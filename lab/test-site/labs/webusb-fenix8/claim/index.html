@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex,nofollow">
+    <title>Terento — fēnix 8 Minimal Read-Only MTP Proof</title>
+    <link rel="stylesheet" href="/labs/webusb-fenix8/styles.css">
+    <link rel="stylesheet" href="/labs/webusb-fenix8/claim/styles.css">
+    <script defer src="/labs/webusb-fenix8/claim/app.js"></script>
+  </head>
+  <body>
+    <main class="shell">
+      <nav class="topbar" aria-label="Test lab navigation">
+        <a class="wordmark" href="/labs/">TERENTO LABS</a>
+        <span class="tag">STAGE 2A.2 · CLAIM + MINIMAL READ</span>
+      </nav>
+
+      <header class="hero">
+        <p class="eyebrow">FĒNIX 8 · CONTROLLED USB PROOF</p>
+        <h1>Claim the known path. Read only.</h1>
+        <p class="lede">A deliberately narrow WebUSB proof for the already-observed interface 0. It asks for device and storage metadata only, then closes the session cleanly.</p>
+        <p class="safety-banner"><strong>READ-ONLY MTP PROOF</strong><span>No file or object access. No map operation. No automatic retry.</span></p>
+        <p id="methodLabel" class="hint" hidden></p>
+      </header>
+
+      <section class="panel" aria-labelledby="safety-title">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">ABSOLUTE SAFETY LOCK</p>
+            <h2 id="safety-title">This stage is intentionally small</h2>
+          </div>
+          <span class="status status--pass">LOCKED</span>
+        </div>
+        <div class="safety-grid safety-grid--proof">
+          <div><span>Target interface</span><strong>0 ONLY</strong></div>
+          <div><span>Allowed protocol</span><strong>5 READS</strong></div>
+          <div><span>Endpoint 2</span><strong>UNUSED</strong></div>
+          <div><span>File/object path</span><strong>NO</strong></div>
+        </div>
+        <p class="hint">Close Garmin Express, OpenMTP, MacDroid and every other MTP client before connecting the watch. A failed claim stops the run.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="consent-title">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">EXPLICIT USER CONFIRMATION</p>
+            <h2 id="consent-title">Authorize this one read-only run</h2>
+          </div>
+          <span id="flowStatus" class="status status--unknown">NOT RUN</span>
+        </div>
+        <label class="consent-row">
+          <input id="consent" type="checkbox">
+          <span>I confirm this is the intended Garmin test watch, other MTP clients are closed, and I authorize interface 0 plus the five listed read-only protocol operations.</span>
+        </label>
+        <p id="flowMessage" class="hint">Physically disconnect and reconnect the watch before every run.</p>
+        <button id="runButton" type="button" disabled>Run Stage 2A.2</button>
+      </section>
+
+      <section class="panel" aria-labelledby="environment-title">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">CURRENT USB DEVICE</p>
+            <h2 id="environment-title">Identity sanity check</h2>
+          </div>
+        </div>
+        <dl class="facts">
+          <div><dt>Browser</dt><dd id="browserValue">UNKNOWN</dd></div>
+          <div><dt>Platform</dt><dd id="platformValue">UNKNOWN</dd></div>
+          <div><dt>USB vendor</dt><dd id="vendorValue">UNKNOWN</dd></div>
+          <div><dt>USB product</dt><dd id="productValue">UNKNOWN</dd></div>
+          <div><dt>USB manufacturer / product</dt><dd id="usbNameValue">UNKNOWN</dd></div>
+          <div><dt>USB serial exposed</dt><dd id="usbSerialValue">NO</dd></div>
+          <div><dt>Selected configuration</dt><dd id="configurationValue">UNKNOWN</dd></div>
+          <div><dt>Current classification</dt><dd>KNOWN GARMIN — COMPATIBILITY TEST IN PROGRESS</dd></div>
+        </dl>
+      </section>
+
+      <section class="panel" aria-labelledby="results-title">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">CONTROLLED FLOW</p>
+            <h2 id="results-title">Run results</h2>
+          </div>
+          <span id="gateStatus" class="status status--unknown">NOT RUN</span>
+        </div>
+        <div class="results">
+          <div class="result-row"><span>WebUSB API</span><strong id="apiResult" class="status status--unknown">UNKNOWN</strong></div>
+          <div class="result-row"><span>Device request</span><strong id="requestResult" class="status status--unknown">NOT RUN</strong></div>
+          <div class="result-row"><span>Garmin vendor identity</span><strong id="identityResult" class="status status--unknown">NOT RUN</strong></div>
+          <div class="result-row"><span>USB product ID stability</span><strong id="pidResult" class="status status--unknown">NOT RUN</strong></div>
+          <div class="result-row"><span>Descriptor target</span><strong id="descriptorResult" class="status status--unknown">NOT RUN</strong></div>
+          <div class="result-row"><span>Configuration 1 selected</span><strong id="configurationResult" class="status status--unknown">NOT RUN</strong></div>
+          <div class="result-row"><span>Claim interface 0</span><strong id="claimResult" class="status status--unknown">NOT RUN</strong></div>
+          <div class="result-row"><span>GetDeviceInfo</span><strong id="deviceInfoResult" class="status status--unknown">NOT RUN</strong></div>
+          <div class="result-row"><span>OpenSession</span><strong id="openSessionResult" class="status status--unknown">NOT RUN</strong></div>
+          <div class="result-row"><span>GetStorageIDs</span><strong id="storageIdsResult" class="status status--unknown">NOT RUN</strong></div>
+          <div class="result-row"><span>GetStorageInfo</span><strong id="storageInfoResult" class="status status--unknown">NOT RUN</strong></div>
+          <div class="result-row"><span>CloseSession</span><strong id="closeSessionResult" class="status status--unknown">NOT RUN</strong></div>
+          <div class="result-row"><span>Release interface 0</span><strong id="releaseResult" class="status status--unknown">NOT RUN</strong></div>
+          <div class="result-row"><span>Device close</span><strong id="closeResult" class="status status--unknown">NOT RUN</strong></div>
+        </div>
+        <div id="gateMessage" class="summary" hidden></div>
+        <div id="errorMessage" class="error-note" hidden></div>
+      </section>
+
+      <section class="panel" aria-labelledby="info-title">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">MTP DEVICE INFO</p>
+            <h2 id="info-title">Technical identity only</h2>
+          </div>
+          <span id="infoStatus" class="status status--unknown">NOT RUN</span>
+        </div>
+        <dl class="facts facts--three">
+          <div><dt>Standard version</dt><dd id="standardVersion">UNKNOWN</dd></div>
+          <div><dt>Vendor extension ID</dt><dd id="vendorExtensionId">UNKNOWN</dd></div>
+          <div><dt>Vendor extension version</dt><dd id="vendorExtensionVersion">UNKNOWN</dd></div>
+          <div><dt>Vendor extension description</dt><dd id="vendorExtensionDescription">UNKNOWN</dd></div>
+          <div><dt>Functional mode</dt><dd id="functionalMode">UNKNOWN</dd></div>
+          <div><dt>MTP manufacturer</dt><dd id="mtpManufacturer">UNKNOWN</dd></div>
+          <div><dt>MTP model</dt><dd id="mtpModel">UNKNOWN</dd></div>
+          <div><dt>Device version / firmware</dt><dd id="mtpVersion">UNKNOWN</dd></div>
+          <div><dt>MTP serial exposed</dt><dd id="mtpSerial">NO</dd></div>
+          <div><dt>Supported operations count</dt><dd id="operationsCount">UNKNOWN</dd></div>
+          <div><dt>Supported events count</dt><dd id="eventsCount">UNKNOWN</dd></div>
+          <div><dt>Supported properties count</dt><dd id="propertiesCount">UNKNOWN</dd></div>
+        </dl>
+      </section>
+
+      <section class="panel" aria-labelledby="protocol-title">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">PROTOCOL EVIDENCE</p>
+            <h2 id="protocol-title">Framed transactions</h2>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Operation</th><th>Code</th><th>Transaction</th><th>Data bytes</th><th>Response code</th><th>Response</th></tr></thead>
+            <tbody id="protocolTable"><tr><td colspan="6" class="empty">No protocol transaction yet.</td></tr></tbody>
+          </table>
+        </div>
+        <p class="hint">Endpoint 3 is the observed bulk OUT path. Endpoint 1 is the observed bulk IN path. The interrupt endpoint is not used.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="storage-title">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">STORAGE METADATA</p>
+            <h2 id="storage-title">Capacity only — no names or paths</h2>
+          </div>
+          <span id="storageCount" class="status status--unknown">NOT RUN</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Storage ID</th><th>Storage type</th><th>Filesystem</th><th>Access</th><th>Capacity</th><th>Free space</th><th>Free objects</th><th>Description</th><th>Volume label</th></tr></thead>
+            <tbody id="storageTable"><tr><td colspan="9" class="empty">No storage metadata yet.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="history-title">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">REPEATABILITY</p>
+            <h2 id="history-title">Latest runs</h2>
+          </div>
+          <span id="repeatStatus" class="status status--unknown">0 / 3</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Run</th><th>Status</th><th>VID</th><th>PID</th><th>MTP identity</th><th>Storage count</th><th>Claim</th><th>Error</th></tr></thead>
+            <tbody id="historyTable"><tr><td colspan="8" class="empty">No run recorded.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="export-title">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">LOCAL EXPORTS</p>
+            <h2 id="export-title">Redacted evidence</h2>
+          </div>
+        </div>
+        <div class="export-actions">
+          <div>
+            <button id="downloadReport" class="button-secondary" type="button" disabled>Download log after a run</button>
+            <p class="export-note">Available after every run, including a safe FAIL. Includes protocol codes, response codes, technical identity and storage metadata. Raw serial and buffers are excluded.</p>
+          </div>
+          <div>
+            <button id="downloadPrivate" class="button-secondary button-private" type="button" hidden>Download private MTP identity record</button>
+            <p id="privateMessage" class="export-note">If MTP exposes a serial, it remains in this tab memory unless you explicitly download the local record.</p>
+          </div>
+        </div>
+        <a id="downloadAnchor" hidden download></a>
+      </section>
+
+      <details class="technical-details">
+        <summary>Technical scope</summary>
+        <p>The flow reads the current USB device object, verifies the observed descriptor target, optionally selects configuration 1, claims interface 0, and uses only GetDeviceInfo, OpenSession, GetStorageIDs, GetStorageInfo and CloseSession.</p>
+        <p>Every protocol container is length-checked and transaction-checked. The page does not request object handles, object metadata, object content, filenames or paths.</p>
+      </details>
+
+      <footer class="footer">
+        <a href="/labs/webusb-fenix8/">Back to descriptor forensics</a>
+        <span>Stage 2A.2 · local diagnostics · no analytics</span>
+      </footer>
+    </main>
+  </body>
+</html>

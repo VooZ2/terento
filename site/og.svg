@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Terento — Your device, ready for where you're going.</title>
+  <desc id="desc">Terento is exploring a simpler way to install community maps on modern Garmin smartwatches from a Mac.</desc>
+  <rect width="1200" height="630" fill="#F7F3EC"/>
+  <path d="M0 132 C175 72 290 92 407 148 S670 218 822 128 S1037 70 1200 105" fill="none" stroke="#D7DDDA" stroke-width="2"/>
+  <path d="M0 229 C172 165 283 190 427 248 S673 321 827 233 S1031 181 1200 215" fill="none" stroke="#D7DDDA" stroke-width="2"/>
+  <path d="M0 415 C188 347 302 382 442 436 S708 508 846 417 S1037 367 1200 402" fill="none" stroke="#D7DDDA" stroke-width="2"/>
+  <path d="M120 495 C265 409 303 292 450 316 C560 333 565 462 684 413 C783 371 764 250 918 188" fill="none" stroke="#577787" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="120" cy="495" r="12" fill="#F7F3EC" stroke="#577787" stroke-width="5"/>
+  <circle cx="918" cy="188" r="12" fill="#577787"/>
+  <rect x="1012" y="76" width="96" height="96" rx="48" fill="#9AA58B" opacity=".7"/>
+  <rect x="84" y="86" width="62" height="62" rx="31" fill="#7898A8" opacity=".65"/>
+  <image x="880" y="352" width="74" height="92" preserveAspectRatio="xMidYMid meet" xlink:href="/assets/logo-sky.svg"/>
+  <text x="968" y="426" fill="#222A2B" font-family="Instrument Sans, Helvetica Neue, Arial, sans-serif" font-size="44" font-weight="600" letter-spacing="-1.5">Terento</text>
+  <text x="88" y="560" fill="#222A2B" font-family="Instrument Sans, Helvetica Neue, Arial, sans-serif" font-size="37" font-weight="600" letter-spacing="-1">Community maps for Garmin smartwatches on Mac.</text>
+</svg>

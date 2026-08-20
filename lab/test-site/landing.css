@@ -1,0 +1,243 @@
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("/assets/fonts/instrument-sans.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("/assets/fonts/inter-variable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+:root {
+  --sky: #7898A8;
+  --off-white: #F7F3EC;
+  --graphite: #222A2B;
+  --secondary: #6D706F;
+  --trail: #B39A78;
+  --font-brand: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--off-white);
+  color: var(--graphite);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.holding-page {
+  display: flex;
+  position: relative;
+  min-height: 100svh;
+  flex-direction: column;
+  overflow: hidden;
+  padding: clamp(30px, 5vw, 70px) clamp(20px, 4vw, 64px) clamp(28px, 4vw, 56px);
+}
+
+.masthead {
+  flex: 0 0 auto;
+  width: min(100%, 1600px);
+  margin: 0 auto;
+}
+
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--graphite);
+  font-family: var(--font-brand);
+  font-size: clamp(20px, 2vw, 25px);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+}
+
+.brand-lockup img {
+  width: 29px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.hero {
+  display: flex;
+  width: min(100%, 1600px);
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  margin: 0 auto;
+  padding: clamp(72px, 9vh, 140px) 0 clamp(24px, 4vh, 64px);
+}
+
+.hero-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 780px;
+  margin: 0 auto clamp(44px, 6vh, 84px);
+  text-align: center;
+}
+
+h1,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-family: var(--font-brand);
+  font-size: clamp(48px, 8vw, 112px);
+  font-weight: 600;
+  letter-spacing: -0.07em;
+  line-height: 0.94;
+}
+
+.hero-copy p {
+  margin-top: 22px;
+  color: var(--secondary);
+  font-size: clamp(17px, 1.8vw, 22px);
+  letter-spacing: -0.015em;
+}
+
+.hero-visual {
+  position: relative;
+  width: min(100%, 1600px);
+  margin: 0 auto;
+}
+
+.hero-visual img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.waypoint-trail {
+  position: absolute;
+  top: 44%;
+  left: 33%;
+  z-index: 1;
+  width: clamp(90px, 13vw, 210px);
+  height: clamp(26px, 3vw, 48px);
+  border-top: 1px dashed color-mix(in srgb, var(--trail) 70%, transparent);
+  border-radius: 50%;
+  transform: rotate(-14deg);
+}
+
+.waypoint {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--trail);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--trail) 18%, transparent);
+  offset-path: path("M 0 0 C 35 22, 100 25, 210 0");
+  offset-distance: 0%;
+  animation: waypoint-travel 13s ease-in-out infinite;
+}
+
+@keyframes waypoint-travel {
+  0%, 8% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  15%, 80% {
+    opacity: 1;
+  }
+  92%, 100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .holding-page {
+    padding: 28px 16px 28px;
+  }
+
+  .hero {
+    justify-content: space-between;
+    padding: clamp(72px, 15vh, 130px) 0 18px;
+  }
+
+  .hero-copy {
+    margin-bottom: 52px;
+  }
+
+  h1 {
+    font-size: clamp(46px, 14vw, 72px);
+    line-height: 0.96;
+  }
+
+  .hero-copy p {
+    margin-top: 18px;
+    font-size: 17px;
+  }
+
+  .hero-visual {
+    width: 100%;
+  }
+
+  .waypoint-trail {
+    top: 43%;
+    left: 32%;
+    width: 92px;
+    height: 24px;
+  }
+
+  .waypoint {
+    offset-path: path("M 0 0 C 18 14, 48 17, 92 0");
+  }
+}
+
+@media (min-width: 721px) and (max-height: 780px) {
+  .holding-page {
+    padding-top: 28px;
+    padding-bottom: 22px;
+  }
+
+  .hero {
+    padding-top: clamp(36px, 6vh, 60px);
+    padding-bottom: 0;
+  }
+
+  .hero-copy {
+    margin-bottom: clamp(24px, 4vh, 42px);
+  }
+
+  h1 {
+    font-size: clamp(48px, 7vw, 84px);
+  }
+
+  .hero-copy p {
+    margin-top: 14px;
+    font-size: 18px;
+  }
+
+  .hero-visual {
+    width: 95%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .waypoint {
+    animation: none;
+    opacity: 1;
+  }
+
+}

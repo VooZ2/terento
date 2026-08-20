@@ -1,0 +1,31 @@
+# Deployment operator notes contain live infrastructure details and are
+# maintained outside the GitHub source repository.
+/deploy/
+/docs/tasks/
+
+# Internal design exploration/validation boards. Final approved identity is
+# documented in brand/BRAND_GUIDELINES.md and the canonical logo assets.
+/brand/previews/
+
+# Local secrets and credentials.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+acme.json
+**/acme.json
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+
+# Local machine and runtime output.
+.DS_Store
+*.log
+coverage/
+dist/
+node_modules/

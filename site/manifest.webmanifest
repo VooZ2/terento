@@ -1,0 +1,27 @@
+{
+  "name": "Terento",
+  "short_name": "Terento",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7F3EC",
+  "theme_color": "#F7F3EC",
+  "icons": [
+    {
+      "src": "/favicon.svg?v=20260820-4",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.ico?v=20260820-4",
+      "sizes": "any",
+      "type": "image/x-icon",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png?v=20260820-4",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
