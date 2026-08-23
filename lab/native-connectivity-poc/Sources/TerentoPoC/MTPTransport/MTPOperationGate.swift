@@ -1,8 +1,8 @@
 import Foundation
 
 /// Native MTP operations are process-wide resources on macOS. This gate is
-/// deliberately below SwiftUI so presence checks, inventory reads, backup,
-/// removal, update, and installation cannot open competing sessions.
+/// deliberately below SwiftUI so presence checks, catalog loading, inventory
+/// reads, backup, removal, update, and installation cannot overlap.
 enum MTPOperationKind: String, Sendable {
     case presence
     case catalog
@@ -83,6 +83,20 @@ final class MTPOperationGate: @unchecked Sendable {
         return MTPOperationLease(id: id)
     }
 
+    /// Async counterpart used by UI-owned lifecycle tasks. It polls without
+    /// blocking the main actor, so cancelling the task can stop a queued
+    /// operation before it owns the native boundary.
+    func beginLifecycleAsync() async throws -> MTPOperationLease {
+        while !Task.isCancelled {
+            if let lease = try beginLifecycleIfAvailable() {
+                return lease
+            }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+
+        throw CancellationError()
+    }
+
     func invalidateLifecycleOperations() {
         condition.lock()
         lifecycleInvalidated = true
@@ -126,12 +140,6 @@ final class MTPOperationGate: @unchecked Sendable {
                 guard !lifecycleInvalidated else {
                     throw MTPOperationGateError.lifecycleInvalidated
                 }
-            } else if kind == .presence {
-                // A lifecycle reservation pauses presence before any new
-                // native session can be opened.
-                throw MTPOperationGateError.lifecycleBusy
-            } else if lifecycleLeaseID != nil {
-                throw MTPOperationGateError.lifecycleBusy
             }
 
             guard !Task.isCancelled else {
@@ -160,14 +168,77 @@ final class MTPOperationGate: @unchecked Sendable {
         return try body()
     }
 
+    /// Serializes metadata work that does not open an MTP session with the
+    /// native lifecycle. Catalog loading is kept here so Eject and presence
+    /// monitoring observe one complete Maps operation instead of a gap between
+    /// catalog and inventory work.
+    func withAsyncOperation<T: Sendable>(
+        kind: MTPOperationKind,
+        _ body: @escaping @Sendable () async throws -> T
+    ) async throws -> T {
+        let operationID = try await beginAsyncOperation(kind: kind)
+        defer { endOperation(operationID) }
+
+        try Task.checkCancellation()
+        return try await body()
+    }
+
     private func waitForChange() throws {
         while !Task.isCancelled {
             _ = condition.wait(until: Date(timeIntervalSinceNow: 0.05))
-            if activeNativeOperation == nil {
-                return
-            }
+            return
         }
 
         throw CancellationError()
+    }
+
+    private func beginLifecycleIfAvailable() throws -> MTPOperationLease? {
+        condition.lock()
+        defer { condition.unlock() }
+
+        guard lifecycleLeaseID == nil, activeNativeOperation == nil else {
+            return nil
+        }
+
+        let id = UUID()
+        lifecycleLeaseID = id
+        lifecycleInvalidated = false
+        return MTPOperationLease(id: id)
+    }
+
+    private func beginAsyncOperation(kind: MTPOperationKind) async throws -> UUID {
+        _ = kind
+
+        while !Task.isCancelled {
+            if let operationID = claimAsyncOperationIfAvailable() {
+                return operationID
+            }
+
+            try await Task.sleep(for: .milliseconds(50))
+        }
+
+        throw CancellationError()
+    }
+
+    private func claimAsyncOperationIfAvailable() -> UUID? {
+        condition.lock()
+        defer { condition.unlock() }
+
+        guard activeNativeOperation == nil, lifecycleLeaseID == nil else {
+            return nil
+        }
+
+        let operationID = UUID()
+        activeNativeOperation = operationID
+        return operationID
+    }
+
+    private func endOperation(_ operationID: UUID) {
+        condition.lock()
+        if activeNativeOperation == operationID {
+            activeNativeOperation = nil
+            condition.broadcast()
+        }
+        condition.unlock()
     }
 }

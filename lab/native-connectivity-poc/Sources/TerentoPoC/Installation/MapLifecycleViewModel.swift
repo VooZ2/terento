@@ -52,18 +52,39 @@ final class MapLifecycleViewModel: ObservableObject {
 
     private let deviceEngine: DeviceEngine
     private let mapEngine: MapEngine
+    private let operationGate: MTPOperationGate
+    private let operationController: MapLifecycleOperationController
+    private let contextProvider: (String) -> MapLifecycleContext?
+    private let connectedDeviceProvider: () -> Bool
     private let resolver = MapLifecyclePresentationResolver()
     private var lifecycleEpoch: UInt64 = 0
     private var inFlightOperationCount = 0
+    private var operationTasks: [String: Task<Void, Never>] = [:]
 
-    init(deviceEngine: DeviceEngine, mapEngine: MapEngine) {
+    init(
+        deviceEngine: DeviceEngine,
+        mapEngine: MapEngine,
+        operationGate: MTPOperationGate = .shared,
+        operationController: MapLifecycleOperationController = MapLifecycleOperationController(),
+        contextProvider: ((String) -> MapLifecycleContext?)? = nil,
+        connectedDeviceProvider: (() -> Bool)? = nil
+    ) {
         self.deviceEngine = deviceEngine
         self.mapEngine = mapEngine
+        self.operationGate = operationGate
+        self.operationController = operationController
+        self.contextProvider = contextProvider ?? { [weak mapEngine] itemID in
+            mapEngine?.lifecycleContext(for: itemID)
+        }
+        self.connectedDeviceProvider = connectedDeviceProvider ?? { [weak deviceEngine] in
+            deviceEngine?.hasConnectedDevice == true
+        }
     }
 
     var isBusy: Bool {
         pendingConfirmation != nil
             || inFlightOperationCount > 0
+            || operationController.isBusy
             || operations.values.contains { state in
                 switch state.phase {
                 case .backingUp, .removing, .updating, .verifying:
@@ -74,8 +95,15 @@ final class MapLifecycleViewModel: ObservableObject {
             }
     }
 
+    var canEject: Bool {
+        !isBusy
+    }
+
     func resetForDisconnectedDevice() {
         lifecycleEpoch &+= 1
+        operationController.invalidate()
+        operationGate.invalidateLifecycleOperations()
+        operationTasks.values.forEach { $0.cancel() }
         pendingConfirmation = nil
         operations.removeAll()
         backupResults.removeAll()
@@ -86,7 +114,7 @@ final class MapLifecycleViewModel: ObservableObject {
     }
 
     func availability(for item: MapLifecycleItem) -> MapLifecycleActionAvailability {
-        guard let context = mapEngine.lifecycleContext(for: item.id) else {
+        guard let context = lifecycleContext(for: item.id) else {
             return MapLifecycleActionAvailability(
                 actions: [],
                 status: "Needs refresh",
@@ -104,12 +132,15 @@ final class MapLifecycleViewModel: ObservableObject {
     }
 
     func requestBackup(itemID: String) {
-        guard let context = mapEngine.lifecycleContext(for: itemID),
+        guard let context = lifecycleContext(for: itemID),
               availability(for: context.item).allows(.backup),
               !isBusy else {
             return
         }
 
+        let operationGate = self.operationGate
+        let operationController = self.operationController
+        guard let operationToken = operationController.begin() else { return }
         let operationEpoch = lifecycleEpoch
         let relay = MapLifecycleProgressRelay(
             viewModel: self,
@@ -126,31 +157,53 @@ final class MapLifecycleViewModel: ObservableObject {
             message: "Creating a verified local backup…"
         )
 
-        let task = Task.detached(priority: .userInitiated) {
-            ReadBackupAdapter(transport: MTPReadBackupAdapter()).backup(
-                target: ManagedMapBackupTarget(
-                    item: context.item,
-                    expectedSHA256ByItemID: context.expectedSHA256ByItemID
-                ),
-                onProgress: { progress in
-                    relay.send(
-                        SafeUpdateProgress(
-                            state: .backingUp,
-                            bytesCompleted: progress.bytesTransferred,
-                            totalBytes: progress.totalBytes,
-                            bytesPerSecond: progress.bytesPerSecond
+        let task = Task { [weak self] in
+            let result: ReadBackupResult
+            do {
+                result = try await CancellableDetached.run(priority: .userInitiated) {
+                    let lease = try await operationGate.beginLifecycleAsync()
+                    defer { operationGate.endLifecycle(lease) }
+                    guard operationController.isCurrent(operationToken) else {
+                        throw CancellationError()
+                    }
+
+                    return ReadBackupAdapter(
+                        transport: MTPReadBackupAdapter(
+                            operationGate: operationGate,
+                            lifecycleLease: lease
                         )
+                    ).backup(
+                        target: ManagedMapBackupTarget(
+                            item: context.item,
+                            expectedSHA256ByItemID: context.expectedSHA256ByItemID
+                        ),
+                        onProgress: { progress in
+                            relay.send(
+                                SafeUpdateProgress(
+                                    state: .backingUp,
+                                    bytesCompleted: progress.bytesTransferred,
+                                    totalBytes: progress.totalBytes,
+                                    bytesPerSecond: progress.bytesPerSecond
+                                )
+                            )
+                        }
                     )
                 }
-            )
-        }
+            } catch {
+                result = ReadBackupResult(
+                    mapID: context.item.id,
+                    status: .backupFailedDeviceDisconnected,
+                    files: [],
+                    message: "The Garmin connection changed before the backup could finish."
+                )
+            }
 
-        Task { [weak self] in
-            let result = await task.value
             guard let self else { return }
-
+            let isCurrent = operationController.isCurrent(operationToken)
+            operationController.finish(operationToken)
+            operationTasks.removeValue(forKey: itemID)
             inFlightOperationCount = max(0, inFlightOperationCount - 1)
-            guard lifecycleEpoch == operationEpoch else { return }
+            guard isCurrent, lifecycleEpoch == operationEpoch else { return }
 
             backupResults[itemID] = result
             if result.isSuccess {
@@ -171,10 +224,11 @@ final class MapLifecycleViewModel: ObservableObject {
                 )
             }
         }
+        operationTasks[itemID] = task
     }
 
     func requestRemove(itemID: String) {
-        guard let context = mapEngine.lifecycleContext(for: itemID),
+        guard let context = lifecycleContext(for: itemID),
               availability(for: context.item).allows(.remove),
               !isBusy else {
             return
@@ -187,7 +241,7 @@ final class MapLifecycleViewModel: ObservableObject {
     }
 
     func requestUpdate(itemID: String) {
-        guard let context = mapEngine.lifecycleContext(for: itemID),
+        guard let context = lifecycleContext(for: itemID),
               availability(for: context.item).allows(.update),
               !isBusy else {
             return
@@ -284,7 +338,7 @@ final class MapLifecycleViewModel: ObservableObject {
     }
 
     private func remove(itemID: String) {
-        guard let context = mapEngine.lifecycleContext(for: itemID),
+        guard let context = lifecycleContext(for: itemID),
               availability(for: context.item).allows(.remove),
               context.item.installedMaps.count == 1,
               let installedMap = context.item.installedMaps.first,
@@ -293,12 +347,13 @@ final class MapLifecycleViewModel: ObservableObject {
               let region = context.item.region,
               let mapIdentity = MapIdentity(provider: provider, region: region),
               let expectedHash = context.expectedSHA256ByItemID[objectID],
-              deviceEngine.hasConnectedDevice,
+              connectedDeviceProvider(),
               !isBusy else {
             fail(itemID: itemID, action: .remove, message: "This map could not be verified for safe removal. Nothing was changed.")
             return
         }
 
+        guard let operationToken = operationController.begin() else { return }
         let cachedBackup = backupResults[itemID]
         let operationEpoch = lifecycleEpoch
         let relay = MapLifecycleProgressRelay(
@@ -318,7 +373,6 @@ final class MapLifecycleViewModel: ObservableObject {
                 : "Creating a verified local backup before removal…"
         )
 
-        let connected = deviceEngine.hasConnectedDevice
         let target = SafeDeleteTarget(
             deviceKey: context.deviceKey,
             mapIdentity: mapIdentity,
@@ -333,76 +387,109 @@ final class MapLifecycleViewModel: ObservableObject {
         )
         let item = context.item
         let expectedHashes = context.expectedSHA256ByItemID
+        let operationGate = self.operationGate
+        let operationController = self.operationController
 
-        let task = Task.detached(priority: .userInitiated) {
-            let backup: ReadBackupResult
-            if let cachedBackup, cachedBackup.isSuccess {
-                backup = cachedBackup
-            } else {
-                backup = ReadBackupAdapter(transport: MTPReadBackupAdapter()).backup(
-                    target: ManagedMapBackupTarget(
-                        item: item,
-                        expectedSHA256ByItemID: expectedHashes
-                    ),
-                    onProgress: { progress in
-                        relay.send(
-                            SafeUpdateProgress(
-                                state: .backingUp,
-                                bytesCompleted: progress.bytesTransferred,
-                                totalBytes: progress.totalBytes,
-                                bytesPerSecond: progress.bytesPerSecond
+        let task = Task { [weak self] in
+            let result: SafeDeleteResult
+            do {
+                result = try await CancellableDetached.run(priority: .userInitiated) {
+                    let lease = try await operationGate.beginLifecycleAsync()
+                    defer { operationGate.endLifecycle(lease) }
+                    guard operationController.isCurrent(operationToken) else {
+                        throw CancellationError()
+                    }
+
+                    let backup: ReadBackupResult
+                    if let cachedBackup, cachedBackup.isSuccess {
+                        backup = cachedBackup
+                    } else {
+                        backup = ReadBackupAdapter(
+                            transport: MTPReadBackupAdapter(
+                                operationGate: operationGate,
+                                lifecycleLease: lease
                             )
+                        ).backup(
+                            target: ManagedMapBackupTarget(
+                                item: item,
+                                expectedSHA256ByItemID: expectedHashes
+                            ),
+                            onProgress: { progress in
+                                relay.send(
+                                    SafeUpdateProgress(
+                                        state: .backingUp,
+                                        bytesCompleted: progress.bytesTransferred,
+                                        totalBytes: progress.totalBytes,
+                                        bytesPerSecond: progress.bytesPerSecond
+                                    )
+                                )
+                            }
                         )
                     }
-                )
-            }
 
-            guard backup.isSuccess, let verifiedBackup = backup.files.first else {
-                return SafeDeleteResult(
+                    guard backup.isSuccess, let verifiedBackup = backup.files.first else {
+                        return SafeDeleteResult(
+                            mapIdentity: mapIdentity,
+                            status: .blockedBackupRequired,
+                            message: backup.message
+                        )
+                    }
+
+                    guard operationGate.isValid(lease) else {
+                        throw CancellationError()
+                    }
+
+                    let confirmedTarget = SafeDeleteTarget(
+                        deviceKey: target.deviceKey,
+                        mapIdentity: target.mapIdentity,
+                        ownership: target.ownership,
+                        objectID: target.objectID,
+                        expectedPath: target.expectedPath,
+                        expectedFilename: target.expectedFilename,
+                        expectedSizeBytes: target.expectedSizeBytes,
+                        expectedSHA256: target.expectedSHA256,
+                        backup: verifiedBackup,
+                        expectedVersion: target.expectedVersion
+                    )
+                    let transport = MTPSafeDeleteTransport(
+                        operationGate: operationGate,
+                        lifecycleLease: lease
+                    )
+                    let deviceTransport = MTPTransport(
+                        operationGate: operationGate,
+                        lifecycleLease: lease
+                    )
+                    return MapLifecycleManager().delete(
+                        target: confirmedTarget,
+                        confirmed: true,
+                        deviceConnected: operationGate.isValid(lease),
+                        rescan: {
+                            try deviceTransport.readFileInventory().map {
+                                InstalledMapFile(
+                                    path: $0.path,
+                                    filename: $0.filename,
+                                    sizeBytes: $0.sizeBytes,
+                                    itemID: $0.itemID
+                                )
+                            }
+                        },
+                        transport: transport
+                    )
+                }
+            } catch {
+                result = SafeDeleteResult(
                     mapIdentity: mapIdentity,
-                    status: .blockedBackupRequired,
-                    message: backup.message
+                    status: .failedDeviceDisconnected,
+                    message: "The Garmin connection changed before removal could finish. The result must be checked again."
                 )
             }
 
-            let confirmedTarget = SafeDeleteTarget(
-                deviceKey: target.deviceKey,
-                mapIdentity: target.mapIdentity,
-                ownership: target.ownership,
-                objectID: target.objectID,
-                expectedPath: target.expectedPath,
-                expectedFilename: target.expectedFilename,
-                expectedSizeBytes: target.expectedSizeBytes,
-                expectedSHA256: target.expectedSHA256,
-                backup: verifiedBackup,
-                expectedVersion: target.expectedVersion
-            )
-            let transport = MTPSafeDeleteTransport()
-            let deviceTransport = MTPTransport()
-            return MapLifecycleManager().delete(
-                target: confirmedTarget,
-                confirmed: true,
-                deviceConnected: connected,
-                rescan: {
-                    try deviceTransport.readFileInventory().map {
-                        InstalledMapFile(
-                            path: $0.path,
-                            filename: $0.filename,
-                            sizeBytes: $0.sizeBytes,
-                            itemID: $0.itemID
-                        )
-                    }
-                },
-                transport: transport
-            )
-        }
-
-        Task { [weak self] in
-            let result = await task.value
             guard let self else { return }
-
+            let isCurrent = operationController.isCurrent(operationToken)
+            operationController.finish(operationToken)
+            operationTasks.removeValue(forKey: itemID)
             inFlightOperationCount = max(0, inFlightOperationCount - 1)
-            guard lifecycleEpoch == operationEpoch else { return }
+            guard isCurrent, lifecycleEpoch == operationEpoch else { return }
 
             if result.isSuccess {
                 setOperation(
@@ -423,10 +510,11 @@ final class MapLifecycleViewModel: ObservableObject {
                 )
             }
         }
+        operationTasks[itemID] = task
     }
 
     private func update(itemID: String) {
-        guard let context = mapEngine.lifecycleContext(for: itemID),
+        guard let context = lifecycleContext(for: itemID),
               availability(for: context.item).allows(.update),
               let selectedMap = context.selectedMap,
               let comparison = context.comparison,
@@ -437,7 +525,7 @@ final class MapLifecycleViewModel: ObservableObject {
               let version = context.item.version,
               let expectedHash = context.expectedSHA256ByItemID[objectID],
               let profile = context.profile,
-              deviceEngine.hasConnectedDevice,
+              connectedDeviceProvider(),
               !isBusy else {
             fail(itemID: itemID, action: .update, message: "This map is not ready for a safe update. Nothing was changed.")
             return
@@ -463,8 +551,11 @@ final class MapLifecycleViewModel: ObservableObject {
                 .appendingPathComponent("Backups", isDirectory: true)
                 ?? FileManager.default.temporaryDirectory.appendingPathComponent("Terento-Backups", isDirectory: true),
             confirmed: true,
-            deviceConnected: deviceEngine.hasConnectedDevice
+            deviceConnected: true
         )
+        let operationGate = self.operationGate
+        let operationController = self.operationController
+        guard let operationToken = operationController.begin() else { return }
         let operationEpoch = lifecycleEpoch
         let relay = MapLifecycleProgressRelay(
             viewModel: self,
@@ -481,21 +572,58 @@ final class MapLifecycleViewModel: ObservableObject {
             message: "Preparing the map update…"
         )
 
-        let task = Task.detached(priority: .userInitiated) {
-            await SafeUpdateTransaction().run(
-                request: request,
-                provider: MapPackageAcquisitionProvider(),
-                transport: MTPSafeUpdateTransport(),
-                onProgress: relay.send
-            )
-        }
+        let task = Task { [weak self] in
+            let result: SafeUpdateResult
+            do {
+                result = try await CancellableDetached.run(priority: .userInitiated) {
+                    let lease = try await operationGate.beginLifecycleAsync()
+                    defer { operationGate.endLifecycle(lease) }
+                    guard operationController.isCurrent(operationToken) else {
+                        throw CancellationError()
+                    }
 
-        Task { [weak self] in
-            let result = await task.value
+                    let liveRequest = SafeUpdateRequest(
+                        deviceKey: request.deviceKey,
+                        identity: request.identity,
+                        profile: request.profile,
+                        selectedMap: request.selectedMap,
+                        comparison: request.comparison,
+                        currentItem: request.currentItem,
+                        currentObject: request.currentObject,
+                        backupDirectory: request.backupDirectory,
+                        confirmed: request.confirmed,
+                        deviceConnected: operationGate.isValid(lease),
+                        deviceConnectionCheck: { operationGate.isValid(lease) }
+                    )
+                    return await SafeUpdateTransaction().run(
+                        request: liveRequest,
+                        provider: MapPackageAcquisitionProvider(),
+                        transport: MTPSafeUpdateTransport(
+                            operationGate: operationGate,
+                            lifecycleLease: lease
+                        ),
+                        onProgress: relay.send
+                    )
+                }
+            } catch {
+                result = SafeUpdateResult(
+                    status: .failedDeviceDisconnected,
+                    state: .failed,
+                    message: "The Garmin connection changed before the update could finish. The result must be checked again.",
+                    storagePlan: nil,
+                    backup: nil,
+                    newObject: nil,
+                    finalObjects: [],
+                    oldMapPreserved: true
+                )
+            }
+
             guard let self else { return }
-
+            let isCurrent = operationController.isCurrent(operationToken)
+            operationController.finish(operationToken)
+            operationTasks.removeValue(forKey: itemID)
             inFlightOperationCount = max(0, inFlightOperationCount - 1)
-            guard lifecycleEpoch == operationEpoch else { return }
+            guard isCurrent, lifecycleEpoch == operationEpoch else { return }
 
             if result.isSuccess {
                 setOperation(
@@ -516,6 +644,11 @@ final class MapLifecycleViewModel: ObservableObject {
                 )
             }
         }
+        operationTasks[itemID] = task
+    }
+
+    private func lifecycleContext(for itemID: String) -> MapLifecycleContext? {
+        contextProvider(itemID)
     }
 
     private func setOperation(

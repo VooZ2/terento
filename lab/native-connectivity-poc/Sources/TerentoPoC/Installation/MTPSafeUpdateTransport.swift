@@ -5,15 +5,36 @@ import Foundation
 /// safety order; this type only translates exact MTP reads/writes into the
 /// domain protocol and never selects an object by filename alone.
 struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
-    private let deviceReader = MTPTransport()
-    private let mapTransport = MTPMapInstallationTransport()
+    private let operationGate: MTPOperationGate
+    private let lifecycleLease: MTPOperationLease?
+    private let deviceReader: MTPTransport
+    private let mapTransport: MTPMapInstallationTransport
+
+    init(
+        operationGate: MTPOperationGate = .shared,
+        lifecycleLease: MTPOperationLease? = nil
+    ) {
+        self.operationGate = operationGate
+        self.lifecycleLease = lifecycleLease
+        self.deviceReader = MTPTransport(
+            operationGate: operationGate,
+            lifecycleLease: lifecycleLease
+        )
+        self.mapTransport = MTPMapInstallationTransport(
+            operationGate: operationGate,
+            lifecycleLease: lifecycleLease
+        )
+    }
 
     func readExistingFile(
         file: InstalledMapFile,
         to destinationURL: URL,
         onProgress: (@Sendable (TransferProgress) -> Void)?
     ) throws -> MapLifecycleBackupTransfer {
-        try MTPReadBackupAdapter().readExistingFile(
+        try MTPReadBackupAdapter(
+            operationGate: operationGate,
+            lifecycleLease: lifecycleLease
+        ).readExistingFile(
             file: file,
             to: destinationURL,
             onProgress: onProgress
@@ -64,7 +85,7 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
         }
 
         let temporaryURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("terento-update-inspect-(UUID().uuidString).img")
+            .appendingPathComponent("terento-update-inspect-\(UUID().uuidString).img")
         defer { try? FileManager.default.removeItem(at: temporaryURL) }
 
         do {
@@ -134,7 +155,9 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
                 targetFilename: targetFilename,
                 progress: onProgress ?? { _ in }
             )
-            let parsed = parseManagedFilename(targetFilename)
+            guard let parsed = parseManagedFilename(targetFilename) else {
+                throw SafeUpdateTransportError.metadataMismatch
+            }
             return SafeUpdateRemoteObject(
                 file: InstalledMapFile(
                     path: targetPath,
@@ -158,10 +181,17 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
         _ object: SafeUpdateRemoteObject,
         expected: SafeUpdateSourceArtifact
     ) throws -> SafeUpdateRemoteObject {
+        guard let expectedIdentity = MapIdentity(
+            provider: expected.provider,
+            region: expected.region
+        ) else {
+            throw SafeUpdateTransportError.metadataMismatch
+        }
+
         let inspected = try inspectCurrentObject(
             SafeUpdateRemoteObject(
                 file: object.file,
-                identity: MapIdentity(provider: expected.provider, region: expected.region)!,
+                identity: expectedIdentity,
                 version: expected.version,
                 ownership: .managedByTerento,
                 sha256: nil
@@ -170,7 +200,7 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
 
         guard inspected.file.sizeBytes == expected.installSizeBytes,
               inspected.sha256?.caseInsensitiveCompare(expected.sha256) == .orderedSame,
-              inspected.identity == MapIdentity(provider: expected.provider, region: expected.region),
+              inspected.identity == expectedIdentity,
               inspected.version == expected.version else {
             throw SafeUpdateTransportError.metadataMismatch
         }
@@ -225,8 +255,12 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
             maxLength: GarminIMGMetadataParser.prefixLength
         )
 
-        return files.map { file in
+        return files.compactMap { file in
             let metadata = prefixes[file.itemID].flatMap { GarminIMGMetadataParser().parse($0) }
+            guard let metadata,
+                  let identity = MapIdentity(provider: metadata.provider, region: metadata.region) else {
+                return nil
+            }
             return SafeUpdateRemoteObject(
                 file: InstalledMapFile(
                     path: file.path,
@@ -234,11 +268,8 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
                     sizeBytes: file.sizeBytes,
                     itemID: file.itemID
                 ),
-                identity: MapIdentity(
-                    provider: metadata?.provider ?? "unknown",
-                    region: metadata?.region ?? file.filename
-                )!,
-                version: metadata?.version,
+                identity: identity,
+                version: metadata.version,
                 ownership: .unknown,
                 sha256: nil
             )
@@ -265,7 +296,7 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
         return metadata
     }
 
-    private func parseManagedFilename(_ filename: String) -> (identity: MapIdentity, version: MapVersion?) {
+    private func parseManagedFilename(_ filename: String) -> (identity: MapIdentity, version: MapVersion?)? {
         let stem = filename.dropLast(".img".count)
         let components = stem.split(separator: "_").map(String.init)
         let version: MapVersion?
@@ -280,10 +311,13 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
 
         let provider = identityComponents.dropFirst().dropLast().joined(separator: "_")
         let region = identityComponents.last ?? "unknown"
-        return (
-            MapIdentity(provider: provider.isEmpty ? "unknown" : provider, region: region)!,
-            version
-        )
+        guard !provider.isEmpty,
+              !region.isEmpty,
+              let identity = MapIdentity(provider: provider, region: region) else {
+            return nil
+        }
+
+        return (identity, version)
     }
 
     private func mapError(_ error: InstallationTransportError) -> SafeUpdateTransportError {

@@ -1,7 +1,10 @@
 # Deployment operator notes contain live infrastructure details and are
 # maintained outside the GitHub source repository.
 /deploy/
-/docs/tasks/
+# Exact publication boundary: keep these repository-relative paths local.
+/docs/
+/internal/
+/lab/test-site/
 
 # Internal design exploration/validation boards. Final approved identity is
 # documented in brand/BRAND_GUIDELINES.md and the canonical logo assets.

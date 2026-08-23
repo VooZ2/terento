@@ -605,8 +605,17 @@ struct ConnectScreen: View {
                     compatibility: deviceEngine.compatibility?.status ?? .unknown,
                     asset: resolvedDeviceAsset
                 ),
-                canEject: deviceEngine.hasConnectedDevice && !mapEngine.isInstalling,
+                canEject: deviceEngine.canEject
+                    && !mapEngine.isBusy
+                    && !lifecycleViewModel.isBusy,
                 onEject: {
+                    guard deviceEngine.canEject,
+                          !mapEngine.isBusy,
+                          !lifecycleViewModel.isBusy else {
+                        return
+                    }
+
+                    lifecycleViewModel.resetForDisconnectedDevice()
                     mapEngine.resetForDisconnectedDevice()
                     deviceEngine.ejectDevice()
                 }

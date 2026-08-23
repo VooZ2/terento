@@ -366,6 +366,37 @@ struct SafeUpdateRequest: Sendable {
     let backupDirectory: URL
     let confirmed: Bool
     let deviceConnected: Bool
+    let deviceConnectionCheck: (@Sendable () -> Bool)?
+
+    init(
+        deviceKey: String,
+        identity: DeviceIdentity,
+        profile: DeviceInstallProfile?,
+        selectedMap: MapPackage,
+        comparison: MapComparison,
+        currentItem: MapLifecycleItem,
+        currentObject: SafeUpdateRemoteObject,
+        backupDirectory: URL,
+        confirmed: Bool,
+        deviceConnected: Bool,
+        deviceConnectionCheck: (@Sendable () -> Bool)? = nil
+    ) {
+        self.deviceKey = deviceKey
+        self.identity = identity
+        self.profile = profile
+        self.selectedMap = selectedMap
+        self.comparison = comparison
+        self.currentItem = currentItem
+        self.currentObject = currentObject
+        self.backupDirectory = backupDirectory
+        self.confirmed = confirmed
+        self.deviceConnected = deviceConnected
+        self.deviceConnectionCheck = deviceConnectionCheck
+    }
+
+    func isDeviceConnectedNow() -> Bool {
+        deviceConnected && (deviceConnectionCheck?() ?? true)
+    }
 }
 
 struct SafeUpdateResult: Equatable, Sendable {
@@ -404,7 +435,7 @@ struct SafeUpdateTransaction: Sendable {
     ) async -> SafeUpdateResult {
         let transactionID = UUID()
 
-        guard request.deviceConnected else {
+        guard request.isDeviceConnectedNow() else {
             return failure(.failedDeviceDisconnected, "The Garmin device is not connected. Nothing was changed.")
         }
         guard request.confirmed else {
@@ -435,6 +466,10 @@ struct SafeUpdateTransaction: Sendable {
         }
         guard profile.targetDirectory == "/GARMIN" else {
             return failure(.blockedUnknownTarget, "The device profile does not provide the validated Garmin map target.")
+        }
+
+        func deviceIsConnected() -> Bool {
+            request.isDeviceConnectedNow()
         }
 
         switch request.comparison.status {
@@ -494,6 +529,15 @@ struct SafeUpdateTransaction: Sendable {
             return failure(.blockedCurrentObjectChanged, "The installed map changed while the new version was being prepared. Nothing was changed.")
         }
 
+        guard let currentItemID = current.file.itemID,
+              let currentHash = current.sha256 else {
+            return failure(.failedMetadataMismatch, "The current map integrity record is incomplete. Nothing was changed.")
+        }
+
+        guard deviceIsConnected() else {
+            return failure(.failedDeviceDisconnected, "The Garmin device was disconnected before the update could continue. Nothing was changed.")
+        }
+
         let freeSpace: UInt64
         do {
             freeSpace = try transport.readFreeSpace()
@@ -520,7 +564,7 @@ struct SafeUpdateTransaction: Sendable {
             target: ManagedMapBackupTarget(
                 item: request.currentItem,
                 expectedSHA256ByItemID: [
-                    current.file.itemID!: current.sha256!
+                    currentItemID: currentHash
                 ]
             ),
             onProgress: { progress in
@@ -537,6 +581,10 @@ struct SafeUpdateTransaction: Sendable {
                 ? .failedDeviceDisconnected
                 : .failedBackup
             return failure(status, "The existing map could not be backed up and verified. The old map remains installed.", storagePlan: storagePlan, backup: backup)
+        }
+
+        guard deviceIsConnected() else {
+            return failure(.failedDeviceDisconnected, "The Garmin device was disconnected before the new map could be written. The old map remains installed.", storagePlan: storagePlan, backup: backup)
         }
 
         let targetFilename: String
@@ -648,22 +696,25 @@ struct SafeUpdateTransaction: Sendable {
 
             return current.file.filename == baseFilename ? nil : version
         }()
+        guard deviceIsConnected() else {
+            return failure(.failedDeviceDisconnected, "The Garmin device was disconnected before the old map could be removed. The verified new map was not reported as complete.", storagePlan: storagePlan, backup: backup, newObject: verified)
+        }
         let deleteTarget = SafeDeleteTarget(
             deviceKey: request.deviceKey,
             mapIdentity: request.currentObject.identity,
             ownership: request.currentObject.ownership,
-            objectID: current.file.itemID!,
+            objectID: currentItemID,
             expectedPath: current.file.path,
             expectedFilename: current.file.filename,
             expectedSizeBytes: current.file.sizeBytes,
-            expectedSHA256: current.sha256!,
+            expectedSHA256: currentHash,
             backup: verifiedBackup,
             expectedVersion: expectedOldVersion
         )
         let deleteResult = SafeDeleteAdapter().delete(
             target: deleteTarget,
             confirmed: true,
-            deviceConnected: request.deviceConnected,
+            deviceConnected: deviceIsConnected(),
             rescan: {
                 try transport.rescanObjects().map(\.file)
             },

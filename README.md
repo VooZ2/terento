@@ -65,6 +65,8 @@ notarized DMG or PKG is provided by this release.
 - [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) — dependency and runtime
   notices
 - [`VERSIONING.md`](VERSIONING.md) — public beta versioning policy
+- [`RELEASE_NOTES.md`](RELEASE_NOTES.md) — current beta checkpoint scope and
+  validation limitations
 
 ## Principles
 

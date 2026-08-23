@@ -15,14 +15,21 @@ final class DeviceEngine: ObservableObject {
     private let logger = Logger(subsystem: "app.terento.native-connectivity-poc", category: "MTP")
     private let compatibilityEngine = CompatibilityEngine()
     private let transport: any DeviceSnapshotReader
+    private let operationGate: MTPOperationGate
     private var stateManager = DeviceStateManager()
     private var activeTask: Task<Void, Never>?
     private var presenceTask: Task<Void, Never>?
+    private var activeNativeReadTask: Task<DeviceSnapshot, Error>?
+    private var activeNativePresenceTask: Task<DeviceSnapshot, Error>?
     private var readingStatusTask: Task<Void, Never>?
     private var presenceMonitoringEnabled = true
 
-    init(transport: any DeviceSnapshotReader = MTPTransport()) {
+    init(
+        transport: any DeviceSnapshotReader = MTPTransport(),
+        operationGate: MTPOperationGate = .shared
+    ) {
         self.transport = transport
+        self.operationGate = operationGate
     }
 
     var isReading: Bool {
@@ -31,6 +38,10 @@ final class DeviceEngine: ObservableObject {
 
     var hasConnectedDevice: Bool {
         stateManager.canUseDevice
+    }
+
+    var canEject: Bool {
+        hasConnectedDevice && operationGate.canEject
     }
 
     /// The Maps engine pauses this while it owns the MTP transport. This
@@ -148,7 +159,8 @@ final class DeviceEngine: ObservableObject {
     /// native transport already closes every bridge-opened MTP handle at the
     /// end of each operation. This method has no device write surface.
     func ejectDevice() {
-        guard stateManager.beginEject() else {
+        guard canEject,
+              stateManager.beginEject() else {
             return
         }
 
@@ -161,10 +173,15 @@ final class DeviceEngine: ObservableObject {
         appendLog("Eject requested; cancelling read-only work")
 
         Task { [weak self] in
-            await Task.yield()
-            guard let self, self.state == .ejecting else {
-                return
+            while let self,
+                  self.state == .ejecting,
+                  self.activeNativeReadTask != nil
+                    || self.activeNativePresenceTask != nil
+                    || self.operationGate.isNativeOperationActive {
+                try? await Task.sleep(for: .milliseconds(50))
             }
+
+            guard let self, self.state == .ejecting else { return }
 
             self.stateManager.markSafeToDisconnect()
             self.state = self.stateManager.state
@@ -192,9 +209,7 @@ final class DeviceEngine: ObservableObject {
                 : "Still looking for your Garmin watch… Attempt \(attempt). Retrying automatically."
 
             do {
-                return try await Task.detached(priority: .userInitiated) {
-                    try transport.readSnapshot()
-                }.value
+                return try await readNativeSnapshot(transport: transport, presence: false)
             } catch {
                 lastError = error
                 guard !Task.isCancelled else {
@@ -228,13 +243,11 @@ final class DeviceEngine: ObservableObject {
                     try await Task.sleep(for: .milliseconds(1_500))
                     guard !Task.isCancelled else { return }
 
-                    let probe = try await Task.detached(priority: .utility) {
-                        try transport.readSnapshot()
-                    }.value
-
                     guard let self, self.stateManager.canUseDevice else {
                         return
                     }
+
+                    let probe = try await self.readNativeSnapshot(transport: transport, presence: true)
 
                     guard Self.isSamePhysicalDevice(expected: expectedSnapshot, actual: probe) else {
                         self.handleUnexpectedDisconnect("A different device was detected")
@@ -242,6 +255,16 @@ final class DeviceEngine: ObservableObject {
                     }
                 } catch {
                     guard !Task.isCancelled else { return }
+
+                    if let gateError = error as? MTPOperationGateError,
+                       gateError == .lifecycleBusy {
+                        // A map inventory or lifecycle operation owns the
+                        // native boundary. Presence resumes after it ends;
+                        // it must not turn a deliberate pause into a fake
+                        // disconnect.
+                        continue
+                    }
+
                     self?.handleUnexpectedDisconnect(error.localizedDescription)
                     return
                 }
@@ -269,8 +292,39 @@ final class DeviceEngine: ObservableObject {
         activeTask = nil
         presenceTask?.cancel()
         presenceTask = nil
+        activeNativeReadTask?.cancel()
+        activeNativePresenceTask?.cancel()
         readingStatusTask?.cancel()
         readingStatusTask = nil
+    }
+
+    private func readNativeSnapshot(
+        transport: any DeviceSnapshotReader,
+        presence: Bool
+    ) async throws -> DeviceSnapshot {
+        let task = Task.detached(priority: presence ? .utility : .userInitiated) {
+            try transport.readSnapshot()
+        }
+
+        if presence {
+            activeNativePresenceTask = task
+        } else {
+            activeNativeReadTask = task
+        }
+
+        defer {
+            if presence {
+                activeNativePresenceTask = nil
+            } else {
+                activeNativeReadTask = nil
+            }
+        }
+
+        return try await withTaskCancellationHandler {
+            try await task.value
+        } onCancel: {
+            task.cancel()
+        }
     }
 
     private func clearCachedDevice() {

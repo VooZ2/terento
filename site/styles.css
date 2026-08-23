@@ -154,6 +154,38 @@ nav a:hover,
   color: var(--interactive-hover);
 }
 
+.language-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 2px;
+  padding-left: 16px;
+  border-left: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
+}
+
+.language-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 30px;
+  border-radius: 6px;
+  font-size: 18px;
+  line-height: 1;
+  text-decoration: none;
+  filter: saturate(.82);
+  opacity: .72;
+  transition: background-color .2s ease, opacity .2s ease, filter .2s ease;
+}
+
+.language-option:hover,
+.language-option:focus-visible,
+.language-option[aria-current="page"] {
+  background: color-mix(in srgb, var(--surface-muted) 82%, transparent);
+  filter: saturate(1);
+  opacity: 1;
+}
+
 .hero {
   padding: clamp(72px, 10vw, 144px) 0 clamp(88px, 12vw, 160px);
   overflow: hidden;
@@ -614,8 +646,19 @@ details p {
   }
 
   nav {
-    gap: 18px;
+    gap: 14px;
     font-size: 14px;
+  }
+
+  .language-switcher {
+    gap: 0;
+    margin-left: 0;
+    padding-left: 8px;
+  }
+
+  .language-option {
+    width: 20px;
+    font-size: 17px;
   }
 
   .hero {

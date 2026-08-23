@@ -269,7 +269,3 @@ struct MapInventoryListBuilder: Sendable {
         return map.name.isEmpty ? map.sourceFile.filename : map.name
     }
 }
-
-private extension MapVersion {
-    static let minimum = MapVersion(year: 0, month: 1)!
-}

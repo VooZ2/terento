@@ -4,6 +4,17 @@ import Foundation
 /// Native Stage 5.2 transport. Inspection is read-only; deletion delegates
 /// to the existing exact managed-map bridge operation. It is not wired to UI.
 struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
+    private let operationGate: MTPOperationGate
+    private let lifecycleLease: MTPOperationLease?
+
+    init(
+        operationGate: MTPOperationGate = .shared,
+        lifecycleLease: MTPOperationLease? = nil
+    ) {
+        self.operationGate = operationGate
+        self.lifecycleLease = lifecycleLease
+    }
+
     func inspectExactObject(_ target: SafeDeleteTarget) throws -> SafeDeleteDeviceObject {
         let temporaryURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("terento-safe-delete-check-\(UUID().uuidString).img")
@@ -11,7 +22,10 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
 
         let transfer: MapLifecycleBackupTransfer
         do {
-            transfer = try MTPReadBackupAdapter().readExistingFile(
+            transfer = try MTPReadBackupAdapter(
+                operationGate: operationGate,
+                lifecycleLease: lifecycleLease
+            ).readExistingFile(
                 file: target.sourceFile,
                 to: temporaryURL,
                 onProgress: nil
@@ -52,7 +66,10 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
 
     func deleteExactObject(_ target: SafeDeleteTarget) throws {
         do {
-            try MTPMapInstallationTransport().deleteExact(
+            try MTPMapInstallationTransport(
+                operationGate: operationGate,
+                lifecycleLease: lifecycleLease
+            ).deleteExact(
                 targetFilename: target.expectedFilename,
                 expectedItemID: target.objectID
             )

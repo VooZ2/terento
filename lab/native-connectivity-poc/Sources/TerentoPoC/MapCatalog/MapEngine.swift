@@ -176,6 +176,7 @@ final class MapEngine: ObservableObject {
     @Published private(set) var userErrorMessage: String?
 
     private let reader: MTPTransport
+    private let operationGate: MTPOperationGate
     private let catalogLoader: MapCatalogLoader
     private var activeTask: Task<Void, Never>?
     private var loadedCatalog: MapCatalog?
@@ -186,16 +187,19 @@ final class MapEngine: ObservableObject {
 
     init(
         reader: MTPTransport = MTPTransport(),
-        catalogLoader: MapCatalogLoader = MapCatalogLoader()
+        catalogLoader: MapCatalogLoader = MapCatalogLoader(),
+        operationGate: MTPOperationGate = .shared
     ) {
         self.reader = reader
         self.catalogLoader = catalogLoader
+        self.operationGate = operationGate
     }
 
     /// Invalidates all device-derived map state after a disconnect or eject.
     /// This only cancels local work and clears memory; it never calls an MTP
     /// write, delete, move, or rename operation.
     func resetForDisconnectedDevice() {
+        operationGate.invalidateLifecycleOperations()
         activeTask?.cancel()
         activeTask = nil
         state = .idle
@@ -251,16 +255,18 @@ final class MapEngine: ObservableObject {
         currentIdentity = deviceIdentity
         currentAvailableStorage = availableStorage
 
-        let reader = self.reader
+        let operationGate = self.operationGate
         let catalogLoader = self.catalogLoader
         let preflightEngine = InstallationPreflightEngine()
         let ownershipRecords = Self.loadOwnershipRecords(for: deviceIdentity)
         activeTask?.cancel()
         activeTask = Task { [weak self] in
             do {
-                let loaded = try await Task.detached(priority: .userInitiated) {
-                    try await catalogLoader.loadRemoteThenFallback()
-                }.value
+                let loaded = try await CancellableDetached.run(priority: .userInitiated) {
+                    try await operationGate.withAsyncOperation(kind: .catalog) {
+                        try await catalogLoader.loadRemoteThenFallback()
+                    }
+                }
 
                 guard !Task.isCancelled else { return }
 
@@ -269,13 +275,20 @@ final class MapEngine: ObservableObject {
                 self?.catalogUpdatedAt = loaded.catalog.updatedAt
                 self?.state = .scanning
 
-                let inventory = try await Task.detached(priority: .userInitiated) {
-                    try MapInventoryEngine(
-                        reader: reader,
+                let inventory = try await CancellableDetached.run(priority: .userInitiated) {
+                    let lease = try await operationGate.beginLifecycleAsync()
+                    defer { operationGate.endLifecycle(lease) }
+
+                    let lifecycleReader = MTPTransport(
+                        operationGate: operationGate,
+                        lifecycleLease: lease
+                    )
+                    return try MapInventoryEngine(
+                        reader: lifecycleReader,
                         catalog: loaded.catalog,
                         ownershipRecords: ownershipRecords
                     ).scan()
-                }.value
+                }
 
                 guard !Task.isCancelled else { return }
 
@@ -481,6 +494,19 @@ final class MapEngine: ObservableObject {
         state == .installing
     }
 
+    /// True while any map lifecycle work owns the workflow, including the
+    /// catalog/inventory phase before a native session is opened. Eject must
+    /// remain unavailable for the whole operation, not only during transfer.
+    var isBusy: Bool {
+        switch state {
+        case .loadingCatalog, .scanning, .acquiringArtifact,
+             .preparingInstallation, .installing:
+            return true
+        case .idle, .scanned, .failed:
+            return false
+        }
+    }
+
     var isPreparingInstallation: Bool {
         state == .preparingInstallation
     }
@@ -598,14 +624,14 @@ final class MapEngine: ObservableObject {
         activeTask?.cancel()
         activeTask = Task { [weak self] in
             do {
-                let artifact = try await Task.detached(priority: .userInitiated) {
+                let artifact = try await CancellableDetached.run(priority: .userInitiated) {
                     try await acquirer.acquire(
                         package: package,
                         canonicalRegion: "Latvia",
                         onStateChange: stateRelay.send,
                         onDownloadProgress: progressRelay.send
                     )
-                }.value
+                }
 
                 guard !Task.isCancelled else { return }
                 self?.validatedArtifact = artifact
@@ -625,7 +651,7 @@ final class MapEngine: ObservableObject {
         }
     }
 
-    /// Runs the no-write confirmation pass. The actual SendObject call is
+    /// Runs the no-write confirmation pass. The actual device write call is
     /// reachable only from `installLatvia()` after the user confirms on the
     /// Install screen.
     func prepareLatviaConfirmation() {
@@ -641,11 +667,12 @@ final class MapEngine: ObservableObject {
         let coordinator = MapInstallationCoordinator.live()
         activeTask?.cancel()
         activeTask = Task { [weak self] in
-            let result = await Task.detached(priority: .userInitiated) {
+            let result = try? await CancellableDetached.run(priority: .userInitiated) {
                 coordinator.run(request)
-            }.value
+            }
 
             guard !Task.isCancelled else { return }
+            guard let result else { return }
             self?.installationResult = result
             self?.latviaPreflight = result.preflight
             self?.installationProgress = TransferProgress(
@@ -684,7 +711,7 @@ final class MapEngine: ObservableObject {
         )
         installationErrorMessage = nil
 
-        let reader = self.reader
+        let operationGate = self.operationGate
         let artifact = validatedArtifact
         let catalog = loadedCatalog
         let progressRelay = MapEngineProgressRelay(engine: self)
@@ -697,11 +724,18 @@ final class MapEngine: ObservableObject {
                     throw MapAcquisitionError.invalidPackage("The validated Latvia map is unavailable.")
                 }
 
-                let result = try await Task.detached(priority: .userInitiated) {
-                    let snapshot = try reader.readSnapshot()
+                let result = try await CancellableDetached.run(priority: .userInitiated) {
+                    let lease = try await operationGate.beginLifecycleAsync()
+                    defer { operationGate.endLifecycle(lease) }
+
+                    let lifecycleReader = MTPTransport(
+                        operationGate: operationGate,
+                        lifecycleLease: lease
+                    )
+                    let snapshot = try lifecycleReader.readSnapshot()
                     let identity = CompatibilityEngine().evaluate(snapshot: snapshot).identity
                     let inventory = try MapInventoryEngine(
-                        reader: reader,
+                        reader: lifecycleReader,
                         catalog: catalog,
                         ownershipRecords: Self.loadOwnershipRecords(for: identity)
                     ).scan()
@@ -724,13 +758,16 @@ final class MapEngine: ObservableObject {
                         userConfirmed: true
                     )
 
-                    return MapInstallationCoordinator.live().run(
+                    return MapInstallationCoordinator.live(
+                        operationGate: operationGate,
+                        lifecycleLease: lease
+                    ).run(
                         request,
                         onProgress: progressRelay.send,
                         onPhase: phaseRelay.send,
                         onPhaseProgress: phaseProgressRelay.send
                     )
-                }.value
+                }
 
                 guard !Task.isCancelled else { return }
                 self?.installationResult = result

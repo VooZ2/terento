@@ -292,7 +292,8 @@ struct SystemZIPArchiveExtractor: MapPackageArchiveExtractor, Sendable {
                 encoding: .utf8
             )?.trimmingCharacters(in: .whitespacesAndNewlines)
             throw MapAcquisitionError.invalidPackage(
-                message?.isEmpty == false ? message! : "The ZIP archive could not be extracted."
+                message.flatMap { $0.isEmpty ? nil : $0 }
+                    ?? "The ZIP archive could not be extracted."
             )
         }
     }

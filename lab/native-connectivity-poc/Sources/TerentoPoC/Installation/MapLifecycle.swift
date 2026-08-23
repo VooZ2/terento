@@ -393,9 +393,9 @@ struct MapUpdatePlanner: Sendable {
             status = .blockedAmbiguousMapIdentity
         } else if installedVersion == nil {
             status = .blockedUnknownVersion
-        } else if installedVersion! == targetVersion {
+        } else if let installedVersion, installedVersion == targetVersion {
             status = .noUpdateRequired
-        } else if installedVersion! > targetVersion {
+        } else if let installedVersion, installedVersion > targetVersion {
             status = .newerVersionAlreadyInstalled
         } else if !storagePlan.isAllowed {
             status = .blockedInsufficientSpace
