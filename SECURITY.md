@@ -7,7 +7,7 @@ Terento is an active beta project. This policy covers the repository, the native
 | Version or branch | Support |
 | --- | --- |
 | Latest beta release | Security reports accepted; fixes are best effort |
-| Current default branch (experimental at the time of writing) | Security reports accepted; fixes are best effort |
+| Current default branch (beta at the time of writing) | Security reports accepted; fixes are best effort |
 | Older beta releases | Not guaranteed |
 
 Terento is not a stable production release. Device and map behaviour may change between beta releases.
