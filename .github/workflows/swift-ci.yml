@@ -1,0 +1,33 @@
+name: Swift CI
+
+on:
+  push:
+    branches:
+      - experimental
+      - main
+  pull_request:
+    branches:
+      - experimental
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: lab/native-connectivity-poc
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Install libmtp
+        run: brew install libmtp
+      - name: Build and test
+        run: |
+          export LIBMTP_PREFIX=$(brew --prefix libmtp)
+          export CLANG_MODULE_CACHE_PATH=$RUNNER_TEMP/terento-clang-module-cache
+          swift build
+          swift test
