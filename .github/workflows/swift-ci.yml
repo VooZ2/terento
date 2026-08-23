@@ -3,11 +3,11 @@ name: Swift CI
 on:
   push:
     branches:
-      - experimental
+      - beta
       - main
   pull_request:
     branches:
-      - experimental
+      - beta
       - main
   workflow_dispatch:
 
