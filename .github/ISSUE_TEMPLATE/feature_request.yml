@@ -1,0 +1,33 @@
+name: Feature request
+description: Suggest a focused improvement for Terento.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What user problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the smallest useful solution.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety and scope
+      options:
+        - label: This request does not require silently modifying unrelated Garmin files.
+          required: true
+        - label: I have considered map-provider licensing and attribution requirements.
+          required: true
