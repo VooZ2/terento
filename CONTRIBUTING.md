@@ -47,7 +47,7 @@ Hardware tests require an explicitly authorised personal Garmin device. They are
 
 ## Branches and pull requests
 
-The repository currently uses experimental as its default branch. Unless the repository announces a new default branch, target pull requests at the current default branch.
+The repository currently uses beta as its default branch. Unless the repository announces a new default branch, target pull requests at the current default branch.
 
 Use a focused branch name such as:
 
