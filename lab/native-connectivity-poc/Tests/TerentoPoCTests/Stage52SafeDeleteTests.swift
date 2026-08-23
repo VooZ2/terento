@@ -1,0 +1,353 @@
+import CryptoKit
+import Foundation
+
+protocol DeviceFileReader: Sendable {
+    func readFilePrefix(for file: DeviceFile, maxLength: Int) throws -> [UInt8]
+    func readFilePrefixes(for files: [DeviceFile], maxLength: Int) throws -> [UInt32: [UInt8]]
+}
+
+private final class FakeSafeDeleteTransport: SafeDeleteTransport, @unchecked Sendable {
+    var events: [String] = []
+    var currentObject: SafeDeleteDeviceObject?
+    var deleteError: SafeDeleteTransportError?
+
+    func inspectExactObject(_ target: SafeDeleteTarget) throws -> SafeDeleteDeviceObject {
+        events.append("inspect")
+        guard let currentObject else {
+            throw SafeDeleteTransportError.objectNotFound
+        }
+        return currentObject
+    }
+
+    func deleteExactObject(_ target: SafeDeleteTarget) throws {
+        events.append("delete")
+        if let deleteError {
+            throw deleteError
+        }
+    }
+}
+
+private final class FakeManifestCleanupStore: TerentoManifestCleanupStore, @unchecked Sendable {
+    var removed: [(deviceKey: String, devicePath: String, filename: String)] = []
+    var shouldFail = false
+
+    func remove(deviceKey: String, devicePath: String, filename: String) throws -> Bool {
+        if shouldFail {
+            throw TerentoManifestStoreError.cleanupFailed
+        }
+
+        removed.append((deviceKey, devicePath, filename))
+        return true
+    }
+}
+
+private final class SafeDeleteScanSequence: @unchecked Sendable {
+    private var index = 0
+    private let scans: [[InstalledMapFile]]
+
+    init(_ scans: [[InstalledMapFile]]) {
+        self.scans = scans
+    }
+
+    func next() -> [InstalledMapFile] {
+        defer { index += 1 }
+        return scans[min(index, scans.count - 1)]
+    }
+}
+
+private enum Stage52TestError: Error {
+    case failed(String)
+}
+
+private func require(_ condition: @autoclosure () -> Bool, _ message: String) throws {
+    guard condition() else {
+        throw Stage52TestError.failed(message)
+    }
+}
+
+private func sha256(_ data: Data) -> String {
+    SHA256.hash(data: data)
+        .map { String(format: "%02x", $0) }
+        .joined()
+}
+
+private func validTarget(
+    ownership: MapManagementState = .managedByTerento,
+    backup: VerifiedBackupFile? = nil
+) -> (target: SafeDeleteTarget, contents: Data) {
+    let contents = Data(repeating: 0x41, count: 12)
+    let hash = sha256(contents)
+    let identity = MapIdentity(provider: "Freizeitkarte", region: "LVA")!
+    let file = InstalledMapFile(
+        path: "/GARMIN/terento_freizeitkarte_lva.img",
+        filename: "terento_freizeitkarte_lva.img",
+        sizeBytes: UInt64(contents.count),
+        itemID: 101
+    )
+    let target = SafeDeleteTarget(
+        deviceKey: "fenix-8-091e-51b8",
+        mapIdentity: identity,
+        ownership: ownership,
+        objectID: 101,
+        expectedPath: file.path,
+        expectedFilename: file.filename,
+        expectedSizeBytes: file.sizeBytes,
+        expectedSHA256: hash,
+        backup: backup
+    )
+    return (target, contents)
+}
+
+private func targetWithVerifiedBackup() throws -> (target: SafeDeleteTarget, contents: Data, backupURL: URL) {
+    let initial = validTarget()
+    let backupURL = FileManager.default.temporaryDirectory
+        .appendingPathComponent("terento-stage52-backup-(UUID().uuidString).img")
+    try initial.contents.write(to: backupURL, options: .atomic)
+
+    let source = MapLifecycleFileIdentity(file: initial.target.sourceFile)!
+    let backup = VerifiedBackupFile(
+        source: source,
+        localURL: backupURL,
+        sizeBytes: initial.target.expectedSizeBytes,
+        sha256: initial.target.expectedSHA256
+    )
+    let target = SafeDeleteTarget(
+        deviceKey: initial.target.deviceKey,
+        mapIdentity: initial.target.mapIdentity,
+        ownership: initial.target.ownership,
+        objectID: initial.target.objectID,
+        expectedPath: initial.target.expectedPath,
+        expectedFilename: initial.target.expectedFilename,
+        expectedSizeBytes: initial.target.expectedSizeBytes,
+        expectedSHA256: initial.target.expectedSHA256,
+        backup: backup
+    )
+    return (target, initial.contents, backupURL)
+}
+
+private func run(
+    target: SafeDeleteTarget,
+    current: SafeDeleteDeviceObject?,
+    confirmed: Bool = true,
+    deviceConnected: Bool = true,
+    scans: [[InstalledMapFile]],
+    transport: FakeSafeDeleteTransport? = nil
+) -> (SafeDeleteResult, FakeSafeDeleteTransport) {
+    let transport = transport ?? FakeSafeDeleteTransport()
+    transport.currentObject = current
+    let scanSequence = SafeDeleteScanSequence(scans)
+    let result = SafeDeleteAdapter().delete(
+        target: target,
+        confirmed: confirmed,
+        deviceConnected: deviceConnected,
+        rescan: { scanSequence.next() },
+        transport: transport
+    )
+    return (result, transport)
+}
+
+private func deviceObject(for target: SafeDeleteTarget, sha256 hash: String? = nil) -> SafeDeleteDeviceObject {
+    SafeDeleteDeviceObject(
+        file: target.sourceFile,
+        sha256: hash ?? target.expectedSHA256
+    )
+}
+
+private func testManagedMapDeletesAfterVerifiedBackup() throws {
+    let prepared = try targetWithVerifiedBackup()
+    defer { try? FileManager.default.removeItem(at: prepared.backupURL) }
+    let (result, transport) = run(
+        target: prepared.target,
+        current: deviceObject(for: prepared.target),
+        scans: [ [] ]
+    )
+
+    try require(result.status == .success, "managed map should delete successfully")
+    try require(transport.events == ["inspect", "delete"], "delete must inspect first and use one delete operation")
+}
+
+private func testExternalAndUnknownMapsAreBlocked() throws {
+    for state in [MapManagementState.detectedNotManaged, .unknown] {
+        let initial = validTarget(ownership: state)
+        let (result, transport) = run(
+            target: initial.target,
+            current: deviceObject(for: initial.target),
+            scans: [ [] ]
+        )
+
+        try require(result.status == .blockedOwnership, "non-managed map must be blocked")
+        try require(transport.events.isEmpty, "blocked ownership must not inspect or delete")
+    }
+}
+
+private func testHashMismatchAndMissingBackupAreBlocked() throws {
+    let prepared = try targetWithVerifiedBackup()
+    defer { try? FileManager.default.removeItem(at: prepared.backupURL) }
+
+    let (hashResult, hashTransport) = run(
+        target: prepared.target,
+        current: deviceObject(for: prepared.target, sha256: String(repeating: "0", count: 64)),
+        scans: [ [] ]
+    )
+    try require(hashResult.status == .blockedIntegrityCheck, "device hash mismatch must be blocked")
+    try require(hashTransport.events == ["inspect"], "hash mismatch must stop before delete")
+
+    let withoutBackup = SafeDeleteTarget(
+        deviceKey: prepared.target.deviceKey,
+        mapIdentity: prepared.target.mapIdentity,
+        ownership: prepared.target.ownership,
+        objectID: prepared.target.objectID,
+        expectedPath: prepared.target.expectedPath,
+        expectedFilename: prepared.target.expectedFilename,
+        expectedSizeBytes: prepared.target.expectedSizeBytes,
+        expectedSHA256: prepared.target.expectedSHA256,
+        backup: nil
+    )
+    let (backupResult, backupTransport) = run(
+        target: withoutBackup,
+        current: deviceObject(for: withoutBackup),
+        scans: [ [] ]
+    )
+    try require(backupResult.status == .blockedBackupRequired, "missing backup must be blocked")
+    try require(backupTransport.events.isEmpty, "missing backup must stop before inspection")
+}
+
+private func testDisconnectAndConfirmationAreBlocked() throws {
+    let prepared = try targetWithVerifiedBackup()
+    defer { try? FileManager.default.removeItem(at: prepared.backupURL) }
+
+    let (disconnected, disconnectedTransport) = run(
+        target: prepared.target,
+        current: deviceObject(for: prepared.target),
+        deviceConnected: false,
+        scans: [ [] ]
+    )
+    try require(disconnected.status == .failedDeviceDisconnected, "disconnected device must fail safely")
+    try require(disconnectedTransport.events.isEmpty, "disconnect must not inspect or delete")
+
+    let (unconfirmed, unconfirmedTransport) = run(
+        target: prepared.target,
+        current: deviceObject(for: prepared.target),
+        confirmed: false,
+        scans: [ [] ]
+    )
+    try require(unconfirmed.status == .blockedConfirmationRequired, "delete must require explicit confirmation")
+    try require(unconfirmedTransport.events.isEmpty, "missing confirmation must not inspect or delete")
+}
+
+private func testPostDeleteRescanAndExactIdentityAreRequired() throws {
+    let prepared = try targetWithVerifiedBackup()
+    defer { try? FileManager.default.removeItem(at: prepared.backupURL) }
+
+    let (stillPresent, stillPresentTransport) = run(
+        target: prepared.target,
+        current: deviceObject(for: prepared.target),
+        scans: [ [prepared.target.sourceFile] ]
+    )
+    try require(stillPresent.status == .failedPostVerify, "remaining object must fail post-delete verification")
+    try require(stillPresentTransport.events == ["inspect", "delete"], "post-delete verification must occur after delete")
+
+    var wrongIdentity = prepared.target.sourceFile
+    wrongIdentity = InstalledMapFile(
+        path: wrongIdentity.path,
+        filename: wrongIdentity.filename,
+        sizeBytes: wrongIdentity.sizeBytes,
+        itemID: 102
+    )
+    let mismatched = SafeDeleteDeviceObject(file: wrongIdentity, sha256: prepared.target.expectedSHA256)
+    let (identityResult, identityTransport) = run(
+        target: prepared.target,
+        current: mismatched,
+        scans: [ [] ]
+    )
+    try require(identityResult.status == .blockedIntegrityCheck, "object handle mismatch must be blocked")
+    try require(identityTransport.events == ["inspect"], "identity mismatch must stop before delete")
+}
+
+private func testTransportFailureIsReported() throws {
+    let prepared = try targetWithVerifiedBackup()
+    defer { try? FileManager.default.removeItem(at: prepared.backupURL) }
+    let transport = FakeSafeDeleteTransport()
+    transport.currentObject = deviceObject(for: prepared.target)
+    transport.deleteError = .operationFailed("simulated delete failure")
+    let (result, returnedTransport) = run(
+        target: prepared.target,
+        current: transport.currentObject,
+        scans: [ [] ],
+        transport: transport
+    )
+
+    try require(result.status == .failedOperation, "delete transport failure must be reported")
+    try require(returnedTransport.events == ["inspect", "delete"], "transport failure must not trigger extra operations")
+
+    let (missing, missingTransport) = run(
+        target: prepared.target,
+        current: nil,
+        scans: [ [] ]
+    )
+    try require(missing.status == .failedObjectNotFound, "a missing object must be reported explicitly")
+    try require(missingTransport.events == ["inspect"], "a missing object must stop before delete")
+}
+
+private func testLifecycleManagerCleansManifestAfterVerifiedDelete() throws {
+    let prepared = try targetWithVerifiedBackup()
+    defer { try? FileManager.default.removeItem(at: prepared.backupURL) }
+
+    let cleanupStore = FakeManifestCleanupStore()
+    let transport = FakeSafeDeleteTransport()
+    transport.currentObject = deviceObject(for: prepared.target)
+    let scanSequence = SafeDeleteScanSequence([[]])
+    let result = MapLifecycleManager(manifestCleanupStore: cleanupStore).delete(
+        target: prepared.target,
+        confirmed: true,
+        deviceConnected: true,
+        rescan: { scanSequence.next() },
+        transport: transport
+    )
+
+    try require(result.status == .success, "verified delete should succeed when manifest cleanup succeeds")
+    try require(cleanupStore.removed.count == 1, "successful delete should remove one exact manifest entry")
+    try require(cleanupStore.removed[0].deviceKey == prepared.target.deviceKey, "manifest cleanup must use the exact device key")
+    try require(cleanupStore.removed[0].devicePath == prepared.target.expectedPath, "manifest cleanup must use the exact device path")
+    try require(cleanupStore.removed[0].filename == prepared.target.expectedFilename, "manifest cleanup must use the exact filename")
+
+    let failingCleanup = FakeManifestCleanupStore()
+    failingCleanup.shouldFail = true
+    let failingTransport = FakeSafeDeleteTransport()
+    failingTransport.currentObject = deviceObject(for: prepared.target)
+    let failingScanSequence = SafeDeleteScanSequence([[]])
+    let failedResult = MapLifecycleManager(manifestCleanupStore: failingCleanup).delete(
+        target: prepared.target,
+        confirmed: true,
+        deviceConnected: true,
+        rescan: { failingScanSequence.next() },
+        transport: failingTransport
+    )
+    try require(failedResult.status == .failedManifestCleanup, "manifest cleanup failure must not report a clean success")
+}
+
+@main
+struct Stage52SafeDeleteTests {
+    static func main() {
+        let tests: [(String, () throws -> Void)] = [
+            ("managed map deletes after verified backup", testManagedMapDeletesAfterVerifiedBackup),
+            ("external and unknown maps are blocked", testExternalAndUnknownMapsAreBlocked),
+            ("hash mismatch and missing backup are blocked", testHashMismatchAndMissingBackupAreBlocked),
+            ("disconnect and confirmation are blocked", testDisconnectAndConfirmationAreBlocked),
+            ("post-delete rescan and exact identity are required", testPostDeleteRescanAndExactIdentityAreRequired),
+            ("transport failure is reported", testTransportFailureIsReported),
+            ("lifecycle manager cleans manifest after verified delete", testLifecycleManagerCleansManifestAfterVerifiedDelete)
+        ]
+
+        do {
+            for (name, test) in tests {
+                try test()
+                print("PASS: " + name)
+            }
+            print("PASS: " + String(tests.count) + " Stage 5.2 safe-delete tests")
+        } catch {
+            print("FAIL: " + String(describing: error))
+            exit(1)
+        }
+    }
+}

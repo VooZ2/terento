@@ -21,6 +21,7 @@
   const OP_GET_STORAGE_IDS = 0x1004;
   const OP_GET_STORAGE_INFO = 0x1005;
   const LIBMTP_PRODUCT_ID = 0x51b8;
+  const GARMIN_MODE_PRODUCT_ID = 0x0003;
   const LIBMTP_ORDER_MODE = new URLSearchParams(window.location.search).get("method") === "libmtp";
 
   const dom = {
@@ -51,6 +52,8 @@
     usbNameValue: document.querySelector("#usbNameValue"),
     usbSerialValue: document.querySelector("#usbSerialValue"),
     configurationValue: document.querySelector("#configurationValue"),
+    usbPresenceValue: document.querySelector("#usbPresenceValue"),
+    usbModeValue: document.querySelector("#usbModeValue"),
     infoStatus: document.querySelector("#infoStatus"),
     standardVersion: document.querySelector("#standardVersion"),
     vendorExtensionId: document.querySelector("#vendorExtensionId"),
@@ -122,6 +125,46 @@
       timer = setTimeout(() => reject(new StopError(`${label} timed out.`)), timeout);
     });
     return Promise.race([Promise.resolve(promise), deadline]).finally(() => clearTimeout(timer));
+  }
+
+  function usbModeLabel(productId) {
+    if (productId === LIBMTP_PRODUCT_ID) return "MTP";
+    if (productId === GARMIN_MODE_PRODUCT_ID) return "Garmin";
+    return "Unknown";
+  }
+
+  async function refreshPresence(source) {
+    const devices = navigator.usb?.getDevices ? await navigator.usb.getDevices() : [];
+    const rows = devices
+      .filter(device => device.vendorId === GARMIN_VENDOR_ID)
+      .map(device => ({
+        productId: device.productId,
+        productIdHex: hexValue(device.productId),
+        mode: usbModeLabel(device.productId),
+        opened: Boolean(device.opened)
+      }));
+    const primary = rows.find(row => row.productId === LIBMTP_PRODUCT_ID) || rows[0] || null;
+    setText(dom.usbPresenceValue, rows.length ? `${rows.length} permitted · ${rows.map(row => row.productIdHex).join(", ")}` : "NO PERMITTED DEVICE");
+    setText(dom.usbModeValue, primary ? `${primary.mode} (${primary.productIdHex})${primary.opened ? " · held by this page" : ""}` : "NONE");
+    return { devices, rows, primary };
+  }
+
+  function topologyProbe(topology) {
+    const alternate = topology[0]?.interfaces?.[0]?.alternates?.[0] || null;
+    return {
+      configurationCount: topology.length,
+      configurationValue: topology[0]?.configurationValue ?? null,
+      interfaceCount: topology[0]?.interfaces?.length ?? 0,
+      interfaceClass: alternate?.interfaceClass ?? null,
+      interfaceSubclass: alternate?.interfaceSubclass ?? null,
+      interfaceProtocol: alternate?.interfaceProtocol ?? null,
+      endpoints: (alternate?.endpoints || []).map(endpoint => ({
+        number: endpoint.endpointNumber,
+        direction: endpoint.direction,
+        type: endpoint.type,
+        packetSize: endpoint.packetSize
+      }))
+    };
   }
 
   function setStatus(element, value) {
@@ -240,9 +283,11 @@
       return { ok: false, reason: "Expected exactly alternate setting 0." };
     }
     const alternate = alternates[0];
-    const expectedProtocol = LIBMTP_ORDER_MODE && productId === LIBMTP_PRODUCT_ID ? 0x00 : 0xff;
-    if (alternate.interfaceClass !== 0xff || alternate.interfaceSubclass !== 0xff || alternate.interfaceProtocol !== expectedProtocol) {
-      return { ok: false, reason: `Expected vendor-specific class tuple 0xff / 0xff / ${hexValue(expectedProtocol, 2)} for this test mode.` };
+    if (productId !== LIBMTP_PRODUCT_ID) {
+      return { ok: false, reason: `USB product ${hexValue(productId)} is Garmin mode, not MTP. Expected ${hexValue(LIBMTP_PRODUCT_ID)}.` };
+    }
+    if (alternate.interfaceClass !== 0xff || alternate.interfaceSubclass !== 0xff || alternate.interfaceProtocol !== 0x00) {
+      return { ok: false, reason: "Expected vendor-specific class tuple 0xff / 0xff / 0x00 for the fēnix 8 MTP USB mode." };
     }
     const expected = [
       [1, "in", "bulk", 512],
@@ -251,7 +296,7 @@
     ];
     const actual = alternate.endpoints;
     const same = actual.length === expected.length && expected.every(item => actual.some(endpoint => endpoint.endpointNumber === item[0] && endpoint.direction === item[1] && endpoint.type === item[2] && endpoint.packetSize === item[3]));
-    return same ? { ok: true, reason: LIBMTP_ORDER_MODE ? "Observed the libmtp Fēnix 8 MTP descriptor target." : "Expected configuration 1 / interface 0 / alternate 0 and endpoint topology observed." } : { ok: false, reason: "Expected bulk IN 1, interrupt IN 2 and bulk OUT 3 with the observed packet sizes." };
+    return same ? { ok: true, reason: "Observed the fēnix 8 MTP descriptor target (0xff / 0xff / 0x00)." } : { ok: false, reason: "Expected bulk IN 1, interrupt IN 2 and bulk OUT 3 with the observed packet sizes." };
   }
 
   function escapeHtml(value) {
@@ -398,10 +443,17 @@
       return part;
     }
     function u8(label) { return take(1, label)[0]; }
-    function u16(label) { return new DataView(take(2, label).buffer).getUint16(0, true); }
-    function u32(label) { return new DataView(take(4, label).buffer).getUint32(0, true); }
+    function u16(label) {
+      const part = take(2, label);
+      return new DataView(part.buffer, part.byteOffset, 2).getUint16(0, true);
+    }
+    function u32(label) {
+      const part = take(4, label);
+      return new DataView(part.buffer, part.byteOffset, 4).getUint32(0, true);
+    }
     function u64(label) {
-      const view = new DataView(take(8, label).buffer);
+      const part = take(8, label);
+      const view = new DataView(part.buffer, part.byteOffset, 8);
       const low = BigInt(view.getUint32(0, true));
       const high = BigInt(view.getUint32(4, true));
       return ((high << 32n) | low).toString();
@@ -409,7 +461,8 @@
     function text(label) {
       const count = u8(label);
       if (count === 0) return "";
-      const value = new TextDecoder("utf-16le").decode(take((count - 1) * 2, label));
+      const raw = take(count * 2, label);
+      const value = new TextDecoder("utf-16le").decode(raw.subarray(0, (count - 1) * 2));
       return value.replace(/\u0000+$/g, "");
     }
     function array16(label) {
@@ -541,10 +594,26 @@
   }
 
   async function inspectAndClaim() {
-    const filter = { vendorId: GARMIN_VENDOR_ID };
-    if (LIBMTP_ORDER_MODE) filter.productId = LIBMTP_PRODUCT_ID;
-    const device = await navigator.usb.requestDevice({ filters: [filter] });
+    const presence = await refreshPresence("before-chooser");
+    const existingMtp = presence.devices.find(device => device.vendorId === GARMIN_VENDOR_ID && device.productId === LIBMTP_PRODUCT_ID);
+    let device = existingMtp || null;
+    if (!device) {
+      try {
+        device = await navigator.usb.requestDevice({
+          filters: [
+            { vendorId: GARMIN_VENDOR_ID, productId: LIBMTP_PRODUCT_ID },
+            { vendorId: GARMIN_VENDOR_ID, productId: GARMIN_MODE_PRODUCT_ID }
+          ]
+        });
+      } catch (error) {
+        if (error?.name === "NotFoundError") {
+          throw new StopError("No Garmin USB device was selected. If the chooser is empty, this page may still be holding the previous session — wait for Live USB presence to update, or refresh only if it stays empty.");
+        }
+        throw error;
+      }
+    }
     state.device = device;
+    await refreshPresence("after-request");
     const identity = identityFromDevice(device);
     state.current.identity = identity;
     state.currentPrivate.identity = { vendorId: identity.vendorId, productId: identity.productId, rawUsbSerial: device.serialNumber || null };
@@ -555,9 +624,22 @@
       throw new StopError("NON-GARMIN — DENIED.");
     }
     markStep("identity", "PASS");
-    if (LIBMTP_ORDER_MODE && identity.productId !== LIBMTP_PRODUCT_ID) {
+    await withTimeout(device.open(), "Opening the USB device");
+    state.opened = true;
+    const topology = captureTopology(device);
+    state.current.topology = topology;
+    renderTopology(topology);
+    const probe = topologyProbe(topology);
+    state.current.debugProbe = {
+      productId: identity.productId,
+      productIdHex: identity.productIdHex,
+      serialNumberPresent: identity.serialNumberPresent,
+      libmtpOrder: LIBMTP_ORDER_MODE,
+      ...probe
+    };
+    if (identity.productId !== LIBMTP_PRODUCT_ID) {
       markStep("pid", "FAIL");
-      throw new StopError(`libmtp method requires USB product ID ${hexValue(LIBMTP_PRODUCT_ID)}.`);
+      throw new StopError(`USB product ${hexValue(identity.productId)} is Garmin mode, not MTP. Expected ${hexValue(LIBMTP_PRODUCT_ID)}. Set the watch USB Mode to MTP, then reconnect.`);
     }
     if (state.firstProductId === null) {
       state.firstProductId = identity.productId;
@@ -571,12 +653,7 @@
       state.current.pidStability = "PASS";
       markStep("pid", "PASS");
     }
-    await withTimeout(device.open(), "Opening the USB device");
-    state.opened = true;
-    const topology = captureTopology(device);
-    state.current.topology = topology;
     const target = expectedDescriptorCheck(topology, identity.productId);
-    renderTopology(topology);
     if (!target.ok) {
       markStep("descriptor", "FAIL");
       throw new StopError(target.reason);
@@ -668,8 +745,14 @@
       }
       state.opened = false;
     }
+    if (state.device && typeof state.device.forget === "function") {
+      try {
+        await withTimeout(state.device.forget(), "Releasing USB permission (forget)");
+      } catch (_) {}
+    }
     state.reader = null;
     state.device = null;
+    await refreshPresence("after-cleanup");
   }
 
   function requiredStepsPass(run) {
@@ -682,7 +765,17 @@
   }
 
   function compareStorage(left, right) {
-    return JSON.stringify(left) === JSON.stringify(right);
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+    return left.every((item, index) => {
+      const other = right[index];
+      return item.storageId === other.storageId
+        && item.storageType === other.storageType
+        && item.filesystemType === other.filesystemType
+        && item.accessCapability === other.accessCapability
+        && item.maxCapacity === other.maxCapacity
+        && item.storageDescription === other.storageDescription
+        && item.volumeLabel === other.volumeLabel;
+    });
   }
 
   function updateGate() {
@@ -700,7 +793,9 @@
     setStatus(dom.gateStatus, gate);
     setStatus(dom.repeatStatus, `${latest.length} / ${RUN_LIMIT}`);
     dom.gateMessage.hidden = !complete;
-    if (complete) dom.gateMessage.textContent = `Latest three runs — protocol: ${allPass ? "PASS" : "FAIL"}; USB identity stable: ${identityStable ? "YES" : "NO"}; MTP identity stable: ${mtpStable ? "YES" : "NO"}; storage metadata stable: ${storageStable ? "YES" : "NO"}.`;
+    if (complete) {
+      dom.gateMessage.textContent = `Latest three runs — protocol: ${allPass ? "PASS" : "FAIL"}; USB identity stable: ${identityStable ? "YES" : "NO"}; MTP identity stable: ${mtpStable ? "YES" : "NO"}; storage identity stable: ${storageStable ? "YES" : "NO"} (free space may change between reconnects).`;
+    }
     dom.downloadPrivate.hidden = !state.privateRuns.some(run => run.mtpSerial || run.identity?.rawUsbSerial);
     dom.privateMessage.textContent = state.privateRuns.some(run => run.mtpSerial) ? "An MTP serial is held in this tab memory. Download only the private local record if needed." : "No MTP serial has been exposed by the runs so far.";
   }
@@ -715,7 +810,9 @@
     state.privateRuns.push(state.currentPrivate);
     const status = completedRun.status;
     setStatus(dom.flowStatus, status);
-    setFlowMessage(status === "PASS" ? `Run ${completedRun.runNumber} completed the minimal read-only proof. Physically reconnect before the next run.` : `Run ${completedRun.runNumber} stopped safely. Review the exact failure before reconnecting.`);
+    setFlowMessage(status === "PASS"
+      ? `Run ${completedRun.runNumber} completed. USB permission was released from this page (safe eject). Watch Live USB mode: wait until it shows MTP (0x51b8), then run again — no page refresh needed.`
+      : `Run ${completedRun.runNumber} stopped safely. Review the exact failure before reconnecting.`);
     if (completedRun.error) {
       dom.errorMessage.hidden = false;
       dom.errorMessage.textContent = `${completedRun.error.name}: ${completedRun.error.message}`;
@@ -761,6 +858,7 @@
       deviceInfo: null,
       protocol: { operations: [], storageIds: [], storage: [] },
       storage: [],
+      debugProbe: null,
       error: null,
       cleanupError: null
     };
@@ -811,6 +909,7 @@
       deviceInfo: run.deviceInfo,
       protocol: run.protocol,
       storage: run.storage,
+      debugProbe: run.debugProbe || null,
       error: run.error || null
     };
   }
@@ -913,7 +1012,22 @@
       dom.consent.disabled = true;
     }
     renderHistory();
-    if (navigator.usb) navigator.usb.addEventListener("disconnect", event => { if (state.device && event.device === state.device) dom.flowMessage.textContent = "The watch disconnected. This run will close safely; reconnect before the next run."; });
+    if (navigator.usb) {
+      navigator.usb.addEventListener("connect", event => {
+        const productId = event.device?.productId;
+        setFlowMessage(`Watch connected as ${usbModeLabel(productId)} (${hexValue(productId)}). ${productId === LIBMTP_PRODUCT_ID ? "MTP is ready." : "Garmin mode — wait or replug until Live USB mode shows MTP (0x51b8)."}`);
+        refreshPresence("connect");
+      });
+      navigator.usb.addEventListener("disconnect", event => {
+        if (state.device && event.device === state.device) {
+          setFlowMessage("The watch disconnected. This run will close safely.");
+        } else {
+          setFlowMessage("Watch disconnected. Plug it back in and wait for Live USB mode.");
+        }
+        refreshPresence("disconnect");
+      });
+      refreshPresence("setup");
+    }
   }
 
   setup();

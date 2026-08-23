@@ -7,7 +7,7 @@
     <title>Terento — fēnix 8 Minimal Read-Only MTP Proof</title>
     <link rel="stylesheet" href="/labs/webusb-fenix8/styles.css">
     <link rel="stylesheet" href="/labs/webusb-fenix8/claim/styles.css">
-    <script defer src="/labs/webusb-fenix8/claim/app.js"></script>
+    <script defer src="/labs/webusb-fenix8/claim/app.js?v=2a2-storage-stable"></script>
   </head>
   <body>
     <main class="shell">
@@ -38,7 +38,7 @@
           <div><span>Endpoint 2</span><strong>UNUSED</strong></div>
           <div><span>File/object path</span><strong>NO</strong></div>
         </div>
-        <p class="hint">Close Garmin Express, OpenMTP, MacDroid and every other MTP client before connecting the watch. A failed claim stops the run.</p>
+        <p class="hint">Close Garmin Express, OpenMTP, MacDroid and every other MTP client. After each run this page releases the USB device (safe eject). Watch Live USB mode: MTP (0x51b8) is the only claimable path; Garmin (0x0003) is visible but not claimed. Do not refresh unless presence stays empty.</p>
       </section>
 
       <section class="panel" aria-labelledby="consent-title">
@@ -72,6 +72,8 @@
           <div><dt>USB manufacturer / product</dt><dd id="usbNameValue">UNKNOWN</dd></div>
           <div><dt>USB serial exposed</dt><dd id="usbSerialValue">NO</dd></div>
           <div><dt>Selected configuration</dt><dd id="configurationValue">UNKNOWN</dd></div>
+          <div><dt>Live USB presence</dt><dd id="usbPresenceValue">NO PERMITTED DEVICE</dd></div>
+          <div><dt>Live USB mode</dt><dd id="usbModeValue">NONE</dd></div>
           <div><dt>Current classification</dt><dd>KNOWN GARMIN — COMPATIBILITY TEST IN PROGRESS</dd></div>
         </dl>
       </section>
@@ -203,6 +205,7 @@
       </details>
 
       <footer class="footer">
+        <a href="/labs/webusb-fenix8/objects/">Open Stage 2B object discovery ↗</a>
         <a href="/labs/webusb-fenix8/">Back to descriptor forensics</a>
         <span>Stage 2A.2 · local diagnostics · no analytics</span>
       </footer>

@@ -1,0 +1,45 @@
+{
+  "catalogVersion": 1,
+  "updatedAt": "2026-08-21T03:00:00Z",
+  "providers": [
+    {
+      "id": "freizeitkarte",
+      "name": "Freizeitkarte",
+      "website": "https://www.freizeitkarte-osm.de/garmin/en/mitteleuropa.html",
+      "attribution": "Map data © OpenStreetMap contributors; produced map © FZK project",
+      "licenseURL": "https://www.freizeitkarte-osm.de/garmin/en/imprint.html",
+      "maps": [
+        {
+          "id": "freizeitkarte-ltu",
+          "region": "LTU",
+          "name": "Lithuania",
+          "country": "Lithuania",
+          "version": {
+            "year": 2026,
+            "month": 5
+          },
+          "sizeBytes": 344000000,
+          "sourceURL": "https://download.freizeitkarte-osm.de/garmin/latest/LTU+_en_gmapsupp.img.zip",
+          "releaseDate": "2026-05-06",
+          "identifier": null
+        },
+        {
+          "id": "freizeitkarte-lva",
+          "region": "LVA",
+          "name": "Latvia",
+          "country": "Latvia",
+          "version": {
+            "year": 2026,
+            "month": 5
+          },
+          "sizeBytes": 298518679,
+          "downloadSizeBytes": 298518679,
+          "installSizeBytes": 348684288,
+          "sourceURL": "https://download.freizeitkarte-osm.de/garmin/latest/LVA+_en_gmapsupp.img.zip",
+          "releaseDate": "2026-05-03",
+          "identifier": "LVA+"
+        }
+      ]
+    }
+  ]
+}

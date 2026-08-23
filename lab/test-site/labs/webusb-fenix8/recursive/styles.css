@@ -1,0 +1,11 @@
+.status--partial-pass { color: var(--amber); background: #fff1d4; }
+.hierarchy-tree { margin: 0; min-height: 150px; overflow: auto; padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: #fbfaf7; color: var(--graphite); font: 600 13px/1.75 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; white-space: pre; }
+#objectTable td { white-space: normal; vertical-align: top; }
+#objectTable td:first-child, #objectTable td:nth-child(2), #objectTable td:nth-child(3), #objectTable td:nth-child(6) { white-space: nowrap; }
+#objectTable td:nth-child(5) { min-width: 180px; overflow-wrap: anywhere; }
+#historyTable td:last-child { min-width: 180px; overflow-wrap: anywhere; }
+
+@media (max-width: 760px) {
+  .hierarchy-tree { font-size: 11px; padding: 14px; }
+  #objectTable td:nth-child(5) { min-width: 140px; }
+}

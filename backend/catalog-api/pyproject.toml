@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=75,<80"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "terento-catalog"
+version = "0.1.0-beta.1"
+description = "Metadata-only catalog service for Terento"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "psycopg[binary]==3.2.9",
+]
+
+[project.scripts]
+terento-catalog-api = "terento_catalog.app:main"
+terento-catalog-migrate = "terento_catalog.migrate:main"
+terento-catalog-collect = "terento_catalog.collect:main"
+terento-catalog-collect-devices = "terento_catalog.collect_devices:main"
+terento-catalog-backfill-sizes = "terento_catalog.backfill_sizes:main"
+terento-catalog-schedule = "terento_catalog.scheduler:main"
+terento-catalog-asset = "terento_catalog.asset_admin:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+terento_catalog = ["migrations/*.sql"]

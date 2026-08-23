@@ -1,0 +1,841 @@
+import Foundation
+
+struct MapInventoryResult: Sendable, Equatable {
+    let scan: MapScanResult
+    /// Complete pre-install inventory. `scan.files` intentionally contains
+    /// only files inspected as map candidates; installation protection needs
+    /// the complete device inventory.
+    let deviceFiles: [DeviceFile]
+    let comparisons: [MapComparison]
+
+    var comparisonEvidence: EvidenceResult {
+        guard !comparisons.isEmpty else {
+            return .pending
+        }
+
+        return comparisons.allSatisfy { $0.status != .unknown } ? .pass : .fail
+    }
+
+    func unifiedMapInventory(selectedCatalogPackageID: String) -> UnifiedMapInventory {
+        MapInventoryListBuilder().build(
+            scan: scan,
+            comparisons: comparisons,
+            selectedCatalogPackageID: selectedCatalogPackageID
+        )
+    }
+}
+
+private final class MapEngineAcquisitionRelay: @unchecked Sendable {
+    weak var engine: MapEngine?
+
+    init(engine: MapEngine) {
+        self.engine = engine
+    }
+
+    func send(_ state: MapAcquisitionState) {
+        let engine = self.engine
+        Task { @MainActor in
+            engine?.receiveAcquisitionState(state)
+        }
+    }
+}
+
+private final class MapEngineProgressRelay: @unchecked Sendable {
+    weak var engine: MapEngine?
+
+    init(engine: MapEngine) {
+        self.engine = engine
+    }
+
+    func send(_ progress: TransferProgress) {
+        let engine = self.engine
+        Task { @MainActor in
+            engine?.receiveInstallationProgress(progress)
+        }
+    }
+}
+
+private final class MapEnginePhaseRelay: @unchecked Sendable {
+    weak var engine: MapEngine?
+
+    init(engine: MapEngine) {
+        self.engine = engine
+    }
+
+    func send(_ phase: InstallationProcessPhase) {
+        let engine = self.engine
+        Task { @MainActor in
+            engine?.receiveInstallationPhase(phase)
+        }
+    }
+}
+
+private final class MapEnginePhaseProgressRelay: @unchecked Sendable {
+    weak var engine: MapEngine?
+
+    init(engine: MapEngine) {
+        self.engine = engine
+    }
+
+    func send(_ phase: InstallationProcessPhase, _ progress: Double) {
+        let engine = self.engine
+        Task { @MainActor in
+            engine?.receiveInstallationPhaseProgress(phase, progress: progress)
+        }
+    }
+}
+
+private final class MapEngineDownloadProgressRelay: @unchecked Sendable {
+    weak var engine: MapEngine?
+
+    init(engine: MapEngine) {
+        self.engine = engine
+    }
+
+    func send(_ progress: MapDownloadProgress) {
+        let engine = self.engine
+        Task { @MainActor in
+            engine?.receiveDownloadProgress(progress)
+        }
+    }
+}
+
+struct MapInventoryEngine<Reader: DeviceFileReader>: Sendable {
+    let reader: Reader
+    let catalog: MapCatalog
+    let ownershipRecords: [MapOwnershipRecord]
+
+    init(
+        reader: Reader,
+        catalog: MapCatalog,
+        ownershipRecords: [MapOwnershipRecord] = []
+    ) {
+        self.reader = reader
+        self.catalog = catalog
+        self.ownershipRecords = ownershipRecords
+    }
+
+    func scan() throws -> MapInventoryResult {
+        let files = try reader.readFileInventory()
+        let scan = GarminMapScanner().scan(
+            files: files,
+            reader: reader,
+            ownershipRecords: ownershipRecords
+        )
+        let comparisons = catalog.packages.compactMap { package -> MapComparison? in
+            guard let provider = catalog.provider(for: package.providerId),
+                  let region = catalog.region(for: package.regionId) else {
+                return nil
+            }
+
+            return MapComparisonEngine().compare(
+                installedMaps: scan.installedMaps,
+                provider: provider,
+                region: region,
+                catalogMap: package
+            )
+        }
+
+        return MapInventoryResult(
+            scan: scan,
+            deviceFiles: files,
+            comparisons: comparisons
+        )
+    }
+}
+
+enum MapEngineState: Equatable {
+    case idle
+    case loadingCatalog
+    case scanning
+    case acquiringArtifact
+    case preparingInstallation
+    case installing
+    case scanned
+    case failed
+}
+
+@MainActor
+final class MapEngine: ObservableObject {
+    @Published private(set) var state: MapEngineState = .idle
+    @Published private(set) var result: MapInventoryResult?
+    @Published private(set) var preflight: InstallationPreflightResult?
+    @Published private(set) var latviaPreflight: InstallationPreflightResult?
+    @Published private(set) var validatedArtifact: ValidatedMapArtifact?
+    @Published private(set) var acquisitionState: MapAcquisitionState = .idle
+    @Published private(set) var acquisitionProgress: MapDownloadProgress?
+    @Published private(set) var acquisitionErrorMessage: String?
+    @Published private(set) var installationResult: MapInstallationResult?
+    @Published private(set) var installationProgress: TransferProgress?
+    @Published private(set) var installationPhase: InstallationProcessPhase = .idle
+    @Published private(set) var installationPhaseProgress: Double?
+    @Published private(set) var installationErrorMessage: String?
+    @Published private(set) var catalogSource: MapCatalogSource?
+    @Published private(set) var catalogUpdatedAt: Date?
+    @Published private(set) var errorMessage: String?
+    @Published private(set) var userErrorMessage: String?
+
+    private let reader: MTPTransport
+    private let catalogLoader: MapCatalogLoader
+    private var activeTask: Task<Void, Never>?
+    private var loadedCatalog: MapCatalog?
+    private var currentIdentity: DeviceIdentity?
+    private var currentAvailableStorage: UInt64?
+    private var lastInstallationProgressAt: Date?
+    private var lastInstallationProgressBytes: UInt64 = 0
+
+    init(
+        reader: MTPTransport = MTPTransport(),
+        catalogLoader: MapCatalogLoader = MapCatalogLoader()
+    ) {
+        self.reader = reader
+        self.catalogLoader = catalogLoader
+    }
+
+    /// Invalidates all device-derived map state after a disconnect or eject.
+    /// This only cancels local work and clears memory; it never calls an MTP
+    /// write, delete, move, or rename operation.
+    func resetForDisconnectedDevice() {
+        activeTask?.cancel()
+        activeTask = nil
+        state = .idle
+        result = nil
+        preflight = nil
+        latviaPreflight = nil
+        validatedArtifact = nil
+        acquisitionState = .idle
+        acquisitionProgress = nil
+        acquisitionErrorMessage = nil
+        installationResult = nil
+        installationProgress = nil
+        installationPhase = .idle
+        installationPhaseProgress = nil
+        installationErrorMessage = nil
+        catalogSource = nil
+        catalogUpdatedAt = nil
+        errorMessage = nil
+        userErrorMessage = nil
+        loadedCatalog = nil
+        currentIdentity = nil
+        currentAvailableStorage = nil
+        lastInstallationProgressAt = nil
+        lastInstallationProgressBytes = 0
+    }
+
+    func scanDeviceMaps(
+        deviceIdentity: DeviceIdentity? = nil,
+        availableStorage: UInt64? = nil
+    ) {
+        guard state != .loadingCatalog, state != .scanning else {
+            return
+        }
+
+        state = .loadingCatalog
+        result = nil
+        preflight = nil
+        latviaPreflight = nil
+        validatedArtifact = nil
+        acquisitionState = .idle
+        acquisitionProgress = nil
+        acquisitionErrorMessage = nil
+        installationResult = nil
+        installationProgress = nil
+        installationPhase = .idle
+        installationPhaseProgress = nil
+        installationErrorMessage = nil
+        catalogSource = nil
+        catalogUpdatedAt = nil
+        errorMessage = nil
+        userErrorMessage = nil
+        loadedCatalog = nil
+        currentIdentity = deviceIdentity
+        currentAvailableStorage = availableStorage
+
+        let reader = self.reader
+        let catalogLoader = self.catalogLoader
+        let preflightEngine = InstallationPreflightEngine()
+        let ownershipRecords = Self.loadOwnershipRecords(for: deviceIdentity)
+        activeTask?.cancel()
+        activeTask = Task { [weak self] in
+            do {
+                let loaded = try await Task.detached(priority: .userInitiated) {
+                    try await catalogLoader.loadRemoteThenFallback()
+                }.value
+
+                guard !Task.isCancelled else { return }
+
+                self?.loadedCatalog = loaded.catalog
+                self?.catalogSource = loaded.source
+                self?.catalogUpdatedAt = loaded.catalog.updatedAt
+                self?.state = .scanning
+
+                let inventory = try await Task.detached(priority: .userInitiated) {
+                    try MapInventoryEngine(
+                        reader: reader,
+                        catalog: loaded.catalog,
+                        ownershipRecords: ownershipRecords
+                    ).scan()
+                }.value
+
+                guard !Task.isCancelled else { return }
+
+                self?.result = inventory
+                self?.preflight = Self.makePreflight(
+                    inventory: inventory,
+                    deviceIdentity: deviceIdentity,
+                    availableStorage: availableStorage,
+                    engine: preflightEngine
+                )
+                self?.latviaPreflight = Self.makeLatviaPreflight(
+                    inventory: inventory,
+                    deviceIdentity: deviceIdentity,
+                    availableStorage: availableStorage,
+                    engine: preflightEngine
+                )
+                self?.state = .scanned
+            } catch {
+                guard !Task.isCancelled else { return }
+
+                self?.state = .failed
+                self?.errorMessage = error.localizedDescription
+                self?.userErrorMessage = UserFacingErrorMessage.forMapScan(error)
+            }
+        }
+    }
+
+    private nonisolated static func loadOwnershipRecords(
+        for identity: DeviceIdentity?
+    ) -> [MapOwnershipRecord] {
+        guard let identity else {
+            return []
+        }
+
+        guard let manifest = try? LocalTerentoManifestStore().read(
+            deviceKey: identity.localManifestDeviceKey
+        ) else {
+            return []
+        }
+
+        let entries = manifest.entries
+
+        return entries.map { entry in
+            MapOwnershipRecord(
+                devicePath: entry.devicePath,
+                filename: entry.filename,
+                providerId: entry.providerId,
+                regionId: entry.regionId,
+                version: entry.version,
+                sizeBytes: entry.sizeBytes
+            )
+        }
+    }
+
+    var latviaPackage: MapPackage? {
+        loadedCatalog?.packages.first { $0.id == Stage42ArtifactValidator.expectedPackageID }
+    }
+
+    var catalogRecordCount: Int {
+        loadedCatalog?.packages.count ?? 0
+    }
+
+    /// The canonical, catalog-backed list for the Choose screen. Unlike the
+    /// diagnostic inventory, this list contains one row per provider/region
+    /// and never adds a second row for an installed file.
+    var mapSelectionItems: [MapSelectionItem] {
+        guard let inventory = result,
+              let identity = currentIdentity,
+              let availableStorage = currentAvailableStorage else {
+            return []
+        }
+
+        let preflightEngine = InstallationPreflightEngine()
+        var preflightStatuses: [String: InstallationPreflightStatus] = [:]
+        let profile = DeviceInstallProfileRegistry.local.profile(for: identity)
+
+        for comparison in inventory.comparisons {
+            let preflight = preflightEngine.evaluate(
+                identity: identity,
+                selectedMap: comparison.catalogMap,
+                comparison: comparison,
+                installedMaps: inventory.scan.installedMaps,
+                inspectedFiles: inventory.scan.files,
+                availableStorage: availableStorage,
+                profile: profile
+            )
+            preflightStatuses[comparison.id] = preflight.status
+        }
+
+        let recommendedRegionID = MapRegionRecommendation.regionID(
+            systemRegionCode: Locale.current.region?.identifier,
+            comparisons: inventory.comparisons
+        )
+
+        return MapSelectionPlanner().items(
+            comparisons: inventory.comparisons,
+            preflightStatuses: preflightStatuses,
+            recommendedRegionID: recommendedRegionID
+        )
+    }
+
+    func installationPlan(for selectedIDs: Set<String>) -> InstallationPlan? {
+        guard let availableStorage = currentAvailableStorage,
+              result != nil else {
+            return nil
+        }
+
+        return MapSelectionPlanner().plan(
+            items: mapSelectionItems,
+            selectedIDs: selectedIDs,
+            currentFreeSpace: availableStorage
+        )
+    }
+
+    /// Builds the single inventory used by the lifecycle screen. The view
+    /// must not rebuild ownership or comparison state independently because
+    /// doing so could make a destructive action disagree with the scanner.
+    func mapLifecycleInventory() -> MapLifecycleInventory? {
+        guard let result else {
+            return nil
+        }
+
+        let inventory = result.unifiedMapInventory(
+            selectedCatalogPackageID: Stage42ArtifactValidator.expectedPackageID
+        )
+        return MapLifecycleInventoryBuilder().build(from: inventory)
+    }
+
+    /// Resolves one lifecycle item together with the exact local integrity
+    /// records needed by backup/delete/update. Manifest entries are matched by
+    /// path, filename, size, identity, and version; a filename alone never
+    /// grants an operation.
+    func lifecycleContext(for itemID: String) -> MapLifecycleContext? {
+        guard let result,
+              let identity = currentIdentity,
+              let availableStorage = currentAvailableStorage else {
+            return nil
+        }
+
+        let inventory = result.unifiedMapInventory(
+            selectedCatalogPackageID: Stage42ArtifactValidator.expectedPackageID
+        )
+        let lifecycleInventory = MapLifecycleInventoryBuilder().build(from: inventory)
+        guard let item = lifecycleInventory.item(id: itemID) else {
+            return nil
+        }
+
+        let manifestEntries = (try? LocalTerentoManifestStore().read(
+            deviceKey: identity.localManifestDeviceKey
+        ))??.entries ?? []
+        let hashes = Dictionary(uniqueKeysWithValues: item.installedMaps.compactMap { installedMap -> (UInt32, String)? in
+            guard let objectID = installedMap.sourceFile.itemID,
+                  let version = installedMap.version,
+                  let provider = installedMap.provider,
+                  let region = installedMap.region,
+                  let manifestEntry = manifestEntries.first(where: { entry in
+                      entry.devicePath == installedMap.sourceFile.path
+                          && entry.filename == installedMap.sourceFile.filename
+                          && entry.sizeBytes == installedMap.sourceFile.sizeBytes
+                          && MapIdentity.normalizeProvider(entry.providerId) == MapIdentity.normalizeProvider(provider)
+                          && MapIdentity.normalizeRegion(entry.regionId) == MapIdentity.normalizeRegion(region)
+                          && entry.version == version
+                  }),
+                  !manifestEntry.sha256.isEmpty else {
+                return nil
+            }
+
+            return (objectID, manifestEntry.sha256)
+        })
+
+        return MapLifecycleContext(
+            item: item,
+            comparison: inventory.allEntries.first(where: { $0.key == itemID })?.comparison,
+            selectedMap: inventory.allEntries.first(where: { $0.key == itemID })?.catalogPackage,
+            identity: identity,
+            availableStorage: availableStorage,
+            profile: DeviceInstallProfileRegistry.local.profile(for: identity),
+            deviceKey: identity.localManifestDeviceKey,
+            expectedSHA256ByItemID: hashes
+        )
+    }
+
+    /// Refreshes the device-derived inventory after a successful lifecycle
+    /// operation. This is read-only and reuses the normal scanner/catalog
+    /// pipeline.
+    func refreshCurrentDeviceMaps() {
+        guard let identity = currentIdentity,
+              let availableStorage = currentAvailableStorage else {
+            return
+        }
+
+        scanDeviceMaps(
+            deviceIdentity: identity,
+            availableStorage: availableStorage
+        )
+    }
+
+    var isPreparingArtifact: Bool {
+        state == .acquiringArtifact
+    }
+
+    var isInstalling: Bool {
+        state == .installing
+    }
+
+    var isPreparingInstallation: Bool {
+        state == .preparingInstallation
+    }
+
+    fileprivate func receiveAcquisitionState(_ state: MapAcquisitionState) {
+        acquisitionState = state
+
+        switch state {
+        case .resolvingPackage:
+            installationPhase = .preparing
+            installationPhaseProgress = 0
+        case .downloading:
+            installationPhase = .downloading
+            installationPhaseProgress = nil
+        case .validatingDownload:
+            installationPhase = .preparing
+            installationPhaseProgress = 0.2
+        case .extracting:
+            installationPhase = .preparing
+            installationPhaseProgress = 0.4
+        case .inspectingIMG:
+            installationPhase = .preparing
+            installationPhaseProgress = 0.6
+        case .validatingIdentity:
+            installationPhase = .preparing
+            installationPhaseProgress = 0.75
+        case .hashing:
+            installationPhase = .preparing
+            installationPhaseProgress = 0.9
+        case .validated:
+            installationPhase = .preparing
+            installationPhaseProgress = 1
+        case .failed:
+            installationPhase = .failed
+            installationPhaseProgress = nil
+        case .idle:
+            break
+        }
+    }
+
+    fileprivate func receiveDownloadProgress(_ progress: MapDownloadProgress) {
+        acquisitionProgress = progress
+    }
+
+    fileprivate func receiveInstallationProgress(_ progress: TransferProgress) {
+        let now = Date()
+        let speed: Double
+        if let lastInstallationProgressAt {
+            let elapsed = now.timeIntervalSince(lastInstallationProgressAt)
+            speed = elapsed > 0
+                ? Double(progress.bytesTransferred &- lastInstallationProgressBytes) / elapsed
+                : 0
+        } else {
+            speed = 0
+        }
+
+        lastInstallationProgressAt = now
+        lastInstallationProgressBytes = progress.bytesTransferred
+        installationProgress = TransferProgress(
+            bytesTransferred: progress.bytesTransferred,
+            totalBytes: progress.totalBytes,
+            bytesPerSecond: speed
+        )
+    }
+
+    fileprivate func receiveInstallationPhase(_ phase: InstallationProcessPhase) {
+        installationPhase = phase
+
+        switch phase {
+        case .preparing, .finishing:
+            installationPhaseProgress = 0
+        case .completed:
+            installationPhaseProgress = 1
+        default:
+            installationPhaseProgress = nil
+        }
+    }
+
+    fileprivate func receiveInstallationPhaseProgress(
+        _ phase: InstallationProcessPhase,
+        progress: Double
+    ) {
+        guard installationPhase == phase else {
+            return
+        }
+
+        installationPhaseProgress = min(1, max(0, progress))
+    }
+
+    /// Downloads and validates only the catalog-selected official provider
+    /// package. It does not contact the Garmin device or perform a write.
+    func prepareLatviaArtifact() {
+        guard state == .scanned,
+              let package = latviaPackage else {
+            return
+        }
+
+        state = .acquiringArtifact
+        installationPhase = .preparing
+        installationPhaseProgress = 0
+        acquisitionState = .resolvingPackage
+        acquisitionProgress = MapDownloadProgress(
+            bytesDownloaded: 0,
+            totalBytes: package.expectedDownloadSizeBytes ?? 0,
+            bytesPerSecond: 0
+        )
+        acquisitionErrorMessage = nil
+        validatedArtifact = nil
+        installationResult = nil
+        installationErrorMessage = nil
+
+        let acquirer = MapPackageAcquirer()
+        let stateRelay = MapEngineAcquisitionRelay(engine: self)
+        let progressRelay = MapEngineDownloadProgressRelay(engine: self)
+        activeTask?.cancel()
+        activeTask = Task { [weak self] in
+            do {
+                let artifact = try await Task.detached(priority: .userInitiated) {
+                    try await acquirer.acquire(
+                        package: package,
+                        canonicalRegion: "Latvia",
+                        onStateChange: stateRelay.send,
+                        onDownloadProgress: progressRelay.send
+                    )
+                }.value
+
+                guard !Task.isCancelled else { return }
+                self?.validatedArtifact = artifact
+                self?.acquisitionState = .validated
+                self?.state = .scanned
+                Task { @MainActor [weak self] in
+                    self?.prepareLatviaConfirmation()
+                }
+            } catch {
+                guard !Task.isCancelled else { return }
+                self?.acquisitionState = .failed
+                self?.acquisitionErrorMessage = error.localizedDescription
+                self?.installationErrorMessage = error.localizedDescription
+                self?.installationPhase = .failed
+                self?.state = .failed
+            }
+        }
+    }
+
+    /// Runs the no-write confirmation pass. The actual SendObject call is
+    /// reachable only from `installLatvia()` after the user confirms on the
+    /// Install screen.
+    func prepareLatviaConfirmation() {
+        guard let request = makeLatviaRequest(userConfirmed: false),
+              let artifact = validatedArtifact else {
+            return
+        }
+
+        state = .preparingInstallation
+        installationPhase = .preparing
+        installationPhaseProgress = 0
+        installationErrorMessage = nil
+        let coordinator = MapInstallationCoordinator.live()
+        activeTask?.cancel()
+        activeTask = Task { [weak self] in
+            let result = await Task.detached(priority: .userInitiated) {
+                coordinator.run(request)
+            }.value
+
+            guard !Task.isCancelled else { return }
+            self?.installationResult = result
+            self?.latviaPreflight = result.preflight
+            self?.installationProgress = TransferProgress(
+                bytesTransferred: 0,
+                totalBytes: artifact.installSizeBytes
+            )
+            self?.installationErrorMessage = result.failure?.userLabel
+            self?.installationPhase = result.status == .confirmationRequired
+                ? .awaitingConfirmation
+                : (result.isSuccess ? .completed : .failed)
+            self?.installationPhaseProgress = result.status == .confirmationRequired
+                ? 1
+                : (result.isSuccess ? 1 : nil)
+            self?.state = .scanned
+        }
+    }
+
+    /// Re-reads the device and map inventory immediately before the write,
+    /// then executes the shared Stage 4.2 coordinator. This method never
+    /// retries automatically and never bypasses the confirmation result.
+    func installLatvia() {
+        guard validatedArtifact != nil,
+              installationResult?.status == .confirmationRequired,
+              state != .installing else {
+            return
+        }
+
+        state = .installing
+        installationPhase = .installing
+        installationPhaseProgress = nil
+        lastInstallationProgressAt = nil
+        lastInstallationProgressBytes = 0
+        installationProgress = TransferProgress(
+            bytesTransferred: 0,
+            totalBytes: validatedArtifact?.installSizeBytes ?? 0
+        )
+        installationErrorMessage = nil
+
+        let reader = self.reader
+        let artifact = validatedArtifact
+        let catalog = loadedCatalog
+        let progressRelay = MapEngineProgressRelay(engine: self)
+        let phaseRelay = MapEnginePhaseRelay(engine: self)
+        let phaseProgressRelay = MapEnginePhaseProgressRelay(engine: self)
+        activeTask?.cancel()
+        activeTask = Task { [weak self] in
+            do {
+                guard let artifact, let catalog else {
+                    throw MapAcquisitionError.invalidPackage("The validated Latvia map is unavailable.")
+                }
+
+                let result = try await Task.detached(priority: .userInitiated) {
+                    let snapshot = try reader.readSnapshot()
+                    let identity = CompatibilityEngine().evaluate(snapshot: snapshot).identity
+                    let inventory = try MapInventoryEngine(
+                        reader: reader,
+                        catalog: catalog,
+                        ownershipRecords: Self.loadOwnershipRecords(for: identity)
+                    ).scan()
+                    guard let comparison = inventory.comparisons.first(where: {
+                        $0.catalogMap.id == Stage42ArtifactValidator.expectedPackageID
+                    }) else {
+                        throw MapAcquisitionError.invalidPackage("The Latvia catalog entry is unavailable.")
+                    }
+
+                    let request = MapInstallationRequest(
+                        identity: identity,
+                        selectedMap: comparison.catalogMap,
+                        comparison: comparison,
+                        installedMaps: inventory.scan.installedMaps,
+                        inspectedFiles: inventory.scan.files,
+                        beforeDeviceFiles: inventory.deviceFiles,
+                        availableStorage: snapshot.freeSpace,
+                        profile: DeviceInstallProfileRegistry.local.profile(for: identity),
+                        artifact: artifact,
+                        userConfirmed: true
+                    )
+
+                    return MapInstallationCoordinator.live().run(
+                        request,
+                        onProgress: progressRelay.send,
+                        onPhase: phaseRelay.send,
+                        onPhaseProgress: phaseProgressRelay.send
+                    )
+                }.value
+
+                guard !Task.isCancelled else { return }
+                self?.installationResult = result
+                self?.latviaPreflight = result.preflight
+                self?.installationProgress = TransferProgress(
+                    bytesTransferred: result.diagnostics.bytesTransferred,
+                    totalBytes: result.diagnostics.transferTotalBytes,
+                    bytesPerSecond: 0
+                )
+                self?.installationErrorMessage = result.failure?.userLabel
+                self?.installationPhase = result.isSuccess ? .completed : .failed
+                self?.installationPhaseProgress = result.isSuccess ? 1 : nil
+                self?.state = result.isSuccess ? .scanned : .failed
+            } catch {
+                guard !Task.isCancelled else { return }
+                self?.installationErrorMessage = error.localizedDescription
+                self?.installationPhase = .failed
+                self?.installationPhaseProgress = nil
+                self?.state = .failed
+            }
+        }
+    }
+
+    private static func makePreflight(
+        inventory: MapInventoryResult,
+        deviceIdentity: DeviceIdentity?,
+        availableStorage: UInt64?,
+        engine: InstallationPreflightEngine
+    ) -> InstallationPreflightResult? {
+        guard let comparison = selectedComparison(in: inventory),
+              let deviceIdentity,
+              let availableStorage else {
+            return nil
+        }
+
+        return engine.evaluate(
+            identity: deviceIdentity,
+            selectedMap: comparison.catalogMap,
+            comparison: comparison,
+            installedMaps: inventory.scan.installedMaps,
+            inspectedFiles: inventory.scan.files,
+            availableStorage: availableStorage,
+            profile: DeviceInstallProfileRegistry.local.profile(for: deviceIdentity)
+        )
+    }
+
+    private static func makeLatviaPreflight(
+        inventory: MapInventoryResult,
+        deviceIdentity: DeviceIdentity?,
+        availableStorage: UInt64?,
+        engine: InstallationPreflightEngine
+    ) -> InstallationPreflightResult? {
+        guard let comparison = inventory.comparisons.first(where: {
+            $0.catalogMap.id == Stage42ArtifactValidator.expectedPackageID
+        }),
+        let deviceIdentity,
+        let availableStorage else {
+            return nil
+        }
+
+        return engine.evaluate(
+            identity: deviceIdentity,
+            selectedMap: comparison.catalogMap,
+            comparison: comparison,
+            installedMaps: inventory.scan.installedMaps,
+            inspectedFiles: inventory.scan.files,
+            availableStorage: availableStorage,
+            profile: DeviceInstallProfileRegistry.local.profile(for: deviceIdentity)
+        )
+    }
+
+    private func makeLatviaRequest(userConfirmed: Bool) -> MapInstallationRequest? {
+        guard let inventory = result,
+              let identity = currentIdentity,
+              let availableStorage = currentAvailableStorage,
+              let artifact = validatedArtifact,
+              let comparison = inventory.comparisons.first(where: {
+                  $0.catalogMap.id == Stage42ArtifactValidator.expectedPackageID
+              }) else {
+            return nil
+        }
+
+        return MapInstallationRequest(
+            identity: identity,
+            selectedMap: comparison.catalogMap,
+            comparison: comparison,
+            installedMaps: inventory.scan.installedMaps,
+            inspectedFiles: inventory.scan.files,
+            beforeDeviceFiles: inventory.deviceFiles,
+            availableStorage: availableStorage,
+            profile: DeviceInstallProfileRegistry.local.profile(for: identity),
+            artifact: artifact,
+            userConfirmed: userConfirmed
+        )
+    }
+
+    private static func selectedComparison(
+        in inventory: MapInventoryResult
+    ) -> MapComparison? {
+        // Until the Maps screen provides explicit selection, prefer the
+        // catalog entry that was actually detected on the device. This keeps
+        // the read-only preflight tied to the real installed map instead of
+        // whichever package happens to be first in a remote catalog.
+        inventory.comparisons.first(where: { $0.installedMap != nil })
+            ?? inventory.comparisons.first(where: { $0.catalogMap.regionId == "LTU" })
+            ?? inventory.comparisons.first
+    }
+}

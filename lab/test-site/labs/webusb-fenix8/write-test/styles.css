@@ -1,0 +1,16 @@
+.write-warning { border-color: #e4c28d; background: #fff4df; }
+.write-warning strong { color: #805514; }
+.write-table td:first-child { font-weight: 700; }
+.write-table td:nth-child(2) { min-width: 250px; white-space: normal; overflow-wrap: anywhere; }
+.write-table td:nth-child(4), .write-table td:nth-child(5) { min-width: 280px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; overflow-wrap: anywhere; white-space: normal; }
+.integrity-summary { margin-top: 18px; padding: 15px 16px; border: 1px solid var(--line); border-radius: 10px; background: #f8faf7; line-height: 1.5; }
+.status--running { color: var(--sky-strong); background: var(--sky); }
+.status--safe-stop { color: var(--red); background: #f8e5e2; }
+.status--recovery-required { color: #7d4d12; background: #fff0cd; }
+.status--skipped { color: #6b7280; background: #eef1f2; }
+.recovery-note { margin-top: 14px; padding: 16px 18px; border: 1px solid #e4c28d; border-radius: 10px; background: #fff4df; color: #5d451f; line-height: 1.55; }
+.recovery-note strong { color: #805514; }
+.recovery-note a { color: #245f55; font-weight: 700; }
+.recovery-note code { overflow-wrap: anywhere; }
+.protocol-row--failed { background: #fff4f2; color: #9f3d32; }
+.protocol-row--failed small { font-size: 0.75em; }

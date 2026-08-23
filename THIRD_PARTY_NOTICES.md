@@ -19,7 +19,8 @@ Terento currently bundles the following web fonts for the public landing page. T
 - Upstream: <https://github.com/rsms/inter>
 - Source distribution: <https://rsms.me/inter/inter.css>
 - License: SIL Open Font License 1.1
-- License notice: `site/assets/fonts/Inter-OFL.txt`
+- License notice: the upstream SIL Open Font License 1.1 applies; no separate
+  copied license file is present in `site/assets/fonts/`
 - Use: body copy and UI text
 
 ## Umami analytics
@@ -32,6 +33,29 @@ Website ID: `d8097a98-ffe4-478e-b212-9f06b5bcccbe`
 
 This is a runtime service reference, not a bundled dependency or secret. It is included on the production page only; test environments must use a no-tracking build. See the [Umami documentation](https://docs.umami.is/docs) for the service's privacy model and configuration details.
 
+## Native connectivity PoC dependencies
+
+The isolated native connectivity PoC under
+`lab/native-connectivity-poc/` links to Homebrew-installed libraries during
+development. These libraries are not bundled or redistributed by the
+repository.
+
+### libmtp
+
+- Version: 1.1.23
+- Upstream: <https://github.com/libmtp/libmtp>
+- License: GNU Lesser General Public License 2.1 or later
+- Use: read-only Garmin MTP detection, device information, and storage information
+- Distribution: external Homebrew dependency; not bundled by Terento
+
+### libusb
+
+- Version: 1.0.30
+- Upstream: <https://github.com/libusb/libusb>
+- License: GNU Lesser General Public License 2.1 or later
+- Use: transitive runtime dependency of libmtp
+- Distribution: external Homebrew dependency; not bundled by Terento
+
 ## Caddy static web server
 
 - Image: `caddy:2.10-alpine`
@@ -40,3 +64,13 @@ This is a runtime service reference, not a bundled dependency or secret. It is i
 - License: Apache License 2.0
 - Use: serve the static landing page inside the private Docker network behind the existing Traefik reverse proxy
 - The image is pulled at deployment time and is not redistributed in the Terento repository.
+
+## psycopg
+
+- Version: 3.2.9 (`psycopg[binary]`)
+- Upstream: <https://www.psycopg.org/psycopg3/>
+- License: GNU Lesser General Public License 3.0 or later
+- Use: PostgreSQL connection and migration access for the metadata-only
+  catalog service
+- Distribution: installed in the catalog API Docker image; the dependency's
+  own license and notice requirements remain applicable

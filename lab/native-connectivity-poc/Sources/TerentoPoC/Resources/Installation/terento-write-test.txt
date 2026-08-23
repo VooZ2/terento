@@ -1,0 +1,7 @@
+Terento native MTP write test
+
+This is a harmless test payload for the Stage 3 owned-object roundtrip.
+It is not a Garmin map and must not replace or overwrite any existing file.
+
+Purpose: verify create, read-back, hash verification, cleanup, and reconnect
+handling before Terento attempts any map installation.

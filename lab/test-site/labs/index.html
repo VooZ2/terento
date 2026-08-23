@@ -68,9 +68,93 @@
           <span class="card-action">Open Stage 2A.2 <span aria-hidden="true">↗</span></span>
         </a>
 
-        <article class="lab-card lab-card--planned">
+        <a class="lab-card lab-card--active" href="/labs/webusb-fenix8/objects/">
           <div class="card-topline">
             <span class="card-number">03</span>
+            <span class="card-status card-status--active">Read-only</span>
+          </div>
+          <div class="card-mark card-mark--device" aria-hidden="true"><span></span><span></span><span></span></div>
+          <h2>Object discovery</h2>
+          <p class="card-lede">A bounded enumeration of the objects the MTP device exposes.</p>
+          <dl class="card-details">
+            <div>
+              <dt>What it does</dt>
+              <dd>Reads object handles and selected object metadata without reading object content.</dd>
+            </div>
+            <div>
+              <dt>Responsible for</dt>
+              <dd>Object enumeration and map-related evidence only.</dd>
+            </div>
+          </dl>
+          <span class="card-action">Open Stage 2B <span aria-hidden="true">↗</span></span>
+        </a>
+
+        <a class="lab-card lab-card--active" href="/labs/webusb-fenix8/recursive/">
+          <div class="card-topline">
+            <span class="card-number">04</span>
+            <span class="card-status card-status--active">Read-only</span>
+          </div>
+          <div class="card-mark card-mark--device" aria-hidden="true"><span></span><span></span><span></span></div>
+          <h2>Recursive association discovery</h2>
+          <p class="card-lede">A bounded hierarchy traversal beneath the objects exposed by MTP.</p>
+          <dl class="card-details">
+            <div>
+              <dt>What it does</dt>
+              <dd>Queries children beneath every association, with five levels and 500 objects as hard limits.</dd>
+            </div>
+            <div>
+              <dt>Responsible for</dt>
+              <dd>Hierarchy evidence under GARMIN and other exposed associations.</dd>
+            </div>
+          </dl>
+          <span class="card-action">Open Stage 2B.1 <span aria-hidden="true">↗</span></span>
+        </a>
+
+        <a class="lab-card lab-card--active" href="/labs/webusb-fenix8/map-read/">
+          <div class="card-topline">
+            <span class="card-number">05</span>
+            <span class="card-status card-status--active">Read-only</span>
+          </div>
+          <div class="card-mark card-mark--device" aria-hidden="true"><span></span><span></span><span></span></div>
+          <h2>Garmin map object read</h2>
+          <p class="card-lede">A streamed content check for the map objects already exposed by MTP.</p>
+          <dl class="card-details">
+            <div>
+              <dt>What it does</dt>
+              <dd>Reads selected map bytes in bounded chunks, compares their size and calculates SHA-256.</dd>
+            </div>
+            <div>
+              <dt>Responsible for</dt>
+              <dd>Map-content read feasibility and transfer-stability evidence.</dd>
+            </div>
+          </dl>
+          <span class="card-action">Open Stage 2C <span aria-hidden="true">↗</span></span>
+        </a>
+
+        <a class="lab-card lab-card--active" href="/labs/webusb-fenix8/write-test/">
+          <div class="card-topline">
+            <span class="card-number">06</span>
+            <span class="card-status card-status--active">Controlled</span>
+          </div>
+          <div class="card-mark card-mark--safety" aria-hidden="true"><span></span><span></span></div>
+          <h2>Safe MTP write roundtrip</h2>
+          <p class="card-lede">A controlled test of creating, verifying and removing one temporary object.</p>
+          <dl class="card-details">
+            <div>
+              <dt>What it does</dt>
+              <dd>Creates one unique TERENTO_TEST file, reads it back, compares SHA-256 and deletes only that file.</dd>
+            </div>
+            <div>
+              <dt>Responsible for</dt>
+              <dd>Basic WebUSB write safety and fail-closed cleanup.</dd>
+            </div>
+          </dl>
+          <span class="card-action">Open Stage 2D <span aria-hidden="true">↗</span></span>
+        </a>
+
+        <article class="lab-card lab-card--planned">
+          <div class="card-topline">
+            <span class="card-number">07</span>
             <span class="card-status">Planned</span>
           </div>
           <div class="card-mark card-mark--safety" aria-hidden="true"><span></span><span></span></div>

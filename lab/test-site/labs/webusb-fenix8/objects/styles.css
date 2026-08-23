@@ -1,0 +1,11 @@
+.object-summary { margin: 0 0 18px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; background: #fbfaf7; color: var(--muted); line-height: 1.5; }
+.object-summary strong { color: var(--graphite); }
+#objectTable td, #storageTable td { white-space: normal; vertical-align: top; }
+#objectTable td:first-child, #objectTable td:nth-child(2), #objectTable td:nth-child(5), #objectTable td:nth-child(6) { white-space: nowrap; }
+#objectTable td:nth-child(4) { min-width: 190px; overflow-wrap: anywhere; }
+#objectTable td:last-child { min-width: 140px; }
+#protocolTable td:last-child { white-space: normal; }
+
+@media (max-width: 760px) {
+  #objectTable td:nth-child(4) { min-width: 140px; }
+}
