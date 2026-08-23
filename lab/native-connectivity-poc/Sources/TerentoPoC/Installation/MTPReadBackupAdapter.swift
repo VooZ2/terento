@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(LibMTPBridge)
 import LibMTPBridge
+#endif
 
 /// Native read-only adapter for the Stage 5.1 backup boundary.
 ///

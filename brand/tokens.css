@@ -1,0 +1,144 @@
+:root {
+  /* Terento — core brand */
+  --terento-sky: #7898A8;
+  --terento-lichen: #9AA58B;
+  --terento-warm-stone: #B39A78;
+  --terento-off-white: #F7F3EC;
+  --terento-graphite: #222A2B;
+
+  /* Accessible functional derivatives */
+  --terento-interactive: #577787;
+  --terento-interactive-hover: #4F6E7E;
+  --terento-text-secondary-accessible: #6D706F;
+  --terento-lichen-dark: #5F6D53;
+  --terento-stone-dark: #7B6246;
+  --terento-error-rust: #8A4F47;
+  --terento-selected-tint: #E7EEF1;
+
+  /* Light mode */
+  --background-primary: #F7F3EC;
+  --background-secondary: #F1EEE7;
+  --surface-primary: #FFFFFF;
+  --surface-elevated: #FCFBF8;
+  --text-primary: #222A2B;
+  --text-secondary: #6D706F;
+  --text-muted: #7E8481;
+  --text-disabled: #9EA5A2;
+  --border-subtle: #D7DDDA;
+
+  --interactive-primary: #577787;
+  --interactive-primary-hover: #4F6E7E;
+  --interactive-primary-text: #FFFFFF;
+  --focus-ring: #577787;
+  --selected-background: #E7EEF1;
+  --selected-border: #577787;
+
+  --status-success: #5F6D53;
+  --status-warning: #7B6246;
+  --status-error: #8A4F47;
+  --status-info: #577787;
+
+  --progress-track: #DDE6E5;
+  --progress-fill: #577787;
+
+  /* Typography */
+  --font-brand: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Validated type scale */
+  --type-hero-size: 64px;
+  --type-hero-line: 70px;
+  --type-h1-size: 52px;
+  --type-h1-line: 60px;
+  --type-h2-size: 40px;
+  --type-h2-line: 48px;
+  --type-h3-size: 30px;
+  --type-h3-line: 38px;
+  --type-ui-heading-size: 22px;
+  --type-ui-heading-line: 28px;
+  --type-body-size: 17px;
+  --type-body-line: 26px;
+  --type-body-small-size: 15px;
+  --type-body-small-line: 22px;
+  --type-label-size: 14px;
+  --type-label-line: 20px;
+  --type-button-size: 15px;
+  --type-button-line: 20px;
+  --type-caption-size: 13px;
+  --type-caption-line: 18px;
+  --type-diagnostics-size: 13px;
+  --type-diagnostics-line: 20px;
+
+  /* Provisional implementation defaults; validate in the real product */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --radius-control: 10px;
+  --radius-card: 14px;
+  --radius-large: 18px;
+}
+
+[data-theme="dark"],
+.terento-dark {
+  --background-primary: #222A2B;
+  --background-secondary: #283132;
+  --surface-primary: #2B3536;
+  --surface-elevated: #313C3D;
+  --text-primary: #F7F3EC;
+  --text-secondary: #C9D0CD;
+  --text-muted: #A9B1AE;
+  --text-disabled: #7F8986;
+  --border-subtle: #465355;
+
+  --interactive-primary: #577787;
+  --interactive-primary-hover: #4F6E7E;
+  --interactive-primary-text: #FFFFFF;
+  --focus-ring: #9CB6C2;
+  --selected-background: #32444A;
+  --selected-border: #7898A8;
+
+  --status-success: #A4B39B;
+  --status-warning: #C2A779;
+  --status-error: #C9857C;
+  --status-info: #9CB6C2;
+
+  --progress-track: #465355;
+  --progress-fill: #7898A8;
+}
+
+/* Suggested semantic usage */
+.terento-heading {
+  font-family: var(--font-brand);
+  color: var(--text-primary);
+}
+
+.terento-body {
+  font-family: var(--font-ui);
+  color: var(--text-primary);
+}
+
+.terento-diagnostics {
+  font-family: var(--font-mono);
+}
+
+.terento-primary-button {
+  background: var(--interactive-primary);
+  color: var(--interactive-primary-text);
+  font: 600 var(--type-button-size)/var(--type-button-line) var(--font-ui);
+}
+
+.terento-primary-button:hover {
+  background: var(--interactive-primary-hover);
+}
+
+.terento-primary-button:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}

@@ -2092,6 +2092,9 @@ private struct DeviceAssetImage: View {
                   forResource: "generic-garmin-watch",
                   withExtension: "png",
                   subdirectory: "Devices"
+              ) ?? Bundle.module.url(
+                  forResource: "generic-garmin-watch",
+                  withExtension: "png"
               ) else {
             return nil
         }

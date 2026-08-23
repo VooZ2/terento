@@ -1,0 +1,345 @@
+{
+  "$schema": "https://tr.designtokens.org/format/",
+  "meta": {
+    "name": "Terento Design Tokens",
+    "version": "1.0.0",
+    "status": "approved-visual-baseline",
+    "date": "2026-08-20",
+    "notes": [
+      "Canonical logo geometry is external to this token file and must not be modified.",
+      "Sky, Lichen and Warm Stone are brand colors; accessible functional derivatives are used where text contrast requires them."
+    ]
+  },
+  "color": {
+    "brand": {
+      "sky": {
+        "$value": "#7898A8",
+        "$type": "color"
+      },
+      "lichen": {
+        "$value": "#9AA58B",
+        "$type": "color"
+      },
+      "stone": {
+        "$value": "#B39A78",
+        "$type": "color"
+      },
+      "offWhite": {
+        "$value": "#F7F3EC",
+        "$type": "color"
+      },
+      "graphite": {
+        "$value": "#222A2B",
+        "$type": "color"
+      }
+    },
+    "functional": {
+      "interactivePrimary": {
+        "$value": "#577787",
+        "$type": "color"
+      },
+      "interactiveHover": {
+        "$value": "#4F6E7E",
+        "$type": "color"
+      },
+      "secondaryText": {
+        "$value": "#6D706F",
+        "$type": "color"
+      },
+      "lichenDark": {
+        "$value": "#5F6D53",
+        "$type": "color"
+      },
+      "stoneDark": {
+        "$value": "#7B6246",
+        "$type": "color"
+      },
+      "errorRust": {
+        "$value": "#8A4F47",
+        "$type": "color"
+      },
+      "selectedTint": {
+        "$value": "#E7EEF1",
+        "$type": "color"
+      }
+    },
+    "light": {
+      "backgroundPrimary": {
+        "$value": "#F7F3EC",
+        "$type": "color"
+      },
+      "backgroundSecondary": {
+        "$value": "#F1EEE7",
+        "$type": "color"
+      },
+      "surfacePrimary": {
+        "$value": "#FFFFFF",
+        "$type": "color"
+      },
+      "surfaceElevated": {
+        "$value": "#FCFBF8",
+        "$type": "color"
+      },
+      "textPrimary": {
+        "$value": "#222A2B",
+        "$type": "color"
+      },
+      "textSecondary": {
+        "$value": "#6D706F",
+        "$type": "color"
+      },
+      "textMuted": {
+        "$value": "#7E8481",
+        "$type": "color"
+      },
+      "textDisabled": {
+        "$value": "#9EA5A2",
+        "$type": "color"
+      },
+      "borderSubtle": {
+        "$value": "#D7DDDA",
+        "$type": "color"
+      },
+      "selectedBackground": {
+        "$value": "#E7EEF1",
+        "$type": "color"
+      },
+      "selectedBorder": {
+        "$value": "#577787",
+        "$type": "color"
+      },
+      "focusRing": {
+        "$value": "#577787",
+        "$type": "color"
+      },
+      "progressTrack": {
+        "$value": "#DDE6E5",
+        "$type": "color"
+      },
+      "progressFill": {
+        "$value": "#577787",
+        "$type": "color"
+      }
+    },
+    "dark": {
+      "backgroundPrimary": {
+        "$value": "#222A2B",
+        "$type": "color"
+      },
+      "backgroundSecondary": {
+        "$value": "#283132",
+        "$type": "color"
+      },
+      "surfacePrimary": {
+        "$value": "#2B3536",
+        "$type": "color"
+      },
+      "surfaceElevated": {
+        "$value": "#313C3D",
+        "$type": "color"
+      },
+      "textPrimary": {
+        "$value": "#F7F3EC",
+        "$type": "color"
+      },
+      "textSecondary": {
+        "$value": "#C9D0CD",
+        "$type": "color"
+      },
+      "textMuted": {
+        "$value": "#A9B1AE",
+        "$type": "color"
+      },
+      "borderSubtle": {
+        "$value": "#465355",
+        "$type": "color"
+      },
+      "selectedBackground": {
+        "$value": "#32444A",
+        "$type": "color"
+      },
+      "selectedBorder": {
+        "$value": "#7898A8",
+        "$type": "color"
+      },
+      "focusRing": {
+        "$value": "#9CB6C2",
+        "$type": "color"
+      },
+      "progressTrack": {
+        "$value": "#465355",
+        "$type": "color"
+      },
+      "progressFill": {
+        "$value": "#7898A8",
+        "$type": "color"
+      }
+    },
+    "status": {
+      "light": {
+        "success": {
+          "$value": "#5F6D53",
+          "$type": "color"
+        },
+        "warning": {
+          "$value": "#7B6246",
+          "$type": "color"
+        },
+        "error": {
+          "$value": "#8A4F47",
+          "$type": "color"
+        },
+        "info": {
+          "$value": "#577787",
+          "$type": "color"
+        }
+      },
+      "dark": {
+        "success": {
+          "$value": "#A4B39B",
+          "$type": "color"
+        },
+        "warning": {
+          "$value": "#C2A779",
+          "$type": "color"
+        },
+        "error": {
+          "$value": "#C9857C",
+          "$type": "color"
+        },
+        "info": {
+          "$value": "#9CB6C2",
+          "$type": "color"
+        }
+      }
+    }
+  },
+  "typography": {
+    "fontFamily": {
+      "brand": {
+        "$value": "Instrument Sans",
+        "$type": "fontFamily"
+      },
+      "ui": {
+        "$value": "Inter",
+        "$type": "fontFamily"
+      },
+      "mono": {
+        "$value": "JetBrains Mono",
+        "$type": "fontFamily"
+      }
+    },
+    "scale": {
+      "hero": {
+        "fontFamily": "Instrument Sans",
+        "fontSize": "64px",
+        "lineHeight": "70px",
+        "fontWeight": 600
+      },
+      "h1": {
+        "fontFamily": "Instrument Sans",
+        "fontSize": "52px",
+        "lineHeight": "60px",
+        "fontWeight": 600
+      },
+      "h2": {
+        "fontFamily": "Instrument Sans",
+        "fontSize": "40px",
+        "lineHeight": "48px",
+        "fontWeight": 600
+      },
+      "h3": {
+        "fontFamily": "Instrument Sans",
+        "fontSize": "30px",
+        "lineHeight": "38px",
+        "fontWeight": 600
+      },
+      "uiHeading": {
+        "fontFamily": "Inter",
+        "fontSize": "22px",
+        "lineHeight": "28px",
+        "fontWeight": 600
+      },
+      "body": {
+        "fontFamily": "Inter",
+        "fontSize": "17px",
+        "lineHeight": "26px",
+        "fontWeight": 400
+      },
+      "bodySmall": {
+        "fontFamily": "Inter",
+        "fontSize": "15px",
+        "lineHeight": "22px",
+        "fontWeight": 400
+      },
+      "label": {
+        "fontFamily": "Inter",
+        "fontSize": "14px",
+        "lineHeight": "20px",
+        "fontWeight": 500
+      },
+      "button": {
+        "fontFamily": "Inter",
+        "fontSize": "15px",
+        "lineHeight": "20px",
+        "fontWeight": 600
+      },
+      "caption": {
+        "fontFamily": "Inter",
+        "fontSize": "13px",
+        "lineHeight": "18px",
+        "fontWeight": 400
+      },
+      "diagnostics": {
+        "fontFamily": "JetBrains Mono",
+        "fontSize": "13px",
+        "lineHeight": "20px",
+        "fontWeight": 400
+      }
+    }
+  },
+  "iconography": {
+    "baseSize": {
+      "$value": "24px",
+      "$type": "dimension"
+    },
+    "strokeWidthMin": {
+      "$value": "1.75px",
+      "$type": "dimension"
+    },
+    "strokeWidthMax": {
+      "$value": "2px",
+      "$type": "dimension"
+    },
+    "style": "outline-first"
+  },
+  "logo": {
+    "minimumHeight": {
+      "$value": "24px",
+      "$type": "dimension"
+    },
+    "preferredMinimumHeight": {
+      "$value": "40px",
+      "$type": "dimension"
+    },
+    "clearSpace": "approximately 0.5× symbol width on all sides"
+  },
+  "implementationDefaults": {
+    "status": "provisional-until-real-ui-implementation",
+    "spacing": [
+      "4px",
+      "8px",
+      "12px",
+      "16px",
+      "24px",
+      "32px",
+      "48px",
+      "64px"
+    ],
+    "radius": {
+      "control": "10px",
+      "card": "14px",
+      "large": "18px"
+    }
+  }
+}
