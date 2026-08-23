@@ -1,6 +1,6 @@
 # Third-party notices
 
-Terento currently bundles the following web fonts for the public landing page. They remain under their upstream licenses; the Terento source code remains planned for GPL-3.0-or-later.
+Terento currently bundles the following web fonts for the public landing page. They remain under their upstream licenses; the Terento source code is licensed under GPL-3.0-or-later.
 
 ## Instrument Sans
 

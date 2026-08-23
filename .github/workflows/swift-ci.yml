@@ -3,11 +3,11 @@ name: Swift CI
 on:
   push:
     branches:
-      - experimental
+      - beta
       - main
   pull_request:
     branches:
-      - experimental
+      - beta
       - main
   workflow_dispatch:
 
@@ -22,7 +22,13 @@ jobs:
         working-directory: lab/native-connectivity-poc
     steps:
       - name: Check out source
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Select Swift 6 toolchain
+        run: |
+          xcode_16_path=$(find /Applications -maxdepth 1 -type d -name "Xcode_16*.app" | sort | tail -n 1)
+          if [ -z "$xcode_16_path" ]; then echo "Xcode 16 was not found on the runner"; exit 1; fi
+          sudo xcode-select -s "$xcode_16_path/Contents/Developer"
+          swift --version
       - name: Install libmtp
         run: brew install libmtp
       - name: Build and test

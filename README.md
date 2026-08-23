@@ -80,6 +80,6 @@ notarized DMG or PKG is provided by this release.
 
 ## License
 
-The planned Terento source-code license is GPL-3.0-or-later. Provider map and
+Terento source code is licensed under GPL-3.0-or-later. See [LICENSE](LICENSE) and [NOTICE](NOTICE). Provider map and
 data licenses remain separate and must retain their own attribution and source
 requirements.
