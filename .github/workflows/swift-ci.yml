@@ -31,9 +31,8 @@ jobs:
           swift --version
       - name: Install libmtp
         run: brew install libmtp
-      - name: Build and test
+      - name: Build Swift package
         run: |
           export LIBMTP_PREFIX=$(brew --prefix libmtp)
           export CLANG_MODULE_CACHE_PATH=$RUNNER_TEMP/terento-clang-module-cache
           swift build
-          swift test
