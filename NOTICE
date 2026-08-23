@@ -28,11 +28,11 @@ See [Freizeitkarte](https://www.freizeitkarte-osm.de/) and [OpenStreetMap copyri
 
 ## Software licence
 
-Terento source code is licensed under the GNU GPL 3.0 or later. Full text: [LICENSE](https://github.com/VooZ2/terento) in the repository.
+Terento source code is licensed under the GNU GPL 3.0 or later. Full text: [LICENSE](https://github.com/VooZ2/terento/blob/beta/LICENSE).
 
 The GPL grants freedoms in the code. It does not grant rights to use the name or mark “Terento” as a trademark, and it does not let anyone claim that a modified version is an official Terento release if it is not.
 
-Website HTML, CSS, and JavaScript of Terento origin are also GPL unless a file says otherwise. Fonts and other third-party parts stay under their own licences — see [THIRD_PARTY_NOTICES.md](https://github.com/VooZ2/terento/blob/main/THIRD_PARTY_NOTICES.md).
+Website HTML, CSS, and JavaScript of Terento origin are also GPL unless a file says otherwise. Fonts and other third-party parts stay under their own licences — see [THIRD_PARTY_NOTICES.md](https://github.com/VooZ2/terento/blob/beta/THIRD_PARTY_NOTICES.md).
 
 ## Other software
 
