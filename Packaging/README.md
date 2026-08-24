@@ -4,7 +4,8 @@
 builds a fresh arm64 Release app, runs the SwiftPM regression suite, verifies
 the bundled libmtp/libusb libraries, signs nested code inside-out with
 Developer ID, submits a temporary ZIP to Apple, staples the accepted app, and
-validates the extracted final ZIP with Gatekeeper and a launch smoke test.
+validates both final ZIP and DMG installers with Gatekeeper and launch smoke
+tests.
 
 ## Preconditions
 
@@ -26,16 +27,32 @@ Run from the repository root:
 Packaging/release.sh --version 1.0.0 --build 1
 ```
 
-The pipeline fails rather than silently replacing an existing artifact. Use
-`--overwrite` only when the exact output is intentionally being regenerated.
-The result is written to:
+For a beta release, keep the app's marketing version separate from the public
+release label:
 
-```text
-dist/Terento-1.0.0-macOS-arm64.zip
+```sh
+RELEASE_TAG=v1.0.0-beta.2 \
+Packaging/release.sh \
+  --version 1.0.0 \
+  --build 1 \
+  --release-version 1.0.0-beta.2 \
+  --overwrite
 ```
 
-The command prints the final artifact size and SHA-256 checksum. The ZIP
-contains one top-level item: `Terento.app`.
+The pipeline fails rather than silently replacing an existing artifact. Use
+`--overwrite` only when the exact output is intentionally being regenerated.
+The results are written to:
+
+```text
+dist/Terento-1.0.0-beta.2-macOS-arm64.zip
+dist/Terento-1.0.0-beta.2-macOS-arm64.dmg
+```
+
+The command prints the final artifact size and SHA-256 checksum for both
+packages. The ZIP contains one top-level item, `Terento.app`. The DMG contains
+the same signed app and an `Applications` shortcut for drag-and-drop install.
+Both packages are mounted or extracted and checked before the pipeline reports
+success.
 
 ## Application icon and Help menu
 
@@ -62,7 +79,7 @@ on a file-mode error.
 ## Dry-run
 
 To exercise the fresh build, tests, signing, Hardened Runtime, and runtime-path
-checks without contacting Apple or creating a release ZIP:
+checks without contacting Apple or creating release artifacts:
 
 ```sh
 Packaging/release.sh --no-notarize --version 1.0.0 --build 1
@@ -76,5 +93,6 @@ are removed after a successful run. A failed run preserves its unique run
 directory for diagnostics. No certificate, private key, password, Apple ID,
 or app-specific password is read from or written to the repository.
 
-This pipeline does not create a DMG, publish to GitHub, upload release files,
-or modify Apple Developer settings.
+This pipeline does not publish to GitHub, upload release files, or modify Apple
+Developer settings. The `dist/` artifacts are local release outputs until they
+are explicitly attached to a GitHub prerelease.

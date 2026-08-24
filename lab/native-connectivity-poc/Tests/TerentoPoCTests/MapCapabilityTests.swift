@@ -23,6 +23,10 @@ struct MapCapabilityTests {
             "Lily 2 Active stays visible but map actions are disabled"
         )
         expect(
+            registry.evaluate(identity: identity(model: "Lily 2 Active")).showsTerentoCompatibility == false,
+            "known non-map watches hide Terento compatibility status"
+        )
+        expect(
             registry.evaluate(identity: identity(model: "Approach S70"))
                 == .unsupported(reason: "This model uses Garmin golf CourseView maps, not additional Terento maps."),
             "Approach S70 is excluded because its Map Manager maps are golf-only"
@@ -31,7 +35,7 @@ struct MapCapabilityTests {
             registry.evaluate(identity: identity(model: "Garmin Future Watch")) == .unknown,
             "an unrecognised Garmin model fails closed with unknown map support"
         )
-        print("PASS: 6 Map Manager capability tests")
+        print("PASS: 7 Map Manager capability tests")
     }
 
     private static func identity(model: String) -> DeviceIdentity {

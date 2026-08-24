@@ -30,7 +30,7 @@ struct MapInstallationDiagnostics: Equatable, Sendable {
     let freeSpaceBefore: UInt64
     let freeSpaceAfter: UInt64?
     let projectedFreeSpace: UInt64?
-    let lithuaniaProtectionPassed: Bool
+    let existingFilesProtectionPassed: Bool
     let unrelatedFilesProtectionPassed: Bool
 
     static func initial(
@@ -54,7 +54,7 @@ struct MapInstallationDiagnostics: Equatable, Sendable {
             freeSpaceBefore: freeSpaceBefore,
             freeSpaceAfter: nil,
             projectedFreeSpace: nil,
-            lithuaniaProtectionPassed: true,
+            existingFilesProtectionPassed: true,
             unrelatedFilesProtectionPassed: true
         )
     }
@@ -117,15 +117,7 @@ protocol MapInstallationArtifactValidator: Sendable {
 /// reaching the write transport while allowing each validated Freizeitkarte
 /// package to use its own identity, version, size, hash, and managed filename.
 struct Stage42ArtifactValidator: MapInstallationArtifactValidator, Sendable {
-    // Kept as compatibility constants for existing Stage 4.2 fixtures.
-    static let expectedPackageID = "freizeitkarte-lva"
-    static let expectedProvider = "freizeitkarte"
-    static let expectedRegion = "LVA"
-    static let expectedVersion = MapVersion(year: 2026, month: 5)
-    static let expectedInstallSize: UInt64 = 348_684_288
-    static let expectedDownloadSize: UInt64 = 298_518_679
-    static let expectedSHA256 = "9a990a62156f61a78de82af78c6b1165c13ec5daaf789824029b2c6be4ba6103"
-    static let expectedFilename = "terento_freizeitkarte_lva.img"
+    static let allowedProvider = "freizeitkarte"
 
     func validate(artifact: ValidatedMapArtifact, package: MapPackage) throws {
         let expectedFilename = try TerentoManagedFilenameGenerator().filename(
@@ -134,10 +126,10 @@ struct Stage42ArtifactValidator: MapInstallationArtifactValidator, Sendable {
         )
 
         guard !package.id.isEmpty,
-              MapIdentity.normalizeProvider(package.providerId) == Self.expectedProvider,
+              MapIdentity.normalizeProvider(package.providerId) == Self.allowedProvider,
               !package.regionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               artifact.catalogPackageID == package.id,
-              MapIdentity.normalizeProvider(artifact.provider) == Self.expectedProvider,
+              MapIdentity.normalizeProvider(artifact.provider) == Self.allowedProvider,
               MapIdentity.normalizeRegion(artifact.region)
                 == MapIdentity.normalizeRegion(package.regionId),
               artifact.version == package.version,
@@ -611,7 +603,7 @@ struct MapInstallationCoordinator: Sendable {
                     transaction: &transaction,
                     preflight: preflight,
                     diagnostics: verifiedDiagnostics.withProtection(
-                        lithuaniaUnchanged: protection.lithuaniaUnchanged,
+                        existingFilesUnchanged: protection.existingFilesUnchanged,
                         unrelatedUnchanged: false,
                         freeSpaceAfter: afterSnapshot.freeSpace
                     ),
@@ -648,7 +640,7 @@ struct MapInstallationCoordinator: Sendable {
                     transaction: &transaction,
                     preflight: preflight,
                     diagnostics: verifiedDiagnostics.withProtection(
-                        lithuaniaUnchanged: protection.lithuaniaUnchanged,
+                        existingFilesUnchanged: protection.existingFilesUnchanged,
                         unrelatedUnchanged: true,
                         freeSpaceAfter: afterSnapshot.freeSpace
                     ),
@@ -681,7 +673,7 @@ struct MapInstallationCoordinator: Sendable {
                     version: metadataResult.version,
                     warning: metadataResult.warning
                 ).withProtection(
-                    lithuaniaUnchanged: protection.lithuaniaUnchanged,
+                    existingFilesUnchanged: protection.existingFilesUnchanged,
                     unrelatedUnchanged: true,
                     freeSpaceAfter: afterSnapshot.freeSpace
                 ),
@@ -1036,7 +1028,7 @@ struct MapInstallationCoordinator: Sendable {
     }
 
     private struct ProtectionResult: Sendable {
-        let lithuaniaUnchanged: Bool
+        let existingFilesUnchanged: Bool
         let unrelatedFilesUnchanged: Bool
     }
 
@@ -1061,8 +1053,7 @@ struct MapInstallationCoordinator: Sendable {
         return ProtectionResult(
             // This field is retained for compatibility with the Stage 4.2
             // diagnostics schema; it now means all pre-existing files were
-            // unchanged, not a special-case Lithuania check.
-            lithuaniaUnchanged: beforeComparable == afterComparable,
+            existingFilesUnchanged: beforeComparable == afterComparable,
             unrelatedFilesUnchanged: beforeComparable == afterComparable && targetUnchanged
         )
     }
@@ -1115,7 +1106,7 @@ private extension MapInstallationDiagnostics {
             freeSpaceBefore: freeSpaceBefore,
             freeSpaceAfter: freeSpaceAfter,
             projectedFreeSpace: projectedFreeSpace,
-            lithuaniaProtectionPassed: lithuaniaProtectionPassed,
+            existingFilesProtectionPassed: existingFilesProtectionPassed,
             unrelatedFilesProtectionPassed: unrelatedFilesProtectionPassed
         )
     }
@@ -1138,7 +1129,7 @@ private extension MapInstallationDiagnostics {
             freeSpaceBefore: freeSpaceBefore,
             freeSpaceAfter: freeSpaceAfter,
             projectedFreeSpace: projectedFreeSpace,
-            lithuaniaProtectionPassed: lithuaniaProtectionPassed,
+            existingFilesProtectionPassed: existingFilesProtectionPassed,
             unrelatedFilesProtectionPassed: unrelatedFilesProtectionPassed
         )
     }
@@ -1179,7 +1170,7 @@ private extension MapInstallationDiagnostics {
             freeSpaceBefore: freeSpaceBefore,
             freeSpaceAfter: freeSpaceAfter,
             projectedFreeSpace: projectedFreeSpace,
-            lithuaniaProtectionPassed: lithuaniaProtectionPassed,
+            existingFilesProtectionPassed: existingFilesProtectionPassed,
             unrelatedFilesProtectionPassed: unrelatedFilesProtectionPassed
         )
     }
@@ -1207,13 +1198,13 @@ private extension MapInstallationDiagnostics {
             freeSpaceBefore: freeSpaceBefore,
             freeSpaceAfter: freeSpaceAfter,
             projectedFreeSpace: projectedFreeSpace,
-            lithuaniaProtectionPassed: lithuaniaProtectionPassed,
+            existingFilesProtectionPassed: existingFilesProtectionPassed,
             unrelatedFilesProtectionPassed: unrelatedFilesProtectionPassed
         )
     }
 
     func withProtection(
-        lithuaniaUnchanged: Bool,
+        existingFilesUnchanged: Bool,
         unrelatedUnchanged: Bool,
         freeSpaceAfter: UInt64?
     ) -> MapInstallationDiagnostics {
@@ -1234,7 +1225,7 @@ private extension MapInstallationDiagnostics {
             freeSpaceBefore: freeSpaceBefore,
             freeSpaceAfter: freeSpaceAfter,
             projectedFreeSpace: projectedFreeSpace,
-            lithuaniaProtectionPassed: lithuaniaUnchanged,
+            existingFilesProtectionPassed: existingFilesUnchanged,
             unrelatedFilesProtectionPassed: unrelatedUnchanged
         )
     }

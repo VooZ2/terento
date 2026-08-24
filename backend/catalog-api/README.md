@@ -7,8 +7,9 @@ Freizeitkarte map binaries or Garmin product images.
 
 The pre-MVP map-provider hard gate remains Freizeitkarte only. A separate
 Garmin collector indexes official smartwatch-category metadata; it is a device
-catalog, not a compatibility registry. No device identifiers, manifests,
-accounts, telemetry, or write operations exist here.
+catalog, not a compatibility registry. Opt-in compatibility evidence uses a
+separate schema and endpoints; it accepts no Unit ID, serial number, manifest,
+account, private log, or map binary.
 
 ## Local development
 
@@ -23,6 +24,8 @@ python3 -m venv .venv
 python -m pip install --upgrade pip
 python -m pip install -e .
 export DATABASE_URL='postgresql://terento_catalog:password@localhost:5432/terento_catalog'
+export COMPATIBILITY_ADMIN_USERNAME='operator'
+export COMPATIBILITY_ADMIN_PASSWORD='use-a-long-random-secret'
 terento-catalog-migrate
 terento-catalog-collect
 terento-catalog-backfill-sizes
@@ -51,6 +54,10 @@ PYTHONPATH=backend/catalog-api/src python3 -m unittest discover -s backend/catal
   compatibility status.
 - `GET /assets/devices/<name>.webp` serves validated runtime assets from the
   same API domain.
+- `POST /compatibility/events` accepts validated, rate-limited, idempotent
+  anonymized install events after client consent.
+- `GET /internal/compatibility/` serves the authenticated, noindex aggregate
+  operator page. Production must add HTTPS and edge brute-force protection.
 
 The catalog includes a map only after a collector has a normalized version and
 a known download size. A missing size is retained in the database but omitted

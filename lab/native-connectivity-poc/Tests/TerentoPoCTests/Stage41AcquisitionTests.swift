@@ -23,6 +23,7 @@ struct Stage41AcquisitionTests {
         await testFailedHTTPIsTyped()
         await testEmptyDownloadIsTyped()
         await testRenamedIMGIsIdentifiedByContent()
+        await testCompositeRegionIdentityPasses()
         await testWrongIdentityIsRejected()
         await testMatchingVersionPasses()
         await testMismatchedVersionIsRejected()
@@ -30,7 +31,7 @@ struct Stage41AcquisitionTests {
         await testFailedAcquisitionLeavesNoArtifact()
         testNoDeviceWriteDependency()
 
-        print("PASS: 14 Stage 4.1 acquisition tests")
+        print("PASS: 15 Stage 4.1 acquisition tests")
     }
 
     private static func testCatalogResolvesLatvia() {
@@ -228,6 +229,38 @@ struct Stage41AcquisitionTests {
         }
     }
 
+    private static func testCompositeRegionIdentityPasses() async {
+        let image = makeSplitHeaderCanariasIMG()
+
+        let package = MapPackage(
+            id: "freizeitkarte-esp-canarias",
+            providerId: "freizeitkarte",
+            regionId: "ESP-CANARIAS",
+            name: "Canarias",
+            version: version(2026, 5),
+            sizeBytes: UInt64(image.count),
+            sourceURL: URL(string: "https://provider.example/canarias.zip"),
+            releaseDate: "2026-05-03",
+            identifier: "ESP_CANARIAS"
+        )
+
+        do {
+            let source = try temporaryFile(data: Data([0x50, 0x4B, 0x03, 0x04]))
+            defer { try? FileManager.default.removeItem(at: source) }
+            let artifact = try await acquire(
+                package: package,
+                source: source,
+                extractor: FixtureArchiveExtractor(images: [("gmapsupp.img", image)])
+            )
+            expect(
+                artifact.region == "ESPCANARIAS",
+                "composite Freizeitkarte region identity is accepted"
+            )
+        } catch {
+            expect(false, "composite Freizeitkarte region identity is accepted")
+        }
+    }
+
     private static func testWrongIdentityIsRejected() async {
         let image = makeIMG(region: "LTU", release: "26.05")
         do {
@@ -393,6 +426,25 @@ struct Stage41AcquisitionTests {
         write("GARMIN", at: 0x41, length: 7, into: &data)
         write("Freizeitkarte_\(region)+", at: 0x49, length: 20, into: &data)
         write("Release \(release)", at: 0x65, length: 31, into: &data)
+        return data
+    }
+
+    /// Mirrors the official 2026-05 Canarias IMG header. The 20-byte
+    /// description ends at `ESP_CA`; binary header bytes follow, and the
+    /// remaining `NARIAS` starts in the detail field.
+    private static func makeSplitHeaderCanariasIMG() -> Data {
+        var data = Data(repeating: 0, count: 8192)
+        write("DSKIMG", at: 0x10, length: 7, into: &data)
+        write("GARMIN", at: 0x41, length: 7, into: &data)
+        write("Freizeitkarte_ESP_CA", at: 0x49, length: 20, into: &data)
+        data[0x5D] = 0x10
+        data[0x60] = 0x00
+        data[0x61] = 0x09
+        data[0x62] = 0x02
+        data[0x63] = 0xE9
+        data[0x64] = 0x7D
+        data[0x65] = 0x7D
+        write("NARIAS (Release 26.05)", at: 0x66, length: 30, into: &data)
         return data
     }
 

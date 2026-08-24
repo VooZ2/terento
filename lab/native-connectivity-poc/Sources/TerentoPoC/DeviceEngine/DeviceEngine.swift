@@ -103,7 +103,7 @@ final class DeviceEngine: ObservableObject {
         errorMessage = nil
         userErrorMessage = nil
         readingAttempt = 0
-        readingMessage = "Looking for your Garmin watch…"
+        readingMessage = "Waiting for your Garmin…"
 
         readingStatusTask = Task { [weak self] in
             do {
@@ -226,8 +226,8 @@ final class DeviceEngine: ObservableObject {
             attempt += 1
             readingAttempt = attempt
             readingMessage = attempt == 1
-                ? "Looking for your Garmin watch…"
-                : "Still looking for your Garmin watch…"
+                ? "Waiting for your Garmin…"
+                : "Still waiting for your Garmin…"
 
             do {
                 return try await readNativeSnapshot(transport: transport, presence: false)

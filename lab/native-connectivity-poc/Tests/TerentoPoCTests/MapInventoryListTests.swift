@@ -13,8 +13,9 @@ struct MapInventoryListTests {
         testSelectedCatalogMapIsNotDuplicatedWhenInstalled()
         testCompanionFilesAppearAsOneOtherMap()
         testManifestRecordRestoresManagedOwnership()
+        testRemovedMapIsAbsentAfterFreshScan()
 
-        print("PASS: 4 unified map inventory and ownership tests")
+        print("PASS: 5 unified map inventory and ownership tests")
     }
 
     private static func testFreizeitkarteRegionsAppearInOneList() {
@@ -151,6 +152,24 @@ struct MapInventoryListTests {
         expect(
             state == .managedByTerento,
             "manifest-backed Latvia map is shown as managed by Terento"
+        )
+    }
+
+    private static func testRemovedMapIsAbsentAfterFreshScan() {
+        let scan = makeScan(installedMaps: [])
+        let comparisons = [
+            makeComparison(region: "LTU", name: "Lithuania", installedMap: nil)
+        ]
+
+        let list = MapInventoryListBuilder().build(
+            scan: scan,
+            comparisons: comparisons,
+            selectedCatalogPackageID: nil
+        )
+
+        expect(
+            list.freizeitkarte.isEmpty && list.otherMaps.isEmpty,
+            "a map absent from a fresh device scan is absent from Manage maps"
         )
     }
 

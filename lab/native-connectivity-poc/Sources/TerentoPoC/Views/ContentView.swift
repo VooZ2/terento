@@ -4,6 +4,7 @@ struct ContentView: View {
     @ObservedObject var deviceEngine: DeviceEngine
     @ObservedObject var mapEngine: MapEngine
     @StateObject private var lifecycleViewModel: MapLifecycleViewModel
+    @StateObject private var evidenceController = InstallationEvidenceController()
 
     init(deviceEngine: DeviceEngine, mapEngine: MapEngine) {
         self.deviceEngine = deviceEngine
@@ -20,7 +21,8 @@ struct ContentView: View {
         ConnectScreen(
             deviceEngine: deviceEngine,
             mapEngine: mapEngine,
-            lifecycleViewModel: lifecycleViewModel
+            lifecycleViewModel: lifecycleViewModel,
+            evidenceController: evidenceController
         )
     }
 }

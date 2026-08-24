@@ -6,8 +6,26 @@ Base URL in production:
 https://api.terento.app
 ```
 
-The API is public read-only metadata. It has no authentication, write route,
-device identifier input, or map binary response.
+The map and device catalog routes are public read-only metadata. A separate
+opt-in compatibility-evidence boundary has one validated write route and one
+private authenticated operator route. No route serves map binaries.
+
+## `POST /compatibility/events`
+
+Accepts at most 16 KiB of allowlisted schema-version-1 JSON after client
+opt-in. Event UUIDs are idempotent. Unknown fields, local paths, malformed
+payloads, non-Freizeitkarte providers, and privacy-prohibited data are
+rejected. The endpoint is rate limited and stores raw immutable events in the
+separate compatibility tables; a repeated confirmed event records its
+confirmation separately. Upload failure never changes the macOS installation
+result.
+
+## `GET /internal/compatibility/`
+
+Returns an aggregate HTML operator view only after environment-configured
+Basic authentication. It includes no-store, noindex and restrictive CSP
+headers. Production must expose it only over HTTPS with edge-level
+brute-force protection. Raw event payloads are not displayed by default.
 
 ## `GET /health`
 
@@ -188,7 +206,8 @@ media, clients must show or make available the following notice:
 > Terento is an independent open-source project and is not affiliated with Garmin.
 
 The macOS app consumes the controlled `asset` first. If that is missing, it
-may consume `sourceAsset.url` only after validating the HTTPS
+may consume `sourceAsset.url`, or derive the documented Garmin product-media
+URL from a validated catalog `partNumber`, only after validating the HTTPS
 `res.garmin.com` origin and Garmin attribution metadata. The image is fetched
 directly by the Mac and cached locally; the API does not proxy or host it. A
 missing or invalid asset/source falls back to the generic Terento watch

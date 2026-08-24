@@ -100,9 +100,11 @@ The macOS client reads `asset.url`, `asset.version`, `asset.scope`,
 `asset.source.type`, and `asset.source.attributionRequired` from this API. If
 no applicable controlled `asset` exists, it may use `sourceAsset.url` only when
 the URL is HTTPS, hosted by `res.garmin.com`, and carries valid Garmin source
-metadata. The client downloads that source image directly to the user's Mac
-and caches it locally; the catalog API never relays the image. Invalid or
-incomplete source metadata is ignored and the generic fallback remains.
+metadata. If `sourceAsset` is not yet present, the macOS client may derive the
+same official product-media path from a validated catalog part number. The
+client downloads that source image directly to the user's Mac and caches it
+locally; the catalog API never relays the image. Invalid or incomplete source
+metadata is ignored and the generic fallback remains.
 
 ## Asset delivery and fallback contract
 

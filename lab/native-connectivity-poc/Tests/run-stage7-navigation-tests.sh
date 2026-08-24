@@ -62,11 +62,18 @@ if ! grep -Fq 'defaultWidth' "$project_root/Sources/TerentoPoC/TerentoPoCApp.swi
     exit 1
 fi
 
-if ! grep -Fq 'mapEngine.beginLatviaInstallation()' "$connect_screen" \
+if ! grep -Fq 'mapEngine.beginInstallation(plan: plan)' "$connect_screen" \
     || ! grep -Fq 'shouldContinueAfterPreflight' \
         "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift" \
+    || grep -Fq 'beginLatviaInstallation' "$connect_screen" \
     || grep -Fq 'else if mapEngine.installationPhase == .awaitingConfirmation' "$connect_screen"; then
     print -u2 "FAIL: Review does not own the single authorization or active state still offers a second CTA"
+    exit 1
+fi
+
+if ! grep -Fq 'let shouldRefreshMapInventory = section == .manageMaps' "$connect_screen" \
+    || ! grep -Fq 'refreshMapInventory()' "$connect_screen"; then
+    print -u2 "FAIL: map navigation does not refresh the device-backed inventory"
     exit 1
 fi
 
@@ -136,7 +143,7 @@ if ! awk '
     ' "$connect_screen" | grep -Fq 'TerentoPageFooter' \
     || ! awk '
         /private var finishContent/ { capture = 1 }
-        /private var mapStateLabel/ { capture = 0 }
+        /private func storageFillRatio/ { capture = 0 }
         capture { print }
     ' "$connect_screen" | grep -Fq 'TerentoPageFooter'; then
     print -u2 "FAIL: footer shell migration is incomplete across Manage, Choose, Review, or Done"
@@ -145,7 +152,7 @@ fi
 
 finish_content="$(awk '
     /private var finishContent/ { capture = 1 }
-    /private var mapStateLabel/ { capture = 0 }
+    /private func storageFillRatio/ { capture = 0 }
     capture { print }
 ' "$connect_screen")"
 if [[ "$finish_content" != *'TerentoPageHeader'* \

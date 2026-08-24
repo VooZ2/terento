@@ -159,15 +159,13 @@ enum MapEngineState: Equatable {
 final class MapEngine: ObservableObject {
     @Published private(set) var state: MapEngineState = .idle
     @Published private(set) var result: MapInventoryResult?
-    @Published private(set) var preflight: InstallationPreflightResult?
     @Published private(set) var selectedPreflight: InstallationPreflightResult?
-    @Published private(set) var latviaPreflight: InstallationPreflightResult?
-    @Published private(set) var validatedArtifact: ValidatedMapArtifact?
     @Published private(set) var validatedArtifacts: [String: ValidatedMapArtifact] = [:]
     @Published private(set) var acquisitionState: MapAcquisitionState = .idle
     @Published private(set) var acquisitionProgress: MapDownloadProgress?
     @Published private(set) var acquisitionErrorMessage: String?
     @Published private(set) var installationResult: MapInstallationResult?
+    @Published private(set) var installationBatchResults: [MapInstallationResult] = []
     @Published private(set) var installationProgress: TransferProgress?
     @Published private(set) var finishingTransferProgress: TransferProgress?
     @Published private(set) var installationPhase: InstallationProcessPhase = .idle
@@ -191,6 +189,13 @@ final class MapEngine: ObservableObject {
     private var installationAuthorizationGranted = false
     private var selectedInstallationPlan: InstallationPlan?
 
+    var validatedArtifact: ValidatedMapArtifact? {
+        guard let firstPackageID = selectedInstallationPlan?.installItems.first?.package.id else {
+            return nil
+        }
+        return validatedArtifacts[firstPackageID]
+    }
+
     init(
         reader: MTPTransport = MTPTransport(),
         catalogLoader: MapCatalogLoader = MapCatalogLoader(),
@@ -210,15 +215,13 @@ final class MapEngine: ObservableObject {
         activeTask = nil
         state = .idle
         result = nil
-        preflight = nil
         selectedPreflight = nil
-        latviaPreflight = nil
-        validatedArtifact = nil
         validatedArtifacts = [:]
         acquisitionState = .idle
         acquisitionProgress = nil
         acquisitionErrorMessage = nil
         installationResult = nil
+        installationBatchResults = []
         installationProgress = nil
         finishingTransferProgress = nil
         installationPhase = .idle
@@ -255,10 +258,7 @@ final class MapEngine: ObservableObject {
 
         state = .loadingCatalog
         result = nil
-        preflight = nil
         selectedPreflight = nil
-        latviaPreflight = nil
-        validatedArtifact = nil
         validatedArtifacts = [:]
         acquisitionState = .idle
         acquisitionProgress = nil
@@ -285,7 +285,6 @@ final class MapEngine: ObservableObject {
 
         let operationGate = self.operationGate
         let catalogLoader = self.catalogLoader
-        let preflightEngine = InstallationPreflightEngine()
         let ownershipRecords = Self.loadOwnershipRecords(for: deviceIdentity)
         activeTask?.cancel()
         activeTask = Task { [weak self] in
@@ -321,19 +320,6 @@ final class MapEngine: ObservableObject {
                 guard !Task.isCancelled else { return }
 
                 self?.result = inventory
-                self?.preflight = Self.makePreflight(
-                    inventory: inventory,
-                    deviceIdentity: deviceIdentity,
-                    availableStorage: availableStorage,
-                    engine: preflightEngine
-                )
-                self?.selectedPreflight = Self.makePreflight(
-                    inventory: inventory,
-                    deviceIdentity: deviceIdentity,
-                    availableStorage: availableStorage,
-                    engine: preflightEngine
-                )
-                self?.latviaPreflight = self?.selectedPreflight
                 if preservingInstallationResult {
                     self?.installationResult = preservedInstallationResult
                     self?.installationPhase = preservedInstallationPhase
@@ -423,10 +409,6 @@ final class MapEngine: ObservableObject {
             }
         }
         return records
-    }
-
-    var latviaPackage: MapPackage? {
-        loadedCatalog?.packages.first { $0.id == Stage42ArtifactValidator.expectedPackageID }
     }
 
     var catalogRecordCount: Int {
@@ -741,6 +723,12 @@ final class MapEngine: ObservableObject {
 
         installationAuthorizationGranted = true
         selectedInstallationPlan = plan
+        selectedPreflight = nil
+        installationResult = nil
+        installationBatchResults = []
+        TerentoDiagnosticLog.recordInstallationStarted(
+            maps: plan.installItems.map(\.package)
+        )
         prepareInstallationArtifacts()
     }
 
@@ -761,7 +749,6 @@ final class MapEngine: ObservableObject {
             bytesPerSecond: 0
         )
         acquisitionErrorMessage = nil
-        validatedArtifact = nil
         validatedArtifacts = [:]
         installationResult = nil
         installationErrorMessage = nil
@@ -789,7 +776,6 @@ final class MapEngine: ObservableObject {
 
                 guard !Task.isCancelled else { return }
                 self?.validatedArtifacts = artifacts
-                self?.validatedArtifact = packages.first.flatMap { artifacts[$0.id] }
                 self?.acquisitionState = .validated
                 self?.state = .scanned
                 Task { @MainActor [weak self] in
@@ -802,6 +788,10 @@ final class MapEngine: ObservableObject {
                 self?.installationErrorMessage = error.localizedDescription
                 self?.installationPhase = .failed
                 self?.state = .failed
+                self?.recordInstallationFailure(
+                    error.localizedDescription,
+                    technicalError: String(reflecting: error)
+                )
             }
         }
     }
@@ -863,9 +853,7 @@ final class MapEngine: ObservableObject {
                     && results.allSatisfy { $0.status == .confirmationRequired }
                 let finalResult = allReady ? first : (results.last ?? first)
                 self?.installationResult = finalResult
-                self?.preflight = first.preflight
                 self?.selectedPreflight = first.preflight
-                self?.latviaPreflight = first.preflight
                 self?.installationProgress = TransferProgress(
                     bytesTransferred: 0,
                     totalBytes: artifacts[plan.installItems.first!.package.id]?.installSizeBytes ?? 0
@@ -874,6 +862,10 @@ final class MapEngine: ObservableObject {
                 self?.installationPhase = allReady ? .awaitingConfirmation : .failed
                 self?.installationPhaseProgress = allReady ? 1 : nil
                 self?.state = .scanned
+
+                if !allReady {
+                    self?.recordInstallationFailure(finalResult.failure?.userLabel)
+                }
 
                 let shouldContinue = InstallationFlowPresentation.shouldContinueAfterPreflight(
                     userAuthorized: self?.installationAuthorizationGranted == true,
@@ -890,6 +882,10 @@ final class MapEngine: ObservableObject {
                 self?.installationPhase = .failed
                 self?.installationPhaseProgress = nil
                 self?.state = .failed
+                self?.recordInstallationFailure(
+                    error.localizedDescription,
+                    technicalError: String(reflecting: error)
+                )
             }
         }
     }
@@ -906,6 +902,7 @@ final class MapEngine: ObservableObject {
         }
 
         state = .installing
+        installationBatchResults = []
         installationPhase = .installing
         installationPhaseProgress = nil
         lastInstallationProgressAt = nil
@@ -992,9 +989,8 @@ final class MapEngine: ObservableObject {
                 let batchSucceeded = results.count == plan.installItems.count
                     && results.allSatisfy(\.isSuccess)
                 self?.installationResult = finalResult
-                self?.preflight = finalResult.preflight
+                self?.installationBatchResults = results
                 self?.selectedPreflight = finalResult.preflight
-                self?.latviaPreflight = finalResult.preflight
                 self?.installationProgress = TransferProgress(
                     bytesTransferred: finalResult.diagnostics.bytesTransferred,
                     totalBytes: finalResult.diagnostics.transferTotalBytes,
@@ -1006,6 +1002,8 @@ final class MapEngine: ObservableObject {
                 self?.state = batchSucceeded ? .scanned : .failed
                 if batchSucceeded {
                     self?.refreshCurrentDeviceMaps()
+                } else {
+                    self?.recordInstallationFailure(finalResult.failure?.userLabel)
                 }
             } catch {
                 guard !Task.isCancelled else { return }
@@ -1013,63 +1011,29 @@ final class MapEngine: ObservableObject {
                 self?.installationPhase = .failed
                 self?.installationPhaseProgress = nil
                 self?.state = .failed
+                self?.recordInstallationFailure(
+                    error.localizedDescription,
+                    technicalError: String(reflecting: error)
+                )
             }
         }
     }
 
-    // Compatibility entry points retained for the existing Stage 4.2 harness.
-    // Production UI calls beginInstallation(plan:) and installSelectedMaps().
-    func beginLatviaInstallation() {
-        guard let package = latviaPackage,
-              let item = mapSelectionItems.first(where: { $0.package.id == package.id }),
-              let plan = installationPlan(for: [item.id]) else {
-            return
-        }
-        beginInstallation(plan: plan)
-    }
-
-    func prepareLatviaArtifact() {
-        prepareInstallationArtifacts()
-    }
-
-    func prepareLatviaConfirmation() {
-        prepareInstallationConfirmation()
-    }
-
-    func installLatvia() {
-        installSelectedMaps()
-    }
-
-    private static func makePreflight(
-        inventory: MapInventoryResult,
-        deviceIdentity: DeviceIdentity?,
-        availableStorage: UInt64?,
-        engine: InstallationPreflightEngine
-    ) -> InstallationPreflightResult? {
-        guard let comparison = selectedComparison(in: inventory),
-              let deviceIdentity,
-              let availableStorage else {
-            return nil
-        }
-
-        return engine.evaluate(
-            identity: deviceIdentity,
-            selectedMap: comparison.catalogMap,
-            comparison: comparison,
-            installedMaps: inventory.scan.installedMaps,
-            inspectedFiles: inventory.scan.files,
-            availableStorage: availableStorage,
-            profile: DeviceInstallProfileRegistry.local.profile(for: deviceIdentity)
+    private func recordInstallationFailure(
+        _ message: String?,
+        technicalError: String? = nil
+    ) {
+        TerentoDiagnosticLog.recordInstallationFailure(
+            maps: selectedInstallationPlan?.installItems.map(\.package) ?? [],
+            phase: installationPhase,
+            engineState: state,
+            acquisitionState: acquisitionState,
+            message: message,
+            technicalError: technicalError,
+            acquisitionError: acquisitionErrorMessage,
+            preflight: selectedPreflight,
+            result: installationResult,
+            inventory: result
         )
-    }
-
-    private static func selectedComparison(
-        in inventory: MapInventoryResult
-    ) -> MapComparison? {
-        // Until the Maps screen provides explicit selection, prefer an
-        // installed catalog entry. This keeps the read-only preflight tied to
-        // a real device comparison without privileging a specific region.
-        inventory.comparisons.first(where: { $0.installedMap != nil })
-            ?? inventory.comparisons.first
     }
 }

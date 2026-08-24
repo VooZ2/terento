@@ -90,6 +90,7 @@ struct DeviceCatalogRecord: Decodable, Sendable {
     let variant: String
     let caseSizeMm: Int?
     let displayType: String?
+    let partNumber: String?
     let asset: DeviceCatalogAsset?
     let sourceAsset: DeviceCatalogSourceAsset?
 
@@ -102,6 +103,7 @@ struct DeviceCatalogRecord: Decodable, Sendable {
         case variant
         case caseSizeMm
         case displayType
+        case partNumber
         case asset
         case sourceAsset
     }
@@ -115,6 +117,7 @@ struct DeviceCatalogRecord: Decodable, Sendable {
         variant: String,
         caseSizeMm: Int?,
         displayType: String?,
+        partNumber: String? = nil,
         asset: DeviceCatalogAsset?,
         sourceAsset: DeviceCatalogSourceAsset? = nil
     ) {
@@ -126,6 +129,7 @@ struct DeviceCatalogRecord: Decodable, Sendable {
         self.variant = variant
         self.caseSizeMm = caseSizeMm
         self.displayType = displayType
+        self.partNumber = partNumber
         self.asset = asset
         self.sourceAsset = sourceAsset
     }
@@ -238,7 +242,8 @@ struct DeviceAssetSource: Decodable, Equatable, Sendable {
 }
 
 /// Resolves approved Terento-controlled catalogue assets first, then an
-/// allowlisted official Garmin source image when no controlled asset applies.
+/// allowlisted official Garmin source image from catalog metadata or its
+/// validated part number when no controlled asset applies.
 /// The API never authorizes a device operation; it supplies presentation
 /// metadata only. Any ambiguity returns the neutral watch fallback.
 protocol DeviceCatalogAPIClient {
@@ -349,6 +354,7 @@ struct DeviceAssetResolver {
     )?.url
     private static let controlledAssetPath = "/assets/devices/"
     private static let officialMediaHost = "res.garmin.com"
+    private static let officialPartNumberPattern = #"^\d{3}-\d{5}-\d{2}$"#
 
     private let client: any DeviceCatalogAPIClient
     private let cache: DeviceAssetCache
@@ -494,23 +500,32 @@ struct DeviceAssetResolver {
                 return nil
             }
 
-            guard let asset = record.asset,
-                  asset.isAvailable,
-                  Self.downloadURL(for: asset.url) != nil,
-                  asset.hasValidSourceMetadata
-            else {
-                guard let sourceAsset = record.sourceAsset,
-                      sourceAsset.hasValidSourceMetadata,
-                      Self.officialSourceURL(for: sourceAsset.url) != nil else {
-                    return nil
-                }
-                let catalogAsset = sourceAsset.asCatalogAsset()
-                guard catalogAsset.isAvailable else { return nil }
-                return Self.match(record: record, asset: catalogAsset, canonicalModel: canonicalModel,
+            if let asset = record.asset,
+               asset.isAvailable,
+               Self.downloadURL(for: asset.url) != nil,
+               asset.hasValidSourceMetadata {
+                return Self.match(record: record, asset: asset, canonicalModel: canonicalModel,
                                   identityFamily: identityFamily, knownSize: knownSize,
                                   knownDisplay: knownDisplay)
             }
-            return Self.match(record: record, asset: asset, canonicalModel: canonicalModel,
+
+            if let sourceAsset = record.sourceAsset,
+               sourceAsset.hasValidSourceMetadata,
+               Self.officialSourceURL(for: sourceAsset.url) != nil {
+                return Self.match(
+                    record: record,
+                    asset: sourceAsset.asCatalogAsset(),
+                    canonicalModel: canonicalModel,
+                    identityFamily: identityFamily,
+                    knownSize: knownSize,
+                    knownDisplay: knownDisplay
+                )
+            }
+
+            guard let derivedAsset = Self.derivedOfficialAsset(for: record) else {
+                return nil
+            }
+            return Self.match(record: record, asset: derivedAsset, canonicalModel: canonicalModel,
                               identityFamily: identityFamily, knownSize: knownSize,
                               knownDisplay: knownDisplay)
         }
@@ -519,6 +534,30 @@ struct DeviceAssetResolver {
             return $0.record.id < $1.record.id
         }
         .first
+    }
+
+    private static func derivedOfficialAsset(
+        for record: DeviceCatalogRecord
+    ) -> DeviceCatalogAsset? {
+        guard let partNumber = record.partNumber?.trimmingCharacters(in: .whitespacesAndNewlines),
+              partNumber.range(of: officialPartNumberPattern, options: .regularExpression) != nil,
+              let url = URL(string: "https://res.garmin.com/en/products/\(partNumber)/g/cf-lg.jpg"),
+              officialSourceURL(for: url) != nil else {
+            return nil
+        }
+
+        return DeviceCatalogAsset(
+            status: "AVAILABLE",
+            url: url,
+            scope: "MODEL",
+            version: 1,
+            attribution: "Garmin official product media",
+            source: DeviceAssetSource(
+                type: "OFFICIAL_PRODUCT_MEDIA",
+                brand: "Garmin",
+                attributionRequired: true
+            )
+        )
     }
 
     private static func match(

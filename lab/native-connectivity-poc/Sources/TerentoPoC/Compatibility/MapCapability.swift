@@ -13,12 +13,21 @@ enum GarminMapSupportStatus: Equatable, Sendable {
         return false
     }
 
+    var isKnownUnsupported: Bool {
+        if case .unsupported = self { return true }
+        return false
+    }
+
+    var showsTerentoCompatibility: Bool {
+        !isKnownUnsupported
+    }
+
     var userLabel: String {
         switch self {
         case .supported:
             return "Maps available"
         case .unsupported:
-            return "No map support"
+            return "This watch does not support maps."
         case .unknown:
             return "Map support unknown"
         }
@@ -29,7 +38,9 @@ enum GarminMapSupportStatus: Equatable, Sendable {
         case .supported:
             return "Garmin Map Manager lists this model for additional maps."
         case let .unsupported(reason):
-            return reason
+            return reason.isEmpty
+                ? "Additional maps are not available for this model."
+                : reason
         case .unknown:
             return "Terento could not determine whether this model supports additional maps."
         }

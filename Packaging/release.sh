@@ -14,17 +14,19 @@ overwrite=0
 output_dir="$repo_root/$RELEASE_OUTPUT_DIR"
 version_assertion=""
 build_assertion=""
+release_label_assertion=""
 
 usage() {
     cat <<'EOF'
 Usage: Packaging/release.sh [options]
 
 Options:
-  --no-notarize       Build, sign, and verify only; do not create a release ZIP.
-  --overwrite         Replace the exact final ZIP if it already exists.
-  --output-dir DIR    Write the final ZIP under DIR instead of dist/.
+  --no-notarize       Build, sign, and verify only; do not create release artifacts.
+  --overwrite         Replace the exact final ZIP and DMG if they already exist.
+  --output-dir DIR    Write final artifacts under DIR instead of dist/.
   --version VERSION   Assert that the generated app has VERSION.
   --build NUMBER      Assert that the generated app has build NUMBER.
+  --release-version V Use V in package filenames, for example 1.0.0-beta.2.
   --help              Show this help.
 EOF
 }
@@ -39,7 +41,7 @@ require_command() {
 }
 
 setting_value() {
-    /usr/bin/sed -n "s/^[[:space:]]*$1 = //p" "$build_settings" | /usr/bin/sed -n '1p'
+    /usr/bin/sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*//p" "$build_settings" | /usr/bin/sed -n '1p'
 }
 
 plist_value() {
@@ -123,6 +125,11 @@ while (( $# > 0 )); do
             build_assertion="$2"
             shift 2
             ;;
+        --release-version)
+            (( $# >= 2 )) || die "--release-version requires a value"
+            release_label_assertion="$2"
+            shift 2
+            ;;
         --help|-h)
             usage
             exit 0
@@ -150,6 +157,7 @@ require_command plutil
 require_command shasum
 require_command spctl
 require_command open
+require_command hdiutil
 require_command rg
 
 [[ -d "$repo_root/$RELEASE_PROJECT" ]] || die "Project not found: $RELEASE_PROJECT"
@@ -162,10 +170,15 @@ run_dir="$(/usr/bin/mktemp -d /private/tmp/terento-stage65-run.XXXXXX)"
 derived_data="$run_dir/derived-data"
 app="$derived_data/Build/Products/$RELEASE_CONFIGURATION/$RELEASE_PRODUCT_NAME.app"
 build_settings="$run_dir/build-settings.txt"
+dmg_mount="$run_dir/dmg-mount"
+dmg_attached=0
 
 cleanup() {
     local result_code=$?
     trap - EXIT
+    if (( dmg_attached )); then
+        hdiutil detach "$dmg_mount" -force >/dev/null 2>&1 || true
+    fi
     if (( result_code == 0 )); then
         /bin/rm -rf -- "$run_dir"
     else
@@ -191,6 +204,7 @@ if ! xcodebuild \
     -scheme "$RELEASE_SCHEME" \
     -configuration "$RELEASE_CONFIGURATION" \
     -sdk macosx \
+    -derivedDataPath "$derived_data" \
     -showBuildSettings >"$build_settings" 2>&1; then
     tail -n 80 "$build_settings" >&2
     die "Could not read Xcode Release build settings"
@@ -225,8 +239,27 @@ elif [[ -v CI_COMMIT_TAG ]]; then
 fi
 if [[ -n "$release_tag" ]]; then
     release_tag="$(printf '%s' "$release_tag" | /usr/bin/sed -e 's#^.*/##' -e 's/^v//')"
-    assert_equal "Release tag version" "$project_version" "$release_tag"
+    release_tag_base="${release_tag%%-*}"
+    assert_equal "Release tag base version" "$project_version" "$release_tag_base"
 fi
+
+release_label="$release_label_assertion"
+if [[ -z "$release_label" ]]; then
+    if [[ -n "$release_tag" ]]; then
+        release_label="$release_tag"
+    else
+        release_label="$project_version"
+    fi
+fi
+release_label="$(printf '%s' "$release_label" | /usr/bin/sed -e 's#^.*/##' -e 's/^v//')"
+case "$release_label" in
+    "$project_version"|"$project_version"-*)
+        ;;
+    *)
+        die "Release package version must start with app version '$project_version': $release_label"
+        ;;
+esac
+printf '%s\n' "Release package version: $release_label"
 
 identity_check="$run_dir/signing-identities.txt"
 if ! security find-identity -v -p codesigning >"$identity_check" 2>&1; then
@@ -409,11 +442,14 @@ xcrun stapler validate "$app"
 codesign --verify --deep --strict --verbose=4 "$app"
 printf '%s\n' "Stapling and post-staple signature verification: PASS"
 
-final_zip="$output_dir/$RELEASE_PRODUCT_NAME-$app_version-macOS-$RELEASE_ARCH.zip"
-if [[ -e "$final_zip" ]]; then
-    (( overwrite )) || die "Final artifact already exists; use --overwrite: $final_zip"
-    /bin/rm -f -- "$final_zip"
-fi
+final_zip="$output_dir/$RELEASE_PRODUCT_NAME-$release_label-macOS-$RELEASE_ARCH.zip"
+final_dmg="$output_dir/$RELEASE_PRODUCT_NAME-$release_label-macOS-$RELEASE_ARCH.dmg"
+for final_artifact in "$final_zip" "$final_dmg"; do
+    if [[ -e "$final_artifact" ]]; then
+        (( overwrite )) || die "Final artifact already exists; use --overwrite: $final_artifact"
+        /bin/rm -f -- "$final_artifact"
+    fi
+done
 mkdir -p "$output_dir"
 ditto -c -k --keepParent "$app" "$final_zip"
 
@@ -441,9 +477,59 @@ rg -q 'accepted' "$gatekeeper_output" || die "Gatekeeper did not report accepted
 rg -q 'Notarized Developer ID' "$gatekeeper_output" || die "Gatekeeper source is not Notarized Developer ID"
 launch_smoke "$final_app"
 
+dmg_stage="$run_dir/dmg-stage"
+mkdir -p "$dmg_stage"
+ditto "$app" "$dmg_stage/$RELEASE_PRODUCT_NAME.app"
+ln -s /Applications "$dmg_stage/Applications"
+run_logged "dmg-create" \
+    hdiutil create \
+    -volname "Terento $release_label" \
+    -srcfolder "$dmg_stage" \
+    -ov \
+    -format UDZO \
+    "$final_dmg"
+run_logged "dmg-verify" hdiutil verify "$final_dmg"
+
+mkdir -p "$dmg_mount"
+if ! hdiutil attach "$final_dmg" \
+    -nobrowse \
+    -readonly \
+    -mountpoint "$dmg_mount" \
+    >"$run_dir/dmg-attach.log" 2>&1; then
+    cat "$run_dir/dmg-attach.log" >&2
+    die "Could not mount the final DMG"
+fi
+dmg_attached=1
+dmg_app="$dmg_mount/$RELEASE_PRODUCT_NAME.app"
+[[ -d "$dmg_app" ]] || die "Final DMG does not contain Terento.app"
+[[ -L "$dmg_mount/Applications" ]] || die "Final DMG does not contain an Applications shortcut"
+dmg_entry_count="$(find "$dmg_mount" -mindepth 1 -maxdepth 1 ! -name '.DS_Store' -print | wc -l | tr -d ' ')"
+assert_equal "DMG top-level entry count" "$dmg_entry_count" "2"
+if find "$dmg_app" -name '.DS_Store' -print -quit | rg -q .; then
+    die "Final DMG contains .DS_Store"
+fi
+codesign --verify --deep --strict --verbose=4 "$dmg_app"
+xcrun stapler validate "$dmg_app"
+dmg_gatekeeper_output="$run_dir/dmg-gatekeeper.txt"
+if ! spctl --assess --type execute --verbose=4 "$dmg_app" >"$dmg_gatekeeper_output" 2>&1; then
+    cat "$dmg_gatekeeper_output" >&2
+    die "Gatekeeper rejected the app mounted from the final DMG"
+fi
+cat "$dmg_gatekeeper_output"
+rg -q 'accepted' "$dmg_gatekeeper_output" || die "Gatekeeper did not accept the app mounted from the final DMG"
+rg -q 'Notarized Developer ID' "$dmg_gatekeeper_output" || die "DMG app is not reported as Notarized Developer ID"
+launch_smoke "$dmg_app"
+hdiutil detach "$dmg_mount" -force >/dev/null
+dmg_attached=0
+
 artifact_sha256="$(shasum -a 256 "$final_zip" | awk '{print $1}')"
-artifact_size="$(stat -f %z "$final_zip")"
+artifact_size="$(/usr/bin/stat -f %z "$final_zip")"
+dmg_sha256="$(shasum -a 256 "$final_dmg" | awk '{print $1}')"
+dmg_size="$(/usr/bin/stat -f %z "$final_dmg")"
 printf '%s\n' "Final artifact: $final_zip"
 printf '%s\n' "Artifact size: $artifact_size bytes"
 printf '%s\n' "SHA-256: $artifact_sha256"
+printf '%s\n' "Final artifact: $final_dmg"
+printf '%s\n' "DMG size: $dmg_size bytes"
+printf '%s\n' "DMG SHA-256: $dmg_sha256"
 printf '%s\n' "STAGE_6_5_RELEASE_PIPELINE=PASS"

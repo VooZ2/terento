@@ -83,7 +83,15 @@ struct GarminIMGMetadataParser: Sendable {
         let headerDetail = text(bytes, offset: 0x65, length: 31)
         let strings = printableStrings(bytes)
         let headerStrings = [description, headerDetail].compactMap { $0 }
-        let combinedText = (headerStrings + strings).joined(separator: " ")
+        let stitchedHeader = stitchedFreizeitkarteHeader(
+            description: description,
+            detail: headerDetail
+        )
+        let combinedText = (
+            headerStrings
+                + [stitchedHeader].compactMap { $0 }
+                + strings
+        ).joined(separator: " ")
         let provider = provider(in: combinedText)
         let region = provider == "Freizeitkarte"
             ? freizeitkarteRegion(in: combinedText)
@@ -163,18 +171,67 @@ struct GarminIMGMetadataParser: Sendable {
         ) == nil ? nil : "Freizeitkarte"
     }
 
-    private func freizeitkarteRegion(in value: String) -> String? {
-        let pattern = #"(?i)freizeitkarte[\s_-]+([a-z]{3})(?:\+)?(?:[^a-z]|$)"#
-        guard let regex = try? NSRegularExpression(pattern: pattern),
-              let match = regex.firstMatch(
-                in: value,
-                range: NSRange(value.startIndex..<value.endIndex, in: value)
-              ),
-              let regionRange = Range(match.range(at: 1), in: value) else {
+    /// Garmin IMG descriptions are split across two fixed header fields when
+    /// the provider identity is longer than 20 bytes. The fields are separated
+    /// by binary header bytes, so generic printable-string extraction cannot
+    /// reconstruct values such as `Freizeitkarte_ESP_CANARIAS` by itself.
+    private func stitchedFreizeitkarteHeader(
+        description: String?,
+        detail: String?
+    ) -> String? {
+        guard let description,
+              let detail,
+              description.utf8.count == 20,
+              provider(in: description) == "Freizeitkarte" else {
             return nil
         }
 
-        return String(value[regionRange]).uppercased()
+        let releaseStart = detail.range(
+            of: "(release",
+            options: [.caseInsensitive, .diacriticInsensitive]
+        )?.lowerBound ?? detail.endIndex
+        let prefix = String(detail[..<releaseStart])
+        let pattern = #"[A-Za-z0-9][A-Za-z0-9_-]*"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(
+                in: prefix,
+                range: NSRange(prefix.startIndex..<prefix.endIndex, in: prefix)
+              ),
+              let range = Range(match.range, in: prefix) else {
+            return nil
+        }
+
+        let continuation = String(prefix[range])
+        guard !continuation.isEmpty else {
+            return nil
+        }
+        return description + continuation
+    }
+
+    private func freizeitkarteRegion(in value: String) -> String? {
+        // Some provider regions are composite identifiers, for example
+        // ESP-CANARIAS. Prefer the longest token found in the header because
+        // the fixed description field may contain a truncated prefix while
+        // the same IMG also contains the complete printable identifier.
+        let pattern = #"(?i)freizeitkarte[\s_-]+([a-z0-9]+(?:[_-][a-z0-9]+)*)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            return nil
+        }
+
+        let matches = regex.matches(
+                  in: value,
+                  range: NSRange(value.startIndex..<value.endIndex, in: value)
+        )
+        guard let region = matches.compactMap({ match -> String? in
+            guard let regionRange = Range(match.range(at: 1), in: value) else {
+                return nil
+            }
+            return String(value[regionRange])
+        }).max(by: { $0.count < $1.count }) else {
+            return nil
+        }
+
+        return region.uppercased()
     }
 
     private func releaseLabel(in value: String) -> String? {

@@ -96,10 +96,15 @@ if grep -Fq 'This map cannot be installed safely from this flow yet.' "$connect_
     exit 1
 fi
 
-if ! grep -Fq 'mapEngine.beginLatviaInstallation()' "$connect_screen" \
-    || ! grep -Fq 'func prepareLatviaArtifact()' \
+if ! grep -Fq 'mapEngine.beginInstallation(plan: plan)' "$connect_screen" \
+    || ! grep -Fq 'func beginInstallation(plan: InstallationPlan)' \
         "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift" \
-    || ! grep -Fq 'func installLatvia()' \
+    || ! grep -Fq 'func installSelectedMaps()' \
+        "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift" \
+    || grep -Fq 'beginLatviaInstallation' "$connect_screen" \
+    || grep -Fq 'prepareLatviaArtifact' \
+        "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift" \
+    || grep -Fq 'func installLatvia()' \
         "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift"; then
     print -u2 "FAIL: Review CTA is not wired to the complete install lifecycle"
     exit 1

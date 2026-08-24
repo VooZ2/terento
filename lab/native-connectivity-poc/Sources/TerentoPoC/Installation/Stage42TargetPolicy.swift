@@ -27,14 +27,8 @@ enum Stage42TargetPolicyError: LocalizedError, Equatable, Sendable {
 /// matching filename grammar check, but invalid input must be rejected before
 /// any transport call is reached.
 struct Stage42TargetPolicy: Sendable {
-    // Kept as compatibility constants for the Stage 4.2 regression fixtures.
-    // They are no longer used as a production allowlist.
-    static let expectedPackageID = "freizeitkarte-lva"
-    static let expectedProvider = "freizeitkarte"
-    static let expectedRegion = "LVA"
-    static let expectedProfileID = "garmin-fenix8-amoled-47mm"
-    static let expectedFilename = "terento_freizeitkarte_lva.img"
-    static let expectedVersion = MapVersion(year: 2026, month: 5)
+    static let allowedProvider = "freizeitkarte"
+    static let supportedProfileID = "garmin-fenix8-amoled-47mm"
 
     func validate(
         package: MapPackage,
@@ -42,10 +36,10 @@ struct Stage42TargetPolicy: Sendable {
         profile: DeviceInstallProfile?
     ) throws {
         guard !package.id.isEmpty,
-              MapIdentity.normalizeProvider(package.providerId) == Self.expectedProvider,
+              MapIdentity.normalizeProvider(package.providerId) == Self.allowedProvider,
               !package.regionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               artifact.catalogPackageID == package.id,
-              MapIdentity.normalizeProvider(artifact.provider) == Self.expectedProvider,
+              MapIdentity.normalizeProvider(artifact.provider) == Self.allowedProvider,
               MapIdentity.normalizeRegion(artifact.region)
                 == MapIdentity.normalizeRegion(package.regionId) else {
             throw Stage42TargetPolicyError.unsupportedPackage
@@ -64,7 +58,7 @@ struct Stage42TargetPolicy: Sendable {
             throw Stage42TargetPolicyError.unsupportedFilename
         }
 
-        guard profile?.id == Self.expectedProfileID,
+        guard profile?.id == Self.supportedProfileID,
               profile?.targetDirectory == "/GARMIN",
               profile?.supportsMapWrite == true else {
             throw Stage42TargetPolicyError.unsupportedDeviceProfile
