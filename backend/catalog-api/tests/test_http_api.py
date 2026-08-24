@@ -76,6 +76,7 @@ class FakeDatabase(Database):
                 "asset_source_brand": "Garmin",
                 "asset_attribution_required": True,
                 "asset_storage_key": "devices/garmin/fenix-8.webp",
+                "source_image_url": "https://res.garmin.com/en/products/010-02904-10/g/cf-lg.jpg",
             }
         ], datetime(2026, 5, 3, tzinfo=timezone.utc)
 
@@ -146,6 +147,10 @@ class HTTPAPITests(unittest.TestCase):
         )
         self.assertEqual(document["devices"][0]["asset"]["scope"], "MODEL_SIZE")
         self.assertEqual(document["devices"][0]["asset"]["status"], "AVAILABLE")
+        self.assertEqual(
+            document["devices"][0]["sourceAsset"]["url"],
+            "https://res.garmin.com/en/products/010-02904-10/g/cf-lg.jpg",
+        )
         self.assertEqual(
             document["devices"][0]["asset"]["source"],
             {
@@ -300,6 +305,44 @@ class HTTPAPITests(unittest.TestCase):
             [row], datetime(2026, 5, 3, tzinfo=timezone.utc)
         )["devices"][0]
         self.assertEqual(device["asset"], {"status": "MISSING"})
+
+    def test_official_source_image_is_public_metadata_only(self) -> None:
+        row = {
+            "family_canonical_name": "lily",
+            "family_name": "Lily",
+            "device_id": "garmin-lily-2-active",
+            "manufacturer": "Garmin",
+            "model": "Lily 2 Active",
+            "canonical_model": "lily 2 active",
+            "variant": "",
+            "case_size_mm": None,
+            "display_type": None,
+            "part_number": None,
+            "product_url": "https://www.garmin.com/en-US/p/1196650/",
+            "active": True,
+            "asset_status": "MISSING",
+            "asset_url": None,
+            "source_image_url": "https://res.garmin.com/en/products/010-02891-00/g/cf-lg.jpg",
+        }
+        device = build_device_catalog(
+            [row], datetime(2026, 5, 3, tzinfo=timezone.utc)
+        )["devices"][0]
+        self.assertEqual(device["asset"], {"status": "MISSING"})
+        self.assertEqual(device["sourceAsset"]["scope"], "MODEL")
+        self.assertEqual(
+            device["sourceAsset"]["source"],
+            {
+                "type": "OFFICIAL_PRODUCT_MEDIA",
+                "brand": "Garmin",
+                "attributionRequired": True,
+            },
+        )
+
+        row["source_image_url"] = "https://example.com/not-garmin.jpg"
+        without_external = build_device_catalog(
+            [row], datetime(2026, 5, 3, tzinfo=timezone.utc)
+        )["devices"][0]
+        self.assertNotIn("sourceAsset", without_external)
 
     def test_asset_is_served_from_api_domain_and_traversal_is_blocked(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

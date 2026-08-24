@@ -11,6 +11,44 @@ enum DeviceConnectionState: Equatable, Sendable {
     case safeToDisconnect
     case failed
 }
+
+enum SafeEjectPresentation: Equatable, Sendable {
+    case hidden
+    case disabled
+    case enabled
+
+    static func resolve(
+        state: DeviceConnectionState,
+        canEject: Bool
+    ) -> Self {
+        switch state {
+        case .connected, .ready:
+            return canEject ? .enabled : .disabled
+        case .disconnected, .detecting, .ejecting, .safeToDisconnect, .failed:
+            return .hidden
+        }
+    }
+}
+
+/// The UI-facing eject policy is shared by the Device card and the sidebar.
+/// Transport availability remains supplied by the global MTP gate; view code
+/// never infers safety from map ownership or filenames.
+enum SafeEjectPolicy: Sendable {
+    static func canEject(
+        isConnected: Bool,
+        transportAvailable: Bool,
+        mapOperationBusy: Bool,
+        lifecycleOperationBusy: Bool,
+        installationActive: Bool
+    ) -> Bool {
+        isConnected
+            && transportAvailable
+            && !mapOperationBusy
+            && !lifecycleOperationBusy
+            && !installationActive
+    }
+}
+
 /// Keeps lifecycle transitions and the presence of an active device out of
 /// SwiftUI. A disconnected or ejected device can never remain active here.
 struct DeviceStateManager: Sendable {

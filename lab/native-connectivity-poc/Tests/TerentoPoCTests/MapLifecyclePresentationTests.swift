@@ -162,6 +162,53 @@ func runMapLifecyclePresentationTests() throws {
     try require(update.allows(.remove), "managed map allows removal")
     try require(update.allows(.update), "older managed map allows update")
     try require(update.status == "Update available", "update status is user-facing")
+    try require(
+        managed.manageDetailLabel == "Installed · Release 26.05",
+        "managed row uses concise release metadata"
+    )
+    try require(
+        ManageMapRowActionPresentation.actions(for: update) == [.update, .backup, .remove],
+        "three valid actions use one ordered action group"
+    )
+
+    let recoveryRecord = TerentoFailedInstallRecoveryRecord(
+        deviceKey: "fenix-8-091e-51b8",
+        packageID: "freizeitkarte-ltu",
+        providerId: "freizeitkarte",
+        regionId: "LTU",
+        version: installedVersion,
+        devicePath: "/GARMIN/terento_freizeitkarte_ltu.img",
+        filename: "terento_freizeitkarte_ltu.img",
+        sizeBytes: 100,
+        sha256: String(repeating: "a", count: 64),
+        createdAt: Date(timeIntervalSince1970: 0)
+    )
+    let recoveryItem = MapLifecycleItem(
+        id: managed.id,
+        title: managed.title,
+        provider: managed.provider,
+        region: managed.region,
+        version: managed.version,
+        rawVersion: managed.rawVersion,
+        sizeBytes: managed.sizeBytes,
+        installedMaps: managed.installedMaps,
+        classification: .externalRecognized,
+        failedInstallRecovery: recoveryRecord
+    )
+    let recovery = resolver.resolve(
+        item: recoveryItem,
+        comparison: comparison(status: .upToDate),
+        hasIntegrityRecord: true,
+        hasValidatedUpdateProfile: true,
+        failedInstallRecovery: true
+    )
+    try require(recovery.actions == [.remove], "failed install recovery exposes only removal")
+    try require(!recovery.allows(.backup), "failed install recovery does not expose backup as a separate action")
+    try require(recovery.status == "Failed install recovery", "failed install recovery has a distinct status")
+    try require(
+        recoveryItem.manageDetailLabel == "Incomplete installation · Release 26.05",
+        "recovery row uses explicit incomplete-installation metadata"
+    )
 
     let upToDate = resolver.resolve(
         item: managed,
@@ -173,6 +220,20 @@ func runMapLifecyclePresentationTests() throws {
     try require(upToDate.allows(.remove), "up-to-date map allows removal")
     try require(!upToDate.allows(.update), "up-to-date map does not expose update")
     try require(upToDate.reason?.contains("explicit confirmation") == true, "up-to-date replacement remains explicit")
+    try require(
+        ManageMapRowActionPresentation.actions(for: upToDate) == [.backup, .remove],
+        "two valid actions use the same ordered action group"
+    )
+
+    let backupOnly = MapLifecycleActionAvailability(
+        actions: [.backup],
+        status: "Installed",
+        reason: nil
+    )
+    try require(
+        ManageMapRowActionPresentation.actions(for: backupOnly) == [.backup],
+        "one valid action keeps the same action control style"
+    )
 
     let newer = resolver.resolve(
         item: managed,
@@ -200,6 +261,17 @@ func runMapLifecyclePresentationTests() throws {
     )
     try require(external.actions.isEmpty, "external map exposes no lifecycle actions")
     try require(external.reason?.contains("left unchanged") == true, "external map explains read-only handling")
+    try require(
+        lifecycleItem(
+            installed: installedMap(managementState: .detectedNotManaged),
+            classification: .externalRecognized
+        ).manageDetailLabel == "Installed · Read-only",
+        "read-only row uses concise status metadata"
+    )
+    try require(
+        ManageMapRowActionPresentation.actions(for: external) == [],
+        "no valid actions leaves the row action area empty"
+    )
 
     let ambiguous = resolver.resolve(
         item: lifecycleItem(installed: installedMap(itemID: nil), classification: .ambiguous),
@@ -208,7 +280,7 @@ func runMapLifecyclePresentationTests() throws {
         hasValidatedUpdateProfile: true
     )
     try require(ambiguous.actions.isEmpty, "ambiguous map exposes no lifecycle actions")
-    try require(ambiguous.status == "Identity unavailable", "ambiguous map has a safe status")
+    try require(ambiguous.status == "Read-only", "ambiguous map has a safe status")
 
     let missingIntegrity = resolver.resolve(
         item: managed,

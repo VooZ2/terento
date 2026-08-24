@@ -3,6 +3,7 @@ set -euo pipefail
 
 project_root="${0:A:h}"
 libmtp_prefix="${LIBMTP_PREFIX:-/opt/homebrew/opt/libmtp}"
+libusb_prefix="${LIBUSB_PREFIX:-/opt/homebrew/opt/libusb}"
 swiftpm_config_dir="${SWIFTPM_CONFIG_DIR:-/tmp/terento-native-poc-swiftpm}"
 module_cache_dir="${CLANG_MODULE_CACHE_PATH:-/tmp/terento-native-poc-module-cache}"
 build_dir="$(mktemp -d "${TMPDIR:-/tmp}/terento-stage51-hardware.XXXXXX")"
@@ -13,6 +14,7 @@ bridge_object="$platform_build_dir/LibMTPBridge.build/MTPBridge.c.o"
 bridge_module_dir="$platform_build_dir/LibMTPBridge.build"
 
 export LIBMTP_PREFIX="$libmtp_prefix"
+export LIBUSB_PREFIX="$libusb_prefix"
 export CLANG_MODULE_CACHE_PATH="$module_cache_dir"
 export SWIFTPM_CONFIG_DIR="$swiftpm_config_dir"
 
@@ -52,7 +54,10 @@ swiftc \
   "$bridge_object" \
   -L "$libmtp_prefix/lib" \
   -lmtp \
+  -L "$libusb_prefix/lib" \
+  -lusb-1.0 \
   -Xlinker -rpath -Xlinker "$libmtp_prefix/lib" \
+  -Xlinker -rpath -Xlinker "$libusb_prefix/lib" \
   -o "$binary_path"
 
 "$binary_path"

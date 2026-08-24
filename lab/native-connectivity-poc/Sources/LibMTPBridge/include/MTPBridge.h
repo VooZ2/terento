@@ -53,12 +53,17 @@ typedef int (*TerentoMTPProgressCallback)(
     const void *context
 );
 
+typedef void (*TerentoMTPWriteCompletedCallback)(const void *context);
+
 enum {
     TERENTO_MTP_MAP_TARGET_EXISTS = -20,
     TERENTO_MTP_MAP_REMOTE_FILE_MISSING = -21,
     TERENTO_MTP_MAP_OBJECT_ID_MISMATCH = -22,
     TERENTO_MTP_MAP_UNSUPPORTED_DEVICE = -23
 };
+
+/* Read-only USB presence probe. Returns the number of connected Garmin USB devices. */
+int terento_mtp_probe_garmin_presence(void);
 
 /* Read-only operation: detect one Garmin MTP device and read its metadata. */
 int terento_mtp_read_snapshot(
@@ -139,8 +144,9 @@ int terento_mtp_delete_test_file(
 );
 
 /*
- * Production Stage 4.2 write path. It is deliberately constrained to the
- * validated Freizeitkarte Latvia target and validated fēnix 8 profile.
+ * Production write path. The Swift layer validates the exact catalog package;
+ * the native layer independently enforces the Terento-managed filename
+ * grammar and validated fēnix 8 profile.
  */
 int terento_mtp_install_map_file(
     const char *local_path,
@@ -149,6 +155,23 @@ int terento_mtp_install_map_file(
     uint64_t *size_bytes,
     TerentoMTPProgressCallback progress_callback,
     const void *progress_context,
+    char *error_message,
+    size_t error_message_capacity
+);
+
+/* Write and read the exact managed target back before releasing the same MTP
+ * session. This avoids a Garmin USB-session race after a large transfer. */
+int terento_mtp_install_map_file_and_read_back(
+    const char *local_path,
+    const char *target_filename,
+    const char *read_back_local_path,
+    uint32_t *item_id,
+    uint64_t *size_bytes,
+    uint64_t *read_back_size_bytes,
+    TerentoMTPProgressCallback progress_callback,
+    const void *progress_context,
+    TerentoMTPWriteCompletedCallback write_completed_callback,
+    const void *write_completed_context,
     char *error_message,
     size_t error_message_capacity
 );

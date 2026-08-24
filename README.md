@@ -19,7 +19,9 @@ Garmin filesystem details.
 - modern Garmin smartwatches using the supported connectivity path
 - direct community-map installation and management
 - Freizeitkarte as the first and only map provider
-- Lithuania as the first real end-to-end proof path
+- all catalog-listed Freizeitkarte regions are available in the local beta
+  install flow; Latvia is the currently hardware-validated region and
+  Lithuania is the next validation target
 
 Physical development and testing has been performed with a Garmin fēnix 8.
 That evidence is specific to the tested device and connectivity path; it is
@@ -41,8 +43,9 @@ The current pre-MVP implementation includes:
 
 Terento is conservative around device contents. Unknown or unrelated files are
 not silently replaced or removed. Destructive lifecycle actions are limited to
-maps Terento can prove it owns, and backup and integrity checks are required
-before removal. Installation and update verification are part of the guarded
+maps Terento can prove it owns. Manual Remove uses live exact-object and
+integrity checks without creating a local backup; Safe Update remains
+backup-protected. Installation and update verification are part of the guarded
 workflow.
 
 Safe Update is implemented and covered by automated validation. The final
@@ -52,16 +55,32 @@ The project has not marked Stage 5.3 hardware validation as passed.
 ## Development status
 
 Terento is not a stable production release. The repository currently contains
-source and development builds for the macOS PoC, public web surfaces, and the
-metadata catalog service. Stage 6 production packaging has not started: no
-notarized DMG or PKG is provided by this release.
+the macOS application source, public web surfaces, and the metadata catalog
+service. Stage 6 packaging validation has been performed locally, but no DMG
+or PKG is committed or distributed by this repository. Generated release
+outputs remain local under the ignored `dist/` directory.
+
+The production app target and bundled native runtime are ready for local beta
+validation. The local install flow supports one or several catalog-listed
+Freizeitkarte maps sequentially on the tested fēnix 8 profile. Latvia is the
+current hardware evidence; other regions are not yet public compatibility
+claims. OpenTopoMap remains read-only and is not part of installation.
 
 ## Repository guide
 
 - [`site/`](site/) — the public landing page and legal/SEO assets
-- [`lab/`](lab/) — the macOS proof of concept and isolated connectivity labs
+- [`app/`](app/) — the macOS application shell, metadata, entitlements, and
+  resources
+- [`lab/native-connectivity-poc/`](lab/native-connectivity-poc/) — the current
+  SwiftPM source module and tests consumed by the macOS application target;
+  the historical `lab` name is retained for compatibility
+- [`Packaging/`](Packaging/) — local release-build and signing/notarization
+  preparation scripts; it does not contain release artifacts
 - [`backend/catalog-api/`](backend/catalog-api/) — the metadata-only catalog
   service
+- [`legal/`](legal/) — public legal web content and publication inputs
+- [`PROJECT_STRUCTURE.md`](PROJECT_STRUCTURE.md) — what belongs in each
+  project area and what stays local
 - [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) — dependency and runtime
   notices
 - [`VERSIONING.md`](VERSIONING.md) — public beta versioning policy

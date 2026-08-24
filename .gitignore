@@ -5,6 +5,10 @@
 /docs/
 /internal/
 /lab/test-site/
+/AGENTS.md
+
+# Local Codex task prompts are working instructions, not public project docs.
+/legal/web/CODEX-PROMPT*.md
 
 # Internal design exploration/validation boards. Final approved identity is
 # documented in brand/BRAND_GUIDELINES.md and the canonical logo assets.
@@ -28,7 +32,15 @@ id_ed25519.*
 
 # Local machine and runtime output.
 .DS_Store
+.AppleDouble
+._*
+__MACOSX/
+**/xcuserdata/
+*.xcuserstate
 *.log
+.cursor/
+**/.build/
+**/.swiftpm/
 coverage/
 dist/
 node_modules/

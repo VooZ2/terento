@@ -89,6 +89,19 @@ Use generous neutral space around the symbol. As a practical minimum, reserve ap
 
 Below 24 px, use only when technically necessary and validate the opening remains legible.
 
+### macOS application icon
+
+The macOS application icon uses only the canonical symbol above, without the
+Terento wordmark or any additional map, GPS, Garmin, compass, landscape, or
+decorative graphics. Its square background is Terento Sky (`#7898A8`) and the
+symbol is Alpine Off-White (`#F7F3EC`). The symbol is optically centered with
+generous breathing room; macOS supplies the native rounded-square presentation.
+
+The checked-in renditions live in
+`app/Terento/Assets.xcassets/AppIcon.appiconset/` and are reproducibly generated
+by `Packaging/generate-app-icon.swift` from `brand/logo/logo.svg`. The generator
+must not change the canonical path data, proportions, opening, or curves.
+
 ### Monochrome
 
 The symbol must always work as:

@@ -46,6 +46,14 @@ private final class FakeReadTransport: MapLifecycleReadTransport, @unchecked Sen
     }
 }
 
+private final class ProgressCollector: @unchecked Sendable {
+    var values: [TransferProgress] = []
+
+    func append(_ progress: TransferProgress) {
+        values.append(progress)
+    }
+}
+
 private enum Stage51TestError: Error {
     case failed(String)
 }
@@ -97,15 +105,23 @@ private func makeItem(
     map: InstalledMap,
     classification: MapLifecycleClassification = .terentoManaged
 ) -> MapLifecycleItem {
-    MapLifecycleItem(
+    makeItem(maps: [map], classification: classification)
+}
+
+private func makeItem(
+    maps: [InstalledMap],
+    classification: MapLifecycleClassification = .terentoManaged
+) -> MapLifecycleItem {
+    let firstMap = maps[0]
+    return MapLifecycleItem(
         id: "freizeitkarte:LTU",
         title: "Freizeitkarte Lithuania",
         provider: "freizeitkarte",
         region: "LTU",
-        version: map.version,
-        rawVersion: map.rawVersion,
-        sizeBytes: map.sizeBytes,
-        installedMaps: [map],
+        version: firstMap.version,
+        rawVersion: firstMap.rawVersion,
+        sizeBytes: maps.reduce(0) { $0 &+ $1.sizeBytes },
+        installedMaps: maps,
         classification: classification
     )
 }
@@ -235,6 +251,36 @@ private func testDisconnectIsReportedClearly() throws {
     try require(hasNoBackupOutput(at: root), "disconnect must remove partial local output")
 }
 
+private func testMultiFileProgressIsAggregated() throws {
+    let transport = FakeReadTransport()
+    let root = backupDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let firstMap = makeMap(id: 501)
+    let secondMap = makeMap(id: 502)
+    let item = makeItem(maps: [firstMap, secondMap])
+    let collector = ProgressCollector()
+
+    let result = ReadBackupAdapter(
+        transport: transport,
+        backupDirectory: root
+    ).backup(
+        target: ManagedMapBackupTarget(
+            item: item,
+            expectedSHA256ByItemID: [
+                firstMap.sourceFile.itemID!: sha256(transport.data),
+                secondMap.sourceFile.itemID!: sha256(transport.data)
+            ]
+        ),
+        onProgress: { progress in collector.append(progress) }
+    )
+
+    try require(result.status == .backupSuccess, "multi-file backup should succeed")
+    try require(collector.values.count == 2, "each verified file should report progress")
+    try require(collector.values.map(\.bytesTransferred) == [32, 64], "backup progress should aggregate bytes across files")
+    try require(collector.values.allSatisfy { $0.totalBytes == 64 }, "backup progress should use the complete map size")
+    try require(collector.values.last?.fractionCompleted == 1, "completed multi-file backup should report 100 percent")
+}
+
 private func testReadBackupHasNoWriteSurface() throws {
     let source = try String(
         contentsOfFile: #filePath.replacingOccurrences(
@@ -264,6 +310,7 @@ struct Stage51ReadBackupTests {
             ("size mismatch removes partial backup", testSizeMismatchRemovesPartialBackup),
             ("hash mismatch removes partial backup", testHashMismatchRemovesPartialBackup),
             ("disconnect has a dedicated failure status", testDisconnectIsReportedClearly),
+            ("multi-file progress is aggregated", testMultiFileProgressIsAggregated),
             ("read adapter has no write surface", testReadBackupHasNoWriteSurface)
         ]
 

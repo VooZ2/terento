@@ -20,9 +20,9 @@ enum MapLifecycleClassification: String, Codable, Equatable, Sendable {
         case .externalRecognized:
             return "Installed on your watch"
         case .ambiguous:
-            return "Identity unavailable"
+            return "Read-only"
         case .system:
-            return "Garmin system map"
+            return "Read-only"
         }
     }
 }
@@ -53,6 +53,31 @@ struct MapLifecycleItem: Identifiable, Equatable, Sendable {
     let sizeBytes: UInt64
     let installedMaps: [InstalledMap]
     let classification: MapLifecycleClassification
+    let failedInstallRecovery: TerentoFailedInstallRecoveryRecord?
+
+    init(
+        id: String,
+        title: String,
+        provider: String?,
+        region: String?,
+        version: MapVersion?,
+        rawVersion: String?,
+        sizeBytes: UInt64,
+        installedMaps: [InstalledMap],
+        classification: MapLifecycleClassification,
+        failedInstallRecovery: TerentoFailedInstallRecoveryRecord? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.provider = provider
+        self.region = region
+        self.version = version
+        self.rawVersion = rawVersion
+        self.sizeBytes = sizeBytes
+        self.installedMaps = installedMaps
+        self.classification = classification
+        self.failedInstallRecovery = failedInstallRecovery
+    }
 
     var isInstalled: Bool {
         !installedMaps.isEmpty
@@ -85,16 +110,46 @@ struct MapLifecycleItem: Identifiable, Equatable, Sendable {
         return "Installed"
     }
 
-    var noteLabel: String {
+    /// Compact metadata for the consumer-facing Manage Maps row. Safety and
+    /// ownership remain in the lifecycle model; this label only avoids
+    /// repeating diagnostic prose below every row.
+    var manageDetailLabel: String {
+        guard isInstalled else {
+            return "Not installed"
+        }
+
+        let release = rawVersion ?? version?.description
+        if failedInstallRecovery != nil {
+            return release.map { "Incomplete installation · \($0)" }
+                ?? "Incomplete installation"
+        }
+
         switch classification {
         case .terentoManaged:
-            return "Installed by Terento. Backup and removal are available after confirmation."
+            return release.map { "Installed · \($0)" } ?? "Installed"
         case .externalRecognized:
-            return "Already on your watch. Terento will not replace or remove it automatically."
+            return "Installed · Read-only"
         case .ambiguous:
-            return "This map could not be identified safely and will be left untouched."
+            return "Installed · Read-only"
         case .system:
-            return "Garmin system map. Terento will leave it untouched."
+            return "Installed · Read-only"
+        }
+    }
+
+    var noteLabel: String {
+        if failedInstallRecovery != nil {
+            return "Incomplete install · only this exact map can be recovered."
+        }
+
+        switch classification {
+        case .terentoManaged:
+            return "Managed by Terento · backup and removal are available."
+        case .externalRecognized:
+            return "Already on your watch · Terento will leave it unchanged."
+        case .ambiguous:
+            return "Read-only · Terento will leave it unchanged."
+        case .system:
+            return "Read-only · Terento will leave it unchanged."
         }
     }
 }
@@ -117,10 +172,13 @@ struct MapLifecycleInventory: Equatable, Sendable {
 }
 
 struct MapLifecycleInventoryBuilder: Sendable {
-    func build(from inventory: UnifiedMapInventory) -> MapLifecycleInventory {
+    func build(
+        from inventory: UnifiedMapInventory,
+        recoveryRecords: [TerentoFailedInstallRecoveryRecord] = []
+    ) -> MapLifecycleInventory {
         let items = inventory.allEntries
             .filter(\.isInstalled)
-            .map(makeItem)
+            .map { makeItem($0, recoveryRecords: recoveryRecords) }
 
         return MapLifecycleInventory(
             freizeitkarte: items.filter {
@@ -132,8 +190,25 @@ struct MapLifecycleInventoryBuilder: Sendable {
         )
     }
 
-    private func makeItem(_ entry: MapInventoryEntry) -> MapLifecycleItem {
-        MapLifecycleItem(
+    private func makeItem(
+        _ entry: MapInventoryEntry,
+        recoveryRecords: [TerentoFailedInstallRecoveryRecord]
+    ) -> MapLifecycleItem {
+        let recoveryRecord = recoveryRecords.first { record in
+            entry.installedMaps.contains { installedMap in
+                record.matches(
+                    deviceKey: record.deviceKey,
+                    path: installedMap.sourceFile.path,
+                    filename: installedMap.sourceFile.filename,
+                    sizeBytes: installedMap.sourceFile.sizeBytes,
+                    providerId: installedMap.provider,
+                    regionId: installedMap.region,
+                    version: installedMap.version
+                )
+            }
+        }
+
+        return MapLifecycleItem(
             id: entry.key,
             title: entry.title,
             provider: entry.catalogPackage?.providerId ?? entry.installedMaps.first?.provider,
@@ -142,7 +217,8 @@ struct MapLifecycleInventoryBuilder: Sendable {
             rawVersion: entry.installedRawVersion,
             sizeBytes: entry.installedSizeBytes,
             installedMaps: entry.installedMaps,
-            classification: classification(for: entry)
+            classification: classification(for: entry),
+            failedInstallRecovery: recoveryRecord
         )
     }
 
@@ -216,8 +292,9 @@ struct MapLifecycleBackupTransfer: Equatable, Sendable {
 }
 
 /// The production MTP adapter must implement these operations without using
-/// filenames as identity. The current Stage 4 bridge intentionally does not
-/// conform yet because it only exposes the validated Latvia install path.
+/// filenames as identity. Install writes and lifecycle mutations share the
+/// same narrow native bridge, while this protocol keeps lifecycle actions
+/// transport-injected and independently testable.
 protocol MapLifecycleTransport: Sendable {
     func backup(
         file: InstalledMapFile,

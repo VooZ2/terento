@@ -136,6 +136,17 @@ database; inactive historical records can remain in the response.
           "brand": "Garmin",
           "attributionRequired": true
         }
+      },
+      "sourceAsset": {
+        "url": "https://res.garmin.com/en/products/010-02904-10/g/cf-lg.jpg",
+        "scope": "MODEL",
+        "version": 1,
+        "attribution": "Garmin official product media",
+        "source": {
+          "type": "OFFICIAL_PRODUCT_MEDIA",
+          "brand": "Garmin",
+          "attributionRequired": true
+        }
       }
     }
   ]
@@ -144,7 +155,9 @@ database; inactive historical records can remain in the response.
 
 `caseSizeMm`, `displayType`, and `partNumber` may be `null` when the official
 source does not provide the field. `asset` is always present in version 2 and
-is either `{ "status": "MISSING" }` or an `AVAILABLE` asset. Review and
+is either `{ "status": "MISSING" }` or an `AVAILABLE` asset. An optional
+`sourceAsset` contains only allowlisted official Garmin media metadata and is
+not a Terento-hosted binary. Review and
 deprecated states are never exposed as public URLs. An available asset has a
 scope of `FAMILY`, `MODEL`, `MODEL_SIZE`, `EXACT_VARIANT`, or `GENERIC`, a
 valid `source` declaration, a version, and an optional checksum under the same API domain:
@@ -174,11 +187,12 @@ media, clients must show or make available the following notice:
 > Garmin and fēnix are trademarks of Garmin Ltd.
 > Terento is an independent open-source project and is not affiliated with Garmin.
 
-The macOS app consumes `asset.url`, `asset.version`, `asset.scope`,
-`asset.source.type`, and `asset.source.attributionRequired` from the Device
-Catalog API. It does not scrape Garmin sites, hardcode Garmin image URLs, or
-infer attribution. A missing or invalid asset/source falls back to the
-generic Terento watch illustration.
+The macOS app consumes the controlled `asset` first. If that is missing, it
+may consume `sourceAsset.url` only after validating the HTTPS
+`res.garmin.com` origin and Garmin attribution metadata. The image is fetched
+directly by the Mac and cached locally; the API does not proxy or host it. A
+missing or invalid asset/source falls back to the generic Terento watch
+illustration.
 
 The device endpoint supports the same public cache policy as the map endpoint:
 `ETag`, `Last-Modified`, `Cache-Control: public, max-age=300,

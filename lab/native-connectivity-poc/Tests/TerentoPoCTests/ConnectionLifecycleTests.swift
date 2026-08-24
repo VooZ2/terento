@@ -65,6 +65,86 @@ private func testEjectCannotStartWithoutDevice() throws {
     try require(manager.state == .disconnected, "rejected eject must not change state")
 }
 
+private func testSafeEjectPresentationStates() throws {
+    try require(
+        SafeEjectPresentation.resolve(state: .connected, canEject: true) == .enabled,
+        "connected idle device should show enabled eject"
+    )
+    try require(
+        SafeEjectPresentation.resolve(state: .ready, canEject: false) == .disabled,
+        "connected device operation should show disabled eject"
+    )
+    try require(
+        SafeEjectPresentation.resolve(state: .detecting, canEject: false) == .hidden,
+        "connecting state should hide eject"
+    )
+    try require(
+        SafeEjectPresentation.resolve(state: .disconnected, canEject: false) == .hidden,
+        "disconnected state should hide eject"
+    )
+    try require(
+        SafeEjectPresentation.resolve(state: .safeToDisconnect, canEject: false) == .hidden,
+        "successful eject should remove the sidebar action"
+    )
+}
+
+private func testSafeEjectPolicyAcrossOperations() throws {
+    try require(
+        SafeEjectPolicy.canEject(
+            isConnected: true,
+            transportAvailable: true,
+            mapOperationBusy: false,
+            lifecycleOperationBusy: false,
+            installationActive: false
+        ),
+        "connected idle device keeps Eject enabled"
+    )
+    try require(
+        SafeEjectPolicy.canEject(
+            isConnected: true,
+            transportAvailable: true,
+            mapOperationBusy: false,
+            lifecycleOperationBusy: false,
+            installationActive: false
+        ),
+        "map selection alone does not disable Eject"
+    )
+    try require(
+        !SafeEjectPolicy.canEject(
+            isConnected: true,
+            transportAvailable: true,
+            mapOperationBusy: false,
+            lifecycleOperationBusy: true,
+            installationActive: false
+        )
+            && !SafeEjectPolicy.canEject(
+                isConnected: true,
+                transportAvailable: true,
+                mapOperationBusy: true,
+                lifecycleOperationBusy: false,
+                installationActive: false
+            )
+            && !SafeEjectPolicy.canEject(
+                isConnected: true,
+                transportAvailable: true,
+                mapOperationBusy: false,
+                lifecycleOperationBusy: false,
+                installationActive: true
+            ),
+        "backup, remove/update, and active install disable Eject"
+    )
+    try require(
+        SafeEjectPolicy.canEject(
+            isConnected: true,
+            transportAvailable: true,
+            mapOperationBusy: false,
+            lifecycleOperationBusy: false,
+            installationActive: false
+        ),
+        "Eject re-enables after the operation is complete"
+    )
+}
+
 @main
 struct ConnectionLifecycleTests {
     static func main() {
@@ -73,7 +153,9 @@ struct ConnectionLifecycleTests {
             ("disconnect invalidates session and active device", testDisconnectInvalidatesDevice),
             ("no stale connected or ready state remains", testNoStaleDeviceAfterDisconnect),
             ("safe eject transitions to safe-to-disconnect", testSafeEjectIsReadOnly),
-            ("eject is unavailable without a device", testEjectCannotStartWithoutDevice)
+            ("eject is unavailable without a device", testEjectCannotStartWithoutDevice),
+            ("sidebar eject visibility follows connection and lifecycle state", testSafeEjectPresentationStates),
+            ("eject policy follows the shared operation state", testSafeEjectPolicyAcrossOperations)
         ]
 
         do {

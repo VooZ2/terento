@@ -91,6 +91,7 @@ struct DeviceCatalogRecord: Decodable, Sendable {
     let caseSizeMm: Int?
     let displayType: String?
     let asset: DeviceCatalogAsset?
+    let sourceAsset: DeviceCatalogSourceAsset?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -102,6 +103,54 @@ struct DeviceCatalogRecord: Decodable, Sendable {
         case caseSizeMm
         case displayType
         case asset
+        case sourceAsset
+    }
+
+    init(
+        id: String,
+        manufacturer: String,
+        family: String,
+        model: String,
+        canonicalModel: String,
+        variant: String,
+        caseSizeMm: Int?,
+        displayType: String?,
+        asset: DeviceCatalogAsset?,
+        sourceAsset: DeviceCatalogSourceAsset? = nil
+    ) {
+        self.id = id
+        self.manufacturer = manufacturer
+        self.family = family
+        self.model = model
+        self.canonicalModel = canonicalModel
+        self.variant = variant
+        self.caseSizeMm = caseSizeMm
+        self.displayType = displayType
+        self.asset = asset
+        self.sourceAsset = sourceAsset
+    }
+}
+
+struct DeviceCatalogSourceAsset: Decodable, Sendable {
+    let url: URL?
+    let scope: String?
+    let version: Int?
+    let attribution: String?
+    let source: DeviceAssetSource?
+
+    var hasValidSourceMetadata: Bool {
+        source?.isValid == true
+    }
+
+    func asCatalogAsset() -> DeviceCatalogAsset {
+        DeviceCatalogAsset(
+            status: "AVAILABLE",
+            url: url,
+            scope: scope ?? "MODEL",
+            version: version,
+            attribution: attribution,
+            source: source
+        )
     }
 }
 
@@ -188,7 +237,8 @@ struct DeviceAssetSource: Decodable, Equatable, Sendable {
     }
 }
 
-/// Resolves only explicitly approved Terento-controlled catalogue assets.
+/// Resolves approved Terento-controlled catalogue assets first, then an
+/// allowlisted official Garmin source image when no controlled asset applies.
 /// The API never authorizes a device operation; it supplies presentation
 /// metadata only. Any ambiguity returns the neutral watch fallback.
 protocol DeviceCatalogAPIClient {
@@ -298,6 +348,7 @@ struct DeviceAssetResolver {
         string: "https://api.terento.app"
     )?.url
     private static let controlledAssetPath = "/assets/devices/"
+    private static let officialMediaHost = "res.garmin.com"
 
     private let client: any DeviceCatalogAPIClient
     private let cache: DeviceAssetCache
@@ -311,7 +362,7 @@ struct DeviceAssetResolver {
     }
 
     func resolve(identity: DeviceIdentity) async -> ResolvedDeviceAsset {
-        guard let canonicalModel = identity.canonicalModel else {
+        guard let canonicalModel = identity.catalogCanonicalModel else {
             return .fallback
         }
 
@@ -323,7 +374,7 @@ struct DeviceAssetResolver {
                       canonicalModel: canonicalModel,
                       records: catalog.devices
                   ),
-                  let assetURL = Self.controlledURL(for: match.asset.url),
+                  let assetURL = Self.downloadURL(for: match.asset.url),
                   let scope = Self.scope(for: match.asset.scope),
                   match.asset.isAvailable,
                   match.asset.hasValidSourceMetadata else {
@@ -410,6 +461,24 @@ struct DeviceAssetResolver {
         return resolved
     }
 
+    static func officialSourceURL(for value: URL?) -> URL? {
+        guard let value,
+              let components = URLComponents(url: value, resolvingAgainstBaseURL: false),
+              components.scheme?.lowercased() == "https",
+              components.host?.lowercased() == officialMediaHost,
+              components.port == nil,
+              components.user == nil,
+              components.password == nil,
+              !components.path.isEmpty else {
+            return nil
+        }
+        return value
+    }
+
+    private static func downloadURL(for value: URL?) -> URL? {
+        controlledURL(for: value) ?? officialSourceURL(for: value)
+    }
+
     private static func matchingRecord(
         identity: DeviceIdentity,
         canonicalModel: String,
@@ -427,52 +496,74 @@ struct DeviceAssetResolver {
 
             guard let asset = record.asset,
                   asset.isAvailable,
-                  Self.controlledURL(for: asset.url) != nil,
+                  Self.downloadURL(for: asset.url) != nil,
                   asset.hasValidSourceMetadata
             else {
-                return nil
-            }
-            let assetScope = Self.normalized(asset.scope ?? "")
-            switch assetScope {
-            case "exact variant":
-                guard Self.normalized(record.canonicalModel) == Self.normalized(canonicalModel)
-                else { return nil }
-                guard Self.normalized(record.family) == identityFamily else { return nil }
-                guard let knownSize,
-                      let knownDisplay,
-                      record.caseSizeMm == knownSize,
-                      Self.normalized(record.displayType ?? "") == knownDisplay else {
+                guard let sourceAsset = record.sourceAsset,
+                      sourceAsset.hasValidSourceMetadata,
+                      Self.officialSourceURL(for: sourceAsset.url) != nil else {
                     return nil
                 }
-                return Match(record: record, asset: asset, rank: 0)
-            case "model size":
-                guard Self.normalized(record.canonicalModel) == Self.normalized(canonicalModel)
-                else { return nil }
-                guard Self.normalized(record.family) == identityFamily else { return nil }
-                guard let knownSize, record.caseSizeMm == knownSize else {
-                    return nil
-                }
-                return Match(record: record, asset: asset, rank: 1)
-            case "model":
-                guard Self.normalized(record.canonicalModel) == Self.normalized(canonicalModel)
-                else { return nil }
-                guard Self.normalized(record.family) == identityFamily else { return nil }
-                return Match(record: record, asset: asset, rank: 2)
-            case "family":
-                guard !identityFamily.isEmpty,
-                      Self.normalized(record.family) == identityFamily else { return nil }
-                return Match(record: record, asset: asset, rank: 3)
-            case "generic":
-                return Match(record: record, asset: asset, rank: 4)
-            default:
-                return nil
+                let catalogAsset = sourceAsset.asCatalogAsset()
+                guard catalogAsset.isAvailable else { return nil }
+                return Self.match(record: record, asset: catalogAsset, canonicalModel: canonicalModel,
+                                  identityFamily: identityFamily, knownSize: knownSize,
+                                  knownDisplay: knownDisplay)
             }
+            return Self.match(record: record, asset: asset, canonicalModel: canonicalModel,
+                              identityFamily: identityFamily, knownSize: knownSize,
+                              knownDisplay: knownDisplay)
         }
         .sorted {
             if $0.rank != $1.rank { return $0.rank < $1.rank }
             return $0.record.id < $1.record.id
         }
         .first
+    }
+
+    private static func match(
+        record: DeviceCatalogRecord,
+        asset: DeviceCatalogAsset,
+        canonicalModel: String,
+        identityFamily: String,
+        knownSize: Int?,
+        knownDisplay: String?
+    ) -> Match? {
+        let assetScope = Self.normalized(asset.scope ?? "")
+        switch assetScope {
+        case "exact variant":
+            guard Self.normalized(record.canonicalModel) == Self.normalized(canonicalModel)
+            else { return nil }
+            guard Self.normalized(record.family) == identityFamily else { return nil }
+            guard let knownSize,
+                  let knownDisplay,
+                  record.caseSizeMm == knownSize,
+                  Self.normalized(record.displayType ?? "") == knownDisplay else {
+                return nil
+            }
+            return Match(record: record, asset: asset, rank: 0)
+        case "model size":
+            guard Self.normalized(record.canonicalModel) == Self.normalized(canonicalModel)
+            else { return nil }
+            guard Self.normalized(record.family) == identityFamily else { return nil }
+            guard let knownSize, record.caseSizeMm == knownSize else {
+                return nil
+            }
+            return Match(record: record, asset: asset, rank: 1)
+        case "model":
+            guard Self.normalized(record.canonicalModel) == Self.normalized(canonicalModel)
+            else { return nil }
+            guard Self.normalized(record.family) == identityFamily else { return nil }
+            return Match(record: record, asset: asset, rank: 2)
+        case "family":
+            guard !identityFamily.isEmpty,
+                  Self.normalized(record.family) == identityFamily else { return nil }
+            return Match(record: record, asset: asset, rank: 3)
+        case "generic":
+            return Match(record: record, asset: asset, rank: 4)
+        default:
+            return nil
+        }
     }
 
     private static func scope(for value: String?) -> DeviceAssetScope? {

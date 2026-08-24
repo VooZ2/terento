@@ -1,11 +1,10 @@
-# Terento v0.1.0-beta.1
+# Terento v1.0.0-beta.1
 
-Release date: 2026-08-23
+Release date: 2026-08-24
 
-This is a pre-MVP beta checkpoint for the Terento macOS proof of concept. It
-is intended to make the current implementation reproducible for development
-and hardware validation; it is not a stable production release and does not
-include a notarized DMG or PKG.
+This is a pre-MVP beta release for the Terento macOS application. It is
+intended for development and hardware validation; it is not a stable
+production release and does not include a DMG or PKG.
 
 ## Included
 
@@ -16,6 +15,11 @@ include a notarized DMG or PKG.
   Garmin-owned device files;
 - metadata-only Freizeitkarte catalog and Garmin device catalog services;
 - serialized MTP lifecycle handling and disconnect-safe map lifecycle UI;
+- a native macOS application target with bundled arm64 libmtp/libusb runtime;
+- catalog-driven Freizeitkarte installation for one or several selected maps,
+  with inventory refresh and bounded Finishing progress;
+- an About page with app version, update placeholder, support links, and local
+  privacy statement;
 - the public Terento landing page with English, German, French, Polish, Czech,
   and Italian indexable versions, translated metadata, reciprocal `hreflang`,
   sitemap entries, and a local language preference; and
@@ -24,8 +28,9 @@ include a notarized DMG or PKG.
 
 ## Validation status
 
-- Automated Stage 2–5 validation and Swift build are the release validation
-  baseline.
+- Full automated Stage 2–7 validation and Swift/Xcode Release builds pass.
+- The application is Developer ID signed, notarized, stapled, Gatekeeper
+  validated, and distributed as an arm64 ZIP containing one `Terento.app`.
 - The harmless write/read/delete roundtrip has passed on the validated Garmin
   fēnix 8 profile, including after reconnect.
 - Read-only backup and safe-delete hardware gates have passed for the tested
@@ -44,8 +49,8 @@ include a notarized DMG or PKG.
 - Freizeitkarte remains the only supported map provider in this phase.
 - The catalog contains metadata only; Terento does not host or mirror map
   binaries.
-- The macOS app is a development proof of concept. Distribution, notarization,
-  and App Store packaging are outside this checkpoint.
+- No DMG, PKG, App Store package, or universal Intel/Apple Silicon binary is
+  included in this beta.
 
 ## Privacy and safety
 

@@ -25,6 +25,28 @@ struct MTPTransport: Sendable {
         }
     }
 
+    func readPresence() throws -> DevicePresence {
+        try operationGate.withOperation(
+            kind: .presence,
+            lifecycleLease: lifecycleLease
+        ) {
+            let count = terento_mtp_probe_garmin_presence()
+            guard count >= 0 else {
+                throw MTPTransportError.readFailed("USB device presence could not be checked")
+            }
+            guard count == 1 else {
+                if count == 0 {
+                    throw MTPTransportError.readFailed("No Garmin MTP device connected")
+                }
+                throw MTPTransportError.readFailed("More than one Garmin MTP device connected")
+            }
+
+            // The probe intentionally does not open an MTP session. The
+            // device identity is revalidated by the next real operation.
+            return DevicePresence(vendorID: 0x091e, productID: 0)
+        }
+    }
+
     private func readSnapshotUncoordinated() throws -> DeviceSnapshot {
         var rawSnapshot = TerentoMTPDeviceSnapshot()
         var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
@@ -269,6 +291,17 @@ protocol DeviceSnapshotReader: Sendable {
 }
 
 extension MTPTransport: DeviceSnapshotReader {}
+
+struct DevicePresence: Sendable, Equatable {
+    let vendorID: UInt16
+    let productID: UInt16
+}
+
+protocol DevicePresenceReader: Sendable {
+    func readPresence() throws -> DevicePresence
+}
+
+extension MTPTransport: DevicePresenceReader {}
 
 protocol DeviceFileReader: Sendable {
     func readFileInventory() throws -> [DeviceFile]

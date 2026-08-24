@@ -398,6 +398,7 @@ class Database:
                 dm.part_number,
                 dm.product_url,
                 dm.source_url,
+                dm.source_image_url,
                 dm.active,
                 dm.first_seen_at,
                 dm.last_seen_at,
@@ -506,8 +507,9 @@ class Database:
         model_query = """
             INSERT INTO device_model (
                 id, family_id, manufacturer, model, canonical_model, variant,
-                case_size_mm, display_type, part_number, product_url, source_url
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                case_size_mm, display_type, part_number, product_url, source_url,
+                source_image_url
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (id) DO UPDATE SET
                 family_id = EXCLUDED.family_id,
                 manufacturer = EXCLUDED.manufacturer,
@@ -519,6 +521,7 @@ class Database:
                 part_number = COALESCE(EXCLUDED.part_number, device_model.part_number),
                 product_url = EXCLUDED.product_url,
                 source_url = EXCLUDED.source_url,
+                source_image_url = EXCLUDED.source_image_url,
                 active = TRUE,
                 consecutive_missed_collections = 0,
                 last_seen_at = now(),
@@ -533,7 +536,8 @@ class Database:
                         device_model.display_type,
                         device_model.part_number,
                         device_model.product_url,
-                        device_model.source_url
+                        device_model.source_url,
+                        device_model.source_image_url
                     ) IS DISTINCT FROM (
                         EXCLUDED.family_id,
                         EXCLUDED.manufacturer,
@@ -544,7 +548,8 @@ class Database:
                         EXCLUDED.display_type,
                         COALESCE(EXCLUDED.part_number, device_model.part_number),
                         EXCLUDED.product_url,
-                        EXCLUDED.source_url
+                        EXCLUDED.source_url,
+                        EXCLUDED.source_image_url
                     ) OR device_model.active = FALSE
                     THEN now()
                     ELSE device_model.updated_at
@@ -579,6 +584,7 @@ class Database:
                         record.part_number,
                         record.product_url,
                         record.source_url,
+                        record.source_image_url,
                     ),
                 )
 

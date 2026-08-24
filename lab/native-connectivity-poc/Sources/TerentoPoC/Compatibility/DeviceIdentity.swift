@@ -83,6 +83,12 @@ struct DeviceIdentity: Sendable, Equatable {
     var canonicalModel: String? {
         GarminDeviceModelNormalizer.canonicalModel(from: model)
     }
+
+    /// Presentation/catalog identity for models that do not yet have a local
+    /// transport/install profile. This never authorizes device writes.
+    var catalogCanonicalModel: String? {
+        GarminDeviceModelNormalizer.catalogCanonicalModel(from: model)
+    }
 }
 
 struct GarminDeviceModelNormalizer: Sendable {
@@ -99,6 +105,53 @@ struct GarminDeviceModelNormalizer: Sendable {
         }
     }
 
+    static func catalogCanonicalModel(from rawModel: String) -> String? {
+        var normalized = normalize(rawModel)
+        let knownPrefixes = [
+            "approach",
+            "d2 mach",
+            "descent",
+            "enduro",
+            "epix",
+            "fenix",
+            "forerunner",
+            "instinct",
+            "lily",
+            "marq",
+            "quatix",
+            "tactix",
+            "venu",
+            "vivoactive",
+            "vivomove"
+        ]
+
+        guard knownPrefixes.contains(where: normalized.hasPrefix) else {
+            return nil
+        }
+
+        let cosmeticTokens = [
+            " sapphire",
+            " solar",
+            " amoled",
+            " mip",
+            " microled",
+            " leather",
+            " titanium",
+            " stainless",
+            " silicone"
+        ]
+        for token in cosmeticTokens {
+            if let range = normalized.range(of: token) {
+                normalized = String(normalized[..<range.lowerBound])
+            }
+        }
+
+        if let range = normalized.range(of: #"\s\d{2,3}\s*mm"#, options: .regularExpression) {
+            normalized = String(normalized[..<range.lowerBound])
+        }
+        return normalized
+    }
+
     static func normalize(_ value: String) -> String {
         value
             .folding(
@@ -107,5 +160,37 @@ struct GarminDeviceModelNormalizer: Sendable {
             )
             .replacingOccurrences(of: "[^a-z0-9]+", with: " ", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+/// Garmin's user-facing firmware notation is `major.minor`, while some MTP
+/// devices expose the same value as a compact numeric string such as `2244`.
+/// Keep the raw value in `DeviceIdentity` for compatibility gates and normalize
+/// only the value shown in the UI.
+enum GarminFirmwareVersionFormatter: Sendable {
+    static func display(rawValue: String, manufacturer: String) -> String {
+        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              isGarminManufacturer(manufacturer),
+              !trimmed.contains("."),
+              trimmed.allSatisfy(\.isNumber) else {
+            return trimmed
+        }
+
+        switch trimmed.count {
+        case 3:
+            return "\(trimmed.prefix(1)).\(trimmed.suffix(2))"
+        case 4:
+            let major = Int(trimmed.prefix(2))
+                .map(String.init)
+                ?? String(trimmed.prefix(2))
+            return "\(major).\(trimmed.suffix(2))"
+        default:
+            return trimmed
+        }
+    }
+
+    private static func isGarminManufacturer(_ value: String) -> Bool {
+        value.range(of: "garmin", options: [.caseInsensitive, .diacriticInsensitive]) != nil
     }
 }

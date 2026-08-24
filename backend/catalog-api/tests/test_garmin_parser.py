@@ -52,6 +52,35 @@ class GarminParserTests(unittest.TestCase):
         self.assertEqual(len(products), 1)
         self.assertEqual(products[0].name, "fēnix 8 – 47 mm, AMOLED")
 
+    def test_category_parser_preserves_only_official_large_product_image(self) -> None:
+        products = parse_category_products(
+            {
+                "products": [
+                    {
+                        "id": "lily",
+                        "name": "Lily 2 Active",
+                        "url": "https://www.garmin.com/en-US/p/1/",
+                        "group": False,
+                        "image": {
+                            "large": "https://res.garmin.com/en/products/010-02891-00/g/cf-lg.jpg"
+                        },
+                    },
+                    {
+                        "id": "external",
+                        "name": "Venu X1",
+                        "url": "https://www.garmin.com/en-US/p/2/",
+                        "group": False,
+                        "image": {"large": "https://example.com/not-garmin.jpg"},
+                    },
+                ]
+            }
+        )
+        self.assertEqual(
+            products[0].source_image_url,
+            "https://res.garmin.com/en/products/010-02891-00/g/cf-lg.jpg",
+        )
+        self.assertIsNone(products[1].source_image_url)
+
     def test_normalization_preserves_display_diacritics_and_stable_identity(self) -> None:
         device = normalize_product(
             GarminProduct(

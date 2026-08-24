@@ -29,10 +29,12 @@ struct MTPOperationConcurrencyTests {
         try await testAsyncLifecycleWaitsForPreviousOperation()
         try await testCatalogOperationWaitsForLifecycle()
         try testNativeOperationsAreSerialized()
+        try testPresenceDoesNotDisableEject()
+        try testEjectAvailabilityFollowsActiveOperations()
         try testDisconnectInvalidatesMutationLease()
         try testStaleLifecycleCompletionIsRejected()
 
-        print("PASS: 7 MTP operation concurrency and disconnect tests")
+        print("PASS: 9 MTP operation concurrency and disconnect tests")
     }
 
     private static func testIdlePresenceIsAllowed() throws {
@@ -136,6 +138,42 @@ struct MTPOperationConcurrencyTests {
             throw Failure("native operation gate allowed overlapping native work")
         }
         print("PASS: native operations are serialized process-wide")
+    }
+
+    private static func testEjectAvailabilityFollowsActiveOperations() throws {
+        let gate = MTPOperationGate()
+        guard gate.canEject else {
+            throw Failure("idle operation gate unexpectedly blocked eject")
+        }
+
+        for kind in [MTPOperationKind.install, .backup, .remove] {
+            var bodyRan = false
+            try gate.withOperation(kind: kind) {
+                bodyRan = true
+                guard !gate.canEject else {
+                    throw Failure("eject remained available during \(kind.rawValue)")
+                }
+            }
+            guard bodyRan, gate.canEject else {
+                throw Failure("eject did not return after \(kind.rawValue)")
+            }
+        }
+
+        print("PASS: install, backup, and remove operations disable eject")
+    }
+
+    private static func testPresenceDoesNotDisableEject() throws {
+        let gate = MTPOperationGate()
+        try gate.withOperation(kind: .presence) {
+            guard gate.isBusy else {
+                throw Failure("presence probe did not retain native serialization")
+            }
+            guard gate.canEject else {
+                throw Failure("read-only presence probe disabled Safe Eject")
+            }
+        }
+
+        print("PASS: presence remains serialized without disabling Safe Eject")
     }
 
     private static func testDisconnectInvalidatesMutationLease() throws {

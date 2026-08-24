@@ -61,7 +61,8 @@ struct ReadBackupResult: Equatable, Sendable {
 }
 
 /// Coordinates a verified local backup without exposing transport details to
-/// SwiftUI. It is deliberately not connected to the lifecycle UI yet.
+/// SwiftUI. Progress is normalized across every file in the map so the
+/// lifecycle UI can show one operation-level transfer state.
 struct ReadBackupAdapter: Sendable {
     private let transport: any MapLifecycleReadTransport
     private let backupDirectoryOverride: URL?
@@ -132,6 +133,11 @@ struct ReadBackupAdapter: Sendable {
             )
         }
 
+        let totalExpectedBytes = item.installedMaps.reduce(into: UInt64.zero) { total, installedMap in
+            let result = total.addingReportingOverflow(installedMap.sourceFile.sizeBytes)
+            total = result.overflow ? UInt64.max : result.partialValue
+        }
+        var completedBytes: UInt64 = 0
         var stagedFiles: [(stagedURL: URL, finalURL: URL, verified: VerifiedBackupFile)] = []
         defer {
             // A successful operation moves every staged file below and leaves
@@ -164,12 +170,22 @@ struct ReadBackupAdapter: Sendable {
                 "\(safeComponent(mapIdentity(for: item)))-\(safeComponent(versionLabel(for: item)))-\(timestamp())-\(sourceIdentity.itemID)-\(safeFilename)",
                 isDirectory: false
             )
+            let completedBeforeFile = completedBytes
+            let sourceSizeBytes = sourceIdentity.sizeBytes
 
             do {
                 let transfer = try transport.readExistingFile(
                     file: installedMap.sourceFile,
                     to: stagedURL,
-                    onProgress: onProgress
+                    onProgress: { progress in
+                        let fileBytes = min(progress.bytesTransferred, sourceSizeBytes)
+                        let aggregate = completedBeforeFile.addingReportingOverflow(fileBytes)
+                        onProgress?(TransferProgress(
+                            bytesTransferred: aggregate.overflow ? UInt64.max : aggregate.partialValue,
+                            totalBytes: totalExpectedBytes,
+                            bytesPerSecond: progress.bytesPerSecond
+                        ))
+                    }
                 )
                 let localSize = try fileSize(at: stagedURL)
 
@@ -207,6 +223,8 @@ struct ReadBackupAdapter: Sendable {
                         )
                     )
                 )
+                let completed = completedBytes.addingReportingOverflow(sourceSizeBytes)
+                completedBytes = completed.overflow ? UInt64.max : completed.partialValue
             } catch let error as MapLifecycleReadTransportError {
                 removeLocalDirectory(operationDirectory)
                 let status: ReadBackupStatus = {

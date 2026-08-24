@@ -701,14 +701,7 @@ struct MapPackageAcquirer: Sendable {
     }
 
     private func canonicalRegionName(for package: MapPackage) -> String {
-        switch MapIdentity.normalizeRegion(package.regionId) {
-        case "LVA":
-            return "Latvia"
-        case "LTU":
-            return "Lithuania"
-        default:
-            return package.name
-        }
+        package.name
     }
 
     private func state(

@@ -213,8 +213,11 @@ if [ ! -f "$build_marker" ]; then
 fi
 
 # The compiler resolves `-lmtp` through the unversioned development name. The
-# app bundle itself receives only the versioned dylib below.
+# app bundle itself receives only the versioned dylib below. Keep the matching
+# libusb development name in the build directory as well: Xcode links with
+# `-lusb-1.0`, while the shipped binary remains the versioned dylib.
 ln -sf "libmtp.9.dylib" "$bundle_lib_dir/libmtp.dylib"
+ln -sf "libusb-1.0.0.dylib" "$bundle_lib_dir/libusb-1.0.dylib"
 
 assert_arm64_and_minimum_target "$bundle_lib_dir/libusb-1.0.0.dylib" "@rpath/libusb-1.0.0.dylib"
 assert_arm64_and_minimum_target "$bundle_lib_dir/libmtp.9.dylib" "@rpath/libmtp.9.dylib"

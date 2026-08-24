@@ -19,12 +19,25 @@ struct MapLifecycleActionAvailability: Equatable, Sendable {
     }
 }
 
+/// Keeps the compact Manage Maps action group in a stable product order while
+/// the resolver remains the only authority for which actions are available.
+enum ManageMapRowActionPresentation: Sendable {
+    static let displayOrder: [MapLifecycleAction] = [.update, .backup, .remove]
+
+    static func actions(
+        for availability: MapLifecycleActionAvailability
+    ) -> [MapLifecycleAction] {
+        displayOrder.filter(availability.allows)
+    }
+}
+
 struct MapLifecyclePresentationResolver: Sendable {
     func resolve(
         item: MapLifecycleItem,
         comparison: MapComparison?,
         hasIntegrityRecord: Bool,
-        hasValidatedUpdateProfile: Bool
+        hasValidatedUpdateProfile: Bool,
+        failedInstallRecovery: Bool = false
     ) -> MapLifecycleActionAvailability {
         guard item.isInstalled else {
             return MapLifecycleActionAvailability(
@@ -34,11 +47,27 @@ struct MapLifecyclePresentationResolver: Sendable {
             )
         }
 
+        if failedInstallRecovery {
+            guard item.hasExactObjectIdentity, hasIntegrityRecord else {
+                return MapLifecycleActionAvailability(
+                    actions: [],
+                    status: "Needs verification",
+                    reason: "Only the exact incomplete map can be recovered."
+                )
+            }
+
+            return MapLifecycleActionAvailability(
+                actions: [.remove],
+                status: "Failed install recovery",
+                reason: "Only the exact incomplete map can be recovered."
+            )
+        }
+
         guard item.classification == .terentoManaged else {
             return MapLifecycleActionAvailability(
                 actions: [],
                 status: item.classification.userLabel,
-                reason: "This map is shown for reference and will be left unchanged."
+                reason: "This map is read-only and will be left unchanged."
             )
         }
 
@@ -46,7 +75,7 @@ struct MapLifecyclePresentationResolver: Sendable {
             return MapLifecycleActionAvailability(
                 actions: [],
                 status: "Needs verification",
-                reason: "Terento needs a complete local ownership record before changing this map."
+                reason: "Terento needs to verify this map before changing it."
             )
         }
 
@@ -61,7 +90,7 @@ struct MapLifecyclePresentationResolver: Sendable {
                 status = "Update available"
             case .updateAvailable:
                 status = "Update available"
-                reason = "This device is not enabled for the validated update path yet."
+                reason = "Safe update is not available for this device yet."
             case .upToDate:
                 status = "Up to date"
                 reason = "The installed map is current. Replacing it still requires explicit confirmation."
@@ -90,6 +119,29 @@ struct MapLifecycleContext: Sendable {
     let profile: DeviceInstallProfile?
     let deviceKey: String
     let expectedSHA256ByItemID: [UInt32: String]
+    let failedInstallRecovery: TerentoFailedInstallRecoveryRecord?
+
+    init(
+        item: MapLifecycleItem,
+        comparison: MapComparison?,
+        selectedMap: MapPackage?,
+        identity: DeviceIdentity,
+        availableStorage: UInt64,
+        profile: DeviceInstallProfile?,
+        deviceKey: String,
+        expectedSHA256ByItemID: [UInt32: String],
+        failedInstallRecovery: TerentoFailedInstallRecoveryRecord? = nil
+    ) {
+        self.item = item
+        self.comparison = comparison
+        self.selectedMap = selectedMap
+        self.identity = identity
+        self.availableStorage = availableStorage
+        self.profile = profile
+        self.deviceKey = deviceKey
+        self.expectedSHA256ByItemID = expectedSHA256ByItemID
+        self.failedInstallRecovery = failedInstallRecovery
+    }
 
     var hasIntegrityRecord: Bool {
         !item.installedMaps.isEmpty

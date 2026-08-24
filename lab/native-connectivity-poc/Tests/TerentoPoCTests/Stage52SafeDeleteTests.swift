@@ -130,6 +130,7 @@ private func run(
     current: SafeDeleteDeviceObject?,
     confirmed: Bool = true,
     deviceConnected: Bool = true,
+    requiresVerifiedBackup: Bool = true,
     scans: [[InstalledMapFile]],
     transport: FakeSafeDeleteTransport? = nil
 ) -> (SafeDeleteResult, FakeSafeDeleteTransport) {
@@ -141,7 +142,8 @@ private func run(
         confirmed: confirmed,
         deviceConnected: deviceConnected,
         rescan: { scanSequence.next() },
-        transport: transport
+        transport: transport,
+        requiresVerifiedBackup: requiresVerifiedBackup
     )
     return (result, transport)
 }
@@ -164,6 +166,45 @@ private func testManagedMapDeletesAfterVerifiedBackup() throws {
 
     try require(result.status == .success, "managed map should delete successfully")
     try require(transport.events == ["inspect", "delete"], "delete must inspect first and use one delete operation")
+}
+
+private func testManagedMapDeletesWithoutBackup() throws {
+    let prepared = validTarget()
+    let current = SafeDeleteDeviceObject(file: prepared.target.sourceFile, sha256: nil)
+    let (result, transport) = run(
+        target: prepared.target,
+        current: current,
+        requiresVerifiedBackup: false,
+        scans: [ [] ]
+    )
+
+    try require(result.status == .success, "manual remove must not require a local backup")
+    try require(transport.events == ["inspect", "delete"], "backup-free remove must still inspect before deleting")
+}
+
+private func testBaseManagedFilenameAllowsRecordedMapVersion() throws {
+    let prepared = validTarget()
+    let target = SafeDeleteTarget(
+        deviceKey: prepared.target.deviceKey,
+        mapIdentity: prepared.target.mapIdentity,
+        ownership: prepared.target.ownership,
+        objectID: prepared.target.objectID,
+        expectedPath: prepared.target.expectedPath,
+        expectedFilename: prepared.target.expectedFilename,
+        expectedSizeBytes: prepared.target.expectedSizeBytes,
+        expectedSHA256: prepared.target.expectedSHA256,
+        backup: nil,
+        expectedVersion: MapVersion(year: 2026, month: 5)
+    )
+    let (result, transport) = run(
+        target: target,
+        current: deviceObject(for: target, sha256: nil),
+        requiresVerifiedBackup: false,
+        scans: [[]]
+    )
+
+    try require(result.status == .success, "a base managed filename must remain removable when metadata has a release")
+    try require(transport.events == ["inspect", "delete"], "base filename removal must still verify before delete")
 }
 
 private func testExternalAndUnknownMapsAreBlocked() throws {
@@ -331,6 +372,8 @@ struct Stage52SafeDeleteTests {
     static func main() {
         let tests: [(String, () throws -> Void)] = [
             ("managed map deletes after verified backup", testManagedMapDeletesAfterVerifiedBackup),
+            ("managed map deletes without backup", testManagedMapDeletesWithoutBackup),
+            ("base managed filename allows recorded map version", testBaseManagedFilenameAllowsRecordedMapVersion),
             ("external and unknown maps are blocked", testExternalAndUnknownMapsAreBlocked),
             ("hash mismatch and missing backup are blocked", testHashMismatchAndMissingBackupAreBlocked),
             ("disconnect and confirmation are blocked", testDisconnectAndConfirmationAreBlocked),

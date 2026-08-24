@@ -5,11 +5,13 @@ import json
 import re
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import urlsplit
 
 from . import DEVICE_CATALOG_VERSION
 from .asset_attribution import LEGAL_METADATA, public_asset_source
 
 CONTROLLED_ASSET_PREFIX = "https://api.terento.app/assets/devices/"
+OFFICIAL_MEDIA_HOSTS = {"res.garmin.com"}
 ALLOWED_ASSET_SCOPES = {
     "FAMILY",
     "MODEL",
@@ -27,6 +29,20 @@ def build_device_catalog(
     devices: list[dict[str, Any]] = []
     for row in rows:
         asset = {"status": "MISSING"}
+        source_asset = None
+        source_image_url = _official_source_image_url(row.get("source_image_url"))
+        if source_image_url is not None:
+            source_asset = {
+                "url": source_image_url,
+                "scope": "MODEL",
+                "version": 1,
+                "attribution": "Garmin official product media",
+                "source": {
+                    "type": "OFFICIAL_PRODUCT_MEDIA",
+                    "brand": "Garmin",
+                    "attributionRequired": True,
+                },
+            }
         asset_url = row.get("asset_url")
         asset_scope = row.get("asset_scope") or "MODEL"
         if (
@@ -69,6 +85,8 @@ def build_device_catalog(
                 "asset": asset,
             }
         )
+        if source_asset is not None:
+            devices[-1]["sourceAsset"] = source_asset
 
     devices.sort(key=lambda item: item["id"])
     return {
@@ -105,6 +123,24 @@ def _public_https_url(value: Any) -> str | None:
     if value.startswith("https://") and "[" not in value and "](" not in value:
         return value
     return None
+
+
+def _official_source_image_url(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    parsed = urlsplit(value)
+    if (
+        parsed.scheme.lower() != "https"
+        or parsed.hostname is None
+        or parsed.hostname.lower() not in OFFICIAL_MEDIA_HOSTS
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.port is not None
+        or not parsed.path
+    ):
+        return None
+    return value
 
 
 def _format_timestamp(value: datetime) -> str:
