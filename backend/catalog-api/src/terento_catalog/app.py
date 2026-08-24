@@ -18,6 +18,8 @@ def main() -> None:
                 connect_timeout_seconds=settings.database_connect_timeout_seconds,
             ),
             asset_storage=AssetStorage(settings.asset_root),
+            compatibility_admin_username=settings.compatibility_admin_username,
+            compatibility_admin_password=settings.compatibility_admin_password,
         ),
         settings.host,
         settings.port,

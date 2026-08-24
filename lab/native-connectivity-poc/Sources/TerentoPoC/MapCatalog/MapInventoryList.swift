@@ -85,7 +85,7 @@ struct MapInventoryListBuilder: Sendable {
     func build(
         scan: MapScanResult,
         comparisons: [MapComparison],
-        selectedCatalogPackageID: String
+        selectedCatalogPackageID: String? = nil
     ) -> UnifiedMapInventory {
         let freizeitkarteEntries = buildFreizeitkarteEntries(
             scan: scan,
@@ -102,7 +102,7 @@ struct MapInventoryListBuilder: Sendable {
     private func buildFreizeitkarteEntries(
         scan: MapScanResult,
         comparisons: [MapComparison],
-        selectedCatalogPackageID: String
+        selectedCatalogPackageID: String?
     ) -> [MapInventoryEntry] {
         let installedGroups = groupedInstalledMaps(
             scan.installedMaps,

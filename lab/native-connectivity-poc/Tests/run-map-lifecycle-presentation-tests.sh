@@ -35,10 +35,18 @@ if grep -Eiq 'terento_mtp_|SendObject|DeleteObject|MoveObject|RenameObject' \
 fi
 
 if ! grep -Fq 'confirmationDialog' "$project_root/Sources/TerentoPoC/Views/ConnectScreen.swift" \
-    || ! grep -Fq 'role: .destructive' "$project_root/Sources/TerentoPoC/Views/ConnectScreen.swift" \
+    || ! grep -Fq '.destructive' "$project_root/Sources/TerentoPoC/Views/ConnectScreen.swift" \
     || ! grep -Fq '.accessibilityLabel(operation.message)' "$project_root/Sources/TerentoPoC/Views/ConnectScreen.swift" \
     || ! grep -Fq 'lifecycleEpoch' "$project_root/Sources/TerentoPoC/Installation/MapLifecycleViewModel.swift"; then
     print -u2 "FAIL: lifecycle UI safety/accessibility hooks are incomplete"
+    exit 1
+fi
+
+if grep -Fq 'ProgressView(value: operation.progress?.fractionCompleted ?? 0)' \
+    "$project_root/Sources/TerentoPoC/Views/ConnectScreen.swift" \
+    || ! grep -Fq '.progressViewStyle(.linear)' \
+        "$project_root/Sources/TerentoPoC/Views/ConnectScreen.swift"; then
+    print -u2 "FAIL: backup progress must be real when available and indeterminate otherwise"
     exit 1
 fi
 

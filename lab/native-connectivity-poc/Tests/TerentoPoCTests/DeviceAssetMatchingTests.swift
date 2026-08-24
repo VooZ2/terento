@@ -10,6 +10,8 @@ struct DeviceAssetMatchingTests {
         await testUnknownDeviceUsesFallback()
         await testCacheAndVersionRefresh()
         await testRealMTPIdentityResolvesModelSizeAsset()
+        await testOfficialGarminSourceImageFallback()
+        await testOfficialGarminPartNumberImageFallback()
 
         let exactURL = URL(string: "https://api.terento.app/assets/devices/garmin/fenix8-exact.webp")!
         let modelSizeURL = URL(string: "https://api.terento.app/assets/devices/garmin/fenix8-size.webp")!
@@ -111,7 +113,7 @@ struct DeviceAssetMatchingTests {
             ).isValid,
             "official product media without attribution is rejected"
         )
-        print("PASS: 18 device asset matching, cache, and compatibility tests")
+        print("PASS: 20 device asset matching, cache, and compatibility tests")
     }
 
     private static func testCompatibilityIsIndependent() {
@@ -325,6 +327,141 @@ struct DeviceAssetMatchingTests {
         )
     }
 
+    private static func testOfficialGarminSourceImageFallback() async {
+        let sourceURL = URL(string: "https://res.garmin.com/en/products/010-02891-00/g/cf-lg.jpg")!
+        let sourceAsset = DeviceCatalogSourceAsset(
+            url: sourceURL,
+            scope: "MODEL",
+            version: 1,
+            attribution: "Garmin official product media",
+            source: officialSource
+        )
+        let client = MockDeviceCatalogClient(
+            catalog: DeviceCatalogResponse(
+                catalogVersion: 2,
+                legal: nil,
+                devices: [
+                    record(
+                        id: "garmin-lily-2-active",
+                        family: "Lily",
+                        canonicalModel: "lily 2 active",
+                        caseSizeMm: nil,
+                        displayType: nil,
+                        asset: DeviceCatalogAsset(status: "MISSING", url: nil, scope: nil),
+                        sourceAsset: sourceAsset
+                    )
+                ]
+            ),
+            assetData: Data("garmin-source-image".utf8)
+        )
+        let cacheDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("terento-garmin-source-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: cacheDirectory) }
+
+        let lily = DeviceIdentity(
+            manufacturer: "Garmin",
+            model: "Lily 2 Active",
+            family: "Lily",
+            variant: nil,
+            usbVendorId: 0x091e,
+            usbProductId: 0x0001,
+            firmware: nil,
+            storageCapacity: 0,
+            freeSpace: 0
+        )
+        let result = await DeviceAssetResolver(
+            client: client,
+            cache: DeviceAssetCache(directory: cacheDirectory)
+        ).resolve(identity: lily)
+
+        expect(
+            !result.isFallback
+                && result.assetURL == sourceURL
+                && result.assetSource?.type == "OFFICIAL_PRODUCT_MEDIA"
+                && client.assetDownloadCount == 1,
+            "approved catalog absence falls back to the official Garmin source image"
+        )
+        expect(
+            DeviceAssetResolver.officialSourceURL(for: sourceURL) == sourceURL
+                && DeviceAssetResolver.officialSourceURL(
+                    for: URL(string: "https://example.com/watch.jpg")
+                ) == nil,
+            "official source image URLs are restricted to Garmin media hosting"
+        )
+    }
+
+    private static func testOfficialGarminPartNumberImageFallback() async {
+        let partNumber = "010-02891-00"
+        let expectedURL = URL(string: "https://res.garmin.com/en/products/010-02891-00/g/cf-lg.jpg")!
+        let client = MockDeviceCatalogClient(
+            catalog: DeviceCatalogResponse(
+                catalogVersion: 2,
+                legal: nil,
+                devices: [
+                    record(
+                        id: "garmin-lily-2-active",
+                        family: "Lily",
+                        canonicalModel: "lily 2 active",
+                        caseSizeMm: nil,
+                        displayType: nil,
+                        partNumber: partNumber,
+                        asset: DeviceCatalogAsset(status: "MISSING", url: nil, scope: nil)
+                    )
+                ]
+            ),
+            assetData: Data("garmin-part-number-image".utf8)
+        )
+        let cacheDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("terento-garmin-part-number-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: cacheDirectory) }
+        let result = await DeviceAssetResolver(
+            client: client,
+            cache: DeviceAssetCache(directory: cacheDirectory)
+        ).resolve(
+            identity: DeviceIdentity(
+                manufacturer: "Garmin",
+                model: "Lily 2 Active",
+                family: "Lily",
+                variant: nil,
+                usbVendorId: 0x091e,
+                usbProductId: 0x0001,
+                firmware: nil,
+                storageCapacity: 0,
+                freeSpace: 0
+            )
+        )
+        let lily = DeviceIdentity(
+            manufacturer: "Garmin",
+            model: "Lily 2 Active",
+            family: "Lily",
+            variant: nil,
+            usbVendorId: 0x091e,
+            usbProductId: 0x0001,
+            firmware: nil,
+            storageCapacity: 0,
+            freeSpace: 0
+        )
+
+        expect(
+            lily.catalogCanonicalModel == "lily 2 active",
+            "Lily 2 Active derives the catalog canonical model"
+        )
+        expect(
+            DeviceAssetResolver.matchingAsset(
+                identity: lily,
+                canonicalModel: lily.catalogCanonicalModel ?? "",
+                records: client.catalog.devices
+            )?.url == expectedURL,
+            "Lily 2 Active matches the derived official image URL"
+        )
+        expect(
+            !result.isFallback
+                && result.assetURL == expectedURL
+                && result.assetSource?.type == "OFFICIAL_PRODUCT_MEDIA",
+            "catalog part number derives an official Garmin image before sourceAsset is deployed"
+        )
+    }
+
     private static func identity(variant: String?) -> DeviceIdentity {
         DeviceIdentity(
             manufacturer: "Garmin",
@@ -345,7 +482,9 @@ struct DeviceAssetMatchingTests {
         canonicalModel: String,
         caseSizeMm: Int?,
         displayType: String?,
-        asset: DeviceCatalogAsset
+        partNumber: String? = nil,
+        asset: DeviceCatalogAsset,
+        sourceAsset: DeviceCatalogSourceAsset? = nil
     ) -> DeviceCatalogRecord {
         DeviceCatalogRecord(
             id: id,
@@ -356,7 +495,9 @@ struct DeviceAssetMatchingTests {
             variant: "",
             caseSizeMm: caseSizeMm,
             displayType: displayType,
-            asset: asset
+            partNumber: partNumber,
+            asset: asset,
+            sourceAsset: sourceAsset
         )
     }
 

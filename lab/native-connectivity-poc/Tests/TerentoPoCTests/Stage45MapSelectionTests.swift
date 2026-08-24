@@ -23,8 +23,14 @@ struct Stage45MapSelectionTests {
         testRegionalVariantsRemainDistinct()
         testInstalledAndAvailableListsAreSeparated()
         testAvailableSearchUsesDisplayAndRegionNames()
+        testSelectionSurvivesFilteredPresentation()
+        testInstalledPresentationUsesRecognizedInventoryOwnership()
+        testStorageBarProjectionIsBoundedAndSegmented()
+        testInstallReviewAvailabilityMatchesRealState()
+        testSelectedMapDividerPolicy()
+        testInstallationFlowPresentation()
 
-        print("PASS: 14 Stage 4.5 map selection tests")
+        print("PASS: 20 Stage 4.5 map selection tests")
     }
 
     private static func testCatalogRegionsProduceOneCanonicalList() {
@@ -375,6 +381,281 @@ struct Stage45MapSelectionTests {
                     .map(\.title) == ["Latvia"],
             "Available search filters display names and region identifiers"
         )
+
+        expect(
+            MapSelectionPresentationModel.available(items, query: "LITHUANIA")
+                .map(\.title) == ["Lithuania"]
+                && MapSelectionPresentationModel.available(items, query: "")
+                    .map(\.title) == ["Latvia", "Lithuania"],
+            "search is case-insensitive and clearing restores the full list"
+        )
+    }
+
+    private static func testSelectionSurvivesFilteredPresentation() {
+        let estonia = makeComparison(
+            region: "EST",
+            name: "Estonia",
+            status: .notInstalled,
+            size: 300
+        )
+        let france = makeComparison(
+            region: "FRA",
+            name: "France",
+            status: .notInstalled,
+            size: 200
+        )
+        let items = MapSelectionPlanner().items(
+            comparisons: [estonia, france],
+            preflightStatuses: [
+                estonia.id: .readyNewInstall,
+                france.id: .readyNewInstall
+            ],
+            recommendedRegionID: nil
+        )
+
+        let filtered = MapSelectionPresentationModel.available(items, query: "France")
+        let plan = MapSelectionPlanner().plan(
+            items: items,
+            selectedIDs: [estonia.id, france.id],
+            currentFreeSpace: 15 * gigabyte
+        )
+
+        expect(
+            filtered.map(\.title) == ["France"]
+                && Set(plan.selectedItems.map(\.id)) == Set([estonia.id, france.id])
+                && plan.storagePlan.selectedMapBytes == 500,
+            "filtering changes visible rows without rebuilding selected map state"
+        )
+    }
+
+    private static func testInstalledPresentationUsesRecognizedInventoryOwnership() {
+        let managed = makeComparison(
+            region: "LTU",
+            name: "Lithuania",
+            installedMap: makeInstalledMap(
+                region: "LTU",
+                managementState: .managedByTerento
+            ),
+            status: .upToDate
+        )
+        let external = makeComparison(
+            region: "LVA",
+            name: "Latvia",
+            installedMap: makeInstalledMap(
+                region: "LVA",
+                managementState: .detectedNotManaged
+            ),
+            status: .upToDate
+        )
+        let unknown = makeComparison(
+            region: "EST",
+            name: "Estonia",
+            installedMap: makeInstalledMap(
+                region: "EST",
+                managementState: .unknown
+            ),
+            status: .upToDate
+        )
+        let systemComparison = makeComparison(
+            region: "DEU",
+            name: "Garmin system map",
+            installedMap: makeInstalledMap(
+                region: "DEU",
+                provider: "Garmin",
+                managementState: .unknown
+            ),
+            status: .upToDate
+        )
+        let comparisons = [managed, external, unknown, systemComparison]
+        let items = MapSelectionPlanner().items(
+            comparisons: comparisons,
+            preflightStatuses: Dictionary(uniqueKeysWithValues: comparisons.map {
+                ($0.id, InstallationPreflightStatus.readyWithExistingMapConflict)
+            }),
+            recommendedRegionID: nil
+        )
+        let inventory = UnifiedMapInventory(
+            freizeitkarte: [managed, external, unknown].map {
+                MapInventoryEntry(
+                    key: $0.id,
+                    title: $0.regionName,
+                    catalogPackage: $0.catalogMap,
+                    comparison: $0,
+                    installedMaps: [$0.installedMap!],
+                    isSelectedCatalogMap: false
+                )
+            },
+            otherMaps: [
+                MapInventoryEntry(
+                    key: "garmin-system",
+                    title: "Garmin system map",
+                    catalogPackage: nil,
+                    comparison: nil,
+                    installedMaps: [
+                        makeInstalledMap(
+                            region: "DEU",
+                            provider: "Garmin",
+                            managementState: .unknown
+                        )
+                    ],
+                    isSelectedCatalogMap: false
+                )
+            ]
+        )
+
+        let installed = MapSelectionPresentationModel.supportedInstalled(
+            items,
+            inventory: inventory
+        )
+
+        expect(
+            installed.map(\.title) == ["Latvia", "Lithuania"],
+            "managed and external recognized maps appear while unknown and system maps stay out"
+        )
+    }
+
+    private static func testStorageBarProjectionIsBoundedAndSegmented() {
+        let plan = StoragePlanner(safetyReserve: 0).plan(
+            currentFreeSpace: 600,
+            selectedMapSizes: [100, 200]
+        )
+        let projection = StorageBarProjection(plan: plan, totalCapacity: 1_000)
+        let insufficientPlan = StoragePlanner(safetyReserve: 0).plan(
+            currentFreeSpace: 100,
+            selectedMapSizes: [200]
+        )
+        let insufficientProjection = StorageBarProjection(
+            plan: insufficientPlan,
+            totalCapacity: 1_000
+        )
+        let zeroCapacityProjection = StorageBarProjection(
+            plan: plan,
+            totalCapacity: 0
+        )
+
+        expect(
+            projection.existingUsedBytes == 400
+                && projection.selectedMapBytes == 300
+                && projection.freeAfterInstallationBytes == 300
+                && abs(projection.fraction(for: 400) - 0.4) < 0.0001
+                && abs(projection.fraction(for: 300) - 0.3) < 0.0001
+                && insufficientProjection.selectedMapBytes == 100
+                && insufficientProjection.freeAfterInstallationBytes == 0
+                && zeroCapacityProjection.existingUsedBytes == 0
+                && zeroCapacityProjection.selectedMapBytes == 0,
+            "storage bar segments aggregate selected bytes and stay within capacity"
+        )
+    }
+
+    private static func testInstallReviewAvailabilityMatchesRealState() {
+        let comparison = makeComparison(
+            region: "LVA",
+            name: "Latvia",
+            status: .notInstalled
+        )
+        let items = MapSelectionPlanner().items(
+            comparisons: [comparison],
+            preflightStatuses: [comparison.id: .readyNewInstall],
+            recommendedRegionID: nil
+        )
+        let plan = MapSelectionPlanner().plan(
+            items: items,
+            selectedIDs: [comparison.id],
+            currentFreeSpace: 15 * gigabyte
+        )
+        let resolver = InstallReviewAvailabilityResolver()
+        let readyToPrepare = resolver.resolve(
+            plan: plan,
+            deviceConnected: true,
+            supportedInstallFlow: true,
+            installationPhase: .idle,
+            hasValidatedArtifact: false,
+            operationBusy: false
+        )
+        let readyToInstall = resolver.resolve(
+            plan: plan,
+            deviceConnected: true,
+            supportedInstallFlow: true,
+            installationPhase: .awaitingConfirmation,
+            hasValidatedArtifact: true,
+            operationBusy: false
+        )
+        let blockedByDevice = resolver.resolve(
+            plan: plan,
+            deviceConnected: false,
+            supportedInstallFlow: true,
+            installationPhase: .idle,
+            hasValidatedArtifact: false,
+            operationBusy: false
+        )
+        let blockedByOperation = resolver.resolve(
+            plan: plan,
+            deviceConnected: true,
+            supportedInstallFlow: true,
+            installationPhase: .idle,
+            hasValidatedArtifact: false,
+            operationBusy: true
+        )
+        let blockedByUnsupportedFlow = resolver.resolve(
+            plan: plan,
+            deviceConnected: true,
+            supportedInstallFlow: false,
+            installationPhase: .idle,
+            hasValidatedArtifact: false,
+            operationBusy: false
+        )
+
+        expect(
+            readyToPrepare == .ready(.prepare)
+                && readyToInstall == .ready(.install)
+                && blockedByDevice.userReason == "Reconnect your Garmin to continue."
+                && blockedByOperation.userReason == "Another device operation is in progress."
+                && blockedByUnsupportedFlow.userReason == "This map cannot be installed safely on this Garmin yet.",
+            "Install maps is enabled only for an executable ready state and explains real blockers"
+        )
+    }
+
+    private static func testSelectedMapDividerPolicy() {
+        expect(
+            !MapRowDividerPolicy.showsDivider(at: 0, in: 1)
+                && MapRowDividerPolicy.showsDivider(at: 0, in: 2)
+                && !MapRowDividerPolicy.showsDivider(at: 1, in: 2)
+                && MapRowDividerPolicy.showsDivider(at: 0, in: 4)
+                && MapRowDividerPolicy.showsDivider(at: 2, in: 4)
+                && !MapRowDividerPolicy.showsDivider(at: 3, in: 4),
+            "selected-map dividers appear only between rows"
+        )
+    }
+
+    private static func testInstallationFlowPresentation() {
+        expect(
+            !InstallationFlowPresentation.hasStarted(.idle)
+                && InstallationFlowPresentation.isActive(.downloading)
+                && InstallationFlowPresentation.isActive(.awaitingConfirmation)
+                && InstallationFlowPresentation.hasStarted(.failed)
+                && !InstallationFlowPresentation.isActive(.failed)
+                && InstallationFlowPresentation.conflictMessage(
+                    flowOwnsOperation: true,
+                    independentOperationBusy: true
+                ) == nil
+                && InstallationFlowPresentation.conflictMessage(
+                    flowOwnsOperation: false,
+                    independentOperationBusy: true
+                ) == "Another device operation is in progress."
+                && InstallationFlowPresentation.shouldContinueAfterPreflight(
+                    userAuthorized: true,
+                    preflightSucceeded: true
+                )
+                && !InstallationFlowPresentation.shouldContinueAfterPreflight(
+                    userAuthorized: false,
+                    preflightSucceeded: true
+                )
+                && !InstallationFlowPresentation.shouldContinueAfterPreflight(
+                    userAuthorized: true,
+                    preflightSucceeded: false
+                ),
+            "active installation owns its UI state while independent MTP conflicts remain visible"
+        )
     }
 
     private static func makeComparison(
@@ -412,12 +693,15 @@ struct Stage45MapSelectionTests {
 
     private static func makeInstalledMap(
         region: String,
-        version: MapVersion = MapVersion(year: 2026, month: 5)!
+        version: MapVersion = MapVersion(year: 2026, month: 5)!,
+        provider: String = "Freizeitkarte",
+        managementState: MapManagementState = .detectedNotManaged,
+        metadataStatus: MapMetadataStatus = .parsed
     ) -> InstalledMap {
         let path = "/GARMIN/freizeitkarte-\(region.lowercased()).img"
         return InstalledMap(
             name: "Freizeitkarte \(region)",
-            provider: "Freizeitkarte",
+            provider: provider,
             region: region,
             family: "Freizeitkarte",
             rawVersion: "Release 26.05",
@@ -431,8 +715,8 @@ struct Stage45MapSelectionTests {
                 filename: URL(fileURLWithPath: path).lastPathComponent,
                 sizeBytes: 300
             ),
-            metadataStatus: .parsed,
-            managementState: .detectedNotManaged
+            metadataStatus: metadataStatus,
+            managementState: managementState
         )
     }
 

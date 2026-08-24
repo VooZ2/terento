@@ -10,6 +10,7 @@ from urllib.parse import urljoin
 
 CATEGORY_SOURCE_URL = "https://www.garmin.com/en-US/c/wearables-smartwatches/"
 MANUFACTURER = "Garmin"
+OFFICIAL_MEDIA_HOSTS = {"res.garmin.com"}
 
 
 class GarminCatalogParserError(ValueError):
@@ -23,6 +24,7 @@ class GarminProduct:
     product_url: str
     description: str
     group: bool
+    source_image_url: str | None = None
 
 
 @dataclass(frozen=True)
@@ -39,6 +41,7 @@ class NormalizedGarminDevice:
     product_url: str
     source_url: str = CATEGORY_SOURCE_URL
     part_number: str | None = None
+    source_image_url: str | None = None
 
 
 def parse_category_products(document: dict[str, Any]) -> list[GarminProduct]:
@@ -77,6 +80,10 @@ def parse_category_products(document: dict[str, Any]) -> list[GarminProduct]:
             )
         else:
             description = _clean_display_text(_text(description_value))
+        image = item.get("image")
+        source_image_url = None
+        if isinstance(image, dict):
+            source_image_url = _official_media_url(_text(image.get("large")))
         parsed.append(
             GarminProduct(
                 source_id=source_id,
@@ -84,6 +91,7 @@ def parse_category_products(document: dict[str, Any]) -> list[GarminProduct]:
                 product_url=product_url,
                 description=description,
                 group=False,
+                source_image_url=source_image_url,
             )
         )
 
@@ -135,6 +143,7 @@ def normalize_product(product: GarminProduct) -> NormalizedGarminDevice:
         case_size_mm=case_size_mm,
         display_type=display_type,
         product_url=product.product_url,
+        source_image_url=product.source_image_url,
     )
 
 
@@ -278,3 +287,13 @@ def _https_url(value: str) -> str | None:
         return None
     absolute = urljoin("https://www.garmin.com", value)
     return absolute if absolute.startswith("https://") else None
+
+
+def _official_media_url(value: str) -> str | None:
+    if not value:
+        return None
+    absolute = urljoin("https://www.garmin.com", value)
+    match = re.match(r"^https://([^/]+)(/.*)?$", absolute, re.IGNORECASE)
+    if match is None or match.group(1).lower() not in OFFICIAL_MEDIA_HOSTS:
+        return None
+    return absolute

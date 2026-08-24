@@ -19,6 +19,9 @@ class FakeGarminFetcher:
                 "name": "fēnix 8 – 47 mm, AMOLED",
                 "url": "https://www.garmin.com/en-US/p/1/",
                 "group": False,
+                "image": {
+                    "large": "https://res.garmin.com/en/products/010-02904-10/g/cf-lg.jpg"
+                },
             },
         ]
     }
@@ -46,6 +49,10 @@ class GarminCollectorTests(unittest.TestCase):
         self.assertEqual(result.discovered_products, 1)
         self.assertEqual(result.canonical_devices, 1)
         self.assertEqual(result.records[0].id, "garmin-fenix-8-47-amoled")
+        self.assertEqual(
+            result.records[0].source_image_url,
+            "https://res.garmin.com/en/products/010-02904-10/g/cf-lg.jpg",
+        )
         self.assertEqual(fetcher.text_urls, [])
         self.assertEqual(len(fetcher.json_urls), 1)
 

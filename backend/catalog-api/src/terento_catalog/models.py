@@ -90,3 +90,4 @@ class CollectedDevice:
     product_url: str
     source_url: str
     asset: DeviceAsset | None = None
+    source_image_url: str | None = None

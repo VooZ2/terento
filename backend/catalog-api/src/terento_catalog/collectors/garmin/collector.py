@@ -107,6 +107,7 @@ class GarminCollector:
                     part_number=part_number,
                     product_url=device.product_url,
                     source_url=self.category_source_url,
+                    source_image_url=device.source_image_url,
                 )
             )
 

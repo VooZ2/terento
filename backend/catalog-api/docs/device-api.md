@@ -55,9 +55,11 @@ display evidence cannot claim an AMOLED-only exact variant.
 
 ## Asset policy
 
-Garmin image URLs may appear in source HTML, but the weekly collector does not
-publish them automatically. A production API response can contain an asset
-only when a separate, explicit `AVAILABLE` record exists in `device_asset`
+Garmin image URLs may appear in the official category response. The weekly
+collector preserves only an HTTPS URL hosted by `res.garmin.com` as source
+metadata; it does not download, mirror, or proxy the image. A production API
+response can contain a Terento-controlled `asset` only when a separate,
+explicit `AVAILABLE` record exists in `device_asset`
 with the necessary source, license, checksum, storage, and scope metadata, and
 its URL is under the same API origin `https://api.terento.app/assets/devices/`.
 Supported scopes are `EXACT_VARIANT`, `MODEL_SIZE`, `MODEL`, `FAMILY`, and
@@ -95,10 +97,14 @@ text in every device row. The required Garmin notice is:
 > Terento is an independent open-source project and is not affiliated with Garmin.
 
 The macOS client reads `asset.url`, `asset.version`, `asset.scope`,
-`asset.source.type`, and `asset.source.attributionRequired` from this API. It
-does not scrape Garmin pages, download Garmin images directly, hardcode image
-URLs, or infer attribution. Invalid or incomplete source metadata is hidden as
-`MISSING`.
+`asset.source.type`, and `asset.source.attributionRequired` from this API. If
+no applicable controlled `asset` exists, it may use `sourceAsset.url` only when
+the URL is HTTPS, hosted by `res.garmin.com`, and carries valid Garmin source
+metadata. If `sourceAsset` is not yet present, the macOS client may derive the
+same official product-media path from a validated catalog part number. The
+client downloads that source image directly to the user's Mac and caches it
+locally; the catalog API never relays the image. Invalid or incomplete source
+metadata is ignored and the generic fallback remains.
 
 ## Asset delivery and fallback contract
 
@@ -107,7 +113,8 @@ The intended flow is:
 ```text
 weekly Garmin discovery → device catalog metadata
 approved asset → api.terento.app asset storage → macOS local cache
-no applicable approved asset → generic Terento watch fallback
+no approved asset → official Garmin sourceAsset → macOS local cache
+no applicable image → generic Terento watch fallback
 ```
 
 For an available asset, the client matches in this order:

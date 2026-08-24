@@ -7,7 +7,7 @@ import LibMTPBridge
 ///
 /// The bridge function used here validates the exact MTP object ID and path
 /// before reading it. This adapter deliberately exposes no write or delete
-/// operation and is not connected to SwiftUI in Stage 5.1.
+/// operation and reports verified transfer completion to the lifecycle UI.
 struct MTPReadBackupAdapter: MapLifecycleReadTransport, Sendable {
     private static let errorCapacity = 2048
     private let operationGate: MTPOperationGate

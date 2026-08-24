@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
@@ -35,6 +36,76 @@ class Database:
         with self.connection() as connection:
             connection.execute("SELECT 1")
         return True
+
+    def insert_compatibility_event(self, event: dict[str, Any]) -> bool:
+        query = """
+            INSERT INTO compatibility_evidence_event (
+                event_id, occurred_at, model, family, firmware_version,
+                usb_vendor_id, usb_product_id, transport, provider, region,
+                map_release, terento_version, macos_version, phase_outcome,
+                automatic_finishing_result, error_category, raw_event
+            ) VALUES (
+                %(id)s, %(timestamp)s, %(model)s, %(family)s, %(firmwareVersion)s,
+                %(usbVendorID)s, %(usbProductID)s, %(transport)s, %(provider)s, %(region)s,
+                %(mapRelease)s, %(terentoVersion)s, %(macOSVersion)s, %(phaseOutcome)s,
+                %(automaticFinishingResult)s, %(errorCategory)s, %(raw)s::jsonb
+            ) ON CONFLICT (event_id) DO NOTHING
+            RETURNING event_id
+        """
+        values = {**event, "raw": json.dumps(event, separators=(",", ":"))}
+        with self.connection() as connection:
+            inserted = connection.execute(query, values).fetchone() is not None
+            if event.get("userConfirmed"):
+                connection.execute(
+                    "INSERT INTO compatibility_evidence_confirmation (event_id) VALUES (%s) ON CONFLICT DO NOTHING",
+                    (event["id"],),
+                )
+        return inserted
+
+    def compatibility_statistics(self) -> list[dict[str, Any]]:
+        query = """
+            SELECT e.model,
+                string_agg(DISTINCT COALESCE(e.firmware_version, 'unknown'), ', ' ORDER BY COALESCE(e.firmware_version, 'unknown')) AS firmware_versions,
+                count(*) AS attempted_install_count,
+                count(*) FILTER (WHERE phase_outcome = 'SUCCEEDED' AND automatic_finishing_result = 'VERIFIED') AS successful_install_count,
+                count(*) FILTER (WHERE phase_outcome = 'FAILED') AS failed_install_count,
+                round(100.0 * count(*) FILTER (WHERE phase_outcome = 'SUCCEEDED' AND automatic_finishing_result = 'VERIFIED') / NULLIF(count(*), 0), 1) AS success_rate,
+                max(occurred_at) FILTER (WHERE phase_outcome = 'SUCCEEDED' AND automatic_finishing_result = 'VERIFIED') AS last_success,
+                max(occurred_at) FILTER (WHERE phase_outcome = 'FAILED') AS last_failure,
+                COALESCE((
+                    SELECT jsonb_object_agg(COALESCE(category, 'unknown'), category_count)
+                    FROM (
+                        SELECT x.error_category AS category, count(*) AS category_count
+                        FROM compatibility_evidence_event x
+                        WHERE x.model = e.model AND x.phase_outcome = 'FAILED'
+                        GROUP BY x.error_category
+                    ) category_counts
+                ), '{}'::jsonb) AS error_categories,
+                CASE
+                    WHEN count(*) FILTER (WHERE phase_outcome = 'SUCCEEDED' AND automatic_finishing_result = 'VERIFIED') >= 3
+                         AND count(DISTINCT firmware_version) FILTER (WHERE phase_outcome = 'SUCCEEDED' AND automatic_finishing_result = 'VERIFIED') >= 2
+                         AND COALESCE(r.physical_device_evidence_count, 0) >= 2 THEN 'VERIFIED'
+                    WHEN EXISTS (
+                        SELECT 1 FROM compatibility_evidence_event same_firmware
+                        WHERE same_firmware.model = e.model
+                          AND same_firmware.phase_outcome = 'SUCCEEDED'
+                          AND same_firmware.automatic_finishing_result = 'VERIFIED'
+                          AND NULLIF(same_firmware.firmware_version, '') IS NOT NULL
+                        GROUP BY same_firmware.firmware_version
+                        HAVING count(*) >= 3
+                    ) THEN 'SUPPORTED'
+                    WHEN count(*) FILTER (WHERE phase_outcome = 'SUCCEEDED' AND automatic_finishing_result = 'VERIFIED' AND NULLIF(firmware_version, '') IS NOT NULL) >= 1 THEN 'TESTED'
+                    ELSE 'UNKNOWN' END AS calculated_status,
+                COALESCE(r.physical_device_evidence_count, 0) AS physical_device_evidence_count,
+                COALESCE(r.review_notes, '') AS review_notes,
+                COALESCE(r.review_status, 'PENDING') AS review_status
+            FROM compatibility_evidence_event e
+            LEFT JOIN compatibility_model_review r ON r.model = e.model
+            GROUP BY e.model, r.physical_device_evidence_count, r.review_notes, r.review_status
+            ORDER BY e.model
+        """
+        with self.connection() as connection:
+            return list(connection.execute(query).fetchall())
 
     def catalog_snapshot(self) -> tuple[list[dict[str, Any]], datetime]:
         query = """
@@ -398,6 +469,7 @@ class Database:
                 dm.part_number,
                 dm.product_url,
                 dm.source_url,
+                dm.source_image_url,
                 dm.active,
                 dm.first_seen_at,
                 dm.last_seen_at,
@@ -506,8 +578,9 @@ class Database:
         model_query = """
             INSERT INTO device_model (
                 id, family_id, manufacturer, model, canonical_model, variant,
-                case_size_mm, display_type, part_number, product_url, source_url
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                case_size_mm, display_type, part_number, product_url, source_url,
+                source_image_url
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (id) DO UPDATE SET
                 family_id = EXCLUDED.family_id,
                 manufacturer = EXCLUDED.manufacturer,
@@ -519,6 +592,7 @@ class Database:
                 part_number = COALESCE(EXCLUDED.part_number, device_model.part_number),
                 product_url = EXCLUDED.product_url,
                 source_url = EXCLUDED.source_url,
+                source_image_url = EXCLUDED.source_image_url,
                 active = TRUE,
                 consecutive_missed_collections = 0,
                 last_seen_at = now(),
@@ -533,7 +607,8 @@ class Database:
                         device_model.display_type,
                         device_model.part_number,
                         device_model.product_url,
-                        device_model.source_url
+                        device_model.source_url,
+                        device_model.source_image_url
                     ) IS DISTINCT FROM (
                         EXCLUDED.family_id,
                         EXCLUDED.manufacturer,
@@ -544,7 +619,8 @@ class Database:
                         EXCLUDED.display_type,
                         COALESCE(EXCLUDED.part_number, device_model.part_number),
                         EXCLUDED.product_url,
-                        EXCLUDED.source_url
+                        EXCLUDED.source_url,
+                        EXCLUDED.source_image_url
                     ) OR device_model.active = FALSE
                     THEN now()
                     ELSE device_model.updated_at
@@ -579,6 +655,7 @@ class Database:
                         record.part_number,
                         record.product_url,
                         record.source_url,
+                        record.source_image_url,
                     ),
                 )
 

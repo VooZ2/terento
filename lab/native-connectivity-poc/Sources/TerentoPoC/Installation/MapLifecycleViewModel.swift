@@ -43,7 +43,9 @@ private final class MapLifecycleProgressRelay: @unchecked Sendable {
 ///
 /// SwiftUI receives only resolved availability and operation state. All
 /// ownership, manifest, exact-object, backup, storage, and transaction rules
-/// remain in the existing domain adapters.
+/// remain in the existing domain adapters. Manual removal does not create a
+/// local backup; the separate Backup action and Safe Update transaction retain
+/// their own backup behavior.
 @MainActor
 final class MapLifecycleViewModel: ObservableObject {
     @Published private(set) var operations: [String: MapLifecycleOperationState] = [:]
@@ -54,6 +56,7 @@ final class MapLifecycleViewModel: ObservableObject {
     private let mapEngine: MapEngine
     private let operationGate: MTPOperationGate
     private let operationController: MapLifecycleOperationController
+    private let recoveryStore: any TerentoFailedInstallRecoveryStore
     private let contextProvider: (String) -> MapLifecycleContext?
     private let connectedDeviceProvider: () -> Bool
     private let resolver = MapLifecyclePresentationResolver()
@@ -66,6 +69,7 @@ final class MapLifecycleViewModel: ObservableObject {
         mapEngine: MapEngine,
         operationGate: MTPOperationGate = .shared,
         operationController: MapLifecycleOperationController = MapLifecycleOperationController(),
+        recoveryStore: any TerentoFailedInstallRecoveryStore = LocalTerentoFailedInstallRecoveryStore(),
         contextProvider: ((String) -> MapLifecycleContext?)? = nil,
         connectedDeviceProvider: (() -> Bool)? = nil
     ) {
@@ -73,6 +77,7 @@ final class MapLifecycleViewModel: ObservableObject {
         self.mapEngine = mapEngine
         self.operationGate = operationGate
         self.operationController = operationController
+        self.recoveryStore = recoveryStore
         self.contextProvider = contextProvider ?? { [weak mapEngine] itemID in
             mapEngine?.lifecycleContext(for: itemID)
         }
@@ -127,7 +132,8 @@ final class MapLifecycleViewModel: ObservableObject {
             comparison: context.comparison,
             hasIntegrityRecord: context.hasIntegrityRecord,
             hasValidatedUpdateProfile: context.profile?.matches(context.identity) == true
-                && context.profile?.supportsMapWrite == true
+                && context.profile?.supportsMapWrite == true,
+            failedInstallRecovery: context.failedInstallRecovery != nil
         )
     }
 
@@ -154,7 +160,7 @@ final class MapLifecycleViewModel: ObservableObject {
             action: .backup,
             phase: .backingUp,
             progress: nil,
-            message: "Creating a verified local backup…"
+            message: "Creating a verified backup…"
         )
 
         let task = Task { [weak self] in
@@ -285,7 +291,11 @@ final class MapLifecycleViewModel: ObservableObject {
     var confirmationMessage: String {
         switch pendingConfirmation?.action {
         case .remove:
-            return "Terento will create or use a verified local backup, remove only the Terento-managed map, and verify that it is gone. Other maps will be left untouched."
+            if let itemID = pendingConfirmation?.itemID,
+               contextProvider(itemID)?.failedInstallRecovery != nil {
+                return "Terento will verify the exact map left by the failed installation, remove only that object, and confirm that it is gone."
+            }
+            return "Terento will verify the exact Terento-managed map, remove only that object, and confirm that it is gone. Other maps will be left untouched. No local backup is created."
         case .update:
             return "Terento will download and verify the new map, keep the current map as a backup, then replace only the exact Terento-managed object."
         case .backup, .none:
@@ -317,7 +327,7 @@ final class MapLifecycleViewModel: ObservableObject {
         let message: String
         switch phase {
         case .backingUp:
-            message = "Creating a verified local backup…"
+            message = "Creating a verified backup…"
         case .updating:
             message = action == .update
                 ? "Preparing the map update…"
@@ -354,23 +364,14 @@ final class MapLifecycleViewModel: ObservableObject {
         }
 
         guard let operationToken = operationController.begin() else { return }
-        let cachedBackup = backupResults[itemID]
         let operationEpoch = lifecycleEpoch
-        let relay = MapLifecycleProgressRelay(
-            viewModel: self,
-            itemID: itemID,
-            action: .remove,
-            epoch: operationEpoch
-        )
         inFlightOperationCount += 1
         setOperation(
             itemID: itemID,
             action: .remove,
-            phase: cachedBackup?.isSuccess == true ? .removing : .backingUp,
+            phase: .removing,
             progress: nil,
-            message: cachedBackup?.isSuccess == true
-                ? "Removing the Terento-managed map…"
-                : "Creating a verified local backup before removal…"
+            message: "Removing the Terento-managed map…"
         )
 
         let target = SafeDeleteTarget(
@@ -382,11 +383,10 @@ final class MapLifecycleViewModel: ObservableObject {
             expectedFilename: installedMap.sourceFile.filename,
             expectedSizeBytes: installedMap.sourceFile.sizeBytes,
             expectedSHA256: expectedHash,
-            backup: cachedBackup?.files.first,
+            backup: nil,
             expectedVersion: context.item.version
         )
-        let item = context.item
-        let expectedHashes = context.expectedSHA256ByItemID
+        let recoveryStore = self.recoveryStore
         let operationGate = self.operationGate
         let operationController = self.operationController
 
@@ -400,57 +400,22 @@ final class MapLifecycleViewModel: ObservableObject {
                         throw CancellationError()
                     }
 
-                    let backup: ReadBackupResult
-                    if let cachedBackup, cachedBackup.isSuccess {
-                        backup = cachedBackup
-                    } else {
-                        backup = ReadBackupAdapter(
-                            transport: MTPReadBackupAdapter(
-                                operationGate: operationGate,
-                                lifecycleLease: lease
+                    if let recoveryRecord = context.failedInstallRecovery {
+                        do {
+                            try recoveryStore.record(recoveryRecord)
+                        } catch {
+                            return SafeDeleteResult(
+                                mapIdentity: mapIdentity,
+                                status: .failedManifestCleanup,
+                                message: "Terento could not record the failed-install recovery safely. Nothing was changed."
                             )
-                        ).backup(
-                            target: ManagedMapBackupTarget(
-                                item: item,
-                                expectedSHA256ByItemID: expectedHashes
-                            ),
-                            onProgress: { progress in
-                                relay.send(
-                                    SafeUpdateProgress(
-                                        state: .backingUp,
-                                        bytesCompleted: progress.bytesTransferred,
-                                        totalBytes: progress.totalBytes,
-                                        bytesPerSecond: progress.bytesPerSecond
-                                    )
-                                )
-                            }
-                        )
-                    }
-
-                    guard backup.isSuccess, let verifiedBackup = backup.files.first else {
-                        return SafeDeleteResult(
-                            mapIdentity: mapIdentity,
-                            status: .blockedBackupRequired,
-                            message: backup.message
-                        )
+                        }
                     }
 
                     guard operationGate.isValid(lease) else {
                         throw CancellationError()
                     }
 
-                    let confirmedTarget = SafeDeleteTarget(
-                        deviceKey: target.deviceKey,
-                        mapIdentity: target.mapIdentity,
-                        ownership: target.ownership,
-                        objectID: target.objectID,
-                        expectedPath: target.expectedPath,
-                        expectedFilename: target.expectedFilename,
-                        expectedSizeBytes: target.expectedSizeBytes,
-                        expectedSHA256: target.expectedSHA256,
-                        backup: verifiedBackup,
-                        expectedVersion: target.expectedVersion
-                    )
                     let transport = MTPSafeDeleteTransport(
                         operationGate: operationGate,
                         lifecycleLease: lease
@@ -460,7 +425,7 @@ final class MapLifecycleViewModel: ObservableObject {
                         lifecycleLease: lease
                     )
                     return MapLifecycleManager().delete(
-                        target: confirmedTarget,
+                        target: target,
                         confirmed: true,
                         deviceConnected: operationGate.isValid(lease),
                         rescan: {
@@ -473,7 +438,11 @@ final class MapLifecycleViewModel: ObservableObject {
                                 )
                             }
                         },
-                        transport: transport
+                        transport: transport,
+                        ownershipSource: context.failedInstallRecovery == nil
+                            ? .manifest
+                            : .failedInstallRecovery,
+                        requiresVerifiedBackup: false
                     )
                 }
             } catch {

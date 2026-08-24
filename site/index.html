@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#F7F3EC">
-    <meta name="description" content="Terento is an open-source project exploring a simpler way to install community maps on modern Garmin smartwatches from a Mac.">
+    <meta name="description" content="Terento is an open-source project exploring a simpler way to install community maps on Garmin smartwatches from a Mac.">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://terento.app/">
     <link rel="alternate" hreflang="en" href="https://terento.app/">
@@ -22,26 +22,26 @@
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Terento">
     <meta property="og:title" content="Terento — Community Maps for Garmin Smartwatches on Mac">
-    <meta property="og:description" content="Terento is an open-source project exploring a simpler way to install community maps on modern Garmin smartwatches from a Mac.">
+    <meta property="og:description" content="Terento is an open-source project exploring a simpler way to install community maps on Garmin smartwatches from a Mac.">
     <meta property="og:url" content="https://terento.app/">
     <meta property="og:image" content="https://terento.app/og.svg">
     <meta property="og:image:type" content="image/svg+xml">
     <meta property="og:image:alt" content="Terento — Your device, ready for where you're going.">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Terento — Community Maps for Garmin Smartwatches on Mac">
-    <meta name="twitter:description" content="Terento is an open-source project exploring a simpler way to install community maps on modern Garmin smartwatches from a Mac.">
+    <meta name="twitter:description" content="Terento is an open-source project exploring a simpler way to install community maps on Garmin smartwatches from a Mac.">
     <meta name="twitter:image" content="https://terento.app/og.svg">
     <title>Terento — Community Maps for Garmin Smartwatches on Mac</title>
-    <link rel="stylesheet" href="/styles.css?v=20260824-1">
-    <script defer src="/language.js?v=20260823-1"></script>
-    <script defer src="https://stats.enduristas.lt/script.js" data-website-id="d8097a98-ffe4-478e-b212-9f06b5bcccbe"></script>
+    <link rel="stylesheet" href="/styles.css?v=20260824-5">
+    <script defer src="/language.js?v=20260824-2"></script>
+    <script defer src="/privacy-consent.js?v=20260824-1"></script>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "WebSite",
         "name": "Terento",
         "url": "https://terento.app/",
-        "description": "Terento is an open-source project exploring a simpler way to install community maps on modern Garmin smartwatches from a Mac."
+        "description": "Terento is an open-source project exploring a simpler way to install community maps on Garmin smartwatches from a Mac."
       }
     </script>
   </head>
@@ -57,13 +57,20 @@
         <nav aria-label="Primary navigation">
           <a href="#about">About</a>
           <a href="#faq">FAQ</a>
-          <span class="language-switcher" aria-label="Language selection">
-            <a class="language-option" href="/" data-language-switch="en" lang="en" aria-label="English" aria-current="page">🇬🇧</a>
-            <a class="language-option" href="/de/" data-language-switch="de" lang="de" aria-label="Deutsch">🇩🇪</a>
-            <a class="language-option" href="/fr/" data-language-switch="fr" lang="fr" aria-label="Français">🇫🇷</a>
-            <a class="language-option" href="/pl/" data-language-switch="pl" lang="pl" aria-label="Polski">🇵🇱</a>
-            <a class="language-option" href="/cs/" data-language-switch="cs" lang="cs" aria-label="Čeština">🇨🇿</a>
-            <a class="language-option" href="/it/" data-language-switch="it" lang="it" aria-label="Italiano">🇮🇹</a>
+          <span class="language-switcher">
+            <details class="language-menu">
+              <summary class="language-trigger" aria-label="Language selection">
+                <span class="language-current" aria-hidden="true">🇬🇧</span>
+              </summary>
+              <div class="language-options">
+                <a class="language-option" href="/" data-language-switch="en" lang="en" aria-label="English" aria-current="page"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a>
+                <a class="language-option" href="/de/" data-language-switch="de" lang="de" aria-label="Deutsch"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a>
+                <a class="language-option" href="/fr/" data-language-switch="fr" lang="fr" aria-label="Français"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a>
+                <a class="language-option" href="/pl/" data-language-switch="pl" lang="pl" aria-label="Polski"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a>
+                <a class="language-option" href="/cs/" data-language-switch="cs" lang="cs" aria-label="Čeština"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a>
+                <a class="language-option" href="/it/" data-language-switch="it" lang="it" aria-label="Italiano"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a>
+              </div>
+            </details>
           </span>
         </nav>
       </div>
@@ -75,7 +82,7 @@
           <div class="hero-copy">
             <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Open-source project · In development</p>
             <h1 id="hero-title">Your device, ready for where you're going.</h1>
-            <p class="hero-lede">Terento is an open-source project exploring a simpler way to install community maps on modern Garmin smartwatches from a Mac.</p>
+            <p class="hero-lede">Terento is an open-source project exploring a simpler way to install community maps on Garmin smartwatches from a Mac.</p>
             <p class="hero-status">Currently validating the first Garmin + macOS workflow.</p>
             <a class="text-link" href="#what-we-test">Learn what we're testing <span aria-hidden="true">↘</span></a>
           </div>
@@ -140,7 +147,7 @@
             <div class="testing-row">
               <span class="testing-label"><span class="mini-mark mark-lichen" aria-hidden="true"></span>Devices</span>
               <strong>Garmin smartwatches</strong>
-              <span>Modern smartwatches using MTP</span>
+              <span>Smartwatches using MTP</span>
             </div>
             <div class="testing-row">
               <span class="testing-label"><span class="mini-mark mark-stone" aria-hidden="true"></span>Maps</span>
@@ -172,11 +179,11 @@
             </details>
             <details>
               <summary>What is Terento trying to do?</summary>
-              <p>Make installing community maps on modern Garmin smartwatches from a Mac much simpler.</p>
+              <p>Make installing community maps on Garmin smartwatches from a Mac much simpler.</p>
             </details>
             <details>
               <summary>What are you testing first?</summary>
-              <p>Apple Silicon Macs, modern Garmin smartwatches using MTP, and Freizeitkarte.</p>
+              <p>Apple Silicon Macs, Garmin smartwatches using MTP, and Freizeitkarte.</p>
             </details>
             <details>
               <summary>Will Terento be open source?</summary>
@@ -208,8 +215,7 @@
         <p>In development</p>
       </div>
       <div class="shell footer-note">
-        <p>Visit statistics (Umami) do not use cookies. Details: <a href="/privacy/">Privacy</a>.</p>
-        <p>Garmin is a trademark of Garmin Ltd. Terento is an independent project and is not affiliated with or endorsed by Garmin.</p>
+        <p>Visit statistics (Umami) do not use cookies.</p>
       </div>
     </footer>
   </body>

@@ -17,9 +17,9 @@ private enum Stage52HardwareGateFailure: Error, LocalizedError, CustomStringConv
 
 /// Controlled Stage 5.2 physical gate.
 ///
-/// Without `--delete <exact-device-path>` this command only reads the device
-/// and creates a verified local backup. Deletion additionally requires typing
-/// the exact confirmation phrase shown by the command.
+/// Without `--delete <exact-device-path>` this command only reads the device.
+/// Deletion additionally requires typing the exact confirmation phrase shown
+/// by the command. Manual removal does not create a local backup.
 @main
 struct Stage52HardwareDeleteMain {
     private static let expectedVendorID: UInt16 = 0x091e
@@ -122,72 +122,9 @@ struct Stage52HardwareDeleteMain {
         print("Object size: \(deviceFile.sizeBytes) bytes")
         print("Manifest SHA-256: \(entry.sha256)")
 
-        let installedMap = InstalledMap(
-            name: "Freizeitkarte \(entry.regionId)",
-            provider: entry.providerId,
-            region: entry.regionId,
-            family: entry.providerId,
-            rawVersion: entry.version.description,
-            version: entry.version,
-            identifier: nil,
-            productId: nil,
-            familyId: nil,
-            sizeBytes: deviceFile.sizeBytes,
-            sourceFile: InstalledMapFile(
-                path: deviceFile.path,
-                filename: deviceFile.filename,
-                sizeBytes: deviceFile.sizeBytes,
-                itemID: deviceFile.itemID
-            ),
-            metadataStatus: .parsed,
-            managementState: .managedByTerento
-        )
-
-        let lifecycleItem = MapLifecycleItem(
-            id: "freizeitkarte:\(entry.regionId.lowercased())",
-            title: "Freizeitkarte \(entry.regionId)",
-            provider: entry.providerId,
-            region: entry.regionId,
-            version: entry.version,
-            rawVersion: entry.version.description,
-            sizeBytes: deviceFile.sizeBytes,
-            installedMaps: [installedMap],
-            classification: .terentoManaged
-        )
-
-        let backupResult = ReadBackupAdapter(
-            transport: MTPReadBackupAdapter()
-        ).backup(
-            target: ManagedMapBackupTarget(
-                item: lifecycleItem,
-                expectedSHA256ByItemID: [deviceFile.itemID: entry.sha256]
-            ),
-            onProgress: { progress in
-                print(
-                    String(
-                        format: "Backup progress: %.1f%% (%llu / %llu bytes)",
-                        progress.fractionCompleted * 100,
-                        progress.bytesTransferred,
-                        progress.totalBytes
-                    )
-                )
-            }
-        )
-
-        guard backupResult.status == .backupSuccess,
-              backupResult.files.count == 1,
-              let backup = backupResult.files.first else {
-            throw Stage52HardwareGateFailure.message(
-                "The required verified backup failed: \(backupResult.message) No map was changed."
-            )
-        }
-
-        print("Verified backup: \(backup.localURL.path)")
-        print("Backup size: \(backup.sizeBytes) bytes")
-        print("Backup SHA-256: \(backup.sha256)")
-
         guard deleteRequested else {
             print("Read-only preflight: PASS")
+            print("No local backup was created.")
             print("No DeleteObject operation was executed.")
             print("STAGE 5.2 HARDWARE GATE: READY_FOR_CONFIRMATION")
             print("To execute the delete gate later, rerun with --delete \(entry.devicePath)")
@@ -211,7 +148,7 @@ struct Stage52HardwareDeleteMain {
             expectedFilename: entry.filename,
             expectedSizeBytes: entry.sizeBytes,
             expectedSHA256: entry.sha256,
-            backup: backup
+            backup: nil
         )
 
         let result = MapLifecycleManager().delete(
@@ -228,7 +165,8 @@ struct Stage52HardwareDeleteMain {
                     )
                 }
             },
-            transport: MTPSafeDeleteTransport()
+            transport: MTPSafeDeleteTransport(),
+            requiresVerifiedBackup: false
         )
 
         guard result.isSuccess else {
@@ -259,9 +197,8 @@ struct Stage52HardwareDeleteMain {
         print("MTP operations executed:")
         print("- read device snapshot")
         print("- read file inventory")
-        print("- read exact object to local backup")
-        print("- read exact object again for pre-delete hash verification")
-        print("- DeleteObject for the exact verified object ID only")
+        print("- read exact object metadata for pre-delete identity verification")
+        print("- DeleteObject for the exact manifest-owned object ID only")
         print("- read file inventory for post-delete verification")
         print("SendObject / MoveObject / RenameObject: none")
         print("Other Garmin/device files changed: none")

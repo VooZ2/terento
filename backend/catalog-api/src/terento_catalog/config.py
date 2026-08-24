@@ -13,6 +13,8 @@ class Settings:
     port: int = 8000
     database_connect_timeout_seconds: int = 5
     collector_schedule_utc: str = "MON 03:00"
+    compatibility_admin_username: str | None = None
+    compatibility_admin_password: str | None = None
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -33,6 +35,8 @@ class Settings:
             collector_schedule_utc=os.environ.get(
                 "COLLECTOR_SCHEDULE_UTC", "MON 03:00"
             ),
+            compatibility_admin_username=os.environ.get("COMPATIBILITY_ADMIN_USERNAME") or None,
+            compatibility_admin_password=os.environ.get("COMPATIBILITY_ADMIN_PASSWORD") or None,
         )
 
 

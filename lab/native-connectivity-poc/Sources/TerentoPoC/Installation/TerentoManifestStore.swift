@@ -9,6 +9,9 @@ enum TerentoManifestStoreError: LocalizedError, Equatable, Sendable {
     case newerEntryExists
     case writeFailed
     case cleanupFailed
+    case unreadableRecovery
+    case recoveryWriteFailed
+    case recoveryCleanupFailed
 
     var errorDescription: String? {
         switch self {
@@ -26,6 +29,12 @@ enum TerentoManifestStoreError: LocalizedError, Equatable, Sendable {
             return "Terento could not record local ownership of the installed map."
         case .cleanupFailed:
             return "Terento could not remove the local ownership record after the device change."
+        case .unreadableRecovery:
+            return "Terento found a failed-install recovery record it could not safely read."
+        case .recoveryWriteFailed:
+            return "Terento could not record the failed installation safely."
+        case .recoveryCleanupFailed:
+            return "Terento could not remove the failed-install recovery record."
         }
     }
 }
@@ -45,6 +54,12 @@ protocol TerentoManifestUpdateStore: Sendable {
         oldFilename: String,
         newEntry: TerentoManifestEntry
     ) throws
+}
+
+protocol TerentoFailedInstallRecoveryStore: Sendable {
+    func read(deviceKey: String) throws -> [TerentoFailedInstallRecoveryRecord]
+    func record(_ record: TerentoFailedInstallRecoveryRecord) throws
+    func remove(deviceKey: String, devicePath: String, filename: String) throws -> Bool
 }
 
 struct LocalTerentoManifestStore: TerentoManifestStore, TerentoManifestCleanupStore, TerentoManifestUpdateStore, Sendable {
@@ -270,6 +285,185 @@ struct LocalTerentoManifestStore: TerentoManifestStore, TerentoManifestCleanupSt
         }
 
         let lockURL = manifestURL.appendingPathExtension("lock")
+        let descriptor = lockURL.path.withCString {
+            open($0, O_CREAT | O_RDWR, mode_t(0o600))
+        }
+        guard descriptor >= 0 else {
+            throw TerentoManifestStoreError.lockFailed
+        }
+        defer { close(descriptor) }
+
+        let lockOperation = exclusive ? LOCK_EX : LOCK_SH
+        guard flock(descriptor, lockOperation) == 0 else {
+            throw TerentoManifestStoreError.lockFailed
+        }
+        defer { _ = flock(descriptor, LOCK_UN) }
+
+        return try operation()
+    }
+}
+
+/// Stores only incomplete-install candidates. A candidate is never enough by
+/// itself to delete a device object: the recovery delete path still verifies
+/// the live object, size, full hash, backup, and post-delete absence.
+struct LocalTerentoFailedInstallRecoveryStore: TerentoFailedInstallRecoveryStore, Sendable {
+    private let rootDirectory: URL?
+
+    init(rootDirectory: URL? = nil) {
+        self.rootDirectory = rootDirectory
+    }
+
+    func read(deviceKey: String) throws -> [TerentoFailedInstallRecoveryRecord] {
+        let recoveryURL = try recoveryURL()
+        return try withRecoveryLock(at: recoveryURL, exclusive: false) {
+            guard FileManager.default.fileExists(atPath: recoveryURL.path) else {
+                return []
+            }
+
+            do {
+                let data = try Data(contentsOf: recoveryURL)
+                let file = try JSONDecoder().decode(
+                    TerentoFailedInstallRecoveryFile.self,
+                    from: data
+                )
+                return file.records.filter { $0.deviceKey == deviceKey }
+            } catch {
+                throw TerentoManifestStoreError.unreadableRecovery
+            }
+        }
+    }
+
+    func record(_ record: TerentoFailedInstallRecoveryRecord) throws {
+        let fileManager = FileManager.default
+        let recoveryURL = try recoveryURL()
+
+        do {
+            try withRecoveryLock(at: recoveryURL, exclusive: true) {
+                var records = try readUnlocked(recoveryURL)
+                records.removeAll {
+                    $0.deviceKey == record.deviceKey
+                        && $0.devicePath == record.devicePath
+                        && $0.filename == record.filename
+                }
+                records.append(record)
+
+                try fileManager.createDirectory(
+                    at: recoveryURL.deletingLastPathComponent(),
+                    withIntermediateDirectories: true
+                )
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                let data = try encoder.encode(
+                    TerentoFailedInstallRecoveryFile(records: records)
+                )
+                try data.write(to: recoveryURL, options: .atomic)
+            }
+        } catch let error as TerentoManifestStoreError {
+            throw error
+        } catch {
+            throw TerentoManifestStoreError.recoveryWriteFailed
+        }
+    }
+
+    func remove(
+        deviceKey: String,
+        devicePath: String,
+        filename: String
+    ) throws -> Bool {
+        let fileManager = FileManager.default
+        let recoveryURL = try recoveryURL()
+
+        do {
+            return try withRecoveryLock(at: recoveryURL, exclusive: true) {
+                guard fileManager.fileExists(atPath: recoveryURL.path) else {
+                    return false
+                }
+
+                var records = try readUnlocked(recoveryURL)
+                let originalCount = records.count
+                records.removeAll {
+                    $0.deviceKey == deviceKey
+                        && $0.devicePath == devicePath
+                        && $0.filename == filename
+                }
+                guard records.count != originalCount else {
+                    return false
+                }
+
+                if records.isEmpty {
+                    try fileManager.removeItem(at: recoveryURL)
+                } else {
+                    let encoder = JSONEncoder()
+                    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                    let data = try encoder.encode(
+                        TerentoFailedInstallRecoveryFile(records: records)
+                    )
+                    try data.write(to: recoveryURL, options: .atomic)
+                }
+
+                return true
+            }
+        } catch let error as TerentoManifestStoreError {
+            throw error
+        } catch {
+            throw TerentoManifestStoreError.recoveryCleanupFailed
+        }
+    }
+
+    private func recoveryURL() throws -> URL {
+        let applicationSupport: URL
+        if let rootDirectory {
+            applicationSupport = rootDirectory
+        } else {
+            let fileManager = FileManager.default
+            guard let directory = fileManager.urls(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask
+            ).first else {
+                throw TerentoManifestStoreError.applicationSupportUnavailable
+            }
+            applicationSupport = directory
+        }
+
+        return applicationSupport
+            .appendingPathComponent("Terento", isDirectory: true)
+            .appendingPathComponent("failed-install-recovery.json")
+    }
+
+    private func readUnlocked(
+        _ recoveryURL: URL
+    ) throws -> [TerentoFailedInstallRecoveryRecord] {
+        guard FileManager.default.fileExists(atPath: recoveryURL.path) else {
+            return []
+        }
+
+        do {
+            let data = try Data(contentsOf: recoveryURL)
+            return try JSONDecoder().decode(
+                TerentoFailedInstallRecoveryFile.self,
+                from: data
+            ).records
+        } catch {
+            throw TerentoManifestStoreError.unreadableRecovery
+        }
+    }
+
+    private func withRecoveryLock<Result>(
+        at recoveryURL: URL,
+        exclusive: Bool,
+        operation: () throws -> Result
+    ) throws -> Result {
+        let directory = recoveryURL.deletingLastPathComponent()
+        do {
+            try FileManager.default.createDirectory(
+                at: directory,
+                withIntermediateDirectories: true
+            )
+        } catch {
+            throw TerentoManifestStoreError.applicationSupportUnavailable
+        }
+
+        let lockURL = recoveryURL.appendingPathExtension("lock")
         let descriptor = lockURL.path.withCString {
             open($0, O_CREAT | O_RDWR, mode_t(0o600))
         }

@@ -1,0 +1,24 @@
+name: Installation failure
+description: Report a map installation that Terento could not complete
+title: "Installation failed: "
+labels: ["installation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Terento never submits this report automatically. Review the sanitized report copied by the app before pasting it below. Remove anything you do not want to share.
+  - type: textarea
+    id: diagnostic-report
+    attributes:
+      label: Sanitized diagnostic report
+      description: In Terento, choose Report issue; the report is copied before this form opens.
+      placeholder: Paste the sanitized report here.
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy-review
+    attributes:
+      label: Privacy review
+      options:
+        - label: I reviewed the pasted report and removed anything I do not want to share.
+          required: true

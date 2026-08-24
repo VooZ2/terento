@@ -5,7 +5,7 @@ enum UserFacingErrorMessage {
         let message = error.localizedDescription.lowercased()
 
         if message.contains("no mtp device") || message.contains("no garmin") {
-            return "No Garmin watch was found. Connect the watch and try again."
+            return "No Garmin watch was found. Connect it and try again."
         }
 
         if message.contains("more than one garmin") {
@@ -13,14 +13,14 @@ enum UserFacingErrorMessage {
         }
 
         if isBusyConnectionError(message) {
-            return "The Garmin watch is busy or another app is using it. Close other Garmin or file-transfer apps, disconnect the watch, reconnect it, and try again."
+            return "Your Garmin watch is busy. Close any other Garmin apps, reconnect it, and try again."
         }
 
         if message.contains("storage") {
-            return "The watch connected, but its storage could not be read. Disconnect it, reconnect it, and try again."
+            return "The watch connected, but it was not ready yet. Reconnect it and try again."
         }
 
-        return "The Garmin watch could not be read. Disconnect it, reconnect it, and try again."
+        return "The Garmin watch could not be connected. Reconnect it and try again."
     }
 
     static func forMapScan(_ error: Error) -> String {

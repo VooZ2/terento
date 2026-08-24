@@ -8,9 +8,10 @@ final class DeviceEngine: ObservableObject {
     @Published private(set) var compatibility: CompatibilityDecision?
     @Published private(set) var errorMessage: String?
     @Published private(set) var userErrorMessage: String?
-    @Published private(set) var readingMessage = "Connect your Garmin watch to this Mac. Nothing will be changed."
+    @Published private(set) var readingMessage = "Connect your Garmin watch to this Mac."
     @Published private(set) var readingAttempt = 0
     @Published private(set) var logLines: [String] = ["Ready for a read-only device check."]
+    @Published private(set) var operationAvailabilityRevision = 0
 
     private let logger = Logger(subsystem: "app.terento.native-connectivity-poc", category: "MTP")
     private let compatibilityEngine = CompatibilityEngine()
@@ -20,7 +21,7 @@ final class DeviceEngine: ObservableObject {
     private var activeTask: Task<Void, Never>?
     private var presenceTask: Task<Void, Never>?
     private var activeNativeReadTask: Task<DeviceSnapshot, Error>?
-    private var activeNativePresenceTask: Task<DeviceSnapshot, Error>?
+    private var activeNativePresenceTask: Task<Void, Never>?
     private var readingStatusTask: Task<Void, Never>?
     private var presenceMonitoringEnabled = true
 
@@ -41,24 +42,38 @@ final class DeviceEngine: ObservableObject {
     }
 
     var canEject: Bool {
-        hasConnectedDevice && operationGate.canEject
+        hasConnectedDevice
+            && activeNativeReadTask == nil
+            && activeNativePresenceTask == nil
+            && operationGate.canEject
     }
 
     /// The Maps engine pauses this while it owns the MTP transport. This
     /// prevents a background presence probe from opening a competing MTP
     /// session during inventory or installation work.
     func setPresenceMonitoringEnabled(_ enabled: Bool) {
+        guard presenceMonitoringEnabled != enabled else {
+            return
+        }
+
         presenceMonitoringEnabled = enabled
 
         guard enabled else {
             presenceTask?.cancel()
             presenceTask = nil
+            // The outer task may already be inside a detached synchronous
+            // MTP read. Cancelling only the loop leaves the shared operation
+            // gate occupied until that native read returns, which can make a
+            // legitimate map installation appear blocked indefinitely.
+            activeNativePresenceTask?.cancel()
+            publishOperationAvailability()
             return
         }
 
         if stateManager.canUseDevice {
             startPresenceMonitoring()
         }
+        publishOperationAvailability()
     }
 
     func cancelReadDevice() {
@@ -88,11 +103,11 @@ final class DeviceEngine: ObservableObject {
         errorMessage = nil
         userErrorMessage = nil
         readingAttempt = 0
-        readingMessage = "Looking for your Garmin watch… Nothing will be changed."
+        readingMessage = "Waiting for your Garmin…"
 
         readingStatusTask = Task { [weak self] in
             do {
-                try await Task.sleep(nanoseconds: 5_000_000_000)
+                try await Task.sleep(nanoseconds: 120_000_000_000)
             } catch {
                 return
             }
@@ -101,7 +116,13 @@ final class DeviceEngine: ObservableObject {
                 return
             }
 
-            self.readingMessage = "The watch is taking longer than expected. Close other Garmin or file-transfer apps, reconnect the watch, and keep this window open."
+            self.activeTask?.cancel()
+            self.activeNativeReadTask?.cancel()
+            self.stateManager.fail()
+            self.state = self.stateManager.state
+            self.userErrorMessage = "We couldn't connect to your Garmin within 2 minutes. Reconnect it and try again."
+            self.readingMessage = "Connection timed out after 2 minutes."
+            self.appendLog("Connection check timed out after 2 minutes")
         }
         appendLog("Starting read-only MTP check")
 
@@ -205,8 +226,8 @@ final class DeviceEngine: ObservableObject {
             attempt += 1
             readingAttempt = attempt
             readingMessage = attempt == 1
-                ? "Looking for your Garmin watch… Nothing will be changed."
-                : "Still looking for your Garmin watch… Attempt \(attempt). Retrying automatically."
+                ? "Waiting for your Garmin…"
+                : "Still waiting for your Garmin…"
 
             do {
                 return try await readNativeSnapshot(transport: transport, presence: false)
@@ -247,11 +268,20 @@ final class DeviceEngine: ObservableObject {
                         return
                     }
 
-                    let probe = try await self.readNativeSnapshot(transport: transport, presence: true)
+                    if let presenceTransport = transport as? any DevicePresenceReader {
+                        let probe = try await self.readNativePresence(transport: presenceTransport)
 
-                    guard Self.isSamePhysicalDevice(expected: expectedSnapshot, actual: probe) else {
-                        self.handleUnexpectedDisconnect("A different device was detected")
-                        return
+                        guard Self.isSamePhysicalDevice(expected: expectedSnapshot, actual: probe) else {
+                            self.handleUnexpectedDisconnect("A different device was detected")
+                            return
+                        }
+                    } else {
+                        let probe = try await self.readNativeSnapshot(transport: transport, presence: true)
+
+                        guard Self.isSamePhysicalDevice(expected: expectedSnapshot, actual: probe) else {
+                            self.handleUnexpectedDisconnect("A different device was detected")
+                            return
+                        }
                     }
                 } catch {
                     guard !Task.isCancelled else { return }
@@ -307,7 +337,9 @@ final class DeviceEngine: ObservableObject {
         }
 
         if presence {
-            activeNativePresenceTask = task
+            activeNativePresenceTask = Task {
+                _ = try? await task.value
+            }
         } else {
             activeNativeReadTask = task
         }
@@ -317,7 +349,12 @@ final class DeviceEngine: ObservableObject {
                 activeNativePresenceTask = nil
             } else {
                 activeNativeReadTask = nil
+                publishOperationAvailability()
             }
+        }
+
+        if !presence {
+            publishOperationAvailability()
         }
 
         return try await withTaskCancellationHandler {
@@ -327,10 +364,45 @@ final class DeviceEngine: ObservableObject {
         }
     }
 
+    private func readNativePresence(
+        transport: any DevicePresenceReader
+    ) async throws -> DevicePresence {
+        let task = Task.detached(priority: .utility) {
+            try transport.readPresence()
+        }
+
+        activeNativePresenceTask = Task {
+            _ = try? await task.value
+        }
+
+        defer {
+            activeNativePresenceTask = nil
+        }
+
+        return try await withTaskCancellationHandler {
+            try await task.value
+        } onCancel: {
+            task.cancel()
+        }
+    }
+
+    private func publishOperationAvailability() {
+        operationAvailabilityRevision &+= 1
+    }
+
     private func clearCachedDevice() {
         snapshot = nil
         compatibility = nil
         readingAttempt = 0
+    }
+
+    private static func isSamePhysicalDevice(
+        expected: DeviceSnapshot?,
+        actual: DevicePresence
+    ) -> Bool {
+        guard let expected else { return false }
+        return expected.vendorID == actual.vendorID
+            && (actual.productID == 0 || expected.productID == actual.productID)
     }
 
     private static func isSamePhysicalDevice(

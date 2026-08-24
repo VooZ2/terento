@@ -28,7 +28,7 @@ enum InstallationFailure: String, Codable, Error, Equatable, Sendable {
         case .existingMapConflict:
             return "This map is already on the Garmin device. No replacement was attempted."
         case .sourceArtifactInvalid:
-            return "The prepared Latvia map did not match the validated source artifact."
+            return "The prepared map did not match the validated source artifact."
         case .insufficientSpace:
             return "There is not enough free space for a safe installation."
         case .unknownInstallSize:
@@ -54,7 +54,7 @@ enum InstallationFailure: String, Codable, Error, Equatable, Sendable {
         case .remoteFileMissing:
             return "The transferred map could not be found on the Garmin device."
         case .metadataMismatch:
-            return "The transferred map identity did not match Freizeitkarte Latvia."
+            return "The transferred map identity did not match the selected Freizeitkarte map."
         case .manifestFailed:
             return "The map was transferred, but local ownership could not be recorded safely."
         case .protectionViolation:
@@ -91,6 +91,46 @@ struct TerentoManifestEntry: Codable, Equatable, Sendable {
 
 struct TerentoManifest: Codable, Equatable, Sendable {
     let entries: [TerentoManifestEntry]
+}
+
+/// A durable marker for a device object created by an installation that did
+/// not reach manifest recording. It is not normal ownership; it exists only
+/// so a failed write can be recovered after the app or device reconnects.
+struct TerentoFailedInstallRecoveryRecord: Codable, Equatable, Sendable {
+    let deviceKey: String
+    let packageID: String
+    let providerId: String
+    let regionId: String
+    let version: MapVersion
+    let devicePath: String
+    let filename: String
+    let sizeBytes: UInt64
+    let sha256: String
+    let createdAt: Date
+
+    func matches(
+        deviceKey: String,
+        path: String,
+        filename: String,
+        sizeBytes: UInt64,
+        providerId: String?,
+        regionId: String?,
+        version: MapVersion?
+    ) -> Bool {
+        self.deviceKey == deviceKey
+            && devicePath == path
+            && self.filename == filename
+            && self.sizeBytes == sizeBytes
+            && MapIdentity.normalizeProvider(self.providerId)
+                == MapIdentity.normalizeProvider(providerId ?? "")
+            && MapIdentity.normalizeRegion(self.regionId)
+                == MapIdentity.normalizeRegion(regionId ?? "")
+            && self.version == version
+    }
+}
+
+struct TerentoFailedInstallRecoveryFile: Codable, Equatable, Sendable {
+    let records: [TerentoFailedInstallRecoveryRecord]
 }
 
 enum InstallationProcessPhase: String, Equatable, Sendable {

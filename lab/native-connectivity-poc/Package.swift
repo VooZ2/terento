@@ -5,6 +5,8 @@ import PackageDescription
 
 let libMTPPrefix = ProcessInfo.processInfo.environment["LIBMTP_PREFIX"]
     ?? "/opt/homebrew/opt/libmtp"
+let libUSBPrefix = ProcessInfo.processInfo.environment["LIBUSB_PREFIX"]
+    ?? "/opt/homebrew/opt/libusb"
 
 let package = Package(
     name: "TerentoPoC",
@@ -31,7 +33,10 @@ let package = Package(
             path: "Sources/LibMTPBridge",
             publicHeadersPath: "include",
             cSettings: [
-                .unsafeFlags(["-I\(libMTPPrefix)/include"])
+                .unsafeFlags([
+                    "-I\(libMTPPrefix)/include",
+                    "-I\(libUSBPrefix)/include/libusb-1.0"
+                ])
             ]
         ),
         .executableTarget(
@@ -44,7 +49,9 @@ let package = Package(
             linkerSettings: [
                 .unsafeFlags([
                     "-L\(libMTPPrefix)/lib",
-                    "-lmtp"
+                    "-lmtp",
+                    "-L\(libUSBPrefix)/lib",
+                    "-lusb-1.0"
                 ])
             ]
         ),
@@ -55,7 +62,9 @@ let package = Package(
             linkerSettings: [
                 .unsafeFlags([
                     "-L\(libMTPPrefix)/lib",
-                    "-lmtp"
+                    "-lmtp",
+                    "-L\(libUSBPrefix)/lib",
+                    "-lusb-1.0"
                 ])
             ]
         ),
@@ -66,7 +75,9 @@ let package = Package(
             linkerSettings: [
                 .unsafeFlags([
                     "-L\(libMTPPrefix)/lib",
-                    "-lmtp"
+                    "-lmtp",
+                    "-L\(libUSBPrefix)/lib",
+                    "-lusb-1.0"
                 ])
             ]
         )

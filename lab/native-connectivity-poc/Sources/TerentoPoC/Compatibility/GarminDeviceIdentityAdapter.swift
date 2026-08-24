@@ -42,6 +42,42 @@ struct GarminDeviceIdentityAdapter: Sendable {
             return "quatix"
         }
 
+        if normalized.contains("d2 mach") {
+            return "D2 Mach"
+        }
+
+        if normalized.contains("descent") {
+            return "Descent"
+        }
+
+        if normalized.contains("lily") {
+            return "Lily"
+        }
+
+        if normalized.contains("venu") {
+            return "Venu"
+        }
+
+        if normalized.contains("marq") {
+            return "MARQ"
+        }
+
+        if normalized.contains("instinct") {
+            return "Instinct"
+        }
+
+        if normalized.contains("approach") {
+            return "Approach"
+        }
+
+        if normalized.contains("vivoactive") {
+            return "vívoactive"
+        }
+
+        if normalized.contains("vivomove") {
+            return "vívomove"
+        }
+
         return nil
     }
 
@@ -58,6 +94,14 @@ struct GarminDeviceIdentityAdapter: Sendable {
 
         if normalized.contains("47mm") {
             return "47mm"
+        }
+
+        if let match = normalized.range(of: #"\b\d{2}\s*mm\b"#, options: .regularExpression) {
+            return normalized[match].replacingOccurrences(of: " ", with: "")
+        }
+
+        if normalized.contains("solar") {
+            return "Solar"
         }
 
         return nil

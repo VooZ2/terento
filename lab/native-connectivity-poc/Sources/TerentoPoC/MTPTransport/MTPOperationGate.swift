@@ -41,6 +41,7 @@ final class MTPOperationGate: @unchecked Sendable {
 
     private let condition = NSCondition()
     private var activeNativeOperation: UUID?
+    private var activeNativeOperationKind: MTPOperationKind?
     private var lifecycleLeaseID: UUID?
     private var lifecycleInvalidated = false
 
@@ -63,7 +64,17 @@ final class MTPOperationGate: @unchecked Sendable {
     }
 
     var canEject: Bool {
-        !isBusy
+        condition.lock()
+        defer { condition.unlock() }
+
+        guard lifecycleLeaseID == nil else {
+            return false
+        }
+
+        // A presence probe is read-only and cancellable at the Swift layer.
+        // Safe Eject cancels that probe and waits for the synchronous native
+        // call to release its handle before showing "Safe to disconnect".
+        return activeNativeOperation == nil || activeNativeOperationKind == .presence
     }
 
     /// Reserves the lifecycle boundary without holding the native-operation
@@ -147,6 +158,7 @@ final class MTPOperationGate: @unchecked Sendable {
             }
 
             activeNativeOperation = operationID
+            activeNativeOperationKind = kind
             condition.unlock()
         } catch {
             condition.unlock()
@@ -157,6 +169,7 @@ final class MTPOperationGate: @unchecked Sendable {
             condition.lock()
             if activeNativeOperation == operationID {
                 activeNativeOperation = nil
+                activeNativeOperationKind = nil
                 condition.broadcast()
             }
             condition.unlock()
@@ -207,10 +220,8 @@ final class MTPOperationGate: @unchecked Sendable {
     }
 
     private func beginAsyncOperation(kind: MTPOperationKind) async throws -> UUID {
-        _ = kind
-
         while !Task.isCancelled {
-            if let operationID = claimAsyncOperationIfAvailable() {
+            if let operationID = claimAsyncOperationIfAvailable(kind: kind) {
                 return operationID
             }
 
@@ -220,7 +231,7 @@ final class MTPOperationGate: @unchecked Sendable {
         throw CancellationError()
     }
 
-    private func claimAsyncOperationIfAvailable() -> UUID? {
+    private func claimAsyncOperationIfAvailable(kind: MTPOperationKind) -> UUID? {
         condition.lock()
         defer { condition.unlock() }
 
@@ -230,6 +241,7 @@ final class MTPOperationGate: @unchecked Sendable {
 
         let operationID = UUID()
         activeNativeOperation = operationID
+        activeNativeOperationKind = kind
         return operationID
     }
 
@@ -237,6 +249,7 @@ final class MTPOperationGate: @unchecked Sendable {
         condition.lock()
         if activeNativeOperation == operationID {
             activeNativeOperation = nil
+            activeNativeOperationKind = nil
             condition.broadcast()
         }
         condition.unlock()

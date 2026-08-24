@@ -99,6 +99,7 @@ band, and material SKUs are collapsed by the collector.
 | `part_number` | `text` | Representative official part number, nullable |
 | `product_url` | `text` | Official Garmin product page |
 | `source_url` | `text` | Official category source |
+| `source_image_url` | `text` | Allowlisted direct official Garmin media URL (`res.garmin.com`), nullable |
 | `active` | `boolean` | Conservative current/ historical state |
 | `consecutive_missed_collections` | `smallint` | Absence counter used by inactive policy |
 | `first_seen_at`, `last_seen_at` | `timestamptz` | Observation timestamps |
@@ -146,10 +147,17 @@ to the existing API domain. Migration `006` restores a PostgreSQL unique
 constraint for model-owned assets and a separate unique index for the global
 generic asset. Migration `007` adds the explicit source type/brand/attribution
 contract and fail-closes legacy available rows without that metadata. Separate
-asset records are allowed for different scopes. The Garmin collector never
+asset records are allowed for different scopes. Migration `008` adds the
+allowlisted nullable `device_model.source_image_url` used for direct official
+Garmin source media metadata. The Garmin collector never
 approves these rows automatically. The public device catalog also exposes one
 reusable top-level `legal` object containing the Garmin/Terento independence
 notice; it is not duplicated in each device row.
+
+`source_image_url` is not a `device_asset` row and is never downloaded by the
+catalog service. When valid, the API exposes it as `sourceAsset` with
+`OFFICIAL_PRODUCT_MEDIA` metadata. The macOS client may fetch it directly and
+cache it locally only after validating the host and HTTPS URL.
 
 ## `device_collection_run`
 

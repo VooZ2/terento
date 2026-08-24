@@ -32,6 +32,43 @@ private final class MockManifestStore: TerentoManifestStore, @unchecked Sendable
     }
 }
 
+private final class MockFailedInstallRecoveryStore: TerentoFailedInstallRecoveryStore, @unchecked Sendable {
+    var records: [TerentoFailedInstallRecoveryRecord] = []
+    var shouldFail = false
+
+    func read(deviceKey: String) throws -> [TerentoFailedInstallRecoveryRecord] {
+        if shouldFail {
+            throw TerentoManifestStoreError.unreadableRecovery
+        }
+        return records.filter { $0.deviceKey == deviceKey }
+    }
+
+    func record(_ record: TerentoFailedInstallRecoveryRecord) throws {
+        if shouldFail {
+            throw TerentoManifestStoreError.recoveryWriteFailed
+        }
+        records.removeAll {
+            $0.deviceKey == record.deviceKey
+                && $0.devicePath == record.devicePath
+                && $0.filename == record.filename
+        }
+        records.append(record)
+    }
+
+    func remove(deviceKey: String, devicePath: String, filename: String) throws -> Bool {
+        if shouldFail {
+            throw TerentoManifestStoreError.recoveryCleanupFailed
+        }
+        let count = records.count
+        records.removeAll {
+            $0.deviceKey == deviceKey
+                && $0.devicePath == devicePath
+                && $0.filename == filename
+        }
+        return records.count != count
+    }
+}
+
 private final class MockDeviceReader: InstallationDeviceReader, @unchecked Sendable {
     var files: [DeviceFile]
     private let initialFiles: [DeviceFile]
@@ -102,6 +139,7 @@ private final class MockTransport: MapInstallationTransport, @unchecked Sendable
     var deleteCount = 0
     var deletedFilename: String?
     var deletedItemID: UInt32?
+    var deleteError: InstallationTransportError?
 
     init(remoteData: Data) {
         self.remoteData = remoteData
@@ -164,6 +202,9 @@ private final class MockTransport: MapInstallationTransport, @unchecked Sendable
         deleteCount += 1
         deletedFilename = targetFilename
         deletedItemID = expectedItemID
+        if let deleteError {
+            throw deleteError
+        }
     }
 }
 
@@ -175,7 +216,8 @@ struct Stage42InstallationTests {
         passed += testExistingLatviaBlocksNewInstall()
         passed += testInsufficientSpaceBlocksWrite()
         passed += testUnknownProfileBlocksWrite()
-        passed += testTargetPolicyRejectsUnsupportedRegionBeforeTransport()
+        passed += testTargetPolicyRejectsUnsupportedProviderBeforeTransport()
+        passed += testTargetPolicyAcceptsAnotherFreizeitkarteRegion()
         passed += testCoordinatorUsesBusyTransactionGate()
         passed += testNonValidatedArtifactBlocksWrite()
         passed += testConfirmationIsRequiredBeforeWrite()
@@ -190,6 +232,8 @@ struct Stage42InstallationTests {
         passed += testLithuaniaIsNeverCleanupTarget()
         passed += testSuccessMarksMapManaged()
         passed += testSuccessRequiresHashVerification()
+        passed += testSuccessClearsFailedInstallRecoveryRecord()
+        passed += testFailedVerificationPreservesRecoveryRecordWhenCleanupFails()
 
         print("PASS: \(passed) Stage 4.2 installation tests")
     }
@@ -240,13 +284,13 @@ struct Stage42InstallationTests {
         )
     }
 
-    private static func testTargetPolicyRejectsUnsupportedRegionBeforeTransport() -> Int {
+    private static func testTargetPolicyRejectsUnsupportedProviderBeforeTransport() -> Int {
         let harness = makeHarness()
         let unsupportedPackage = MapPackage(
-            id: "freizeitkarte-ltu",
-            providerId: "freizeitkarte",
+            id: "opentopomap-ltu",
+            providerId: "opentopomap",
             regionId: "LTU",
-            name: "Lithuania",
+            name: "OpenTopoMap Lithuania",
             version: MapVersion(year: 2026, month: 5)!,
             sizeBytes: 100,
             sourceURL: nil,
@@ -260,14 +304,35 @@ struct Stage42InstallationTests {
                 artifact: harness.request.artifact!,
                 profile: harness.request.profile
             )
-            return expect(false, "unsupported Stage 4.2 region is rejected before transport")
+            return expect(false, "unsupported provider is rejected before transport")
         } catch Stage42TargetPolicyError.unsupportedPackage {
             return expect(
                 harness.transport.writeCount == 0,
-                "unsupported Stage 4.2 region is rejected before transport"
+                "unsupported provider is rejected before transport"
             )
         } catch {
-            return expect(false, "unsupported Stage 4.2 region is rejected before transport")
+            return expect(false, "unsupported provider is rejected before transport")
+        }
+    }
+
+    private static func testTargetPolicyAcceptsAnotherFreizeitkarteRegion() -> Int {
+        let data = Harness.makeIMG(region: "LTU")
+        let package = Harness.makePackage(
+            size: UInt64(data.count),
+            regionID: "LTU",
+            name: "Lithuania"
+        )
+        let artifact = Harness.makeArtifact(package: package, data: data)
+
+        do {
+            try Stage42TargetPolicy().validate(
+                package: package,
+                artifact: artifact,
+                profile: DeviceInstallProfileRegistry.local.profiles.first
+            )
+            return expect(true, "another validated Freizeitkarte region is accepted")
+        } catch {
+            return expect(false, "another validated Freizeitkarte region is accepted")
         }
     }
 
@@ -447,9 +512,36 @@ struct Stage42InstallationTests {
         )
     }
 
+    private static func testSuccessClearsFailedInstallRecoveryRecord() -> Int {
+        let harness = makeHarness()
+        let result = harness.run()
+        return expect(
+            result.status == .installVerified
+                && harness.recovery.records.isEmpty,
+            "successful install clears the failed-install recovery record"
+        )
+    }
+
+    private static func testFailedVerificationPreservesRecoveryRecordWhenCleanupFails() -> Int {
+        let harness = makeHarness()
+        harness.transport.readBackMode = .missing
+        harness.transport.deleteError = .operationFailed(
+            "cleanup failed",
+            createdItemID: nil
+        )
+        let result = harness.run()
+        return expect(
+            result.status == .failed
+                && result.failure == .cleanupFailed
+                && harness.recovery.records.count == 1,
+            "failed verification preserves recovery when exact cleanup fails"
+        )
+    }
+
     private final class Harness {
         let transport: MockTransport
         let manifest: MockManifestStore
+        let recovery: MockFailedInstallRecoveryStore
         let request: MapInstallationRequest
         let remoteData: Data
 
@@ -464,6 +556,7 @@ struct Stage42InstallationTests {
             remoteData = Self.makeIMG()
             transport = MockTransport(remoteData: remoteData)
             manifest = MockManifestStore()
+            recovery = MockFailedInstallRecoveryStore()
 
             let package = Self.makePackage(size: UInt64(remoteData.count))
             let installed = installedLatvia ? Self.makeLatviaMap(size: UInt64(remoteData.count)) : nil
@@ -505,6 +598,7 @@ struct Stage42InstallationTests {
                 transport: transport,
                 deviceReader: reader,
                 manifestStore: manifest,
+                recoveryStore: recovery,
                 transactionGate: transactionGate,
                 now: { Date(timeIntervalSince1970: 0) }
             ).run(request)
@@ -524,41 +618,49 @@ struct Stage42InstallationTests {
             )
         }
 
-        private static func makePackage(size: UInt64) -> MapPackage {
+        fileprivate static func makePackage(
+            size: UInt64,
+            regionID: String = "LVA",
+            name: String = "Latvia"
+        ) -> MapPackage {
             MapPackage(
-                id: "freizeitkarte-lva",
+                id: "freizeitkarte-\(regionID.lowercased())",
                 providerId: "freizeitkarte",
-                regionId: "LVA",
-                name: "Latvia",
+                regionId: regionID,
+                name: name,
                 version: MapVersion(year: 2026, month: 5)!,
                 sizeBytes: 100,
-                sourceURL: URL(string: "https://provider.example/LVA.zip"),
+                sourceURL: URL(string: "https://provider.example/\(regionID).zip"),
                 releaseDate: "2026-05-03",
-                identifier: "LVA+",
+                identifier: "\(regionID)+",
                 downloadSizeBytes: 100,
                 installSizeBytes: size
             )
         }
 
-        private static func makeArtifact(package: MapPackage, data: Data) -> ValidatedMapArtifact {
+        fileprivate static func makeArtifact(package: MapPackage, data: Data) -> ValidatedMapArtifact {
             let sourceURL = FileManager.default.temporaryDirectory
                 .appendingPathComponent("terento-stage42-mock-source-(UUID().uuidString).img")
             try! data.write(to: sourceURL, options: .atomic)
             let digest = SHA256.hash(data: data)
                 .map { String(format: "%02x", $0) }
                 .joined()
+            let targetFilename = try! TerentoManagedFilenameGenerator().filename(
+                providerId: package.providerId,
+                regionId: package.regionId
+            )
             return ValidatedMapArtifact(
                 provider: "Freizeitkarte",
-                region: "LVA",
-                canonicalRegion: "Latvia",
+                region: package.regionId,
+                canonicalRegion: package.name,
                 rawRelease: "Release 26.05",
                 version: package.version,
                 localIMGURL: sourceURL,
                 installSizeBytes: UInt64(data.count),
                 sha256: digest,
-                sourcePackageURL: URL(string: "https://provider.example/LVA.zip")!,
+                sourcePackageURL: package.sourceURL!,
                 catalogPackageID: package.id,
-                targetFilename: "terento_freizeitkarte_lva.img",
+                targetFilename: targetFilename,
                 downloadSizeBytes: 100,
                 catalogDownloadSizeBytes: 100,
                 downloadSizeMatchesCatalog: true,
@@ -566,11 +668,11 @@ struct Stage42InstallationTests {
             )
         }
 
-        private static func makeIMG() -> Data {
+        fileprivate static func makeIMG(region: String = "LVA") -> Data {
             var bytes = [UInt8](repeating: 0, count: 4096)
             write("DSKIMG", at: 0x10, into: &bytes)
             write("GARMIN", at: 0x41, into: &bytes)
-            write("Freizeitkarte_LVA+", at: 0x100, into: &bytes)
+            write("Freizeitkarte_\(region)+", at: 0x100, into: &bytes)
             write("Release 26.05", at: 0x200, into: &bytes)
             return Data(bytes)
         }

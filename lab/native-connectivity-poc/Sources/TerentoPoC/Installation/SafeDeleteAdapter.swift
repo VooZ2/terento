@@ -84,7 +84,11 @@ struct SafeDeleteTarget: Equatable, Sendable {
 
 struct SafeDeleteDeviceObject: Equatable, Sendable {
     let file: InstalledMapFile
-    let sha256: String
+    /// A native transport may omit the content hash when the caller has
+    /// explicitly selected metadata-only removal. The manifest hash is still
+    /// required on the target; this value is present for backup-protected
+    /// flows such as Safe Update.
+    let sha256: String?
 }
 
 /// Transport boundary for SafeDeleteAdapter. The inspect operation must be
@@ -107,14 +111,17 @@ struct SafeDeleteResult: Equatable, Sendable {
 
 /// Isolated Stage 5.2 safety coordinator. It is deliberately not connected
 /// to SwiftUI or MapEngine. A caller must provide explicit confirmation, a
-/// live device check, a verified Stage 5.1 backup, and a post-delete rescan.
+/// live device check, exact manifest identity, and a post-delete rescan.
+/// Backup-protected callers such as Safe Update opt into the additional
+/// verified-backup gate.
 struct SafeDeleteAdapter: Sendable {
     func delete(
         target: SafeDeleteTarget,
         confirmed: Bool,
         deviceConnected: Bool,
         rescan: @escaping @Sendable () throws -> [InstalledMapFile],
-        transport: any SafeDeleteTransport
+        transport: any SafeDeleteTransport,
+        requiresVerifiedBackup: Bool = true
     ) -> SafeDeleteResult {
         guard confirmed else {
             return result(
@@ -148,20 +155,22 @@ struct SafeDeleteAdapter: Sendable {
             )
         }
 
-        guard let backup = target.backup else {
-            return result(
-                target,
-                status: .blockedBackupRequired,
-                message: "A verified local backup is required before this map can be removed."
-            )
-        }
+        if requiresVerifiedBackup {
+            guard let backup = target.backup else {
+                return result(
+                    target,
+                    status: .blockedBackupRequired,
+                    message: "A verified local backup is required before this map can be removed."
+                )
+            }
 
-        guard isVerifiedBackup(backup, for: target) else {
-            return result(
-                target,
-                status: .blockedIntegrityCheck,
-                message: "The local backup did not match the managed map. Nothing was removed."
-            )
+            guard isVerifiedBackup(backup, for: target) else {
+                return result(
+                    target,
+                    status: .blockedIntegrityCheck,
+                    message: "The local backup did not match the managed map. Nothing was removed."
+                )
+            }
         }
 
         let current: SafeDeleteDeviceObject
@@ -231,15 +240,21 @@ struct SafeDeleteAdapter: Sendable {
         }
 
         let generator = TerentoManagedFilenameGenerator()
-        if let expectedVersion = target.expectedVersion {
-            return generator.isVersioned(
-                target.expectedFilename,
-                providerId: target.mapIdentity.provider,
-                regionId: target.mapIdentity.region,
-                version: expectedVersion
-            )
+        if let expectedVersion = target.expectedVersion,
+           generator.isVersioned(
+               target.expectedFilename,
+               providerId: target.mapIdentity.provider,
+               regionId: target.mapIdentity.region,
+               version: expectedVersion
+           ) {
+            return true
         }
 
+        // Stage 4.2 created the first managed map with the stable base name,
+        // while later safe-update flows use a versioned name. The installed
+        // metadata can contain a release even when the filename is still the
+        // original base name. A release value must not turn that valid base
+        // target into an ownership failure.
         guard generator.isValid(target.expectedFilename),
               let generated = try? generator.filename(
                   providerId: target.mapIdentity.provider,
@@ -297,7 +312,8 @@ struct SafeDeleteAdapter: Sendable {
             && object.file.path == target.expectedPath
             && object.file.filename == target.expectedFilename
             && object.file.sizeBytes == target.expectedSizeBytes
-            && normalizedHash(object.sha256) == normalizedHash(target.expectedSHA256)
+            && (object.sha256 == nil
+                || normalizedHash(object.sha256 ?? "") == normalizedHash(target.expectedSHA256))
     }
 
     private func status(for error: SafeDeleteTransportError) -> SafeDeleteStatus {
@@ -355,16 +371,24 @@ struct SafeDeleteAdapter: Sendable {
 
 /// Lifecycle-facing façade kept separate from SwiftUI and MapEngine. Future
 /// UI confirmation can call this façade without gaining direct MTP access.
+enum MapLifecycleOwnershipSource: Sendable {
+    case manifest
+    case failedInstallRecovery
+}
+
 struct MapLifecycleManager: Sendable {
     private let safeDeleteAdapter: SafeDeleteAdapter
     private let manifestCleanupStore: any TerentoManifestCleanupStore
+    private let recoveryCleanupStore: any TerentoFailedInstallRecoveryStore
 
     init(
         safeDeleteAdapter: SafeDeleteAdapter = SafeDeleteAdapter(),
-        manifestCleanupStore: any TerentoManifestCleanupStore = LocalTerentoManifestStore()
+        manifestCleanupStore: any TerentoManifestCleanupStore = LocalTerentoManifestStore(),
+        recoveryCleanupStore: any TerentoFailedInstallRecoveryStore = LocalTerentoFailedInstallRecoveryStore()
     ) {
         self.safeDeleteAdapter = safeDeleteAdapter
         self.manifestCleanupStore = manifestCleanupStore
+        self.recoveryCleanupStore = recoveryCleanupStore
     }
 
     func delete(
@@ -372,14 +396,17 @@ struct MapLifecycleManager: Sendable {
         confirmed: Bool,
         deviceConnected: Bool,
         rescan: @escaping @Sendable () throws -> [InstalledMapFile],
-        transport: any SafeDeleteTransport
+        transport: any SafeDeleteTransport,
+        ownershipSource: MapLifecycleOwnershipSource = .manifest,
+        requiresVerifiedBackup: Bool = true
     ) -> SafeDeleteResult {
         let result = safeDeleteAdapter.delete(
             target: target,
             confirmed: confirmed,
             deviceConnected: deviceConnected,
             rescan: rescan,
-            transport: transport
+            transport: transport,
+            requiresVerifiedBackup: requiresVerifiedBackup
         )
 
         guard result.isSuccess else {
@@ -387,15 +414,39 @@ struct MapLifecycleManager: Sendable {
         }
 
         do {
-            guard try manifestCleanupStore.remove(
-                deviceKey: target.deviceKey,
-                devicePath: target.expectedPath,
-                filename: target.expectedFilename
-            ) else {
+            let manifestRemoved: Bool
+            let recoveryRemoved: Bool
+
+            switch ownershipSource {
+            case .manifest:
+                manifestRemoved = try manifestCleanupStore.remove(
+                    deviceKey: target.deviceKey,
+                    devicePath: target.expectedPath,
+                    filename: target.expectedFilename
+                )
+                recoveryRemoved = false
+            case .failedInstallRecovery:
+                recoveryRemoved = try recoveryCleanupStore.remove(
+                    deviceKey: target.deviceKey,
+                    devicePath: target.expectedPath,
+                    filename: target.expectedFilename
+                )
+                // A stale recovery marker may coexist with a manifest if a
+                // successful install could not clean its marker. Remove both
+                // local records when the device object has already passed
+                // the full Safe Delete verification.
+                manifestRemoved = (try? manifestCleanupStore.remove(
+                    deviceKey: target.deviceKey,
+                    devicePath: target.expectedPath,
+                    filename: target.expectedFilename
+                )) == true
+            }
+
+            guard manifestRemoved || recoveryRemoved else {
                 return SafeDeleteResult(
                     mapIdentity: target.mapIdentity,
                     status: .failedManifestCleanup,
-                    message: "The map was removed from the Garmin device, but its local ownership record was not found. Do not retry blindly."
+                    message: "The map was removed from the Garmin device, but its local recovery record was not found. Do not retry blindly."
                 )
             }
         } catch {

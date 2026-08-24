@@ -7,6 +7,7 @@ struct DevicePresentation: Equatable, Sendable {
     let deviceName: String
     let variant: String
     let compatibility: CompatibilityStatus
+    let mapSupport: GarminMapSupportStatus
     let asset: ResolvedDeviceAsset
     let assetURL: URL?
     let cachedAssetURL: URL?
@@ -27,6 +28,7 @@ struct DevicePresentation: Equatable, Sendable {
         self.deviceName = deviceName
         self.variant = variant
         self.compatibility = compatibility
+        self.mapSupport = GarminMapCapabilityRegistry.local.evaluate(identity: identity)
         self.asset = asset
         self.assetURL = asset.assetURL
         self.cachedAssetURL = asset.cachedFileURL

@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import json
 import logging
+import base64
+import hmac
+import time
+from collections import defaultdict, deque
 from datetime import datetime, timezone
 from email.utils import format_datetime, parsedate_to_datetime
 from http import HTTPStatus
@@ -17,16 +21,21 @@ from .device_catalog import (
     device_catalog_etag,
     serialize_device_catalog,
 )
+from .compatibility_evidence import EvidenceValidationError, operator_page, validate_event
 
 LOGGER = logging.getLogger(__name__)
 
 
 class CatalogService:
     def __init__(
-        self, database: Database, asset_storage: AssetStorage | None = None
+        self, database: Database, asset_storage: AssetStorage | None = None,
+        compatibility_admin_username: str | None = None,
+        compatibility_admin_password: str | None = None,
     ) -> None:
         self.database = database
         self.asset_storage = asset_storage
+        self.compatibility_admin_username = compatibility_admin_username
+        self.compatibility_admin_password = compatibility_admin_password
 
     def health(self) -> bool:
         return self.database.health()
@@ -46,8 +55,26 @@ class CatalogService:
             return None
         return self.asset_storage.read_public_path(request_path)
 
+    def receive_compatibility_event(self, body: bytes) -> bool:
+        return self.database.insert_compatibility_event(validate_event(body))
+
+    def compatibility_statistics(self) -> list[dict[str, Any]]:
+        return self.database.compatibility_statistics()
+
+    def operator_authorized(self, authorization: str | None) -> bool:
+        if not self.compatibility_admin_username or not self.compatibility_admin_password or not authorization:
+            return False
+        try:
+            scheme, encoded = authorization.split(" ", 1)
+            username, password = base64.b64decode(encoded).decode().split(":", 1)
+        except (ValueError, UnicodeDecodeError):
+            return False
+        return scheme.lower() == "basic" and hmac.compare_digest(username, self.compatibility_admin_username) and hmac.compare_digest(password, self.compatibility_admin_password)
+
 
 def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
+    request_times: dict[str, deque[float]] = defaultdict(deque)
+
     class Handler(BaseHTTPRequestHandler):
         server_version = "TerentoCatalog"
         sys_version = ""
@@ -57,6 +84,13 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
 
         def do_HEAD(self) -> None:  # noqa: N802 - stdlib handler API
             self._handle_request(send_body=False)
+
+        def do_POST(self) -> None:  # noqa: N802 - stdlib handler API
+            request_path = urlsplit(self.path).path
+            if request_path != "/compatibility/events":
+                self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=True, cache_control="no-store")
+                return
+            self._handle_compatibility_event()
 
         def _handle_request(self, *, send_body: bool) -> None:
             request_path = urlsplit(self.path).path
@@ -80,12 +114,75 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if request_path.startswith("/assets/devices/"):
                 self._handle_asset(request_path, send_body=send_body)
                 return
+            if request_path == "/internal/compatibility/":
+                self._handle_operator_page(send_body=send_body)
+                return
             self._send_json(
                 HTTPStatus.NOT_FOUND,
                 {"error": "not_found"},
                 send_body=send_body,
                 cache_control="no-store",
             )
+
+        def _handle_compatibility_event(self) -> None:
+            client = self.client_address[0]
+            now = time.monotonic()
+            recent = request_times[client]
+            while recent and recent[0] < now - 60:
+                recent.popleft()
+            if len(recent) >= 30:
+                self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store")
+                return
+            recent.append(now)
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                length = 0
+            if length <= 0 or length > 16_384:
+                self._send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"error": "invalid_size"}, send_body=True, cache_control="no-store")
+                return
+            try:
+                inserted = service.receive_compatibility_event(self.rfile.read(length))
+            except EvidenceValidationError as exc:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)}, send_body=True, cache_control="no-store")
+                return
+            except Exception:
+                LOGGER.exception("compatibility event storage failed")
+                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "evidence_unavailable"}, send_body=True, cache_control="no-store")
+                return
+            self._send_json(HTTPStatus.CREATED if inserted else HTTPStatus.OK, {"status": "stored" if inserted else "duplicate"}, send_body=True, cache_control="no-store")
+
+        def _handle_operator_page(self, *, send_body: bool) -> None:
+            client = f"operator:{self.client_address[0]}"
+            now = time.monotonic()
+            recent = request_times[client]
+            while recent and recent[0] < now - 300:
+                recent.popleft()
+            if len(recent) >= 10:
+                self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=send_body, cache_control="no-store")
+                return
+            if not service.operator_authorized(self.headers.get("Authorization")):
+                recent.append(now)
+                self.send_response(HTTPStatus.UNAUTHORIZED)
+                self.send_header("WWW-Authenticate", 'Basic realm="Terento compatibility", charset="UTF-8"')
+                self._common_headers(cache_control="no-store", content_length=0)
+                self.send_header("X-Robots-Tag", "noindex, nofollow")
+                self.end_headers()
+                return
+            recent.clear()
+            try:
+                body = operator_page(service.compatibility_statistics())
+            except Exception:
+                LOGGER.exception("compatibility statistics failed")
+                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "statistics_unavailable"}, send_body=send_body, cache_control="no-store")
+                return
+            self.send_response(HTTPStatus.OK)
+            self._common_headers(cache_control="no-store", content_type="text/html; charset=utf-8", content_length=len(body))
+            self.send_header("X-Robots-Tag", "noindex, nofollow")
+            self.send_header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'")
+            self.end_headers()
+            if send_body:
+                self.wfile.write(body)
 
         def _handle_asset(self, request_path: str, *, send_body: bool) -> None:
             try:

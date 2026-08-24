@@ -13,6 +13,18 @@
     }
   };
 
+  const updateLanguageMenu = (language) => {
+    const currentLink = document.querySelector(`[data-language-switch="${language}"]`);
+    const currentFlag = currentLink?.querySelector(".language-option-flag")?.textContent.trim() || "";
+    const currentName = currentLink?.getAttribute("aria-label") || language.toUpperCase();
+    document.querySelectorAll("[data-language-current]").forEach((element) => {
+      element.textContent = currentFlag;
+      element.setAttribute("aria-label", currentName);
+    });
+  };
+
+  window.TerentoLanguageMenu = { update: updateLanguageMenu };
+
   const languageFromTag = (tag) => {
     if (typeof tag !== "string") return null;
     const language = tag.toLowerCase().split("-")[0];
@@ -82,6 +94,7 @@
   document.querySelectorAll("[data-language-switch]").forEach((link) => {
     link.addEventListener("click", () => {
       saveLanguagePreference(link.dataset.languageSwitch);
+      link.closest(".language-menu")?.removeAttribute("open");
     });
   });
 

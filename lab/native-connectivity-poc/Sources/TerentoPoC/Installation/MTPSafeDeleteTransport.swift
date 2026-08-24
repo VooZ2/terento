@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 
 /// Native Stage 5.2 transport. Inspection is read-only; deletion delegates
@@ -16,27 +15,20 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
     }
 
     func inspectExactObject(_ target: SafeDeleteTarget) throws -> SafeDeleteDeviceObject {
-        let temporaryURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("terento-safe-delete-check-\(UUID().uuidString).img")
-        defer { try? FileManager.default.removeItem(at: temporaryURL) }
-
-        let transfer: MapLifecycleBackupTransfer
+        let files: [DeviceFile]
         do {
-            transfer = try MTPReadBackupAdapter(
+            files = try MTPTransport(
                 operationGate: operationGate,
                 lifecycleLease: lifecycleLease
-            ).readExistingFile(
-                file: target.sourceFile,
-                to: temporaryURL,
-                onProgress: nil
-            )
-        } catch let error as MapLifecycleReadTransportError {
+            ).readFileInventory()
+        } catch let error as MTPTransportError {
             switch error {
-            case .deviceDisconnected(let message):
-                throw SafeDeleteTransportError.deviceDisconnected(message)
             case .readFailed(let message):
                 if isMissing(message) {
                     throw SafeDeleteTransportError.objectNotFound
+                }
+                if isDisconnected(message) {
+                    throw SafeDeleteTransportError.deviceDisconnected(message)
                 }
                 throw SafeDeleteTransportError.operationFailed(message)
             }
@@ -44,24 +36,38 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
             throw SafeDeleteTransportError.operationFailed(error.localizedDescription)
         }
 
-        guard transfer.itemID == target.objectID,
-              transfer.sourcePath == target.expectedPath,
-              transfer.reportedSizeBytes == target.expectedSizeBytes else {
+        let candidates = files.filter {
+            $0.itemID == target.objectID || $0.path == target.expectedPath
+        }
+        guard !candidates.isEmpty else {
+            throw SafeDeleteTransportError.objectNotFound
+        }
+
+        guard candidates.count == 1,
+              let object = candidates.first,
+              object.itemID == target.objectID,
+              object.path == target.expectedPath,
+              object.filename == target.expectedFilename,
+              object.sizeBytes == target.expectedSizeBytes,
+              !object.isFolder else {
             throw SafeDeleteTransportError.operationFailed(
                 "The exact managed map identity changed during validation."
             )
         }
 
-        do {
-            return SafeDeleteDeviceObject(
-                file: target.sourceFile,
-                sha256: try sha256(of: temporaryURL)
-            )
-        } catch {
-            throw SafeDeleteTransportError.operationFailed(
-                "The managed map could not be hashed before removal."
-            )
-        }
+        // Manual Remove intentionally does not copy or hash the complete map.
+        // The manifest SHA-256 remains an integrity record, while the live MTP
+        // inventory proves the exact object identity and metadata immediately
+        // before DeleteObject.
+        return SafeDeleteDeviceObject(
+            file: InstalledMapFile(
+                path: object.path,
+                filename: object.filename,
+                sizeBytes: object.sizeBytes,
+                itemID: object.itemID
+            ),
+            sha256: nil
+        )
     }
 
     func deleteExactObject(_ target: SafeDeleteTarget) throws {
@@ -94,21 +100,11 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
             || value.contains("no such file")
     }
 
-    private func sha256(of url: URL) throws -> String {
-        let handle = try FileHandle(forReadingFrom: url)
-        defer { try? handle.close() }
-
-        var hasher = SHA256()
-        while true {
-            let data = try handle.read(upToCount: 1024 * 1024) ?? Data()
-            if data.isEmpty {
-                break
-            }
-            hasher.update(data: data)
-        }
-
-        return hasher.finalize()
-            .map { String(format: "%02x", $0) }
-            .joined()
+    private func isDisconnected(_ message: String) -> Bool {
+        let value = message.lowercased()
+        return value.contains("disconnected")
+            || value.contains("not connected")
+            || value.contains("no device")
     }
+
 }

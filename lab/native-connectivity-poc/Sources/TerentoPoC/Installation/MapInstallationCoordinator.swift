@@ -30,7 +30,7 @@ struct MapInstallationDiagnostics: Equatable, Sendable {
     let freeSpaceBefore: UInt64
     let freeSpaceAfter: UInt64?
     let projectedFreeSpace: UInt64?
-    let lithuaniaProtectionPassed: Bool
+    let existingFilesProtectionPassed: Bool
     let unrelatedFilesProtectionPassed: Bool
 
     static func initial(
@@ -54,7 +54,7 @@ struct MapInstallationDiagnostics: Equatable, Sendable {
             freeSpaceBefore: freeSpaceBefore,
             freeSpaceAfter: nil,
             projectedFreeSpace: nil,
-            lithuaniaProtectionPassed: true,
+            existingFilesProtectionPassed: true,
             unrelatedFilesProtectionPassed: true
         )
     }
@@ -98,13 +98,13 @@ enum Stage42ArtifactValidationError: LocalizedError, Equatable, Sendable {
     var errorDescription: String? {
         switch self {
         case .notExactValidatedArtifact:
-            return "The source is not the exact validated Stage 4.1 Latvia artifact."
+            return "The source is not the exact validated catalog artifact."
         case .sourceUnavailable:
-            return "The validated Latvia IMG is no longer available locally."
+            return "The validated map IMG is no longer available locally."
         case .sourceSizeMismatch:
-            return "The local Latvia IMG size changed after validation."
+            return "The local map IMG size changed after validation."
         case .sourceHashMismatch:
-            return "The local Latvia IMG contents changed after validation."
+            return "The local map IMG contents changed after validation."
         }
     }
 }
@@ -113,35 +113,31 @@ protocol MapInstallationArtifactValidator: Sendable {
     func validate(artifact: ValidatedMapArtifact, package: MapPackage) throws
 }
 
-/// The only artifact validator enabled by the Stage 4.2 production path.
-/// It prevents an arbitrary local IMG from reaching the write transport.
+/// Catalog-driven artifact validator. It prevents an arbitrary local IMG from
+/// reaching the write transport while allowing each validated Freizeitkarte
+/// package to use its own identity, version, size, hash, and managed filename.
 struct Stage42ArtifactValidator: MapInstallationArtifactValidator, Sendable {
-    static let expectedPackageID = "freizeitkarte-lva"
-    static let expectedProvider = "freizeitkarte"
-    static let expectedRegion = "LVA"
-    static let expectedVersion = MapVersion(year: 2026, month: 5)
-    static let expectedInstallSize: UInt64 = 348_684_288
-    static let expectedDownloadSize: UInt64 = 298_518_679
-    static let expectedSHA256 = "9a990a62156f61a78de82af78c6b1165c13ec5daaf789824029b2c6be4ba6103"
-    static let expectedFilename = "terento_freizeitkarte_lva.img"
+    static let allowedProvider = "freizeitkarte"
 
     func validate(artifact: ValidatedMapArtifact, package: MapPackage) throws {
-        guard let expectedVersion = Self.expectedVersion else {
-            throw Stage42ArtifactValidationError.notExactValidatedArtifact
-        }
+        let expectedFilename = try TerentoManagedFilenameGenerator().filename(
+            providerId: package.providerId,
+            regionId: package.regionId
+        )
 
-        guard package.id == Self.expectedPackageID,
-              MapIdentity.normalizeProvider(package.providerId) == Self.expectedProvider,
-              MapIdentity.normalizeRegion(package.regionId) == Self.expectedRegion,
-              package.version == expectedVersion,
-              artifact.catalogPackageID == Self.expectedPackageID,
-              MapIdentity.normalizeProvider(artifact.provider) == Self.expectedProvider,
-              MapIdentity.normalizeRegion(artifact.region) == Self.expectedRegion,
-              artifact.version == expectedVersion,
-              artifact.targetFilename == Self.expectedFilename,
-              artifact.installSizeBytes == Self.expectedInstallSize,
-              artifact.downloadSizeBytes == Self.expectedDownloadSize,
-              artifact.sha256.caseInsensitiveCompare(Self.expectedSHA256) == .orderedSame,
+        guard !package.id.isEmpty,
+              MapIdentity.normalizeProvider(package.providerId) == Self.allowedProvider,
+              !package.regionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              artifact.catalogPackageID == package.id,
+              MapIdentity.normalizeProvider(artifact.provider) == Self.allowedProvider,
+              MapIdentity.normalizeRegion(artifact.region)
+                == MapIdentity.normalizeRegion(package.regionId),
+              artifact.version == package.version,
+              artifact.targetFilename == expectedFilename,
+              TerentoManagedFilenameGenerator().isValid(artifact.targetFilename),
+              artifact.installSizeBytes > 0,
+              !artifact.sha256.isEmpty,
+              artifact.downloadSizeMatchesCatalog,
               artifact.packageFormat == .zip else {
             throw Stage42ArtifactValidationError.notExactValidatedArtifact
         }
@@ -153,12 +149,12 @@ struct Stage42ArtifactValidator: MapInstallationArtifactValidator, Sendable {
 
         let attributes = try fileManager.attributesOfItem(atPath: artifact.localIMGURL.path)
         guard let number = attributes[.size] as? NSNumber,
-              number.uint64Value == Self.expectedInstallSize else {
+              number.uint64Value == artifact.installSizeBytes else {
             throw Stage42ArtifactValidationError.sourceSizeMismatch
         }
 
         let actualHash = try Self.sha256(of: artifact.localIMGURL)
-        guard actualHash.caseInsensitiveCompare(Self.expectedSHA256) == .orderedSame else {
+        guard actualHash.caseInsensitiveCompare(artifact.sha256) == .orderedSame else {
             throw Stage42ArtifactValidationError.sourceHashMismatch
         }
     }
@@ -197,6 +193,7 @@ struct MapInstallationCoordinator: Sendable {
     private let transport: any MapInstallationTransport
     private let deviceReader: any InstallationDeviceReader
     private let manifestStore: any TerentoManifestStore
+    private let recoveryStore: any TerentoFailedInstallRecoveryStore
     private let transactionGate: InstallationTransactionGate
     private let now: @Sendable () -> Date
 
@@ -206,6 +203,7 @@ struct MapInstallationCoordinator: Sendable {
         transport: any MapInstallationTransport,
         deviceReader: any InstallationDeviceReader,
         manifestStore: any TerentoManifestStore,
+        recoveryStore: any TerentoFailedInstallRecoveryStore = LocalTerentoFailedInstallRecoveryStore(),
         transactionGate: InstallationTransactionGate = .shared,
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
@@ -214,6 +212,7 @@ struct MapInstallationCoordinator: Sendable {
         self.transport = transport
         self.deviceReader = deviceReader
         self.manifestStore = manifestStore
+        self.recoveryStore = recoveryStore
         self.transactionGate = transactionGate
         self.now = now
     }
@@ -382,6 +381,19 @@ struct MapInstallationCoordinator: Sendable {
             )
         }
 
+        let recoveryRecord = TerentoFailedInstallRecoveryRecord(
+            deviceKey: request.identity.localManifestDeviceKey,
+            packageID: request.selectedMap.id,
+            providerId: request.selectedMap.providerId,
+            regionId: request.selectedMap.regionId,
+            version: artifact.version,
+            devicePath: targetPath,
+            filename: targetFilename,
+            sizeBytes: artifact.installSizeBytes,
+            sha256: artifact.sha256,
+            createdAt: now()
+        )
+
         let startedAt = ContinuousClock.now
         do {
             try transaction.begin()
@@ -398,33 +410,61 @@ struct MapInstallationCoordinator: Sendable {
             onPhase?(.installing)
             onPhaseProgress?(.installing, 0)
 
+            do {
+                try recoveryStore.record(recoveryRecord)
+            } catch {
+                return failureResult(
+                    failure: .manifestFailed,
+                    transaction: &transaction,
+                    preflight: preflight,
+                    diagnostics: diagnostics,
+                    remoteObjectID: nil,
+                    shouldCleanup: false
+                )
+            }
+
             let progressState = TransferProgressState(
                 value: TransferProgress(
                     bytesTransferred: 0,
                     totalBytes: artifact.installSizeBytes
                 )
             )
-            let written = try transport.write(
-                sourceURL: artifact.localIMGURL,
-                targetFilename: targetFilename,
-                progress: { progress in
-                    progressState.value = progress
-                    onProgress?(progress)
-                }
-            )
-
             try transaction.transition(to: .verifying)
-            onPhase?(.finishing)
-            onPhaseProgress?(.finishing, 0)
-            let readBack: MTPReadBackMapObject
+            let transfer: MTPWriteAndReadBackResult
             do {
-                readBack = try transport.readBack(
+                transfer = try transport.writeAndReadBack(
+                    sourceURL: artifact.localIMGURL,
                     targetFilename: targetFilename,
-                    expectedItemID: written.itemID,
-                    targetPath: targetPath
+                    targetPath: targetPath,
+                    progress: { progress in
+                        progressState.value = progress
+                        onProgress?(progress)
+                    },
+                    onWriteCompleted: {
+                        onPhase?(.finishing)
+                        // Read-back begins immediately after this callback.
+                        // Start at a visible non-zero value so a slow Garmin
+                        // read-back is not presented as a frozen operation.
+                        onPhaseProgress?(.finishing, 0.05)
+                    }
                 )
             } catch {
-                let failure = Self.failure(for: error, during: .verification)
+                let failure: InstallationFailure
+                let createdItemID: UInt32?
+                switch error {
+                case let combinedError as MTPWriteAndReadBackError:
+                    switch combinedError {
+                    case .write(let underlying):
+                        failure = Self.failure(for: underlying, during: .write)
+                        createdItemID = Self.createdItemID(from: underlying)
+                    case .readBack(let underlying, let combinedItemID):
+                        failure = Self.failure(for: underlying, during: .verification)
+                        createdItemID = combinedItemID ?? Self.createdItemID(from: underlying)
+                    }
+                default:
+                    failure = Self.failure(for: error, during: .verification)
+                    createdItemID = Self.createdItemID(from: error)
+                }
                 return failureResult(
                     failure: failure,
                     transaction: &transaction,
@@ -433,10 +473,13 @@ struct MapInstallationCoordinator: Sendable {
                         progress: progressState.value,
                         elapsedMilliseconds: elapsedMilliseconds(since: startedAt)
                     ),
-                    remoteObjectID: written.itemID,
-                    shouldCleanup: true
+                    remoteObjectID: createdItemID,
+                    shouldCleanup: createdItemID != nil,
+                    recoveryRecord: recoveryRecord
                 )
             }
+            let written = transfer.written
+            let readBack = transfer.readBack
             defer { try? FileManager.default.removeItem(at: readBack.localURL) }
             onPhaseProgress?(.finishing, 0.25)
 
@@ -453,7 +496,8 @@ struct MapInstallationCoordinator: Sendable {
                         elapsedMilliseconds: elapsedMilliseconds(since: startedAt)
                     ),
                     remoteObjectID: written.itemID,
-                    shouldCleanup: true
+                    shouldCleanup: true,
+                    recoveryRecord: recoveryRecord
                 )
             }
             let verification = TransferVerifier().verify(
@@ -483,7 +527,8 @@ struct MapInstallationCoordinator: Sendable {
                     diagnostics: verifiedDiagnostics,
                     remoteObjectID: written.itemID,
                     shouldCleanup: true,
-                    verification: verification
+                    verification: verification,
+                    recoveryRecord: recoveryRecord
                 )
             }
 
@@ -504,7 +549,8 @@ struct MapInstallationCoordinator: Sendable {
                     ),
                     remoteObjectID: written.itemID,
                     shouldCleanup: true,
-                    verification: verification
+                    verification: verification,
+                    recoveryRecord: recoveryRecord
                 )
             }
             onPhaseProgress?(.finishing, 0.65)
@@ -522,7 +568,8 @@ struct MapInstallationCoordinator: Sendable {
                     diagnostics: verifiedDiagnostics,
                     remoteObjectID: written.itemID,
                     shouldCleanup: true,
-                    verification: verification
+                    verification: verification,
+                    recoveryRecord: recoveryRecord
                 )
             }
 
@@ -536,7 +583,8 @@ struct MapInstallationCoordinator: Sendable {
                     diagnostics: verifiedDiagnostics,
                     remoteObjectID: written.itemID,
                     shouldCleanup: true,
-                    verification: verification
+                    verification: verification,
+                    recoveryRecord: recoveryRecord
                 )
             }
             onPhaseProgress?(.finishing, 0.85)
@@ -555,13 +603,14 @@ struct MapInstallationCoordinator: Sendable {
                     transaction: &transaction,
                     preflight: preflight,
                     diagnostics: verifiedDiagnostics.withProtection(
-                        lithuaniaUnchanged: protection.lithuaniaUnchanged,
+                        existingFilesUnchanged: protection.existingFilesUnchanged,
                         unrelatedUnchanged: false,
                         freeSpaceAfter: afterSnapshot.freeSpace
                     ),
                     remoteObjectID: written.itemID,
                     shouldCleanup: true,
-                    verification: verification
+                    verification: verification,
+                    recoveryRecord: recoveryRecord
                 )
             }
 
@@ -591,16 +640,23 @@ struct MapInstallationCoordinator: Sendable {
                     transaction: &transaction,
                     preflight: preflight,
                     diagnostics: verifiedDiagnostics.withProtection(
-                        lithuaniaUnchanged: protection.lithuaniaUnchanged,
+                        existingFilesUnchanged: protection.existingFilesUnchanged,
                         unrelatedUnchanged: true,
                         freeSpaceAfter: afterSnapshot.freeSpace
                     ),
                     remoteObjectID: nil,
                     shouldCleanup: false,
-                    verification: verification
+                    verification: verification,
+                    recoveryRecord: recoveryRecord
                 )
             }
             onPhaseProgress?(.finishing, 1)
+
+            _ = try? recoveryStore.remove(
+                deviceKey: recoveryRecord.deviceKey,
+                devicePath: recoveryRecord.devicePath,
+                filename: recoveryRecord.filename
+            )
 
             try transaction.transition(to: .completed)
             return MapInstallationResult(
@@ -617,7 +673,7 @@ struct MapInstallationCoordinator: Sendable {
                     version: metadataResult.version,
                     warning: metadataResult.warning
                 ).withProtection(
-                    lithuaniaUnchanged: protection.lithuaniaUnchanged,
+                    existingFilesUnchanged: protection.existingFilesUnchanged,
                     unrelatedUnchanged: true,
                     freeSpaceAfter: afterSnapshot.freeSpace
                 ),
@@ -626,6 +682,13 @@ struct MapInstallationCoordinator: Sendable {
         } catch {
             let failure = Self.failure(for: error, during: .write)
             let createdItemID = Self.createdItemID(from: error)
+            if createdItemID == nil {
+                _ = try? recoveryStore.remove(
+                    deviceKey: recoveryRecord.deviceKey,
+                    devicePath: recoveryRecord.devicePath,
+                    filename: recoveryRecord.filename
+                )
+            }
             return failureResult(
                 failure: failure,
                 transaction: &transaction,
@@ -636,9 +699,10 @@ struct MapInstallationCoordinator: Sendable {
                         totalBytes: artifact.installSizeBytes
                     ),
                     elapsedMilliseconds: elapsedMilliseconds(since: startedAt)
-                    ),
+                ),
                 remoteObjectID: createdItemID,
-                shouldCleanup: createdItemID != nil
+                shouldCleanup: createdItemID != nil,
+                recoveryRecord: createdItemID == nil ? nil : recoveryRecord
             )
         }
     }
@@ -743,15 +807,31 @@ struct MapInstallationCoordinator: Sendable {
         diagnostics: MapInstallationDiagnostics,
         remoteObjectID: UInt32?,
         shouldCleanup: Bool,
-        verification: TransferVerification? = nil
+        verification: TransferVerification? = nil,
+        recoveryRecord: TerentoFailedInstallRecoveryRecord? = nil
     ) -> MapInstallationResult {
         var cleanupFailure: InstallationFailure?
         if shouldCleanup, let remoteObjectID, remoteObjectID != 0 {
             do {
+                let cleanupFilename = preflight.proposedFilename
+                    ?? (try? TerentoManagedFilenameGenerator().filename(
+                        providerId: preflight.selectedMap.providerId,
+                        regionId: preflight.selectedMap.regionId
+                    ))
+                guard let cleanupFilename else {
+                    throw ManagedFilenameError.emptyComponent
+                }
                 try transport.deleteExact(
-                    targetFilename: preflight.proposedFilename ?? Stage42ArtifactValidator.expectedFilename,
+                    targetFilename: cleanupFilename,
                     expectedItemID: remoteObjectID
                 )
+                if let recoveryRecord {
+                    _ = try? recoveryStore.remove(
+                        deviceKey: recoveryRecord.deviceKey,
+                        devicePath: recoveryRecord.devicePath,
+                        filename: recoveryRecord.filename
+                    )
+                }
             } catch {
                 cleanupFailure = .cleanupFailed
             }
@@ -948,7 +1028,7 @@ struct MapInstallationCoordinator: Sendable {
     }
 
     private struct ProtectionResult: Sendable {
-        let lithuaniaUnchanged: Bool
+        let existingFilesUnchanged: Bool
         let unrelatedFilesUnchanged: Bool
     }
 
@@ -962,19 +1042,6 @@ struct MapInstallationCoordinator: Sendable {
     ) -> ProtectionResult {
         let beforeComparable = Set(before.filter { $0.path != targetPath }.map(Self.comparable))
         let afterComparable = Set(after.filter { $0.path != targetPath }.map(Self.comparable))
-        let lithuaniaPath = "/GARMIN/freizeitkarte-lithuania.img"
-        let beforeLithuania = before.first(where: { $0.path == lithuaniaPath })
-        let afterLithuania = after.first(where: { $0.path == lithuaniaPath })
-        let lithuaniaUnchanged: Bool
-        switch (beforeLithuania, afterLithuania) {
-        case (nil, nil):
-            lithuaniaUnchanged = true
-        case let (before?, after?):
-            lithuaniaUnchanged = Self.comparable(before) == Self.comparable(after)
-        default:
-            lithuaniaUnchanged = false
-        }
-
         let target = after.first(where: { $0.path == targetPath && $0.itemID == expectedItemID })
         let targetUnchanged = target.map {
             !$0.isFolder
@@ -984,10 +1051,10 @@ struct MapInstallationCoordinator: Sendable {
         } ?? false
 
         return ProtectionResult(
-            lithuaniaUnchanged: lithuaniaUnchanged,
-            unrelatedFilesUnchanged: beforeComparable == afterComparable
-                && lithuaniaUnchanged
-                && targetUnchanged
+            // This field is retained for compatibility with the Stage 4.2
+            // diagnostics schema; it now means all pre-existing files were
+            existingFilesUnchanged: beforeComparable == afterComparable,
+            unrelatedFilesUnchanged: beforeComparable == afterComparable && targetUnchanged
         )
     }
 
@@ -1039,7 +1106,7 @@ private extension MapInstallationDiagnostics {
             freeSpaceBefore: freeSpaceBefore,
             freeSpaceAfter: freeSpaceAfter,
             projectedFreeSpace: projectedFreeSpace,
-            lithuaniaProtectionPassed: lithuaniaProtectionPassed,
+            existingFilesProtectionPassed: existingFilesProtectionPassed,
             unrelatedFilesProtectionPassed: unrelatedFilesProtectionPassed
         )
     }
@@ -1062,7 +1129,7 @@ private extension MapInstallationDiagnostics {
             freeSpaceBefore: freeSpaceBefore,
             freeSpaceAfter: freeSpaceAfter,
             projectedFreeSpace: projectedFreeSpace,
-            lithuaniaProtectionPassed: lithuaniaProtectionPassed,
+            existingFilesProtectionPassed: existingFilesProtectionPassed,
             unrelatedFilesProtectionPassed: unrelatedFilesProtectionPassed
         )
     }
@@ -1103,7 +1170,7 @@ private extension MapInstallationDiagnostics {
             freeSpaceBefore: freeSpaceBefore,
             freeSpaceAfter: freeSpaceAfter,
             projectedFreeSpace: projectedFreeSpace,
-            lithuaniaProtectionPassed: lithuaniaProtectionPassed,
+            existingFilesProtectionPassed: existingFilesProtectionPassed,
             unrelatedFilesProtectionPassed: unrelatedFilesProtectionPassed
         )
     }
@@ -1131,13 +1198,13 @@ private extension MapInstallationDiagnostics {
             freeSpaceBefore: freeSpaceBefore,
             freeSpaceAfter: freeSpaceAfter,
             projectedFreeSpace: projectedFreeSpace,
-            lithuaniaProtectionPassed: lithuaniaProtectionPassed,
+            existingFilesProtectionPassed: existingFilesProtectionPassed,
             unrelatedFilesProtectionPassed: unrelatedFilesProtectionPassed
         )
     }
 
     func withProtection(
-        lithuaniaUnchanged: Bool,
+        existingFilesUnchanged: Bool,
         unrelatedUnchanged: Bool,
         freeSpaceAfter: UInt64?
     ) -> MapInstallationDiagnostics {
@@ -1158,7 +1225,7 @@ private extension MapInstallationDiagnostics {
             freeSpaceBefore: freeSpaceBefore,
             freeSpaceAfter: freeSpaceAfter,
             projectedFreeSpace: projectedFreeSpace,
-            lithuaniaProtectionPassed: lithuaniaUnchanged,
+            existingFilesProtectionPassed: existingFilesUnchanged,
             unrelatedFilesProtectionPassed: unrelatedUnchanged
         )
     }

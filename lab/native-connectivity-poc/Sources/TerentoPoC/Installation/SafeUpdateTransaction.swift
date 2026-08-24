@@ -718,7 +718,8 @@ struct SafeUpdateTransaction: Sendable {
             rescan: {
                 try transport.rescanObjects().map(\.file)
             },
-            transport: transport
+            transport: transport,
+            requiresVerifiedBackup: true
         )
         guard deleteResult.isSuccess else {
             return failure(.failedCommit, "The new map is verified, but the previous map could not be removed. No success was reported.", storagePlan: storagePlan, backup: backup, newObject: verified)
