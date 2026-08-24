@@ -70,7 +70,20 @@ struct MapCatalogLoader: Sendable {
             throw MapCatalogError.invalidMetadata(error.localizedDescription)
         }
         #else
-        throw MapCatalogError.resourceMissing
+        guard let resourceURL = Bundle.main.url(
+            forResource: "catalog",
+            withExtension: "json"
+        ) else {
+            throw MapCatalogError.resourceMissing
+        }
+
+        do {
+            return try decode(Data(contentsOf: resourceURL))
+        } catch let error as MapCatalogError {
+            throw error
+        } catch {
+            throw MapCatalogError.invalidMetadata(error.localizedDescription)
+        }
         #endif
     }
 

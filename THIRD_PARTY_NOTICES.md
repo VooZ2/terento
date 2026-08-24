@@ -37,24 +37,31 @@ This is a runtime service reference, not a bundled dependency or secret. It is i
 
 The isolated native connectivity PoC under
 `lab/native-connectivity-poc/` links to Homebrew-installed libraries during
-development. These libraries are not bundled or redistributed by the
-repository.
+development. The production Xcode target rebuilds these libraries from the
+pinned upstream sources recorded below and bundles the resulting dynamic
+libraries in `Terento.app/Contents/Frameworks`.
 
 ### libmtp
 
 - Version: 1.1.23
 - Upstream: <https://github.com/libmtp/libmtp>
-- License: GNU Lesser General Public License 2.1 or later
+- License: GNU Lesser General Public License 2.1 or later (LGPL-2.1-or-later)
+- Copyright: libmtp contributors
 - Use: read-only Garmin MTP detection, device information, and storage information
-- Distribution: external Homebrew dependency; not bundled by Terento
+- Distribution: bundled in the production `Terento.app` under `Contents/Frameworks`; SwiftPM development builds may still use a local Homebrew prefix.
+- Build: pinned upstream source archive and checksum are recorded in `Packaging/NativeDependencies/build.sh`.
+- Compatibility: Terento code is GPL-3.0-or-later; the dynamically linked libmtp remains under LGPL-2.1-or-later. Terento does not relicense libmtp.
 
 ### libusb
 
 - Version: 1.0.30
 - Upstream: <https://github.com/libusb/libusb>
-- License: GNU Lesser General Public License 2.1 or later
+- License: GNU Lesser General Public License 2.1 or later (LGPL-2.1-or-later)
+- Copyright: libusb contributors
 - Use: transitive runtime dependency of libmtp
-- Distribution: external Homebrew dependency; not bundled by Terento
+- Distribution: bundled in the production `Terento.app` under `Contents/Frameworks`; SwiftPM development builds may still use a local Homebrew prefix.
+- Build: pinned upstream source archive and checksum are recorded in `Packaging/NativeDependencies/build.sh`.
+- Compatibility: the dynamically linked libusb remains under LGPL-2.1-or-later and is not relicensed by Terento.
 
 ## Caddy static web server
 

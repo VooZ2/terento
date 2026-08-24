@@ -31,8 +31,13 @@ jobs:
           swift --version
       - name: Install libmtp
         run: brew install libmtp
-      - name: Build Swift package
+      - name: Build and test
         run: |
-          export LIBMTP_PREFIX=$(brew --prefix libmtp)
-          export CLANG_MODULE_CACHE_PATH=$RUNNER_TEMP/terento-clang-module-cache
+          set -euo pipefail
+          export LIBMTP_PREFIX="$(brew --prefix libmtp)"
+          export CLANG_MODULE_CACHE_PATH="$RUNNER_TEMP/terento-clang-module-cache"
           swift build
+          for test_script in Tests/run-*.sh; do
+            echo "=== ${test_script} ==="
+            "${test_script}"
+          done

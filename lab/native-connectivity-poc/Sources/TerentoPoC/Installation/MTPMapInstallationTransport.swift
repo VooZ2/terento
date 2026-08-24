@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(LibMTPBridge)
 import LibMTPBridge
+#endif
 extension MTPTransport: InstallationDeviceReader {}
 
 private final class MTPProgressBox: @unchecked Sendable {

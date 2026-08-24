@@ -1,0 +1,319 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		000000000000000000000016 /* CompatibilityEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000015 /* CompatibilityEngine.swift */; };
+		000000000000000000000018 /* CompatibilityPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000017 /* CompatibilityPresentation.swift */; };
+		00000000000000000000001a /* DeviceAssetRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000019 /* DeviceAssetRegistry.swift */; };
+		00000000000000000000001c /* DeviceIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000001b /* DeviceIdentity.swift */; };
+		00000000000000000000001e /* DevicePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000001d /* DevicePresentation.swift */; };
+		000000000000000000000020 /* DeviceRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000001f /* DeviceRegistry.swift */; };
+		000000000000000000000022 /* GarminDeviceIdentityAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000021 /* GarminDeviceIdentityAdapter.swift */; };
+		000000000000000000000024 /* CancellableDetached.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000023 /* CancellableDetached.swift */; };
+		000000000000000000000026 /* DeviceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000025 /* DeviceEngine.swift */; };
+		000000000000000000000028 /* DeviceStateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000027 /* DeviceStateManager.swift */; };
+		00000000000000000000002a /* UserFacingErrorMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000029 /* UserFacingErrorMessage.swift */; };
+		00000000000000000000002c /* InstallProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000002b /* InstallProfile.swift */; };
+		00000000000000000000002e /* InstallationFailureRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000002d /* InstallationFailureRecovery.swift */; };
+		000000000000000000000030 /* InstallationPreflight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000002f /* InstallationPreflight.swift */; };
+		000000000000000000000032 /* InstallationSafetyModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000031 /* InstallationSafetyModels.swift */; };
+		000000000000000000000034 /* InstallationTransaction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000033 /* InstallationTransaction.swift */; };
+		000000000000000000000036 /* InstallationTransportProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000035 /* InstallationTransportProtocols.swift */; };
+		000000000000000000000038 /* MTPMapInstallationTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000037 /* MTPMapInstallationTransport.swift */; };
+		00000000000000000000003a /* MTPReadBackupAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000039 /* MTPReadBackupAdapter.swift */; };
+		00000000000000000000003c /* MTPSafeDeleteTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000003b /* MTPSafeDeleteTransport.swift */; };
+		00000000000000000000003e /* MTPSafeUpdateTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000003d /* MTPSafeUpdateTransport.swift */; };
+		000000000000000000000040 /* ManagedFilename.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000003f /* ManagedFilename.swift */; };
+		000000000000000000000042 /* MapConflictResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000041 /* MapConflictResolver.swift */; };
+		000000000000000000000044 /* MapInstallationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000043 /* MapInstallationCoordinator.swift */; };
+		000000000000000000000046 /* MapLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000045 /* MapLifecycle.swift */; };
+		000000000000000000000048 /* MapLifecycleOperationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000047 /* MapLifecycleOperationController.swift */; };
+		00000000000000000000004a /* MapLifecyclePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000049 /* MapLifecyclePresentation.swift */; };
+		00000000000000000000004c /* MapLifecycleViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000004b /* MapLifecycleViewModel.swift */; };
+		00000000000000000000004e /* MapSourceValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000004d /* MapSourceValidator.swift */; };
+		000000000000000000000050 /* ReadBackupAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000004f /* ReadBackupAdapter.swift */; };
+		000000000000000000000052 /* SafeDeleteAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000051 /* SafeDeleteAdapter.swift */; };
+		000000000000000000000054 /* SafeUpdateTransaction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000053 /* SafeUpdateTransaction.swift */; };
+		000000000000000000000056 /* Stage42TargetPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000055 /* Stage42TargetPolicy.swift */; };
+		000000000000000000000058 /* StoragePlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000057 /* StoragePlanner.swift */; };
+		00000000000000000000005a /* TerentoManifestStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000059 /* TerentoManifestStore.swift */; };
+		00000000000000000000005c /* TransferVerification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000005b /* TransferVerification.swift */; };
+		00000000000000000000005e /* MTPOperationGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000005d /* MTPOperationGate.swift */; };
+		000000000000000000000060 /* MTPTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000005f /* MTPTransport.swift */; };
+		000000000000000000000062 /* InstalledMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000061 /* InstalledMap.swift */; };
+		000000000000000000000064 /* MapCatalogLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000063 /* MapCatalogLoader.swift */; };
+		000000000000000000000066 /* MapComparison.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000065 /* MapComparison.swift */; };
+		000000000000000000000068 /* MapEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000067 /* MapEngine.swift */; };
+		00000000000000000000006a /* MapIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000069 /* MapIdentity.swift */; };
+		00000000000000000000006c /* MapInventoryList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000006b /* MapInventoryList.swift */; };
+		00000000000000000000006e /* MapModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000006d /* MapModels.swift */; };
+		000000000000000000000070 /* MapOwnership.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000006f /* MapOwnership.swift */; };
+		000000000000000000000072 /* MapPackageAcquisition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000071 /* MapPackageAcquisition.swift */; };
+		000000000000000000000074 /* MapPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000073 /* MapPresentation.swift */; };
+		000000000000000000000076 /* MapSelectionPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000075 /* MapSelectionPlanner.swift */; };
+		000000000000000000000078 /* MapSelectionPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000077 /* MapSelectionPresentation.swift */; };
+		00000000000000000000007a /* MapStorageEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000079 /* MapStorageEvaluator.swift */; };
+		00000000000000000000007c /* MapVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000007b /* MapVersion.swift */; };
+		00000000000000000000007e /* MTPModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000007d /* MTPModels.swift */; };
+		000000000000000000000080 /* TerentoPoCApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000007f /* TerentoPoCApp.swift */; };
+		000000000000000000000082 /* ConnectScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000081 /* ConnectScreen.swift */; };
+		000000000000000000000084 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000083 /* ContentView.swift */; };
+		000000000000000000000086 /* TerentoAppResourceCompatibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000085 /* TerentoAppResourceCompatibility.swift */; };
+		000000000000000000000088 /* MTPBridge.c in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000087 /* MTPBridge.c */; };
+		00000000000000000000008a /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000089 /* Assets.xcassets */; };
+		00000000000000000000008c /* logo.svg in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000008b /* logo.svg */; };
+		00000000000000000000008e /* fenix8-render.png in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000008d /* fenix8-render.png */; };
+		000000000000000000000090 /* generic-garmin-watch.png in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000008f /* generic-garmin-watch.png */; };
+		000000000000000000000092 /* connect-illustration.png in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000091 /* connect-illustration.png */; };
+		000000000000000000000094 /* terento-write-test.txt in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000093 /* terento-write-test.txt */; };
+		000000000000000000000096 /* catalog.json in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000095 /* catalog.json */; };
+		000000000000000000000098 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000099 /* LICENSE */; };
+		00000000000000000000009a /* THIRD_PARTY_NOTICES.md in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000009b /* THIRD_PARTY_NOTICES.md */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		00000000000000000000000d /* Terento.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Terento.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000011 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = app/Terento/Info.plist; sourceTree = SOURCE_ROOT; };
+		000000000000000000000012 /* Terento.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = app/Terento/Terento.entitlements; sourceTree = SOURCE_ROOT; };
+		000000000000000000000013 /* Terento-Bridging-Header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = app/Terento/Terento-Bridging-Header.h; sourceTree = SOURCE_ROOT; };
+		000000000000000000000014 /* Assets.xcassets */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = folder.assetcatalog; path = app/Terento/Assets.xcassets; sourceTree = SOURCE_ROOT; };
+		000000000000000000000015 /* CompatibilityEngine.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Compatibility/CompatibilityEngine.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000017 /* CompatibilityPresentation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Compatibility/CompatibilityPresentation.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000019 /* DeviceAssetRegistry.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Compatibility/DeviceAssetRegistry.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000001b /* DeviceIdentity.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Compatibility/DeviceIdentity.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000001d /* DevicePresentation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Compatibility/DevicePresentation.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000001f /* DeviceRegistry.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Compatibility/DeviceRegistry.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000021 /* GarminDeviceIdentityAdapter.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Compatibility/GarminDeviceIdentityAdapter.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000023 /* CancellableDetached.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Concurrency/CancellableDetached.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000025 /* DeviceEngine.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/DeviceEngine/DeviceEngine.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000027 /* DeviceStateManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/DeviceEngine/DeviceStateManager.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000029 /* UserFacingErrorMessage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Errors/UserFacingErrorMessage.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000002b /* InstallProfile.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/InstallProfile.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000002d /* InstallationFailureRecovery.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/InstallationFailureRecovery.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000002f /* InstallationPreflight.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/InstallationPreflight.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000031 /* InstallationSafetyModels.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/InstallationSafetyModels.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000033 /* InstallationTransaction.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/InstallationTransaction.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000035 /* InstallationTransportProtocols.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/InstallationTransportProtocols.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000037 /* MTPMapInstallationTransport.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/MTPMapInstallationTransport.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000039 /* MTPReadBackupAdapter.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/MTPReadBackupAdapter.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000003b /* MTPSafeDeleteTransport.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/MTPSafeDeleteTransport.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000003d /* MTPSafeUpdateTransport.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/MTPSafeUpdateTransport.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000003f /* ManagedFilename.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/ManagedFilename.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000041 /* MapConflictResolver.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/MapConflictResolver.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000043 /* MapInstallationCoordinator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/MapInstallationCoordinator.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000045 /* MapLifecycle.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/MapLifecycle.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000047 /* MapLifecycleOperationController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/MapLifecycleOperationController.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000049 /* MapLifecyclePresentation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/MapLifecyclePresentation.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000004b /* MapLifecycleViewModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/MapLifecycleViewModel.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000004d /* MapSourceValidator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/MapSourceValidator.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000004f /* ReadBackupAdapter.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/ReadBackupAdapter.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000051 /* SafeDeleteAdapter.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/SafeDeleteAdapter.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000053 /* SafeUpdateTransaction.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/SafeUpdateTransaction.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000055 /* Stage42TargetPolicy.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/Stage42TargetPolicy.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000057 /* StoragePlanner.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/StoragePlanner.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000059 /* TerentoManifestStore.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/TerentoManifestStore.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000005b /* TransferVerification.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Installation/TransferVerification.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000005d /* MTPOperationGate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/MTPTransport/MTPOperationGate.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000005f /* MTPTransport.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/MTPTransport/MTPTransport.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000061 /* InstalledMap.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/MapCatalog/InstalledMap.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000063 /* MapCatalogLoader.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/MapCatalog/MapCatalogLoader.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000065 /* MapComparison.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/MapCatalog/MapComparison.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000067 /* MapEngine.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/MapCatalog/MapEngine.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000069 /* MapIdentity.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/MapCatalog/MapIdentity.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000006b /* MapInventoryList.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/MapCatalog/MapInventoryList.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000006d /* MapModels.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/MapCatalog/MapModels.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000006f /* MapOwnership.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/MapCatalog/MapOwnership.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000071 /* MapPackageAcquisition.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/MapCatalog/MapPackageAcquisition.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000073 /* MapPresentation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/MapCatalog/MapPresentation.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000075 /* MapSelectionPlanner.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/MapCatalog/MapSelectionPlanner.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000077 /* MapSelectionPresentation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/MapCatalog/MapSelectionPresentation.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000079 /* MapStorageEvaluator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/MapCatalog/MapStorageEvaluator.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000007b /* MapVersion.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/MapCatalog/MapVersion.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000007d /* MTPModels.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Models/MTPModels.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000007f /* TerentoPoCApp.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/TerentoPoCApp.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000081 /* ConnectScreen.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Views/ConnectScreen.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000083 /* ContentView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = lab/native-connectivity-poc/Sources/TerentoPoC/Views/ContentView.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000085 /* TerentoAppResourceCompatibility.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/Terento/TerentoAppResourceCompatibility.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000087 /* MTPBridge.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = lab/native-connectivity-poc/Sources/LibMTPBridge/MTPBridge.c; sourceTree = SOURCE_ROOT; };
+		000000000000000000000097 /* MTPBridge.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = lab/native-connectivity-poc/Sources/LibMTPBridge/include/MTPBridge.h; sourceTree = SOURCE_ROOT; };
+		00000000000000000000008b /* logo.svg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = image.svg; path = lab/native-connectivity-poc/Sources/TerentoPoC/Resources/Brand/logo.svg; sourceTree = SOURCE_ROOT; };
+		00000000000000000000008d /* fenix8-render.png */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = image.png; path = lab/native-connectivity-poc/Sources/TerentoPoC/Resources/Devices/fenix8-render.png; sourceTree = SOURCE_ROOT; };
+		00000000000000000000008f /* generic-garmin-watch.png */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = image.png; path = lab/native-connectivity-poc/Sources/TerentoPoC/Resources/Devices/generic-garmin-watch.png; sourceTree = SOURCE_ROOT; };
+		000000000000000000000091 /* connect-illustration.png */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = image.png; path = lab/native-connectivity-poc/Sources/TerentoPoC/Resources/Illustrations/connect-illustration.png; sourceTree = SOURCE_ROOT; };
+		000000000000000000000093 /* terento-write-test.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = lab/native-connectivity-poc/Sources/TerentoPoC/Resources/Installation/terento-write-test.txt; sourceTree = SOURCE_ROOT; };
+		000000000000000000000095 /* catalog.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = lab/native-connectivity-poc/Sources/TerentoPoC/Resources/Maps/catalog.json; sourceTree = SOURCE_ROOT; };
+		000000000000000000000099 /* LICENSE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE; sourceTree = SOURCE_ROOT; };
+		00000000000000000000009b /* THIRD_PARTY_NOTICES.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = THIRD_PARTY_NOTICES.md; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		000000000000000000000010 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		000000000000000000000009 = {isa = PBXGroup; children = (00000000000000000000000a, 00000000000000000000000b, 00000000000000000000000c); sourceTree = "<group>"; };
+		00000000000000000000000a /* Application */ = {isa = PBXGroup; children = (000000000000000000000011, 000000000000000000000012, 000000000000000000000013, 000000000000000000000014); name = Application; path = app/Terento; sourceTree = SOURCE_ROOT; };
+		00000000000000000000000b /* Sources */ = {isa = PBXGroup; children = (000000000000000000000015, 000000000000000000000017, 000000000000000000000019, 00000000000000000000001b, 00000000000000000000001d, 00000000000000000000001f, 000000000000000000000021, 000000000000000000000023, 000000000000000000000025, 000000000000000000000027, 000000000000000000000029, 00000000000000000000002b, 00000000000000000000002d, 00000000000000000000002f, 000000000000000000000031, 000000000000000000000033, 000000000000000000000035, 000000000000000000000037, 000000000000000000000039, 00000000000000000000003b, 00000000000000000000003d, 00000000000000000000003f, 000000000000000000000041, 000000000000000000000043, 000000000000000000000045, 000000000000000000000047, 000000000000000000000049, 00000000000000000000004b, 00000000000000000000004d, 00000000000000000000004f, 000000000000000000000051, 000000000000000000000053, 000000000000000000000055, 000000000000000000000057, 000000000000000000000059, 00000000000000000000005b, 00000000000000000000005d, 00000000000000000000005f, 000000000000000000000061, 000000000000000000000063, 000000000000000000000065, 000000000000000000000067, 000000000000000000000069, 00000000000000000000006b, 00000000000000000000006d, 00000000000000000000006f, 000000000000000000000071, 000000000000000000000073, 000000000000000000000075, 000000000000000000000077, 000000000000000000000079, 00000000000000000000007b, 00000000000000000000007d, 00000000000000000000007f, 000000000000000000000081, 000000000000000000000083, 000000000000000000000085, 000000000000000000000087, 000000000000000000000097); name = Sources; sourceTree = "<group>"; };
+		00000000000000000000000c /* Products */ = {isa = PBXGroup; children = (00000000000000000000000d); name = Products; sourceTree = "<group>"; };
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		000000000000000000000002 /* Terento */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 000000000000000000000004 /* Build configuration list for PBXNativeTarget "Terento" */;
+			buildPhases = (00000000000000000000009c, 00000000000000000000000e, 00000000000000000000000f, 000000000000000000000010);
+			buildRules = ();
+			dependencies = ();
+			name = Terento;
+			productName = Terento;
+			productReference = 00000000000000000000000d /* Terento.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		000000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2630;
+				LastUpgradeCheck = 2630;
+			};
+			buildConfigurationList = 000000000000000000000003 /* Build configuration list for PBXProject "Terento" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (en, Base);
+			mainGroup = 000000000000000000000009;
+			productRefGroup = 00000000000000000000000c;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (000000000000000000000002);
+		};
+/* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		00000000000000000000009c /* Build native dependencies */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/Packaging/NativeDependencies/build.sh",
+			);
+			name = "Build native dependencies";
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/TerentoNativeDependencies/lib/libmtp.9.dylib",
+				"$(DERIVED_FILE_DIR)/TerentoNativeDependencies/lib/libusb-1.0.0.dylib",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -eu\n\"${SRCROOT}/Packaging/NativeDependencies/build.sh\" --output \"${DERIVED_FILE_DIR}/TerentoNativeDependencies\" --deployment-target \"${MACOSX_DEPLOYMENT_TARGET:-13.0}\" --arch \"${NATIVE_ARCH_ACTUAL:-arm64}\" --bundle \"${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXResourcesBuildPhase section */
+		00000000000000000000000f /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (00000000000000000000008a, 00000000000000000000008c, 00000000000000000000008e, 000000000000000000000090, 000000000000000000000092, 000000000000000000000094, 000000000000000000000096, 000000000000000000000098, 00000000000000000000009a); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		00000000000000000000000e /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000016, 000000000000000000000018, 00000000000000000000001a, 00000000000000000000001c, 00000000000000000000001e, 000000000000000000000020, 000000000000000000000022, 000000000000000000000024, 000000000000000000000026, 000000000000000000000028, 00000000000000000000002a, 00000000000000000000002c, 00000000000000000000002e, 000000000000000000000030, 000000000000000000000032, 000000000000000000000034, 000000000000000000000036, 000000000000000000000038, 00000000000000000000003a, 00000000000000000000003c, 00000000000000000000003e, 000000000000000000000040, 000000000000000000000042, 000000000000000000000044, 000000000000000000000046, 000000000000000000000048, 00000000000000000000004a, 00000000000000000000004c, 00000000000000000000004e, 000000000000000000000050, 000000000000000000000052, 000000000000000000000054, 000000000000000000000056, 000000000000000000000058, 00000000000000000000005a, 00000000000000000000005c, 00000000000000000000005e, 000000000000000000000060, 000000000000000000000062, 000000000000000000000064, 000000000000000000000066, 000000000000000000000068, 00000000000000000000006a, 00000000000000000000006c, 00000000000000000000006e, 000000000000000000000070, 000000000000000000000072, 000000000000000000000074, 000000000000000000000076, 000000000000000000000078, 00000000000000000000007a, 00000000000000000000007c, 00000000000000000000007e, 000000000000000000000080, 000000000000000000000082, 000000000000000000000084, 000000000000000000000086, 000000000000000000000088); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		000000000000000000000005 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {
+			ARCHS = arm64;
+			CLANG_ENABLE_MODULES = YES;
+			CLANG_ENABLE_OBJC_ARC = YES;
+			MACOSX_DEPLOYMENT_TARGET = 13.0;
+			SDKROOT = macosx;
+			SWIFT_VERSION = 6.0;
+		}; name = Debug; };
+		000000000000000000000006 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {
+			ARCHS = arm64;
+			CLANG_ENABLE_MODULES = YES;
+			CLANG_ENABLE_OBJC_ARC = YES;
+			MACOSX_DEPLOYMENT_TARGET = 13.0;
+			SDKROOT = macosx;
+			SWIFT_VERSION = 6.0;
+		}; name = Release; };
+		000000000000000000000007 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {
+			ARCHS = arm64;
+			ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+			CODE_SIGN_ENTITLEMENTS = app/Terento/Terento.entitlements;
+			CODE_SIGN_STYLE = Manual;
+			CURRENT_PROJECT_VERSION = 1;
+			DEVELOPMENT_TEAM = VXALAZU3B5;
+			GENERATE_INFOPLIST_FILE = NO;
+			HEADER_SEARCH_PATHS = ("$(DERIVED_FILE_DIR)/TerentoNativeDependencies/include", "$(DERIVED_FILE_DIR)/TerentoNativeDependencies/include/libusb-1.0", "$(inherited)");
+			INFOPLIST_FILE = app/Terento/Info.plist;
+			LIBRARY_SEARCH_PATHS = ("$(DERIVED_FILE_DIR)/TerentoNativeDependencies/lib", "$(inherited)");
+			LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks");
+			MACOSX_DEPLOYMENT_TARGET = 13.0;
+			MARKETING_VERSION = "0.1.0-beta";
+			OTHER_LDFLAGS = ("$(inherited)", "-lmtp");
+			PRODUCT_BUNDLE_IDENTIFIER = app.terento.mac;
+			PRODUCT_NAME = Terento;
+			SUPPORTED_PLATFORMS = macosx;
+			SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/app/Terento/Terento-Bridging-Header.h";
+			CODE_SIGN_IDENTITY = "-";
+			CODE_SIGN_INJECT_BASE_ENTITLEMENTS = YES;
+			DEBUG_INFORMATION_FORMAT = dwarf;
+			ENABLE_HARDENED_RUNTIME = NO;
+			GCC_PREPROCESSOR_DEFINITIONS = ("DEBUG=1", "$(inherited)");
+			ONLY_ACTIVE_ARCH = YES;
+			SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+			SWIFT_COMPILATION_MODE = incremental;
+			SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+		}; name = Debug; };
+		000000000000000000000008 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {
+			ARCHS = arm64;
+			ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+			CODE_SIGN_ENTITLEMENTS = app/Terento/Terento.entitlements;
+			CODE_SIGN_STYLE = Manual;
+			CURRENT_PROJECT_VERSION = 1;
+			DEVELOPMENT_TEAM = VXALAZU3B5;
+			GENERATE_INFOPLIST_FILE = NO;
+			HEADER_SEARCH_PATHS = ("$(DERIVED_FILE_DIR)/TerentoNativeDependencies/include", "$(DERIVED_FILE_DIR)/TerentoNativeDependencies/include/libusb-1.0", "$(inherited)");
+			INFOPLIST_FILE = app/Terento/Info.plist;
+			LIBRARY_SEARCH_PATHS = ("$(DERIVED_FILE_DIR)/TerentoNativeDependencies/lib", "$(inherited)");
+			LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks");
+			MACOSX_DEPLOYMENT_TARGET = 13.0;
+			MARKETING_VERSION = "0.1.0-beta";
+			OTHER_LDFLAGS = ("$(inherited)", "-lmtp");
+			PRODUCT_BUNDLE_IDENTIFIER = app.terento.mac;
+			PRODUCT_NAME = Terento;
+			SUPPORTED_PLATFORMS = macosx;
+			SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/app/Terento/Terento-Bridging-Header.h";
+			CODE_SIGN_IDENTITY = "Developer ID Application";
+			CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
+			DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+			ENABLE_HARDENED_RUNTIME = YES;
+			GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+			GCC_PREPROCESSOR_DEFINITIONS = ("NDEBUG=1", "$(inherited)");
+			ONLY_ACTIVE_ARCH = NO;
+			SWIFT_ACTIVE_COMPILATION_CONDITIONS = RELEASE;
+			SWIFT_COMPILATION_MODE = wholemodule;
+			SWIFT_OPTIMIZATION_LEVEL = "-O";
+			VALIDATE_PRODUCT = YES;
+		}; name = Release; };
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		000000000000000000000003 /* Build configuration list for PBXProject "Terento" */ = {isa = XCConfigurationList; buildConfigurations = (000000000000000000000005, 000000000000000000000006); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		000000000000000000000004 /* Build configuration list for PBXNativeTarget "Terento" */ = {isa = XCConfigurationList; buildConfigurations = (000000000000000000000007, 000000000000000000000008); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+/* End XCConfigurationList section */
+	};
+	rootObject = 000000000000000000000001 /* Project object */;
+}

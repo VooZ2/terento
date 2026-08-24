@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(LibMTPBridge)
 import LibMTPBridge
+#endif
 
 struct MTPTransport: Sendable {
     private static let errorCapacity = 1024
