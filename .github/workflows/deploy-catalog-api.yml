@@ -155,9 +155,9 @@ jobs:
           duplicate_args=(--project-name "$duplicate_project" --project-directory "$project" --env-file "$env_file" -f "$compose" -f "$override")
           docker compose "${duplicate_args[@]}" rm -sf catalog-api catalog-scheduler catalog-db || true
 
-          mapfile -t api_containers < <(docker ps -q --filter label=com.docker.compose.service=catalog-api)
-          mapfile -t scheduler_containers < <(docker ps -q --filter label=com.docker.compose.service=catalog-scheduler)
-          mapfile -t db_containers < <(docker ps -q --filter label=com.docker.compose.service=catalog-db)
+          mapfile -t api_containers < <(docker ps --no-trunc -q --filter label=com.docker.compose.service=catalog-api)
+          mapfile -t scheduler_containers < <(docker ps --no-trunc -q --filter label=com.docker.compose.service=catalog-scheduler)
+          mapfile -t db_containers < <(docker ps --no-trunc -q --filter label=com.docker.compose.service=catalog-db)
           api_container="$(docker compose "${compose_args[@]}" ps -q catalog-api)"
           scheduler_container="$(docker compose "${compose_args[@]}" ps -q catalog-scheduler)"
           db_container="$(docker compose "${compose_args[@]}" ps -q catalog-db)"
