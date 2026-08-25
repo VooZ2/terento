@@ -48,12 +48,13 @@ struct InstallationEvidenceTests {
 
     static func makeEvent(
         id: UUID = UUID(), firmware: String = "20.19",
+        variant: String? = nil,
         outcome: InstallationEvidenceOutcome = .succeeded,
         finishing: AutomaticFinishingResult = .verified
     ) -> InstallationEvidenceEvent {
         let changedIdentity = DeviceIdentity(
             manufacturer: identity.manufacturer, model: identity.model, family: identity.family,
-            variant: nil, usbVendorId: identity.usbVendorId, usbProductId: identity.usbProductId,
+            variant: variant, usbVendorId: identity.usbVendorId, usbProductId: identity.usbProductId,
             firmware: firmware, storageCapacity: identity.storageCapacity, freeSpace: identity.freeSpace
         )
         return InstallationEvidenceEvent(
@@ -95,18 +96,31 @@ struct InstallationEvidenceTests {
         let model = identity.canonicalModel ?? identity.model
         let one = CompatibilityEvidenceCalculator.summarize([makeEvent()], forModel: model)
         expect(one.attemptedInstallCount == 1 && one.successRate == 1, "success rate denominator contains started installs")
-        expect(one.calculatedStatus == .tested, "one verified success reaches TESTED")
+        expect(one.calculatedStatus == .supported, "one successful install reaches SUPPORTED without reconnect")
 
         let three = [makeEvent(), makeEvent(), makeEvent()]
         let supported = CompatibilityEvidenceCalculator.summarize(three, forModel: model)
-        expect(supported.calculatedStatus == .supported, "three verified successes reach SUPPORTED")
+        expect(supported.calculatedStatus == .supported, "install count does not change the SUPPORTED semantics")
 
         let twoFirmware = [makeEvent(), makeEvent(), makeEvent(firmware: "20.20")]
         let reviewPending = CompatibilityEvidenceCalculator.summarize(twoFirmware, forModel: model)
-        expect(reviewPending.calculatedStatus == .tested, "mixed firmware results do not satisfy the same-firmware SUPPORTED threshold")
+        expect(reviewPending.calculatedStatus == .supported, "firmware variation alone does not award VERIFIED")
         expect(reviewPending.verifiedRequiresPhysicalDeviceReview, "VERIFIED requires physical-device review")
         let verified = CompatibilityEvidenceCalculator.summarize(twoFirmware, forModel: model, reviewedPhysicalDeviceCount: 2)
         expect(verified.calculatedStatus == .verified, "reviewed two-device evidence reaches VERIFIED")
+
+        let failedOnly = CompatibilityEvidenceCalculator.summarize(
+            [makeEvent(outcome: .failed, finishing: .failed)], forModel: model
+        )
+        expect(failedOnly.calculatedStatus == .testing, "partial hardware evidence remains TESTING")
+
+        let variant47 = CompatibilityEvidenceCalculator.summarize(
+            [makeEvent(variant: "47mm")], forModel: "fēnix 8 · 47 mm"
+        )
+        let variant51 = CompatibilityEvidenceCalculator.summarize(
+            [makeEvent(variant: "51mm")], forModel: "fēnix 8 · 51 mm"
+        )
+        expect(variant47.successfulInstallCount == 1 && variant51.successfulInstallCount == 1, "47 mm and 51 mm evidence stays isolated")
 
         let withFailure = CompatibilityEvidenceCalculator.summarize(three + [makeEvent(outcome: .failed, finishing: .failed)], forModel: model)
         expect(withFailure.attemptedInstallCount == 4 && withFailure.failedInstallCount == 1 && withFailure.successRate == 0.75, "failures affect the denominator but not promotion")

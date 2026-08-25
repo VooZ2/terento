@@ -9,7 +9,7 @@ from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 from urllib.parse import urlencode
 
-from terento_catalog.admin import hash_password, verify_password
+from terento_catalog.admin import dashboard_page, format_timestamp, hash_password, login_page, setup_page, verify_password
 from terento_catalog.compatibility_evidence import EvidenceValidationError, validate_event
 from terento_catalog.db import Database
 from terento_catalog.http_api import CatalogService, make_handler
@@ -67,13 +67,14 @@ class FakeEvidenceDatabase:
             "model": "fēnix 8", "firmware_versions": "20.19", "attempted_install_count": 1,
             "successful_install_count": 1, "failed_install_count": 0, "success_rate": 100,
             "last_success": "2026-08-24", "last_failure": None, "error_categories": {},
-            "calculated_status": "TESTED", "physical_device_evidence_count": 1,
+            "calculated_status": "SUPPORTED", "physical_device_evidence_count": 1,
             "review_notes": "Owner evidence",
         }]
 
     def public_compatibility_statistics(self, limit):
         return [{
-            "model": "fēnix 8", "attempted_install_count": 3,
+            "model": "fēnix 8", "compatibility_identity": "fēnix 8 · 47 mm", "variant": "47 mm", "case_size_mm": 47,
+            "attempted_install_count": 3, "reconnect_verified_install_count": 0,
             "successful_install_count": 2, "failed_install_count": 1,
             "success_rate": 66.7, "calculated_status": "SUPPORTED",
             "last_success": datetime(2026, 8, 24, tzinfo=timezone.utc),
@@ -185,6 +186,68 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertIsNone(database.parameters["errorCategory"])
         self.assertEqual(len(database.parameters["deletionTokenHash"]), 64)
 
+    def test_admin_dashboard_uses_compact_english_evidence_layout(self):
+        row = {
+            "model": "fēnix 8",
+            "compatibility_identity": "fēnix 8 · 51 mm",
+            "variant": "51mm",
+            "family": "fēnix",
+            "firmware_versions": "2244",
+            "attempted_install_count": 1,
+            "successful_install_count": 1,
+            "failed_install_count": 0,
+            "success_rate": 100.0,
+            "calculated_status": "SUPPORTED",
+            "last_success": datetime(2026, 8, 25, 16, 4, tzinfo=timezone.utc),
+            "last_failure": None,
+            "error_categories": {},
+            "review_status": "APPROVED",
+            "public_statistics_enabled": True,
+        }
+        body = dashboard_page([row], {"username": "gediminas"}, "csrf", public_stats_enabled=True).decode()
+        self.assertIn("Installation evidence", body)
+        self.assertIn(">Reports<", body)
+        self.assertIn(">51 mm<", body)
+        self.assertIn("Latest activity", body)
+        self.assertIn("Public compatibility", body)
+        self.assertIn("Enabled", body)
+        self.assertIn("1 model published", body)
+        self.assertNotIn("Diegimų", body)
+        self.assertNotIn("ADMINISTRAVIMAS", body)
+        self.assertNotIn("Georgia", body)
+        self.assertNotIn("Logged in as", body)
+        self.assertNotIn("Attempts", body)
+        self.assertIn("logo-sky.svg", body)
+        self.assertEqual(format_timestamp(row["last_success"]), "25 Aug 2026, 16:04 UTC")
+
+        unknown_variant = dict(row)
+        unknown_variant.pop("compatibility_identity")
+        unknown_variant.pop("variant")
+        unknown_variant.pop("case_size_mm", None)
+        unknown_body = dashboard_page([unknown_variant], {"username": "gediminas"}, "csrf").decode()
+        self.assertIn(">—<", unknown_body)
+
+        self.assertIn("Sign in", login_page().decode())
+        self.assertIn("Create the first admin account", setup_page().decode())
+
+    def test_schema_v2_keeps_exact_variant_and_treats_reconnect_as_optional(self):
+        payload = event(
+            schemaVersion=2,
+            compatibilityIdentity="fēnix 8 · 51 mm",
+            variant="51 mm",
+            caseSizeMm=51,
+            reconnectVerified=False,
+            mapVisibleAfterReconnect=False,
+        )
+        validated = validate_event(json.dumps(payload).encode())
+        self.assertEqual(validated["compatibilityIdentity"], "fēnix 8 · 51 mm")
+        self.assertEqual(validated["caseSizeMm"], 51)
+
+        database = CaptureDatabase()
+        self.assertTrue(database.insert_compatibility_event(validated))
+        self.assertFalse(database.parameters["reconnectVerified"])
+        self.assertFalse(database.parameters["mapVisibleAfterReconnect"])
+
     def test_privacy_fields_and_local_paths_are_rejected(self):
         without_deletion_token = event()
         without_deletion_token.pop("deletionToken")
@@ -257,7 +320,10 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         response, body = self.request("GET", "/compatibility/public/top-models.json?limit=5")
         document = json.loads(body)
         self.assertEqual(response.status, 200)
+        self.assertEqual(document["schemaVersion"], 2)
         self.assertEqual(document["models"][0]["model"], "fēnix 8")
+        self.assertEqual(document["models"][0]["compatibilityIdentity"], "fēnix 8 · 47 mm")
+        self.assertEqual(document["models"][0]["caseSizeMm"], 47)
         self.assertEqual(document["models"][0]["successfulInstallations"], 2)
         self.assertNotIn("firmwareVersion", document["models"][0])
 

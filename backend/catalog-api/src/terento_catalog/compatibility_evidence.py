@@ -9,10 +9,11 @@ from typing import Any
 
 MAX_EVENT_BYTES = 16_384
 ALLOWED_KEYS = {
-    "schemaVersion", "id", "timestamp", "model", "family", "firmwareVersion",
+    "schemaVersion", "id", "timestamp", "model", "compatibilityIdentity", "variant", "caseSizeMm", "family", "firmwareVersion",
     "usbVendorID", "usbProductID", "transport", "provider", "region",
     "mapRelease", "terentoVersion", "macOSVersion", "phaseOutcome",
-    "automaticFinishingResult", "errorCategory", "userConfirmed", "deletionToken",
+    "automaticFinishingResult", "reconnectVerified", "mapVisibleAfterReconnect",
+    "errorCategory", "userConfirmed", "deletionToken",
 }
 FORBIDDEN_KEY_PARTS = ("serial", "unitid", "unit_id", "path", "manifest", "username", "token", "password")
 
@@ -44,7 +45,7 @@ def validate_event(raw: bytes) -> dict[str, Any]:
     }
     if required - set(event):
         raise EvidenceValidationError("missing_fields")
-    if event["schemaVersion"] != 1:
+    if event["schemaVersion"] not in {1, 2}:
         raise EvidenceValidationError("unsupported_schema")
     if not re.fullmatch(r"[0-9a-fA-F-]{36}", str(event["id"])):
         raise EvidenceValidationError("invalid_event_id")
@@ -73,10 +74,29 @@ def validate_event(raw: bytes) -> dict[str, Any]:
         datetime.fromisoformat(str(event["timestamp"]).replace("Z", "+00:00"))
     except ValueError as exc:
         raise EvidenceValidationError("invalid_timestamp") from exc
-    for key in ("family", "firmwareVersion"):
+    for key in ("compatibilityIdentity", "variant", "family", "firmwareVersion"):
         value = event.get(key)
         if value is not None and (not isinstance(value, str) or len(value) > 160 or "/Users/" in value or "file://" in value):
             raise EvidenceValidationError(f"invalid_{key}")
+    compatibility_identity = str(event.get("compatibilityIdentity") or event["model"]).strip()
+    if not compatibility_identity:
+        raise EvidenceValidationError("invalid_compatibilityIdentity")
+    if event.get("caseSizeMm") is not None and (
+        not isinstance(event["caseSizeMm"], int)
+        or isinstance(event["caseSizeMm"], bool)
+        or not 1 <= event["caseSizeMm"] <= 999
+    ):
+        raise EvidenceValidationError("invalid_caseSizeMm")
+    for key in ("reconnectVerified", "mapVisibleAfterReconnect"):
+        if key in event and not isinstance(event[key], bool):
+            raise EvidenceValidationError(f"invalid_{key}")
+    if event.get("reconnectVerified") and (
+        event["phaseOutcome"] != "SUCCEEDED"
+        or event["automaticFinishingResult"] != "VERIFIED"
+    ):
+        raise EvidenceValidationError("inconsistent_reconnect_evidence")
+    if event.get("mapVisibleAfterReconnect") and not event.get("reconnectVerified"):
+        raise EvidenceValidationError("inconsistent_reconnect_evidence")
     if event["provider"].lower() != "freizeitkarte":
         raise EvidenceValidationError("unsupported_provider")
     if "userConfirmed" in event and not isinstance(event["userConfirmed"], bool):

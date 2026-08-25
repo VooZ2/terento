@@ -10,6 +10,7 @@ struct DeviceAssetMatchingTests {
         await testUnknownDeviceUsesFallback()
         await testCacheAndVersionRefresh()
         await testRealMTPIdentityResolvesModelSizeAsset()
+        testExactCompatibilityIdentityKeepsSizeAndDisplay()
         await testOfficialGarminSourceImageFallback()
         await testOfficialGarminProductPageImageFallback()
 
@@ -325,6 +326,24 @@ struct DeviceAssetMatchingTests {
                 && !result.isFallback
                 && client.assetDownloadCount == 1,
             "real MTP model fenix 8 - 47mm resolves the model-size asset"
+        )
+    }
+
+    private static func testExactCompatibilityIdentityKeepsSizeAndDisplay() {
+        let snapshot = DeviceSnapshot(
+            manufacturer: "Garmin",
+            model: "fenix 8 - 51mm AMOLED",
+            deviceVersion: "2244",
+            vendorID: 0x091e,
+            productID: 0x51b8,
+            storages: []
+        )
+        let identity = GarminDeviceIdentityAdapter().makeIdentity(from: snapshot)
+        expect(
+            identity.compatibilityIdentity == "fēnix 8 · 51 mm, AMOLED"
+                && identity.caseSizeMm == 51
+                && identity.displayType == "AMOLED",
+            "exact compatibility identity keeps 51mm and AMOLED evidence together"
         )
     }
 

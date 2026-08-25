@@ -186,9 +186,15 @@ the default-false public-statistics switch/display name.
 `compatibility_model_statistics` is a live SQL view over the immutable event
 table and model review metadata. It calculates attempted, successful and
 failed installation counts, success rate, firmware coverage, latest outcomes,
-error-category totals and the evidence-based status. The private dashboard
-reads this view. The prepared public query additionally requires both
-`review_status = 'APPROVED'` and `public_statistics_enabled = true`.
+error-category totals and the canonical evidence status. Events carry an exact
+compatibility identity plus optional variant/case-size and reconnect/map-
+visibility observations. Reconnect is informational only. `SUPPORTED` means
+at least one successful verified map installation; `VERIFIED` additionally
+requires successful evidence across multiple operator-reviewed physical
+devices and firmware versions. The private dashboard reads this view. The
+prepared public query additionally requires both `review_status = 'APPROVED'`
+and `public_statistics_enabled = true` and only exposes evidence-backed
+statuses.
 
 ## Administrator authentication
 

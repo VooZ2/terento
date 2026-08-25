@@ -79,6 +79,49 @@
     document.head.append(script);
   };
 
+  // Conversion metadata is inert until the consent-gated Umami script loads.
+  // Keeping it on the links preserves native navigation if analytics is blocked.
+  const setConversionEvent = (link, eventName, properties) => {
+    if (!link || link.dataset.umamiEvent) return;
+    link.dataset.umamiEvent = eventName;
+    Object.entries(properties).forEach(([key, value]) => {
+      const attribute = `umamiEvent${key.charAt(0).toUpperCase()}${key.slice(1)}`;
+      link.dataset[attribute] = value;
+    });
+  };
+
+  const instrumentConversionLinks = () => {
+    document.querySelectorAll("a[href]").forEach((link) => {
+      let url;
+      try {
+        url = new URL(link.href, window.location.href);
+      } catch {
+        return;
+      }
+      const path = url.pathname.toLowerCase();
+      if (path.endsWith(".dmg") || path.endsWith(".zip")) {
+        setConversionEvent(link, "download-click", {
+          file: path.endsWith(".dmg") ? "dmg" : "zip",
+          location: "download-page"
+        });
+      }
+    });
+
+    document.querySelectorAll('.hero-copy .text-link[href], .final-cta a.download-action[href]').forEach((link) => {
+      let url;
+      try {
+        url = new URL(link.href, window.location.href);
+      } catch {
+        return;
+      }
+      if (!url.pathname.endsWith("/download/")) return;
+      const location = link.closest(".final-cta") ? "home-final-cta" : "home-hero";
+      setConversionEvent(link, "download-cta-click", { location });
+    });
+  };
+
+  instrumentConversionLinks();
+
   const banner = document.createElement("section");
   banner.className = "consent-banner";
   banner.hidden = true;

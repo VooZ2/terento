@@ -84,6 +84,32 @@ struct DeviceIdentity: Sendable, Equatable {
         GarminDeviceModelNormalizer.canonicalModel(from: model)
     }
 
+    /// Exact compatibility identity used for evidence aggregation.  The
+    /// family/model label is intentionally augmented with case size and
+    /// display evidence when available so 47 mm and 51 mm never share a
+    /// status accidentally.
+    var compatibilityIdentity: String {
+        guard let canonicalModel else { return model.trimmingCharacters(in: .whitespacesAndNewlines) }
+        let identitySource = [model, variant].compactMap { $0 }.joined(separator: " ")
+        let size = GarminDeviceModelNormalizer.caseSizeMm(from: identitySource)
+        let display = GarminDeviceModelNormalizer.displayType(from: identitySource)
+        var details: [String] = []
+        if let size { details.append("\(size) mm") }
+        if let display { details.append(display) }
+        guard !details.isEmpty else { return canonicalModel }
+        return "\(canonicalModel) · \(details.joined(separator: ", "))"
+    }
+
+    var caseSizeMm: Int? {
+        let identitySource = [model, variant].compactMap { $0 }.joined(separator: " ")
+        return GarminDeviceModelNormalizer.caseSizeMm(from: identitySource)
+    }
+
+    var displayType: String? {
+        let identitySource = [model, variant].compactMap { $0 }.joined(separator: " ")
+        return GarminDeviceModelNormalizer.displayType(from: identitySource)
+    }
+
     /// Presentation/catalog identity for models that do not yet have a local
     /// transport/install profile. This never authorizes device writes.
     var catalogCanonicalModel: String? {
@@ -98,7 +124,7 @@ struct GarminDeviceModelNormalizer: Sendable {
         // Keep this list explicit. A model prefix alone is not sufficient to
         // authorize a device install target.
         switch normalized {
-        case "fenix 8", "fenix 8 47mm", "fenix 8 amoled 47mm":
+        case let value where value == "fenix 8" || value.hasPrefix("fenix 8 "):
             return "fēnix 8"
         default:
             return nil
@@ -163,6 +189,24 @@ struct GarminDeviceModelNormalizer: Sendable {
             )
             .replacingOccurrences(of: "[^a-z0-9]+", with: " ", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func caseSizeMm(from value: String) -> Int? {
+        guard let match = normalize(value).range(of: #"\b(\d{2,3})\s*mm\b"#, options: .regularExpression) else {
+            return nil
+        }
+        let digits = normalize(value)[match]
+            .replacingOccurrences(of: "mm", with: "")
+            .trimmingCharacters(in: .whitespaces)
+        return Int(digits)
+    }
+
+    static func displayType(from value: String) -> String? {
+        let normalized = normalize(value)
+        if normalized.contains("microled") { return "MicroLED" }
+        if normalized.contains("amoled") { return "AMOLED" }
+        if normalized.contains("solar") { return "Solar" }
+        return nil
     }
 }
 

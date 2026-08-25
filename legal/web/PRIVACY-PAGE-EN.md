@@ -10,9 +10,14 @@ It does not cover the privacy practices of Freizeitkarte or OpenStreetMap. Map f
 
 The website and app do not provide an account or login and do not require an email address. Device state, maps, Terento manifests and local installation records stay on your Mac. Local installation records are not sent to Terento unless you choose to share compatibility reports.
 
-## Optional compatibility reports
+## Compatibility reports
 
-The macOS beta does not send compatibility reports by default. If you actively opt in, it sends privacy-minimised installation reports to `api.terento.app` to measure installation reliability and compatibility evidence by watch model and firmware. Declining does not limit the app or map installation.
+For a new installation, the macOS beta shows a visible compatibility-sharing
+choice before installation and selects it by default. If you leave it enabled
+and continue with the installation, the app sends privacy-minimised
+installation reports to `api.terento.app` to measure installation reliability
+and compatibility evidence by watch model and firmware. You can uncheck the
+choice before installing; declining does not limit the app or map installation.
 
 A report may contain a random event ID, timestamp, watch model and family, firmware version, USB vendor and product identifiers, MTP transport, map provider, region and release, Terento version, macOS version, installation outcome and a general error category. It does not contain a Garmin Unit ID, serial number, account information, email address, local file paths, Terento manifests, map files or diagnostic logs.
 

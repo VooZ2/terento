@@ -8,15 +8,15 @@ enum CompatibilityPresentation {
     static func explanation(for status: CompatibilityStatus) -> String {
         switch status {
         case .unknown:
-            return "Terento hasn't tested this exact device yet."
+            return "This exact device is known, but Terento does not have enough real hardware evidence yet."
         case .testing:
-            return "This exact device is currently being tested with Terento."
+            return "This exact device is currently under validation or has only partial evidence."
         case .tested:
-            return "Tested with real hardware.\n\nTerento has real hardware evidence for this exact Garmin model.\n\nTesting confirms device identification and specific validated capabilities. It does not necessarily mean all map installation features are supported."
+            return "Real hardware evidence exists for this model, but it is not yet a full support claim."
         case .supported:
-            return "Supported for Terento map installation.\n\nThis Garmin model has successfully completed the Terento installation workflow.\n\nTerento verified map installation, reconnect behavior, and that the installed map is visible on the device."
+            return "A real map installation completed successfully for this exact model."
         case .verified:
-            return "Verified across multiple devices.\n\nThis Garmin model has completed successful Terento workflows on multiple physical devices, including firmware variations."
+            return "Confirmed across multiple physical devices and firmware versions."
         }
     }
 }

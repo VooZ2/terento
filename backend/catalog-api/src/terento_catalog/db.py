@@ -41,15 +41,19 @@ class Database:
     def insert_compatibility_event(self, event: dict[str, Any]) -> bool:
         query = """
             INSERT INTO compatibility_evidence_event (
-                event_id, occurred_at, model, family, firmware_version,
+                event_id, occurred_at, model, compatibility_identity, variant, case_size_mm,
+                family, firmware_version,
                 usb_vendor_id, usb_product_id, transport, provider, region,
                 map_release, terento_version, macos_version, phase_outcome,
-                automatic_finishing_result, error_category, deletion_token_hash
+                automatic_finishing_result, reconnect_verified, map_visible_after_reconnect,
+                error_category, deletion_token_hash
             ) VALUES (
-                %(id)s, %(timestamp)s, %(model)s, %(family)s, %(firmwareVersion)s,
+                %(id)s, %(timestamp)s, %(model)s, %(compatibilityIdentity)s, %(variant)s, %(caseSizeMm)s,
+                %(family)s, %(firmwareVersion)s,
                 %(usbVendorID)s, %(usbProductID)s, %(transport)s, %(provider)s, %(region)s,
                 %(mapRelease)s, %(terentoVersion)s, %(macOSVersion)s, %(phaseOutcome)s,
-                %(automaticFinishingResult)s, %(errorCategory)s, %(deletionTokenHash)s
+                %(automaticFinishingResult)s, %(reconnectVerified)s, %(mapVisibleAfterReconnect)s,
+                %(errorCategory)s, %(deletionTokenHash)s
             ) ON CONFLICT (event_id) DO NOTHING
             RETURNING event_id
         """
@@ -59,6 +63,11 @@ class Database:
             # explicit NULL parameters for the named placeholders below.
             "family": event.get("family"),
             "firmwareVersion": event.get("firmwareVersion"),
+            "compatibilityIdentity": event.get("compatibilityIdentity") or event["model"],
+            "variant": event.get("variant"),
+            "caseSizeMm": event.get("caseSizeMm"),
+            "reconnectVerified": bool(event.get("reconnectVerified", False)),
+            "mapVisibleAfterReconnect": bool(event.get("mapVisibleAfterReconnect", False)),
             "errorCategory": event.get("errorCategory"),
             "deletionTokenHash": self._token_hash(event.get("deletionToken")),
         }
@@ -100,8 +109,12 @@ class Database:
     def public_compatibility_statistics(self, limit: int) -> list[dict[str, Any]]:
         query = """
             SELECT public_display_name AS model,
+                   compatibility_identity,
+                   variant,
+                   case_size_mm,
                    attempted_install_count,
                    successful_install_count,
+                   reconnect_verified_install_count,
                    failed_install_count,
                    success_rate,
                    calculated_status,
@@ -109,6 +122,7 @@ class Database:
             FROM compatibility_model_statistics
             WHERE public_statistics_enabled = true
               AND review_status = 'APPROVED'
+              AND calculated_status IN ('TESTED', 'SUPPORTED', 'VERIFIED')
             ORDER BY successful_install_count DESC, attempted_install_count DESC, public_display_name
             LIMIT %s
         """

@@ -45,7 +45,7 @@ struct CompatibilityEngine: Sendable {
         case .testing:
             reason = "This exact registry entry is currently under validation."
         case .supported:
-            reason = "Map installation, reconnect, and map visibility evidence is complete."
+            reason = "A successful map installation was completed for this exact device identity."
         case .verified:
             reason = "Multiple devices and firmware variations have completed the workflow."
         case .unknown:
@@ -64,9 +64,7 @@ struct CompatibilityEngine: Sendable {
     private func evaluatedStatus(for entry: DeviceRegistryEntry) -> CompatibilityStatus {
         let evidence = entry.evidence
 
-        if evidence.map == .pass,
-           evidence.reconnect == .pass,
-           evidence.mapVisible == .pass {
+        if evidence.map == .pass {
             if evidence.multiplePhysicalDevices == .pass,
                evidence.firmwareVariation == .pass {
                 return .verified

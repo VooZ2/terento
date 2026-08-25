@@ -2927,12 +2927,7 @@ private struct CompatibilityStatusView: View {
     }
 
     private var compatibilityPopoverBody: String {
-        switch status {
-        case .tested:
-            return "Tested with this Garmin model on real hardware.\n\nDevice detection and supported capabilities have been verified."
-        default:
-            return CompatibilityPresentation.explanation(for: status)
-        }
+        CompatibilityPresentation.explanation(for: status)
     }
 
     private var statusIcon: String {

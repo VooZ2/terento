@@ -90,15 +90,15 @@ class CatalogService:
 
     def setup_admin(self, username: str, password: str, bootstrap_secret: str) -> dict[str, Any]:
         if self.admin_is_configured():
-            raise AdminValidationError("Administratorius jau sukurtas.")
+            raise AdminValidationError("An administrator account already exists.")
         if not self.admin_bootstrap_secret or not hmac.compare_digest(bootstrap_secret, self.admin_bootstrap_secret):
-            raise AdminValidationError("Neteisinga diegimo paslaptis.")
+            raise AdminValidationError("The deployment secret is incorrect.")
         return self.database.create_admin_user(validate_username(username), hash_password(password))
 
     def login_admin(self, username: str, password: str) -> tuple[str, str]:
         user = self.database.admin_user_by_username(username.strip())
         if not user or not verify_password(password, user["password_hash"]):
-            raise AdminValidationError("Neteisingas naudotojo vardas arba slaptažodis.")
+            raise AdminValidationError("Incorrect username or password.")
         session_token, csrf_token = new_token(), new_token()
         expires_at = datetime.now(timezone.utc) + timedelta(seconds=self.admin_session_ttl_seconds)
         self.database.create_admin_session(
@@ -125,12 +125,12 @@ class CatalogService:
         new_password: str, new_password_confirmation: str,
     ) -> dict[str, Any]:
         if not verify_password(current_password, user["password_hash"]):
-            raise AdminValidationError("Dabartinis slaptažodis neteisingas.")
+            raise AdminValidationError("Current password is incorrect.")
         normalized_username = validate_username(username)
         password_hash = user["password_hash"]
         if new_password or new_password_confirmation:
             if new_password != new_password_confirmation:
-                raise AdminValidationError("Nauji slaptažodžiai nesutampa.")
+                raise AdminValidationError("New passwords do not match.")
             password_hash = hash_password(validate_password(new_password))
         return self.database.update_admin_user(int(user["id"]), normalized_username, password_hash)
 
@@ -297,7 +297,10 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return
             if request_path in {"/admin", "/admin/"}:
                 try:
-                    body = dashboard_page(service.compatibility_statistics(), session, csrf_token)
+                    body = dashboard_page(
+                        service.compatibility_statistics(), session, csrf_token,
+                        public_stats_enabled=service.public_compatibility_stats_enabled,
+                    )
                 except Exception:
                     LOGGER.exception("compatibility statistics failed")
                     self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "statistics_unavailable"}, send_body=send_body, cache_control="no-store")
@@ -342,7 +345,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     body = account_page(session, self._csrf_cookie() or "", error=str(exc))
                     self._send_admin_html(body, send_body=True, status=HTTPStatus.BAD_REQUEST)
                     return
-                body = account_page(updated, self._csrf_cookie() or "", success="Prisijungimo duomenys atnaujinti.")
+                body = account_page(updated, self._csrf_cookie() or "", success="Account details updated.")
                 self._send_admin_html(body, send_body=True)
                 return
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=True, cache_control="no-store")
@@ -353,7 +356,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store")
                 return
             if form.get("password") != form.get("password_confirmation"):
-                self._send_admin_html(setup_page(error="Slaptažodžiai nesutampa."), send_body=True, status=HTTPStatus.BAD_REQUEST)
+                self._send_admin_html(setup_page(error="Passwords do not match."), send_body=True, status=HTTPStatus.BAD_REQUEST)
                 return
             try:
                 service.setup_admin(form.get("username", ""), form.get("password", ""), form.get("bootstrap_secret", ""))
@@ -396,14 +399,18 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return
             models = [{
                 "model": row["model"],
+                "compatibilityIdentity": row.get("compatibility_identity"),
+                "variant": row.get("variant"),
+                "caseSizeMm": row.get("case_size_mm"),
                 "attemptedInstallations": int(row["attempted_install_count"]),
                 "successfulInstallations": int(row["successful_install_count"]),
+                "reconnectVerifiedInstallations": int(row.get("reconnect_verified_install_count") or 0),
                 "failedInstallations": int(row["failed_install_count"]),
                 "successRate": float(row["success_rate"]) if row.get("success_rate") is not None else None,
                 "evidenceStatus": row["calculated_status"],
                 "lastSuccessfulInstallation": row["last_success"].isoformat() if isinstance(row.get("last_success"), datetime) else row.get("last_success"),
             } for row in rows]
-            self._send_json(HTTPStatus.OK, {"schemaVersion": 1, "generatedAt": datetime.now(timezone.utc).isoformat(), "models": models}, send_body=send_body, cache_control="public, max-age=300, stale-while-revalidate=3600")
+            self._send_json(HTTPStatus.OK, {"schemaVersion": 2, "generatedAt": datetime.now(timezone.utc).isoformat(), "models": models}, send_body=send_body, cache_control="public, max-age=300, stale-while-revalidate=3600")
 
         def _read_form(self) -> dict[str, str] | None:
             try:

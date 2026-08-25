@@ -1,0 +1,140 @@
+{
+  "siteName": "Terento",
+  "baseUrl": "https://terento.app",
+  "socialImage": "/assets/social/terento-og.png",
+  "socialImageType": "image/png",
+  "socialImageWidth": 1200,
+  "socialImageHeight": 630,
+  "socialImageAlt": "Terento showing a connected Garmin smartwatch on macOS",
+  "locales": {
+    "en": "en_US",
+    "de": "de_DE",
+    "fr": "fr_FR",
+    "pl": "pl_PL",
+    "cs": "cs_CZ",
+    "it": "it_IT"
+  },
+  "alternateLanguages": ["en", "de", "fr", "pl", "cs", "it"],
+  "pages": [
+    {
+      "file": "site/index.html",
+      "path": "/",
+      "locale": "en",
+      "title": "Terento — Garmin Maps for Mac",
+      "description": "A native macOS app for installing and managing Freizeitkarte maps on Garmin smartwatches. Apple Silicon Mac required.",
+      "alternates": true
+    },
+    {
+      "file": "site/de/index.html",
+      "path": "/de/",
+      "locale": "de",
+      "title": "Terento — Garmin-Karten für Mac",
+      "description": "Terento ist eine kostenlose Open-Source-Beta für macOS zur Installation von Freizeitkarte-Karten auf ausgewählten Garmin-Smartwatches. Erfordert einen Apple-Silicon-Mac; Intel-Macs werden nicht unterstützt.",
+      "alternates": true
+    },
+    {
+      "file": "site/fr/index.html",
+      "path": "/fr/",
+      "locale": "fr",
+      "title": "Terento — Cartes Garmin pour Mac",
+      "description": "Terento est une bêta macOS gratuite et open source pour installer des cartes Freizeitkarte sur certaines montres Garmin. Nécessite un Mac Apple Silicon ; les Mac Intel ne sont pas pris en charge.",
+      "alternates": true
+    },
+    {
+      "file": "site/pl/index.html",
+      "path": "/pl/",
+      "locale": "pl",
+      "title": "Terento — Mapy Garmin na Mac",
+      "description": "Terento to bezpłatna, otwartoźródłowa beta macOS do instalowania map Freizeitkarte na wybranych zegarkach Garmin. Wymaga Maca z Apple Silicon; Maki z Intelem nie są obsługiwane.",
+      "alternates": true
+    },
+    {
+      "file": "site/cs/index.html",
+      "path": "/cs/",
+      "locale": "cs",
+      "title": "Terento — Mapy Garmin pro Mac",
+      "description": "Terento je bezplatná open-source beta pro macOS k instalaci map Freizeitkarte do vybraných hodinek Garmin. Vyžaduje Mac s Apple Silicon; Macy s Intelem nejsou podporovány.",
+      "alternates": true
+    },
+    {
+      "file": "site/it/index.html",
+      "path": "/it/",
+      "locale": "it",
+      "title": "Terento — Mappe Garmin per Mac",
+      "description": "Terento è una beta macOS gratuita e open source per installare mappe Freizeitkarte su alcuni smartwatch Garmin. Richiede un Mac Apple Silicon; i Mac Intel non sono supportati.",
+      "alternates": true
+    },
+    {
+      "file": "site/download/index.html",
+      "path": "/download/",
+      "locale": "en",
+      "title": "Download — Terento",
+      "description": "Download the Terento beta for installing Freizeitkarte maps on Garmin smartwatches on an Apple Silicon Mac running macOS 13 or later.",
+      "alternates": true
+    },
+    {
+      "file": "site/de/download/index.html",
+      "path": "/de/download/",
+      "locale": "de",
+      "title": "Herunterladen — Terento",
+      "description": "Terento Beta für Apple-Silicon-Macs mit macOS 13 oder neuer herunterladen. Intel-Macs werden nicht unterstützt. Freizeitkarte-Karten auf Garmin-Smartwatches testen.",
+      "alternates": true
+    },
+    {
+      "file": "site/fr/download/index.html",
+      "path": "/fr/download/",
+      "locale": "fr",
+      "title": "Télécharger — Terento",
+      "description": "Téléchargez la bêta Terento pour les Mac Apple Silicon sous macOS 13 ou version ultérieure. Les Mac Intel ne sont pas pris en charge. Testez l’installation de cartes Freizeitkarte sur les montres Garmin.",
+      "alternates": true
+    },
+    {
+      "file": "site/pl/download/index.html",
+      "path": "/pl/download/",
+      "locale": "pl",
+      "title": "Pobierz — Terento",
+      "description": "Pobierz wersję beta Terento dla Maców z Apple Silicon i macOS 13 lub nowszym. Maki z Intelem nie są obsługiwane. Testuj instalację map Freizeitkarte na zegarkach Garmin.",
+      "alternates": true
+    },
+    {
+      "file": "site/cs/download/index.html",
+      "path": "/cs/download/",
+      "locale": "cs",
+      "title": "Stáhnout — Terento",
+      "description": "Stáhněte si betu Terento pro Macy s Apple Silicon a macOS 13 nebo novějším. Macy s Intelem nejsou podporovány. Testujte instalaci map Freizeitkarte do hodinek Garmin.",
+      "alternates": true
+    },
+    {
+      "file": "site/it/download/index.html",
+      "path": "/it/download/",
+      "locale": "it",
+      "title": "Scarica — Terento",
+      "description": "Scarica la beta di Terento per Mac Apple Silicon con macOS 13 o versioni successive. I Mac Intel non sono supportati. Prova l’installazione di mappe Freizeitkarte sugli smartwatch Garmin.",
+      "alternates": true
+    },
+    {
+      "file": "site/compatibility/index.html",
+      "path": "/compatibility/",
+      "locale": "en",
+      "title": "Garmin Compatibility — Terento",
+      "description": "See Garmin watch compatibility with Terento, including tested models and successful community map installations.",
+      "alternates": false
+    },
+    {
+      "file": "site/legal/index.html",
+      "path": "/legal/",
+      "locale": "en",
+      "title": "Legal — Terento",
+      "description": "Terento legal notices for the website and public macOS beta, including independence, map and software licences, online services and warranty terms.",
+      "alternates": false
+    },
+    {
+      "file": "site/privacy/index.html",
+      "path": "/privacy/",
+      "locale": "en",
+      "title": "Privacy — Terento",
+      "description": "Terento privacy notice for the public website and macOS beta, including optional compatibility reports, Cloudflare services and consent-based visit statistics.",
+      "alternates": false
+    }
+  ]
+}
