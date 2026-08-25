@@ -115,18 +115,11 @@ struct DeviceIdentity: Sendable, Equatable {
         guard usbVendorId == 0x091e,
               usbProductId == 0x51b8,
               canonicalModel == "fēnix 8",
+              caseSizeMm == 47,
               displayType == nil || displayType == "AMOLED" else {
             return nil
         }
-
-        switch caseSizeMm {
-        case 47:
-            return "garmin-fenix-8-47-amoled"
-        case 51:
-            return "garmin-fenix-8-51-amoled"
-        default:
-            return nil
-        }
+        return "garmin-fenix-8-47-amoled"
     }
 
     /// Presentation/catalog identity for models that do not yet have a local

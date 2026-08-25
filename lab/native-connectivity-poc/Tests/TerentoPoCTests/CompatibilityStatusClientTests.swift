@@ -125,13 +125,6 @@ struct CompatibilityStatusClientTests {
             "unknown variant subtitle does not invent AMOLED or Solar"
         )
 
-        let reviewed51Identity = adapter.makeIdentity(from: snapshot(model: "fenix 8 - 51mm", productID: 0x51b8))
-        require(reviewed51Identity.variant == "51 mm, AMOLED", "reviewed 51 mm MTP identity resolves its exact AMOLED variant")
-        require(
-            reviewed51Identity.reviewedCanonicalDeviceID == "garmin-fenix-8-51-amoled",
-            "reviewed 51 mm identity binds to the live API canonical device ID"
-        )
-
         try? FileManager.default.removeItem(at: cacheURL)
         print("PASS: canonical compatibility status client, exact variants, cache, and offline behavior")
     }
@@ -179,7 +172,7 @@ struct CompatibilityStatusClientTests {
         ]
         if variant?.contains("Solar") == true {
             result["displayType"] = "Solar"
-        } else {
+        } else if size == 47 {
             result["displayType"] = "AMOLED"
         }
         return result

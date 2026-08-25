@@ -100,17 +100,15 @@ struct GarminDeviceIdentityAdapter: Sendable {
             return "Solar"
         }
 
-        // VID/PID 091e:51b8 plus the live MTP case-size token is separately
-        // reviewed hardware evidence for the exact 47 mm and 51 mm AMOLED
-        // catalog records. This is not inferred from artwork. An explicit
-        // display token above always wins, so a future Solar identity cannot
-        // leak AMOLED.
+        // VID/PID 091e:51b8 is separately reviewed hardware evidence for the
+        // exact 47 mm AMOLED catalog record. This is not inferred from the
+        // product image or from size alone. An explicit display token above
+        // always wins, so a future Solar identity cannot leak AMOLED.
         if snapshot.vendorID == 0x091e,
            snapshot.productID == 0x51b8,
            GarminDeviceModelNormalizer.canonicalModel(from: model) == "fēnix 8",
-           let size = GarminDeviceModelNormalizer.caseSizeMm(from: model),
-           size == 47 || size == 51 {
-            return "\(size) mm, AMOLED"
+           GarminDeviceModelNormalizer.caseSizeMm(from: model) == 47 {
+            return "47 mm, AMOLED"
         }
 
         if normalized.contains("47mm") {
