@@ -81,14 +81,19 @@ jobs:
           env_file="$project/.env"
           image="terento-catalog-api:publish-${release_id}"
           override="/tmp/terento-catalog-api-override-${release_id}.yml"
+          compose_project="terento-catalog"
           old_image=""
           old_container=""
 
           test -f "$compose"
           test -f "$env_file"
-          old_container="$(docker ps -aq --filter label=com.docker.compose.service=catalog-api | head -n 1)"
+          old_container="$(docker ps -aq --filter label=com.docker.compose.service=catalog-api | tail -n 1)"
           if [ -n "$old_container" ]; then
             old_image="$(docker inspect --format '{{.Config.Image}}' "$old_container")"
+            detected_project="$(docker inspect --format '{{ index .Config.Labels "com.docker.compose.project" }}' "$old_container")"
+            if [ -n "$detected_project" ]; then
+              compose_project="$detected_project"
+            fi
           fi
           if [ -z "$old_image" ]; then
             old_image="$(docker compose --project-directory "$project" --env-file "$env_file" -f "$compose" images -q catalog-api | head -n 1)"
@@ -107,7 +112,7 @@ jobs:
               image: $image
           EOF
 
-          compose_args=(--project-directory "$project" --env-file "$env_file" -f "$compose" -f "$override")
+          compose_args=(--project-name "$compose_project" --project-directory "$project" --env-file "$env_file" -f "$compose" -f "$override")
           docker compose "${compose_args[@]}" config --quiet
           docker compose "${compose_args[@]}" --profile manual run --rm --no-deps catalog-migrate
 
@@ -119,13 +124,19 @@ jobs:
             catalog-scheduler:
               image: $old_image
           EOF
-            docker compose "${compose_args[@]}" up -d --no-build catalog-api catalog-scheduler || true
+            docker compose "${compose_args[@]}" up -d --force-recreate --no-build catalog-api catalog-scheduler || true
             rm -rf -- "$stage" "$override"
           }
 
-          if ! docker compose "${compose_args[@]}" up -d --no-build catalog-api catalog-scheduler; then
+          if ! docker compose "${compose_args[@]}" up -d --force-recreate --no-build catalog-api catalog-scheduler; then
             rollback
             exit 1
+          fi
+
+          duplicate_project="catalog"
+          if [ "$compose_project" != "$duplicate_project" ]; then
+            duplicate_args=(--project-name "$duplicate_project" --project-directory "$project" --env-file "$env_file" -f "$compose" -f "$override")
+            docker compose "${duplicate_args[@]}" rm -sf catalog-api catalog-scheduler || true
           fi
 
           health_url="https://api.terento.app/health"
@@ -140,8 +151,9 @@ jobs:
           done
 
           admin_status="$(curl --silent --show-error --connect-timeout 5 --max-time 10 -o /dev/null -w '%{http_code}' https://terento.app/admin/campaign-links || true)"
-          admin_location="$(curl --silent --show-error --connect-timeout 5 --max-time 10 -D - -o /dev/null https://terento.app/admin/campaign-links | awk 'tolower($1)=="location:" {print $2}' | tr -d '\r' | head -n 1 || true)"
-          if [ "$health_verified" != true ] || [ "$admin_status" != "303" ] || [ "$admin_location" != "/admin/login" ]; then
+          admin_headers="$(curl --silent --show-error --connect-timeout 5 --max-time 10 -D - -o /dev/null https://terento.app/admin/campaign-links || true)"
+          admin_location="$(printf '%s\n' "$admin_headers" | awk 'tolower($1)=="location:" {print $2}' | tr -d '\r' | head -n 1)"
+          if [ "$health_verified" != true ] || [ "$admin_status" != "303" ] || [ "$admin_location" != "/admin/login" ] || ! printf '%s\n' "$admin_headers" | grep -qi "script-src 'none'"; then
             rollback
             exit 1
           fi
