@@ -89,6 +89,9 @@ jobs:
           docker build --pull=false -f "$stage/site-deploy/Dockerfile" -t "$image" "$stage"
 
           if docker inspect "$container" >/dev/null 2>&1; then
+            # A repeated deployment of the same commit reuses release_id. Remove
+            # only its stale, stopped rollback container before reserving the name.
+            docker rm -f "$rollback" >/dev/null 2>&1 || true
             docker rename "$container" "$rollback"
             docker stop "$rollback" >/dev/null
             old_container="$rollback"
@@ -150,5 +153,8 @@ jobs:
             exit 1
           fi
 
+          if [ -n "$old_container" ]; then
+            docker rm -f "$old_container" >/dev/null
+          fi
           rm -rf -- "$stage"
           REMOTE
