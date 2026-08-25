@@ -13,9 +13,9 @@ struct CompatibilityPresentationTests {
         let expected: [CompatibilityStatus: String] = [
             .unknown: "This exact device is known, but Terento does not have enough real hardware evidence yet.",
             .testing: "This exact device is currently under validation or has only partial evidence.",
-            .tested: "Real hardware evidence exists for this model, but it is not yet a full support claim.",
-            .supported: "A real map installation completed successfully for this exact model.",
-            .verified: "Confirmed across multiple physical devices and firmware versions."
+            .tested: "Real hardware testing exists for this exact model and variant.",
+            .supported: "A successful verified map installation exists for this exact model and variant.",
+            .verified: "Successful installations are confirmed across at least two operator-reviewed physical devices and two firmware versions."
         ]
 
         for status in CompatibilityStatus.allCases {

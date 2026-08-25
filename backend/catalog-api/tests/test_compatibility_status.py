@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 
 from terento_catalog.compatibility_status import (
+    STATUS_PUBLIC_COPY,
     CompatibilityStatus,
     calculate_compatibility_status,
 )
@@ -65,6 +66,20 @@ class CompatibilityStatusTests(unittest.TestCase):
                 physical_device_count=1,
             ),
             CompatibilityStatus.VERIFIED,
+        )
+
+    def test_public_copy_matches_exact_status_criteria(self):
+        self.assertEqual(
+            STATUS_PUBLIC_COPY[CompatibilityStatus.TESTED],
+            "Real hardware testing exists for this exact model and variant.",
+        )
+        self.assertEqual(
+            STATUS_PUBLIC_COPY[CompatibilityStatus.SUPPORTED],
+            "A successful verified map installation exists for this exact model and variant.",
+        )
+        self.assertEqual(
+            STATUS_PUBLIC_COPY[CompatibilityStatus.VERIFIED],
+            "Successful installations are confirmed across at least two operator-reviewed physical devices and two firmware versions.",
         )
 
 

@@ -53,7 +53,7 @@ def calculate_compatibility_status(
 STATUS_PUBLIC_COPY: dict[CompatibilityStatus, str] = {
     CompatibilityStatus.UNKNOWN: "This exact device is known, but Terento does not have enough real hardware evidence yet.",
     CompatibilityStatus.TESTING: "This exact device is currently under validation or has only partial evidence.",
-    CompatibilityStatus.TESTED: "Real hardware evidence exists for this model, but it is not yet a full support claim.",
-    CompatibilityStatus.SUPPORTED: "A real map installation completed successfully for this exact model.",
-    CompatibilityStatus.VERIFIED: "Confirmed across multiple physical devices and firmware versions.",
+    CompatibilityStatus.TESTED: "Real hardware testing exists for this exact model and variant.",
+    CompatibilityStatus.SUPPORTED: "A successful verified map installation exists for this exact model and variant.",
+    CompatibilityStatus.VERIFIED: "Successful installations are confirmed across at least two operator-reviewed physical devices and two firmware versions.",
 }

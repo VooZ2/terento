@@ -8,6 +8,7 @@ import sys
 
 root = Path(sys.argv[1])
 js = (root / "site/compatibility/compatibility.js").read_text()
+data_js = (root / "site/compatibility/compatibility-data.js").read_text()
 html = (root / "site/compatibility/index.html").read_text()
 css = (root / "site/styles.css").read_text()
 
@@ -17,12 +18,26 @@ for status in required_statuses:
     assert f"status-{status.lower()}" in css, f"missing badge style: {status}"
 
 assert 'status-${escapeHtml(statusClass)}' in js, "missing shared status badge template"
+assert js.count("createStatusBadge(") >= 3, "cards and explanation must use the shared badge renderer"
 
 assert "How compatibility works" in html
 assert "status-info" not in js and "status-info" not in css
-assert "not required for any status" in html.lower()
+assert "info-circle" not in js and "(i)" not in js
+assert "Compatibility is based on real installation reports shared by Terento users." in html
+assert "Thanks for helping us understand which Garmin models work." in html
+assert "Unknown</dt>" not in html and "Testing</dt>" not in html
+assert "Garmin models with evidence" in html
 assert "compatibilityIdentity" in js
 assert "caseSizeMm" in js
+assert "canonicalFamilyKey" in data_js
+assert "familyOptions" in data_js
 assert "min-width: 74px" in css
 print("Compatibility status web tests passed (statuses, exact variants, disclosure, shared badge contract).")
 PY
+
+node_bin="${NODE_BIN:-$(command -v node || true)}"
+if [[ -z "$node_bin" ]]; then
+    echo "Node.js is required for compatibility family data tests." >&2
+    exit 1
+fi
+"$node_bin" "$repo_root/Tests/compatibility-data-tests.cjs"

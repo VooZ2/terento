@@ -12,11 +12,11 @@ enum CompatibilityPresentation {
         case .testing:
             return "This exact device is currently under validation or has only partial evidence."
         case .tested:
-            return "Real hardware evidence exists for this model, but it is not yet a full support claim."
+            return "Real hardware testing exists for this exact model and variant."
         case .supported:
-            return "A real map installation completed successfully for this exact model."
+            return "A successful verified map installation exists for this exact model and variant."
         case .verified:
-            return "Confirmed across multiple physical devices and firmware versions."
+            return "Successful installations are confirmed across at least two operator-reviewed physical devices and two firmware versions."
         }
     }
 }

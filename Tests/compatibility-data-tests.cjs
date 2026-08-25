@@ -1,0 +1,42 @@
+"use strict";
+
+const assert = require("node:assert/strict");
+const {
+  canonicalFamilyKey,
+  familyOptions,
+  filterByFamily,
+} = require("../site/compatibility/compatibility-data.js");
+
+const row = (family, familyName, variant, report = 1) => ({
+  family,
+  familyName,
+  model: "fēnix 8",
+  variants: [variant],
+  report,
+});
+
+const twoVariants = [
+  row("fenix", "fēnix", "47 mm, AMOLED"),
+  row("fenix", "fēnix", "51 mm, AMOLED"),
+];
+assert.deepEqual(familyOptions(twoVariants), [["fenix", "fēnix"]]);
+
+const repeatedReports = [
+  ...twoVariants,
+  row(" FENIX ", "fēnix", "47 mm, AMOLED", 2),
+  row("fe\u0301nix", "fénix", "51 mm, AMOLED", 2),
+];
+assert.deepEqual(familyOptions(repeatedReports), [["fenix", "fēnix"]]);
+
+const mixedFamilies = [
+  ...twoVariants,
+  { family: "forerunner", familyName: "Forerunner", model: "Forerunner 970", variants: ["47 mm"] },
+];
+assert.deepEqual(familyOptions(mixedFamilies), [["fenix", "fēnix"], ["forerunner", "Forerunner"]]);
+
+const selected = filterByFamily(mixedFamilies, canonicalFamilyKey("fēnix"));
+assert.equal(selected.length, 2);
+assert.deepEqual(selected.map((item) => item.variants[0]), ["47 mm, AMOLED", "51 mm, AMOLED"]);
+assert.notStrictEqual(selected[0], selected[1]);
+
+console.log("Compatibility family data tests passed (canonical options, duplicates, selection, exact variants).");
