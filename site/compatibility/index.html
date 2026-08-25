@@ -63,7 +63,7 @@
         <div class="shell">
           <div class="section-heading compatibility-heading">
             <p class="eyebrow">Compatibility evidence</p>
-            <h2 id="directory-title">Tested Garmin models</h2>
+            <h2 id="directory-title">Garmin models with evidence</h2>
           </div>
 
           <div class="compatibility-summary" id="compatibility-summary" aria-live="polite" aria-busy="true">
@@ -78,14 +78,8 @@
           <details class="compatibility-how">
             <summary>How compatibility works</summary>
             <div class="compatibility-how-body">
-              <p>Statuses describe evidence for the exact model and variant. Install counts are evidence metrics, not status thresholds. Reconnecting the watch or confirming map visibility is not required for any status.</p>
-              <dl>
-                <div><dt>Unknown</dt><dd>The exact device is known, but Terento does not have enough real hardware evidence yet.</dd></div>
-                <div><dt>Testing</dt><dd>The exact device is under validation or has only partial evidence.</dd></div>
-                <div><dt>Tested</dt><dd>Real hardware evidence exists for this model, but it is not yet a full support claim.</dd></div>
-                <div><dt>Supported</dt><dd>A real map installation completed successfully for this exact model.</dd></div>
-                <div><dt>Verified</dt><dd>Confirmed across multiple physical devices and firmware versions.</dd></div>
-              </dl>
+              <p>Compatibility is based on real installation reports shared by Terento users. Thanks for helping us understand which Garmin models work.</p>
+              <div class="compatibility-status-list" id="compatibility-status-list"></div>
             </div>
           </details>
 
@@ -151,6 +145,7 @@
       </div>
     </footer>
 
-    <script defer src="/compatibility/compatibility.js?v=20260825-7"></script>
+    <script defer src="/compatibility/compatibility-data.js?v=20260825-1"></script>
+    <script defer src="/compatibility/compatibility.js?v=20260825-8"></script>
   </body>
 </html>

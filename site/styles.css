@@ -1733,7 +1733,7 @@ details p {
 
 .compatibility-how {
   width: fit-content;
-  max-width: 720px;
+  max-width: 760px;
   margin: 0 0 18px;
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -1741,11 +1741,28 @@ details p {
 }
 
 .compatibility-how summary {
+  min-height: 0;
   padding: 10px 14px;
   color: var(--graphite);
   cursor: pointer;
   font-size: 14px;
   font-weight: 650;
+}
+
+.compatibility-how summary::after,
+.compatibility-how[open] summary::after {
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  content: "";
+  font-size: 0;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform .16s ease;
+}
+
+.compatibility-how[open] summary::after {
+  transform: rotate(-135deg) translate(-2px, -1px);
 }
 
 .compatibility-how summary:focus-visible {
@@ -1754,34 +1771,35 @@ details p {
 }
 
 .compatibility-how-body {
-  padding: 0 14px 13px;
+  padding: 8px 14px 14px;
   color: var(--secondary);
   font-size: 13px;
 }
 
 .compatibility-how-body p {
-  margin: 0 0 10px;
-}
-
-.compatibility-how-body dl {
-  display: grid;
-  gap: 7px;
   margin: 0;
 }
 
-.compatibility-how-body dl > div {
+.compatibility-status-list {
+  margin-top: 22px;
+}
+
+.compatibility-status-row {
   display: grid;
-  grid-template-columns: 82px 1fr;
-  gap: 10px;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  padding: 12px 0;
+  border-top: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
 }
 
-.compatibility-how-body dt {
-  color: var(--graphite);
-  font-weight: 700;
+.compatibility-status-row:first-child {
+  padding-top: 0;
+  border-top: 0;
 }
 
-.compatibility-how-body dd {
-  margin: 0;
+.compatibility-status-row:last-child {
+  padding-bottom: 0;
 }
 
 .compatibility-summary-separator,
@@ -1957,7 +1975,7 @@ details p {
 .status-verified {
   background: color-mix(in srgb, var(--lichen) 35%, var(--surface));
   border-color: color-mix(in srgb, var(--lichen) 52%, var(--border));
-  color: color-mix(in srgb, var(--lichen) 48%, var(--graphite));
+  color: color-mix(in srgb, var(--lichen) 38%, var(--graphite));
 }
 
 .status-supported {
@@ -2103,8 +2121,6 @@ details p {
 
   .status-badge {
     justify-self: start;
-    padding: 5px 8px;
-    font-size: 10px;
   }
 
   .watch-install-count {
@@ -2115,6 +2131,17 @@ details p {
 
   .watch-card-meta {
     font-size: 12px;
+  }
+}
+
+@media (max-width: 430px) {
+  .compatibility-how {
+    width: 100%;
+  }
+
+  .compatibility-status-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
 }
 

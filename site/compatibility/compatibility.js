@@ -1,4 +1,6 @@
 (() => {
+  const data = globalThis.TerentoCompatibilityData;
+  if (!data) throw new Error("compatibility_data_unavailable");
   const API_ORIGIN = "https://api.terento.app";
   const isLocalPreview = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
   const previewStats = [
@@ -44,13 +46,10 @@
     summarySuccesses: document.querySelector('[data-summary="successes"]'),
     summaryUpdated: document.querySelector('[data-summary="updated"]'),
     summaryUpdatedLine: document.querySelector('[data-summary-updated]'),
+    statusList: document.querySelector("#compatibility-status-list"),
   };
 
-  const normalize = (value) => String(value || "")
-    .trim()
-    .toLocaleLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+  const { normalize, canonicalFamilyKey, familyOptions, filterByFamily } = data;
 
   const statusLabel = (status) => ({
     VERIFIED: "Verified",
@@ -61,12 +60,25 @@
   }[status] || "Unknown");
 
   const statusDescription = (status) => ({
-    TESTED: "Real hardware evidence exists for this model, but it is not yet a full support claim.",
-    SUPPORTED: "A real map installation completed successfully for this exact model.",
-    VERIFIED: "Confirmed across multiple physical devices and firmware versions.",
+    TESTED: "Real hardware testing exists for this exact model and variant.",
+    SUPPORTED: "A successful verified map installation exists for this exact model and variant.",
+    VERIFIED: "Successful installations are confirmed across at least two operator-reviewed physical devices and two firmware versions.",
     TESTING: "This exact device is currently under validation or has only partial evidence.",
     UNKNOWN: "This exact device is known, but Terento does not have enough real hardware evidence yet.",
   }[status] || "Compatibility evidence is not available yet.");
+
+  function createStatusBadge(status, ariaLabel = statusLabel(status)) {
+    const statusClass = String(status || "UNKNOWN").toLocaleLowerCase();
+    return `<span class="status-badge status-${escapeHtml(statusClass)}" aria-label="${escapeHtml(ariaLabel)}"><span>${escapeHtml(statusLabel(status))}</span></span>`;
+  }
+
+  function renderStatusExplanations() {
+    elements.statusList.innerHTML = ["TESTED", "SUPPORTED", "VERIFIED"].map((status) => `
+      <div class="compatibility-status-row">
+        ${createStatusBadge(status)}
+        <p>${escapeHtml(statusDescription(status))}</p>
+      </div>`).join("");
+  }
 
   const formatDate = (value) => {
     if (!value) return "";
@@ -124,7 +136,7 @@
   function catalogEntry(device, imageUrl) {
     return {
       model: device.model,
-      family: device.family || "other",
+      family: canonicalFamilyKey(device.family || device.familyName),
       familyName: device.familyName || device.family || "Other",
       variants: device.variant ? [device.variant] : [],
       caseSizeMm: device.caseSizeMm ?? null,
@@ -189,7 +201,6 @@
     const variantLabel = row.variants.length > 3
       ? `${row.variants.length} variants`
       : (row.variants.join(" · ") || "Smartwatch");
-    const statusClass = row.status.toLocaleLowerCase();
     const lastTested = formatDate(row.lastSuccess);
     const lastTestedMarkup = lastTested
       ? `<p class="watch-card-meta">Last tested ${escapeHtml(lastTested)}</p>`
@@ -206,7 +217,7 @@
               <h3>${escapeHtml(row.model)}</h3>
               <p class="watch-variant">${escapeHtml(variantLabel)}</p>
             </div>
-            <span class="status-badge status-${escapeHtml(statusClass)}" aria-label="${escapeHtml(statusLabel(row.status))}: ${escapeHtml(statusDescription(row.status))}"><span>${statusLabel(row.status)}</span></span>
+            ${createStatusBadge(row.status, `${statusLabel(row.status)}: ${statusDescription(row.status)}`)}
           </div>
           <p class="watch-install-count">${escapeHtml(metricText(row))}</p>
           ${lastTestedMarkup}
@@ -218,7 +229,7 @@
     const query = normalize(state.search);
     const filtered = state.rows
       .filter((row) => state.status === "ALL" || row.status === state.status)
-      .filter((row) => state.family === "ALL" || row.family === state.family)
+      .filter((row) => filterByFamily([row], state.family).length > 0)
       .filter((row) => !query || normalize(`${row.model} ${row.variants.join(" ")} ${row.familyName}`).includes(query))
       .sort((a, b) => {
         if (state.sort === "name") return a.model.localeCompare(b.model);
@@ -238,8 +249,7 @@
 
   function populateFamilies() {
     elements.family.querySelectorAll("option:not(:first-child)").forEach((option) => option.remove());
-    const families = [...new Map(state.rows.map((row) => [row.family, row.familyName])).entries()]
-      .sort((a, b) => a[1].localeCompare(b[1]));
+    const families = familyOptions(state.rows);
     elements.family.insertAdjacentHTML("beforeend", families.map(([value, label]) =>
       `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`
     ).join(""));
@@ -347,6 +357,7 @@
   elements.status.addEventListener("change", (event) => { state.status = event.target.value; render(); });
   elements.family.addEventListener("change", (event) => { state.family = event.target.value; render(); });
   elements.sort.addEventListener("change", (event) => { state.sort = event.target.value; render(); });
+  renderStatusExplanations();
   load();
   // Public evidence is deliberately cached at the API edge, so a quiet
   // refresh uses a cache-busting query and keeps model counts/statuses current
