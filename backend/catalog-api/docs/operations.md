@@ -99,10 +99,10 @@ curl -fsS https://api.terento.app/health
 curl -fsSI https://api.terento.app/maps/catalog.json
 curl -fsSI https://api.terento.app/devices/catalog.json
 curl -fsSI https://api.terento.app/assets/devices/garmin/example.webp
-curl -fsSI https://terento.app/admin
+curl -fsSI https://api.terento.app/admin
 ```
 
 The asset URL returns 404 until an asset is explicitly approved and published.
-Before an administrator exists, `/admin` returns a 303 redirect to
-`/admin/setup`; after setup it redirects unauthenticated requests to
-`/admin/login`. Both are expected and remain noindex/no-store.
+Before an administrator exists, `https://api.terento.app/admin` returns a 303
+redirect to `/admin/setup`; after setup it redirects unauthenticated requests
+to `/admin/login`. Both are expected and remain noindex/no-store.

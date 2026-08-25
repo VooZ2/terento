@@ -51,7 +51,7 @@ client keeps deletion tokens locally; the server stores only their hashes.
 Compatibility events older than 24 months are pruned from the active database
 by the service health cycle.
 
-## `GET /admin`
+## `GET https://api.terento.app/admin`
 
 Returns an aggregate HTML operator dashboard after database-backed login. The
 dashboard uses the Terento branded English admin shell, exact model/variant
@@ -65,7 +65,7 @@ are rate limited. Pages include no-store, noindex and restrictive CSP headers.
 Raw event payloads are not displayed. `/internal/compatibility/` redirects to
 this route for the earlier local implementation.
 
-## `GET /admin/campaign-links`
+## `GET https://api.terento.app/admin/campaign-links`
 
 Returns the authenticated operator's local Campaign link builder. It is a
 client-side tool: no campaign links, history, or analytics data are stored and
@@ -74,7 +74,7 @@ no campaign-link API is exposed. The builder restricts destinations to
 keeps the canonical parameter order `utm_source`, `utm_medium`,
 `utm_campaign`, `utm_content`, `utm_term`. The page uses the same private
 admin session, CSRF cookie, no-store response policy, and noindex policy as
-`GET /admin`.
+`GET https://api.terento.app/admin`.
 
 ## `GET /compatibility/public/top-models.json`
 
