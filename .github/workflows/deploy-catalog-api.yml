@@ -183,7 +183,17 @@ jobs:
             exit 1
           fi
 
+          if ! docker exec "$api_container" python -c \
+            'import urllib.request; assert b"<title>Admin sign in \xc2\xb7 Terento</title>" in urllib.request.urlopen("http://127.0.0.1:8000/admin/login", timeout=5).read()'; then
+            rollback
+            exit 1
+          fi
+
           echo "Catalog services: one API, one scheduler, one healthy database; release $release_id"
+          echo "Active Traefik containers:"
+          for container in $(docker ps -q --filter label=traefik.enable=true); do
+            docker inspect --format '{{.Name}} project={{ index .Config.Labels "com.docker.compose.project" }} image={{.Config.Image}} catalog={{ index .Config.Labels "traefik.http.routers.terento-catalog.rule" }} admin={{ index .Config.Labels "traefik.http.routers.terento-admin.rule" }}' "$container"
+          done
 
           rm -rf -- "$stage" "$override"
           REMOTE
