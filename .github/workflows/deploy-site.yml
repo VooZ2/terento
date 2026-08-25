@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - beta
+    paths:
+      - "site/**"
+      - "site-deploy/**"
+      - ".github/workflows/deploy-site.yml"
     tags:
       - "v*"
   workflow_dispatch:

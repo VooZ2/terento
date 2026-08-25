@@ -21,6 +21,9 @@
   @legacySupportedWatches path /supported-watches /supported-watches/*
   redir @legacySupportedWatches /compatibility/ permanent
 
+  @legacyAdmin path /admin /admin/*
+  redir @legacyAdmin https://api.terento.app{uri} permanent
+
   handle_errors {
     header X-Robots-Tag "noindex, nofollow"
     rewrite * /404.html

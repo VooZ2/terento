@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - beta
+    paths:
+      - "backend/catalog-api/src/**"
+      - "backend/catalog-api/Dockerfile"
+      - "backend/catalog-api/pyproject.toml"
+      - ".github/workflows/deploy-catalog-api.yml"
   workflow_dispatch:
 
 permissions:
@@ -102,12 +107,18 @@ jobs:
           fi
           test -n "$old_image"
 
-          docker build --pull=false -f "$stage/backend/catalog-api/Dockerfile" -t "$image" "$stage/backend/catalog-api"
+          docker build --pull=false \
+            --label "io.terento.release=$release_id" \
+            -f "$stage/backend/catalog-api/Dockerfile" \
+            -t "$image" \
+            "$stage/backend/catalog-api"
 
           cat > "$override" <<EOF
           services:
             catalog-api:
               image: $image
+              labels:
+                traefik.http.routers.terento-admin.rule: 'Host(\`api.terento.app\`) && PathPrefix(\`/admin\`)'
             catalog-scheduler:
               image: $image
             catalog-migrate:
@@ -135,29 +146,44 @@ jobs:
             exit 1
           fi
 
-          # Remove only the known stale project created by the earlier
-          # deployment attempt.  Keep its database and volumes untouched.
+          # Remove only services from the known duplicate project created by
+          # the earlier rollout attempts. Database/asset volumes are retained.
           duplicate_project="terento-catalog"
           duplicate_args=(--project-name "$duplicate_project" --project-directory "$project" --env-file "$env_file" -f "$compose" -f "$override")
-          docker compose "${duplicate_args[@]}" rm -sf catalog-api catalog-scheduler || true
-          health_url="https://api.terento.app/health"
-          health_verified=false
-          deadline=$(( $(date +%s) + 90 ))
-          while [ "$(date +%s)" -lt "$deadline" ]; do
-            if curl --fail --silent --connect-timeout 5 --max-time 10 "$health_url" | grep -q '"status":"ok"'; then
-              health_verified=true
-              break
-            fi
-            sleep 2
-          done
+          docker compose "${duplicate_args[@]}" rm -sf catalog-api catalog-scheduler catalog-db || true
 
-          admin_status="$(curl --silent --show-error --connect-timeout 5 --max-time 10 -o /dev/null -w '%{http_code}' https://terento.app/admin/campaign-links || true)"
-          admin_headers="$(curl --silent --show-error --connect-timeout 5 --max-time 10 -D - -o /dev/null https://terento.app/admin/campaign-links || true)"
-          admin_location="$(printf '%s\n' "$admin_headers" | awk 'tolower($1)=="location:" {print $2}' | tr -d '\r' | head -n 1)"
-          if [ "$health_verified" != true ] || [ "$admin_status" != "303" ] || [ "$admin_location" != "/admin/login" ] || ! printf '%s\n' "$admin_headers" | grep -Eqi "(script-src|default-src)[[:space:]]+'none'"; then
+          mapfile -t api_containers < <(docker ps -q --filter label=com.docker.compose.service=catalog-api)
+          mapfile -t scheduler_containers < <(docker ps -q --filter label=com.docker.compose.service=catalog-scheduler)
+          mapfile -t db_containers < <(docker ps -q --filter label=com.docker.compose.service=catalog-db)
+          api_container="$(docker compose "${compose_args[@]}" ps -q catalog-api)"
+          scheduler_container="$(docker compose "${compose_args[@]}" ps -q catalog-scheduler)"
+          db_container="$(docker compose "${compose_args[@]}" ps -q catalog-db)"
+
+          if [ "${#api_containers[@]}" -ne 1 ] || [ "${#scheduler_containers[@]}" -ne 1 ] || [ "${#db_containers[@]}" -ne 1 ] \
+            || [ "${api_containers[0]:-}" != "$api_container" ] \
+            || [ "${scheduler_containers[0]:-}" != "$scheduler_container" ] \
+            || [ "${db_containers[0]:-}" != "$db_container" ]; then
+            docker ps -a --format 'container={{.Names}} image={{.Image}} status={{.Status}}' \
+              --filter label=com.docker.compose.service
             rollback
             exit 1
           fi
+
+          api_release="$(docker inspect --format '{{ index .Config.Labels "io.terento.release" }}' "$api_container")"
+          scheduler_release="$(docker inspect --format '{{ index .Config.Labels "io.terento.release" }}' "$scheduler_container")"
+          db_health="$(docker inspect --format '{{.State.Health.Status}}' "$db_container")"
+          if [ "$api_release" != "$release_id" ] || [ "$scheduler_release" != "$release_id" ] || [ "$db_health" != "healthy" ]; then
+            rollback
+            exit 1
+          fi
+
+          if ! docker exec "$api_container" python -c \
+            'import urllib.request; assert urllib.request.urlopen("http://127.0.0.1:8000/health", timeout=5).read() == b"{\"status\":\"ok\"}"'; then
+            rollback
+            exit 1
+          fi
+
+          echo "Catalog services: one API, one scheduler, one healthy database; release $release_id"
 
           rm -rf -- "$stage" "$override"
           REMOTE
@@ -167,11 +193,23 @@ jobs:
         run: |
           set -euo pipefail
           health="$(curl --fail --silent --show-error --connect-timeout 5 --max-time 10 https://api.terento.app/health)"
-          headers="$(curl --silent --show-error --connect-timeout 5 --max-time 10 -D - -o /dev/null https://terento.app/admin/campaign-links || true)"
-          status="$(printf '%s\n' "$headers" | awk 'tolower($1)=="http/2" {print $2; exit}')"
+          maps="$(curl --fail --silent --show-error --connect-timeout 5 --max-time 15 https://api.terento.app/maps/catalog.json)"
+          devices="$(curl --fail --silent --show-error --connect-timeout 5 --max-time 15 https://api.terento.app/devices/catalog.json)"
+          login="$(curl --fail --silent --show-error --connect-timeout 5 --max-time 10 https://api.terento.app/admin/login)"
+          headers="$(curl --silent --show-error --connect-timeout 5 --max-time 10 -D - -o /dev/null https://api.terento.app/admin/campaign-links || true)"
+          status="$(printf '%s\n' "$headers" | awk 'toupper($1) ~ /^HTTP\// {code=$2} END {print code}')"
           location="$(printf '%s\n' "$headers" | awk 'tolower($1)=="location:" {print $2; exit}' | tr -d '\r')"
-          if [ "$health" != '{"status":"ok"}' ] || [ "$status" != "303" ] || [ "$location" != "/admin/login" ] || ! printf '%s\n' "$headers" | grep -Eqi "(script-src|default-src)[[:space:]]+'none'"; then
+          if [ "$health" != '{"status":"ok"}' ] \
+            || ! printf '%s\n' "$maps" | grep -q '"catalogVersion"' \
+            || ! printf '%s\n' "$devices" | grep -q '"catalogVersion"' \
+            || ! printf '%s\n' "$login" | grep -q '<title>Admin sign in · Terento</title>' \
+            || [ "$status" != "303" ] \
+            || [ "$location" != "/admin/login" ] \
+            || ! printf '%s\n' "$headers" | grep -qi "script-src 'none'"; then
             printf '%s\n' "Public catalog verification failed" >&2
             printf '%s\n' "$headers" >&2
             exit 1
           fi
+
+          compatibility_script="$(curl --fail --silent --show-error --connect-timeout 5 --max-time 10 https://terento.app/compatibility/compatibility.js)"
+          printf '%s\n' "$compatibility_script" | grep -q 'https://api.terento.app'
