@@ -1,0 +1,31 @@
+:80 {
+  root * /srv
+  encode gzip
+
+  header {
+    Strict-Transport-Security "max-age=31536000"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "DENY"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    Content-Security-Policy "default-src 'self'; script-src 'self' https://stats.enduristas.lt; connect-src 'self' https://api.terento.app https://stats.enduristas.lt; img-src 'self' data: https://api.terento.app; style-src 'self'; font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'"
+  }
+
+  @assets path *.css *.js *.svg *.png *.ico *.woff2 *.webmanifest *.xml
+  header @assets Cache-Control "public, max-age=604800"
+
+  @updateManifest path /updates/macos-arm64.json
+  header @updateManifest Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+  header @updateManifest Pragma "no-cache"
+
+  @legacySupportedWatches path /supported-watches /supported-watches/*
+  redir @legacySupportedWatches /compatibility/ permanent
+
+  handle_errors {
+    header X-Robots-Tag "noindex, nofollow"
+    rewrite * /404.html
+    file_server
+  }
+
+  file_server
+}
