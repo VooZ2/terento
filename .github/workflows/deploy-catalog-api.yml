@@ -135,6 +135,11 @@ jobs:
             exit 1
           fi
 
+          echo "Catalog API containers after rollout:"
+          for container in $(docker ps -aq --filter label=com.docker.compose.service=catalog-api); do
+            docker inspect --format '{{.Name}} project={{ index .Config.Labels "com.docker.compose.project" }} image={{.Config.Image}} admin={{ index .Config.Labels "traefik.http.routers.terento-admin.rule" }}' "$container"
+          done
+
           # Remove only the known stale project created by the earlier
           # deployment attempt.  Keep its database and volumes untouched.
           duplicate_project="terento-catalog"
