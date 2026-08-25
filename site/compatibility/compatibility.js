@@ -21,6 +21,14 @@
   };
   const transparentImageCache = new Map();
 
+  // A small, reviewed source fallback keeps a newly verified model visible
+  // while its normalized API asset is going through the separate asset review
+  // workflow. The browser downloads this official Garmin media directly; the
+  // API never proxies or hosts it.
+  const officialImageFallbacks = new Map([
+    ["garmin-fenix-8-51-amoled", "https://res.garmin.com/en/products/010-02905-10/v/cf-lg.jpg"],
+  ]);
+
   const elements = {
     grid: document.querySelector("#watch-grid"),
     empty: document.querySelector("#compatibility-empty"),
@@ -74,8 +82,39 @@
       attempted: Number.isFinite(attempted) ? attempted : 0,
       successful: Number.isFinite(successful) ? successful : 0,
       failed: Number.isFinite(failed) ? failed : 0,
-      status: String(row.status || row.calculated_status || (attempted > 0 ? "TESTED" : "NOT_TESTED")).toUpperCase(),
+      status: String(row.status || row.evidenceStatus || row.calculated_status || (attempted > 0 ? "TESTED" : "NOT_TESTED")).toUpperCase(),
       lastSuccess: row.lastSuccess || row.last_success || row.lastSuccessfulInstallation || row.last_successful_installation || null,
+    };
+  }
+
+  function parseModelIdentity(value) {
+    const normalized = normalize(value).replace(/^garmin\s+/, "");
+    const sizeMatch = normalized.match(/\b(\d{2})\s*mm\b/);
+    const displayMatch = normalized.match(/\b(amoled|solar|microled)\b/);
+    const base = normalized
+      .replace(/\b\d{2}\s*mm\b/g, " ")
+      .replace(/\b(?:amoled|solar|microled)\b/g, " ")
+      .replace(/[·–—-]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    return {
+      base,
+      size: sizeMatch ? Number(sizeMatch[1]) : null,
+      display: displayMatch ? displayMatch[1] : "",
+    };
+  }
+
+  function catalogKey(identity, size = identity.size, display = identity.display) {
+    return [identity.base, size || "", display || ""].join("|");
+  }
+
+  function catalogEntry(device, imageUrl) {
+    return {
+      model: device.model,
+      family: device.family || "other",
+      familyName: device.familyName || device.family || "Other",
+      variants: device.variant ? [device.variant] : [],
+      imageUrl,
     };
   }
 
@@ -218,19 +257,22 @@
   function catalogImages(devices) {
     const models = new Map();
     for (const device of devices) {
-      if (device.asset?.status !== "AVAILABLE" || !device.asset.url) continue;
-      const keys = [device.model, device.canonicalModel].map(normalize).filter(Boolean);
-      for (const key of keys) {
-        const current = models.get(key) || {
-          model: device.model,
-          family: device.family || "other",
-          familyName: device.familyName || device.family || "Other",
-          variants: [],
-          imageUrl: device.asset.url,
-        };
-        if (device.variant && !current.variants.includes(device.variant)) current.variants.push(device.variant);
-        models.set(key, current);
-      }
+      const imageUrl = device.asset?.status === "AVAILABLE" && device.asset.url
+        ? device.asset.url
+        : device.sourceAsset?.url || officialImageFallbacks.get(device.id);
+      if (!imageUrl) continue;
+      const identity = parseModelIdentity(device.model || device.canonicalModel);
+      if (!identity.base) continue;
+      const exactKey = catalogKey(identity, device.caseSizeMm, normalize(device.displayType));
+      const sizeKey = catalogKey(identity, device.caseSizeMm, "");
+      const modelKey = catalogKey(identity, null, "");
+      const entry = catalogEntry(device, imageUrl);
+      // Exact variant and size keys are intentionally never overwritten by a
+      // less-specific catalog record. The model key remains a fallback only
+      // for evidence that did not include a size.
+      if (!models.has(exactKey)) models.set(exactKey, entry);
+      if (device.caseSizeMm && !models.has(sizeKey)) models.set(sizeKey, entry);
+      if (!models.has(modelKey)) models.set(modelKey, entry);
     }
     return models;
   }
@@ -240,18 +282,25 @@
     return stats
       .filter((row) => row.attempted > 0)
       .map((row) => {
-        const catalog = images.get(normalize(row.model));
+        const identity = parseModelIdentity(row.model);
+        if (!identity.base) return null;
+        const exactKey = catalogKey(identity);
+        const sizeKey = catalogKey(identity, identity.size, "");
+        const modelKey = catalogKey(identity, null, "");
+        const catalog = images.get(exactKey)
+          || (identity.size ? images.get(sizeKey) : images.get(modelKey));
         if (!catalog) return null;
-        return { ...row, ...catalog, model: row.model || catalog.model };
+        return { ...row, ...catalog, model: catalog.model || row.model };
       })
       .filter(Boolean);
   }
 
-  async function load() {
+  async function load({ quiet = false } = {}) {
     try {
+      const refreshToken = Date.now();
       const [catalogResponse, publicStatsResponse] = await Promise.all([
-        fetch(`${API_ORIGIN}/devices/catalog.json`, { headers: { Accept: "application/json" } }),
-        fetch(`${API_ORIGIN}/compatibility/public/top-models.json?limit=500`, { headers: { Accept: "application/json" } }),
+        fetch(`${API_ORIGIN}/devices/catalog.json?refresh=${refreshToken}`, { cache: "no-store", headers: { Accept: "application/json" } }),
+        fetch(`${API_ORIGIN}/compatibility/public/top-models.json?limit=500&refresh=${refreshToken}`, { cache: "no-store", headers: { Accept: "application/json" } }),
       ]);
       if (!catalogResponse.ok) throw new Error("catalog_unavailable");
       const catalog = await catalogResponse.json();
@@ -268,8 +317,10 @@
       updateSummary();
       render();
     } catch (error) {
-      elements.grid.setAttribute("aria-busy", "false");
-      elements.error.hidden = false;
+      if (!quiet) {
+        elements.grid.setAttribute("aria-busy", "false");
+        elements.error.hidden = false;
+      }
       console.error("Terento compatibility results failed", error);
     }
   }
@@ -280,4 +331,8 @@
   elements.family.addEventListener("change", (event) => { state.family = event.target.value; render(); });
   elements.sort.addEventListener("change", (event) => { state.sort = event.target.value; render(); });
   load();
+  // Public evidence is deliberately cached at the API edge, so a quiet
+  // refresh uses a cache-busting query and keeps model counts/statuses current
+  // while the page remains open. Existing filters stay in the local state.
+  window.setInterval(() => load({ quiet: true }), 60_000);
 })();

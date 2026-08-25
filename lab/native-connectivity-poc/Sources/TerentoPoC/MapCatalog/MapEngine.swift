@@ -431,7 +431,10 @@ final class MapEngine: ObservableObject {
 
         let preflightEngine = InstallationPreflightEngine()
         var preflightStatuses: [String: InstallationPreflightStatus] = [:]
-        let profile = DeviceInstallProfileRegistry.local.profile(for: identity)
+        let profile = DeviceInstallProfileRegistry.local.profile(
+            for: identity,
+            deviceFiles: inventory.deviceFiles
+        )
 
         for comparison in inventory.comparisons {
             let preflight = preflightEngine.evaluate(
@@ -559,7 +562,10 @@ final class MapEngine: ObservableObject {
             selectedMap: inventory.allEntries.first(where: { $0.key == itemID })?.catalogPackage,
             identity: identity,
             availableStorage: availableStorage,
-            profile: DeviceInstallProfileRegistry.local.profile(for: identity),
+            profile: DeviceInstallProfileRegistry.local.profile(
+                for: identity,
+                deviceFiles: result.deviceFiles
+            ),
             deviceKey: identity.localManifestDeviceKey,
             expectedSHA256ByItemID: hashes,
             failedInstallRecovery: item.failedInstallRecovery
@@ -807,7 +813,10 @@ final class MapEngine: ObservableObject {
         installationPhaseProgress = 0
         installationErrorMessage = nil
         let artifacts = validatedArtifacts
-        let profile = DeviceInstallProfileRegistry.local.profile(for: identity)
+        let profile = DeviceInstallProfileRegistry.local.profile(
+            for: identity,
+            deviceFiles: inventory.deviceFiles
+        )
         let coordinator = MapInstallationCoordinator.live()
         activeTask?.cancel()
         activeTask = Task { [weak self] in
@@ -959,7 +968,10 @@ final class MapEngine: ObservableObject {
                             inspectedFiles: inventory.scan.files,
                             beforeDeviceFiles: inventory.deviceFiles,
                             availableStorage: snapshot.freeSpace,
-                            profile: DeviceInstallProfileRegistry.local.profile(for: identity),
+                            profile: DeviceInstallProfileRegistry.local.profile(
+                                for: identity,
+                                deviceFiles: inventory.deviceFiles
+                            ),
                             artifact: artifact,
                             userConfirmed: true
                         )

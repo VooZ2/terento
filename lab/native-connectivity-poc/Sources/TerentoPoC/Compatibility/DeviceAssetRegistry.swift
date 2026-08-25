@@ -91,6 +91,7 @@ struct DeviceCatalogRecord: Decodable, Sendable {
     let caseSizeMm: Int?
     let displayType: String?
     let partNumber: String?
+    let productURL: URL?
     let asset: DeviceCatalogAsset?
     let sourceAsset: DeviceCatalogSourceAsset?
 
@@ -104,6 +105,7 @@ struct DeviceCatalogRecord: Decodable, Sendable {
         case caseSizeMm
         case displayType
         case partNumber
+        case productURL
         case asset
         case sourceAsset
     }
@@ -118,6 +120,7 @@ struct DeviceCatalogRecord: Decodable, Sendable {
         caseSizeMm: Int?,
         displayType: String?,
         partNumber: String? = nil,
+        productURL: URL? = nil,
         asset: DeviceCatalogAsset?,
         sourceAsset: DeviceCatalogSourceAsset? = nil
     ) {
@@ -130,6 +133,7 @@ struct DeviceCatalogRecord: Decodable, Sendable {
         self.caseSizeMm = caseSizeMm
         self.displayType = displayType
         self.partNumber = partNumber
+        self.productURL = productURL
         self.asset = asset
         self.sourceAsset = sourceAsset
     }
@@ -242,13 +246,14 @@ struct DeviceAssetSource: Decodable, Equatable, Sendable {
 }
 
 /// Resolves approved Terento-controlled catalogue assets first, then an
-/// allowlisted official Garmin source image from catalog metadata or its
-/// validated part number when no controlled asset applies.
+/// allowlisted official Garmin source image from catalog metadata or the
+/// catalog's official Garmin product page when no controlled asset applies.
 /// The API never authorizes a device operation; it supplies presentation
 /// metadata only. Any ambiguity returns the neutral watch fallback.
 protocol DeviceCatalogAPIClient {
     func fetchCatalog() async throws -> DeviceCatalogResponse
     func fetchAsset(from url: URL) async throws -> Data
+    func fetchProductImageURL(from productURL: URL) async throws -> URL?
 }
 
 struct URLSessionDeviceCatalogAPIClient: DeviceCatalogAPIClient {
@@ -283,6 +288,64 @@ struct URLSessionDeviceCatalogAPIClient: DeviceCatalogAPIClient {
             throw DeviceAssetResolverError.invalidHTTPResponse
         }
         return data
+    }
+
+    func fetchProductImageURL(from productURL: URL) async throws -> URL? {
+        guard DeviceAssetResolver.officialProductURL(for: productURL) != nil else {
+            throw DeviceAssetResolverError.uncontrolledAssetURL
+        }
+
+        var request = URLRequest(url: productURL)
+        request.timeoutInterval = 8
+        request.cachePolicy = .reloadRevalidatingCacheData
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse,
+              200..<300 ~= httpResponse.statusCode,
+              let finalURL = httpResponse.url,
+              DeviceAssetResolver.officialProductURL(for: finalURL) != nil,
+              data.count <= 4 * 1_024 * 1_024,
+              let html = String(data: data, encoding: .utf8) else {
+            throw DeviceAssetResolverError.invalidHTTPResponse
+        }
+
+        return Self.openGraphImageURL(in: html)
+    }
+
+    private static func openGraphImageURL(in html: String) -> URL? {
+        let metaPattern = #"<meta\b[^>]*>"#
+        guard let expression = try? NSRegularExpression(
+            pattern: metaPattern,
+            options: [.caseInsensitive]
+        ) else {
+            return nil
+        }
+
+        let range = NSRange(html.startIndex..<html.endIndex, in: html)
+        for match in expression.matches(in: html, range: range) {
+            guard let tagRange = Range(match.range, in: html) else { continue }
+            let tag = String(html[tagRange])
+            guard tag.range(
+                of: #"(?:property|name)\s*=\s*[\"']og:image[\"']"#,
+                options: [.regularExpression, .caseInsensitive]
+            ) != nil,
+            let contentRange = tag.range(
+                of: #"content\s*=\s*[\"'][^\"']+[\"']"#,
+                options: [.regularExpression, .caseInsensitive]
+            ) else {
+                continue
+            }
+
+            let content = tag[contentRange]
+            guard let equals = content.firstIndex(of: "=") else { continue }
+            let rawValue = content[content.index(after: equals)...]
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+                .replacingOccurrences(of: "&amp;", with: "&")
+            if let url = URL(string: rawValue) {
+                return url
+            }
+        }
+        return nil
     }
 }
 
@@ -354,8 +417,7 @@ struct DeviceAssetResolver {
     )?.url
     private static let controlledAssetPath = "/assets/devices/"
     private static let officialMediaHost = "res.garmin.com"
-    private static let officialPartNumberPattern = #"^\d{3}-\d{5}-\d{2}$"#
-
+    private static let officialProductHosts: Set<String> = ["garmin.com", "www.garmin.com"]
     private let client: any DeviceCatalogAPIClient
     private let cache: DeviceAssetCache
 
@@ -374,13 +436,44 @@ struct DeviceAssetResolver {
 
         do {
             let catalog = try await client.fetchCatalog()
-            guard catalog.catalogVersion == Self.catalogVersion,
-                  let match = Self.matchingRecord(
+            guard catalog.catalogVersion == Self.catalogVersion else {
+                return .fallback
+            }
+
+            let match: Match
+            if let catalogMatch = Self.matchingRecord(
                       identity: identity,
                       canonicalModel: canonicalModel,
                       records: catalog.devices
-                  ),
-                  let assetURL = Self.downloadURL(for: match.asset.url),
+                  ) {
+                match = catalogMatch
+            } else if let productMatch = Self.matchingProductRecord(
+                identity: identity,
+                canonicalModel: canonicalModel,
+                records: catalog.devices
+            ), let productURL = Self.officialProductURL(for: productMatch.record.productURL),
+               let sourceURL = try await client.fetchProductImageURL(from: productURL),
+               let officialURL = Self.officialSourceURL(for: sourceURL) {
+                match = Match(
+                    record: productMatch.record,
+                    asset: DeviceCatalogAsset(
+                        url: officialURL,
+                        scope: productMatch.scope.rawValue,
+                        version: 1,
+                        attribution: "Garmin official product media",
+                        source: DeviceAssetSource(
+                            type: "OFFICIAL_PRODUCT_MEDIA",
+                            brand: "Garmin",
+                            attributionRequired: true
+                        )
+                    ),
+                    rank: productMatch.rank
+                )
+            } else {
+                return .fallback
+            }
+
+            guard let assetURL = Self.downloadURL(for: match.asset.url),
                   let scope = Self.scope(for: match.asset.scope),
                   match.asset.isAvailable,
                   match.asset.hasValidSourceMetadata else {
@@ -428,6 +521,12 @@ struct DeviceAssetResolver {
     struct Match: Sendable {
         let record: DeviceCatalogRecord
         let asset: DeviceCatalogAsset
+        let rank: Int
+    }
+
+    struct ProductMatch: Sendable {
+        let record: DeviceCatalogRecord
+        let scope: DeviceAssetScope
         let rank: Int
     }
 
@@ -481,6 +580,21 @@ struct DeviceAssetResolver {
         return value
     }
 
+    static func officialProductURL(for value: URL?) -> URL? {
+        guard let value,
+              let components = URLComponents(url: value, resolvingAgainstBaseURL: false),
+              components.scheme?.lowercased() == "https",
+              let host = components.host?.lowercased(),
+              officialProductHosts.contains(host),
+              components.port == nil,
+              components.user == nil,
+              components.password == nil,
+              components.path.hasPrefix("/") else {
+            return nil
+        }
+        return value
+    }
+
     private static func downloadURL(for value: URL?) -> URL? {
         controlledURL(for: value) ?? officialSourceURL(for: value)
     }
@@ -522,12 +636,7 @@ struct DeviceAssetResolver {
                 )
             }
 
-            guard let derivedAsset = Self.derivedOfficialAsset(for: record) else {
-                return nil
-            }
-            return Self.match(record: record, asset: derivedAsset, canonicalModel: canonicalModel,
-                              identityFamily: identityFamily, knownSize: knownSize,
-                              knownDisplay: knownDisplay)
+            return nil
         }
         .sorted {
             if $0.rank != $1.rank { return $0.rank < $1.rank }
@@ -536,28 +645,37 @@ struct DeviceAssetResolver {
         .first
     }
 
-    private static func derivedOfficialAsset(
-        for record: DeviceCatalogRecord
-    ) -> DeviceCatalogAsset? {
-        guard let partNumber = record.partNumber?.trimmingCharacters(in: .whitespacesAndNewlines),
-              partNumber.range(of: officialPartNumberPattern, options: .regularExpression) != nil,
-              let url = URL(string: "https://res.garmin.com/en/products/\(partNumber)/g/cf-lg.jpg"),
-              officialSourceURL(for: url) != nil else {
-            return nil
-        }
+    private static func matchingProductRecord(
+        identity: DeviceIdentity,
+        canonicalModel: String,
+        records: [DeviceCatalogRecord]
+    ) -> ProductMatch? {
+        let knownSize = parsedCaseSize(from: normalized(identity.variant ?? ""))
+        let knownDisplay = displayType(from: normalized(identity.variant ?? ""))
 
-        return DeviceCatalogAsset(
-            status: "AVAILABLE",
-            url: url,
-            scope: "MODEL",
-            version: 1,
-            attribution: "Garmin official product media",
-            source: DeviceAssetSource(
-                type: "OFFICIAL_PRODUCT_MEDIA",
-                brand: "Garmin",
-                attributionRequired: true
-            )
-        )
+        return records.compactMap { record -> ProductMatch? in
+            guard normalized(record.manufacturer) == normalized(identity.manufacturer),
+                  normalized(record.canonicalModel) == normalized(canonicalModel),
+                  officialProductURL(for: record.productURL) != nil else {
+                return nil
+            }
+
+            if let knownSize,
+               let knownDisplay,
+               record.caseSizeMm == knownSize,
+               normalized(record.displayType ?? "") == knownDisplay {
+                return ProductMatch(record: record, scope: .exactVariant, rank: 0)
+            }
+            if let knownSize, record.caseSizeMm == knownSize {
+                return ProductMatch(record: record, scope: .modelSize, rank: 1)
+            }
+            return ProductMatch(record: record, scope: .model, rank: 2)
+        }
+        .sorted {
+            if $0.rank != $1.rank { return $0.rank < $1.rank }
+            return $0.record.id < $1.record.id
+        }
+        .first
     }
 
     private static func match(

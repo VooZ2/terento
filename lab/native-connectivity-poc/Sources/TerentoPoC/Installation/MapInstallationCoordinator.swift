@@ -303,7 +303,9 @@ struct MapInstallationCoordinator: Sendable {
             try Stage42TargetPolicy().validate(
                 package: request.selectedMap,
                 artifact: artifact,
-                profile: request.profile
+                profile: request.profile,
+                identity: request.identity,
+                deviceFiles: request.beforeDeviceFiles
             )
         } catch let error as Stage42TargetPolicyError {
             let failure: InstallationFailure = error == .unsupportedDeviceProfile

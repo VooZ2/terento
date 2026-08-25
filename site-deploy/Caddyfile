@@ -8,7 +8,7 @@
     X-Frame-Options "DENY"
     Referrer-Policy "strict-origin-when-cross-origin"
     Permissions-Policy "camera=(), microphone=(), geolocation=()"
-    Content-Security-Policy "default-src 'self'; script-src 'self' https://stats.enduristas.lt; connect-src 'self' https://api.terento.app https://stats.enduristas.lt; img-src 'self' data: https://api.terento.app; style-src 'self'; font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'"
+    Content-Security-Policy "default-src 'self'; script-src 'self' https://stats.enduristas.lt; connect-src 'self' https://api.terento.app https://res.garmin.com https://stats.enduristas.lt; img-src 'self' data: https://api.terento.app https://res.garmin.com; style-src 'self'; font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'"
   }
 
   @assets path *.css *.js *.svg *.png *.ico *.woff2 *.webmanifest *.xml

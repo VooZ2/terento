@@ -28,12 +28,13 @@ enum Stage42TargetPolicyError: LocalizedError, Equatable, Sendable {
 /// any transport call is reached.
 struct Stage42TargetPolicy: Sendable {
     static let allowedProvider = "freizeitkarte"
-    static let supportedProfileID = "garmin-fenix8-amoled-47mm"
 
     func validate(
         package: MapPackage,
         artifact: ValidatedMapArtifact,
-        profile: DeviceInstallProfile?
+        profile: DeviceInstallProfile?,
+        identity: DeviceIdentity,
+        deviceFiles: [DeviceFile]
     ) throws {
         guard !package.id.isEmpty,
               MapIdentity.normalizeProvider(package.providerId) == Self.allowedProvider,
@@ -59,9 +60,13 @@ struct Stage42TargetPolicy: Sendable {
             throw Stage42TargetPolicyError.unsupportedFilename
         }
 
-        guard profile?.id == Self.supportedProfileID,
-              profile?.targetDirectory == "/GARMIN",
-              profile?.supportsMapWrite == true else {
+        guard identity.usbVendorId == 0x091e,
+              GarminMapCapabilityRegistry.local.evaluate(identity: identity).canUseTerentoMaps,
+              DeviceInstallProfileRegistry.hasSingleGarminRootFolder(in: deviceFiles),
+              let profile,
+              profile.matches(identity),
+              profile.targetDirectory == "/GARMIN",
+              profile.supportsMapWrite else {
             throw Stage42TargetPolicyError.unsupportedDeviceProfile
         }
     }

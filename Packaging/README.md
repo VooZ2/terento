@@ -24,18 +24,18 @@ tests.
 Run from the repository root:
 
 ```sh
-Packaging/release.sh --version 1.0.0 --build 2
+Packaging/release.sh --version 1.0.0 --build 3
 ```
 
 For a beta release, keep the app's marketing version separate from the public
 release label:
 
 ```sh
-RELEASE_TAG=v1.0.0-beta.3 \
+RELEASE_TAG=v1.0.0-beta.4 \
 Packaging/release.sh \
   --version 1.0.0 \
-  --build 2 \
-  --release-version 1.0.0-beta.3 \
+  --build 3 \
+  --release-version 1.0.0-beta.4 \
   --overwrite
 ```
 
@@ -44,8 +44,8 @@ The pipeline fails rather than silently replacing an existing artifact. Use
 The results are written to:
 
 ```text
-dist/Terento-1.0.0-beta.3-macOS-arm64.zip
-dist/Terento-1.0.0-beta.3-macOS-arm64.dmg
+dist/Terento-1.0.0-beta.4-macOS-arm64.zip
+dist/Terento-1.0.0-beta.4-macOS-arm64.dmg
 ```
 
 The command prints the final artifact size and SHA-256 checksum for both
@@ -85,7 +85,7 @@ To exercise the fresh build, tests, signing, Hardened Runtime, and runtime-path
 checks without contacting Apple or creating release artifacts:
 
 ```sh
-Packaging/release.sh --no-notarize --version 1.0.0 --build 2
+Packaging/release.sh --no-notarize --version 1.0.0 --build 3
 ```
 
 This mode explicitly reports `NOT NOTARIZED` and must not be treated as a

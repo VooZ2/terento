@@ -1,8 +1,8 @@
 import Foundation
 
-/// Map Manager capability is deliberately separate from Terento's tested
-/// transport/install profile. It tells the UI whether it is meaningful to
-/// open the map flow; it does not authorize a write to the device.
+/// Map Manager capability is separate from public compatibility evidence.
+/// During beta it is one of several required inputs to a live-bound install
+/// profile; by itself it never authorizes a device write.
 enum GarminMapSupportStatus: Equatable, Sendable {
     case supported
     case unsupported(reason: String)
@@ -56,20 +56,29 @@ struct GarminMapCapabilityRegistry: Sendable {
     private let supportedPrefixes: Set<String> = [
         "d2 mach 1",
         "d2 mach 2",
+        "descent mk1",
+        "descent mk2",
         "descent mk3",
         "enduro 2",
         "enduro 3",
         "epix gen 2",
         "epix pro gen 2",
+        "fenix 5x",
+        "fenix 5 plus",
+        "fenix 6",
         "fenix 7",
         "fenix 8",
         "fenix e",
+        "forerunner 945",
         "forerunner 955",
         "forerunner 965",
         "forerunner 970",
         "marq",
+        "quatix 6",
         "quatix 7",
         "quatix 8",
+        "tactix charlie",
+        "tactix delta",
         "tactix 7",
         "tactix 8",
         "venu x1"
@@ -99,7 +108,10 @@ struct GarminMapCapabilityRegistry: Sendable {
             return .unknown
         }
 
-        let model = GarminDeviceModelNormalizer.normalize(identity.model)
+        var model = GarminDeviceModelNormalizer.normalize(identity.model)
+        if model.hasPrefix("garmin ") {
+            model.removeFirst("garmin ".count)
+        }
         guard !model.isEmpty else { return .unknown }
 
         if model.hasPrefix("approach s70") {
