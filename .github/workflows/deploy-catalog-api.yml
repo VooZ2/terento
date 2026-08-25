@@ -133,14 +133,11 @@ jobs:
             exit 1
           fi
 
-          for service in catalog-api catalog-scheduler; do
-            for candidate in $(docker ps -aq --filter "label=com.docker.compose.service=$service"); do
-              candidate_project="$(docker inspect --format '{{ index .Config.Labels "com.docker.compose.project" }}' "$candidate")"
-              if [ -n "$candidate_project" ] && [ "$candidate_project" != "$compose_project" ]; then
-                docker rm -f "$candidate" >/dev/null
-              fi
-            done
-          done
+          duplicate_project="catalog"
+          if [ "$compose_project" != "$duplicate_project" ]; then
+            duplicate_args=(--project-name "$duplicate_project" --project-directory "$project" --env-file "$env_file" -f "$compose" -f "$override")
+            docker compose "${duplicate_args[@]}" rm -sf catalog-api catalog-scheduler || true
+          fi
 
           health_url="https://api.terento.app/health"
           health_verified=false
