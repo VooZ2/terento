@@ -201,7 +201,7 @@ enum CompatibilityEvidenceCalculator {
             lastSuccessfulInstallation: successes.map(\.timestamp).max(),
             lastFailure: failures.map(\.timestamp).max(),
             errorCategories: Dictionary(grouping: failures.compactMap(\.errorCategory), by: { $0 })
-                .mapValues(\.count),
+                .mapValues(\.count)
         )
     }
 }
