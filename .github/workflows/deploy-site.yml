@@ -1,0 +1,132 @@
+name: Deploy public site
+
+on:
+  push:
+    branches:
+      - beta
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-site-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/beta' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    env:
+      SITE_SSH_HOST: ${{ secrets.TERENTO_SITE_SSH_HOST }}
+      SITE_SSH_PORT: ${{ secrets.TERENTO_SITE_SSH_PORT }}
+      SITE_SSH_USER: ${{ secrets.TERENTO_SITE_SSH_USER }}
+      SITE_SSH_KEY: ${{ secrets.TERENTO_SITE_SSH_KEY }}
+      SITE_SSH_KNOWN_HOSTS: ${{ secrets.TERENTO_SITE_SSH_KNOWN_HOSTS }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Validate deployment configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SITE_SSH_HOST"
+          test -n "$SITE_SSH_USER"
+          test -n "$SITE_SSH_KEY"
+          test -n "$SITE_SSH_KNOWN_HOSTS"
+
+      - name: Configure pinned SSH access
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$SITE_SSH_KEY" > "$HOME/.ssh/terento_site"
+          printf '%s\n' "$SITE_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/terento_site" "$HOME/.ssh/known_hosts"
+
+      - name: Package site source
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -czf "$RUNNER_TEMP/terento-site.tgz" site site-deploy
+
+      - name: Upload source to the VPS
+        shell: bash
+        run: |
+          set -euo pipefail
+          port="${SITE_SSH_PORT:-22}"
+          release_id="${GITHUB_SHA:0:12}"
+          remote_stage="/tmp/terento-site-${release_id}"
+          ssh -i "$HOME/.ssh/terento_site" -p "$port" -o BatchMode=yes "$SITE_SSH_USER@$SITE_SSH_HOST" \
+            "rm -rf -- '$remote_stage' && mkdir -m 700 -p '$remote_stage'"
+          scp -i "$HOME/.ssh/terento_site" -P "$port" -o BatchMode=yes \
+            "$RUNNER_TEMP/terento-site.tgz" "$SITE_SSH_USER@$SITE_SSH_HOST:$remote_stage/source.tgz"
+          ssh -i "$HOME/.ssh/terento_site" -p "$port" -o BatchMode=yes "$SITE_SSH_USER@$SITE_SSH_HOST" \
+            "tar -xzf '$remote_stage/source.tgz' -C '$remote_stage' && rm -f '$remote_stage/source.tgz'"
+
+      - name: Build and roll out the web container
+        shell: bash
+        run: |
+          set -euo pipefail
+          port="${SITE_SSH_PORT:-22}"
+          release_id="${GITHUB_SHA:0:12}"
+          ssh -i "$HOME/.ssh/terento_site" -p "$port" -o BatchMode=yes "$SITE_SSH_USER@$SITE_SSH_HOST" \
+            "bash -s -- '$release_id'" <<'REMOTE'
+          set -euo pipefail
+          release_id="$1"
+          stage="/tmp/terento-site-${release_id}"
+          image="terento-site-terento-web:publish-${release_id}"
+          container="terento-site-terento-web-1"
+          rollback="${container}-rollback-${release_id}"
+
+          docker build --pull=false -f "$stage/site-deploy/Dockerfile" -t "$image" "$stage"
+
+          if docker inspect "$container" >/dev/null 2>&1; then
+            docker rename "$container" "$rollback"
+            docker stop "$rollback" >/dev/null
+            old_container="$rollback"
+          else
+            old_container=""
+          fi
+
+          rollback_web() {
+            docker rm -f "$container" >/dev/null 2>&1 || true
+            if [ -n "$old_container" ] && docker inspect "$old_container" >/dev/null 2>&1; then
+              docker rename "$old_container" "$container"
+              docker start "$container" >/dev/null
+            fi
+            rm -rf -- "$stage"
+          }
+
+          if ! docker run -d --name "$container" --restart unless-stopped --network terento-site \
+            --label traefik.enable=true \
+            --label traefik.docker.network=terento-site \
+            --label traefik.http.routers.terento.rule='Host(`terento.app`)' \
+            --label traefik.http.routers.terento.entrypoints=websecure \
+            --label traefik.http.routers.terento.tls=true \
+            --label traefik.http.routers.terento.tls.certresolver=letsencrypt \
+            --label traefik.http.services.terento.loadbalancer.server.port=80 \
+            --label traefik.http.routers.terento-www.rule='Host(`www.terento.app`)' \
+            --label traefik.http.routers.terento-www.entrypoints=websecure \
+            --label traefik.http.routers.terento-www.tls=true \
+            --label traefik.http.routers.terento-www.tls.certresolver=letsencrypt \
+            --label traefik.http.routers.terento-www.middlewares=terento-www-redirect \
+            --label traefik.http.middlewares.terento-www-redirect.redirectregex.regex='^https?://www\.terento\.app/(.*)' \
+            --label traefik.http.middlewares.terento-www-redirect.redirectregex.replacement='https://terento.app/$$1' \
+            --label traefik.http.middlewares.terento-www-redirect.redirectregex.permanent=true \
+            "$image"; then
+            rollback_web
+            exit 1
+          fi
+
+          if ! curl --fail --silent --show-error --max-time 20 \
+            https://terento.app/updates/macos-arm64.json | grep -q '"architecture"[[:space:]]*:[[:space:]]*"arm64"'; then
+            rollback_web
+            exit 1
+          fi
+
+          rm -rf -- "$stage"
+          REMOTE

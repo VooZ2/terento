@@ -1,0 +1,29 @@
+# Public site deployment
+
+The production site is currently served by a Caddy container on the existing
+Hostinger VPS. Cloudflare provides DNS, HTTPS and the proxy edge; it is not the
+site origin or a Cloudflare Pages project.
+
+`.github/workflows/deploy-site.yml` publishes the tracked `site/` tree after a
+push to `beta` or a `v*` tag. The workflow connects to the VPS with a GitHub
+Actions SSH key, builds the pinned Caddy image, replaces only the `terento-web`
+container, and keeps the previous web container as a rollback target. It does
+not touch Traefik, the catalog API, PostgreSQL, or map files.
+
+Configure these GitHub repository secrets before enabling the workflow:
+
+- `TERENTO_SITE_SSH_HOST` — VPS hostname or IP;
+- `TERENTO_SITE_SSH_PORT` — usually `22`;
+- `TERENTO_SITE_SSH_USER` — the restricted deployment user;
+- `TERENTO_SITE_SSH_KEY` — a private deploy key whose public key is authorized
+  for that user;
+- `TERENTO_SITE_SSH_KNOWN_HOSTS` — the pinned `known_hosts` line for the VPS.
+
+The deployment user needs Docker access and membership/permission for the
+`terento-site` Docker network, but must not receive repository secrets or
+passwords. The current VPS operator account does not have write access to the
+root-owned `/docker/terento-site` checkout, so the workflow deploys from a
+temporary Docker build context and does not rewrite that checkout.
+
+The update manifest is deliberately sent with `Cache-Control: no-store` so an
+old app-update response cannot remain cached after a release.
