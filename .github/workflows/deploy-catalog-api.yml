@@ -81,11 +81,11 @@ jobs:
           env_file="$project/.env"
           image="terento-catalog-api:publish-${release_id}"
           override="/tmp/terento-catalog-api-override-${release_id}.yml"
-          # The live Traefik router is attached to this Compose project.  Do
-          # not infer the project from an arbitrary catalog-api container:
-          # earlier failed deploys left a second `catalog` project running and
-          # Docker returns both when filtering only by service label.
-          compose_project="terento-catalog"
+          # The production checkout lives in a directory named `catalog`, so
+          # Docker Compose's existing production project is `catalog`.
+          # Keep this explicit: inferring from an arbitrary service container
+          # previously selected a stale duplicate project.
+          compose_project="catalog"
           old_image=""
           old_container=""
 
@@ -137,7 +137,7 @@ jobs:
 
           # Remove only the known stale project created by the earlier
           # deployment attempt.  Keep its database and volumes untouched.
-          duplicate_project="catalog"
+          duplicate_project="terento-catalog"
           duplicate_args=(--project-name "$duplicate_project" --project-directory "$project" --env-file "$env_file" -f "$compose" -f "$override")
           docker compose "${duplicate_args[@]}" rm -sf catalog-api catalog-scheduler || true
           health_url="https://api.terento.app/health"
