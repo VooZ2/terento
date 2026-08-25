@@ -1,0 +1,142 @@
+name: Deploy catalog API
+
+on:
+  push:
+    branches:
+      - beta
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: catalog-api-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/beta'
+    runs-on: ubuntu-latest
+    env:
+      CATALOG_SSH_HOST: ${{ secrets.TERENTO_SITE_SSH_HOST }}
+      CATALOG_SSH_PORT: ${{ secrets.TERENTO_SITE_SSH_PORT }}
+      CATALOG_SSH_USER: ${{ secrets.TERENTO_SITE_SSH_USER }}
+      CATALOG_SSH_KEY: ${{ secrets.TERENTO_SITE_SSH_KEY }}
+      CATALOG_SSH_KNOWN_HOSTS: ${{ secrets.TERENTO_SITE_SSH_KNOWN_HOSTS }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Validate deployment configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CATALOG_SSH_HOST"
+          test -n "$CATALOG_SSH_USER"
+          test -n "$CATALOG_SSH_KEY"
+          test -n "$CATALOG_SSH_KNOWN_HOSTS"
+
+      - name: Configure pinned SSH access
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$CATALOG_SSH_KEY" > "$HOME/.ssh/terento_catalog"
+          printf '%s\n' "$CATALOG_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/terento_catalog" "$HOME/.ssh/known_hosts"
+
+      - name: Package catalog API source
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -czf "$RUNNER_TEMP/terento-catalog-api.tgz" backend/catalog-api
+
+      - name: Upload source to the VPS
+        shell: bash
+        run: |
+          set -euo pipefail
+          port="${CATALOG_SSH_PORT:-22}"
+          release_id="${GITHUB_SHA:0:12}"
+          remote_stage="/tmp/terento-catalog-api-${release_id}"
+          ssh -i "$HOME/.ssh/terento_catalog" -p "$port" -o BatchMode=yes "$CATALOG_SSH_USER@$CATALOG_SSH_HOST" \
+            "rm -rf -- '$remote_stage' && mkdir -m 700 -p '$remote_stage'"
+          scp -i "$HOME/.ssh/terento_catalog" -P "$port" -o BatchMode=yes \
+            "$RUNNER_TEMP/terento-catalog-api.tgz" "$CATALOG_SSH_USER@$CATALOG_SSH_HOST:$remote_stage/source.tgz"
+          ssh -i "$HOME/.ssh/terento_catalog" -p "$port" -o BatchMode=yes "$CATALOG_SSH_USER@$CATALOG_SSH_HOST" \
+            "tar -xzf '$remote_stage/source.tgz' -C '$remote_stage' && rm -f '$remote_stage/source.tgz'"
+
+      - name: Build and roll out the API container
+        shell: bash
+        run: |
+          set -euo pipefail
+          port="${CATALOG_SSH_PORT:-22}"
+          release_id="${GITHUB_SHA:0:12}"
+          ssh -i "$HOME/.ssh/terento_catalog" -p "$port" -o BatchMode=yes "$CATALOG_SSH_USER@$CATALOG_SSH_HOST" \
+            "bash -s -- '$release_id'" <<'REMOTE'
+          set -euo pipefail
+          release_id="$1"
+          stage="/tmp/terento-catalog-api-${release_id}"
+          project="/docker/terento-catalog"
+          compose="$project/deploy/hostinger/catalog/docker-compose.yml"
+          image="terento-catalog-api:publish-${release_id}"
+          override="/tmp/terento-catalog-api-override-${release_id}.yml"
+          old_image=""
+
+          test -f "$compose"
+          test -f "$project/deploy/hostinger/catalog/.env"
+          old_image="$(docker compose --project-directory "$project" -f "$compose" images -q catalog-api | head -n 1)"
+          test -n "$old_image"
+
+          docker build --pull=false -f "$stage/backend/catalog-api/Dockerfile" -t "$image" "$stage/backend/catalog-api"
+
+          cat > "$override" <<EOF
+          services:
+            catalog-api:
+              image: $image
+            catalog-scheduler:
+              image: $image
+            catalog-migrate:
+              image: $image
+          EOF
+
+          compose_args=(--project-directory "$project" -f "$compose" -f "$override")
+          docker compose "${compose_args[@]}" config --quiet
+          docker compose "${compose_args[@]}" --profile manual run --rm --no-deps catalog-migrate
+
+          rollback() {
+            cat > "$override" <<EOF
+          services:
+            catalog-api:
+              image: $old_image
+            catalog-scheduler:
+              image: $old_image
+          EOF
+            docker compose "${compose_args[@]}" up -d --no-build catalog-api catalog-scheduler || true
+            rm -rf -- "$stage" "$override"
+          }
+
+          if ! docker compose "${compose_args[@]}" up -d --no-build catalog-api catalog-scheduler; then
+            rollback
+            exit 1
+          fi
+
+          health_url="https://api.terento.app/health"
+          health_verified=false
+          deadline=$(( $(date +%s) + 90 ))
+          while [ "$(date +%s)" -lt "$deadline" ]; do
+            if curl --fail --silent --connect-timeout 5 --max-time 10 "$health_url" | grep -q '"status":"ok"'; then
+              health_verified=true
+              break
+            fi
+            sleep 2
+          done
+
+          admin_status="$(curl --silent --show-error --connect-timeout 5 --max-time 10 -o /dev/null -w '%{http_code}' https://terento.app/admin/campaign-links || true)"
+          admin_location="$(curl --silent --show-error --connect-timeout 5 --max-time 10 -D - -o /dev/null https://terento.app/admin/campaign-links | awk 'tolower($1)=="location:" {print $2}' | tr -d '\r' | head -n 1 || true)"
+          if [ "$health_verified" != true ] || [ "$admin_status" != "303" ] || [ "$admin_location" != "/admin/login" ]; then
+            rollback
+            exit 1
+          fi
+
+          rm -rf -- "$stage" "$override"
+          REMOTE

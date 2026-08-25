@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import hmac
+import re
 import time
 from collections import defaultdict, deque
 from datetime import datetime, timedelta, timezone
@@ -16,6 +17,7 @@ from urllib.parse import parse_qs, urlsplit
 from .admin import (
     AdminValidationError,
     account_page,
+    campaign_links_page,
     dashboard_page,
     hash_password,
     login_page,
@@ -307,6 +309,9 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     return
                 self._send_admin_html(body, send_body=send_body)
                 return
+            if request_path in {"/admin/campaign-links", "/admin/campaign-links/"}:
+                self._send_admin_html(campaign_links_page(session, csrf_token), send_body=send_body)
+                return
             if request_path == "/admin/account":
                 self._send_admin_html(account_page(session, csrf_token), send_body=send_body)
                 return
@@ -455,19 +460,24 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             self, body: bytes, *, send_body: bool, status: HTTPStatus = HTTPStatus.OK
         ) -> None:
             self.send_response(status)
-            self._admin_headers(content_length=len(body))
+            self._admin_headers(content_length=len(body), body=body)
             self.end_headers()
             if send_body:
                 self.wfile.write(body)
 
-        def _admin_headers(self, *, content_length: int) -> None:
+        def _admin_headers(self, *, content_length: int, body: bytes = b"") -> None:
             self._common_headers(
                 cache_control="no-store",
                 content_type="text/html; charset=utf-8",
                 content_length=content_length,
             )
             self.send_header("X-Robots-Tag", "noindex, nofollow")
-            self.send_header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+            nonce_match = re.search(rb'<script nonce="([A-Za-z0-9_-]+)">', body)
+            script_policy = f"script-src 'nonce-{nonce_match.group(1).decode('ascii')}'" if nonce_match else "script-src 'none'"
+            self.send_header(
+                "Content-Security-Policy",
+                f"default-src 'none'; {script_policy}; style-src 'unsafe-inline' https://terento.app; font-src https://terento.app; img-src https://terento.app data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+            )
             self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 
         def _redirect(

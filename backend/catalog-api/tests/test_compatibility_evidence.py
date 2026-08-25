@@ -266,6 +266,9 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         initial, _ = self.request("GET", "/admin")
         self.assertEqual(initial.status, 303)
         self.assertEqual(initial.headers["Location"], "/admin/setup")
+        initial_campaign, _ = self.request("GET", "/admin/campaign-links")
+        self.assertEqual(initial_campaign.status, 303)
+        self.assertEqual(initial_campaign.headers["Location"], "/admin/setup")
 
         setup_body = urlencode({
             "username": "operator", "password": "long-test-password",
@@ -289,6 +292,17 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertEqual(allowed.status, 200)
         self.assertEqual(allowed.headers["X-Robots-Tag"], "noindex, nofollow")
         self.assertIn(b"f\xc4\x93nix 8", body)
+
+        unauthenticated_campaign, _ = self.request("GET", "/admin/campaign-links")
+        self.assertEqual(unauthenticated_campaign.status, 303)
+        self.assertEqual(unauthenticated_campaign.headers["Location"], "/admin/login")
+
+        campaign_links, campaign_body = self.request("GET", "/admin/campaign-links", headers={"Cookie": cookie_header})
+        self.assertEqual(campaign_links.status, 200)
+        self.assertIn("script-src 'nonce-", campaign_links.headers["Content-Security-Policy"])
+        self.assertRegex(campaign_body, rb'<script nonce="[A-Za-z0-9_-]+">')
+        self.assertIn(b"Campaign link builder", campaign_body)
+        self.assertIn(b"Reddit community post", campaign_body)
 
         update_body = urlencode({
             "csrf_token": csrf_token, "username": "owner",

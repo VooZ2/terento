@@ -61,6 +61,17 @@ are rate limited. Pages include no-store, noindex and restrictive CSP headers.
 Raw event payloads are not displayed. `/internal/compatibility/` redirects to
 this route for the earlier local implementation.
 
+## `GET /admin/campaign-links`
+
+Returns the authenticated operator's local Campaign link builder. It is a
+client-side tool: no campaign links, history, or analytics data are stored and
+no campaign-link API is exposed. The builder restricts destinations to
+`terento.app`, normalizes UTM values, replaces existing UTM parameters, and
+keeps the canonical parameter order `utm_source`, `utm_medium`,
+`utm_campaign`, `utm_content`, `utm_term`. The page uses the same private
+admin session, CSRF cookie, no-store response policy, and noindex policy as
+`GET /admin`.
+
 ## `GET /compatibility/public/top-models.json`
 
 Prepared for a later public TOP-models widget. The route returns 404 unless

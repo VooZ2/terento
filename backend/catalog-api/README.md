@@ -65,9 +65,21 @@ PYTHONPATH=backend/catalog-api/src python3 -m unittest discover -s backend/catal
 - `GET /admin` serves the authenticated, noindex aggregate operator dashboard
   and account settings. The first account requires `ADMIN_BOOTSTRAP_SECRET`;
   later credentials are PBKDF2-hashed in PostgreSQL.
+- `GET /admin/campaign-links` serves the authenticated, client-side campaign
+  link builder. It shares the `/admin` session gate and stores no campaign
+  links or history.
 - `GET /compatibility/public/top-models.json` is a prepared, default-disabled
   aggregate API. It returns only individually reviewed and approved models
   after `PUBLIC_COMPATIBILITY_STATS_ENABLED=true`; it never returns raw events.
+
+Production API updates are rolled out by
+`.github/workflows/deploy-catalog-api.yml`. The workflow builds the API image
+from the checked-in source, runs the forward migration command against the
+existing private database, replaces only the API and scheduler containers,
+waits for `/health`, and verifies that unauthenticated admin requests redirect
+to `/admin/login`. It keeps the previous API image available for rollback and
+does not change the PostgreSQL or asset volumes. The workflow uses the pinned
+SSH secrets already documented for the Hostinger deployment account.
 
 The catalog includes a map only after a collector has a normalized version and
 a known download size. A missing size is retained in the database but omitted
