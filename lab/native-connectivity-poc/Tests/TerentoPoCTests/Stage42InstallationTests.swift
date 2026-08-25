@@ -222,6 +222,8 @@ struct Stage42InstallationTests {
         passed += testUnknownProfileBlocksWrite()
         passed += testTargetPolicyRejectsUnsupportedProviderBeforeTransport()
         passed += testTargetPolicyAcceptsAnotherFreizeitkarteRegion()
+        passed += testTargetPolicyAcceptsMapCapableBetaProfile()
+        passed += testTargetPolicyRejectsBetaProfileWithoutGarminRoot()
         passed += testCoordinatorUsesBusyTransactionGate()
         passed += testNonValidatedArtifactBlocksWrite()
         passed += testConfirmationIsRequiredBeforeWrite()
@@ -306,7 +308,9 @@ struct Stage42InstallationTests {
             try Stage42TargetPolicy().validate(
                 package: unsupportedPackage,
                 artifact: harness.request.artifact!,
-                profile: harness.request.profile
+                profile: harness.request.profile,
+                identity: harness.request.identity,
+                deviceFiles: harness.request.beforeDeviceFiles
             )
             return expect(false, "unsupported provider is rejected before transport")
         } catch Stage42TargetPolicyError.unsupportedPackage {
@@ -327,17 +331,105 @@ struct Stage42InstallationTests {
             name: "Lithuania"
         )
         let artifact = Harness.makeArtifact(package: package, data: data)
+        let harness = makeHarness()
 
         do {
             try Stage42TargetPolicy().validate(
                 package: package,
                 artifact: artifact,
-                profile: DeviceInstallProfileRegistry.local.profiles.first
+                profile: DeviceInstallProfileRegistry.local.profiles.first,
+                identity: harness.request.identity,
+                deviceFiles: harness.request.beforeDeviceFiles
             )
             return expect(true, "another validated Freizeitkarte region is accepted")
         } catch {
             return expect(false, "another validated Freizeitkarte region is accepted")
         }
+    }
+
+    private static func testTargetPolicyAcceptsMapCapableBetaProfile() -> Int {
+        let data = Harness.makeIMG(region: "LTU")
+        let package = Harness.makePackage(
+            size: UInt64(data.count),
+            regionID: "LTU",
+            name: "Lithuania"
+        )
+        let artifact = Harness.makeArtifact(package: package, data: data)
+        let identity = betaIdentity()
+        let files = [betaGarminRoot()]
+        let profile = DeviceInstallProfileRegistry.local.profile(
+            for: identity,
+            deviceFiles: files
+        )
+
+        do {
+            try Stage42TargetPolicy().validate(
+                package: package,
+                artifact: artifact,
+                profile: profile,
+                identity: identity,
+                deviceFiles: files
+            )
+            return expect(true, "map-capable beta profile passes the final write policy")
+        } catch {
+            return expect(false, "map-capable beta profile passes the final write policy")
+        }
+    }
+
+    private static func testTargetPolicyRejectsBetaProfileWithoutGarminRoot() -> Int {
+        let data = Harness.makeIMG(region: "LTU")
+        let package = Harness.makePackage(
+            size: UInt64(data.count),
+            regionID: "LTU",
+            name: "Lithuania"
+        )
+        let artifact = Harness.makeArtifact(package: package, data: data)
+        let identity = betaIdentity()
+        let profile = DeviceInstallProfileRegistry.local.profile(
+            for: identity,
+            deviceFiles: [betaGarminRoot()]
+        )
+
+        do {
+            try Stage42TargetPolicy().validate(
+                package: package,
+                artifact: artifact,
+                profile: profile,
+                identity: identity,
+                deviceFiles: []
+            )
+            return expect(false, "missing /GARMIN is rejected again at final write policy")
+        } catch Stage42TargetPolicyError.unsupportedDeviceProfile {
+            return expect(true, "missing /GARMIN is rejected again at final write policy")
+        } catch {
+            return expect(false, "missing /GARMIN is rejected again at final write policy")
+        }
+    }
+
+    private static func betaIdentity() -> DeviceIdentity {
+        DeviceIdentity(
+            manufacturer: "Garmin",
+            model: "fenix 8 - 51mm",
+            family: "fēnix",
+            variant: "51mm",
+            usbVendorId: 0x091e,
+            usbProductId: 0x7777,
+            firmware: "2244",
+            storageCapacity: 31 * gigabyte,
+            freeSpace: 16 * gigabyte
+        )
+    }
+
+    private static func betaGarminRoot() -> DeviceFile {
+        DeviceFile(
+            itemID: 9,
+            parentID: 0,
+            storageID: 1,
+            path: "/GARMIN",
+            filename: "GARMIN",
+            sizeBytes: 0,
+            isFolder: true
+        )
     }
 
     private static func testCoordinatorUsesBusyTransactionGate() -> Int {
@@ -693,6 +785,15 @@ struct Stage42InstallationTests {
 
         private static func makeBeforeFiles(installedLatvia: Bool) -> [DeviceFile] {
             var files = [
+                DeviceFile(
+                    itemID: 9,
+                    parentID: 0,
+                    storageID: 1,
+                    path: "/GARMIN",
+                    filename: "GARMIN",
+                    sizeBytes: 0,
+                    isFolder: true
+                ),
                 DeviceFile(
                     itemID: 1,
                     parentID: 0,

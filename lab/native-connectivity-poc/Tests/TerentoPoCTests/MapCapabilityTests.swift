@@ -18,6 +18,18 @@ struct MapCapabilityTests {
             "MARQ models are enabled by the Map Manager capability list"
         )
         expect(
+            registry.evaluate(identity: identity(model: "fēnix 6 Pro")) == .supported,
+            "fēnix 6 map-capable variants are enabled"
+        )
+        expect(
+            registry.evaluate(identity: identity(model: "Descent Mk2S")) == .supported,
+            "Descent Mk2 variants are enabled"
+        )
+        expect(
+            registry.evaluate(identity: identity(model: "Garmin fēnix 8 - 51mm")) == .supported,
+            "optional Garmin prefix does not hide a map-capable model"
+        )
+        expect(
             registry.evaluate(identity: identity(model: "Lily 2 Active"))
                 == .unsupported(reason: "Garmin Map Manager does not list this model for additional maps."),
             "Lily 2 Active stays visible but map actions are disabled"
@@ -35,7 +47,7 @@ struct MapCapabilityTests {
             registry.evaluate(identity: identity(model: "Garmin Future Watch")) == .unknown,
             "an unrecognised Garmin model fails closed with unknown map support"
         )
-        print("PASS: 7 Map Manager capability tests")
+        print("PASS: 10 Map Manager capability tests")
     }
 
     private static func identity(model: String) -> DeviceIdentity {

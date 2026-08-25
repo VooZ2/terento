@@ -10,6 +10,7 @@ struct DeviceInstallProfile: Equatable, Sendable {
     let modelAliases: [String]
     let targetDirectory: String
     let supportsMapWrite: Bool
+    var requiresValidatedCanonicalModel: Bool = true
 
     func matches(_ identity: DeviceIdentity) -> Bool {
         guard identity.usbVendorId == usbVendorId,
@@ -19,7 +20,9 @@ struct DeviceInstallProfile: Equatable, Sendable {
                   options: [.caseInsensitive, .diacriticInsensitive]
               ) == .orderedSame,
               identity.family == Optional(family),
-              let canonicalModel = identity.canonicalModel else {
+              let canonicalModel = requiresValidatedCanonicalModel
+                ? identity.canonicalModel
+                : identity.catalogCanonicalModel else {
             return false
         }
 
@@ -48,5 +51,58 @@ struct DeviceInstallProfileRegistry: Sendable {
 
     func profile(for identity: DeviceIdentity) -> DeviceInstallProfile? {
         profiles.first { $0.matches(identity) && $0.supportsMapWrite }
+    }
+
+    /// Beta enrollment path for a newly connected Garmin smartwatch. It does
+    /// not generalize from another device's USB product ID: the generated
+    /// profile is bound to the exact live VID/PID, catalog model and family.
+    /// A write target is returned only after the read-only inventory proves
+    /// that exactly one root `/GARMIN` folder exists.
+    func profile(
+        for identity: DeviceIdentity,
+        deviceFiles: [DeviceFile]
+    ) -> DeviceInstallProfile? {
+        guard identity.usbVendorId == 0x091e,
+              identity.manufacturer.range(
+                  of: "garmin",
+                  options: [.caseInsensitive, .diacriticInsensitive]
+              ) != nil,
+              GarminMapCapabilityRegistry.local.evaluate(identity: identity).canUseTerentoMaps,
+              let canonicalModel = identity.catalogCanonicalModel,
+              let family = identity.family,
+              Self.hasSingleGarminRootFolder(in: deviceFiles) else {
+            return nil
+        }
+
+        if let validated = profile(for: identity) {
+            return validated
+        }
+
+        return DeviceInstallProfile(
+            id: "garmin-map-capable-beta",
+            displayName: "Garmin \(identity.model)",
+            manufacturer: identity.manufacturer,
+            family: family,
+            usbVendorId: identity.usbVendorId,
+            usbProductIds: [identity.usbProductId],
+            modelAliases: [canonicalModel],
+            targetDirectory: "/GARMIN",
+            supportsMapWrite: true,
+            requiresValidatedCanonicalModel: false
+        )
+    }
+
+    static func hasSingleGarminRootFolder(in deviceFiles: [DeviceFile]) -> Bool {
+        deviceFiles.filter { file in
+            file.isFolder
+                && file.path.compare(
+                    "/GARMIN",
+                    options: [.caseInsensitive, .diacriticInsensitive]
+                ) == .orderedSame
+                && file.filename.compare(
+                    "GARMIN",
+                    options: [.caseInsensitive, .diacriticInsensitive]
+                ) == .orderedSame
+        }.count == 1
     }
 }

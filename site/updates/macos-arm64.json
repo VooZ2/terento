@@ -4,10 +4,10 @@
   "platform": "macOS",
   "architecture": "arm64",
   "version": "1.0.0",
-  "build": 2,
-  "releaseLabel": "1.0.0-beta.3",
-  "downloadURL": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.3/Terento-1.0.0-beta.3-macOS-arm64.dmg",
-  "releaseURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.3",
-  "sha256": "eeb56bdf247c870a69b8ae3205052a028fe7c97c4ec28975ac4fea8eb87b91d9",
+  "build": 3,
+  "releaseLabel": "1.0.0-beta.4",
+  "downloadURL": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.4/Terento-1.0.0-beta.4-macOS-arm64.dmg",
+  "releaseURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.4",
+  "sha256": "efa6574247eb9eaedb9b21853ead97a2743f05e4a5fcc2ead602530c5c4f17cf",
   "minimumMacOS": "13.0"
 }
