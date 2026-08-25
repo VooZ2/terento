@@ -161,3 +161,17 @@ jobs:
 
           rm -rf -- "$stage" "$override"
           REMOTE
+
+      - name: Verify public catalog API
+        shell: bash
+        run: |
+          set -euo pipefail
+          health="$(curl --fail --silent --show-error --connect-timeout 5 --max-time 10 https://api.terento.app/health)"
+          headers="$(curl --silent --show-error --connect-timeout 5 --max-time 10 -D - -o /dev/null https://terento.app/admin/campaign-links || true)"
+          status="$(printf '%s\n' "$headers" | awk 'tolower($1)=="http/2" {print $2; exit}')"
+          location="$(printf '%s\n' "$headers" | awk 'tolower($1)=="location:" {print $2; exit}' | tr -d '\r')"
+          if [ "$health" != '{"status":"ok"}' ] || [ "$status" != "303" ] || [ "$location" != "/admin/login" ] || ! printf '%s\n' "$headers" | grep -qi "script-src 'none'"; then
+            printf '%s\n' "Public catalog verification failed" >&2
+            printf '%s\n' "$headers" >&2
+            exit 1
+          fi
