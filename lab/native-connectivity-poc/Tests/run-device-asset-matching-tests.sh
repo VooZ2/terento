@@ -12,6 +12,7 @@ swiftc \
     "$project_root/Sources/TerentoPoC/Compatibility/GarminDeviceIdentityAdapter.swift" \
     "$project_root/Sources/TerentoPoC/Compatibility/DeviceRegistry.swift" \
     "$project_root/Sources/TerentoPoC/Compatibility/CompatibilityEngine.swift" \
+    "$project_root/Sources/TerentoPoC/Compatibility/CompatibilityStatusClient.swift" \
     "$project_root/Sources/TerentoPoC/Compatibility/DeviceAssetRegistry.swift" \
     "$project_root/Tests/TerentoPoCTests/DeviceAssetMatchingTests.swift" \
     -o "$binary_path"

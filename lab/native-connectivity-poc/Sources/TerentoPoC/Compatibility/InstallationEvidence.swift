@@ -173,8 +173,6 @@ struct CompatibilityEvidenceSummary: Equatable, Sendable {
     let lastSuccessfulInstallation: Date?
     let lastFailure: Date?
     let errorCategories: [EvidenceErrorCategory: Int]
-    let calculatedStatus: CompatibilityStatus
-    let verifiedRequiresPhysicalDeviceReview: Bool
 }
 
 enum CompatibilityEvidenceCalculator {
@@ -183,8 +181,7 @@ enum CompatibilityEvidenceCalculator {
     /// before the write are never events and therefore never enter this count.
     static func summarize(
         _ events: [InstallationEvidenceEvent],
-        forModel model: String,
-        reviewedPhysicalDeviceCount: Int = 0
+        forModel model: String
     ) -> CompatibilityEvidenceSummary {
         // The identity key is exact. Legacy v1 events decode their missing
         // key as `model`, so this remains backwards-compatible without
@@ -194,31 +191,17 @@ enum CompatibilityEvidenceCalculator {
             $0.phaseOutcome == .succeeded && $0.automaticFinishingResult == .verified
         }
         let failures = matching.filter { $0.phaseOutcome == .failed }
-        let firmware = Set(successes.compactMap(\.firmwareVersion))
-        let status: CompatibilityStatus
-        if !matching.isEmpty && successes.isEmpty {
-            status = .testing
-        } else if !successes.isEmpty && firmware.count >= 2 && reviewedPhysicalDeviceCount >= 2 {
-            status = .verified
-        } else if !successes.isEmpty {
-            status = .supported
-        } else {
-            status = .unknown
-        }
-
         return CompatibilityEvidenceSummary(
             attemptedInstallCount: matching.count,
             successfulInstallCount: successes.count,
             reconnectVerifiedInstallCount: successes.filter(\.reconnectVerified).count,
             failedInstallCount: failures.count,
             successRate: matching.isEmpty ? 0 : Double(successes.count) / Double(matching.count),
-            firmwareVersions: firmware,
+            firmwareVersions: Set(successes.compactMap(\.firmwareVersion)),
             lastSuccessfulInstallation: successes.map(\.timestamp).max(),
             lastFailure: failures.map(\.timestamp).max(),
             errorCategories: Dictionary(grouping: failures.compactMap(\.errorCategory), by: { $0 })
-                .mapValues(\.count),
-            calculatedStatus: status,
-            verifiedRequiresPhysicalDeviceReview: !successes.isEmpty && firmware.count >= 2 && reviewedPhysicalDeviceCount < 2
+                .mapValues(\.count)
         )
     }
 }

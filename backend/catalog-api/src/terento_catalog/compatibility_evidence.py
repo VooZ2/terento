@@ -9,7 +9,7 @@ from typing import Any
 
 MAX_EVENT_BYTES = 16_384
 ALLOWED_KEYS = {
-    "schemaVersion", "id", "timestamp", "model", "compatibilityIdentity", "variant", "caseSizeMm", "family", "firmwareVersion",
+    "schemaVersion", "id", "timestamp", "model", "compatibilityIdentity", "variant", "caseSizeMm", "displayType", "canonicalDeviceId", "family", "firmwareVersion",
     "usbVendorID", "usbProductID", "transport", "provider", "region",
     "mapRelease", "terentoVersion", "macOSVersion", "phaseOutcome",
     "automaticFinishingResult", "reconnectVerified", "mapVisibleAfterReconnect",
@@ -74,7 +74,7 @@ def validate_event(raw: bytes) -> dict[str, Any]:
         datetime.fromisoformat(str(event["timestamp"]).replace("Z", "+00:00"))
     except ValueError as exc:
         raise EvidenceValidationError("invalid_timestamp") from exc
-    for key in ("compatibilityIdentity", "variant", "family", "firmwareVersion"):
+    for key in ("compatibilityIdentity", "variant", "displayType", "family", "firmwareVersion"):
         value = event.get(key)
         if value is not None and (not isinstance(value, str) or len(value) > 160 or "/Users/" in value or "file://" in value):
             raise EvidenceValidationError(f"invalid_{key}")
@@ -87,6 +87,12 @@ def validate_event(raw: bytes) -> dict[str, Any]:
         or not 1 <= event["caseSizeMm"] <= 999
     ):
         raise EvidenceValidationError("invalid_caseSizeMm")
+    canonical_device_id = event.get("canonicalDeviceId")
+    if canonical_device_id is not None and (
+        not isinstance(canonical_device_id, str)
+        or re.fullmatch(r"[a-z0-9][a-z0-9-]{0,159}", canonical_device_id) is None
+    ):
+        raise EvidenceValidationError("invalid_canonicalDeviceId")
     for key in ("reconnectVerified", "mapVisibleAfterReconnect"):
         if key in event and not isinstance(event[key], bool):
             raise EvidenceValidationError(f"invalid_{key}")

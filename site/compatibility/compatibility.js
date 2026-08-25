@@ -6,8 +6,8 @@
   const previewStats = [
     {
       model: "fēnix 8",
-      attempted: 2,
-      successful: 2,
+      attempted: 3,
+      successful: 3,
       failed: 0,
       status: "SUPPORTED",
       lastSuccess: "2026-08-24T21:34:17Z",
@@ -49,31 +49,29 @@
     statusList: document.querySelector("#compatibility-status-list"),
   };
 
-  const { normalize, canonicalFamilyKey, familyOptions, filterByFamily } = data;
+  const { normalize, canonicalFamilyKey, familyOptions, filterByFamily, exactVariantLabel } = data;
 
   const statusLabel = (status) => ({
     VERIFIED: "Verified",
     SUPPORTED: "Supported",
     TESTED: "Tested",
     TESTING: "Testing",
-    UNKNOWN: "Unknown",
-  }[status] || "Unknown");
+  }[status] || "Compatibility unavailable");
 
   const statusDescription = (status) => ({
-    TESTED: "Real hardware testing exists for this exact model and variant.",
-    SUPPORTED: "A successful verified map installation exists for this exact model and variant.",
-    VERIFIED: "Successful installations are confirmed across at least two operator-reviewed physical devices and two firmware versions.",
-    TESTING: "This exact device is currently under validation or has only partial evidence.",
-    UNKNOWN: "This exact device is known, but Terento does not have enough real hardware evidence yet.",
+    TESTING: "Terento has recognized this model as map-capable, but no successful shared installation has been received yet.",
+    TESTED: "1–2 successful installations have been shared by Terento users.",
+    SUPPORTED: "3–4 successful installations have been shared by Terento users.",
+    VERIFIED: "5 or more successful installations have been shared by Terento users.",
   }[status] || "Compatibility evidence is not available yet.");
 
   function createStatusBadge(status, ariaLabel = statusLabel(status)) {
-    const statusClass = String(status || "UNKNOWN").toLocaleLowerCase();
+    const statusClass = String(status).toLocaleLowerCase();
     return `<span class="status-badge status-${escapeHtml(statusClass)}" aria-label="${escapeHtml(ariaLabel)}"><span>${escapeHtml(statusLabel(status))}</span></span>`;
   }
 
   function renderStatusExplanations() {
-    elements.statusList.innerHTML = ["TESTED", "SUPPORTED", "VERIFIED"].map((status) => `
+    elements.statusList.innerHTML = ["TESTING", "TESTED", "SUPPORTED", "VERIFIED"].map((status) => `
       <div class="compatibility-status-row">
         ${createStatusBadge(status)}
         <p>${escapeHtml(statusDescription(status))}</p>
@@ -98,6 +96,10 @@
     const attempted = Number(row.attemptedInstallations ?? row.attempted_install_count ?? row.attempted ?? 0);
     const successful = Number(row.successfulInstallations ?? row.successful_install_count ?? row.successful ?? 0);
     const failed = Number(row.failedInstallations ?? row.failed_install_count ?? row.failed ?? Math.max(0, attempted - successful));
+    const rawStatus = String(row.status || row.evidenceStatus || row.calculated_status || "").toUpperCase();
+    const status = ["TESTING", "TESTED", "SUPPORTED", "VERIFIED"].includes(rawStatus)
+      ? rawStatus
+      : null;
     return {
       model: String(row.model || "").trim(),
       compatibilityIdentity: String(row.compatibilityIdentity || row.compatibility_identity || row.model || "").trim(),
@@ -107,7 +109,7 @@
       attempted: Number.isFinite(attempted) ? attempted : 0,
       successful: Number.isFinite(successful) ? successful : 0,
       failed: Number.isFinite(failed) ? failed : 0,
-      status: String(row.status || row.evidenceStatus || row.calculated_status || (successful > 0 ? "SUPPORTED" : attempted > 0 ? "TESTING" : "UNKNOWN")).toUpperCase(),
+      status,
       lastSuccess: row.lastSuccess || row.last_success || row.lastSuccessfulInstallation || row.last_successful_installation || null,
     };
   }
@@ -316,10 +318,10 @@
           ...row,
           ...catalog,
           model: catalog.model || row.model,
-          variants: row.variant ? [row.variant] : catalog.variants,
+          variants: [exactVariantLabel(row, catalog.variants)].filter(Boolean),
         };
       })
-      .filter(Boolean);
+      .filter((row) => row && row.status);
   }
 
   async function load({ quiet = false } = {}) {

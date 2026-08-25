@@ -10,8 +10,8 @@ protocol DeviceFileReader: Sendable {
 struct Stage401PreflightTests {
     static func main() {
         testRealFenixModelResolvesValidatedProfile()
-        testMissingAmoledStringDoesNotBlockValidatedProfile()
-        testPartialIdentityDoesNotClaimExactAsset()
+        testReviewedHardwareIdentityRestoresAmoledVariant()
+        testReviewedHardwareIdentityClaimsExactAsset()
         testUnknownDeviceStaysBlocked()
         testMapCapableBetaDeviceGetsLiveBoundProfile()
         testBetaProfileRequiresOneGarminRoot()
@@ -40,20 +40,20 @@ struct Stage401PreflightTests {
         )
     }
 
-    private static func testMissingAmoledStringDoesNotBlockValidatedProfile() {
+    private static func testReviewedHardwareIdentityRestoresAmoledVariant() {
         let identity = realIdentity()
         expect(
-            identity.variant == "47mm"
+            identity.variant == "47 mm, AMOLED"
                 && DeviceInstallProfileRegistry.local.profile(for: identity) != nil,
-            "missing AMOLED in the raw model string does not block profile matching"
+            "reviewed VID/PID restores AMOLED without blocking profile matching"
         )
     }
 
-    private static func testPartialIdentityDoesNotClaimExactAsset() {
+    private static func testReviewedHardwareIdentityClaimsExactAsset() {
         let asset = DeviceAssetRegistry.local.asset(for: realIdentity())
         expect(
-            asset.scope == .modelSize && !asset.isExactMatch,
-            "model-plus-size identity cannot claim an exact AMOLED asset"
+            asset.scope == .exactVariant && asset.isExactMatch,
+            "reviewed VID/PID and size claim only the exact AMOLED asset"
         )
     }
 

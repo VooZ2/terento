@@ -2,21 +2,19 @@ import Foundation
 
 /// User-facing explanations for the domain compatibility status.
 ///
-/// The status itself remains owned by the compatibility registry. This type
-/// only translates that existing domain value into restrained UI copy.
+/// The public status is resolved by the canonical compatibility service. This
+/// type only translates that resolved domain value into restrained UI copy.
 enum CompatibilityPresentation {
     static func explanation(for status: CompatibilityStatus) -> String {
         switch status {
-        case .unknown:
-            return "This exact device is known, but Terento does not have enough real hardware evidence yet."
         case .testing:
-            return "This exact device is currently under validation or has only partial evidence."
+            return "Terento has recognized this model as map-capable, but no successful shared installation has been received yet."
         case .tested:
-            return "Real hardware testing exists for this exact model and variant."
+            return "1–2 successful installations have been shared by Terento users."
         case .supported:
-            return "A successful verified map installation exists for this exact model and variant."
+            return "3–4 successful installations have been shared by Terento users."
         case .verified:
-            return "Successful installations are confirmed across at least two operator-reviewed physical devices and two firmware versions."
+            return "5 or more successful installations have been shared by Terento users."
         }
     }
 }

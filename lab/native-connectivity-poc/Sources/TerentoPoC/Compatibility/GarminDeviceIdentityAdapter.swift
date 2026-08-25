@@ -6,7 +6,7 @@ struct GarminDeviceIdentityAdapter: Sendable {
             manufacturer: snapshot.manufacturer,
             model: snapshot.model,
             family: family(for: snapshot.model),
-            variant: variant(for: snapshot.model),
+            variant: variant(for: snapshot),
             usbVendorId: snapshot.vendorID,
             usbProductId: snapshot.productID,
             firmware: nonEmpty(snapshot.deviceVersion),
@@ -81,7 +81,8 @@ struct GarminDeviceIdentityAdapter: Sendable {
         return nil
     }
 
-    private func variant(for model: String) -> String? {
+    private func variant(for snapshot: DeviceSnapshot) -> String? {
+        let model = snapshot.model
         let normalized = GarminDeviceModelNormalizer.normalize(model)
 
         if normalized.contains("amoled") && normalized.contains("47mm") {
@@ -92,16 +93,30 @@ struct GarminDeviceIdentityAdapter: Sendable {
             return "AMOLED"
         }
 
+        if normalized.contains("solar") {
+            if let size = GarminDeviceModelNormalizer.caseSizeMm(from: model) {
+                return "\(size) mm, Solar"
+            }
+            return "Solar"
+        }
+
+        // VID/PID 091e:51b8 is separately reviewed hardware evidence for the
+        // exact 47 mm AMOLED catalog record. This is not inferred from the
+        // product image or from size alone. An explicit display token above
+        // always wins, so a future Solar identity cannot leak AMOLED.
+        if snapshot.vendorID == 0x091e,
+           snapshot.productID == 0x51b8,
+           GarminDeviceModelNormalizer.canonicalModel(from: model) == "fēnix 8",
+           GarminDeviceModelNormalizer.caseSizeMm(from: model) == 47 {
+            return "47 mm, AMOLED"
+        }
+
         if normalized.contains("47mm") {
             return "47mm"
         }
 
         if let match = normalized.range(of: #"\b\d{2}\s*mm\b"#, options: .regularExpression) {
             return normalized[match].replacingOccurrences(of: " ", with: "")
-        }
-
-        if normalized.contains("solar") {
-            return "Solar"
         }
 
         return nil

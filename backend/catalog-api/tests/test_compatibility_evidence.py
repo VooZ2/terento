@@ -67,17 +67,31 @@ class FakeEvidenceDatabase:
             "model": "fēnix 8", "firmware_versions": "20.19", "attempted_install_count": 1,
             "successful_install_count": 1, "failed_install_count": 0, "success_rate": 100,
             "last_success": "2026-08-24", "last_failure": None, "error_categories": {},
-            "calculated_status": "SUPPORTED", "physical_device_evidence_count": 1,
+            "calculated_status": "TESTED", "physical_device_evidence_count": 1,
             "review_notes": "Owner evidence",
         }]
 
     def public_compatibility_statistics(self, limit):
         return [{
-            "model": "fēnix 8", "compatibility_identity": "fēnix 8 · 47 mm", "variant": "47 mm", "case_size_mm": 47,
-            "attempted_install_count": 3, "reconnect_verified_install_count": 0,
-            "successful_install_count": 2, "failed_install_count": 1,
-            "success_rate": 66.7, "calculated_status": "SUPPORTED",
+            "model": "fēnix 8 · 47 mm AMOLED", "canonical_model": "fēnix 8",
+            "compatibility_identity": "fēnix 8 · 47 mm AMOLED", "variant": "AMOLED", "case_size_mm": 47,
+            "display_type": "AMOLED", "canonical_device_model_id": "garmin-fenix-8-47-amoled",
+            "attempted_install_count": 4, "reconnect_verified_install_count": 0,
+            "successful_install_count": 3, "failed_install_count": 1,
+            "success_rate": 75.0, "calculated_status": "SUPPORTED",
+            "recognized_map_capable_evidence": True,
             "last_success": datetime(2026, 8, 24, tzinfo=timezone.utc),
+            "last_evidence": datetime(2026, 8, 24, tzinfo=timezone.utc),
+        }, {
+            "model": "fēnix 8 · 51 mm AMOLED", "canonical_model": "fēnix 8",
+            "compatibility_identity": "fēnix 8 · 51 mm AMOLED", "variant": "AMOLED", "case_size_mm": 51,
+            "display_type": "AMOLED", "canonical_device_model_id": "garmin-fenix-8-51-amoled",
+            "attempted_install_count": 1, "reconnect_verified_install_count": 0,
+            "successful_install_count": 1, "failed_install_count": 0,
+            "success_rate": 100.0, "calculated_status": "SUPPORTED",
+            "recognized_map_capable_evidence": True,
+            "last_success": datetime(2026, 8, 25, tzinfo=timezone.utc),
+            "last_evidence": datetime(2026, 8, 25, tzinfo=timezone.utc),
         }][:limit]
 
     def admin_user_count(self):
@@ -184,6 +198,8 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertIsNone(database.parameters["family"])
         self.assertIsNone(database.parameters["firmwareVersion"])
         self.assertIsNone(database.parameters["errorCategory"])
+        self.assertIsNone(database.parameters["displayType"])
+        self.assertIsNone(database.parameters["canonicalDeviceId"])
         self.assertEqual(len(database.parameters["deletionTokenHash"]), 64)
 
     def test_admin_dashboard_uses_compact_english_evidence_layout(self):
@@ -197,7 +213,8 @@ class CompatibilityEvidenceTests(unittest.TestCase):
             "successful_install_count": 1,
             "failed_install_count": 0,
             "success_rate": 100.0,
-            "calculated_status": "SUPPORTED",
+            "calculated_status": "TESTED",
+            "recognized_map_capable_evidence": True,
             "last_success": datetime(2026, 8, 25, 16, 4, tzinfo=timezone.utc),
             "last_failure": None,
             "error_categories": {},
@@ -236,17 +253,23 @@ class CompatibilityEvidenceTests(unittest.TestCase):
             compatibilityIdentity="fēnix 8 · 51 mm",
             variant="51 mm",
             caseSizeMm=51,
+            displayType="AMOLED",
+            canonicalDeviceId="garmin-fenix-8-51-amoled",
             reconnectVerified=False,
             mapVisibleAfterReconnect=False,
         )
         validated = validate_event(json.dumps(payload).encode())
         self.assertEqual(validated["compatibilityIdentity"], "fēnix 8 · 51 mm")
         self.assertEqual(validated["caseSizeMm"], 51)
+        self.assertEqual(validated["displayType"], "AMOLED")
+        self.assertEqual(validated["canonicalDeviceId"], "garmin-fenix-8-51-amoled")
 
         database = CaptureDatabase()
         self.assertTrue(database.insert_compatibility_event(validated))
         self.assertFalse(database.parameters["reconnectVerified"])
         self.assertFalse(database.parameters["mapVisibleAfterReconnect"])
+        self.assertEqual(database.parameters["displayType"], "AMOLED")
+        self.assertEqual(database.parameters["canonicalDeviceId"], "garmin-fenix-8-51-amoled")
 
     def test_privacy_fields_and_local_paths_are_rejected(self):
         without_deletion_token = event()
@@ -335,10 +358,19 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         document = json.loads(body)
         self.assertEqual(response.status, 200)
         self.assertEqual(document["schemaVersion"], 2)
-        self.assertEqual(document["models"][0]["model"], "fēnix 8")
-        self.assertEqual(document["models"][0]["compatibilityIdentity"], "fēnix 8 · 47 mm")
+        self.assertEqual(document["models"][0]["model"], "fēnix 8 · 47 mm AMOLED")
+        self.assertEqual(document["models"][0]["canonicalModel"], "fēnix 8")
+        self.assertEqual(document["models"][0]["compatibilityIdentity"], "fēnix 8 · 47 mm AMOLED")
         self.assertEqual(document["models"][0]["caseSizeMm"], 47)
-        self.assertEqual(document["models"][0]["successfulInstallations"], 2)
+        self.assertEqual(document["models"][0]["displayType"], "AMOLED")
+        self.assertEqual(document["models"][0]["canonicalDeviceId"], "garmin-fenix-8-47-amoled")
+        self.assertEqual(document["models"][0]["successfulInstallations"], 3)
+        self.assertEqual(document["models"][1]["compatibilityIdentity"], "fēnix 8 · 51 mm AMOLED")
+        self.assertEqual(document["models"][1]["caseSizeMm"], 51)
+        self.assertEqual(document["models"][1]["evidenceStatus"], "TESTED")
+        self.assertEqual(document["models"][0]["evidenceStatus"], "SUPPORTED")
+        self.assertEqual(document["models"][0]["successfulInstallations"], 3)
+        self.assertEqual(document["models"][0]["mapCapable"], True)
         self.assertNotIn("firmwareVersion", document["models"][0])
 
 

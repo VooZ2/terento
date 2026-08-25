@@ -1,7 +1,6 @@
 import Foundation
 
 enum CompatibilityStatus: String, Codable, CaseIterable, Sendable {
-    case unknown = "UNKNOWN"
     case testing = "TESTING"
     case tested = "TESTED"
     case supported = "SUPPORTED"
@@ -9,8 +8,6 @@ enum CompatibilityStatus: String, Codable, CaseIterable, Sendable {
 
     var userLabel: String {
         switch self {
-        case .unknown:
-            return "Unknown"
         case .testing:
             return "Testing"
         case .tested:
@@ -108,6 +105,21 @@ struct DeviceIdentity: Sendable, Equatable {
     var displayType: String? {
         let identitySource = [model, variant].compactMap { $0 }.joined(separator: " ")
         return GarminDeviceModelNormalizer.displayType(from: identitySource)
+    }
+
+    /// Canonical catalog identity backed by separately reviewed hardware
+    /// evidence. This is intentionally narrower than model normalization:
+    /// model text, case size, or artwork alone must never manufacture an
+    /// AMOLED/Solar distinction.
+    var reviewedCanonicalDeviceID: String? {
+        guard usbVendorId == 0x091e,
+              usbProductId == 0x51b8,
+              canonicalModel == "fēnix 8",
+              caseSizeMm == 47,
+              displayType == nil || displayType == "AMOLED" else {
+            return nil
+        }
+        return "garmin-fenix-8-47-amoled"
     }
 
     /// Presentation/catalog identity for models that do not yet have a local
@@ -239,5 +251,29 @@ enum GarminFirmwareVersionFormatter: Sendable {
 
     private static func isGarminManufacturer(_ value: String) -> Bool {
         value.range(of: "garmin", options: [.caseInsensitive, .diacriticInsensitive]) != nil
+    }
+}
+
+enum ConnectedDeviceSubtitleFormatter: Sendable {
+    static func format(identity: DeviceIdentity, fallbackModel: String, manufacturer: String) -> String {
+        var parts: [String] = []
+        if let size = identity.caseSizeMm {
+            parts.append("\(size) mm")
+        }
+        if let display = identity.displayType {
+            parts.append(display)
+        }
+        if parts.isEmpty {
+            let fallback = (identity.variant ?? fallbackModel)
+                .replacingOccurrences(of: "47mm", with: "47 mm", options: .caseInsensitive)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if !fallback.isEmpty { parts.append(fallback) }
+        }
+        let firmware = GarminFirmwareVersionFormatter.display(
+            rawValue: identity.firmware ?? "",
+            manufacturer: manufacturer
+        )
+        if !firmware.isEmpty { parts.append("Firmware \(firmware)") }
+        return parts.joined(separator: " · ")
     }
 }

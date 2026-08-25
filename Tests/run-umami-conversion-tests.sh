@@ -105,7 +105,7 @@ for path in home_files:
 for path in download_files:
     html = path.read_text(encoding="utf-8")
     versions = set(re.findall(r"v1\.0\.0-beta\.\d+", html))
-    assert versions == {"v1.0.0-beta.4"}, f"{path}: expected current beta.4 release metadata"
+    assert versions == {"v1.0.0-beta.5"}, f"{path}: expected current beta.5 release metadata"
     items = anchors(path)
     dmg = [item for item in items if urlparse(item["href"]).path.lower().endswith(".dmg")]
     zip_files = [item for item in items if urlparse(item["href"]).path.lower().endswith(".zip")]

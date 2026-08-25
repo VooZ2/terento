@@ -42,6 +42,7 @@ class Database:
         query = """
             INSERT INTO compatibility_evidence_event (
                 event_id, occurred_at, model, compatibility_identity, variant, case_size_mm,
+                display_type, canonical_device_model_id,
                 family, firmware_version,
                 usb_vendor_id, usb_product_id, transport, provider, region,
                 map_release, terento_version, macos_version, phase_outcome,
@@ -49,6 +50,7 @@ class Database:
                 error_category, deletion_token_hash
             ) VALUES (
                 %(id)s, %(timestamp)s, %(model)s, %(compatibilityIdentity)s, %(variant)s, %(caseSizeMm)s,
+                %(displayType)s, %(canonicalDeviceId)s,
                 %(family)s, %(firmwareVersion)s,
                 %(usbVendorID)s, %(usbProductID)s, %(transport)s, %(provider)s, %(region)s,
                 %(mapRelease)s, %(terentoVersion)s, %(macOSVersion)s, %(phaseOutcome)s,
@@ -66,6 +68,8 @@ class Database:
             "compatibilityIdentity": event.get("compatibilityIdentity") or event["model"],
             "variant": event.get("variant"),
             "caseSizeMm": event.get("caseSizeMm"),
+            "displayType": event.get("displayType"),
+            "canonicalDeviceId": event.get("canonicalDeviceId"),
             "reconnectVerified": bool(event.get("reconnectVerified", False)),
             "mapVisibleAfterReconnect": bool(event.get("mapVisibleAfterReconnect", False)),
             "errorCategory": event.get("errorCategory"),
@@ -109,20 +113,25 @@ class Database:
     def public_compatibility_statistics(self, limit: int) -> list[dict[str, Any]]:
         query = """
             SELECT public_display_name AS model,
+                   model AS canonical_model,
                    compatibility_identity,
                    variant,
                    case_size_mm,
+                   display_type,
+                   canonical_device_model_id,
                    attempted_install_count,
                    successful_install_count,
                    reconnect_verified_install_count,
                    failed_install_count,
                    success_rate,
                    calculated_status,
-                   last_success
+                   last_success,
+                   last_evidence,
+                   recognized_map_capable_evidence
             FROM compatibility_model_statistics
             WHERE public_statistics_enabled = true
               AND review_status = 'APPROVED'
-              AND calculated_status IN ('TESTED', 'SUPPORTED', 'VERIFIED')
+              AND calculated_status IN ('TESTING', 'TESTED', 'SUPPORTED', 'VERIFIED')
             ORDER BY successful_install_count DESC, attempted_install_count DESC, public_display_name
             LIMIT %s
         """

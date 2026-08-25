@@ -1990,8 +1990,7 @@ details p {
   color: color-mix(in srgb, var(--stone) 62%, var(--graphite));
 }
 
-.status-testing,
-.status-unknown {
+.status-testing {
   background: var(--surface-muted);
   border-color: var(--border);
   color: var(--secondary);

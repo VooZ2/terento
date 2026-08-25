@@ -135,15 +135,21 @@ struct DeviceAssetMatchingTests {
             ]
         )
         let engine = CompatibilityEngine()
-        let before = engine.evaluate(snapshot: snapshot).status
+        let before = engine.evaluate(snapshot: snapshot)
         _ = DeviceAssetResolver.matchingAsset(
             identity: identity(variant: "AMOLED 47mm"),
             canonicalModel: "fēnix 8",
             records: []
         )
-        let after = engine.evaluate(snapshot: snapshot).status
+        let after = engine.evaluate(snapshot: snapshot)
 
-        expect(before == .tested && after == before, "asset resolution cannot change compatibility status")
+        expect(
+            before.status == nil
+                && after.status == before.status
+                && before.statusSource == .unavailable
+                && after.statusSource == before.statusSource,
+            "asset resolution cannot invent or change canonical compatibility status"
+        )
     }
 
     private static func testControlledURLsResolveRelativeAPIPaths() {
@@ -281,7 +287,7 @@ struct DeviceAssetMatchingTests {
             storages: []
         )
         let identity = GarminDeviceIdentityAdapter().makeIdentity(from: snapshot)
-        expect(identity.variant == "47mm", "real MTP model derives the 47mm variant")
+        expect(identity.variant == "47 mm, AMOLED", "reviewed real MTP identity resolves the exact 47 mm AMOLED variant")
         expect(identity.canonicalModel == "fēnix 8", "real MTP model derives the canonical fēnix 8 model")
         let asset = DeviceCatalogAsset(
             url: URL(string: "/assets/devices/garmin/fenix-8-47.webp"),
@@ -321,7 +327,7 @@ struct DeviceAssetMatchingTests {
         expect(directMatch?.scope == "MODEL_SIZE", "real MTP identity matches the model-size catalog record")
 
         expect(
-            identity.variant == "47mm"
+            identity.variant == "47 mm, AMOLED"
                 && result.scope == .modelSize
                 && !result.isFallback
                 && client.assetDownloadCount == 1,

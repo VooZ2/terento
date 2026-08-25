@@ -71,7 +71,9 @@ PYTHONPATH=backend/catalog-api/src python3 -m unittest discover -s backend/catal
   stores no campaign links or history.
 - `GET /compatibility/public/top-models.json` is a prepared, default-disabled
   aggregate API. It returns only individually reviewed and approved models
-  after `PUBLIC_COMPATIBILITY_STATS_ENABLED=true`; it never returns raw events.
+  after `PUBLIC_COMPATIBILITY_STATS_ENABLED=true`, with the canonical
+  `TESTING`, `TESTED`, `SUPPORTED`, or `VERIFIED` status, successful count, and
+  last evidence date; it never returns raw events.
 
 Production API and admin updates are rolled out only when the catalog backend
 or its deployment workflow changes; application releases and unrelated site

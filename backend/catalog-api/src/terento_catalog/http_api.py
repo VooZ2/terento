@@ -41,6 +41,7 @@ from .compatibility_evidence import (
     validate_deletion_request,
     validate_event,
 )
+from .compatibility_status import calculate_compatibility_status
 
 LOGGER = logging.getLogger(__name__)
 
@@ -85,7 +86,7 @@ class CatalogService:
         return self.database.delete_compatibility_event(event_id, deletion_token)
 
     def compatibility_statistics(self) -> list[dict[str, Any]]:
-        return self.database.compatibility_statistics()
+        return self._canonicalize_statistics(self.database.compatibility_statistics())
 
     def admin_is_configured(self) -> bool:
         return self.database.admin_user_count() > 0
@@ -139,7 +140,21 @@ class CatalogService:
     def public_statistics(self, limit: int) -> list[dict[str, Any]]:
         if not self.public_compatibility_stats_enabled:
             raise LookupError("disabled")
-        return self.database.public_compatibility_statistics(limit)
+        return self._canonicalize_statistics(self.database.public_compatibility_statistics(limit))
+
+    @staticmethod
+    def _canonicalize_statistics(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Apply the one status classifier before any consumer renders rows."""
+        canonical: list[dict[str, Any]] = []
+        for row in rows:
+            status = calculate_compatibility_status(
+                successful_install_count=int(row.get("successful_install_count") or 0),
+                recognized_map_capable_evidence=bool(
+                    row.get("recognized_map_capable_evidence", True)
+                ),
+            )
+            canonical.append({**row, "calculated_status": status.value if status else None})
+        return canonical
 
 
 def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
@@ -393,7 +408,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
         def _handle_public_statistics(self, *, send_body: bool) -> None:
             try:
                 query = parse_qs(urlsplit(self.path).query)
-                limit = max(1, min(20, int(query.get("limit", ["5"])[0])))
+                limit = max(1, min(500, int(query.get("limit", ["5"])[0])))
                 rows = service.public_statistics(limit)
             except (ValueError, LookupError):
                 self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=send_body, cache_control="no-store")
@@ -404,9 +419,12 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return
             models = [{
                 "model": row["model"],
+                "canonicalModel": row.get("canonical_model"),
                 "compatibilityIdentity": row.get("compatibility_identity"),
                 "variant": row.get("variant"),
                 "caseSizeMm": row.get("case_size_mm"),
+                "displayType": row.get("display_type"),
+                "canonicalDeviceId": row.get("canonical_device_model_id"),
                 "attemptedInstallations": int(row["attempted_install_count"]),
                 "successfulInstallations": int(row["successful_install_count"]),
                 "reconnectVerifiedInstallations": int(row.get("reconnect_verified_install_count") or 0),
@@ -414,6 +432,8 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 "successRate": float(row["success_rate"]) if row.get("success_rate") is not None else None,
                 "evidenceStatus": row["calculated_status"],
                 "lastSuccessfulInstallation": row["last_success"].isoformat() if isinstance(row.get("last_success"), datetime) else row.get("last_success"),
+                "lastEvidence": row["last_evidence"].isoformat() if isinstance(row.get("last_evidence"), datetime) else row.get("last_evidence"),
+                "mapCapable": bool(row.get("recognized_map_capable_evidence", True)),
             } for row in rows]
             self._send_json(HTTPStatus.OK, {"schemaVersion": 2, "generatedAt": datetime.now(timezone.utc).isoformat(), "models": models}, send_body=send_body, cache_control="public, max-age=300, stale-while-revalidate=3600")
 

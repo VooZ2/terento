@@ -9,7 +9,6 @@ struct DeviceRegistryEntry: Sendable, Equatable {
     let usbProductIds: Set<UInt16>
     let caseSizeMm: Int?
     let displayType: String?
-    let status: CompatibilityStatus
     let evidence: CompatibilityEvidence
 
     func matches(_ identity: DeviceIdentity) -> Bool {
@@ -51,7 +50,6 @@ struct DeviceRegistry: Sendable {
             // The transport identity sometimes reports only 47 mm; do not
             // infer AMOLED when the device did not expose display evidence.
             displayType: nil,
-            status: .tested,
             evidence: .nativeConnectivityTested
         )
     ])

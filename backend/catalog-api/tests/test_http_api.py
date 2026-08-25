@@ -258,19 +258,19 @@ class HTTPAPITests(unittest.TestCase):
             self.assertEqual(device["asset"]["source"]["type"], source_type)
             self.assertNotIn("compatibility", device)
 
-        unknown_row = {
+        testing_row = {
             **base,
             "asset_status": "AVAILABLE",
             "asset_source_type": "OFFICIAL_PRODUCT_MEDIA",
             "asset_source_brand": "Garmin",
             "asset_attribution_required": True,
-            "compatibility_status": "UNKNOWN",
+            "compatibility_status": "TESTING",
         }
-        unknown_device = build_device_catalog(
-            [unknown_row], datetime(2026, 5, 3, tzinfo=timezone.utc)
+        testing_device = build_device_catalog(
+            [testing_row], datetime(2026, 5, 3, tzinfo=timezone.utc)
         )["devices"][0]
-        self.assertEqual(unknown_device["asset"]["status"], "AVAILABLE")
-        self.assertNotIn("compatibility", unknown_device)
+        self.assertEqual(testing_device["asset"]["status"], "AVAILABLE")
+        self.assertNotIn("compatibility", testing_device)
 
         verified_row = {
             **base,

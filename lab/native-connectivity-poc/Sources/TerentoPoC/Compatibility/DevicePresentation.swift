@@ -1,12 +1,12 @@
 import Foundation
 
-/// Presentation data for the existing Device screen. Compatibility remains a
-/// local decision; the catalog contributes only optional artwork metadata.
+/// Presentation data for the existing Device screen. Compatibility is the
+/// canonical API result; the catalog contributes only optional artwork metadata.
 struct DevicePresentation: Equatable, Sendable {
     let identity: DeviceIdentity
     let deviceName: String
     let variant: String
-    let compatibility: CompatibilityStatus
+    let compatibility: CompatibilityStatus?
     let mapSupport: GarminMapSupportStatus
     let asset: ResolvedDeviceAsset
     let assetURL: URL?
@@ -21,7 +21,7 @@ struct DevicePresentation: Equatable, Sendable {
         identity: DeviceIdentity,
         deviceName: String,
         variant: String,
-        compatibility: CompatibilityStatus,
+        compatibility: CompatibilityStatus?,
         asset: ResolvedDeviceAsset
     ) {
         self.identity = identity

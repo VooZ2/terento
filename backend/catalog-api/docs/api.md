@@ -26,15 +26,19 @@ confirmation signal; legacy `userConfirmed` fields are tolerated only for
 backward compatibility with older beta clients. Upload failure never changes
 the macOS installation result.
 
-Version 2 events may include an exact `compatibilityIdentity`, `variant`, and
-`caseSizeMm`, plus optional `reconnectVerified` and
-`mapVisibleAfterReconnect` observations. Reconnect is never required for any
-compatibility status. The canonical aggregate is `UNKNOWN` for no evidence,
-`TESTING` for partial/failed evidence, `TESTED` for real hardware evidence
-without a successful map installation, `SUPPORTED` after a successful verified
-map installation, and `VERIFIED` after successful evidence across multiple
-operator-reviewed physical devices and firmware versions. Counts are displayed
-evidence metrics only.
+Version 2 events may include an exact `compatibilityIdentity`, `variant`,
+`caseSizeMm`, privacy-safe `displayType`, and `canonicalDeviceId`, plus
+optional `reconnectVerified` and `mapVisibleAfterReconnect` observations.
+Older beta clients remain accepted when the newer identity fields are absent;
+such model-only evidence must not be matched to a sibling exact variant.
+Reconnect is never required for any compatibility status. The canonical
+aggregate uses the exact successful
+opt-in installation count: `TESTING` for zero successful installations on
+recognized map-capable evidence, `TESTED` for 1–2, `SUPPORTED` for 3–4, and
+`VERIFIED` for 5 or more. Failed reports, opt-out local installs, and duplicate
+event IDs do not increase the successful count. Firmware variation, physical
+device count, operator review, reconnect, and map visibility are retained only
+as optional evidence dimensions and do not promote a status.
 
 ## `DELETE /compatibility/events`
 
@@ -78,12 +82,36 @@ Prepared for a later public TOP-models widget. The route returns 404 unless
 `PUBLIC_COMPATIBILITY_STATS_ENABLED=true`. Even then, it includes only model
 rows that an operator has separately marked `APPROVED` and enabled for public
 statistics. Results are ordered by successful installation count and include
-attempted, successful, failed, exact-variant, and canonical-status fields;
-firmware and raw event records are omitted. Only `TESTED`, `SUPPORTED`, and
-`VERIFIED` rows are public. The public `/compatibility/` page calls this
+attempted, successful, failed, canonical model, exact identity, case size,
+display type, canonical device-catalog ID, map-capability, last-evidence, and
+canonical-status fields; firmware and raw event records are omitted. All
+four canonical statuses may be public after review. The public `/compatibility/` page calls this
 endpoint when the public compatibility flag is enabled. The endpoint remains
 default-disabled and the page shows no public evidence when the flag or
 approved aggregate data is absent.
+
+The response's `evidenceStatus` is the authoritative public status for the
+exact `compatibilityIdentity`. It is one of `TESTING`, `TESTED`, `SUPPORTED`,
+or `VERIFIED`; non-map devices are not represented by a compatibility status.
+`canonicalModel`, `caseSizeMm`, `displayType`, `variant`, and
+`canonicalDeviceId` identify the exact reviewed catalog variant. Clients must
+not fall back from a sized row to a model-only or sibling-size row. The native macOS client
+refreshes this endpoint after device discovery, stores only a bounded
+exact-identity cache for offline presentation, and uses a neutral unavailable
+UI when neither a current response nor a recent cached canonical result is
+available. A transport/install registry or write-safety decision must not
+change `evidenceStatus`.
+
+The production website and native macOS client request `limit=500` before
+performing exact-identity matching. Clients must not rely on the route's
+smaller default result page to represent the complete reviewed catalog.
+
+The reviewed Garmin `091e:51b8` hardware identity is associated separately
+with `garmin-fenix-8-47-amoled` and may therefore match that exact public row
+when MTP omits the display token. This is reviewed identity evidence, not an
+inference from case size or artwork. An unreviewed 47 mm identity without
+display evidence must not match either the AMOLED or Solar row, including via
+the native offline cache.
 
 ## `GET /health`
 
@@ -246,8 +274,8 @@ metadata only and never becomes a compatibility or support claim.
 Device images are used only for device identification and a better display of
 the connected hardware. They do not indicate endorsement, partnership,
 certification, or official support. Asset availability never changes the
-separate compatibility evidence status (`UNKNOWN`, `TESTING`, `TESTED`,
-`SUPPORTED`, or `VERIFIED`).
+separate compatibility evidence status (`TESTING`, `TESTED`, `SUPPORTED`, or
+`VERIFIED`).
 
 The `asset.source` object uses exactly one of these source types:
 

@@ -28,5 +28,17 @@
     ? [...rows]
     : rows.filter((row) => canonicalFamilyKey(row.family) === canonicalFamilyKey(family));
 
-  return Object.freeze({ normalize, canonicalFamilyKey, familyOptions, filterByFamily });
+  const exactVariantLabel = (row, fallbackVariants = []) => {
+    const size = Number(row.caseSizeMm ?? row.case_size_mm);
+    const display = String(row.displayType ?? row.display_type ?? "").trim();
+    const exactParts = [];
+    if (Number.isInteger(size) && size > 0) exactParts.push(`${size} mm`);
+    if (display) exactParts.push(display);
+    if (exactParts.length) return exactParts.join(", ");
+    const variant = String(row.variant || "").trim();
+    if (variant) return variant;
+    return fallbackVariants.map((value) => String(value).trim()).filter(Boolean).join(" · ");
+  };
+
+  return Object.freeze({ normalize, canonicalFamilyKey, familyOptions, filterByFamily, exactVariantLabel });
 });

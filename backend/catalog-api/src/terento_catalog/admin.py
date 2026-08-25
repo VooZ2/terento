@@ -249,7 +249,7 @@ def dashboard_page(
         1 for row in rows
         if row.get("public_statistics_enabled") is True
         and str(row.get("review_status") or "").upper() == "APPROVED"
-        and str(row.get("calculated_status") or "").upper() in {"TESTED", "SUPPORTED", "VERIFIED"}
+        and str(row.get("calculated_status") or "").upper() in {"TESTING", "TESTED", "SUPPORTED", "VERIFIED"}
     ) if public_stats_enabled else 0
     status_values = ["TESTING", "TESTED", "SUPPORTED", "VERIFIED"]
     status_options = "".join(
@@ -278,6 +278,7 @@ def dashboard_page(
           <p class="results-count" id="results-count" aria-live="polite">{len(rows)} {"report" if len(rows) == 1 else "reports"}</p>
           <div class="table-wrap"><table><caption class="sr-only">Installation evidence reports by exact device identity</caption><thead><tr><th scope="col">Model</th><th scope="col">Variant</th><th scope="col">Firmware</th><th scope="col">Reports</th><th scope="col">Successful</th><th scope="col">Failed</th><th scope="col">Success rate</th><th scope="col">Status</th><th scope="col">Last success</th><th scope="col">Errors</th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
         </section>
+        <section class="status-guide" aria-labelledby="status-guide-title"><div class="section-heading"><div><p class="section-kicker">Canonical rules</p><h2 id="status-guide-title">Compatibility statuses</h2></div><p class="table-help">Exact model and variant; successful shared installations only</p></div><div class="status-guide-grid">{''.join(f"<div class='status-guide-row'>{_status_badge(status)}<span>{html.escape(STATUS_PUBLIC_COPY[CompatibilityStatus(status)])}</span></div>" for status in status_values)}</div></section>
         <section class="public-status" aria-labelledby="public-status-title"><div><p class="section-kicker">Publication</p><h2 id="public-status-title">Public compatibility</h2></div><div class="public-status-value"><span class="status-badge status-{('enabled' if public_stats_enabled else 'disabled')}">{'Enabled' if public_stats_enabled else 'Disabled'}</span><span>{published} {'model' if published == 1 else 'models'} published</span></div></section>
       </main>
       <script>{_dashboard_script()}</script>
@@ -387,7 +388,7 @@ def account_page(user: dict[str, Any], csrf_token: str, *, error: str | None = N
 
 def _statistics_row(row: dict[str, Any]) -> str:
     model, variant, identity = _identity_parts(row)
-    status = str(row.get("calculated_status") or "UNKNOWN").upper()
+    status = str(row.get("calculated_status") or "").upper()
     search_text = " ".join((model, variant, str(row.get("family") or ""), identity)).strip()
     activity = max((_timestamp_iso(row.get(key)) for key in ("last_success", "last_failure")), default="")
     cells = (
@@ -407,7 +408,7 @@ def _status_badge(value: str) -> str:
     try:
         status = CompatibilityStatus(str(value).upper())
     except ValueError:
-        status = CompatibilityStatus.UNKNOWN
+        return "<span class='status-badge status-unavailable' role='img' aria-label='Compatibility status unavailable'>Unavailable</span>"
     label = status.value.title()
     return (
         f"<span class='status-badge status-{status.value.lower()}' role='img' "
@@ -667,12 +668,16 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .status-tested{background:#EDE8DF;border-color:#CFC2AE;color:#5B5144}
 .status-supported{background:#E3EDF0;border-color:#ABC3CD;color:#375E6D}
 .status-verified{background:#E7EEE2;border-color:#B4C6A7;color:#4B6142}
-.status-testing,.status-unknown{background:#F0F1ED;border-color:#D8DDD8;color:#60706C}
+.status-testing{background:#F0F1ED;border-color:#D8DDD8;color:#60706C}
 .status-enabled{background:#E7EEE2;border-color:#B4C6A7;color:#4B6142}
 .status-disabled{background:#F0F1ED;border-color:#D8DDD8;color:#60706C}
 .public-status{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-top:28px;padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:14px}
 .public-status .section-kicker{margin-bottom:5px}
 .public-status-value{display:flex;align-items:center;gap:12px;color:var(--secondary);font-size:13px;font-weight:600}
+.status-guide{margin-top:24px;padding:20px 0;border-top:1px solid var(--border)}
+.status-guide-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 24px}
+.status-guide-row{display:flex;align-items:center;gap:12px;min-height:42px;color:var(--secondary)}
+.status-unavailable{background:var(--surface-muted);border-color:var(--border);color:var(--secondary)}
 .empty{margin:0 0 20px;padding:16px 18px;background:var(--surface);border:1px solid var(--border);border-radius:12px;color:var(--secondary)}
 .auth-card{width:min(480px,calc(100% - 48px));margin:8vh auto;padding:32px;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:0 16px 44px rgba(34,42,43,.08)}
 .auth-card .admin-brand{margin-bottom:28px}
@@ -723,7 +728,7 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .preview-grid dt{color:var(--secondary);font-size:11px;font-weight:650}
 .preview-grid dd{margin:2px 0 0;overflow-wrap:anywhere;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-@media(max-width:800px){.admin-topbar-inner,.dashboard{width:min(calc(100% - 32px),var(--max-width))}.admin-section-nav{margin-left:0}.heading-row{align-items:flex-start;flex-direction:column;gap:12px}.updated-at{margin:0}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-bar input{width:min(100%,360px)}.filter-bar{align-items:stretch}.filter-bar label,.filter-bar select,.filter-bar input{flex:1 1 170px}.public-status{align-items:flex-start;flex-direction:column}.public-status-value{width:100%;justify-content:space-between}.campaign-fields{grid-template-columns:1fr}.campaign-field-wide{grid-column:auto}.attribution-preview{grid-template-columns:1fr}}
+@media(max-width:800px){.admin-topbar-inner,.dashboard{width:min(calc(100% - 32px),var(--max-width))}.admin-section-nav{margin-left:0}.heading-row{align-items:flex-start;flex-direction:column;gap:12px}.updated-at{margin:0}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-bar input{width:min(100%,360px)}.filter-bar{align-items:stretch}.filter-bar label,.filter-bar select,.filter-bar input{flex:1 1 170px}.public-status{align-items:flex-start;flex-direction:column}.public-status-value{width:100%;justify-content:space-between}.status-guide-grid{grid-template-columns:1fr}.campaign-fields{grid-template-columns:1fr}.campaign-field-wide{grid-column:auto}.attribution-preview{grid-template-columns:1fr}}
 @media(max-width:560px){.admin-topbar-inner{align-items:flex-start;flex-direction:column;padding:14px 0}.admin-section-nav{width:100%;overflow:auto}.admin-section-nav a{white-space:nowrap}.admin-nav{width:100%;justify-content:space-between;gap:10px}.dashboard{padding-top:28px}.metrics{gap:8px}.metric{min-height:92px;padding:14px}.metric strong{font-size:26px}.auth-card{width:calc(100% - 32px);padding:24px}.section-heading{align-items:flex-start;flex-direction:column;gap:4px}.campaign-card{padding:16px}.campaign-preset-row{grid-template-columns:1fr;gap:8px}.generated-url-row{grid-template-columns:1fr}.copy-button{width:100%}.copy-status{min-height:18px}}
 """
 
