@@ -255,15 +255,16 @@ summary:focus-visible {
 }
 
 .mobile-language-menu .language-trigger::after {
-  content: "+";
+  content: "⌄";
   grid-column: 3;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   width: 22px;
   color: var(--interactive);
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 400;
+  line-height: 1;
 }
 
 .mobile-language-menu .mobile-language-label {
@@ -283,7 +284,7 @@ summary:focus-visible {
 }
 
 .mobile-language-menu[open] .language-trigger::after {
-  content: "−";
+  content: "⌃";
 }
 
 .mobile-language-menu .language-options {
@@ -1459,6 +1460,18 @@ details p {
     padding-top: 72px;
   }
 
+  .section {
+    padding: 64px 0;
+  }
+
+  .experience.section {
+    padding-bottom: 32px;
+  }
+
+  .scope-section {
+    padding-bottom: 64px;
+  }
+
   h1 {
     font-size: clamp(44px, 13vw, 62px);
   }
@@ -1578,12 +1591,19 @@ details p {
 
   .product-showcase,
   .final-cta {
-    padding: 72px 0;
+    padding: 64px 0;
+  }
+
+  .experience + .product-showcase,
+  .product-showcase + .product-showcase,
+  .product-showcase + .scope-section,
+  .scope-section + .faq {
+    padding-top: 32px;
   }
 
   .product-showcase-grid,
   .scope-grid {
-    gap: 32px;
+    gap: 36px;
   }
 
   .scope-copy {
