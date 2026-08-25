@@ -115,7 +115,7 @@
         <p class="footer-status">${copy.status}</p>
       </div>
       <nav class="footer-nav" aria-label="${copy.footer}">
-        ${navLink("about")}${navLink("faq")}
+        ${navLink("about")}${navLink("compatibility")}${navLink("faq")}${navLink("download")}
         <a href="/legal/">${copy.legal}</a>
         <a href="/privacy/">${copy.privacy}</a>
       </nav>

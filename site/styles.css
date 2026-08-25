@@ -427,7 +427,7 @@ summary:focus-visible {
 .hero-grid {
   display: grid;
   grid-template-columns: minmax(360px, .82fr) minmax(0, 1.18fr);
-  gap: clamp(48px, 6vw, 88px);
+  gap: clamp(42px, 5.5vw, 80px);
   align-items: center;
 }
 
@@ -515,13 +515,16 @@ h1 {
 }
 
 .app-shot {
+  --app-shot-max-width: 100%;
   position: relative;
+  width: 100%;
+  max-width: var(--app-shot-max-width);
   margin: 0;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--border) 88%, var(--sky));
-  border-radius: 18px;
+  border-radius: 16px;
   background: var(--surface);
-  box-shadow: 0 20px 48px color-mix(in srgb, var(--graphite) 11%, transparent);
+  box-shadow: 0 16px 38px color-mix(in srgb, var(--graphite) 9%, transparent);
 }
 
 .app-shot picture,
@@ -531,13 +534,13 @@ h1 {
   height: auto;
 }
 
-.hero-app-shot {
+.app-shot--hero {
+  --app-shot-max-width: 840px;
   transform: translateY(4px);
 }
 
-.hero-app-shot img {
-  aspect-ratio: 2180 / 1380;
-  object-fit: contain;
+.app-shot--feature {
+  --app-shot-max-width: 760px;
 }
 
 .legal-main {
@@ -931,7 +934,7 @@ h1 {
 }
 
 .product-showcase {
-  padding: clamp(88px, 11vw, 144px) 0;
+  padding: clamp(80px, 9vw, 124px) 0;
 }
 
 .product-showcase--muted {
@@ -984,28 +987,12 @@ h1 {
   width: 100%;
 }
 
-.review-proof {
-  display: grid;
-  grid-template-columns: minmax(220px, .8fr) minmax(0, 1.2fr);
-  gap: clamp(32px, 6vw, 80px);
-  align-items: center;
-  margin-top: 42px;
-  padding-top: 32px;
-  border-top: 1px solid var(--border);
-}
-
-.review-proof-copy p:not(.eyebrow) {
-  margin-bottom: 0;
-  color: var(--secondary);
-  font-size: 15px;
-}
-
-.review-proof .app-shot {
-  max-width: 620px;
-}
-
 .scope-section {
   padding: clamp(80px, 10vw, 120px) 0;
+}
+
+.scope-section + .faq {
+  padding-top: clamp(64px, 7vw, 96px);
 }
 
 .scope-grid {
@@ -1065,74 +1052,16 @@ h1 {
   text-underline-offset: 3px;
 }
 
-.trust-section {
-  background: var(--surface-muted);
-}
-
-.trust-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(260px, .85fr);
-  gap: clamp(40px, 8vw, 120px);
-  align-items: center;
-}
-
-.trust-copy {
-  max-width: 650px;
-}
-
-.trust-copy h2 {
-  margin-bottom: 20px;
-  font-size: clamp(38px, 5vw, 58px);
-  line-height: 1.04;
-}
-
-.trust-copy > p:not(.eyebrow) {
-  max-width: 570px;
-  margin-bottom: 24px;
-  color: var(--secondary);
-  font-size: 17px;
-}
-
-.trust-list {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.trust-list li {
-  position: relative;
-  padding-left: 20px;
-  color: var(--graphite);
-  font-size: 15px;
-}
-
-.trust-list li::before {
-  position: absolute;
-  top: .65em;
-  left: 0;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--lichen);
-  content: "";
-}
-
-.trust-media .app-shot {
-  max-width: 620px;
-}
-
 .final-cta {
-  padding: clamp(88px, 11vw, 144px) 0;
+  padding: clamp(72px, 8vw, 112px) 0;
 }
 
 .final-cta-inner {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 40px;
-  padding-top: 32px;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 24px;
+  padding-top: 28px;
   border-top: 1px solid var(--border);
 }
 
@@ -1148,25 +1077,6 @@ h1 {
   margin-bottom: 0;
   color: var(--secondary);
   font-size: 17px;
-}
-
-.final-cta-action {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  min-height: 48px;
-  padding: 12px 18px;
-  border-radius: 10px;
-  background: var(--interactive);
-  color: #fff;
-  font-size: 15px;
-  font-weight: 650;
-  text-decoration: none;
-}
-
-.final-cta-action:hover,
-.final-cta-action:focus-visible {
-  background: var(--interactive-hover);
 }
 
 .testing-grid,
@@ -1462,9 +1372,7 @@ details p {
   .download-sections,
   .product-showcase-grid,
   .product-showcase--reverse .product-showcase-grid,
-  .scope-grid,
-  .trust-grid,
-  .review-proof {
+  .scope-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1674,9 +1582,7 @@ details p {
   }
 
   .product-showcase-grid,
-  .scope-grid,
-  .trust-grid,
-  .review-proof {
+  .scope-grid {
     gap: 32px;
   }
 
@@ -1690,11 +1596,10 @@ details p {
 
   .final-cta-inner {
     align-items: stretch;
-    flex-direction: column;
     gap: 24px;
   }
 
-  .final-cta-action {
+  .final-cta-inner .download-action {
     justify-content: center;
     width: 100%;
   }
