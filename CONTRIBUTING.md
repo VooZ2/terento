@@ -5,7 +5,7 @@ Thank you for taking an interest in Terento. Contributions, bug reports, documen
 ## Project status
 
 Terento is an active beta and pre-MVP project for macOS. It is not a stable
-production release. The current public beta is `v1.0.0-beta.4` and includes a
+production release. The current public beta is `v1.0.0-beta.5` and includes a
 notarized Apple Silicon DMG and ZIP; there is no PKG or App Store package.
 
 The production app is the root Xcode macOS target and consumes the SwiftPM

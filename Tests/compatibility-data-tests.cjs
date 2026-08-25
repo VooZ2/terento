@@ -5,6 +5,7 @@ const {
   canonicalFamilyKey,
   familyOptions,
   filterByFamily,
+  exactVariantLabel,
 } = require("../site/compatibility/compatibility-data.js");
 
 const row = (family, familyName, variant, report = 1) => ({
@@ -38,5 +39,15 @@ const selected = filterByFamily(mixedFamilies, canonicalFamilyKey("fēnix"));
 assert.equal(selected.length, 2);
 assert.deepEqual(selected.map((item) => item.variants[0]), ["47 mm, AMOLED", "51 mm, AMOLED"]);
 assert.notStrictEqual(selected[0], selected[1]);
+
+assert.equal(
+  exactVariantLabel({ variant: "AMOLED", caseSizeMm: 47, displayType: "AMOLED" }),
+  "47 mm, AMOLED"
+);
+assert.equal(
+  exactVariantLabel({ variant: "AMOLED", caseSizeMm: 51, displayType: "AMOLED" }),
+  "51 mm, AMOLED"
+);
+assert.equal(exactVariantLabel({ variant: "51 mm, AMOLED" }), "51 mm, AMOLED");
 
 console.log("Compatibility family data tests passed (canonical options, duplicates, selection, exact variants).");

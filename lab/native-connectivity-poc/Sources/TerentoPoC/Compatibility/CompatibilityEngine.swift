@@ -2,7 +2,9 @@ import Foundation
 
 struct CompatibilityDecision: Sendable, Equatable {
     let identity: DeviceIdentity
-    let status: CompatibilityStatus
+    let status: CompatibilityStatus?
+    let statusSource: CompatibilityStatusSource
+    let publicRecord: CompatibilityStatusRecord?
     let evidence: CompatibilityEvidence
     let registryEntry: DeviceRegistryEntry?
     let reason: String
@@ -30,54 +32,53 @@ struct CompatibilityEngine: Sendable {
         guard let entry = registry.entry(for: identity) else {
             return CompatibilityDecision(
                 identity: identity,
-                status: .unknown,
+                status: nil,
+                statusSource: .unavailable,
+                publicRecord: nil,
                 evidence: .nativeConnectivityTested,
                 registryEntry: nil,
-                reason: "No local evidence exists for this exact device identity."
+                reason: "Current public compatibility evidence is not available for this exact device identity."
             )
-        }
-
-        let status = evaluatedStatus(for: entry)
-        let reason: String
-        switch status {
-        case .tested:
-            reason = "Read-only connectivity evidence exists for this exact registry entry."
-        case .testing:
-            reason = "This exact registry entry is currently under validation."
-        case .supported:
-            reason = "A successful map installation was completed for this exact device identity."
-        case .verified:
-            reason = "Multiple devices and firmware variations have completed the workflow."
-        case .unknown:
-            reason = "The local registry does not contain enough evidence for support."
         }
 
         return CompatibilityDecision(
             identity: identity,
-            status: status,
+            // The local registry only identifies the device and its safe
+            // capability profile. It is not a public compatibility source.
+            status: nil,
+            statusSource: .unavailable,
+            publicRecord: nil,
             evidence: entry.evidence,
             registryEntry: entry,
-            reason: reason
+            reason: "Resolving current public compatibility evidence for this exact device identity."
         )
     }
 
-    private func evaluatedStatus(for entry: DeviceRegistryEntry) -> CompatibilityStatus {
-        let evidence = entry.evidence
+}
 
-        if evidence.map == .pass {
-            if evidence.multiplePhysicalDevices == .pass,
-               evidence.firmwareVariation == .pass {
-                return .verified
-            }
-            return .supported
-        }
+extension CompatibilityDecision {
+    func applying(
+        _ resolution: CompatibilityStatusResolution
+    ) -> CompatibilityDecision {
+        CompatibilityDecision(
+            identity: identity,
+            status: resolution.status,
+            statusSource: resolution.source,
+            publicRecord: resolution.record,
+            evidence: evidence,
+            registryEntry: registryEntry,
+            reason: Self.reason(for: resolution)
+        )
+    }
 
-        switch entry.status {
-        case .unknown, .testing, .tested:
-            return entry.status
-        case .supported, .verified:
-            // A registry cannot claim a higher status than its recorded evidence.
-            return .tested
+    private static func reason(for resolution: CompatibilityStatusResolution) -> String {
+        switch resolution.source {
+        case .remote:
+            return "Public compatibility status refreshed from the canonical Terento service."
+        case .cache:
+            return "Public compatibility status is shown from a recent canonical Terento cache entry."
+        case .unavailable:
+            return "Current public compatibility evidence is unavailable; no local status was invented."
         }
     }
 }

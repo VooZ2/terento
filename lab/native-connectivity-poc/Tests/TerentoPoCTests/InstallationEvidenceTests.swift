@@ -96,23 +96,23 @@ struct InstallationEvidenceTests {
         let model = identity.canonicalModel ?? identity.model
         let one = CompatibilityEvidenceCalculator.summarize([makeEvent()], forModel: model)
         expect(one.attemptedInstallCount == 1 && one.successRate == 1, "success rate denominator contains started installs")
-        expect(one.calculatedStatus == .supported, "one successful install reaches SUPPORTED without reconnect")
 
         let three = [makeEvent(), makeEvent(), makeEvent()]
         let supported = CompatibilityEvidenceCalculator.summarize(three, forModel: model)
-        expect(supported.calculatedStatus == .supported, "install count does not change the SUPPORTED semantics")
+        expect(supported.successfulInstallCount == 3, "three successful installs remain exact evidence counts")
 
-        let twoFirmware = [makeEvent(), makeEvent(), makeEvent(firmware: "20.20")]
-        let reviewPending = CompatibilityEvidenceCalculator.summarize(twoFirmware, forModel: model)
-        expect(reviewPending.calculatedStatus == .supported, "firmware variation alone does not award VERIFIED")
-        expect(reviewPending.verifiedRequiresPhysicalDeviceReview, "VERIFIED requires physical-device review")
-        let verified = CompatibilityEvidenceCalculator.summarize(twoFirmware, forModel: model, reviewedPhysicalDeviceCount: 2)
-        expect(verified.calculatedStatus == .verified, "reviewed two-device evidence reaches VERIFIED")
+        let twoFirmware = [makeEvent(), makeEvent(firmware: "20.20")]
+        let tested = CompatibilityEvidenceCalculator.summarize(twoFirmware, forModel: model)
+        expect(tested.successfulInstallCount == 2 && tested.firmwareVersions.count == 2, "firmware is retained as diagnostics only")
+        let verified = CompatibilityEvidenceCalculator.summarize(
+            twoFirmware + [makeEvent(), makeEvent(), makeEvent()], forModel: model
+        )
+        expect(verified.successfulInstallCount == 5, "five successful installs remain exact evidence counts")
 
         let failedOnly = CompatibilityEvidenceCalculator.summarize(
             [makeEvent(outcome: .failed, finishing: .failed)], forModel: model
         )
-        expect(failedOnly.calculatedStatus == .testing, "partial hardware evidence remains TESTING")
+        expect(failedOnly.successfulInstallCount == 0 && failedOnly.failedInstallCount == 1, "failed evidence does not become a successful count")
 
         let variant47 = CompatibilityEvidenceCalculator.summarize(
             [makeEvent(variant: "47mm")], forModel: "fēnix 8 · 47 mm"

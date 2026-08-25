@@ -85,6 +85,7 @@ struct DeviceCatalogRecord: Decodable, Sendable {
     let id: String
     let manufacturer: String
     let family: String
+    let familyName: String?
     let model: String
     let canonicalModel: String
     let variant: String
@@ -92,6 +93,7 @@ struct DeviceCatalogRecord: Decodable, Sendable {
     let displayType: String?
     let partNumber: String?
     let productURL: URL?
+    let active: Bool?
     let asset: DeviceCatalogAsset?
     let sourceAsset: DeviceCatalogSourceAsset?
 
@@ -99,6 +101,7 @@ struct DeviceCatalogRecord: Decodable, Sendable {
         case id
         case manufacturer
         case family
+        case familyName
         case model
         case canonicalModel
         case variant
@@ -106,6 +109,7 @@ struct DeviceCatalogRecord: Decodable, Sendable {
         case displayType
         case partNumber
         case productURL
+        case active
         case asset
         case sourceAsset
     }
@@ -114,6 +118,7 @@ struct DeviceCatalogRecord: Decodable, Sendable {
         id: String,
         manufacturer: String,
         family: String,
+        familyName: String? = nil,
         model: String,
         canonicalModel: String,
         variant: String,
@@ -121,12 +126,14 @@ struct DeviceCatalogRecord: Decodable, Sendable {
         displayType: String?,
         partNumber: String? = nil,
         productURL: URL? = nil,
+        active: Bool? = nil,
         asset: DeviceCatalogAsset?,
         sourceAsset: DeviceCatalogSourceAsset? = nil
     ) {
         self.id = id
         self.manufacturer = manufacturer
         self.family = family
+        self.familyName = familyName
         self.model = model
         self.canonicalModel = canonicalModel
         self.variant = variant
@@ -134,6 +141,7 @@ struct DeviceCatalogRecord: Decodable, Sendable {
         self.displayType = displayType
         self.partNumber = partNumber
         self.productURL = productURL
+        self.active = active
         self.asset = asset
         self.sourceAsset = sourceAsset
     }
@@ -792,11 +800,14 @@ struct DeviceAssetRegistry: Sendable {
             )
         }
 
-        let normalizedVariant = GarminDeviceModelNormalizer.normalize(identity.variant ?? "")
-        let scope: DeviceAssetScope = normalizedVariant.contains("amoled")
-            && normalizedVariant.contains("47mm")
-            ? .exactVariant
-            : normalizedVariant.contains("47mm") ? .modelSize : .model
+        let scope: DeviceAssetScope
+        if identity.caseSizeMm == 47, identity.displayType == "AMOLED" {
+            scope = .exactVariant
+        } else if identity.caseSizeMm == 47 {
+            scope = .modelSize
+        } else {
+            scope = .model
+        }
 
         return DeviceAsset(
             resourceName: "fenix8-render",

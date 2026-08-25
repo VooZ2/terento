@@ -1,13 +1,16 @@
-# Terento v1.0.0-beta.4
+# Terento v1.0.0-beta.5
 
-Release date: 2026-08-25
+Release date: 2026-08-26
 
-Beta.4 adds beta installation enrollment for Garmin map-capable smartwatches,
-including newly connected model and size variants, while retaining guarded
-`/GARMIN` target and transfer-verification gates.
+Beta.5 synchronizes the native device compatibility presentation with the
+canonical Terento API. Exact reviewed Garmin variants now retain their model,
+case size, display type, public evidence status, and map capability without a
+local hardcoded status or cross-variant cache inheritance.
 
-It also improves device artwork resolution through official Garmin product
-pages and keeps a neutral fallback image when artwork is unavailable.
+For the reviewed fēnix 8 USB identity, the connected-device screen can now
+show the exact 47 mm AMOLED variant even when the raw MTP model omits the
+display token. Unreviewed size-only identities still fail closed rather than
+guessing AMOLED or Solar.
 
 This is a pre-MVP beta release for the Terento macOS application. It is
 intended for development and hardware validation; it is not a stable
@@ -35,6 +38,9 @@ beta.
   failure screen;
 - an About page with app version, update checking, support links, and local
   privacy statement;
+- API-backed Testing, Tested, Supported, and Verified compatibility status,
+  exact AMOLED/Solar variant isolation, and a bounded exact-identity offline
+  cache;
 - the public Terento landing page with English, German, French, Polish, Czech,
   and Italian indexable versions, translated metadata, reciprocal `hreflang`,
   sitemap entries, and a local language preference; and
@@ -57,8 +63,8 @@ beta.
 - Safe Update is implemented and covered by automated tests, but its physical
   real-device update gate remains pending a genuinely newer Freizeitkarte
   release.
-- The public beta release is `v1.0.0-beta.4` with notarized arm64 ZIP and DMG
-  assets published at the [GitHub release page](https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.4).
+- The public beta release is `v1.0.0-beta.5` with notarized arm64 ZIP and DMG
+  assets published at the [GitHub release page](https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.5).
 
 ## Known limitations
 
@@ -84,6 +90,6 @@ safe failure over destructive guessing.
 ## Release checksums
 
 ```text
-Terento-1.0.0-beta.4-macOS-arm64.dmg  efa6574247eb9eaedb9b21853ead97a2743f05e4a5fcc2ead602530c5c4f17cf
-Terento-1.0.0-beta.4-macOS-arm64.zip  568d0b6b687d6bc268fbfa75777c09391757dff64b21cb43e2058d6950ec8298
+Terento-1.0.0-beta.5-macOS-arm64.dmg  a96326e73ebc453e2b46fad3c3e0759e0340a58e26415e3f8b2a85b07583c9c3
+Terento-1.0.0-beta.5-macOS-arm64.zip  bdb807430e533f9ccb3f9f79929e21395844643f3079891cd057a957186a8707
 ```

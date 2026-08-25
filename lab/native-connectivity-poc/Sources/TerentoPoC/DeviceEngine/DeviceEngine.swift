@@ -15,6 +15,7 @@ final class DeviceEngine: ObservableObject {
 
     private let logger = Logger(subsystem: "app.terento.native-connectivity-poc", category: "MTP")
     private let compatibilityEngine = CompatibilityEngine()
+    private let compatibilityStatusClient: CompatibilityStatusClient
     private let transport: any DeviceSnapshotReader
     private let operationGate: MTPOperationGate
     private var stateManager = DeviceStateManager()
@@ -23,15 +24,18 @@ final class DeviceEngine: ObservableObject {
     private var activeNativeReadTask: Task<DeviceSnapshot, Error>?
     private var activeNativePresenceTask: Task<Void, Never>?
     private var readingStatusTask: Task<Void, Never>?
+    private var compatibilityStatusTask: Task<Void, Never>?
     private var postEjectPresenceTask: Task<Void, Never>?
     private var presenceMonitoringEnabled = true
 
     init(
         transport: any DeviceSnapshotReader = MTPTransport(),
-        operationGate: MTPOperationGate = .shared
+        operationGate: MTPOperationGate = .shared,
+        compatibilityStatusClient: CompatibilityStatusClient = CompatibilityStatusClient()
     ) {
         self.transport = transport
         self.operationGate = operationGate
+        self.compatibilityStatusClient = compatibilityStatusClient
     }
 
     var isReading: Bool {
@@ -159,8 +163,9 @@ final class DeviceEngine: ObservableObject {
                         + "(VID \(Self.hex(result.vendorID)), PID \(Self.hex(result.productID)))"
                 )
                 self.appendLog("Read \(result.storages.count) storage record(s)")
-                self.appendLog("Compatibility status: \(decision.status.rawValue)")
+                self.appendLog("Compatibility status: resolving canonical public status")
                 self.appendLog("Compatibility evidence: USB PASS, MTP PASS, Device info PASS, Storage PASS, Maps PENDING")
+                self.refreshPublicCompatibilityStatus(for: decision)
                 self.startPresenceMonitoring()
             } catch {
                 guard !Task.isCancelled else {
@@ -460,6 +465,8 @@ final class DeviceEngine: ObservableObject {
         activeNativePresenceTask?.cancel()
         readingStatusTask?.cancel()
         readingStatusTask = nil
+        compatibilityStatusTask?.cancel()
+        compatibilityStatusTask = nil
     }
 
     private func readNativeSnapshot(
@@ -550,6 +557,44 @@ final class DeviceEngine: ObservableObject {
         snapshot = nil
         compatibility = nil
         readingAttempt = 0
+    }
+
+    private func refreshPublicCompatibilityStatus(for decision: CompatibilityDecision) {
+        compatibilityStatusTask?.cancel()
+        let client = compatibilityStatusClient
+        let identity = decision.identity
+        compatibilityStatusTask = Task { [weak self] in
+            let resolution = await client.resolve(identity: identity)
+            guard !Task.isCancelled,
+                  let self,
+                  self.snapshot != nil,
+                  self.compatibility?.identity == identity else {
+                return
+            }
+
+            let updatedDecision = decision.applying(resolution)
+            self.compatibility = updatedDecision
+            self.appendLog(
+                "Compatibility status: \(updatedDecision.status?.userLabel ?? "Unavailable") "
+                    + "(\(updatedDecision.statusSource.rawValue))"
+            )
+            if let record = updatedDecision.publicRecord {
+                self.appendLog(
+                    "Compatibility record: id=\(record.canonicalDeviceId ?? "unavailable"), "
+                        + "canonical=\(record.canonicalModel ?? "unavailable"), "
+                        + "size=\(record.caseSizeMm.map(String.init) ?? "unavailable"), "
+                        + "variant=\(record.variant ?? "unavailable"), "
+                        + "display=\(record.displayType ?? "unavailable"), "
+                        + "successes=\(record.successfulInstallations.map(String.init) ?? "unavailable"), "
+                        + "lastEvidence=\(record.lastEvidence ?? "unavailable"), "
+                        + "mapCapable=\(record.mapCapable.map(String.init) ?? "unavailable")"
+                )
+            }
+            self.appendLog(
+                "Local device: firmware=\(identity.firmware ?? "unavailable"), "
+                    + "VID=\(Self.hex(identity.usbVendorId)), PID=\(Self.hex(identity.usbProductId))"
+            )
+        }
     }
 
     private static func isSamePhysicalDevice(

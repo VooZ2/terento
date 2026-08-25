@@ -68,7 +68,6 @@ assert_contains 'NSWorkspace.shared.open(fileURL)' "$repo_root/lab/native-connec
 assert_contains 'TerentoDiagnosticLog.swift in Sources' "$project_file"
 assert_absent 'Button("Show log.txt")' "$connect_screen"
 assert_absent 'Button("Report issue")' "$connect_screen"
-assert_absent 'return TerentoColors.warmStone' "$connect_screen"
 assert_absent 'Looking for your Garmin' "$connect_screen"
 assert_absent 'Looking for your Garmin' "$device_engine"
 assert_contains 'Still waiting for your Garmin…' "$device_engine"
@@ -97,6 +96,10 @@ if [[ "$connection_status_view" == *'ProgressView()'* ]]; then
 fi
 if [[ "$connection_status_view" == *'Circle()'* ]]; then
     print -u2 "FAIL: connection state still has a decorative status dot"
+    exit 1
+fi
+if [[ "$connection_status_view" == *'TerentoColors.warmStone'* ]]; then
+    print -u2 "FAIL: connection state must not use the compatibility Warm Stone token"
     exit 1
 fi
 

@@ -37,14 +37,13 @@ SwiftUI
               └── C libmtp bridge
 ```
 
-The local registry contains exact tested Garmin smartwatch identities with
-status `TESTED`. This status records read-only connectivity evidence only. A
-successful verified map installation promotes the exact identity to
-`SUPPORTED`; reconnect verification and map visibility are optional
-observations, not status gates. `VERIFIED` additionally requires multiple
-operator-reviewed physical devices and firmware variation. Exact model names
-and firmware values belong in internal compatibility records, not this public
-PoC overview.
+The local registry contains exact Garmin smartwatch identities and safe
+capability profiles only. Public compatibility status comes from the canonical
+API: `TESTING` is zero successful shared installations, `TESTED` is 1–2,
+`SUPPORTED` is 3–4, and `VERIFIED` is 5 or more for the exact model and
+variant. Reconnect, map visibility, physical-device count, firmware variation,
+and operator review do not promote a status. Exact model names and firmware
+values belong in internal compatibility records, not this public PoC overview.
 
 The metadata-only catalog records Freizeitkarte packages. The bundled fallback
 is a small snapshot containing Lithuania and Latvia; the live catalog may
@@ -165,15 +164,22 @@ MacDroid, and other MTP clients first.
 The developer-details toggle shows local diagnostic messages, VID/PID, stages,
 errors, timing, identity fields, map identity/version evidence, catalog source,
 and compatibility evidence. Normal UI does not expose USB IDs, MTP terminology,
-or protocol details. For this SwiftPM PoC target the only network path is
-metadata-only catalog lookup; map binary download and map installation belong
-to the production Xcode app, while analytics and account paths remain absent.
+or protocol details. For this SwiftPM PoC target the network paths are the
+metadata-only catalog lookup and current public compatibility-status lookup;
+map binary download and map installation belong to the production Xcode app,
+while analytics and account paths remain absent. The compatibility lookup
+uses the exact model/size/display identity, refreshes from the public aggregate
+API after discovery, and falls back only to a recent exact-identity cache. It
+never changes device write authorization. The separately reviewed Garmin
+`091e:51b8` identity resolves to the exact fēnix 8 47 mm AMOLED catalog row;
+other size-only identities remain variant-unknown and cannot inherit its
+status or cached result.
 
 ## Known limitation
 
-The repository Mac currently has Swift command-line tools but no full Xcode
-installation selected, so the SwiftUI windowed build must be validated on a
-Mac with Xcode available. The source remains intentionally separated into the
+The native SwiftUI target builds successfully with the selected full Xcode
+toolchain on arm64. Physical-device rendering still requires an explicitly
+connected Garmin and remains a separate hardware check. The source remains intentionally separated into the
 SwiftUI app, device engine, compatibility engine, local device registry,
 map catalog, transport model, bundled metadata resource, and C libmtp bridge.
 

@@ -11,11 +11,10 @@ private func require(_ condition: @autoclosure () -> Bool, _ message: String) {
 struct CompatibilityPresentationTests {
     static func main() {
         let expected: [CompatibilityStatus: String] = [
-            .unknown: "This exact device is known, but Terento does not have enough real hardware evidence yet.",
-            .testing: "This exact device is currently under validation or has only partial evidence.",
-            .tested: "Real hardware testing exists for this exact model and variant.",
-            .supported: "A successful verified map installation exists for this exact model and variant.",
-            .verified: "Successful installations are confirmed across at least two operator-reviewed physical devices and two firmware versions."
+            .testing: "Terento has recognized this model as map-capable, but no successful shared installation has been received yet.",
+            .tested: "1–2 successful installations have been shared by Terento users.",
+            .supported: "3–4 successful installations have been shared by Terento users.",
+            .verified: "5 or more successful installations have been shared by Terento users."
         ]
 
         for status in CompatibilityStatus.allCases {
@@ -25,7 +24,7 @@ struct CompatibilityPresentationTests {
             require(status.userLabel != status.rawValue, "\(status.rawValue) is exposed as a raw technical label")
         }
 
-        print("PASS: compatibility presentation covers all five domain statuses")
+        print("PASS: compatibility presentation covers all four canonical statuses")
 
         require(
             GarminFirmwareVersionFormatter.display(rawValue: "2244", manufacturer: "Garmin") == "22.44",

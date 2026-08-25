@@ -89,9 +89,10 @@ watch behaves the same way.
 
 You may see these statuses:
 
-- **Tested** — real hardware evidence exists for that exact model and variant.
-- **Supported** — a real map installation completed successfully for that exact model.
-- **Verified** — confirmed across multiple physical devices and firmware versions.
+- **Testing** — the exact model has been recognized as map-capable, but no successful shared installation has been received yet.
+- **Tested** — 1–2 successful shared installations.
+- **Supported** — 3–4 successful shared installations.
+- **Verified** — 5 or more successful shared installations.
 
 See the current compatibility list:
 

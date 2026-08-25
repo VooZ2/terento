@@ -953,7 +953,7 @@ struct ConnectScreen: View {
                 deviceName: deviceEngine.compatibility?.displayName
                     ?? "\(snapshot.manufacturer) \(snapshot.model)",
                 variant: deviceVariantLine(snapshot),
-                compatibility: deviceEngine.compatibility?.status ?? .unknown,
+                compatibility: deviceEngine.compatibility?.status,
                 asset: resolvedDeviceAsset
             )
 
@@ -1011,15 +1011,11 @@ struct ConnectScreen: View {
     }
 
     private func deviceVariantLine(_ snapshot: DeviceSnapshot) -> String {
-        let rawVariant = identity?.variant ?? snapshot.model
-        let variant = rawVariant
-            .replacingOccurrences(of: "47mm", with: "47 mm", options: .caseInsensitive)
-        let rawFirmware = identity?.firmware ?? snapshot.deviceVersion
-        let firmware = GarminFirmwareVersionFormatter.display(
-            rawValue: rawFirmware,
+        ConnectedDeviceSubtitleFormatter.format(
+            identity: identity ?? GarminDeviceIdentityAdapter().makeIdentity(from: snapshot),
+            fallbackModel: snapshot.model,
             manufacturer: snapshot.manufacturer
         )
-        return firmware.isEmpty ? variant : "\(variant) · Firmware \(firmware)"
     }
 
     private var mapsContent: some View {
@@ -2744,8 +2740,9 @@ struct DeviceCard: View {
                     .foregroundStyle(TerentoColors.secondaryText)
                     .padding(.top, 6)
 
-                if presentation.mapSupport.showsTerentoCompatibility {
-                    CompatibilityStatusView(status: presentation.compatibility)
+                if presentation.mapSupport.showsTerentoCompatibility,
+                   let compatibility = presentation.compatibility {
+                    CompatibilityStatusView(status: compatibility)
                         .padding(.top, 12)
                 }
 
@@ -2883,71 +2880,33 @@ private struct DeviceAssetImage: View {
 
 private struct CompatibilityStatusView: View {
     let status: CompatibilityStatus
-    @State private var showingCompatibilityInfo = false
 
     var body: some View {
-        HStack(spacing: 5) {
-            Image(systemName: statusIcon)
-                .font(.system(size: 13, weight: .semibold))
-                .accessibilityHidden(true)
-
-            Text(status.userLabel)
-                .font(.terentoUI(size: 13, weight: .medium))
-
-            Button {
-                showingCompatibilityInfo = true
-            } label: {
-                Image(systemName: "info.circle")
-                    .font(.system(size: 13, weight: .medium))
-                    .frame(width: 22, height: 22)
-            }
-            .buttonStyle(.plain)
-            .help(compatibilityPopoverBody)
-            .accessibilityLabel("\(status.userLabel) compatibility information")
-            .accessibilityHint("Opens an explanation of this device's compatibility status.")
-            .popover(isPresented: $showingCompatibilityInfo) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(status.userLabel)
-                        .font(.terentoUI(size: 15, weight: .semibold))
-                        .foregroundStyle(TerentoColors.graphite)
-
-                    Text(compatibilityPopoverBody)
-                        .font(.terentoUI(size: 13, weight: .regular))
-                        .foregroundStyle(TerentoColors.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(14)
-                .frame(width: 258, alignment: .leading)
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("\(status.userLabel). \(compatibilityPopoverBody)")
-            }
-        }
-        .foregroundStyle(statusColor)
-        .accessibilityElement(children: .contain)
+        Text(status.userLabel)
+            .font(.terentoUI(size: 12, weight: .semibold))
+            .foregroundStyle(statusColor)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(statusColor.opacity(0.16), in: Capsule())
+            .overlay(Capsule().stroke(statusColor.opacity(0.38), lineWidth: 1))
+            .help(compatibilityExplanation)
+            .accessibilityLabel("\(status.userLabel) compatibility status")
+            .accessibilityValue(compatibilityExplanation)
     }
 
-    private var compatibilityPopoverBody: String {
+    private var compatibilityExplanation: String {
         CompatibilityPresentation.explanation(for: status)
-    }
-
-    private var statusIcon: String {
-        switch status {
-        case .tested, .supported, .verified:
-            return "checkmark"
-        case .testing:
-            return "hourglass"
-        case .unknown:
-            return "questionmark"
-        }
     }
 
     private var statusColor: Color {
         switch status {
-        case .tested, .supported, .verified:
+        case .tested:
+            return TerentoColors.warmStone
+        case .supported:
+            return TerentoColors.interactive
+        case .verified:
             return TerentoColors.lichenDark
         case .testing:
-            return TerentoColors.interactive
-        case .unknown:
             return TerentoColors.secondaryText
         }
     }

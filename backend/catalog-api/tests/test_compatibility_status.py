@@ -10,76 +10,60 @@ from terento_catalog.compatibility_status import (
 
 
 class CompatibilityStatusTests(unittest.TestCase):
-    def status(self, **changes):
+    def status(self, successful_install_count: int, **changes):
         values = {
-            "evidence_count": 1,
-            "successful_install_count": 1,
-            "reconnect_verified_install_count": 0,
-            "firmware_version_count": 1,
-            "physical_device_count": 0,
+            "successful_install_count": successful_install_count,
+            "recognized_map_capable_evidence": True,
         }
         values.update(changes)
         return calculate_compatibility_status(**values)
 
-    def test_unknown_has_no_exact_identity_evidence(self):
-        self.assertEqual(self.status(evidence_count=0, successful_install_count=0), CompatibilityStatus.UNKNOWN)
+    def test_threshold_boundaries(self):
+        expected = {
+            0: CompatibilityStatus.TESTING,
+            1: CompatibilityStatus.TESTED,
+            2: CompatibilityStatus.TESTED,
+            3: CompatibilityStatus.SUPPORTED,
+            4: CompatibilityStatus.SUPPORTED,
+            5: CompatibilityStatus.VERIFIED,
+            6: CompatibilityStatus.VERIFIED,
+        }
+        for count, status in expected.items():
+            with self.subTest(count=count):
+                self.assertEqual(self.status(count), status)
 
-    def test_partial_or_failed_hardware_evidence_is_testing(self):
-        self.assertEqual(self.status(successful_install_count=0), CompatibilityStatus.TESTING)
+    def test_failed_reports_are_not_successes(self):
+        self.assertEqual(self.status(1), CompatibilityStatus.TESTED)
 
-    def test_successful_install_without_reconnect_is_supported(self):
-        self.assertEqual(self.status(), CompatibilityStatus.SUPPORTED)
+    def test_non_map_devices_have_no_compatibility_status(self):
+        self.assertIsNone(self.status(0, recognized_map_capable_evidence=False))
+        self.assertIsNone(self.status(5, recognized_map_capable_evidence=False))
 
-    def test_reconnect_is_optional_diagnostic_evidence(self):
+    def test_old_promotion_dimensions_do_not_change_status(self):
+        self.assertEqual(self.status(1), CompatibilityStatus.TESTED)
+        self.assertEqual(self.status(3), CompatibilityStatus.SUPPORTED)
+        self.assertEqual(self.status(5), CompatibilityStatus.VERIFIED)
+
+    def test_statuses_and_copy_are_exactly_canonical(self):
         self.assertEqual(
-            self.status(successful_install_count=1, reconnect_verified_install_count=1),
-            CompatibilityStatus.SUPPORTED,
-        )
-
-    def test_verified_requires_multiple_devices_and_firmware_variation(self):
-        self.assertEqual(
-            self.status(
-                successful_install_count=2,
-                reconnect_verified_install_count=1,
-                firmware_version_count=2,
-                physical_device_count=1,
-            ),
-            CompatibilityStatus.SUPPORTED,
+            {status.value for status in CompatibilityStatus},
+            {"TESTING", "TESTED", "SUPPORTED", "VERIFIED"},
         )
         self.assertEqual(
-            self.status(
-                successful_install_count=2,
-                reconnect_verified_install_count=1,
-                firmware_version_count=2,
-                physical_device_count=2,
-            ),
-            CompatibilityStatus.VERIFIED,
+            STATUS_PUBLIC_COPY[CompatibilityStatus.TESTING],
+            "Terento has recognized this model as map-capable, but no successful shared installation has been received yet.",
         )
-
-    def test_repeated_one_device_count_does_not_make_verified(self):
-        self.assertNotEqual(
-            self.status(
-                evidence_count=8,
-                successful_install_count=8,
-                reconnect_verified_install_count=0,
-                firmware_version_count=1,
-                physical_device_count=1,
-            ),
-            CompatibilityStatus.VERIFIED,
-        )
-
-    def test_public_copy_matches_exact_status_criteria(self):
         self.assertEqual(
             STATUS_PUBLIC_COPY[CompatibilityStatus.TESTED],
-            "Real hardware testing exists for this exact model and variant.",
+            "1–2 successful installations have been shared by Terento users.",
         )
         self.assertEqual(
             STATUS_PUBLIC_COPY[CompatibilityStatus.SUPPORTED],
-            "A successful verified map installation exists for this exact model and variant.",
+            "3–4 successful installations have been shared by Terento users.",
         )
         self.assertEqual(
             STATUS_PUBLIC_COPY[CompatibilityStatus.VERIFIED],
-            "Successful installations are confirmed across at least two operator-reviewed physical devices and two firmware versions.",
+            "5 or more successful installations have been shared by Terento users.",
         )
 
 

@@ -65,8 +65,8 @@ The local packaging pipeline and `dist/` output are separate from the public
 website and from source publication. The pipeline can produce notarized arm64
 ZIP and DMG artifacts, but organizing this tree does not publish them.
 
-The current public release is `v1.0.0-beta.4`. The Xcode marketing version is
-`1.0.0`, build `3`; the release tag and artifact names carry the `-beta.4`
+The current public release is `v1.0.0-beta.5`. The Xcode marketing version is
+`1.0.0`, build `4`; the release tag and artifact names carry the `-beta.5`
 label. The corresponding GitHub prerelease contains the notarized arm64 ZIP
 and DMG. Keep this release identity aligned across Xcode settings, release
 notes, the Git tag, the update manifest, and artifact names.
