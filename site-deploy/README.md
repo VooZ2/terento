@@ -8,7 +8,11 @@ site origin or a Cloudflare Pages project.
 push to `beta` or a `v*` tag. The workflow connects to the VPS with a GitHub
 Actions SSH key, builds the pinned Caddy image, replaces only the `terento-web`
 container, and keeps the previous web container as a rollback target. It does
-not touch Traefik, the catalog API, PostgreSQL, or map files.
+not touch Traefik, the catalog API, PostgreSQL, or map files. After the new
+container starts, the workflow first verifies that the update manifest exists
+inside the image, then waits up to 60 seconds for the public Traefik/Cloudflare
+route to serve the arm64 manifest. A transient route-refresh delay therefore
+does not cause an unnecessary rollback.
 
 Configure these GitHub repository secrets before enabling the workflow:
 
