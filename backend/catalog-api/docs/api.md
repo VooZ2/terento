@@ -7,25 +7,56 @@ https://api.terento.app
 ```
 
 The map and device catalog routes are public read-only metadata. A separate
-opt-in compatibility-evidence boundary has one validated write route and one
-private authenticated operator route. No route serves map binaries.
+opt-in compatibility-evidence boundary has one validated write route, one
+private authenticated operator route, and a default-disabled reviewed public
+aggregate route. No route serves map binaries.
 
 ## `POST /compatibility/events`
 
 Accepts at most 16 KiB of allowlisted schema-version-1 JSON after client
 opt-in. Event UUIDs are idempotent. Unknown fields, local paths, malformed
 payloads, non-Freizeitkarte providers, and privacy-prohibited data are
-rejected. The endpoint is rate limited and stores raw immutable events in the
-separate compatibility tables; a repeated confirmed event records its
-confirmation separately. Upload failure never changes the macOS installation
-result.
+rejected. A random per-event deletion token is required; older beta payloads
+without one are rejected rather than retained without a self-service deletion
+credential. The endpoint is rate limited and stores allowlisted columns in the
+separate compatibility table. The original JSON body is not retained; only
+the approved fields and a SHA-256 hash of the event deletion token are stored.
+New clients do not send a post-install
+confirmation signal; legacy `userConfirmed` fields are tolerated only for
+backward compatibility with older beta clients. Upload failure never changes
+the macOS installation result.
 
-## `GET /internal/compatibility/`
+## `DELETE /compatibility/events`
 
-Returns an aggregate HTML operator view only after environment-configured
-Basic authentication. It includes no-store, noindex and restrictive CSP
-headers. Production must expose it only over HTTPS with edge-level
-brute-force protection. Raw event payloads are not displayed by default.
+Accepts the event UUID and its 64-character deletion token. The service hashes
+the supplied token and deletes the matching event. A missing event and an
+incorrect token both return the same not-found response. This prevents the
+event UUID alone from authorizing deletion. The route is rate limited and the
+client keeps deletion tokens locally; the server stores only their hashes.
+
+Compatibility events older than 24 months are pruned from the active database
+by the service health cycle.
+
+## `GET /admin`
+
+Returns an aggregate HTML operator dashboard after database-backed login. The
+first administrator can be created only once through `/admin/setup` with the
+environment-provided bootstrap secret. Passwords use salted PBKDF2-SHA256;
+opaque sessions and CSRF values are stored only as SHA-256 hashes. Cookies are
+Secure, HttpOnly, SameSite=Strict, and scoped to `/admin`. Login/setup attempts
+are rate limited. Pages include no-store, noindex and restrictive CSP headers.
+Raw event payloads are not displayed. `/internal/compatibility/` redirects to
+this route for the earlier local implementation.
+
+## `GET /compatibility/public/top-models.json`
+
+Prepared for a later public TOP-models widget. The route returns 404 unless
+`PUBLIC_COMPATIBILITY_STATS_ENABLED=true`. Even then, it includes only model
+rows that an operator has separately marked `APPROVED` and enabled for public
+statistics. Results are ordered by successful installation count and include
+attempted, successful, and failed aggregate counts; firmware and raw event
+records are omitted. The route is not enabled or linked from the public site
+by this implementation.
 
 ## `GET /health`
 

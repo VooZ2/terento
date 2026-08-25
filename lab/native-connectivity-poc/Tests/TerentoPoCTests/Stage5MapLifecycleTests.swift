@@ -189,6 +189,58 @@ private func testInventoryBuilderUsesRealEntries() throws {
     try require(result.freizeitkarte[0].classification == .externalRecognized, "unmanaged parsed map should be external-recognized")
 }
 
+private func testInventoryBuilderUsesCanonicalPackageIdentity() throws {
+    let map = InstalledMap(
+        name: "Freizeitkarte Balearics",
+        provider: "Freizeitkarte",
+        region: "BALEARICS",
+        family: "Freizeitkarte",
+        rawVersion: "Release 26.05",
+        version: version(2026, 5),
+        identifier: "BALEARICS",
+        productId: nil,
+        familyId: nil,
+        sizeBytes: 41_537_536,
+        sourceFile: InstalledMapFile(
+            path: "/GARMIN/terento_freizeitkarte_balearics.img",
+            filename: "terento_freizeitkarte_balearics.img",
+            sizeBytes: 41_537_536,
+            itemID: 202
+        ),
+        metadataStatus: .parsed,
+        managementState: .managedByTerento
+    )
+    let package = MapPackage(
+        id: "freizeitkarte-esp-balearics",
+        providerId: "freizeitkarte",
+        regionId: "AZORES",
+        name: "Balearics",
+        version: version(2026, 5),
+        sizeBytes: 1,
+        sourceURL: nil,
+        releaseDate: nil,
+        identifier: "BALEARICS",
+        installSizeBytes: map.sizeBytes
+    )
+    let entry = MapInventoryEntry(
+        key: "freizeitkarte:identity:freizeitkarte:BALEARICS",
+        title: "Freizeitkarte Balearics",
+        catalogPackage: package,
+        comparison: nil,
+        installedMaps: [map],
+        isSelectedCatalogMap: false
+    )
+
+    let result = MapLifecycleInventoryBuilder().build(
+        from: UnifiedMapInventory(freizeitkarte: [entry], otherMaps: [])
+    )
+
+    try require(
+        result.freizeitkarte.first?.region == "BALEARICS",
+        "lifecycle identity must use the concrete package identifier, not the shared catalog region"
+    )
+}
+
 private func testBackupIsVerified() throws {
     let map = installedMap(sizeBytes: 12)
     let item = lifecycleItem(map: map)
@@ -351,6 +403,7 @@ struct Stage5MapLifecycleTests {
     static func main() {
         let tests: [(String, () throws -> Void)] = [
             ("inventory uses exact object identity", testInventoryBuilderUsesRealEntries),
+            ("inventory uses canonical package identity", testInventoryBuilderUsesCanonicalPackageIdentity),
             ("backup output is size-verified", testBackupIsVerified),
             ("update direction and storage reserve are safe", testUpdatePlanProtectsStorageAndVersionDirection),
             ("replacement verifies before delete and preserves on failure", testReplacementOrderAndRecovery)

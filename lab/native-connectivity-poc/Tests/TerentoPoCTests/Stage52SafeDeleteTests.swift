@@ -207,6 +207,63 @@ private func testBaseManagedFilenameAllowsRecordedMapVersion() throws {
     try require(transport.events == ["inspect", "delete"], "base filename removal must still verify before delete")
 }
 
+private func testCompositeRegionManagedFilenameCanBeRemoved() throws {
+    let contents = Data(repeating: 0x43, count: 12)
+    let identity = MapIdentity(provider: "Freizeitkarte", region: "ESP_CANARIAS")!
+    let file = InstalledMapFile(
+        path: "/GARMIN/terento_freizeitkarte_esp_canarias.img",
+        filename: "terento_freizeitkarte_esp_canarias.img",
+        sizeBytes: UInt64(contents.count),
+        itemID: 202
+    )
+    let target = SafeDeleteTarget(
+        deviceKey: "fenix-8-091e-51b8",
+        mapIdentity: identity,
+        ownership: .managedByTerento,
+        objectID: 202,
+        expectedPath: file.path,
+        expectedFilename: file.filename,
+        expectedSizeBytes: file.sizeBytes,
+        expectedSHA256: sha256(contents),
+        backup: nil,
+        expectedVersion: MapVersion(year: 2026, month: 5)
+    )
+    let (result, transport) = run(
+        target: target,
+        current: deviceObject(for: target, sha256: nil),
+        requiresVerifiedBackup: false,
+        scans: [[]]
+    )
+
+    try require(result.status == .success, "a manifest-owned composite region map must be removable")
+    try require(transport.events == ["inspect", "delete"], "composite region removal must still inspect before delete")
+}
+
+private func testManagedFilenameMustMatchNormalizedIdentity() throws {
+    let prepared = validTarget()
+    let wrongIdentity = MapIdentity(provider: "Freizeitkarte", region: "AUT")!
+    let target = SafeDeleteTarget(
+        deviceKey: prepared.target.deviceKey,
+        mapIdentity: wrongIdentity,
+        ownership: .managedByTerento,
+        objectID: prepared.target.objectID,
+        expectedPath: prepared.target.expectedPath,
+        expectedFilename: prepared.target.expectedFilename,
+        expectedSizeBytes: prepared.target.expectedSizeBytes,
+        expectedSHA256: prepared.target.expectedSHA256,
+        backup: nil
+    )
+    let (result, transport) = run(
+        target: target,
+        current: deviceObject(for: target, sha256: nil),
+        requiresVerifiedBackup: false,
+        scans: [[]]
+    )
+
+    try require(result.status == .blockedOwnership, "a managed filename for another region must remain blocked")
+    try require(transport.events.isEmpty, "identity mismatch must stop before transport access")
+}
+
 private func testExternalAndUnknownMapsAreBlocked() throws {
     for state in [MapManagementState.detectedNotManaged, .unknown] {
         let initial = validTarget(ownership: state)
@@ -305,6 +362,24 @@ private func testPostDeleteRescanAndExactIdentityAreRequired() throws {
     try require(identityTransport.events == ["inspect"], "identity mismatch must stop before delete")
 }
 
+private func testPostDeleteRescanRetriesWithoutRepeatingDelete() throws {
+    let prepared = try targetWithVerifiedBackup()
+    defer { try? FileManager.default.removeItem(at: prepared.backupURL) }
+
+    let (result, transport) = run(
+        target: prepared.target,
+        current: deviceObject(for: prepared.target),
+        scans: [
+            [prepared.target.sourceFile],
+            [prepared.target.sourceFile],
+            []
+        ]
+    )
+
+    try require(result.status == .success, "a delayed device inventory refresh should be retried")
+    try require(transport.events == ["inspect", "delete"], "rescan retry must never repeat the destructive delete")
+}
+
 private func testTransportFailureIsReported() throws {
     let prepared = try targetWithVerifiedBackup()
     defer { try? FileManager.default.removeItem(at: prepared.backupURL) }
@@ -374,10 +449,13 @@ struct Stage52SafeDeleteTests {
             ("managed map deletes after verified backup", testManagedMapDeletesAfterVerifiedBackup),
             ("managed map deletes without backup", testManagedMapDeletesWithoutBackup),
             ("base managed filename allows recorded map version", testBaseManagedFilenameAllowsRecordedMapVersion),
+            ("composite region managed filename can be removed", testCompositeRegionManagedFilenameCanBeRemoved),
+            ("managed filename must match normalized identity", testManagedFilenameMustMatchNormalizedIdentity),
             ("external and unknown maps are blocked", testExternalAndUnknownMapsAreBlocked),
             ("hash mismatch and missing backup are blocked", testHashMismatchAndMissingBackupAreBlocked),
             ("disconnect and confirmation are blocked", testDisconnectAndConfirmationAreBlocked),
             ("post-delete rescan and exact identity are required", testPostDeleteRescanAndExactIdentityAreRequired),
+            ("post-delete rescan retries without repeating delete", testPostDeleteRescanRetriesWithoutRepeatingDelete),
             ("transport failure is reported", testTransportFailureIsReported),
             ("lifecycle manager cleans manifest after verified delete", testLifecycleManagerCleansManifestAfterVerifiedDelete)
         ]

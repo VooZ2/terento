@@ -24,6 +24,9 @@ struct Stage41AcquisitionTests {
         await testEmptyDownloadIsTyped()
         await testRenamedIMGIsIdentifiedByContent()
         await testCompositeRegionIdentityPasses()
+        await testSplitReleaseHeaderPasses()
+        testRegionalProviderTokensRemainConcrete()
+        testSharedCatalogRegionsUseDistinctManagedTargets()
         await testWrongIdentityIsRejected()
         await testMatchingVersionPasses()
         await testMismatchedVersionIsRejected()
@@ -31,7 +34,7 @@ struct Stage41AcquisitionTests {
         await testFailedAcquisitionLeavesNoArtifact()
         testNoDeviceWriteDependency()
 
-        print("PASS: 15 Stage 4.1 acquisition tests")
+        print("PASS: 18 Stage 4.1 acquisition tests")
     }
 
     private static func testCatalogResolvesLatvia() {
@@ -261,6 +264,123 @@ struct Stage41AcquisitionTests {
         }
     }
 
+    private static func testSplitReleaseHeaderPasses() async {
+        let image = makeSplitReleaseHeaderAndorraIMG()
+        let package = MapPackage(
+            id: "freizeitkarte-and",
+            providerId: "freizeitkarte",
+            regionId: "AND",
+            name: "Principality of Andorra",
+            version: version(2026, 5),
+            sizeBytes: UInt64(image.count),
+            sourceURL: URL(string: "https://provider.example/andorra.zip"),
+            releaseDate: "2026-05-03",
+            identifier: "AND"
+        )
+
+        do {
+            let source = try temporaryFile(data: Data([0x50, 0x4B, 0x03, 0x04]))
+            defer { try? FileManager.default.removeItem(at: source) }
+            let artifact = try await acquire(
+                package: package,
+                source: source,
+                extractor: FixtureArchiveExtractor(images: [("gmapsupp.img", image)])
+            )
+            expect(
+                artifact.region == "AND" && artifact.version == version(2026, 5),
+                "Andorra IMG with a split Release header passes identity and version validation"
+            )
+        } catch {
+            expect(
+                false,
+                "Andorra IMG with a split Release header passes identity and version validation"
+            )
+        }
+    }
+
+    private static func testRegionalProviderTokensRemainConcrete() {
+        let tokens = [
+            "DEU+NORTH",
+            "DEU+SOUTH",
+            "FRA+NORTHEAST",
+            "FRA+NORTHWEST",
+            "FRA+SOUTHEAST",
+            "FRA+SOUTHWEST",
+            "NOR+NORTH",
+            "NOR+SOUTH",
+            "RUS_CENTRAL",
+            "RUS_NORTHWEST",
+            "RUS+KGD"
+        ]
+
+        let parsed = tokens.allSatisfy { token in
+            GarminIMGMetadataParser().parse(
+                Array(makeRegionalVariantIMG(token: token).prefix(GarminIMGMetadataParser.prefixLength))
+            )?.region == token
+        }
+
+        expect(
+            parsed,
+            "regional Freizeitkarte IMG headers preserve DEU/FRA/NOR/RUS package tokens"
+        )
+    }
+
+    private static func testSharedCatalogRegionsUseDistinctManagedTargets() {
+        let generator = TerentoManagedFilenameGenerator()
+        let packages = [
+            MapPackage(
+                id: "freizeitkarte-azores",
+                providerId: "freizeitkarte",
+                regionId: "AZORES",
+                name: "Azores",
+                version: version(2026, 5),
+                sizeBytes: 1,
+                sourceURL: nil,
+                releaseDate: nil,
+                identifier: "AZORES"
+            ),
+            MapPackage(
+                id: "freizeitkarte-balearics",
+                providerId: "freizeitkarte",
+                regionId: "AZORES",
+                name: "Balearics",
+                version: version(2026, 5),
+                sizeBytes: 1,
+                sourceURL: nil,
+                releaseDate: nil,
+                identifier: "BALEARICS"
+            ),
+            MapPackage(
+                id: "freizeitkarte-madeira",
+                providerId: "freizeitkarte",
+                regionId: "AZORES",
+                name: "Madeira",
+                version: version(2026, 5),
+                sizeBytes: 1,
+                sourceURL: nil,
+                releaseDate: nil,
+                identifier: "MADEIRA"
+            )
+        ]
+
+        let filenames = packages.compactMap {
+            try? generator.filename(
+                providerId: $0.providerId,
+                regionId: $0.canonicalRegionId
+            )
+        }
+
+        expect(
+            Set(filenames).count == packages.count
+                && filenames == [
+                    "terento_freizeitkarte_azores.img",
+                    "terento_freizeitkarte_balearics.img",
+                    "terento_freizeitkarte_madeira.img"
+                ],
+            "catalog packages sharing AZORES use distinct managed targets"
+        )
+    }
+
     private static func testWrongIdentityIsRejected() async {
         let image = makeIMG(region: "LTU", release: "26.05")
         do {
@@ -429,6 +549,32 @@ struct Stage41AcquisitionTests {
         return data
     }
 
+    private static func makeRegionalVariantIMG(token: String) -> Data {
+        var data = Data(repeating: 0, count: 8192)
+        write("DSKIMG", at: 0x10, length: 7, into: &data)
+        write("GARMIN", at: 0x41, length: 7, into: &data)
+
+        let header = Array("Freizeitkarte_\(token)".utf8)
+        let description = Array(header.prefix(20))
+        data.replaceSubrange(
+            0x49..<(0x49 + 20),
+            with: description + Array(repeating: 0, count: 20 - description.count)
+        )
+
+        let continuation = Array(header.dropFirst(20))
+        if continuation.isEmpty {
+            write("Release 26.05", at: 0x65, length: 31, into: &data)
+        } else {
+            let detail = continuation + Array(" (Release 26.05)".utf8)
+            data.replaceSubrange(
+                0x65..<(0x65 + 31),
+                with: detail.prefix(31) + Array(repeating: 0, count: max(0, 31 - detail.count))
+            )
+        }
+
+        return data
+    }
+
     /// Mirrors the official 2026-05 Canarias IMG header. The 20-byte
     /// description ends at `ESP_CA`; binary header bytes follow, and the
     /// remaining `NARIAS` starts in the detail field.
@@ -445,6 +591,23 @@ struct Stage41AcquisitionTests {
         data[0x64] = 0x7D
         data[0x65] = 0x7D
         write("NARIAS (Release 26.05)", at: 0x66, length: 30, into: &data)
+        return data
+    }
+
+    /// Mirrors the official Andorra IMG header where `(R` is the end of the
+    /// fixed description field and `elease 26.05)` starts in the detail field.
+    private static func makeSplitReleaseHeaderAndorraIMG() -> Data {
+        var data = Data(repeating: 0, count: 8192)
+        write("DSKIMG", at: 0x10, length: 7, into: &data)
+        write("GARMIN", at: 0x41, length: 7, into: &data)
+        write("Freizeitkarte_AND (R", at: 0x49, length: 20, into: &data)
+        data[0x5D] = 0x10
+        data[0x5F] = 0x04
+        data[0x61] = 0x09
+        data[0x62] = 0x01
+        data[0x63] = 0x85
+        data[0x64] = 0x11
+        write("elease 26.05)", at: 0x65, length: 31, into: &data)
         return data
     }
 

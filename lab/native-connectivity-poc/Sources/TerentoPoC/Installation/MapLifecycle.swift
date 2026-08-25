@@ -212,7 +212,7 @@ struct MapLifecycleInventoryBuilder: Sendable {
             id: entry.key,
             title: entry.title,
             provider: entry.catalogPackage?.providerId ?? entry.installedMaps.first?.provider,
-            region: entry.catalogPackage?.regionId ?? entry.installedMaps.first?.region,
+            region: entry.catalogPackage?.canonicalRegionId ?? entry.installedMaps.first?.region,
             version: entry.installedVersion,
             rawVersion: entry.installedRawVersion,
             sizeBytes: entry.installedSizeBytes,

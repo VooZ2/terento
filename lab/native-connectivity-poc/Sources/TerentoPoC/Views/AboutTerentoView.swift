@@ -2,8 +2,13 @@ import AppKit
 import SwiftUI
 
 enum TerentoAppMetadata {
-    static let version = "1.0.0"
-    static let description = "Open-source macOS app for installing and managing community maps on Garmin devices."
+    static let version = (Bundle.main.object(
+        forInfoDictionaryKey: "CFBundleShortVersionString"
+    ) as? String) ?? "1.0.0"
+    static let build = (Bundle.main.object(
+        forInfoDictionaryKey: "CFBundleVersion"
+    ) as? String) ?? "1"
+    static let description = "Open-source macOS app for installing and managing Freizeitkarte maps on Garmin devices."
 }
 
 struct AboutTerentoView: View {

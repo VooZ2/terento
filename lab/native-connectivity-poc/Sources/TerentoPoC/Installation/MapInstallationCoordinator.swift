@@ -122,7 +122,7 @@ struct Stage42ArtifactValidator: MapInstallationArtifactValidator, Sendable {
     func validate(artifact: ValidatedMapArtifact, package: MapPackage) throws {
         let expectedFilename = try TerentoManagedFilenameGenerator().filename(
             providerId: package.providerId,
-            regionId: package.regionId
+            regionId: package.canonicalRegionId
         )
 
         guard !package.id.isEmpty,
@@ -130,8 +130,9 @@ struct Stage42ArtifactValidator: MapInstallationArtifactValidator, Sendable {
               !package.regionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               artifact.catalogPackageID == package.id,
               MapIdentity.normalizeProvider(artifact.provider) == Self.allowedProvider,
+              let expectedIdentity = package.identity,
               MapIdentity.normalizeRegion(artifact.region)
-                == MapIdentity.normalizeRegion(package.regionId),
+                == expectedIdentity.region,
               artifact.version == package.version,
               artifact.targetFilename == expectedFilename,
               TerentoManagedFilenameGenerator().isValid(artifact.targetFilename),
@@ -385,7 +386,7 @@ struct MapInstallationCoordinator: Sendable {
             deviceKey: request.identity.localManifestDeviceKey,
             packageID: request.selectedMap.id,
             providerId: request.selectedMap.providerId,
-            regionId: request.selectedMap.regionId,
+            regionId: request.selectedMap.identity?.region ?? request.selectedMap.regionId,
             version: artifact.version,
             devicePath: targetPath,
             filename: targetFilename,
@@ -429,42 +430,19 @@ struct MapInstallationCoordinator: Sendable {
                     totalBytes: artifact.installSizeBytes
                 )
             )
-            try transaction.transition(to: .verifying)
-            let transfer: MTPWriteAndReadBackResult
+            let written: MTPWrittenMapObject
             do {
-                transfer = try transport.writeAndReadBack(
+                written = try transport.write(
                     sourceURL: artifact.localIMGURL,
                     targetFilename: targetFilename,
-                    targetPath: targetPath,
                     progress: { progress in
                         progressState.value = progress
                         onProgress?(progress)
-                    },
-                    onWriteCompleted: {
-                        onPhase?(.finishing)
-                        // Read-back begins immediately after this callback.
-                        // Start at a visible non-zero value so a slow Garmin
-                        // read-back is not presented as a frozen operation.
-                        onPhaseProgress?(.finishing, 0.05)
                     }
                 )
             } catch {
-                let failure: InstallationFailure
-                let createdItemID: UInt32?
-                switch error {
-                case let combinedError as MTPWriteAndReadBackError:
-                    switch combinedError {
-                    case .write(let underlying):
-                        failure = Self.failure(for: underlying, during: .write)
-                        createdItemID = Self.createdItemID(from: underlying)
-                    case .readBack(let underlying, let combinedItemID):
-                        failure = Self.failure(for: underlying, during: .verification)
-                        createdItemID = combinedItemID ?? Self.createdItemID(from: underlying)
-                    }
-                default:
-                    failure = Self.failure(for: error, during: .verification)
-                    createdItemID = Self.createdItemID(from: error)
-                }
+                let failure = Self.failure(for: error, during: .write)
+                let createdItemID = Self.createdItemID(from: error)
                 return failureResult(
                     failure: failure,
                     transaction: &transaction,
@@ -478,20 +456,43 @@ struct MapInstallationCoordinator: Sendable {
                     recoveryRecord: recoveryRecord
                 )
             }
-            let written = transfer.written
-            let readBack = transfer.readBack
-            defer { try? FileManager.default.removeItem(at: readBack.localURL) }
-            onPhaseProgress?(.finishing, 0.25)
 
-            let remoteHash: String
+            try transaction.transition(to: .verifying)
+            onPhase?(.finishing)
+            onPhaseProgress?(.finishing, 0.05)
+
+            // Garmin devices may need a short settle after a large object is
+            // committed and the write session is closed. This wait precedes
+            // a new, read-only MTP session; the write is never retried.
+            Thread.sleep(forTimeInterval: 0.75)
+
+            let readBack: MTPReadBackMapObject
             do {
-                remoteHash = try Self.sha256(of: readBack.localURL)
+                readBack = try transport.readBack(
+                    sourceURL: artifact.localIMGURL,
+                    targetFilename: targetFilename,
+                    expectedItemID: written.itemID,
+                    targetPath: targetPath,
+                    expectedSizeBytes: artifact.installSizeBytes,
+                    sampleOffsets: Self.verificationSampleOffsets(
+                        fileSizeBytes: artifact.installSizeBytes,
+                        sourceSHA256: artifact.sha256
+                    ),
+                    sampleLength: Self.verificationSampleLength,
+                    progress: { progress in
+                        progressState.value = progress
+                        onProgress?(progress)
+                    }
+                )
             } catch {
                 return failureResult(
-                    failure: .hashMismatch,
+                    failure: Self.failure(for: error, during: .verification),
                     transaction: &transaction,
                     preflight: preflight,
-                    diagnostics: diagnostics.withProgress(
+                    diagnostics: diagnostics.withRemote(
+                        exists: true,
+                        size: written.sizeBytes,
+                        hash: nil,
                         progress: progressState.value,
                         elapsedMilliseconds: elapsedMilliseconds(since: startedAt)
                     ),
@@ -500,18 +501,22 @@ struct MapInstallationCoordinator: Sendable {
                     recoveryRecord: recoveryRecord
                 )
             }
-            let verification = TransferVerifier().verify(
+            onPhaseProgress?(.finishing, 0.25)
+
+            let verification = TransferVerification.sampled(
                 sourceSizeBytes: artifact.installSizeBytes,
                 sourceSHA256: artifact.sha256,
                 remoteSizeBytes: readBack.reportedSizeBytes,
-                remoteSHA256: remoteHash
+                sampledBytes: readBack.sampledBytes,
+                sampleCount: readBack.sampleCount,
+                matchedSampleCount: readBack.matchedSampleCount
             )
             try transaction.recordTransferVerification(verification)
             onPhaseProgress?(.finishing, 0.45)
             let verifiedDiagnostics = diagnostics.withRemote(
                 exists: true,
                 size: readBack.reportedSizeBytes,
-                hash: remoteHash,
+                hash: nil,
                 progress: progressState.value,
                 elapsedMilliseconds: elapsedMilliseconds(since: startedAt)
             )
@@ -533,7 +538,7 @@ struct MapInstallationCoordinator: Sendable {
             }
 
             let metadataResult = verifyMetadata(
-                at: readBack.localURL,
+                at: artifact.localIMGURL,
                 expectedPackage: request.selectedMap
             )
             if let metadataFailure = metadataResult.failure {
@@ -625,7 +630,7 @@ struct MapInstallationCoordinator: Sendable {
                 devicePath: targetPath,
                 filename: targetFilename,
                 providerId: request.selectedMap.providerId,
-                regionId: request.selectedMap.regionId,
+                regionId: request.selectedMap.identity?.region ?? request.selectedMap.regionId,
                 version: artifact.version,
                 sizeBytes: artifact.installSizeBytes,
                 sha256: artifact.sha256,
@@ -816,7 +821,7 @@ struct MapInstallationCoordinator: Sendable {
                 let cleanupFilename = preflight.proposedFilename
                     ?? (try? TerentoManagedFilenameGenerator().filename(
                         providerId: preflight.selectedMap.providerId,
-                        regionId: preflight.selectedMap.regionId
+                        regionId: preflight.selectedMap.canonicalRegionId
                     ))
                 guard let cleanupFilename else {
                     throw ManagedFilenameError.emptyComponent
@@ -913,6 +918,32 @@ struct MapInstallationCoordinator: Sendable {
             .joined()
     }
 
+    private static let verificationSampleLength: UInt32 = 4 * 1024 * 1024
+
+    private static func verificationSampleOffsets(
+        fileSizeBytes: UInt64,
+        sourceSHA256: String
+    ) -> [UInt64] {
+        let sampleLength = min(UInt64(verificationSampleLength), fileSizeBytes)
+        let maximumOffset = fileSizeBytes - sampleLength
+        guard maximumOffset > 0 else {
+            return [0]
+        }
+
+        var seed: UInt64 = 0xcbf29ce484222325
+        for byte in sourceSHA256.utf8 {
+            seed ^= UInt64(byte)
+            seed = seed &* 0x100000001b3
+        }
+
+        var offsets: Set<UInt64> = [0, maximumOffset]
+        for _ in 0..<5 {
+            seed = seed &* 2862933555777941757 &+ 3037000493
+            offsets.insert(seed % (maximumOffset + 1))
+        }
+        return offsets.sorted()
+    }
+
     private struct MetadataResult: Sendable {
         let provider: String?
         let region: String?
@@ -941,7 +972,7 @@ struct MapInstallationCoordinator: Sendable {
                     rawVersion: nil,
                     name: nil,
                     family: nil,
-                    warning: "The verified IMG could not be parsed again after read-back.",
+                    warning: "The validated IMG could not be parsed during final verification.",
                     failure: nil
                 )
             }

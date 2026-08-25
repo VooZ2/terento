@@ -184,8 +184,7 @@ final class MapEngine: ObservableObject {
     private var loadedCatalog: MapCatalog?
     private var currentIdentity: DeviceIdentity?
     private var currentAvailableStorage: UInt64?
-    private var lastInstallationProgressAt: Date?
-    private var lastInstallationProgressBytes: UInt64 = 0
+    private var installationSpeedEstimator = TransferSpeedEstimator()
     private var installationAuthorizationGranted = false
     private var selectedInstallationPlan: InstallationPlan?
 
@@ -235,8 +234,7 @@ final class MapEngine: ObservableObject {
         loadedCatalog = nil
         currentIdentity = nil
         currentAvailableStorage = nil
-        lastInstallationProgressAt = nil
-        lastInstallationProgressBytes = 0
+        installationSpeedEstimator.reset()
         installationAuthorizationGranted = false
         selectedInstallationPlan = nil
     }
@@ -320,6 +318,12 @@ final class MapEngine: ObservableObject {
                 guard !Task.isCancelled else { return }
 
                 self?.result = inventory
+                TerentoDiagnosticLog.recordMapInventoryScan(
+                    inventory,
+                    trigger: preservingInstallationResult
+                        ? "post-operation-refresh"
+                        : "device-or-navigation-refresh"
+                )
                 if preservingInstallationResult {
                     self?.installationResult = preservedInstallationResult
                     self?.installationPhase = preservedInstallationPhase
@@ -645,23 +649,10 @@ final class MapEngine: ObservableObject {
     }
 
     fileprivate func receiveInstallationProgress(_ progress: TransferProgress) {
-        let now = Date()
-        let speed: Double
-        if let lastInstallationProgressAt {
-            let elapsed = now.timeIntervalSince(lastInstallationProgressAt)
-            speed = elapsed > 0
-                ? Double(progress.bytesTransferred &- lastInstallationProgressBytes) / elapsed
-                : 0
-        } else {
-            speed = 0
-        }
-
-        lastInstallationProgressAt = now
-        lastInstallationProgressBytes = progress.bytesTransferred
         let updatedProgress = TransferProgress(
             bytesTransferred: progress.bytesTransferred,
             totalBytes: progress.totalBytes,
-            bytesPerSecond: speed
+            bytesPerSecond: installationSpeedEstimator.update(bytes: progress.bytesTransferred)
         )
         if installationPhase == .finishing {
             finishingTransferProgress = updatedProgress
@@ -684,8 +675,12 @@ final class MapEngine: ObservableObject {
         installationPhaseProgressIsMeasured = false
 
         switch phase {
-        case .preparing, .finishing:
+        case .preparing:
             installationPhaseProgress = 0
+        case .finishing:
+            installationPhaseProgress = 0
+            finishingTransferProgress = nil
+            installationSpeedEstimator.reset()
         case .completed:
             installationPhaseProgress = 1
             finishingTransferProgress = nil
@@ -766,9 +761,9 @@ final class MapEngine: ObservableObject {
                     let artifact = try await CancellableDetached.run(priority: .userInitiated) {
                         try await acquirer.acquire(
                             package: package,
-                            canonicalRegion: package.name,
-                            onStateChange: stateRelay.send,
-                            onDownloadProgress: progressRelay.send
+                            canonicalRegion: package.canonicalRegionId,
+                            onStateChange: { state in stateRelay.send(state) },
+                            onDownloadProgress: { progress in progressRelay.send(progress) }
                         )
                     }
                     artifacts[package.id] = artifact
@@ -905,8 +900,7 @@ final class MapEngine: ObservableObject {
         installationBatchResults = []
         installationPhase = .installing
         installationPhaseProgress = nil
-        lastInstallationProgressAt = nil
-        lastInstallationProgressBytes = 0
+        installationSpeedEstimator.reset()
         installationProgress = TransferProgress(
             bytesTransferred: 0,
             totalBytes: validatedArtifact?.installSizeBytes ?? 0
@@ -975,9 +969,11 @@ final class MapEngine: ObservableObject {
                             lifecycleLease: lease
                         ).run(
                             request,
-                            onProgress: progressRelay.send,
-                            onPhase: phaseRelay.send,
-                            onPhaseProgress: phaseProgressRelay.send
+                            onProgress: { progress in progressRelay.send(progress) },
+                            onPhase: { phase in phaseRelay.send(phase) },
+                            onPhaseProgress: { phase, progress in
+                                phaseProgressRelay.send(phase, progress)
+                            }
                         )
                         results.append(result)
                         guard result.isSuccess else { break }

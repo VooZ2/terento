@@ -13,8 +13,9 @@ class Settings:
     port: int = 8000
     database_connect_timeout_seconds: int = 5
     collector_schedule_utc: str = "MON 03:00"
-    compatibility_admin_username: str | None = None
-    compatibility_admin_password: str | None = None
+    admin_bootstrap_secret: str | None = None
+    admin_session_ttl_seconds: int = 28_800
+    public_compatibility_stats_enabled: bool = False
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -35,8 +36,9 @@ class Settings:
             collector_schedule_utc=os.environ.get(
                 "COLLECTOR_SCHEDULE_UTC", "MON 03:00"
             ),
-            compatibility_admin_username=os.environ.get("COMPATIBILITY_ADMIN_USERNAME") or None,
-            compatibility_admin_password=os.environ.get("COMPATIBILITY_ADMIN_PASSWORD") or None,
+            admin_bootstrap_secret=os.environ.get("ADMIN_BOOTSTRAP_SECRET") or None,
+            admin_session_ttl_seconds=_positive_int("ADMIN_SESSION_TTL_SECONDS", 28_800),
+            public_compatibility_stats_enabled=_boolean("PUBLIC_COMPATIBILITY_STATS_ENABLED", False),
         )
 
 
@@ -51,3 +53,15 @@ def _positive_int(name: str, default: int) -> int:
     if parsed <= 0:
         raise RuntimeError(f"{name} must be greater than zero")
     return parsed
+
+
+def _boolean(name: str, default: bool) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise RuntimeError(f"{name} must be a boolean")

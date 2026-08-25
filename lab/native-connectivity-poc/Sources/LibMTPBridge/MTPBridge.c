@@ -1174,7 +1174,7 @@ static int find_stage42_map_file(
 
 /* Transfer the catalog-validated artifact on an already-open device.
  * Keeping this part separate lets the production install path perform its
- * mandatory read-back before the native MTP session is released. */
+ * sampled verification after the write session is released. */
 static int send_stage42_map_file(
     LIBMTP_mtpdevice_t *device,
     const char *local_path,
@@ -1373,100 +1373,18 @@ cleanup:
     return result;
 }
 
-int terento_mtp_install_map_file_and_read_back(
-    const char *local_path,
+static int validate_managed_map_object(
+    LIBMTP_mtpdevice_t *device,
     const char *target_filename,
-    const char *read_back_local_path,
-    uint32_t *item_id,
-    uint64_t *size_bytes,
-    uint64_t *read_back_size_bytes,
-    TerentoMTPProgressCallback progress_callback,
-    const void *progress_context,
-    TerentoMTPWriteCompletedCallback write_completed_callback,
-    const void *write_completed_context,
+    uint32_t expected_item_id,
+    uint64_t expected_size_bytes,
+    uint64_t *actual_size_bytes,
     char *error_message,
     size_t error_message_capacity
 ) {
-    if (item_id == NULL || size_bytes == NULL || read_back_size_bytes == NULL) {
-        set_error(error_message, error_message_capacity, "The map installation result is unavailable");
-        return -1;
-    }
-
-    *item_id = 0;
-    *size_bytes = 0;
-    *read_back_size_bytes = 0;
-    set_error(error_message, error_message_capacity, "");
-
-    if (validate_stage42_target(target_filename, error_message, error_message_capacity) != 0) {
-        return -2;
-    }
-
-    if (read_back_local_path == NULL) {
-        set_error(error_message, error_message_capacity, "The read-back destination is unavailable");
-        return -3;
-    }
-    struct stat destination_stat;
-    if (stat(read_back_local_path, &destination_stat) == 0) {
-        set_error(error_message, error_message_capacity, "The read-back destination already exists");
-        return -4;
-    }
-    if (errno != ENOENT) {
-        set_error(error_message, error_message_capacity, "The read-back destination is not available");
-        return -5;
-    }
-
-    struct stat source_stat;
-    if (validate_stage42_source(local_path, &source_stat, error_message, error_message_capacity) != 0) {
-        return -6;
-    }
-
-    uint16_t vendor_id = 0;
-    uint16_t product_id = 0;
-    LIBMTP_mtpdevice_t *device = open_single_garmin_device(
-        &vendor_id,
-        &product_id,
-        error_message,
-        error_message_capacity,
-        1
-    );
-    if (device == NULL) {
-        return -7;
-    }
-
-    int result = validate_write_test_device(
-        vendor_id,
-        product_id,
-        error_message,
-        error_message_capacity
-    );
-    if (result != 0) {
-        result = TERENTO_MTP_MAP_UNSUPPORTED_DEVICE;
-        goto combined_cleanup;
-    }
-
-    result = send_stage42_map_file(
-        device,
-        local_path,
-        target_filename,
-        &source_stat,
-        item_id,
-        size_bytes,
-        progress_callback,
-        progress_context,
-        error_message,
-        error_message_capacity
-    );
-    if (result != 0) {
-        goto combined_cleanup;
-    }
-
-    if (write_completed_callback != NULL) {
-        write_completed_callback(write_completed_context);
-    }
-
     uint32_t storage_id = 0;
     uint32_t folder_id = 0;
-    result = find_single_garmin_folder(
+    int result = find_single_garmin_folder(
         device,
         &storage_id,
         &folder_id,
@@ -1474,7 +1392,7 @@ int terento_mtp_install_map_file_and_read_back(
         error_message_capacity
     );
     if (result != 0) {
-        goto combined_cleanup;
+        return result;
     }
 
     uint32_t actual_item_id = 0;
@@ -1492,141 +1410,206 @@ int terento_mtp_install_map_file_and_read_back(
         error_message_capacity
     );
     if (result != 0) {
-        goto combined_cleanup;
+        return result;
     }
     if (match_count == 0) {
         set_error(error_message, error_message_capacity, "The transferred map was not found on the Garmin device");
-        result = TERENTO_MTP_MAP_REMOTE_FILE_MISSING;
-        goto combined_cleanup;
+        return TERENTO_MTP_MAP_REMOTE_FILE_MISSING;
     }
-    if (match_count != 1 || actual_item_id != *item_id) {
+    if (match_count != 1 || actual_item_id != expected_item_id) {
         set_error(error_message, error_message_capacity, "The managed map object identity did not match exactly");
-        result = TERENTO_MTP_MAP_OBJECT_ID_MISMATCH;
-        goto combined_cleanup;
+        return TERENTO_MTP_MAP_OBJECT_ID_MISMATCH;
+    }
+    if (remote_size == 0 || remote_size != expected_size_bytes) {
+        set_error(error_message, error_message_capacity, "The managed map size did not match the validated source");
+        return TERENTO_MTP_MAP_OBJECT_ID_MISMATCH;
     }
 
-    LIBMTP_Clear_Errorstack(device);
-    if (LIBMTP_Get_File_To_File(
-            device,
-            actual_item_id,
-            read_back_local_path,
-            progress_callback,
-            progress_context
-        ) != 0) {
-        set_device_error(error_message, error_message_capacity, device, "The map could not be read back");
-        result = -9;
-        goto combined_cleanup;
+    if (actual_size_bytes != NULL) {
+        *actual_size_bytes = remote_size;
     }
-
-    *read_back_size_bytes = remote_size;
-    result = 0;
-
-combined_cleanup:
-    LIBMTP_Release_Device(device);
-    return result;
+    return 0;
 }
 
-int terento_mtp_read_managed_map_to_local(
+int terento_mtp_verify_managed_map_samples(
+    const char *local_path,
     const char *target_filename,
     uint32_t expected_item_id,
-    const char *local_path,
-    uint64_t *size_bytes,
+    uint64_t expected_size_bytes,
+    const uint64_t *sample_offsets,
+    size_t sample_count,
+    uint32_t sample_length,
+    uint64_t *sampled_bytes,
+    uint32_t *matched_samples,
+    TerentoMTPProgressCallback progress_callback,
+    const void *progress_context,
     char *error_message,
     size_t error_message_capacity
 ) {
-    if (expected_item_id == 0 || local_path == NULL || size_bytes == NULL) {
-        set_error(error_message, error_message_capacity, "The managed map read-back request is invalid");
+    if (local_path == NULL || expected_item_id == 0 || expected_size_bytes == 0
+        || sample_offsets == NULL || sample_count == 0 || sample_count > 32
+        || sample_length == 0 || sampled_bytes == NULL || matched_samples == NULL) {
+        set_error(error_message, error_message_capacity, "The sampled map verification request is invalid");
         return -1;
     }
 
-    *size_bytes = 0;
+    *sampled_bytes = 0;
+    *matched_samples = 0;
     set_error(error_message, error_message_capacity, "");
 
     if (validate_stage42_target(target_filename, error_message, error_message_capacity) != 0) {
         return -2;
     }
 
-    struct stat destination_stat;
-    if (stat(local_path, &destination_stat) == 0) {
-        set_error(error_message, error_message_capacity, "The read-back destination already exists");
+    struct stat source_stat;
+    if (validate_stage42_source(local_path, &source_stat, error_message, error_message_capacity) != 0) {
         return -3;
     }
-    if (errno != ENOENT) {
-        set_error(error_message, error_message_capacity, "The read-back destination is not available");
+    if ((uint64_t)source_stat.st_size != expected_size_bytes) {
+        set_error(error_message, error_message_capacity, "The local source size changed before sampled verification");
         return -4;
     }
 
-    uint16_t vendor_id = 0;
-    uint16_t product_id = 0;
-    LIBMTP_mtpdevice_t *device = open_single_garmin_device(
-        &vendor_id,
-        &product_id,
-        error_message,
-        error_message_capacity,
-        1
-    );
-    if (device == NULL) {
-        return -5;
+    uint64_t total_sample_bytes = 0;
+    for (size_t index = 0; index < sample_count; index += 1) {
+        if (sample_offsets[index] >= expected_size_bytes) {
+            set_error(error_message, error_message_capacity, "A sampled map offset is outside the validated source");
+            return -5;
+        }
+        uint64_t remaining = expected_size_bytes - sample_offsets[index];
+        uint64_t requested = remaining < sample_length ? remaining : sample_length;
+        if (UINT64_MAX - total_sample_bytes < requested) {
+            set_error(error_message, error_message_capacity, "The sampled verification size is unavailable");
+            return -6;
+        }
+        total_sample_bytes += requested;
     }
 
-    int result = validate_write_test_device(
-        vendor_id,
-        product_id,
-        error_message,
-        error_message_capacity
-    );
-    if (result != 0) {
-        result = TERENTO_MTP_MAP_UNSUPPORTED_DEVICE;
-        goto cleanup;
+    FILE *source = fopen(local_path, "rb");
+    if (source == NULL) {
+        set_error(error_message, error_message_capacity, "The validated map source could not be opened");
+        return -7;
     }
 
-    uint32_t storage_id = 0;
-    uint32_t folder_id = 0;
-    result = find_single_garmin_folder(device, &storage_id, &folder_id, error_message, error_message_capacity);
-    if (result != 0) {
-        goto cleanup;
+    const unsigned int maximum_sample_attempts = 3;
+    LIBMTP_mtpdevice_t *device = NULL;
+    int result = 0;
+
+    for (size_t index = 0; index < sample_count; index += 1) {
+        uint64_t offset = sample_offsets[index];
+        uint64_t remaining = expected_size_bytes - offset;
+        uint32_t requested = remaining < sample_length ? (uint32_t)remaining : sample_length;
+        unsigned int failed_attempts = 0;
+        int sample_verified = 0;
+
+        while (!sample_verified) {
+            if (device == NULL) {
+                uint16_t vendor_id = 0;
+                uint16_t product_id = 0;
+                device = open_single_garmin_device(
+                    &vendor_id,
+                    &product_id,
+                    error_message,
+                    error_message_capacity,
+                    1
+                );
+                if (device == NULL) {
+                    result = -8;
+                    goto sample_cleanup;
+                }
+
+                if (validate_write_test_device(
+                        vendor_id,
+                        product_id,
+                        error_message,
+                        error_message_capacity
+                    ) != 0) {
+                    result = TERENTO_MTP_MAP_UNSUPPORTED_DEVICE;
+                    goto sample_cleanup;
+                }
+
+                result = validate_managed_map_object(
+                    device,
+                    target_filename,
+                    expected_item_id,
+                    expected_size_bytes,
+                    NULL,
+                    error_message,
+                    error_message_capacity
+                );
+                if (result != 0) {
+                    goto sample_cleanup;
+                }
+            }
+
+            unsigned char *raw_bytes = NULL;
+            unsigned int actual_length = 0;
+            LIBMTP_Clear_Errorstack(device);
+            int read_result = LIBMTP_GetPartialObject(
+                device,
+                expected_item_id,
+                offset,
+                requested,
+                &raw_bytes,
+                &actual_length
+            );
+
+            if (read_result != 0 || actual_length != requested) {
+                if (raw_bytes != NULL) {
+                    LIBMTP_FreeMemory(raw_bytes);
+                }
+                failed_attempts += 1;
+                if (failed_attempts >= maximum_sample_attempts) {
+                    set_device_error(error_message, error_message_capacity, device, "The sampled map verification failed repeatedly");
+                    result = -9;
+                    goto sample_cleanup;
+                }
+                LIBMTP_Release_Device(device);
+                device = NULL;
+                usleep(250000);
+                continue;
+            }
+
+            unsigned char *source_bytes = malloc(requested);
+            if (source_bytes == NULL) {
+                LIBMTP_FreeMemory(raw_bytes);
+                set_error(error_message, error_message_capacity, "The sampled map verification buffer could not be allocated");
+                result = -10;
+                goto sample_cleanup;
+            }
+
+            int seek_result = fseeko(source, (off_t)offset, SEEK_SET);
+            size_t source_length = seek_result == 0
+                ? fread(source_bytes, 1, requested, source)
+                : 0;
+            int matches = source_length == requested
+                && memcmp(source_bytes, raw_bytes, requested) == 0;
+            free(source_bytes);
+            LIBMTP_FreeMemory(raw_bytes);
+
+            if (!matches) {
+                set_error(error_message, error_message_capacity, "A sampled map region did not match the validated source");
+                result = -11;
+                goto sample_cleanup;
+            }
+
+            *sampled_bytes += requested;
+            *matched_samples += 1;
+            sample_verified = 1;
+            if (progress_callback != NULL
+                && progress_callback(*sampled_bytes, total_sample_bytes, progress_context) != 0) {
+                set_error(error_message, error_message_capacity, "The sampled map verification was cancelled");
+                result = -12;
+                goto sample_cleanup;
+            }
+        }
     }
 
-    uint32_t actual_item_id = 0;
-    uint64_t remote_size = 0;
-    size_t match_count = 0;
-    result = find_stage42_map_file(
-        device,
-        storage_id,
-        folder_id,
-        target_filename,
-        &actual_item_id,
-        &remote_size,
-        &match_count,
-        error_message,
-        error_message_capacity
-    );
-    if (result != 0) {
-        goto cleanup;
+sample_cleanup:
+    if (device != NULL) {
+        LIBMTP_Release_Device(device);
     }
-    if (match_count == 0) {
-        set_error(error_message, error_message_capacity, "The transferred map was not found on the Garmin device");
-        result = TERENTO_MTP_MAP_REMOTE_FILE_MISSING;
-        goto cleanup;
-    }
-    if (match_count != 1 || actual_item_id != expected_item_id) {
-        set_error(error_message, error_message_capacity, "The managed map object identity did not match exactly");
-        result = TERENTO_MTP_MAP_OBJECT_ID_MISMATCH;
-        goto cleanup;
-    }
-
-    LIBMTP_Clear_Errorstack(device);
-    if (LIBMTP_Get_File_To_File(device, actual_item_id, local_path, NULL, NULL) != 0) {
-        set_device_error(error_message, error_message_capacity, device, "The map could not be read back");
-        result = -6;
-        goto cleanup;
-    }
-
-    *size_bytes = remote_size;
-    result = 0;
-
-cleanup:
-    LIBMTP_Release_Device(device);
+    fclose(source);
     return result;
 }
 
@@ -1697,29 +1680,19 @@ int terento_mtp_delete_managed_map(
 
     LIBMTP_Clear_Errorstack(device);
     if (LIBMTP_Delete_Object(device, actual_item_id) != 0) {
-        set_device_error(error_message, error_message_capacity, device, "The incomplete map could not be removed");
+        set_device_error(error_message, error_message_capacity, device, "The managed map could not be removed");
         result = -4;
         goto cleanup;
     }
 
-    uint32_t remaining_item_id = 0;
-    uint64_t remaining_size = 0;
-    size_t remaining_count = 0;
-    result = find_stage42_map_file(
-        device,
-        storage_id,
-        folder_id,
-        target_filename,
-        &remaining_item_id,
-        &remaining_size,
-        &remaining_count,
-        error_message,
-        error_message_capacity
-    );
-    if (result == 0 && remaining_count != 0) {
-        set_error(error_message, error_message_capacity, "Cleanup could not confirm that the incomplete map was removed");
-        result = -5;
-    }
+    /*
+     * Do not enumerate /GARMIN again in this session. Garmin devices can
+     * leave the libmtp object list stale, or block while refreshing it,
+     * immediately after DeleteObject. The Swift lifecycle layer releases
+     * this session and performs the authoritative read-only post-delete
+     * verification in a fresh session.
+     */
+    result = 0;
 
 cleanup:
     LIBMTP_Release_Device(device);

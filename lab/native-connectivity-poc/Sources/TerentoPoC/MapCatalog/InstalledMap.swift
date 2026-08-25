@@ -87,9 +87,14 @@ struct GarminIMGMetadataParser: Sendable {
             description: description,
             detail: headerDetail
         )
+        let stitchedMetadata = stitchedFreizeitkarteMetadata(
+            description: description,
+            detail: headerDetail
+        )
         let combinedText = (
             headerStrings
                 + [stitchedHeader].compactMap { $0 }
+                + [stitchedMetadata].compactMap { $0 }
                 + strings
         ).joined(separator: " ")
         let provider = provider(in: combinedText)
@@ -117,6 +122,9 @@ struct GarminIMGMetadataParser: Sendable {
             family: provider ?? description ?? headerDetail,
             rawVersion: rawVersion,
             version: version,
+            // The concrete provider token is represented by `region` after
+            // parsing. The catalog's package identifier is joined through
+            // MapPackage.identity and MapCatalogIdentityKey.
             identifier: nil,
             productId: nil,
             familyId: nil
@@ -208,12 +216,31 @@ struct GarminIMGMetadataParser: Sendable {
         return description + continuation
     }
 
+    /// The release marker can itself cross the binary gap between the fixed
+    /// fields, for example `(R` + `elease 26.05)`. Keep a second, bounded
+    /// joined value for release parsing; region parsing uses the sanitized
+    /// identity value above because some images have printable binary bytes
+    /// before the continuation.
+    private func stitchedFreizeitkarteMetadata(
+        description: String?,
+        detail: String?
+    ) -> String? {
+        guard let description,
+              let detail,
+              description.utf8.count == 20,
+              provider(in: description) == "Freizeitkarte" else {
+            return nil
+        }
+
+        return description + detail
+    }
+
     private func freizeitkarteRegion(in value: String) -> String? {
         // Some provider regions are composite identifiers, for example
         // ESP-CANARIAS. Prefer the longest token found in the header because
         // the fixed description field may contain a truncated prefix while
         // the same IMG also contains the complete printable identifier.
-        let pattern = #"(?i)freizeitkarte[\s_-]+([a-z0-9]+(?:[_-][a-z0-9]+)*)"#
+        let pattern = #"(?i)freizeitkarte[\s_-]+([a-z0-9]+(?:[+_-][a-z0-9]+)*)"#
         guard let regex = try? NSRegularExpression(pattern: pattern) else {
             return nil
         }

@@ -168,6 +168,97 @@ struct TransferProgress: Equatable, Sendable {
     }
 }
 
+/// Converts cumulative transfer callbacks into a stable, human-readable rate.
+///
+/// Callbacks can arrive in very small bursts, so dividing one callback delta
+/// by its wall-clock interval produces implausible spikes. This estimator uses
+/// monotonic time, waits for a meaningful sample interval, and smooths accepted
+/// samples while preserving a cumulative-byte baseline.
+enum TransferRateCalculator {
+    static let minimumSampleInterval: TimeInterval = 0.25
+
+    static func sample(
+        deltaBytes: UInt64,
+        elapsedSeconds: TimeInterval,
+        previousRate: Double = 0
+    ) -> Double? {
+        guard deltaBytes > 0,
+              elapsedSeconds.isFinite,
+              elapsedSeconds >= minimumSampleInterval else {
+            return nil
+        }
+
+        let instantaneousRate = Double(deltaBytes) / elapsedSeconds
+        guard instantaneousRate.isFinite, instantaneousRate >= 0 else {
+            return nil
+        }
+
+        let smoothedRate = previousRate > 0
+            ? (previousRate * 0.75) + (instantaneousRate * 0.25)
+            : instantaneousRate
+        return smoothedRate.isFinite ? smoothedRate : nil
+    }
+
+    static func seconds(_ duration: Duration) -> TimeInterval {
+        let components = duration.components
+        return Double(components.seconds)
+            + (Double(components.attoseconds) / 1_000_000_000_000_000_000)
+    }
+}
+
+struct TransferSpeedEstimator: Sendable {
+    private var sampleStart: ContinuousClock.Instant?
+    private var sampleBytes: UInt64 = 0
+    private var smoothedRate: Double = 0
+
+    mutating func reset() {
+        sampleStart = nil
+        sampleBytes = 0
+        smoothedRate = 0
+    }
+
+    mutating func update(
+        bytes: UInt64,
+        now: ContinuousClock.Instant = .now
+    ) -> Double {
+        guard let sampleStart else {
+            self.sampleStart = now
+            sampleBytes = bytes
+            return 0
+        }
+
+        guard bytes >= sampleBytes else {
+            self.sampleStart = now
+            sampleBytes = bytes
+            smoothedRate = 0
+            return 0
+        }
+
+        let elapsed = TransferRateCalculator.seconds(sampleStart.duration(to: now))
+        guard elapsed >= TransferRateCalculator.minimumSampleInterval else {
+            return smoothedRate
+        }
+
+        let deltaBytes = bytes - sampleBytes
+        self.sampleStart = now
+        sampleBytes = bytes
+
+        guard deltaBytes > 0 else {
+            smoothedRate *= 0.75
+            return smoothedRate.isFinite ? smoothedRate : 0
+        }
+
+        if let rate = TransferRateCalculator.sample(
+            deltaBytes: deltaBytes,
+            elapsedSeconds: elapsed,
+            previousRate: smoothedRate
+        ) {
+            smoothedRate = rate
+        }
+        return smoothedRate
+    }
+}
+
 enum InstallationTransactionState: String, Codable, Equatable, Sendable {
     case idle = "IDLE"
     case validating = "VALIDATING"

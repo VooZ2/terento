@@ -65,6 +65,22 @@ private func testEjectCannotStartWithoutDevice() throws {
     try require(manager.state == .disconnected, "rejected eject must not change state")
 }
 
+private func testPhysicalDisconnectAfterEjectReturnsToDetection() throws {
+    var manager = DeviceStateManager()
+    manager.beginDetection()
+    manager.deviceConnected()
+
+    try require(manager.beginEject(), "connected device should allow eject")
+    manager.markSafeToDisconnect()
+    manager.deviceDisconnected()
+
+    try require(manager.state == .disconnected, "physical unplug after eject should clear the safe state")
+    try require(!manager.hasActiveDevice, "physical unplug after eject must not retain an active device")
+
+    manager.beginDetection()
+    try require(manager.state == .detecting, "the app should be able to restart discovery after unplug")
+}
+
 private func testSafeEjectPresentationStates() throws {
     try require(
         SafeEjectPresentation.resolve(state: .connected, canEject: true) == .enabled,
@@ -154,6 +170,7 @@ struct ConnectionLifecycleTests {
             ("no stale connected or ready state remains", testNoStaleDeviceAfterDisconnect),
             ("safe eject transitions to safe-to-disconnect", testSafeEjectIsReadOnly),
             ("eject is unavailable without a device", testEjectCannotStartWithoutDevice),
+            ("physical unplug after eject restarts detection", testPhysicalDisconnectAfterEjectReturnsToDetection),
             ("sidebar eject visibility follows connection and lifecycle state", testSafeEjectPresentationStates),
             ("eject policy follows the shared operation state", testSafeEjectPolicyAcrossOperations)
         ]

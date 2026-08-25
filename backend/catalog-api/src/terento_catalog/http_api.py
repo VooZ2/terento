@@ -2,17 +2,30 @@ from __future__ import annotations
 
 import json
 import logging
-import base64
 import hmac
 import time
 from collections import defaultdict, deque
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from email.utils import format_datetime, parsedate_to_datetime
 from http import HTTPStatus
+from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
+from .admin import (
+    AdminValidationError,
+    account_page,
+    dashboard_page,
+    hash_password,
+    login_page,
+    new_token,
+    setup_page,
+    token_hash,
+    validate_password,
+    validate_username,
+    verify_password,
+)
 from .asset_storage import AssetStorage
 from .catalog import build_catalog, catalog_etag, serialize_catalog
 from .db import Database
@@ -21,7 +34,11 @@ from .device_catalog import (
     device_catalog_etag,
     serialize_device_catalog,
 )
-from .compatibility_evidence import EvidenceValidationError, operator_page, validate_event
+from .compatibility_evidence import (
+    EvidenceValidationError,
+    validate_deletion_request,
+    validate_event,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -29,15 +46,18 @@ LOGGER = logging.getLogger(__name__)
 class CatalogService:
     def __init__(
         self, database: Database, asset_storage: AssetStorage | None = None,
-        compatibility_admin_username: str | None = None,
-        compatibility_admin_password: str | None = None,
+        admin_bootstrap_secret: str | None = None,
+        admin_session_ttl_seconds: int = 28_800,
+        public_compatibility_stats_enabled: bool = False,
     ) -> None:
         self.database = database
         self.asset_storage = asset_storage
-        self.compatibility_admin_username = compatibility_admin_username
-        self.compatibility_admin_password = compatibility_admin_password
+        self.admin_bootstrap_secret = admin_bootstrap_secret
+        self.admin_session_ttl_seconds = admin_session_ttl_seconds
+        self.public_compatibility_stats_enabled = public_compatibility_stats_enabled
 
     def health(self) -> bool:
+        self.database.prune_compatibility_events()
         return self.database.health()
 
     def catalog_response(self) -> tuple[bytes, str, datetime]:
@@ -58,18 +78,66 @@ class CatalogService:
     def receive_compatibility_event(self, body: bytes) -> bool:
         return self.database.insert_compatibility_event(validate_event(body))
 
+    def delete_compatibility_event(self, body: bytes) -> bool:
+        event_id, deletion_token = validate_deletion_request(body)
+        return self.database.delete_compatibility_event(event_id, deletion_token)
+
     def compatibility_statistics(self) -> list[dict[str, Any]]:
         return self.database.compatibility_statistics()
 
-    def operator_authorized(self, authorization: str | None) -> bool:
-        if not self.compatibility_admin_username or not self.compatibility_admin_password or not authorization:
-            return False
-        try:
-            scheme, encoded = authorization.split(" ", 1)
-            username, password = base64.b64decode(encoded).decode().split(":", 1)
-        except (ValueError, UnicodeDecodeError):
-            return False
-        return scheme.lower() == "basic" and hmac.compare_digest(username, self.compatibility_admin_username) and hmac.compare_digest(password, self.compatibility_admin_password)
+    def admin_is_configured(self) -> bool:
+        return self.database.admin_user_count() > 0
+
+    def setup_admin(self, username: str, password: str, bootstrap_secret: str) -> dict[str, Any]:
+        if self.admin_is_configured():
+            raise AdminValidationError("Administratorius jau sukurtas.")
+        if not self.admin_bootstrap_secret or not hmac.compare_digest(bootstrap_secret, self.admin_bootstrap_secret):
+            raise AdminValidationError("Neteisinga diegimo paslaptis.")
+        return self.database.create_admin_user(validate_username(username), hash_password(password))
+
+    def login_admin(self, username: str, password: str) -> tuple[str, str]:
+        user = self.database.admin_user_by_username(username.strip())
+        if not user or not verify_password(password, user["password_hash"]):
+            raise AdminValidationError("Neteisingas naudotojo vardas arba slaptažodis.")
+        session_token, csrf_token = new_token(), new_token()
+        expires_at = datetime.now(timezone.utc) + timedelta(seconds=self.admin_session_ttl_seconds)
+        self.database.create_admin_session(
+            int(user["id"]), token_hash(session_token), token_hash(csrf_token), expires_at
+        )
+        return session_token, csrf_token
+
+    def admin_session(self, session_token: str | None) -> dict[str, Any] | None:
+        if not session_token:
+            return None
+        return self.database.admin_session(token_hash(session_token))
+
+    def csrf_valid(self, session: dict[str, Any], csrf_token: str | None) -> bool:
+        return bool(csrf_token) and hmac.compare_digest(
+            str(session["csrf_token_hash"]), token_hash(str(csrf_token))
+        )
+
+    def logout_admin(self, session_token: str | None) -> None:
+        if session_token:
+            self.database.delete_admin_session(token_hash(session_token))
+
+    def update_admin_account(
+        self, user: dict[str, Any], username: str, current_password: str,
+        new_password: str, new_password_confirmation: str,
+    ) -> dict[str, Any]:
+        if not verify_password(current_password, user["password_hash"]):
+            raise AdminValidationError("Dabartinis slaptažodis neteisingas.")
+        normalized_username = validate_username(username)
+        password_hash = user["password_hash"]
+        if new_password or new_password_confirmation:
+            if new_password != new_password_confirmation:
+                raise AdminValidationError("Nauji slaptažodžiai nesutampa.")
+            password_hash = hash_password(validate_password(new_password))
+        return self.database.update_admin_user(int(user["id"]), normalized_username, password_hash)
+
+    def public_statistics(self, limit: int) -> list[dict[str, Any]]:
+        if not self.public_compatibility_stats_enabled:
+            raise LookupError("disabled")
+        return self.database.public_compatibility_statistics(limit)
 
 
 def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
@@ -87,10 +155,20 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
 
         def do_POST(self) -> None:  # noqa: N802 - stdlib handler API
             request_path = urlsplit(self.path).path
-            if request_path != "/compatibility/events":
-                self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=True, cache_control="no-store")
+            if request_path == "/compatibility/events":
+                self._handle_compatibility_event()
                 return
-            self._handle_compatibility_event()
+            if request_path.startswith("/admin"):
+                self._handle_admin_post(request_path)
+                return
+            self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=True, cache_control="no-store")
+
+        def do_DELETE(self) -> None:  # noqa: N802 - stdlib handler API
+            request_path = urlsplit(self.path).path
+            if request_path == "/compatibility/events":
+                self._handle_compatibility_event_deletion()
+                return
+            self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=True, cache_control="no-store")
 
         def _handle_request(self, *, send_body: bool) -> None:
             request_path = urlsplit(self.path).path
@@ -114,8 +192,14 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if request_path.startswith("/assets/devices/"):
                 self._handle_asset(request_path, send_body=send_body)
                 return
+            if request_path == "/compatibility/public/top-models.json":
+                self._handle_public_statistics(send_body=send_body)
+                return
             if request_path == "/internal/compatibility/":
-                self._handle_operator_page(send_body=send_body)
+                self._redirect("/admin", send_body=send_body)
+                return
+            if request_path.startswith("/admin"):
+                self._handle_admin_get(request_path, send_body=send_body)
                 return
             self._send_json(
                 HTTPStatus.NOT_FOUND,
@@ -152,37 +236,251 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return
             self._send_json(HTTPStatus.CREATED if inserted else HTTPStatus.OK, {"status": "stored" if inserted else "duplicate"}, send_body=True, cache_control="no-store")
 
-        def _handle_operator_page(self, *, send_body: bool) -> None:
-            client = f"operator:{self.client_address[0]}"
-            now = time.monotonic()
-            recent = request_times[client]
-            while recent and recent[0] < now - 300:
-                recent.popleft()
-            if len(recent) >= 10:
-                self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=send_body, cache_control="no-store")
+        def _handle_compatibility_event_deletion(self) -> None:
+            client = f"compatibility-delete:{self.client_address[0]}"
+            if self._rate_limited(client, limit=10, window=60):
+                self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store")
                 return
-            if not service.operator_authorized(self.headers.get("Authorization")):
-                recent.append(now)
-                self.send_response(HTTPStatus.UNAUTHORIZED)
-                self.send_header("WWW-Authenticate", 'Basic realm="Terento compatibility", charset="UTF-8"')
-                self._common_headers(cache_control="no-store", content_length=0)
-                self.send_header("X-Robots-Tag", "noindex, nofollow")
-                self.end_headers()
-                return
-            recent.clear()
             try:
-                body = operator_page(service.compatibility_statistics())
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                length = 0
+            if length <= 0 or length > 2048:
+                self._send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"error": "invalid_size"}, send_body=True, cache_control="no-store")
+                return
+            try:
+                deleted = service.delete_compatibility_event(self.rfile.read(length))
+            except EvidenceValidationError as exc:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)}, send_body=True, cache_control="no-store")
+                return
             except Exception:
-                LOGGER.exception("compatibility statistics failed")
+                LOGGER.exception("compatibility event deletion failed")
+                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "evidence_unavailable"}, send_body=True, cache_control="no-store")
+                return
+            self._send_json(
+                HTTPStatus.OK if deleted else HTTPStatus.NOT_FOUND,
+                {"status": "deleted"} if deleted else {"error": "not_found"},
+                send_body=True,
+                cache_control="no-store",
+            )
+
+        def _handle_admin_get(self, request_path: str, *, send_body: bool) -> None:
+            try:
+                configured = service.admin_is_configured()
+            except Exception:
+                LOGGER.exception("admin configuration check failed")
+                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "admin_unavailable"}, send_body=send_body, cache_control="no-store")
+                return
+            if request_path == "/admin/setup":
+                if configured:
+                    self._redirect("/admin/login", send_body=send_body)
+                elif not service.admin_bootstrap_secret:
+                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "admin_bootstrap_not_configured"}, send_body=send_body, cache_control="no-store")
+                else:
+                    self._send_admin_html(setup_page(), send_body=send_body)
+                return
+            if not configured:
+                self._redirect("/admin/setup", send_body=send_body)
+                return
+            if request_path == "/admin/login":
+                self._send_admin_html(login_page(), send_body=send_body)
+                return
+            session_token = self._session_cookie()
+            session = service.admin_session(session_token)
+            if not session:
+                self._redirect("/admin/login", send_body=send_body, clear_cookie=bool(session_token))
+                return
+            csrf_token = self._csrf_cookie()
+            if not csrf_token or not service.csrf_valid(session, csrf_token):
+                service.logout_admin(session_token)
+                self._redirect("/admin/login", send_body=send_body, clear_cookie=True)
+                return
+            if request_path in {"/admin", "/admin/"}:
+                try:
+                    body = dashboard_page(service.compatibility_statistics(), session, csrf_token)
+                except Exception:
+                    LOGGER.exception("compatibility statistics failed")
+                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "statistics_unavailable"}, send_body=send_body, cache_control="no-store")
+                    return
+                self._send_admin_html(body, send_body=send_body)
+                return
+            if request_path == "/admin/account":
+                self._send_admin_html(account_page(session, csrf_token), send_body=send_body)
+                return
+            self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=send_body, cache_control="no-store")
+
+        def _handle_admin_post(self, request_path: str) -> None:
+            form = self._read_form()
+            if form is None:
+                return
+            if request_path == "/admin/setup":
+                self._admin_setup(form)
+                return
+            if request_path == "/admin/login":
+                self._admin_login(form)
+                return
+            session_token = self._session_cookie()
+            session = service.admin_session(session_token)
+            csrf_token = form.get("csrf_token")
+            if not session or not service.csrf_valid(session, csrf_token):
+                self._send_json(HTTPStatus.FORBIDDEN, {"error": "csrf_or_session_invalid"}, send_body=True, cache_control="no-store")
+                return
+            if request_path == "/admin/logout":
+                service.logout_admin(session_token)
+                self._redirect("/admin/login", send_body=True, clear_cookie=True)
+                return
+            if request_path == "/admin/account":
+                try:
+                    updated = service.update_admin_account(
+                        session,
+                        form.get("username", ""),
+                        form.get("current_password", ""),
+                        form.get("new_password", ""),
+                        form.get("new_password_confirmation", ""),
+                    )
+                except AdminValidationError as exc:
+                    body = account_page(session, self._csrf_cookie() or "", error=str(exc))
+                    self._send_admin_html(body, send_body=True, status=HTTPStatus.BAD_REQUEST)
+                    return
+                body = account_page(updated, self._csrf_cookie() or "", success="Prisijungimo duomenys atnaujinti.")
+                self._send_admin_html(body, send_body=True)
+                return
+            self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=True, cache_control="no-store")
+
+        def _admin_setup(self, form: dict[str, str]) -> None:
+            client = f"admin-setup:{self.client_address[0]}"
+            if self._rate_limited(client, limit=10, window=900):
+                self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store")
+                return
+            if form.get("password") != form.get("password_confirmation"):
+                self._send_admin_html(setup_page(error="Slaptažodžiai nesutampa."), send_body=True, status=HTTPStatus.BAD_REQUEST)
+                return
+            try:
+                service.setup_admin(form.get("username", ""), form.get("password", ""), form.get("bootstrap_secret", ""))
+            except AdminValidationError as exc:
+                request_times[client].append(time.monotonic())
+                self._send_admin_html(setup_page(error=str(exc)), send_body=True, status=HTTPStatus.BAD_REQUEST)
+                return
+            request_times[client].clear()
+            self._redirect("/admin/login", send_body=True)
+
+        def _admin_login(self, form: dict[str, str]) -> None:
+            client = f"admin-login:{self.client_address[0]}"
+            if self._rate_limited(client, limit=10, window=900):
+                self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store")
+                return
+            try:
+                session_token, csrf_token = service.login_admin(form.get("username", ""), form.get("password", ""))
+            except AdminValidationError as exc:
+                request_times[client].append(time.monotonic())
+                self._send_admin_html(login_page(error=str(exc)), send_body=True, status=HTTPStatus.UNAUTHORIZED)
+                return
+            request_times[client].clear()
+            self.send_response(HTTPStatus.SEE_OTHER)
+            self.send_header("Location", "/admin")
+            self._set_admin_cookies(session_token, csrf_token)
+            self._admin_headers(content_length=0)
+            self.end_headers()
+
+        def _handle_public_statistics(self, *, send_body: bool) -> None:
+            try:
+                query = parse_qs(urlsplit(self.path).query)
+                limit = max(1, min(20, int(query.get("limit", ["5"])[0])))
+                rows = service.public_statistics(limit)
+            except (ValueError, LookupError):
+                self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=send_body, cache_control="no-store")
+                return
+            except Exception:
+                LOGGER.exception("public compatibility statistics failed")
                 self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "statistics_unavailable"}, send_body=send_body, cache_control="no-store")
                 return
-            self.send_response(HTTPStatus.OK)
-            self._common_headers(cache_control="no-store", content_type="text/html; charset=utf-8", content_length=len(body))
-            self.send_header("X-Robots-Tag", "noindex, nofollow")
-            self.send_header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'")
+            models = [{
+                "model": row["model"],
+                "attemptedInstallations": int(row["attempted_install_count"]),
+                "successfulInstallations": int(row["successful_install_count"]),
+                "failedInstallations": int(row["failed_install_count"]),
+                "successRate": float(row["success_rate"]) if row.get("success_rate") is not None else None,
+                "evidenceStatus": row["calculated_status"],
+                "lastSuccessfulInstallation": row["last_success"].isoformat() if isinstance(row.get("last_success"), datetime) else row.get("last_success"),
+            } for row in rows]
+            self._send_json(HTTPStatus.OK, {"schemaVersion": 1, "generatedAt": datetime.now(timezone.utc).isoformat(), "models": models}, send_body=send_body, cache_control="public, max-age=300, stale-while-revalidate=3600")
+
+        def _read_form(self) -> dict[str, str] | None:
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                length = 0
+            if length <= 0 or length > 16_384:
+                self._send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"error": "invalid_size"}, send_body=True, cache_control="no-store")
+                return None
+            content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+            if content_type != "application/x-www-form-urlencoded":
+                self._send_json(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, {"error": "invalid_content_type"}, send_body=True, cache_control="no-store")
+                return None
+            try:
+                values = parse_qs(self.rfile.read(length).decode("utf-8"), keep_blank_values=True, max_num_fields=12)
+            except (UnicodeDecodeError, ValueError):
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_form"}, send_body=True, cache_control="no-store")
+                return None
+            return {key: items[-1] for key, items in values.items()}
+
+        def _session_cookie(self) -> str | None:
+            return self._cookie_value("terento_admin_session")
+
+        def _csrf_cookie(self) -> str | None:
+            return self._cookie_value("terento_admin_csrf")
+
+        def _cookie_value(self, name: str) -> str | None:
+            cookie = SimpleCookie()
+            try:
+                cookie.load(self.headers.get("Cookie", ""))
+            except Exception:
+                return None
+            morsel = cookie.get(name)
+            return morsel.value if morsel else None
+
+        def _set_admin_cookies(self, session_token: str, csrf_token: str) -> None:
+            attributes = f"Max-Age={service.admin_session_ttl_seconds}; Path=/admin; Secure; HttpOnly; SameSite=Strict"
+            self.send_header("Set-Cookie", f"terento_admin_session={session_token}; {attributes}")
+            self.send_header("Set-Cookie", f"terento_admin_csrf={csrf_token}; {attributes}")
+
+        def _send_admin_html(
+            self, body: bytes, *, send_body: bool, status: HTTPStatus = HTTPStatus.OK
+        ) -> None:
+            self.send_response(status)
+            self._admin_headers(content_length=len(body))
             self.end_headers()
             if send_body:
                 self.wfile.write(body)
+
+        def _admin_headers(self, *, content_length: int) -> None:
+            self._common_headers(
+                cache_control="no-store",
+                content_type="text/html; charset=utf-8",
+                content_length=content_length,
+            )
+            self.send_header("X-Robots-Tag", "noindex, nofollow")
+            self.send_header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+            self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+
+        def _redirect(
+            self, location: str, *, send_body: bool, clear_cookie: bool = False
+        ) -> None:
+            self.send_response(HTTPStatus.SEE_OTHER)
+            self.send_header("Location", location)
+            if clear_cookie:
+                expired = "Max-Age=0; Path=/admin; Secure; HttpOnly; SameSite=Strict"
+                self.send_header("Set-Cookie", f"terento_admin_session=; {expired}")
+                self.send_header("Set-Cookie", f"terento_admin_csrf=; {expired}")
+            self._admin_headers(content_length=0)
+            self.end_headers()
+
+        def _rate_limited(self, key: str, *, limit: int, window: int) -> bool:
+            now = time.monotonic()
+            recent = request_times[key]
+            while recent and recent[0] < now - window:
+                recent.popleft()
+            return len(recent) >= limit
 
         def _handle_asset(self, request_path: str, *, send_body: bool) -> None:
             try:

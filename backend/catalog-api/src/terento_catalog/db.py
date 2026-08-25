@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -43,69 +44,132 @@ class Database:
                 event_id, occurred_at, model, family, firmware_version,
                 usb_vendor_id, usb_product_id, transport, provider, region,
                 map_release, terento_version, macos_version, phase_outcome,
-                automatic_finishing_result, error_category, raw_event
+                automatic_finishing_result, error_category, deletion_token_hash
             ) VALUES (
                 %(id)s, %(timestamp)s, %(model)s, %(family)s, %(firmwareVersion)s,
                 %(usbVendorID)s, %(usbProductID)s, %(transport)s, %(provider)s, %(region)s,
                 %(mapRelease)s, %(terentoVersion)s, %(macOSVersion)s, %(phaseOutcome)s,
-                %(automaticFinishingResult)s, %(errorCategory)s, %(raw)s::jsonb
+                %(automaticFinishingResult)s, %(errorCategory)s, %(deletionTokenHash)s
             ) ON CONFLICT (event_id) DO NOTHING
             RETURNING event_id
         """
-        values = {**event, "raw": json.dumps(event, separators=(",", ":"))}
+        values = {
+            **event,
+            # Swift Codable omits nil optional fields. PostgreSQL still needs
+            # explicit NULL parameters for the named placeholders below.
+            "family": event.get("family"),
+            "firmwareVersion": event.get("firmwareVersion"),
+            "errorCategory": event.get("errorCategory"),
+            "deletionTokenHash": self._token_hash(event.get("deletionToken")),
+        }
         with self.connection() as connection:
             inserted = connection.execute(query, values).fetchone() is not None
-            if event.get("userConfirmed"):
-                connection.execute(
-                    "INSERT INTO compatibility_evidence_confirmation (event_id) VALUES (%s) ON CONFLICT DO NOTHING",
-                    (event["id"],),
-                )
         return inserted
 
-    def compatibility_statistics(self) -> list[dict[str, Any]]:
+    def delete_compatibility_event(self, event_id: str, deletion_token: str) -> bool:
         query = """
-            SELECT e.model,
-                string_agg(DISTINCT COALESCE(e.firmware_version, 'unknown'), ', ' ORDER BY COALESCE(e.firmware_version, 'unknown')) AS firmware_versions,
-                count(*) AS attempted_install_count,
-                count(*) FILTER (WHERE phase_outcome = 'SUCCEEDED' AND automatic_finishing_result = 'VERIFIED') AS successful_install_count,
-                count(*) FILTER (WHERE phase_outcome = 'FAILED') AS failed_install_count,
-                round(100.0 * count(*) FILTER (WHERE phase_outcome = 'SUCCEEDED' AND automatic_finishing_result = 'VERIFIED') / NULLIF(count(*), 0), 1) AS success_rate,
-                max(occurred_at) FILTER (WHERE phase_outcome = 'SUCCEEDED' AND automatic_finishing_result = 'VERIFIED') AS last_success,
-                max(occurred_at) FILTER (WHERE phase_outcome = 'FAILED') AS last_failure,
-                COALESCE((
-                    SELECT jsonb_object_agg(COALESCE(category, 'unknown'), category_count)
-                    FROM (
-                        SELECT x.error_category AS category, count(*) AS category_count
-                        FROM compatibility_evidence_event x
-                        WHERE x.model = e.model AND x.phase_outcome = 'FAILED'
-                        GROUP BY x.error_category
-                    ) category_counts
-                ), '{}'::jsonb) AS error_categories,
-                CASE
-                    WHEN count(*) FILTER (WHERE phase_outcome = 'SUCCEEDED' AND automatic_finishing_result = 'VERIFIED') >= 3
-                         AND count(DISTINCT firmware_version) FILTER (WHERE phase_outcome = 'SUCCEEDED' AND automatic_finishing_result = 'VERIFIED') >= 2
-                         AND COALESCE(r.physical_device_evidence_count, 0) >= 2 THEN 'VERIFIED'
-                    WHEN EXISTS (
-                        SELECT 1 FROM compatibility_evidence_event same_firmware
-                        WHERE same_firmware.model = e.model
-                          AND same_firmware.phase_outcome = 'SUCCEEDED'
-                          AND same_firmware.automatic_finishing_result = 'VERIFIED'
-                          AND NULLIF(same_firmware.firmware_version, '') IS NOT NULL
-                        GROUP BY same_firmware.firmware_version
-                        HAVING count(*) >= 3
-                    ) THEN 'SUPPORTED'
-                    WHEN count(*) FILTER (WHERE phase_outcome = 'SUCCEEDED' AND automatic_finishing_result = 'VERIFIED' AND NULLIF(firmware_version, '') IS NOT NULL) >= 1 THEN 'TESTED'
-                    ELSE 'UNKNOWN' END AS calculated_status,
-                COALESCE(r.physical_device_evidence_count, 0) AS physical_device_evidence_count,
-                COALESCE(r.review_notes, '') AS review_notes,
-                COALESCE(r.review_status, 'PENDING') AS review_status
-            FROM compatibility_evidence_event e
-            LEFT JOIN compatibility_model_review r ON r.model = e.model
-            GROUP BY e.model, r.physical_device_evidence_count, r.review_notes, r.review_status
-            ORDER BY e.model
+            DELETE FROM compatibility_evidence_event
+            WHERE event_id = %s AND deletion_token_hash = %s
+            RETURNING event_id
         """
         with self.connection() as connection:
+            row = connection.execute(
+                query,
+                (event_id, self._token_hash(deletion_token)),
+            ).fetchone()
+        return row is not None
+
+    def prune_compatibility_events(self) -> int:
+        with self.connection() as connection:
+            result = connection.execute(
+                "DELETE FROM compatibility_evidence_event WHERE received_at < now() - interval '24 months'"
+            )
+        return int(result.rowcount)
+
+    @staticmethod
+    def _token_hash(token: str | None) -> str | None:
+        if not token:
+            return None
+        return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+    def compatibility_statistics(self) -> list[dict[str, Any]]:
+        query = "SELECT * FROM compatibility_model_statistics ORDER BY model"
+        with self.connection() as connection:
             return list(connection.execute(query).fetchall())
+
+    def public_compatibility_statistics(self, limit: int) -> list[dict[str, Any]]:
+        query = """
+            SELECT public_display_name AS model,
+                   attempted_install_count,
+                   successful_install_count,
+                   failed_install_count,
+                   success_rate,
+                   calculated_status,
+                   last_success
+            FROM compatibility_model_statistics
+            WHERE public_statistics_enabled = true
+              AND review_status = 'APPROVED'
+            ORDER BY successful_install_count DESC, attempted_install_count DESC, public_display_name
+            LIMIT %s
+        """
+        with self.connection() as connection:
+            return list(connection.execute(query, (limit,)).fetchall())
+
+    def admin_user_count(self) -> int:
+        with self.connection() as connection:
+            row = connection.execute("SELECT count(*) AS count FROM admin_user").fetchone()
+        return int(row["count"])
+
+    def create_admin_user(self, username: str, password_hash: str) -> dict[str, Any]:
+        query = """
+            INSERT INTO admin_user (username, password_hash)
+            VALUES (%s, %s)
+            RETURNING id, username, password_hash, created_at, last_login_at
+        """
+        with self.connection() as connection:
+            return dict(connection.execute(query, (username, password_hash)).fetchone())
+
+    def admin_user_by_username(self, username: str) -> dict[str, Any] | None:
+        query = "SELECT id, username, password_hash, created_at, last_login_at FROM admin_user WHERE username = %s"
+        with self.connection() as connection:
+            row = connection.execute(query, (username,)).fetchone()
+        return dict(row) if row else None
+
+    def create_admin_session(
+        self, user_id: int, session_hash: str, csrf_hash: str, expires_at: datetime
+    ) -> None:
+        with self.connection() as connection:
+            connection.execute("DELETE FROM admin_session WHERE expires_at <= now()")
+            connection.execute(
+                "INSERT INTO admin_session (token_hash, admin_user_id, csrf_token_hash, expires_at) VALUES (%s, %s, %s, %s)",
+                (session_hash, user_id, csrf_hash, expires_at),
+            )
+            connection.execute("UPDATE admin_user SET last_login_at = now() WHERE id = %s", (user_id,))
+
+    def admin_session(self, session_hash: str) -> dict[str, Any] | None:
+        query = """
+            SELECT u.id, u.username, u.password_hash, u.created_at, u.last_login_at,
+                   s.csrf_token_hash, s.expires_at
+            FROM admin_session s JOIN admin_user u ON u.id = s.admin_user_id
+            WHERE s.token_hash = %s AND s.expires_at > now()
+        """
+        with self.connection() as connection:
+            row = connection.execute(query, (session_hash,)).fetchone()
+        return dict(row) if row else None
+
+    def delete_admin_session(self, session_hash: str) -> None:
+        with self.connection() as connection:
+            connection.execute("DELETE FROM admin_session WHERE token_hash = %s", (session_hash,))
+
+    def update_admin_user(self, user_id: int, username: str, password_hash: str) -> dict[str, Any]:
+        query = """
+            UPDATE admin_user SET username = %s, password_hash = %s, updated_at = now()
+            WHERE id = %s
+            RETURNING id, username, password_hash, created_at, last_login_at
+        """
+        with self.connection() as connection:
+            row = connection.execute(query, (username, password_hash, user_id)).fetchone()
+        return dict(row)
 
     def catalog_snapshot(self) -> tuple[list[dict[str, Any]], datetime]:
         query = """

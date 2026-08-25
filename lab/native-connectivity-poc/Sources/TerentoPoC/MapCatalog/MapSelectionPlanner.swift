@@ -215,8 +215,11 @@ struct MapSelectionPlanner: Sendable {
             }
         }
 
+        // Install owns only new map additions. An update item can still be
+        // represented in a defensive plan for lifecycle tests, but it must
+        // never consume the Install screen's storage projection.
         let selectedSizes = selectedItems
-            .filter { $0.action == .install || $0.action == .update }
+            .filter { $0.action == .install }
             .map(\.installSizeBytes)
         let storagePlan = storagePlanner.plan(
             currentFreeSpace: currentFreeSpace,

@@ -42,6 +42,50 @@ struct TerentoManagedFilenameGenerator: Sendable {
         return filename == expected && isValid(filename)
     }
 
+    /// Matches a validated managed filename back to a normalized map
+    /// identity without requiring the original provider separators to have
+    /// survived `MapIdentity` normalization. For example, the installed
+    /// `ESP_CANARIAS` filename must match the normalized `ESPCANARIAS`
+    /// identity used by lifecycle state.
+    func matchesIdentity(
+        _ filename: String,
+        providerId: String,
+        regionId: String,
+        version: MapVersion? = nil
+    ) -> Bool {
+        guard isValid(filename),
+              let providerSentinel = try? self.filename(
+                  providerId: providerId,
+                  regionId: "region"
+              ) else {
+            return false
+        }
+
+        let sentinelSuffix = "region.img"
+        guard providerSentinel.hasSuffix(sentinelSuffix) else {
+            return false
+        }
+
+        let providerPrefix = String(providerSentinel.dropLast(sentinelSuffix.count))
+        guard filename.hasPrefix(providerPrefix), filename.hasSuffix(".img") else {
+            return false
+        }
+
+        var encodedRegion = String(
+            filename.dropFirst(providerPrefix.count).dropLast(".img".count)
+        )
+        if let version {
+            let versionSuffix = "_\(version.description)"
+            if encodedRegion.hasSuffix(versionSuffix) {
+                encodedRegion.removeLast(versionSuffix.count)
+            }
+        }
+
+        return !encodedRegion.isEmpty
+            && MapIdentity.normalizeRegion(encodedRegion)
+                == MapIdentity.normalizeRegion(regionId)
+    }
+
     func isValid(_ filename: String) -> Bool {
         guard filename.utf8.count <= 255,
               !filename.isEmpty,

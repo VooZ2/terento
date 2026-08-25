@@ -9,17 +9,9 @@ struct MTPReadBackMapObject: Equatable, Sendable {
     let itemID: UInt32
     let targetPath: String
     let reportedSizeBytes: UInt64
-    let localURL: URL
-}
-
-struct MTPWriteAndReadBackResult: Equatable, Sendable {
-    let written: MTPWrittenMapObject
-    let readBack: MTPReadBackMapObject
-}
-
-enum MTPWriteAndReadBackError: Error {
-    case write(any Error)
-    case readBack(any Error, createdItemID: UInt32?)
+    let sampledBytes: UInt64
+    let sampleCount: Int
+    let matchedSampleCount: Int
 }
 
 enum InstallationTransportError: LocalizedError, Equatable, Sendable {
@@ -55,60 +47,17 @@ protocol MapInstallationTransport: Sendable {
     ) throws -> MTPWrittenMapObject
 
     func readBack(
+        sourceURL: URL,
         targetFilename: String,
         expectedItemID: UInt32,
-        targetPath: String
+        targetPath: String,
+        expectedSizeBytes: UInt64,
+        sampleOffsets: [UInt64],
+        sampleLength: UInt32,
+        progress: @escaping @Sendable (TransferProgress) -> Void
     ) throws -> MTPReadBackMapObject
 
-    /// Performs the write and mandatory read-back verification in one native
-    /// transport session when the implementation supports it. The default
-    /// keeps test and non-native transports source-compatible.
-    func writeAndReadBack(
-        sourceURL: URL,
-        targetFilename: String,
-        targetPath: String,
-        progress: @escaping @Sendable (TransferProgress) -> Void,
-        onWriteCompleted: @escaping @Sendable () -> Void
-    ) throws -> MTPWriteAndReadBackResult
-
     func deleteExact(targetFilename: String, expectedItemID: UInt32) throws
-}
-
-extension MapInstallationTransport {
-    func writeAndReadBack(
-        sourceURL: URL,
-        targetFilename: String,
-        targetPath: String,
-        progress: @escaping @Sendable (TransferProgress) -> Void,
-        onWriteCompleted: @escaping @Sendable () -> Void
-    ) throws -> MTPWriteAndReadBackResult {
-        let written: MTPWrittenMapObject
-        do {
-            written = try write(
-                sourceURL: sourceURL,
-                targetFilename: targetFilename,
-                progress: progress
-            )
-        } catch {
-            throw MTPWriteAndReadBackError.write(error)
-        }
-        onWriteCompleted()
-
-        let readBackObject: MTPReadBackMapObject
-        do {
-            readBackObject = try readBack(
-                targetFilename: targetFilename,
-                expectedItemID: written.itemID,
-                targetPath: targetPath
-            )
-        } catch {
-            throw MTPWriteAndReadBackError.readBack(
-                error,
-                createdItemID: written.itemID
-            )
-        }
-        return MTPWriteAndReadBackResult(written: written, readBack: readBackObject)
-    }
 }
 
 protocol InstallationInventoryReader: Sendable {

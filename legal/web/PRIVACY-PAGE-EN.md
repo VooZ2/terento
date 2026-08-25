@@ -1,55 +1,49 @@
 # Privacy
 
-A short notice about the public website **terento.app**. It is separate from the [legal notices](/legal/).
+This notice covers the public website **terento.app** and the Terento macOS beta. It is separate from the [legal notices](/legal/).
 
-This is not a privacy policy for the macOS app, and not Freizeitkarte’s or OpenStreetMap’s policy. You download maps from the original provider; those files are not a Terento personal-data product.
+It does not cover the privacy practices of Freizeitkarte or OpenStreetMap. Map files are provided by their respective providers and are not personal data collected by Terento.
 
-**Status.** No controller identity or contact is designated yet. The project is published by Terento contributors. When a legal person is designated, it will be stated here. There is no email on this page — do not invent one.
+**Data controller:** Private individual. **Contact:** [privacy@terento.app](mailto:privacy@terento.app).
 
-## What this site does not do
+## Local app data
 
-There is no account, login, or required email. Device state and Terento manifests stay on your Mac under project rules and are not uploaded to a Terento server as a cloud watch profile during MVP.
+The website and app do not provide an account or login and do not require an email address. Device state, maps, Terento manifests and local installation records stay on your Mac. Local installation records are not sent to Terento unless you choose to share compatibility reports.
 
-libmtp and libusb are used only by the native macOS app, not by this website. Development builds use Homebrew; the production app uses the pinned bundled dynamic libraries described in the legal notices.
+## Optional compatibility reports
 
-## What runs on the website
+The macOS beta does not send compatibility reports by default. If you actively opt in, it sends privacy-minimised installation reports to `api.terento.app` to measure installation reliability and compatibility evidence by watch model and firmware. Declining does not limit the app or map installation.
 
-### Cloudflare
+A report may contain a random event ID, timestamp, watch model and family, firmware version, USB vendor and product identifiers, MTP transport, map provider, region and release, Terento version, macOS version, installation outcome and a general error category. It does not contain a Garmin Unit ID, serial number, account information, email address, local file paths, Terento manifests, map files or diagnostic logs.
 
-DNS and HTTPS at the edge are provided by Cloudflare. That typically means content delivery, TLS, and protection against abusive traffic. Project documentation names only this edge — not Workers, R2, or Turnstile.
+These reports are processed with your consent under Article 6(1)(a) GDPR. You can stop future sharing or delete uploaded reports in the app under **About Terento → Privacy**. Withdrawal does not affect processing that took place before it.
 
-IP addresses and request metadata may be processed so the site can be delivered and protected. [Cloudflare’s privacy policy](https://www.cloudflare.com/privacypolicy/) applies. Data may be processed outside Lithuania or the EU, depending on Cloudflare’s setup.
+## Storage and public statistics
 
-Cloudflare **may** set security cookies (for example `__cf_bm`, `cf_clearance`) if bot protection or challenges are enabled in the dashboard. That depends on Cloudflare settings. A normal response observed at the time of writing did not set those cookies — this page does not claim they exist if they do not.
+Compatibility reports are stored in Terento's PostgreSQL database on its hosting infrastructure for no longer than 24 months and are then deleted. Access to individual reports is restricted to the private administration service.
 
-### Umami analytics
+Terento may publish only reviewed aggregate compatibility statistics. Raw reports, event IDs, firmware lists, error details and request metadata are not published. The public compatibility statistics service is currently disabled.
 
-The production site loads an Umami script from `stats.enduristas.lt` to count visits. Umami states, and the script confirms: it **does not use tracking cookies**. There is no account, email, or personal profile across visits.
+## Cloudflare and hosting
 
-It typically records path, referrer, browser and device type, and country-level context. Terento does not enable Umami `identify()`. The script may read a `localStorage` key `umami.disabled` if you set it yourself as an opt-out.
+Cloudflare provides services used to deliver and secure the website and API, including DNS, HTTPS/TLS, content delivery and protection against abusive traffic. The website, API and database run on Hostinger infrastructure. Terento and these providers may process IP addresses, request metadata and security-related information to operate and protect these services. [Cloudflare's privacy policy](https://www.cloudflare.com/privacypolicy/) and [Hostinger's privacy policy](https://www.hostinger.com/legal/privacy-policy) apply.
 
-See the [Umami FAQ](https://umami.is/docs/faq).
+## Umami analytics
 
-### Language preference
+The site loads the Umami analytics script from `stats.enduristas.lt` only after you consent, to measure visits. Umami does not use tracking cookies or create personal profiles. Visit statistics are processed with your consent under Article 6(1)(a) GDPR.
 
-If you choose a site language, your browser may store `terento-language` (`localStorage`). That is a preference you asked for, so the same language can open next time — not advertising tracking.
+It may record the page path, referrer, browser and device type, and country-level context to produce aggregated statistics. It is not used for advertising or personal profiling. See the [Umami FAQ](https://umami.is/docs/faq).
 
-## Cookies — what applies
+## Language preference and cookies
 
-**No consent banner is needed.**
+When you choose a site language, the site stores `terento-language` in your browser's local storage. The site does not use advertising or profiling cookies. Cloudflare security cookies, if used, serve infrastructure and security purposes.
 
-This site does not use advertising or profiling cookies. Visit statistics (Umami) are cookieless and do not build a personal profile. Language `localStorage` is written only when you choose a language. Cloudflare security cookies, if they ever appear, would be for infrastructure, not marketing.
-
-If that changes (for example non-essential cookies or profiling analytics), this page must be updated and only then should consent be asked.
-
-Do not put an absolute “no cookies are used” line in the footer if Cloudflare settings can change. A more accurate line: visit statistics do not use cookies; details on this page.
+If you do not consent to analytics, Umami is not loaded. You can change or withdraw analytics consent at any time using the website privacy settings.
 
 ## Your rights
 
-Under the GDPR you may have rights to access, rectify, erase, restrict processing, object, and lodge a complaint with a supervisory authority. In Lithuania that is the State Data Protection Inspectorate (VDAI).
+Under the GDPR you may have rights to access, rectify, erase, restrict processing, object, data portability, withdraw consent and lodge a complaint with a supervisory authority. In Lithuania that is the State Data Protection Inspectorate (VDAI).
 
-Until a controller contact exists, exercising those rights through a Terento channel is limited. That is stated openly. Nothing here limits those rights.
+Use the app to stop sharing or delete uploaded compatibility reports. For other requests, contact [privacy@terento.app](mailto:privacy@terento.app).
 
-The purpose is to serve a static site, protect it, and see aggregated visit counts. A full GDPR Article 6 legal-basis statement can be given only by a designated controller; it will be added together with the identity.
-
-This notice is a transparency text, not legal advice.
+The controller relies on legitimate interests under Article 6(1)(f) GDPR to deliver and secure the website and API, prevent abuse, and maintain network and information security. Website analytics and optional compatibility reports are processed only with consent under Article 6(1)(a) GDPR.

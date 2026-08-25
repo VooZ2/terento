@@ -1,7 +1,10 @@
 # Catalog database schema
 
 The PostgreSQL schema is applied by the forward-only migrations in
-`src/terento_catalog/migrations/`. The service stores metadata only.
+`src/terento_catalog/migrations/`. Map/provider tables store metadata only.
+Compatibility evidence, administrator credentials, and sessions are isolated
+from those tables and contain no Garmin Unit IDs, serial numbers, local
+manifests, local paths, or map binaries.
 
 ## `map_provider`
 
@@ -165,3 +168,31 @@ Append-only operational diagnostics for Garmin collections. It stores source,
 timestamps, counts, status (`RUNNING`, `SUCCEEDED`, `PARTIAL`, `FAILED`), and
 structured warning/error diagnostics. These diagnostics are not exposed by
 the public API.
+
+## Compatibility evidence and statistics
+
+`compatibility_evidence_event` contains idempotent opt-in event rows identified
+by a client-generated UUID. Only allowlisted columns are retained; the original
+JSON payload is not stored. A per-event deletion token is retained only as a
+SHA-256 hash, allowing the client to erase an uploaded event without an
+account. Rows older than 24 months are deleted automatically. The retired
+confirmation table has been removed because the current client does not create
+a separate post-install confirmation signal. Migration 011 also removes older
+beta events that had no deletion token, rather than retaining reports the
+revised client could not erase. `compatibility_model_review`
+stores maintainer-reviewed physical-device evidence, notes, review state, and
+the default-false public-statistics switch/display name.
+
+`compatibility_model_statistics` is a live SQL view over the immutable event
+table and model review metadata. It calculates attempted, successful and
+failed installation counts, success rate, firmware coverage, latest outcomes,
+error-category totals and the evidence-based status. The private dashboard
+reads this view. The prepared public query additionally requires both
+`review_status = 'APPROVED'` and `public_statistics_enabled = true`.
+
+## Administrator authentication
+
+`admin_user` stores a unique username and salted PBKDF2-SHA256 password hash;
+no recoverable password is stored. `admin_session` stores only hashes of the
+opaque session and CSRF tokens with an expiry and user foreign key. PostgreSQL
+is not published outside the private Docker network.

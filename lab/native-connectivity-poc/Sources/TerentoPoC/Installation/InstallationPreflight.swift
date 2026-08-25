@@ -145,7 +145,7 @@ struct InstallationPreflightEngine: Sendable {
         do {
             proposedFilename = try TerentoManagedFilenameGenerator().filename(
                 providerId: selectedMap.providerId,
-                regionId: selectedMap.regionId
+                regionId: selectedMap.canonicalRegionId
             )
         } catch {
             return blocked(

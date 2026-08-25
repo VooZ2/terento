@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script defer src="/site-shell.js?v=20260825-4"></script>
+    <script defer src="/privacy-consent.js?v=20260824-1"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#F7F3EC">
+    <meta name="description" content="See Garmin watch compatibility with Terento, including tested models and successful community map installations.">
+    <meta name="robots" content="index,follow">
+    <link rel="canonical" href="https://terento.app/compatibility/">
+    <link rel="icon" href="/favicon.ico?v=20260825-2" sizes="any">
+    <link rel="icon" href="/favicon.svg?v=20260825-2" type="image/svg+xml">
+    <link rel="stylesheet" href="/styles.css?v=20260825-7">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Terento">
+    <meta property="og:title" content="Garmin Watch Compatibility with Terento | Terento">
+    <meta property="og:description" content="See Garmin watch compatibility with Terento, including tested models and successful community map installations.">
+    <meta property="og:url" content="https://terento.app/compatibility/">
+    <meta property="og:image" content="https://terento.app/og.svg?v=20260825-1">
+    <meta property="og:image:type" content="image/svg+xml">
+    <meta property="og:image:alt" content="Terento — Your device, ready for where you're going.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Garmin Watch Compatibility with Terento | Terento">
+    <meta name="twitter:description" content="See Garmin watch compatibility with Terento, including tested models and successful community map installations.">
+    <meta name="twitter:image" content="https://terento.app/og.svg?v=20260825-1">
+    <title>Garmin Watch Compatibility with Terento | Terento</title>
+  </head>
+  <body class="compatibility-page">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    <header class="site-header">
+      <div class="shell header-inner">
+        <a class="brand-lockup" href="/" aria-label="Terento home">
+          <img src="/assets/logo-sky.svg" alt="" width="40" height="40">
+          <span>Terento</span>
+        </a>
+        <nav aria-label="Primary navigation">
+          <a href="/#about">About</a>
+          <a href="/compatibility/" aria-current="page">Compatibility</a>
+          <a href="/#faq">FAQ</a>
+          <a href="/download/">Download</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main-content">
+      <section class="compatibility-hero" aria-labelledby="compatibility-title">
+        <div class="shell compatibility-hero-inner">
+          <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Compatibility</p>
+          <h1 id="compatibility-title">Garmin watch compatibility with Terento</h1>
+          <p class="hero-lede">See which Garmin watches have real Terento installation evidence. Compatibility is tracked by exact model and updated as more installations are verified.</p>
+        </div>
+      </section>
+
+      <section class="compatibility-directory section" aria-labelledby="directory-title">
+        <div class="shell">
+          <div class="section-heading compatibility-heading">
+            <p class="eyebrow">Compatibility evidence</p>
+            <h2 id="directory-title">Tested Garmin models</h2>
+          </div>
+
+          <div class="compatibility-summary" id="compatibility-summary" aria-live="polite" aria-busy="true">
+            <p class="compatibility-summary-line">
+              <span><strong data-summary="models">0</strong> <span data-summary-model-label>models tested</span></span>
+              <span class="compatibility-summary-separator" aria-hidden="true">·</span>
+              <span><strong data-summary="successes">0</strong> successful installs</span>
+              <span class="compatibility-summary-updated" data-summary-updated hidden><span aria-hidden="true">·</span> Updated <time data-summary="updated"></time></span>
+            </p>
+          </div>
+
+          <form class="compatibility-filters" id="compatibility-filters" role="search">
+            <label class="compatibility-filter-control compatibility-search">
+              <span class="sr-only">Search models</span>
+              <input id="watch-search" type="search" placeholder="Search models" autocomplete="off">
+            </label>
+            <label class="compatibility-filter-control compatibility-filter-select">
+              <span class="sr-only">Filter by status</span>
+              <select id="status-filter">
+                <option value="ALL">All statuses</option>
+                <option value="VERIFIED">Verified</option>
+                <option value="SUPPORTED">Supported</option>
+                <option value="TESTED">Tested</option>
+              </select>
+            </label>
+            <label class="compatibility-filter-control compatibility-filter-select">
+              <span class="sr-only">Filter by family</span>
+              <select id="family-filter">
+                <option value="ALL">All families</option>
+              </select>
+            </label>
+            <label class="compatibility-filter-control compatibility-filter-select">
+              <span class="sr-only">Sort models</span>
+              <select id="sort-filter">
+                <option value="attempts">Most installations</option>
+                <option value="successes">Most successful</option>
+                <option value="name">A–Z</option>
+                <option value="status">Status</option>
+              </select>
+            </label>
+          </form>
+
+          <p class="compatibility-results-count" id="results-count" aria-live="polite"></p>
+          <div class="watch-grid" id="watch-grid" aria-live="polite" aria-busy="true"></div>
+          <p class="compatibility-empty" id="compatibility-empty" hidden>No tried models match these filters.</p>
+          <p class="compatibility-error" id="compatibility-error" hidden>Compatibility results are temporarily unavailable. Please try again later.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="shell footer-grid">
+        <div class="footer-identity">
+          <a class="brand-lockup footer-brand" href="/" aria-label="Terento home">
+            <img src="/assets/logo-sky.svg" alt="" width="32" height="32">
+            <span>Terento</span>
+          </a>
+          <p class="footer-status">Open-source project</p>
+        </div>
+        <nav class="footer-nav" aria-label="Footer navigation">
+          <a href="/#about">About</a>
+          <a href="/#faq">FAQ</a>
+          <a href="/download/">Download</a>
+          <a href="/legal/">Legal</a>
+          <a href="/privacy/">Privacy</a>
+        </nav>
+      </div>
+      <div class="shell footer-bottom">
+        <p>© 2026 Terento Project</p>
+        <p>Beta</p>
+      </div>
+    </footer>
+
+    <script defer src="/compatibility/compatibility.js?v=20260825-6"></script>
+  </body>
+</html>

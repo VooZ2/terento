@@ -2,13 +2,26 @@ import Foundation
 
 private actor UploadRecorder: InstallationEvidenceUploading {
     let shouldFail: Bool
+    var failuresRemaining: Int
     private(set) var uploaded: [UUID] = []
-    init(shouldFail: Bool = false) { self.shouldFail = shouldFail }
+    private(set) var deleted: [UUID] = []
+    init(shouldFail: Bool = false, failuresRemaining: Int = 0) {
+        self.shouldFail = shouldFail
+        self.failuresRemaining = failuresRemaining
+    }
     func upload(_ event: InstallationEvidenceEvent) async throws {
-        if shouldFail { throw URLError(.cannotConnectToHost) }
+        if shouldFail || failuresRemaining > 0 {
+            if failuresRemaining > 0 { failuresRemaining -= 1 }
+            throw URLError(.cannotConnectToHost)
+        }
         uploaded.append(event.id)
     }
+    func delete(_ event: InstallationEvidenceEvent) async throws {
+        if shouldFail { throw URLError(.cannotConnectToHost) }
+        deleted.append(event.id)
+    }
     func count() -> Int { uploaded.count }
+    func deletionCount() -> Int { deleted.count }
 }
 
 @main
@@ -17,9 +30,9 @@ struct InstallationEvidenceTests {
     static func main() async throws {
         try testEventStorageAndDuplicatePrevention()
         testStatisticsAndPromotionThresholds()
-        try await testConsentConfirmationAndUploadIsolation()
+        try await testConsentAndUploadIsolation()
         testDiagnosticSanitization()
-        print("PASS: 17 installation evidence, privacy, consent, upload, report, and promotion tests")
+        print("PASS: installation evidence, privacy, consent, upload, report, and promotion tests")
     }
 
     static let identity = DeviceIdentity(
@@ -59,6 +72,16 @@ struct InstallationEvidenceTests {
         expect(inserted, "successful Finishing event is stored")
         expect(!duplicated, "duplicate event ID is rejected")
         expect(store.events().count == 1, "polling and preflight create no event unless append is explicitly called")
+        let broadRegionPackage = MapPackage(
+            id: "freizeitkarte-balearics", providerId: "freizeitkarte", regionId: "AZORES",
+            name: "Balearics", version: MapVersion(year: 2026, month: 5)!, sizeBytes: 1,
+            sourceURL: nil, releaseDate: nil, identifier: "BALEARICS"
+        )
+        let broadRegionEvent = InstallationEvidenceEvent(
+            identity: identity, package: broadRegionPackage, outcome: .succeeded,
+            finishingResult: .verified, terentoVersion: "test", macOSVersion: "test"
+        )
+        expect(broadRegionEvent.region == "BALEARICS", "evidence uses concrete package identity, not its broad catalog group")
         let failed = makeEvent(outcome: .failed, finishing: .failed)
         let failedInserted = try store.append(failed, queueForUpload: false)
         expect(failedInserted, "failed started installation is stored")
@@ -93,38 +116,166 @@ struct InstallationEvidenceTests {
         let report = DiagnosticReportSanitizer.sanitize("User /Users/alice/private Unit ID: 123 Serial Number=ABC token: secret")
         expect(!report.contains("alice"), "diagnostic report removes usernames and local paths")
         expect(!report.contains("123") && !report.contains("ABC") && !report.contains("secret"), "diagnostic report removes identifiers and secrets")
+        let backendPayload = DiagnosticReportSanitizer.sanitize("{\"serial\":\"ABC\",\"detail\":\"safe status\"}")
+        expect(!backendPayload.contains("ABC") && backendPayload.contains("safe status"), "JSON backend payload redacts restricted identifiers")
     }
 
     @MainActor
-    static func testConsentConfirmationAndUploadIsolation() async throws {
+    static func testConsentAndUploadIsolation() async throws {
+        struct LegacyEvidenceFile: Encodable {
+            let events: [InstallationEvidenceEvent]
+            let pendingUploadEventIDs: [UUID]
+            let uploadedEventIDs: [UUID]
+            let consent: VersionedEvidenceConsent
+        }
+
+        let staleRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: staleRoot, withIntermediateDirectories: true)
+        let staleEvent = makeEvent()
+        let staleFile = LegacyEvidenceFile(
+            events: [staleEvent],
+            pendingUploadEventIDs: [staleEvent.id],
+            uploadedEventIDs: [],
+            consent: VersionedEvidenceConsent(noticeVersion: 1, choice: .accepted, decidedAt: Date())
+        )
+        let staleEncoder = JSONEncoder()
+        staleEncoder.dateEncodingStrategy = .iso8601
+        try staleEncoder.encode(staleFile).write(
+            to: staleRoot.appendingPathComponent("installation-evidence.json"),
+            options: .atomic
+        )
+        let stale = InstallationEvidenceController(
+            store: LocalInstallationEvidenceStore(rootURL: staleRoot),
+            uploader: UploadRecorder()
+        )
+        expect(stale.currentConsentChoice == .declined, "an older consent notice is invalidated")
+        expect(stale.store.pendingUploads().isEmpty, "invalidating stale consent clears its upload queue")
+
         let declinedRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let declinedUploader = UploadRecorder()
         let declined = InstallationEvidenceController(store: LocalInstallationEvidenceStore(rootURL: declinedRoot), uploader: declinedUploader)
+        expect(declined.compatibilitySharingEnabled, "first-install compatibility sharing is visibly checked")
         declined.decideConsent(.declined)
+        expect(!declined.compatibilitySharingEnabled, "turning sharing off updates the shared preference")
+        let declinedReloaded = InstallationEvidenceController(
+            store: LocalInstallationEvidenceStore(rootURL: declinedRoot),
+            uploader: UploadRecorder()
+        )
+        expect(!declinedReloaded.compatibilitySharingEnabled, "the declined preference persists across controller instances")
         declined.record(makeEvent())
-        declined.confirmLatestSuccessfulInstallation()
         await declined.flushPendingUploads()
         let declinedUploadCount = await declinedUploader.count()
         expect(declinedUploadCount == 0, "declined consent disables upload")
-        expect(declined.latestEvent?.userConfirmed == true, "Confirm stays local without opt-in")
 
         let acceptedRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let acceptedUploader = UploadRecorder()
-        let accepted = InstallationEvidenceController(store: LocalInstallationEvidenceStore(rootURL: acceptedRoot), uploader: acceptedUploader)
+        let accepted = InstallationEvidenceController(
+            store: LocalInstallationEvidenceStore(rootURL: acceptedRoot),
+            uploader: acceptedUploader,
+            automaticRetryDelays: []
+        )
         accepted.decideConsent(.accepted)
-        accepted.record(makeEvent())
-        await accepted.flushPendingUploads()
-        accepted.confirmLatestSuccessfulInstallation()
-        await accepted.flushPendingUploads()
+        expect(accepted.compatibilitySharingEnabled, "turning sharing on updates the shared preference")
+        let acceptedReloaded = InstallationEvidenceController(
+            store: LocalInstallationEvidenceStore(rootURL: acceptedRoot),
+            uploader: UploadRecorder(),
+            automaticRetryDelays: []
+        )
+        expect(acceptedReloaded.compatibilitySharingEnabled, "the accepted preference persists across controller instances")
+        let immediateStatus = await accepted.recordAndUpload([makeEvent()])
+        if case let .sent(count) = immediateStatus {
+            expect(count == 1, "immediate opt-in upload reports the current event as sent")
+        } else {
+            expect(false, "immediate opt-in upload exposes sent status")
+        }
         let acceptedUploadCount = await acceptedUploader.count()
-        expect(acceptedUploadCount >= 1, "opt-in uploads installation and Confirm signal")
+        expect(acceptedUploadCount >= 1, "opt-in uploads installation evidence")
+        expect(accepted.store.pendingUploads().isEmpty, "successful immediate upload clears the pending queue")
+
+        let declinedImmediateRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let declinedImmediate = InstallationEvidenceController(
+            store: LocalInstallationEvidenceStore(rootURL: declinedImmediateRoot),
+            uploader: UploadRecorder(),
+            automaticRetryDelays: []
+        )
+        declinedImmediate.decideConsent(.declined)
+        let declinedStatus = await declinedImmediate.recordAndUpload([makeEvent()])
+        expect(declinedStatus == .notShared, "opt-out reports that compatibility evidence was not shared")
+
+        let immediateFailureRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let immediateFailure = InstallationEvidenceController(
+            store: LocalInstallationEvidenceStore(rootURL: immediateFailureRoot),
+            uploader: UploadRecorder(shouldFail: true),
+            automaticRetryDelays: []
+        )
+        immediateFailure.decideConsent(.accepted)
+        let immediateFailureStatus = await immediateFailure.recordAndUpload([makeEvent()])
+        if case let .queued(count, _, willRetry) = immediateFailureStatus {
+            expect(count == 1 && willRetry, "immediate upload failure reports a retryable queued state")
+        } else {
+            expect(false, "immediate upload failure exposes a delivery reason")
+        }
+        expect(immediateFailure.store.pendingUploads().count == 1, "failed immediate upload remains queued for retry")
 
         let failingRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        let failing = InstallationEvidenceController(store: LocalInstallationEvidenceStore(rootURL: failingRoot), uploader: UploadRecorder(shouldFail: true))
+        let failing = InstallationEvidenceController(
+            store: LocalInstallationEvidenceStore(rootURL: failingRoot),
+            uploader: UploadRecorder(shouldFail: true),
+            automaticRetryDelays: []
+        )
         failing.decideConsent(.accepted)
         failing.record(makeEvent())
         await failing.flushPendingUploads()
         expect(failing.store.pendingUploads().count == 1, "upload failure remains queued and does not change install evidence")
+        if case let .waiting(count, _, willRetry) = failing.uploadStatus {
+            expect(count == 1 && willRetry, "transient upload failure is visible and retryable")
+        } else {
+            expect(false, "transient upload failure exposes waiting status")
+        }
+        expect(
+            InstallationEvidenceUploadError.httpStatus(code: 400, body: "missing_fields").isRetryable == false,
+            "permanent HTTP validation errors are not retried"
+        )
+        let safeFailureMessage = InstallationEvidenceUploadError
+            .httpStatus(code: 500, body: "{\"serial\":\"hidden\",\"detail\":\"backend trace\"}")
+            .errorDescription ?? ""
+        expect(
+            !safeFailureMessage.contains("500")
+                && !safeFailureMessage.contains("backend trace")
+                && !safeFailureMessage.contains("hidden"),
+            "backend and HTTP details stay out of user-facing upload errors"
+        )
+        failing.decideConsent(.declined)
+        expect(failing.store.pendingUploads().isEmpty, "withdrawing consent clears queued reports")
+
+        let retryRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let retryUploader = UploadRecorder(failuresRemaining: 1)
+        let retrying = InstallationEvidenceController(
+            store: LocalInstallationEvidenceStore(rootURL: retryRoot),
+            uploader: retryUploader,
+            automaticRetryDelays: [0, 0, 0]
+        )
+        retrying.decideConsent(.accepted)
+        retrying.record(makeEvent())
+        try await Task.sleep(nanoseconds: 100_000_000)
+        expect(retrying.store.pendingUploads().isEmpty, "transient upload failure is retried automatically")
+        let retriedUploadCount = await retryUploader.count()
+        expect(retriedUploadCount == 1, "retried evidence is marked uploaded after success")
+
+        let deletionRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let deletionUploader = UploadRecorder()
+        let deletion = InstallationEvidenceController(
+            store: LocalInstallationEvidenceStore(rootURL: deletionRoot),
+            uploader: deletionUploader,
+            automaticRetryDelays: []
+        )
+        deletion.decideConsent(.accepted)
+        deletion.record(makeEvent())
+        await deletion.flushPendingUploads()
+        let deleted = await deletion.deleteUploadedReports()
+        let deletionCount = await deletionUploader.deletionCount()
+        expect(deleted == 1 && deletionCount == 1, "uploaded reports can be deleted with their local deletion token")
+        expect(deletion.store.uploadedEvents().isEmpty, "deleted reports are no longer marked as uploaded")
     }
 
     static func expect(_ condition: @autoclosure () -> Bool, _ message: String) {

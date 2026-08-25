@@ -41,13 +41,29 @@ enum MapSelectionPresentationModel: Sendable {
         return installed(items).filter { recognizedCatalogIDs.contains($0.id) }
     }
 
+    /// Returns the maps that belong in the Install catalogue.
+    ///
+    /// Normal browsing is intentionally limited to new-install candidates.
+    /// A non-empty search may also reveal an installed catalog match so the
+    /// user can understand why that region is not available to install here;
+    /// the row remains non-selectable and lifecycle actions stay in Manage.
     static func available(
         _ items: [MapSelectionItem],
         query: String
     ) -> [MapSelectionItem] {
         let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         return items
-            .filter { $0.comparison.installedMap == nil && $0.action == .install }
+            .filter { item in
+                if normalizedQuery.isEmpty {
+                    return item.comparison.installedMap == nil && item.action == .install
+                }
+
+                if item.comparison.installedMap != nil {
+                    return true
+                }
+
+                return item.action == .install
+            }
             .filter { item in
                 guard !normalizedQuery.isEmpty else { return true }
                 return MapDisplayNameNormalizer.searchableText(

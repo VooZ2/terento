@@ -115,6 +115,10 @@ struct SafeDeleteResult: Equatable, Sendable {
 /// Backup-protected callers such as Safe Update opt into the additional
 /// verified-backup gate.
 struct SafeDeleteAdapter: Sendable {
+    private static let postDeleteRescanAttempts = 3
+    private static let postDeleteRescanSettleInterval: TimeInterval = 0.75
+    private static let postDeleteRescanRetryInterval: TimeInterval = 0.5
+
     func delete(
         target: SafeDeleteTarget,
         confirmed: Bool,
@@ -206,30 +210,47 @@ struct SafeDeleteAdapter: Sendable {
             )
         }
 
-        do {
-            let remaining = try rescan()
-            let stillPresent = remaining.contains {
-                $0.itemID == target.objectID || $0.path == target.expectedPath
+        // DeleteObject completes before the watch has necessarily published
+        // its refreshed object list. Wait briefly, then use fresh read-only
+        // MTP sessions for bounded verification retries. This never retries
+        // the destructive delete itself.
+        Thread.sleep(forTimeInterval: Self.postDeleteRescanSettleInterval)
+        var observedSuccessfulRescan = false
+        for attempt in 0..<Self.postDeleteRescanAttempts {
+            if attempt > 0 {
+                Thread.sleep(forTimeInterval: Self.postDeleteRescanRetryInterval)
             }
-            guard !stillPresent else {
-                return result(
-                    target,
-                    status: .failedPostVerify,
-                    message: "Removal could not be verified after rescanning the Garmin device."
-                )
+
+            do {
+                let remaining = try rescan()
+                observedSuccessfulRescan = true
+                let stillPresent = remaining.contains {
+                    $0.itemID == target.objectID || $0.path == target.expectedPath
+                }
+                if !stillPresent {
+                    return result(
+                        target,
+                        status: .success,
+                        message: "The Terento-managed map was removed and verified as absent."
+                    )
+                }
+            } catch {
+                continue
             }
-        } catch {
+        }
+
+        if observedSuccessfulRescan {
             return result(
                 target,
                 status: .failedPostVerify,
-                message: "The Garmin device could not be rescanned after removal."
+                message: "Removal could not be verified after rescanning the Garmin device."
             )
         }
 
         return result(
             target,
-            status: .success,
-            message: "The Terento-managed map was removed and verified as absent."
+            status: .failedPostVerify,
+            message: "The Garmin device could not be rescanned after removal."
         )
     }
 
@@ -240,30 +261,16 @@ struct SafeDeleteAdapter: Sendable {
         }
 
         let generator = TerentoManagedFilenameGenerator()
-        if let expectedVersion = target.expectedVersion,
-           generator.isVersioned(
-               target.expectedFilename,
-               providerId: target.mapIdentity.provider,
-               regionId: target.mapIdentity.region,
-               version: expectedVersion
-           ) {
-            return true
-        }
-
-        // Stage 4.2 created the first managed map with the stable base name,
-        // while later safe-update flows use a versioned name. The installed
-        // metadata can contain a release even when the filename is still the
-        // original base name. A release value must not turn that valid base
-        // target into an ownership failure.
-        guard generator.isValid(target.expectedFilename),
-              let generated = try? generator.filename(
-                  providerId: target.mapIdentity.provider,
-                  regionId: target.mapIdentity.region
-              ) else {
-            return false
-        }
-
-        return generated == target.expectedFilename
+        // The exact path, filename, size, identity, and hash still come from
+        // the manifest-backed lifecycle context. Match normalized identity
+        // here because composite provider regions such as ESP_CANARIAS lose
+        // separators when represented as MapIdentity (`ESPCANARIAS`).
+        return generator.matchesIdentity(
+            target.expectedFilename,
+            providerId: target.mapIdentity.provider,
+            regionId: target.mapIdentity.region,
+            version: target.expectedVersion
+        )
     }
 
     private func isValidIntegrityRecord(_ target: SafeDeleteTarget) -> Bool {

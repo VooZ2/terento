@@ -23,6 +23,7 @@ final class DeviceEngine: ObservableObject {
     private var activeNativeReadTask: Task<DeviceSnapshot, Error>?
     private var activeNativePresenceTask: Task<Void, Never>?
     private var readingStatusTask: Task<Void, Never>?
+    private var postEjectPresenceTask: Task<Void, Never>?
     private var presenceMonitoringEnabled = true
 
     init(
@@ -208,6 +209,74 @@ final class DeviceEngine: ObservableObject {
             self.state = self.stateManager.state
             self.readingMessage = "Safe to disconnect — you can unplug your Garmin."
             self.appendLog("Safe to disconnect; no device files were changed")
+            self.startPostEjectPresenceMonitoring()
+        }
+    }
+
+    /// Keeps the Safe to disconnect result visible while the watch remains
+    /// physically attached. Once it disappears from the USB bus, Terento
+    /// returns to normal detection so a reconnect or another watch can be
+    /// discovered without restarting the app.
+    private func startPostEjectPresenceMonitoring() {
+        postEjectPresenceTask?.cancel()
+        postEjectPresenceTask = nil
+
+        guard state == .safeToDisconnect,
+              let presenceTransport = transport as? any GarminUSBPresenceReader else {
+            return
+        }
+
+        postEjectPresenceTask = Task { [weak self] in
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(for: .milliseconds(500))
+                    guard !Task.isCancelled,
+                          let self,
+                          self.state == .safeToDisconnect else {
+                        return
+                    }
+
+                    let isPresent = try await self.readNativeGarminUSBPresence(
+                        transport: presenceTransport
+                    )
+                    guard !Task.isCancelled else { return }
+
+                    if !isPresent {
+                        self.handlePhysicalDisconnectAfterEject()
+                        return
+                    }
+                } catch {
+                    guard !Task.isCancelled else { return }
+
+                    if let gateError = error as? MTPOperationGateError,
+                       gateError == .lifecycleBusy {
+                        continue
+                    }
+
+                    // A transient USB enumeration failure is not evidence
+                    // that the watch was unplugged. Keep the safe state and
+                    // retry instead of guessing.
+                    continue
+                }
+            }
+        }
+    }
+
+    private func handlePhysicalDisconnectAfterEject() {
+        guard state == .safeToDisconnect else {
+            return
+        }
+
+        postEjectPresenceTask = nil
+        stateManager.deviceDisconnected()
+        state = stateManager.state
+        readingMessage = "Waiting for your Garmin…"
+        appendLog("Ejected Garmin physically disconnected; restarting device discovery")
+
+        Task { [weak self] in
+            await Task.yield()
+            guard let self, self.state == .disconnected else { return }
+            self.readDevice()
         }
     }
 
@@ -221,6 +290,15 @@ final class DeviceEngine: ObservableObject {
         while !Task.isCancelled && attempt < maximumAttempts {
             guard !Task.isCancelled else {
                 return nil
+            }
+
+            if let presenceTransport = transport as? any GarminUSBPresenceReader {
+                let usbReady = await waitForGarminUSBPresenceBeforeSnapshot(
+                    transport: presenceTransport
+                )
+                guard usbReady, !Task.isCancelled else {
+                    return nil
+                }
             }
 
             attempt += 1
@@ -245,6 +323,60 @@ final class DeviceEngine: ObservableObject {
             throw lastError
         }
         return nil
+    }
+
+    /// Full libmtp discovery is attempted only after Garmin is visible on the
+    /// USB bus. This is especially important after Safe Eject: repeatedly
+    /// opening libmtp while the cable is absent can leave reconnect detection
+    /// in a noisy native retry loop. A short settle interval lets macOS finish
+    /// enumerating the returning device before the first MTP read.
+    private func waitForGarminUSBPresenceBeforeSnapshot(
+        transport: any GarminUSBPresenceReader
+    ) async -> Bool {
+        var observedAbsence = false
+
+        while !Task.isCancelled {
+            do {
+                let isPresent = try await readNativeGarminUSBPresence(
+                    transport: transport
+                )
+                guard !Task.isCancelled else { return false }
+
+                if isPresent {
+                    if observedAbsence {
+                        readingMessage = "Garmin detected. Checking the device…"
+                        appendLog("Garmin returned to USB; waiting for MTP enumeration")
+                        do {
+                            try await Task.sleep(for: .milliseconds(750))
+                        } catch {
+                            return false
+                        }
+                    }
+                    return true
+                }
+
+                if !observedAbsence {
+                    appendLog("Waiting for Garmin USB connection before MTP detection")
+                }
+                observedAbsence = true
+                readingAttempt = 0
+                readingMessage = "Waiting for your Garmin…"
+            } catch {
+                guard !Task.isCancelled else { return false }
+
+                // USB enumeration and the shared operation gate can both be
+                // transient while macOS is completing disconnect/reconnect.
+                // Neither is permission to enter libmtp without presence.
+            }
+
+            do {
+                try await Task.sleep(for: .milliseconds(500))
+            } catch {
+                return false
+            }
+        }
+
+        return false
     }
 
     private func startPresenceMonitoring() {
@@ -322,6 +454,8 @@ final class DeviceEngine: ObservableObject {
         activeTask = nil
         presenceTask?.cancel()
         presenceTask = nil
+        postEjectPresenceTask?.cancel()
+        postEjectPresenceTask = nil
         activeNativeReadTask?.cancel()
         activeNativePresenceTask?.cancel()
         readingStatusTask?.cancel()
@@ -369,6 +503,28 @@ final class DeviceEngine: ObservableObject {
     ) async throws -> DevicePresence {
         let task = Task.detached(priority: .utility) {
             try transport.readPresence()
+        }
+
+        activeNativePresenceTask = Task {
+            _ = try? await task.value
+        }
+
+        defer {
+            activeNativePresenceTask = nil
+        }
+
+        return try await withTaskCancellationHandler {
+            try await task.value
+        } onCancel: {
+            task.cancel()
+        }
+    }
+
+    private func readNativeGarminUSBPresence(
+        transport: any GarminUSBPresenceReader
+    ) async throws -> Bool {
+        let task = Task.detached(priority: .utility) {
+            try transport.hasGarminUSBDevice()
         }
 
         activeNativePresenceTask = Task {

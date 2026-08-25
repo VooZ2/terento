@@ -40,8 +40,9 @@ struct Stage42TargetPolicy: Sendable {
               !package.regionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               artifact.catalogPackageID == package.id,
               MapIdentity.normalizeProvider(artifact.provider) == Self.allowedProvider,
+              let expectedIdentity = package.identity,
               MapIdentity.normalizeRegion(artifact.region)
-                == MapIdentity.normalizeRegion(package.regionId) else {
+                == expectedIdentity.region else {
             throw Stage42TargetPolicyError.unsupportedPackage
         }
 
@@ -51,7 +52,7 @@ struct Stage42TargetPolicy: Sendable {
 
         let expectedFilename = try TerentoManagedFilenameGenerator().filename(
             providerId: package.providerId,
-            regionId: package.regionId
+            regionId: package.canonicalRegionId
         )
         guard artifact.targetFilename == expectedFilename,
               TerentoManagedFilenameGenerator().isValid(artifact.targetFilename) else {
