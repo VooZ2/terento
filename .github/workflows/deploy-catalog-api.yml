@@ -78,13 +78,14 @@ jobs:
           stage="/tmp/terento-catalog-api-${release_id}"
           project="/docker/terento-catalog"
           compose="$project/deploy/hostinger/catalog/docker-compose.yml"
+          env_file="$project/deploy/hostinger/catalog/.env"
           image="terento-catalog-api:publish-${release_id}"
           override="/tmp/terento-catalog-api-override-${release_id}.yml"
           old_image=""
 
           test -f "$compose"
-          test -f "$project/deploy/hostinger/catalog/.env"
-          old_image="$(docker compose --project-directory "$project" -f "$compose" images -q catalog-api | head -n 1)"
+          test -f "$env_file"
+          old_image="$(docker compose --project-directory "$project" --env-file "$env_file" -f "$compose" images -q catalog-api | head -n 1)"
           test -n "$old_image"
 
           docker build --pull=false -f "$stage/backend/catalog-api/Dockerfile" -t "$image" "$stage/backend/catalog-api"
@@ -99,7 +100,7 @@ jobs:
               image: $image
           EOF
 
-          compose_args=(--project-directory "$project" -f "$compose" -f "$override")
+          compose_args=(--project-directory "$project" --env-file "$env_file" -f "$compose" -f "$override")
           docker compose "${compose_args[@]}" config --quiet
           docker compose "${compose_args[@]}" --profile manual run --rm --no-deps catalog-migrate
 
