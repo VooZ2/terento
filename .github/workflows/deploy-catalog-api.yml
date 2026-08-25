@@ -127,7 +127,10 @@ jobs:
 
           compose_args=(--project-name "$compose_project" --project-directory "$project" --env-file "$env_file" -f "$compose" -f "$override")
           docker compose "${compose_args[@]}" config --quiet
-          docker compose "${compose_args[@]}" --profile manual run --rm --no-deps catalog-migrate
+          # The remote script itself arrives over stdin. Keep the migration
+          # container detached from that stream or it consumes the remaining
+          # rollout commands after printing its migration result.
+          docker compose "${compose_args[@]}" --profile manual run --rm --no-deps -T catalog-migrate </dev/null
 
           rollback() {
             cat > "$override" <<EOF
