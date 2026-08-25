@@ -81,19 +81,21 @@ jobs:
           env_file="$project/.env"
           image="terento-catalog-api:publish-${release_id}"
           override="/tmp/terento-catalog-api-override-${release_id}.yml"
+          # The live Traefik router is attached to this Compose project.  Do
+          # not infer the project from an arbitrary catalog-api container:
+          # earlier failed deploys left a second `catalog` project running and
+          # Docker returns both when filtering only by service label.
           compose_project="terento-catalog"
           old_image=""
           old_container=""
 
           test -f "$compose"
           test -f "$env_file"
-          old_container="$(docker ps -aq --filter label=com.docker.compose.service=catalog-api | tail -n 1)"
+          old_container="$(docker ps -aq \
+            --filter label=com.docker.compose.project=${compose_project} \
+            --filter label=com.docker.compose.service=catalog-api | head -n 1)"
           if [ -n "$old_container" ]; then
             old_image="$(docker inspect --format '{{.Config.Image}}' "$old_container")"
-            detected_project="$(docker inspect --format '{{ index .Config.Labels "com.docker.compose.project" }}' "$old_container")"
-            if [ -n "$detected_project" ]; then
-              compose_project="$detected_project"
-            fi
           fi
           if [ -z "$old_image" ]; then
             old_image="$(docker compose --project-directory "$project" --env-file "$env_file" -f "$compose" images -q catalog-api | head -n 1)"
@@ -133,12 +135,11 @@ jobs:
             exit 1
           fi
 
+          # Remove only the known stale project created by the earlier
+          # deployment attempt.  Keep its database and volumes untouched.
           duplicate_project="catalog"
-          if [ "$compose_project" != "$duplicate_project" ]; then
-            duplicate_args=(--project-name "$duplicate_project" --project-directory "$project" --env-file "$env_file" -f "$compose" -f "$override")
-            docker compose "${duplicate_args[@]}" rm -sf catalog-api catalog-scheduler || true
-          fi
-
+          duplicate_args=(--project-name "$duplicate_project" --project-directory "$project" --env-file "$env_file" -f "$compose" -f "$override")
+          docker compose "${duplicate_args[@]}" rm -sf catalog-api catalog-scheduler || true
           health_url="https://api.terento.app/health"
           health_verified=false
           deadline=$(( $(date +%s) + 90 ))
