@@ -18,6 +18,7 @@ enum SafeUpdateStatus: String, Equatable, Sendable {
     case blockedTransactionAlreadyRunning = "UPDATE_BLOCKED_TRANSACTION_ALREADY_RUNNING"
     case failedAcquisition = "UPDATE_FAILED_ACQUISITION"
     case failedSourceValidation = "UPDATE_FAILED_SOURCE_VALIDATION"
+    case failedBackup = "UPDATE_FAILED_BACKUP"
     case failedDeviceDisconnected = "UPDATE_FAILED_DEVICE_DISCONNECTED"
     case failedWrite = "UPDATE_FAILED_WRITE"
     case failedRemoteMissing = "UPDATE_FAILED_REMOTE_MISSING"
@@ -362,6 +363,7 @@ struct SafeUpdateRequest: Sendable {
     let comparison: MapComparison
     let currentItem: MapLifecycleItem
     let currentObject: SafeUpdateRemoteObject
+    let backupDirectory: URL
     let confirmed: Bool
     let deviceConnected: Bool
     let deviceConnectionCheck: (@Sendable () -> Bool)?
@@ -374,6 +376,7 @@ struct SafeUpdateRequest: Sendable {
         comparison: MapComparison,
         currentItem: MapLifecycleItem,
         currentObject: SafeUpdateRemoteObject,
+        backupDirectory: URL,
         confirmed: Bool,
         deviceConnected: Bool,
         deviceConnectionCheck: (@Sendable () -> Bool)? = nil
@@ -385,6 +388,7 @@ struct SafeUpdateRequest: Sendable {
         self.comparison = comparison
         self.currentItem = currentItem
         self.currentObject = currentObject
+        self.backupDirectory = backupDirectory
         self.confirmed = confirmed
         self.deviceConnected = deviceConnected
         self.deviceConnectionCheck = deviceConnectionCheck
@@ -400,6 +404,7 @@ struct SafeUpdateResult: Equatable, Sendable {
     let state: SafeUpdateState
     let message: String
     let storagePlan: StoragePlan?
+    let backup: ReadBackupResult?
     let newObject: SafeUpdateRemoteObject?
     let finalObjects: [SafeUpdateRemoteObject]
     let oldMapPreserved: Bool
@@ -551,8 +556,35 @@ struct SafeUpdateTransaction: Sendable {
             )
         }
 
+        emit(.backingUp, onProgress)
+        let backup = ReadBackupAdapter(
+            transport: transport,
+            backupDirectory: request.backupDirectory
+        ).backup(
+            target: ManagedMapBackupTarget(
+                item: request.currentItem,
+                expectedSHA256ByItemID: [
+                    currentItemID: currentHash
+                ]
+            ),
+            onProgress: { progress in
+                onProgress?(SafeUpdateProgress(
+                    state: .backingUp,
+                    bytesCompleted: progress.bytesTransferred,
+                    totalBytes: progress.totalBytes,
+                    bytesPerSecond: progress.bytesPerSecond
+                ))
+            }
+        )
+        guard backup.isSuccess, let verifiedBackup = backup.files.first else {
+            let status: SafeUpdateStatus = backup.status == .backupFailedDeviceDisconnected
+                ? .failedDeviceDisconnected
+                : .failedBackup
+            return failure(status, "The existing map could not be backed up and verified. The old map remains installed.", storagePlan: storagePlan, backup: backup)
+        }
+
         guard deviceIsConnected() else {
-            return failure(.failedDeviceDisconnected, "The Garmin device was disconnected before the new map could be written. The old map remains installed.", storagePlan: storagePlan)
+            return failure(.failedDeviceDisconnected, "The Garmin device was disconnected before the new map could be written. The old map remains installed.", storagePlan: storagePlan, backup: backup)
         }
 
         let targetFilename: String
@@ -676,7 +708,7 @@ struct SafeUpdateTransaction: Sendable {
             expectedFilename: current.file.filename,
             expectedSizeBytes: current.file.sizeBytes,
             expectedSHA256: currentHash,
-            backup: nil,
+            backup: verifiedBackup,
             expectedVersion: expectedOldVersion
         )
         let deleteResult = SafeDeleteAdapter().delete(
@@ -687,7 +719,7 @@ struct SafeUpdateTransaction: Sendable {
                 try transport.rescanObjects().map(\.file)
             },
             transport: transport,
-            requiresVerifiedBackup: false
+            requiresVerifiedBackup: true
         )
         guard deleteResult.isSuccess else {
             return failure(.failedCommit, "The new map is verified, but the previous map could not be removed. No success was reported.", storagePlan: storagePlan, backup: backup, newObject: verified)
@@ -726,6 +758,7 @@ struct SafeUpdateTransaction: Sendable {
             state: .completed,
             message: "The map was updated, verified, and recorded as managed by Terento.",
             storagePlan: storagePlan,
+            backup: backup,
             newObject: verified,
             finalObjects: finalObjects,
             oldMapPreserved: false
@@ -774,6 +807,7 @@ struct SafeUpdateTransaction: Sendable {
         _ status: SafeUpdateStatus,
         _ message: String,
         storagePlan: StoragePlan? = nil,
+        backup: ReadBackupResult? = nil,
         newObject: SafeUpdateRemoteObject? = nil,
         oldMapPreserved: Bool = true,
         finalObjects: [SafeUpdateRemoteObject] = []
@@ -783,6 +817,7 @@ struct SafeUpdateTransaction: Sendable {
             state: .failed,
             message: message,
             storagePlan: storagePlan,
+            backup: backup,
             newObject: newObject,
             finalObjects: finalObjects,
             oldMapPreserved: oldMapPreserved
