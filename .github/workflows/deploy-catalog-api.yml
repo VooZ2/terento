@@ -82,10 +82,17 @@ jobs:
           image="terento-catalog-api:publish-${release_id}"
           override="/tmp/terento-catalog-api-override-${release_id}.yml"
           old_image=""
+          old_container=""
 
           test -f "$compose"
           test -f "$env_file"
-          old_image="$(docker compose --project-directory "$project" --env-file "$env_file" -f "$compose" images -q catalog-api | head -n 1)"
+          old_container="$(docker ps -aq --filter label=com.docker.compose.service=catalog-api | head -n 1)"
+          if [ -n "$old_container" ]; then
+            old_image="$(docker inspect --format '{{.Config.Image}}' "$old_container")"
+          fi
+          if [ -z "$old_image" ]; then
+            old_image="$(docker compose --project-directory "$project" --env-file "$env_file" -f "$compose" images -q catalog-api | head -n 1)"
+          fi
           test -n "$old_image"
 
           docker build --pull=false -f "$stage/backend/catalog-api/Dockerfile" -t "$image" "$stage/backend/catalog-api"
