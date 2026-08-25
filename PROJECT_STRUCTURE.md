@@ -45,7 +45,7 @@ ignored locations:
 | --- | --- |
 | `lab/native-connectivity-poc/.build/` | SwiftPM build cache |
 | `lab/native-connectivity-poc/.swiftpm/` | SwiftPM local metadata |
-| `dist/` | Local release artifacts, including the validated ZIP when present |
+| `dist/` | Local release artifacts, including validated arm64 ZIP and DMG files when present |
 
 These paths are ignored by `.gitignore`. A release is identified by its
 reviewed commit/tag and its checksummed artifact, not by duplicating the
@@ -62,14 +62,14 @@ separate refactor and is deliberately not part of this cleanup.
 ## Release state and provenance
 
 The local packaging pipeline and `dist/` output are separate from the public
-website and from source publication. No DMG, notarization submission, upload,
-or GitHub publication is performed by organizing this tree.
+website and from source publication. The pipeline can produce notarized arm64
+ZIP and DMG artifacts, but organizing this tree does not publish them.
 
-Before the next public release, align the release identifier across the Xcode
-settings, release notes, versioning policy, Git tag, and artifact name. The
-currently observed local app/artifact identifier is `0.1.0-beta` build `1`,
-while the existing repository tag is `v0.1.0-beta.1`. This is recorded as a
-release decision rather than silently rewriting either value.
+The current public release is `v1.0.0-beta.4`. The Xcode marketing version is
+`1.0.0`, build `3`; the release tag and artifact names carry the `-beta.4`
+label. The corresponding GitHub prerelease contains the notarized arm64 ZIP
+and DMG. Keep this release identity aligned across Xcode settings, release
+notes, the Git tag, the update manifest, and artifact names.
 
 The current working tree also contains user changes across application code,
 tests, website/legal content, and packaging files. Those changes must be

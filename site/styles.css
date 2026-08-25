@@ -1731,6 +1731,59 @@ details p {
   letter-spacing: -.03em;
 }
 
+.compatibility-how {
+  width: fit-content;
+  max-width: 720px;
+  margin: 0 0 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-muted);
+}
+
+.compatibility-how summary {
+  padding: 10px 14px;
+  color: var(--graphite);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.compatibility-how summary:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--sky) 24%, transparent);
+  outline-offset: 1px;
+}
+
+.compatibility-how-body {
+  padding: 0 14px 13px;
+  color: var(--secondary);
+  font-size: 13px;
+}
+
+.compatibility-how-body p {
+  margin: 0 0 10px;
+}
+
+.compatibility-how-body dl {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+}
+
+.compatibility-how-body dl > div {
+  display: grid;
+  grid-template-columns: 82px 1fr;
+  gap: 10px;
+}
+
+.compatibility-how-body dt {
+  color: var(--graphite);
+  font-weight: 700;
+}
+
+.compatibility-how-body dd {
+  margin: 0;
+}
+
 .compatibility-summary-separator,
 .compatibility-summary-updated > span {
   color: var(--border);
@@ -1887,9 +1940,12 @@ details p {
 .status-badge {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  justify-content: center;
   flex: 0 0 auto;
-  padding: 6px 9px;
+  min-height: 28px;
+  min-width: 74px;
+  padding: 6px 10px;
+  border: 1px solid transparent;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
@@ -1900,66 +1956,27 @@ details p {
 
 .status-verified {
   background: color-mix(in srgb, var(--lichen) 35%, var(--surface));
-  color: color-mix(in srgb, var(--lichen) 42%, var(--graphite));
+  border-color: color-mix(in srgb, var(--lichen) 52%, var(--border));
+  color: color-mix(in srgb, var(--lichen) 48%, var(--graphite));
 }
 
 .status-supported {
   background: color-mix(in srgb, var(--sky) 25%, var(--surface));
-  color: color-mix(in srgb, var(--sky) 58%, var(--graphite));
+  border-color: color-mix(in srgb, var(--sky) 52%, var(--border));
+  color: color-mix(in srgb, var(--sky) 62%, var(--graphite));
 }
 
 .status-tested {
   background: color-mix(in srgb, var(--stone) 25%, var(--surface));
-  color: color-mix(in srgb, var(--stone) 58%, var(--graphite));
+  border-color: color-mix(in srgb, var(--stone) 52%, var(--border));
+  color: color-mix(in srgb, var(--stone) 62%, var(--graphite));
 }
 
-.status-not_tested {
+.status-testing,
+.status-unknown {
   background: var(--surface-muted);
+  border-color: var(--border);
   color: var(--secondary);
-}
-
-.status-info {
-  position: relative;
-  display: inline-grid;
-  place-items: center;
-  width: 16px;
-  height: 16px;
-  padding: 0;
-  border: 1px solid currentColor;
-  border-radius: 50%;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
-  cursor: help;
-}
-
-.status-info::after {
-  position: absolute;
-  right: 0;
-  bottom: calc(100% + 8px);
-  z-index: 2;
-  display: none;
-  width: min(240px, 65vw);
-  padding: 9px 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--graphite);
-  content: attr(data-tooltip);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.35;
-  text-align: left;
-  white-space: normal;
-  box-shadow: 0 8px 22px color-mix(in srgb, var(--graphite) 12%, transparent);
-}
-
-.status-info:hover::after,
-.status-info:focus-visible::after {
-  display: block;
 }
 
 .watch-install-count {

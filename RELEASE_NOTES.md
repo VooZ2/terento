@@ -1,11 +1,19 @@
-# Terento v1.0.0-beta.3
+# Terento v1.0.0-beta.4
 
 Release date: 2026-08-25
+
+Beta.4 adds beta installation enrollment for Garmin map-capable smartwatches,
+including newly connected model and size variants, while retaining guarded
+`/GARMIN` target and transfer-verification gates.
+
+It also improves device artwork resolution through official Garmin product
+pages and keeps a neutral fallback image when artwork is unavailable.
 
 This is a pre-MVP beta release for the Terento macOS application. It is
 intended for development and hardware validation; it is not a stable
 production release. Apple Silicon users can download the notarized ZIP or DMG
-from the GitHub release assets.
+from the GitHub release assets. Freizeitkarte is the only map provider in this
+beta.
 
 ## Included
 
@@ -49,6 +57,8 @@ from the GitHub release assets.
 - Safe Update is implemented and covered by automated tests, but its physical
   real-device update gate remains pending a genuinely newer Freizeitkarte
   release.
+- The public beta release is `v1.0.0-beta.4` with notarized arm64 ZIP and DMG
+  assets published at the [GitHub release page](https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.4).
 
 ## Known limitations
 
@@ -74,6 +84,6 @@ safe failure over destructive guessing.
 ## Release checksums
 
 ```text
-Terento-1.0.0-beta.3-macOS-arm64.zip  8307e6ce8abff93475ccf21fe135e730ff8b4a6d4a67b615c90f0a0939e0e46d
-Terento-1.0.0-beta.3-macOS-arm64.dmg  eeb56bdf247c870a69b8ae3205052a028fe7c97c4ec28975ac4fea8eb87b91d9
+Terento-1.0.0-beta.4-macOS-arm64.dmg  efa6574247eb9eaedb9b21853ead97a2743f05e4a5fcc2ead602530c5c4f17cf
+Terento-1.0.0-beta.4-macOS-arm64.zip  568d0b6b687d6bc268fbfa75777c09391757dff64b21cb43e2058d6950ec8298
 ```

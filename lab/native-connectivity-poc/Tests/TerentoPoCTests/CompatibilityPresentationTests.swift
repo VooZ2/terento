@@ -11,11 +11,11 @@ private func require(_ condition: @autoclosure () -> Bool, _ message: String) {
 struct CompatibilityPresentationTests {
     static func main() {
         let expected: [CompatibilityStatus: String] = [
-            .unknown: "Terento hasn't tested this exact device yet.",
-            .testing: "This exact device is currently being tested with Terento.",
-            .tested: "Testing confirms device identification and specific validated capabilities.",
-            .supported: "Supported for Terento map installation.",
-            .verified: "Verified across multiple devices."
+            .unknown: "This exact device is known, but Terento does not have enough real hardware evidence yet.",
+            .testing: "This exact device is currently under validation or has only partial evidence.",
+            .tested: "Real hardware evidence exists for this model, but it is not yet a full support claim.",
+            .supported: "A real map installation completed successfully for this exact model.",
+            .verified: "Confirmed across multiple physical devices and firmware versions."
         ]
 
         for status in CompatibilityStatus.allCases {

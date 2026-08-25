@@ -1,8 +1,10 @@
 # Terento native connectivity PoC
 
-This is an isolated macOS proof of concept for the native Garmin MTP path. The
-normal app flow is read-only. Separate developer-only tests can perform narrow,
-harmless MTP roundtrips; they are not the production Terento application.
+This document covers the legacy SwiftPM connectivity target and its native
+Garmin MTP proof-of-concept tests. The production app is the root
+`Terento.xcodeproj` macOS target, which consumes this source module and now has
+a guarded map-installation flow. The SwiftPM PoC window remains read-only;
+separate developer-only tests can perform narrow, harmless MTP roundtrips.
 
 ## Scope
 
@@ -35,14 +37,19 @@ SwiftUI
               └── C libmtp bridge
 ```
 
-The local registry currently contains the Garmin fēnix 8 entry (VID `091e`,
-PID `51b8`) with status `TESTED`. This status records read-only connectivity
-evidence only. Map installation, reconnect verification, and map visibility
-remain pending, so the entry cannot become `SUPPORTED` or `VERIFIED`.
+The local registry contains exact tested Garmin smartwatch identities with
+status `TESTED`. This status records read-only connectivity evidence only. A
+successful verified map installation promotes the exact identity to
+`SUPPORTED`; reconnect verification and map visibility are optional
+observations, not status gates. `VERIFIED` additionally requires multiple
+operator-reviewed physical devices and firmware variation. Exact model names
+and firmware values belong in internal compatibility records, not this public
+PoC overview.
 
-The metadata-only catalog currently contains one Freizeitkarte Lithuania
-package. It records provider attribution, source and license URLs, release
-`2026-05`, and the provider-listed package size. The loader tries
+The metadata-only catalog records Freizeitkarte packages. The bundled fallback
+is a small snapshot containing Lithuania and Latvia; the live catalog may
+contain more regions. It records provider attribution, source and license URLs,
+release, and provider-listed package sizes. The loader tries
 `https://api.terento.app/maps/catalog.json` first and falls back to
 `Resources/Maps/catalog.json`; neither path downloads a map binary.
 
@@ -61,8 +68,10 @@ metadata observed on the fēnix 8 test device and avoids downloading complete
 map images just to identify them. `Release 26.05` is retained as raw metadata
 and normalized to the comparable version `2026-05` by the Freizeitkarte parser.
 
-The normal SwiftUI app contains no map write or device modification path. The
-separate `TerentoWriteTest` command is deliberately narrower: it accepts only
+For this SwiftPM PoC target, the normal SwiftUI window contains no map write or
+device modification path. The production Xcode app owns the guarded map
+installation and optional compatibility-report flow. The separate
+`TerentoWriteTest` command is deliberately narrower: it accepts only
 `terento-write-test.txt`, advertises it as a generic MTP object, targets only
 `/GARMIN/terento-write-test.txt` on the validated fēnix 8 profile, refuses an
 existing target, reads the object back, checks size and SHA-256, and removes only
@@ -156,8 +165,9 @@ MacDroid, and other MTP clients first.
 The developer-details toggle shows local diagnostic messages, VID/PID, stages,
 errors, timing, identity fields, map identity/version evidence, catalog source,
 and compatibility evidence. Normal UI does not expose USB IDs, MTP terminology,
-or protocol details. The only network path is metadata-only catalog lookup;
-there is no map binary download, map installation, analytics, or account path.
+or protocol details. For this SwiftPM PoC target the only network path is
+metadata-only catalog lookup; map binary download and map installation belong
+to the production Xcode app, while analytics and account paths remain absent.
 
 ## Known limitation
 

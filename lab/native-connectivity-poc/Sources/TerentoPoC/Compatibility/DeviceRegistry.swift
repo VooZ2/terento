@@ -7,6 +7,8 @@ struct DeviceRegistryEntry: Sendable, Equatable {
     let family: String
     let usbVendorId: UInt16
     let usbProductIds: Set<UInt16>
+    let caseSizeMm: Int?
+    let displayType: String?
     let status: CompatibilityStatus
     let evidence: CompatibilityEvidence
 
@@ -19,6 +21,12 @@ struct DeviceRegistryEntry: Sendable, Equatable {
               ) == .orderedSame,
               identity.family == Optional(family),
               let canonicalModel = identity.canonicalModel else {
+            return false
+        }
+
+        if let caseSizeMm, identity.caseSizeMm != caseSizeMm { return false }
+        if let displayType,
+           identity.displayType?.caseInsensitiveCompare(displayType) != .orderedSame {
             return false
         }
 
@@ -39,6 +47,10 @@ struct DeviceRegistry: Sendable {
             family: "fēnix",
             usbVendorId: 0x091e,
             usbProductIds: [0x51b8],
+            caseSizeMm: 47,
+            // The transport identity sometimes reports only 47 mm; do not
+            // infer AMOLED when the device did not expose display evidence.
+            displayType: nil,
             status: .tested,
             evidence: .nativeConnectivityTested
         )

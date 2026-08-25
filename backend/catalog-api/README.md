@@ -57,7 +57,8 @@ PYTHONPATH=backend/catalog-api/src python3 -m unittest discover -s backend/catal
 - `POST /compatibility/events` accepts validated, rate-limited, idempotent
   privacy-minimised install events after client consent. It stores only
   allowlisted columns, hashes the per-event deletion token, and never stores
-  the submitted JSON body.
+  the submitted JSON body. Exact model variants are retained separately;
+  reconnect observations are optional and never gate compatibility status.
 - `DELETE /compatibility/events` lets the client erase one uploaded event by
   presenting its event UUID and secret deletion token. Events are also pruned
   automatically after 24 months.
@@ -81,8 +82,8 @@ The collector reads the official Freizeitkarte release page and seven official
 Garmin regional pages: Northern, Eastern, South-Eastern, Southern, Western and
 Middle Europe, plus the other-countries page. It selects one package per map,
 preferring the English variant and falling back to the first published language
-variant. The current live source contains 63 map packages (verified on
-2026-08-21).
+variant. The live-source dry-run on 2026-08-21 produced 63 map packages. This
+is a dated provider snapshot, not a permanent claim about the current catalog.
 
 It uses the underlying OSM data date when the provider uses a release number
 such as `2/2026`; it does not incorrectly treat that release number as a month.

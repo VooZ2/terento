@@ -1,16 +1,39 @@
 # Privatumas
 
-Trumpas pranešimas apie viešą svetainę **terento.app**. Tai atskiras puslapis nuo [teisinės informacijos](/legal/).
+Trumpas pranešimas apie viešą svetainę **terento.app** ir Terento macOS beta
+programą. Tai atskiras puslapis nuo [teisinės informacijos](/legal/).
 
-Tai nėra macOS programos privatumo politika ir ne Freizeitkarte ar OpenStreetMap politika. Žemėlapius atsisiunčiate iš pirminio teikėjo; tie failai nėra Terento asmens duomenų rinkinys.
+Tai nėra Freizeitkarte ar OpenStreetMap politika. Žemėlapius atsisiunčiate iš
+pirminio teikėjo; tie failai nėra Terento asmens duomenų rinkinys.
 
-**Būsena.** Duomenų valdytojo tapatybė ir kontaktas dar nenurodyti. Projektą skelbia Terento talkininkai. Kai bus paskirtas juridinis asmuo — įrašysime čia. El. pašto adreso nėra; jo nesugalvokite.
+**Būsena.** Projektą kaip privatus asmuo skelbia Gediminas. Privatumo
+klausimams: [privacy@terento.app](mailto:privacy@terento.app). Jei pasikeis
+duomenų valdytojas, šis puslapis bus atnaujintas.
 
 ## Ko čia nėra
 
-Nėra paskyros, prisijungimo ir privalomo el. pašto. Įrenginio būsena ir Terento manifestai pagal projekto taisykles lieka jūsų „Mac“ kompiuteryje ir MVP metu nesiunčiami į Terento serverį kaip debesies laikrodžio profilis.
+Nėra paskyros, prisijungimo ir privalomo el. pašto. Įrenginio būsena,
+žemėlapiai, Terento manifestai ir vietiniai diegimo įrašai lieka jūsų „Mac“
+kompiuteryje. Jie nesiunčiami kaip debesies laikrodžio profilis.
 
 libmtp ir libusb naudojamos tik native macOS programoje, ne šioje svetainėje. Kūrimo versijos naudoja Homebrew, o produkcinė programa naudoja teisinių pranešimų skyriuje aprašytas prisegtas dinamines bibliotekas.
+
+## Suderinamumo ataskaitos programoje
+
+Naujo diegimo metu macOS beta prieš diegimą rodo suderinamumo duomenų
+dalijimosi pasirinkimą. Naujam diegimui jis pažymėtas pagal nutylėjimą, tačiau
+jį galima atžymėti prieš diegiant. Atžymėjimas neblokuoja diegimo ir nemažina
+programos funkcionalumo.
+
+Jei pasirinkimas paliekamas įjungtas ir diegimas tęsiamas, siunčiami tik
+privatumą tausojantys suderinamumo duomenys: laikrodžio modelis ar šeima,
+firmware, USB VID/PID, MTP transportas, teikėjas, regionas, versijos ir
+diegimo rezultatas. Ataskaitose nėra Garmin Unit ID, serijos numerio,
+paskyros, el. pašto, vietinių kelių, manifestų, žemėlapių failų ar diagnostikos
+žurnalų.
+
+Dalijimąsi galima sustabdyti, o įkeltas ataskaitas ištrinti programoje per
+**About Terento → Privacy**.
 
 ## Kas veikia svetainėje
 
@@ -48,8 +71,14 @@ Poraštėje nerašykite absoliutaus „slapukai nenaudojami“, jei Cloudflare s
 
 Pagal BDAR galite turėti teisę susipažinti su duomenimis, juos taisyti, ištrinti, apriboti tvarkymą, nesutikti ir pateikti skundą priežiūros institucijai. Lietuvoje tai Valstybinė duomenų apsaugos inspekcija (VDAI).
 
-Kol nėra valdytojo kontakto, šių teisių įgyvendinimas per Terento kanalą yra ribotas. Tai pripažįstama atvirai. Šis tekstas tų teisių nesumažina.
+Šias teises galite įgyvendinti kreipdamiesi adresu
+[privacy@terento.app](mailto:privacy@terento.app). Šis tekstas tų teisių
+nesumažina.
 
-Tikslas — pristatyti statinę svetainę, ją apsaugoti ir matyti agreguotą lankomumą. Pilną BDAR 6 str. pagrindo formulę gali nurodyti tik paskirtas valdytojas; ji bus papildyta kartu su tapatybe.
+Tikslas — pristatyti ir apsaugoti svetainę, matyti agreguotą lankomumą bei
+gerinti programos suderinamumą. Lankomumo statistika tvarkoma su jūsų sutikimu
+(BDAR 6 str. 1 d. a p.), o suderinamumo ataskaitos siunčiamos tik tęsiant
+diegimą su matomu, pagal nutylėjimą pažymėtu pasirinkimu; jų tvarkymas grindžiamas
+BDAR 6 str. 1 d. a p. sutikimu.
 
 Šis pranešimas yra skaidrumo tekstas, ne teisinė konsultacija.

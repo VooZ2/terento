@@ -13,7 +13,7 @@ aggregate route. No route serves map binaries.
 
 ## `POST /compatibility/events`
 
-Accepts at most 16 KiB of allowlisted schema-version-1 JSON after client
+Accepts at most 16 KiB of allowlisted schema-version-1 or schema-version-2 JSON after client
 opt-in. Event UUIDs are idempotent. Unknown fields, local paths, malformed
 payloads, non-Freizeitkarte providers, and privacy-prohibited data are
 rejected. A random per-event deletion token is required; older beta payloads
@@ -25,6 +25,16 @@ New clients do not send a post-install
 confirmation signal; legacy `userConfirmed` fields are tolerated only for
 backward compatibility with older beta clients. Upload failure never changes
 the macOS installation result.
+
+Version 2 events may include an exact `compatibilityIdentity`, `variant`, and
+`caseSizeMm`, plus optional `reconnectVerified` and
+`mapVisibleAfterReconnect` observations. Reconnect is never required for any
+compatibility status. The canonical aggregate is `UNKNOWN` for no evidence,
+`TESTING` for partial/failed evidence, `TESTED` for real hardware evidence
+without a successful map installation, `SUPPORTED` after a successful verified
+map installation, and `VERIFIED` after successful evidence across multiple
+operator-reviewed physical devices and firmware versions. Counts are displayed
+evidence metrics only.
 
 ## `DELETE /compatibility/events`
 
@@ -40,8 +50,11 @@ by the service health cycle.
 ## `GET /admin`
 
 Returns an aggregate HTML operator dashboard after database-backed login. The
-first administrator can be created only once through `/admin/setup` with the
-environment-provided bootstrap secret. Passwords use salted PBKDF2-SHA256;
+dashboard uses the Terento branded English admin shell, exact model/variant
+columns, compact evidence metrics, and client-side search/status/sort controls;
+these controls do not change backend aggregation. The first administrator can
+be created only once through `/admin/setup` with the environment-provided
+bootstrap secret. Passwords use salted PBKDF2-SHA256;
 opaque sessions and CSRF values are stored only as SHA-256 hashes. Cookies are
 Secure, HttpOnly, SameSite=Strict, and scoped to `/admin`. Login/setup attempts
 are rate limited. Pages include no-store, noindex and restrictive CSP headers.
@@ -54,9 +67,12 @@ Prepared for a later public TOP-models widget. The route returns 404 unless
 `PUBLIC_COMPATIBILITY_STATS_ENABLED=true`. Even then, it includes only model
 rows that an operator has separately marked `APPROVED` and enabled for public
 statistics. Results are ordered by successful installation count and include
-attempted, successful, and failed aggregate counts; firmware and raw event
-records are omitted. The route is not enabled or linked from the public site
-by this implementation.
+attempted, successful, failed, exact-variant, and canonical-status fields;
+firmware and raw event records are omitted. Only `TESTED`, `SUPPORTED`, and
+`VERIFIED` rows are public. The public `/compatibility/` page calls this
+endpoint when the public compatibility flag is enabled. The endpoint remains
+default-disabled and the page shows no public evidence when the flag or
+approved aggregate data is absent.
 
 ## `GET /health`
 
@@ -108,9 +124,10 @@ does not download or proxy the package.
 }
 ```
 
-The example shows one map entry for brevity; the verified live source dry-run
-on 2026-08-21 produced 63 current Freizeitkarte Garmin map entries, with 63
-known download sizes and 63 known final IMG install sizes.
+The example shows one map entry for brevity; the verified live-source dry-run
+on 2026-08-21 produced a snapshot of 63 Freizeitkarte Garmin map entries, with
+63 known download sizes and 63 known final IMG install sizes. The provider
+catalog may change after that date.
 
 The client-compatible package list contains only records with a normalized
 version and a known download size. `sizeBytes` remains the backwards-compatible

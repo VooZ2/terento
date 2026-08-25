@@ -49,6 +49,11 @@ Nothing here waives rights that cannot be waived under applicable law, including
 
 ## Online services
 
-The public site and API are delivered and protected through online infrastructure described in the Privacy notice. Visit statistics use Umami only after consent. The macOS beta can send optional, privacy-minimised installation reports only after the user opts in.
+The public site and API are delivered and protected through online
+infrastructure described in the Privacy notice. Visit statistics use Umami
+only after consent. For a new installation, the macOS beta shows a visible
+compatibility-sharing choice before installation and selects it by default.
+Reports are sent only when the user continues with that choice; the user can
+uncheck it before installing.
 
 Details: [Privacy](/privacy/).

@@ -6,7 +6,8 @@ Tai nėra programos vartotojo sutartis, ne App Store EULA, ne Garmin dokumentas 
 
 Svetainė, kuriama macOS programa ir žemėlapių failai yra skirtingi dalykai. Žemėlapiai nėra Terento kūrinys.
 
-**Būsena.** Juridinis asmuo, duomenų valdytojas ir kontaktinis adresas dar nenurodyti. Kai bus paskirti — įrašysime čia. El. pašto adreso šiame puslapyje nėra; jo nesugalvokite.
+**Būsena.** Projektą kaip privatus asmuo skelbia Gediminas. Privatumo
+klausimams: [privacy@terento.app](mailto:privacy@terento.app).
 
 ## Garmin
 
@@ -51,14 +52,24 @@ Produkto taisyklė: verčiau sustoti, nei spėlioti ir gadinti. Tai nėra pažad
 
 Nieko čia parašyto negalima suprasti kaip atsisakymo teisių, kurių pagal taikomą teisę atsisakyti negalima — įskaitant ES ir Lietuvos vartotojų apsaugą.
 
-## Kas veikia svetainėje
+## Kas veikia svetainėje ir programoje
 
-Viešą svetainę pristato ir saugo **Cloudflare**. Lankomumą skaičiuoja **Umami** (be slapukų ir be asmeninio profiliavimo). Kalbos pasirinkimas gali būti įrašytas jūsų naršyklėje.
+Viešą svetainę pristato ir saugo **Cloudflare**. Lankomumą skaičiuoja
+**Umami** (be slapukų ir be asmeninio profiliavimo). Kalbos pasirinkimas gali
+būti įrašytas jūsų naršyklėje.
+
+Naujo macOS beta diegimo metu suderinamumo duomenų dalijimosi pasirinkimas
+rodomas prieš diegimą ir pažymimas pagal nutylėjimą. Jei naudotojas jį palieka
+įjungtą ir tęsia diegimą, siunčiama tik privatumo prasme minimali suderinamumo
+ataskaita. Pasirinkimą galima atžymėti; tai neblokuoja diegimo ir nemažina
+programos funkcionalumo. Išsami informacija pateikta [Privatumo puslapyje](/privacy/).
 
 Išsamiau: [Privatumas](/privacy/).
 
 ## Ko dar nėra
 
-Nėra registruoto juridinio asmens, įmonės kodo, PVM kodo ir oficialaus kontakto. Tai atvira spraga, ne paslėptas adresas. Jei vėliau bus siūloma savanoriška parama, ji neatrakins funkcijų ar žemėlapių.
+Nėra registruoto juridinio asmens, įmonės kodo ar PVM kodo. Privatumo
+klausimams naudojamas [privacy@terento.app](mailto:privacy@terento.app). Jei
+siūloma savanoriška parama, ji neatrakina funkcijų ar žemėlapių.
 
 Šis tekstas yra projekto pranešimas, ne teisinė konsultacija.

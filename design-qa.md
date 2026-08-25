@@ -113,6 +113,6 @@ No actionable P0, P1, or P2 findings remain.
 - [x] Home is noticeably shorter and has no leftover walkthrough spacing.
 - [x] No fake title bars, traffic lights, browser chrome, or background art
   were added.
-- [x] `README.md` was not modified.
+- [x] `README.md` was updated locally after this QA; no GitHub publication was performed.
 
 final result: passed

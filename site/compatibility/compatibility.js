@@ -7,7 +7,7 @@
       attempted: 2,
       successful: 2,
       failed: 0,
-      status: "TESTED",
+      status: "SUPPORTED",
       lastSuccess: "2026-08-24T21:34:17Z",
     },
   ];
@@ -56,8 +56,17 @@
     VERIFIED: "Verified",
     SUPPORTED: "Supported",
     TESTED: "Tested",
-    NOT_TESTED: "Waiting",
-  }[status] || "Waiting");
+    TESTING: "Testing",
+    UNKNOWN: "Unknown",
+  }[status] || "Unknown");
+
+  const statusDescription = (status) => ({
+    TESTED: "Real hardware evidence exists for this model, but it is not yet a full support claim.",
+    SUPPORTED: "A real map installation completed successfully for this exact model.",
+    VERIFIED: "Confirmed across multiple physical devices and firmware versions.",
+    TESTING: "This exact device is currently under validation or has only partial evidence.",
+    UNKNOWN: "This exact device is known, but Terento does not have enough real hardware evidence yet.",
+  }[status] || "Compatibility evidence is not available yet.");
 
   const formatDate = (value) => {
     if (!value) return "";
@@ -79,10 +88,14 @@
     const failed = Number(row.failedInstallations ?? row.failed_install_count ?? row.failed ?? Math.max(0, attempted - successful));
     return {
       model: String(row.model || "").trim(),
+      compatibilityIdentity: String(row.compatibilityIdentity || row.compatibility_identity || row.model || "").trim(),
+      variant: String(row.variant || "").trim(),
+      caseSizeMm: Number.isFinite(Number(row.caseSizeMm ?? row.case_size_mm)) ? Number(row.caseSizeMm ?? row.case_size_mm) : null,
+      displayType: String(row.displayType || row.display_type || "").trim(),
       attempted: Number.isFinite(attempted) ? attempted : 0,
       successful: Number.isFinite(successful) ? successful : 0,
       failed: Number.isFinite(failed) ? failed : 0,
-      status: String(row.status || row.evidenceStatus || row.calculated_status || (attempted > 0 ? "TESTED" : "NOT_TESTED")).toUpperCase(),
+      status: String(row.status || row.evidenceStatus || row.calculated_status || (successful > 0 ? "SUPPORTED" : attempted > 0 ? "TESTING" : "UNKNOWN")).toUpperCase(),
       lastSuccess: row.lastSuccess || row.last_success || row.lastSuccessfulInstallation || row.last_successful_installation || null,
     };
   }
@@ -114,6 +127,8 @@
       family: device.family || "other",
       familyName: device.familyName || device.family || "Other",
       variants: device.variant ? [device.variant] : [],
+      caseSizeMm: device.caseSizeMm ?? null,
+      displayType: device.displayType || "",
       imageUrl,
     };
   }
@@ -176,12 +191,6 @@
       : (row.variants.join(" · ") || "Smartwatch");
     const statusClass = row.status.toLocaleLowerCase();
     const lastTested = formatDate(row.lastSuccess);
-    const statusHelp = row.status === "TESTED"
-      ? "Real hardware evidence exists for this exact model. This is not yet a full support claim."
-      : "";
-    const statusHelpMarkup = statusHelp
-      ? `<button class="status-info" type="button" aria-label="Tested: ${escapeHtml(statusHelp)}" data-tooltip="${escapeHtml(statusHelp)}">i</button>`
-      : "";
     const lastTestedMarkup = lastTested
       ? `<p class="watch-card-meta">Last tested ${escapeHtml(lastTested)}</p>`
       : "";
@@ -197,7 +206,7 @@
               <h3>${escapeHtml(row.model)}</h3>
               <p class="watch-variant">${escapeHtml(variantLabel)}</p>
             </div>
-            <span class="status-badge status-${escapeHtml(statusClass)}"><span>${statusLabel(row.status)}</span>${statusHelpMarkup}</span>
+            <span class="status-badge status-${escapeHtml(statusClass)}" aria-label="${escapeHtml(statusLabel(row.status))}: ${escapeHtml(statusDescription(row.status))}"><span>${statusLabel(row.status)}</span></span>
           </div>
           <p class="watch-install-count">${escapeHtml(metricText(row))}</p>
           ${lastTestedMarkup}
@@ -228,6 +237,7 @@
   }
 
   function populateFamilies() {
+    elements.family.querySelectorAll("option:not(:first-child)").forEach((option) => option.remove());
     const families = [...new Map(state.rows.map((row) => [row.family, row.familyName])).entries()]
       .sort((a, b) => a[1].localeCompare(b[1]));
     elements.family.insertAdjacentHTML("beforeend", families.map(([value, label]) =>
@@ -238,7 +248,7 @@
   function updateSummary() {
     const modelCount = state.rows.length;
     elements.summaryModels.textContent = modelCount.toLocaleString("en");
-    elements.summaryModelLabel.textContent = modelCount === 1 ? "model tested" : "models tested";
+    elements.summaryModelLabel.textContent = modelCount === 1 ? "model with evidence" : "models with evidence";
     elements.summarySuccesses.textContent = state.rows.reduce((sum, row) => sum + row.successful, 0).toLocaleString("en");
     const latest = state.rows
       .map((row) => row.lastSuccess)
@@ -282,15 +292,22 @@
     return stats
       .filter((row) => row.attempted > 0)
       .map((row) => {
-        const identity = parseModelIdentity(row.model);
+        const identity = parseModelIdentity(row.compatibilityIdentity || row.model);
         if (!identity.base) return null;
-        const exactKey = catalogKey(identity);
-        const sizeKey = catalogKey(identity, identity.size, "");
+        const size = row.caseSizeMm || identity.size;
+        const display = normalize(row.displayType || identity.display);
+        const exactKey = catalogKey(identity, size, display);
+        const sizeKey = catalogKey(identity, size, "");
         const modelKey = catalogKey(identity, null, "");
         const catalog = images.get(exactKey)
           || (identity.size ? images.get(sizeKey) : images.get(modelKey));
         if (!catalog) return null;
-        return { ...row, ...catalog, model: catalog.model || row.model };
+        return {
+          ...row,
+          ...catalog,
+          model: catalog.model || row.model,
+          variants: row.variant ? [row.variant] : catalog.variants,
+        };
       })
       .filter(Boolean);
   }

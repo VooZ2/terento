@@ -4,9 +4,15 @@ Thank you for taking an interest in Terento. Contributions, bug reports, documen
 
 ## Project status
 
-Terento is an active beta and pre-MVP project for macOS. It is not a stable production release and it does not yet provide a notarized DMG or PKG.
+Terento is an active beta and pre-MVP project for macOS. It is not a stable
+production release. The current public beta is `v1.0.0-beta.4` and includes a
+notarized Apple Silicon DMG and ZIP; there is no PKG or App Store package.
 
-The current native connectivity work is centred in lab/native-connectivity-poc. The normal app flow is deliberately conservative. Device-writing and interruption tests are developer-only tests and must never be treated as a general map-installation test.
+The production app is the root Xcode macOS target and consumes the SwiftPM
+source module in `lab/native-connectivity-poc/`. The SwiftPM target also
+contains legacy read-only and developer-only connectivity tests. Device-writing
+and interruption tests are developer-only tests and must never be treated as a
+general map-installation test.
 
 ## Before you start
 

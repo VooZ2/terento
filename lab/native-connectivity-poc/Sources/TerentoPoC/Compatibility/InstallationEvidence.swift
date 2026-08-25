@@ -44,12 +44,15 @@ enum EvidenceErrorCategory: String, Codable, CaseIterable, Sendable {
 }
 
 struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
-    static let schemaVersion = 1
+    static let schemaVersion = 2
 
     let schemaVersion: Int
     let id: UUID
     let timestamp: Date
     let model: String
+    let compatibilityIdentity: String
+    let variant: String?
+    let caseSizeMm: Int?
     let family: String?
     let firmwareVersion: String?
     let usbVendorID: UInt16
@@ -62,6 +65,8 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
     let macOSVersion: String
     let phaseOutcome: InstallationEvidenceOutcome
     let automaticFinishingResult: AutomaticFinishingResult
+    let reconnectVerified: Bool
+    let mapVisibleAfterReconnect: Bool
     let errorCategory: EvidenceErrorCategory?
     let deletionToken: String?
 
@@ -72,6 +77,8 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         package: MapPackage,
         outcome: InstallationEvidenceOutcome,
         finishingResult: AutomaticFinishingResult,
+        reconnectVerified: Bool = false,
+        mapVisibleAfterReconnect: Bool = false,
         errorCategory: EvidenceErrorCategory? = nil,
         terentoVersion: String = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "development",
         macOSVersion: String = ProcessInfo.processInfo.operatingSystemVersionString,
@@ -81,6 +88,9 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         self.id = id
         self.timestamp = timestamp
         self.model = identity.canonicalModel ?? identity.model
+        self.compatibilityIdentity = identity.compatibilityIdentity
+        self.variant = identity.variant
+        self.caseSizeMm = identity.caseSizeMm
         self.family = identity.family
         self.firmwareVersion = identity.firmware
         self.usbVendorID = identity.usbVendorId
@@ -96,8 +106,44 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         self.macOSVersion = macOSVersion
         self.phaseOutcome = outcome
         self.automaticFinishingResult = finishingResult
+        self.reconnectVerified = reconnectVerified
+        self.mapVisibleAfterReconnect = mapVisibleAfterReconnect
         self.errorCategory = errorCategory
         self.deletionToken = deletionToken
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, id, timestamp, model, compatibilityIdentity, variant, caseSizeMm,
+             family, firmwareVersion, usbVendorID, usbProductID, transport, provider, region,
+             mapRelease, terentoVersion, macOSVersion, phaseOutcome, automaticFinishingResult,
+             reconnectVerified, mapVisibleAfterReconnect, errorCategory, deletionToken
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
+        id = try container.decode(UUID.self, forKey: .id)
+        timestamp = try container.decode(Date.self, forKey: .timestamp)
+        model = try container.decode(String.self, forKey: .model)
+        compatibilityIdentity = try container.decodeIfPresent(String.self, forKey: .compatibilityIdentity) ?? model
+        variant = try container.decodeIfPresent(String.self, forKey: .variant)
+        caseSizeMm = try container.decodeIfPresent(Int.self, forKey: .caseSizeMm)
+        family = try container.decodeIfPresent(String.self, forKey: .family)
+        firmwareVersion = try container.decodeIfPresent(String.self, forKey: .firmwareVersion)
+        usbVendorID = try container.decode(UInt16.self, forKey: .usbVendorID)
+        usbProductID = try container.decode(UInt16.self, forKey: .usbProductID)
+        transport = try container.decode(String.self, forKey: .transport)
+        provider = try container.decode(String.self, forKey: .provider)
+        region = try container.decode(String.self, forKey: .region)
+        mapRelease = try container.decode(String.self, forKey: .mapRelease)
+        terentoVersion = try container.decode(String.self, forKey: .terentoVersion)
+        macOSVersion = try container.decode(String.self, forKey: .macOSVersion)
+        phaseOutcome = try container.decode(InstallationEvidenceOutcome.self, forKey: .phaseOutcome)
+        automaticFinishingResult = try container.decode(AutomaticFinishingResult.self, forKey: .automaticFinishingResult)
+        reconnectVerified = try container.decodeIfPresent(Bool.self, forKey: .reconnectVerified) ?? false
+        mapVisibleAfterReconnect = try container.decodeIfPresent(Bool.self, forKey: .mapVisibleAfterReconnect) ?? false
+        errorCategory = try container.decodeIfPresent(EvidenceErrorCategory.self, forKey: .errorCategory)
+        deletionToken = try container.decodeIfPresent(String.self, forKey: .deletionToken)
     }
 
     private static func makeDeletionToken() -> String {
@@ -120,6 +166,7 @@ struct VersionedEvidenceConsent: Codable, Equatable, Sendable {
 struct CompatibilityEvidenceSummary: Equatable, Sendable {
     let attemptedInstallCount: Int
     let successfulInstallCount: Int
+    let reconnectVerifiedInstallCount: Int
     let failedInstallCount: Int
     let successRate: Double
     let firmwareVersions: Set<String>
@@ -139,24 +186,22 @@ enum CompatibilityEvidenceCalculator {
         forModel model: String,
         reviewedPhysicalDeviceCount: Int = 0
     ) -> CompatibilityEvidenceSummary {
-        let matching = events.filter { $0.model == model }
+        // The identity key is exact. Legacy v1 events decode their missing
+        // key as `model`, so this remains backwards-compatible without
+        // allowing a base family label to absorb a sized variant.
+        let matching = events.filter { $0.compatibilityIdentity == model }
         let successes = matching.filter {
             $0.phaseOutcome == .succeeded && $0.automaticFinishingResult == .verified
         }
         let failures = matching.filter { $0.phaseOutcome == .failed }
         let firmware = Set(successes.compactMap(\.firmwareVersion))
-        let maximumSuccessesOnOneFirmware = Dictionary(
-            grouping: successes.filter { !($0.firmwareVersion ?? "").isEmpty },
-            by: { $0.firmwareVersion ?? "" }
-        ).values.map(\.count).max() ?? 0
-        let candidateVerified = successes.count >= 3 && firmware.count >= 2
         let status: CompatibilityStatus
-        if candidateVerified && reviewedPhysicalDeviceCount >= 2 {
+        if !matching.isEmpty && successes.isEmpty {
+            status = .testing
+        } else if !successes.isEmpty && firmware.count >= 2 && reviewedPhysicalDeviceCount >= 2 {
             status = .verified
-        } else if maximumSuccessesOnOneFirmware >= 3 {
+        } else if !successes.isEmpty {
             status = .supported
-        } else if !successes.isEmpty && !firmware.isEmpty {
-            status = .tested
         } else {
             status = .unknown
         }
@@ -164,6 +209,7 @@ enum CompatibilityEvidenceCalculator {
         return CompatibilityEvidenceSummary(
             attemptedInstallCount: matching.count,
             successfulInstallCount: successes.count,
+            reconnectVerifiedInstallCount: successes.filter(\.reconnectVerified).count,
             failedInstallCount: failures.count,
             successRate: matching.isEmpty ? 0 : Double(successes.count) / Double(matching.count),
             firmwareVersions: firmware,
@@ -172,7 +218,7 @@ enum CompatibilityEvidenceCalculator {
             errorCategories: Dictionary(grouping: failures.compactMap(\.errorCategory), by: { $0 })
                 .mapValues(\.count),
             calculatedStatus: status,
-            verifiedRequiresPhysicalDeviceReview: candidateVerified && reviewedPhysicalDeviceCount < 2
+            verifiedRequiresPhysicalDeviceReview: !successes.isEmpty && firmware.count >= 2 && reviewedPhysicalDeviceCount < 2
         )
     }
 }
