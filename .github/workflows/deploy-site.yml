@@ -122,8 +122,26 @@ jobs:
             exit 1
           fi
 
-          if ! curl --fail --silent --show-error --max-time 20 \
-            https://terento.app/updates/macos-arm64.json | grep -q '"architecture"[[:space:]]*:[[:space:]]*"arm64"'; then
+          if ! docker exec "$container" sh -c \
+            "test -s /srv/updates/macos-arm64.json && grep -q '\"architecture\"[[:space:]]*:[[:space:]]*\"arm64\"' /srv/updates/macos-arm64.json"; then
+            rollback_web
+            exit 1
+          fi
+
+          manifest_url="https://terento.app/updates/macos-arm64.json"
+          manifest_verified=false
+          deadline=$(( $(date +%s) + 60 ))
+          while [ "$(date +%s)" -lt "$deadline" ]; do
+            if curl --fail --silent --connect-timeout 5 --max-time 10 "$manifest_url" \
+              | grep -q '"architecture"[[:space:]]*:[[:space:]]*"arm64"'; then
+              manifest_verified=true
+              break
+            fi
+
+            sleep 2
+          done
+
+          if [ "$manifest_verified" != true ]; then
             rollback_web
             exit 1
           fi
