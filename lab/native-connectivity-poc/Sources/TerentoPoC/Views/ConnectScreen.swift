@@ -23,9 +23,12 @@ private enum InstallationTimelineLayout {
     static let manageProgressWidth: CGFloat = 220
 }
 
-private enum AboutUpdateState {
+private enum AboutUpdateState: Equatable {
+    case idle
+    case checking
     case latest
-    case available
+    case available(TerentoAppUpdateManifest)
+    case unavailable(String)
 }
 
 struct ConnectScreen: View {
@@ -38,15 +41,15 @@ struct ConnectScreen: View {
     @State private var troubleshootingExpanded = false
     @State private var selectedMapIDs: Set<String> = []
     @State private var selectedInstallationPlan: InstallationPlan?
-    @State private var installedMapsExpanded = true
     @State private var availableMapsExpanded = true
     @State private var otherMapsExpanded = false
     @State private var freizeitkarteMapsExpanded = true
-    @State private var aboutUpdateState: AboutUpdateState = .latest
+    @State private var aboutUpdateState: AboutUpdateState = .idle
     @State private var mapSearchText = ""
     @FocusState private var mapSearchFieldFocused: Bool
     @State private var resolvedDeviceAsset = ResolvedDeviceAsset.fallback
-    @State private var pendingConsentPlan: InstallationPlan?
+    @State private var privacyActionMessage: String?
+    @State private var diagnosticLogMessage: String?
     @State private var evidenceWriteStarted = false
     @State private var evidenceRecordedForCurrentWrite = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -70,13 +73,6 @@ struct ConnectScreen: View {
 
     private var mapSelectionItems: [MapSelectionItem] {
         mapEngine.mapSelectionItems
-    }
-
-    private var installedSelectionItems: [MapSelectionItem] {
-        MapSelectionPresentationModel.supportedInstalled(
-            mapSelectionItems,
-            inventory: unifiedMapInventory
-        )
     }
 
     private var availableSelectionItems: [MapSelectionItem] {
@@ -186,9 +182,12 @@ struct ConnectScreen: View {
         .onChange(of: mapEngine.state) { newState in
             updatePresenceMonitoring(for: newState)
         }
-        .onChange(of: mapEngine.installationPhase) { _ in
+        .onChange(of: mapEngine.installationPhase) { phase in
             updatePresenceMonitoring(for: mapEngine.state)
             recordInstallationEvidenceIfNeeded()
+            if phase != .failed {
+                diagnosticLogMessage = nil
+            }
         }
         .onChange(of: lifecycleViewModel.isBusy) { _ in
             updatePresenceMonitoring(for: mapEngine.state)
@@ -205,21 +204,6 @@ struct ConnectScreen: View {
 
             selectedSection = .installMaps
             localInstallStep = .done
-        }
-        .alert("Share anonymous compatibility results?", isPresented: Binding(
-            get: { pendingConsentPlan != nil },
-            set: { if !$0 { pendingConsentPlan = nil } }
-        )) {
-            Button("Share anonymously") {
-                evidenceController.decideConsent(.accepted)
-                startPendingConsentPlan()
-            }
-            Button("Don't share") {
-                evidenceController.decideConsent(.declined)
-                startPendingConsentPlan()
-            }
-        } message: {
-            Text("Terento stores installation evidence locally. If you opt in, it uploads the Garmin model, firmware, USB VID/PID, map and technical result. It never collects the Garmin Unit ID or serial number. Sharing is optional and declining does not disable installation.")
         }
     }
 
@@ -345,6 +329,48 @@ struct ConnectScreen: View {
         )
         selectedMapIDs.removeAll()
         mapSearchText = ""
+    }
+
+    private func checkForAppUpdate() {
+        guard aboutUpdateState != .checking else {
+            return
+        }
+
+        aboutUpdateState = .checking
+        Task { @MainActor in
+            do {
+                let result = try await TerentoAppUpdateService().check()
+                switch result {
+                case .latest:
+                    aboutUpdateState = .latest
+                case let .available(update):
+                    aboutUpdateState = .available(update)
+                }
+            } catch {
+                aboutUpdateState = .unavailable(
+                    error.localizedDescription
+                )
+            }
+        }
+    }
+
+    private func openAppUpdate(_ update: TerentoAppUpdateManifest) {
+        guard NSWorkspace.shared.open(update.downloadURL) else {
+            aboutUpdateState = .unavailable(
+                "The update download could not be opened. Try again later."
+            )
+            return
+        }
+    }
+
+    /// Leaves a failed install flow without discarding its recovery record,
+    /// then rebuilds the catalog and device inventory from live read-only
+    /// data. This prevents the failed engine phase from trapping Install maps
+    /// in its loading fallback after the user presses Back.
+    private func returnToMapSelectionAfterFailure() {
+        selectedInstallationPlan = nil
+        localInstallStep = .choose
+        refreshMapInventory()
     }
 
     private func performSafeEject() {
@@ -491,6 +517,9 @@ struct ConnectScreen: View {
         case .safeToDisconnect:
             return "You can unplug your Garmin."
         case .failed:
+            if let message = deviceEngine.userErrorMessage {
+                return message
+            }
             return "We couldn't find your Garmin within 2 minutes. Reconnect your watch and try again."
         }
     }
@@ -557,20 +586,20 @@ struct ConnectScreen: View {
         TerentoPageShell {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    TerentoPageHeader(
-                        title: "About Terento",
-                        subtitle: "Your device, ready for where you're going."
-                    )
-
                     HStack(alignment: .center, spacing: 16) {
                         ResourceImage(name: "logo", subdirectory: "Brand")
                             .scaledToFit()
-                            .frame(width: 72, height: 72)
+                            .frame(width: 64, height: 64)
 
                         VStack(alignment: .leading, spacing: 5) {
-                            Text("Terento")
-                                .font(.terentoUI(size: 22, weight: .semibold))
+                            Text("About Terento")
+                                .font(.terentoHeading(size: 30, weight: .semibold))
                                 .foregroundStyle(TerentoColors.graphite)
+
+                            Text("Your device, ready for where you're going.")
+                                .font(.terentoBody(size: 17, weight: .medium))
+                                .foregroundStyle(TerentoColors.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
 
                             Text("Version \(TerentoAppMetadata.version)")
                                 .font(.terentoUI(size: 14, weight: .medium))
@@ -587,44 +616,146 @@ struct ConnectScreen: View {
 
                     aboutSection(title: "Updates") {
                         switch aboutUpdateState {
+                        case .idle:
+                            Text("Check whether a newer Terento version is available.")
+                                .font(.terentoUI(size: 15, weight: .medium))
+                                .foregroundStyle(TerentoColors.secondaryText)
+
+                            SecondaryButton(title: "Check for updates") {
+                                checkForAppUpdate()
+                            }
+                            .padding(.top, 8)
+                        case .checking:
+                            Text("Checking for updates…")
+                                .font(.terentoUI(size: 15, weight: .medium))
+                                .foregroundStyle(TerentoColors.secondaryText)
+
+                            SecondaryButton(title: "Check for updates") {
+                                checkForAppUpdate()
+                            }
+                            .disabled(true)
+                            .padding(.top, 8)
                         case .latest:
                             Text("You're using the latest version.")
                                 .font(.terentoUI(size: 15, weight: .medium))
                                 .foregroundStyle(TerentoColors.secondaryText)
 
                             SecondaryButton(title: "Check for updates") {
-                                aboutUpdateState = .latest
+                                checkForAppUpdate()
                             }
                             .padding(.top, 8)
-                        case .available:
-                            Text("Terento 1.1.0 is available.")
+                        case let .available(update):
+                            Text("Terento \(update.displayVersion) is available.")
                                 .font(.terentoUI(size: 15, weight: .medium))
                                 .foregroundStyle(TerentoColors.secondaryText)
 
                             SecondaryButton(title: "Install update") {
-                                // The update service is intentionally not part
-                                // of the current product scope.
+                                openAppUpdate(update)
+                            }
+                            .padding(.top, 8)
+                        case let .unavailable(message):
+                            Text(message)
+                                .font(.terentoUI(size: 15, weight: .medium))
+                                .foregroundStyle(TerentoColors.secondaryText)
+
+                            SecondaryButton(title: "Check for updates") {
+                                checkForAppUpdate()
                             }
                             .padding(.top, 8)
                         }
                     }
 
                     aboutSection(title: "Support") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            externalLink("GitHub repository ↗", urlString: TerentoAppLinks.repository.absoluteString)
-                            externalLink("Report an issue ↗", urlString: TerentoAppLinks.issues.absoluteString)
-                            externalLink("Website ↗", urlString: TerentoAppLinks.website.absoluteString)
+                        ViewThatFits(in: .horizontal) {
+                            HStack(alignment: .firstTextBaseline, spacing: 18) {
+                                externalLink("GitHub repository ↗", urlString: TerentoAppLinks.repository.absoluteString)
+                                externalLink("Report an issue ↗", urlString: TerentoAppLinks.issues.absoluteString)
+                                externalLink("Website ↗", urlString: TerentoAppLinks.website.absoluteString)
+                            }
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                externalLink("GitHub repository ↗", urlString: TerentoAppLinks.repository.absoluteString)
+                                externalLink("Report an issue ↗", urlString: TerentoAppLinks.issues.absoluteString)
+                                externalLink("Website ↗", urlString: TerentoAppLinks.website.absoluteString)
+                            }
                         }
                     }
 
                     aboutSection(title: "Privacy") {
-                        Text("Your device data stays on this Mac.")
+                        Text("Device state, maps, and Terento manifests stay on this Mac. Optional privacy-minimised installation reports are sent only when you choose to share them.")
                             .font(.terentoUI(size: 15, weight: .medium))
                             .foregroundStyle(TerentoColors.secondaryText)
+
+                        Toggle("Share compatibility reports", isOn: compatibilitySharingBinding)
+                            .toggleStyle(.checkbox)
+                            .padding(.top, 8)
+
+                        Text("Reports include watch and firmware details, map and software versions, and the installation result. They do not include a Garmin Unit ID, serial number, account information, file paths, manifests, or map files.")
+                            .font(.terentoUI(size: 13, weight: .regular))
+                            .foregroundStyle(TerentoColors.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        switch evidenceController.uploadStatus {
+                        case .idle:
+                            EmptyView()
+                        case let .uploading(count):
+                            Text("Sending \(count) compatibility report\(count == 1 ? "" : "s")…")
+                                .font(.terentoUI(size: 13, weight: .medium))
+                                .foregroundStyle(TerentoColors.secondaryText)
+                        case .uploaded:
+                            Text("Compatibility reports are up to date.")
+                                .font(.terentoUI(size: 13, weight: .medium))
+                                .foregroundStyle(TerentoColors.secondaryText)
+                        case let .waiting(count, _, willRetry):
+                            Text(
+                                willRetry
+                                    ? "\(count) compatibility report\(count == 1 ? " is" : "s are") waiting to upload. Terento will retry automatically."
+                                    : "\(count) compatibility report\(count == 1 ? " is" : "s are") waiting to upload. Terento will try again when the app is reopened."
+                            )
+                            .font(.terentoUI(size: 13, weight: .medium))
+                            .foregroundStyle(TerentoColors.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                        }
+
+                        ViewThatFits(in: .horizontal) {
+                            HStack(alignment: .firstTextBaseline, spacing: 14) {
+                                externalLink("Privacy notice ↗", urlString: TerentoAppLinks.privacy.absoluteString)
+                                deleteUploadedReportsLink
+                            }
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                externalLink("Privacy notice ↗", urlString: TerentoAppLinks.privacy.absoluteString)
+                                deleteUploadedReportsLink
+                            }
+                        }
+                        .padding(.top, 5)
+
+                        if let privacyActionMessage {
+                            Text(privacyActionMessage)
+                                .font(.terentoUI(size: 13, weight: .regular))
+                                .foregroundStyle(TerentoColors.secondaryText)
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var deleteUploadedReportsLink: some View {
+        if !evidenceController.store.uploadedEvents().isEmpty {
+            Button("Delete uploaded reports") {
+                Task {
+                    let deleted = await evidenceController.deleteUploadedReports()
+                    privacyActionMessage = deleted > 0
+                        ? "Uploaded reports deleted."
+                        : "Uploaded reports could not be deleted. Try again later or contact privacy@terento.app."
+                }
+            }
+            .buttonStyle(.plain)
+            .font(.terentoUI(size: 14, weight: .medium))
+            .foregroundStyle(TerentoColors.interactive)
         }
     }
 
@@ -916,26 +1047,6 @@ struct ConnectScreen: View {
                         )
                         .padding(.top, 18)
                     } else {
-                        TerentoMapSectionHeader(
-                            title: "Installed maps",
-                            count: installedSelectionItems.count,
-                            isExpanded: $installedMapsExpanded
-                        )
-                        .padding(.top, TerentoPageLayout.firstSectionTopPadding)
-
-                        if installedMapsExpanded, !installedSelectionItems.isEmpty {
-                            LazyVStack(spacing: 0) {
-                                ForEach(installedSelectionItems) { item in
-                                    MapSelectionRow(
-                                        item: item,
-                                        isSelected: .constant(false),
-                                        isAvailable: false
-                                    )
-                                }
-                            }
-                            .padding(.top, TerentoPageLayout.sectionContentTopPadding)
-                        }
-
                         HStack(alignment: .center, spacing: 14) {
                             TerentoMapSectionHeader(
                                 title: "Available Freizeitkarte maps",
@@ -970,20 +1081,32 @@ struct ConnectScreen: View {
                                 .accessibilityValue("\(filteredAvailableSelectionItems.count) results")
                             }
                         }
-                        .padding(.top, TerentoPageLayout.sectionSpacing)
+                        .padding(.top, TerentoPageLayout.firstSectionTopPadding)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             } mapRegion: {
                 if mapEngine.state == .scanned, !mapSelectionItems.isEmpty, availableMapsExpanded {
                     if filteredAvailableSelectionItems.isEmpty {
-                        Text(mapSearchText.isEmpty
-                            ? "No maps are currently available for installation."
-                            : "No maps match your search.")
-                            .font(.terentoUI(size: 13, weight: .medium))
-                            .foregroundStyle(TerentoColors.secondaryText)
-                            .frame(maxWidth: .infinity, alignment: .topLeading)
-                            .padding(.top, 10)
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text(mapSearchText.isEmpty
+                                ? "No new Freizeitkarte maps are available to install."
+                                : "No maps match your search.")
+                                .font(.terentoUI(size: 13, weight: .medium))
+                                .foregroundStyle(TerentoColors.secondaryText)
+
+                            if mapSearchText.isEmpty {
+                                Button("Manage maps") {
+                                    navigate(to: .manageMaps)
+                                }
+                                .buttonStyle(.borderless)
+                                .font(.terentoUI(size: 13, weight: .semibold))
+                                .foregroundStyle(TerentoColors.interactive)
+                                .accessibilityHint("Opens installed map management.")
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .padding(.top, 10)
                     } else {
                         TerentoBoundedMapSelectionRegion {
                             LazyVStack(spacing: 0) {
@@ -1083,7 +1206,13 @@ struct ConnectScreen: View {
             }
         } footer: {
             TerentoPageFooter {
-                EmptyView()
+                if mapEngine.installationPhase == .failed {
+                    TerentoBackButton {
+                        returnToMapSelectionAfterFailure()
+                    }
+                } else {
+                    EmptyView()
+                }
             } trailing: {
                 EmptyView()
             }
@@ -1166,20 +1295,29 @@ struct ConnectScreen: View {
                 .padding(.top, 18)
 
                 if plan.canContinue {
-                    Text("Terento will install the selected maps to your Garmin.\nExisting Garmin system maps are left unchanged.")
+                    Text("Terento will install these maps to your Garmin.\nExisting Garmin maps will not be changed.")
                         .font(.terentoUI(size: 14, weight: .medium))
                         .foregroundStyle(TerentoColors.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, 22)
 
-                    if let reason = installAvailability.userReason {
-                        Text(reason)
-                            .font(.terentoUI(size: 14, weight: .semibold))
-                            .foregroundStyle(TerentoColors.error)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .padding(.top, 12)
+                    Toggle(isOn: compatibilitySharingBinding) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Help improve Terento")
+                                .font(.terentoUI(size: 14, weight: .semibold))
+                            Text("Share anonymous installation data to help us understand device compatibility and improve support for other Garmin users.")
+                                .font(.terentoUI(size: 13, weight: .regular))
+                                .foregroundStyle(TerentoColors.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Link("What is shared and how to stop sharing ↗", destination: TerentoAppLinks.privacy)
+                                .font(.terentoUI(size: 13, weight: .medium))
+                                .foregroundStyle(TerentoColors.interactive)
+                        }
                     }
-                } else {
+                    .toggleStyle(.checkbox)
+                    .padding(.top, 18)
+
+                } else if plan.storagePlan.status == .blockedInsufficientSpace {
                     Text(plan.reason)
                         .font(.terentoUI(size: 15, weight: .semibold))
                         .foregroundStyle(TerentoColors.error)
@@ -1266,34 +1404,52 @@ struct ConnectScreen: View {
                         .font(.terentoUI(size: 14, weight: .medium))
                         .foregroundStyle(TerentoColors.error)
                         .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 14)
+                        .padding(.top, TerentoPageLayout.sectionSpacing)
 
-                    Button("Show log.txt") {
-                        TerentoDiagnosticLog.revealLog()
+                    installationEvidenceDeliveryView
+                        .padding(.top, 8)
+
+                    VStack(alignment: .leading, spacing: TerentoPageLayout.sectionContentTopPadding) {
+                        HStack(alignment: .center, spacing: TerentoPageLayout.sectionSpacing) {
+                            InstallationSupportActionButton(
+                                title: "View diagnostic log",
+                                isExternal: false
+                            ) {
+                                diagnosticLogMessage = TerentoDiagnosticLog.revealLog()
+                                    ? nil
+                                    : "The diagnostic log is not available yet."
+                            }
+
+                            InstallationSupportActionButton(
+                                title: "Report an issue ↗",
+                                isExternal: true
+                            ) {
+                                let report = InstallationIssueReport.generate(
+                                    identity: identity,
+                                    packages: plan.installItems.map(\.package),
+                                    phase: mapEngine.installationPhase,
+                                    error: mapEngine.installationErrorMessage
+                                )
+                                InstallationIssueReport.copyAndOpenGitHub(report)
+                            }
+                        }
+
+                        if let diagnosticLogMessage {
+                            Text(diagnosticLogMessage)
+                                .font(.terentoUI(size: 13, weight: .medium))
+                                .foregroundStyle(TerentoColors.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
-                    .buttonStyle(.bordered)
-                    .padding(.top, 8)
-
-                    Button("Report issue") {
-                        let report = InstallationIssueReport.generate(
-                            identity: identity,
-                            packages: plan.installItems.map(\.package),
-                            phase: mapEngine.installationPhase,
-                            error: mapEngine.installationErrorMessage
-                        )
-                        InstallationIssueReport.copyAndOpenGitHub(report)
-                    }
-                    .buttonStyle(.bordered)
-                    .help("Copies a sanitized diagnostic report, then opens GitHub for your review.")
-
+                    .padding(.top, TerentoPageLayout.sectionSpacing)
+                    .padding(.bottom, TerentoPageLayout.sectionSpacing)
                 }
             }
         } footer: {
             TerentoPageFooter {
                 if mapEngine.installationPhase == .failed {
                     TerentoBackButton {
-                        selectedInstallationPlan = nil
-                        localInstallStep = .choose
+                        returnToMapSelectionAfterFailure()
                     }
                 } else {
                     EmptyView()
@@ -1357,7 +1513,7 @@ struct ConnectScreen: View {
 
             installationStepRow(
                 title: "Finishing",
-                detail: "Reading the map back and completing final checks",
+                detail: "Checking the transferred map and completing final checks",
                 state: installationStepState(for: .finishing),
                 progress: mapEngine.installationPhase == .finishing
                     && mapEngine.installationPhaseProgressIsMeasured
@@ -1635,11 +1791,11 @@ struct ConnectScreen: View {
         let progress = mapEngine.installationPhaseProgress ?? 0
         switch progress {
         case ..<0.25:
-            return "Reading the map back from your Garmin"
+            return "Checking sampled regions on your Garmin"
         case ..<0.45:
-            return "Calculating a full checksum"
+            return "Confirming the transferred file size and content"
         case ..<0.65:
-            return "Comparing the map with the downloaded source"
+            return "Confirming the map identity and release"
         case ..<0.85:
             return "Checking the target file and unchanged device files"
         default:
@@ -1693,12 +1849,9 @@ struct ConnectScreen: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, TerentoPageLayout.sectionSpacing)
 
-                    Button(evidenceController.latestEvent?.userConfirmed == true ? "Confirmed" : "Confirm") {
-                        evidenceController.confirmLatestSuccessfulInstallation()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(evidenceController.latestEvent?.userConfirmed == true)
-                    .padding(.top, TerentoPageLayout.sectionSpacing)
+                    installationEvidenceDeliveryView
+                        .padding(.top, 8)
+
                 }
             }
         } footer: {
@@ -1746,17 +1899,19 @@ struct ConnectScreen: View {
     private func beginInstallationAfterConsent(_ plan: InstallationPlan) {
         evidenceWriteStarted = false
         evidenceRecordedForCurrentWrite = false
-        if evidenceController.requiresConsentDecision {
-            pendingConsentPlan = plan
-        } else {
-            mapEngine.beginInstallation(plan: plan)
-        }
+        evidenceController.resetLatestDeliveryStatus()
+        evidenceController.commitCurrentSharingChoice()
+        mapEngine.beginInstallation(plan: plan)
     }
 
-    private func startPendingConsentPlan() {
-        guard let plan = pendingConsentPlan else { return }
-        pendingConsentPlan = nil
-        mapEngine.beginInstallation(plan: plan)
+    private var compatibilitySharingBinding: Binding<Bool> {
+        Binding(
+            get: { evidenceController.compatibilitySharingEnabled },
+            set: { enabled in
+                privacyActionMessage = nil
+                evidenceController.decideConsent(enabled ? .accepted : .declined)
+            }
+        )
     }
 
     private func recordInstallationEvidenceIfNeeded() {
@@ -1786,9 +1941,10 @@ struct ConnectScreen: View {
         }()
         let results = mapEngine.installationBatchResults
         let startedCount = max(1, results.count)
+        var events: [InstallationEvidenceEvent] = []
         for (index, item) in plan.installItems.prefix(startedCount).enumerated() {
             let itemSucceeded = results.indices.contains(index) ? results[index].isSuccess : succeeded
-            evidenceController.record(InstallationEvidenceEvent(
+            events.append(InstallationEvidenceEvent(
                 identity: identity,
                 package: item.package,
                 outcome: itemSucceeded ? .succeeded : .failed,
@@ -1797,6 +1953,37 @@ struct ConnectScreen: View {
             ))
         }
         evidenceRecordedForCurrentWrite = true
+
+        Task { @MainActor in
+            _ = await evidenceController.recordAndUpload(events)
+        }
+    }
+
+    @ViewBuilder
+    private var installationEvidenceDeliveryView: some View {
+        switch evidenceController.latestDeliveryStatus {
+        case .idle:
+            EmptyView()
+        case .notShared:
+            EmptyView()
+        case let .sending(count):
+            Text("Sending \(count) compatibility report\(count == 1 ? "" : "s")…")
+                .font(.terentoUI(size: 13, weight: .medium))
+                .foregroundStyle(TerentoColors.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+        case let .sent(count):
+            Text(count == 1 ? "Compatibility report sent." : "Compatibility reports sent.")
+                .font(.terentoUI(size: 13, weight: .medium))
+                .foregroundStyle(TerentoColors.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+        case let .queued(count, _, _):
+            Text(count == 1
+                ? "Compatibility report could not be sent. It remains on this Mac."
+                : "Compatibility reports could not be sent. They remain on this Mac.")
+            .font(.terentoUI(size: 13, weight: .medium))
+            .foregroundStyle(TerentoColors.secondaryText)
+            .fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
 
@@ -2412,6 +2599,33 @@ private struct TerentoBackButton: View {
 
     var body: some View {
         SecondaryButton(title: title, action: action)
+    }
+}
+
+private struct InstallationSupportActionButton: View {
+    let title: String
+    let isExternal: Bool
+    let action: () -> Void
+    @Environment(\.isEnabled) private var isEnabled
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.terentoUI(size: 14, weight: .medium))
+                .foregroundStyle(isEnabled ? TerentoColors.interactive : TerentoColors.secondaryText)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .frame(minHeight: 32)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.link)
+        .help(isExternal ? "Opens GitHub in your browser." : "Opens the local diagnostic log on this Mac.")
+        .accessibilityLabel(title.replacingOccurrences(of: " ↗", with: ""))
+        .accessibilityHint(
+            isExternal
+                ? "Opens GitHub in your browser."
+                : "Opens the local diagnostic log on this Mac."
+        )
     }
 }
 
@@ -3176,7 +3390,7 @@ struct MapSelectionRow: View {
         self._isSelected = isSelected
         self.isAvailable = isAvailable
         self.showsSelectionControl = showsSelectionControl
-        self.showsSize = showsSize ?? isAvailable
+        self.showsSize = showsSize ?? (isAvailable && item.comparison.installedMap == nil)
         self.showsDivider = showsDivider
     }
 
@@ -3193,7 +3407,7 @@ struct MapSelectionRow: View {
                     Toggle("", isOn: $isSelected)
                         .toggleStyle(.checkbox)
                         .labelsHidden()
-                } else if showsSelectionControl {
+                } else if showsSelectionControl && !isAlreadyInstalledSearchResult {
                     Image(systemName: statusIcon)
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(statusColor)
@@ -3229,6 +3443,10 @@ struct MapSelectionRow: View {
     }
 
     private var detail: String {
+        if isAlreadyInstalledSearchResult {
+            return "Already installed"
+        }
+
         switch item.comparison.status {
         case .notInstalled:
             return item.installSizeBytes == nil ? "Size calculated before installation" : ""
@@ -3266,12 +3484,20 @@ struct MapSelectionRow: View {
     }
 
     private var accessibilityLabel: String {
+        if isAlreadyInstalledSearchResult {
+            return "\(item.title), Already installed"
+        }
+
         if showsSize {
             return item.installSizeBytes.map {
                 "\(item.title), \(formatBytes($0))"
             } ?? "\(item.title), size calculated before installation"
         }
         return "\(item.title), \(detail)"
+    }
+
+    private var isAlreadyInstalledSearchResult: Bool {
+        isAvailable && item.comparison.installedMap != nil
     }
 
     private func formatBytes(_ bytes: UInt64) -> String {
@@ -3447,9 +3673,9 @@ struct MapSelectionStorageSummary: View {
             return "Map size will be checked before installation."
         }
         if plan.storagePlan.isAllowed {
-            return "Enough space remains after installation."
+            return ""
         }
-        return "Not enough space for these maps. Remove a map or choose a smaller region."
+        return "Not enough space available. Remove a map or select fewer maps."
     }
 
     private var statusColor: Color {

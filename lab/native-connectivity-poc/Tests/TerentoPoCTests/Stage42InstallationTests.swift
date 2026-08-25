@@ -160,41 +160,45 @@ private final class MockTransport: MapInstallationTransport, @unchecked Sendable
     }
 
     func readBack(
+        sourceURL: URL,
         targetFilename: String,
         expectedItemID: UInt32,
-        targetPath: String
+        targetPath: String,
+        expectedSizeBytes: UInt64,
+        sampleOffsets: [UInt64],
+        sampleLength: UInt32,
+        progress: @escaping @Sendable (TransferProgress) -> Void
     ) throws -> MTPReadBackMapObject {
         readBackCount += 1
         if readBackMode == .missing {
             throw InstallationTransportError.remoteFileMissing
         }
 
-        let data: Data
         let reportedSize: UInt64
+        let matchedSampleCount: Int
         switch readBackMode {
         case .success:
-            data = remoteData
             reportedSize = UInt64(remoteData.count)
+            matchedSampleCount = sampleOffsets.count
         case .sizeMismatch:
-            data = remoteData
             reportedSize = UInt64(remoteData.count + 1)
+            matchedSampleCount = sampleOffsets.count
         case .hashMismatch:
-            var bytes = Array(remoteData)
-            bytes[bytes.startIndex] ^= 0x01
-            data = Data(bytes)
-            reportedSize = UInt64(data.count)
+            reportedSize = UInt64(remoteData.count)
+            matchedSampleCount = max(0, sampleOffsets.count - 1)
         case .missing:
             fatalError("handled above")
         }
-
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("terento-stage42-mock-readback-(UUID().uuidString).img")
-        try data.write(to: url, options: .atomic)
+        let sampledBytes = UInt64(sampleOffsets.count) * UInt64(sampleLength)
+        progress(TransferProgress(bytesTransferred: 0, totalBytes: sampledBytes))
+        progress(TransferProgress(bytesTransferred: sampledBytes, totalBytes: sampledBytes))
         return MTPReadBackMapObject(
             itemID: expectedItemID,
             targetPath: targetPath,
             reportedSizeBytes: reportedSize,
-            localURL: url
+            sampledBytes: sampledBytes,
+            sampleCount: sampleOffsets.count,
+            matchedSampleCount: matchedSampleCount
         )
     }
 
@@ -226,12 +230,12 @@ struct Stage42InstallationTests {
         passed += testPartialObjectIsCleanedAfterWriteDisconnect()
         passed += testMissingRemoteIsFailure()
         passed += testSizeMismatchIsFailure()
-        passed += testHashMismatchIsFailure()
-        passed += testMatchingSizeAndHashVerifies()
+        passed += testSampleMismatchIsFailure()
+        passed += testMatchingSizeAndSamplesVerify()
         passed += testCleanupTargetsOnlyNewLatviaObject()
         passed += testLithuaniaIsNeverCleanupTarget()
         passed += testSuccessMarksMapManaged()
-        passed += testSuccessRequiresHashVerification()
+        passed += testSuccessRequiresSampledVerification()
         passed += testSuccessClearsFailedInstallRecoveryRecord()
         passed += testFailedVerificationPreservesRecoveryRecordWhenCleanupFails()
 
@@ -427,8 +431,10 @@ struct Stage42InstallationTests {
         return expect(
             result.failure == .remoteFileMissing
                 && harness.transport.deleteCount == 1
+                && result.diagnostics.remoteObjectExists
+                && result.diagnostics.remoteSizeBytes == UInt64(harness.remoteData.count)
                 && !result.isSuccess,
-            "missing remote object is a failure and cleans only the new object"
+            "read-back failure retains written-object diagnostics and cleans only the new object"
         )
     }
 
@@ -444,7 +450,7 @@ struct Stage42InstallationTests {
         )
     }
 
-    private static func testHashMismatchIsFailure() -> Int {
+    private static func testSampleMismatchIsFailure() -> Int {
         let harness = makeHarness()
         harness.transport.readBackMode = .hashMismatch
         let result = harness.run()
@@ -452,18 +458,20 @@ struct Stage42InstallationTests {
             result.failure == .hashMismatch
                 && result.verification?.status == .hashMismatch
                 && harness.transport.deleteCount == 1,
-            "remote hash mismatch is a failure"
+            "sampled read-back mismatch is a failure"
         )
     }
 
-    private static func testMatchingSizeAndHashVerifies() -> Int {
+    private static func testMatchingSizeAndSamplesVerify() -> Int {
         let harness = makeHarness()
         let result = harness.run()
         return expect(
             result.verification?.status == .verified
+                && result.verification?.mode == .sampledReadBack
+                && result.verification?.sampleCount == result.verification?.matchedSampleCount
                 && result.diagnostics.remoteObjectExists
                 && result.diagnostics.remoteSizeBytes == UInt64(harness.remoteData.count),
-            "matching remote size and full hash verify the transfer"
+            "matching remote size and sampled read-back verify the transfer"
         )
     }
 
@@ -500,7 +508,7 @@ struct Stage42InstallationTests {
         )
     }
 
-    private static func testSuccessRequiresHashVerification() -> Int {
+    private static func testSuccessRequiresSampledVerification() -> Int {
         let harness = makeHarness()
         harness.transport.readBackMode = .hashMismatch
         let result = harness.run()
@@ -508,7 +516,7 @@ struct Stage42InstallationTests {
             result.transaction.state == .failed
                 && result.transaction.state != .completed
                 && result.status != .installVerified,
-            "installation cannot complete before full hash verification"
+            "installation cannot complete before sampled read-back verification"
         )
     }
 

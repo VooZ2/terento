@@ -174,7 +174,7 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
             let expectedBytes = httpResponse.expectedContentLength > 0
                 ? UInt64(httpResponse.expectedContentLength)
                 : 0
-            let startedAt = Date()
+            var speedEstimator = TransferSpeedEstimator()
             var downloadedBytes: UInt64 = 0
             var buffer = Data()
             buffer.reserveCapacity(64 * 1024)
@@ -188,7 +188,7 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
                     onProgress?(Self.progress(
                         bytesDownloaded: downloadedBytes,
                         totalBytes: expectedBytes,
-                        startedAt: startedAt
+                        speedEstimator: &speedEstimator
                     ))
                 }
             }
@@ -201,7 +201,7 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
             onProgress?(Self.progress(
                 bytesDownloaded: downloadedBytes,
                 totalBytes: expectedBytes,
-                startedAt: startedAt
+                speedEstimator: &speedEstimator
             ))
 
             return MapPackageDownloadResponse(
@@ -218,13 +218,12 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
     private static func progress(
         bytesDownloaded: UInt64,
         totalBytes: UInt64,
-        startedAt: Date
+        speedEstimator: inout TransferSpeedEstimator
     ) -> MapDownloadProgress {
-        let elapsed = max(Date().timeIntervalSince(startedAt), 0.001)
         return MapDownloadProgress(
             bytesDownloaded: bytesDownloaded,
             totalBytes: totalBytes,
-            bytesPerSecond: Double(bytesDownloaded) / elapsed
+            bytesPerSecond: speedEstimator.update(bytes: bytesDownloaded)
         )
     }
 }
@@ -566,7 +565,7 @@ struct MapPackageAcquirer: Sendable {
         do {
             targetFilename = try TerentoManagedFilenameGenerator().filename(
                 providerId: package.providerId,
-                regionId: package.regionId
+                regionId: package.canonicalRegionId
             )
         } catch {
             throw MapAcquisitionError.invalidPackage("The managed target filename could not be generated.")

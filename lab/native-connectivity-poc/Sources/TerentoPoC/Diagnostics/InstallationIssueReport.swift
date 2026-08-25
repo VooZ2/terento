@@ -15,7 +15,7 @@ enum InstallationIssueReport {
             "macOS: \(ProcessInfo.processInfo.operatingSystemVersionString)",
             "Device model: \(identity?.canonicalModel ?? identity?.model ?? "unknown")",
             "Firmware: \(identity?.firmware ?? "unknown")",
-            "Map region: \(packages.map(\.regionId).joined(separator: ", "))",
+            "Map region: \(packages.map(\.canonicalRegionId).joined(separator: ", "))",
             "Installation phase: \(phase.rawValue)",
             "Error summary: \(error ?? "unknown")"
         ].joined(separator: "\n")

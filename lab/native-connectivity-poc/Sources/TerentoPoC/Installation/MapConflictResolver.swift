@@ -62,7 +62,7 @@ struct MapConflictResolver: Sendable {
     ) throws -> String {
         let filename = try filenameGenerator.filename(
             providerId: selectedPackage.providerId,
-            regionId: selectedPackage.regionId
+            regionId: selectedPackage.canonicalRegionId
         )
         return "\(profile.targetDirectory)/\(filename)"
     }

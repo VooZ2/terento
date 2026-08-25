@@ -571,7 +571,7 @@ final class MapLifecycleViewModel: ObservableObject {
                             operationGate: operationGate,
                             lifecycleLease: lease
                         ),
-                        onProgress: relay.send
+                        onProgress: { progress in relay.send(progress) }
                     )
                 }
             } catch {

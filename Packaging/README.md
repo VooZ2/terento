@@ -24,18 +24,18 @@ tests.
 Run from the repository root:
 
 ```sh
-Packaging/release.sh --version 1.0.0 --build 1
+Packaging/release.sh --version 1.0.0 --build 2
 ```
 
 For a beta release, keep the app's marketing version separate from the public
 release label:
 
 ```sh
-RELEASE_TAG=v1.0.0-beta.2 \
+RELEASE_TAG=v1.0.0-beta.3 \
 Packaging/release.sh \
   --version 1.0.0 \
-  --build 1 \
-  --release-version 1.0.0-beta.2 \
+  --build 2 \
+  --release-version 1.0.0-beta.3 \
   --overwrite
 ```
 
@@ -44,12 +44,15 @@ The pipeline fails rather than silently replacing an existing artifact. Use
 The results are written to:
 
 ```text
-dist/Terento-1.0.0-beta.2-macOS-arm64.zip
-dist/Terento-1.0.0-beta.2-macOS-arm64.dmg
+dist/Terento-1.0.0-beta.3-macOS-arm64.zip
+dist/Terento-1.0.0-beta.3-macOS-arm64.dmg
 ```
 
 The command prints the final artifact size and SHA-256 checksum for both
-packages. The ZIP contains one top-level item, `Terento.app`. The DMG contains
+packages. Packaging explicitly excludes macOS resource forks, extended
+attributes, ACLs, and quarantine metadata so `._*`, `.DS_Store`, and
+`__MACOSX` files cannot enter the distributed archives. The ZIP contains one
+top-level item, `Terento.app`. The DMG contains
 the same signed app and an `Applications` shortcut for drag-and-drop install.
 Both packages are mounted or extracted and checked before the pipeline reports
 success.
@@ -82,7 +85,7 @@ To exercise the fresh build, tests, signing, Hardened Runtime, and runtime-path
 checks without contacting Apple or creating release artifacts:
 
 ```sh
-Packaging/release.sh --no-notarize --version 1.0.0 --build 1
+Packaging/release.sh --no-notarize --version 1.0.0 --build 2
 ```
 
 This mode explicitly reports `NOT NOTARIZED` and must not be treated as a

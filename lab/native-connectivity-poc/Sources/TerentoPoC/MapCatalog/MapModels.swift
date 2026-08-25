@@ -65,8 +65,21 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         downloadSizeBytes ?? sizeBytes
     }
 
+    /// The provider identifier is the concrete map identity. Most packages
+    /// use the same token for `regionId` and `identifier`, but a few provider
+    /// catalog entries intentionally share a broad region (for example
+    /// AZORES) while `identifier` distinguishes the actual package.
+    var canonicalRegionId: String {
+        guard let identifier = identifier?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !identifier.isEmpty else {
+            return regionId
+        }
+
+        return identifier
+    }
+
     var identity: MapIdentity? {
-        MapIdentity(provider: providerId, region: regionId)
+        MapIdentity(provider: providerId, region: canonicalRegionId)
     }
 
     func withInstallSize(_ installSizeBytes: UInt64) -> MapPackage {

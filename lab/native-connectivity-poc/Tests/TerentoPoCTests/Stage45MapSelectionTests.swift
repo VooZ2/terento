@@ -202,9 +202,10 @@ struct Stage45MapSelectionTests {
         expect(
             items.first?.action == .update
                 && plan.updateItems.count == 1
+                && plan.storagePlan.selectedMapBytes == 0
                 && plan.status == .blocked
                 && plan.canContinue == false,
-            "an update is visible as an update but cannot enter the new-install write path"
+            "an update remains Manage-only and never consumes Install storage"
         )
     }
 
@@ -294,14 +295,14 @@ struct Stage45MapSelectionTests {
     private static func testRegionalVariantsRemainDistinct() {
         let north = makeComparison(
             id: "freizeitkarte-deu-north",
-            region: "DEU",
+            region: "DEU-NORTH",
             name: "Federal Republic of Germany",
             status: .notInstalled,
             identifier: "DEU+NORTH"
         )
         let south = makeComparison(
             id: "freizeitkarte-deu-south",
-            region: "DEU",
+            region: "DEU-SOUTH",
             name: "Federal Republic of Germany",
             status: .notInstalled,
             identifier: "DEU+SOUTH"
@@ -349,8 +350,10 @@ struct Stage45MapSelectionTests {
         expect(
             installedRows.map(\.title) == ["Lithuania"]
                 && availableRows.map(\.title) == ["Latvia"]
-                && !availableRows.contains(where: { $0.title == "Lithuania" }),
-            "installed catalog maps appear once and are excluded from Available"
+                && !availableRows.contains(where: { $0.title == "Lithuania" })
+                && MapSelectionPresentationModel.available(items, query: "Lithuania").map(\.title) == ["Lithuania"]
+                && MapSelectionPresentationModel.available(items, query: "Lithuania").allSatisfy({ !$0.isSelectable }),
+            "installed catalog maps are excluded from normal browsing but appear as non-selectable search results"
         )
     }
 

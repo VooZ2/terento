@@ -5,6 +5,7 @@ enum DiagnosticReportSanitizer {
     static func sanitize(_ value: String) -> String {
         var result = value
         let replacements: [(String, String)] = [
+            (#"(?i)\"(unit[ _-]?id|serial(?: number)?|password|token|credential)\"\s*:\s*\"[^\"]*\""#, "\"$1\":\"[REDACTED]\""),
             (#"(?i)(unit[ _-]?id|serial(?: number)?|password|token|credential)\s*[:=]\s*\S+"#, "$1: [REDACTED]"),
             (#"/Users/[^/\s]+"#, "/Users/[REDACTED]"),
             (#"(?i)file://\S+"#, "[LOCAL FILE REDACTED]"),
@@ -62,7 +63,7 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
     let phaseOutcome: InstallationEvidenceOutcome
     let automaticFinishingResult: AutomaticFinishingResult
     let errorCategory: EvidenceErrorCategory?
-    var userConfirmed: Bool
+    let deletionToken: String?
 
     init(
         id: UUID = UUID(),
@@ -72,9 +73,9 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         outcome: InstallationEvidenceOutcome,
         finishingResult: AutomaticFinishingResult,
         errorCategory: EvidenceErrorCategory? = nil,
-        userConfirmed: Bool = false,
         terentoVersion: String = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "development",
-        macOSVersion: String = ProcessInfo.processInfo.operatingSystemVersionString
+        macOSVersion: String = ProcessInfo.processInfo.operatingSystemVersionString,
+        deletionToken: String = InstallationEvidenceEvent.makeDeletionToken()
     ) {
         self.schemaVersion = Self.schemaVersion
         self.id = id
@@ -86,14 +87,21 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         self.usbProductID = identity.usbProductId
         self.transport = "MTP"
         self.provider = package.providerId
-        self.region = package.regionId
+        // `regionId` is the provider's grouping region. Some catalog entries
+        // share that group (for example AZORES and BALEARICS), so evidence
+        // must use the concrete package identity to remain unambiguous.
+        self.region = package.canonicalRegionId
         self.mapRelease = String(describing: package.version)
         self.terentoVersion = terentoVersion
         self.macOSVersion = macOSVersion
         self.phaseOutcome = outcome
         self.automaticFinishingResult = finishingResult
         self.errorCategory = errorCategory
-        self.userConfirmed = userConfirmed
+        self.deletionToken = deletionToken
+    }
+
+    private static func makeDeletionToken() -> String {
+        (UUID().uuidString + UUID().uuidString).replacingOccurrences(of: "-", with: "").lowercased()
     }
 }
 
@@ -103,7 +111,7 @@ enum EvidenceConsentChoice: String, Codable, Sendable {
 }
 
 struct VersionedEvidenceConsent: Codable, Equatable, Sendable {
-    static let currentNoticeVersion = 1
+    static let currentNoticeVersion = 2
     let noticeVersion: Int
     let choice: EvidenceConsentChoice
     let decidedAt: Date
@@ -172,6 +180,7 @@ enum CompatibilityEvidenceCalculator {
 private struct InstallationEvidenceFile: Codable {
     var events: [InstallationEvidenceEvent] = []
     var pendingUploadEventIDs: [UUID] = []
+    var uploadedEventIDs: [UUID]?
     var consent: VersionedEvidenceConsent?
 }
 
@@ -216,20 +225,10 @@ final class LocalInstallationEvidenceStore: @unchecked Sendable {
                 choice: choice,
                 decidedAt: now
             )
-            try saveUnlocked(file)
-        }
-    }
-
-    func confirm(eventID: UUID, queueForUpload: Bool) throws -> InstallationEvidenceEvent? {
-        try lock.withLock {
-            var file = try loadUnlocked()
-            guard let index = file.events.firstIndex(where: { $0.id == eventID }) else { return nil }
-            file.events[index].userConfirmed = true
-            if queueForUpload && !file.pendingUploadEventIDs.contains(eventID) {
-                file.pendingUploadEventIDs.append(eventID)
+            if choice == .declined {
+                file.pendingUploadEventIDs.removeAll()
             }
             try saveUnlocked(file)
-            return file.events[index]
         }
     }
 
@@ -243,6 +242,25 @@ final class LocalInstallationEvidenceStore: @unchecked Sendable {
         try lock.withLock {
             var file = try loadUnlocked()
             file.pendingUploadEventIDs.removeAll { $0 == eventID }
+            var uploaded = file.uploadedEventIDs ?? []
+            if !uploaded.contains(eventID) {
+                uploaded.append(eventID)
+            }
+            file.uploadedEventIDs = uploaded
+            try saveUnlocked(file)
+        }
+    }
+
+    func uploadedEvents() -> [InstallationEvidenceEvent] {
+        let file = lockedLoad()
+        let ids = Set(file.uploadedEventIDs ?? [])
+        return file.events.filter { ids.contains($0.id) && $0.deletionToken != nil }
+    }
+
+    func markDeleted(eventID: UUID) throws {
+        try lock.withLock {
+            var file = try loadUnlocked()
+            file.uploadedEventIDs?.removeAll { $0 == eventID }
             try saveUnlocked(file)
         }
     }
@@ -277,6 +295,37 @@ private extension NSLock {
 
 protocol InstallationEvidenceUploading: Sendable {
     func upload(_ event: InstallationEvidenceEvent) async throws
+    func delete(_ event: InstallationEvidenceEvent) async throws
+}
+
+enum InstallationEvidenceUploadError: LocalizedError, Equatable, Sendable {
+    case invalidResponse
+    case httpStatus(code: Int, body: String)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidResponse:
+            return "The compatibility service is temporarily unavailable."
+        case let .httpStatus(code, _):
+            switch code {
+            case 408, 425, 429...:
+                return "The compatibility service is temporarily unavailable."
+            case 400..<500:
+                return "The compatibility report could not be accepted."
+            default:
+                return "The compatibility report could not be sent."
+            }
+        }
+    }
+
+    var isRetryable: Bool {
+        switch self {
+        case .invalidResponse:
+            return true
+        case let .httpStatus(code, _):
+            return code == 408 || code == 425 || code == 429 || code >= 500
+        }
+    }
 }
 
 struct HTTPInstallationEvidenceUploader: InstallationEvidenceUploading {
@@ -289,82 +338,366 @@ struct HTTPInstallationEvidenceUploader: InstallationEvidenceUploading {
     func upload(_ event: InstallationEvidenceEvent) async throws {
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
+        request.timeoutInterval = 15
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
         request.httpBody = try JSONEncoder.iso8601.encode(event)
-        let (_, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            throw URLError(.badServerResponse)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw InstallationEvidenceUploadError.invalidResponse
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            let body = String(decoding: data.prefix(512), as: UTF8.self)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            throw InstallationEvidenceUploadError.httpStatus(code: http.statusCode, body: body)
+        }
+    }
+
+    func delete(_ event: InstallationEvidenceEvent) async throws {
+        guard let deletionToken = event.deletionToken else {
+            throw URLError(.userAuthenticationRequired)
+        }
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "DELETE"
+        request.timeoutInterval = 15
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: [
+            "id": event.id.uuidString.lowercased(),
+            "deletionToken": deletionToken,
+        ])
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw InstallationEvidenceUploadError.invalidResponse
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            let body = String(decoding: data.prefix(512), as: UTF8.self)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            throw InstallationEvidenceUploadError.httpStatus(code: http.statusCode, body: body)
         }
     }
 }
 
+enum InstallationEvidenceUploadStatus: Equatable, Sendable {
+    case idle
+    case uploading(count: Int)
+    case uploaded
+    case waiting(count: Int, reason: String, willRetry: Bool)
+}
+
+enum InstallationEvidenceDeliveryStatus: Equatable, Sendable {
+    case idle
+    case notShared
+    case sending(count: Int)
+    case sent(count: Int)
+    case queued(count: Int, reason: String, willRetry: Bool)
+}
+
 @MainActor
 final class InstallationEvidenceController: ObservableObject {
-    @Published private(set) var latestSuccessfulEventID: UUID?
-    @Published private(set) var latestEvent: InstallationEvidenceEvent?
-
     let store: LocalInstallationEvidenceStore
     private let uploader: any InstallationEvidenceUploading
+    private let automaticRetryDelays: [UInt64]
+    private var uploadTask: Task<Void, Never>?
+    private var uploadTaskGeneration: UUID?
+    private var activeUploadTask: Task<UploadAttemptResult, Never>?
+    private var activeUploadTaskGeneration: UUID?
+    @Published private(set) var uploadStatus: InstallationEvidenceUploadStatus = .idle
+    @Published private(set) var latestDeliveryStatus: InstallationEvidenceDeliveryStatus = .idle
 
     init(
         store: LocalInstallationEvidenceStore = LocalInstallationEvidenceStore(),
-        uploader: any InstallationEvidenceUploading = HTTPInstallationEvidenceUploader()
+        uploader: any InstallationEvidenceUploading = HTTPInstallationEvidenceUploader(),
+        automaticRetryDelays: [UInt64] = [0, 5_000_000_000, 30_000_000_000]
     ) {
         self.store = store
         self.uploader = uploader
-        latestEvent = store.events().last
-        latestSuccessfulEventID = store.events().last(where: {
-            $0.phaseOutcome == .succeeded && $0.automaticFinishingResult == .verified
-        })?.id
-        if store.consent()?.choice == .accepted {
-            Task { await flushPendingUploads() }
+        self.automaticRetryDelays = automaticRetryDelays
+        if let consent = store.consent(),
+           consent.noticeVersion != VersionedEvidenceConsent.currentNoticeVersion {
+            try? store.setConsent(.declined)
+        }
+        if uploadEnabled {
+            schedulePendingUploadFlush()
         }
     }
 
-    var requiresConsentDecision: Bool {
-        guard let consent = store.consent() else { return true }
-        return consent.noticeVersion != VersionedEvidenceConsent.currentNoticeVersion
+    var uploadEnabled: Bool {
+        currentConsentChoice == .accepted
     }
 
-    var uploadEnabled: Bool {
-        store.consent()?.choice == .accepted
+    var currentConsentChoice: EvidenceConsentChoice? {
+        guard let consent = store.consent(),
+              consent.noticeVersion == VersionedEvidenceConsent.currentNoticeVersion else {
+            return nil
+        }
+        return consent.choice
+    }
+
+    /// One shared, persisted preference for Ready, About, and report delivery.
+    /// No consent record means the visible first-install default is checked;
+    /// the first installation commits that default as an explicit choice.
+    var compatibilitySharingEnabled: Bool {
+        currentConsentChoice != .declined
     }
 
     func decideConsent(_ choice: EvidenceConsentChoice) {
+        objectWillChange.send()
         try? store.setConsent(choice)
+        if choice == .accepted {
+            schedulePendingUploadFlush()
+        } else {
+            uploadTask?.cancel()
+            uploadTask = nil
+            uploadTaskGeneration = nil
+            uploadStatus = .idle
+        }
+    }
+
+    /// Commits the visible default only when the user starts an installation.
+    /// Existing decisions are already persisted by `decideConsent`.
+    func commitCurrentSharingChoice() {
+        guard currentConsentChoice == nil else { return }
+        decideConsent(compatibilitySharingEnabled ? .accepted : .declined)
+    }
+
+    func resetLatestDeliveryStatus() {
+        latestDeliveryStatus = .idle
     }
 
     func record(_ event: InstallationEvidenceEvent) {
         let upload = uploadEnabled
         guard (try? store.append(event, queueForUpload: upload)) == true else { return }
-        latestEvent = event
-        if event.phaseOutcome == .succeeded && event.automaticFinishingResult == .verified {
-            latestSuccessfulEventID = event.id
-        }
-        if upload { Task { await flushPendingUploads() } }
+        if upload { schedulePendingUploadFlush() }
     }
 
-    func confirmLatestSuccessfulInstallation() {
-        guard let id = latestSuccessfulEventID,
-              let event = try? store.confirm(eventID: id, queueForUpload: uploadEnabled) else {
-            return
+    /// Records the events for the just-finished operation and waits for their
+    /// first upload attempt. The existing background retry path remains in
+    /// place, but the UI now gets a definitive immediate state for this
+    /// operation instead of only seeing an aggregate queue state.
+    @discardableResult
+    func recordAndUpload(_ events: [InstallationEvidenceEvent]) async -> InstallationEvidenceDeliveryStatus {
+        guard !events.isEmpty else {
+            latestDeliveryStatus = .idle
+            return .idle
         }
-        latestEvent = event
-        if uploadEnabled { Task { await flushPendingUploads() } }
+
+        let shouldUpload = uploadEnabled
+        var insertedCount = 0
+        do {
+            for event in events {
+                if try store.append(event, queueForUpload: shouldUpload) {
+                    insertedCount += 1
+                }
+            }
+        } catch {
+            TerentoDiagnosticLog.recordCompatibilityReportDeliveryFailure(
+                reportIDs: events.map(\.id),
+                error: error,
+                willRetry: false,
+                pendingCount: store.pendingUploads().count
+            )
+            let status = InstallationEvidenceDeliveryStatus.queued(
+                count: events.count,
+                reason: "Could not save the compatibility report on this Mac: \(Self.userVisibleUploadError(error))",
+                willRetry: false
+            )
+            latestDeliveryStatus = status
+            return status
+        }
+
+        guard shouldUpload else {
+            latestDeliveryStatus = .notShared
+            return .notShared
+        }
+
+        uploadTask?.cancel()
+        uploadTask = nil
+        uploadTaskGeneration = nil
+        latestDeliveryStatus = .sending(count: max(insertedCount, 1))
+
+        let requestedIDs = Set(events.map(\.id))
+        var result = await uploadPendingEventsOnce()
+
+        // A scheduled upload may have taken a snapshot immediately before
+        // these events were appended. If it completed without seeing them,
+        // make one more pass so this operation is not reported as sent while
+        // its own event is still pending.
+        while result == .completed,
+              !requestedIDs.isDisjoint(with: Set(store.pendingUploads().map(\.id))) {
+            result = await uploadPendingEventsOnce()
+        }
+
+        let status = deliveryStatus(for: result, count: max(insertedCount, 1))
+        latestDeliveryStatus = status
+        if case let .queued(_, _, willRetry) = status, willRetry {
+            schedulePendingUploadFlush()
+        }
+        return status
     }
 
     func flushPendingUploads() async {
-        guard uploadEnabled else { return }
-        for event in store.pendingUploads() {
+        uploadTask?.cancel()
+        uploadTask = nil
+        uploadTaskGeneration = nil
+        _ = await uploadPendingEventsOnce()
+    }
+
+    private func schedulePendingUploadFlush() {
+        guard uploadEnabled, uploadTask == nil, !store.pendingUploads().isEmpty else {
+            return
+        }
+
+        let retryDelays = automaticRetryDelays
+        let generation = UUID()
+        uploadTaskGeneration = generation
+        uploadTask = Task { [weak self] in
+            defer {
+                if let self, self.uploadTaskGeneration == generation {
+                    self.uploadTask = nil
+                    self.uploadTaskGeneration = nil
+                }
+            }
+
+            for delay in retryDelays {
+                if delay > 0 {
+                    do {
+                        try await Task.sleep(nanoseconds: delay)
+                    } catch {
+                        return
+                    }
+                }
+
+                guard !Task.isCancelled, let self, self.uploadEnabled else {
+                    return
+                }
+
+                let result = await self.uploadPendingEventsOnce()
+                switch result {
+                case .empty, .completed, .permanentFailure:
+                    return
+                case .retryableFailure:
+                    continue
+                }
+            }
+        }
+    }
+
+    private enum UploadAttemptResult: Equatable {
+        case empty
+        case completed
+        case retryableFailure
+        case permanentFailure
+    }
+
+    private func uploadPendingEventsOnce() async -> UploadAttemptResult {
+        if let activeUploadTask {
+            return await activeUploadTask.value
+        }
+
+        let generation = UUID()
+        activeUploadTaskGeneration = generation
+        let task = Task { @MainActor [weak self] () -> UploadAttemptResult in
+            guard let self else { return .empty }
+            return await self.performUploadPendingEventsOnce()
+        }
+        activeUploadTask = task
+        let result = await task.value
+        if activeUploadTaskGeneration == generation {
+            activeUploadTask = nil
+            activeUploadTaskGeneration = nil
+        }
+        return result
+    }
+
+    private func performUploadPendingEventsOnce() async -> UploadAttemptResult {
+        guard uploadEnabled else { return .empty }
+        let pending = store.pendingUploads()
+        guard !pending.isEmpty else {
+            uploadStatus = .uploaded
+            return .empty
+        }
+
+        uploadStatus = .uploading(count: pending.count)
+        for event in pending {
             do {
                 try await uploader.upload(event)
                 try store.markUploaded(eventID: event.id)
             } catch {
-                // Evidence upload is deliberately best effort. The queue is
-                // retained and installation state is never changed.
-                return
+                let remaining = store.pendingUploads().count
+                let reason = Self.userVisibleUploadError(error)
+                let willRetry = Self.isRetryable(error)
+                TerentoDiagnosticLog.recordCompatibilityReportDeliveryFailure(
+                    reportIDs: pending.map(\.id),
+                    error: error,
+                    willRetry: willRetry,
+                    pendingCount: remaining
+                )
+                uploadStatus = .waiting(count: remaining, reason: reason, willRetry: willRetry)
+                return willRetry ? .retryableFailure : .permanentFailure
             }
         }
+
+        uploadStatus = .uploaded
+        return .completed
+    }
+
+    private func deliveryStatus(
+        for result: UploadAttemptResult,
+        count: Int
+    ) -> InstallationEvidenceDeliveryStatus {
+        switch result {
+        case .empty, .completed:
+            return .sent(count: count)
+        case .retryableFailure, .permanentFailure:
+            if case let .waiting(_, reason, willRetry) = uploadStatus {
+                return .queued(count: count, reason: reason, willRetry: willRetry)
+            }
+            return .queued(
+                count: count,
+                reason: "The compatibility report could not be sent.",
+                willRetry: result == .retryableFailure
+            )
+        }
+    }
+
+    private static func isRetryable(_ error: Error) -> Bool {
+        if let error = error as? InstallationEvidenceUploadError {
+            return error.isRetryable
+        }
+        if let urlError = error as? URLError {
+            return urlError.code != .userAuthenticationRequired
+        }
+        return true
+    }
+
+    private static func userVisibleUploadError(_ error: Error) -> String {
+        if let uploadError = error as? InstallationEvidenceUploadError {
+            return uploadError.errorDescription ?? "The compatibility report could not be sent."
+        }
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .userAuthenticationRequired:
+                return "The compatibility report could not be accepted."
+            default:
+                return "The compatibility service is temporarily unavailable."
+            }
+        }
+        return "The compatibility report could not be sent."
+    }
+
+    func deleteUploadedReports() async -> Int {
+        var deleted = 0
+        for event in store.uploadedEvents() {
+            do {
+                try await uploader.delete(event)
+                try store.markDeleted(eventID: event.id)
+                deleted += 1
+            } catch {
+                return deleted
+            }
+        }
+        return deleted
     }
 }
 

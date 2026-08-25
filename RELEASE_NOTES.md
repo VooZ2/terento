@@ -1,6 +1,6 @@
-# Terento v1.0.0-beta.2
+# Terento v1.0.0-beta.3
 
-Release date: 2026-08-24
+Release date: 2026-08-25
 
 This is a pre-MVP beta release for the Terento macOS application. It is
 intended for development and hardware validation; it is not a stable
@@ -25,7 +25,7 @@ from the GitHub release assets.
   `~/Library/Logs/Terento/log.txt`, including the selected preflight map and
   latest scanned Freizeitkarte objects, with a `Show log.txt` action on the
   failure screen;
-- an About page with app version, update placeholder, support links, and local
+- an About page with app version, update checking, support links, and local
   privacy statement;
 - the public Terento landing page with English, German, French, Polish, Czech,
   and Italian indexable versions, translated metadata, reciprocal `hreflang`,
@@ -36,6 +36,9 @@ from the GitHub release assets.
 ## Validation status
 
 - Full automated Stage 2–7 validation and Swift/Xcode Release builds pass.
+- The About → Updates flow checks a release metadata endpoint and opens the
+  verified release download for user-confirmed installation. It does not
+  silently replace the running app.
 - The application is Developer ID signed, notarized, stapled, Gatekeeper
   validated, and distributed as arm64 ZIP and DMG assets containing one
   `Terento.app`.
@@ -67,3 +70,10 @@ No account, login, cloud device profile, server-side Garmin Unit ID storage, or
 required email is introduced by this checkpoint. Device manifests remain local
 to the Mac. Terento modifies only files it can prove it owns and prefers a
 safe failure over destructive guessing.
+
+## Release checksums
+
+```text
+Terento-1.0.0-beta.3-macOS-arm64.zip  8307e6ce8abff93475ccf21fe135e730ff8b4a6d4a67b615c90f0a0939e0e46d
+Terento-1.0.0-beta.3-macOS-arm64.dmg  eeb56bdf247c870a69b8ae3205052a028fe7c97c4ec28975ac4fea8eb87b91d9
+```

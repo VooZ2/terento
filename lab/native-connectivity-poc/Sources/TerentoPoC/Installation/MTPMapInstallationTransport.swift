@@ -28,25 +28,6 @@ private func terentoMTPProgressCallback(
     return 0
 }
 
-private final class MTPWriteCompletedBox: @unchecked Sendable {
-    let callback: @Sendable () -> Void
-
-    init(callback: @escaping @Sendable () -> Void) {
-        self.callback = callback
-    }
-}
-
-private func terentoMTPWriteCompletedCallback(_ context: UnsafeRawPointer?) {
-    guard let context else {
-        return
-    }
-
-    let box = Unmanaged<MTPWriteCompletedBox>
-        .fromOpaque(UnsafeMutableRawPointer(mutating: context))
-        .takeUnretainedValue()
-    box.callback()
-}
-
 struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
     private static let errorCapacity = 2048
     private static let targetDirectory = "/GARMIN"
@@ -129,26 +110,41 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
     }
 
     func readBack(
+        sourceURL: URL,
         targetFilename: String,
         expectedItemID: UInt32,
-        targetPath: String
+        targetPath: String,
+        expectedSizeBytes: UInt64,
+        sampleOffsets: [UInt64],
+        sampleLength: UInt32,
+        progress: @escaping @Sendable (TransferProgress) -> Void
     ) throws -> MTPReadBackMapObject {
         try operationGate.withOperation(
             kind: .install,
             lifecycleLease: lifecycleLease
         ) {
             try readBackUncoordinated(
+                sourceURL: sourceURL,
                 targetFilename: targetFilename,
                 expectedItemID: expectedItemID,
-                targetPath: targetPath
+                targetPath: targetPath,
+                expectedSizeBytes: expectedSizeBytes,
+                sampleOffsets: sampleOffsets,
+                sampleLength: sampleLength,
+                progress: progress
             )
         }
     }
 
     private func readBackUncoordinated(
+        sourceURL: URL,
         targetFilename: String,
         expectedItemID: UInt32,
-        targetPath: String
+        targetPath: String,
+        expectedSizeBytes: UInt64,
+        sampleOffsets: [UInt64],
+        sampleLength: UInt32,
+        progress: @escaping @Sendable (TransferProgress) -> Void
     ) throws -> MTPReadBackMapObject {
         guard targetPath == "\(Self.targetDirectory)/\(targetFilename)" else {
             throw InstallationTransportError.operationFailed(
@@ -157,22 +153,34 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
             )
         }
 
-        let destinationURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("terento-map-readback-\(UUID().uuidString).img")
-        var sizeBytes: UInt64 = 0
+        var sampledBytes: UInt64 = 0
+        var matchedSamples: UInt32 = 0
+        let requestedSampleCount = sampleOffsets.count
         var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
+        let progressBox = MTPProgressBox(callback: progress)
 
-        let result = targetFilename.withCString { filename in
-            destinationURL.path.withCString { destinationPath in
-                errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
-                    terento_mtp_read_managed_map_to_local(
-                        filename,
-                        expectedItemID,
-                        destinationPath,
-                        &sizeBytes,
-                        errorPointer.baseAddress,
-                        errorPointer.count
-                    )
+        let result: Int32 = withExtendedLifetime(progressBox) {
+            sampleOffsets.withUnsafeBufferPointer { offsetsBuffer in
+                sourceURL.path.withCString { sourcePath in
+                    targetFilename.withCString { filename in
+                        errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
+                            terento_mtp_verify_managed_map_samples(
+                                sourcePath,
+                                filename,
+                                expectedItemID,
+                                expectedSizeBytes,
+                                offsetsBuffer.baseAddress,
+                                offsetsBuffer.count,
+                                sampleLength,
+                                &sampledBytes,
+                                &matchedSamples,
+                                terentoMTPProgressCallback,
+                                UnsafeRawPointer(Unmanaged.passUnretained(progressBox).toOpaque()),
+                                errorPointer.baseAddress,
+                                errorPointer.count
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -187,120 +195,10 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
         return MTPReadBackMapObject(
             itemID: expectedItemID,
             targetPath: targetPath,
-            reportedSizeBytes: sizeBytes,
-            localURL: destinationURL
-        )
-    }
-
-    func writeAndReadBack(
-        sourceURL: URL,
-        targetFilename: String,
-        targetPath: String,
-        progress: @escaping @Sendable (TransferProgress) -> Void,
-        onWriteCompleted: @escaping @Sendable () -> Void
-    ) throws -> MTPWriteAndReadBackResult {
-        try operationGate.withOperation(
-            kind: .install,
-            lifecycleLease: lifecycleLease
-        ) {
-            try writeAndReadBackUncoordinated(
-                sourceURL: sourceURL,
-                targetFilename: targetFilename,
-                targetPath: targetPath,
-                progress: progress,
-                onWriteCompleted: onWriteCompleted
-            )
-        }
-    }
-
-    private func writeAndReadBackUncoordinated(
-        sourceURL: URL,
-        targetFilename: String,
-        targetPath: String,
-        progress: @escaping @Sendable (TransferProgress) -> Void,
-        onWriteCompleted: @escaping @Sendable () -> Void
-    ) throws -> MTPWriteAndReadBackResult {
-        guard targetPath == "\(Self.targetDirectory)/\(targetFilename)" else {
-            throw InstallationTransportError.operationFailed(
-                "The managed map target path is invalid.",
-                createdItemID: nil
-            )
-        }
-
-        let destinationURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("terento-map-readback-\(UUID().uuidString).img")
-        var succeeded = false
-        defer {
-            if !succeeded {
-                try? FileManager.default.removeItem(at: destinationURL)
-            }
-        }
-
-        var itemID: UInt32 = 0
-        var sizeBytes: UInt64 = 0
-        var readBackSizeBytes: UInt64 = 0
-        var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
-        let progressBox = MTPProgressBox(callback: progress)
-        let writeCompletedBox = MTPWriteCompletedBox(callback: onWriteCompleted)
-
-        let result: Int32 = withExtendedLifetime(progressBox) {
-            withExtendedLifetime(writeCompletedBox) {
-                sourceURL.path.withCString { sourcePath in
-                    targetFilename.withCString { filename in
-                        destinationURL.path.withCString { destinationPath in
-                            errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
-                                terento_mtp_install_map_file_and_read_back(
-                                    sourcePath,
-                                    filename,
-                                    destinationPath,
-                                    &itemID,
-                                    &sizeBytes,
-                                    &readBackSizeBytes,
-                                    terentoMTPProgressCallback,
-                                    UnsafeRawPointer(Unmanaged.passUnretained(progressBox).toOpaque()),
-                                    terentoMTPWriteCompletedCallback,
-                                    UnsafeRawPointer(Unmanaged.passUnretained(writeCompletedBox).toOpaque()),
-                                    errorPointer.baseAddress,
-                                    errorPointer.count
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        guard result == 0 else {
-            let error = Self.mapError(
-                result: result,
-                message: errorMessage(from: errorBuffer),
-                createdItemID: itemID == 0 ? nil : itemID
-            )
-            if itemID == 0 {
-                throw MTPWriteAndReadBackError.write(error)
-            }
-            throw MTPWriteAndReadBackError.readBack(
-                error,
-                createdItemID: itemID
-            )
-        }
-
-        guard itemID != 0 else {
-            throw InstallationTransportError.operationFailed(
-                "The Garmin device did not return a safe object identity.",
-                createdItemID: nil
-            )
-        }
-
-        succeeded = true
-        return MTPWriteAndReadBackResult(
-            written: MTPWrittenMapObject(itemID: itemID, sizeBytes: sizeBytes),
-            readBack: MTPReadBackMapObject(
-                itemID: itemID,
-                targetPath: targetPath,
-                reportedSizeBytes: readBackSizeBytes,
-                localURL: destinationURL
-            )
+            reportedSizeBytes: expectedSizeBytes,
+            sampledBytes: sampledBytes,
+            sampleCount: requestedSampleCount,
+            matchedSampleCount: Int(matchedSamples)
         )
     }
 

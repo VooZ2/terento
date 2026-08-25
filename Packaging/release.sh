@@ -6,6 +6,11 @@ script_dir="$(cd "$(dirname "$0")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
 cd "$repo_root"
 
+# Do not let macOS resource-fork metadata become AppleDouble `._*` files in
+# release archives or the DMG. These files are not part of the application
+# and must not be shipped to users.
+export COPYFILE_DISABLE=1
+
 # shellcheck disable=SC1091
 . "$script_dir/release-config.sh"
 
@@ -26,7 +31,7 @@ Options:
   --output-dir DIR    Write final artifacts under DIR instead of dist/.
   --version VERSION   Assert that the generated app has VERSION.
   --build NUMBER      Assert that the generated app has build NUMBER.
-  --release-version V Use V in package filenames, for example 1.0.0-beta.2.
+  --release-version V Use V in package filenames, for example 1.0.0-beta.3.
   --help              Show this help.
 EOF
 }
@@ -399,14 +404,17 @@ fi
 
 notary_zip="$run_dir/Terento-notarization.zip"
 notary_extract="$run_dir/notary-extract"
-ditto -c -k --keepParent "$app" "$notary_zip"
+ditto --norsrc --noextattr --noqtn --noacl -c -k --keepParent "$app" "$notary_zip"
 mkdir -p "$notary_extract"
-ditto -x -k "$notary_zip" "$notary_extract"
+ditto --norsrc --noextattr --noqtn --noacl -x -k "$notary_zip" "$notary_extract"
 notary_app="$notary_extract/$RELEASE_PRODUCT_NAME.app"
 [[ -d "$notary_app" ]] || die "Notarization archive does not contain the expected app"
 [[ "$(find "$notary_extract" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" == "1" ]] || die "Notarization archive has unexpected top-level entries"
 if find "$notary_app" -name '.DS_Store' -print -quit | rg -q .; then
     die "Notarization archive contains .DS_Store"
+fi
+if find "$notary_app" \( -name '._*' -o -name '__MACOSX' \) -print -quit | rg -q .; then
+    die "Notarization archive contains macOS metadata files"
 fi
 codesign --verify --deep --strict --verbose=4 "$notary_app"
 printf '%s\n' "Notarization archive validation: PASS"
@@ -451,16 +459,19 @@ for final_artifact in "$final_zip" "$final_dmg"; do
     fi
 done
 mkdir -p "$output_dir"
-ditto -c -k --keepParent "$app" "$final_zip"
+ditto --norsrc --noextattr --noqtn --noacl -c -k --keepParent "$app" "$final_zip"
 
 final_extract="$run_dir/final-extract"
 mkdir -p "$final_extract"
-ditto -x -k "$final_zip" "$final_extract"
+ditto --norsrc --noextattr --noqtn --noacl -x -k "$final_zip" "$final_extract"
 final_app="$final_extract/$RELEASE_PRODUCT_NAME.app"
 [[ -d "$final_app" ]] || die "Final ZIP does not contain Terento.app"
 [[ "$(find "$final_extract" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" == "1" ]] || die "Final ZIP has unexpected top-level entries"
 if find "$final_app" -name '.DS_Store' -print -quit | rg -q .; then
     die "Final ZIP contains .DS_Store"
+fi
+if find "$final_extract" \( -name '._*' -o -name '__MACOSX' \) -print -quit | rg -q .; then
+    die "Final ZIP contains macOS metadata files"
 fi
 if find "$final_app" \( -name '*.img' -o -name '*.backup' -o -name '*.p12' -o -name '*.p8' -o -name '*.pem' -o -name '*.key' \) -print -quit | rg -q .; then
     die "Final ZIP contains forbidden content"
@@ -479,7 +490,7 @@ launch_smoke "$final_app"
 
 dmg_stage="$run_dir/dmg-stage"
 mkdir -p "$dmg_stage"
-ditto "$app" "$dmg_stage/$RELEASE_PRODUCT_NAME.app"
+ditto --norsrc --noextattr --noqtn --noacl "$app" "$dmg_stage/$RELEASE_PRODUCT_NAME.app"
 ln -s /Applications "$dmg_stage/Applications"
 run_logged "dmg-create" \
     hdiutil create \
@@ -507,6 +518,9 @@ dmg_entry_count="$(find "$dmg_mount" -mindepth 1 -maxdepth 1 ! -name '.DS_Store'
 assert_equal "DMG top-level entry count" "$dmg_entry_count" "2"
 if find "$dmg_app" -name '.DS_Store' -print -quit | rg -q .; then
     die "Final DMG contains .DS_Store"
+fi
+if find "$dmg_mount" \( -name '._*' -o -name '__MACOSX' \) -print -quit | rg -q .; then
+    die "Final DMG contains macOS metadata files"
 fi
 codesign --verify --deep --strict --verbose=4 "$dmg_app"
 xcrun stapler validate "$dmg_app"

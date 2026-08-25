@@ -109,8 +109,8 @@ genuinely newer Freizeitkarte release.
 
 Apple Silicon users can install the notarized beta from the GitHub release:
 
-- [Download DMG](https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.2/Terento-1.0.0-beta.2-macOS-arm64.dmg) — drag Terento to Applications
-- [Download ZIP](https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.2/Terento-1.0.0-beta.2-macOS-arm64.zip) — open the contained app
+- [Download DMG](https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.3/Terento-1.0.0-beta.3-macOS-arm64.dmg) — drag Terento to Applications
+- [Download ZIP](https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.3/Terento-1.0.0-beta.3-macOS-arm64.zip) — open the contained app
 
 This is a pre-MVP beta with limited real-device validation. Read the
 [release notes](RELEASE_NOTES.md) before installing. Generated local outputs

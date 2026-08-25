@@ -12,7 +12,7 @@ ALLOWED_KEYS = {
     "schemaVersion", "id", "timestamp", "model", "family", "firmwareVersion",
     "usbVendorID", "usbProductID", "transport", "provider", "region",
     "mapRelease", "terentoVersion", "macOSVersion", "phaseOutcome",
-    "automaticFinishingResult", "errorCategory", "userConfirmed",
+    "automaticFinishingResult", "errorCategory", "userConfirmed", "deletionToken",
 }
 FORBIDDEN_KEY_PARTS = ("serial", "unitid", "unit_id", "path", "manifest", "username", "token", "password")
 
@@ -30,12 +30,17 @@ def validate_event(raw: bytes) -> dict[str, Any]:
         raise EvidenceValidationError("invalid_json") from exc
     if not isinstance(event, dict) or set(event) - ALLOWED_KEYS:
         raise EvidenceValidationError("unknown_fields")
-    if any(part in key.lower() for key in event for part in FORBIDDEN_KEY_PARTS):
+    if any(
+        part in key.lower()
+        for key in event
+        if key != "deletionToken"
+        for part in FORBIDDEN_KEY_PARTS
+    ):
         raise EvidenceValidationError("forbidden_field")
     required = {
         "schemaVersion", "id", "timestamp", "model", "usbVendorID", "usbProductID",
         "transport", "provider", "region", "mapRelease", "terentoVersion",
-        "macOSVersion", "phaseOutcome", "automaticFinishingResult", "userConfirmed",
+        "macOSVersion", "phaseOutcome", "automaticFinishingResult", "deletionToken",
     }
     if required - set(event):
         raise EvidenceValidationError("missing_fields")
@@ -74,9 +79,29 @@ def validate_event(raw: bytes) -> dict[str, Any]:
             raise EvidenceValidationError(f"invalid_{key}")
     if event["provider"].lower() != "freizeitkarte":
         raise EvidenceValidationError("unsupported_provider")
-    if not isinstance(event["userConfirmed"], bool):
+    if "userConfirmed" in event and not isinstance(event["userConfirmed"], bool):
         raise EvidenceValidationError("invalid_confirmation")
+    if not re.fullmatch(r"[0-9a-fA-F]{64}", str(event["deletionToken"])):
+        raise EvidenceValidationError("invalid_deletion_token")
     return event
+
+
+def validate_deletion_request(raw: bytes) -> tuple[str, str]:
+    if not raw or len(raw) > 2048:
+        raise EvidenceValidationError("payload_size")
+    try:
+        request = json.loads(raw)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise EvidenceValidationError("invalid_json") from exc
+    if not isinstance(request, dict) or set(request) != {"id", "deletionToken"}:
+        raise EvidenceValidationError("invalid_deletion_request")
+    event_id = str(request["id"])
+    deletion_token = str(request["deletionToken"])
+    if not re.fullmatch(r"[0-9a-fA-F-]{36}", event_id):
+        raise EvidenceValidationError("invalid_event_id")
+    if not re.fullmatch(r"[0-9a-fA-F]{64}", deletion_token):
+        raise EvidenceValidationError("invalid_deletion_token")
+    return event_id, deletion_token
 
 
 def operator_page(rows: list[dict[str, Any]]) -> bytes:

@@ -24,8 +24,8 @@ python3 -m venv .venv
 python -m pip install --upgrade pip
 python -m pip install -e .
 export DATABASE_URL='postgresql://terento_catalog:password@localhost:5432/terento_catalog'
-export COMPATIBILITY_ADMIN_USERNAME='operator'
-export COMPATIBILITY_ADMIN_PASSWORD='use-a-long-random-secret'
+export ADMIN_BOOTSTRAP_SECRET='use-a-long-random-one-time-secret'
+export PUBLIC_COMPATIBILITY_STATS_ENABLED='false'
 terento-catalog-migrate
 terento-catalog-collect
 terento-catalog-backfill-sizes
@@ -55,9 +55,18 @@ PYTHONPATH=backend/catalog-api/src python3 -m unittest discover -s backend/catal
 - `GET /assets/devices/<name>.webp` serves validated runtime assets from the
   same API domain.
 - `POST /compatibility/events` accepts validated, rate-limited, idempotent
-  anonymized install events after client consent.
-- `GET /internal/compatibility/` serves the authenticated, noindex aggregate
-  operator page. Production must add HTTPS and edge brute-force protection.
+  privacy-minimised install events after client consent. It stores only
+  allowlisted columns, hashes the per-event deletion token, and never stores
+  the submitted JSON body.
+- `DELETE /compatibility/events` lets the client erase one uploaded event by
+  presenting its event UUID and secret deletion token. Events are also pruned
+  automatically after 24 months.
+- `GET /admin` serves the authenticated, noindex aggregate operator dashboard
+  and account settings. The first account requires `ADMIN_BOOTSTRAP_SECRET`;
+  later credentials are PBKDF2-hashed in PostgreSQL.
+- `GET /compatibility/public/top-models.json` is a prepared, default-disabled
+  aggregate API. It returns only individually reviewed and approved models
+  after `PUBLIC_COMPATIBILITY_STATS_ENABLED=true`; it never returns raw events.
 
 The catalog includes a map only after a collector has a normalized version and
 a known download size. A missing size is retained in the database but omitted

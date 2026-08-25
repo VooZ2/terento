@@ -1,10 +1,11 @@
 <!doctype html>
 <html lang="en" data-language="en">
   <head>
+    <script defer src="/site-shell.js?v=20260825-4"></script>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
-    <meta name="description" content="Terento is an open-source project exploring a simpler way to install community maps on Garmin smartwatches from a Mac.">
+    <meta name="description" content="Terento is a free, open-source macOS beta for installing Freizeitkarte maps on selected Garmin smartwatches. Requires an Apple Silicon Mac; Intel Macs are not supported.">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://terento.app/">
     <link rel="alternate" hreflang="en" href="https://terento.app/">
@@ -21,18 +22,18 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Terento">
-    <meta property="og:title" content="Terento — Community Maps for Garmin Smartwatches on Mac">
-    <meta property="og:description" content="Terento is an open-source project exploring a simpler way to install community maps on Garmin smartwatches from a Mac.">
+    <meta property="og:title" content="Terento beta — Maps for Garmin Smartwatches on Apple Silicon Mac">
+    <meta property="og:description" content="Terento is a free, open-source macOS beta for installing Freizeitkarte maps on selected Garmin smartwatches. Requires an Apple Silicon Mac; Intel Macs are not supported.">
     <meta property="og:url" content="https://terento.app/">
-    <meta property="og:image" content="https://terento.app/og.svg">
+    <meta property="og:image" content="https://terento.app/og.svg?v=20260825-1">
     <meta property="og:image:type" content="image/svg+xml">
     <meta property="og:image:alt" content="Terento — Your device, ready for where you're going.">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Terento — Community Maps for Garmin Smartwatches on Mac">
-    <meta name="twitter:description" content="Terento is an open-source project exploring a simpler way to install community maps on Garmin smartwatches from a Mac.">
-    <meta name="twitter:image" content="https://terento.app/og.svg">
-    <title>Terento — Community Maps for Garmin Smartwatches on Mac</title>
-    <link rel="stylesheet" href="/styles.css?v=20260824-5">
+    <meta name="twitter:title" content="Terento beta — Maps for Garmin Smartwatches on Apple Silicon Mac">
+    <meta name="twitter:description" content="Terento is a free, open-source macOS beta for installing Freizeitkarte maps on selected Garmin smartwatches. Requires an Apple Silicon Mac; Intel Macs are not supported.">
+    <meta name="twitter:image" content="https://terento.app/og.svg?v=20260825-1">
+    <title>Terento beta — Maps for Garmin Smartwatches on Apple Silicon Mac</title>
+    <link rel="stylesheet" href="/styles.css?v=20260825-7">
     <script defer src="/language.js?v=20260824-2"></script>
     <script defer src="/privacy-consent.js?v=20260824-1"></script>
     <script type="application/ld+json">
@@ -41,7 +42,7 @@
         "@type": "WebSite",
         "name": "Terento",
         "url": "https://terento.app/",
-        "description": "Terento is an open-source project exploring a simpler way to install community maps on Garmin smartwatches from a Mac."
+        "description": "Terento is a free, open-source macOS beta for installing Freizeitkarte maps on selected Garmin smartwatches. Requires an Apple Silicon Mac; Intel Macs are not supported."
       }
     </script>
   </head>
@@ -56,7 +57,9 @@
         </a>
         <nav aria-label="Primary navigation">
           <a href="#about">About</a>
+          <a href="/compatibility/">Compatibility</a>
           <a href="#faq">FAQ</a>
+          <a href="/download/">Download</a>
           <span class="language-switcher">
             <details class="language-menu">
               <summary class="language-trigger" aria-label="Language selection">
@@ -80,11 +83,11 @@
       <section class="hero" aria-labelledby="hero-title">
         <div class="shell hero-grid">
           <div class="hero-copy">
-            <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Open-source project · In development</p>
+            <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Open-source project · Beta</p>
             <h1 id="hero-title">Your device, ready for where you're going.</h1>
-            <p class="hero-lede">Terento is an open-source project exploring a simpler way to install community maps on Garmin smartwatches from a Mac.</p>
-            <p class="hero-status">Currently validating the first Garmin + macOS workflow.</p>
-            <a class="text-link" href="#what-we-test">Learn what we're testing <span aria-hidden="true">↘</span></a>
+            <p class="hero-lede">Terento is a free, open-source macOS beta for installing Freizeitkarte maps on selected Garmin smartwatches. <strong>It requires an Apple Silicon Mac; Intel Macs are not supported.</strong></p>
+            <p class="hero-status">Beta available · Tested with several watches; map support varies by device.</p>
+            <a class="text-link" href="/download/">Download the beta <span aria-hidden="true">↘</span></a>
           </div>
 
           <div class="hero-visual">
@@ -105,12 +108,12 @@
       <section class="experience section" aria-labelledby="experience-title">
         <div class="shell">
           <div class="section-heading">
-            <p class="eyebrow">What we're building</p>
+            <p class="eyebrow">How it works</p>
             <h2 id="experience-title">Connect <span aria-hidden="true">→</span> Install <span aria-hidden="true">→</span> Go</h2>
           </div>
           <div class="problem-statement">
-            <p>Community maps shouldn't require file managers, device folders and outdated transfer tools.</p>
-            <p>Terento is being built to make that process disappear.</p>
+            <p>Installing maps shouldn't require file managers, device folders or outdated transfer tools.</p>
+            <p>The Terento beta brings that workflow into a native macOS app.</p>
           </div>
           <div class="steps" role="list">
             <article class="step" role="listitem">
@@ -121,7 +124,7 @@
             <article class="step" role="listitem">
               <p class="step-number">02</p>
               <h3>Install</h3>
-              <p>Terento is being built to find and install the community map you need.</p>
+              <p>Choose a Freizeitkarte map and install it from the beta.</p>
             </article>
             <article class="step" role="listitem">
               <p class="step-number">03</p>
@@ -135,19 +138,19 @@
       <section class="testing section" id="about" aria-labelledby="testing-title">
         <div class="shell testing-grid">
           <div class="section-heading">
-            <p class="eyebrow">First technical gate</p>
-            <h2 id="testing-title">What we're testing first</h2>
+            <p class="eyebrow">Beta scope</p>
+            <h2 id="testing-title">What the beta currently covers</h2>
           </div>
           <div class="testing-panel" id="what-we-test">
             <div class="testing-row">
               <span class="testing-label"><span class="mini-mark mark-sky" aria-hidden="true"></span>Platform</span>
               <strong>macOS</strong>
-              <span>Apple Silicon Macs</span>
+              <span>macOS 13+ · Apple Silicon</span>
             </div>
             <div class="testing-row">
               <span class="testing-label"><span class="mini-mark mark-lichen" aria-hidden="true"></span>Devices</span>
               <strong>Garmin smartwatches</strong>
-              <span>Smartwatches using MTP</span>
+              <span>Several watches tested; map support varies by device</span>
             </div>
             <div class="testing-row">
               <span class="testing-label"><span class="mini-mark mark-stone" aria-hidden="true"></span>Maps</span>
@@ -156,13 +159,13 @@
             </div>
             <div class="testing-row">
               <span class="testing-label"><span class="mini-mark mark-graphite" aria-hidden="true"></span>Goal</span>
-              <strong>Safe community map installation</strong>
-              <span>From Mac to device</span>
+              <strong>Map installation</strong>
+              <span>From the original provider to your Mac and device</span>
             </div>
           </div>
         </div>
         <div class="shell">
-          <p class="supporting-copy">Support for additional smartwatch models and map providers will depend on what we learn from the first working prototype.</p>
+          <p class="supporting-copy">Compatibility is evaluated watch by watch. Some tested watches do not support maps, so Terento makes no general compatibility claim for Garmin devices.</p>
         </div>
       </section>
 
@@ -174,20 +177,20 @@
           </div>
           <div class="faq-list">
             <details>
-              <summary>Is Terento available yet?</summary>
-              <p>Not yet. The project is currently in technical validation.</p>
+              <summary>Is the beta available?</summary>
+              <p>Yes. A notarized beta is available for Apple Silicon Macs running macOS 13 or later. It is pre-MVP, and compatibility is still being tested. <a href="/download/">Download the beta</a>.</p>
             </details>
             <details>
               <summary>What is Terento trying to do?</summary>
-              <p>Make installing community maps on Garmin smartwatches from a Mac much simpler.</p>
+              <p>Terento is a native macOS app for installing Freizeitkarte maps on selected Garmin smartwatches.</p>
             </details>
             <details>
               <summary>What are you testing first?</summary>
-              <p>Apple Silicon Macs, Garmin smartwatches using MTP, and Freizeitkarte.</p>
+              <p>Several Garmin watches have been tested. Some do not support maps, so compatibility depends on the device. The beta currently focuses on Freizeitkarte.</p>
             </details>
             <details>
-              <summary>Will Terento be open source?</summary>
-              <p>Yes. Terento is being developed as a free, open-source project.</p>
+              <summary>Is Terento open source?</summary>
+              <p>Yes. Terento is free and open source under GPL-3.0-or-later.</p>
             </details>
           </div>
         </div>
@@ -206,13 +209,14 @@
         <nav class="footer-nav" aria-label="Footer navigation">
           <a href="#about">About</a>
           <a href="#faq">FAQ</a>
+          <a href="/download/">Download</a>
           <a href="/legal/">Legal</a>
           <a href="/privacy/">Privacy</a>
         </nav>
       </div>
       <div class="shell footer-bottom">
         <p>© 2026 Terento Project</p>
-        <p>In development</p>
+        <p>Beta</p>
       </div>
       <div class="shell footer-note">
         <p>Visit statistics (Umami) do not use cookies.</p>

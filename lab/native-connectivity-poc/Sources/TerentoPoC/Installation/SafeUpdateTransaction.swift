@@ -222,7 +222,7 @@ struct DefaultSafeUpdateSourceValidator: SafeUpdateSourceValidator, Sendable {
 
         let expectedFilename = try TerentoManagedFilenameGenerator().filename(
             providerId: package.providerId,
-            regionId: package.regionId
+            regionId: package.canonicalRegionId
         )
         guard artifact.targetFilename == expectedFilename else {
             throw SafeUpdateSourceValidationError.mismatch("The source target filename is not the approved Terento name.")
@@ -591,7 +591,7 @@ struct SafeUpdateTransaction: Sendable {
         do {
             targetFilename = try TerentoManagedFilenameGenerator().versionedFilename(
                 providerId: request.selectedMap.providerId,
-                regionId: request.selectedMap.regionId,
+                regionId: request.selectedMap.canonicalRegionId,
                 version: artifact.version
             )
         } catch {

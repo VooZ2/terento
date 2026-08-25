@@ -23,6 +23,9 @@ class FakeDatabase(Database):
     def health(self) -> bool:
         return True
 
+    def prune_compatibility_events(self) -> int:
+        return 0
+
     def catalog_snapshot(self):
         return [
             {

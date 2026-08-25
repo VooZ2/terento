@@ -57,7 +57,24 @@ if ! grep -Fq 'DevicePresenceReader' \
     exit 1
 fi
 
+if ! grep -Fq 'startPostEjectPresenceMonitoring()' "$device_engine" \
+    || ! grep -Fq 'hasGarminUSBDevice()' "$device_engine" \
+    || ! grep -Fq 'handlePhysicalDisconnectAfterEject()' "$device_engine" \
+    || ! grep -Fq 'self.readDevice()' "$device_engine"; then
+    print -u2 "FAIL: Safe Eject does not return to automatic discovery after physical unplug"
+    exit 1
+fi
+
+if ! grep -Fq 'waitForGarminUSBPresenceBeforeSnapshot' "$device_engine" \
+    || ! grep -Fq 'Garmin returned to USB; waiting for MTP enumeration' "$device_engine" \
+    || ! grep -Fq 'try await Task.sleep(for: .milliseconds(750))' "$device_engine"; then
+    print -u2 "FAIL: reconnect detection enters MTP before USB presence and enumeration settle"
+    exit 1
+fi
+
 print "PASS: connection lifecycle boundary has no device write/delete surface"
 print "PASS: Device and sidebar Safe Eject share one lifecycle path"
 print "PASS: install and lifecycle work pause background presence monitoring"
 print "PASS: idle presence monitoring uses a USB-only probe"
+print "PASS: Safe Eject monitors physical unplug and restarts discovery"
+print "PASS: reconnect waits for USB presence before reopening MTP"

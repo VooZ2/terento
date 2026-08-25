@@ -30,10 +30,7 @@ struct MTPTransport: Sendable {
             kind: .presence,
             lifecycleLease: lifecycleLease
         ) {
-            let count = terento_mtp_probe_garmin_presence()
-            guard count >= 0 else {
-                throw MTPTransportError.readFailed("USB device presence could not be checked")
-            }
+            let count = try garminUSBDeviceCount()
             guard count == 1 else {
                 if count == 0 {
                     throw MTPTransportError.readFailed("No Garmin MTP device connected")
@@ -45,6 +42,27 @@ struct MTPTransport: Sendable {
             // device identity is revalidated by the next real operation.
             return DevicePresence(vendorID: 0x091e, productID: 0)
         }
+    }
+
+    /// USB-only presence check used after Safe Eject. Unlike `readPresence`,
+    /// this intentionally accepts more than one Garmin because the only
+    /// question at this point is whether every Garmin has physically left
+    /// the USB bus before returning the app to device discovery.
+    func hasGarminUSBDevice() throws -> Bool {
+        try operationGate.withOperation(
+            kind: .presence,
+            lifecycleLease: lifecycleLease
+        ) {
+            try garminUSBDeviceCount() > 0
+        }
+    }
+
+    private func garminUSBDeviceCount() throws -> Int {
+        let count = terento_mtp_probe_garmin_presence()
+        guard count >= 0 else {
+            throw MTPTransportError.readFailed("USB device presence could not be checked")
+        }
+        return Int(count)
     }
 
     private func readSnapshotUncoordinated() throws -> DeviceSnapshot {
@@ -284,8 +302,8 @@ struct MTPTransport: Sendable {
 }
 
 /// Read-only device presence boundary used by the lifecycle state manager.
-/// Each bridge call opens and releases its own MTP handle, so no long-lived
-/// session or write-capable operation is exposed here.
+/// The production bridge checks the USB device list without opening an MTP
+/// session, so no long-lived session or write-capable operation is exposed.
 protocol DeviceSnapshotReader: Sendable {
     func readSnapshot() throws -> DeviceSnapshot
 }
@@ -302,6 +320,14 @@ protocol DevicePresenceReader: Sendable {
 }
 
 extension MTPTransport: DevicePresenceReader {}
+
+/// Narrow USB-only boundary used while the UI is showing Safe to disconnect.
+/// It does not identify, open, read, or modify the device.
+protocol GarminUSBPresenceReader: Sendable {
+    func hasGarminUSBDevice() throws -> Bool
+}
+
+extension MTPTransport: GarminUSBPresenceReader {}
 
 protocol DeviceFileReader: Sendable {
     func readFileInventory() throws -> [DeviceFile]

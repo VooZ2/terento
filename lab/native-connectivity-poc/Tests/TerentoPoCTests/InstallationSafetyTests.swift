@@ -12,6 +12,48 @@ struct InstallationSafetyTests {
         var passed = 0
 
         passed += expect(
+            TransferRateCalculator.sample(
+                deltaBytes: 850_000,
+                elapsedSeconds: 1
+            ) == 850_000,
+            "transfer rate uses cumulative byte delta over elapsed time"
+        )
+        passed += expect(
+            TransferRateCalculator.sample(
+                deltaBytes: 8_600_000,
+                elapsedSeconds: 1
+            )?.isFinite == true
+                && TransferRateCalculator.sample(
+                    deltaBytes: 1_200_000_000,
+                    elapsedSeconds: 1
+                )?.isFinite == true,
+            "KB, MB, and GB-sized transfer rates remain finite"
+        )
+        passed += expect(
+            TransferRateCalculator.sample(deltaBytes: 1_000, elapsedSeconds: 0.01) == nil
+                && TransferRateCalculator.sample(deltaBytes: 0, elapsedSeconds: 1) == nil
+                && TransferRateCalculator.sample(deltaBytes: 1_000, elapsedSeconds: .infinity) == nil
+                && TransferRateCalculator.sample(deltaBytes: 1_000, elapsedSeconds: .nan) == nil,
+            "near-zero, zero-byte, infinite, and NaN samples are ignored"
+        )
+        let clock = ContinuousClock()
+        let firstSample = clock.now
+        var estimator = TransferSpeedEstimator()
+        _ = estimator.update(bytes: 1_150_000, now: firstSample)
+        let earlyRate = estimator.update(
+            bytes: 2_000_000,
+            now: firstSample.advanced(by: .milliseconds(100))
+        )
+        let measuredRate = estimator.update(
+            bytes: 2_850_000,
+            now: firstSample.advanced(by: .seconds(1))
+        )
+        passed += expect(
+            earlyRate == 0 && measuredRate.isFinite && measuredRate > 0,
+            "cumulative callbacks wait for a meaningful interval before reporting speed"
+        )
+
+        passed += expect(
             StoragePlanner().plan(
                 currentFreeSpace: 3 * gigabyte,
                 selectedMapSizes: [1 * gigabyte]

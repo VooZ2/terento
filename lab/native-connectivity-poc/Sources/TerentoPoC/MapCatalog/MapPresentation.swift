@@ -96,8 +96,12 @@ enum MapDisplayNameNormalizer: Sendable {
 
         var suffix = identifier.uppercased()
         let region = package.regionId.uppercased()
-        if suffix.hasPrefix(region) {
-            suffix = String(suffix.dropFirst(region.count))
+        let regionPrefix = region
+            .split(whereSeparator: { $0 == "+" || $0 == "-" || $0 == "_" })
+            .first
+            .map(String.init) ?? region
+        if suffix.hasPrefix(regionPrefix) {
+            suffix = String(suffix.dropFirst(regionPrefix.count))
         }
 
         suffix = suffix
@@ -126,24 +130,21 @@ enum MapCatalogIdentityKey: Sendable {
         namespace: String
     ) -> String {
         let normalizedProvider = MapIdentity.normalizeProvider(provider ?? "")
-        let normalizedRegion = MapIdentity.normalizeRegion(region ?? "")
+        // Use the concrete provider package token as the region key. This
+        // joins scanned metadata such as `Freizeitkarte_DEU+NORTH` with the
+        // catalog's `DEU-NORTH`/`DEU+NORTH` pair and keeps packages that share
+        // a broad catalog region (AZORES, Balearics, Madeira) distinct.
+        let concreteRegion: String
+        if let trimmedIdentifier = identifier?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !trimmedIdentifier.isEmpty {
+            concreteRegion = trimmedIdentifier
+        } else {
+            concreteRegion = region ?? ""
+        }
+        let normalizedRegion = MapIdentity.normalizeRegion(concreteRegion)
         guard !normalizedProvider.isEmpty, !normalizedRegion.isEmpty else {
             return "\(namespace):catalog:\(fallback)"
         }
-
-        let normalizedIdentifier = identifier.map {
-            $0.folding(
-                options: [.caseInsensitive, .diacriticInsensitive],
-                locale: Locale(identifier: "en_US_POSIX")
-            )
-            .replacingOccurrences(of: "[^a-z0-9]+", with: "", options: .regularExpression)
-            .lowercased()
-        }
-
-        if let normalizedIdentifier, !normalizedIdentifier.isEmpty {
-            return "\(namespace):identity:\(normalizedProvider):\(normalizedRegion):\(normalizedIdentifier)"
-        }
-
         return "\(namespace):identity:\(normalizedProvider):\(normalizedRegion)"
     }
 }

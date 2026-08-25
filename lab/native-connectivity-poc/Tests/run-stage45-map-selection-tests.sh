@@ -71,14 +71,59 @@ if [[ "$(grep -Fc 'MapSelectionStorageSummary(' "$connect_screen")" -lt 2 ]]; th
     exit 1
 fi
 
-if ! grep -Fq 'Terento will install the selected maps to your Garmin.' "$connect_screen"; then
+if ! grep -Fq 'Terento will install these maps to your Garmin.' "$connect_screen" \
+    || ! grep -Fq 'Existing Garmin maps will not be changed.' "$connect_screen" \
+    || grep -Fq 'Terento will install the selected maps to your Garmin.' "$connect_screen" \
+    || grep -Fq 'Existing Garmin system maps are left unchanged.' "$connect_screen"; then
     print -u2 "FAIL: Review safety disclosure is missing"
+    exit 1
+fi
+
+if ! grep -Fq 'Text("Help improve Terento")' "$connect_screen" \
+    || ! grep -Fq 'Share anonymous installation data to help us understand device compatibility and improve support for other Garmin users.' "$connect_screen" \
+    || grep -Fq 'Help improve Terento for other watch owners' "$connect_screen" \
+    || grep -Fq 'No Garmin Unit ID or serial number is collected.' "$connect_screen"; then
+    print -u2 "FAIL: Review compatibility opt-in copy is too long or outdated"
+    exit 1
+fi
+
+if grep -Fq 'shareCompatibilityEvidence' "$connect_screen" \
+    || ! grep -Fq 'evidenceController.compatibilitySharingEnabled' "$connect_screen" \
+    || ! grep -Fq 'evidenceController.commitCurrentSharingChoice()' "$connect_screen"; then
+    print -u2 "FAIL: compatibility sharing does not use the shared persisted preference"
+    exit 1
+fi
+
+if ! grep -Fq 'else if plan.storagePlan.status == .blockedInsufficientSpace' "$connect_screen" \
+    || grep -Fq 'if let reason = installAvailability.userReason' "$connect_screen"; then
+    print -u2 "FAIL: Review warning is not limited to insufficient storage"
     exit 1
 fi
 
 if grep -Eiq 'community maps?' "$connect_screen" \
     || ! grep -Fq 'title: "Available Freizeitkarte maps"' "$connect_screen"; then
     print -u2 "FAIL: primary map flow exposes origin terminology or hides the current source"
+    exit 1
+fi
+
+if grep -Fq 'installedMapsExpanded' "$connect_screen" \
+    || grep -Fq 'title: "Installed maps"' "$connect_screen" \
+    || grep -Fq 'MapSelectionPresentationModel.supportedInstalled' "$connect_screen"; then
+    print -u2 "FAIL: Install maps still owns a separate Installed maps section"
+    exit 1
+fi
+
+if ! grep -Fq 'No new Freizeitkarte maps are available to install.' "$connect_screen" \
+    || ! grep -Fq 'return "Already installed"' "$connect_screen" \
+    || ! grep -Fq 'item.comparison.installedMap == nil && item.action == .install' \
+        "$project_root/Sources/TerentoPoC/MapCatalog/MapSelectionPresentation.swift"; then
+    print -u2 "FAIL: Install empty state or installed-search presentation is missing"
+    exit 1
+fi
+
+if ! grep -Fq 'case .update:' "$connect_screen" \
+    || ! grep -Fq 'return "Update"' "$connect_screen"; then
+    print -u2 "FAIL: Manage-only update action is missing"
     exit 1
 fi
 

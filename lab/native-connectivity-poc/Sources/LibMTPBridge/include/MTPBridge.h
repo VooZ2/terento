@@ -53,8 +53,6 @@ typedef int (*TerentoMTPProgressCallback)(
     const void *context
 );
 
-typedef void (*TerentoMTPWriteCompletedCallback)(const void *context);
-
 enum {
     TERENTO_MTP_MAP_TARGET_EXISTS = -20,
     TERENTO_MTP_MAP_REMOTE_FILE_MISSING = -21,
@@ -159,34 +157,28 @@ int terento_mtp_install_map_file(
     size_t error_message_capacity
 );
 
-/* Write and read the exact managed target back before releasing the same MTP
- * session. This avoids a Garmin USB-session race after a large transfer. */
-int terento_mtp_install_map_file_and_read_back(
+/*
+ * Read bounded deterministic samples from the exact managed target and
+ * compare them directly with the validated local source. The full map is
+ * never copied back to the Mac.
+ */
+int terento_mtp_verify_managed_map_samples(
     const char *local_path,
-    const char *target_filename,
-    const char *read_back_local_path,
-    uint32_t *item_id,
-    uint64_t *size_bytes,
-    uint64_t *read_back_size_bytes,
-    TerentoMTPProgressCallback progress_callback,
-    const void *progress_context,
-    TerentoMTPWriteCompletedCallback write_completed_callback,
-    const void *write_completed_context,
-    char *error_message,
-    size_t error_message_capacity
-);
-
-/* Read the exact managed target back through MTP into a new local file. */
-int terento_mtp_read_managed_map_to_local(
     const char *target_filename,
     uint32_t expected_item_id,
-    const char *local_path,
-    uint64_t *size_bytes,
+    uint64_t expected_size_bytes,
+    const uint64_t *sample_offsets,
+    size_t sample_count,
+    uint32_t sample_length,
+    uint64_t *sampled_bytes,
+    uint32_t *matched_samples,
+    TerentoMTPProgressCallback progress_callback,
+    const void *progress_context,
     char *error_message,
     size_t error_message_capacity
 );
 
-/* Delete only the exact newly-created managed target object. */
+/* Delete only the exact manifest-authorized managed target object. */
 int terento_mtp_delete_managed_map(
     const char *target_filename,
     uint32_t expected_item_id,
