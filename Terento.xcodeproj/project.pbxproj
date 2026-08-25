@@ -271,7 +271,7 @@
 			ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 			CODE_SIGN_ENTITLEMENTS = app/Terento/Terento.entitlements;
 			CODE_SIGN_STYLE = Manual;
-			CURRENT_PROJECT_VERSION = 2;
+			CURRENT_PROJECT_VERSION = 3;
 			DEVELOPMENT_TEAM = VXALAZU3B5;
 			GENERATE_INFOPLIST_FILE = NO;
 			HEADER_SEARCH_PATHS = ("$(DERIVED_FILE_DIR)/TerentoNativeDependencies/include", "$(DERIVED_FILE_DIR)/TerentoNativeDependencies/include/libusb-1.0", "$(inherited)");
@@ -300,7 +300,7 @@
 			ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 			CODE_SIGN_ENTITLEMENTS = app/Terento/Terento.entitlements;
 			CODE_SIGN_STYLE = Manual;
-			CURRENT_PROJECT_VERSION = 2;
+			CURRENT_PROJECT_VERSION = 3;
 			DEVELOPMENT_TEAM = VXALAZU3B5;
 			GENERATE_INFOPLIST_FILE = NO;
 			HEADER_SEARCH_PATHS = ("$(DERIVED_FILE_DIR)/TerentoNativeDependencies/include", "$(DERIVED_FILE_DIR)/TerentoNativeDependencies/include/libusb-1.0", "$(inherited)");

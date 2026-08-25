@@ -9,6 +9,7 @@ swiftc \
     -module-name TerentoStage42InstallationTests \
     "$project_root/Sources/TerentoPoC/Models/MTPModels.swift" \
     "$project_root/Sources/TerentoPoC/Compatibility/DeviceIdentity.swift" \
+    "$project_root/Sources/TerentoPoC/Compatibility/MapCapability.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapVersion.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapIdentity.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapModels.swift" \

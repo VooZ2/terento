@@ -9,6 +9,7 @@ swiftc \
     -module-name TerentoStage401PreflightTests \
     "$project_root/Sources/TerentoPoC/Models/MTPModels.swift" \
     "$project_root/Sources/TerentoPoC/Compatibility/DeviceIdentity.swift" \
+    "$project_root/Sources/TerentoPoC/Compatibility/MapCapability.swift" \
     "$project_root/Sources/TerentoPoC/Compatibility/GarminDeviceIdentityAdapter.swift" \
     "$project_root/Sources/TerentoPoC/Compatibility/DeviceAssetRegistry.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapVersion.swift" \

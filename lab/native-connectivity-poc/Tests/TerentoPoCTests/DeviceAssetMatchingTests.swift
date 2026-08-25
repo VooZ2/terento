@@ -11,7 +11,7 @@ struct DeviceAssetMatchingTests {
         await testCacheAndVersionRefresh()
         await testRealMTPIdentityResolvesModelSizeAsset()
         await testOfficialGarminSourceImageFallback()
-        await testOfficialGarminPartNumberImageFallback()
+        await testOfficialGarminProductPageImageFallback()
 
         let exactURL = URL(string: "https://api.terento.app/assets/devices/garmin/fenix8-exact.webp")!
         let modelSizeURL = URL(string: "https://api.terento.app/assets/devices/garmin/fenix8-size.webp")!
@@ -113,7 +113,7 @@ struct DeviceAssetMatchingTests {
             ).isValid,
             "official product media without attribution is rejected"
         )
-        print("PASS: 20 device asset matching, cache, and compatibility tests")
+        print("PASS: 26 device asset matching, cache, and compatibility tests")
     }
 
     private static func testCompatibilityIsIndependent() {
@@ -162,7 +162,7 @@ struct DeviceAssetMatchingTests {
 
     private static func testCatalogJSONDecoding() {
         let payload = Data(
-            "{\"catalogVersion\":2,\"legal\":{\"manufacturerNotice\":true,\"text\":\"Terento notice\"},\"devices\":[{\"id\":\"garmin-fenix-8-47-amoled\",\"manufacturer\":\"Garmin\",\"family\":\"fenix\",\"model\":\"fēnix 8\",\"canonicalModel\":\"fenix 8\",\"variant\":\"47 mm, AMOLED\",\"caseSizeMm\":47,\"displayType\":\"AMOLED\",\"asset\":{\"status\":\"AVAILABLE\",\"url\":\"/assets/devices/garmin/fenix-8-47-amoled.webp\",\"version\":1,\"scope\":\"EXACT_VARIANT\",\"attribution\":\"Garmin media\",\"source\":{\"type\":\"OFFICIAL_PRODUCT_MEDIA\",\"brand\":\"Garmin\",\"attributionRequired\":true}}}]}".utf8
+            "{\"catalogVersion\":2,\"legal\":{\"manufacturerNotice\":true,\"text\":\"Terento notice\"},\"devices\":[{\"id\":\"garmin-fenix-8-47-amoled\",\"manufacturer\":\"Garmin\",\"family\":\"fenix\",\"model\":\"fēnix 8\",\"canonicalModel\":\"fenix 8\",\"variant\":\"47 mm, AMOLED\",\"caseSizeMm\":47,\"displayType\":\"AMOLED\",\"productURL\":\"https://www.garmin.com/en-US/p/1228171/\",\"asset\":{\"status\":\"AVAILABLE\",\"url\":\"/assets/devices/garmin/fenix-8-47-amoled.webp\",\"version\":1,\"scope\":\"EXACT_VARIANT\",\"attribution\":\"Garmin media\",\"source\":{\"type\":\"OFFICIAL_PRODUCT_MEDIA\",\"brand\":\"Garmin\",\"attributionRequired\":true}}}]}".utf8
         )
         let decoded = try? JSONDecoder().decode(DeviceCatalogResponse.self, from: payload)
 
@@ -170,7 +170,8 @@ struct DeviceAssetMatchingTests {
             decoded?.catalogVersion == 2
                 && decoded?.devices.first?.asset?.url?.absoluteString == "/assets/devices/garmin/fenix-8-47-amoled.webp"
                 && decoded?.devices.first?.asset?.source?.type == "OFFICIAL_PRODUCT_MEDIA"
-                && decoded?.devices.first?.asset?.attribution == "Garmin media",
+                && decoded?.devices.first?.asset?.attribution == "Garmin media"
+                && decoded?.devices.first?.productURL?.host == "www.garmin.com",
             "version-2 catalog JSON preserves asset and attribution metadata"
         )
     }
@@ -390,9 +391,9 @@ struct DeviceAssetMatchingTests {
         )
     }
 
-    private static func testOfficialGarminPartNumberImageFallback() async {
-        let partNumber = "010-02891-00"
-        let expectedURL = URL(string: "https://res.garmin.com/en/products/010-02891-00/g/cf-lg.jpg")!
+    private static func testOfficialGarminProductPageImageFallback() async {
+        let productURL = URL(string: "https://www.garmin.com/en-US/p/1228171/")!
+        let expectedURL = URL(string: "https://res.garmin.com/en/products/010-02905-10/v/cf-lg.jpg")!
         let client = MockDeviceCatalogClient(
             catalog: DeviceCatalogResponse(
                 catalogVersion: 2,
@@ -404,12 +405,13 @@ struct DeviceAssetMatchingTests {
                         canonicalModel: "lily 2 active",
                         caseSizeMm: nil,
                         displayType: nil,
-                        partNumber: partNumber,
+                        productURL: productURL,
                         asset: DeviceCatalogAsset(status: "MISSING", url: nil, scope: nil)
                     )
                 ]
             ),
-            assetData: Data("garmin-part-number-image".utf8)
+            assetData: Data("garmin-product-page-image".utf8),
+            productImageURL: expectedURL
         )
         let cacheDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("terento-garmin-part-number-\(UUID().uuidString)", isDirectory: true)
@@ -447,18 +449,15 @@ struct DeviceAssetMatchingTests {
             "Lily 2 Active derives the catalog canonical model"
         )
         expect(
-            DeviceAssetResolver.matchingAsset(
-                identity: lily,
-                canonicalModel: lily.catalogCanonicalModel ?? "",
-                records: client.catalog.devices
-            )?.url == expectedURL,
-            "Lily 2 Active matches the derived official image URL"
+            DeviceAssetResolver.officialProductURL(for: productURL) == productURL,
+            "official product page URL is restricted to Garmin hosting"
         )
         expect(
             !result.isFallback
                 && result.assetURL == expectedURL
-                && result.assetSource?.type == "OFFICIAL_PRODUCT_MEDIA",
-            "catalog part number derives an official Garmin image before sourceAsset is deployed"
+                && result.assetSource?.type == "OFFICIAL_PRODUCT_MEDIA"
+                && client.productPageFetchCount == 1,
+            "catalog product page resolves its current official Garmin image"
         )
     }
 
@@ -483,6 +482,7 @@ struct DeviceAssetMatchingTests {
         caseSizeMm: Int?,
         displayType: String?,
         partNumber: String? = nil,
+        productURL: URL? = nil,
         asset: DeviceCatalogAsset,
         sourceAsset: DeviceCatalogSourceAsset? = nil
     ) -> DeviceCatalogRecord {
@@ -496,6 +496,7 @@ struct DeviceAssetMatchingTests {
             caseSizeMm: caseSizeMm,
             displayType: displayType,
             partNumber: partNumber,
+            productURL: productURL,
             asset: asset,
             sourceAsset: sourceAsset
         )
@@ -535,11 +536,14 @@ struct DeviceAssetMatchingTests {
 private final class MockDeviceCatalogClient: DeviceCatalogAPIClient {
     var catalog: DeviceCatalogResponse
     var assetData: Data
+    var productImageURL: URL?
     private(set) var assetDownloadCount = 0
+    private(set) var productPageFetchCount = 0
 
-    init(catalog: DeviceCatalogResponse, assetData: Data) {
+    init(catalog: DeviceCatalogResponse, assetData: Data, productImageURL: URL? = nil) {
         self.catalog = catalog
         self.assetData = assetData
+        self.productImageURL = productImageURL
     }
 
     func fetchCatalog() async throws -> DeviceCatalogResponse {
@@ -549,5 +553,10 @@ private final class MockDeviceCatalogClient: DeviceCatalogAPIClient {
     func fetchAsset(from url: URL) async throws -> Data {
         assetDownloadCount += 1
         return assetData
+    }
+
+    func fetchProductImageURL(from productURL: URL) async throws -> URL? {
+        productPageFetchCount += 1
+        return productImageURL
     }
 }

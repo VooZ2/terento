@@ -71,6 +71,14 @@ struct ConnectScreen: View {
         return GarminMapCapabilityRegistry.local.evaluate(identity: identity)
     }
 
+    /// Unknown map capability is still a useful read-only state. Let the user
+    /// open the map screens so the app can explain the missing validation;
+    /// only a model explicitly known not to support additional maps is kept
+    /// out of the flow. Installation remains fail-closed at preflight.
+    private var canOpenMapSections: Bool {
+        deviceEngine.hasConnectedDevice && mapSupport.showsTerentoCompatibility
+    }
+
     private var mapSelectionItems: [MapSelectionItem] {
         mapEngine.mapSelectionItems
     }
@@ -112,7 +120,6 @@ struct ConnectScreen: View {
         mapEngine.isBusy
             || lifecycleViewModel.isBusy
             || installationOperationIsActive
-            || !deviceEngine.canEject
     }
 
     var body: some View {
@@ -123,7 +130,7 @@ struct ConnectScreen: View {
                 canEject: canSafelyEject,
                 isInstalling: installationOperationIsActive,
                 navigationLocked: installationOperationIsActive,
-                mapNavigationEnabled: mapSupport.canUseTerentoMaps,
+                mapNavigationEnabled: canOpenMapSections,
                 onNavigate: navigate,
                 onEject: performSafeEject
             )
@@ -252,7 +259,7 @@ struct ConnectScreen: View {
         }
 
         if (section == .installMaps || section == .manageMaps),
-           !mapSupport.canUseTerentoMaps {
+           !canOpenMapSections {
             return
         }
 
@@ -866,18 +873,30 @@ struct ConnectScreen: View {
                 if lifecycleInventory.allItems.isEmpty {
                     MapStatusRow(
                         title: "No maps detected",
-                        detail: "Connect your Garmin watch first",
-                        status: "Pending",
+                        detail: deviceEngine.hasConnectedDevice
+                            ? "No installed maps were found on this Garmin."
+                            : "Connect your Garmin watch first",
+                        status: deviceEngine.hasConnectedDevice ? "Ready" : "Pending",
                         note: nil
                     )
                     .padding(.top, 30)
                 }
             } else {
                 MapStatusRow(
-                    title: "Map information is not available",
-                    detail: "Connect your Garmin watch first",
-                    status: "Pending",
-                    note: nil
+                    title: mapEngine.state == .loadingCatalog || mapEngine.state == .scanning
+                        ? "Reading your maps"
+                        : "Map information is not available",
+                    detail: deviceEngine.hasConnectedDevice
+                        ? (mapEngine.state == .loadingCatalog || mapEngine.state == .scanning
+                            ? "Checking your Garmin watch…"
+                            : "Refresh the connected Garmin watch to try again.")
+                        : "Connect your Garmin watch first",
+                    status: deviceEngine.hasConnectedDevice
+                        ? (mapEngine.state == .loadingCatalog || mapEngine.state == .scanning
+                            ? "Checking"
+                            : "Pending")
+                        : "Pending",
+                    note: mapEngine.userErrorMessage
                 )
                 .padding(.top, 30)
             }
@@ -976,12 +995,12 @@ struct ConnectScreen: View {
                 PrimaryButton(title: "Install maps") {
                     navigate(to: .installMaps)
                 }
-                .disabled(mapManagementActionsBusy || !presentation.mapSupport.canUseTerentoMaps)
+                .disabled(mapManagementActionsBusy || !presentation.mapSupport.showsTerentoCompatibility)
 
                 SecondaryButton(title: "Manage maps") {
                     navigate(to: .manageMaps)
                 }
-                .disabled(mapManagementActionsBusy || !presentation.mapSupport.canUseTerentoMaps)
+                .disabled(mapManagementActionsBusy || !presentation.mapSupport.showsTerentoCompatibility)
 
                 Spacer()
             }
@@ -1245,7 +1264,6 @@ struct ConnectScreen: View {
             hasValidatedArtifact: mapEngine.validatedArtifact != nil,
             operationBusy: mapEngine.isBusy
                 || lifecycleViewModel.isBusy
-                || !deviceEngine.canEject
         )
 
         return TerentoInstallFooterPageShell {
@@ -2844,8 +2862,11 @@ private struct DeviceAssetImage: View {
             return image
         }
 
-        guard asset.isFallback,
-              let url = Bundle.module.url(
+        // A catalog asset can become unreadable after a cache or bundle
+        // change. Keep the Device screen visual rather than leaving an empty
+        // image area; the neutral bundled watch is never used as identity or
+        // compatibility evidence.
+        guard let url = Bundle.module.url(
                   forResource: "generic-garmin-watch",
                   withExtension: "png",
                   subdirectory: "Devices"
@@ -3449,6 +3470,24 @@ struct MapSelectionRow: View {
 
         switch item.comparison.status {
         case .notInstalled:
+            if let preflightStatus = item.preflightStatus {
+                switch preflightStatus {
+                case .blockedUnsupportedDevice:
+                    return "This watch has no validated Terento install profile yet"
+                case .blockedUnknownTarget:
+                    return "Install target is not validated for this watch"
+                case .blockedAmbiguousMapIdentity:
+                    return "Map identity needs to be checked before installation"
+                case .blockedInsufficientSpace:
+                    return "Not enough space for a safe installation"
+                case .blockedUnknownInstallSize:
+                    return "Size calculated before installation"
+                case .error:
+                    return "Could not prepare this map for installation"
+                case .readyNewInstall, .readyWithExistingMapConflict:
+                    break
+                }
+            }
             return item.installSizeBytes == nil ? "Size calculated before installation" : ""
         case .updateAvailable:
             return "Installed · Update available"

@@ -13,6 +13,9 @@ struct Stage401PreflightTests {
         testMissingAmoledStringDoesNotBlockValidatedProfile()
         testPartialIdentityDoesNotClaimExactAsset()
         testUnknownDeviceStaysBlocked()
+        testMapCapableBetaDeviceGetsLiveBoundProfile()
+        testBetaProfileRequiresOneGarminRoot()
+        testNonMapWatchCannotEnroll()
         testExistingExternalMapRequiresExplicitReplacement()
         testNewMapWithEnoughStorageIsReady()
         testUnknownInstallSizeIsBlocked()
@@ -22,7 +25,7 @@ struct Stage401PreflightTests {
         testUpToDateMapIsStillAnExistingMapConflict()
         testPreflightIsTransportIndependentAndReadOnly()
 
-        print("PASS: 12 Stage 4.0.1 preflight tests")
+        print("PASS: 15 Stage 4.0.1 preflight tests")
     }
 
     private static func testRealFenixModelResolvesValidatedProfile() {
@@ -80,6 +83,72 @@ struct Stage401PreflightTests {
             DeviceInstallProfileRegistry.local.profile(for: unknownIdentity) == nil
                 && result.status == .blockedUnsupportedDevice,
             "unknown PID/model does not inherit the validated install profile"
+        )
+    }
+
+    private static func testMapCapableBetaDeviceGetsLiveBoundProfile() {
+        let identity = betaIdentity(model: "fenix 8 - 51mm", family: "fēnix")
+        let profile = DeviceInstallProfileRegistry.local.profile(
+            for: identity,
+            deviceFiles: [garminRoot(itemID: 10)]
+        )
+
+        expect(
+            profile?.id == "garmin-map-capable-beta"
+                && profile?.usbProductIds == [0x7777]
+                && profile?.targetDirectory == "/GARMIN"
+                && profile?.matches(identity) == true,
+            "map-capable beta watch gets an exact live-bound /GARMIN profile"
+        )
+    }
+
+    private static func testBetaProfileRequiresOneGarminRoot() {
+        let identity = betaIdentity(model: "fenix 8 - 51mm", family: "fēnix")
+        let missing = DeviceInstallProfileRegistry.local.profile(for: identity, deviceFiles: [])
+        let duplicate = DeviceInstallProfileRegistry.local.profile(
+            for: identity,
+            deviceFiles: [garminRoot(itemID: 10), garminRoot(itemID: 11)]
+        )
+
+        expect(
+            missing == nil && duplicate == nil,
+            "beta enrollment fails closed unless exactly one root /GARMIN folder exists"
+        )
+    }
+
+    private static func testNonMapWatchCannotEnroll() {
+        let identity = betaIdentity(model: "Lily 2 Active", family: "Lily")
+        let profile = DeviceInstallProfileRegistry.local.profile(
+            for: identity,
+            deviceFiles: [garminRoot(itemID: 10)]
+        )
+
+        expect(profile == nil, "known non-map Garmin watch cannot enter beta map installation")
+    }
+
+    private static func betaIdentity(model: String, family: String) -> DeviceIdentity {
+        DeviceIdentity(
+            manufacturer: "Garmin",
+            model: model,
+            family: family,
+            variant: model.contains("51mm") ? "51mm" : nil,
+            usbVendorId: 0x091e,
+            usbProductId: 0x7777,
+            firmware: "22.44",
+            storageCapacity: 31 * gigabyte,
+            freeSpace: 16 * gigabyte
+        )
+    }
+
+    private static func garminRoot(itemID: UInt32) -> DeviceFile {
+        DeviceFile(
+            itemID: itemID,
+            parentID: 0,
+            storageID: 1,
+            path: "/GARMIN",
+            filename: "GARMIN",
+            sizeBytes: 0,
+            isFolder: true
         )
     }
 

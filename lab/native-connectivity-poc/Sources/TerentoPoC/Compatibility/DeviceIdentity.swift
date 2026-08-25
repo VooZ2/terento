@@ -107,6 +107,9 @@ struct GarminDeviceModelNormalizer: Sendable {
 
     static func catalogCanonicalModel(from rawModel: String) -> String? {
         var normalized = normalize(rawModel)
+        if normalized.hasPrefix("garmin ") {
+            normalized.removeFirst("garmin ".count)
+        }
         let knownPrefixes = [
             "approach",
             "d2 mach",
