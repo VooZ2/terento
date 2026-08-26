@@ -162,6 +162,14 @@ class HTTPAPITests(unittest.TestCase):
                 "attributionRequired": True,
             },
         )
+        self.assertEqual(
+            set(document["devices"][0]),
+            {
+                "id", "manufacturer", "family", "familyName", "model",
+                "canonicalModel", "variant", "caseSizeMm", "displayType",
+                "partNumber", "productURL", "active", "asset", "sourceAsset",
+            },
+        )
         self.assertEqual(document["legal"]["manufacturerNotice"], True)
         self.assertIn("Terento is an independent open-source project", document["legal"]["text"])
         raw_json = json.dumps(document, ensure_ascii=False)
