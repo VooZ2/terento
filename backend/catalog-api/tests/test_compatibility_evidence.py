@@ -94,6 +94,62 @@ class FakeEvidenceDatabase:
             "last_evidence": datetime(2026, 8, 25, tzinfo=timezone.utc),
         }][:limit]
 
+    def public_compatibility_models(self, limit):
+        rows = self.public_compatibility_statistics(limit)
+        for row in rows:
+            row.update({
+                "evidence_model": row["canonical_model"],
+                "family": "fenix",
+                "family_name": "fēnix",
+                "canonical_model": "fenix 8",
+                "asset_status": "MISSING",
+                "asset_url": None,
+                "source_image_url": None,
+            })
+        return rows
+
+    def admin_device_snapshot(self):
+        return [{
+            "device_id": "garmin-fenix-8-47-amoled",
+            "manufacturer": "Garmin",
+            "family_canonical_name": "fenix",
+            "family_name": "fēnix",
+            "model": "fēnix 8",
+            "canonical_model": "fenix 8",
+            "variant": "47 mm, AMOLED",
+            "case_size_mm": 47,
+            "display_type": "AMOLED",
+            "part_number": "010-02904-10",
+            "product_url": "https://www.garmin.com/en-US/p/1228429/",
+            "active": True,
+            "map_capable": True,
+            "support_status": "SUPPORTED",
+            "asset_status": "MISSING",
+            "asset_url": None,
+            "attempted_install_count": 1,
+            "successful_install_count": 1,
+            "failed_install_count": 0,
+            "first_success": datetime(2026, 8, 25, tzinfo=timezone.utc),
+            "last_success": datetime(2026, 8, 25, tzinfo=timezone.utc),
+            "last_evidence": datetime(2026, 8, 25, tzinfo=timezone.utc),
+            "first_seen_at": datetime(2026, 8, 20, tzinfo=timezone.utc),
+            "created_at": datetime(2026, 8, 20, tzinfo=timezone.utc),
+            "updated_at": datetime(2026, 8, 25, tzinfo=timezone.utc),
+            "last_seen_at": datetime(2026, 8, 25, tzinfo=timezone.utc),
+            "first_seen_collection_run_id": 1,
+            "last_seen_collection_run_id": 1,
+            "usb_identities": [],
+        }], {
+            "id": 1,
+            "status": "SUCCEEDED",
+            "started_at": datetime(2026, 8, 25, tzinfo=timezone.utc),
+            "finished_at": datetime(2026, 8, 25, 1, tzinfo=timezone.utc),
+            "records_total_before": 0,
+            "records_total_after": 1,
+            "records_added": 1,
+            "records_updated": 0,
+        }
+
     def admin_user_count(self):
         return len(self.users)
 
@@ -235,6 +291,9 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertNotIn("Logged in as", body)
         self.assertNotIn("Attempts", body)
         self.assertIn("logo-sky.svg", body)
+        self.assertIn("Times follow the selected time zone", body)
+        self.assertIn("data-admin-timestamp", body)
+        self.assertIn("admin-timezone", body)
         self.assertEqual(format_timestamp(row["last_success"]), "25 Aug 2026, 16:04 UTC")
 
         unknown_variant = dict(row)
@@ -316,6 +375,19 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertEqual(allowed.headers["X-Robots-Tag"], "noindex, nofollow")
         self.assertIn(b"f\xc4\x93nix 8", body)
 
+        devices, devices_body = self.request("GET", "/admin/devices", headers={"Cookie": cookie_header})
+        self.assertEqual(devices.status, 200)
+        self.assertIn(b"Garmin devices", devices_body)
+        self.assertIn(b"Map-capable: Yes", devices_body)
+        self.assertIn(
+            "img-src https://terento.app https://api.terento.app https://res.garmin.com data:",
+            devices.headers["Content-Security-Policy"],
+        )
+
+        devices_json, devices_json_body = self.request("GET", "/admin/devices.json", headers={"Cookie": cookie_header})
+        self.assertEqual(devices_json.status, 200)
+        self.assertEqual(json.loads(devices_json_body)["summary"]["tested"], 1)
+
         unauthenticated_campaign, _ = self.request("GET", "/admin/campaign-links")
         self.assertEqual(unauthenticated_campaign.status, 303)
         self.assertEqual(unauthenticated_campaign.headers["Location"], "/admin/login")
@@ -372,6 +444,16 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertEqual(document["models"][0]["successfulInstallations"], 3)
         self.assertEqual(document["models"][0]["mapCapable"], True)
         self.assertNotIn("firmwareVersion", document["models"][0])
+
+    def test_public_models_is_additive_and_evidence_only(self):
+        response, body = self.request("GET", "/compatibility/public/models.json?limit=5")
+        document = json.loads(body)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(document["schemaVersion"], 1)
+        self.assertEqual(document["models"][1]["evidenceStatus"], "TESTED")
+        self.assertEqual(document["models"][1]["image"], None)
+        self.assertNotIn("supportStatus", document["models"][1])
+        self.assertNotIn("writeAuthorization", document["models"][1])
 
 
 class PasswordHashTests(unittest.TestCase):

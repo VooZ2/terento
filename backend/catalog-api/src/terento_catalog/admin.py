@@ -4,13 +4,20 @@ import base64
 import hashlib
 import hmac
 import html
+import json
 import re
 import secrets
 from datetime import datetime, timezone
 from typing import Any
 
 from .campaign_links import CAMPAIGN_SUGGESTIONS, MEDIUM_OPTIONS, SOURCE_OPTIONS
-from .compatibility_status import STATUS_PUBLIC_COPY, CompatibilityStatus
+from .compatibility_status import (
+    STATUS_PUBLIC_COPY,
+    CompatibilityStatus,
+    calculate_compatibility_status,
+)
+from .device_catalog import _official_source_image_url
+from .map_capability import classify_map_capable
 
 
 PASSWORD_MIN_LENGTH = 14
@@ -82,6 +89,18 @@ def format_timestamp(value: Any) -> str:
         months = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
         return f"{parsed.day:02d} {months[parsed.month - 1]} {parsed.year}, {parsed.hour:02d}:{parsed.minute:02d} UTC"
     return str(value)
+
+
+def _timestamp_markup(value: Any) -> str:
+    parsed = _parse_timestamp(value)
+    if parsed is None:
+        return html.escape(format_timestamp(value))
+    iso = parsed.isoformat()
+    return (
+        f"<time class='admin-timestamp' datetime='{html.escape(iso, quote=True)}' "
+        f"data-admin-timestamp='{html.escape(iso, quote=True)}'>"
+        f"{html.escape(format_timestamp(parsed))}</time>"
+    )
 
 
 def _parse_timestamp(value: Any) -> datetime | None:
@@ -188,9 +207,10 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     username = html.escape(str(user.get("username") or ""))
     evidence_class = " class='active'" if active == "evidence" else ""
     campaign_class = " class='active'" if active == "campaigns" else ""
+    devices_class = " class='active'" if active == "devices" else ""
     return f"""<header class="admin-topbar"><div class="admin-topbar-inner">{_admin_brand()}
-      <nav class="admin-section-nav" aria-label="Admin sections"><a{evidence_class} href="/admin">Installation evidence</a><a{campaign_class} href="/admin/campaign-links">Campaign links</a></nav>
-      <nav class="admin-nav" aria-label="Admin navigation"><a href="/admin/account">Account</a><span class="admin-user">{username}</span>
+      <nav class="admin-section-nav" aria-label="Admin sections"><a{evidence_class} href="/admin">Installation evidence</a><a{devices_class} href="/admin/devices">Garmin devices</a><a{campaign_class} href="/admin/campaign-links">Campaign links</a></nav>
+      <nav class="admin-nav" aria-label="Admin navigation"><label class="timezone-control"><span>Time zone</span><select id="admin-timezone" aria-label="Time zone"><option value="browser">Automatic (browser)</option><option value="UTC">UTC</option><option value="Europe/Vilnius">Europe/Vilnius</option><option value="Europe/London">Europe/London</option><option value="Europe/Berlin">Europe/Berlin</option><option value="America/New_York">America/New_York</option><option value="America/Los_Angeles">America/Los_Angeles</option><option value="Asia/Tokyo">Asia/Tokyo</option></select></label><a href="/admin/account">Account</a><span class="admin-user">{username}</span>
       <form method="post" action="/admin/logout"><input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}"><button class="link-button" type="submit">Sign out</button></form></nav>
     </div></header>"""
 
@@ -262,20 +282,20 @@ def dashboard_page(
     )
     table_rows = "".join(_statistics_row(row) for row in rows)
     empty = "<p class='empty'>No installation evidence reports yet.</p>" if not rows else ""
-    latest_copy = f"Updated {format_timestamp(latest)}" if latest else "No reports received yet"
+    latest_copy = f"Updated {_timestamp_markup(latest)}" if latest else "No reports received yet"
     content = f"""
       {_admin_header(user, csrf_token)}
       <main class="dashboard" id="main-content">
-        <div class="heading-row"><div><p class="eyebrow">Admin</p><h1>Installation evidence</h1><p class="lede">Compatibility reports received from Terento installations.</p></div><p class="updated-at">{html.escape(latest_copy)}</p></div>
+        <div class="heading-row"><div><p class="eyebrow">Admin</p><h1>Installation evidence</h1><p class="lede">Compatibility reports received from Terento installations.</p></div><p class="updated-at">{latest_copy}</p></div>
         <section class="metrics" aria-label="Evidence summary">{cards}</section>{empty}
         <section class="evidence-section" aria-labelledby="evidence-title">
-          <div class="section-heading"><div><p class="section-kicker">Evidence</p><h2 id="evidence-title">Installation reports</h2></div><p class="table-help">Times shown in UTC</p></div>
+          <div class="section-heading"><div><p class="section-kicker">Evidence</p><h2 id="evidence-title">Installation reports</h2></div><p class="table-help">Times follow the selected time zone</p></div>
           <form class="filter-bar" id="evidence-filters" role="search">
             <label class="filter-search"> <span class="sr-only">Search models</span><input id="evidence-search" type="search" placeholder="Search models" autocomplete="off"></label>
             <label><span class="sr-only">Filter by status</span><select id="evidence-status"><option value="all">All statuses</option>{status_options}</select></label>
             <label><span class="sr-only">Sort reports</span><select id="evidence-sort"><option value="reports">Most reports</option><option value="latest">Latest activity</option></select></label>
           </form>
-          <p class="results-count" id="results-count" aria-live="polite">{len(rows)} {"report" if len(rows) == 1 else "reports"}</p>
+          <p class="results-count" id="results-count" aria-live="polite">{len(rows)} {"model" if len(rows) == 1 else "models"}</p>
           <div class="table-wrap"><table><caption class="sr-only">Installation evidence reports by exact device identity</caption><thead><tr><th scope="col">Model</th><th scope="col">Variant</th><th scope="col">Firmware</th><th scope="col">Reports</th><th scope="col">Successful</th><th scope="col">Failed</th><th scope="col">Success rate</th><th scope="col">Status</th><th scope="col">Last success</th><th scope="col">Errors</th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
         </section>
         <section class="status-guide" aria-labelledby="status-guide-title"><div class="section-heading"><div><p class="section-kicker">Canonical rules</p><h2 id="status-guide-title">Compatibility statuses</h2></div><p class="table-help">Exact model and variant; successful shared installations only</p></div><div class="status-guide-grid">{''.join(f"<div class='status-guide-row'>{_status_badge(status)}<span>{html.escape(STATUS_PUBLIC_COPY[CompatibilityStatus(status)])}</span></div>" for status in status_values)}</div></section>
@@ -284,6 +304,239 @@ def dashboard_page(
       <script>{_dashboard_script()}</script>
     """
     return _layout("Installation evidence", content)
+
+
+def _admin_map_capability(value: Any) -> tuple[str, str]:
+    if value is True:
+        return "Yes", "yes"
+    if value is False:
+        return "No", "no"
+    return "Unknown", "unknown"
+
+
+def _admin_support_status(value: Any) -> tuple[str, str]:
+    status = str(value or "NOT_EVALUATED").upper()
+    labels = {
+        "SUPPORTED": ("Supported", "supported"),
+        "UNSUPPORTED": ("Unsupported", "unsupported"),
+        "NOT_EVALUATED": ("Not evaluated", "not-evaluated"),
+    }
+    return labels.get(status, ("Not evaluated", "not-evaluated"))
+
+
+def _admin_device_payload(
+    rows: list[dict[str, Any]], sync: dict[str, Any] | None,
+) -> dict[str, Any]:
+    def sync_count(key: str) -> int | None:
+        value = (sync or {}).get(key)
+        return int(value) if value is not None else None
+
+    devices: list[dict[str, Any]] = []
+    for row in rows:
+        attempts = int(row.get("attempted_install_count") or 0)
+        successful = int(row.get("successful_install_count") or 0)
+        failed = int(row.get("failed_install_count") or 0)
+        asset_url = row.get("asset_url")
+        if not (
+            row.get("asset_status") == "AVAILABLE"
+            and isinstance(asset_url, str)
+            and asset_url.startswith("https://api.terento.app/assets/devices/")
+        ):
+            asset_url = None
+        source_image_url = _official_source_image_url(row.get("source_image_url"))
+        stored_map_capable = row.get("map_capable")
+        classified_map_capable = classify_map_capable(
+            row.get("canonical_model") or row.get("model"),
+            row.get("manufacturer") or "Garmin",
+        )
+        map_capable = (
+            stored_map_capable if stored_map_capable is not None else classified_map_capable
+        )
+        evidence_status = calculate_compatibility_status(
+            successful_install_count=successful,
+            recognized_map_capable_evidence=map_capable is not False,
+        )
+        if asset_url:
+            image = {"url": asset_url, "origin": "controlled", "status": "AVAILABLE"}
+        elif source_image_url:
+            image = {"url": source_image_url, "origin": "garmin-source", "status": "SOURCE"}
+        else:
+            image = {"url": None, "origin": "missing", "status": "MISSING"}
+        usb_identities = row.get("usb_identities") or []
+        devices.append({
+            "id": row.get("device_id"),
+            "manufacturer": row.get("manufacturer") or "Garmin",
+            "family": row.get("family_canonical_name"),
+            "familyName": row.get("family_name"),
+            "model": row.get("model"),
+            "canonicalModel": row.get("canonical_model"),
+            "variant": row.get("variant"),
+            "caseSizeMm": row.get("case_size_mm"),
+            "displayType": row.get("display_type"),
+            "partNumber": row.get("part_number"),
+            "productURL": row.get("product_url"),
+            "active": bool(row.get("active", True)),
+            "mapCapable": map_capable,
+            "supportStatus": str(row.get("support_status") or "NOT_EVALUATED").upper(),
+            "evidenceStatus": evidence_status.value if evidence_status else None,
+            "recordSource": str(row.get("record_source") or "CURRENT_RETAIL").upper(),
+            "collectorManaged": bool(row.get("collector_managed", True)),
+            "asset": {"status": "AVAILABLE", "url": asset_url} if asset_url else {"status": "MISSING"},
+            "sourceAsset": {"url": source_image_url, "scope": "MODEL"} if source_image_url else None,
+            "image": image,
+            "usbIdentities": usb_identities,
+            "installationStats": {
+                "attempts": attempts,
+                "successful": successful,
+                "failed": failed,
+                "successRate": round(successful * 100 / attempts, 1) if attempts else None,
+                "firstSuccessfulAt": _timestamp_iso(row.get("first_success")) or None,
+                "lastSuccessfulAt": _timestamp_iso(row.get("last_success")) or None,
+                "lastEvidenceAt": _timestamp_iso(row.get("last_evidence")) or None,
+            },
+            "catalog": {
+                "firstSeenAt": _timestamp_iso(row.get("first_seen_at")) or None,
+                "createdAt": _timestamp_iso(row.get("created_at")) or None,
+                "updatedAt": _timestamp_iso(row.get("updated_at")) or None,
+                "lastSeenAt": _timestamp_iso(row.get("last_seen_at")) or None,
+                "newInLatestSync": bool(
+                    sync and row.get("first_seen_collection_run_id") == sync.get("id")
+                ),
+                "firstSeenSyncId": row.get("first_seen_collection_run_id"),
+                "lastSeenSyncId": row.get("last_seen_collection_run_id"),
+            },
+        })
+
+    attempts = sum(device["installationStats"]["attempts"] for device in devices)
+    successful = sum(device["installationStats"]["successful"] for device in devices)
+    return {
+        "schemaVersion": 1,
+        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "summary": {
+            "models": len(devices),
+            "mapCapable": sum(device["mapCapable"] is True for device in devices),
+            "supported": sum(device["supportStatus"] == "SUPPORTED" for device in devices),
+            "tested": sum(device["installationStats"]["successful"] > 0 for device in devices),
+            "installAttempts": attempts,
+            "successfulInstalls": successful,
+            "successRate": round(successful * 100 / attempts, 1) if attempts else None,
+            "newThisSync": sync_count("records_added"),
+        },
+        "sync": {
+            "id": sync.get("id") if sync else None,
+            "status": sync.get("status") if sync else None,
+            "startedAt": _timestamp_iso(sync.get("started_at")) or None if sync else None,
+            "completedAt": _timestamp_iso(sync.get("finished_at")) or None if sync else None,
+            "recordsTotalBefore": sync_count("records_total_before"),
+            "recordsTotalAfter": sync_count("records_total_after"),
+            "recordsAdded": sync_count("records_added"),
+            "recordsUpdated": sync_count("records_updated"),
+        },
+        "devices": devices,
+    }
+
+
+def _admin_status_badge(label: str, kind: str) -> str:
+    return f"<span class='admin-state admin-state-{html.escape(kind)}'>{html.escape(label)}</span>"
+
+
+def _admin_device_row(device: dict[str, Any], index: int) -> str:
+    model = str(device.get("model") or "Unknown Garmin model")
+    variant = str(device.get("variant") or "—")
+    family = str(device.get("familyName") or device.get("family") or "")
+    map_label, map_kind = _admin_map_capability(device.get("mapCapable"))
+    support_label, support_kind = _admin_support_status(device.get("supportStatus"))
+    evidence_status = str(device.get("evidenceStatus") or "").upper()
+    stats = device["installationStats"]
+    catalog = device["catalog"]
+    search = " ".join(str(value or "") for value in (
+        model, device.get("canonicalModel"), family, variant,
+        device.get("caseSizeMm"), device.get("partNumber"), device.get("displayType"),
+    )).strip()
+    image_url = (device.get("image") or {}).get("url") or device.get("asset", {}).get("url")
+    image = (
+        f"<img class='device-thumb' src='{html.escape(image_url, quote=True)}' alt='' loading='lazy'>"
+        if image_url else
+        "<span class='device-thumb device-thumb-placeholder' aria-hidden='true'></span>"
+    )
+    new_badge = "<span class='new-badge'>New</span>" if catalog.get("newInLatestSync") else ""
+    last_tested = _timestamp_markup(stats.get("lastSuccessfulAt")) if stats.get("lastSuccessfulAt") else "—"
+    return f"""<tr data-device-index='{index}' data-search='{html.escape(search, quote=True)}' data-model='{html.escape(model.lower(), quote=True)}' data-updated='{html.escape(str(catalog.get('updatedAt') or ''), quote=True)}' data-installs='{stats['attempts']}' data-tested='{str(stats['successful'] > 0).lower()}' tabindex='0'>
+      <td><button class='device-model-button' type='button' data-device-index='{index}'>{image}<span class='device-model-copy'><strong>{html.escape(model)}</strong>{new_badge}</span></button></td>
+      <td>{html.escape(variant)}</td>
+      <td>{_admin_status_badge(map_label, f'map-{map_kind}')}</td>
+      <td>{_admin_status_badge(support_label, f'support-{support_kind}')}</td>
+      <td>{_status_badge(evidence_status) if evidence_status else _admin_status_badge('Unavailable', 'unavailable')}</td>
+      <td class='numeric'>{stats['attempts']}</td>
+      <td class='numeric'>{stats['successful']}</td>
+      <td>{last_tested}</td>
+    </tr>"""
+
+
+def devices_page(
+    rows: list[dict[str, Any]], sync: dict[str, Any] | None,
+    user: dict[str, Any], csrf_token: str,
+) -> bytes:
+    payload = _admin_device_payload(rows, sync)
+    summary = payload["summary"]
+    rate = _format_rate(summary["successRate"])
+    sync_data = payload["sync"]
+    completed = _timestamp_markup(sync_data["completedAt"]) if sync_data["completedAt"] else "No successful sync recorded"
+    sync_line = (
+        f"Last sync: {sync_data['recordsAdded']} new · {sync_data['recordsUpdated']} updated"
+        if sync_data["id"] is not None and sync_data["recordsAdded"] is not None
+        else ("Last sync: counts unavailable for this historical run" if sync_data["id"] is not None else "Last sync: —")
+    )
+    family_values = sorted({
+        str(device.get("familyName") or device.get("family") or "").strip()
+        for device in payload["devices"]
+        if str(device.get("familyName") or device.get("family") or "").strip()
+    }, key=str.casefold)
+    family_options = "".join(
+        f"<option value='{html.escape(value, quote=True)}'>{html.escape(value)}</option>"
+        for value in family_values
+    )
+    rows_html = "".join(
+        _admin_device_row(device, index)
+        for index, device in enumerate(payload["devices"])
+    )
+    empty = "<p class='empty'>No Garmin device records are available.</p>" if not rows_html else ""
+    payload_json = json.dumps({**payload, "csrfToken": csrf_token}, ensure_ascii=False).replace("<", "\\u003c")
+    content = f"""
+      {_admin_header(user, csrf_token, active="devices")}
+      <main class="dashboard devices-page" id="main-content">
+        <div class="heading-row"><div><p class="eyebrow">Admin · Garmin</p><h1>Garmin devices</h1><p class="lede">Catalogue health, map capability, Support decision, and real Terento installation evidence.</p></div><p class="updated-at">Catalogue completed {completed}</p></div>
+        <section class="metrics device-metrics" aria-label="Garmin device catalogue summary">
+          <article class='metric'><span>Models</span><strong>{summary['models']}</strong></article>
+          <article class='metric'><span>Map-capable</span><strong>{summary['mapCapable']}</strong></article>
+          <article class='metric'><span>Supported</span><strong>{summary['supported']}</strong></article>
+          <article class='metric'><span>Tested</span><strong>{summary['tested']}</strong></article>
+          <article class='metric'><span>Install attempts</span><strong>{summary['installAttempts']}</strong></article>
+          <article class='metric'><span>Successful installs</span><strong>{summary['successfulInstalls']}</strong></article>
+          <article class='metric'><span>Success rate</span><strong>{html.escape(rate)}</strong></article>
+          <article class='metric'><span>New this sync</span><strong>{summary['newThisSync'] if summary['newThisSync'] is not None else '—'}</strong></article>
+        </section>
+        <section class="catalog-sync" aria-labelledby="catalog-sync-title"><div><p class="section-kicker">Catalogue</p><h2 id="catalog-sync-title">Garmin device catalog</h2><p>Last updated {completed}</p></div><p class="sync-summary">{html.escape(sync_line)}</p></section>
+        <section class="evidence-section" aria-labelledby="device-list-title">
+          <div class="section-heading"><div><p class="section-kicker">Inventory</p><h2 id="device-list-title">Known Garmin models</h2></div><p class="table-help">Times follow the selected time zone</p></div>
+          <form class="filter-bar device-filter-bar" id="device-filters" role="search">
+            <label class="filter-search"><span class="sr-only">Search Garmin devices</span><input id="device-search" type="search" placeholder="Search model, family, variant, case size or part number" autocomplete="off"></label>
+            <label><span class="sr-only">Filter by family</span><select id="device-family"><option value="all">All families</option>{family_options}</select></label>
+            <label><span class="sr-only">Filter by map capability</span><select id="device-map"><option value="all">All map capability</option><option value="yes">Map-capable: Yes</option><option value="no">Map-capable: No</option><option value="unknown">Map-capable: Unknown</option></select></label>
+            <label><span class="sr-only">Filter by Support decision</span><select id="device-support"><option value="all">All Support decisions</option><option value="SUPPORTED">Supported</option><option value="UNSUPPORTED">Unsupported</option><option value="NOT_EVALUATED">Not evaluated</option></select></label>
+            <label><span class="sr-only">Filter by testing</span><select id="device-tested"><option value="all">All tested states</option><option value="yes">Tested: Yes</option><option value="no">Tested: No</option></select></label>
+            <label><span class="sr-only">Sort Garmin devices</span><select id="device-sort"><option value="model">Model name</option><option value="newest">Newest in database</option><option value="updated">Recently updated</option><option value="installs">Most installs</option><option value="tested">Last tested</option></select></label>
+          </form>
+          <p class="results-count" id="device-results-count" aria-live="polite">{len(payload['devices'])} {'model' if len(payload['devices']) == 1 else 'models'}</p>
+          {empty}
+          <div class="table-wrap device-table-wrap"><table><caption class="sr-only">Garmin device catalogue and Terento installation evidence</caption><thead><tr><th scope="col">Model</th><th scope="col">Variant</th><th scope="col">Map-capable</th><th scope="col">Support decision</th><th scope="col">Evidence status</th><th scope="col">Installs</th><th scope="col">Success</th><th scope="col">Last tested</th></tr></thead><tbody id="device-rows">{rows_html}</tbody></table></div>
+          <div class="device-pagination" id="device-pagination" hidden><button type="button" id="device-previous">Previous</button><span id="device-page-status"></span><button type="button" id="device-next">Next</button></div>
+        </section>
+      </main>
+      <dialog class="device-dialog" id="device-dialog" aria-labelledby="device-dialog-title"><div class="device-dialog-inner"><div class="device-dialog-header"><div><p class="section-kicker">Garmin device record</p><h2 id="device-dialog-title">Device details</h2></div><button class="dialog-close" type="button" id="device-dialog-close" aria-label="Close device details">×</button></div><div id="device-dialog-body"></div></div></dialog>
+      <script>const terentoAdminDevices = {payload_json};{_devices_script()}</script>
+    """
+    return _layout("Garmin devices", content)
 
 
 def _campaign_info(control_id: str, title: str, body: str) -> str:
@@ -395,7 +648,7 @@ def _statistics_row(row: dict[str, Any]) -> str:
         html.escape(model), html.escape(variant), html.escape(str(row.get("firmware_versions") or "—")),
         html.escape(str(row.get("attempted_install_count", 0))), html.escape(str(row.get("successful_install_count", 0))),
         html.escape(str(row.get("failed_install_count", 0))), html.escape(_format_rate(row.get("success_rate"))),
-        _status_badge(status), html.escape(format_timestamp(row.get("last_success"))), _error_cell(row),
+        _status_badge(status), _timestamp_markup(row.get("last_success")), _error_cell(row),
     )
     return (
         f"<tr data-search='{html.escape(search_text)}' data-status='{html.escape(status.lower())}' data-activity='{html.escape(activity)}' data-reports='{int(row.get('attempted_install_count') or 0)}'>"
@@ -415,6 +668,175 @@ def _status_badge(value: str) -> str:
         f"aria-label='{html.escape(label)}: {html.escape(STATUS_PUBLIC_COPY[status])}'>"
         f"{html.escape(label)}</span>"
     )
+
+
+def _devices_script() -> str:
+    return r"""(() => {
+      const devices = terentoAdminDevices.devices || [];
+      const body = document.querySelector('#device-rows');
+      const form = document.querySelector('#device-filters');
+      const search = document.querySelector('#device-search');
+      const family = document.querySelector('#device-family');
+      const map = document.querySelector('#device-map');
+      const support = document.querySelector('#device-support');
+      const tested = document.querySelector('#device-tested');
+      const sort = document.querySelector('#device-sort');
+      const count = document.querySelector('#device-results-count');
+      const pagination = document.querySelector('#device-pagination');
+      const previous = document.querySelector('#device-previous');
+      const next = document.querySelector('#device-next');
+      const pageStatus = document.querySelector('#device-page-status');
+      const dialog = document.querySelector('#device-dialog');
+      const dialogTitle = document.querySelector('#device-dialog-title');
+      const dialogBody = document.querySelector('#device-dialog-body');
+      const close = document.querySelector('#device-dialog-close');
+      if (!body || !form || !search || !family || !map || !support || !tested || !sort || !count || !dialog) return;
+
+      const pageSize = 50;
+      let page = 0;
+      const escapeHtml = (value) => String(value ?? '—')
+        .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+      const display = (value) => value === null || value === undefined || value === '' ? '—' : value;
+      const utcDate = (value) => value ? new Intl.DateTimeFormat('en-GB', {
+        day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC', timeZoneName: 'short'
+      }).format(new Date(value)) : '—';
+      const date = (value) => value ? `<time class="admin-timestamp" data-admin-timestamp="${escapeHtml(value)}">${escapeHtml(window.TerentoAdminTime ? window.TerentoAdminTime.format(value) : utcDate(value))}</time>` : '—';
+      const mapValue = (device) => device.mapCapable === true ? 'yes' : device.mapCapable === false ? 'no' : 'unknown';
+      const supportLabel = (value) => ({SUPPORTED: 'Supported', UNSUPPORTED: 'Unsupported', NOT_EVALUATED: 'Not evaluated'})[value] || 'Not evaluated';
+      const evidenceLabel = (value) => ({TESTING: 'Testing', TESTED: 'Tested', SUPPORTED: 'Supported', VERIFIED: 'Verified'})[value] || 'Unavailable';
+      const deviceSearch = (device) => [device.model, device.canonicalModel, device.family, device.familyName, device.variant, device.caseSizeMm, device.partNumber, device.displayType].filter(Boolean).join(' ').toLocaleLowerCase();
+      const matching = () => {
+        const query = search.value.trim().toLocaleLowerCase();
+        return devices.filter((device) => {
+          const matchesSearch = !query || deviceSearch(device).includes(query);
+          const matchesFamily = family.value === 'all' || family.value === (device.familyName || device.family);
+          const matchesMap = map.value === 'all' || mapValue(device) === map.value;
+          const matchesSupport = support.value === 'all' || (device.supportStatus || 'NOT_EVALUATED') === support.value;
+          const matchesTested = tested.value === 'all' || (device.installationStats.successful > 0 ? 'yes' : 'no') === tested.value;
+          return matchesSearch && matchesFamily && matchesMap && matchesSupport && matchesTested;
+        }).sort((a, b) => {
+          if (sort.value === 'newest') return String(b.catalog.firstSeenAt || '').localeCompare(String(a.catalog.firstSeenAt || ''));
+          if (sort.value === 'updated') return String(b.catalog.updatedAt || '').localeCompare(String(a.catalog.updatedAt || ''));
+          if (sort.value === 'installs') return (b.installationStats.attempts || 0) - (a.installationStats.attempts || 0);
+          if (sort.value === 'tested') return String(b.installationStats.lastSuccessfulAt || '').localeCompare(String(a.installationStats.lastSuccessfulAt || ''));
+          return String(a.model || '').localeCompare(String(b.model || ''), undefined, {sensitivity: 'base', numeric: true})
+            || String(a.variant || '').localeCompare(String(b.variant || ''), undefined, {sensitivity: 'base', numeric: true});
+        });
+      };
+      const openDevice = (device) => {
+        if (!device) return;
+        dialogTitle.textContent = display(device.model);
+        const stats = device.installationStats;
+        const catalog = device.catalog;
+        const mapLabel = device.mapCapable === true ? 'Yes' : device.mapCapable === false ? 'No' : 'Unknown';
+        const image = device.image || {};
+        const assetLabel = image.origin === 'controlled' ? 'Controlled Terento asset' : image.origin === 'garmin-source' ? 'Garmin source image (model match)' : 'Missing';
+        const imageMarkup = image.url ? `<img class="device-detail-image" src="${escapeHtml(image.url)}" alt="">` : '';
+        const usb = (device.usbIdentities || []).map((identity) => `VID ${identity.vendorId} · PID ${identity.productId}`).join(', ') || '—';
+        dialogBody.innerHTML = `
+          ${imageMarkup}
+          <div class="device-detail-grid">
+            <section><p class="detail-kicker">Identity</p><dl>
+              <div><dt>Model</dt><dd>${escapeHtml(device.model)}</dd></div>
+              <div><dt>Canonical model</dt><dd>${escapeHtml(device.canonicalModel)}</dd></div>
+              <div><dt>Family</dt><dd>${escapeHtml(device.familyName || device.family)}</dd></div>
+              <div><dt>Variant</dt><dd>${escapeHtml(device.variant)}</dd></div>
+              <div><dt>Case size</dt><dd>${escapeHtml(device.caseSizeMm ? `${device.caseSizeMm} mm` : null)}</dd></div>
+              <div><dt>Display</dt><dd>${escapeHtml(device.displayType)}</dd></div>
+              <div><dt>Part number</dt><dd>${escapeHtml(device.partNumber)}</dd></div>
+              <div><dt>Record ID</dt><dd class="technical-value">${escapeHtml(device.id)}</dd></div>
+            </dl></section>
+            <section><p class="detail-kicker">Compatibility</p><dl>
+              <div><dt>Map-capable</dt><dd>${escapeHtml(mapLabel)}</dd></div>
+              <div><dt>Support decision</dt><dd>${escapeHtml(supportLabel(device.supportStatus))}</dd></div>
+              <div><dt>Evidence status</dt><dd>${escapeHtml(evidenceLabel(device.evidenceStatus))}</dd></div>
+              <div><dt>Active</dt><dd>${device.active ? 'Yes' : 'No'}</dd></div>
+              <div><dt>USB identities</dt><dd class="technical-value">${escapeHtml(usb)}</dd></div>
+            </dl></section>
+            <section><p class="detail-kicker">Installation evidence</p><dl>
+              <div><dt>Attempts</dt><dd>${stats.attempts}</dd></div>
+              <div><dt>Successful</dt><dd>${stats.successful}</dd></div>
+              <div><dt>Failed</dt><dd>${stats.failed}</dd></div>
+              <div><dt>Success rate</dt><dd>${stats.successRate === null ? '—' : `${stats.successRate}%`}</dd></div>
+              <div><dt>First successful install</dt><dd>${date(stats.firstSuccessfulAt)}</dd></div>
+              <div><dt>Last tested</dt><dd>${date(stats.lastSuccessfulAt)}</dd></div>
+              <div><dt>Last evidence</dt><dd>${date(stats.lastEvidenceAt)}</dd></div>
+            </dl></section>
+            <section><p class="detail-kicker">Catalogue</p><dl>
+              <div><dt>First seen in Terento</dt><dd>${date(catalog.firstSeenAt)}</dd></div>
+              <div><dt>Record created</dt><dd>${date(catalog.createdAt)}</dd></div>
+              <div><dt>Record updated</dt><dd>${date(catalog.updatedAt)}</dd></div>
+              <div><dt>Last seen</dt><dd>${date(catalog.lastSeenAt)}</dd></div>
+              <div><dt>New in latest sync</dt><dd>${catalog.newInLatestSync ? 'Yes' : 'No'}</dd></div>
+              <div><dt>Image</dt><dd>${escapeHtml(assetLabel)}</dd></div>
+              <div><dt>Match source</dt><dd>${escapeHtml(image.origin === 'controlled' ? 'Approved catalog asset' : image.origin === 'garmin-source' ? 'Official Garmin product media URL for this exact catalog row' : 'No image URL stored for this row')}</dd></div>
+            </dl></section>
+          </div>
+          <section class="device-support-review" aria-labelledby="device-support-review-title">
+            <p class="detail-kicker" id="device-support-review-title">Operator review</p>
+            <p class="table-help">This changes the Support decision only. It does not change Evidence status or installation counts.</p>
+            <form method="post" action="/admin/devices/support">
+              <input type="hidden" name="csrf_token" value="${escapeHtml(terentoAdminDevices.csrfToken)}">
+              <input type="hidden" name="device_id" value="${escapeHtml(device.id)}">
+              <label for="support-decision-${escapeHtml(device.id)}">Support decision</label>
+              <select id="support-decision-${escapeHtml(device.id)}" name="support_status">
+                <option value="SUPPORTED"${device.supportStatus === 'SUPPORTED' ? ' selected' : ''}>Supported</option>
+                <option value="UNSUPPORTED"${device.supportStatus === 'UNSUPPORTED' ? ' selected' : ''}>Unsupported</option>
+                <option value="NOT_EVALUATED"${device.supportStatus === 'NOT_EVALUATED' ? ' selected' : ''}>Not evaluated</option>
+              </select>
+              <button type="submit">Save support decision</button>
+            </form>
+          </section>
+          ${device.productURL ? `<p class="device-product-link"><a href="${escapeHtml(device.productURL)}" target="_blank" rel="noreferrer">Open Garmin product page</a></p>` : ''}
+        `;
+        if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open', '');
+      };
+      const refresh = () => {
+        const visible = matching();
+        const totalPages = Math.max(1, Math.ceil(visible.length / pageSize));
+        page = Math.min(page, totalPages - 1);
+        const pageRows = visible.slice(page * pageSize, (page + 1) * pageSize);
+        const rowsById = new Map([...body.querySelectorAll('tr[data-device-index]')].map((row) => {
+          const device = devices[Number(row.dataset.deviceIndex)];
+          return [device && device.id, row];
+        }));
+        rowsById.forEach((row) => { row.hidden = true; });
+        pageRows.forEach((device) => {
+          const row = rowsById.get(device.id);
+          if (!row) return;
+          row.hidden = false;
+          body.appendChild(row);
+        });
+        count.textContent = visible.length === devices.length ? `${visible.length} ${visible.length === 1 ? 'model' : 'models'}` : `${visible.length} of ${devices.length} models`;
+        pagination.hidden = visible.length <= pageSize;
+        pageStatus.textContent = `Page ${page + 1} of ${totalPages}`;
+        previous.disabled = page === 0;
+        next.disabled = page >= totalPages - 1;
+      };
+      const reset = () => { page = 0; refresh(); };
+      form.addEventListener('submit', (event) => event.preventDefault());
+      [search, family, map, support, tested, sort].forEach((control) => control.addEventListener(control === search ? 'input' : 'change', reset));
+      previous.addEventListener('click', () => { page -= 1; refresh(); });
+      next.addEventListener('click', () => { page += 1; refresh(); });
+      body.addEventListener('click', (event) => {
+        const button = event.target.closest('button[data-device-index]');
+        const row = event.target.closest('tr[data-device-index]');
+        if (button || !row) return;
+        openDevice(devices[Number(row.dataset.deviceIndex)]);
+      });
+      body.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        const row = event.target.closest('tr[data-device-index]');
+        if (!row) return;
+        event.preventDefault();
+        openDevice(devices[Number(row.dataset.deviceIndex)]);
+      });
+      body.querySelectorAll('button[data-device-index]').forEach((button) => button.addEventListener('click', () => openDevice(devices[Number(button.dataset.deviceIndex)])));
+      close.addEventListener('click', () => dialog.close());
+      dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+      refresh();
+    })();"""
 
 
 def _campaign_links_script() -> str:
@@ -597,12 +1019,83 @@ def _dashboard_script() -> str:
           ? (b.dataset.activity || '').localeCompare(a.dataset.activity || '')
           : Number(b.dataset.reports || 0) - Number(a.dataset.reports || 0));
         visible.forEach((row) => body.appendChild(row));
-        const label = visible.length === 1 ? 'report' : 'reports';
+        const label = visible.length === 1 ? 'model' : 'models';
         count.textContent = visible.length === rows.length ? `${visible.length} ${label}` : `${visible.length} of ${rows.length} ${label}`;
       };
       form.addEventListener('submit', (event) => event.preventDefault());
       [search, status, sort].forEach((control) => control.addEventListener('input', refresh));
       refresh();
+    })();"""
+
+
+def _admin_timezone_script() -> str:
+    return r"""(() => {
+      const select = document.querySelector('#admin-timezone');
+      if (!select) return;
+      const storageKey = 'terento.admin.timeZone';
+      const browserTimeZone = (() => {
+        try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch (_) { return 'UTC'; }
+      })();
+      const isValidTimeZone = (value) => {
+        try {
+          new Intl.DateTimeFormat('en-GB', { timeZone: value }).format();
+          return true;
+        } catch (_) {
+          return false;
+        }
+      };
+      const commonTimeZones = [
+        'Europe/Vilnius', 'Europe/Riga', 'Europe/Warsaw', 'Europe/Berlin',
+        'Europe/London', 'America/New_York', 'America/Los_Angeles',
+        'America/Toronto', 'Asia/Tokyo', 'Asia/Singapore', 'Australia/Sydney'
+      ];
+      const supportedTimeZones = typeof Intl.supportedValuesOf === 'function'
+        ? Intl.supportedValuesOf('timeZone') : [];
+      const timeZones = ['browser', 'UTC', browserTimeZone, ...commonTimeZones, ...supportedTimeZones]
+        .filter((value, index, values) => values.indexOf(value) === index)
+        .filter((value) => value === 'browser' || isValidTimeZone(value));
+      const readStoredTimeZone = () => {
+        try { return localStorage.getItem(storageKey) || 'browser'; } catch (_) { return 'browser'; }
+      };
+      const storedTimeZone = readStoredTimeZone();
+      const selectedTimeZone = timeZones.includes(storedTimeZone) ? storedTimeZone : 'browser';
+      const activeTimeZone = () => select.value === 'browser' ? browserTimeZone : select.value;
+      const format = (value) => {
+        if (!value) return '—';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return String(value);
+        try {
+          return new Intl.DateTimeFormat('en-GB', {
+            day: '2-digit', month: 'short', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', timeZone: activeTimeZone(), timeZoneName: 'short'
+          }).format(date);
+        } catch (_) {
+          return date.toISOString();
+        }
+      };
+      const render = () => {
+        const zone = activeTimeZone();
+        document.querySelectorAll('[data-admin-timestamp]').forEach((element) => {
+          element.textContent = format(element.dataset.adminTimestamp);
+          element.title = `${element.textContent} · ${zone}`;
+        });
+        select.title = zone;
+        select.setAttribute('aria-label', `Time zone: ${select.value === 'browser' ? `Automatic (${browserTimeZone})` : select.value}`);
+      };
+      select.replaceChildren(...timeZones.map((value) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value === 'browser' ? `Automatic (browser) · ${browserTimeZone}` : value;
+        return option;
+      }));
+      select.value = selectedTimeZone;
+      window.TerentoAdminTime = { format, render, timeZone: activeTimeZone };
+      select.addEventListener('change', () => {
+        try { localStorage.setItem(storageKey, select.value); } catch (_) { /* local preference is optional */ }
+        render();
+        window.dispatchEvent(new Event('terento-admin-timezone-change'));
+      });
+      render();
     })();"""
 
 
@@ -629,6 +1122,8 @@ button{cursor:pointer}
 .admin-nav a{text-decoration:none}
 .admin-nav a:hover{color:var(--interactive)}
 .admin-user{color:var(--graphite);font-weight:650}
+.timezone-control{display:flex;align-items:center;gap:7px;color:var(--secondary);font-size:11px;font-weight:650;white-space:nowrap}
+.timezone-control select{max-width:205px;min-height:32px;padding:5px 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--graphite);font-size:11px}
 .admin-nav form{margin:0}
 .link-button{padding:0;border:0;background:none;color:var(--interactive);font-weight:650;text-decoration:underline;text-underline-offset:3px}
 .dashboard{width:min(calc(100% - 48px),var(--max-width));margin:0 auto;padding:40px 0 64px}
@@ -727,9 +1222,56 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .preview-grid div{padding:10px 12px;background:var(--surface-muted);border-radius:8px}
 .preview-grid dt{color:var(--secondary);font-size:11px;font-weight:650}
 .preview-grid dd{margin:2px 0 0;overflow-wrap:anywhere;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+.devices-page .device-metrics{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:18px}
+.catalog-sync{display:flex;align-items:center;justify-content:space-between;gap:24px;margin:0 0 28px;padding:16px 20px;background:var(--surface);border:1px solid var(--border);border-radius:14px}
+.catalog-sync h2{font-size:20px}
+.catalog-sync p{margin:5px 0 0;color:var(--secondary);font-size:13px}
+.catalog-sync .section-kicker{margin:0 0 4px}
+.sync-summary{font-weight:700!important;color:var(--interactive)!important;white-space:nowrap}
+.device-filter-bar{align-items:stretch}
+.device-filter-bar .filter-search{flex:1 1 310px}
+.device-filter-bar input{width:100%}
+.device-table-wrap table{min-width:900px}
+.device-table-wrap tbody tr{cursor:pointer}
+.device-table-wrap tbody tr:hover{background:color-mix(in srgb,var(--surface-muted) 52%,white)}
+.device-table-wrap tbody tr:focus-visible{outline:3px solid color-mix(in srgb,var(--sky) 58%,white);outline-offset:-3px}
+.device-model-button{display:flex;align-items:center;gap:10px;width:100%;padding:0;border:0;background:none;color:inherit;text-align:left}
+.device-model-button strong{display:block;font-weight:700}
+.device-model-copy{display:flex;align-items:center;gap:8px}
+.device-thumb{display:block;width:38px;height:38px;flex:0 0 38px;object-fit:contain;border-radius:8px;background:var(--surface-muted)}
+.device-detail-image{display:block;width:120px;height:120px;object-fit:contain;border-radius:16px;background:var(--surface-muted);margin:0 0 16px}
+.device-thumb-placeholder{position:relative;border:1px solid var(--border)}
+.device-thumb-placeholder:before{content:"";position:absolute;left:10px;top:8px;width:16px;height:21px;border:2px solid var(--sky);border-radius:5px}
+.device-thumb-placeholder:after{content:"";position:absolute;left:15px;top:13px;width:6px;height:2px;border-radius:2px;background:var(--sky);box-shadow:0 8px 0 var(--sky)}
+.new-badge{display:inline-flex;align-items:center;min-height:20px;padding:2px 7px;border:1px solid color-mix(in srgb,var(--lichen) 65%,var(--border));border-radius:999px;background:#EEF2E9;color:#52624C;font-size:10px;font-weight:750;letter-spacing:.06em;text-transform:uppercase}
+.admin-state{display:inline-flex;align-items:center;min-height:26px;padding:5px 9px;border:1px solid transparent;border-radius:999px;font-size:11px;font-weight:750;line-height:1;white-space:nowrap}
+.admin-state-map-yes,.admin-state-support-supported{background:#E7EEE2;border-color:#B4C6A7;color:#4B6142}
+.admin-state-map-no,.admin-state-support-unsupported{background:#F0E9E5;border-color:#D6BDB2;color:#7A493D}
+.admin-state-map-unknown,.admin-state-support-not-evaluated{background:var(--surface-muted);border-color:var(--border);color:var(--secondary)}
+.numeric{font-variant-numeric:tabular-nums}
+.device-pagination{display:flex;align-items:center;justify-content:center;gap:16px;margin:14px 0 0;color:var(--secondary);font-size:13px}
+.device-pagination button,.dialog-close{min-height:34px;padding:7px 11px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--interactive);font-weight:700}
+.device-pagination button:hover,.dialog-close:hover{border-color:var(--interactive);background:var(--success-bg)}
+.device-pagination button:disabled{cursor:not-allowed;opacity:.45}
+.device-dialog{width:min(860px,calc(100% - 32px));max-height:min(820px,calc(100% - 32px));padding:0;border:0;border-radius:16px;background:var(--surface);color:var(--graphite);box-shadow:0 24px 80px rgba(34,42,43,.24)}
+.device-dialog::backdrop{background:rgba(34,42,43,.34)}
+.device-dialog-inner{padding:24px}
+.device-dialog-header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:22px}
+.device-dialog-header h2{font-size:28px}
+.dialog-close{width:34px;padding:0;font-size:23px;line-height:1}
+.device-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 26px}
+.device-detail-grid section{min-width:0;padding-top:2px}
+.detail-kicker{margin:0 0 8px;color:var(--interactive);font-size:11px;font-weight:750;letter-spacing:.12em;text-transform:uppercase}
+.device-detail-grid dl{margin:0;border-top:1px solid var(--border)}
+.device-detail-grid dl div{display:grid;grid-template-columns:minmax(120px,.8fr) minmax(0,1.2fr);gap:12px;padding:8px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 70%,transparent)}
+.device-detail-grid dt{color:var(--secondary);font-size:12px}
+.device-detail-grid dd{margin:0;overflow-wrap:anywhere;font-size:13px;font-weight:650;text-align:right}
+.technical-value{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px!important}
+.device-product-link{margin:22px 0 0;padding-top:16px;border-top:1px solid var(--border);font-size:13px;font-weight:700}
+.device-product-link a{color:var(--interactive);text-underline-offset:3px}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-@media(max-width:800px){.admin-topbar-inner,.dashboard{width:min(calc(100% - 32px),var(--max-width))}.admin-section-nav{margin-left:0}.heading-row{align-items:flex-start;flex-direction:column;gap:12px}.updated-at{margin:0}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-bar input{width:min(100%,360px)}.filter-bar{align-items:stretch}.filter-bar label,.filter-bar select,.filter-bar input{flex:1 1 170px}.public-status{align-items:flex-start;flex-direction:column}.public-status-value{width:100%;justify-content:space-between}.status-guide-grid{grid-template-columns:1fr}.campaign-fields{grid-template-columns:1fr}.campaign-field-wide{grid-column:auto}.attribution-preview{grid-template-columns:1fr}}
-@media(max-width:560px){.admin-topbar-inner{align-items:flex-start;flex-direction:column;padding:14px 0}.admin-section-nav{width:100%;overflow:auto}.admin-section-nav a{white-space:nowrap}.admin-nav{width:100%;justify-content:space-between;gap:10px}.dashboard{padding-top:28px}.metrics{gap:8px}.metric{min-height:92px;padding:14px}.metric strong{font-size:26px}.auth-card{width:calc(100% - 32px);padding:24px}.section-heading{align-items:flex-start;flex-direction:column;gap:4px}.campaign-card{padding:16px}.campaign-preset-row{grid-template-columns:1fr;gap:8px}.generated-url-row{grid-template-columns:1fr}.copy-button{width:100%}.copy-status{min-height:18px}}
+@media(max-width:800px){.admin-topbar-inner,.dashboard{width:min(calc(100% - 32px),var(--max-width))}.admin-section-nav{margin-left:0}.heading-row{align-items:flex-start;flex-direction:column;gap:12px}.updated-at{margin:0}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.devices-page .device-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-bar input{width:min(100%,360px)}.filter-bar{align-items:stretch}.filter-bar label,.filter-bar select,.filter-bar input{flex:1 1 170px}.public-status{align-items:flex-start;flex-direction:column}.public-status-value{width:100%;justify-content:space-between}.status-guide-grid{grid-template-columns:1fr}.campaign-fields{grid-template-columns:1fr}.campaign-field-wide{grid-column:auto}.attribution-preview{grid-template-columns:1fr}.catalog-sync{align-items:flex-start;flex-direction:column;gap:4px}.sync-summary{white-space:normal!important}.device-detail-grid{grid-template-columns:1fr}}
+@media(max-width:560px){.admin-topbar-inner{align-items:flex-start;flex-direction:column;padding:14px 0}.admin-section-nav{width:100%;overflow:auto}.admin-section-nav a{white-space:nowrap}.admin-nav{width:100%;justify-content:space-between;gap:10px;flex-wrap:wrap}.timezone-control{width:100%;justify-content:space-between}.timezone-control select{max-width:none;flex:1}.dashboard{padding-top:28px}.metrics{gap:8px}.metric{min-height:92px;padding:14px}.metric strong{font-size:26px}.auth-card{width:calc(100% - 32px);padding:24px}.section-heading{align-items:flex-start;flex-direction:column;gap:4px}.campaign-card{padding:16px}.campaign-preset-row{grid-template-columns:1fr;gap:8px}.generated-url-row{grid-template-columns:1fr}.copy-button{width:100%}.copy-status{min-height:18px}.device-dialog-inner{padding:18px}.device-detail-grid dl div{grid-template-columns:1fr;gap:2px}.device-detail-grid dd{text-align:left}}
 """
 
 
@@ -739,6 +1281,9 @@ def _error(message: str | None) -> str:
 
 def _layout(title: str, content: str) -> bytes:
     nonce = secrets.token_urlsafe(18)
+    content = content.replace("<script>", f"<script nonce=\"{nonce}\">")
+    timezone_script = _admin_timezone_script()
+    content = f"{content}<script>{timezone_script}</script>"
     content = content.replace("<script>", f"<script nonce=\"{nonce}\">")
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>{html.escape(title)} · Terento</title><style>{ADMIN_STYLES}</style></head><body>{content}</body></html>""".encode("utf-8")
 

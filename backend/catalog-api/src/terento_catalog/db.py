@@ -9,6 +9,8 @@ from typing import Any, Iterator
 
 from .models import CollectedDevice, CollectedMap
 from .asset_attribution import normalize_asset_source
+from .historical_devices import historical_device_for_event
+from .map_capability import classify_map_capable
 
 
 class Database:
@@ -76,8 +78,55 @@ class Database:
             "deletionTokenHash": self._token_hash(event.get("deletionToken")),
         }
         with self.connection() as connection:
+            # The client contract remains unchanged: canonicalDeviceId is
+            # optional. Resolve a reviewed historical identity server-side so
+            # an installed fēnix 7 can be recorded even when retail collection
+            # no longer returns it. An unknown/stale client ID is ignored
+            # rather than allowing a foreign-key failure to drop the report.
+            requested_id = values.get("canonicalDeviceId")
+            canonical_id = None
+            if requested_id:
+                existing = connection.execute(
+                    "SELECT id FROM device_model WHERE id = %s",
+                    (requested_id,),
+                ).fetchone()
+                canonical_id = (existing.get("id") or requested_id) if existing else None
+            historical = historical_device_for_event(event)
+            if canonical_id is None and historical is not None:
+                self._ensure_historical_device(connection, historical)
+                canonical_id = historical.id
+            values["canonicalDeviceId"] = canonical_id
             inserted = connection.execute(query, values).fetchone() is not None
         return inserted
+
+    @staticmethod
+    def _ensure_historical_device(connection: Any, spec: Any) -> None:
+        connection.execute(
+            """
+            INSERT INTO device_family (id, manufacturer, name, canonical_name, source_url)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (id) DO NOTHING
+            """,
+            (spec.family_id, spec.manufacturer, spec.family_name, spec.canonical_model.split()[0], spec.source_url),
+        )
+        connection.execute(
+            """
+            INSERT INTO device_model (
+                id, family_id, manufacturer, model, canonical_model, variant,
+                case_size_mm, display_type, product_url, source_url,
+                source_image_url, active, map_capable, support_status,
+                record_source, collector_managed
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE, TRUE,
+                       'NOT_EVALUATED', 'HISTORICAL_REVIEWED', FALSE)
+            ON CONFLICT (id) DO NOTHING
+            """,
+            (
+                spec.id, spec.family_id, spec.manufacturer, spec.model,
+                spec.canonical_model, spec.variant, spec.case_size_mm,
+                spec.display_type, spec.product_url, spec.source_url,
+                spec.source_image_url,
+            ),
+        )
 
     def delete_compatibility_event(self, event_id: str, deletion_token: str) -> bool:
         query = """
@@ -138,6 +187,82 @@ class Database:
         with self.connection() as connection:
             return list(connection.execute(query, (limit,)).fetchall())
 
+    def public_compatibility_models(self, limit: int) -> list[dict[str, Any]]:
+        """Return an additive, evidence-first public model projection.
+
+        This deliberately does not replace ``public_compatibility_statistics``
+        because the latter is consumed by existing native/web clients.
+        """
+        query = """
+            SELECT
+                s.public_display_name AS model,
+                s.model AS evidence_model,
+                s.compatibility_identity,
+                s.variant,
+                s.case_size_mm,
+                s.display_type,
+                s.canonical_device_model_id,
+                s.attempted_install_count,
+                s.successful_install_count,
+                s.reconnect_verified_install_count,
+                s.failed_install_count,
+                s.success_rate,
+                s.calculated_status,
+                s.last_success,
+                s.last_evidence,
+                s.recognized_map_capable_evidence,
+                dm.family_id,
+                f.canonical_name AS family,
+                f.name AS family_name,
+                dm.canonical_model,
+                dm.model AS catalog_model,
+                dm.source_image_url,
+                asset.asset_type,
+                asset.status AS asset_status,
+                asset.url AS asset_url,
+                asset.scope AS asset_scope,
+                asset.sha256 AS asset_sha256,
+                asset.mime_type AS asset_mime_type,
+                asset.width AS asset_width,
+                asset.height AS asset_height,
+                asset.asset_version,
+                asset.source_type AS asset_source_type,
+                asset.source_brand AS asset_source_brand,
+                asset.attribution_required AS asset_attribution_required,
+                asset.storage_key AS asset_storage_key
+            FROM compatibility_model_statistics AS s
+            LEFT JOIN device_model AS dm
+                ON dm.id = s.canonical_device_model_id
+            LEFT JOIN device_family AS f
+                ON f.id = dm.family_id
+            LEFT JOIN LATERAL (
+                SELECT da.*
+                FROM device_asset AS da
+                WHERE da.device_model_id = dm.id
+                  AND da.status = 'AVAILABLE'
+                ORDER BY
+                    CASE da.scope
+                        WHEN 'EXACT_VARIANT' THEN 0
+                        WHEN 'MODEL_SIZE' THEN 1
+                        WHEN 'MODEL' THEN 2
+                        WHEN 'FAMILY' THEN 3
+                        ELSE 4
+                    END,
+                    da.updated_at DESC,
+                    da.id DESC
+                LIMIT 1
+            ) AS asset ON TRUE
+            WHERE s.public_statistics_enabled = true
+              AND s.review_status = 'APPROVED'
+              AND s.calculated_status IN ('TESTING', 'TESTED', 'SUPPORTED', 'VERIFIED')
+            ORDER BY s.successful_install_count DESC,
+                     s.attempted_install_count DESC,
+                     s.public_display_name
+            LIMIT %s
+        """
+        with self.connection() as connection:
+            return list(connection.execute(query, (limit,)).fetchall())
+
     def admin_user_count(self) -> int:
         with self.connection() as connection:
             row = connection.execute("SELECT count(*) AS count FROM admin_user").fetchone()
@@ -193,6 +318,29 @@ class Database:
         with self.connection() as connection:
             row = connection.execute(query, (username, password_hash, user_id)).fetchone()
         return dict(row)
+
+    def update_device_support_status(self, device_id: str, support_status: str) -> bool:
+        """Update only the operator's support decision.
+
+        Evidence counts/statuses are computed from compatibility events and are
+        intentionally absent from this UPDATE. In particular, this method is
+        never used as a device write authorization gate.
+        """
+        allowed = {"SUPPORTED", "UNSUPPORTED", "NOT_EVALUATED"}
+        normalized = support_status.strip().upper()
+        if normalized not in allowed:
+            raise ValueError("unsupported support decision")
+        with self.connection() as connection:
+            row = connection.execute(
+                """
+                UPDATE device_model
+                SET support_status = %s, updated_at = now()
+                WHERE id = %s
+                RETURNING id
+                """,
+                (normalized, device_id),
+            ).fetchone()
+        return row is not None
 
     def catalog_snapshot(self) -> tuple[list[dict[str, Any]], datetime]:
         query = """
@@ -608,6 +756,7 @@ class Database:
                     da.id DESC
                 LIMIT 1
             ) AS asset ON TRUE
+            WHERE dm.collector_managed = TRUE
             ORDER BY dm.id
         """
         updated_at_query = """
@@ -615,7 +764,9 @@ class Database:
             FROM (
                 SELECT updated_at AS changed_at FROM device_family
                 UNION ALL
-                SELECT updated_at AS changed_at FROM device_model
+                SELECT updated_at AS changed_at
+                FROM device_model
+                WHERE collector_managed = TRUE
                 UNION ALL
                 SELECT updated_at AS changed_at FROM device_asset
             ) AS changes
@@ -629,12 +780,138 @@ class Database:
             updated_at = updated_at.replace(tzinfo=timezone.utc)
         return rows, updated_at
 
+    def admin_device_snapshot(self) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+        """Return one aggregate row per exact Garmin catalog record.
+
+        Compatibility evidence is joined only through the canonical catalog
+        device ID. Legacy/model-string joins are deliberately excluded so a
+        47 mm and 51 mm variant can never inherit one another's counts.
+        """
+        query = """
+            SELECT
+                f.id AS family_id,
+                f.name AS family_name,
+                f.canonical_name AS family_canonical_name,
+                dm.id AS device_id,
+                dm.manufacturer,
+                dm.model,
+                dm.canonical_model,
+                dm.variant,
+                dm.case_size_mm,
+                dm.display_type,
+                dm.part_number,
+                dm.product_url,
+                dm.source_url,
+                dm.source_image_url,
+                dm.active,
+                dm.record_source,
+                dm.collector_managed,
+                dm.first_seen_at,
+                dm.last_seen_at,
+                dm.created_at,
+                dm.updated_at,
+                dm.map_capable,
+                dm.support_status,
+                dm.first_seen_collection_run_id,
+                dm.last_seen_collection_run_id,
+                asset.asset_type,
+                asset.status AS asset_status,
+                asset.url AS asset_url,
+                asset.sha256 AS asset_sha256,
+                asset.width AS asset_width,
+                asset.height AS asset_height,
+                asset.mime_type AS asset_mime_type,
+                asset.asset_version,
+                COALESCE(usb.identities, '[]'::jsonb) AS usb_identities,
+                COALESCE(evidence.attempts, 0) AS attempted_install_count,
+                COALESCE(evidence.successful, 0) AS successful_install_count,
+                COALESCE(evidence.failed, 0) AS failed_install_count,
+                evidence.first_success,
+                evidence.last_success,
+                evidence.last_evidence,
+                latest.id AS latest_successful_sync_id,
+                latest.started_at AS latest_successful_sync_started_at,
+                latest.finished_at AS latest_successful_sync_finished_at,
+                latest.status AS latest_successful_sync_status,
+                latest.records_total_before AS latest_records_total_before,
+                latest.records_total_after AS latest_records_total_after,
+                latest.records_added AS latest_records_added,
+                latest.records_updated AS latest_records_updated
+            FROM device_model AS dm
+            JOIN device_family AS f ON f.id = dm.family_id
+            LEFT JOIN LATERAL (
+                SELECT da.asset_type, da.status, da.url, da.sha256,
+                       da.width, da.height, da.mime_type, da.asset_version
+                FROM device_asset AS da
+                WHERE da.device_model_id = dm.id
+                  AND da.status = 'AVAILABLE'
+                ORDER BY da.updated_at DESC, da.id DESC
+                LIMIT 1
+            ) AS asset ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT jsonb_agg(
+                    jsonb_build_object(
+                        'vendorId', ui.vendor_id,
+                        'productId', ui.product_id,
+                        'source', ui.source,
+                        'confidence', ui.confidence
+                    ) ORDER BY ui.vendor_id, ui.product_id
+                ) AS identities
+                FROM device_usb_identity AS ui
+                WHERE ui.device_model_id = dm.id
+            ) AS usb ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT
+                    count(*) AS attempts,
+                    count(*) FILTER (
+                        WHERE e.phase_outcome = 'SUCCEEDED'
+                          AND e.automatic_finishing_result = 'VERIFIED'
+                    ) AS successful,
+                    count(*) FILTER (WHERE e.phase_outcome = 'FAILED') AS failed,
+                    min(e.occurred_at) FILTER (
+                        WHERE e.phase_outcome = 'SUCCEEDED'
+                          AND e.automatic_finishing_result = 'VERIFIED'
+                    ) AS first_success,
+                    max(e.occurred_at) FILTER (
+                        WHERE e.phase_outcome = 'SUCCEEDED'
+                          AND e.automatic_finishing_result = 'VERIFIED'
+                    ) AS last_success,
+                    max(e.occurred_at) AS last_evidence
+                FROM compatibility_evidence_event AS e
+                WHERE e.canonical_device_model_id = dm.id
+            ) AS evidence ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT r.*
+                FROM device_collection_run AS r
+                WHERE r.status = 'SUCCEEDED'
+                ORDER BY r.finished_at DESC NULLS LAST, r.id DESC
+                LIMIT 1
+            ) AS latest ON TRUE
+            ORDER BY dm.model, dm.case_size_mm NULLS LAST, dm.variant, dm.id
+        """
+        with self.connection() as connection:
+            rows = list(connection.execute(query).fetchall())
+            latest = connection.execute(
+                """
+                SELECT id, started_at, finished_at, status,
+                       records_total_before, records_total_after,
+                       records_added, records_updated
+                FROM device_collection_run
+                WHERE status = 'SUCCEEDED'
+                ORDER BY finished_at DESC NULLS LAST, id DESC
+                LIMIT 1
+                """
+            ).fetchone()
+
+        sync = dict(latest) if latest else None
+        return rows, sync
+
     def upsert_collected_devices(
         self,
         records: list[CollectedDevice],
         *,
         collection_complete: bool = True,
-    ) -> None:
+    ) -> dict[str, Any]:
         if not records:
             raise ValueError("Garmin collector returned no records")
 
@@ -666,8 +943,8 @@ class Database:
             INSERT INTO device_model (
                 id, family_id, manufacturer, model, canonical_model, variant,
                 case_size_mm, display_type, part_number, product_url, source_url,
-                source_image_url
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                source_image_url, map_capable, record_source, collector_managed
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'CURRENT_RETAIL', TRUE)
             ON CONFLICT (id) DO UPDATE SET
                 family_id = EXCLUDED.family_id,
                 manufacturer = EXCLUDED.manufacturer,
@@ -680,6 +957,9 @@ class Database:
                 product_url = EXCLUDED.product_url,
                 source_url = EXCLUDED.source_url,
                 source_image_url = EXCLUDED.source_image_url,
+                map_capable = COALESCE(device_model.map_capable, EXCLUDED.map_capable),
+                record_source = 'CURRENT_RETAIL',
+                collector_managed = TRUE,
                 active = TRUE,
                 consecutive_missed_collections = 0,
                 last_seen_at = now(),
@@ -716,7 +996,50 @@ class Database:
 
         seen_ids = [record.id for record in records]
         with self.connection() as connection:
+            total_before = int(
+                connection.execute("SELECT count(*) AS count FROM device_model").fetchone()["count"]
+            )
+            existing_rows = {
+                row["id"]: row
+                for row in connection.execute(
+                    """
+                    SELECT id, family_id, manufacturer, model, canonical_model, variant,
+                           case_size_mm, display_type, part_number, product_url,
+                           source_url, source_image_url, active
+                    FROM device_model
+                    WHERE id = ANY(%s)
+                    """,
+                    (seen_ids,),
+                ).fetchall()
+            }
+            added_ids: list[str] = []
+            updated_ids: list[str] = []
             for record in records:
+                existing = existing_rows.get(record.id)
+                if existing is None:
+                    added_ids.append(record.id)
+                else:
+                    incoming_part_number = record.part_number or existing["part_number"]
+                    incoming_values = (
+                        record.family_id,
+                        record.manufacturer,
+                        record.model,
+                        record.canonical_model,
+                        record.variant,
+                        record.case_size_mm,
+                        record.display_type,
+                        incoming_part_number,
+                        record.product_url,
+                        record.source_url,
+                        record.source_image_url,
+                    )
+                    existing_values = tuple(existing[key] for key in (
+                        "family_id", "manufacturer", "model", "canonical_model", "variant",
+                        "case_size_mm", "display_type", "part_number", "product_url",
+                        "source_url", "source_image_url",
+                    ))
+                    if existing["active"] is False or incoming_values != existing_values:
+                        updated_ids.append(record.id)
                 connection.execute(
                     family_query,
                     (
@@ -743,6 +1066,7 @@ class Database:
                         record.product_url,
                         record.source_url,
                         record.source_image_url,
+                        classify_map_capable(record.canonical_model, record.manufacturer),
                     ),
                 )
 
@@ -757,6 +1081,20 @@ class Database:
                 )
 
             if collection_complete:
+                deactivated_ids = [
+                    row["id"]
+                    for row in connection.execute(
+                        """
+                        SELECT id
+                        FROM device_model
+                        WHERE id <> ALL(%s)
+                          AND collector_managed = TRUE
+                          AND active = TRUE
+                          AND consecutive_missed_collections + 1 >= 3
+                        """,
+                        (seen_ids,),
+                    ).fetchall()
+                ]
                 connection.execute(
                     """
                     UPDATE device_model
@@ -777,10 +1115,28 @@ class Database:
                             THEN now()
                             ELSE updated_at
                         END
-                    WHERE TRUE
+                    WHERE collector_managed = TRUE
                     """,
                     (seen_ids, seen_ids, seen_ids),
                 )
+                updated_ids.extend(
+                    device_id for device_id in deactivated_ids
+                    if device_id not in updated_ids
+                )
+
+            total_after = int(
+                connection.execute("SELECT count(*) AS count FROM device_model").fetchone()["count"]
+            )
+
+        return {
+            "records_total_before": total_before,
+            "records_total_after": total_after,
+            "records_added": len(added_ids),
+            "records_updated": len(updated_ids),
+            "added_ids": added_ids,
+            "updated_ids": updated_ids,
+            "seen_ids": seen_ids,
+        }
 
     def record_device_collection_run(
         self,
@@ -793,17 +1149,25 @@ class Database:
         canonical_count: int,
         warning_count: int,
         diagnostics: dict[str, Any],
+        records_total_before: int = 0,
+        records_total_after: int = 0,
+        records_added: int = 0,
+        records_updated: int = 0,
+        added_ids: list[str] | None = None,
+        seen_ids: list[str] | None = None,
     ) -> None:
         import json
 
         with self.connection() as connection:
-            connection.execute(
+            run = connection.execute(
                 """
                 INSERT INTO device_collection_run (
                     source_url, started_at, finished_at, status,
                     discovered_count, canonical_count, warning_count,
-                    diagnostics_json
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb)
+                    diagnostics_json, records_total_before, records_total_after,
+                    records_added, records_updated
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s, %s)
+                RETURNING id
                 """,
                 (
                     source_url,
@@ -814,8 +1178,31 @@ class Database:
                     canonical_count,
                     warning_count,
                     json.dumps(diagnostics, ensure_ascii=False),
+                    records_total_before,
+                    records_total_after,
+                    records_added,
+                    records_updated,
                 ),
-            )
+            ).fetchone()
+            run_id = run["id"]
+            if seen_ids:
+                connection.execute(
+                    """
+                    UPDATE device_model
+                    SET last_seen_collection_run_id = %s
+                    WHERE id = ANY(%s)
+                    """,
+                    (run_id, seen_ids),
+                )
+            if added_ids:
+                connection.execute(
+                    """
+                    UPDATE device_model
+                    SET first_seen_collection_run_id = COALESCE(first_seen_collection_run_id, %s)
+                    WHERE id = ANY(%s)
+                    """,
+                    (run_id, added_ids),
+                )
 
     def upsert_device_asset(
         self,

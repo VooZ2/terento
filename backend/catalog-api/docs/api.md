@@ -32,8 +32,9 @@ optional `reconnectVerified` and `mapVisibleAfterReconnect` observations.
 Older beta clients remain accepted when the newer identity fields are absent;
 such model-only evidence must not be matched to a sibling exact variant.
 Reconnect is never required for any compatibility status. The canonical
-aggregate uses the exact successful
-opt-in installation count: `TESTING` for zero successful installations on
+aggregate groups by `canonicalDeviceId` when available and uses exact
+`compatibilityIdentity` only as the fallback for older uncanonicalized events.
+It then uses the successful opt-in installation count: `TESTING` for zero successful installations on
 recognized map-capable evidence, `TESTED` for 1–2, `SUPPORTED` for 3–4, and
 `VERIFIED` for 5 or more. Failed reports, opt-out local installs, and duplicate
 event IDs do not increase the successful count. Firmware variation, physical
@@ -75,6 +76,26 @@ keeps the canonical parameter order `utm_source`, `utm_medium`,
 `utm_campaign`, `utm_content`, `utm_term`. The page uses the same private
 admin session, CSRF cookie, no-store response policy, and noindex policy as
 `GET https://api.terento.app/admin`.
+
+## `GET https://api.terento.app/admin/devices`
+
+Returns the authenticated Garmin device observability page. The page is
+limited to Garmin catalog records and combines catalogue metadata, map
+capability, separate operator support state, exact-ID installation
+aggregates, approved cached assets or allowlisted Garmin `sourceAsset`
+thumbnails, and latest successful sync metadata. Map-capable Yes/No uses a
+stored `device_model.map_capable` value when present; otherwise the page
+classifies the canonical model with the same Map Manager prefix list as the
+native macOS client. Unknown remains only for models outside that list. The
+page keeps the dense list paginated in the browser and opens a detail dialog
+for technical fields, including which image origin was used
+(controlled Terento asset vs official Garmin product media).
+
+`GET https://api.terento.app/admin/devices.json` returns the same additive
+data as JSON for admin tooling. The endpoint uses the existing admin session,
+is no-store/noindex, and joins installation events only through
+`canonical_device_model_id`. It is not part of the native or public device
+catalog API contracts.
 
 ## `GET /compatibility/public/top-models.json`
 
