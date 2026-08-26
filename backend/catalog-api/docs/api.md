@@ -169,9 +169,11 @@ review gate as the existing route, but it is a separate contract so the
 website does not need to join the retail device catalog. Historical evidence
 rows can therefore appear even when Garmin no longer lists that model in its
 current retail category. The response contains exact identity, evidence
-counts, `evidenceStatus`, family/variant display metadata, and an optional
-`image` object. `image` follows controlled Terento asset → allowlisted Garmin
-`garmin-source` URL → `null`; a null image is a valid public card state.
+counts, `evidenceStatus`, family/variant display metadata, and an `image`
+object. `image` follows controlled Terento asset → allowlisted Garmin
+`garmin-source` URL → the neutral Terento `fallback` image at
+`https://terento.app/assets/generic-garmin-watch.svg`. The fallback is
+presentation-only and does not indicate a model match or compatibility.
 
 This endpoint does not expose `supportStatus`, operator review decisions,
 transport profiles, write authorization, Unit IDs, or raw event data. The

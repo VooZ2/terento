@@ -13,6 +13,7 @@ ASSET_SOURCE_TYPES = frozenset(
 OFFICIAL_PRODUCT_MEDIA = "OFFICIAL_PRODUCT_MEDIA"
 TERENTO_RENDER = "TERENTO_RENDER"
 GENERIC_FALLBACK = "GENERIC_FALLBACK"
+GENERIC_FALLBACK_IMAGE_URL = "https://terento.app/assets/generic-garmin-watch.svg"
 
 LEGAL_METADATA = {
     "manufacturerNotice": True,
@@ -76,4 +77,19 @@ def public_asset_source(row: dict[str, Any]) -> dict[str, Any] | None:
         "type": source_type,
         "brand": brand,
         "attributionRequired": attribution_required,
+    }
+
+
+def generic_fallback_image() -> dict[str, Any]:
+    """Return the stable, neutral image used when no model photo is available."""
+
+    return {
+        "url": GENERIC_FALLBACK_IMAGE_URL,
+        "origin": "fallback",
+        "status": "FALLBACK",
+        "source": {
+            "type": GENERIC_FALLBACK,
+            "brand": "Terento",
+            "attributionRequired": False,
+        },
     }

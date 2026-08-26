@@ -31,7 +31,7 @@ from .admin import (
     verify_password,
 )
 from .asset_storage import AssetStorage
-from .asset_attribution import public_asset_source
+from .asset_attribution import generic_fallback_image, public_asset_source
 from .catalog import build_catalog, catalog_etag, serialize_catalog
 from .db import Database
 from .device_catalog import (
@@ -531,6 +531,8 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     source_image_url = _official_source_image_url(row.get("source_image_url"))
                     if source_image_url:
                         image = {"url": source_image_url, "origin": "garmin-source", "status": "SOURCE"}
+                if image is None:
+                    image = generic_fallback_image()
                 models.append({
                     "model": row.get("model") or row.get("evidence_model"),
                     "canonicalModel": row.get("canonical_model") or row.get("evidence_model"),

@@ -622,7 +622,9 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertEqual(response.status, 200)
         self.assertEqual(document["schemaVersion"], 1)
         self.assertEqual(document["models"][1]["evidenceStatus"], "TESTED")
-        self.assertEqual(document["models"][1]["image"], None)
+        self.assertEqual(document["models"][1]["image"]["origin"], "fallback")
+        self.assertEqual(document["models"][1]["image"]["status"], "FALLBACK")
+        self.assertEqual(document["models"][1]["image"]["source"]["type"], "GENERIC_FALLBACK")
         self.assertNotIn("supportStatus", document["models"][1])
         self.assertNotIn("writeAuthorization", document["models"][1])
 

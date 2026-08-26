@@ -117,7 +117,8 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertTrue(payload["devices"][2]["catalog"]["newInLatestSync"])
         self.assertIsNone(payload["devices"][1]["installationStats"]["lastSuccessfulAt"])
         self.assertFalse(payload["devices"][1]["mapCapable"])
-        self.assertEqual(payload["devices"][1]["image"]["origin"], "missing")
+        self.assertEqual(payload["devices"][1]["image"]["origin"], "fallback")
+        self.assertEqual(payload["devices"][1]["image"]["status"], "FALLBACK")
 
     def test_null_map_capable_is_classified_from_the_native_prefix_list(self) -> None:
         payload = _admin_device_payload(
@@ -219,6 +220,17 @@ class AdminDevicesTests(unittest.TestCase):
             )
         )
 
+    def test_missing_image_uses_neutral_fallback(self) -> None:
+        payload = _admin_device_payload(
+            [device_row(asset_status="MISSING", asset_url=None, source_image_url=None)],
+            None,
+        )
+        image = payload["devices"][0]["image"]
+        self.assertEqual(image["origin"], "fallback")
+        self.assertEqual(image["status"], "FALLBACK")
+        self.assertEqual(image["source"]["type"], "GENERIC_FALLBACK")
+        self.assertTrue(image["url"].endswith("/assets/generic-garmin-watch.svg"))
+
     def test_historical_sync_without_counts_is_not_presented_as_zero(self):
         payload = _admin_device_payload(
             [device_row(first_seen_collection_run_id=None)],
@@ -264,12 +276,13 @@ class AdminDevicesTests(unittest.TestCase):
             "Garmin devices", "Map-capable: Yes", "Map-capable: No",
             "Map-capable: Unknown", "Supported", "Unsupported", "Not evaluated",
             "Tested: Yes", "Tested: No", "Newest in database", "Most installs",
-            "Last tested", "Support decision", "Evidence status", "device-dialog", "device-thumb-placeholder", "admin-timezone",
+            "Last tested", "Support decision", "Evidence status", "device-dialog", "admin-timezone",
             "Automatic (browser)", "data-admin-timestamp", "TerentoAdminTime",
             "selected time zone",
         ):
             self.assertIn(value, body)
         self.assertNotIn("src='None'", body)
+        self.assertIn("generic-garmin-watch.svg", body)
         self.assertIn("does not change Evidence status or installation counts", body)
 
 

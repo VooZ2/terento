@@ -2,6 +2,7 @@
   const data = globalThis.TerentoCompatibilityData;
   if (!data) throw new Error("compatibility_data_unavailable");
   const API_ORIGIN = "https://api.terento.app";
+  const FALLBACK_IMAGE_URL = "/assets/generic-garmin-watch.svg";
   const isLocalPreview = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
   const previewStats = [
     {
@@ -186,9 +187,8 @@
     const lastTestedMarkup = lastTested
       ? `<p class="watch-card-meta">Last tested ${escapeHtml(lastTested)}</p>`
       : "";
-    const imageMarkup = row.imageUrl
-      ? `<img data-remote-src="${escapeHtml(row.imageUrl)}" alt="${escapeHtml(row.model)}" loading="lazy">`
-      : `<div class="watch-image-placeholder" role="img" aria-label="Image unavailable">Image unavailable</div>`;
+    const imageUrl = row.imageUrl || FALLBACK_IMAGE_URL;
+    const imageMarkup = `<img data-remote-src="${escapeHtml(imageUrl)}" alt="${escapeHtml(row.model)}" loading="lazy">`;
     return `
       <article class="watch-card">
         <div class="watch-card-image">
@@ -265,6 +265,7 @@
         ...row,
         family: canonicalFamilyKey(row.family || row.familyName),
         variants: [exactVariantLabel(row)].filter(Boolean),
+        imageUrl: row.imageUrl || FALLBACK_IMAGE_URL,
       }))
       .filter((row) => row.status);
   }
