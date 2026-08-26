@@ -183,6 +183,12 @@ class Database:
             return list(connection.execute(query).fetchall())
 
     def compatibility_operation_details(self, limit: int = 500) -> list[dict[str, Any]]:
+        return self._compatibility_operation_details("ACTIVE", limit)
+
+    def compatibility_resolved_operation_details(self, limit: int = 500) -> list[dict[str, Any]]:
+        return self._compatibility_operation_details("RESOLVED", limit)
+
+    def _compatibility_operation_details(self, diagnostic_status: str, limit: int) -> list[dict[str, Any]]:
         query = """
             SELECT
                 COALESCE(operation_id::text, 'legacy:' || event_id::text) AS operation_key,
@@ -194,13 +200,15 @@ class Database:
                 COALESCE(remote_object_created, false) AS remote_object_created,
                 COALESCE(cleanup_attempted, false) AS cleanup_attempted,
                 cleanup_succeeded, transfer_progress_bucket, error_category,
-                raw_mtp_model, identity_resolution_code
+                raw_mtp_model, identity_resolution_code,
+                diagnostic_status, resolution_code, resolution_note, resolved_at
             FROM compatibility_evidence_event
+            WHERE diagnostic_status = %s
             ORDER BY occurred_at DESC, operation_key, map_result_index NULLS FIRST
             LIMIT %s
         """
         with self.connection() as connection:
-            return list(connection.execute(query, (limit,)).fetchall())
+            return list(connection.execute(query, (diagnostic_status, limit)).fetchall())
 
     def public_compatibility_statistics(self, limit: int) -> list[dict[str, Any]]:
         query = """
@@ -923,6 +931,7 @@ class Database:
                     max(e.occurred_at) AS last_evidence
                 FROM compatibility_evidence_event AS e
                 WHERE e.canonical_device_model_id = dm.id
+                  AND e.diagnostic_status = 'ACTIVE'
             ) AS evidence ON TRUE
             LEFT JOIN LATERAL (
                 SELECT r.*
