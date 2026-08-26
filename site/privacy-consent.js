@@ -118,6 +118,13 @@
       const location = link.closest(".final-cta") ? "home-final-cta" : "home-hero";
       setConversionEvent(link, "download-cta-click", { location });
     });
+
+    document.querySelectorAll(".footer-support-link[href]").forEach((link) => {
+      setConversionEvent(link, "support-click", {
+        location: "footer",
+        destination: "buymeacoffee"
+      });
+    });
   };
 
   instrumentConversionLinks();

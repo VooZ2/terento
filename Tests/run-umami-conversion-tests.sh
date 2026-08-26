@@ -12,6 +12,7 @@ import sys
 
 root = Path(sys.argv[1])
 privacy_script = (root / "site/privacy-consent.js").read_text(encoding="utf-8")
+site_shell = (root / "site/site-shell.js").read_text(encoding="utf-8")
 
 assert '"download-click"' in privacy_script
 assert '"download-cta-click"' in privacy_script
@@ -19,6 +20,9 @@ assert '"dmg"' in privacy_script and '"zip"' in privacy_script
 assert '"download-page"' in privacy_script
 assert '"home-hero"' in privacy_script
 assert '"home-final-cta"' in privacy_script
+assert '"support-click"' in privacy_script
+assert 'location: "footer"' in privacy_script
+assert 'destination: "buymeacoffee"' in privacy_script
 conversion_block = privacy_script.split("const setConversionEvent", 1)[1].split("const banner", 1)[0]
 assert "addEventListener" not in conversion_block
 assert "preventDefault" not in conversion_block
@@ -126,6 +130,22 @@ assert "data-umami-event-file" not in privacy_script
 assert "link.dataset.umamiEvent" in privacy_script
 assert "const attribute = `umamiEvent" in privacy_script
 assert "key.charAt(0).toUpperCase()" in privacy_script
+
+assert 'href="https://buymeacoffee.com/vooz2"' in site_shell
+assert 'class="footer-support-link" data-support-link' in site_shell
+assert 'Support Terento' in site_shell
+
+for path in [root / "site/index.html", *sorted(root.glob("site/*/index.html")), *sorted(root.glob("site/*/download/index.html")), root / "site/download/index.html"]:
+    html = path.read_text(encoding="utf-8")
+    if 'class="footer-status"' not in html:
+        continue
+    assert 'href="https://buymeacoffee.com/vooz2"' in html, f"{path}: missing static support link"
+    assert 'class="footer-support-link"' in html, f"{path}: missing support link class"
+    assert 'data-umami-event="support-click"' not in html, f"{path}: tracking must remain consent-gated"
+    support = [item for item in anchors(path) if "footer-support-link" in item["class"]]
+    assert len(support) == 1, f"{path}: expected one support link"
+    assert any("footer-identity" in ancestor for ancestor in support[0]["ancestors"]), f"{path}: support link moved out of footer metadata"
+    assert not any("footer-nav" in ancestor for ancestor in support[0]["ancestors"]), f"{path}: support link entered footer navigation"
 
 print("PASS: localized beta parity, Umami conversion taxonomy, CTA scope, download links, and failure-safe behavior")
 PY
