@@ -23,12 +23,18 @@ WHERE canonical_device_model_id IS NULL
 DROP VIEW compatibility_model_statistics;
 
 CREATE VIEW compatibility_model_statistics AS
-WITH event_stats AS (
+WITH normalized_events AS (
     SELECT
+        e.*,
         COALESCE(
             e.canonical_device_model_id,
             'identity:' || e.compatibility_identity
-        ) AS aggregate_key,
+        ) AS aggregate_key
+    FROM compatibility_evidence_event e
+),
+event_stats AS (
+    SELECT
+        e.aggregate_key,
         min(e.compatibility_identity) AS compatibility_identity,
         min(e.model) AS model,
         min(e.variant) FILTER (WHERE e.variant IS NOT NULL AND btrim(e.variant) <> '') AS variant,
@@ -44,28 +50,27 @@ WITH event_stats AS (
         round(100.0 * count(*) FILTER (WHERE e.phase_outcome = 'SUCCEEDED' AND e.automatic_finishing_result = 'VERIFIED') / NULLIF(count(*), 0), 1) AS success_rate,
         max(e.occurred_at) FILTER (WHERE e.phase_outcome = 'SUCCEEDED' AND e.automatic_finishing_result = 'VERIFIED') AS last_success,
         max(e.occurred_at) FILTER (WHERE e.phase_outcome = 'FAILED') AS last_failure,
-        max(e.occurred_at) AS last_evidence,
-        COALESCE((
-            SELECT jsonb_object_agg(COALESCE(category, 'unknown'), category_count)
-            FROM (
-                SELECT x.error_category AS category, count(*) AS category_count
-                FROM compatibility_evidence_event x
-                WHERE COALESCE(
-                    x.canonical_device_model_id,
-                    'identity:' || x.compatibility_identity
-                ) = COALESCE(
-                    e.canonical_device_model_id,
-                    'identity:' || e.compatibility_identity
-                )
-                  AND x.phase_outcome = 'FAILED'
-                GROUP BY x.error_category
-            ) category_counts
-        ), '{}'::jsonb) AS error_categories
-    FROM compatibility_evidence_event e
-    GROUP BY COALESCE(
-        e.canonical_device_model_id,
-        'identity:' || e.compatibility_identity
-    )
+        max(e.occurred_at) AS last_evidence
+    FROM normalized_events e
+    GROUP BY e.aggregate_key
+),
+error_stats AS (
+    SELECT
+        category_counts.aggregate_key,
+        jsonb_object_agg(
+            COALESCE(category_counts.error_category, 'unknown'),
+            category_counts.category_count
+        ) AS error_categories
+    FROM (
+        SELECT
+            e.aggregate_key,
+            e.error_category,
+            count(*) AS category_count
+        FROM normalized_events e
+        WHERE e.phase_outcome = 'FAILED'
+        GROUP BY e.aggregate_key, e.error_category
+    ) category_counts
+    GROUP BY category_counts.aggregate_key
 )
 SELECT
     COALESCE(NULLIF(r.identity_key, ''), e.compatibility_identity) AS compatibility_identity,
@@ -84,7 +89,7 @@ SELECT
     e.last_success,
     e.last_failure,
     e.last_evidence,
-    e.error_categories,
+    COALESCE(errors.error_categories, '{}'::jsonb) AS error_categories,
     CASE
         WHEN e.successful_install_count = 0 THEN 'TESTING'
         WHEN e.successful_install_count < 3 THEN 'TESTED'
@@ -98,6 +103,8 @@ SELECT
     COALESCE(r.public_statistics_enabled, false) AS public_statistics_enabled,
     COALESCE(NULLIF(r.public_display_name, ''), NULLIF(r.identity_key, ''), e.compatibility_identity) AS public_display_name
 FROM event_stats e
+LEFT JOIN error_stats errors
+    ON errors.aggregate_key = e.aggregate_key
 LEFT JOIN LATERAL (
     SELECT review.*
     FROM compatibility_model_review review
