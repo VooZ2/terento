@@ -16,22 +16,29 @@ class CompatibilityAggregationMigrationTests(unittest.TestCase):
         sql = MIGRATION.read_text(encoding="utf-8")
         canonical_key = (
             "COALESCE(\n"
-            "        e.canonical_device_model_id,\n"
-            "        'identity:' || e.compatibility_identity\n"
-            "    )"
+            "            e.canonical_device_model_id,\n"
+            "            'identity:' || e.compatibility_identity\n"
+            "        ) AS aggregate_key"
         )
         self.assertIn(canonical_key, sql)
-        self.assertIn("GROUP BY COALESCE(", sql)
+        self.assertIn("GROUP BY e.aggregate_key", sql)
         self.assertNotIn("GROUP BY e.compatibility_identity", sql)
 
     def test_counts_and_status_are_calculated_after_canonical_grouping(self) -> None:
         sql = MIGRATION.read_text(encoding="utf-8")
-        group_position = sql.index("GROUP BY COALESCE(")
+        group_position = sql.index("GROUP BY e.aggregate_key")
         status_position = sql.index("WHEN e.successful_install_count = 0")
         self.assertLess(group_position, status_position)
         self.assertIn("count(*) AS attempted_install_count", sql)
         self.assertIn("WHEN e.successful_install_count < 3 THEN 'TESTED'", sql)
         self.assertIn("WHEN e.successful_install_count < 5 THEN 'SUPPORTED'", sql)
+
+    def test_error_categories_use_the_same_materialized_aggregate_key(self) -> None:
+        sql = MIGRATION.read_text(encoding="utf-8")
+        self.assertIn("error_stats AS (", sql)
+        self.assertIn("GROUP BY e.aggregate_key, e.error_category", sql)
+        self.assertIn("ON errors.aggregate_key = e.aggregate_key", sql)
+        self.assertNotIn("subquery uses ungrouped column", sql)
         self.assertIn("WHEN e.successful_install_count = 0 THEN 'TESTING'", sql)
         self.assertIn("ELSE 'VERIFIED'", sql)
 
