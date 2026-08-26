@@ -347,6 +347,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
             "release_label": "1.0.0-beta.6", "app_build": "5", "write_started": True,
             "failure_stage": "write", "failure_code": "INSTALL_FAILED_WRITE",
             "native_failure_code": "SEND_OBJECT_FAILED", "transfer_progress_bucket": "25-99",
+            "raw_mtp_model": "fenix 8 pro - 51mm", "identity_resolution_code": "GARMIN_UNIT_ID",
             "map_result_index": 0,
         }
         body = dashboard_page(
@@ -357,6 +358,22 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertIn("1.0.0-beta.6 (build 5)", body)
         self.assertIn("INSTALL_FAILED_WRITE", body)
         self.assertIn("SEND_OBJECT_FAILED", body)
+        self.assertIn("fenix 8 pro - 51mm", body)
+        self.assertIn("GARMIN_UNIT_ID", body)
+
+    def test_issue_32_quarantine_is_narrow_and_non_destructive(self):
+        from pathlib import Path
+
+        migration = (
+            Path(__file__).parents[1]
+            / "src/terento_catalog/migrations/018_device_identity_diagnostics.sql"
+        ).read_text()
+        self.assertIn("region = 'CHE+'", migration)
+        self.assertIn("firmware_version = '2326'", migration)
+        self.assertIn("case_size_mm = 51", migration)
+        self.assertIn("phase_outcome = 'FAILED'", migration)
+        self.assertIn("Identity pending · issue #32 · fēnix 8 Pro 51 mm", migration)
+        self.assertNotIn("DELETE FROM compatibility_evidence_event", migration)
 
     def test_schema_v2_keeps_exact_variant_and_treats_reconnect_as_optional(self):
         payload = event(
@@ -400,6 +417,8 @@ class CompatibilityEvidenceTests(unittest.TestCase):
             cleanupAttempted=False,
             cleanupSucceeded=False,
             transferProgressBucket="25-99",
+            rawMTPModel="fenix 8 pro - 51mm",
+            identityResolutionCode="GARMIN_UNIT_ID",
         )
         validated = validate_event(json.dumps(payload).encode())
         self.assertEqual(validated["operationId"], payload["operationId"])
@@ -407,11 +426,19 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertTrue(database.insert_compatibility_event(validated))
         self.assertEqual(database.parameters["appBuild"], "5")
         self.assertEqual(database.parameters["failureStage"], "write")
+        self.assertEqual(database.parameters["rawMTPModel"], "fenix 8 pro - 51mm")
+        self.assertEqual(database.parameters["identityResolutionCode"], "GARMIN_UNIT_ID")
 
         with self.assertRaises(EvidenceValidationError):
             validate_event(json.dumps({**payload, "nativeFailureCode": "RAW: libmtp failed /Users/me"}).encode())
         with self.assertRaises(EvidenceValidationError):
             validate_event(json.dumps({**payload, "releaseLabel": "file:///Users/me/build"}).encode())
+        with self.assertRaises(EvidenceValidationError):
+            validate_event(json.dumps({**payload, "rawMTPModel": "/Users/me/watch"}).encode())
+        with self.assertRaises(EvidenceValidationError):
+            validate_event(json.dumps({**payload, "rawMTPModel": "fenix 8\nserial"}).encode())
+        with self.assertRaises(EvidenceValidationError):
+            validate_event(json.dumps({**payload, "identityResolutionCode": "UNIT_ID:123"}).encode())
         with self.assertRaises(EvidenceValidationError):
             validate_event(json.dumps({**payload, "writeStarted": False, "remoteObjectCreated": True}).encode())
         with self.assertRaises(EvidenceValidationError):
@@ -563,6 +590,41 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertEqual(document["models"][1]["image"], None)
         self.assertNotIn("supportStatus", document["models"][1])
         self.assertNotIn("writeAuthorization", document["models"][1])
+
+    def test_fenix_8_pro_identity_is_preserved_for_admin_and_public_web(self):
+        pro_row = {
+            "model": "fēnix 8 Pro · 51 mm AMOLED",
+            "evidence_model": "fēnix 8 Pro",
+            "canonical_model": "fenix 8 pro",
+            "compatibility_identity": "fēnix 8 Pro · 51 mm, AMOLED",
+            "variant": "51 mm, AMOLED", "case_size_mm": 51,
+            "display_type": "AMOLED",
+            "canonical_device_model_id": "garmin-fenix-8-pro-51-amoled",
+            "attempted_install_count": 1, "successful_install_count": 1,
+            "reconnect_verified_install_count": 0, "failed_install_count": 0,
+            "success_rate": 100.0, "calculated_status": "TESTED",
+            "recognized_map_capable_evidence": True,
+            "last_success": datetime(2026, 8, 26, tzinfo=timezone.utc),
+            "last_evidence": datetime(2026, 8, 26, tzinfo=timezone.utc),
+            "family": "fenix", "family_name": "fēnix",
+            "asset_status": "MISSING", "asset_url": None,
+            "source_image_url": None,
+        }
+        self.database.public_compatibility_models = lambda limit: [pro_row][:limit]
+
+        response, body = self.request("GET", "/compatibility/public/models.json?limit=5")
+        public_model = json.loads(body)["models"][0]
+        self.assertEqual(response.status, 200)
+        self.assertEqual(public_model["model"], "fēnix 8 Pro · 51 mm AMOLED")
+        self.assertEqual(public_model["canonicalModel"], "fenix 8 pro")
+        self.assertEqual(
+            public_model["canonicalDeviceId"],
+            "garmin-fenix-8-pro-51-amoled",
+        )
+
+        admin = dashboard_page([pro_row], {"username": "operator"}, "csrf").decode()
+        self.assertIn("fēnix 8 Pro", admin)
+        self.assertNotIn(">fēnix 8<", admin)
 
 
 class PasswordHashTests(unittest.TestCase):

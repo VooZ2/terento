@@ -65,6 +65,7 @@ class FakeDatabase(Database):
                 "part_number": "010-02904-10",
                 "product_url": "https://www.garmin.com/en-US/p/1228429/",
                 "active": True,
+                "map_capable": True,
                 "asset_status": "AVAILABLE",
                 "asset_url": "https://api.terento.app/assets/devices/garmin/fenix-8.webp",
                 "asset_type": "product-image",
@@ -167,9 +168,10 @@ class HTTPAPITests(unittest.TestCase):
             {
                 "id", "manufacturer", "family", "familyName", "model",
                 "canonicalModel", "variant", "caseSizeMm", "displayType",
-                "partNumber", "productURL", "active", "asset", "sourceAsset",
+                "partNumber", "productURL", "active", "mapCapable", "asset", "sourceAsset",
             },
         )
+        self.assertTrue(document["devices"][0]["mapCapable"])
         self.assertEqual(document["legal"]["manufacturerNotice"], True)
         self.assertIn("Terento is an independent open-source project", document["legal"]["text"])
         raw_json = json.dumps(document, ensure_ascii=False)
@@ -184,6 +186,12 @@ class HTTPAPITests(unittest.TestCase):
         )
         self.assertEqual(cached.status, 304)
         self.assertEqual(cached_body, b"")
+
+    def test_device_catalog_database_projection_includes_map_capability(self) -> None:
+        import inspect
+
+        source = inspect.getsource(Database.device_catalog_snapshot)
+        self.assertIn("dm.map_capable", source)
 
     def test_non_approved_asset_is_not_serialized(self) -> None:
         row = {
