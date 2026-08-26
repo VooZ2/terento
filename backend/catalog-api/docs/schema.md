@@ -221,8 +221,17 @@ Garmin Unit ID. The migration also quarantines only the issue #32 legacy
 identity-pending label; it preserves the rows for diagnosis and prevents their
 lossy base-model identity from affecting public aggregation.
 
-`compatibility_model_statistics` is a live SQL view over the immutable event
-table and model review metadata. Events with a `canonical_device_model_id` are
+Migration 019 adds the internal `diagnostic_status` lifecycle (`ACTIVE` or
+`RESOLVED`) and resolution metadata. Failed events from clients before the
+beta.6 structured-diagnostics rollout are marked `RESOLVED`, not deleted. They
+remain available in the private historical-diagnostics section, but are
+excluded from current compatibility counts, rates, status badges, and public
+evidence projections. New beta.6 and later events remain active by default.
+
+`compatibility_model_statistics` is a live SQL view over the evidence event
+table and model review metadata. It includes only `ACTIVE` diagnostic events;
+resolved historical failures remain queryable through the private operation
+diagnostics path. Events with a `canonical_device_model_id` are
 grouped by that exact Garmin catalog record; textual `compatibility_identity`
 is only the fallback for older uncanonicalized events. Formatting changes
 between app versions therefore increase one variant's report and success

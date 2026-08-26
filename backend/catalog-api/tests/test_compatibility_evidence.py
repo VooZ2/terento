@@ -361,6 +361,41 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertIn("fenix 8 pro - 51mm", body)
         self.assertIn("GARMIN_UNIT_ID", body)
 
+    def test_admin_dashboard_separates_resolved_legacy_failures_from_active_data(self):
+        active_row = {
+            "model": "fēnix 8", "compatibility_identity": "fēnix 8 · 47 mm AMOLED",
+            "variant": "47 mm, AMOLED", "firmware_versions": "2244",
+            "attempted_install_count": 1, "successful_install_count": 1,
+            "failed_install_count": 0, "success_rate": 100,
+            "calculated_status": "TESTED", "last_success": datetime(2026, 8, 26, tzinfo=timezone.utc),
+            "last_failure": None, "error_categories": {},
+        }
+        resolved = {
+            "operation_key": "legacy:issue-32",
+            "occurred_at": datetime(2026, 8, 26, 8, 30, tzinfo=timezone.utc),
+            "compatibility_identity": "Identity pending · issue #32 · fēnix 8 Pro 51 mm",
+            "region": "CHE+", "phase_outcome": "FAILED", "failure_stage": "preflight",
+            "failure_code": "INSTALL_BLOCKED_UNKNOWN_TARGET",
+            "native_failure_code": "UNSUPPORTED_DEVICE", "write_started": False,
+            "remote_object_created": False, "cleanup_attempted": False,
+            "cleanup_succeeded": False, "transfer_progress_bucket": "0",
+            "release_label": "1.0.0", "app_build": None,
+            "raw_mtp_model": None, "identity_resolution_code": "UNAVAILABLE",
+            "diagnostic_status": "RESOLVED",
+            "resolution_note": "Historical pre-beta.6 failure; excluded from current compatibility statistics.",
+            "map_result_index": 0,
+        }
+        body = dashboard_page(
+            [active_row], {"username": "operator"}, "csrf",
+            operations=[], resolved_operations=[resolved],
+        ).decode()
+        self.assertIn("Resolved / historical diagnostics", body)
+        self.assertIn("Resolved / historical · Identity pending", body)
+        self.assertIn("Historical pre-beta.6 failure", body)
+        self.assertIn("INSTALL_BLOCKED_UNKNOWN_TARGET", body)
+        self.assertIn("excluded from current compatibility counts or rates", body)
+        self.assertNotIn("Identity pending</td>", body)
+
     def test_issue_32_quarantine_is_narrow_and_non_destructive(self):
         from pathlib import Path
 

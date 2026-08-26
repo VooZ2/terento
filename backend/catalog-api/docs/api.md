@@ -79,7 +79,10 @@ Secure, HttpOnly, SameSite=Strict, and scoped to `/admin`. Login/setup attempts
 are rate limited. Pages include no-store, noindex and restrictive CSP headers.
 The error count links to a private per-operation detail with child map results,
 release/build, raw MTP model label, identity-source category, failure stage and
-allowlisted codes. Raw event payloads and raw diagnostic text are not displayed. `/internal/compatibility/` redirects to
+allowlisted codes. Current error counts and compatibility rates exclude
+resolved historical failures. Those events remain available in a separate
+`Resolved / historical diagnostics` section with their resolution reason. Raw
+event payloads and raw diagnostic text are not displayed. `/internal/compatibility/` redirects to
 this route for the earlier local implementation.
 
 ## `GET https://api.terento.app/admin/campaign-links`

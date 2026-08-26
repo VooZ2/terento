@@ -96,6 +96,10 @@ class CatalogService:
     def compatibility_operation_details(self) -> list[dict[str, Any]]:
         return self.database.compatibility_operation_details()
 
+    def compatibility_resolved_operation_details(self) -> list[dict[str, Any]]:
+        getter = getattr(self.database, "compatibility_resolved_operation_details", None)
+        return getter() if getter is not None else []
+
     def admin_devices(self) -> dict[str, Any]:
         rows, sync = self.database.admin_device_snapshot()
         return _admin_device_payload(rows, sync)
@@ -340,6 +344,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     body = dashboard_page(
                         service.compatibility_statistics(), session, csrf_token,
                         operations=service.compatibility_operation_details(),
+                        resolved_operations=service.compatibility_resolved_operation_details(),
                         public_stats_enabled=service.public_compatibility_stats_enabled,
                     )
                 except Exception:

@@ -49,6 +49,15 @@ The Garmin collector creates a `MISSING` asset baseline for new devices; it
 does not request product-image binaries and it never changes an asset to
 `AVAILABLE`.
 
+## Evidence lifecycle cleanup
+
+Migration `019_resolved_legacy_diagnostics.sql` is applied automatically by
+the normal forward migration command. It marks failed pre-beta.6 events as
+`RESOLVED` so the administrator dashboard shows current compatibility data
+without erasing the old reports. The old events remain in the database and
+are visible under `Resolved / historical diagnostics`; they do not contribute
+to active failure counts, rates, or public compatibility projections.
+
 ## Asset review and publication
 
 Asset work is explicit and non-destructive. A candidate is prepared into
