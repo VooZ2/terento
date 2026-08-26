@@ -19,8 +19,10 @@ from .admin import (
     account_page,
     campaign_links_page,
     dashboard_page,
+    diagnostics_page,
     devices_page,
     _admin_device_payload,
+    _normalise_github_issue_reference,
     hash_password,
     login_page,
     new_token,
@@ -142,6 +144,19 @@ class CatalogService:
             resolution_reason=resolution_reason,
             resolution_note=resolution_note,
             linked_github_issue=linked_github_issue,
+        )
+
+    def update_diagnostic_issue(
+        self,
+        operation_key: str,
+        *,
+        linked_github_issue: str | None,
+        admin_user_id: int | None,
+    ) -> int:
+        return self.database.update_diagnostic_issue(
+            operation_key,
+            linked_github_issue=linked_github_issue,
+            admin_user_id=admin_user_id,
         )
 
     def resolve_compatibility_identity(
@@ -395,12 +410,35 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 service.logout_admin(session_token)
                 self._redirect("/admin/login", send_body=send_body, clear_cookie=True)
                 return
+            if request_path in {"/admin/diagnostics", "/admin/diagnostics/"}:
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                identity = query.get("identity", [""])[0].strip()
+                if not identity:
+                    self._redirect("/admin", send_body=send_body)
+                    return
+                try:
+                    statistics = service.compatibility_statistics()
+                    identity_devices = service.admin_devices().get("devices", [])
+                    body = diagnostics_page(
+                        statistics,
+                        session,
+                        csrf_token,
+                        identity=identity,
+                        operations=service.compatibility_operation_details(),
+                        resolved_operations=service.compatibility_resolved_operation_details(),
+                        identity_devices=identity_devices,
+                    )
+                except Exception:
+                    LOGGER.exception("compatibility diagnostics failed")
+                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "diagnostics_unavailable"}, send_body=send_body, cache_control="no-store")
+                    return
+                self._send_admin_html(body, send_body=send_body)
+                return
             if request_path in {"/admin", "/admin/"}:
                 try:
                     body = dashboard_page(
                         service.compatibility_statistics(), session, csrf_token,
                         operations=service.compatibility_operation_details(),
-                        resolved_operations=service.compatibility_resolved_operation_details(),
                         public_stats_enabled=service.public_compatibility_stats_enabled,
                     )
                 except Exception:
@@ -495,13 +533,14 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 try:
                     operation_key = form.get("operation_key", "").strip()
                     is_resolve = request_path.endswith("/resolve")
+                    linked_issue = _normalise_github_issue_reference(form.get("linked_github_issue", ""))
                     changed = service.update_diagnostic_lifecycle(
                         operation_key,
                         new_status="RESOLVED" if is_resolve else "ACTIVE",
                         admin_user_id=int(session["id"]),
                         resolution_reason=form.get("resolution_reason", "").strip() or None,
                         resolution_note=form.get("resolution_note", "").strip() or None,
-                        linked_github_issue=form.get("linked_github_issue", "").strip() or None,
+                        linked_github_issue=linked_issue,
                     )
                     if not changed:
                         self._send_json(HTTPStatus.NOT_FOUND, {"error": "diagnostic_not_found"}, send_body=True, cache_control="no-store")
@@ -509,7 +548,23 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 except ValueError:
                     self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_diagnostic_lifecycle"}, send_body=True, cache_control="no-store")
                     return
-                self._redirect("/admin", send_body=True)
+                self._redirect(self._safe_admin_return(form.get("return_to"), "/admin"), send_body=True)
+                return
+            if request_path == "/admin/diagnostics/issue":
+                try:
+                    issue = _normalise_github_issue_reference(form.get("linked_github_issue", ""))
+                    changed = service.update_diagnostic_issue(
+                        form.get("operation_key", "").strip(),
+                        linked_github_issue=issue,
+                        admin_user_id=int(session["id"]),
+                    )
+                    if not changed:
+                        self._send_json(HTTPStatus.NOT_FOUND, {"error": "diagnostic_not_found"}, send_body=True, cache_control="no-store")
+                        return
+                except ValueError:
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_github_issue"}, send_body=True, cache_control="no-store")
+                    return
+                self._redirect(self._safe_admin_return(form.get("return_to"), "/admin"), send_body=True)
                 return
             if request_path == "/admin/diagnostics/identity":
                 try:
@@ -527,9 +582,16 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 except ValueError:
                     self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_identity_resolution"}, send_body=True, cache_control="no-store")
                     return
-                self._redirect("/admin", send_body=True)
+                self._redirect(self._safe_admin_return(form.get("return_to"), "/admin"), send_body=True)
                 return
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=True, cache_control="no-store")
+
+        @staticmethod
+        def _safe_admin_return(value: str | None, default: str) -> str:
+            target = (value or "").strip()
+            if target.startswith("/admin/diagnostics") and "//" not in target:
+                return target
+            return default
 
         def _admin_setup(self, form: dict[str, str]) -> None:
             client = f"admin-setup:{self.client_address[0]}"
