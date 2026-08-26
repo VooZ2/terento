@@ -89,6 +89,9 @@ remains the only map provider.
   compatibility, privacy and unchanged Safe Update suites pass.
 - Swift/Xcode arm64 Release build, bundled libmtp/libusb checks, Developer ID
   signing verification and GitHub CI pass.
+- The owner hardware smoke gate passed on the available fēnix 8 watch using
+  the final notarized build: exact model presentation, map installation,
+  opted-in beta.6 report delivery and Remove all passed.
 - The fēnix 8 Pro issue #32 correction is based on the reported pre-write
   failure and automated regression coverage. Public beta evidence is still
   needed for that exact model.
@@ -107,8 +110,9 @@ remains the only map provider.
 - macOS 13 or later on Apple Silicon is required. Intel Macs, App Store, PKG,
   Windows and Linux distributions are not included.
 
-## Release artifacts
+## Release checksums
 
-The final notarized ZIP and DMG checksums are added from the exact published
-artifacts during the release step. Published artifacts and the tag are not
-created until the remaining release gate passes.
+```text
+Terento-1.0.0-beta.6-macOS-arm64.dmg  f206816fbee38fe2092cdfc91d58eb68e88c2b0f7ee0c909c327b4b1d455ccb5
+Terento-1.0.0-beta.6-macOS-arm64.zip  b779086c1bad975b7275db34e44c6033eeaf04118881feca20b383fa82b960c7
+```
