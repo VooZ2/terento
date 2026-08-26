@@ -1,6 +1,6 @@
 # Terento v1.0.0-beta.7
 
-Release date: pending publication
+Release date: 2026-08-26
 
 Beta.7 keeps the complete validated Freizeitkarte catalog visible while
 separating catalog membership from Terento's map-acquisition policy. Downloads
@@ -72,8 +72,8 @@ has been independently verified.
 
 ## Release artifacts
 
-The local release pipeline completed successfully and Apple notarization was
-accepted with no issues. These artifacts are prepared but not yet published.
+The release pipeline completed successfully and Apple notarization was
+accepted with no issues.
 
 ```text
 Terento-1.0.0-beta.7-macOS-arm64.dmg  6a74b7613a81c68b9e0e3995dd0e00c6a7778957fc039b40a113731573e95faa
