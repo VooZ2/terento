@@ -72,5 +72,10 @@ has been independently verified.
 
 ## Release artifacts
 
-The notarized beta.7 ZIP and DMG checksums will be recorded here after the local
-release pipeline succeeds. This candidate is not yet published.
+The local release pipeline completed successfully and Apple notarization was
+accepted with no issues. These artifacts are prepared but not yet published.
+
+```text
+Terento-1.0.0-beta.7-macOS-arm64.dmg  6a74b7613a81c68b9e0e3995dd0e00c6a7778957fc039b40a113731573e95faa
+Terento-1.0.0-beta.7-macOS-arm64.zip  f9940254242935843e7fdd340d5962961e4cdaf8f6752dcf2cef9d3fef248203
+```
