@@ -1,4 +1,5 @@
 import Darwin
+import CryptoKit
 import Foundation
 
 enum TerentoManifestStoreError: LocalizedError, Equatable, Sendable {
@@ -483,9 +484,107 @@ struct LocalTerentoFailedInstallRecoveryStore: TerentoFailedInstallRecoveryStore
 }
 
 extension DeviceIdentity {
-    var localManifestDeviceKey: String {
+    var physicalManifestDeviceKey: String? {
+        guard let localHardwareIdentifier,
+              !localHardwareIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return nil
+        }
+
+        return try? LocalPhysicalDeviceKeyDeriver().derive(
+            source: "mtp-serial",
+            value: localHardwareIdentifier
+        )
+    }
+
+    var legacyManifestDeviceKey: String {
         let modelKey = GarminDeviceModelNormalizer.normalize(canonicalModel ?? model)
             .replacingOccurrences(of: " ", with: "-")
         return "\(modelKey)-\(String(format: "%04x", usbVendorId))-\(String(format: "%04x", usbProductId))"
+    }
+
+    var localManifestDeviceKey: String {
+        physicalManifestDeviceKey ?? legacyManifestDeviceKey
+    }
+}
+
+struct LocalPhysicalDeviceKeyDeriver {
+    private static let secretByteCount = 32
+    private let rootDirectory: URL?
+
+    init(rootDirectory: URL? = nil) {
+        self.rootDirectory = rootDirectory
+    }
+
+    func derive(source: String, value: String) throws -> String {
+        let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty else {
+            throw TerentoManifestStoreError.invalidDeviceKey
+        }
+
+        let secret = try loadOrCreateSecret()
+        let input = Data("terento-watch-v2:\(source):\(normalized)".utf8)
+        let authenticationCode = HMAC<SHA256>.authenticationCode(
+            for: input,
+            using: SymmetricKey(data: secret)
+        )
+        let digest = authenticationCode.map { String(format: "%02x", $0) }.joined()
+        return "watch-v2-\(digest)"
+    }
+
+    private func loadOrCreateSecret() throws -> Data {
+        let directory: URL
+        if let rootDirectory {
+            directory = rootDirectory
+        } else {
+            guard let applicationSupport = FileManager.default.urls(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask
+            ).first else {
+                throw TerentoManifestStoreError.applicationSupportUnavailable
+            }
+            directory = applicationSupport.appendingPathComponent("Terento", isDirectory: true)
+        }
+        do {
+            try FileManager.default.createDirectory(
+                at: directory,
+                withIntermediateDirectories: true,
+                attributes: [.posixPermissions: 0o700]
+            )
+        } catch {
+            throw TerentoManifestStoreError.applicationSupportUnavailable
+        }
+
+        let secretURL = directory.appendingPathComponent(".device-key-secret", isDirectory: false)
+        let lockURL = directory.appendingPathComponent(".device-key-secret.lock", isDirectory: false)
+        let descriptor = lockURL.path.withCString {
+            open($0, O_CREAT | O_RDWR, mode_t(0o600))
+        }
+        guard descriptor >= 0, flock(descriptor, LOCK_EX) == 0 else {
+            if descriptor >= 0 { close(descriptor) }
+            throw TerentoManifestStoreError.lockFailed
+        }
+        defer {
+            _ = flock(descriptor, LOCK_UN)
+            close(descriptor)
+        }
+
+        if let existing = try? Data(contentsOf: secretURL),
+           existing.count == Self.secretByteCount {
+            return existing
+        }
+
+        var generator = SystemRandomNumberGenerator()
+        let secret = Data((0..<Self.secretByteCount).map { _ in UInt8.random(in: .min ... .max, using: &generator) })
+        do {
+            try secret.write(to: secretURL, options: .atomic)
+            guard chmod(secretURL.path, mode_t(0o600)) == 0 else {
+                throw TerentoManifestStoreError.writeFailed
+            }
+        } catch let error as TerentoManifestStoreError {
+            throw error
+        } catch {
+            throw TerentoManifestStoreError.writeFailed
+        }
+        return secret
     }
 }

@@ -7,6 +7,25 @@ struct DeviceSnapshot: Sendable {
     let vendorID: UInt16
     let productID: UInt16
     let storages: [StorageInfo]
+    let serialNumber: String?
+
+    init(
+        manufacturer: String,
+        model: String,
+        deviceVersion: String,
+        vendorID: UInt16,
+        productID: UInt16,
+        storages: [StorageInfo],
+        serialNumber: String? = nil
+    ) {
+        self.manufacturer = manufacturer
+        self.model = model
+        self.deviceVersion = deviceVersion
+        self.vendorID = vendorID
+        self.productID = productID
+        self.storages = storages
+        self.serialNumber = serialNumber
+    }
 
     var totalCapacity: UInt64 {
         storages.reduce(into: UInt64(0)) { total, storage in

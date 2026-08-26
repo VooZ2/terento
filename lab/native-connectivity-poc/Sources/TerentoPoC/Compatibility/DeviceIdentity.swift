@@ -73,6 +73,31 @@ struct DeviceIdentity: Sendable, Equatable {
     let firmware: String?
     let storageCapacity: UInt64
     let freeSpace: UInt64
+    let localHardwareIdentifier: String?
+
+    init(
+        manufacturer: String,
+        model: String,
+        family: String?,
+        variant: String?,
+        usbVendorId: UInt16,
+        usbProductId: UInt16,
+        firmware: String?,
+        storageCapacity: UInt64,
+        freeSpace: UInt64,
+        localHardwareIdentifier: String? = nil
+    ) {
+        self.manufacturer = manufacturer
+        self.model = model
+        self.family = family
+        self.variant = variant
+        self.usbVendorId = usbVendorId
+        self.usbProductId = usbProductId
+        self.firmware = firmware
+        self.storageCapacity = storageCapacity
+        self.freeSpace = freeSpace
+        self.localHardwareIdentifier = localHardwareIdentifier
+    }
 
     /// Stable model identity derived from the raw MTP model string when the
     /// string matches a locally validated model grammar. Cosmetic display

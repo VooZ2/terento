@@ -35,20 +35,25 @@ swiftc \
   -module-cache-path "$module_cache_dir" \
   "$project_root/Sources/TerentoPoC/Models/MTPModels.swift" \
   "$project_root/Sources/TerentoPoC/Compatibility/DeviceIdentity.swift" \
+  "$project_root/Sources/TerentoPoC/Compatibility/MapCapability.swift" \
   "$project_root/Sources/TerentoPoC/Compatibility/GarminDeviceIdentityAdapter.swift" \
   "$project_root/Sources/TerentoPoC/MapCatalog/MapVersion.swift" \
   "$project_root/Sources/TerentoPoC/MapCatalog/MapIdentity.swift" \
   "$project_root/Sources/TerentoPoC/MapCatalog/MapModels.swift" \
   "$project_root/Sources/TerentoPoC/MapCatalog/MapPresentation.swift" \
   "$project_root/Sources/TerentoPoC/MapCatalog/InstalledMap.swift" \
+  "$project_root/Sources/TerentoPoC/MapCatalog/MapOwnership.swift" \
   "$project_root/Sources/TerentoPoC/MapCatalog/MapComparison.swift" \
   "$project_root/Sources/TerentoPoC/MapCatalog/MapInventoryList.swift" \
+  "$project_root/Sources/TerentoPoC/MTPTransport/MTPOperationGate.swift" \
   "$project_root/Sources/TerentoPoC/MTPTransport/MTPTransport.swift" \
   "$project_root/Sources/TerentoPoC/Installation/InstallationSafetyModels.swift" \
   "$project_root/Sources/TerentoPoC/Installation/StoragePlanner.swift" \
   "$project_root/Sources/TerentoPoC/Installation/MapLifecycle.swift" \
+  "$project_root/Sources/TerentoPoC/Installation/InstallProfile.swift" \
   "$project_root/Sources/TerentoPoC/Installation/TerentoManifestStore.swift" \
   "$project_root/Sources/TerentoPoC/Installation/ReadBackupAdapter.swift" \
+  "$project_root/Sources/TerentoPoC/Installation/MTPMapOperationProfileBridge.swift" \
   "$project_root/Sources/TerentoPoC/Installation/MTPReadBackupAdapter.swift" \
   "$project_root/Tests/Stage51HardwareBackupMain.swift" \
   "$bridge_object" \
@@ -59,5 +64,10 @@ swiftc \
   -Xlinker -rpath -Xlinker "$libmtp_prefix/lib" \
   -Xlinker -rpath -Xlinker "$libusb_prefix/lib" \
   -o "$binary_path"
+
+if [[ "${1:-}" == "--compile-only" ]]; then
+  print "Stage 5.1 Hardware Test: compile PASS"
+  exit 0
+fi
 
 "$binary_path"

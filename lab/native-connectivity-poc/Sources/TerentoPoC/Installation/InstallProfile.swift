@@ -32,6 +32,49 @@ struct DeviceInstallProfile: Equatable, Sendable {
     }
 }
 
+/// Per-operation production authorization. Unlike compatibility identity, all
+/// values here come from the live snapshot and can be compared again by C
+/// after it opens the device in a new MTP session.
+struct DeviceMapOperationProfile: Equatable, Sendable {
+    static let currentVersion: UInt32 = 1
+
+    let version: UInt32
+    let vendorID: UInt16
+    let productID: UInt16
+    let manufacturer: String
+    let rawModel: String
+    let targetDirectory: String
+
+    init?(identity: DeviceIdentity, installProfile: DeviceInstallProfile?) {
+        guard let installProfile,
+              installProfile.supportsMapWrite,
+              installProfile.matches(identity),
+              installProfile.targetDirectory == "/GARMIN",
+              let localHardwareIdentifier = identity.localHardwareIdentifier,
+              !localHardwareIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return nil
+        }
+
+        let manufacturer = identity.manufacturer.trimmingCharacters(in: .whitespacesAndNewlines)
+        let rawModel = identity.model.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard identity.usbVendorId == 0x091e,
+              identity.usbProductId != 0,
+              !manufacturer.isEmpty,
+              !rawModel.isEmpty,
+              manufacturer.utf8.count <= 255,
+              rawModel.utf8.count <= 255 else {
+            return nil
+        }
+
+        self.version = Self.currentVersion
+        self.vendorID = identity.usbVendorId
+        self.productID = identity.usbProductId
+        self.manufacturer = manufacturer
+        self.rawModel = rawModel
+        self.targetDirectory = installProfile.targetDirectory
+    }
+}
+
 struct DeviceInstallProfileRegistry: Sendable {
     let profiles: [DeviceInstallProfile]
 
@@ -72,10 +115,6 @@ struct DeviceInstallProfileRegistry: Sendable {
               let family = identity.family,
               Self.hasSingleGarminRootFolder(in: deviceFiles) else {
             return nil
-        }
-
-        if let validated = profile(for: identity) {
-            return validated
         }
 
         return DeviceInstallProfile(

@@ -1,15 +1,19 @@
 import Foundation
+import CryptoKit
 
 /// Native Stage 5.2 transport. Inspection is read-only; deletion delegates
 /// to the existing exact managed-map bridge operation. It is not wired to UI.
 struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
     private let operationGate: MTPOperationGate
     private let lifecycleLease: MTPOperationLease?
+    private let operationProfile: DeviceMapOperationProfile?
 
     init(
+        operationProfile: DeviceMapOperationProfile? = nil,
         operationGate: MTPOperationGate = .shared,
         lifecycleLease: MTPOperationLease? = nil
     ) {
+        self.operationProfile = operationProfile
         self.operationGate = operationGate
         self.lifecycleLease = lifecycleLease
     }
@@ -36,16 +40,13 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
             throw SafeDeleteTransportError.operationFailed(error.localizedDescription)
         }
 
-        let candidates = files.filter {
-            $0.itemID == target.objectID || $0.path == target.expectedPath
-        }
+        let candidates = files.filter { $0.path == target.expectedPath }
         guard !candidates.isEmpty else {
             throw SafeDeleteTransportError.objectNotFound
         }
 
         guard candidates.count == 1,
               let object = candidates.first,
-              object.itemID == target.objectID,
               object.path == target.expectedPath,
               object.filename == target.expectedFilename,
               object.sizeBytes == target.expectedSizeBytes,
@@ -55,29 +56,75 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
             )
         }
 
-        // Manual Remove intentionally does not copy or hash the complete map.
-        // The manifest SHA-256 remains an integrity record, while the live MTP
-        // inventory proves the exact object identity and metadata immediately
-        // before DeleteObject.
+        let temporaryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("terento-remove-verify-\(UUID().uuidString).img")
+        defer { try? FileManager.default.removeItem(at: temporaryURL) }
+
+        let verifiedLiveItemID: UInt32
+        do {
+            let transfer = try MTPReadBackupAdapter(
+                operationProfile: operationProfile,
+                operationGate: operationGate,
+                lifecycleLease: lifecycleLease
+            ).readExistingFile(
+                file: InstalledMapFile(
+                    path: object.path,
+                    filename: object.filename,
+                    sizeBytes: object.sizeBytes,
+                    itemID: object.itemID
+                ),
+                to: temporaryURL,
+                onProgress: nil
+            )
+
+            guard transfer.itemID != 0 else {
+                throw SafeDeleteTransportError.operationFailed(
+                    "The exact managed map no longer has a valid live object identity."
+                )
+            }
+
+            verifiedLiveItemID = transfer.itemID
+        } catch let error as MapLifecycleReadTransportError {
+            switch error {
+            case .deviceDisconnected(let message):
+                throw SafeDeleteTransportError.deviceDisconnected(message)
+            case .readFailed(let message):
+                throw SafeDeleteTransportError.operationFailed(message)
+            }
+        } catch {
+            throw SafeDeleteTransportError.operationFailed(error.localizedDescription)
+        }
+
+        let liveHash: String
+        do {
+            liveHash = try sha256(of: temporaryURL)
+        } catch {
+            throw SafeDeleteTransportError.operationFailed(
+                "The complete managed map could not be verified before removal."
+            )
+        }
+
         return SafeDeleteDeviceObject(
             file: InstalledMapFile(
                 path: object.path,
                 filename: object.filename,
                 sizeBytes: object.sizeBytes,
-                itemID: object.itemID
+                itemID: verifiedLiveItemID
             ),
-            sha256: nil
+            sha256: liveHash
         )
     }
 
     func deleteExactObject(_ target: SafeDeleteTarget) throws {
         do {
             try MTPMapInstallationTransport(
+                operationProfile: operationProfile,
                 operationGate: operationGate,
                 lifecycleLease: lifecycleLease
             ).deleteExact(
                 targetFilename: target.expectedFilename,
-                expectedItemID: target.objectID
+                expectedItemID: target.objectID,
+                expectedSizeBytes: target.expectedSizeBytes
             )
         } catch let error as InstallationTransportError {
             switch error {
@@ -105,6 +152,19 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
         return value.contains("disconnected")
             || value.contains("not connected")
             || value.contains("no device")
+    }
+
+    private func sha256(of url: URL) throws -> String {
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+
+        var hasher = SHA256()
+        while true {
+            let data = try handle.read(upToCount: 1024 * 1024) ?? Data()
+            if data.isEmpty { break }
+            hasher.update(data: data)
+        }
+        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }
 
 }

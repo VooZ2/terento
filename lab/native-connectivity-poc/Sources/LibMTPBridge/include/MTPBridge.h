@@ -22,6 +22,7 @@ typedef struct {
     char *manufacturer;
     char *model;
     char *device_version;
+    char *serial_number;
     size_t storage_count;
     TerentoMTPStorage *storages;
 } TerentoMTPDeviceSnapshot;
@@ -45,6 +46,20 @@ typedef struct {
     size_t byte_count;
     unsigned char *bytes;
 } TerentoMTPByteBuffer;
+
+/*
+ * Per-operation production authorization prepared from the same live snapshot
+ * Swift used for its reviewed map-capability decision. C compares only these
+ * directly observable values with the device it opens itself.
+ */
+typedef struct {
+    uint32_t version;
+    uint16_t vendor_id;
+    uint16_t product_id;
+    const char *manufacturer;
+    const char *model;
+    const char *target_directory;
+} TerentoMTPMapOperationProfile;
 
 /* A real transfer callback. Returning non-zero cancels the transfer. */
 typedef int (*TerentoMTPProgressCallback)(
@@ -105,9 +120,12 @@ void terento_mtp_free_byte_buffer(TerentoMTPByteBuffer *buffer);
 
 /* Read-only operation: validate one exact existing object and read it locally. */
 int terento_mtp_read_existing_file_to_local(
+    const TerentoMTPMapOperationProfile *profile,
     uint32_t expected_item_id,
     const char *expected_path,
+    uint64_t expected_size_bytes,
     const char *local_path,
+    uint32_t *resolved_item_id,
     uint64_t *size_bytes,
     char *error_message,
     size_t error_message_capacity
@@ -147,6 +165,7 @@ int terento_mtp_delete_test_file(
  * grammar and validated fēnix 8 profile.
  */
 int terento_mtp_install_map_file(
+    const TerentoMTPMapOperationProfile *profile,
     const char *local_path,
     const char *target_filename,
     uint32_t *item_id,
@@ -163,6 +182,7 @@ int terento_mtp_install_map_file(
  * never copied back to the Mac.
  */
 int terento_mtp_verify_managed_map_samples(
+    const TerentoMTPMapOperationProfile *profile,
     const char *local_path,
     const char *target_filename,
     uint32_t expected_item_id,
@@ -180,8 +200,10 @@ int terento_mtp_verify_managed_map_samples(
 
 /* Delete only the exact manifest-authorized managed target object. */
 int terento_mtp_delete_managed_map(
+    const TerentoMTPMapOperationProfile *profile,
     const char *target_filename,
     uint32_t expected_item_id,
+    uint64_t expected_size_bytes,
     char *error_message,
     size_t error_message_capacity
 );

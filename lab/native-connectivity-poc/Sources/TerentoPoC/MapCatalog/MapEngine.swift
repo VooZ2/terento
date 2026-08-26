@@ -960,6 +960,15 @@ final class MapEngine: ObservableObject {
                             )
                         }
 
+                        let installProfile = DeviceInstallProfileRegistry.local.profile(
+                            for: identity,
+                            deviceFiles: inventory.deviceFiles
+                        )
+                        let operationProfile = DeviceMapOperationProfile(
+                            identity: identity,
+                            installProfile: installProfile
+                        )
+
                         let request = MapInstallationRequest(
                             identity: identity,
                             selectedMap: comparison.catalogMap,
@@ -968,15 +977,13 @@ final class MapEngine: ObservableObject {
                             inspectedFiles: inventory.scan.files,
                             beforeDeviceFiles: inventory.deviceFiles,
                             availableStorage: snapshot.freeSpace,
-                            profile: DeviceInstallProfileRegistry.local.profile(
-                                for: identity,
-                                deviceFiles: inventory.deviceFiles
-                            ),
+                            profile: installProfile,
                             artifact: artifact,
                             userConfirmed: true
                         )
 
                         let result = MapInstallationCoordinator.live(
+                            operationProfile: operationProfile,
                             operationGate: operationGate,
                             lifecycleLease: lease
                         ).run(

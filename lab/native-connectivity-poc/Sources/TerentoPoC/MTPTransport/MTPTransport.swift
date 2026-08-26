@@ -115,8 +115,15 @@ struct MTPTransport: Sendable {
             deviceVersion: string(from: rawSnapshot.device_version, fallback: "Unknown"),
             vendorID: rawSnapshot.vendor_id,
             productID: rawSnapshot.product_id,
-            storages: storages
+            storages: storages,
+            serialNumber: optionalString(from: rawSnapshot.serial_number)
         )
+    }
+
+    private func optionalString(from pointer: UnsafeMutablePointer<CChar>?) -> String? {
+        guard let pointer else { return nil }
+        let value = String(cString: pointer).trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
     }
 
     func readFileInventory() throws -> [DeviceFile] {

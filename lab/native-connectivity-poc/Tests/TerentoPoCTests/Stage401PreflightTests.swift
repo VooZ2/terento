@@ -10,10 +10,14 @@ protocol DeviceFileReader: Sendable {
 struct Stage401PreflightTests {
     static func main() {
         testRealFenixModelResolvesValidatedProfile()
+        testRealFenixUsesGenericProductionProfile()
         testReviewedHardwareIdentityRestoresAmoledVariant()
         testReviewedHardwareIdentityClaimsExactAsset()
         testUnknownDeviceStaysBlocked()
         testMapCapableBetaDeviceGetsLiveBoundProfile()
+        testOperationProfileBindsRawLiveIdentity()
+        testOperationProfileRejectsAnotherDeviceProfile()
+        testOperationProfileRequiresPhysicalWatchDiscriminator()
         testBetaProfileRequiresOneGarminRoot()
         testNonMapWatchCannotEnroll()
         testExistingExternalMapRequiresExplicitReplacement()
@@ -25,7 +29,7 @@ struct Stage401PreflightTests {
         testUpToDateMapIsStillAnExistingMapConflict()
         testPreflightIsTransportIndependentAndReadOnly()
 
-        print("PASS: 15 Stage 4.0.1 preflight tests")
+        print("PASS: 19 Stage 4.0.1 preflight tests")
     }
 
     private static func testRealFenixModelResolvesValidatedProfile() {
@@ -37,6 +41,20 @@ struct Stage401PreflightTests {
                 && profile?.targetDirectory == "/GARMIN"
                 && profile?.supportsMapWrite == true,
             "real fenix 8 - 47mm identity resolves the validated /GARMIN profile"
+        )
+    }
+
+    private static func testRealFenixUsesGenericProductionProfile() {
+        let identity = realIdentity()
+        let profile = DeviceInstallProfileRegistry.local.profile(
+            for: identity,
+            deviceFiles: [garminRoot(itemID: 10)]
+        )
+
+        expect(
+            profile?.id == "garmin-map-capable-beta"
+                && profile?.matches(identity) == true,
+            "hardware-proven variants use the same generic production profile"
         )
     }
 
@@ -60,8 +78,8 @@ struct Stage401PreflightTests {
     private static func testUnknownDeviceStaysBlocked() {
         let unknownIdentity = DeviceIdentity(
             manufacturer: "Garmin",
-            model: "fenix 8 pro",
-            family: "fēnix",
+            model: "Garmin Mystery 999",
+            family: nil,
             variant: nil,
             usbVendorId: 0x091e,
             usbProductId: 0xffff,
@@ -76,11 +94,17 @@ struct Stage401PreflightTests {
             installedMaps: [],
             inspectedFiles: [],
             availableStorage: 15 * gigabyte,
-            profile: DeviceInstallProfileRegistry.local.profile(for: unknownIdentity)
+            profile: DeviceInstallProfileRegistry.local.profile(
+                for: unknownIdentity,
+                deviceFiles: [garminRoot(itemID: 10)]
+            )
         )
 
         expect(
-            DeviceInstallProfileRegistry.local.profile(for: unknownIdentity) == nil
+            DeviceInstallProfileRegistry.local.profile(
+                for: unknownIdentity,
+                deviceFiles: [garminRoot(itemID: 10)]
+            ) == nil
                 && result.status == .blockedUnsupportedDevice,
             "unknown PID/model does not inherit the validated install profile"
         )
@@ -99,6 +123,75 @@ struct Stage401PreflightTests {
                 && profile?.targetDirectory == "/GARMIN"
                 && profile?.matches(identity) == true,
             "map-capable beta watch gets an exact live-bound /GARMIN profile"
+        )
+    }
+
+    private static func testOperationProfileBindsRawLiveIdentity() {
+        let identity = betaIdentity(model: "Forerunner 970", family: "Forerunner")
+        let installProfile = DeviceInstallProfileRegistry.local.profile(
+            for: identity,
+            deviceFiles: [garminRoot(itemID: 10)]
+        )
+        let operationProfile = DeviceMapOperationProfile(
+            identity: identity,
+            installProfile: installProfile
+        )
+
+        expect(
+            operationProfile?.vendorID == 0x091e
+                && operationProfile?.productID == 0x7777
+                && operationProfile?.manufacturer == "Garmin"
+                && operationProfile?.rawModel == "Forerunner 970"
+                && operationProfile?.targetDirectory == "/GARMIN",
+            "production operation profile binds the exact non-0x51b8 live identity"
+        )
+    }
+
+    private static func testOperationProfileRejectsAnotherDeviceProfile() {
+        let identity = betaIdentity(model: "Forerunner 970", family: "Forerunner")
+        let anotherDeviceProfile = DeviceInstallProfile(
+            id: "another-device",
+            displayName: "Another Garmin",
+            manufacturer: "Garmin",
+            family: "Forerunner",
+            usbVendorId: 0x091e,
+            usbProductIds: [0x8888],
+            modelAliases: ["Forerunner 970"],
+            targetDirectory: "/GARMIN",
+            supportsMapWrite: true,
+            requiresValidatedCanonicalModel: false
+        )
+
+        expect(
+            DeviceMapOperationProfile(
+                identity: identity,
+                installProfile: anotherDeviceProfile
+            ) == nil,
+            "production operation profile rejects a profile for another live PID"
+        )
+    }
+
+    private static func testOperationProfileRequiresPhysicalWatchDiscriminator() {
+        let identity = DeviceIdentity(
+            manufacturer: "Garmin",
+            model: "Forerunner 970",
+            family: "Forerunner",
+            variant: nil,
+            usbVendorId: 0x091e,
+            usbProductId: 0x7777,
+            firmware: "22.44",
+            storageCapacity: 31 * gigabyte,
+            freeSpace: 16 * gigabyte
+        )
+        let profile = DeviceInstallProfileRegistry.local.profile(
+            for: identity,
+            deviceFiles: [garminRoot(itemID: 10)]
+        )
+
+        expect(
+            profile != nil
+                && DeviceMapOperationProfile(identity: identity, installProfile: profile) == nil,
+            "missing physical-watch discriminator blocks mutation without removing map-capable discovery"
         )
     }
 
@@ -136,7 +229,8 @@ struct Stage401PreflightTests {
             usbProductId: 0x7777,
             firmware: "22.44",
             storageCapacity: 31 * gigabyte,
-            freeSpace: 16 * gigabyte
+            freeSpace: 16 * gigabyte,
+            localHardwareIdentifier: "stage401-\(model)-\(family)"
         )
     }
 
@@ -346,12 +440,16 @@ struct Stage401PreflightTests {
                 volumeIdentifier: "GARMIN",
                 maximumCapacity: 31 * gigabyte,
                 freeSpace: 15 * gigabyte
-            )]
+            )],
+            serialNumber: "stage401-fenix8-47"
         ))
     }
 
     private static func realProfile() -> DeviceInstallProfile? {
-        DeviceInstallProfileRegistry.local.profile(for: realIdentity())
+        DeviceInstallProfileRegistry.local.profile(
+            for: realIdentity(),
+            deviceFiles: [garminRoot(itemID: 10)]
+        )
     }
 
     private static func makeEngine() -> InstallationPreflightEngine {

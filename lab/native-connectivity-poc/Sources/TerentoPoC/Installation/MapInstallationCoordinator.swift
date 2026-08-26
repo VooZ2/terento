@@ -3,7 +3,7 @@ import Foundation
 
 enum MapInstallationStatus: String, Codable, Equatable, Sendable {
     case confirmationRequired = "CONFIRMATION_REQUIRED"
-    case installVerified = "INSTALL_VERIFIED"
+    case installVerified = "INSTALL_VERIFIED_SAMPLED_READBACK_V1"
     case blockedExistingMapConflict = "BLOCKED_EXISTING_MAP_CONFLICT"
     case blockedInsufficientSpace = "BLOCKED_INSUFFICIENT_SPACE"
     case blockedUnknownTarget = "BLOCKED_UNKNOWN_TARGET"

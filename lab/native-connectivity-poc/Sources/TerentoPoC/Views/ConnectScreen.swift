@@ -835,6 +835,8 @@ struct ConnectScreen: View {
                                 operation: lifecycleViewModel.operation(for: item.id),
                                 isLifecycleBusy: mapManagementActionsBusy,
                                 onBackup: { lifecycleViewModel.requestBackup(itemID: item.id) },
+                                onTransferOwnership: { lifecycleViewModel.requestTransferOwnership(itemID: item.id) },
+                                onRecoverOwnership: { lifecycleViewModel.requestRecoverOwnership(itemID: item.id) },
                                 onRemove: { lifecycleViewModel.requestRemove(itemID: item.id) },
                                 onUpdate: { lifecycleViewModel.requestUpdate(itemID: item.id) }
                             )
@@ -856,6 +858,8 @@ struct ConnectScreen: View {
                                 operation: lifecycleViewModel.operation(for: item.id),
                                 isLifecycleBusy: mapManagementActionsBusy,
                                 onBackup: { lifecycleViewModel.requestBackup(itemID: item.id) },
+                                onTransferOwnership: { lifecycleViewModel.requestTransferOwnership(itemID: item.id) },
+                                onRecoverOwnership: { lifecycleViewModel.requestRecoverOwnership(itemID: item.id) },
                                 onRemove: { lifecycleViewModel.requestRemove(itemID: item.id) },
                                 onUpdate: { lifecycleViewModel.requestUpdate(itemID: item.id) }
                             )
@@ -1042,6 +1046,17 @@ struct ConnectScreen: View {
                             .help("Refresh map information")
                             .accessibilityLabel("Refresh map information")
                         }
+                    }
+
+                    if mapEngine.catalogSource == .bundledFallback {
+                        Label(
+                            MapCatalogSource.bundledFallback.userLabel,
+                            systemImage: "wifi.slash"
+                        )
+                        .font(.terentoUI(size: 12, weight: .medium))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                        .padding(.top, 10)
+                        .accessibilityHint("Terento is using its bundled map list because the live catalog is unavailable.")
                     }
 
                     if mapEngine.state == .loadingCatalog || mapEngine.state == .scanning {
@@ -2918,6 +2933,8 @@ private struct ManageMapRow: View {
     let operation: MapLifecycleOperationState?
     let isLifecycleBusy: Bool
     let onBackup: () -> Void
+    let onTransferOwnership: () -> Void
+    let onRecoverOwnership: () -> Void
     let onRemove: () -> Void
     let onUpdate: () -> Void
 
@@ -2964,6 +2981,10 @@ private struct ManageMapRow: View {
         switch action {
         case .backup:
             onBackup()
+        case .transferOwnership:
+            onTransferOwnership()
+        case .recoverOwnership:
+            onRecoverOwnership()
         case .remove:
             onRemove()
         case .update:
@@ -3017,6 +3038,10 @@ private struct ManageActionButton: View {
             return "Update"
         case .backup:
             return "Back up"
+        case .transferOwnership:
+            return "Transfer"
+        case .recoverOwnership:
+            return "Restore"
         case .remove:
             return "Remove"
         }

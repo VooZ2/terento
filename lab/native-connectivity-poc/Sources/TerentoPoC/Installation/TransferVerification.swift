@@ -1,7 +1,8 @@
 import Foundation
 
 enum TransferVerificationStatus: String, Equatable, Sendable {
-    case verified = "INSTALL_VERIFIED"
+    case verifiedSampledReadBack = "INSTALL_VERIFIED_SAMPLED_READBACK_V1"
+    case verifiedFullSHA256 = "INSTALL_VERIFIED_FULL_SHA256"
     case sizeMismatch = "INSTALL_FAILED_SIZE_MISMATCH"
     case hashMismatch = "INSTALL_FAILED_HASH_MISMATCH"
 }
@@ -23,7 +24,7 @@ struct TransferVerification: Equatable, Sendable {
     let matchedSampleCount: Int
 
     var isVerified: Bool {
-        status == .verified
+        status == .verifiedSampledReadBack || status == .verifiedFullSHA256
     }
 
     static func sampled(
@@ -36,7 +37,7 @@ struct TransferVerification: Equatable, Sendable {
     ) -> TransferVerification {
         let status: TransferVerificationStatus = sourceSizeBytes == remoteSizeBytes
             && sampleCount == matchedSampleCount
-            ? .verified
+            ? .verifiedSampledReadBack
             : sourceSizeBytes == remoteSizeBytes ? .hashMismatch : .sizeMismatch
 
         return TransferVerification(
@@ -66,7 +67,7 @@ struct TransferVerifier: Sendable {
         } else if sourceSHA256.caseInsensitiveCompare(remoteSHA256) != .orderedSame {
             status = .hashMismatch
         } else {
-            status = .verified
+            status = .verifiedFullSHA256
         }
 
         return TransferVerification(

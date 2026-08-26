@@ -11,7 +11,8 @@ struct GarminDeviceIdentityAdapter: Sendable {
             usbProductId: snapshot.productID,
             firmware: nonEmpty(snapshot.deviceVersion),
             storageCapacity: snapshot.totalCapacity,
-            freeSpace: snapshot.freeSpace
+            freeSpace: snapshot.freeSpace,
+            localHardwareIdentifier: snapshot.serialNumber
         )
     }
 

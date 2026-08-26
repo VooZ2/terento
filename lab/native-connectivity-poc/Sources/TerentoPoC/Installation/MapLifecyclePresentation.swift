@@ -5,6 +5,8 @@ import Foundation
 /// implementation of the lifecycle safety rules.
 enum MapLifecycleAction: String, CaseIterable, Equatable, Sendable {
     case backup
+    case transferOwnership
+    case recoverOwnership
     case remove
     case update
 }
@@ -22,7 +24,9 @@ struct MapLifecycleActionAvailability: Equatable, Sendable {
 /// Keeps the compact Manage Maps action group in a stable product order while
 /// the resolver remains the only authority for which actions are available.
 enum ManageMapRowActionPresentation: Sendable {
-    static let displayOrder: [MapLifecycleAction] = [.update, .backup, .remove]
+    static let displayOrder: [MapLifecycleAction] = [
+        .update, .backup, .transferOwnership, .recoverOwnership, .remove
+    ]
 
     static func actions(
         for availability: MapLifecycleActionAvailability
@@ -37,6 +41,7 @@ struct MapLifecyclePresentationResolver: Sendable {
         comparison: MapComparison?,
         hasIntegrityRecord: Bool,
         hasValidatedUpdateProfile: Bool,
+        hasStableWatchIdentity: Bool = false,
         failedInstallRecovery: Bool = false
     ) -> MapLifecycleActionAvailability {
         guard item.isInstalled else {
@@ -63,6 +68,17 @@ struct MapLifecyclePresentationResolver: Sendable {
             )
         }
 
+        if item.classification == .externalRecognized,
+           item.hasExactObjectIdentity,
+           hasValidatedUpdateProfile,
+           hasStableWatchIdentity {
+            return MapLifecycleActionAvailability(
+                actions: [.recoverOwnership],
+                status: "Recovery available",
+                reason: "Verify this existing Terento map once to restore management."
+            )
+        }
+
         guard item.classification == .terentoManaged else {
             return MapLifecycleActionAvailability(
                 actions: [],
@@ -80,6 +96,9 @@ struct MapLifecyclePresentationResolver: Sendable {
         }
 
         var actions: Set<MapLifecycleAction> = [.backup, .remove]
+        if hasStableWatchIdentity {
+            actions.insert(.transferOwnership)
+        }
         var status = comparison?.status.userLabel ?? "Installed"
         var reason: String?
 

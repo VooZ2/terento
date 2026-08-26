@@ -53,6 +53,8 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
     let compatibilityIdentity: String
     let variant: String?
     let caseSizeMm: Int?
+    let displayType: String?
+    let canonicalDeviceId: String?
     let family: String?
     let firmwareVersion: String?
     let usbVendorID: UInt16
@@ -91,6 +93,8 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         self.compatibilityIdentity = identity.compatibilityIdentity
         self.variant = identity.variant
         self.caseSizeMm = identity.caseSizeMm
+        self.displayType = identity.displayType
+        self.canonicalDeviceId = identity.reviewedCanonicalDeviceID
         self.family = identity.family
         self.firmwareVersion = identity.firmware
         self.usbVendorID = identity.usbVendorId
@@ -114,7 +118,7 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, id, timestamp, model, compatibilityIdentity, variant, caseSizeMm,
-             family, firmwareVersion, usbVendorID, usbProductID, transport, provider, region,
+             displayType, canonicalDeviceId, family, firmwareVersion, usbVendorID, usbProductID, transport, provider, region,
              mapRelease, terentoVersion, macOSVersion, phaseOutcome, automaticFinishingResult,
              reconnectVerified, mapVisibleAfterReconnect, errorCategory, deletionToken
     }
@@ -128,6 +132,8 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         compatibilityIdentity = try container.decodeIfPresent(String.self, forKey: .compatibilityIdentity) ?? model
         variant = try container.decodeIfPresent(String.self, forKey: .variant)
         caseSizeMm = try container.decodeIfPresent(Int.self, forKey: .caseSizeMm)
+        displayType = try container.decodeIfPresent(String.self, forKey: .displayType)
+        canonicalDeviceId = try container.decodeIfPresent(String.self, forKey: .canonicalDeviceId)
         family = try container.decodeIfPresent(String.self, forKey: .family)
         firmwareVersion = try container.decodeIfPresent(String.self, forKey: .firmwareVersion)
         usbVendorID = try container.decode(UInt16.self, forKey: .usbVendorID)

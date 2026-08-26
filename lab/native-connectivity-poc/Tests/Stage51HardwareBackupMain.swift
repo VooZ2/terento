@@ -55,6 +55,16 @@ struct Stage51HardwareBackupMain {
             )
         }
 
+        guard let installProfile = DeviceInstallProfileRegistry.local.profile(for: identity),
+              let operationProfile = DeviceMapOperationProfile(
+                identity: identity,
+                installProfile: installProfile
+              ) else {
+            throw Stage51HardwareTestFailure.message(
+                "The connected device could not be bound to the validated live operation profile. No map was read."
+            )
+        }
+
         let beforeInventory = try transport.readFileInventory()
         let manifest = try readManifest(for: identity)
         let candidates = manifest.entries.filter { entry in
@@ -125,7 +135,9 @@ struct Stage51HardwareBackupMain {
             expectedSHA256ByItemID: [deviceFile.itemID: entry.sha256]
         )
 
-        let result = ReadBackupAdapter(transport: MTPReadBackupAdapter()).backup(
+        let result = ReadBackupAdapter(
+            transport: MTPReadBackupAdapter(operationProfile: operationProfile)
+        ).backup(
             target: target,
             onProgress: { progress in
                 print(

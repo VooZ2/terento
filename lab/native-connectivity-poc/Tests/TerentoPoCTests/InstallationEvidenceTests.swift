@@ -83,6 +83,27 @@ struct InstallationEvidenceTests {
             finishingResult: .verified, terentoVersion: "test", macOSVersion: "test"
         )
         expect(broadRegionEvent.region == "BALEARICS", "evidence uses concrete package identity, not its broad catalog group")
+        let reviewedIdentity = DeviceIdentity(
+            manufacturer: "Garmin", model: "fenix 8 - 47mm", family: "fēnix",
+            variant: "47 mm, AMOLED", usbVendorId: 0x091e, usbProductId: 0x51b8,
+            firmware: "2244", storageCapacity: 32_000_000_000,
+            freeSpace: 10_000_000_000
+        )
+        let reviewedEvent = InstallationEvidenceEvent(
+            identity: reviewedIdentity, package: package, outcome: .succeeded,
+            finishingResult: .verified, terentoVersion: "test", macOSVersion: "test"
+        )
+        expect(
+            reviewedEvent.canonicalDeviceId == "garmin-fenix-8-47-amoled"
+                && reviewedEvent.displayType == "AMOLED",
+            "reviewed exact identity is sent with canonical device and display fields"
+        )
+        let reviewedPayload = String(decoding: try JSONEncoder().encode(reviewedEvent), as: UTF8.self)
+        expect(
+            reviewedPayload.contains("\"canonicalDeviceId\":\"garmin-fenix-8-47-amoled\"")
+                && reviewedPayload.contains("\"displayType\":\"AMOLED\""),
+            "schema v2 payload encodes canonical identity fields"
+        )
         let failed = makeEvent(outcome: .failed, finishing: .failed)
         let failedInserted = try store.append(failed, queueForUpload: false)
         expect(failedInserted, "failed started installation is stored")

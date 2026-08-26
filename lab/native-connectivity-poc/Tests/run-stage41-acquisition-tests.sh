@@ -23,6 +23,23 @@ swiftc \
 
 "$binary_path"
 
+bundled_catalog="$project_root/Sources/TerentoPoC/Resources/Maps/catalog.json"
+if ! jq -e '
+    .catalogVersion == 1
+    and ([.providers[].maps[]] | length) == 63
+    and ([.providers[].maps[].id] | unique | length) == 63
+    and all(.providers[].maps[];
+        (.installSizeBytes | type == "number")
+        and .installSizeBytes > 0
+        and (.sourceURL | startswith("https://download.freizeitkarte-osm.de/"))
+    )
+' "$bundled_catalog" >/dev/null; then
+    print -u2 "FAIL: bundled catalog is not the complete validated API-schema snapshot"
+    exit 1
+fi
+
+print "PASS: bundled fallback contains all 63 current packages with final IMG sizes"
+
 if grep -Eq 'LibMTPBridge|MTPTransport|SendObject|DeleteObject|MoveObject|RenameObject|Backup' \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapPackageAcquisition.swift"; then
     print -u2 "FAIL: acquisition layer contains a device transport or write dependency"

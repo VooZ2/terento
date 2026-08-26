@@ -12,11 +12,14 @@ struct MTPReadBackupAdapter: MapLifecycleReadTransport, Sendable {
     private static let errorCapacity = 2048
     private let operationGate: MTPOperationGate
     private let lifecycleLease: MTPOperationLease?
+    private let operationProfile: DeviceMapOperationProfile?
 
     init(
+        operationProfile: DeviceMapOperationProfile? = nil,
         operationGate: MTPOperationGate = .shared,
         lifecycleLease: MTPOperationLease? = nil
     ) {
+        self.operationProfile = operationProfile
         self.operationGate = operationGate
         self.lifecycleLease = lifecycleLease
     }
@@ -43,25 +46,36 @@ struct MTPReadBackupAdapter: MapLifecycleReadTransport, Sendable {
         to destinationURL: URL,
         onProgress: (@Sendable (TransferProgress) -> Void)?
     ) throws -> MapLifecycleBackupTransfer {
+        guard let operationProfile else {
+            throw MapLifecycleReadTransportError.readFailed(
+                "The connected Garmin does not have a live map operation profile."
+            )
+        }
         guard let itemID = file.itemID, itemID != 0 else {
             throw MapLifecycleReadTransportError.readFailed(
                 "The map does not have an exact device object identity."
             )
         }
 
+        var resolvedItemID: UInt32 = 0
         var sizeBytes: UInt64 = 0
         var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
-        let result = file.path.withCString { expectedPath in
-            destinationURL.path.withCString { localPath in
-                errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
-                    terento_mtp_read_existing_file_to_local(
-                        itemID,
-                        expectedPath,
-                        localPath,
-                        &sizeBytes,
-                        errorPointer.baseAddress,
-                        errorPointer.count
-                    )
+        let result = withNativeMapOperationProfile(operationProfile) { nativeProfile in
+            file.path.withCString { expectedPath in
+                destinationURL.path.withCString { localPath in
+                    errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
+                        terento_mtp_read_existing_file_to_local(
+                            nativeProfile,
+                            itemID,
+                            expectedPath,
+                            file.sizeBytes,
+                            localPath,
+                            &resolvedItemID,
+                            &sizeBytes,
+                            errorPointer.baseAddress,
+                            errorPointer.count
+                        )
+                    }
                 }
             }
         }
@@ -75,8 +89,14 @@ struct MTPReadBackupAdapter: MapLifecycleReadTransport, Sendable {
         }
 
         onProgress?(TransferProgress(bytesTransferred: sizeBytes, totalBytes: sizeBytes))
+        guard resolvedItemID != 0 else {
+            throw MapLifecycleReadTransportError.readFailed(
+                "The map did not return a valid live object identity."
+            )
+        }
+
         return MapLifecycleBackupTransfer(
-            itemID: itemID,
+            itemID: resolvedItemID,
             sourcePath: file.path,
             reportedSizeBytes: sizeBytes
         )
