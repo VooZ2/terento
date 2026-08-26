@@ -13,7 +13,7 @@ ASSET_SOURCE_TYPES = frozenset(
 OFFICIAL_PRODUCT_MEDIA = "OFFICIAL_PRODUCT_MEDIA"
 TERENTO_RENDER = "TERENTO_RENDER"
 GENERIC_FALLBACK = "GENERIC_FALLBACK"
-GENERIC_FALLBACK_IMAGE_URL = "https://terento.app/assets/generic-garmin-watch.png"
+GENERIC_FALLBACK_IMAGE_URL = "https://terento.app/assets/generic-garmin-watch.png?v=20260826-1"
 
 LEGAL_METADATA = {
     "manufacturerNotice": True,

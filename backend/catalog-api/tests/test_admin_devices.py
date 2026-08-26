@@ -234,7 +234,8 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertEqual(image["origin"], "fallback")
         self.assertEqual(image["status"], "FALLBACK")
         self.assertEqual(image["source"]["type"], "GENERIC_FALLBACK")
-        self.assertTrue(image["url"].endswith("/assets/generic-garmin-watch.png"))
+        self.assertTrue(image["url"].startswith("https://terento.app/assets/generic-garmin-watch.png?"))
+        self.assertIn("v=20260826-1", image["url"])
 
     def test_historical_sync_without_counts_is_not_presented_as_zero(self):
         payload = _admin_device_payload(
