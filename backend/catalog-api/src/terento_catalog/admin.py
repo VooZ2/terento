@@ -90,8 +90,7 @@ def format_timestamp(value: Any) -> str:
         return "—"
     parsed = _parse_timestamp(value)
     if parsed is not None:
-        months = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-        return f"{parsed.day:02d} {months[parsed.month - 1]} {parsed.year}, {parsed.hour:02d}:{parsed.minute:02d} UTC"
+        return parsed.strftime("%Y-%m-%d %H:%M")
     return str(value)
 
 
@@ -583,39 +582,37 @@ def dashboard_page(
 ) -> bytes:
     attempts = sum(int(row.get("attempted_install_count") or 0) for row in rows)
     successes = sum(int(row.get("successful_install_count") or 0) for row in rows)
-    failures = sum(int(row.get("failed_install_count") or 0) for row in rows)
     latest = _latest_data_timestamp(rows)
     status_values = [status.value for status in CANONICAL_STATUS_ORDER]
     status_options = "".join(
         f"<option value='{status.lower()}'>{status.title()}</option>"
         for status in status_values
     )
-    cards = "".join(
-        f"<article class='metric'><span>{label}</span><strong>{value}</strong></article>"
-        for label, value in (("Models", len(rows)), ("Install attempts", attempts), ("Successful", successes), ("Failed", failures))
-    )
     diagnostic_summary = _diagnostic_summary_by_identity(operations or [])
+    errors = sum(int(summary.get("errors") or 0) for summary in diagnostic_summary.values())
     table_rows = "".join(
         _statistics_row(row, diagnostic_summary.get(_identity_group_key(row), {}))
         for row in rows
     )
     empty = "<p class='empty'>No installation evidence yet.</p>" if not rows else ""
-    latest_copy = f"Updated {_timestamp_markup(latest)}" if latest else "No evidence received yet"
+    latest_copy = f"<strong>Updated</strong> {_timestamp_markup(latest)}" if latest else "No evidence received yet"
     content = f"""
       {_admin_header(user, csrf_token)}
       <main class="dashboard" id="main-content">
-        <div class="heading-row"><div><p class="eyebrow">Evidence</p><h1>Installations</h1><p class="lede">Installation activity and compatibility evidence from Terento users.</p></div><p class="updated-at">{latest_copy}</p></div>
-        <section class="metrics" aria-label="Evidence summary">{cards}</section>{empty}
-        <section class="evidence-section" aria-labelledby="evidence-title">
-          <div class="section-heading"><div><p class="section-kicker">Evidence</p><h2 id="evidence-title">Installations</h2></div><p class="table-help">Times follow the selected time zone</p></div>
-          <form class="filter-bar" id="evidence-filters" role="search">
+        <div class="heading-row"><div><p class="eyebrow">Evidence</p><h1>Installations</h1><p class="lede">Installation activity and compatibility evidence from Terento users.</p></div></div>
+        <section class="admin-summary-strip installation-summary-strip" aria-label="Evidence summary and latest update">
+          <p class="admin-summary-metrics"><strong>{len(rows)} {'model' if len(rows) == 1 else 'models'}</strong><span> · {attempts} {'attempt' if attempts == 1 else 'attempts'} · {successes} successful · {errors} {'error' if errors == 1 else 'errors'}</span></p>
+          <p class="admin-summary-context">{latest_copy}</p>
+        </section>{empty}
+        <section class="evidence-section" aria-label="Installation evidence table">
+          <form class="filter-bar admin-filter-bar" id="evidence-filters" role="search">
             <label class="filter-search"> <span class="sr-only">Search models</span><input id="evidence-search" type="search" placeholder="Search models" autocomplete="off"></label>
             <label><span class="sr-only">Filter by status</span><select id="evidence-status"><option value="all">All statuses</option>{status_options}</select></label>
             <label><span class="sr-only">Sort models</span><select id="evidence-sort"><option value="attempts">Most attempts</option><option value="errors">Most errors</option><option value="latest">Latest activity</option><option value="model">Model name</option></select></label>
+            <p class="results-count" id="results-count" aria-live="polite">{len(rows)} {"model" if len(rows) == 1 else "models"}</p>
           </form>
-          <p class="results-count" id="results-count" aria-live="polite">{len(rows)} {"model" if len(rows) == 1 else "models"}</p>
-          <div class="table-wrap evidence-table-wrap"><table><caption class="sr-only">Installations by exact device identity</caption><thead><tr><th scope="col">Model</th><th scope="col">Variant</th><th scope="col">Attempts</th><th scope="col">Success</th><th scope="col">Errors</th><th scope="col">Status</th><th scope="col">Last success</th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
-          <p class="table-help evidence-table-note">Errors are unresolved diagnostic operations. Identity pending is shown separately and does not change the evidence status. Resolved historical diagnostics remain available from the model detail.</p>
+          <div class="table-wrap evidence-table-wrap"><table class="admin-table"><caption class="sr-only">Installations by exact device identity</caption><thead><tr><th scope="col">Model</th><th scope="col">Variant</th><th scope="col">Attempts</th><th scope="col">Success</th><th scope="col">Errors</th><th scope="col">Status</th><th scope="col">Last success</th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
+          <p class="table-help evidence-table-note">Times follow the selected time zone. Errors are unresolved diagnostic operations. Identity pending is shown separately and does not change the evidence status. Resolved historical diagnostics remain available from the model detail.</p>
         </section>
       </main>
       <script>{_dashboard_script()}</script>
@@ -1279,14 +1276,14 @@ def devices_page(
       {_admin_header(user, csrf_token, active="devices")}
       <main class="dashboard devices-page" id="main-content">
         <div class="heading-row"><div><p class="eyebrow">Catalog</p><h1>Devices</h1><p class="lede">Garmin device catalog, map capability, authorization, and compatibility evidence.</p></div></div>
-        <section class="device-summary-strip" aria-label="Device catalog summary and sync">
+        <section class="admin-summary-strip device-summary-strip" aria-label="Device catalog summary and sync">
           <p class="device-summary-metrics"><strong>{summary['models']} models</strong><span> · {summary['mapCapable']} map-capable · {summary['approved']} approved · {summary['successful']} successful installs</span></p>
           <p class="device-summary-sync"><strong>Last sync</strong> {completed}<span> · {html.escape(sync_line)}</span>{f"<span> · {html.escape(str(sync_data['status'] or '').title())}</span>" if sync_data['status'] else ''}</p>
         </section>
         <section class="evidence-section" aria-labelledby="device-list-title">
           <div class="section-heading"><div><p class="section-kicker">Inventory</p><h2 id="device-list-title">Known models</h2></div><p class="table-help">Times follow the selected time zone</p></div>
           <p class="sr-only">Compatibility status and installation counts remain backend-derived.</p>
-          <form class="filter-bar device-filter-bar" id="device-filters" role="search">
+          <form class="filter-bar admin-filter-bar device-filter-bar" id="device-filters" role="search">
             <label class="filter-search"><span class="sr-only">Search devices</span><input id="device-search" type="search" placeholder="Search devices" autocomplete="off"></label>
             <label><span class="sr-only">Filter by family</span><select id="device-family"><option value="all">All families</option>{family_options}</select></label>
             <label><span class="sr-only">Filter by map capability</span><select id="device-map"><option value="all">All maps</option><option value="yes">Maps: Yes</option><option value="no">Maps: No</option><option value="unknown">Maps: Unknown</option></select></label>
@@ -1295,7 +1292,7 @@ def devices_page(
             <p class="results-count" id="device-results-count" aria-live="polite">{len(payload['devices'])} {'model' if len(payload['devices']) == 1 else 'models'}</p>
           </form>
           {empty}
-          <div class="table-wrap device-table-wrap"><table><caption class="sr-only">Device catalog and Terento installation evidence</caption><thead><tr><th scope="col" aria-sort="ascending"><button type="button" class="device-sort-button" data-device-sort="model" aria-label="Model">Model <span aria-hidden="true">↑</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="variant" aria-label="Variant">Variant <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="maps" aria-label="Map capability" title="Map capability">Maps <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="authorization" aria-label="Installation authorization" title="Installation authorization">Authorization <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="status" aria-label="Compatibility status" title="Compatibility status">Status <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="attempts" aria-label="Install attempts" title="Install attempts">Attempts <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="success" aria-label="Successful installations" title="Successful installations">Success <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="evidence" aria-label="Last evidence" title="Last evidence">Last evidence <span aria-hidden="true">↕</span></button></th></tr></thead><tbody id="device-rows">{rows_html}</tbody></table></div>
+          <div class="table-wrap device-table-wrap"><table class="admin-table"><caption class="sr-only">Device catalog and Terento installation evidence</caption><thead><tr><th scope="col" aria-sort="ascending"><button type="button" class="device-sort-button" data-device-sort="model" aria-label="Model">Model <span aria-hidden="true">↑</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="variant" aria-label="Variant">Variant <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="maps" aria-label="Map capability" title="Map capability">Maps <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="authorization" aria-label="Installation authorization" title="Installation authorization">Authorization <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="status" aria-label="Compatibility status" title="Compatibility status">Status <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="attempts" aria-label="Install attempts" title="Install attempts">Attempts <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="success" aria-label="Successful installations" title="Successful installations">Success <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="evidence" aria-label="Last evidence" title="Last evidence">Last evidence <span aria-hidden="true">↕</span></button></th></tr></thead><tbody id="device-rows">{rows_html}</tbody></table></div>
           <div class="device-pagination" id="device-pagination" hidden><button type="button" id="device-previous">Previous</button><span id="device-page-status"></span><button type="button" id="device-next">Next</button></div>
         </section>
       </main>
@@ -1334,7 +1331,7 @@ def campaign_links_page(user: dict[str, Any], csrf_token: str) -> bytes:
         <div class="heading-row"><div><p class="eyebrow">Campaigns</p><h1>Campaign links</h1><p class="lede">Create consistent tracking links for Terento campaigns.</p></div></div>
         <section class="campaign-card" aria-labelledby="campaign-builder-title">
           <div class="section-heading"><div><p class="section-kicker">Attribution</p><h2 id="campaign-builder-title">Campaign link builder</h2></div><p class="table-help">Links are generated locally in this browser.</p></div>
-          <div class="campaign-preset-row">
+          <div class="filter-bar admin-filter-bar campaign-preset-row">
             <label class="campaign-label" for="campaign-preset">Preset { _campaign_info("campaign-preset", "Preset", "<p>Choose a common campaign setup, then edit any field before copying.</p><p><strong>Recommendation:</strong> use the Reddit preset for a community post.</p>") }</label>
             <select id="campaign-preset"><option value="reddit-community" selected>Reddit community post</option><option value="">Custom</option></select>
           </div>
@@ -1476,9 +1473,7 @@ def _devices_script() -> str:
         .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
       const display = (value) => value === null || value === undefined || value === '' ? '—' : value;
-      const utcDate = (value) => value ? new Intl.DateTimeFormat('en-GB', {
-        day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC', timeZoneName: 'short'
-      }).format(new Date(value)) : '—';
+      const utcDate = (value) => value ? new Date(value).toISOString().slice(0, 16).replace('T', ' ') : '—';
       const date = (value) => value ? `<time class="admin-timestamp" data-admin-timestamp="${escapeHtml(value)}">${escapeHtml(window.TerentoAdminTime ? window.TerentoAdminTime.format(value) : utcDate(value))}</time>` : '—';
       const mapValue = (device) => device.mapCapable === true ? 'yes' : device.mapCapable === false ? 'no' : 'unknown';
       const authorizationLabel = (value) => ({APPROVED: 'Approved', BLOCKED: 'Blocked', PENDING: 'Pending'})[value] || 'Pending';
@@ -2036,12 +2031,18 @@ def _admin_timezone_script() -> str:
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
         try {
-          return new Intl.DateTimeFormat('en-GB', {
-            day: '2-digit', month: 'short', year: 'numeric',
-            hour: '2-digit', minute: '2-digit', timeZone: activeTimeZone(), timeZoneName: 'short'
-          }).format(date);
+          const parts = Object.fromEntries(
+            new Intl.DateTimeFormat('en-CA', {
+              year: 'numeric', month: '2-digit', day: '2-digit',
+              hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+              timeZone: activeTimeZone()
+            }).formatToParts(date)
+              .filter((part) => part.type !== 'literal')
+              .map((part) => [part.type, part.value])
+          );
+          return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
         } catch (_) {
-          return date.toISOString();
+          return date.toISOString().slice(0, 16).replace('T', ' ');
         }
       };
       const render = () => {
@@ -2113,25 +2114,21 @@ h1,h2{margin:0;font-family:"Instrument Sans","Helvetica Neue",Arial,sans-serif;l
 h1{font-size:clamp(32px,3.5vw,44px);line-height:1.06}
 h2{font-size:22px;line-height:1.15}
 .lede{max-width:680px;margin:12px 0 0;color:var(--secondary);font-size:16px}
-.updated-at{margin:0 0 5px;color:var(--secondary);font-size:13px;white-space:nowrap}
-.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:34px}
-.metric{min-height:104px;padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:14px}
-.metric span{display:block;color:var(--secondary);font-size:13px;font-weight:600}
-.metric strong{display:block;margin-top:5px;font-family:"Instrument Sans","Helvetica Neue",Arial,sans-serif;font-size:30px;line-height:1.1;letter-spacing:-.025em}
 .evidence-section{margin-top:2px}
 .section-heading{display:flex;align-items:end;justify-content:space-between;gap:20px;margin-bottom:14px}
 .section-heading .section-kicker{margin-bottom:5px}
 .table-help,.results-count{margin:0;color:var(--secondary);font-size:12px}
-.filter-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 9px;padding:8px;background:var(--surface-muted);border:1px solid var(--border);border-radius:12px}
-.filter-bar label{margin:0}
-.filter-bar input,.filter-bar select{min-height:var(--admin-control-height);padding:8px var(--admin-control-padding-x)}
-.filter-bar input{width:min(360px,42vw)}
+.filter-bar{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;margin:0 0 10px;padding:8px;background:var(--surface-muted);border:1px solid var(--border);border-radius:12px}
+.filter-bar label{display:flex;align-items:stretch;margin:0}
+.filter-bar input,.filter-bar select{height:var(--admin-control-height);min-height:var(--admin-control-height);padding:8px var(--admin-control-padding-x);border-radius:var(--admin-control-radius);font:600 var(--admin-control-font-size)/1.2 "Instrument Sans","Helvetica Neue",Arial,sans-serif}
+.filter-bar .filter-search{flex:1 1 310px}
+.filter-bar input{width:100%}
 .filter-bar select{min-width:150px}
-.filter-bar input::placeholder{color:var(--secondary)}
-.results-count{margin:0 0 8px 3px}
+.filter-bar input::placeholder{color:var(--admin-placeholder);font-weight:500}
+.filter-bar .results-count{align-self:center;margin:0 4px 0 auto;white-space:nowrap}
 .table-wrap{max-height:none;overflow-x:auto;overflow-y:visible;background:var(--surface);border:1px solid var(--border);border-radius:14px}
 table{border-collapse:collapse;width:100%;min-width:1060px}
-th,td{padding:12px 14px;border-bottom:1px solid color-mix(in srgb,var(--border) 78%,transparent);text-align:left;white-space:nowrap;vertical-align:middle}
+th,td{padding:10px 14px;border-bottom:1px solid color-mix(in srgb,var(--border) 78%,transparent);text-align:left;white-space:nowrap;vertical-align:middle}
 thead th{background:var(--surface);box-shadow:0 1px 0 var(--border);color:var(--secondary);font-size:11px;font-weight:750;letter-spacing:.07em;text-transform:uppercase}
 tbody tr:last-child td{border-bottom:0}
 tbody tr[hidden]{display:none}
@@ -2171,8 +2168,10 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .account{margin-top:48px}
 .campaign-card{padding:24px;background:var(--surface);border:1px solid var(--border);border-radius:14px}
 .campaign-card>.section-heading{margin-bottom:22px}
-.campaign-preset-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,360px);align-items:center;gap:16px;margin-bottom:20px;padding:13px 14px;background:var(--surface-muted);border:1px solid var(--border);border-radius:10px}
-.campaign-preset-row select,.campaign-field input,.campaign-field select{width:100%;min-height:var(--admin-control-height);padding:8px var(--admin-control-padding-x);border-radius:var(--admin-control-radius)}
+.campaign-preset-row{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding:8px;background:var(--surface-muted);border:1px solid var(--border);border-radius:12px}
+.campaign-preset-row .campaign-label{margin:0;white-space:nowrap}
+.campaign-preset-row select{width:min(360px,100%);margin-left:auto}
+.campaign-field input,.campaign-field select{width:100%;min-height:var(--admin-control-height);padding:8px var(--admin-control-padding-x);border-radius:var(--admin-control-radius)}
 .campaign-form{margin:0}
 .campaign-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 16px}
 .campaign-field{min-width:0}
@@ -2205,26 +2204,22 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .preview-grid div{padding:10px 12px;background:var(--surface-muted);border-radius:8px}
 .preview-grid dt{color:var(--secondary);font-size:11px;font-weight:650}
 .preview-grid dd{margin:2px 0 0;overflow-wrap:anywhere;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
-.device-summary-strip{display:flex;align-items:center;justify-content:space-between;gap:24px;margin:0 0 28px;padding:13px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;color:var(--secondary);font-size:13px}
-.device-summary-strip p{margin:0;min-width:0}
-.device-summary-metrics strong,.device-summary-sync strong{color:var(--graphite);font-weight:750}
-.device-summary-sync{text-align:right;white-space:nowrap}
-.device-filter-bar{position:sticky;top:calc(var(--admin-topbar-height) + 8px);z-index:20;align-items:stretch;margin-bottom:10px;background:var(--off-white);box-shadow:0 2px 0 rgba(34,42,43,.05)}
-.device-filter-bar label{display:flex;align-items:stretch}
-.device-filter-bar input,.device-filter-bar select{height:var(--admin-control-height);min-height:var(--admin-control-height);border-radius:var(--admin-control-radius);font:600 var(--admin-control-font-size)/1.2 "Instrument Sans","Helvetica Neue",Arial,sans-serif}
-.device-filter-bar .filter-search{flex:1 1 310px}
-.device-filter-bar input{width:100%}
-.device-filter-bar .results-count{align-self:center;margin:0 4px 0 auto;white-space:nowrap}
+.admin-summary-strip{display:flex;align-items:center;justify-content:space-between;gap:24px;margin:0 0 28px;padding:13px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;color:var(--secondary);font-size:13px}
+.admin-summary-strip p{margin:0;min-width:0}
+.admin-summary-metrics strong,.admin-summary-context strong,.device-summary-metrics strong,.device-summary-sync strong{color:var(--graphite);font-weight:750}
+.admin-summary-context,.device-summary-sync{text-align:right;white-space:nowrap}
+.device-filter-bar{position:sticky;top:calc(var(--admin-topbar-height) + 8px);z-index:20;align-items:stretch;margin-bottom:10px;background:var(--surface-muted);box-shadow:0 2px 0 rgba(34,42,43,.05)}
 .device-table-wrap{overflow:visible}
 .device-table-wrap table{min-width:0;table-layout:fixed}
 .device-table-wrap th:nth-child(1){width:20%}.device-table-wrap th:nth-child(2){width:18%}.device-table-wrap th:nth-child(3){width:9%}.device-table-wrap th:nth-child(4){width:14%}.device-table-wrap th:nth-child(5){width:11%}.device-table-wrap th:nth-child(6){width:9%}.device-table-wrap th:nth-child(7){width:8%}.device-table-wrap th:nth-child(8){width:11%}
 .device-table-wrap thead{position:static}
 .device-table-wrap thead th{position:sticky;top:calc(var(--admin-topbar-height) + var(--device-filter-height, 54px) + 18px);z-index:10}
 .device-table-wrap th,.device-table-wrap td{white-space:normal;overflow-wrap:anywhere}
-.device-sort-button{display:inline-flex;align-items:center;gap:5px;width:auto;min-height:28px;margin:-6px;padding:6px;border:0;background:transparent;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer}
+.device-sort-button{display:inline-flex;align-items:center;gap:5px;width:auto;min-height:0;margin:0;padding:0;border:0;background:transparent;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;white-space:nowrap;cursor:pointer}
 .device-sort-button:hover{color:var(--graphite)}.device-sort-button:focus-visible{outline:2px solid var(--interactive);outline-offset:1px}
 .device-sort-button span{min-width:10px;color:var(--interactive);font-size:12px}
-.device-table-wrap td:nth-child(3),.device-table-wrap td:nth-child(4),.device-table-wrap td:nth-child(5),.device-table-wrap td:nth-child(6),.device-table-wrap td:nth-child(7){white-space:nowrap}
+.device-table-wrap td:nth-child(3),.device-table-wrap td:nth-child(4),.device-table-wrap td:nth-child(5),.device-table-wrap td:nth-child(6),.device-table-wrap td:nth-child(7),.device-table-wrap td:nth-child(8){white-space:nowrap}
+.device-table-wrap tbody td{padding-top:6px;padding-bottom:6px}
 .device-table-wrap tbody tr{cursor:pointer}
 .device-table-wrap tbody tr:hover{background:color-mix(in srgb,var(--surface-muted) 52%,white)}
 .device-table-wrap tbody tr:focus-visible{outline:3px solid color-mix(in srgb,var(--sky) 58%,white);outline-offset:-3px}
@@ -2290,10 +2285,10 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .admin-action-dialog textarea{resize:vertical}
 .dialog-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-@media(max-width:800px){.admin-topbar-inner,.dashboard{width:min(calc(100% - 32px),var(--max-width))}.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}.heading-row{align-items:flex-start;flex-direction:column;gap:12px}.updated-at{margin:0}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.diagnostic-model-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-bar input{width:min(100%,360px)}.filter-bar{align-items:stretch}.filter-bar label,.filter-bar select,.filter-bar input{flex:1 1 170px}.public-status{align-items:flex-start;flex-direction:column}.public-status-value{width:100%;justify-content:space-between;flex-wrap:wrap}.status-guide-grid{grid-template-columns:1fr}.campaign-fields{grid-template-columns:1fr}.campaign-field-wide{grid-column:auto}.attribution-preview{grid-template-columns:1fr}.sync-summary{white-space:normal!important}.device-detail-grid{grid-template-columns:1fr}.device-support-review form{grid-template-columns:1fr}.diagnostic-operation-heading{flex-direction:column}.diagnostic-actions{justify-content:flex-start}.diagnostic-detail-summary{grid-template-columns:1fr}.diagnostic-actions-grid{grid-template-columns:1fr}.github-review{grid-column:auto}}
+@media(max-width:800px){.admin-topbar-inner,.dashboard{width:min(calc(100% - 32px),var(--max-width))}.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}.heading-row{align-items:flex-start;flex-direction:column;gap:12px}.diagnostic-model-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-bar{align-items:stretch}.filter-bar label,.filter-bar select,.filter-bar input{flex:1 1 170px}.filter-bar .results-count{width:100%;margin:2px 4px 0}.public-status{align-items:flex-start;flex-direction:column}.public-status-value{width:100%;justify-content:space-between;flex-wrap:wrap}.status-guide-grid{grid-template-columns:1fr}.campaign-fields{grid-template-columns:1fr}.campaign-field-wide{grid-column:auto}.attribution-preview{grid-template-columns:1fr}.sync-summary{white-space:normal!important}.device-detail-grid{grid-template-columns:1fr}.device-support-review form{grid-template-columns:1fr}.diagnostic-operation-heading{flex-direction:column}.diagnostic-actions{justify-content:flex-start}.diagnostic-detail-summary{grid-template-columns:1fr}.diagnostic-actions-grid{grid-template-columns:1fr}.github-review{grid-column:auto}}
 @media(max-width:980px){.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}}
-@media(max-width:560px){.admin-topbar-inner{align-items:flex-start;flex-direction:column;padding:14px 0}.admin-header-left,.admin-section-nav,.admin-nav{width:100%}.admin-section-nav{order:0;overflow:auto;justify-content:flex-start}.admin-section-nav a{white-space:nowrap}.admin-nav{justify-content:space-between;gap:10px;flex-wrap:wrap}.timezone-control{width:100%;justify-content:space-between}.timezone-control select{width:auto;flex:1}.dashboard{padding-top:28px}.metrics{gap:8px}.metric{min-height:92px;padding:14px}.metric strong{font-size:26px}.diagnostic-model-metrics{gap:8px}.diagnostic-model-metrics article{padding:12px}.auth-card{width:calc(100% - 32px);padding:24px}.section-heading{align-items:flex-start;flex-direction:column;gap:4px}.campaign-card{padding:16px}.campaign-preset-row{grid-template-columns:1fr;gap:8px}.generated-url-row{grid-template-columns:1fr}.copy-button{width:100%}.copy-status{min-height:18px}.device-dialog-inner,.diagnostic-detail-inner{padding:18px}.device-detail-grid dl div,.device-detail-secondary dl div{grid-template-columns:1fr;gap:2px}.device-detail-grid dd,.device-detail-secondary dd{text-align:left}.diagnostic-technical-details dl{grid-template-columns:1fr}.diagnostic-summary-action{float:none;display:block;margin-top:6px}.github-link-form{grid-template-columns:1fr}.github-link-form button{width:100%}}
-@media(max-width:800px){.device-summary-strip{align-items:flex-start;flex-direction:column;gap:6px}.device-summary-sync{text-align:left;white-space:normal}.device-filter-bar .results-count{width:100%;margin:2px 4px 0}.device-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.admin-topbar-inner{align-items:flex-start;flex-direction:column;padding:14px 0}.admin-header-left,.admin-section-nav,.admin-nav{width:100%}.admin-section-nav{order:0;overflow:auto;justify-content:flex-start}.admin-section-nav a{white-space:nowrap}.admin-nav{justify-content:space-between;gap:10px;flex-wrap:wrap}.timezone-control{width:100%;justify-content:space-between}.timezone-control select{width:auto;flex:1}.dashboard{padding-top:28px}.diagnostic-model-metrics{gap:8px}.diagnostic-model-metrics article{padding:12px}.auth-card{width:calc(100% - 32px);padding:24px}.section-heading{align-items:flex-start;flex-direction:column;gap:4px}.campaign-card{padding:16px}.campaign-preset-row{align-items:stretch;flex-direction:column;gap:8px}.campaign-preset-row .campaign-label,.campaign-preset-row select{flex:none}.campaign-preset-row select{width:100%;height:var(--admin-control-height);margin-left:0}.generated-url-row{grid-template-columns:1fr}.copy-button{width:100%}.copy-status{min-height:18px}.device-dialog-inner,.diagnostic-detail-inner{padding:18px}.device-detail-grid dl div,.device-detail-secondary dl div{grid-template-columns:1fr;gap:2px}.device-detail-grid dd,.device-detail-secondary dd{text-align:left}.diagnostic-technical-details dl{grid-template-columns:1fr}.diagnostic-summary-action{float:none;display:block;margin-top:6px}.github-link-form{grid-template-columns:1fr}.github-link-form button{width:100%}}
+@media(max-width:800px){.admin-summary-strip{align-items:flex-start;flex-direction:column;gap:6px}.admin-summary-context,.device-summary-sync{text-align:left;white-space:normal}.device-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.device-detail-grid{grid-template-columns:1fr}.device-catalog-details dl div{grid-template-columns:1fr;gap:2px}.device-catalog-details dd{text-align:left}.device-detail-grid dd{text-align:left}.device-filter-bar .results-count{margin-left:0}.device-dialog-inner{padding:18px}}
 @media(max-width:900px){.device-table-wrap{overflow-x:auto;overflow-y:visible}.device-table-wrap table{min-width:1050px}.device-table-wrap thead th{top:0}}
 @media(max-height:760px){.device-dialog-inner{max-height:calc(100vh - 32px);overflow:auto}.device-dialog-header{position:sticky;top:-1px;z-index:2;padding-bottom:10px;background:var(--surface)}}

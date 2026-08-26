@@ -284,7 +284,7 @@ class AdminDevicesTests(unittest.TestCase):
             "Maps: Unknown", "Approved", "Blocked", "Pending", "Last evidence",
             "device-dialog", "admin-timezone",
             "Automatic (browser)", "data-admin-timestamp", "TerentoAdminTime",
-            "selected time zone", "device-summary-strip", "position:sticky",
+            "selected time zone", "admin-summary-strip device-summary-strip", "position:sticky",
             "--admin-control-height", "--admin-focus-ring", "--admin-placeholder",
             "table-layout:fixed", "overflow-y:visible", "Catalog details", "data-authorization-change",
             "data-authorization-form hidden", "data-authorization-cancel", "disabled>Save</button>",
@@ -314,6 +314,13 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertNotIn("Evidence status", body)
         self.assertNotIn("id=\"device-sort\"", body)
         self.assertIn("statusOrder = {unavailable: 0, TESTING: 1, TESTED: 2, SUPPORTED: 3, VERIFIED: 4}", body)
+        self.assertIn('class="filter-bar admin-filter-bar device-filter-bar"', body)
+        self.assertIn('class="admin-table"', body)
+        self.assertIn("formatToParts", body)
+        self.assertIn("${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}", body)
+        self.assertNotIn("timeZoneName: 'short'", body)
+        self.assertIn("white-space:nowrap;cursor:pointer", body)
+        self.assertIn(".device-table-wrap tbody td{padding-top:6px;padding-bottom:6px}", body)
         self.assertIn("[device.id, device.model", body)
         self.assertIn("let sortKey = 'model'", body)
         self.assertIn("let sortDirection = 'ascending'", body)

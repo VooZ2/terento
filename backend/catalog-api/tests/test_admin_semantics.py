@@ -347,7 +347,11 @@ class AdminSemanticsTests(unittest.TestCase):
                 "diagnostic_status": "RESOLVED",
             }],
         ).decode()
-        self.assertEqual(body.count("class='metric'"), 4)
+        self.assertNotIn("class='metric'", body)
+        self.assertIn('class="admin-summary-strip installation-summary-strip"', body)
+        self.assertIn("2 attempts · 1 successful · 1 error", body)
+        self.assertNotIn('id="evidence-title"', body)
+        self.assertNotIn("<h2 id=\"evidence-title\">Installations</h2>", body)
         self.assertIn("1 error", body)
         self.assertIn("/admin/diagnostics?identity=f%C4%93nix+8+%C2%B7+51+mm%2C+AMOLED&amp;state=open", body)
         self.assertIn("data-diagnostics-url='/admin/diagnostics?identity=", body)

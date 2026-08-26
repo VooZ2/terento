@@ -90,6 +90,10 @@ class CampaignLinkContractTests(unittest.TestCase):
         ):
             self.assertIn(text, body)
         self.assertIn("grid-template-columns:repeat(2", body)
+        self.assertIn('class="filter-bar admin-filter-bar campaign-preset-row"', body)
+        self.assertIn(".campaign-preset-row{display:flex", body)
+        self.assertIn("height:var(--admin-control-height)", body)
+        self.assertIn(".campaign-preset-row .campaign-label,.campaign-preset-row select{flex:none}", body)
         self.assertNotIn(">Generate<", body)
 
 

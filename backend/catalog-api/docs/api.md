@@ -70,7 +70,7 @@ by the service health cycle.
 
 Returns an aggregate HTML operator dashboard after database-backed login. The
 dashboard uses the Terento branded English admin shell, exact model/variant
-columns, compact evidence metrics, and client-side search/status/sort controls;
+columns, a compact shared summary strip, and client-side search/status/sort controls;
 these controls do not change backend aggregation. The first administrator can
 be created only once through `/admin/setup` with the environment-provided
 bootstrap secret. Passwords use salted PBKDF2-SHA256;
