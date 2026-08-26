@@ -14,6 +14,176 @@ struct MapRegion: Codable, Equatable, Identifiable, Sendable {
     let country: String?
 }
 
+/// Provider-independent geographic identity used only for product policy and
+/// presentation. Provider catalog values remain unchanged and continue to be
+/// the source of package provenance and map matching.
+struct CanonicalMapRegionIdentity: Equatable, Sendable {
+    let countryCode: String
+    let locality: String?
+
+    init(countryCode: String, locality: String? = nil) {
+        self.countryCode = countryCode
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .uppercased()
+        let normalizedLocality = locality?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .uppercased()
+        self.locality = normalizedLocality?.isEmpty == false ? normalizedLocality : nil
+    }
+}
+
+enum MapAcquisitionAvailability: String, Equatable, Hashable, Sendable {
+    case available
+    case withheldRussia
+    case withheldCrimea
+
+    var shortStatus: String? {
+        switch self {
+        case .available:
+            return nil
+        case .withheldRussia, .withheldCrimea:
+            return "Downloads are not offered for this region under Terento's current policy."
+        }
+    }
+
+    var detailedExplanation: String? {
+        switch self {
+        case .available:
+            return nil
+        case .withheldRussia:
+            return "Terento does not offer map downloads for russia while its war of aggression against Ukraine continues."
+        case .withheldCrimea:
+            return "Crimea is part of Ukraine and is temporarily occupied by russia."
+        }
+    }
+}
+
+enum MapAcquisitionPolicyError: Error, Equatable, Sendable {
+    case withheldRussia
+    case withheldCrimea
+
+    var availability: MapAcquisitionAvailability {
+        switch self {
+        case .withheldRussia: return .withheldRussia
+        case .withheldCrimea: return .withheldCrimea
+        }
+    }
+}
+
+/// This is the only layer that interprets Freizeitkarte-specific package
+/// tokens. Explicit Crimea aliases are resolved before the generic RUS*
+/// family so Crimea cannot fall through to the russia policy result.
+struct FreizeitkarteMapRegionIdentityMapper: Sendable {
+    func map(package: MapPackage) -> CanonicalMapRegionIdentity? {
+        guard MapIdentity.normalizeProvider(package.providerId) == "freizeitkarte" else {
+            return nil
+        }
+
+        let tokens = [package.identifier, package.regionId, package.id]
+            .compactMap { value -> String? in
+                guard let value else { return nil }
+                let normalized = normalize(value)
+                return normalized.isEmpty ? nil : normalized
+            }
+
+        if tokens.contains("RUS-CRIMEA") {
+            return CanonicalMapRegionIdentity(countryCode: "UA", locality: "CRIMEA")
+        }
+
+        if let russiaToken = tokens.first(where: { $0.hasPrefix("RUS") }) {
+            let locality = String(russiaToken.dropFirst(3))
+                .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+            return CanonicalMapRegionIdentity(
+                countryCode: "RU",
+                locality: locality.isEmpty ? nil : locality
+            )
+        }
+
+        for token in tokens {
+            let components = token.split(separator: "-", omittingEmptySubsequences: true)
+            guard let country = components.first,
+                  country.count == 3,
+                  country.allSatisfy({ $0.isASCII && $0.isLetter }) else {
+                continue
+            }
+
+            let locality = components.dropFirst().isEmpty
+                ? nil
+                : components.dropFirst().joined(separator: "-")
+            return CanonicalMapRegionIdentity(
+                countryCode: String(country),
+                locality: locality
+            )
+        }
+
+        return nil
+    }
+
+    private func normalize(_ value: String) -> String {
+        var normalized = value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .uppercased()
+            .replacingOccurrences(of: "_", with: "-")
+            .replacingOccurrences(of: "+", with: "-")
+
+        if normalized.hasPrefix("FREIZEITKARTE-") {
+            normalized.removeFirst("FREIZEITKARTE-".count)
+        }
+
+        while normalized.contains("--") {
+            normalized = normalized.replacingOccurrences(of: "--", with: "-")
+        }
+        return normalized.trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+    }
+}
+
+/// Product policy consumes only canonical identity and has no knowledge of
+/// Freizeitkarte identifiers, catalog records, downloads, or device state.
+struct MapAcquisitionPolicy: Sendable {
+    func availability(
+        for identity: CanonicalMapRegionIdentity?
+    ) -> MapAcquisitionAvailability {
+        guard let identity else { return .available }
+        if identity.countryCode == "UA", identity.locality == "CRIMEA" {
+            return .withheldCrimea
+        }
+        if identity.countryCode == "RU" {
+            return .withheldRussia
+        }
+        return .available
+    }
+
+    func validate(_ identity: CanonicalMapRegionIdentity?) throws {
+        switch availability(for: identity) {
+        case .available:
+            return
+        case .withheldRussia:
+            throw MapAcquisitionPolicyError.withheldRussia
+        case .withheldCrimea:
+            throw MapAcquisitionPolicyError.withheldCrimea
+        }
+    }
+}
+
+/// Composes provider mapping with the provider-independent policy. Unknown
+/// non-russia identities remain available rather than being guessed.
+struct MapPackageAcquisitionPolicyResolver: Sendable {
+    private let mapper = FreizeitkarteMapRegionIdentityMapper()
+    private let policy = MapAcquisitionPolicy()
+
+    func canonicalIdentity(for package: MapPackage) -> CanonicalMapRegionIdentity? {
+        mapper.map(package: package)
+    }
+
+    func availability(for package: MapPackage) -> MapAcquisitionAvailability {
+        policy.availability(for: canonicalIdentity(for: package))
+    }
+
+    func validate(package: MapPackage) throws {
+        try policy.validate(canonicalIdentity(for: package))
+    }
+}
+
 struct MapPackage: Codable, Equatable, Identifiable, Sendable {
     let id: String
     let providerId: String

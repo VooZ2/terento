@@ -135,6 +135,9 @@ final class MapLifecycleViewModel: ObservableObject {
             hasIntegrityRecord: context.hasIntegrityRecord,
             hasValidatedUpdateProfile: context.profile?.matches(context.identity) == true
                 && context.profile?.supportsMapWrite == true,
+            acquisitionAvailability: context.selectedMap.map {
+                MapPackageAcquisitionPolicyResolver().availability(for: $0)
+            } ?? .available,
             hasStableWatchIdentity: context.identity.localHardwareIdentifier?.isEmpty == false,
             failedInstallRecovery: context.failedInstallRecovery != nil
         )

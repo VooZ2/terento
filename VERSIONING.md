@@ -29,7 +29,7 @@ are not release versions.
 
 For every publicly distributed Terento build, `CFBundleVersion` is the
 canonical ordering value used by the macOS update check and must increase
-monotonically. Human-readable beta labels such as `1.0.0-beta.6` do not replace
+monotonically. Human-readable beta labels such as `1.0.0-beta.7` do not replace
 the build-number requirement. The release manifest must carry the matching
 version/build, public release label, update channel, minimum macOS, canonical
 DMG URL, concise summary, and trusted full release-notes URL.

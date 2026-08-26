@@ -79,6 +79,7 @@ enum MapPackageFormat: String, Codable, Equatable, Sendable {
 }
 
 enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
+    case acquisitionWithheld(MapAcquisitionAvailability)
     case downloadFailed(String)
     case downloadIncomplete(expected: UInt64?, actual: UInt64)
     case invalidPackage(String)
@@ -94,6 +95,8 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
 
     var errorDescription: String? {
         switch self {
+        case .acquisitionWithheld(let availability):
+            return availability.detailedExplanation
         case .downloadFailed(let message):
             return "The map package could not be downloaded: \(message)"
         case .downloadIncomplete(let expected, let actual):
@@ -482,14 +485,19 @@ struct ValidatedMapArtifact: Equatable, Sendable {
 struct MapPackageAcquirer: Sendable {
     private let downloadClient: any MapPackageDownloadClient
     private let archiveExtractor: any MapPackageArchiveExtractor
+    private let workspaceFactory: @Sendable () throws -> MapAcquisitionWorkspace
     private let parser = GarminIMGMetadataParser()
 
     init(
         downloadClient: any MapPackageDownloadClient = FoundationMapPackageDownloadClient(),
-        archiveExtractor: any MapPackageArchiveExtractor = SystemZIPArchiveExtractor()
+        archiveExtractor: any MapPackageArchiveExtractor = SystemZIPArchiveExtractor(),
+        workspaceFactory: @escaping @Sendable () throws -> MapAcquisitionWorkspace = {
+            try MapAcquisitionWorkspace.make()
+        }
     ) {
         self.downloadClient = downloadClient
         self.archiveExtractor = archiveExtractor
+        self.workspaceFactory = workspaceFactory
     }
 
     func acquire(
@@ -499,12 +507,20 @@ struct MapPackageAcquirer: Sendable {
         onStateChange: (@Sendable (MapAcquisitionState) -> Void)? = nil,
         onDownloadProgress: (@Sendable (MapDownloadProgress) -> Void)? = nil
     ) async throws -> ValidatedMapArtifact {
+        state(.resolvingPackage, onStateChange)
+        do {
+            try MapPackageAcquisitionPolicyResolver().validate(package: package)
+        } catch let error as MapAcquisitionPolicyError {
+            onStateChange?(.failed)
+            throw MapAcquisitionError.acquisitionWithheld(error.availability)
+        }
+
         let acquisitionWorkspace: MapAcquisitionWorkspace
         do {
             if let suppliedWorkspace = requestedWorkspace {
                 acquisitionWorkspace = suppliedWorkspace
             } else {
-                acquisitionWorkspace = try MapAcquisitionWorkspace.make()
+                acquisitionWorkspace = try workspaceFactory()
             }
         } catch let error as MapAcquisitionError {
             onStateChange?(.failed)
@@ -537,7 +553,6 @@ struct MapPackageAcquirer: Sendable {
         onStateChange: (@Sendable (MapAcquisitionState) -> Void)?,
         onDownloadProgress: (@Sendable (MapDownloadProgress) -> Void)?
     ) async throws -> ValidatedMapArtifact {
-        state(.resolvingPackage, onStateChange)
         guard let sourceURL = package.downloadURL else {
             throw MapAcquisitionError.downloadFailed("The catalog package has no source URL.")
         }

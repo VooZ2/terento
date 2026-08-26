@@ -192,6 +192,12 @@ struct ConnectScreen: View {
         .onChange(of: mapEngine.state) { newState in
             updatePresenceMonitoring(for: newState)
         }
+        .onChange(of: mapSelectionItems) { items in
+            selectedMapIDs = MapSelectionPresentationModel.validSelectionIDs(
+                selectedMapIDs,
+                items: items
+            )
+        }
         .onChange(of: mapEngine.installationPhase) { phase in
             updatePresenceMonitoring(for: mapEngine.state)
             recordInstallationEvidenceIfNeeded()
@@ -3091,8 +3097,8 @@ private struct ManageMapRow: View {
     var body: some View {
         TerentoMapRow(
             title: item.title,
-            detail: operation?.phase == .completed ? "Action complete" : item.manageDetailLabel,
-            note: operation?.message,
+            detail: operation?.phase == .completed ? "Action complete" : manageDetail,
+            note: operation?.message ?? availability.reason,
             contentSpacing: 9,
             rowVerticalPadding: 10
         ) {
@@ -3111,6 +3117,12 @@ private struct ManageMapRow: View {
                 )
             }
         }
+    }
+
+    private var manageDetail: String {
+        availability.status == "Updates are not offered for this map"
+            ? availability.status
+            : item.manageDetailLabel
     }
 
     private func perform(_ action: MapLifecycleAction) {
@@ -3534,6 +3546,7 @@ struct MapSelectionRow: View {
         TerentoMapRow(
             title: item.title,
             detail: detail,
+            note: item.acquisitionAvailability.detailedExplanation,
             contentSpacing: 9,
             rowVerticalPadding: 10,
             showsDivider: showsDivider
@@ -3543,7 +3556,9 @@ struct MapSelectionRow: View {
                     Toggle("", isOn: $isSelected)
                         .toggleStyle(.checkbox)
                         .labelsHidden()
-                } else if showsSelectionControl && !isAlreadyInstalledSearchResult {
+                } else if showsSelectionControl
+                    && item.acquisitionAvailability == .available
+                    && !isAlreadyInstalledSearchResult {
                     Image(systemName: statusIcon)
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(statusColor)
@@ -3556,12 +3571,16 @@ struct MapSelectionRow: View {
                     .frame(width: 24)
             }
         } trailing: {
-            if showsSize {
+            if showsSize && item.acquisitionAvailability == .available {
                 Text(item.installSizeBytes.map(formatBytes) ?? "Size calculated before installation")
                     .font(.terentoUI(size: 13, weight: .medium))
                     .foregroundStyle(TerentoColors.secondaryText)
                     .multilineTextAlignment(.trailing)
                     .frame(maxWidth: 190, alignment: .trailing)
+            } else if item.acquisitionAvailability != .available {
+                Text("Unavailable")
+                    .font(.terentoUI(size: 13, weight: .medium))
+                    .foregroundStyle(TerentoColors.secondaryText)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -3570,7 +3589,7 @@ struct MapSelectionRow: View {
             guard isAvailable, item.isSelectable else { return }
             isSelected.toggle()
         }
-        .opacity(item.isSelectable || item.comparison.status == .upToDate ? 1 : 0.78)
+        .opacity(item.acquisitionAvailability != .available || item.isSelectable || item.comparison.status == .upToDate ? 1 : 0.78)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(isAvailable && item.isSelectable && showsSelectionControl
@@ -3579,6 +3598,10 @@ struct MapSelectionRow: View {
     }
 
     private var detail: String {
+        if let status = item.acquisitionAvailability.shortStatus {
+            return status
+        }
+
         if isAlreadyInstalledSearchResult {
             return "Already installed"
         }
@@ -3638,6 +3661,10 @@ struct MapSelectionRow: View {
     }
 
     private var accessibilityLabel: String {
+        if item.acquisitionAvailability != .available {
+            return item.acquisitionAccessibilityLabel ?? "\(item.title), unavailable"
+        }
+
         if isAlreadyInstalledSearchResult {
             return "\(item.title), Already installed"
         }
