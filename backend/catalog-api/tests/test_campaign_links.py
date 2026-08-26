@@ -93,6 +93,9 @@ class CampaignLinkContractTests(unittest.TestCase):
         self.assertIn('class="filter-bar admin-filter-bar campaign-preset-row"', body)
         self.assertIn(".campaign-preset-row{display:flex", body)
         self.assertIn("height:var(--admin-control-height)", body)
+        self.assertIn(".campaign-field input,.campaign-field select,.campaign-preset-row select{height:var(--admin-control-height)", body)
+        self.assertIn('font-family:"Inter"', body)
+        self.assertIn("box-sizing:border-box", body)
         self.assertIn(".campaign-preset-row .campaign-label,.campaign-preset-row select{flex:none}", body)
         self.assertNotIn(">Generate<", body)
 
