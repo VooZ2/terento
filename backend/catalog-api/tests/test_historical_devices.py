@@ -47,6 +47,14 @@ class HistoricalDeviceRegistryTests(unittest.TestCase):
         self.assertIn("collector_managed", sql)
         self.assertIn("garmin-fenix-7-47", sql)
         self.assertIn("collector_managed BOOLEAN NOT NULL DEFAULT TRUE", sql)
+        db_source = (
+            Path(__file__).resolve().parents[1]
+            / "src"
+            / "terento_catalog"
+            / "db.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("AND collector_managed = TRUE", db_source)
+        self.assertIn("WHERE collector_managed = TRUE", db_source)
 
 
 if __name__ == "__main__":

@@ -14,6 +14,10 @@ ALLOWED_KEYS = {
     "mapRelease", "terentoVersion", "macOSVersion", "phaseOutcome",
     "automaticFinishingResult", "reconnectVerified", "mapVisibleAfterReconnect",
     "errorCategory", "userConfirmed", "deletionToken",
+    "operationId", "mapResultIndex", "selectedMapCount", "appBuild", "releaseLabel",
+    "failureStage", "failureCode", "nativeFailureCode", "writeStarted",
+    "remoteObjectCreated", "cleanupAttempted", "cleanupSucceeded",
+    "transferProgressBucket",
 }
 FORBIDDEN_KEY_PARTS = ("serial", "unitid", "unit_id", "path", "manifest", "username", "token", "password")
 
@@ -45,7 +49,7 @@ def validate_event(raw: bytes) -> dict[str, Any]:
     }
     if required - set(event):
         raise EvidenceValidationError("missing_fields")
-    if event["schemaVersion"] not in {1, 2}:
+    if event["schemaVersion"] not in {1, 2, 3}:
         raise EvidenceValidationError("unsupported_schema")
     if not re.fullmatch(r"[0-9a-fA-F-]{36}", str(event["id"])):
         raise EvidenceValidationError("invalid_event_id")
@@ -54,7 +58,8 @@ def validate_event(raw: bytes) -> dict[str, Any]:
             raise EvidenceValidationError(f"invalid_{key}")
         if "/Users/" in event[key] or "file://" in event[key]:
             raise EvidenceValidationError("local_path")
-    if event["phaseOutcome"] not in {"SUCCEEDED", "FAILED"}:
+    allowed_outcomes = {"SUCCEEDED", "FAILED", "NOT_STARTED"} if event["schemaVersion"] == 3 else {"SUCCEEDED", "FAILED"}
+    if event["phaseOutcome"] not in allowed_outcomes:
         raise EvidenceValidationError("invalid_outcome")
     if event["automaticFinishingResult"] not in {"VERIFIED", "FAILED", "NOT_REACHED"}:
         raise EvidenceValidationError("invalid_finishing_result")
@@ -62,6 +67,8 @@ def validate_event(raw: bytes) -> dict[str, Any]:
         raise EvidenceValidationError("inconsistent_success")
     if event["phaseOutcome"] == "FAILED" and event["automaticFinishingResult"] == "VERIFIED":
         raise EvidenceValidationError("inconsistent_failure")
+    if event["phaseOutcome"] == "NOT_STARTED" and event["automaticFinishingResult"] != "NOT_REACHED":
+        raise EvidenceValidationError("inconsistent_not_started")
     if event.get("errorCategory") not in {
         None, "acquisition", "transport", "verification", "storage",
         "deviceDisconnected", "sourceValidation", "unknown",
@@ -109,7 +116,79 @@ def validate_event(raw: bytes) -> dict[str, Any]:
         raise EvidenceValidationError("invalid_confirmation")
     if not re.fullmatch(r"[0-9a-fA-F]{64}", str(event["deletionToken"])):
         raise EvidenceValidationError("invalid_deletion_token")
+    if event["schemaVersion"] == 3:
+        _validate_v3(event)
     return event
+
+
+def _validate_v3(event: dict[str, Any]) -> None:
+    required = {
+        "operationId", "mapResultIndex", "selectedMapCount", "appBuild", "releaseLabel",
+        "writeStarted", "remoteObjectCreated", "cleanupAttempted", "cleanupSucceeded",
+        "transferProgressBucket",
+    }
+    if required - set(event):
+        raise EvidenceValidationError("missing_diagnostic_fields")
+    if not re.fullmatch(r"[0-9a-fA-F-]{36}", str(event["operationId"])):
+        raise EvidenceValidationError("invalid_operation_id")
+    if not isinstance(event["mapResultIndex"], int) or isinstance(event["mapResultIndex"], bool):
+        raise EvidenceValidationError("invalid_map_result_index")
+    if not isinstance(event["selectedMapCount"], int) or isinstance(event["selectedMapCount"], bool):
+        raise EvidenceValidationError("invalid_selected_map_count")
+    if not 0 <= event["mapResultIndex"] < event["selectedMapCount"] <= 100:
+        raise EvidenceValidationError("invalid_map_result_position")
+    for key in ("appBuild", "releaseLabel"):
+        if (
+            not isinstance(event[key], str)
+            or not event[key].strip()
+            or len(event[key]) > 80
+            or "/Users/" in event[key]
+            or "file://" in event[key]
+        ):
+            raise EvidenceValidationError(f"invalid_{key}")
+    for key in ("writeStarted", "remoteObjectCreated", "cleanupAttempted", "cleanupSucceeded"):
+        if not isinstance(event[key], bool):
+            raise EvidenceValidationError(f"invalid_{key}")
+    if event["transferProgressBucket"] not in {"0", "1-24", "25-99", "100"}:
+        raise EvidenceValidationError("invalid_transfer_progress_bucket")
+    stages = {"download", "extract", "source-validation", "preflight", "write", "verify", "cleanup", "manifest"}
+    if event.get("failureStage") not in stages | {None}:
+        raise EvidenceValidationError("invalid_failure_stage")
+    failure_codes = {
+        "INSTALL_BLOCKED_EXISTING_MAP_CONFLICT", "INSTALL_BLOCKED_SOURCE_ARTIFACT_INVALID",
+        "INSTALL_BLOCKED_INSUFFICIENT_SPACE", "INSTALL_BLOCKED_UNKNOWN_INSTALL_SIZE",
+        "INSTALL_BLOCKED_UNKNOWN_TARGET", "INSTALL_BLOCKED_MAP_IDENTITY_AMBIGUOUS",
+        "INSTALL_BLOCKED_BACKUP_FAILED", "INSTALL_BLOCKED_DOWNLOAD_FAILED",
+        "INSTALL_BLOCKED_SOURCE_VALIDATION_FAILED", "INSTALL_FAILED_DEVICE_DISCONNECTED",
+        "INSTALL_FAILED_WRITE", "INSTALL_FAILED_SIZE_MISMATCH", "INSTALL_FAILED_HASH_MISMATCH",
+        "INSTALL_FAILED_REMOTE_FILE_MISSING", "INSTALL_FAILED_METADATA_MISMATCH",
+        "INSTALL_FAILED_MANIFEST", "INSTALL_FAILED_PROTECTION_VIOLATION",
+        "INSTALL_FAILED_CLEANUP", "INSTALL_BLOCKED_TRANSACTION_ALREADY_RUNNING",
+        "INSTALL_FAILED_INVALID_STATE_TRANSITION", "INSTALL_BLOCKED_VERIFICATION_REQUIRED",
+        "INSTALL_NOT_STARTED_AFTER_EARLIER_FAILURE",
+    }
+    if event.get("failureCode") not in failure_codes | {None}:
+        raise EvidenceValidationError("invalid_failure_code")
+    native_codes = {
+        "TARGET_ALREADY_EXISTS", "REMOTE_FILE_MISSING", "OBJECT_ID_MISMATCH",
+        "UNSUPPORTED_DEVICE", "DEVICE_DISCONNECTED", "SEND_OBJECT_FAILED",
+        "READBACK_FAILED", "DELETE_FAILED", "MTP_OPEN_FAILED", "GARMIN_ROOT_COUNT_INVALID",
+        "PREFLIGHT_MTP_READ_FAILED",
+    }
+    if event.get("nativeFailureCode") not in native_codes | {None}:
+        raise EvidenceValidationError("invalid_native_failure_code")
+    if event["phaseOutcome"] == "SUCCEEDED" and any(event.get(key) is not None for key in ("failureStage", "failureCode", "nativeFailureCode")):
+        raise EvidenceValidationError("inconsistent_success_diagnostics")
+    if event["phaseOutcome"] in {"FAILED", "NOT_STARTED"} and (
+        event.get("failureStage") is None or event.get("failureCode") is None
+    ):
+        raise EvidenceValidationError("missing_failure_diagnostics")
+    if event["phaseOutcome"] == "NOT_STARTED" and event["writeStarted"]:
+        raise EvidenceValidationError("inconsistent_not_started")
+    if event["remoteObjectCreated"] and not event["writeStarted"]:
+        raise EvidenceValidationError("inconsistent_remote_object")
+    if event["cleanupSucceeded"] and not event["cleanupAttempted"]:
+        raise EvidenceValidationError("inconsistent_cleanup")
 
 
 def validate_deletion_request(raw: bytes) -> tuple[str, str]:

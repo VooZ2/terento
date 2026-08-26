@@ -105,12 +105,17 @@ band, and material SKUs are collapsed by the collector.
 | `source_image_url` | `text` | Allowlisted direct official Garmin media URL (`res.garmin.com`), nullable |
 | `active` | `boolean` | Conservative current/ historical state |
 | `consecutive_missed_collections` | `smallint` | Absence counter used by inactive policy |
+| `record_source` | `text` | `CURRENT_RETAIL`, `HISTORICAL_REVIEWED`, or `EVIDENCE_DISCOVERED` |
+| `collector_managed` | `boolean` | Whether the current retail collector may update/deactivate this row |
 | `first_seen_at`, `last_seen_at` | `timestamptz` | Observation timestamps |
 | `created_at`, `updated_at` | `timestamptz` | Local audit timestamps |
 
-Records are preserved. `active` becomes false only after three consecutive
-successful complete collections do not observe a model; a partial or failed
-collection does not advance that policy.
+Records are preserved. Only `collector_managed = true` rows participate in the
+absence policy: `active` becomes false after three consecutive successful
+complete collections do not observe a model; a partial or failed collection
+does not advance that policy. Migration `016` seeds reviewed historical
+identities, including fēnix 7, with `collector_managed = false`, so retail
+absence cannot deactivate them.
 
 ## `device_usb_identity`
 
@@ -200,12 +205,24 @@ revised client could not erase. `compatibility_model_review`
 stores maintainer-reviewed physical-device evidence, notes, review state, and
 the default-false public-statistics switch/display name.
 
+Migration 017 adds schema-v3 structured diagnostics. `operation_id` groups the
+per-map rows produced by one Install action; map index/count, app build/release,
+allowlisted failure stage and codes, write/object/cleanup state, and coarse
+progress are stored as separate columns. No raw JSON or error message is
+retained. `NOT_STARTED` is reserved for selected child maps skipped after an
+earlier result stopped the batch.
+
 `compatibility_model_statistics` is a live SQL view over the immutable event
 table and model review metadata. Events with a `canonical_device_model_id` are
 grouped by that exact Garmin catalog record; textual `compatibility_identity`
 is only the fallback for older uncanonicalized events. Formatting changes
 between app versions therefore increase one variant's report and success
-counts instead of creating another model row. The view calculates attempted, successful and
+counts instead of creating another model row. Schema-v3 rows are first grouped
+by operation; legacy rows each form one operation. Only write-started
+operations enter attempted/success/failed compatibility counts, and a
+multi-map operation succeeds only if every selected child result verifies.
+Separate map-result and pre-write-failure totals remain available for private
+diagnosis. The view calculates attempted, successful and
 failed installation counts, success rate, firmware coverage, latest outcomes,
 error-category totals and the canonical evidence status. Events carry an exact
 compatibility identity plus optional variant/case-size and reconnect/map-
@@ -215,6 +232,18 @@ is `SUPPORTED`, and 5 or more is `VERIFIED`. The private dashboard reads this vi
 prepared public query additionally requires both `review_status = 'APPROVED'`
 and `public_statistics_enabled = true` and only exposes evidence-backed
 statuses.
+
+Migration `015_canonical_compatibility_aggregation.sql` replaces the earlier
+view rule that promoted one successful install to `SUPPORTED`. The view now
+uses the same thresholds as `terento_catalog.compatibility_status`, and the
+runtime API reapplies that classifier before rendering. This keeps raw DB
+views, admin output, and public evidence output aligned.
+
+Compatibility evidence may resolve to a reviewed historical `device_model`
+transactionally during ingestion. An unresolved identity is retained under
+its textual compatibility identity rather than rejected for missing retail
+catalog membership. Neither the canonical link nor the evidence status is a
+device write authorization.
 
 The private `/admin/devices.json` aggregate joins evidence only through
 `compatibility_evidence_event.canonical_device_model_id = device_model.id`.

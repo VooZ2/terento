@@ -49,7 +49,10 @@ class Database:
                 usb_vendor_id, usb_product_id, transport, provider, region,
                 map_release, terento_version, macos_version, phase_outcome,
                 automatic_finishing_result, reconnect_verified, map_visible_after_reconnect,
-                error_category, deletion_token_hash
+                error_category, deletion_token_hash, operation_id, map_result_index,
+                selected_map_count, app_build, release_label, failure_stage, failure_code,
+                native_failure_code, write_started, remote_object_created,
+                cleanup_attempted, cleanup_succeeded, transfer_progress_bucket
             ) VALUES (
                 %(id)s, %(timestamp)s, %(model)s, %(compatibilityIdentity)s, %(variant)s, %(caseSizeMm)s,
                 %(displayType)s, %(canonicalDeviceId)s,
@@ -57,7 +60,11 @@ class Database:
                 %(usbVendorID)s, %(usbProductID)s, %(transport)s, %(provider)s, %(region)s,
                 %(mapRelease)s, %(terentoVersion)s, %(macOSVersion)s, %(phaseOutcome)s,
                 %(automaticFinishingResult)s, %(reconnectVerified)s, %(mapVisibleAfterReconnect)s,
-                %(errorCategory)s, %(deletionTokenHash)s
+                %(errorCategory)s, %(deletionTokenHash)s, %(operationId)s, %(mapResultIndex)s,
+                %(selectedMapCount)s, %(appBuild)s, %(releaseLabel)s, %(failureStage)s,
+                %(failureCode)s, %(nativeFailureCode)s, %(writeStarted)s,
+                %(remoteObjectCreated)s, %(cleanupAttempted)s, %(cleanupSucceeded)s,
+                %(transferProgressBucket)s
             ) ON CONFLICT (event_id) DO NOTHING
             RETURNING event_id
         """
@@ -76,6 +83,19 @@ class Database:
             "mapVisibleAfterReconnect": bool(event.get("mapVisibleAfterReconnect", False)),
             "errorCategory": event.get("errorCategory"),
             "deletionTokenHash": self._token_hash(event.get("deletionToken")),
+            "operationId": event.get("operationId"),
+            "mapResultIndex": event.get("mapResultIndex"),
+            "selectedMapCount": event.get("selectedMapCount"),
+            "appBuild": event.get("appBuild"),
+            "releaseLabel": event.get("releaseLabel"),
+            "failureStage": event.get("failureStage"),
+            "failureCode": event.get("failureCode"),
+            "nativeFailureCode": event.get("nativeFailureCode"),
+            "writeStarted": event.get("writeStarted"),
+            "remoteObjectCreated": event.get("remoteObjectCreated"),
+            "cleanupAttempted": event.get("cleanupAttempted"),
+            "cleanupSucceeded": event.get("cleanupSucceeded"),
+            "transferProgressBucket": event.get("transferProgressBucket"),
         }
         with self.connection() as connection:
             # The client contract remains unchanged: canonicalDeviceId is
@@ -158,6 +178,25 @@ class Database:
         query = "SELECT * FROM compatibility_model_statistics ORDER BY model"
         with self.connection() as connection:
             return list(connection.execute(query).fetchall())
+
+    def compatibility_operation_details(self, limit: int = 500) -> list[dict[str, Any]]:
+        query = """
+            SELECT
+                COALESCE(operation_id::text, 'legacy:' || event_id::text) AS operation_key,
+                operation_id, event_id, occurred_at, model, compatibility_identity,
+                variant, firmware_version, region, map_release, terento_version,
+                app_build, release_label, map_result_index, selected_map_count,
+                phase_outcome, failure_stage, failure_code, native_failure_code,
+                COALESCE(write_started, true) AS write_started,
+                COALESCE(remote_object_created, false) AS remote_object_created,
+                COALESCE(cleanup_attempted, false) AS cleanup_attempted,
+                cleanup_succeeded, transfer_progress_bucket, error_category
+            FROM compatibility_evidence_event
+            ORDER BY occurred_at DESC, operation_key, map_result_index NULLS FIRST
+            LIMIT %s
+        """
+        with self.connection() as connection:
+            return list(connection.execute(query, (limit,)).fetchall())
 
     def public_compatibility_statistics(self, limit: int) -> list[dict[str, Any]]:
         query = """

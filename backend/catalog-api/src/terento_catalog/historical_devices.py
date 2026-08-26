@@ -128,19 +128,33 @@ def historical_device_spec(device_id: str | None) -> HistoricalDeviceSpec | None
 def historical_device_for_event(event: dict[str, object]) -> HistoricalDeviceSpec | None:
     """Resolve a report to a reviewed historical identity without fuzzy joins."""
 
-    model = normalize_identity(event.get("model"))
-    if not model:
+    identities = [
+        normalize_identity(event.get("model")),
+        normalize_identity(event.get("compatibilityIdentity")),
+    ]
+    identities = [identity for identity in identities if identity]
+    if not identities:
         return None
     case_size = event.get("caseSizeMm")
     try:
         case_size = int(case_size) if case_size is not None else None
     except (TypeError, ValueError):
         case_size = None
+    if case_size is None:
+        for identity in identities:
+            size_match = re.search(r"\b(\d{2})\s*mm\b", identity)
+            if size_match:
+                case_size = int(size_match.group(1))
+                break
 
     candidates: list[HistoricalDeviceSpec] = []
     for spec in HISTORICAL_DEVICE_REGISTRY:
         aliases = {normalize_identity(alias) for alias in spec.aliases}
-        if model not in aliases:
+        if not any(
+            identity == alias or identity.startswith(f"{alias} ")
+            for identity in identities
+            for alias in aliases
+        ):
             continue
         if spec.case_size_mm is not None and case_size is not None and spec.case_size_mm != case_size:
             continue

@@ -45,6 +45,7 @@ class FakeEvidenceDatabase:
         self.events = {}
         self.users = []
         self.sessions = {}
+        self.device_support_status = "SUPPORTED"
 
     def insert_compatibility_event(self, value):
         if value["id"] in self.events:
@@ -70,6 +71,9 @@ class FakeEvidenceDatabase:
             "calculated_status": "TESTED", "physical_device_evidence_count": 1,
             "review_notes": "Owner evidence",
         }]
+
+    def compatibility_operation_details(self):
+        return []
 
     def public_compatibility_statistics(self, limit):
         return [{
@@ -123,7 +127,7 @@ class FakeEvidenceDatabase:
             "product_url": "https://www.garmin.com/en-US/p/1228429/",
             "active": True,
             "map_capable": True,
-            "support_status": "SUPPORTED",
+            "support_status": self.device_support_status,
             "asset_status": "MISSING",
             "asset_url": None,
             "attempted_install_count": 1,
@@ -176,6 +180,12 @@ class FakeEvidenceDatabase:
         user = next(user for user in self.users if user["id"] == user_id)
         user.update(username=username, password_hash=password_hash)
         return user
+
+    def update_device_support_status(self, device_id, support_status):
+        if device_id != "garmin-fenix-8-47-amoled":
+            return False
+        self.device_support_status = support_status
+        return True
 
 
 class CaptureDatabase(Database):
@@ -258,6 +268,20 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertIsNone(database.parameters["canonicalDeviceId"])
         self.assertEqual(len(database.parameters["deletionTokenHash"]), 64)
 
+    def test_historical_fenix_7_evidence_is_canonicalized_without_retail_row(self):
+        database = CaptureDatabase()
+        payload = event(
+            model="fēnix 7",
+            compatibilityIdentity="fēnix 7 · 47 mm",
+            variant="47 mm",
+            caseSizeMm=47,
+        )
+        self.assertTrue(database.insert_compatibility_event(payload))
+        self.assertEqual(
+            database.parameters["canonicalDeviceId"],
+            "garmin-fenix-7-47",
+        )
+
     def test_admin_dashboard_uses_compact_english_evidence_layout(self):
         row = {
             "model": "fēnix 8",
@@ -279,7 +303,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         }
         body = dashboard_page([row], {"username": "gediminas"}, "csrf", public_stats_enabled=True).decode()
         self.assertIn("Installation evidence", body)
-        self.assertIn(">Reports<", body)
+        self.assertIn(">Write attempts<", body)
         self.assertIn(">51 mm<", body)
         self.assertIn("Latest activity", body)
         self.assertIn("Public compatibility", body)
@@ -306,6 +330,34 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertIn("Sign in", login_page().decode())
         self.assertIn("Create the first admin account", setup_page().decode())
 
+    def test_admin_dashboard_links_errors_to_structured_operation_details(self):
+        row = {
+            "model": "fēnix 8", "compatibility_identity": "fēnix 8 · 51 mm AMOLED",
+            "variant": "51 mm, AMOLED", "firmware_versions": "2326",
+            "attempted_install_count": 1, "successful_install_count": 0,
+            "failed_install_count": 1, "success_rate": 0,
+            "calculated_status": "TESTING", "last_success": None,
+            "last_failure": datetime(2026, 8, 26, 8, 30, tzinfo=timezone.utc),
+            "error_categories": {"write:INSTALL_FAILED_WRITE": 1},
+        }
+        operation = {
+            "operation_key": "223e4567-e89b-12d3-a456-426614174000",
+            "occurred_at": row["last_failure"], "compatibility_identity": row["compatibility_identity"],
+            "firmware_version": "2326", "region": "LTU", "phase_outcome": "FAILED",
+            "release_label": "1.0.0-beta.6", "app_build": "5", "write_started": True,
+            "failure_stage": "write", "failure_code": "INSTALL_FAILED_WRITE",
+            "native_failure_code": "SEND_OBJECT_FAILED", "transfer_progress_bucket": "25-99",
+            "map_result_index": 0,
+        }
+        body = dashboard_page(
+            [row], {"username": "operator"}, "csrf", operations=[operation]
+        ).decode()
+        self.assertIn("aria-label='View 1 errors'", body)
+        self.assertIn("Operation diagnostics", body)
+        self.assertIn("1.0.0-beta.6 (build 5)", body)
+        self.assertIn("INSTALL_FAILED_WRITE", body)
+        self.assertIn("SEND_OBJECT_FAILED", body)
+
     def test_schema_v2_keeps_exact_variant_and_treats_reconnect_as_optional(self):
         payload = event(
             schemaVersion=2,
@@ -329,6 +381,41 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertFalse(database.parameters["mapVisibleAfterReconnect"])
         self.assertEqual(database.parameters["displayType"], "AMOLED")
         self.assertEqual(database.parameters["canonicalDeviceId"], "garmin-fenix-8-51-amoled")
+
+    def test_schema_v3_accepts_structured_diagnostics_and_rejects_raw_or_inconsistent_data(self):
+        payload = event(
+            schemaVersion=3,
+            phaseOutcome="FAILED",
+            automaticFinishingResult="FAILED",
+            operationId="223e4567-e89b-12d3-a456-426614174000",
+            mapResultIndex=0,
+            selectedMapCount=3,
+            appBuild="5",
+            releaseLabel="1.0.0-beta.6",
+            failureStage="write",
+            failureCode="INSTALL_FAILED_WRITE",
+            nativeFailureCode="SEND_OBJECT_FAILED",
+            writeStarted=True,
+            remoteObjectCreated=False,
+            cleanupAttempted=False,
+            cleanupSucceeded=False,
+            transferProgressBucket="25-99",
+        )
+        validated = validate_event(json.dumps(payload).encode())
+        self.assertEqual(validated["operationId"], payload["operationId"])
+        database = CaptureDatabase()
+        self.assertTrue(database.insert_compatibility_event(validated))
+        self.assertEqual(database.parameters["appBuild"], "5")
+        self.assertEqual(database.parameters["failureStage"], "write")
+
+        with self.assertRaises(EvidenceValidationError):
+            validate_event(json.dumps({**payload, "nativeFailureCode": "RAW: libmtp failed /Users/me"}).encode())
+        with self.assertRaises(EvidenceValidationError):
+            validate_event(json.dumps({**payload, "releaseLabel": "file:///Users/me/build"}).encode())
+        with self.assertRaises(EvidenceValidationError):
+            validate_event(json.dumps({**payload, "writeStarted": False, "remoteObjectCreated": True}).encode())
+        with self.assertRaises(EvidenceValidationError):
+            validate_event(json.dumps({**payload, "phaseOutcome": "NOT_STARTED", "writeStarted": True}).encode())
 
     def test_privacy_fields_and_local_paths_are_rejected(self):
         without_deletion_token = event()
@@ -388,6 +475,17 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertEqual(devices_json.status, 200)
         self.assertEqual(json.loads(devices_json_body)["summary"]["tested"], 1)
 
+        review_body = urlencode({
+            "csrf_token": csrf_token,
+            "device_id": "garmin-fenix-8-47-amoled",
+            "support_status": "SUPPORTED",
+        })
+        reviewed, _ = self.request("POST", "/admin/devices/support", review_body, {
+            "Content-Type": "application/x-www-form-urlencoded", "Cookie": cookie_header,
+        })
+        self.assertEqual(reviewed.status, 303)
+        self.assertEqual(self.database.device_support_status, "SUPPORTED")
+
         unauthenticated_campaign, _ = self.request("GET", "/admin/campaign-links")
         self.assertEqual(unauthenticated_campaign.status, 303)
         self.assertEqual(unauthenticated_campaign.headers["Location"], "/admin/login")
@@ -444,6 +542,17 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertEqual(document["models"][0]["successfulInstallations"], 3)
         self.assertEqual(document["models"][0]["mapCapable"], True)
         self.assertNotIn("firmwareVersion", document["models"][0])
+        self.assertEqual(
+            set(document["models"][0]),
+            {
+                "model", "canonicalModel", "compatibilityIdentity", "variant",
+                "caseSizeMm", "displayType", "canonicalDeviceId",
+                "attemptedInstallations", "successfulInstallations",
+                "reconnectVerifiedInstallations", "failedInstallations",
+                "successRate", "evidenceStatus", "lastSuccessfulInstallation",
+                "lastEvidence", "mapCapable",
+            },
+        )
 
     def test_public_models_is_additive_and_evidence_only(self):
         response, body = self.request("GET", "/compatibility/public/models.json?limit=5")

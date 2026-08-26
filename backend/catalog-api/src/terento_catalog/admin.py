@@ -193,7 +193,12 @@ def _error_cell(row: dict[str, Any]) -> str:
         return "<span class='muted-value'>—</span>"
     count = sum(int(value) for value in errors.values() if str(value).isdigit())
     detail = ", ".join(f"{html.escape(str(key))}: {html.escape(str(value))}" for key, value in sorted(errors.items()))
-    return f"<span class='error-count' title='{detail}' aria-label='{count} errors'>{count}</span>"
+    target = _diagnostics_id(str(row.get("compatibility_identity") or row.get("model") or "unknown"))
+    return f"<a class='error-count' href='#{target}' title='{detail}' aria-label='View {count} errors'>{count}</a>"
+
+
+def _diagnostics_id(identity: str) -> str:
+    return "diagnostics-" + hashlib.sha256(identity.encode("utf-8")).hexdigest()[:16]
 
 
 def _admin_brand() -> str:
@@ -259,7 +264,7 @@ def login_page(*, error: str | None = None) -> bytes:
 
 def dashboard_page(
     rows: list[dict[str, Any]], user: dict[str, Any], csrf_token: str,
-    *, public_stats_enabled: bool = False,
+    *, operations: list[dict[str, Any]] | None = None, public_stats_enabled: bool = False,
 ) -> bytes:
     attempts = sum(int(row.get("attempted_install_count") or 0) for row in rows)
     successes = sum(int(row.get("successful_install_count") or 0) for row in rows)
@@ -278,11 +283,12 @@ def dashboard_page(
     )
     cards = "".join(
         f"<article class='metric'><span>{label}</span><strong>{value}</strong></article>"
-        for label, value in (("Models", len(rows)), ("Reports", attempts), ("Successful", successes), ("Failed", failures))
+        for label, value in (("Models", len(rows)), ("Write attempts", attempts), ("Successful operations", successes), ("Failed operations", failures))
     )
     table_rows = "".join(_statistics_row(row) for row in rows)
     empty = "<p class='empty'>No installation evidence reports yet.</p>" if not rows else ""
     latest_copy = f"Updated {_timestamp_markup(latest)}" if latest else "No reports received yet"
+    diagnostic_details = _diagnostic_details(rows, operations or [])
     content = f"""
       {_admin_header(user, csrf_token)}
       <main class="dashboard" id="main-content">
@@ -296,7 +302,9 @@ def dashboard_page(
             <label><span class="sr-only">Sort reports</span><select id="evidence-sort"><option value="reports">Most reports</option><option value="latest">Latest activity</option></select></label>
           </form>
           <p class="results-count" id="results-count" aria-live="polite">{len(rows)} {"model" if len(rows) == 1 else "models"}</p>
-          <div class="table-wrap"><table><caption class="sr-only">Installation evidence reports by exact device identity</caption><thead><tr><th scope="col">Model</th><th scope="col">Variant</th><th scope="col">Firmware</th><th scope="col">Reports</th><th scope="col">Successful</th><th scope="col">Failed</th><th scope="col">Success rate</th><th scope="col">Status</th><th scope="col">Last success</th><th scope="col">Errors</th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
+          <div class="table-wrap"><table><caption class="sr-only">Installation evidence by exact device identity</caption><thead><tr><th scope="col">Model</th><th scope="col">Variant</th><th scope="col">Firmware</th><th scope="col">Write attempts</th><th scope="col">Successful operations</th><th scope="col">Failed operations</th><th scope="col">Success rate</th><th scope="col">Status</th><th scope="col">Last success</th><th scope="col">Errors</th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
+          <p class="table-help">Compatibility rates count distinct write-started operations. Operation details list every selected-map result and pre-write failure.</p>
+          {diagnostic_details}
         </section>
         <section class="status-guide" aria-labelledby="status-guide-title"><div class="section-heading"><div><p class="section-kicker">Canonical rules</p><h2 id="status-guide-title">Compatibility statuses</h2></div><p class="table-help">Exact model and variant; successful shared installations only</p></div><div class="status-guide-grid">{''.join(f"<div class='status-guide-row'>{_status_badge(status)}<span>{html.escape(STATUS_PUBLIC_COPY[CompatibilityStatus(status)])}</span></div>" for status in status_values)}</div></section>
         <section class="public-status" aria-labelledby="public-status-title"><div><p class="section-kicker">Publication</p><h2 id="public-status-title">Public compatibility</h2></div><div class="public-status-value"><span class="status-badge status-{('enabled' if public_stats_enabled else 'disabled')}">{'Enabled' if public_stats_enabled else 'Disabled'}</span><span>{published} {'model' if published == 1 else 'models'} published</span></div></section>
@@ -304,6 +312,51 @@ def dashboard_page(
       <script>{_dashboard_script()}</script>
     """
     return _layout("Installation evidence", content)
+
+
+def _diagnostic_details(rows: list[dict[str, Any]], events: list[dict[str, Any]]) -> str:
+    by_identity: dict[str, dict[str, list[dict[str, Any]]]] = {}
+    for event in events:
+        identity = str(event.get("compatibility_identity") or event.get("model") or "Unknown")
+        operation = str(event.get("operation_key") or event.get("operation_id") or event.get("event_id"))
+        by_identity.setdefault(identity, {}).setdefault(operation, []).append(event)
+    sections: list[str] = []
+    for row in rows:
+        identity = str(row.get("compatibility_identity") or row.get("model") or "Unknown")
+        operations = by_identity.get(identity, {})
+        if not operations:
+            continue
+        operation_cards: list[str] = []
+        for operation_key, results in operations.items():
+            first = results[0]
+            map_rows = "".join(
+                "<tr>" + "".join(f"<td>{html.escape(str(value if value not in (None, '') else '—'))}</td>" for value in (
+                    result.get("region"), result.get("phase_outcome"), result.get("failure_stage"),
+                    result.get("failure_code"), result.get("native_failure_code"),
+                    str(bool(result.get("write_started"))).lower(),
+                    str(bool(result.get("remote_object_created"))).lower(),
+                    ("not attempted" if not result.get("cleanup_attempted") else
+                     ("succeeded" if result.get("cleanup_succeeded") else "failed")),
+                    result.get("transfer_progress_bucket"),
+                )) + "</tr>"
+                for result in sorted(results, key=lambda item: int(item.get("map_result_index") or 0))
+            )
+            release = first.get("release_label") or first.get("terento_version") or "legacy"
+            build = first.get("app_build") or "legacy"
+            operation_cards.append(f"""
+              <article class='diagnostic-operation'>
+                <h4>{html.escape(str(operation_key))}</h4>
+                <p>{_timestamp_markup(first.get('occurred_at'))} · {html.escape(str(release))} (build {html.escape(str(build))}) · write started: {str(bool(first.get('write_started'))).lower()}</p>
+                <div class='table-wrap'><table><thead><tr><th>Region</th><th>Result</th><th>Stage</th><th>Code</th><th>Native code</th><th>Write</th><th>Object created</th><th>Cleanup</th><th>Progress</th></tr></thead><tbody>{map_rows}</tbody></table></div>
+              </article>""")
+        sections.append(f"""
+          <details class='diagnostic-details' id='{_diagnostics_id(identity)}'>
+            <summary>{html.escape(identity)} · {len(operations)} operation{'s' if len(operations) != 1 else ''}</summary>
+            {''.join(operation_cards)}
+          </details>""")
+    if not sections:
+        return ""
+    return "<section class='diagnostics-list' aria-label='Installation operation diagnostics'><h3>Operation diagnostics</h3>" + "".join(sections) + "</section>"
 
 
 def _admin_map_capability(value: Any) -> tuple[str, str]:
@@ -1024,6 +1077,12 @@ def _dashboard_script() -> str:
       };
       form.addEventListener('submit', (event) => event.preventDefault());
       [search, status, sort].forEach((control) => control.addEventListener('input', refresh));
+      document.querySelectorAll('a.error-count[href^="#diagnostics-"]').forEach((link) => {
+        link.addEventListener('click', () => {
+          const target = document.querySelector(link.getAttribute('href'));
+          if (target instanceof HTMLDetailsElement) target.open = true;
+        });
+      });
       refresh();
     })();"""
 
@@ -1159,6 +1218,7 @@ td:nth-child(1){font-weight:650}
 td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-numeric:tabular-nums}
 .muted-value{color:var(--secondary)}
 .error-count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;padding:2px 7px;border:1px solid color-mix(in srgb,var(--danger) 35%,var(--border));border-radius:999px;color:var(--danger);font-weight:700}
+.diagnostics-list{margin-top:24px}.diagnostics-list h3{margin-bottom:12px}.diagnostic-details{margin:8px 0;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;scroll-margin-top:20px}.diagnostic-details summary{cursor:pointer;font-weight:700}.diagnostic-operation{margin-top:16px}.diagnostic-operation h4{margin:0;font:650 13px ui-monospace,SFMono-Regular,Menlo,monospace}.diagnostic-operation p{margin:5px 0 9px;color:var(--secondary);font-size:12px}.diagnostic-operation table{min-width:920px}
 .status-badge{display:inline-flex;align-items:center;justify-content:center;min-width:74px;min-height:28px;padding:6px 10px;border:1px solid transparent;border-radius:999px;font-size:11px;font-weight:750;letter-spacing:.03em;line-height:1;text-transform:uppercase}
 .status-tested{background:#EDE8DF;border-color:#CFC2AE;color:#5B5144}
 .status-supported{background:#E3EDF0;border-color:#ABC3CD;color:#375E6D}

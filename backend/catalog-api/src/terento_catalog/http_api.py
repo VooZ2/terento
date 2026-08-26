@@ -93,6 +93,9 @@ class CatalogService:
     def compatibility_statistics(self) -> list[dict[str, Any]]:
         return self._canonicalize_statistics(self.database.compatibility_statistics())
 
+    def compatibility_operation_details(self) -> list[dict[str, Any]]:
+        return self.database.compatibility_operation_details()
+
     def admin_devices(self) -> dict[str, Any]:
         rows, sync = self.database.admin_device_snapshot()
         return _admin_device_payload(rows, sync)
@@ -336,6 +339,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 try:
                     body = dashboard_page(
                         service.compatibility_statistics(), session, csrf_token,
+                        operations=service.compatibility_operation_details(),
                         public_stats_enabled=service.public_compatibility_stats_enabled,
                     )
                 except Exception:
