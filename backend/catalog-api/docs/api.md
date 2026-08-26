@@ -77,13 +77,25 @@ bootstrap secret. Passwords use salted PBKDF2-SHA256;
 opaque sessions and CSRF values are stored only as SHA-256 hashes. Cookies are
 Secure, HttpOnly, SameSite=Strict, and scoped to `/admin`. Login/setup attempts
 are rate limited. Pages include no-store, noindex and restrictive CSP headers.
-The error count links to a private per-operation detail with child map results,
-release/build, raw MTP model label, identity-source category, failure stage and
-allowlisted codes. Current error counts and compatibility rates exclude
-resolved historical failures. Those events remain available in a separate
-`Resolved / historical diagnostics` section with their resolution reason. Raw
-event payloads and raw diagnostic text are not displayed. `/internal/compatibility/` redirects to
-this route for the earlier local implementation.
+The first screen stops at the model summary, filters, and one-row-per-exact-
+model/variant table. `Errors` counts only unresolved problematic operations;
+successful evidence and resolved historical diagnostics are not counted as
+open errors. Identity-pending evidence is shown separately. Selecting a model
+or its error count opens the private per-model diagnostics view below.
+`/internal/compatibility/` redirects to this route for the earlier local
+implementation.
+
+## `GET https://api.terento.app/admin/diagnostics?identity=...`
+
+Returns an authenticated, no-store/noindex diagnostic drill-down for one exact
+compatibility identity. The list uses the compact columns Date, Region, Result,
+Stage, Code, Issue, and State, and defaults to Open. A Review action opens the
+detail dialog with the separate evidence/lifecycle summary, Resolve/Reopen,
+auditable identity selector, GitHub issue link/create actions, and collapsed
+technical fields. Successful normal evidence remains historical evidence and
+does not appear as an open problem. Identity-pending success is a separate
+state from Failed. This is an additive admin-only route and does not alter any
+native, public, or existing device API contract.
 
 ## `GET https://api.terento.app/admin/campaign-links`
 
@@ -128,9 +140,12 @@ compatibility status, or any native device write authorization.
 `POST /admin/diagnostics/resolve` and `/admin/diagnostics/reopen` change only
 the retained diagnostic lifecycle, while `POST /admin/diagnostics/identity`
 assigns or leaves an exact canonical Garmin record and writes an identity audit
-entry. Neither action deletes evidence or changes the original install
-outcome. Admin counts are grouped by distinct install operation, not raw
-per-map evidence rows.
+entry. `POST /admin/diagnostics/issue` links, changes, or removes a GitHub issue
+reference without changing evidence outcome or lifecycle. The create-issue
+flow opens a sanitized prefilled GitHub form; it does not create an issue for
+every error or auto-close an issue when a diagnostic is resolved. Neither
+action deletes evidence or changes the original install outcome. Admin counts
+are grouped by distinct install operation, not raw per-map evidence rows.
 
 ## `GET /compatibility/public/top-models.json`
 

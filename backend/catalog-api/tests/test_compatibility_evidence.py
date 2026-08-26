@@ -312,10 +312,9 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertIn("Installation evidence", body)
         self.assertIn(">Install attempts<", body)
         self.assertIn(">51 mm<", body)
-        self.assertIn("Latest evidence", body)
-        self.assertIn("Public compatibility", body)
-        self.assertIn("Enabled", body)
-        self.assertIn("1 model published", body)
+        self.assertIn("Latest activity", body)
+        self.assertNotIn("Public compatibility", body)
+        self.assertNotIn("1 model published", body)
         self.assertNotIn("Diegimų", body)
         self.assertNotIn("ADMINISTRAVIMAS", body)
         self.assertNotIn("Georgia", body)
@@ -360,13 +359,12 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         body = dashboard_page(
             [row], {"username": "operator"}, "csrf", operations=[operation]
         ).decode()
-        self.assertIn("aria-label='View 1 errors'", body)
-        self.assertIn("Diagnostic record", body)
-        self.assertIn("1.0.0-beta.6 (build 5)", body)
-        self.assertIn("INSTALL_FAILED_WRITE", body)
-        self.assertIn("SEND_OBJECT_FAILED", body)
-        self.assertIn("fenix 8 pro - 51mm", body)
-        self.assertIn("GARMIN_UNIT_ID", body)
+        self.assertIn("aria-label='View 1 unresolved errors", body)
+        self.assertIn("/admin/diagnostics?identity=", body)
+        self.assertNotIn("Diagnostic record", body)
+        self.assertNotIn("1.0.0-beta.6 (build 5)", body)
+        self.assertNotIn("fenix 8 pro - 51mm", body)
+        self.assertNotIn("GARMIN_UNIT_ID", body)
 
     def test_admin_dashboard_separates_resolved_legacy_failures_from_active_data(self):
         active_row = {
@@ -396,16 +394,11 @@ class CompatibilityEvidenceTests(unittest.TestCase):
             [active_row], {"username": "operator"}, "csrf",
             operations=[], resolved_operations=[resolved],
         ).decode()
-        self.assertIn("Resolved / historical diagnostics", body)
-        self.assertIn("fēnix 8 Pro · 51 mm", body)
-        self.assertIn("Identity pending", body)
-        self.assertIn("Issue #32", body)
-        self.assertIn("1 diagnostic", body)
-        self.assertNotIn("Resolved / historical · Identity pending", body)
-        self.assertIn("Historical pre-beta.6 failure", body)
-        self.assertIn("INSTALL_BLOCKED_UNKNOWN_TARGET", body)
-        self.assertIn("excluded from current compatibility counts or rates", body)
-        self.assertNotIn("Identity pending</td>", body)
+        self.assertNotIn("Resolved / historical diagnostics", body)
+        self.assertNotIn("fēnix 8 Pro · 51 mm", body)
+        self.assertNotIn("Historical pre-beta.6 failure", body)
+        self.assertNotIn("INSTALL_BLOCKED_UNKNOWN_TARGET", body)
+        self.assertIn("Resolved historical diagnostics", body)
 
     def test_issue_32_quarantine_is_narrow_and_non_destructive(self):
         from pathlib import Path

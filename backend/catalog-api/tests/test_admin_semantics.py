@@ -13,6 +13,7 @@ from terento_catalog.admin import (
     _status_badge,
     campaign_links_page,
     dashboard_page,
+    diagnostics_page,
     devices_page,
 )
 from terento_catalog.compatibility_status import (
@@ -280,6 +281,135 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Failed", body)
         self.assertIn("Yes", body)
         self.assertIn("Not attempted", body)
+
+    def test_dashboard_is_model_summary_only_and_errors_link_to_exact_drilldown(self):
+        identity = "fēnix 8 · 51 mm, AMOLED"
+        row = {
+            "model": "fēnix 8",
+            "variant": "51 mm, AMOLED",
+            "compatibility_identity": identity,
+            "attempted_install_count": 2,
+            "successful_install_count": 1,
+            "failed_install_count": 1,
+            "success_rate": 50,
+            "recognized_map_capable_evidence": True,
+            "last_success": "2026-08-25T16:04:00+00:00",
+            "last_evidence": "2026-08-25T16:05:00+00:00",
+        }
+        body = dashboard_page(
+            [row],
+            {"username": "operator"},
+            "csrf",
+            operations=[{
+                "operation_key": "failed-operation",
+                "compatibility_identity": identity,
+                "phase_outcome": "FAILED",
+                "failure_code": "SEND_OBJECT_FAILED",
+                "identity_resolution_state": "RESOLVED",
+            }],
+            resolved_operations=[{
+                "operation_key": "resolved-operation",
+                "compatibility_identity": identity,
+                "phase_outcome": "FAILED",
+                "failure_code": "OLD_FAILURE",
+                "diagnostic_status": "RESOLVED",
+            }],
+        ).decode()
+        self.assertEqual(body.count("class='metric'"), 4)
+        self.assertIn("1 error", body)
+        self.assertIn("/admin/diagnostics?identity=f%C4%93nix+8+%C2%B7+51+mm%2C+AMOLED&amp;state=open", body)
+        self.assertIn("data-diagnostics-url='/admin/diagnostics?identity=", body)
+        self.assertIn("Most errors", body)
+        self.assertIn("Latest activity", body)
+        self.assertIn("Model name", body)
+        self.assertNotIn("Diagnostic record", body)
+        self.assertNotIn("Raw MTP model", body)
+        self.assertNotIn("resolve-diagnostic-dialog", body)
+
+    def test_diagnostics_page_separates_state_columns_and_collapsed_detail_actions(self):
+        identity = "fēnix 8 · 51 mm, AMOLED"
+        failed = {
+            "operation_key": "failed-operation",
+            "event_id": "event-failed",
+            "occurred_at": "2026-08-25T16:04:00+00:00",
+            "compatibility_identity": identity,
+            "variant": "51 mm, AMOLED",
+            "release_label": "beta",
+            "app_build": "2244",
+            "region": "DEU+",
+            "phase_outcome": "FAILED",
+            "failure_stage": "write",
+            "failure_code": "SEND_OBJECT_FAILED",
+            "native_failure_code": "LIBMTP_ERROR_IO",
+            "write_started": True,
+            "remote_object_created": False,
+            "cleanup_attempted": False,
+            "map_result_index": 0,
+            "raw_mtp_model": "fenix 8 51mm",
+            "identity_resolution_state": "RESOLVED",
+            "canonical_device_model_id": "garmin-fenix-8-51-amoled",
+            "linked_github_issue": "#32",
+        }
+        pending = {
+            **failed,
+            "operation_key": "pending-operation",
+            "event_id": "event-pending",
+            "phase_outcome": "SUCCEEDED",
+            "failure_stage": None,
+            "failure_code": None,
+            "native_failure_code": None,
+            "raw_mtp_model": "fenix 8 51mm",
+            "identity_resolution_state": "UNRESOLVED",
+            "canonical_device_model_id": None,
+            "linked_github_issue": None,
+        }
+        resolved = {**failed, "operation_key": "resolved-operation", "event_id": "event-resolved", "diagnostic_status": "RESOLVED", "linked_github_issue": None}
+        body = diagnostics_page(
+            [{
+                "model": "fēnix 8",
+                "variant": "51 mm, AMOLED",
+                "compatibility_identity": identity,
+                "attempted_install_count": 2,
+                "successful_install_count": 1,
+                "recognized_map_capable_evidence": True,
+            }],
+            {"username": "operator"},
+            "csrf",
+            identity=identity,
+            operations=[failed, pending],
+            resolved_operations=[resolved],
+            identity_devices=[{
+                "id": "garmin-fenix-8-51-amoled",
+                "model": "fēnix 8",
+                "variant": "51 mm, AMOLED",
+                "familyName": "fēnix",
+            }],
+        ).decode()
+        table = body.split("class='diagnostic-list-table'", 1)[1].split("</table>", 1)[0]
+        for label in ("Date", "Region", "Result", "Stage", "Code", "Issue", "State", "Action"):
+            self.assertIn(f">{label}<", table)
+        self.assertNotIn("Raw MTP model", table)
+        self.assertIn("Open", body)
+        self.assertIn("Identity pending", body)
+        self.assertIn("Resolved", body)
+        self.assertIn("Review", body)
+        self.assertIn("Resolve diagnostic", body)
+        self.assertIn("Reopen diagnostic", body)
+        self.assertIn("HISTORICAL_SUPERSEDED", body)
+        self.assertIn("Search model, family, variant, case size, or canonical ID", body)
+        self.assertIn("Canonical ID:", body)
+        self.assertIn("Create GitHub issue", body)
+        self.assertIn("Change linked issue", body)
+        self.assertIn("Remove link", body)
+        self.assertIn("#32 · Open", body)
+        self.assertIn("Diagnostic ID:", body)
+        self.assertIn("Technical details", body)
+
+    def test_issue_link_update_is_additive_and_does_not_change_evidence_outcome(self):
+        source = inspect.getsource(Database.update_diagnostic_issue)
+        self.assertIn("SET linked_github_issue = %s", source)
+        self.assertNotIn("phase_outcome", source)
+        self.assertNotIn("diagnostic_status =", source)
 
     def test_historical_diagnostics_keep_the_same_summary_and_separate_group_metadata(self):
         result = {
