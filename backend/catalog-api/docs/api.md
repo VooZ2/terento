@@ -181,7 +181,8 @@ current retail category. The response contains exact identity, evidence
 counts, `evidenceStatus`, family/variant display metadata, and an `image`
 object. `image` follows controlled Terento asset → allowlisted Garmin
 `garmin-source` URL → the neutral Terento `fallback` image at
-`https://terento.app/assets/generic-garmin-watch.png`. The fallback is
+`https://terento.app/assets/generic-garmin-watch.png` (with a cache-busting
+version query in emitted URLs). The fallback is
 presentation-only and does not indicate a model match or compatibility.
 
 This endpoint does not expose `supportStatus`, operator review decisions,

@@ -2,7 +2,7 @@
   const data = globalThis.TerentoCompatibilityData;
   if (!data) throw new Error("compatibility_data_unavailable");
   const API_ORIGIN = "https://api.terento.app";
-  const FALLBACK_IMAGE_URL = "/assets/generic-garmin-watch.png";
+  const FALLBACK_IMAGE_URL = "/assets/generic-garmin-watch.png?v=20260826-1";
   const isLocalPreview = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
   const previewStats = [
     {
