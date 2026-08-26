@@ -281,21 +281,24 @@ class AdminDevicesTests(unittest.TestCase):
         for value in (
             "Devices", "Garmin device catalog, map capability, authorization, and compatibility evidence.",
             "Search devices", "All families", "All maps", "Maps: Yes", "Maps: No",
-            "Maps: Unknown", "Approved", "Blocked", "Pending", "Newest in catalog",
-            "Most attempts", "Last evidence", "device-dialog", "admin-timezone",
+            "Maps: Unknown", "Approved", "Blocked", "Pending", "Last evidence",
+            "device-dialog", "admin-timezone",
             "Automatic (browser)", "data-admin-timestamp", "TerentoAdminTime",
             "selected time zone", "device-summary-strip", "position:sticky",
             "--admin-control-height", "--admin-focus-ring", "--admin-placeholder",
             "table-layout:fixed", "overflow-y:visible", "Catalog details", "data-authorization-change",
             "data-authorization-form hidden", "data-authorization-cancel", "disabled>Save</button>",
-            ">Model<", ">Variant<", ">Maps<", ">Authorization<", ">Status<", ">Attempts<",
-            ">Success<", ">Last evidence<",
+            "data-device-sort=\"model\"", "data-device-sort=\"variant\"", "data-device-sort=\"maps\"",
+            "data-device-sort=\"authorization\"", "data-device-sort=\"status\"",
+            "data-device-sort=\"attempts\"", "data-device-sort=\"success\"", "data-device-sort=\"evidence\"",
+            "aria-sort=\"ascending\"", "Catalog metadata only", "device-catalog-id", "detail-status-value",
         ):
             self.assertIn(value, body)
         table_header = body[body.index("<thead>"):body.index("</thead>")]
         header_positions = [table_header.index(value) for value in (
-            ">Model<", ">Variant<", ">Maps<", ">Authorization<", ">Status<",
-            ">Attempts<", ">Success<", ">Last evidence<",
+            "data-device-sort=\"model\"", "data-device-sort=\"variant\"", "data-device-sort=\"maps\"",
+            "data-device-sort=\"authorization\"", "data-device-sort=\"status\"",
+            "data-device-sort=\"attempts\"", "data-device-sort=\"success\"", "data-device-sort=\"evidence\"",
         )]
         self.assertEqual(header_positions, sorted(header_positions))
         self.assertNotIn("Garmin devices", body)
@@ -306,9 +309,21 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertIn("generic-garmin-watch.png", body)
         self.assertIn("Compatibility status and installation counts remain backend-derived", body)
         self.assertIn("Compatibility status", body)
-        self.assertIn("aria-label=\"Installation authorization\"", body)
+        self.assertIn("title=\"Installation authorization\"", body)
         self.assertNotIn("Support decision", body)
         self.assertNotIn("Evidence status", body)
+        self.assertNotIn("id=\"device-sort\"", body)
+        self.assertIn("statusOrder = {unavailable: 0, TESTING: 1, TESTED: 2, SUPPORTED: 3, VERIFIED: 4}", body)
+        self.assertIn("[device.id, device.model", body)
+        self.assertIn("let sortKey = 'model'", body)
+        self.assertIn("let sortDirection = 'ascending'", body)
+        self.assertIn("sortDirection === 'ascending' ? 'descending' : 'ascending'", body)
+        self.assertIn("attempts: Number(device.installationStats.attempts || 0)", body)
+        self.assertIn("success: Number(device.installationStats.successful || 0)", body)
+        self.assertIn("Date.parse(device.installationStats.lastEvidenceAt)", body)
+        self.assertIn("mapOrder = {unknown: 0, no: 1, yes: 2}", body)
+        self.assertIn("authorizationOrder = {NOT_EVALUATED: 0, UNSUPPORTED: 1, SUPPORTED: 2}", body)
+        self.assertIn("if (aValue === null || aValue === undefined || aValue === '')", body)
 
 
 if __name__ == "__main__":

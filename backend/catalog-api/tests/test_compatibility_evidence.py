@@ -309,7 +309,8 @@ class CompatibilityEvidenceTests(unittest.TestCase):
             "public_statistics_enabled": True,
         }
         body = dashboard_page([row], {"username": "gediminas"}, "csrf", public_stats_enabled=True).decode()
-        self.assertIn("Installation evidence", body)
+        self.assertIn("Installations", body)
+        self.assertIn("Installation activity and compatibility evidence from Terento users.", body)
         self.assertIn(">Install attempts<", body)
         self.assertIn(">51 mm<", body)
         self.assertIn("Latest activity", body)
@@ -531,7 +532,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         devices, devices_body = self.request("GET", "/admin/devices", headers={"Cookie": cookie_header})
         self.assertEqual(devices.status, 200)
         self.assertIn(b">Devices<", devices_body)
-        self.assertIn(b">Maps<", devices_body)
+        self.assertIn(b'data-device-sort="maps"', devices_body)
         self.assertIn(
             "img-src https://terento.app https://api.terento.app https://res.garmin.com data:",
             devices.headers["Content-Security-Policy"],

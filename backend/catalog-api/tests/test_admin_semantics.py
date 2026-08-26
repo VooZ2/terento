@@ -394,6 +394,13 @@ class AdminSemanticsTests(unittest.TestCase):
             "canonical_device_model_id": None,
             "linked_github_issue": None,
         }
+        succeeded = {
+            **pending,
+            "operation_key": "succeeded-operation",
+            "event_id": "event-succeeded",
+            "identity_resolution_state": "RESOLVED",
+            "canonical_device_model_id": "garmin-fenix-8-51-amoled",
+        }
         resolved = {**failed, "operation_key": "resolved-operation", "event_id": "event-resolved", "diagnostic_status": "RESOLVED", "linked_github_issue": None}
         body = diagnostics_page(
             [{
@@ -407,7 +414,7 @@ class AdminSemanticsTests(unittest.TestCase):
             {"username": "operator"},
             "csrf",
             identity=identity,
-            operations=[failed, pending],
+            operations=[failed, pending, succeeded],
             resolved_operations=[resolved],
             identity_devices=[{
                 "id": "garmin-fenix-8-51-amoled",
@@ -417,7 +424,7 @@ class AdminSemanticsTests(unittest.TestCase):
             }],
         ).decode()
         table = body.split("class='diagnostic-list-table'", 1)[1].split("</table>", 1)[0]
-        for label in ("Date", "Region", "Result", "Stage", "Code", "Issue", "State", "Action"):
+        for label in ("Date", "Region", "Result", "Stage", "Code", "Issue", "Review", "Action"):
             self.assertIn(f">{label}<", table)
         self.assertNotIn("Raw MTP model", table)
         self.assertIn("Open", body)
@@ -435,6 +442,17 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("#32 · Open", body)
         self.assertIn("Diagnostic ID:", body)
         self.assertIn("Technical details", body)
+        self.assertIn("<option value='all' selected>All</option><option value='succeeded'>Succeeded</option><option value='failed'>Failed</option><option value='open'>Open</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity pending</option><option value='with-issue'>With issue</option>", body)
+        self.assertEqual(body.count("action='/admin/diagnostics/resolve'"), 1)
+        self.assertEqual(body.count("action='/admin/diagnostics/reopen'"), 1)
+        self.assertEqual(body.count("action='/admin/diagnostics/identity'"), 1)
+        self.assertIn("data-diagnostic-state='history'", body)
+        self.assertIn("data-diagnostic-result='succeeded'", body)
+        self.assertIn("new URLSearchParams(window.location.search).get('state')", body)
+        self.assertIn("selected === 'succeeded'", body)
+        self.assertIn("selected === 'failed'", body)
+        self.assertIn("selected === 'open' && row.dataset.reviewOpen === 'true'", body)
+        self.assertIn("selected === 'identity-pending' && row.dataset.identityPending === 'true'", body)
 
     def test_issue_link_update_is_additive_and_does_not_change_evidence_outcome(self):
         source = inspect.getsource(Database.update_diagnostic_issue)
