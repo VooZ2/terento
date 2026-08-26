@@ -26,12 +26,12 @@ One logical map region owned by a provider.
 
 | Column | Type | Meaning |
 | --- | --- | --- |
-| `id` | `text` | Stable map ID, for example `freizeitkarte-ltu` |
+| `id` | `text` | Stable map ID, for example `freizeitkarte-deu` |
 | `provider_id` | `text` | Foreign key to `map_provider` |
-| `name` | `text` | User-facing name, for example `Lithuania` |
-| `region` | `text` | Normalized provider region, for example `LTU` |
+| `name` | `text` | User-facing name, for example `Germany` |
+| `region` | `text` | Normalized provider region, for example `DEU` |
 | `country` | `text` | Country or provider region label |
-| `identifier` | `text` | Provider identifier, for example `LTU+` |
+| `identifier` | `text` | Provider identifier, for example `DEU+` |
 | `managed_by_terento` | `boolean` | Catalog management flag; not device ownership |
 | `created_at`, `updated_at` | `timestamptz` | Local catalog audit timestamps |
 
@@ -227,6 +227,18 @@ beta.6 structured-diagnostics rollout are marked `RESOLVED`, not deleted. They
 remain available in the private historical-diagnostics section, but are
 excluded from current compatibility counts, rates, status badges, and public
 evidence projections. New beta.6 and later events remain active by default.
+
+Migration 021 adds additive diagnostic resolution fields and lifecycle audit
+rows, exact identity-resolution state/audit rows, and installation-
+authorization audit rows. It also installs the canonical threshold function
+used by the live compatibility view: recognized map-capable evidence is
+required, then 0 successful operations is `TESTING`, 1–2 is `TESTED`, 3–4 is
+`SUPPORTED`, and 5+ is `VERIFIED`; unrecognized or non-map records have no
+compatibility status. The view and private admin snapshot count distinct
+write-started install operations, while retaining per-map evidence for
+diagnosis. Historical reviewed records are not deactivated by the retail
+collector. Compatibility evidence, canonical links, and operator
+installation authorization remain separate from device write authorization.
 
 `compatibility_model_statistics` is a live SQL view over the evidence event
 table and model review metadata. It includes only `ACTIVE` diagnostic events;

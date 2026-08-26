@@ -200,11 +200,11 @@ private func makeHarness(oldVersioned: Bool = false) -> Harness {
     )
     let oldVersion = MapVersion(year: 2026, month: 5)!
     let newVersion = MapVersion(year: 2026, month: 6)!
-    let mapIdentity = MapIdentity(provider: "freizeitkarte", region: "LVA")!
+    let mapIdentity = MapIdentity(provider: "freizeitkarte", region: "FRA")!
     let oldData = Data(repeating: 0x41, count: 16)
     let oldFilename = oldVersioned
-        ? "terento_freizeitkarte_lva_2026-05.img"
-        : "terento_freizeitkarte_lva.img"
+        ? "terento_freizeitkarte_fra_2026-05.img"
+        : "terento_freizeitkarte_fra.img"
     let oldFile = InstalledMapFile(
         path: "/GARMIN/\(oldFilename)",
         filename: oldFilename,
@@ -212,17 +212,17 @@ private func makeHarness(oldVersioned: Bool = false) -> Harness {
         itemID: 101
     )
     let newFile = InstalledMapFile(
-        path: "/GARMIN/terento_freizeitkarte_lva_2026-06.img",
-        filename: "terento_freizeitkarte_lva_2026-06.img",
+        path: "/GARMIN/terento_freizeitkarte_fra_2026-06.img",
+        filename: "terento_freizeitkarte_fra_2026-06.img",
         sizeBytes: 24,
         itemID: 202
     )
     let oldHash = SHA256.hash(data: oldData).map { String(format: "%02x", $0) }.joined()
     let sourceHash = String(repeating: "b", count: 64)
     let installedMap = InstalledMap(
-        name: "Freizeitkarte LVA",
+        name: "Freizeitkarte FRA",
         provider: "Freizeitkarte",
-        region: "LVA",
+        region: "FRA",
         family: "Freizeitkarte",
         rawVersion: "Release 26.05",
         version: oldVersion,
@@ -235,10 +235,10 @@ private func makeHarness(oldVersioned: Bool = false) -> Harness {
         managementState: .managedByTerento
     )
     let item = MapLifecycleItem(
-        id: "freizeitkarte-lva",
-        title: "Freizeitkarte Latvia",
+        id: "freizeitkarte-fra",
+        title: "Freizeitkarte France",
         provider: "freizeitkarte",
-        region: "LVA",
+        region: "FRA",
         version: oldVersion,
         rawVersion: "Release 26.05",
         sizeBytes: UInt64(oldData.count),
@@ -246,13 +246,13 @@ private func makeHarness(oldVersioned: Bool = false) -> Harness {
         classification: .terentoManaged
     )
     let package = MapPackage(
-        id: "freizeitkarte-lva",
+        id: "freizeitkarte-fra",
         providerId: "freizeitkarte",
-        regionId: "LVA",
-        name: "Freizeitkarte Latvia",
+        regionId: "FRA",
+        name: "Freizeitkarte France",
         version: newVersion,
         sizeBytes: 24,
-        sourceURL: URL(string: "https://provider.example/lva.zip"),
+        sourceURL: URL(string: "https://provider.example/fra.zip"),
         releaseDate: nil,
         identifier: nil,
         installSizeBytes: 24
@@ -262,14 +262,14 @@ private func makeHarness(oldVersioned: Bool = false) -> Harness {
     try? Data(repeating: 0x42, count: 24).write(to: artifactURL, options: .atomic)
     let artifact = SafeUpdateSourceArtifact(
         provider: "freizeitkarte",
-        region: "LVA",
+        region: "FRA",
         version: newVersion,
         localIMGURL: artifactURL,
         installSizeBytes: 24,
         sha256: sourceHash,
         sourcePackageURL: package.sourceURL!,
         catalogPackageID: package.id,
-        targetFilename: "terento_freizeitkarte_lva.img"
+        targetFilename: "terento_freizeitkarte_fra.img"
     )
     let oldObject = SafeUpdateRemoteObject(
         file: oldFile,
@@ -287,7 +287,7 @@ private func makeHarness(oldVersioned: Bool = false) -> Harness {
     )
     let comparison = MapComparison(
         providerName: "Freizeitkarte",
-        regionName: "Latvia",
+        regionName: "France",
         catalogMap: package,
         installedMap: installedMap,
         status: .updateAvailable
@@ -339,14 +339,14 @@ private func testSuccessfulUpdateAndOrdering() async throws {
 private func testNoUpdateAndOwnershipAreBlockedBeforeTransport() async throws {
     let harness = makeHarness()
     var request = harness.request
-    request = SafeUpdateRequest(deviceKey: request.deviceKey, identity: request.identity, profile: request.profile, selectedMap: request.selectedMap, comparison: MapComparison(providerName: "Freizeitkarte", regionName: "Latvia", catalogMap: request.selectedMap, installedMap: request.comparison.installedMap, status: .upToDate), currentItem: request.currentItem, currentObject: request.currentObject, backupDirectory: request.backupDirectory, confirmed: true, deviceConnected: true)
+    request = SafeUpdateRequest(deviceKey: request.deviceKey, identity: request.identity, profile: request.profile, selectedMap: request.selectedMap, comparison: MapComparison(providerName: "Freizeitkarte", regionName: "France", catalogMap: request.selectedMap, installedMap: request.comparison.installedMap, status: .upToDate), currentItem: request.currentItem, currentObject: request.currentObject, backupDirectory: request.backupDirectory, confirmed: true, deviceConnected: true)
     let result = await SafeUpdateTransaction(gate: harness.gate, sourceValidator: harness.validator, manifestReconciler: harness.reconciler).run(request: request, provider: harness.provider, transport: harness.transport)
     try require(result.status == .blockedNoUpdate, "up-to-date map must not enter update")
     try require(harness.transport.events.isEmpty, "blocked update must not touch transport")
 
     let unmanaged = makeHarness()
-    let unmanagedMap = InstalledMap(name: "External", provider: "Freizeitkarte", region: "LVA", family: nil, rawVersion: "Release 26.05", version: MapVersion(year: 2026, month: 5), identifier: nil, productId: nil, familyId: nil, sizeBytes: unmanaged.request.currentObject.file.sizeBytes, sourceFile: unmanaged.request.currentObject.file, metadataStatus: .parsed, managementState: .detectedNotManaged)
-    let unmanagedItem = MapLifecycleItem(id: "freizeitkarte-lva", title: "External", provider: "freizeitkarte", region: "LVA", version: unmanagedMap.version, rawVersion: unmanagedMap.rawVersion, sizeBytes: unmanagedMap.sizeBytes, installedMaps: [unmanagedMap], classification: .externalRecognized)
+    let unmanagedMap = InstalledMap(name: "External", provider: "Freizeitkarte", region: "FRA", family: nil, rawVersion: "Release 26.05", version: MapVersion(year: 2026, month: 5), identifier: nil, productId: nil, familyId: nil, sizeBytes: unmanaged.request.currentObject.file.sizeBytes, sourceFile: unmanaged.request.currentObject.file, metadataStatus: .parsed, managementState: .detectedNotManaged)
+    let unmanagedItem = MapLifecycleItem(id: "freizeitkarte-fra", title: "External", provider: "freizeitkarte", region: "FRA", version: unmanagedMap.version, rawVersion: unmanagedMap.rawVersion, sizeBytes: unmanagedMap.sizeBytes, installedMaps: [unmanagedMap], classification: .externalRecognized)
     let unmanagedRequest = SafeUpdateRequest(deviceKey: unmanaged.request.deviceKey, identity: unmanaged.request.identity, profile: unmanaged.request.profile, selectedMap: unmanaged.request.selectedMap, comparison: unmanaged.request.comparison, currentItem: unmanagedItem, currentObject: unmanaged.request.currentObject, backupDirectory: unmanaged.request.backupDirectory, confirmed: true, deviceConnected: true)
     let unmanagedResult = await SafeUpdateTransaction(gate: unmanaged.gate, sourceValidator: unmanaged.validator, manifestReconciler: unmanaged.reconciler).run(request: unmanagedRequest, provider: unmanaged.provider, transport: unmanaged.transport)
     try require(unmanagedResult.status == .blockedNotManaged, "external map must be blocked")
@@ -367,7 +367,7 @@ private func testMismatchedMapIdentityIsBlockedBeforeTransport() async throws {
     let harness = makeHarness()
     let mismatchedObject = SafeUpdateRemoteObject(
         file: harness.request.currentObject.file,
-        identity: MapIdentity(provider: "opentopomap", region: "LVA")!,
+        identity: MapIdentity(provider: "opentopomap", region: "FRA")!,
         version: harness.request.currentObject.version,
         ownership: .managedByTerento,
         sha256: harness.request.currentObject.sha256
@@ -449,7 +449,7 @@ private func testBusyGateAndNoDowngrade() async throws {
 
     let downgrade = makeHarness()
     let newerInstalled = SafeUpdateRemoteObject(file: downgrade.request.currentObject.file, identity: downgrade.request.currentObject.identity, version: MapVersion(year: 2026, month: 7), ownership: .managedByTerento, sha256: downgrade.request.currentObject.sha256)
-    let request = SafeUpdateRequest(deviceKey: downgrade.request.deviceKey, identity: downgrade.request.identity, profile: downgrade.request.profile, selectedMap: downgrade.request.selectedMap, comparison: MapComparison(providerName: "Freizeitkarte", regionName: "Latvia", catalogMap: downgrade.request.selectedMap, installedMap: downgrade.request.comparison.installedMap, status: .newerInstalled), currentItem: downgrade.request.currentItem, currentObject: newerInstalled, backupDirectory: downgrade.request.backupDirectory, confirmed: true, deviceConnected: true)
+    let request = SafeUpdateRequest(deviceKey: downgrade.request.deviceKey, identity: downgrade.request.identity, profile: downgrade.request.profile, selectedMap: downgrade.request.selectedMap, comparison: MapComparison(providerName: "Freizeitkarte", regionName: "France", catalogMap: downgrade.request.selectedMap, installedMap: downgrade.request.comparison.installedMap, status: .newerInstalled), currentItem: downgrade.request.currentItem, currentObject: newerInstalled, backupDirectory: downgrade.request.backupDirectory, confirmed: true, deviceConnected: true)
     let downgradeResult = await SafeUpdateTransaction(gate: downgrade.gate, sourceValidator: downgrade.validator, manifestReconciler: downgrade.reconciler).run(request: request, provider: downgrade.provider, transport: downgrade.transport)
     try require(downgradeResult.status == .blockedNewerInstalled, "newer installed map must never be downgraded")
 }

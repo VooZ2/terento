@@ -101,8 +101,8 @@ The collector reads the official Freizeitkarte release page and seven official
 Garmin regional pages: Northern, Eastern, South-Eastern, Southern, Western and
 Middle Europe, plus the other-countries page. It selects one package per map,
 preferring the English variant and falling back to the first published language
-variant. The live-source dry-run on 2026-08-21 produced 63 map packages. This
-is a dated provider snapshot, not a permanent claim about the current catalog.
+variant. The collector includes every downloadable official Freizeitkarte
+Garmin package. The current bundled snapshot contains 63 map packages.
 
 It uses the underlying OSM data date when the provider uses a release number
 such as `2/2026`; it does not incorrectly treat that release number as a month.

@@ -55,9 +55,9 @@ private func installedMap(
     managementState: MapManagementState = .managedByTerento
 ) -> InstalledMap {
     InstalledMap(
-        name: "Freizeitkarte LTU+",
+        name: "Freizeitkarte DEU+",
         provider: "Freizeitkarte",
-        region: "LTU",
+        region: "DEU",
         family: "Freizeitkarte",
         rawVersion: "Release 26.05",
         version: installedVersion,
@@ -66,8 +66,8 @@ private func installedMap(
         familyId: nil,
         sizeBytes: 100,
         sourceFile: InstalledMapFile(
-            path: "/GARMIN/terento_freizeitkarte_ltu.img",
-            filename: "terento_freizeitkarte_ltu.img",
+            path: "/GARMIN/terento_freizeitkarte_deu.img",
+            filename: "terento_freizeitkarte_deu.img",
             sizeBytes: 100,
             itemID: itemID
         ),
@@ -81,10 +81,10 @@ private func lifecycleItem(
     classification: MapLifecycleClassification = .terentoManaged
 ) -> MapLifecycleItem {
     MapLifecycleItem(
-        id: "freizeitkarte-ltu",
-        title: "Freizeitkarte Lithuania",
+        id: "freizeitkarte-deu",
+        title: "Freizeitkarte Germany",
         provider: "Freizeitkarte",
-        region: "LTU",
+        region: "DEU",
         version: installed?.version,
         rawVersion: installed?.rawVersion,
         sizeBytes: installed?.sizeBytes ?? 0,
@@ -99,12 +99,12 @@ private func comparison(
 ) -> MapComparison {
     MapComparison(
         providerName: "Freizeitkarte",
-        regionName: "Lithuania",
+        regionName: "Germany",
         catalogMap: MapPackage(
-            id: "freizeitkarte-ltu",
+            id: "freizeitkarte-deu",
             providerId: "freizeitkarte",
-            regionId: "LTU",
-            name: "Lithuania",
+            regionId: "DEU",
+            name: "Germany",
             version: catalogVersion,
             sizeBytes: 100,
             sourceURL: nil,
@@ -186,12 +186,12 @@ func runMapLifecyclePresentationTests() throws {
 
     let recoveryRecord = TerentoFailedInstallRecoveryRecord(
         deviceKey: "fenix-8-091e-51b8",
-        packageID: "freizeitkarte-ltu",
+        packageID: "freizeitkarte-deu",
         providerId: "freizeitkarte",
-        regionId: "LTU",
+        regionId: "DEU",
         version: installedVersion,
-        devicePath: "/GARMIN/terento_freizeitkarte_ltu.img",
-        filename: "terento_freizeitkarte_ltu.img",
+        devicePath: "/GARMIN/terento_freizeitkarte_deu.img",
+        filename: "terento_freizeitkarte_deu.img",
         sizeBytes: 100,
         sha256: String(repeating: "a", count: 64),
         createdAt: Date(timeIntervalSince1970: 0)

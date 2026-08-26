@@ -17,15 +17,24 @@ class CompatibilityStatus(str, Enum):
     VERIFIED = "VERIFIED"
 
 
+CANONICAL_STATUS_ORDER = (
+    CompatibilityStatus.TESTING,
+    CompatibilityStatus.TESTED,
+    CompatibilityStatus.SUPPORTED,
+    CompatibilityStatus.VERIFIED,
+)
+CANONICAL_STATUS_VALUES = tuple(status.value for status in CANONICAL_STATUS_ORDER)
+
+
 PUBLIC_COMPATIBILITY_STATUSES = frozenset(
-    set(CompatibilityStatus)
+    CANONICAL_STATUS_ORDER
 )
 
 
 def calculate_compatibility_status(
     *,
     successful_install_count: int,
-    recognized_map_capable_evidence: bool = True,
+    recognized_map_capable_evidence: bool = False,
 ) -> CompatibilityStatus | None:
     """Return the canonical status for one exact model and variant.
 
@@ -39,6 +48,9 @@ def calculate_compatibility_status(
         raise ValueError("successful_install_count must not be negative")
     if not recognized_map_capable_evidence:
         return None
+    # Keep the threshold order explicit: this is the shared classifier used
+    # by the public projection, admin projection, and tests.  The database
+    # view mirrors these boundaries for query-side filtering.
     if successful_install_count == 0:
         return CompatibilityStatus.TESTING
     if successful_install_count < 3:

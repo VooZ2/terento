@@ -136,10 +136,10 @@ struct ManifestStoreConcurrencyTests {
     ) -> TerentoManifestEntry {
         TerentoManifestEntry(
             deviceKey: "fenix8-test-device",
-            devicePath: "/GARMIN/terento_freizeitkarte_ltu.img",
-            filename: "terento_freizeitkarte_ltu.img",
+            devicePath: "/GARMIN/terento_freizeitkarte_deu.img",
+            filename: "terento_freizeitkarte_deu.img",
             providerId: "freizeitkarte",
-            regionId: "LTU",
+            regionId: "DEU",
             version: version,
             sizeBytes: 100,
             sha256: suffix,

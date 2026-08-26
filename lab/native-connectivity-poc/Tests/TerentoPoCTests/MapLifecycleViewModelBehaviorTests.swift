@@ -108,20 +108,20 @@ struct MapLifecycleViewModelBehaviorTests {
 
     private static func makeContext() throws -> MapLifecycleContext {
         guard let version = MapVersion(year: 2026, month: 5),
-              MapIdentity(provider: "Freizeitkarte", region: "LVA") != nil else {
+              MapIdentity(provider: "Freizeitkarte", region: "FRA") != nil else {
             throw Failure("could not construct deterministic lifecycle test identity")
         }
 
         let sourceFile = InstalledMapFile(
-            path: "/GARMIN/terento_freizeitkarte_lva.img",
-            filename: "terento_freizeitkarte_lva.img",
+            path: "/GARMIN/terento_freizeitkarte_fra.img",
+            filename: "terento_freizeitkarte_fra.img",
             sizeBytes: 348_684_288,
             itemID: 16777326
         )
         let installedMap = InstalledMap(
-            name: "Freizeitkarte Latvia",
+            name: "Freizeitkarte France",
             provider: "Freizeitkarte",
-            region: "LVA",
+            region: "FRA",
             family: "Freizeitkarte",
             rawVersion: "Release 26.05",
             version: version,
@@ -134,10 +134,10 @@ struct MapLifecycleViewModelBehaviorTests {
             managementState: .managedByTerento
         )
         let item = MapLifecycleItem(
-            id: "freizeitkarte-lva",
-            title: "Freizeitkarte Latvia",
+            id: "freizeitkarte-fra",
+            title: "Freizeitkarte France",
             provider: "Freizeitkarte",
-            region: "LVA",
+            region: "FRA",
             version: version,
             rawVersion: "Release 26.05",
             sizeBytes: sourceFile.sizeBytes,
@@ -157,10 +157,10 @@ struct MapLifecycleViewModelBehaviorTests {
         )
         let profile = DeviceInstallProfileRegistry.local.profile(for: deviceIdentity)
         let selectedMap = MapPackage(
-            id: "freizeitkarte-lva",
+            id: "freizeitkarte-fra",
             providerId: "Freizeitkarte",
-            regionId: "LVA",
-            name: "Freizeitkarte Latvia",
+            regionId: "FRA",
+            name: "Freizeitkarte France",
             version: version,
             sizeBytes: sourceFile.sizeBytes,
             sourceURL: nil,
@@ -169,7 +169,7 @@ struct MapLifecycleViewModelBehaviorTests {
         )
         let comparison = MapComparison(
             providerName: "Freizeitkarte",
-            regionName: "Latvia",
+            regionName: "France",
             catalogMap: selectedMap,
             installedMap: installedMap,
             status: .upToDate

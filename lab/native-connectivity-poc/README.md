@@ -45,10 +45,10 @@ variant. Reconnect, map visibility, physical-device count, firmware variation,
 and operator review do not promote a status. Exact model names and firmware
 values belong in internal compatibility records, not this public PoC overview.
 
-The metadata-only catalog records Freizeitkarte packages. The bundled fallback
-is a small snapshot containing Lithuania and Latvia; the live catalog may
-contain more regions. It records provider attribution, source and license URLs,
-release, and provider-listed package sizes. The loader tries
+The metadata-only catalog records downloadable Freizeitkarte packages. The
+bundled fallback contains all 63 official packages. It records
+provider attribution, source and license URLs, release, and provider-listed
+package sizes. The loader tries
 `https://api.terento.app/maps/catalog.json` first and falls back to
 `Resources/Maps/catalog.json`; neither path downloads a map binary.
 
@@ -60,7 +60,8 @@ file or a BaseCamp-renamed Freizeitkarte image can still be recognized from
 its IMG metadata. Non-Freizeitkarte images are ignored after inspection,
 without any write, rename, overwrite, or delete operation. The header parser
 recognizes the fixed `DSKIMG`/`GARMIN` signatures, the Freizeitkarte provider
-and region code such as `LTU`, and release labels such as `Release 26.05`.
+and an active provider region code such as `DEU`, and release labels such as
+`Release 26.05`.
 
 The prefix is currently limited to 4 KiB. This is enough for the fixed header
 metadata observed on the fēnix 8 test device and avoids downloading complete

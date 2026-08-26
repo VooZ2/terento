@@ -19,57 +19,57 @@ struct MapInventoryListTests {
     }
 
     private static func testFreizeitkarteRegionsAppearInOneList() {
-        let lithuania = makeInstalledMap(
-            name: "Freizeitkarte Lithuania",
+        let germany = makeInstalledMap(
+            name: "Freizeitkarte Germany",
             provider: "Freizeitkarte",
-            region: "LTU",
-            path: "/GARMIN/freizeitkarte-lithuania.img"
+            region: "DEU",
+            path: "/GARMIN/freizeitkarte-germany.img"
         )
-        let latvia = makeInstalledMap(
-            name: "Freizeitkarte Latvia",
+        let france = makeInstalledMap(
+            name: "Freizeitkarte France",
             provider: "Freizeitkarte",
-            region: "LVA",
-            path: "/GARMIN/freizeitkarte-latvia.img"
+            region: "FRA",
+            path: "/GARMIN/freizeitkarte-france.img"
         )
         let scan = makeScan(
-            installedMaps: [lithuania, latvia],
+            installedMaps: [germany, france],
             otherMaps: []
         )
         let comparisons = [
-            makeComparison(region: "LTU", name: "Lithuania", installedMap: lithuania),
-            makeComparison(region: "LVA", name: "Latvia", installedMap: latvia)
+            makeComparison(region: "DEU", name: "Germany", installedMap: germany),
+            makeComparison(region: "FRA", name: "France", installedMap: france)
         ]
 
         let list = MapInventoryListBuilder().build(
             scan: scan,
             comparisons: comparisons,
-            selectedCatalogPackageID: "freizeitkarte-lva"
+            selectedCatalogPackageID: "freizeitkarte-fra"
         )
         let titles = list.freizeitkarte.map(\.title)
 
         expect(
             list.freizeitkarte.count == 2
-                && titles.contains("Freizeitkarte Latvia")
-                && titles.contains("Freizeitkarte Lithuania")
+                && titles.contains("Freizeitkarte France")
+                && titles.contains("Freizeitkarte Germany")
                 && list.otherMaps.isEmpty,
             "Freizeitkarte regions appear once in one unified list"
         )
     }
 
     private static func testSelectedCatalogMapIsNotDuplicatedWhenInstalled() {
-        let latvia = makeInstalledMap(
-            name: "Freizeitkarte Latvia",
+        let france = makeInstalledMap(
+            name: "Freizeitkarte France",
             provider: "Freizeitkarte",
-            region: "LVA",
+            region: "FRA",
             path: "/GARMIN/BaseCamp-renamed.img"
         )
-        let scan = makeScan(installedMaps: [latvia])
-        let comparisons = [makeComparison(region: "LVA", name: "Latvia", installedMap: latvia)]
+        let scan = makeScan(installedMaps: [france])
+        let comparisons = [makeComparison(region: "FRA", name: "France", installedMap: france)]
 
         let list = MapInventoryListBuilder().build(
             scan: scan,
             comparisons: comparisons,
-            selectedCatalogPackageID: "freizeitkarte-lva"
+            selectedCatalogPackageID: "freizeitkarte-fra"
         )
 
         expect(
@@ -82,18 +82,18 @@ struct MapInventoryListTests {
 
     private static func testCompanionFilesAppearAsOneOtherMap() {
         let main = makeInstalledMap(
-            name: "OpenTopoMap Lithuania",
+            name: "OpenTopoMap Germany",
             provider: nil,
             region: nil,
-            path: "/GARMIN/otm-lithuania.img",
+            path: "/GARMIN/otm-germany.img",
             rawVersion: nil,
             size: 100
         )
         let contours = makeInstalledMap(
-            name: "OpenTopoMap Lithuania",
+            name: "OpenTopoMap Germany",
             provider: nil,
             region: nil,
-            path: "/GARMIN/otm-lithuania-contours.img",
+            path: "/GARMIN/otm-germany-contours.img",
             rawVersion: nil,
             size: 200
         )
@@ -105,7 +105,7 @@ struct MapInventoryListTests {
         let list = MapInventoryListBuilder().build(
             scan: scan,
             comparisons: [],
-            selectedCatalogPackageID: "freizeitkarte-lva"
+            selectedCatalogPackageID: "freizeitkarte-fra"
         )
 
         expect(
@@ -118,15 +118,15 @@ struct MapInventoryListTests {
 
     private static func testManifestRecordRestoresManagedOwnership() {
         let file = InstalledMapFile(
-            path: "/GARMIN/terento_freizeitkarte_lva.img",
-            filename: "terento_freizeitkarte_lva.img",
+            path: "/GARMIN/terento_freizeitkarte_fra.img",
+            filename: "terento_freizeitkarte_fra.img",
             sizeBytes: 348_684_288,
             itemID: 42
         )
         let metadata = GarminIMGMetadata(
-            name: "Freizeitkarte LVA+",
+            name: "Freizeitkarte FRA+",
             provider: "Freizeitkarte",
-            region: "LVA",
+            region: "FRA",
             family: "Freizeitkarte",
             rawVersion: "Release 26.05",
             version: MapVersion(year: 2026, month: 5),
@@ -138,7 +138,7 @@ struct MapInventoryListTests {
             devicePath: file.path,
             filename: file.filename,
             providerId: "freizeitkarte",
-            regionId: "LVA",
+            regionId: "FRA",
             version: MapVersion(year: 2026, month: 5)!,
             sizeBytes: file.sizeBytes
         )
@@ -151,14 +151,14 @@ struct MapInventoryListTests {
 
         expect(
             state == .managedByTerento,
-            "manifest-backed Latvia map is shown as managed by Terento"
+            "manifest-backed France map is shown as managed by Terento"
         )
     }
 
     private static func testRemovedMapIsAbsentAfterFreshScan() {
         let scan = makeScan(installedMaps: [])
         let comparisons = [
-            makeComparison(region: "LTU", name: "Lithuania", installedMap: nil)
+            makeComparison(region: "DEU", name: "Germany", installedMap: nil)
         ]
 
         let list = MapInventoryListBuilder().build(
@@ -172,6 +172,7 @@ struct MapInventoryListTests {
             "a map absent from a fresh device scan is absent from Manage maps"
         )
     }
+
 
     private static func makeScan(
         installedMaps: [InstalledMap],

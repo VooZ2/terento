@@ -84,10 +84,10 @@ struct MapVersionComparisonTests {
 
     private static func testOtherInstalledRegionStillMeansInstallAvailable() {
         let installedMap = InstalledMap(
-            name: "Freizeitkarte Latvia",
+            name: "Freizeitkarte France",
             provider: "Freizeitkarte",
-            region: "LVA",
-            family: "Freizeitkarte_LVA+",
+            region: "FRA",
+            family: "Freizeitkarte_FRA+",
             rawVersion: "Release 26.05",
             version: FreizeitkarteVersionParser().parse("Release 26.05"),
             identifier: nil,
@@ -112,12 +112,12 @@ struct MapVersionComparisonTests {
                 attribution: nil,
                 licenseURL: nil
             ),
-            region: MapRegion(id: "LTU", name: "Lithuania", country: "Lithuania"),
+            region: MapRegion(id: "DEU", name: "Germany", country: "Germany"),
             catalogMap: MapPackage(
-                id: "freizeitkarte-ltu",
+                id: "freizeitkarte-deu",
                 providerId: "freizeitkarte",
-                regionId: "LTU",
-                name: "Lithuania",
+                regionId: "DEU",
+                name: "Germany",
                 version: MapVersion(year: 2026, month: 5)!,
                 sizeBytes: 344_000_000,
                 sourceURL: nil,
@@ -134,10 +134,10 @@ struct MapVersionComparisonTests {
 
     private static func testKnownDifferentRegionCannotMatchByIdentifier() {
         let installedMap = InstalledMap(
-            name: "Freizeitkarte Lithuania",
+            name: "Freizeitkarte Germany",
             provider: "Freizeitkarte",
-            region: "LTU",
-            family: "Freizeitkarte_LTU+",
+            region: "DEU",
+            family: "Freizeitkarte_DEU+",
             rawVersion: "Release 26.05",
             version: FreizeitkarteVersionParser().parse("Release 26.05"),
             identifier: "shared-provider-identifier",
@@ -145,8 +145,8 @@ struct MapVersionComparisonTests {
             familyId: nil,
             sizeBytes: 344_000_000,
             sourceFile: InstalledMapFile(
-                path: "/GARMIN/freizeitkarte-lithuania.img",
-                filename: "freizeitkarte-lithuania.img",
+                path: "/GARMIN/freizeitkarte-germany.img",
+                filename: "freizeitkarte-germany.img",
                 sizeBytes: 344_000_000
             ),
             metadataStatus: .parsed,
@@ -154,10 +154,10 @@ struct MapVersionComparisonTests {
         )
 
         let catalogMap = MapPackage(
-            id: "freizeitkarte-lva",
+            id: "freizeitkarte-fra",
             providerId: "freizeitkarte",
-            regionId: "LVA",
-            name: "Latvia",
+            regionId: "FRA",
+            name: "France",
             version: MapVersion(year: 2026, month: 5)!,
             sizeBytes: 298_518_679,
             sourceURL: nil,
@@ -174,13 +174,13 @@ struct MapVersionComparisonTests {
                 attribution: nil,
                 licenseURL: nil
             ),
-            region: MapRegion(id: "LVA", name: "Latvia", country: "Latvia"),
+            region: MapRegion(id: "FRA", name: "France", country: "France"),
             catalogMap: catalogMap
         )
 
         expect(
             comparison.status == .notInstalled,
-            "known LTU identity cannot match LVA through a shared identifier"
+            "known DEU identity cannot match FRA through a shared identifier"
         )
     }
 
@@ -194,10 +194,10 @@ struct MapVersionComparisonTests {
         }
 
         let installedMap = InstalledMap(
-            name: "Freizeitkarte Lithuania",
+            name: "Freizeitkarte Germany",
             provider: "Freizeitkarte",
-            region: "LTU",
-            family: "Freizeitkarte_LTU+",
+            region: "DEU",
+            family: "Freizeitkarte_DEU+",
             rawVersion: installedRawVersion,
             version: installedVersion,
             identifier: nil,
@@ -221,15 +221,15 @@ struct MapVersionComparisonTests {
             licenseURL: nil
         )
         let region = MapRegion(
-            id: "LTU",
-            name: "Lithuania",
-            country: "Lithuania"
+            id: "DEU",
+            name: "Germany",
+            country: "Germany"
         )
         let catalogMap = MapPackage(
-            id: "freizeitkarte-ltu",
+            id: "freizeitkarte-deu",
             providerId: "freizeitkarte",
-            regionId: "LTU",
-            name: "Lithuania",
+            regionId: "DEU",
+            name: "Germany",
             version: catalogVersion,
             sizeBytes: 344_000_000,
             sourceURL: nil,

@@ -99,8 +99,8 @@ admin session, CSRF cookie, no-store response policy, and noindex policy as
 ## `GET https://api.terento.app/admin/devices`
 
 Returns the authenticated Garmin device observability page. The page is
-limited to Garmin catalog records and combines catalogue metadata, map
-capability, separate operator support state, exact-ID installation
+limited to Garmin catalog records and combines catalog metadata, map
+capability, separate installation authorization, exact-ID installation
 aggregates, approved cached assets or allowlisted Garmin `sourceAsset`
 thumbnails, and latest successful sync metadata. Map-capable Yes/No uses a
 stored `device_model.map_capable` value when present; otherwise the page
@@ -116,12 +116,21 @@ is no-store/noindex, and joins installation events only through
 `canonical_device_model_id`. It is not part of the native or public device
 catalog API contracts.
 
-The page labels the operator field `Support decision` and shows a separate,
-classifier-derived `Evidence status`. `POST /admin/devices/support` accepts
-the CSRF-protected `device_id` and one of `SUPPORTED`, `UNSUPPORTED`, or
-`NOT_EVALUATED`; it updates only `device_model.support_status`. It cannot
-change evidence events, install counts, evidence status, or any native device
-write authorization.
+The page labels the operator field `Installation authorization` and shows a
+separate, classifier-derived `Compatibility status`. The visible values are
+Pending, Approved, and Blocked; the existing internal enum remains
+`NOT_EVALUATED`, `SUPPORTED`, or `UNSUPPORTED`. CSRF-protected
+`POST /admin/devices/authorization` (with the legacy `/admin/devices/support`
+alias retained) updates only `device_model.support_status` and records an
+audit entry. It cannot change evidence events, operation-level install counts,
+compatibility status, or any native device write authorization.
+
+`POST /admin/diagnostics/resolve` and `/admin/diagnostics/reopen` change only
+the retained diagnostic lifecycle, while `POST /admin/diagnostics/identity`
+assigns or leaves an exact canonical Garmin record and writes an identity audit
+entry. Neither action deletes evidence or changes the original install
+outcome. Admin counts are grouped by distinct install operation, not raw
+per-map evidence rows.
 
 ## `GET /compatibility/public/top-models.json`
 
@@ -172,7 +181,7 @@ current retail category. The response contains exact identity, evidence
 counts, `evidenceStatus`, family/variant display metadata, and an `image`
 object. `image` follows controlled Terento asset → allowlisted Garmin
 `garmin-source` URL → the neutral Terento `fallback` image at
-`https://terento.app/assets/generic-garmin-watch.svg`. The fallback is
+`https://terento.app/assets/generic-garmin-watch.png`. The fallback is
 presentation-only and does not indicate a model match or compatibility.
 
 This endpoint does not expose `supportStatus`, operator review decisions,
@@ -195,7 +204,7 @@ Responses use `Cache-Control: no-store`.
 ## `GET /maps/catalog.json`
 
 Returns catalog version 1. The response contains the latest known metadata for
-all currently indexed Freizeitkarte Garmin packages. The collector indexes
+all currently indexed downloadable Freizeitkarte Garmin packages. The collector indexes
 official regional pages and keeps the original provider download URL; the API
 does not download or proxy the package.
 
@@ -213,17 +222,17 @@ does not download or proxy the package.
       "licenseInformation": "...",
       "maps": [
         {
-          "id": "freizeitkarte-ltu",
-          "region": "LTU",
-          "name": "Lithuania",
-          "country": "Lithuania",
+          "id": "freizeitkarte-deu",
+          "region": "DEU",
+          "name": "Germany",
+          "country": "Germany",
           "version": {"year": 2026, "month": 5},
           "downloadSizeBytes": 361187697,
           "installSizeBytes": 429793280,
           "sizeBytes": 361187697,
-          "sourceURL": "https://download.freizeitkarte-osm.de/garmin/latest/LTU+_en_gmapsupp.img.zip",
+          "sourceURL": "https://download.freizeitkarte-osm.de/garmin/latest/DEU+_en_gmapsupp.img.zip",
           "releaseDate": "2026-05-03",
-          "identifier": "LTU+"
+          "identifier": "DEU+"
         }
       ]
     }
@@ -231,10 +240,9 @@ does not download or proxy the package.
 }
 ```
 
-The example shows one map entry for brevity; the verified live-source dry-run
-on 2026-08-21 produced a snapshot of 63 Freizeitkarte Garmin map entries, with
-63 known download sizes and 63 known final IMG install sizes. The provider
-catalog may change after that date.
+The example shows one map entry for brevity; the current snapshot contains 63
+Freizeitkarte Garmin map entries. The provider catalog may change after that
+date.
 
 The client-compatible package list contains only records with a normalized
 version and a known download size. `sizeBytes` remains the backwards-compatible

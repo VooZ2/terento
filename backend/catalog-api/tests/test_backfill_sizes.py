@@ -14,7 +14,7 @@ class FakeDatabase:
         self.targets = [
             {
                 "id": 1,
-                "source_url": "https://download.example/ltu.zip",
+                "source_url": "https://download.example/deu.zip",
                 "install_payload_path": None,
                 "download_size_bytes": None,
                 "install_size_bytes": None,

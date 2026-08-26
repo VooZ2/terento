@@ -90,31 +90,31 @@ struct InstallationSafetyTests {
         passed += expect(
             try filenameGenerator.filename(
                 providerId: "Freizeitkarte",
-                regionId: "LTU+"
-            ) == "terento_freizeitkarte_ltu.img",
+                regionId: "DEU+"
+            ) == "terento_freizeitkarte_deu.img",
             "managed filename is deterministic and safe"
         )
         passed += expect(
-            filenameGenerator.isValid("terento_freizeitkarte_ltu.img"),
+            filenameGenerator.isValid("terento_freizeitkarte_deu.img"),
             "managed filename passes policy"
         )
         passed += expect(
             try filenameGenerator.filename(
                 providerId: "Freezeit Karte",
-                regionId: "LTU+"
-            ) == "terento_freezeit_karte_ltu.img"
-                && filenameGenerator.isValid("terento_freezeit_karte_ltu.img"),
+                regionId: "DEU+"
+            ) == "terento_freezeit_karte_deu.img"
+                && filenameGenerator.isValid("terento_freezeit_karte_deu.img"),
             "normalized internal separators remain valid in managed filenames"
         )
         passed += expect(
-            !filenameGenerator.isValid("terento_freizeitkarte_ltu/evil.img")
-                && !filenameGenerator.isValid("../terento_freizeitkarte_ltu.img")
-                && !filenameGenerator.isValid("terento_freizeitkarte_ltu\\evil.img")
-                && !filenameGenerator.isValid("terento_freizeitkarte_ltu.img\0"),
+            !filenameGenerator.isValid("terento_freizeitkarte_deu/evil.img")
+                && !filenameGenerator.isValid("../terento_freizeitkarte_deu.img")
+                && !filenameGenerator.isValid("terento_freizeitkarte_deu\\evil.img")
+                && !filenameGenerator.isValid("terento_freizeitkarte_deu.img\0"),
             "managed filename policy rejects traversal, separators, and NUL"
         )
         passed += expectThrows(
-            { try filenameGenerator.filename(providerId: "///", regionId: "LTU") },
+            { try filenameGenerator.filename(providerId: "///", regionId: "DEU") },
             "empty normalized provider is rejected"
         )
 
@@ -180,7 +180,7 @@ struct InstallationSafetyTests {
 
         let unknownTargetFile = InstalledMapFile(
             path: targetPath,
-            filename: "terento_freizeitkarte_ltu.img",
+            filename: "terento_freizeitkarte_deu.img",
             sizeBytes: 100
         )
         passed += expect(
@@ -205,8 +205,8 @@ struct InstallationSafetyTests {
         )
 
         let managedMap = makeInstalledMap(
-            path: "/GARMIN/terento_freizeitkarte_ltu.img",
-            filename: "terento_freizeitkarte_ltu.img"
+            path: "/GARMIN/terento_freizeitkarte_deu.img",
+            filename: "terento_freizeitkarte_deu.img"
         )
         let manifest = TerentoManifest(entries: [
             TerentoManifestEntry(
@@ -214,7 +214,7 @@ struct InstallationSafetyTests {
                 devicePath: managedMap.sourceFile.path,
                 filename: managedMap.sourceFile.filename,
                 providerId: "freizeitkarte",
-                regionId: "LTU",
+                regionId: "DEU",
                 version: package.version,
                 sizeBytes: managedMap.sizeBytes,
                 sha256: "abc123",
@@ -249,7 +249,7 @@ struct InstallationSafetyTests {
             {
                 try validator.validate(
                     fileURL: sourceURL,
-                    expectedPackage: makePackage(region: "LVA")
+                    expectedPackage: makePackage(region: "FRA")
                 )
             },
             "source region mismatch is blocked"
@@ -423,14 +423,14 @@ struct InstallationSafetyTests {
     private static let gigabyte: UInt64 = 1024 * 1024 * 1024
 
     private static func makePackage(
-        region: String = "LTU",
+        region: String = "DEU",
         version: MapVersion = MapVersion(year: 2026, month: 5)!
     ) -> MapPackage {
         MapPackage(
             id: "freizeitkarte-\(region.lowercased())",
             providerId: "freizeitkarte",
             regionId: region,
-            name: region == "LTU" ? "Lithuania" : "Latvia",
+            name: region == "DEU" ? "Germany" : "France",
             version: version,
             sizeBytes: 344_000_000,
             sourceURL: nil,
@@ -444,10 +444,10 @@ struct InstallationSafetyTests {
         filename: String = "gmapsupp.img"
     ) -> InstalledMap {
         InstalledMap(
-            name: "Freizeitkarte LTU",
+            name: "Freizeitkarte DEU",
             provider: "Freizeitkarte",
-            region: "LTU",
-            family: "Freizeitkarte_LTU+",
+            region: "DEU",
+            family: "Freizeitkarte_DEU+",
             rawVersion: "Release 26.05",
             version: MapVersion(year: 2026, month: 5),
             identifier: nil,
@@ -476,7 +476,7 @@ struct InstallationSafetyTests {
         var bytes = [UInt8](repeating: 0, count: 4096)
         write("DSKIMG", at: 0x10, into: &bytes)
         write("GARMIN", at: 0x41, into: &bytes)
-        write("Freizeitkarte_LTU+", at: 0x100, into: &bytes)
+        write("Freizeitkarte_DEU+", at: 0x100, into: &bytes)
         write("Release 26.05", at: 0x200, into: &bytes)
 
         let url = FileManager.default.temporaryDirectory

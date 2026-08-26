@@ -15,7 +15,8 @@ protocol DeviceFileReader: Sendable {
 @main
 struct Stage41AcquisitionTests {
     static func main() async {
-        testCatalogResolvesLatvia()
+        testCatalogResolvesFrance()
+        testCatalogKeepsAllDownloadableRegions()
         testFormatDetection()
         testArchivePathSafety()
         await testExtractedSymlinkSafety()
@@ -35,10 +36,10 @@ struct Stage41AcquisitionTests {
         await testFailedAcquisitionLeavesNoArtifact()
         testNoDeviceWriteDependency()
 
-        print("PASS: 19 Stage 4.1 acquisition tests")
+        print("PASS: 20 Stage 4.1 acquisition tests")
     }
 
-    private static func testCatalogResolvesLatvia() {
+    private static func testCatalogResolvesFrance() {
         let json = """
         {
           "catalogVersion": 1,
@@ -52,12 +53,12 @@ struct Stage41AcquisitionTests {
               "licenseURL": "https://www.freizeitkarte-osm.de/garmin/en/imprint.html",
               "maps": [
                 {
-                  "id": "freizeitkarte-lva",
-                  "region": "LVA",
-                  "name": "Republic of Latvia",
+                  "id": "freizeitkarte-fra",
+                  "region": "FRA",
+                  "name": "Republic of France",
                   "version": { "year": 2026, "month": 5 },
                   "sizeBytes": 298518679,
-                  "sourceURL": "https://download.freizeitkarte-osm.de/garmin/latest/LVA+_en_gmapsupp.img.zip"
+                  "sourceURL": "https://download.freizeitkarte-osm.de/garmin/latest/FRA+_en_gmapsupp.img.zip"
                 }
               ]
             }
@@ -69,22 +70,77 @@ struct Stage41AcquisitionTests {
             let catalog = try MapCatalogDocumentDecoder().decode(Data(json.utf8))
             let package = catalog.packages.first
             expect(
-                package?.id == "freizeitkarte-lva"
-                    && package?.regionId == "LVA"
+                package?.id == "freizeitkarte-fra"
+                    && package?.regionId == "FRA"
                     && package?.providerId == "freizeitkarte"
                     && package?.version == version(2026, 5)
-                    && package?.downloadURL?.absoluteString.contains("LVA+_en_gmapsupp.img.zip") == true
+                    && package?.downloadURL?.absoluteString.contains("FRA+_en_gmapsupp.img.zip") == true
                     && package?.expectedDownloadSizeBytes == 298518679,
-                "catalog resolves Freizeitkarte Latvia with the original source URL"
+                "catalog resolves Freizeitkarte France with the original source URL"
             )
         } catch {
-            expect(false, "catalog resolves Freizeitkarte Latvia with the original source URL")
+            expect(false, "catalog resolves Freizeitkarte France with the original source URL")
+        }
+    }
+
+    private static func testCatalogKeepsAllDownloadableRegions() {
+        let json = """
+        {
+          "catalogVersion": 1,
+          "updatedAt": "2026-08-21T03:00:00Z",
+          "providers": [
+            {
+              "id": "freizeitkarte",
+              "name": "Freizeitkarte",
+              "website": "https://www.freizeitkarte-osm.de/",
+              "attribution": "Freizeitkarte",
+              "licenseURL": "https://www.freizeitkarte-osm.de/garmin/en/imprint.html",
+              "maps": [
+                {
+                  "id": "freizeitkarte-deu",
+                  "region": "DEU",
+                  "name": "Germany",
+                  "version": { "year": 2026, "month": 5 },
+                  "sizeBytes": 100,
+                  "sourceURL": "https://download.freizeitkarte-osm.de/garmin/latest/DEU+_en_gmapsupp.img.zip"
+                },
+                {
+                  "id": "freizeitkarte-ltu",
+                  "region": "LTU",
+                  "name": "Lithuania",
+                  "version": { "year": 2026, "month": 5 },
+                  "sizeBytes": 100,
+                  "sourceURL": "https://download.freizeitkarte-osm.de/garmin/latest/LTU+_en_gmapsupp.img.zip"
+                },
+                {
+                  "id": "freizeitkarte-lva",
+                  "region": "LVA",
+                  "name": "Latvia",
+                  "version": { "year": 2026, "month": 5 },
+                  "sizeBytes": 100,
+                  "sourceURL": "https://download.freizeitkarte-osm.de/garmin/latest/LVA+_en_gmapsupp.img.zip"
+                }
+              ]
+            }
+          ]
+        }
+        """
+
+        do {
+            let catalog = try MapCatalogDocumentDecoder().decode(Data(json.utf8))
+            expect(
+                catalog.packages.map(\.regionId) == ["DEU", "LTU", "LVA"]
+                    && catalog.regions.map(\.id).sorted() == ["DEU", "LTU", "LVA"],
+                "all downloadable map regions remain available to catalog consumers"
+            )
+        } catch {
+            expect(false, "all downloadable map regions remain available to catalog consumers")
         }
     }
 
     private static func testFormatDetection() {
         do {
-            let rawURL = try temporaryFile(data: makeIMG(region: "LVA", release: "26.05"))
+            let rawURL = try temporaryFile(data: makeIMG(region: "FRA", release: "26.05"))
             defer { try? FileManager.default.removeItem(at: rawURL) }
             let zipURL = try temporaryFile(data: Data([0x50, 0x4B, 0x03, 0x04]))
             defer { try? FileManager.default.removeItem(at: zipURL) }
@@ -115,7 +171,7 @@ struct Stage41AcquisitionTests {
     }
 
     private static func testExtractedSymlinkSafety() async {
-        let image = makeIMG(region: "LVA", release: "26.05")
+        let image = makeIMG(region: "FRA", release: "26.05")
         do {
             let source = try temporaryFile(data: Data([0x50, 0x4B, 0x03, 0x04]))
             defer { try? FileManager.default.removeItem(at: source) }
@@ -138,11 +194,11 @@ struct Stage41AcquisitionTests {
 
     private static func testDownloaderUsesCatalogURL() async {
         let recorder = URLRecorder()
-        let image = makeIMG(region: "LVA", release: "26.05")
+        let image = makeIMG(region: "FRA", release: "26.05")
         do {
             let source = try temporaryFile(data: image)
             defer { try? FileManager.default.removeItem(at: source) }
-            let package = makePackage(sourceURL: URL(string: "https://provider.example/lva.zip")!)
+            let package = makePackage(sourceURL: URL(string: "https://provider.example/fra.zip")!)
             let workspace = try makeWorkspace()
             let client = RecordingDownloadClient(
                 recorder: recorder,
@@ -150,7 +206,7 @@ struct Stage41AcquisitionTests {
             )
             let artifact = try await MapPackageAcquirer(downloadClient: client).acquire(
                 package: package,
-                canonicalRegion: "Latvia",
+                canonicalRegion: "France",
                 workspace: workspace
             )
             try? workspace.cleanup()
@@ -166,12 +222,12 @@ struct Stage41AcquisitionTests {
 
     private static func testReviewedProviderURLPolicy() {
         let policy = ReviewedProviderURLPolicy.freizeitkarte
-        let allowed = URL(string: "https://download.freizeitkarte-osm.de/garmin/latest/LTU+_en_gmapsupp.img.zip")!
+        let allowed = URL(string: "https://download.freizeitkarte-osm.de/garmin/latest/DEU+_en_gmapsupp.img.zip")!
         let rejected = [
-            URL(string: "http://download.freizeitkarte-osm.de/garmin/latest/LTU.zip")!,
-            URL(string: "https://download.freizeitkarte-osm.de.example/LTU.zip")!,
-            URL(string: "https://example.com/LTU.zip")!,
-            URL(string: "https://user:secret@download.freizeitkarte-osm.de/LTU.zip")!
+            URL(string: "http://download.freizeitkarte-osm.de/garmin/latest/DEU.zip")!,
+            URL(string: "https://download.freizeitkarte-osm.de.example/DEU.zip")!,
+            URL(string: "https://example.com/DEU.zip")!,
+            URL(string: "https://user:secret@download.freizeitkarte-osm.de/DEU.zip")!
         ]
 
         do {
@@ -242,7 +298,7 @@ struct Stage41AcquisitionTests {
     }
 
     private static func testRenamedIMGIsIdentifiedByContent() async {
-        let image = makeIMG(region: "LVA", release: "26.05")
+        let image = makeIMG(region: "FRA", release: "26.05")
         let extractor = FixtureArchiveExtractor(images: [("BaseCamp-renamed.img", image)])
         do {
             let source = try temporaryFile(data: Data([0x50, 0x4B, 0x03, 0x04]))
@@ -254,8 +310,8 @@ struct Stage41AcquisitionTests {
             )
             expect(
                 artifact.provider == "freizeitkarte"
-                    && artifact.region == "LVA"
-                    && artifact.canonicalRegion == "Latvia"
+                    && artifact.region == "FRA"
+                    && artifact.canonicalRegion == "France"
                     && artifact.localIMGURL.lastPathComponent == "BaseCamp-renamed.img",
                 "IMG identity is read from metadata, not its filename"
             )
@@ -414,7 +470,7 @@ struct Stage41AcquisitionTests {
     }
 
     private static func testWrongIdentityIsRejected() async {
-        let image = makeIMG(region: "LTU", release: "26.05")
+        let image = makeIMG(region: "DEU", release: "26.05")
         do {
             let source = try temporaryFile(data: Data([0x50, 0x4B, 0x03, 0x04]))
             defer { try? FileManager.default.removeItem(at: source) }
@@ -443,7 +499,7 @@ struct Stage41AcquisitionTests {
                 package: makePackage(),
                 source: source,
                 extractor: FixtureArchiveExtractor(
-                    images: [("any-name.img", makeIMG(region: "LVA", release: "26.05"))]
+                    images: [("any-name.img", makeIMG(region: "FRA", release: "26.05"))]
                 )
             )
             expect(artifact.version == version(2026, 5), "matching catalog and IMG version passes")
@@ -460,7 +516,7 @@ struct Stage41AcquisitionTests {
                 package: makePackage(),
                 source: source,
                 extractor: FixtureArchiveExtractor(
-                    images: [("any-name.img", makeIMG(region: "LVA", release: "26.04"))]
+                    images: [("any-name.img", makeIMG(region: "FRA", release: "26.04"))]
                 )
             )
             expect(false, "mismatched catalog and IMG version returns SOURCE_VERSION_MISMATCH")
@@ -476,7 +532,7 @@ struct Stage41AcquisitionTests {
     }
 
     private static func testArtifactUsesIMGSizeAndHash() async {
-        let image = makeIMG(region: "LVA", release: "26.05")
+        let image = makeIMG(region: "FRA", release: "26.05")
         do {
             let source = try temporaryFile(data: Data([0x50, 0x4B, 0x03, 0x04] + Array(repeating: 7, count: 127)))
             defer { try? FileManager.default.removeItem(at: source) }
@@ -490,7 +546,7 @@ struct Stage41AcquisitionTests {
                 artifact.installSizeBytes == UInt64(image.count)
                     && artifact.downloadSizeBytes == 131
                     && artifact.sha256 == expectedHash
-                    && artifact.targetFilename == "terento_freizeitkarte_lva.img",
+                    && artifact.targetFilename == "terento_freizeitkarte_fra.img",
                 "artifact records IMG install size, complete IMG SHA-256, and deterministic target"
             )
         } catch {
@@ -540,22 +596,22 @@ struct Stage41AcquisitionTests {
             archiveExtractor: extractor
         ).acquire(
             package: package,
-            canonicalRegion: "Latvia",
+            canonicalRegion: "France",
             workspace: workspace
         )
     }
 
-    private static func makePackage(sourceURL: URL? = URL(string: "https://provider.example/lva.zip")!) -> MapPackage {
+    private static func makePackage(sourceURL: URL? = URL(string: "https://provider.example/fra.zip")!) -> MapPackage {
         MapPackage(
-            id: "freizeitkarte-lva",
+            id: "freizeitkarte-fra",
             providerId: "freizeitkarte",
-            regionId: "LVA",
-            name: "Republic of Latvia",
+            regionId: "FRA",
+            name: "Republic of France",
             version: version(2026, 5),
             sizeBytes: 298518679,
             sourceURL: sourceURL,
             releaseDate: "2026-05-03",
-            identifier: "LVA+"
+            identifier: "FRA+"
         )
     }
 

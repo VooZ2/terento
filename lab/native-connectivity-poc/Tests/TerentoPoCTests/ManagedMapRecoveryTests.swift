@@ -162,10 +162,10 @@ struct ManagedMapRecoveryTests {
         TerentoManifest(entries: [
             TerentoManifestEntry(
                 deviceKey: "legacy-fenix8-091e-51b8",
-                devicePath: "/GARMIN/terento_freizeitkarte_ltu.img",
-                filename: "terento_freizeitkarte_ltu.img",
+                devicePath: "/GARMIN/terento_freizeitkarte_deu.img",
+                filename: "terento_freizeitkarte_deu.img",
                 providerId: "freizeitkarte",
-                regionId: "LTU",
+                regionId: "DEU",
                 version: MapVersion(year: 2026, month: 5)!,
                 sizeBytes: UInt64(data.count),
                 sha256: sha256(data),
@@ -198,8 +198,8 @@ struct ManagedMapRecoveryTests {
             itemID: 777,
             parentID: 1,
             storageID: 1,
-            path: "/GARMIN/terento_freizeitkarte_ltu.img",
-            filename: "terento_freizeitkarte_ltu.img",
+            path: "/GARMIN/terento_freizeitkarte_deu.img",
+            filename: "terento_freizeitkarte_deu.img",
             sizeBytes: size,
             isFolder: false
         )

@@ -41,9 +41,9 @@ struct InstallationEvidenceTests {
         storageCapacity: 32_000_000_000, freeSpace: 10_000_000_000
     )
     static let package = MapPackage(
-        id: "freizeitkarte-ltu", providerId: "freizeitkarte", regionId: "LTU",
-        name: "Lithuania", version: MapVersion(year: 2026, month: 8)!, sizeBytes: 1,
-        sourceURL: nil, releaseDate: nil, identifier: "LTU+"
+        id: "freizeitkarte-deu", providerId: "freizeitkarte", regionId: "DEU",
+        name: "Germany", version: MapVersion(year: 2026, month: 8)!, sizeBytes: 1,
+        sourceURL: nil, releaseDate: nil, identifier: "DEU+"
     )
 
     static func makeEvent(

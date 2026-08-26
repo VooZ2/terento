@@ -101,18 +101,23 @@ class AdminDevicesTests(unittest.TestCase):
         )
 
         self.assertEqual(
-            payload["summary"],
+            {key: payload["summary"][key] for key in (
+                "models", "mapCapable", "approved", "successful",
+                "installAttempts", "successfulInstalls", "successRate", "newThisSync",
+            )},
             {
                 "models": 3,
                 "mapCapable": 1,
-                "supported": 1,
-                "tested": 1,
+                "approved": 1,
+                "successful": 2,
                 "installAttempts": 4,
                 "successfulInstalls": 2,
                 "successRate": 50.0,
                 "newThisSync": 1,
             },
         )
+        self.assertNotIn("supported", payload["summary"])
+        self.assertNotIn("tested", payload["summary"])
         self.assertEqual(payload["devices"][0]["installationStats"]["successRate"], 66.7)
         self.assertTrue(payload["devices"][2]["catalog"]["newInLatestSync"])
         self.assertIsNone(payload["devices"][1]["installationStats"]["lastSuccessfulAt"])
@@ -229,7 +234,7 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertEqual(image["origin"], "fallback")
         self.assertEqual(image["status"], "FALLBACK")
         self.assertEqual(image["source"]["type"], "GENERIC_FALLBACK")
-        self.assertTrue(image["url"].endswith("/assets/generic-garmin-watch.svg"))
+        self.assertTrue(image["url"].endswith("/assets/generic-garmin-watch.png"))
 
     def test_historical_sync_without_counts_is_not_presented_as_zero(self):
         payload = _admin_device_payload(
@@ -263,7 +268,7 @@ class AdminDevicesTests(unittest.TestCase):
             {"username": "operator"},
             "csrf",
         ).decode()
-        self.assertIn("counts unavailable for this historical run", body)
+        self.assertIn("Counts unavailable for this historical run", body)
 
     def test_page_has_required_filters_modal_and_neutral_image_fallback(self):
         body = devices_page(
@@ -273,17 +278,20 @@ class AdminDevicesTests(unittest.TestCase):
             "csrf",
         ).decode()
         for value in (
-            "Garmin devices", "Map-capable: Yes", "Map-capable: No",
-            "Map-capable: Unknown", "Supported", "Unsupported", "Not evaluated",
-            "Tested: Yes", "Tested: No", "Newest in database", "Most installs",
-            "Last tested", "Support decision", "Evidence status", "device-dialog", "admin-timezone",
+            "Garmin devices", "Map capability: Yes", "Map capability: No",
+            "Map capability: Unknown", "Approved", "Blocked", "Pending",
+            "Newest in catalog", "Most attempts", "Last evidence", "device-dialog", "admin-timezone",
             "Automatic (browser)", "data-admin-timestamp", "TerentoAdminTime",
             "selected time zone",
         ):
             self.assertIn(value, body)
         self.assertNotIn("src='None'", body)
-        self.assertIn("generic-garmin-watch.svg", body)
-        self.assertIn("does not change Evidence status or installation counts", body)
+        self.assertIn("generic-garmin-watch.png", body)
+        self.assertIn("Compatibility status and installation counts remain backend-derived", body)
+        self.assertIn("Compatibility status", body)
+        self.assertIn("aria-label=\"Installation authorization\"", body)
+        self.assertNotIn("Support decision", body)
+        self.assertNotIn("Evidence status", body)
 
 
 if __name__ == "__main__":

@@ -115,8 +115,8 @@ struct MapComparisonEngine: Sendable {
 
         // 1–2. Provider and region identity are the primary match. Once both
         // identities are known, a mismatch is definitive. Do not let a
-        // weaker identifier/name fallback turn (for example) an LTU image
-        // into an LVA match.
+        // weaker identifier/name fallback turn one regional image into
+        // another regional match.
         if let installedIdentity = installedMap.identity,
            let catalogIdentity = catalogMap.identity {
             guard installedIdentity == catalogIdentity else {

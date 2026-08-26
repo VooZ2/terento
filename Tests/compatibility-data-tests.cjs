@@ -57,7 +57,7 @@ const compatibilitySource = fs.readFileSync(
   "utf8"
 );
 assert.match(compatibilitySource, /\/compatibility\/public\/models\.json/);
-assert.match(compatibilitySource, /generic-garmin-watch\.svg/);
+assert.match(compatibilitySource, /generic-garmin-watch\.png/);
 assert.doesNotMatch(compatibilitySource, /watch-image-placeholder/);
 assert.doesNotMatch(compatibilitySource, /\/devices\/catalog\.json/);
 
