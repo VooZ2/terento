@@ -100,6 +100,19 @@ private final class MapEngineDownloadProgressRelay: @unchecked Sendable {
     }
 }
 
+private final class InstallationMapIndexState: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storedValue = 0
+
+    var value: Int {
+        lock.withLock { storedValue }
+    }
+
+    func set(_ value: Int) {
+        lock.withLock { storedValue = value }
+    }
+}
+
 struct MapInventoryEngine<Reader: DeviceFileReader>: Sendable {
     let reader: Reader
     let catalog: MapCatalog
@@ -172,6 +185,10 @@ final class MapEngine: ObservableObject {
     @Published private(set) var installationPhaseProgress: Double?
     @Published private(set) var installationPhaseProgressIsMeasured = false
     @Published private(set) var installationErrorMessage: String?
+    @Published private(set) var evidenceFailureStage: EvidenceFailureStage?
+    @Published private(set) var evidenceFailure: InstallationFailure?
+    @Published private(set) var evidenceNativeFailureCode: EvidenceNativeFailureCode?
+    @Published private(set) var evidencePrimaryFailureMapIndex: Int?
     @Published private(set) var catalogSource: MapCatalogSource?
     @Published private(set) var catalogUpdatedAt: Date?
     @Published private(set) var errorMessage: String?
@@ -221,6 +238,10 @@ final class MapEngine: ObservableObject {
         acquisitionErrorMessage = nil
         installationResult = nil
         installationBatchResults = []
+        evidenceFailureStage = nil
+        evidenceFailure = nil
+        evidenceNativeFailureCode = nil
+        evidencePrimaryFailureMapIndex = nil
         installationProgress = nil
         finishingTransferProgress = nil
         installationPhase = .idle
@@ -727,9 +748,33 @@ final class MapEngine: ObservableObject {
         selectedPreflight = nil
         installationResult = nil
         installationBatchResults = []
+        evidenceFailureStage = nil
+        evidenceFailure = nil
+        evidenceNativeFailureCode = nil
+        evidencePrimaryFailureMapIndex = nil
         TerentoDiagnosticLog.recordInstallationStarted(
             maps: plan.installItems.map(\.package)
         )
+        let preflightIdentity = currentIdentity
+        guard let identity = preflightIdentity,
+              identity.localHardwareIdentifier?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else {
+            evidenceFailureStage = .preflight
+            evidenceFailure = .stableWatchIdentityUnavailable
+            if let identity = preflightIdentity,
+               identity.garminDeviceXMLStatus == .ambiguous
+                || identity.garminDeviceXMLStatus == .oversized
+                || identity.garminDeviceXMLStatus == .readFailed {
+                evidenceNativeFailureCode = .garminDeviceXMLInvalid
+            } else {
+                evidenceNativeFailureCode = .stableWatchIdentityUnavailable
+            }
+            installationErrorMessage = InstallationFailure.stableWatchIdentityUnavailable.userLabel
+            installationPhase = .failed
+            installationPhaseProgress = nil
+            state = .failed
+            recordInstallationFailure(installationErrorMessage)
+            return
+        }
         prepareInstallationArtifacts()
     }
 
@@ -760,9 +805,11 @@ final class MapEngine: ObservableObject {
         let progressRelay = MapEngineDownloadProgressRelay(engine: self)
         activeTask?.cancel()
         activeTask = Task { [weak self] in
+            var activePackageIndex = 0
             do {
                 var artifacts: [String: ValidatedMapArtifact] = [:]
-                for package in packages {
+                for (index, package) in packages.enumerated() {
+                    activePackageIndex = index
                     try Task.checkCancellation()
                     let artifact = try await CancellableDetached.run(priority: .userInitiated) {
                         try await acquirer.acquire(
@@ -784,6 +831,15 @@ final class MapEngine: ObservableObject {
                 }
             } catch {
                 guard !Task.isCancelled else { return }
+                self?.evidencePrimaryFailureMapIndex = activePackageIndex
+                if let acquisitionError = error as? MapAcquisitionError {
+                    let diagnostic = Self.evidenceDiagnostic(for: acquisitionError)
+                    self?.evidenceFailureStage = diagnostic.stage
+                    self?.evidenceFailure = diagnostic.failure
+                } else {
+                    self?.evidenceFailureStage = .download
+                    self?.evidenceFailure = .downloadFailed
+                }
                 self?.acquisitionState = .failed
                 self?.acquisitionErrorMessage = error.localizedDescription
                 self?.installationErrorMessage = error.localizedDescription
@@ -818,12 +874,14 @@ final class MapEngine: ObservableObject {
             deviceFiles: inventory.deviceFiles
         )
         let coordinator = MapInstallationCoordinator.live()
+        let activeMapIndex = InstallationMapIndexState()
         activeTask?.cancel()
         activeTask = Task { [weak self] in
             do {
                 let results = try await CancellableDetached.run(priority: .userInitiated) {
                     var results: [MapInstallationResult] = []
-                    for item in plan.installItems {
+                    for (index, item) in plan.installItems.enumerated() {
+                        activeMapIndex.set(index)
                         guard let artifact = artifacts[item.package.id],
                               let comparison = inventory.comparisons.first(where: {
                                   $0.catalogMap.id == item.package.id
@@ -868,6 +926,11 @@ final class MapEngine: ObservableObject {
                 self?.state = .scanned
 
                 if !allReady {
+                    self?.evidencePrimaryFailureMapIndex = results.firstIndex {
+                        $0.status != .confirmationRequired
+                    } ?? activeMapIndex.value
+                    self?.evidenceFailureStage = Self.evidenceStage(for: finalResult.failure)
+                    self?.evidenceFailure = finalResult.failure
                     self?.recordInstallationFailure(finalResult.failure?.userLabel)
                 }
 
@@ -882,6 +945,15 @@ final class MapEngine: ObservableObject {
                 }
             } catch {
                 guard !Task.isCancelled else { return }
+                self?.evidencePrimaryFailureMapIndex = activeMapIndex.value
+                if let acquisitionError = error as? MapAcquisitionError {
+                    let diagnostic = Self.evidenceDiagnostic(for: acquisitionError)
+                    self?.evidenceFailureStage = diagnostic.stage
+                    self?.evidenceFailure = diagnostic.failure
+                } else {
+                    self?.evidenceFailureStage = .preflight
+                    self?.evidenceFailure = .sourceArtifactInvalid
+                }
                 self?.installationErrorMessage = error.localizedDescription
                 self?.installationPhase = .failed
                 self?.installationPhaseProgress = nil
@@ -922,6 +994,7 @@ final class MapEngine: ObservableObject {
         let progressRelay = MapEngineProgressRelay(engine: self)
         let phaseRelay = MapEnginePhaseRelay(engine: self)
         let phaseProgressRelay = MapEnginePhaseProgressRelay(engine: self)
+        let activeMapIndex = InstallationMapIndexState()
         activeTask?.cancel()
         activeTask = Task { [weak self] in
             do {
@@ -934,7 +1007,8 @@ final class MapEngine: ObservableObject {
                     defer { operationGate.endLifecycle(lease) }
 
                     var results: [MapInstallationResult] = []
-                    for item in plan.installItems {
+                    for (index, item) in plan.installItems.enumerated() {
+                        activeMapIndex.set(index)
                         guard let artifact = artifacts[item.package.id] else {
                             throw MapAcquisitionError.invalidPackage(
                                 "The validated source for the selected map is unavailable."
@@ -1018,10 +1092,16 @@ final class MapEngine: ObservableObject {
                 if batchSucceeded {
                     self?.refreshCurrentDeviceMaps()
                 } else {
+                    self?.evidenceFailureStage = Self.evidenceStage(for: finalResult.failure)
+                    self?.evidenceFailure = finalResult.failure
                     self?.recordInstallationFailure(finalResult.failure?.userLabel)
                 }
             } catch {
                 guard !Task.isCancelled else { return }
+                self?.evidencePrimaryFailureMapIndex = activeMapIndex.value
+                self?.evidenceFailureStage = .preflight
+                self?.evidenceFailure = .deviceDisconnected
+                self?.evidenceNativeFailureCode = .preflightMTPReadFailed
                 self?.installationErrorMessage = error.localizedDescription
                 self?.installationPhase = .failed
                 self?.installationPhaseProgress = nil
@@ -1031,6 +1111,32 @@ final class MapEngine: ObservableObject {
                     technicalError: String(reflecting: error)
                 )
             }
+        }
+    }
+
+    private static func evidenceDiagnostic(
+        for error: MapAcquisitionError
+    ) -> (stage: EvidenceFailureStage, failure: InstallationFailure) {
+        switch error {
+        case .downloadFailed, .downloadIncomplete, .untrustedSourceURL:
+            return (.download, .downloadFailed)
+        case .workspaceFailed, .unsafeArchivePath, .extractionFailed:
+            return (.extract, .sourceValidationFailed)
+        case .unsupportedPackageFormat, .invalidPackage, .sourceIdentityMismatch,
+             .sourceVersionMismatch, .noIMGFound, .ambiguousIMG:
+            return (.sourceValidation, .sourceValidationFailed)
+        }
+    }
+
+    private static func evidenceStage(for failure: InstallationFailure?) -> EvidenceFailureStage {
+        switch failure {
+        case .manifestFailed: return .manifest
+        case .cleanupFailed: return .cleanup
+        case .sizeMismatch, .hashMismatch, .remoteFileMissing, .metadataMismatch, .verificationRequired:
+            return .verify
+        case .writeFailed, .deviceDisconnected: return .write
+        case .sourceArtifactInvalid, .sourceValidationFailed: return .sourceValidation
+        default: return .preflight
         }
     }
 

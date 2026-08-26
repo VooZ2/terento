@@ -64,6 +64,12 @@ struct CompatibilityEvidence: Sendable, Equatable {
 }
 
 struct DeviceIdentity: Sendable, Equatable {
+    enum LocalIdentityResolution: String, Sendable, Equatable {
+        case mtpSerial = "MTP_SERIAL"
+        case garminUnitID = "GARMIN_UNIT_ID"
+        case unavailable = "UNAVAILABLE"
+    }
+
     let manufacturer: String
     let model: String
     let family: String?
@@ -74,6 +80,9 @@ struct DeviceIdentity: Sendable, Equatable {
     let storageCapacity: UInt64
     let freeSpace: UInt64
     let localHardwareIdentifier: String?
+    let localIdentityResolution: LocalIdentityResolution
+    let deviceDescription: String?
+    let garminDeviceXMLStatus: GarminDeviceXMLReadStatus
 
     init(
         manufacturer: String,
@@ -85,7 +94,10 @@ struct DeviceIdentity: Sendable, Equatable {
         firmware: String?,
         storageCapacity: UInt64,
         freeSpace: UInt64,
-        localHardwareIdentifier: String? = nil
+        localHardwareIdentifier: String? = nil,
+        localIdentityResolution: LocalIdentityResolution? = nil,
+        deviceDescription: String? = nil,
+        garminDeviceXMLStatus: GarminDeviceXMLReadStatus = .unavailable
     ) {
         self.manufacturer = manufacturer
         self.model = model
@@ -97,13 +109,27 @@ struct DeviceIdentity: Sendable, Equatable {
         self.storageCapacity = storageCapacity
         self.freeSpace = freeSpace
         self.localHardwareIdentifier = localHardwareIdentifier
+        self.localIdentityResolution = localIdentityResolution
+            ?? (localHardwareIdentifier == nil ? .unavailable : .mtpSerial)
+        self.deviceDescription = deviceDescription
+        self.garminDeviceXMLStatus = garminDeviceXMLStatus
     }
 
     /// Stable model identity derived from the raw MTP model string when the
     /// string matches a locally validated model grammar. Cosmetic display
     /// variants are deliberately not part of this value.
     var canonicalModel: String? {
-        GarminDeviceModelNormalizer.canonicalModel(from: model)
+        GarminDeviceModelNormalizer.canonicalModel(from: identityModelSource)
+    }
+
+    var presentationModel: String {
+        canonicalModel ?? deviceDescription?.trimmingCharacters(in: .whitespacesAndNewlines)
+            ?? model.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var identityModelSource: String {
+        let description = deviceDescription?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return description.isEmpty ? model : description
     }
 
     /// Exact compatibility identity used for evidence aggregation.  The
@@ -111,8 +137,8 @@ struct DeviceIdentity: Sendable, Equatable {
     /// display evidence when available so 47 mm and 51 mm never share a
     /// status accidentally.
     var compatibilityIdentity: String {
-        guard let canonicalModel else { return model.trimmingCharacters(in: .whitespacesAndNewlines) }
-        let identitySource = [model, variant].compactMap { $0 }.joined(separator: " ")
+        guard let canonicalModel else { return presentationModel }
+        let identitySource = [identityModelSource, model, variant].compactMap { $0 }.joined(separator: " ")
         let size = GarminDeviceModelNormalizer.caseSizeMm(from: identitySource)
         let display = GarminDeviceModelNormalizer.displayType(from: identitySource)
         var details: [String] = []
@@ -123,12 +149,12 @@ struct DeviceIdentity: Sendable, Equatable {
     }
 
     var caseSizeMm: Int? {
-        let identitySource = [model, variant].compactMap { $0 }.joined(separator: " ")
+        let identitySource = [identityModelSource, model, variant].compactMap { $0 }.joined(separator: " ")
         return GarminDeviceModelNormalizer.caseSizeMm(from: identitySource)
     }
 
     var displayType: String? {
-        let identitySource = [model, variant].compactMap { $0 }.joined(separator: " ")
+        let identitySource = [identityModelSource, model, variant].compactMap { $0 }.joined(separator: " ")
         return GarminDeviceModelNormalizer.displayType(from: identitySource)
     }
 
@@ -137,6 +163,14 @@ struct DeviceIdentity: Sendable, Equatable {
     /// model text, case size, or artwork alone must never manufacture an
     /// AMOLED/Solar distinction.
     var reviewedCanonicalDeviceID: String? {
+        if canonicalModel == "fēnix 8 Pro" {
+            switch (caseSizeMm, displayType) {
+            case (47, "AMOLED"): return "garmin-fenix-8-pro-47-amoled"
+            case (51, "AMOLED"): return "garmin-fenix-8-pro-51-amoled"
+            case (51, "MicroLED"): return "garmin-fenix-8-pro-51-microled"
+            default: return nil
+            }
+        }
         guard usbVendorId == 0x091e,
               usbProductId == 0x51b8,
               canonicalModel == "fēnix 8",
@@ -150,7 +184,7 @@ struct DeviceIdentity: Sendable, Equatable {
     /// Presentation/catalog identity for models that do not yet have a local
     /// transport/install profile. This never authorizes device writes.
     var catalogCanonicalModel: String? {
-        GarminDeviceModelNormalizer.catalogCanonicalModel(from: model)
+        GarminDeviceModelNormalizer.catalogCanonicalModel(from: identityModelSource)
     }
 }
 
@@ -158,13 +192,11 @@ struct GarminDeviceModelNormalizer: Sendable {
     static func canonicalModel(from rawModel: String) -> String? {
         let normalized = normalize(rawModel)
 
-        // Keep this list explicit. A model prefix alone is not sufficient to
-        // authorize a device install target.
-        switch normalized {
-        case let value where value == "fenix 8" || value.hasPrefix("fenix 8 "):
-            return "fēnix 8"
-        default:
-            return nil
+        let catalogModel = catalogCanonicalModel(from: normalized)
+        switch catalogModel {
+        case "fenix 8 pro": return "fēnix 8 Pro"
+        case "fenix 8": return "fēnix 8"
+        default: return nil
         }
     }
 
@@ -216,6 +248,14 @@ struct GarminDeviceModelNormalizer: Sendable {
             normalized = String(normalized[..<range.lowerBound])
         }
         return normalized
+    }
+
+    static func displayCanonicalModel(_ normalizedModel: String) -> String {
+        switch normalize(normalizedModel) {
+        case "fenix 8 pro": return "fēnix 8 Pro"
+        case "fenix 8": return "fēnix 8"
+        default: return normalizedModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
     }
 
     static func normalize(_ value: String) -> String {

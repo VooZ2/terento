@@ -491,7 +491,7 @@ extension DeviceIdentity {
         }
 
         return try? LocalPhysicalDeviceKeyDeriver().derive(
-            source: "mtp-serial",
+            source: localIdentityResolution == .garminUnitID ? "garmin-unit-id" : "mtp-serial",
             value: localHardwareIdentifier
         )
     }

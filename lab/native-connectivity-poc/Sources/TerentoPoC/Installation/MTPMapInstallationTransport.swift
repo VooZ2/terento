@@ -285,6 +285,8 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
             return .objectIdentityMismatch
         case Int32(TERENTO_MTP_MAP_UNSUPPORTED_DEVICE):
             return .unsupportedDevice
+        case Int32(TERENTO_MTP_MAP_IDENTITY_MISMATCH):
+            return .liveIdentityMismatch
         default:
             let readable = message.isEmpty ? "The native MTP map operation failed." : message
             if readable.localizedCaseInsensitiveContains("disconnect")

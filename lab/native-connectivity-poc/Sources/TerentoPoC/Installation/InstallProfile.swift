@@ -49,9 +49,7 @@ struct DeviceMapOperationProfile: Equatable, Sendable {
         guard let installProfile,
               installProfile.supportsMapWrite,
               installProfile.matches(identity),
-              installProfile.targetDirectory == "/GARMIN",
-              let localHardwareIdentifier = identity.localHardwareIdentifier,
-              !localHardwareIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+              installProfile.targetDirectory == "/GARMIN" else {
             return nil
         }
 

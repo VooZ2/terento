@@ -1,5 +1,17 @@
 import Foundation
 
+enum InstallationNativeFailureCode: String, Equatable, Sendable {
+    case targetAlreadyExists = "TARGET_ALREADY_EXISTS"
+    case remoteFileMissing = "REMOTE_FILE_MISSING"
+    case objectIDMismatch = "OBJECT_ID_MISMATCH"
+    case unsupportedDevice = "UNSUPPORTED_DEVICE"
+    case liveIdentityMismatch = "LIVE_IDENTITY_MISMATCH"
+    case deviceDisconnected = "DEVICE_DISCONNECTED"
+    case sendObjectFailed = "SEND_OBJECT_FAILED"
+    case readbackFailed = "READBACK_FAILED"
+    case deleteFailed = "DELETE_FAILED"
+}
+
 struct MTPWrittenMapObject: Equatable, Sendable {
     let itemID: UInt32
     let sizeBytes: UInt64
@@ -19,6 +31,7 @@ enum InstallationTransportError: LocalizedError, Equatable, Sendable {
     case remoteFileMissing
     case objectIdentityMismatch
     case unsupportedDevice
+    case liveIdentityMismatch
     case deviceDisconnected(String, createdItemID: UInt32?)
     case operationFailed(String, createdItemID: UInt32?)
 
@@ -32,6 +45,8 @@ enum InstallationTransportError: LocalizedError, Equatable, Sendable {
             return "The Garmin object identity did not match the intended map."
         case .unsupportedDevice:
             return "This Garmin device is not enabled for the validated map installation path."
+        case .liveIdentityMismatch:
+            return "The connected Garmin device changed after this map operation was authorized."
         case .deviceDisconnected(let message, _),
              .operationFailed(let message, _):
             return message

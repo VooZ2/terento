@@ -17,7 +17,9 @@ struct Stage401PreflightTests {
         testMapCapableBetaDeviceGetsLiveBoundProfile()
         testOperationProfileBindsRawLiveIdentity()
         testOperationProfileRejectsAnotherDeviceProfile()
-        testOperationProfileRequiresPhysicalWatchDiscriminator()
+        testOperationProfileDoesNotOwnPhysicalWatchIdentity()
+        testGarminDeviceXMLRestoresProIdentityAndUnitID()
+        testGarminDeviceXMLRejectsAmbiguousUnitID()
         testBetaProfileRequiresOneGarminRoot()
         testNonMapWatchCannotEnroll()
         testExistingExternalMapRequiresExplicitReplacement()
@@ -29,7 +31,7 @@ struct Stage401PreflightTests {
         testUpToDateMapIsStillAnExistingMapConflict()
         testPreflightIsTransportIndependentAndReadOnly()
 
-        print("PASS: 19 Stage 4.0.1 preflight tests")
+        print("PASS: 21 Stage 4.0.1 preflight tests")
     }
 
     private static func testRealFenixModelResolvesValidatedProfile() {
@@ -171,7 +173,7 @@ struct Stage401PreflightTests {
         )
     }
 
-    private static func testOperationProfileRequiresPhysicalWatchDiscriminator() {
+    private static func testOperationProfileDoesNotOwnPhysicalWatchIdentity() {
         let identity = DeviceIdentity(
             manufacturer: "Garmin",
             model: "Forerunner 970",
@@ -190,8 +192,55 @@ struct Stage401PreflightTests {
 
         expect(
             profile != nil
-                && DeviceMapOperationProfile(identity: identity, installProfile: profile) == nil,
-            "missing physical-watch discriminator blocks mutation without removing map-capable discovery"
+                && DeviceMapOperationProfile(identity: identity, installProfile: profile) != nil
+                && identity.localHardwareIdentifier == nil,
+            "C operation profile uses live write facts while durable ownership remains independently unavailable"
+        )
+    }
+
+    private static func testGarminDeviceXMLRestoresProIdentityAndUnitID() {
+        let xml = Data("""
+        <?xml version="1.0" encoding="UTF-8"?>
+        <GarminDevice><Model><PartNumber>006-B9999-00</PartNumber><SoftwareVersion>2326</SoftwareVersion><Description>fēnix 8 Pro - 51mm AMOLED</Description></Model><Id>1234567890</Id></GarminDevice>
+        """.utf8)
+        let identity = GarminDeviceIdentityAdapter().makeIdentity(from: DeviceSnapshot(
+            manufacturer: "Garmin", model: "fenix 8 - 51mm", deviceVersion: "2326",
+            vendorID: 0x091e, productID: 0x7777, storages: [], serialNumber: nil,
+            garminDeviceXMLStatus: .available, garminDeviceXML: xml
+        ))
+        expect(
+            identity.canonicalModel == "fēnix 8 Pro"
+                && identity.compatibilityIdentity == "fēnix 8 Pro · 51 mm, AMOLED"
+                && identity.reviewedCanonicalDeviceID == "garmin-fenix-8-pro-51-amoled"
+                && identity.localIdentityResolution == .garminUnitID
+                && identity.localHardwareIdentifier == "1234567890",
+            "GarminDevice.xml preserves Pro and supplies a local Unit ID fallback without PID inference"
+        )
+    }
+
+    private static func testGarminDeviceXMLRejectsAmbiguousUnitID() {
+        let xml = Data("""
+        <GarminDevice><Model><Description>fēnix 8 Pro - 51mm</Description></Model><Id>1234567890</Id><Id>0987654321</Id></GarminDevice>
+        """.utf8)
+        let identity = GarminDeviceIdentityAdapter().makeIdentity(from: DeviceSnapshot(
+            manufacturer: "Garmin", model: "fenix 8 - 51mm", deviceVersion: "2326",
+            vendorID: 0x091e, productID: 0x7777, storages: [], serialNumber: nil,
+            garminDeviceXMLStatus: .available, garminDeviceXML: xml
+        ))
+        expect(
+            identity.localHardwareIdentifier == nil
+                && identity.localIdentityResolution == .unavailable
+                && identity.canonicalModel == "fēnix 8",
+            "ambiguous GarminDevice.xml cannot invent Unit ID or Pro identity"
+        )
+
+        let entityXML = Data("""
+        <!DOCTYPE GarminDevice [<!ENTITY model "fēnix 8 Pro - 51mm">]>
+        <GarminDevice><Model><Description>&model;</Description></Model><Id>1234567890</Id></GarminDevice>
+        """.utf8)
+        expect(
+            GarminDeviceDocumentParser.parse(entityXML) == nil,
+            "GarminDevice.xml rejects declarations and entities"
         )
     }
 

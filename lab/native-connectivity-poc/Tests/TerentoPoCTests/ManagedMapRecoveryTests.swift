@@ -49,7 +49,7 @@ struct ManagedMapRecoveryTests {
 
     private static func testSameWatchRecoversAfterCompleteRead() throws {
         let data = Data(repeating: 0x41, count: 4096)
-        let identity = makeIdentity(serial: "WATCH-A")
+        let identity = makeIdentity(serial: "WATCH-A", resolution: .garminUnitID)
         let document = try makeDocument(data: data, identity: identity)
         let store = RecoveryManifestStore()
         // Garmin may issue a different object handle when the native read
@@ -77,7 +77,10 @@ struct ManagedMapRecoveryTests {
 
     private static func testAnotherIdenticalWatchCannotClaimExport() throws {
         let data = Data(repeating: 0x41, count: 4096)
-        let document = try makeDocument(data: data, identity: makeIdentity(serial: "WATCH-A"))
+        let document = try makeDocument(
+            data: data,
+            identity: makeIdentity(serial: "WATCH-A", resolution: .garminUnitID)
+        )
         let store = RecoveryManifestStore()
         let reader = RecoveryReader(data: data)
 
@@ -87,7 +90,7 @@ struct ManagedMapRecoveryTests {
                 deviceKeyProvider: { _ in "watch-v2-local-b" }
             ).recover(
                 document: document,
-                identity: makeIdentity(serial: "WATCH-B"),
+                identity: makeIdentity(serial: "WATCH-B", resolution: .garminUnitID),
                 liveFiles: [makeLiveFile(size: UInt64(data.count))],
                 reader: reader
             )
@@ -171,7 +174,10 @@ struct ManagedMapRecoveryTests {
         ])
     }
 
-    private static func makeIdentity(serial: String?) -> DeviceIdentity {
+    private static func makeIdentity(
+        serial: String?,
+        resolution: DeviceIdentity.LocalIdentityResolution? = nil
+    ) -> DeviceIdentity {
         DeviceIdentity(
             manufacturer: "Garmin",
             model: "fenix 8 - 47mm",
@@ -182,7 +188,8 @@ struct ManagedMapRecoveryTests {
             firmware: "2243",
             storageCapacity: 31 * 1024 * 1024 * 1024,
             freeSpace: 15 * 1024 * 1024 * 1024,
-            localHardwareIdentifier: serial
+            localHardwareIdentifier: serial,
+            localIdentityResolution: resolution
         )
     }
 

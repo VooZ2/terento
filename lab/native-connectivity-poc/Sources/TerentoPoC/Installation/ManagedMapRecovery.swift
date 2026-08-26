@@ -127,7 +127,7 @@ struct TerentoManifestExportService: Sendable {
               !value.isEmpty else {
             throw ManagedMapRecoveryError.stableWatchIdentityUnavailable
         }
-        return value
+        return "\(identity.localIdentityResolution.rawValue):\(value)"
     }
 
     private static func watchProof(identifier: String, salt: Data) -> String {

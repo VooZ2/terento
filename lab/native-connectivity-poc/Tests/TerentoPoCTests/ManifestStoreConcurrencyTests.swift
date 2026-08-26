@@ -102,12 +102,17 @@ struct ManifestStoreConcurrencyTests {
         let watchA = try deriver.derive(source: "mtp-serial", value: "SERIAL-A")
         let watchAAgain = try deriver.derive(source: "mtp-serial", value: "SERIAL-A")
         let watchB = try deriver.derive(source: "mtp-serial", value: "SERIAL-B")
+        let unitIDA = try deriver.derive(source: "garmin-unit-id", value: "UNIT-A")
+        let unitIDB = try deriver.derive(source: "garmin-unit-id", value: "UNIT-B")
+        let sameValueDifferentSource = try deriver.derive(source: "garmin-unit-id", value: "SERIAL-A")
         let secretURL = root.appendingPathComponent(".device-key-secret")
         let attributes = try FileManager.default.attributesOfItem(atPath: secretURL.path)
         let permissions = (attributes[.posixPermissions] as? NSNumber)?.intValue
 
         guard watchA == watchAAgain,
               watchA != watchB,
+              unitIDA != unitIDB,
+              watchA != sameValueDifferentSource,
               watchA.hasPrefix("watch-v2-"),
               !watchA.contains("SERIAL-A"),
               permissions == 0o600 else {

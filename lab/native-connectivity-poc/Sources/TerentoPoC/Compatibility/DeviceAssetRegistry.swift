@@ -94,6 +94,7 @@ struct DeviceCatalogRecord: Decodable, Sendable {
     let partNumber: String?
     let productURL: URL?
     let active: Bool?
+    let mapCapable: Bool?
     let asset: DeviceCatalogAsset?
     let sourceAsset: DeviceCatalogSourceAsset?
 
@@ -110,6 +111,7 @@ struct DeviceCatalogRecord: Decodable, Sendable {
         case partNumber
         case productURL
         case active
+        case mapCapable
         case asset
         case sourceAsset
     }
@@ -127,6 +129,7 @@ struct DeviceCatalogRecord: Decodable, Sendable {
         partNumber: String? = nil,
         productURL: URL? = nil,
         active: Bool? = nil,
+        mapCapable: Bool? = nil,
         asset: DeviceCatalogAsset?,
         sourceAsset: DeviceCatalogSourceAsset? = nil
     ) {
@@ -142,6 +145,7 @@ struct DeviceCatalogRecord: Decodable, Sendable {
         self.partNumber = partNumber
         self.productURL = productURL
         self.active = active
+        self.mapCapable = mapCapable
         self.asset = asset
         self.sourceAsset = sourceAsset
     }

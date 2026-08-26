@@ -312,6 +312,7 @@ if ! xcodebuild \
     CODE_SIGNING_ALLOWED=NO \
     CODE_SIGNING_REQUIRED=NO \
     CODE_SIGN_IDENTITY=- \
+    TERENTO_RELEASE_LABEL="$release_label" \
     build >"$run_dir/xcodebuild.log" 2>&1; then
     tail -n 100 "$run_dir/xcodebuild.log" >&2
     die "Fresh Release app build failed; full log: $run_dir/xcodebuild.log"
@@ -327,10 +328,12 @@ done
 
 app_version="$(plist_value CFBundleShortVersionString "$app/Contents/Info.plist")"
 app_build="$(plist_value CFBundleVersion "$app/Contents/Info.plist")"
+app_release_label="$(plist_value TerentoReleaseLabel "$app/Contents/Info.plist")"
 app_bundle_identifier="$(plist_value CFBundleIdentifier "$app/Contents/Info.plist")"
 app_minimum_os="$(plist_value LSMinimumSystemVersion "$app/Contents/Info.plist")"
 assert_equal "Built app version" "$app_version" "$project_version"
 assert_equal "Built app build" "$app_build" "$project_build"
+assert_equal "Built app release label" "$app_release_label" "$release_label"
 assert_equal "Built app bundle identifier" "$app_bundle_identifier" "$RELEASE_BUNDLE_IDENTIFIER"
 assert_equal "Built app minimum macOS" "$app_minimum_os" "$RELEASE_DEPLOYMENT_TARGET"
 [[ "$(lipo -archs "$app/Contents/MacOS/$RELEASE_PRODUCT_NAME")" == "$RELEASE_ARCH" ]] || die "Unexpected app architecture"

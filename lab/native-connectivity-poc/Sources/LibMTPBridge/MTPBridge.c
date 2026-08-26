@@ -24,6 +24,7 @@
 #define MAX_FILE_TREE_DEPTH 32
 #define TERENTO_MAP_OPERATION_PROFILE_VERSION 1
 #define TERENTO_PROFILE_TEXT_MAX_BYTES 255
+#define TERENTO_GARMIN_DEVICE_XML_MAX_BYTES (2 * 1024 * 1024)
 
 static int validate_map_operation_profile(
     const TerentoMTPMapOperationProfile *profile,
@@ -39,6 +40,14 @@ static int validate_live_map_operation_device(
     char *error_message,
     size_t error_message_capacity
 );
+
+static int map_live_validation_error(int validation_result) {
+    return validation_result == -2 || validation_result == -3
+        ? TERENTO_MTP_MAP_IDENTITY_MISMATCH
+        : TERENTO_MTP_MAP_UNSUPPORTED_DEVICE;
+}
+
+static int device_error_is_present(LIBMTP_mtpdevice_t *device);
 
 static int find_single_garmin_folder(
     LIBMTP_mtpdevice_t *device,
@@ -87,6 +96,7 @@ static void clear_snapshot(TerentoMTPDeviceSnapshot *snapshot) {
     free(snapshot->model);
     free(snapshot->device_version);
     free(snapshot->serial_number);
+    free(snapshot->garmin_device_xml);
 
     if (snapshot->storages != NULL) {
         for (size_t index = 0; index < snapshot->storage_count; index += 1) {
@@ -210,6 +220,124 @@ static int copy_storage(
     }
 
     return 0;
+}
+
+static void read_garmin_device_xml(
+    LIBMTP_mtpdevice_t *device,
+    TerentoMTPDeviceSnapshot *snapshot
+) {
+    if (snapshot == NULL) {
+        return;
+    }
+    snapshot->garmin_device_xml_status = TERENTO_GARMIN_DEVICE_XML_UNAVAILABLE;
+    if (device == NULL || device->storage == NULL) {
+        return;
+    }
+
+    uint32_t storage_id = 0;
+    uint32_t garmin_folder_id = 0;
+    size_t garmin_folder_count = 0;
+    for (LIBMTP_devicestorage_t *storage = device->storage;
+         storage != NULL;
+         storage = storage->next) {
+        LIBMTP_Clear_Errorstack(device);
+        LIBMTP_file_t *root = LIBMTP_Get_Files_And_Folders(
+            device,
+            storage->id,
+            LIBMTP_FILES_AND_FOLDERS_ROOT
+        );
+        if (root == NULL && device_error_is_present(device)) {
+            snapshot->garmin_device_xml_status = TERENTO_GARMIN_DEVICE_XML_READ_FAILED;
+            return;
+        }
+        for (LIBMTP_file_t *item = root; item != NULL; item = item->next) {
+            if (item->filetype == LIBMTP_FILETYPE_FOLDER
+                && item->filename != NULL
+                && strcasecmp(item->filename, "GARMIN") == 0) {
+                garmin_folder_count += 1;
+                storage_id = storage->id;
+                garmin_folder_id = item->item_id;
+            }
+        }
+        if (root != NULL) {
+            LIBMTP_destroy_file_t(root);
+        }
+    }
+
+    if (garmin_folder_count != 1) {
+        if (garmin_folder_count > 1) {
+            snapshot->garmin_device_xml_status = TERENTO_GARMIN_DEVICE_XML_AMBIGUOUS;
+        }
+        return;
+    }
+
+    uint32_t xml_item_id = 0;
+    uint64_t xml_size = 0;
+    size_t xml_count = 0;
+    LIBMTP_Clear_Errorstack(device);
+    LIBMTP_file_t *children = LIBMTP_Get_Files_And_Folders(
+        device,
+        storage_id,
+        garmin_folder_id
+    );
+    if (children == NULL && device_error_is_present(device)) {
+        snapshot->garmin_device_xml_status = TERENTO_GARMIN_DEVICE_XML_READ_FAILED;
+        return;
+    }
+    for (LIBMTP_file_t *item = children; item != NULL; item = item->next) {
+        if (item->filetype != LIBMTP_FILETYPE_FOLDER
+            && item->filename != NULL
+            && strcasecmp(item->filename, "GarminDevice.xml") == 0) {
+            xml_count += 1;
+            xml_item_id = item->item_id;
+            xml_size = item->filesize;
+        }
+    }
+    if (children != NULL) {
+        LIBMTP_destroy_file_t(children);
+    }
+
+    if (xml_count != 1) {
+        if (xml_count > 1) {
+            snapshot->garmin_device_xml_status = TERENTO_GARMIN_DEVICE_XML_AMBIGUOUS;
+        }
+        return;
+    }
+    if (xml_size == 0 || xml_size > TERENTO_GARMIN_DEVICE_XML_MAX_BYTES
+        || xml_size > UINT32_MAX) {
+        snapshot->garmin_device_xml_status = TERENTO_GARMIN_DEVICE_XML_OVERSIZED;
+        return;
+    }
+
+    unsigned char *raw_bytes = NULL;
+    unsigned int actual_length = 0;
+    LIBMTP_Clear_Errorstack(device);
+    int read_result = LIBMTP_GetPartialObject(
+        device,
+        xml_item_id,
+        0,
+        (uint32_t)xml_size,
+        &raw_bytes,
+        &actual_length
+    );
+    if (read_result != 0 || raw_bytes == NULL || actual_length != xml_size) {
+        if (raw_bytes != NULL) {
+            LIBMTP_FreeMemory(raw_bytes);
+        }
+        snapshot->garmin_device_xml_status = TERENTO_GARMIN_DEVICE_XML_READ_FAILED;
+        return;
+    }
+
+    snapshot->garmin_device_xml = malloc(actual_length);
+    if (snapshot->garmin_device_xml == NULL) {
+        LIBMTP_FreeMemory(raw_bytes);
+        snapshot->garmin_device_xml_status = TERENTO_GARMIN_DEVICE_XML_READ_FAILED;
+        return;
+    }
+    memcpy(snapshot->garmin_device_xml, raw_bytes, actual_length);
+    snapshot->garmin_device_xml_size = actual_length;
+    snapshot->garmin_device_xml_status = TERENTO_GARMIN_DEVICE_XML_AVAILABLE;
+    LIBMTP_FreeMemory(raw_bytes);
 }
 
 static LIBMTP_mtpdevice_t *open_single_garmin_device(
@@ -798,7 +926,7 @@ int terento_mtp_read_existing_file_to_local(
         error_message_capacity
     );
     if (result != 0) {
-        result = TERENTO_MTP_MAP_UNSUPPORTED_DEVICE;
+        result = map_live_validation_error(result);
         goto cleanup;
     }
 
@@ -1219,7 +1347,7 @@ static int validate_live_map_operation_device(
     int matches = manufacturer != NULL
         && model != NULL
         && trimmed_text_equal(manufacturer, profile->manufacturer, 1)
-        && trimmed_text_equal(model, profile->model, 0);
+        && trimmed_text_equal(model, profile->model, 1);
     if (manufacturer != NULL) {
         LIBMTP_FreeMemory(manufacturer);
     }
@@ -1559,7 +1687,7 @@ int terento_mtp_install_map_file(
         error_message_capacity
     );
     if (result != 0) {
-        result = TERENTO_MTP_MAP_UNSUPPORTED_DEVICE;
+        result = map_live_validation_error(result);
         goto cleanup;
     }
 
@@ -1734,15 +1862,16 @@ int terento_mtp_verify_managed_map_samples(
                     goto sample_cleanup;
                 }
 
-                if (validate_live_map_operation_device(
+                int identity_result = validate_live_map_operation_device(
                         profile,
                         vendor_id,
                         product_id,
                         device,
                         error_message,
                         error_message_capacity
-                    ) != 0) {
-                    result = TERENTO_MTP_MAP_UNSUPPORTED_DEVICE;
+                    );
+                if (identity_result != 0) {
+                    result = map_live_validation_error(identity_result);
                     goto sample_cleanup;
                 }
 
@@ -1878,7 +2007,7 @@ int terento_mtp_delete_managed_map(
         error_message_capacity
     );
     if (result != 0) {
-        result = TERENTO_MTP_MAP_UNSUPPORTED_DEVICE;
+        result = map_live_validation_error(result);
         goto cleanup;
     }
 
@@ -2865,7 +2994,7 @@ int terento_mtp_read_snapshot(
     snapshot->vendor_id = selected_device.device_entry.vendor_id;
     snapshot->product_id = selected_device.device_entry.product_id;
 
-    LIBMTP_mtpdevice_t *device = LIBMTP_Open_Raw_Device(&raw_devices[selected_index]);
+    LIBMTP_mtpdevice_t *device = LIBMTP_Open_Raw_Device_Uncached(&raw_devices[selected_index]);
     free(raw_devices);
     raw_devices = NULL;
 
@@ -2970,6 +3099,10 @@ int terento_mtp_read_snapshot(
         }
         storage_index += 1;
     }
+
+    /* Optional read-only identity fallback. Failure here must not hide a
+       usable MTP serial or prevent ordinary read-only device detection. */
+    read_garmin_device_xml(device, snapshot);
 
 cleanup:
     LIBMTP_Release_Device(device);

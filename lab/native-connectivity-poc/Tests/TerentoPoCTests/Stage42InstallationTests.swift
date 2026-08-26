@@ -224,6 +224,7 @@ struct Stage42InstallationTests {
         passed += testTargetPolicyAcceptsAnotherFreizeitkarteRegion()
         passed += testTargetPolicyAcceptsMapCapableBetaProfile()
         passed += testMapCapableNonLabPIDCompletesGenericLifecycle()
+        passed += testMissingStableWatchIdentityBlocksBeforeMutation()
         passed += testTargetPolicyRejectsBetaProfileWithoutGarminRoot()
         passed += testCoordinatorUsesBusyTransactionGate()
         passed += testNonValidatedArtifactBlocksWrite()
@@ -425,6 +426,34 @@ struct Stage42InstallationTests {
         )
     }
 
+    private static func testMissingStableWatchIdentityBlocksBeforeMutation() -> Int {
+        let identity = DeviceIdentity(
+            manufacturer: "Garmin",
+            model: "fenix 8 - 51mm",
+            family: "fēnix",
+            variant: "51mm",
+            usbVendorId: 0x091e,
+            usbProductId: 0x7777,
+            firmware: "2244",
+            storageCapacity: 31 * gigabyte,
+            freeSpace: 16 * gigabyte
+        )
+        let profile = DeviceInstallProfileRegistry.local.profile(
+            for: identity,
+            deviceFiles: Harness.makeBeforeFiles(installedLatvia: false)
+        )
+        let harness = Harness(profile: profile, identity: identity)
+        let result = harness.run()
+
+        return expect(
+            result.status == .blockedUnsupportedDevice
+                && result.failure == .stableWatchIdentityUnavailable
+                && harness.transport.writeCount == 0
+                && harness.manifest.entries.isEmpty,
+            "missing stable watch identity is rechecked before mutation"
+        )
+    }
+
     private static func betaIdentity() -> DeviceIdentity {
         DeviceIdentity(
             manufacturer: "Garmin",
@@ -435,7 +464,9 @@ struct Stage42InstallationTests {
             usbProductId: 0x7777,
             firmware: "2244",
             storageCapacity: 31 * gigabyte,
-            freeSpace: 16 * gigabyte
+            freeSpace: 16 * gigabyte,
+            localHardwareIdentifier: "UNIT-ID-PRO-51",
+            localIdentityResolution: .garminUnitID
         )
     }
 
@@ -735,7 +766,8 @@ struct Stage42InstallationTests {
                 usbProductId: 0x51b8,
                 firmware: "2243",
                 storageCapacity: 31 * gigabyte,
-                freeSpace: 15 * gigabyte
+                freeSpace: 15 * gigabyte,
+                localHardwareIdentifier: "MTP-SERIAL-FENIX-47"
             )
         }
 

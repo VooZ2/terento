@@ -1,5 +1,13 @@
 import Foundation
 
+enum GarminDeviceXMLReadStatus: Equatable, Sendable {
+    case unavailable
+    case available
+    case ambiguous
+    case oversized
+    case readFailed
+}
+
 struct DeviceSnapshot: Sendable {
     let manufacturer: String
     let model: String
@@ -8,6 +16,8 @@ struct DeviceSnapshot: Sendable {
     let productID: UInt16
     let storages: [StorageInfo]
     let serialNumber: String?
+    let garminDeviceXMLStatus: GarminDeviceXMLReadStatus
+    let garminDeviceXML: Data?
 
     init(
         manufacturer: String,
@@ -16,7 +26,9 @@ struct DeviceSnapshot: Sendable {
         vendorID: UInt16,
         productID: UInt16,
         storages: [StorageInfo],
-        serialNumber: String? = nil
+        serialNumber: String? = nil,
+        garminDeviceXMLStatus: GarminDeviceXMLReadStatus = .unavailable,
+        garminDeviceXML: Data? = nil
     ) {
         self.manufacturer = manufacturer
         self.model = model
@@ -25,6 +37,8 @@ struct DeviceSnapshot: Sendable {
         self.productID = productID
         self.storages = storages
         self.serialNumber = serialNumber
+        self.garminDeviceXMLStatus = garminDeviceXMLStatus
+        self.garminDeviceXML = garminDeviceXML
     }
 
     var totalCapacity: UInt64 {

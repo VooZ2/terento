@@ -25,6 +25,44 @@ enum DiagnosticReportSanitizer {
 enum InstallationEvidenceOutcome: String, Codable, Sendable {
     case succeeded = "SUCCEEDED"
     case failed = "FAILED"
+    case notStarted = "NOT_STARTED"
+}
+
+enum EvidenceFailureStage: String, Codable, Sendable {
+    case download, extract, preflight, write, verify, cleanup, manifest
+    case sourceValidation = "source-validation"
+}
+
+enum EvidenceNativeFailureCode: String, Codable, Sendable {
+    case targetAlreadyExists = "TARGET_ALREADY_EXISTS"
+    case remoteFileMissing = "REMOTE_FILE_MISSING"
+    case objectIDMismatch = "OBJECT_ID_MISMATCH"
+    case unsupportedDevice = "UNSUPPORTED_DEVICE"
+    case deviceDisconnected = "DEVICE_DISCONNECTED"
+    case sendObjectFailed = "SEND_OBJECT_FAILED"
+    case readbackFailed = "READBACK_FAILED"
+    case deleteFailed = "DELETE_FAILED"
+    case mtpOpenFailed = "MTP_OPEN_FAILED"
+    case garminRootCountInvalid = "GARMIN_ROOT_COUNT_INVALID"
+    case preflightMTPReadFailed = "PREFLIGHT_MTP_READ_FAILED"
+    case liveIdentityMismatch = "LIVE_IDENTITY_MISMATCH"
+    case stableWatchIdentityUnavailable = "STABLE_WATCH_IDENTITY_UNAVAILABLE"
+    case garminDeviceXMLInvalid = "GARMIN_DEVICE_XML_INVALID"
+}
+
+enum EvidenceTransferProgressBucket: String, Codable, Sendable {
+    case zero = "0"
+    case oneToTwentyFour = "1-24"
+    case twentyFiveToNinetyNine = "25-99"
+    case complete = "100"
+
+    init(bytes: UInt64, total: UInt64) {
+        guard total > 0, bytes > 0 else { self = .zero; return }
+        let percentage = min(100, Int((Double(bytes) / Double(total)) * 100))
+        if percentage >= 100 { self = .complete }
+        else if percentage >= 25 { self = .twentyFiveToNinetyNine }
+        else { self = .oneToTwentyFour }
+    }
 }
 
 enum AutomaticFinishingResult: String, Codable, Sendable {
@@ -44,7 +82,7 @@ enum EvidenceErrorCategory: String, Codable, CaseIterable, Sendable {
 }
 
 struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
-    static let schemaVersion = 2
+    static let schemaVersion = 3
 
     let schemaVersion: Int
     let id: UUID
@@ -70,6 +108,21 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
     let reconnectVerified: Bool
     let mapVisibleAfterReconnect: Bool
     let errorCategory: EvidenceErrorCategory?
+    let rawMTPModel: String?
+    let identityResolutionCode: String?
+    let operationId: UUID?
+    let mapResultIndex: Int?
+    let selectedMapCount: Int?
+    let appBuild: String?
+    let releaseLabel: String?
+    let failureStage: EvidenceFailureStage?
+    let failureCode: String?
+    let nativeFailureCode: EvidenceNativeFailureCode?
+    let writeStarted: Bool?
+    let remoteObjectCreated: Bool?
+    let cleanupAttempted: Bool?
+    let cleanupSucceeded: Bool?
+    let transferProgressBucket: EvidenceTransferProgressBucket?
     let deletionToken: String?
 
     init(
@@ -82,6 +135,21 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         reconnectVerified: Bool = false,
         mapVisibleAfterReconnect: Bool = false,
         errorCategory: EvidenceErrorCategory? = nil,
+        operationId: UUID = UUID(),
+        mapResultIndex: Int = 0,
+        selectedMapCount: Int = 1,
+        appBuild: String = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "development",
+        releaseLabel: String = Bundle.main.infoDictionary?["TerentoReleaseLabel"] as? String
+            ?? Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+            ?? "development",
+        failureStage: EvidenceFailureStage? = nil,
+        failureCode: String? = nil,
+        nativeFailureCode: EvidenceNativeFailureCode? = nil,
+        writeStarted: Bool = true,
+        remoteObjectCreated: Bool = false,
+        cleanupAttempted: Bool = false,
+        cleanupSucceeded: Bool = false,
+        transferProgressBucket: EvidenceTransferProgressBucket = .zero,
         terentoVersion: String = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "development",
         macOSVersion: String = ProcessInfo.processInfo.operatingSystemVersionString,
         deletionToken: String = InstallationEvidenceEvent.makeDeletionToken()
@@ -89,7 +157,7 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         self.schemaVersion = Self.schemaVersion
         self.id = id
         self.timestamp = timestamp
-        self.model = identity.canonicalModel ?? identity.model
+        self.model = identity.canonicalModel ?? identity.presentationModel
         self.compatibilityIdentity = identity.compatibilityIdentity
         self.variant = identity.variant
         self.caseSizeMm = identity.caseSizeMm
@@ -113,6 +181,21 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         self.reconnectVerified = reconnectVerified
         self.mapVisibleAfterReconnect = mapVisibleAfterReconnect
         self.errorCategory = errorCategory
+        self.rawMTPModel = Self.sanitizedDiagnosticLabel(identity.model)
+        self.identityResolutionCode = identity.localIdentityResolution.rawValue
+        self.operationId = operationId
+        self.mapResultIndex = mapResultIndex
+        self.selectedMapCount = selectedMapCount
+        self.appBuild = appBuild
+        self.releaseLabel = releaseLabel
+        self.failureStage = failureStage
+        self.failureCode = failureCode
+        self.nativeFailureCode = nativeFailureCode
+        self.writeStarted = writeStarted
+        self.remoteObjectCreated = remoteObjectCreated
+        self.cleanupAttempted = cleanupAttempted
+        self.cleanupSucceeded = cleanupSucceeded
+        self.transferProgressBucket = transferProgressBucket
         self.deletionToken = deletionToken
     }
 
@@ -121,6 +204,10 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
              displayType, canonicalDeviceId, family, firmwareVersion, usbVendorID, usbProductID, transport, provider, region,
              mapRelease, terentoVersion, macOSVersion, phaseOutcome, automaticFinishingResult,
              reconnectVerified, mapVisibleAfterReconnect, errorCategory, deletionToken
+        case rawMTPModel, identityResolutionCode
+        case operationId, mapResultIndex, selectedMapCount, appBuild, releaseLabel,
+             failureStage, failureCode, nativeFailureCode, writeStarted, remoteObjectCreated,
+             cleanupAttempted, cleanupSucceeded, transferProgressBucket
     }
 
     init(from decoder: Decoder) throws {
@@ -149,11 +236,36 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         reconnectVerified = try container.decodeIfPresent(Bool.self, forKey: .reconnectVerified) ?? false
         mapVisibleAfterReconnect = try container.decodeIfPresent(Bool.self, forKey: .mapVisibleAfterReconnect) ?? false
         errorCategory = try container.decodeIfPresent(EvidenceErrorCategory.self, forKey: .errorCategory)
+        rawMTPModel = try container.decodeIfPresent(String.self, forKey: .rawMTPModel)
+        identityResolutionCode = try container.decodeIfPresent(String.self, forKey: .identityResolutionCode)
+        operationId = try container.decodeIfPresent(UUID.self, forKey: .operationId)
+        mapResultIndex = try container.decodeIfPresent(Int.self, forKey: .mapResultIndex)
+        selectedMapCount = try container.decodeIfPresent(Int.self, forKey: .selectedMapCount)
+        appBuild = try container.decodeIfPresent(String.self, forKey: .appBuild)
+        releaseLabel = try container.decodeIfPresent(String.self, forKey: .releaseLabel)
+        failureStage = try container.decodeIfPresent(EvidenceFailureStage.self, forKey: .failureStage)
+        failureCode = try container.decodeIfPresent(String.self, forKey: .failureCode)
+        nativeFailureCode = try container.decodeIfPresent(EvidenceNativeFailureCode.self, forKey: .nativeFailureCode)
+        writeStarted = try container.decodeIfPresent(Bool.self, forKey: .writeStarted)
+        remoteObjectCreated = try container.decodeIfPresent(Bool.self, forKey: .remoteObjectCreated)
+        cleanupAttempted = try container.decodeIfPresent(Bool.self, forKey: .cleanupAttempted)
+        cleanupSucceeded = try container.decodeIfPresent(Bool.self, forKey: .cleanupSucceeded)
+        transferProgressBucket = try container.decodeIfPresent(EvidenceTransferProgressBucket.self, forKey: .transferProgressBucket)
         deletionToken = try container.decodeIfPresent(String.self, forKey: .deletionToken)
     }
 
     private static func makeDeletionToken() -> String {
         (UUID().uuidString + UUID().uuidString).replacingOccurrences(of: "-", with: "").lowercased()
+    }
+
+    private static func sanitizedDiagnosticLabel(_ value: String) -> String? {
+        let permittedScalars = value.unicodeScalars.filter {
+            $0.value >= 32 && $0.value != 127
+        }
+        let sanitized = String(String.UnicodeScalarView(permittedScalars))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !sanitized.isEmpty else { return nil }
+        return String(sanitized.prefix(160))
     }
 }
 
@@ -163,7 +275,7 @@ enum EvidenceConsentChoice: String, Codable, Sendable {
 }
 
 struct VersionedEvidenceConsent: Codable, Equatable, Sendable {
-    static let currentNoticeVersion = 2
+    static let currentNoticeVersion = 3
     let noticeVersion: Int
     let choice: EvidenceConsentChoice
     let decidedAt: Date
@@ -193,20 +305,36 @@ enum CompatibilityEvidenceCalculator {
         // key as `model`, so this remains backwards-compatible without
         // allowing a base family label to absorb a sized variant.
         let matching = events.filter { $0.compatibilityIdentity == model }
-        let successes = matching.filter {
-            $0.phaseOutcome == .succeeded && $0.automaticFinishingResult == .verified
+        let operations = Dictionary(grouping: matching) { event in
+            event.operationId?.uuidString ?? "legacy:\(event.id.uuidString)"
+        }.values
+        let writeStartedOperations = operations.filter { operation in
+            operation.contains { $0.writeStarted ?? true }
         }
-        let failures = matching.filter { $0.phaseOutcome == .failed }
+        let successes = writeStartedOperations.filter { operation in
+            let expected = operation.compactMap(\.selectedMapCount).max() ?? 1
+            return operation.count == expected && operation.allSatisfy {
+                $0.phaseOutcome == .succeeded && $0.automaticFinishingResult == .verified
+            }
+        }
+        let failures = writeStartedOperations.filter { operation in
+            !successes.contains { successful in
+                successful.first?.operationId == operation.first?.operationId
+                    && successful.first?.id == operation.first?.id
+            }
+        }
+        let successfulEvents = successes.flatMap { $0 }
+        let failedEvents = failures.flatMap { $0 }.filter { $0.phaseOutcome == .failed }
         return CompatibilityEvidenceSummary(
-            attemptedInstallCount: matching.count,
+            attemptedInstallCount: writeStartedOperations.count,
             successfulInstallCount: successes.count,
-            reconnectVerifiedInstallCount: successes.filter(\.reconnectVerified).count,
+            reconnectVerifiedInstallCount: successes.filter { $0.contains(where: \.reconnectVerified) }.count,
             failedInstallCount: failures.count,
-            successRate: matching.isEmpty ? 0 : Double(successes.count) / Double(matching.count),
-            firmwareVersions: Set(successes.compactMap(\.firmwareVersion)),
-            lastSuccessfulInstallation: successes.map(\.timestamp).max(),
-            lastFailure: failures.map(\.timestamp).max(),
-            errorCategories: Dictionary(grouping: failures.compactMap(\.errorCategory), by: { $0 })
+            successRate: writeStartedOperations.isEmpty ? 0 : Double(successes.count) / Double(writeStartedOperations.count),
+            firmwareVersions: Set(successfulEvents.compactMap(\.firmwareVersion)),
+            lastSuccessfulInstallation: successfulEvents.map(\.timestamp).max(),
+            lastFailure: failedEvents.map(\.timestamp).max(),
+            errorCategories: Dictionary(grouping: failedEvents.compactMap(\.errorCategory), by: { $0 })
                 .mapValues(\.count)
         )
     }
@@ -263,6 +391,15 @@ final class LocalInstallationEvidenceStore: @unchecked Sendable {
             if choice == .declined {
                 file.pendingUploadEventIDs.removeAll()
             }
+            try saveUnlocked(file)
+        }
+    }
+
+    func invalidateConsentForNoticeChange() throws {
+        try lock.withLock {
+            var file = try loadUnlocked()
+            file.consent = nil
+            file.pendingUploadEventIDs.removeAll()
             try saveUnlocked(file)
         }
     }
@@ -450,7 +587,7 @@ final class InstallationEvidenceController: ObservableObject {
         self.automaticRetryDelays = automaticRetryDelays
         if let consent = store.consent(),
            consent.noticeVersion != VersionedEvidenceConsent.currentNoticeVersion {
-            try? store.setConsent(.declined)
+            try? store.invalidateConsentForNoticeChange()
         }
         if uploadEnabled {
             schedulePendingUploadFlush()

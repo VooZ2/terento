@@ -194,4 +194,14 @@ if ! grep -Fq 'TerentoInstallMapsVerticalLayout' "$connect_screen" \
     exit 1
 fi
 
+if ! grep -Fq 'evidencePrimaryFailureMapIndex = activePackageIndex' \
+        "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift" \
+    || ! grep -Fq 'evidencePrimaryFailureMapIndex = activeMapIndex.value' \
+        "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift" \
+    || ! grep -Fq 'index == primaryFailureIndex ? mapEngine.installationResult : nil' \
+        "$connect_screen"; then
+    print -u2 "FAIL: multi-map diagnostics do not preserve the actual failed map index"
+    exit 1
+fi
+
 print "PASS: map selection planner is transport-independent and read-only"

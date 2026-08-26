@@ -339,6 +339,8 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
             return .metadataMismatch
         case .unsupportedDevice:
             return .operationFailed("This device is not enabled for the validated update path.")
+        case .liveIdentityMismatch:
+            return .operationFailed("The connected Garmin device changed after the update was authorized.")
         case .operationFailed(let message, _):
             return .operationFailed(message)
         }

@@ -82,6 +82,7 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
     case downloadFailed(String)
     case downloadIncomplete(expected: UInt64?, actual: UInt64)
     case invalidPackage(String)
+    case extractionFailed(String)
     case unsupportedPackageFormat
     case unsafeArchivePath(String)
     case sourceIdentityMismatch(expected: MapIdentity, actual: MapIdentity?)
@@ -102,6 +103,8 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
             return "The map package is incomplete: received \(actual) bytes."
         case .invalidPackage(let message):
             return "The downloaded map package is invalid: \(message)"
+        case .extractionFailed(let message):
+            return "The map package could not be extracted: \(message)"
         case .unsupportedPackageFormat:
             return "The provider package format is not supported."
         case .unsafeArchivePath(let path):
@@ -367,7 +370,7 @@ struct SystemZIPArchiveExtractor: MapPackageArchiveExtractor, Sendable {
         do {
             try process.run()
         } catch {
-            throw MapAcquisitionError.invalidPackage("The ZIP extractor could not be started.")
+            throw MapAcquisitionError.extractionFailed("The ZIP extractor could not be started.")
         }
 
         process.waitUntilExit()
@@ -376,7 +379,7 @@ struct SystemZIPArchiveExtractor: MapPackageArchiveExtractor, Sendable {
                 data: errorPipe.fileHandleForReading.readDataToEndOfFile(),
                 encoding: .utf8
             )?.trimmingCharacters(in: .whitespacesAndNewlines)
-            throw MapAcquisitionError.invalidPackage(
+            throw MapAcquisitionError.extractionFailed(
                 message.flatMap { $0.isEmpty ? nil : $0 }
                     ?? "The ZIP archive could not be extracted."
             )
@@ -395,12 +398,12 @@ struct SystemZIPArchiveExtractor: MapPackageArchiveExtractor, Sendable {
         do {
             try process.run()
         } catch {
-            throw MapAcquisitionError.invalidPackage("The ZIP inspector could not be started.")
+            throw MapAcquisitionError.extractionFailed("The ZIP inspector could not be started.")
         }
 
         process.waitUntilExit()
         guard process.terminationStatus == 0 else {
-            throw MapAcquisitionError.invalidPackage("The ZIP archive could not be inspected.")
+            throw MapAcquisitionError.extractionFailed("The ZIP archive could not be inspected.")
         }
 
         let output = outputPipe.fileHandleForReading.readDataToEndOfFile()

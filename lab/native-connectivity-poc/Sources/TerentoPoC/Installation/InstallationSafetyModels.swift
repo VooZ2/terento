@@ -6,6 +6,7 @@ enum InstallationFailure: String, Codable, Error, Equatable, Sendable {
     case insufficientSpace = "INSTALL_BLOCKED_INSUFFICIENT_SPACE"
     case unknownInstallSize = "INSTALL_BLOCKED_UNKNOWN_INSTALL_SIZE"
     case unknownInstallTarget = "INSTALL_BLOCKED_UNKNOWN_TARGET"
+    case stableWatchIdentityUnavailable = "INSTALL_BLOCKED_STABLE_WATCH_IDENTITY_UNAVAILABLE"
     case mapIdentityAmbiguous = "INSTALL_BLOCKED_MAP_IDENTITY_AMBIGUOUS"
     case backupFailed = "INSTALL_BLOCKED_BACKUP_FAILED"
     case downloadFailed = "INSTALL_BLOCKED_DOWNLOAD_FAILED"
@@ -35,6 +36,8 @@ enum InstallationFailure: String, Codable, Error, Equatable, Sendable {
             return "The final Garmin install size must be calculated before installation."
         case .unknownInstallTarget:
             return "This device does not have a validated map installation target."
+        case .stableWatchIdentityUnavailable:
+            return "Terento could not establish the stable local watch identity required to manage this installation safely."
         case .mapIdentityAmbiguous:
             return "An existing map could not be identified safely."
         case .backupFailed:

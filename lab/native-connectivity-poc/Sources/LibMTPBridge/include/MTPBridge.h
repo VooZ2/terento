@@ -23,9 +23,20 @@ typedef struct {
     char *model;
     char *device_version;
     char *serial_number;
+    uint8_t garmin_device_xml_status;
+    size_t garmin_device_xml_size;
+    unsigned char *garmin_device_xml;
     size_t storage_count;
     TerentoMTPStorage *storages;
 } TerentoMTPDeviceSnapshot;
+
+enum {
+    TERENTO_GARMIN_DEVICE_XML_UNAVAILABLE = 0,
+    TERENTO_GARMIN_DEVICE_XML_AVAILABLE = 1,
+    TERENTO_GARMIN_DEVICE_XML_AMBIGUOUS = 2,
+    TERENTO_GARMIN_DEVICE_XML_OVERSIZED = 3,
+    TERENTO_GARMIN_DEVICE_XML_READ_FAILED = 4
+};
 
 typedef struct {
     uint32_t item_id;
@@ -72,7 +83,8 @@ enum {
     TERENTO_MTP_MAP_TARGET_EXISTS = -20,
     TERENTO_MTP_MAP_REMOTE_FILE_MISSING = -21,
     TERENTO_MTP_MAP_OBJECT_ID_MISMATCH = -22,
-    TERENTO_MTP_MAP_UNSUPPORTED_DEVICE = -23
+    TERENTO_MTP_MAP_UNSUPPORTED_DEVICE = -23,
+    TERENTO_MTP_MAP_IDENTITY_MISMATCH = -24
 };
 
 /* Read-only USB presence probe. Returns the number of connected Garmin USB devices. */
@@ -162,7 +174,7 @@ int terento_mtp_delete_test_file(
 /*
  * Production write path. The Swift layer validates the exact catalog package;
  * the native layer independently enforces the Terento-managed filename
- * grammar and validated fēnix 8 profile.
+ * grammar and the live device facts in the per-operation production profile.
  */
 int terento_mtp_install_map_file(
     const TerentoMTPMapOperationProfile *profile,

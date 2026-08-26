@@ -19,7 +19,7 @@ installation reports to `api.terento.app` to measure installation reliability
 and compatibility evidence by watch model and firmware. You can uncheck the
 choice before installing; declining does not limit the app or map installation.
 
-A report may contain a random event ID, timestamp, watch model and family, firmware version, USB vendor and product identifiers, MTP transport, map provider, region and release, Terento version, macOS version, installation outcome and a general error category. It does not contain a Garmin Unit ID, serial number, account information, email address, local file paths, Terento manifests, map files or diagnostic logs.
+A report may contain random event and per-installation operation IDs, timestamp, watch model and family, sanitized raw MTP model label, firmware version, USB vendor and product identifiers, MTP transport, a category stating only whether local identity came from an MTP serial, Garmin Unit ID, or was unavailable, map provider, selected regions and releases, exact Terento release/build, macOS version, per-map outcome, failure stage, allowlisted Terento/native failure codes, whether device writing or cleanup started, and a coarse transfer-progress range. Pre-write provider and validation failures are kept separate from watch compatibility rates. It does not contain the Garmin Unit ID or serial value, local watch identifier, account information, email address, local file paths, MTP object IDs, Terento manifests, map files, map hashes, raw error text or diagnostic logs.
 
 These reports are processed with your consent under Article 6(1)(a) GDPR. You can stop future sharing or delete uploaded reports in the app under **About Terento → Privacy**. Withdrawal does not affect processing that took place before it.
 
@@ -27,7 +27,7 @@ These reports are processed with your consent under Article 6(1)(a) GDPR. You ca
 
 Compatibility reports are stored in Terento's PostgreSQL database on its hosting infrastructure for no longer than 24 months and are then deleted. Access to individual reports is restricted to the private administration service.
 
-Terento may publish only reviewed aggregate compatibility statistics. Raw reports, event IDs, firmware lists, error details and request metadata are not published. The public compatibility statistics service is currently disabled.
+Terento may publish only reviewed aggregate compatibility statistics. Raw reports, operation or event IDs, firmware lists, error details and request metadata are not published.
 
 ## Cloudflare and hosting
 
