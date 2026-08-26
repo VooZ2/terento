@@ -9,8 +9,21 @@ if ! grep -Fq 'HStack(alignment: .center, spacing: 16)' <<<"$about_content" \
     || ! grep -Fq 'ResourceImage(name: "logo", subdirectory: "Brand")' <<<"$about_content" \
     || ! grep -Fq 'Text("About Terento")' <<<"$about_content" \
     || ! grep -Fq 'Text("Your device, ready for where you' <<<"$about_content" \
-    || ! grep -Fq 'Text("Version \(TerentoAppMetadata.version)")' <<<"$about_content"; then
+    || ! grep -Fq 'Text(TerentoAppMetadata.displayVersion)' <<<"$about_content"; then
     print -u2 "FAIL: About does not use the compact dynamic logo/header block"
+    exit 1
+fi
+
+if ! grep -Fq 'Text(TerentoAppMetadata.displayVersion)' \
+    "$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/Views/AboutTerentoView.swift"; then
+    print -u2 "FAIL: Help → About does not use the shared display version"
+    exit 1
+fi
+
+if grep -Fq 'Install update' <<<"$about_content" \
+    || ! grep -Fq 'SecondaryButton(title: "Download")' <<<"$about_content" \
+    || ! grep -Fq 'What’s new' <<<"$about_content"; then
+    print -u2 "FAIL: About update actions do not use Download and What’s new wording"
     exit 1
 fi
 

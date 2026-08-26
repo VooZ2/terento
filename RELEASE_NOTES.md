@@ -1,118 +1,81 @@
-# Terento v1.0.0-beta.6
+# Terento v1.0.0-beta.7
 
 Release date: 2026-08-26
 
-Beta.6 broadens the Garmin smartwatch beta from one tested USB identity to
-reviewed Garmin Map Manager model families, while strengthening the checks
-that protect the connected watch and Terento-managed maps. It also adds
-privacy-minimised failure diagnostics so unsuccessful beta installations can
-be investigated without asking users to send raw logs.
+Beta.7 keeps the complete validated Freizeitkarte catalog visible while
+separating catalog membership from Terento's map-acquisition policy. Downloads
+for Crimea and canonical Russian Federation regions are withheld before any
+temporary workspace or network request is created. Other regions, including
+Ukraine, Belarus and unknown non-Russian identities, remain available under
+the normal validation rules.
 
-This remains a pre-MVP beta for hardware validation. A model being listed by
-Garmin as map-capable allows a guarded beta installation attempt; it is not a
-claim that Terento has already verified that exact model. Freizeitkarte
-remains the only map provider.
+This remains a pre-MVP beta for hardware validation. Freizeitkarte remains the
+only map provider, and model eligibility is not a claim that every exact watch
+has been independently verified.
 
 ## Highlights
 
-- Map installation is no longer limited to the fēnix 8 USB PID used by the
-  original hardware test. Reviewed map-capable smartwatch families, including
-  fēnix, epix, Forerunner, Enduro, tactix, quatix, MARQ, Descent, D2 Mach and
-  Venu X1 families, may enter the guarded beta installation flow.
-- Every production write is bound to the live MTP session. The native layer
-  verifies the connected Garmin VID/PID, manufacturer, raw MTP model and one
-  unambiguous `/GARMIN` target before writing. The laboratory Write Test and
-  Interruption Test remain restricted to their validated `0x51b8` identity.
-- fēnix 8 and fēnix 8 Pro are now separate identities in the app, private
-  diagnostics and compatibility data. Case size alone never guesses AMOLED,
-  Solar or MicroLED.
-- Watches without a stable MTP serial can use the Garmin Unit ID from one
-  bounded `/GARMIN/GarminDevice.xml` read for local ownership. The serial and
-  Unit ID values are never uploaded, logged or stored in the manifest.
-- Terento-managed maps can be recovered after moving the same watch to a new
-  Mac or losing the previous local manifest. Recovery verifies the complete
-  map before adopting it and cannot transfer ownership to a different watch.
-- Remove refreshes the live device inventory and resolves current-session MTP
-  handles before deletion. It still removes only a verified Terento-managed
-  map. Backup remains an explicit user choice and is not run automatically.
+- Crimea remains listed under its canonical provider identity and is presented
+  as part of Ukraine and temporarily occupied by russia.
+- Canonical Russian Federation packages remain searchable and visible, but
+  Terento does not offer their downloads while russia's war of aggression
+  against Ukraine continues.
+- Withheld rows show a neutral `Unavailable` state, policy explanation and no
+  checkbox-like control, size, update action or storage impact.
+- Ukraine and all other non-withheld packages retain the normal selectable map
+  control and acquisition flow.
+- Install and Safe Update use one acquisition-policy gate. A withheld package
+  fails before creating temporary files or making an HTTP request.
+- Existing Terento-owned maps are not reclassified. Backup and Remove remain
+  available, while Update is hidden for a currently withheld region.
 
-## Installation diagnostics and compatibility evidence
+## Application updates
 
-- The visible compatibility-sharing choice remains selected by default and
-  can be turned off without limiting installation or removal.
-- Opted-in reports now include one random operation ID per Install action,
-  exact Terento beta/build, a controlled failure stage and code, whether a
-  write or cleanup started, and a coarse transfer-progress range.
-- Download, extraction, validation and preflight failures can be diagnosed but
-  do not reduce a watch model's installation compatibility rate when device
-  writing never started.
-- Multiple selected maps share one operation ID while retaining individual map
-  results. Reports for the same exact model/variant aggregate into one evidence
-  row instead of creating duplicate model rows.
-- Private admin diagnostics show only the sanitized raw MTP model label and
-  whether local identity came from an MTP serial, Garmin Unit ID or was
-  unavailable. They never receive the identifier value, local path, MTP object
-  ID, manifest, map hash, raw error text or log file.
-- The three legacy Swiss-map failures from issue #32 were retained for private
-  investigation but quarantined from the incorrect base fēnix 8 identity.
-
-## Catalog, UI and offline behavior
-
-- The app consumes the canonical API compatibility status instead of deriving
-  Testing, Tested, Supported or Verified locally.
-- The bundled Freizeitkarte fallback contains the complete 63-package
-  metadata set, including measured final IMG installation sizes. It is used
-  only when the live catalog is unavailable and is presented as potentially
-  stale; it does not limit the remote catalog.
-- Verification wording now distinguishes sampled transfer verification from a
-  complete file proof.
-- App metadata and compatibility reports carry the exact
-  `1.0.0-beta.6` / build `5` identity.
+- Terento performs one non-blocking HTTPS metadata check per launch after the
+  first window becomes usable. Startup failures remain silent.
+- About retains the manual update check and persistent result state.
+- A user-confirmed Download action opens only a strictly validated official
+  Terento distribution URL. The app does not download, mount or replace itself.
 
 ## Safety and privacy
 
 - Garmin-owned, unknown and manually managed files remain read-only.
-- New installs never overwrite an existing target. Update still follows
+- New installs never overwrite an existing target. Safe Update still follows
   write-new → verify → remove-old and never deletes the working map first.
-- Safe Update behavior is unchanged in beta.6. Its automated suite passes, but
-  the real-device update gate remains pending a genuinely newer Freizeitkarte
-  release.
 - Device manifests and physical-watch ownership keys remain local. There is no
-  account, login, cloud device profile, required email or server-side Garmin
-  identifier storage.
+  account, login, cloud device profile or server-side Garmin identifier storage.
+- Catalog filtering and acquisition policy do not add telemetry or map proxying;
+  available maps still download directly from Freizeitkarte infrastructure.
 
 ## Validation status
 
-- Backend validation: 95 tests passed; backward-compatible migrations 017 and
-  018 are deployed before the beta.6 client.
-- Full automated native Stage 2–7, Install, Recover, Remove, manifest,
-  compatibility, privacy and unchanged Safe Update suites pass.
-- Swift/Xcode arm64 Release build, bundled libmtp/libusb checks, Developer ID
-  signing verification and GitHub CI pass.
-- The owner hardware smoke gate passed on the available fēnix 8 watch using
-  the final notarized build: exact model presentation, map installation,
-  opted-in beta.6 report delivery and Remove all passed.
-- The fēnix 8 Pro issue #32 correction is based on the reported pre-write
-  failure and automated regression coverage. Public beta evidence is still
-  needed for that exact model.
+- Automated policy tests cover canonical Crimea and Russian identities,
+  Freizeitkarte `RUS*` alias mapping, non-Russian controls, stale selections,
+  accessibility labels, Manage actions and fail-before-workspace/network order.
+- The full native shell regression matrix and signed arm64 Release dry-run pass
+  on the beta.7 candidate tree, including bundled-library and runtime-path
+  verification.
+- Owner hardware evidence on the connected fēnix 8 confirms the 63-package
+  catalog view, withheld Russia/Crimea presentation and normal Ukraine row.
+- No install, update or remove operation was performed as part of that visual
+  hardware check. Safe Update's real-device newer-map gate remains pending.
 
 ## Known limitations
 
 - Map-capable means eligible for a guarded beta attempt, not independently
-  verified compatibility. Exact model status continues to be based on opted-in
-  successful installations.
-- A watch that exposes neither a stable MTP serial nor a valid Garmin Unit ID
-  remains read-only because Terento cannot safely separate two identical
-  physical watches for ownership and later removal.
+  verified compatibility.
 - Safe Update has not yet passed its real-device newer-map gate.
-- Freizeitkarte is the only supported map provider. Terento does not host or
-  mirror map binaries.
+- Freizeitkarte is the only supported map provider. Terento does not host,
+  mirror or proxy map binaries.
 - macOS 13 or later on Apple Silicon is required. Intel Macs, App Store, PKG,
   Windows and Linux distributions are not included.
 
-## Release checksums
+## Release artifacts
+
+The release pipeline completed successfully and Apple notarization was
+accepted with no issues.
 
 ```text
-Terento-1.0.0-beta.6-macOS-arm64.dmg  f206816fbee38fe2092cdfc91d58eb68e88c2b0f7ee0c909c327b4b1d455ccb5
-Terento-1.0.0-beta.6-macOS-arm64.zip  b779086c1bad975b7275db34e44c6033eeaf04118881feca20b383fa82b960c7
+Terento-1.0.0-beta.7-macOS-arm64.dmg  6a74b7613a81c68b9e0e3995dd0e00c6a7778957fc039b40a113731573e95faa
+Terento-1.0.0-beta.7-macOS-arm64.zip  f9940254242935843e7fdd340d5962961e4cdaf8f6752dcf2cef9d3fef248203
 ```

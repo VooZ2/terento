@@ -277,7 +277,7 @@
 			ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 			CODE_SIGN_ENTITLEMENTS = app/Terento/Terento.entitlements;
 			CODE_SIGN_STYLE = Manual;
-			CURRENT_PROJECT_VERSION = 5;
+			CURRENT_PROJECT_VERSION = 6;
 			DEVELOPMENT_TEAM = VXALAZU3B5;
 			GENERATE_INFOPLIST_FILE = NO;
 			HEADER_SEARCH_PATHS = ("$(DERIVED_FILE_DIR)/TerentoNativeDependencies/include", "$(DERIVED_FILE_DIR)/TerentoNativeDependencies/include/libusb-1.0", "$(inherited)");
@@ -300,14 +300,15 @@
 			SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 			SWIFT_COMPILATION_MODE = incremental;
 			SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-			TERENTO_RELEASE_LABEL = "1.0.0-beta.6";
+			TERENTO_RELEASE_CHANNEL = beta;
+			TERENTO_RELEASE_LABEL = "1.0.0-beta.7";
 		}; name = Debug; };
 		000000000000000000000008 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {
 			ARCHS = arm64;
 			ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 			CODE_SIGN_ENTITLEMENTS = app/Terento/Terento.entitlements;
 			CODE_SIGN_STYLE = Manual;
-			CURRENT_PROJECT_VERSION = 5;
+			CURRENT_PROJECT_VERSION = 6;
 			DEVELOPMENT_TEAM = VXALAZU3B5;
 			GENERATE_INFOPLIST_FILE = NO;
 			HEADER_SEARCH_PATHS = ("$(DERIVED_FILE_DIR)/TerentoNativeDependencies/include", "$(DERIVED_FILE_DIR)/TerentoNativeDependencies/include/libusb-1.0", "$(inherited)");
@@ -330,7 +331,8 @@
 			ONLY_ACTIVE_ARCH = NO;
 			SWIFT_ACTIVE_COMPILATION_CONDITIONS = RELEASE;
 			SWIFT_COMPILATION_MODE = wholemodule;
-			TERENTO_RELEASE_LABEL = "1.0.0-beta.6";
+			TERENTO_RELEASE_LABEL = "1.0.0-beta.7";
+			TERENTO_RELEASE_CHANNEL = beta;
 			SWIFT_OPTIMIZATION_LEVEL = "-O";
 			VALIDATE_PRODUCT = YES;
 		}; name = Release; };

@@ -8,10 +8,19 @@ enum TerentoAppMetadata {
     static let build = (Bundle.main.object(
         forInfoDictionaryKey: "CFBundleVersion"
     ) as? String) ?? "1"
+    static let releaseLabel = (Bundle.main.object(
+        forInfoDictionaryKey: "TerentoReleaseLabel"
+    ) as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+    static let displayVersion: String = {
+        let label = releaseLabel?.isEmpty == false ? releaseLabel! : version
+        return "Version \(label) (\(build))"
+    }()
     static let description = "Open-source macOS app for installing and managing Freizeitkarte maps on Garmin devices."
 }
 
 struct AboutTerentoView: View {
+    @ObservedObject var appUpdateController: AppUpdateController
+
     var body: some View {
         VStack(spacing: 14) {
             Image(nsImage: NSApplication.shared.applicationIconImage)
@@ -23,7 +32,7 @@ struct AboutTerentoView: View {
             VStack(spacing: 4) {
                 Text("Terento")
                     .font(.system(size: 24, weight: .semibold))
-                Text("Version \(TerentoAppMetadata.version)")
+                Text(TerentoAppMetadata.displayVersion)
                     .foregroundStyle(.secondary)
             }
 

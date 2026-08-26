@@ -1118,6 +1118,8 @@ final class MapEngine: ObservableObject {
         for error: MapAcquisitionError
     ) -> (stage: EvidenceFailureStage, failure: InstallationFailure) {
         switch error {
+        case .acquisitionWithheld:
+            return (.preflight, .sourceArtifactInvalid)
         case .downloadFailed, .downloadIncomplete, .untrustedSourceURL:
             return (.download, .downloadFailed)
         case .workspaceFailed, .unsafeArchivePath, .extractionFailed:

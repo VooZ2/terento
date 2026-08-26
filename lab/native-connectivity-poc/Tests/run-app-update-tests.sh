@@ -4,6 +4,8 @@ set -euo pipefail
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
 build_dir="$(mktemp -d "${TMPDIR:-/tmp}/terento-app-update-tests.XXXXXX")"
 binary_path="$build_dir/app-update-tests"
+export CLANG_MODULE_CACHE_PATH="$build_dir/clang-module-cache"
+mkdir -p "$CLANG_MODULE_CACHE_PATH"
 
 swiftc \
     -module-name TerentoAppUpdateTests \

@@ -8,6 +8,10 @@
   "releaseLabel": "1.0.0-beta.6",
   "downloadURL": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.6/Terento-1.0.0-beta.6-macOS-arm64.dmg",
   "releaseURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.6",
+  "releaseNotesURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.6",
+  "summary": "Strengthens Garmin smartwatch safety checks and improves installation diagnostics.",
+  "publishedAt": "2026-08-26",
+  "channel": "beta",
   "sha256": "f206816fbee38fe2092cdfc91d58eb68e88c2b0f7ee0c909c327b4b1d455ccb5",
   "minimumMacOS": "13.0"
 }

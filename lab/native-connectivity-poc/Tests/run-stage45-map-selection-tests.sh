@@ -116,9 +116,9 @@ fi
 
 if ! grep -Fq 'No new Freizeitkarte maps are available to install.' "$connect_screen" \
     || ! grep -Fq 'return "Already installed"' "$connect_screen" \
-    || ! grep -Fq 'item.comparison.installedMap == nil && item.action == .install' \
+    || ! grep -Fq 'return item.comparison.installedMap == nil' \
         "$project_root/Sources/TerentoPoC/MapCatalog/MapSelectionPresentation.swift"; then
-    print -u2 "FAIL: Install empty state or installed-search presentation is missing"
+    printf '%s\n' "FAIL: Install empty state or installed-search presentation is missing" >&2
     exit 1
 fi
 
@@ -199,4 +199,11 @@ if ! grep -Fq 'evidencePrimaryFailureMapIndex = activePackageIndex' \
     exit 1
 fi
 
-print "PASS: map selection planner is transport-independent and read-only"
+if ! grep -Fq '&& item.acquisitionAvailability == .available' "$connect_screen"; then
+    print -u2 "FAIL: withheld map rows may still render a selectable-looking status circle"
+    exit 1
+fi
+
+printf '%s\n' "PASS: withheld map rows render no checkbox-like status circle"
+
+printf '%s\n' "PASS: map selection planner is transport-independent and read-only"

@@ -51,5 +51,5 @@ if grep -Fq 'ProgressView(value: operation.progress?.fractionCompleted ?? 0)' \
     exit 1
 fi
 
-print "PASS: lifecycle UI coordinator has no raw MTP operation calls"
-print "PASS: lifecycle UI includes confirmation, destructive clarity, progress accessibility, and disconnect epochs"
+printf '%s\n' "PASS: lifecycle UI coordinator has no raw MTP operation calls"
+printf '%s\n' "PASS: lifecycle UI includes confirmation, destructive clarity, progress accessibility, and disconnect epochs"

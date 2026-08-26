@@ -22,6 +22,8 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>TerentoReleaseLabel</key>
 	<string>$(TERENTO_RELEASE_LABEL)</string>
+	<key>TerentoReleaseChannel</key>
+	<string>$(TERENTO_RELEASE_CHANNEL)</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
 	<key>LSMinimumSystemVersion</key>

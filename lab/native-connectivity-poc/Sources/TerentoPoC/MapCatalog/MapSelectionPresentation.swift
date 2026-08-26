@@ -2,6 +2,13 @@ import Foundation
 
 /// Pure list rules keep UI partitioning and search deterministic and testable.
 enum MapSelectionPresentationModel: Sendable {
+    static func validSelectionIDs(
+        _ selectedIDs: Set<String>,
+        items: [MapSelectionItem]
+    ) -> Set<String> {
+        selectedIDs.intersection(Set(items.filter(\.isSelectable).map(\.id)))
+    }
+
     static func installed(_ items: [MapSelectionItem]) -> [MapSelectionItem] {
         items
             .filter { $0.comparison.installedMap != nil }
@@ -55,21 +62,22 @@ enum MapSelectionPresentationModel: Sendable {
         return items
             .filter { item in
                 if normalizedQuery.isEmpty {
-                    return item.comparison.installedMap == nil && item.action == .install
+                    return item.comparison.installedMap == nil
                 }
 
                 if item.comparison.installedMap != nil {
                     return true
                 }
 
-                return item.action == .install
+                return true
             }
             .filter { item in
                 guard !normalizedQuery.isEmpty else { return true }
                 return MapDisplayNameNormalizer.searchableText(
                     package: item.package,
                     displayName: item.title
-                ).localizedCaseInsensitiveContains(normalizedQuery)
+                ).appending(" \(policySearchAliases(for: item))")
+                    .localizedCaseInsensitiveContains(normalizedQuery)
             }
             .sorted { lhs, rhs in
                 if lhs.isRecommended != rhs.isRecommended {
@@ -77,6 +85,14 @@ enum MapSelectionPresentationModel: Sendable {
                 }
                 return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
             }
+    }
+
+    private static func policySearchAliases(for item: MapSelectionItem) -> String {
+        guard let identity = item.canonicalRegionIdentity else { return "" }
+        if identity == CanonicalMapRegionIdentity(countryCode: "UA", locality: "CRIMEA") {
+            return "UA Ukraine Crimea RUS-CRIMEA RUS_CRIMEA freizeitkarte-rus-crimea"
+        }
+        return "\(identity.countryCode) \(identity.locality ?? "")"
     }
 }
 
