@@ -44,7 +44,9 @@ as optional evidence dimensions and do not promote a status.
 Version 3 groups all map results from one Install press under a random
 `operationId` and records the exact app release/build plus controlled failure
 stage/code, write/remote-object/cleanup booleans, and a coarse transfer
-progress bucket. It never accepts raw native messages, local paths, object
+progress bucket. It may also record the sanitized raw MTP model label and one
+allowlisted identity-source category (`MTP_SERIAL`, `GARMIN_UNIT_ID`, or
+`UNAVAILABLE`) without the identifier value. It never accepts raw native messages, local paths, object
 IDs, manifests, hashes, serials, Unit IDs, or local watch keys. Selected maps
 not reached after an earlier failure use `NOT_STARTED`. Download, extraction,
 source-validation, and preflight failures remain visible in the private
@@ -76,8 +78,8 @@ opaque sessions and CSRF values are stored only as SHA-256 hashes. Cookies are
 Secure, HttpOnly, SameSite=Strict, and scoped to `/admin`. Login/setup attempts
 are rate limited. Pages include no-store, noindex and restrictive CSP headers.
 The error count links to a private per-operation detail with child map results,
-release/build, failure stage and allowlisted codes. Raw event payloads and raw
-diagnostic text are not displayed. `/internal/compatibility/` redirects to
+release/build, raw MTP model label, identity-source category, failure stage and
+allowlisted codes. Raw event payloads and raw diagnostic text are not displayed. `/internal/compatibility/` redirects to
 this route for the earlier local implementation.
 
 ## `GET https://api.terento.app/admin/campaign-links`

@@ -177,14 +177,16 @@ for syncs recorded after that migration and exact first/last collection-run
 links on `device_model`. Historical runs without those counters remain
 explicitly unknown rather than being presented as zero.
 
-Migration `014` also adds the admin-only `device_model.map_capable` field
+Migration `014` also adds the independently reviewed `device_model.map_capable` field
 (`true`, `false`, or `NULL` for unknown) and the separate operator-controlled
 `device_model.support_status` field (`SUPPORTED`, `UNSUPPORTED`, or
 `NOT_EVALUATED`). Neither field is added to the public device catalog
 contract. Map capability, support state, and installation evidence remain
 independent concepts. The migration carries forward the existing exact
 write-capable `garmin-fenix-8-47-amoled` profile as `map_capable = true` and
-`support_status = 'SUPPORTED'`. For other records, a stored `map_capable`
+`support_status = 'SUPPORTED'`. The public device-catalog v2 contract exposes
+this as additive nullable `mapCapable`; it remains capability metadata, not a
+support status or write grant. For other records, a stored `map_capable`
 value still wins, but a `NULL` column is classified at admin-read time and on
 the next Garmin collection from the same Map Manager prefix list used by the
 native client (`terento_catalog.map_capability`, kept aligned with
@@ -211,6 +213,13 @@ allowlisted failure stage and codes, write/object/cleanup state, and coarse
 progress are stored as separate columns. No raw JSON or error message is
 retained. `NOT_STARTED` is reserved for selected child maps skipped after an
 earlier result stopped the batch.
+
+Migration 018 adds the sanitized `raw_mtp_model` label and the controlled
+`identity_resolution_code` category. It stores neither the MTP serial nor the
+Garmin Unit ID. The migration also quarantines only the issue #32 legacy
+`CHE+` failures (fēnix 8, 51 mm, firmware 2326, 2026-08-26) under an
+identity-pending label; it preserves the rows for diagnosis and prevents their
+lossy base-model identity from affecting public aggregation.
 
 `compatibility_model_statistics` is a live SQL view over the immutable event
 table and model review metadata. Events with a `canonical_device_model_id` are

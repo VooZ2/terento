@@ -331,7 +331,8 @@ def _diagnostic_details(rows: list[dict[str, Any]], events: list[dict[str, Any]]
             first = results[0]
             map_rows = "".join(
                 "<tr>" + "".join(f"<td>{html.escape(str(value if value not in (None, '') else '—'))}</td>" for value in (
-                    result.get("region"), result.get("phase_outcome"), result.get("failure_stage"),
+                    result.get("region"), result.get("raw_mtp_model"), result.get("identity_resolution_code"),
+                    result.get("phase_outcome"), result.get("failure_stage"),
                     result.get("failure_code"), result.get("native_failure_code"),
                     str(bool(result.get("write_started"))).lower(),
                     str(bool(result.get("remote_object_created"))).lower(),
@@ -347,7 +348,7 @@ def _diagnostic_details(rows: list[dict[str, Any]], events: list[dict[str, Any]]
               <article class='diagnostic-operation'>
                 <h4>{html.escape(str(operation_key))}</h4>
                 <p>{_timestamp_markup(first.get('occurred_at'))} · {html.escape(str(release))} (build {html.escape(str(build))}) · write started: {str(bool(first.get('write_started'))).lower()}</p>
-                <div class='table-wrap'><table><thead><tr><th>Region</th><th>Result</th><th>Stage</th><th>Code</th><th>Native code</th><th>Write</th><th>Object created</th><th>Cleanup</th><th>Progress</th></tr></thead><tbody>{map_rows}</tbody></table></div>
+                <div class='table-wrap'><table><thead><tr><th>Region</th><th>Raw MTP model</th><th>Local identity</th><th>Result</th><th>Stage</th><th>Code</th><th>Native code</th><th>Write</th><th>Object created</th><th>Cleanup</th><th>Progress</th></tr></thead><tbody>{map_rows}</tbody></table></div>
               </article>""")
         sections.append(f"""
           <details class='diagnostic-details' id='{_diagnostics_id(identity)}'>

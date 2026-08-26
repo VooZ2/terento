@@ -52,7 +52,8 @@ class Database:
                 error_category, deletion_token_hash, operation_id, map_result_index,
                 selected_map_count, app_build, release_label, failure_stage, failure_code,
                 native_failure_code, write_started, remote_object_created,
-                cleanup_attempted, cleanup_succeeded, transfer_progress_bucket
+                cleanup_attempted, cleanup_succeeded, transfer_progress_bucket,
+                raw_mtp_model, identity_resolution_code
             ) VALUES (
                 %(id)s, %(timestamp)s, %(model)s, %(compatibilityIdentity)s, %(variant)s, %(caseSizeMm)s,
                 %(displayType)s, %(canonicalDeviceId)s,
@@ -64,7 +65,7 @@ class Database:
                 %(selectedMapCount)s, %(appBuild)s, %(releaseLabel)s, %(failureStage)s,
                 %(failureCode)s, %(nativeFailureCode)s, %(writeStarted)s,
                 %(remoteObjectCreated)s, %(cleanupAttempted)s, %(cleanupSucceeded)s,
-                %(transferProgressBucket)s
+                %(transferProgressBucket)s, %(rawMTPModel)s, %(identityResolutionCode)s
             ) ON CONFLICT (event_id) DO NOTHING
             RETURNING event_id
         """
@@ -96,6 +97,8 @@ class Database:
             "cleanupAttempted": event.get("cleanupAttempted"),
             "cleanupSucceeded": event.get("cleanupSucceeded"),
             "transferProgressBucket": event.get("transferProgressBucket"),
+            "rawMTPModel": event.get("rawMTPModel"),
+            "identityResolutionCode": event.get("identityResolutionCode"),
         }
         with self.connection() as connection:
             # The client contract remains unchanged: canonicalDeviceId is
@@ -190,7 +193,8 @@ class Database:
                 COALESCE(write_started, true) AS write_started,
                 COALESCE(remote_object_created, false) AS remote_object_created,
                 COALESCE(cleanup_attempted, false) AS cleanup_attempted,
-                cleanup_succeeded, transfer_progress_bucket, error_category
+                cleanup_succeeded, transfer_progress_bucket, error_category,
+                raw_mtp_model, identity_resolution_code
             FROM compatibility_evidence_event
             ORDER BY occurred_at DESC, operation_key, map_result_index NULLS FIRST
             LIMIT %s
@@ -745,6 +749,7 @@ class Database:
                 dm.source_url,
                 dm.source_image_url,
                 dm.active,
+                dm.map_capable,
                 dm.first_seen_at,
                 dm.last_seen_at,
                 asset.asset_type,
