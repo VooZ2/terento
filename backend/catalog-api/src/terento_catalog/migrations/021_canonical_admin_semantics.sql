@@ -101,7 +101,9 @@ SET map_capable = CASE
 END
 WHERE map_capable IS NULL;
 
-CREATE OR REPLACE FUNCTION terento_compatibility_status(successful_count INTEGER, recognized BOOLEAN)
+-- PostgreSQL count(*) is BIGINT. Keep the function parameter aligned with the
+-- aggregate type so the view can call it without an implicit narrowing cast.
+CREATE OR REPLACE FUNCTION terento_compatibility_status(successful_count BIGINT, recognized BOOLEAN)
 RETURNS TEXT
 LANGUAGE SQL
 IMMUTABLE

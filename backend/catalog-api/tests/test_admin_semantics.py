@@ -192,6 +192,10 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("operation_stats AS (", migration)
         self.assertIn("count(*) FILTER (WHERE o.write_started)", migration)
         self.assertIn("terento_compatibility_status(e.successful_install_count, dm.map_capable IS TRUE)", migration)
+        self.assertIn(
+            "terento_compatibility_status(successful_count BIGINT, recognized BOOLEAN)",
+            migration,
+        )
 
     def test_admin_vocabulary_and_accessible_sticky_tables_are_canonical(self):
         admin_source = (ROOT / "src" / "terento_catalog" / "admin.py").read_text(encoding="utf-8")

@@ -58,6 +58,11 @@ without erasing the old reports. The old events remain in the database and
 are visible under `Resolved / historical diagnostics`; they do not contribute
 to active failure counts, rates, or public compatibility projections.
 
+Migration `021_canonical_admin_semantics.sql` keeps its SQL
+compatibility-status classifier parameter as `BIGINT`, matching PostgreSQL's
+`count(*)` aggregate type, so the derived view can be rebuilt during a forward
+deployment.
+
 ## Asset review and publication
 
 Asset work is explicit and non-destructive. A candidate is prepared into
