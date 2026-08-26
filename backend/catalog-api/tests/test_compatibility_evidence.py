@@ -530,8 +530,8 @@ class CompatibilityEvidenceTests(unittest.TestCase):
 
         devices, devices_body = self.request("GET", "/admin/devices", headers={"Cookie": cookie_header})
         self.assertEqual(devices.status, 200)
-        self.assertIn(b"Garmin devices", devices_body)
-        self.assertIn(b"Map capability: Yes", devices_body)
+        self.assertIn(b">Devices<", devices_body)
+        self.assertIn(b">Maps<", devices_body)
         self.assertIn(
             "img-src https://terento.app https://api.terento.app https://res.garmin.com data:",
             devices.headers["Content-Security-Policy"],
