@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 import hashlib
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
@@ -195,7 +196,7 @@ class Database:
                 operation_id, event_id, occurred_at, model, compatibility_identity,
                 variant, firmware_version, region, map_release, terento_version,
                 app_build, release_label, map_result_index, selected_map_count,
-                phase_outcome, failure_stage, failure_code, native_failure_code,
+                phase_outcome, automatic_finishing_result, failure_stage, failure_code, native_failure_code,
                 COALESCE(write_started, true) AS write_started,
                 COALESCE(remote_object_created, false) AS remote_object_created,
                 COALESCE(cleanup_attempted, false) AS cleanup_attempted,
@@ -449,8 +450,11 @@ class Database:
         if not operation_key or len(operation_key) > 160:
             raise ValueError("invalid diagnostic record")
         linked_issue = (linked_github_issue or "").strip() or None
-        if linked_issue and len(linked_issue) > 120:
-            raise ValueError("invalid GitHub issue reference")
+        if linked_issue:
+            issue_match = re.fullmatch(r"#?(\d{1,10})", linked_issue)
+            if not issue_match:
+                raise ValueError("invalid GitHub issue reference")
+            linked_issue = f"#{int(issue_match.group(1))}"
         note = (resolution_note or "").strip() or None
         with self.connection() as connection:
             rows = connection.execute(
@@ -474,7 +478,7 @@ class Database:
                             resolution_code = %s,
                             resolution_reason = %s,
                             resolution_note = %s,
-                            linked_github_issue = %s,
+                            linked_github_issue = COALESCE(%s, linked_github_issue),
                             resolved_at = now(),
                             resolved_by = %s
                         WHERE event_id = %s
@@ -502,6 +506,46 @@ class Database:
                     """,
                     (row["event_id"], previous, status,
                      resolution_reason, note, linked_issue, admin_user_id),
+                )
+            return len(rows)
+
+    def update_diagnostic_issue(
+        self,
+        operation_key: str,
+        *,
+        linked_github_issue: str | None,
+        admin_user_id: int | None = None,
+    ) -> int:
+        """Link or unlink a GitHub issue without changing evidence semantics."""
+        operation_key = operation_key.strip()
+        if not operation_key or len(operation_key) > 160:
+            raise ValueError("invalid diagnostic record")
+        raw_issue = (linked_github_issue or "").strip()
+        if raw_issue:
+            match = re.fullmatch(r"#?(\d{1,10})", raw_issue)
+            if not match:
+                raise ValueError("invalid GitHub issue reference")
+            linked_github_issue = f"#{int(match.group(1))}"
+        else:
+            linked_github_issue = None
+        with self.connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT event_id
+                FROM compatibility_evidence_event
+                WHERE COALESCE(operation_id::text, 'legacy:' || event_id::text) = %s
+                FOR UPDATE
+                """,
+                (operation_key,),
+            ).fetchall()
+            for row in rows:
+                connection.execute(
+                    """
+                    UPDATE compatibility_evidence_event
+                    SET linked_github_issue = %s
+                    WHERE event_id = %s
+                    """,
+                    (linked_github_issue, row["event_id"]),
                 )
             return len(rows)
 

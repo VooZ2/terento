@@ -54,9 +54,10 @@ does not request product-image binaries and it never changes an asset to
 Migration `019_resolved_legacy_diagnostics.sql` is applied automatically by
 the normal forward migration command. It marks failed pre-beta.6 events as
 `RESOLVED` so the administrator dashboard shows current compatibility data
-without erasing the old reports. The old events remain in the database and
-are visible under `Resolved / historical diagnostics`; they do not contribute
-to active failure counts, rates, or public compatibility projections.
+without erasing the old reports. The old events remain in the database and are
+visible in the exact model's authenticated diagnostics drill-down when the
+operator selects `All` or `Resolved`; they do not contribute to active failure
+counts, rates, or public compatibility projections.
 
 Migration `021_canonical_admin_semantics.sql` keeps its SQL
 compatibility-status classifier parameter as `BIGINT`, matching PostgreSQL's

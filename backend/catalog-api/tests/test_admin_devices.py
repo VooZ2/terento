@@ -279,13 +279,29 @@ class AdminDevicesTests(unittest.TestCase):
             "csrf",
         ).decode()
         for value in (
-            "Garmin devices", "Map capability: Yes", "Map capability: No",
-            "Map capability: Unknown", "Approved", "Blocked", "Pending",
-            "Newest in catalog", "Most attempts", "Last evidence", "device-dialog", "admin-timezone",
+            "Devices", "Garmin device catalog, map capability, authorization, and compatibility evidence.",
+            "Search devices", "All families", "All maps", "Maps: Yes", "Maps: No",
+            "Maps: Unknown", "Approved", "Blocked", "Pending", "Newest in catalog",
+            "Most attempts", "Last evidence", "device-dialog", "admin-timezone",
             "Automatic (browser)", "data-admin-timestamp", "TerentoAdminTime",
-            "selected time zone",
+            "selected time zone", "device-summary-strip", "position:sticky",
+            "--admin-control-height", "--admin-focus-ring", "--admin-placeholder",
+            "table-layout:fixed", "overflow-y:visible", "Catalog details", "data-authorization-change",
+            "data-authorization-form hidden", "data-authorization-cancel", "disabled>Save</button>",
+            ">Model<", ">Variant<", ">Maps<", ">Authorization<", ">Status<", ">Attempts<",
+            ">Success<", ">Last evidence<",
         ):
             self.assertIn(value, body)
+        table_header = body[body.index("<thead>"):body.index("</thead>")]
+        header_positions = [table_header.index(value) for value in (
+            ">Model<", ">Variant<", ">Maps<", ">Authorization<", ">Status<",
+            ">Attempts<", ">Success<", ">Last evidence<",
+        )]
+        self.assertEqual(header_positions, sorted(header_positions))
+        self.assertNotIn("Garmin devices", body)
+        self.assertNotIn("device-metrics", body)
+        self.assertNotIn("catalog-sync", body)
+        self.assertNotIn(">Auth.<", body)
         self.assertNotIn("src='None'", body)
         self.assertIn("generic-garmin-watch.png", body)
         self.assertIn("Compatibility status and installation counts remain backend-derived", body)

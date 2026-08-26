@@ -224,7 +224,7 @@ lossy base-model identity from affecting public aggregation.
 Migration 019 adds the internal `diagnostic_status` lifecycle (`ACTIVE` or
 `RESOLVED`) and resolution metadata. Failed events from clients before the
 beta.6 structured-diagnostics rollout are marked `RESOLVED`, not deleted. They
-remain available in the private historical-diagnostics section, but are
+remain available in the private exact-model diagnostics drill-down, but are
 excluded from current compatibility counts, rates, status badges, and public
 evidence projections. New beta.6 and later events remain active by default.
 
