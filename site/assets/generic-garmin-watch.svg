@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-labelledby="title desc">
+  <title id="title">Generic smartwatch illustration</title>
+  <desc id="desc">A neutral Terento illustration of a smartwatch showing a map.</desc>
+  <rect width="320" height="320" rx="48" fill="#eef4f0"/>
+  <path d="M118 35h84l10 54h-104zM118 285h84l10-54h-104z" fill="#c7d8d0"/>
+  <rect x="75" y="66" width="170" height="188" rx="47" fill="#23453f"/>
+  <rect x="91" y="82" width="138" height="156" rx="34" fill="#f8fbf8"/>
+  <path d="M111 197c24-20 35-35 48-34 13 1 20 20 34 12 10-6 12-23 24-31" fill="none" stroke="#6c9d8a" stroke-width="9" stroke-linecap="round"/>
+  <path d="M108 126h104M108 151h42" fill="none" stroke="#c7d8d0" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="196" cy="175" r="10" fill="#e08b4d"/>
+</svg>

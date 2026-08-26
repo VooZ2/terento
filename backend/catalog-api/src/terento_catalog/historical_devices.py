@@ -14,7 +14,7 @@ import re
 import unicodedata
 
 
-HISTORICAL_REGISTRY_VERSION = 1
+HISTORICAL_REGISTRY_VERSION = 2
 REGISTRY_SOURCE_URL = "https://developer.garmin.com/connect-iq/compatible-devices/"
 GARMIN_CATEGORY_URL = "https://www.garmin.com/en-US/c/wearables-smartwatches/"
 
@@ -103,6 +103,60 @@ HISTORICAL_DEVICE_REGISTRY: tuple[HistoricalDeviceSpec, ...] = (
         family_id="garmin-forerunner",
         family_name="Forerunner",
         aliases=("forerunner 955",),
+    ),
+    # These families are retained because the native Map Manager registry
+    # recognizes them, even though Garmin no longer lists them in its current
+    # retail smartwatch category. Family-level records intentionally avoid
+    # guessing a discontinued size/display variant.
+    _spec(
+        "garmin-d2-mach-1", "D2 Mach 1", "d2 mach 1", "Historical", None,
+        family_id="garmin-d2", family_name="D2",
+    ),
+    _spec(
+        "garmin-descent-mk1", "Descent Mk1", "descent mk1", "Historical", None,
+        family_id="garmin-descent", family_name="Descent",
+    ),
+    _spec(
+        "garmin-descent-mk2", "Descent Mk2", "descent mk2", "Historical", None,
+        family_id="garmin-descent", family_name="Descent",
+    ),
+    _spec(
+        "garmin-enduro-2", "Enduro 2", "enduro 2", "Historical", None,
+        family_id="garmin-enduro", family_name="Enduro",
+    ),
+    _spec(
+        "garmin-epix-pro-gen-2", "epix Pro (Gen 2)", "epix pro gen 2", "Historical", None,
+        family_id="garmin-epix", family_name="epix",
+    ),
+    _spec("garmin-fenix-5x", "fēnix 5X", "fenix 5x", "Historical", None),
+    _spec("garmin-fenix-5-plus", "fēnix 5 Plus", "fenix 5 plus", "Historical", None),
+    _spec(
+        "garmin-forerunner-945", "Forerunner 945", "forerunner 945", "Historical", None,
+        family_id="garmin-forerunner", family_name="Forerunner",
+    ),
+    _spec(
+        "garmin-forerunner-965", "Forerunner 965", "forerunner 965", "Historical", None,
+        family_id="garmin-forerunner", family_name="Forerunner",
+    ),
+    _spec(
+        "garmin-quatix-6", "quatix 6", "quatix 6", "Historical", None,
+        family_id="garmin-quatix", family_name="quatix",
+    ),
+    _spec(
+        "garmin-quatix-7", "quatix 7", "quatix 7", "Historical", None,
+        family_id="garmin-quatix", family_name="quatix",
+    ),
+    _spec(
+        "garmin-tactix-charlie", "tactix Charlie", "tactix charlie", "Historical", None,
+        family_id="garmin-tactix", family_name="tactix",
+    ),
+    _spec(
+        "garmin-tactix-delta", "tactix Delta", "tactix delta", "Historical", None,
+        family_id="garmin-tactix", family_name="tactix",
+    ),
+    _spec(
+        "garmin-tactix-7", "tactix 7", "tactix 7", "Historical", None,
+        family_id="garmin-tactix", family_name="tactix",
     ),
 )
 

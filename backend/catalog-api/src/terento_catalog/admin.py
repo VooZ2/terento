@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from .campaign_links import CAMPAIGN_SUGGESTIONS, MEDIUM_OPTIONS, SOURCE_OPTIONS
+from .asset_attribution import generic_fallback_image
 from .compatibility_status import (
     STATUS_PUBLIC_COPY,
     CompatibilityStatus,
@@ -473,7 +474,7 @@ def _admin_device_payload(
         elif source_image_url:
             image = {"url": source_image_url, "origin": "garmin-source", "status": "SOURCE"}
         else:
-            image = {"url": None, "origin": "missing", "status": "MISSING"}
+            image = generic_fallback_image()
         usb_identities = row.get("usb_identities") or []
         devices.append({
             "id": row.get("device_id"),
@@ -843,7 +844,7 @@ def _devices_script() -> str:
         const catalog = device.catalog;
         const mapLabel = device.mapCapable === true ? 'Yes' : device.mapCapable === false ? 'No' : 'Unknown';
         const image = device.image || {};
-        const assetLabel = image.origin === 'controlled' ? 'Controlled Terento asset' : image.origin === 'garmin-source' ? 'Garmin source image (model match)' : 'Missing';
+        const assetLabel = image.origin === 'controlled' ? 'Controlled Terento asset' : image.origin === 'garmin-source' ? 'Garmin source image (model match)' : image.origin === 'fallback' ? 'Generic Terento fallback' : 'Missing';
         const imageMarkup = image.url ? `<img class="device-detail-image" src="${escapeHtml(image.url)}" alt="">` : '';
         const usb = (device.usbIdentities || []).map((identity) => `VID ${identity.vendorId} · PID ${identity.productId}`).join(', ') || '—';
         dialogBody.innerHTML = `
@@ -882,7 +883,7 @@ def _devices_script() -> str:
               <div><dt>Last seen</dt><dd>${date(catalog.lastSeenAt)}</dd></div>
               <div><dt>New in latest sync</dt><dd>${catalog.newInLatestSync ? 'Yes' : 'No'}</dd></div>
               <div><dt>Image</dt><dd>${escapeHtml(assetLabel)}</dd></div>
-              <div><dt>Match source</dt><dd>${escapeHtml(image.origin === 'controlled' ? 'Approved catalog asset' : image.origin === 'garmin-source' ? 'Official Garmin product media URL for this exact catalog row' : 'No image URL stored for this row')}</dd></div>
+              <div><dt>Match source</dt><dd>${escapeHtml(image.origin === 'controlled' ? 'Approved catalog asset' : image.origin === 'garmin-source' ? 'Official Garmin product media URL for this exact catalog row' : image.origin === 'fallback' ? 'Neutral Terento fallback; no model-specific image available' : 'No image URL stored for this row')}</dd></div>
             </dl></section>
           </div>
           <section class="device-support-review" aria-labelledby="device-support-review-title">
