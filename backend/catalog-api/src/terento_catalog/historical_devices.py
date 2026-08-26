@@ -1,0 +1,159 @@
+"""Reviewed historical Garmin identities used to resolve compatibility evidence.
+
+The retail collector is intentionally not the source of truth for this list.
+These records describe models that can still be encountered in the native app
+even after Garmin removes them from its current retail category.  The registry
+is an identity/provenance aid only: it never grants permission to write to a
+device.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+import re
+import unicodedata
+
+
+HISTORICAL_REGISTRY_VERSION = 1
+REGISTRY_SOURCE_URL = "https://developer.garmin.com/connect-iq/compatible-devices/"
+GARMIN_CATEGORY_URL = "https://www.garmin.com/en-US/c/wearables-smartwatches/"
+
+
+@dataclass(frozen=True)
+class HistoricalDeviceSpec:
+    id: str
+    family_id: str
+    family_name: str
+    manufacturer: str
+    model: str
+    canonical_model: str
+    variant: str
+    case_size_mm: int | None
+    display_type: str | None
+    product_url: str
+    source_url: str = REGISTRY_SOURCE_URL
+    source_image_url: str | None = None
+    aliases: tuple[str, ...] = ()
+
+
+def _spec(
+    id: str,
+    model: str,
+    canonical_model: str,
+    variant: str,
+    case_size_mm: int | None,
+    *,
+    family_id: str = "garmin-fenix",
+    family_name: str = "fēnix",
+    display_type: str | None = None,
+    aliases: tuple[str, ...] = (),
+) -> HistoricalDeviceSpec:
+    return HistoricalDeviceSpec(
+        id=id,
+        family_id=family_id,
+        family_name=family_name,
+        manufacturer="Garmin",
+        model=model,
+        canonical_model=canonical_model,
+        variant=variant,
+        case_size_mm=case_size_mm,
+        display_type=display_type,
+        product_url=GARMIN_CATEGORY_URL,
+        aliases=(canonical_model, *aliases),
+    )
+
+
+# Keep this list small, explicit, and reviewable.  It is deliberately not
+# generated from the current Garmin retail category.
+HISTORICAL_DEVICE_REGISTRY: tuple[HistoricalDeviceSpec, ...] = (
+    _spec("garmin-fenix-7-47", "fēnix 7", "fenix 7", "47 mm", 47),
+    _spec(
+        "garmin-fenix-7s-42", "fēnix 7S", "fenix 7s", "42 mm", 42,
+        aliases=("fenix 7s",),
+    ),
+    _spec(
+        "garmin-fenix-7x-51", "fēnix 7X", "fenix 7x", "51 mm", 51,
+        aliases=("fenix 7x",),
+    ),
+    _spec("garmin-fenix-6-47", "fēnix 6", "fenix 6", "47 mm", 47),
+    _spec(
+        "garmin-fenix-6s-42", "fēnix 6S", "fenix 6s", "42 mm", 42,
+        aliases=("fenix 6s",),
+    ),
+    _spec(
+        "garmin-fenix-6x-51", "fēnix 6X", "fenix 6x", "51 mm", 51,
+        aliases=("fenix 6x",),
+    ),
+    _spec(
+        "garmin-epix-gen-2-47",
+        "epix (Gen 2)",
+        "epix gen 2",
+        "47 mm",
+        47,
+        family_id="garmin-epix",
+        family_name="epix",
+        aliases=("epix", "epix gen 2"),
+    ),
+    _spec(
+        "garmin-forerunner-955",
+        "Forerunner 955",
+        "forerunner 955",
+        "Standard",
+        None,
+        family_id="garmin-forerunner",
+        family_name="Forerunner",
+        aliases=("forerunner 955",),
+    ),
+)
+
+_BY_ID = {spec.id: spec for spec in HISTORICAL_DEVICE_REGISTRY}
+
+
+def normalize_identity(value: object) -> str:
+    if not isinstance(value, str):
+        return ""
+    text = unicodedata.normalize("NFKD", value)
+    text = "".join(char for char in text if not unicodedata.combining(char))
+    text = re.sub(r"[^a-z0-9]+", " ", text.lower())
+    text = " ".join(text.split())
+    if text.startswith("garmin "):
+        text = text[len("garmin "):]
+    return text
+
+
+def historical_device_spec(device_id: str | None) -> HistoricalDeviceSpec | None:
+    return _BY_ID.get(device_id or "")
+
+
+def historical_device_for_event(event: dict[str, object]) -> HistoricalDeviceSpec | None:
+    """Resolve a report to a reviewed historical identity without fuzzy joins."""
+
+    model = normalize_identity(event.get("model"))
+    if not model:
+        return None
+    case_size = event.get("caseSizeMm")
+    try:
+        case_size = int(case_size) if case_size is not None else None
+    except (TypeError, ValueError):
+        case_size = None
+
+    candidates: list[HistoricalDeviceSpec] = []
+    for spec in HISTORICAL_DEVICE_REGISTRY:
+        aliases = {normalize_identity(alias) for alias in spec.aliases}
+        if model not in aliases:
+            continue
+        if spec.case_size_mm is not None and case_size is not None and spec.case_size_mm != case_size:
+            continue
+        candidates.append(spec)
+
+    exact_size = [spec for spec in candidates if spec.case_size_mm == case_size]
+    if exact_size:
+        return exact_size[0]
+    unspecified_size = [spec for spec in candidates if spec.case_size_mm is None]
+    if unspecified_size:
+        return unspecified_size[0]
+    return candidates[0] if candidates else None
+
+
+def all_historical_device_specs() -> tuple[HistoricalDeviceSpec, ...]:
+    return HISTORICAL_DEVICE_REGISTRY

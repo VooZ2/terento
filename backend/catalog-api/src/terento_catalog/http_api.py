@@ -19,6 +19,8 @@ from .admin import (
     account_page,
     campaign_links_page,
     dashboard_page,
+    devices_page,
+    _admin_device_payload,
     hash_password,
     login_page,
     new_token,
@@ -29,9 +31,12 @@ from .admin import (
     verify_password,
 )
 from .asset_storage import AssetStorage
+from .asset_attribution import public_asset_source
 from .catalog import build_catalog, catalog_etag, serialize_catalog
 from .db import Database
 from .device_catalog import (
+    CONTROLLED_ASSET_PREFIX,
+    _official_source_image_url,
     build_device_catalog,
     device_catalog_etag,
     serialize_device_catalog,
@@ -88,6 +93,13 @@ class CatalogService:
     def compatibility_statistics(self) -> list[dict[str, Any]]:
         return self._canonicalize_statistics(self.database.compatibility_statistics())
 
+    def admin_devices(self) -> dict[str, Any]:
+        rows, sync = self.database.admin_device_snapshot()
+        return _admin_device_payload(rows, sync)
+
+    def update_device_support_status(self, device_id: str, support_status: str) -> bool:
+        return self.database.update_device_support_status(device_id, support_status)
+
     def admin_is_configured(self) -> bool:
         return self.database.admin_user_count() > 0
 
@@ -141,6 +153,11 @@ class CatalogService:
         if not self.public_compatibility_stats_enabled:
             raise LookupError("disabled")
         return self._canonicalize_statistics(self.database.public_compatibility_statistics(limit))
+
+    def public_models(self, limit: int) -> list[dict[str, Any]]:
+        if not self.public_compatibility_stats_enabled:
+            raise LookupError("disabled")
+        return self._canonicalize_statistics(self.database.public_compatibility_models(limit))
 
     @staticmethod
     def _canonicalize_statistics(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -211,6 +228,9 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return
             if request_path == "/compatibility/public/top-models.json":
                 self._handle_public_statistics(send_body=send_body)
+                return
+            if request_path == "/compatibility/public/models.json":
+                self._handle_public_models(send_body=send_body)
                 return
             if request_path == "/internal/compatibility/":
                 self._redirect("/admin", send_body=send_body)
@@ -324,6 +344,23 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     return
                 self._send_admin_html(body, send_body=send_body)
                 return
+            if request_path in {"/admin/devices", "/admin/devices/"}:
+                try:
+                    rows, sync = service.database.admin_device_snapshot()
+                    body = devices_page(rows, sync, session, csrf_token)
+                except Exception:
+                    LOGGER.exception("admin device catalog failed")
+                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "admin_devices_unavailable"}, send_body=send_body, cache_control="no-store")
+                    return
+                self._send_admin_html(body, send_body=send_body)
+                return
+            if request_path in {"/admin/devices.json", "/admin/devices.json/"}:
+                try:
+                    self._send_json(HTTPStatus.OK, service.admin_devices(), send_body=send_body, cache_control="no-store")
+                except Exception:
+                    LOGGER.exception("admin device API failed")
+                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "admin_devices_unavailable"}, send_body=send_body, cache_control="no-store")
+                return
             if request_path in {"/admin/campaign-links", "/admin/campaign-links/"}:
                 self._send_admin_html(campaign_links_page(session, csrf_token), send_body=send_body)
                 return
@@ -367,6 +404,20 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     return
                 body = account_page(updated, self._csrf_cookie() or "", success="Account details updated.")
                 self._send_admin_html(body, send_body=True)
+                return
+            if request_path == "/admin/devices/support":
+                try:
+                    device_id = form.get("device_id", "").strip()
+                    support_status = form.get("support_status", "").strip().upper()
+                    if not device_id or support_status not in {"SUPPORTED", "UNSUPPORTED", "NOT_EVALUATED"}:
+                        raise ValueError("invalid support decision")
+                    if not service.update_device_support_status(device_id, support_status):
+                        self._send_json(HTTPStatus.NOT_FOUND, {"error": "device_not_found"}, send_body=True, cache_control="no-store")
+                        return
+                except ValueError:
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_support_decision"}, send_body=True, cache_control="no-store")
+                    return
+                self._redirect("/admin/devices", send_body=True)
                 return
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=True, cache_control="no-store")
 
@@ -437,6 +488,67 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             } for row in rows]
             self._send_json(HTTPStatus.OK, {"schemaVersion": 2, "generatedAt": datetime.now(timezone.utc).isoformat(), "models": models}, send_body=send_body, cache_control="public, max-age=300, stale-while-revalidate=3600")
 
+        def _handle_public_models(self, *, send_body: bool) -> None:
+            try:
+                query = parse_qs(urlsplit(self.path).query)
+                limit = max(1, min(500, int(query.get("limit", ["500"])[0])))
+                rows = service.public_models(limit)
+            except (ValueError, LookupError):
+                self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=send_body, cache_control="no-store")
+                return
+            except Exception:
+                LOGGER.exception("public compatibility model projection failed")
+                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "statistics_unavailable"}, send_body=send_body, cache_control="no-store")
+                return
+
+            models = []
+            for row in rows:
+                image = None
+                asset_url = row.get("asset_url")
+                if (
+                    row.get("asset_status") == "AVAILABLE"
+                    and isinstance(asset_url, str)
+                    and asset_url.startswith(CONTROLLED_ASSET_PREFIX)
+                    and isinstance(row.get("asset_storage_key"), str)
+                    and public_asset_source(row) is not None
+                ):
+                    image = {
+                        "url": asset_url,
+                        "origin": "controlled",
+                        "status": "AVAILABLE",
+                        "scope": row.get("asset_scope") or "MODEL",
+                    }
+                if image is None:
+                    source_image_url = _official_source_image_url(row.get("source_image_url"))
+                    if source_image_url:
+                        image = {"url": source_image_url, "origin": "garmin-source", "status": "SOURCE"}
+                models.append({
+                    "model": row.get("model") or row.get("evidence_model"),
+                    "canonicalModel": row.get("canonical_model") or row.get("evidence_model"),
+                    "family": row.get("family") or "other",
+                    "familyName": row.get("family_name") or row.get("family") or "Other",
+                    "compatibilityIdentity": row.get("compatibility_identity"),
+                    "variant": row.get("variant"),
+                    "caseSizeMm": row.get("case_size_mm"),
+                    "displayType": row.get("display_type"),
+                    "canonicalDeviceId": row.get("canonical_device_model_id"),
+                    "attemptedInstallations": int(row.get("attempted_install_count") or 0),
+                    "successfulInstallations": int(row.get("successful_install_count") or 0),
+                    "reconnectVerifiedInstallations": int(row.get("reconnect_verified_install_count") or 0),
+                    "failedInstallations": int(row.get("failed_install_count") or 0),
+                    "successRate": float(row["success_rate"]) if row.get("success_rate") is not None else None,
+                    "evidenceStatus": row.get("calculated_status"),
+                    "lastSuccessfulInstallation": row["last_success"].isoformat() if isinstance(row.get("last_success"), datetime) else row.get("last_success"),
+                    "lastEvidence": row["last_evidence"].isoformat() if isinstance(row.get("last_evidence"), datetime) else row.get("last_evidence"),
+                    "image": image,
+                })
+            self._send_json(
+                HTTPStatus.OK,
+                {"schemaVersion": 1, "generatedAt": datetime.now(timezone.utc).isoformat(), "models": models},
+                send_body=send_body,
+                cache_control="public, max-age=300, stale-while-revalidate=3600",
+            )
+
         def _read_form(self) -> dict[str, str] | None:
             try:
                 length = int(self.headers.get("Content-Length", "0"))
@@ -496,7 +608,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             script_policy = f"script-src 'nonce-{nonce_match.group(1).decode('ascii')}'" if nonce_match else "script-src 'none'"
             self.send_header(
                 "Content-Security-Policy",
-                f"default-src 'none'; {script_policy}; style-src 'unsafe-inline' https://terento.app; font-src https://terento.app; img-src https://terento.app data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+                f"default-src 'none'; {script_policy}; style-src 'unsafe-inline' https://terento.app; font-src https://terento.app; img-src https://terento.app https://api.terento.app https://res.garmin.com data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
             )
             self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 

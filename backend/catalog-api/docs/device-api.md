@@ -30,6 +30,26 @@ install maps on it. Compatibility status is deliberately absent from this
 public contract. The existing validated fēnix 8 USB identity (`VID 0x091e`,
 `PID 0x51b8`) is stored separately and is not copied to other devices.
 
+The private admin view is additive and is not part of this public contract.
+`/admin/devices.json` is authenticated and may include catalogue sync
+metadata, map-capability state, operator support state, installation
+aggregates joined by the exact canonical device record ID, and image
+observability fields (`asset`, `sourceAsset`, `image`). When
+`device_model.map_capable` is NULL, the admin payload classifies the
+canonical model with the same Map Manager prefix list as the native client.
+The HTML page may render an allowlisted `res.garmin.com` `sourceAsset` as a
+thumbnail when no controlled `AVAILABLE` asset exists; that image is not
+proxied by Terento. Public clients must continue to use
+`/devices/catalog.json` for catalog data.
+
+## Admin time display
+
+Authenticated `/admin` pages keep API and storage timestamps in UTC ISO 8601,
+then render them in the visitor's browser time zone by default. The header
+includes a time-zone selector for manual IANA-zone changes; the choice is
+stored only in that browser's local storage. This changes presentation only
+and does not alter API fields, database values, or collector schedules.
+
 ## Canonicalization
 
 Display names retain official diacritics, for example `fēnix`. Stable identity
@@ -104,7 +124,11 @@ metadata. If `sourceAsset` is not yet present, the macOS client may derive the
 same official product-media path from a validated catalog part number. The
 client downloads that source image directly to the user's Mac and caches it
 locally; the catalog API never relays the image. Invalid or incomplete source
-metadata is ignored and the generic fallback remains.
+metadata is ignored and the generic fallback remains. Authenticated admin HTML
+pages, including `/admin/devices`, may additionally load allowlisted
+`https://res.garmin.com` URLs as thumbnails so operators can verify that a
+catalog row has a model-matched official product image. The catalog API still
+never downloads, mirrors, or proxies those bytes.
 
 ## Asset delivery and fallback contract
 

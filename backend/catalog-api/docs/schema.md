@@ -167,7 +167,24 @@ cache it locally only after validating the host and HTTPS URL.
 Append-only operational diagnostics for Garmin collections. It stores source,
 timestamps, counts, status (`RUNNING`, `SUCCEEDED`, `PARTIAL`, `FAILED`), and
 structured warning/error diagnostics. These diagnostics are not exposed by
-the public API.
+the public API. Migration `014` adds nullable before/after/add/update counts
+for syncs recorded after that migration and exact first/last collection-run
+links on `device_model`. Historical runs without those counters remain
+explicitly unknown rather than being presented as zero.
+
+Migration `014` also adds the admin-only `device_model.map_capable` field
+(`true`, `false`, or `NULL` for unknown) and the separate operator-controlled
+`device_model.support_status` field (`SUPPORTED`, `UNSUPPORTED`, or
+`NOT_EVALUATED`). Neither field is added to the public device catalog
+contract. Map capability, support state, and installation evidence remain
+independent concepts. The migration carries forward the existing exact
+write-capable `garmin-fenix-8-47-amoled` profile as `map_capable = true` and
+`support_status = 'SUPPORTED'`. For other records, a stored `map_capable`
+value still wins, but a `NULL` column is classified at admin-read time and on
+the next Garmin collection from the same Map Manager prefix list used by the
+native client (`terento_catalog.map_capability`, kept aligned with
+`GarminMapCapabilityRegistry`). That classification is not a support claim
+and does not authorize writes. Unrecognised models remain `NULL` / Unknown.
 
 ## Compatibility evidence and statistics
 
@@ -184,17 +201,26 @@ stores maintainer-reviewed physical-device evidence, notes, review state, and
 the default-false public-statistics switch/display name.
 
 `compatibility_model_statistics` is a live SQL view over the immutable event
-table and model review metadata. It calculates attempted, successful and
+table and model review metadata. Events with a `canonical_device_model_id` are
+grouped by that exact Garmin catalog record; textual `compatibility_identity`
+is only the fallback for older uncanonicalized events. Formatting changes
+between app versions therefore increase one variant's report and success
+counts instead of creating another model row. The view calculates attempted, successful and
 failed installation counts, success rate, firmware coverage, latest outcomes,
 error-category totals and the canonical evidence status. Events carry an exact
 compatibility identity plus optional variant/case-size and reconnect/map-
-visibility observations. Reconnect is informational only. `SUPPORTED` means
-at least one successful verified map installation; `VERIFIED` additionally
-requires successful evidence across multiple operator-reviewed physical
-devices and firmware versions. The private dashboard reads this view. The
+visibility observations. Reconnect is informational only. Status depends only
+on successful opt-in installations: zero is `TESTING`, 1–2 is `TESTED`, 3–4
+is `SUPPORTED`, and 5 or more is `VERIFIED`. The private dashboard reads this view. The
 prepared public query additionally requires both `review_status = 'APPROVED'`
 and `public_statistics_enabled = true` and only exposes evidence-backed
 statuses.
+
+The private `/admin/devices.json` aggregate joins evidence only through
+`compatibility_evidence_event.canonical_device_model_id = device_model.id`.
+It returns one row per exact Garmin catalog record, so display model strings
+cannot merge separate variants. The HTML `/admin/devices` page uses the same
+query and keeps technical USB identities inside the detail dialog.
 
 ## Administrator authentication
 
