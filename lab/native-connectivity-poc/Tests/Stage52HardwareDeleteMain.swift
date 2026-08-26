@@ -42,7 +42,7 @@ struct Stage52HardwareDeleteMain {
 
         if deleteRequested && pathArgument == nil {
             throw Stage52HardwareGateFailure.message(
-                "Deletion requires the exact device path, for example /GARMIN/terento_freizeitkarte_lva.img. No map was changed."
+                "Deletion requires the exact device path, for example /GARMIN/terento_freizeitkarte_fra.img. No map was changed."
             )
         }
 

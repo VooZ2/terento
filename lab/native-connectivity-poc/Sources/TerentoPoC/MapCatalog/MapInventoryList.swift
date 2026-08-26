@@ -184,7 +184,7 @@ struct MapInventoryListBuilder: Sendable {
                     return nil
                 }
 
-                let title = otherDisplayName(for: first)
+                let title = first.name.isEmpty ? first.sourceFile.filename : first.name
 
                 return MapInventoryEntry(
                     key: key,
@@ -216,9 +216,9 @@ struct MapInventoryListBuilder: Sendable {
             }
 
             // This is only a display grouping for maps without a stable
-            // identity. It prevents companion files such as an OpenTopoMap
-            // contours IMG from creating duplicate cards, while leaving the
-            // underlying maps unknown and unmanaged for safety decisions.
+            // identity. It prevents companion map files from creating
+            // duplicate cards, while leaving the underlying maps unknown and
+            // unmanaged for safety decisions.
             let displayName = normalizeDisplayText(
                 map.name.isEmpty ? map.sourceFile.filename : map.name
             )
@@ -257,15 +257,4 @@ struct MapInventoryListBuilder: Sendable {
             .lowercased()
     }
 
-    private func otherDisplayName(for map: InstalledMap) -> String {
-        let text = normalizeDisplayText(
-            map.name.isEmpty ? map.sourceFile.filename : map.name
-        )
-
-        if text.contains("opentopomap") && text.contains("lithuania") {
-            return "OpenTopoMap Lithuania"
-        }
-
-        return map.name.isEmpty ? map.sourceFile.filename : map.name
-    }
 }

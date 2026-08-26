@@ -79,10 +79,10 @@ private func validTarget(
 ) -> (target: SafeDeleteTarget, contents: Data) {
     let contents = Data(repeating: 0x41, count: 12)
     let hash = sha256(contents)
-    let identity = MapIdentity(provider: "Freizeitkarte", region: "LVA")!
+    let identity = MapIdentity(provider: "Freizeitkarte", region: "FRA")!
     let file = InstalledMapFile(
-        path: "/GARMIN/terento_freizeitkarte_lva.img",
-        filename: "terento_freizeitkarte_lva.img",
+        path: "/GARMIN/terento_freizeitkarte_fra.img",
+        filename: "terento_freizeitkarte_fra.img",
         sizeBytes: UInt64(contents.count),
         itemID: 101
     )

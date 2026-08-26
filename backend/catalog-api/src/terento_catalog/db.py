@@ -199,10 +199,14 @@ class Database:
                 COALESCE(write_started, true) AS write_started,
                 COALESCE(remote_object_created, false) AS remote_object_created,
                 COALESCE(cleanup_attempted, false) AS cleanup_attempted,
-                cleanup_succeeded, transfer_progress_bucket, error_category,
+                cleanup_succeeded, transfer_progress_bucket, error_category, transport,
                 raw_mtp_model, identity_resolution_code,
-                diagnostic_status, resolution_code, resolution_note, resolved_at
+                diagnostic_status, resolution_code, resolution_reason,
+                resolution_note, resolved_at, resolved_by, linked_github_issue,
+                admin_user.username AS resolved_by_username,
+                identity_resolution_state, canonical_device_model_id
             FROM compatibility_evidence_event
+            LEFT JOIN admin_user ON admin_user.id = compatibility_evidence_event.resolved_by
             WHERE diagnostic_status = %s
             ORDER BY occurred_at DESC, operation_key, map_result_index NULLS FIRST
             LIMIT %s
@@ -370,8 +374,15 @@ class Database:
             row = connection.execute(query, (username, password_hash, user_id)).fetchone()
         return dict(row)
 
-    def update_device_support_status(self, device_id: str, support_status: str) -> bool:
-        """Update only the operator's support decision.
+    def update_device_support_status(
+        self,
+        device_id: str,
+        support_status: str,
+        admin_user_id: int | None = None,
+        reason: str | None = None,
+        note: str | None = None,
+    ) -> bool:
+        """Update only the operator's installation authorization.
 
         Evidence counts/statuses are computed from compatibility events and are
         intentionally absent from this UPDATE. In particular, this method is
@@ -382,16 +393,197 @@ class Database:
         if normalized not in allowed:
             raise ValueError("unsupported support decision")
         with self.connection() as connection:
-            row = connection.execute(
-                """
-                UPDATE device_model
-                SET support_status = %s, updated_at = now()
-                WHERE id = %s
-                RETURNING id
-                """,
-                (normalized, device_id),
+            current = connection.execute(
+                "SELECT support_status FROM device_model WHERE id = %s FOR UPDATE",
+                (device_id,),
             ).fetchone()
-        return row is not None
+            if current is None:
+                return False
+            previous = str(current["support_status"])
+            if previous != normalized:
+                connection.execute(
+                    """
+                    INSERT INTO device_authorization_audit (
+                        device_model_id, previous_status, new_status,
+                        reason, note, changed_by
+                    ) VALUES (%s, %s, %s, %s, %s, %s)
+                    """,
+                    (device_id, previous, normalized, reason, note, admin_user_id),
+                )
+                connection.execute(
+                    """
+                    UPDATE device_model
+                    SET support_status = %s, updated_at = now()
+                    WHERE id = %s
+                    """,
+                    (normalized, device_id),
+                )
+        return True
+
+    def update_diagnostic_lifecycle(
+        self,
+        operation_key: str,
+        *,
+        new_status: str,
+        admin_user_id: int | None,
+        resolution_reason: str | None = None,
+        resolution_note: str | None = None,
+        linked_github_issue: str | None = None,
+    ) -> int:
+        """Resolve or reopen all map-result rows belonging to one install.
+
+        Evidence rows are never deleted. Lifecycle fields and the audit trail
+        are admin-only workflow metadata and cannot authorize device writes.
+        """
+        allowed_statuses = {"ACTIVE", "RESOLVED"}
+        allowed_reasons = {
+            "FIXED", "HISTORICAL_SUPERSEDED", "DUPLICATE",
+            "IDENTITY_CORRECTED", "NOT_TERENTO_ISSUE", "OTHER",
+        }
+        status = new_status.strip().upper()
+        if status not in allowed_statuses:
+            raise ValueError("unsupported diagnostic status")
+        if status == "RESOLVED" and resolution_reason not in allowed_reasons:
+            raise ValueError("a resolution reason is required")
+        operation_key = operation_key.strip()
+        if not operation_key or len(operation_key) > 160:
+            raise ValueError("invalid diagnostic record")
+        linked_issue = (linked_github_issue or "").strip() or None
+        if linked_issue and len(linked_issue) > 120:
+            raise ValueError("invalid GitHub issue reference")
+        note = (resolution_note or "").strip() or None
+        with self.connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT event_id, diagnostic_status
+                FROM compatibility_evidence_event
+                WHERE COALESCE(operation_id::text, 'legacy:' || event_id::text) = %s
+                FOR UPDATE
+                """,
+                (operation_key,),
+            ).fetchall()
+            for row in rows:
+                previous = str(row["diagnostic_status"])
+                if previous == status:
+                    continue
+                if status == "RESOLVED":
+                    connection.execute(
+                        """
+                        UPDATE compatibility_evidence_event
+                        SET diagnostic_status = 'RESOLVED',
+                            resolution_code = %s,
+                            resolution_reason = %s,
+                            resolution_note = %s,
+                            linked_github_issue = %s,
+                            resolved_at = now(),
+                            resolved_by = %s
+                        WHERE event_id = %s
+                        """,
+                        (resolution_reason, resolution_reason, note, linked_issue, admin_user_id, row["event_id"]),
+                    )
+                else:
+                    connection.execute(
+                        """
+                        UPDATE compatibility_evidence_event
+                        SET diagnostic_status = 'ACTIVE',
+                            resolved_at = NULL,
+                            resolved_by = NULL
+                        WHERE event_id = %s
+                        """,
+                        (row["event_id"],),
+                    )
+                connection.execute(
+                    """
+                    INSERT INTO compatibility_diagnostic_lifecycle_audit (
+                        event_id, previous_status, new_status,
+                        resolution_reason, resolution_note,
+                        linked_github_issue, changed_by
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (row["event_id"], previous, status,
+                     resolution_reason, note, linked_issue, admin_user_id),
+                )
+            return len(rows)
+
+    def resolve_compatibility_identity(
+        self,
+        operation_key: str,
+        *,
+        action: str,
+        canonical_device_model_id: str | None,
+        admin_user_id: int | None,
+        reason: str | None = None,
+        note: str | None = None,
+    ) -> int:
+        """Apply an explicit identity review without changing outcomes."""
+        allowed_actions = {"ASSIGN", "LEAVE_UNRESOLVED", "NOT_IDENTIFIABLE"}
+        normalized_action = action.strip().upper()
+        if normalized_action not in allowed_actions:
+            raise ValueError("unsupported identity action")
+        if normalized_action == "ASSIGN":
+            canonical_device_model_id = (canonical_device_model_id or "").strip()
+            if not canonical_device_model_id:
+                raise ValueError("a canonical device is required")
+        else:
+            canonical_device_model_id = None
+        reason = (reason or "").strip() or None
+        note = (note or "").strip() or None
+        operation_key = operation_key.strip()
+        if not operation_key or len(operation_key) > 160:
+            raise ValueError("invalid diagnostic record")
+        with self.connection() as connection:
+            if canonical_device_model_id is not None:
+                device = connection.execute(
+                    """
+                    SELECT id, model, variant
+                    FROM device_model
+                    WHERE id = %s AND manufacturer = 'Garmin'
+                    """,
+                    (canonical_device_model_id,),
+                ).fetchone()
+                if device is None:
+                    raise ValueError("canonical Garmin device not found")
+                new_identity = f"{device['model']} · {device['variant']}" if device["variant"] else str(device["model"])
+            else:
+                new_identity = "Identity unresolved" if normalized_action == "LEAVE_UNRESOLVED" else "Identity not identifiable"
+            rows = connection.execute(
+                """
+                SELECT event_id, compatibility_identity, canonical_device_model_id
+                FROM compatibility_evidence_event
+                WHERE COALESCE(operation_id::text, 'legacy:' || event_id::text) = %s
+                FOR UPDATE
+                """,
+                (operation_key.strip(),),
+            ).fetchall()
+            for row in rows:
+                connection.execute(
+                    """
+                    UPDATE compatibility_evidence_event
+                    SET canonical_device_model_id = %s,
+                        identity_resolution_state = %s
+                    WHERE event_id = %s
+                    """,
+                    (canonical_device_model_id,
+                     "RESOLVED" if normalized_action == "ASSIGN" else (
+                         "NOT_IDENTIFIABLE" if normalized_action == "NOT_IDENTIFIABLE" else "UNRESOLVED"
+                     ),
+                     row["event_id"]),
+                )
+                connection.execute(
+                    """
+                    INSERT INTO compatibility_identity_resolution_audit (
+                        event_id, previous_identity,
+                        previous_canonical_device_model_id,
+                        new_identity, new_canonical_device_model_id,
+                        action, reason, note, corrected_by
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (row["event_id"], str(row["compatibility_identity"]),
+                     row["canonical_device_model_id"], new_identity,
+                     canonical_device_model_id, normalized_action, reason, note,
+                     admin_user_id),
+                )
+            return len(rows)
 
     def catalog_snapshot(self) -> tuple[list[dict[str, Any]], datetime]:
         query = """
@@ -914,24 +1106,24 @@ class Database:
             ) AS usb ON TRUE
             LEFT JOIN LATERAL (
                 SELECT
-                    count(*) AS attempts,
-                    count(*) FILTER (
-                        WHERE e.phase_outcome = 'SUCCEEDED'
-                          AND e.automatic_finishing_result = 'VERIFIED'
-                    ) AS successful,
-                    count(*) FILTER (WHERE e.phase_outcome = 'FAILED') AS failed,
-                    min(e.occurred_at) FILTER (
-                        WHERE e.phase_outcome = 'SUCCEEDED'
-                          AND e.automatic_finishing_result = 'VERIFIED'
-                    ) AS first_success,
-                    max(e.occurred_at) FILTER (
-                        WHERE e.phase_outcome = 'SUCCEEDED'
-                          AND e.automatic_finishing_result = 'VERIFIED'
-                    ) AS last_success,
-                    max(e.occurred_at) AS last_evidence
-                FROM compatibility_evidence_event AS e
-                WHERE e.canonical_device_model_id = dm.id
-                  AND e.diagnostic_status = 'ACTIVE'
+                    count(*) FILTER (WHERE o.write_started) AS attempts,
+                    count(*) FILTER (WHERE o.write_started AND o.operation_succeeded) AS successful,
+                    count(*) FILTER (WHERE o.write_started AND NOT o.operation_succeeded) AS failed,
+                    min(o.occurred_at) FILTER (WHERE o.write_started AND o.operation_succeeded) AS first_success,
+                    max(o.occurred_at) FILTER (WHERE o.write_started AND o.operation_succeeded) AS last_success,
+                    max(o.occurred_at) AS last_evidence
+                FROM (
+                    SELECT
+                        COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text) AS operation_key,
+                        bool_or(COALESCE(e.write_started, true)) AS write_started,
+                        bool_and(e.phase_outcome = 'SUCCEEDED' AND e.automatic_finishing_result = 'VERIFIED')
+                            AND count(*) = max(COALESCE(e.selected_map_count, 1)) AS operation_succeeded,
+                        min(e.occurred_at) AS occurred_at
+                    FROM compatibility_evidence_event AS e
+                    WHERE e.canonical_device_model_id = dm.id
+                      AND e.diagnostic_status = 'ACTIVE'
+                    GROUP BY COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text)
+                ) AS o
             ) AS evidence ON TRUE
             LEFT JOIN LATERAL (
                 SELECT r.*

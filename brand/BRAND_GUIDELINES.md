@@ -512,11 +512,6 @@ brand/
 │   ├── logo-currentcolor.svg
 │   ├── logo-black-on-white.png
 │   └── logo-white-on-black.png
-└── previews/
-    ├── board-1-brand-essentials.png
-    ├── board-2-website-validation.png
-    ├── board-3-product-ui-validation.png
-    └── board-4-design-system-accessibility.png
 ```
 
 The logo SVG is the only source of truth for symbol geometry.

@@ -60,7 +60,7 @@ remains the only map provider.
 
 - The app consumes the canonical API compatibility status instead of deriving
   Testing, Tested, Supported or Verified locally.
-- The bundled Freizeitkarte fallback contains the complete current 63-package
+- The bundled Freizeitkarte fallback contains the complete 63-package
   metadata set, including measured final IMG installation sizes. It is used
   only when the live catalog is unavailable and is presented as potentially
   stale; it does not limit the remote catalog.

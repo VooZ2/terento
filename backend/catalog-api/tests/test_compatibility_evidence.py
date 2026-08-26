@@ -27,7 +27,7 @@ def event(**changes):
         "usbProductID": 10345,
         "transport": "MTP",
         "provider": "freizeitkarte",
-        "region": "LTU",
+        "region": "DEU",
         "mapRelease": "2026-08",
         "terentoVersion": "1.0.0",
         "macOSVersion": "macOS 15.6",
@@ -46,6 +46,7 @@ class FakeEvidenceDatabase:
         self.users = []
         self.sessions = {}
         self.device_support_status = "SUPPORTED"
+        self.authorization_audit = []
 
     def insert_compatibility_event(self, value):
         if value["id"] in self.events:
@@ -181,10 +182,16 @@ class FakeEvidenceDatabase:
         user.update(username=username, password_hash=password_hash)
         return user
 
-    def update_device_support_status(self, device_id, support_status):
+    def update_device_support_status(self, device_id, support_status, admin_user_id=None, reason=None, note=None):
         if device_id != "garmin-fenix-8-47-amoled":
             return False
         self.device_support_status = support_status
+        self.authorization_audit.append({
+            "device_id": device_id,
+            "admin_user_id": admin_user_id,
+            "reason": reason,
+            "note": note,
+        })
         return True
 
 
@@ -303,9 +310,9 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         }
         body = dashboard_page([row], {"username": "gediminas"}, "csrf", public_stats_enabled=True).decode()
         self.assertIn("Installation evidence", body)
-        self.assertIn(">Write attempts<", body)
+        self.assertIn(">Install attempts<", body)
         self.assertIn(">51 mm<", body)
-        self.assertIn("Latest activity", body)
+        self.assertIn("Latest evidence", body)
         self.assertIn("Public compatibility", body)
         self.assertIn("Enabled", body)
         self.assertIn("1 model published", body)
@@ -313,7 +320,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertNotIn("ADMINISTRAVIMAS", body)
         self.assertNotIn("Georgia", body)
         self.assertNotIn("Logged in as", body)
-        self.assertNotIn("Attempts", body)
+        self.assertIn(">Attempts<", body)
         self.assertIn("logo-sky.svg", body)
         self.assertIn("Times follow the selected time zone", body)
         self.assertIn("data-admin-timestamp", body)
@@ -343,7 +350,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         operation = {
             "operation_key": "223e4567-e89b-12d3-a456-426614174000",
             "occurred_at": row["last_failure"], "compatibility_identity": row["compatibility_identity"],
-            "firmware_version": "2326", "region": "LTU", "phase_outcome": "FAILED",
+            "firmware_version": "2326", "region": "DEU", "phase_outcome": "FAILED",
             "release_label": "1.0.0-beta.6", "app_build": "5", "write_started": True,
             "failure_stage": "write", "failure_code": "INSTALL_FAILED_WRITE",
             "native_failure_code": "SEND_OBJECT_FAILED", "transfer_progress_bucket": "25-99",
@@ -354,7 +361,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
             [row], {"username": "operator"}, "csrf", operations=[operation]
         ).decode()
         self.assertIn("aria-label='View 1 errors'", body)
-        self.assertIn("Operation diagnostics", body)
+        self.assertIn("Diagnostic record", body)
         self.assertIn("1.0.0-beta.6 (build 5)", body)
         self.assertIn("INSTALL_FAILED_WRITE", body)
         self.assertIn("SEND_OBJECT_FAILED", body)
@@ -390,7 +397,11 @@ class CompatibilityEvidenceTests(unittest.TestCase):
             operations=[], resolved_operations=[resolved],
         ).decode()
         self.assertIn("Resolved / historical diagnostics", body)
-        self.assertIn("Resolved / historical · Identity pending", body)
+        self.assertIn("fēnix 8 Pro · 51 mm", body)
+        self.assertIn("Identity pending", body)
+        self.assertIn("Issue #32", body)
+        self.assertIn("1 diagnostic", body)
+        self.assertNotIn("Resolved / historical · Identity pending", body)
         self.assertIn("Historical pre-beta.6 failure", body)
         self.assertIn("INSTALL_BLOCKED_UNKNOWN_TARGET", body)
         self.assertIn("excluded from current compatibility counts or rates", body)
@@ -527,7 +538,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         devices, devices_body = self.request("GET", "/admin/devices", headers={"Cookie": cookie_header})
         self.assertEqual(devices.status, 200)
         self.assertIn(b"Garmin devices", devices_body)
-        self.assertIn(b"Map-capable: Yes", devices_body)
+        self.assertIn(b"Map capability: Yes", devices_body)
         self.assertIn(
             "img-src https://terento.app https://api.terento.app https://res.garmin.com data:",
             devices.headers["Content-Security-Policy"],
@@ -535,18 +546,22 @@ class CompatibilityEvidenceTests(unittest.TestCase):
 
         devices_json, devices_json_body = self.request("GET", "/admin/devices.json", headers={"Cookie": cookie_header})
         self.assertEqual(devices_json.status, 200)
-        self.assertEqual(json.loads(devices_json_body)["summary"]["tested"], 1)
+        self.assertEqual(json.loads(devices_json_body)["summary"]["successful"], 1)
+        self.assertNotIn("tested", json.loads(devices_json_body)["summary"])
 
         review_body = urlencode({
             "csrf_token": csrf_token,
             "device_id": "garmin-fenix-8-47-amoled",
             "support_status": "SUPPORTED",
+            "reason": "Validated on hardware",
+            "note": "Keep this profile enabled",
         })
-        reviewed, _ = self.request("POST", "/admin/devices/support", review_body, {
+        reviewed, _ = self.request("POST", "/admin/devices/authorization", review_body, {
             "Content-Type": "application/x-www-form-urlencoded", "Cookie": cookie_header,
         })
         self.assertEqual(reviewed.status, 303)
         self.assertEqual(self.database.device_support_status, "SUPPORTED")
+        self.assertEqual(self.database.authorization_audit[-1]["reason"], "Validated on hardware")
 
         unauthenticated_campaign, _ = self.request("GET", "/admin/campaign-links")
         self.assertEqual(unauthenticated_campaign.status, 303)

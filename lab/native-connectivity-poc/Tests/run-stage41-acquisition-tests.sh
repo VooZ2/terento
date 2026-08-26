@@ -38,7 +38,7 @@ if ! jq -e '
     exit 1
 fi
 
-print "PASS: bundled fallback contains all 63 current packages with final IMG sizes"
+print "PASS: bundled fallback contains all 63 downloadable packages with final IMG sizes"
 
 if grep -Eq 'LibMTPBridge|MTPTransport|SendObject|DeleteObject|MoveObject|RenameObject|Backup' \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapPackageAcquisition.swift"; then

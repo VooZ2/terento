@@ -20,7 +20,10 @@ class CompatibilityStatusContractTests(unittest.TestCase):
         for count, status in expected.items():
             with self.subTest(count=count):
                 self.assertEqual(
-                    calculate_compatibility_status(successful_install_count=count),
+                    calculate_compatibility_status(
+                        successful_install_count=count,
+                        recognized_map_capable_evidence=True,
+                    ),
                     status,
                 )
 

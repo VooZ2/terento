@@ -153,7 +153,7 @@ class RangeZipTests(unittest.TestCase):
     def test_collector_keeps_download_size_when_range_is_unavailable(self) -> None:
         class Fetcher:
             release_html = '<p>The Freizeitkarte maps "2/2026" are based on OpenStreetMap data of 2026/05/03.</p>'
-            map_html = '<h3><a id="LTU">Lithuania (LTU+):</a></h3><a href="https://download.example/LTU_en_gmapsupp.img.zip">gmapsupp</a>'
+            map_html = '<h3><a id="DEU">Germany (DEU+):</a></h3><a href="https://download.example/DEU_en_gmapsupp.img.zip">gmapsupp</a>'
 
             def fetch_text(self, url: str) -> str:
                 return self.release_html if "release" in url else self.map_html

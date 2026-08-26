@@ -10,7 +10,7 @@ protocol DeviceFileReader: Sendable {
 struct Stage45MapSelectionTests {
     static func main() {
         testCatalogRegionsProduceOneCanonicalList()
-        testMacRegionRecommendsLithuania()
+        testMacRegionsRecommendLithuaniaAndLatvia()
         testUpToDateMapIsNotActionable()
         testNewMapProducesReadyPlan()
         testStorageUsesInstallSizeNotDownloadSize()
@@ -34,59 +34,71 @@ struct Stage45MapSelectionTests {
     }
 
     private static func testCatalogRegionsProduceOneCanonicalList() {
-        let firstLithuania = makeComparison(region: "LTU", name: "Lithuania", status: .notInstalled)
-        let duplicateLithuania = makeComparison(
-            id: "freizeitkarte-ltu-duplicate",
-            region: "LTU",
-            name: "Lithuania",
+        let firstGermany = makeComparison(region: "DEU", name: "Germany", status: .notInstalled)
+        let duplicateGermany = makeComparison(
+            id: "freizeitkarte-deu-duplicate",
+            region: "DEU",
+            name: "Germany",
             status: .notInstalled
         )
-        let latvia = makeComparison(region: "LVA", name: "Latvia", status: .notInstalled)
+        let france = makeComparison(region: "FRA", name: "France", status: .notInstalled)
 
         let items = MapSelectionPlanner().items(
-            comparisons: [firstLithuania, duplicateLithuania, latvia],
+            comparisons: [firstGermany, duplicateGermany, france],
             preflightStatuses: [
-                firstLithuania.id: .readyNewInstall,
-                duplicateLithuania.id: .readyNewInstall,
-                latvia.id: .readyNewInstall
+                firstGermany.id: .readyNewInstall,
+                duplicateGermany.id: .readyNewInstall,
+                france.id: .readyNewInstall
             ],
             recommendedRegionID: nil
         )
 
         expect(
             items.count == 2
-                && Set(items.map(\.comparison.catalogMap.regionId)) == ["LTU", "LVA"],
+                && Set(items.map(\.comparison.catalogMap.regionId)) == ["DEU", "FRA"],
             "catalog and installed data produce one canonical row per region"
         )
     }
 
-    private static func testMacRegionRecommendsLithuania() {
+    private static func testMacRegionsRecommendLithuaniaAndLatvia() {
         let lithuania = makeComparison(region: "LTU", name: "Lithuania", status: .notInstalled)
         let latvia = makeComparison(region: "LVA", name: "Latvia", status: .notInstalled)
-        let items = MapSelectionPlanner().items(
-            comparisons: [lithuania, latvia],
-            preflightStatuses: [
-                lithuania.id: .readyNewInstall,
-                latvia.id: .readyNewInstall
-            ],
+        let comparisons = [lithuania, latvia]
+        let preflightStatuses: [String: InstallationPreflightStatus] = [
+            lithuania.id: .readyNewInstall,
+            latvia.id: .readyNewInstall
+        ]
+        let lithuanianItems = MapSelectionPlanner().items(
+            comparisons: comparisons,
+            preflightStatuses: preflightStatuses,
             recommendedRegionID: MapRegionRecommendation.regionID(
                 systemRegionCode: "LT",
-                comparisons: [lithuania, latvia]
+                comparisons: comparisons
+            )
+        )
+        let latvianItems = MapSelectionPlanner().items(
+            comparisons: comparisons,
+            preflightStatuses: preflightStatuses,
+            recommendedRegionID: MapRegionRecommendation.regionID(
+                systemRegionCode: "LV",
+                comparisons: comparisons
             )
         )
 
         expect(
-            items.first?.comparison.catalogMap.regionId == "LTU"
-                && items.first?.isRecommended == true,
-            "the Mac locale recommends the matching catalog region"
+            lithuanianItems.first?.comparison.catalogMap.regionId == "LTU"
+                && lithuanianItems.first?.isRecommended == true
+                && latvianItems.first?.comparison.catalogMap.regionId == "LVA"
+                && latvianItems.first?.isRecommended == true,
+            "the Mac locale recommends the matching Lithuania and Latvia catalog regions"
         )
     }
 
     private static func testUpToDateMapIsNotActionable() {
         let comparison = makeComparison(
-            region: "LTU",
-            name: "Lithuania",
-            installedMap: makeInstalledMap(region: "LTU"),
+            region: "DEU",
+            name: "Germany",
+            installedMap: makeInstalledMap(region: "DEU"),
             status: .upToDate
         )
         let items = MapSelectionPlanner().items(
@@ -109,7 +121,7 @@ struct Stage45MapSelectionTests {
     }
 
     private static func testNewMapProducesReadyPlan() {
-        let comparison = makeComparison(region: "LVA", name: "Latvia", status: .notInstalled)
+        let comparison = makeComparison(region: "FRA", name: "France", status: .notInstalled)
         let items = MapSelectionPlanner().items(
             comparisons: [comparison],
             preflightStatuses: [comparison.id: .readyNewInstall],
@@ -131,19 +143,19 @@ struct Stage45MapSelectionTests {
     }
 
     private static func testMultipleNewMapsUseCombinedStorage() {
-        let lithuania = makeComparison(region: "LTU", name: "Lithuania", status: .notInstalled, size: 300)
-        let latvia = makeComparison(region: "LVA", name: "Latvia", status: .notInstalled, size: 200)
+        let germany = makeComparison(region: "DEU", name: "Germany", status: .notInstalled, size: 300)
+        let france = makeComparison(region: "FRA", name: "France", status: .notInstalled, size: 200)
         let items = MapSelectionPlanner().items(
-            comparisons: [lithuania, latvia],
+            comparisons: [germany, france],
             preflightStatuses: [
-                lithuania.id: .readyNewInstall,
-                latvia.id: .readyNewInstall
+                germany.id: .readyNewInstall,
+                france.id: .readyNewInstall
             ],
             recommendedRegionID: nil
         )
         let plan = MapSelectionPlanner().plan(
             items: items,
-            selectedIDs: [lithuania.id, latvia.id],
+            selectedIDs: [germany.id, france.id],
             currentFreeSpace: 15 * gigabyte
         )
 
@@ -157,8 +169,8 @@ struct Stage45MapSelectionTests {
 
     private static func testStorageUsesInstallSizeNotDownloadSize() {
         let comparison = makeComparison(
-            region: "LTU",
-            name: "Lithuania",
+            region: "DEU",
+            name: "Germany",
             status: .notInstalled,
             size: 900,
             installSize: 300
@@ -181,10 +193,10 @@ struct Stage45MapSelectionTests {
     }
 
     private static func testUpdateIsRepresentedButDoesNotEnterWriteFlow() {
-        let installed = makeInstalledMap(region: "LTU", version: MapVersion(year: 2026, month: 4)!)
+        let installed = makeInstalledMap(region: "DEU", version: MapVersion(year: 2026, month: 4)!)
         let comparison = makeComparison(
-            region: "LTU",
-            name: "Lithuania",
+            region: "DEU",
+            name: "Germany",
             installedMap: installed,
             status: .updateAvailable
         )
@@ -210,7 +222,7 @@ struct Stage45MapSelectionTests {
     }
 
     private static func testUnknownMapIsNotSelectable() {
-        let comparison = makeComparison(region: "LTU", name: "Lithuania", status: .unknown)
+        let comparison = makeComparison(region: "DEU", name: "Germany", status: .unknown)
         let items = MapSelectionPlanner().items(
             comparisons: [comparison],
             preflightStatuses: [comparison.id: .blockedAmbiguousMapIdentity],
@@ -224,7 +236,7 @@ struct Stage45MapSelectionTests {
     }
 
     private static func testInsufficientStorageBlocksPlan() {
-        let comparison = makeComparison(region: "LVA", name: "Latvia", status: .notInstalled, size: 300)
+        let comparison = makeComparison(region: "FRA", name: "France", status: .notInstalled, size: 300)
         let items = MapSelectionPlanner().items(
             comparisons: [comparison],
             preflightStatuses: [comparison.id: .readyNewInstall],
@@ -246,8 +258,8 @@ struct Stage45MapSelectionTests {
 
     private static func testUnknownInstallSizeDoesNotPassStorageGate() {
         let comparison = makeComparison(
-            region: "LTU",
-            name: "Lithuania",
+            region: "DEU",
+            name: "Germany",
             status: .notInstalled,
             includeInstallSize: false
         )
@@ -273,21 +285,21 @@ struct Stage45MapSelectionTests {
 
     private static func testFormalCountryNamesArePresentationOnly() {
         let package = MapPackage(
-            id: "freizeitkarte-ltu",
+            id: "freizeitkarte-deu",
             providerId: "freizeitkarte",
-            regionId: "LTU",
-            name: "Republic of Lithuania",
+            regionId: "DEU",
+            name: "Republic of Germany",
             version: MapVersion(year: 2026, month: 5)!,
             sizeBytes: 300,
             sourceURL: nil,
             releaseDate: nil,
-            identifier: "LTU",
+            identifier: "DEU",
             installSizeBytes: 300
         )
 
         expect(
-            MapDisplayNameNormalizer.normalize(package.name) == "Lithuania"
-                && package.name == "Republic of Lithuania",
+            MapDisplayNameNormalizer.normalize(package.name) == "Germany"
+                && package.name == "Republic of Germany",
             "formal country names are normalized only at the presentation layer"
         )
     }
@@ -325,14 +337,14 @@ struct Stage45MapSelectionTests {
 
     private static func testInstalledAndAvailableListsAreSeparated() {
         let installed = makeComparison(
-            region: "LTU",
-            name: "Republic of Lithuania",
-            installedMap: makeInstalledMap(region: "LTU"),
+            region: "DEU",
+            name: "Republic of Germany",
+            installedMap: makeInstalledMap(region: "DEU"),
             status: .upToDate
         )
         let available = makeComparison(
-            region: "LVA",
-            name: "Republic of Latvia",
+            region: "FRA",
+            name: "Republic of France",
             status: .notInstalled
         )
         let items = MapSelectionPlanner().items(
@@ -348,48 +360,48 @@ struct Stage45MapSelectionTests {
         let availableRows = MapSelectionPresentationModel.available(items, query: "")
 
         expect(
-            installedRows.map(\.title) == ["Lithuania"]
-                && availableRows.map(\.title) == ["Latvia"]
-                && !availableRows.contains(where: { $0.title == "Lithuania" })
-                && MapSelectionPresentationModel.available(items, query: "Lithuania").map(\.title) == ["Lithuania"]
-                && MapSelectionPresentationModel.available(items, query: "Lithuania").allSatisfy({ !$0.isSelectable }),
+            installedRows.map(\.title) == ["Germany"]
+                && availableRows.map(\.title) == ["France"]
+                && !availableRows.contains(where: { $0.title == "Germany" })
+                && MapSelectionPresentationModel.available(items, query: "Germany").map(\.title) == ["Germany"]
+                && MapSelectionPresentationModel.available(items, query: "Germany").allSatisfy({ !$0.isSelectable }),
             "installed catalog maps are excluded from normal browsing but appear as non-selectable search results"
         )
     }
 
     private static func testAvailableSearchUsesDisplayAndRegionNames() {
-        let lithuania = makeComparison(
-            region: "LTU",
-            name: "Republic of Lithuania",
+        let germany = makeComparison(
+            region: "DEU",
+            name: "Republic of Germany",
             status: .notInstalled
         )
-        let latvia = makeComparison(
-            region: "LVA",
-            name: "Republic of Latvia",
+        let france = makeComparison(
+            region: "FRA",
+            name: "Republic of France",
             status: .notInstalled
         )
         let items = MapSelectionPlanner().items(
-            comparisons: [lithuania, latvia],
+            comparisons: [germany, france],
             preflightStatuses: [
-                lithuania.id: .readyNewInstall,
-                latvia.id: .readyNewInstall
+                germany.id: .readyNewInstall,
+                france.id: .readyNewInstall
             ],
             recommendedRegionID: nil
         )
 
         expect(
-            MapSelectionPresentationModel.available(items, query: "ltu")
-                .map(\.title) == ["Lithuania"]
-                && MapSelectionPresentationModel.available(items, query: "latvia")
-                    .map(\.title) == ["Latvia"],
+            MapSelectionPresentationModel.available(items, query: "deu")
+                .map(\.title) == ["Germany"]
+                && MapSelectionPresentationModel.available(items, query: "france")
+                    .map(\.title) == ["France"],
             "Available search filters display names and region identifiers"
         )
 
         expect(
-            MapSelectionPresentationModel.available(items, query: "LITHUANIA")
-                .map(\.title) == ["Lithuania"]
+            MapSelectionPresentationModel.available(items, query: "GERMANY")
+                .map(\.title) == ["Germany"]
                 && MapSelectionPresentationModel.available(items, query: "")
-                    .map(\.title) == ["Latvia", "Lithuania"],
+                    .map(\.title) == ["France", "Germany"],
             "search is case-insensitive and clearing restores the full list"
         )
     }
@@ -433,19 +445,19 @@ struct Stage45MapSelectionTests {
 
     private static func testInstalledPresentationUsesRecognizedInventoryOwnership() {
         let managed = makeComparison(
-            region: "LTU",
-            name: "Lithuania",
+            region: "DEU",
+            name: "Germany",
             installedMap: makeInstalledMap(
-                region: "LTU",
+                region: "DEU",
                 managementState: .managedByTerento
             ),
             status: .upToDate
         )
         let external = makeComparison(
-            region: "LVA",
-            name: "Latvia",
+            region: "FRA",
+            name: "France",
             installedMap: makeInstalledMap(
-                region: "LVA",
+                region: "FRA",
                 managementState: .detectedNotManaged
             ),
             status: .upToDate
@@ -460,6 +472,7 @@ struct Stage45MapSelectionTests {
             status: .upToDate
         )
         let systemComparison = makeComparison(
+            id: "garmin-system",
             region: "DEU",
             name: "Garmin system map",
             installedMap: makeInstalledMap(
@@ -512,7 +525,7 @@ struct Stage45MapSelectionTests {
         )
 
         expect(
-            installed.map(\.title) == ["Latvia", "Lithuania"],
+            installed.map(\.title) == ["France", "Germany"],
             "managed and external recognized maps appear while unknown and system maps stay out"
         )
     }
@@ -552,8 +565,8 @@ struct Stage45MapSelectionTests {
 
     private static func testInstallReviewAvailabilityMatchesRealState() {
         let comparison = makeComparison(
-            region: "LVA",
-            name: "Latvia",
+            region: "FRA",
+            name: "France",
             status: .notInstalled
         )
         let items = MapSelectionPlanner().items(

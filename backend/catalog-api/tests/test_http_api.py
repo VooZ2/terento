@@ -35,17 +35,17 @@ class FakeDatabase(Database):
                 "provider_license_information": "OSM / FZK",
                 "provider_attribution": "Map data © OpenStreetMap contributors",
                 "provider_license_url": "https://www.freizeitkarte-osm.de/garmin/en/imprint.html",
-                "map_id": "freizeitkarte-ltu",
-                "map_name": "Lithuania",
-                "region": "LTU",
-                "country": "Lithuania",
-                "identifier": "LTU+",
+                "map_id": "freizeitkarte-deu",
+                "map_name": "Germany",
+                "region": "DEU",
+                "country": "Germany",
+                "identifier": "DEU+",
                 "version_year": 2026,
                 "version_month": 5,
                 "file_size_bytes": 361187697,
                 "download_size_bytes": 361187697,
                 "install_size_bytes": 348684288,
-                "source_url": "https://download.freizeitkarte-osm.de/garmin/latest/LTU+_en_gmapsupp.img.zip",
+                "source_url": "https://download.freizeitkarte-osm.de/garmin/latest/DEU+_en_gmapsupp.img.zip",
                 "release_date": datetime(2026, 5, 3, tzinfo=timezone.utc).date(),
             }
         ], datetime(2026, 5, 3, tzinfo=timezone.utc)
@@ -112,7 +112,7 @@ class HTTPAPITests(unittest.TestCase):
         document = json.loads(body)
         self.assertEqual(response.status, 200)
         self.assertEqual(document["catalogVersion"], 1)
-        self.assertEqual(document["providers"][0]["maps"][0]["region"], "LTU")
+        self.assertEqual(document["providers"][0]["maps"][0]["region"], "DEU")
         self.assertEqual(
             document["providers"][0]["maps"][0]["downloadSizeBytes"], 361187697
         )

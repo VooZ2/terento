@@ -13,6 +13,7 @@
 # Internal design exploration/validation boards. Final approved identity is
 # documented in brand/BRAND_GUIDELINES.md and the canonical logo assets.
 /brand/previews/
+/design-qa.md
 
 # Local secrets and credentials.
 .env
@@ -20,9 +21,13 @@
 !.env.example
 *.pem
 *.key
+*.p8
 *.p12
 *.pfx
 *.crt
+*.cer
+*.mobileprovision
+*.provisionprofile
 acme.json
 **/acme.json
 id_rsa
@@ -37,6 +42,9 @@ id_ed25519.*
 __MACOSX/
 **/xcuserdata/
 *.xcuserstate
+*.xcarchive
+*.dSYM
+*.dSYM.zip
 *.log
 .cursor/
 **/.build/
@@ -44,3 +52,21 @@ __MACOSX/
 coverage/
 dist/
 node_modules/
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.sql.gz
+
+# Python development and test output.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+*.egg-info/
+.coverage
+coverage.xml
+DerivedData/

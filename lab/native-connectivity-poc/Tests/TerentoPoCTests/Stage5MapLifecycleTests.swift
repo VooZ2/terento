@@ -117,16 +117,16 @@ private func version(_ year: Int, _ month: Int) -> MapVersion {
 
 private func installedMap(
     id: UInt32 = 101,
-    path: String = "/GARMIN/freizeitkarte-ltu.img",
-    filename: String = "freizeitkarte-ltu.img",
+    path: String = "/GARMIN/freizeitkarte-deu.img",
+    filename: String = "freizeitkarte-deu.img",
     sizeBytes: UInt64 = 12,
     version: MapVersion? = version(2026, 5),
     managementState: MapManagementState = .detectedNotManaged
 ) -> InstalledMap {
     InstalledMap(
-        name: "Freizeitkarte LTU+",
+        name: "Freizeitkarte DEU+",
         provider: "Freizeitkarte",
-        region: "LTU",
+        region: "DEU",
         family: "Freizeitkarte",
         rawVersion: version.map { "Release \($0.year - 2000).\(String(format: "%02d", $0.month))" },
         version: version,
@@ -148,13 +148,13 @@ private func installedMap(
 private func lifecycleItem(
     map: InstalledMap,
     classification: MapLifecycleClassification = .terentoManaged,
-    id: String = "freizeitkarte:LTU"
+    id: String = "freizeitkarte:DEU"
 ) -> MapLifecycleItem {
     MapLifecycleItem(
         id: id,
-        title: "Freizeitkarte Lithuania",
+        title: "Freizeitkarte Germany",
         provider: "freizeitkarte",
-        region: "LTU",
+        region: "DEU",
         version: map.version,
         rawVersion: map.rawVersion,
         sizeBytes: map.sizeBytes,
@@ -173,8 +173,8 @@ private func inventory(_ item: MapLifecycleItem) -> MapLifecycleInventory {
 private func testInventoryBuilderUsesRealEntries() throws {
     let map = installedMap()
     let entry = MapInventoryEntry(
-        key: "freizeitkarte:identity:freizeitkarte:LTU",
-        title: "Freizeitkarte Lithuania",
+        key: "freizeitkarte:identity:freizeitkarte:DEU",
+        title: "Freizeitkarte Germany",
         catalogPackage: nil,
         comparison: nil,
         installedMaps: [map],
@@ -281,7 +281,7 @@ private func testUpdatePlanProtectsStorageAndVersionDirection() throws {
         item: item,
         installedVersion: version(2026, 5),
         targetVersion: version(2026, 5),
-        targetFilename: "terento_freizeitkarte_ltu.img",
+        targetFilename: "terento_freizeitkarte_deu.img",
         newMapSizeBytes: 100,
         currentFreeSpace: 3 * 1024 * 1024 * 1024
     )
@@ -291,7 +291,7 @@ private func testUpdatePlanProtectsStorageAndVersionDirection() throws {
         item: item,
         installedVersion: version(2026, 6),
         targetVersion: version(2026, 5),
-        targetFilename: "terento_freizeitkarte_ltu.img",
+        targetFilename: "terento_freizeitkarte_deu.img",
         newMapSizeBytes: 100,
         currentFreeSpace: 3 * 1024 * 1024 * 1024
     )
@@ -301,7 +301,7 @@ private func testUpdatePlanProtectsStorageAndVersionDirection() throws {
         item: item,
         installedVersion: version(2026, 5),
         targetVersion: version(2026, 6),
-        targetFilename: "terento_freizeitkarte_ltu.img",
+        targetFilename: "terento_freizeitkarte_deu.img",
         newMapSizeBytes: 100,
         currentFreeSpace: 3 * 1024 * 1024 * 1024
     )
@@ -311,7 +311,7 @@ private func testUpdatePlanProtectsStorageAndVersionDirection() throws {
         item: item,
         installedVersion: version(2026, 5),
         targetVersion: version(2026, 6),
-        targetFilename: "terento_freizeitkarte_ltu.img",
+        targetFilename: "terento_freizeitkarte_deu.img",
         newMapSizeBytes: 100,
         currentFreeSpace: 100 + StoragePlanner.defaultSafetyReserve - 1
     )
@@ -323,9 +323,9 @@ private func testReplacementOrderAndRecovery() throws {
     let item = lifecycleItem(map: oldMap)
     let before = inventory(item)
     let replacementFile = InstalledMap(
-        name: "Freizeitkarte LTU+",
+        name: "Freizeitkarte DEU+",
         provider: "Freizeitkarte",
-        region: "LTU",
+        region: "DEU",
         family: "Freizeitkarte",
         rawVersion: "Release 26.06",
         version: version(2026, 6),
@@ -334,8 +334,8 @@ private func testReplacementOrderAndRecovery() throws {
         familyId: nil,
         sizeBytes: 20,
         sourceFile: InstalledMapFile(
-            path: "/GARMIN/terento_freizeitkarte_ltu.img",
-            filename: "terento_freizeitkarte_ltu.img",
+            path: "/GARMIN/terento_freizeitkarte_deu.img",
+            filename: "terento_freizeitkarte_deu.img",
             sizeBytes: 20,
             itemID: 900
         ),
@@ -359,7 +359,7 @@ private func testReplacementOrderAndRecovery() throws {
         item: item,
         installedVersion: version(2026, 5),
         targetVersion: version(2026, 6),
-        targetFilename: "terento_freizeitkarte_ltu.img",
+        targetFilename: "terento_freizeitkarte_deu.img",
         newMapSizeBytes: 20,
         currentFreeSpace: 3 * 1024 * 1024 * 1024
     )

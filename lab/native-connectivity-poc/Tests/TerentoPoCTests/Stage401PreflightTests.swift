@@ -314,7 +314,7 @@ struct Stage401PreflightTests {
                 && result.replacementRequired
                 && result.replacementConfirmationRequired
                 && result.backupDecisionRequired
-                && result.proposedFilename == "terento_freizeitkarte_ltu.img",
+                && result.proposedFilename == "terento_freizeitkarte_deu.img",
             "existing EXTERNAL_RECOGNIZED map requires explicit replacement and backup choice"
         )
     }
@@ -388,8 +388,8 @@ struct Stage401PreflightTests {
             familyId: nil,
             sizeBytes: 100,
             sourceFile: InstalledMapFile(
-                path: "/GARMIN/terento_freizeitkarte_ltu.img",
-                filename: "terento_freizeitkarte_ltu.img",
+                path: "/GARMIN/terento_freizeitkarte_deu.img",
+                filename: "terento_freizeitkarte_deu.img",
                 sizeBytes: 100
             ),
             metadataStatus: .unknown,
@@ -507,10 +507,10 @@ struct Stage401PreflightTests {
 
     private static func makePackage(includeInstallSize: Bool = true) -> MapPackage {
         MapPackage(
-            id: "freizeitkarte-ltu",
+            id: "freizeitkarte-deu",
             providerId: "freizeitkarte",
-            regionId: "LTU",
-            name: "Lithuania",
+            regionId: "DEU",
+            name: "Germany",
             version: MapVersion(year: 2026, month: 5)!,
             sizeBytes: 344_000_000,
             sourceURL: nil,
@@ -526,7 +526,7 @@ struct Stage401PreflightTests {
     ) -> MapComparison {
         MapComparison(
             providerName: "Freizeitkarte",
-            regionName: "Lithuania",
+            regionName: "Germany",
             catalogMap: makePackage(),
             installedMap: installedMap,
             status: status
@@ -535,10 +535,10 @@ struct Stage401PreflightTests {
 
     private static func makeInstalledMap() -> InstalledMap {
         InstalledMap(
-            name: "Freizeitkarte LTU",
+            name: "Freizeitkarte DEU",
             provider: "Freizeitkarte",
-            region: "LTU",
-            family: "Freizeitkarte_LTU+",
+            region: "DEU",
+            family: "Freizeitkarte_DEU+",
             rawVersion: "Release 26.05",
             version: MapVersion(year: 2026, month: 5),
             identifier: nil,
@@ -546,8 +546,8 @@ struct Stage401PreflightTests {
             familyId: nil,
             sizeBytes: 344_000_000,
             sourceFile: InstalledMapFile(
-                path: "/GARMIN/freizeitkarte-lithuania.img",
-                filename: "freizeitkarte-lithuania.img",
+                path: "/GARMIN/freizeitkarte-germany.img",
+                filename: "freizeitkarte-germany.img",
                 sizeBytes: 344_000_000
             ),
             metadataStatus: .parsed,

@@ -24,7 +24,7 @@ Derived variants:
 - `logo/logo-white.svg`
 - `logo/logo-currentcolor.svg`
 
-PNG assets are previews/exports only.
+PNG assets in `logo/` are derived exports only.
 
 ## Locked identity
 
@@ -47,11 +47,12 @@ Typography:
 - Inter — UI / body
 - JetBrains Mono — diagnostics only
 
-## Important distinction
+## Scope
 
-The four preview boards demonstrate the intended mature product state.
-
-They do not authorize unsupported production claims before the corresponding functionality exists. During pre-release, use truthful copy such as “Terento is in development.”
+Exploratory preview boards are intentionally kept outside the public
+repository. This directory contains only the approved identity baseline and
+derived logo exports; use truthful product copy such as “Terento is in
+development.”
 
 ## Implementation defaults
 

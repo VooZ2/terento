@@ -5,7 +5,7 @@ Thank you for taking an interest in Terento. Contributions, bug reports, documen
 ## Project status
 
 Terento is an active beta and pre-MVP project for macOS. It is not a stable
-production release. The current public beta is `v1.0.0-beta.5` and includes a
+production release. The current public beta is `v1.0.0-beta.6` and includes a
 notarized Apple Silicon DMG and ZIP; there is no PKG or App Store package.
 
 The production app is the root Xcode macOS target and consumes the SwiftPM
@@ -31,12 +31,13 @@ The current native proof of concept expects:
 - libmtp 1.1.23; and
 - libusb 1.0.30, used by libmtp.
 
-From lab/native-connectivity-poc, the normal build and test commands are:
+From the repository root, the normal build and test commands are:
 
-    export LIBMTP_PREFIX=/opt/homebrew/opt/libmtp
-    export CLANG_MODULE_CACHE_PATH=/tmp/terento-native-poc-module-cache
+    cd lab/native-connectivity-poc
     swift build
-    swift test
+    cd ../..
+    for test_script in Tests/run-*.sh; do "$test_script"; done
+    for test_script in lab/native-connectivity-poc/Tests/run-*.sh; do "$test_script"; done
 
 Hardware tests require an explicitly authorised personal Garmin device. They are not a substitute for automated tests and should not be run against a device containing irreplaceable data.
 

@@ -80,9 +80,9 @@ private func makeMap(
     managementState: MapManagementState = .managedByTerento
 ) -> InstalledMap {
     InstalledMap(
-        name: "Freizeitkarte LTU+",
+        name: "Freizeitkarte DEU+",
         provider: "Freizeitkarte",
-        region: "LTU",
+        region: "DEU",
         family: "Freizeitkarte",
         rawVersion: "Release 26.05",
         version: version(2026, 5),
@@ -91,8 +91,8 @@ private func makeMap(
         familyId: nil,
         sizeBytes: sizeBytes,
         sourceFile: InstalledMapFile(
-            path: "/GARMIN/terento_freizeitkarte_ltu.img",
-            filename: "terento_freizeitkarte_ltu.img",
+            path: "/GARMIN/terento_freizeitkarte_deu.img",
+            filename: "terento_freizeitkarte_deu.img",
             sizeBytes: sizeBytes,
             itemID: id
         ),
@@ -114,10 +114,10 @@ private func makeItem(
 ) -> MapLifecycleItem {
     let firstMap = maps[0]
     return MapLifecycleItem(
-        id: "freizeitkarte:LTU",
-        title: "Freizeitkarte Lithuania",
+        id: "freizeitkarte:DEU",
+        title: "Freizeitkarte Germany",
         provider: "freizeitkarte",
-        region: "LTU",
+        region: "DEU",
         version: firstMap.version,
         rawVersion: firstMap.rawVersion,
         sizeBytes: maps.reduce(0) { $0 &+ $1.sizeBytes },
@@ -167,7 +167,7 @@ private func testSuccessfulBackup() throws {
     try require(result.files[0].sizeBytes == map.sizeBytes, "verified backup size must match the source object")
     try require(result.files[0].sha256 == expectedHash, "verified backup hash must match the manifest hash")
     try require(result.files[0].localURL.lastPathComponent.contains("2026-05"), "backup filename should contain the map version")
-    try require(result.files[0].localURL.lastPathComponent.contains("freizeitkarte-LTU"), "backup filename should contain map identity")
+    try require(result.files[0].localURL.lastPathComponent.contains("freizeitkarte-DEU"), "backup filename should contain map identity")
 }
 
 private func testUnmanagedObjectIsRefused() throws {

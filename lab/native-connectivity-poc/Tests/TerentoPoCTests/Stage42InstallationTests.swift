@@ -2,7 +2,7 @@ import CryptoKit
 import Foundation
 
 private let gigabyte: UInt64 = 1024 * 1024 * 1024
-private let targetPath = "/GARMIN/terento_freizeitkarte_lva.img"
+private let targetPath = "/GARMIN/terento_freizeitkarte_fra.img"
 
 protocol DeviceFileReader: Sendable {
     func readFileInventory() throws -> [DeviceFile]
@@ -217,7 +217,7 @@ struct Stage42InstallationTests {
     static func main() throws {
         var passed = 0
         passed += testValidNewInstall()
-        passed += testExistingLatviaBlocksNewInstall()
+        passed += testExistingFranceBlocksNewInstall()
         passed += testInsufficientSpaceBlocksWrite()
         passed += testUnknownProfileBlocksWrite()
         passed += testTargetPolicyRejectsUnsupportedProviderBeforeTransport()
@@ -236,8 +236,8 @@ struct Stage42InstallationTests {
         passed += testSizeMismatchIsFailure()
         passed += testSampleMismatchIsFailure()
         passed += testMatchingSizeAndSamplesVerify()
-        passed += testCleanupTargetsOnlyNewLatviaObject()
-        passed += testLithuaniaIsNeverCleanupTarget()
+        passed += testCleanupTargetsOnlyNewFranceObject()
+        passed += testGermanyIsNeverCleanupTarget()
         passed += testSuccessMarksMapManaged()
         passed += testSuccessRequiresSampledVerification()
         passed += testSuccessClearsFailedInstallRecoveryRecord()
@@ -259,14 +259,14 @@ struct Stage42InstallationTests {
         )
     }
 
-    private static func testExistingLatviaBlocksNewInstall() -> Int {
-        let harness = makeHarness(installedLatvia: true)
+    private static func testExistingFranceBlocksNewInstall() -> Int {
+        let harness = makeHarness(installedFrance: true)
         let result = harness.run()
         return expect(
             result.status == .blockedExistingMapConflict
                 && result.failure == .existingMapConflict
                 && harness.transport.writeCount == 0,
-            "existing LVA blocks the Stage 4.2 new-install path"
+            "existing FRA blocks the Stage 4.2 new-install path"
         )
     }
 
@@ -295,15 +295,15 @@ struct Stage42InstallationTests {
     private static func testTargetPolicyRejectsUnsupportedProviderBeforeTransport() -> Int {
         let harness = makeHarness()
         let unsupportedPackage = MapPackage(
-            id: "opentopomap-ltu",
+            id: "opentopomap-deu",
             providerId: "opentopomap",
-            regionId: "LTU",
-            name: "OpenTopoMap Lithuania",
+            regionId: "DEU",
+            name: "OpenTopoMap Germany",
             version: MapVersion(year: 2026, month: 5)!,
             sizeBytes: 100,
             sourceURL: nil,
             releaseDate: nil,
-            identifier: "LTU+"
+            identifier: "DEU+"
         )
 
         do {
@@ -326,11 +326,11 @@ struct Stage42InstallationTests {
     }
 
     private static func testTargetPolicyAcceptsAnotherFreizeitkarteRegion() -> Int {
-        let data = Harness.makeIMG(region: "LTU")
+        let data = Harness.makeIMG(region: "DEU")
         let package = Harness.makePackage(
             size: UInt64(data.count),
-            regionID: "LTU",
-            name: "Lithuania"
+            regionID: "DEU",
+            name: "Germany"
         )
         let artifact = Harness.makeArtifact(package: package, data: data)
         let harness = makeHarness()
@@ -350,11 +350,11 @@ struct Stage42InstallationTests {
     }
 
     private static func testTargetPolicyAcceptsMapCapableBetaProfile() -> Int {
-        let data = Harness.makeIMG(region: "LTU")
+        let data = Harness.makeIMG(region: "DEU")
         let package = Harness.makePackage(
             size: UInt64(data.count),
-            regionID: "LTU",
-            name: "Lithuania"
+            regionID: "DEU",
+            name: "Germany"
         )
         let artifact = Harness.makeArtifact(package: package, data: data)
         let identity = betaIdentity()
@@ -379,11 +379,11 @@ struct Stage42InstallationTests {
     }
 
     private static func testTargetPolicyRejectsBetaProfileWithoutGarminRoot() -> Int {
-        let data = Harness.makeIMG(region: "LTU")
+        let data = Harness.makeIMG(region: "DEU")
         let package = Harness.makePackage(
             size: UInt64(data.count),
-            regionID: "LTU",
-            name: "Lithuania"
+            regionID: "DEU",
+            name: "Germany"
         )
         let artifact = Harness.makeArtifact(package: package, data: data)
         let identity = betaIdentity()
@@ -412,7 +412,7 @@ struct Stage42InstallationTests {
         let identity = betaIdentity()
         let profile = DeviceInstallProfileRegistry.local.profile(
             for: identity,
-            deviceFiles: Harness.makeBeforeFiles(installedLatvia: false)
+            deviceFiles: Harness.makeBeforeFiles(installedFrance: false)
         )
         let harness = Harness(profile: profile, identity: identity)
         let result = harness.run()
@@ -440,7 +440,7 @@ struct Stage42InstallationTests {
         )
         let profile = DeviceInstallProfileRegistry.local.profile(
             for: identity,
-            deviceFiles: Harness.makeBeforeFiles(installedLatvia: false)
+            deviceFiles: Harness.makeBeforeFiles(installedFrance: false)
         )
         let harness = Harness(profile: profile, identity: identity)
         let result = harness.run()
@@ -560,7 +560,7 @@ struct Stage42InstallationTests {
         let result = harness.run()
         return expect(
             result.failure == .deviceDisconnected
-                && harness.transport.deletedFilename == "terento_freizeitkarte_lva.img"
+                && harness.transport.deletedFilename == "terento_freizeitkarte_fra.img"
                 && harness.transport.deletedItemID == 77,
             "partial object identity is retained for exact cleanup"
         )
@@ -617,25 +617,25 @@ struct Stage42InstallationTests {
         )
     }
 
-    private static func testCleanupTargetsOnlyNewLatviaObject() -> Int {
+    private static func testCleanupTargetsOnlyNewFranceObject() -> Int {
         let harness = makeHarness()
         harness.transport.readBackMode = .hashMismatch
         _ = harness.run()
         return expect(
-            harness.transport.deletedFilename == "terento_freizeitkarte_lva.img"
+            harness.transport.deletedFilename == "terento_freizeitkarte_fra.img"
                 && harness.transport.deletedItemID == 77,
-            "cleanup can target only the exact new Latvia object"
+            "cleanup can target only the exact new France object"
         )
     }
 
-    private static func testLithuaniaIsNeverCleanupTarget() -> Int {
+    private static func testGermanyIsNeverCleanupTarget() -> Int {
         let harness = makeHarness()
         harness.transport.readBackMode = .missing
         _ = harness.run()
         return expect(
-            harness.transport.deletedFilename != "freizeitkarte-lithuania.img"
-                && harness.transport.deletedFilename != "terento_freizeitkarte_ltu.img",
-            "Lithuania is never a cleanup or replacement target"
+            harness.transport.deletedFilename != "freizeitkarte-germany.img"
+                && harness.transport.deletedFilename != "terento_freizeitkarte_deu.img",
+            "Germany is never a cleanup or replacement target"
         )
     }
 
@@ -644,9 +644,9 @@ struct Stage42InstallationTests {
         let result = harness.run()
         return expect(
             result.installedMap?.managementState == .managedByTerento
-                && harness.manifest.entries.first?.regionId == "LVA"
-                && harness.manifest.entries.first?.filename == "terento_freizeitkarte_lva.img",
-            "verified LVA is marked TERENTO_MANAGED in the local manifest"
+                && harness.manifest.entries.first?.regionId == "FRA"
+                && harness.manifest.entries.first?.filename == "terento_freizeitkarte_fra.img",
+            "verified FRA is marked TERENTO_MANAGED in the local manifest"
         )
     }
 
@@ -696,7 +696,7 @@ struct Stage42InstallationTests {
         let remoteData: Data
 
         init(
-            installedLatvia: Bool = false,
+            installedFrance: Bool = false,
             availableStorage: UInt64 = 15 * gigabyte,
             profile: DeviceInstallProfile? = DeviceInstallProfileRegistry.local.profiles.first,
             identity: DeviceIdentity? = nil,
@@ -710,8 +710,8 @@ struct Stage42InstallationTests {
             recovery = MockFailedInstallRecoveryStore()
 
             let package = Self.makePackage(size: UInt64(remoteData.count))
-            let installed = installedLatvia ? Self.makeLatviaMap(size: UInt64(remoteData.count)) : nil
-            let before = Self.makeBeforeFiles(installedLatvia: installedLatvia)
+            let installed = installedFrance ? Self.makeFranceMap(size: UInt64(remoteData.count)) : nil
+            let before = Self.makeBeforeFiles(installedFrance: installedFrance)
             let resolvedIdentity = identity ?? Self.identity()
             let resolvedArtifact = artifact ?? Self.makeArtifact(
                 package: package,
@@ -722,7 +722,7 @@ struct Stage42InstallationTests {
                 selectedMap: package,
                 comparison: MapComparison(
                     providerName: "Freizeitkarte",
-                    regionName: "Latvia",
+                    regionName: "France",
                     catalogMap: package,
                     installedMap: installed,
                     status: installed == nil ? .notInstalled : .upToDate
@@ -773,8 +773,8 @@ struct Stage42InstallationTests {
 
         fileprivate static func makePackage(
             size: UInt64,
-            regionID: String = "LVA",
-            name: String = "Latvia"
+            regionID: String = "FRA",
+            name: String = "France"
         ) -> MapPackage {
             MapPackage(
                 id: "freizeitkarte-\(regionID.lowercased())",
@@ -821,7 +821,7 @@ struct Stage42InstallationTests {
             )
         }
 
-        fileprivate static func makeIMG(region: String = "LVA") -> Data {
+        fileprivate static func makeIMG(region: String = "FRA") -> Data {
             var bytes = [UInt8](repeating: 0, count: 4096)
             write("DSKIMG", at: 0x10, into: &bytes)
             write("GARMIN", at: 0x41, into: &bytes)
@@ -836,7 +836,7 @@ struct Stage42InstallationTests {
             }
         }
 
-        fileprivate static func makeBeforeFiles(installedLatvia: Bool) -> [DeviceFile] {
+        fileprivate static func makeBeforeFiles(installedFrance: Bool) -> [DeviceFile] {
             var files = [
                 DeviceFile(
                     itemID: 9,
@@ -851,8 +851,8 @@ struct Stage42InstallationTests {
                     itemID: 1,
                     parentID: 0,
                     storageID: 1,
-                    path: "/GARMIN/freizeitkarte-lithuania.img",
-                    filename: "freizeitkarte-lithuania.img",
+                    path: "/GARMIN/freizeitkarte-germany.img",
+                    filename: "freizeitkarte-germany.img",
                     sizeBytes: 344_000_000,
                     isFolder: false
                 ),
@@ -866,14 +866,14 @@ struct Stage42InstallationTests {
                     isFolder: false
                 )
             ]
-            if installedLatvia {
+            if installedFrance {
                 files.append(
                     DeviceFile(
                         itemID: 3,
                         parentID: 0,
                         storageID: 1,
-                        path: "/GARMIN/freizeitkarte-latvia.img",
-                        filename: "freizeitkarte-latvia.img",
+                        path: "/GARMIN/freizeitkarte-france.img",
+                        filename: "freizeitkarte-france.img",
                         sizeBytes: 4096,
                         isFolder: false
                     )
@@ -883,34 +883,34 @@ struct Stage42InstallationTests {
         }
 
         private static func makeAfterFiles() -> [DeviceFile] {
-            makeBeforeFiles(installedLatvia: false) + [
+            makeBeforeFiles(installedFrance: false) + [
                 DeviceFile(
                     itemID: 77,
                     parentID: 0,
                     storageID: 1,
                     path: targetPath,
-                    filename: "terento_freizeitkarte_lva.img",
+                    filename: "terento_freizeitkarte_fra.img",
                     sizeBytes: 4096,
                     isFolder: false
                 )
             ]
         }
 
-        private static func makeLatviaMap(size: UInt64) -> InstalledMap {
+        private static func makeFranceMap(size: UInt64) -> InstalledMap {
             InstalledMap(
-                name: "Freizeitkarte LVA",
+                name: "Freizeitkarte FRA",
                 provider: "Freizeitkarte",
-                region: "LVA",
-                family: "Freizeitkarte_LVA+",
+                region: "FRA",
+                family: "Freizeitkarte_FRA+",
                 rawVersion: "Release 26.05",
                 version: MapVersion(year: 2026, month: 5),
-                identifier: "LVA+",
+                identifier: "FRA+",
                 productId: nil,
                 familyId: nil,
                 sizeBytes: size,
                 sourceFile: InstalledMapFile(
-                    path: "/GARMIN/freizeitkarte-latvia.img",
-                    filename: "freizeitkarte-latvia.img",
+                    path: "/GARMIN/freizeitkarte-france.img",
+                    filename: "freizeitkarte-france.img",
                     sizeBytes: size
                 ),
                 metadataStatus: .parsed,
@@ -920,7 +920,7 @@ struct Stage42InstallationTests {
     }
 
     private static func makeHarness(
-        installedLatvia: Bool = false,
+        installedFrance: Bool = false,
         availableStorage: UInt64 = 15 * gigabyte,
        profile: DeviceInstallProfile? = DeviceInstallProfileRegistry.local.profiles.first,
        artifact: ValidatedMapArtifact? = nil,
@@ -928,7 +928,7 @@ struct Stage42InstallationTests {
         userConfirmed: Bool = true
    ) -> Harness {
         Harness(
-            installedLatvia: installedLatvia,
+            installedFrance: installedFrance,
             availableStorage: availableStorage,
            profile: profile,
            artifact: artifact,

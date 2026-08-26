@@ -65,7 +65,6 @@ fi
 if ! grep -Fq 'mapEngine.beginInstallation(plan: plan)' "$connect_screen" \
     || ! grep -Fq 'shouldContinueAfterPreflight' \
         "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift" \
-    || grep -Fq 'beginLatviaInstallation' "$connect_screen" \
     || grep -Fq 'else if mapEngine.installationPhase == .awaitingConfirmation' "$connect_screen"; then
     print -u2 "FAIL: Review does not own the single authorization or active state still offers a second CTA"
     exit 1

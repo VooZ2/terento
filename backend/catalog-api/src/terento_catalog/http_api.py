@@ -107,6 +107,62 @@ class CatalogService:
     def update_device_support_status(self, device_id: str, support_status: str) -> bool:
         return self.database.update_device_support_status(device_id, support_status)
 
+    def update_device_authorization(
+        self,
+        device_id: str,
+        support_status: str,
+        *,
+        admin_user_id: int | None = None,
+        reason: str | None = None,
+        note: str | None = None,
+    ) -> bool:
+        """Keep the legacy backend enum while exposing authorization in UI."""
+        return self.database.update_device_support_status(
+            device_id,
+            support_status,
+            admin_user_id=admin_user_id,
+            reason=reason,
+            note=note,
+        )
+
+    def update_diagnostic_lifecycle(
+        self,
+        operation_key: str,
+        *,
+        new_status: str,
+        admin_user_id: int | None,
+        resolution_reason: str | None = None,
+        resolution_note: str | None = None,
+        linked_github_issue: str | None = None,
+    ) -> int:
+        return self.database.update_diagnostic_lifecycle(
+            operation_key,
+            new_status=new_status,
+            admin_user_id=admin_user_id,
+            resolution_reason=resolution_reason,
+            resolution_note=resolution_note,
+            linked_github_issue=linked_github_issue,
+        )
+
+    def resolve_compatibility_identity(
+        self,
+        operation_key: str,
+        *,
+        action: str,
+        canonical_device_model_id: str | None,
+        admin_user_id: int | None,
+        reason: str | None = None,
+        note: str | None = None,
+    ) -> int:
+        return self.database.resolve_compatibility_identity(
+            operation_key,
+            action=action,
+            canonical_device_model_id=canonical_device_model_id,
+            admin_user_id=admin_user_id,
+            reason=reason,
+            note=note,
+        )
+
     def admin_is_configured(self) -> bool:
         return self.database.admin_user_count() > 0
 
@@ -173,8 +229,8 @@ class CatalogService:
         for row in rows:
             status = calculate_compatibility_status(
                 successful_install_count=int(row.get("successful_install_count") or 0),
-                recognized_map_capable_evidence=bool(
-                    row.get("recognized_map_capable_evidence", True)
+                recognized_map_capable_evidence=(
+                    row.get("recognized_map_capable_evidence") is True
                 ),
             )
             canonical.append({**row, "calculated_status": status.value if status else None})
@@ -414,19 +470,64 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 body = account_page(updated, self._csrf_cookie() or "", success="Account details updated.")
                 self._send_admin_html(body, send_body=True)
                 return
-            if request_path == "/admin/devices/support":
+            if request_path in {"/admin/devices/support", "/admin/devices/authorization"}:
                 try:
                     device_id = form.get("device_id", "").strip()
                     support_status = form.get("support_status", "").strip().upper()
                     if not device_id or support_status not in {"SUPPORTED", "UNSUPPORTED", "NOT_EVALUATED"}:
-                        raise ValueError("invalid support decision")
-                    if not service.update_device_support_status(device_id, support_status):
+                        raise ValueError("invalid installation authorization")
+                    updated = service.update_device_authorization(
+                        device_id,
+                        support_status,
+                        admin_user_id=int(session["id"]),
+                        reason=form.get("reason", "").strip() or None,
+                        note=form.get("note", "").strip() or None,
+                    )
+                    if not updated:
                         self._send_json(HTTPStatus.NOT_FOUND, {"error": "device_not_found"}, send_body=True, cache_control="no-store")
                         return
                 except ValueError:
-                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_support_decision"}, send_body=True, cache_control="no-store")
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_installation_authorization"}, send_body=True, cache_control="no-store")
                     return
                 self._redirect("/admin/devices", send_body=True)
+                return
+            if request_path in {"/admin/diagnostics/resolve", "/admin/diagnostics/reopen"}:
+                try:
+                    operation_key = form.get("operation_key", "").strip()
+                    is_resolve = request_path.endswith("/resolve")
+                    changed = service.update_diagnostic_lifecycle(
+                        operation_key,
+                        new_status="RESOLVED" if is_resolve else "ACTIVE",
+                        admin_user_id=int(session["id"]),
+                        resolution_reason=form.get("resolution_reason", "").strip() or None,
+                        resolution_note=form.get("resolution_note", "").strip() or None,
+                        linked_github_issue=form.get("linked_github_issue", "").strip() or None,
+                    )
+                    if not changed:
+                        self._send_json(HTTPStatus.NOT_FOUND, {"error": "diagnostic_not_found"}, send_body=True, cache_control="no-store")
+                        return
+                except ValueError:
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_diagnostic_lifecycle"}, send_body=True, cache_control="no-store")
+                    return
+                self._redirect("/admin", send_body=True)
+                return
+            if request_path == "/admin/diagnostics/identity":
+                try:
+                    changed = service.resolve_compatibility_identity(
+                        form.get("operation_key", "").strip(),
+                        action=form.get("identity_action", "").strip().upper(),
+                        canonical_device_model_id=form.get("canonical_device_model_id", "").strip() or None,
+                        admin_user_id=int(session["id"]),
+                        reason=form.get("identity_reason", "").strip() or None,
+                        note=form.get("identity_note", "").strip() or None,
+                    )
+                    if not changed:
+                        self._send_json(HTTPStatus.NOT_FOUND, {"error": "diagnostic_not_found"}, send_body=True, cache_control="no-store")
+                        return
+                except ValueError:
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_identity_resolution"}, send_body=True, cache_control="no-store")
+                    return
+                self._redirect("/admin", send_body=True)
                 return
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=True, cache_control="no-store")
 
@@ -493,7 +594,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 "evidenceStatus": row["calculated_status"],
                 "lastSuccessfulInstallation": row["last_success"].isoformat() if isinstance(row.get("last_success"), datetime) else row.get("last_success"),
                 "lastEvidence": row["last_evidence"].isoformat() if isinstance(row.get("last_evidence"), datetime) else row.get("last_evidence"),
-                "mapCapable": bool(row.get("recognized_map_capable_evidence", True)),
+                "mapCapable": row.get("recognized_map_capable_evidence") is True,
             } for row in rows]
             self._send_json(HTTPStatus.OK, {"schemaVersion": 2, "generatedAt": datetime.now(timezone.utc).isoformat(), "models": models}, send_body=send_body, cache_control="public, max-age=300, stale-while-revalidate=3600")
 
