@@ -5,6 +5,7 @@ repo_root="${0:A:h:h}"
 python3 - "$repo_root" <<'PY'
 from html.parser import HTMLParser
 from pathlib import Path
+import json
 import re
 from urllib.parse import urlparse
 import sys
@@ -105,7 +106,7 @@ for path in home_files:
 for path in download_files:
     html = path.read_text(encoding="utf-8")
     versions = set(re.findall(r"v1\.0\.0-beta\.\d+", html))
-    assert versions == {"v1.0.0-beta.5"}, f"{path}: expected current beta.5 release metadata"
+    assert versions == {"v1.0.0-beta.6"}, f"{path}: expected current beta.6 release metadata"
     items = anchors(path)
     dmg = [item for item in items if urlparse(item["href"]).path.lower().endswith(".dmg")]
     zip_files = [item for item in items if urlparse(item["href"]).path.lower().endswith(".zip")]
@@ -113,6 +114,12 @@ for path in download_files:
     assert len(zip_files) == 1, f"{path}: expected one ZIP download"
     assert "/releases/download/" in dmg[0]["href"], f"{path}: unexpected DMG URL {dmg[0]['href']}"
     assert "/releases/download/" in zip_files[0]["href"], f"{path}: unexpected ZIP URL {zip_files[0]['href']}"
+
+update = json.loads((root / "site/updates/macos-arm64.json").read_text(encoding="utf-8"))
+assert update["build"] == 5
+assert update["releaseLabel"] == "1.0.0-beta.6"
+assert update["downloadURL"].endswith("/Terento-1.0.0-beta.6-macOS-arm64.dmg")
+assert update["sha256"] == "f206816fbee38fe2092cdfc91d58eb68e88c2b0f7ee0c909c327b4b1d455ccb5"
 
 assert "data-umami-event" not in privacy_script
 assert "data-umami-event-file" not in privacy_script
