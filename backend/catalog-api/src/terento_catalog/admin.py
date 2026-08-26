@@ -498,7 +498,7 @@ def _diagnostic_group_summary(identity: str, operations: dict[str, list[dict[str
 
 
 def _admin_brand() -> str:
-    return """<a class="admin-brand" href="https://terento.app/" aria-label="Terento home">
+    return """<a class="admin-brand" href="/admin" aria-label="Terento admin home">
       <img src="https://terento.app/assets/logo-sky.svg" alt="" width="25" height="29">
       <span>Terento</span><span class="admin-badge">Admin</span>
     </a>"""
@@ -509,9 +509,10 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     evidence_class = " class='active'" if active == "evidence" else ""
     campaign_class = " class='active'" if active == "campaigns" else ""
     devices_class = " class='active'" if active == "devices" else ""
-    return f"""<header class="admin-topbar"><div class="admin-topbar-inner">{_admin_brand()}
+    return f"""<header class="admin-topbar"><div class="admin-topbar-inner">
+      <div class="admin-header-zone admin-header-left">{_admin_brand()}</div>
       <nav class="admin-section-nav" aria-label="Admin sections"><a{evidence_class} href="/admin">Installation evidence</a><a{devices_class} href="/admin/devices">Devices</a><a{campaign_class} href="/admin/campaign-links">Campaign links</a></nav>
-      <nav class="admin-nav" aria-label="Admin navigation"><label class="timezone-control"><span class="sr-only">Time zone</span><select id="admin-timezone" aria-label="Time zone" title="Time zone"><option value="browser">Automatic (browser)</option><option value="UTC">UTC</option><option value="Europe/Vilnius">Europe/Vilnius</option><option value="Europe/London">Europe/London</option><option value="Europe/Berlin">Europe/Berlin</option><option value="America/New_York">America/New_York</option><option value="America/Los_Angeles">America/Los_Angeles</option><option value="Asia/Tokyo">Asia/Tokyo</option></select></label><a href="/admin/account">Account</a><span class="admin-user">{username}</span>
+      <nav class="admin-nav" aria-label="Admin navigation"><label class="timezone-control"><span class="sr-only">Time zone</span><select id="admin-timezone" aria-label="Time zone" title="Time zone"><option value="browser">Automatic (browser)</option><option value="UTC">UTC</option><option value="Europe/Vilnius">Europe/Vilnius</option><option value="Europe/London">Europe/London</option><option value="Europe/Berlin">Europe/Berlin</option><option value="America/New_York">America/New_York</option><option value="America/Los_Angeles">America/Los_Angeles</option><option value="Asia/Tokyo">Asia/Tokyo</option></select></label><a class="admin-website-link" href="https://terento.app/" target="_blank" rel="noopener noreferrer" aria-label="Open Terento website in a new tab">Website <span aria-hidden="true">↗</span></a><span class="admin-user" aria-label="Signed in as {username}">{username}</span>
       <form method="post" action="/admin/logout"><input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}"><button class="link-button" type="submit">Sign out</button></form></nav>
     </div></header>"""
 
@@ -1952,13 +1953,13 @@ def _admin_timezone_script() -> str:
           element.textContent = format(element.dataset.adminTimestamp);
           element.title = `${element.textContent} · ${zone}`;
         });
-        select.title = zone;
+        select.title = select.value === 'browser' ? `Automatic browser time zone: ${browserTimeZone}` : zone;
         select.setAttribute('aria-label', `Time zone: ${select.value === 'browser' ? `Automatic (${browserTimeZone})` : select.value}`);
       };
       select.replaceChildren(...timeZones.map((value) => {
         const option = document.createElement('option');
         option.value = value;
-        option.textContent = value === 'browser' ? `Browser · ${browserTimeZone}` : value;
+        option.textContent = value === 'browser' ? `Auto · ${browserTimeZone}` : value;
         return option;
       }));
       select.value = selectedTimeZone;
@@ -1992,21 +1993,22 @@ button{cursor:pointer}
 .admin-action-dialog button:not(.secondary-button),.auth-card button:not(.link-button),.copy-button,.device-support-review button[type="submit"]{min-height:var(--admin-control-height);padding:8px 12px;border:0;border-radius:var(--admin-control-radius);background:var(--interactive);color:#fff;font-weight:700}
 .admin-action-dialog button:not(.secondary-button):hover,.auth-card button:not(.link-button):hover,.copy-button:hover,.device-support-review button[type="submit"]:hover{background:var(--interactive-hover)}
 .admin-topbar{position:sticky;top:0;z-index:30;border-bottom:1px solid color-mix(in srgb,var(--border) 78%,transparent);background:var(--off-white);box-shadow:0 1px 0 rgba(34,42,43,.04)}
-.admin-topbar-inner{width:min(calc(100% - 48px),var(--max-width));min-height:68px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px}
+.admin-topbar-inner{width:min(calc(100% - 48px),var(--max-width));min-height:68px;margin:0 auto;display:grid;grid-template-columns:minmax(180px,1fr) max-content minmax(385px,1fr);align-items:center;gap:16px}
+.admin-header-zone{min-width:0}
+.admin-header-left{display:flex;align-items:center;justify-self:start}
 .admin-brand{display:inline-flex;align-items:center;gap:10px;text-decoration:none;color:var(--graphite);font-family:"Instrument Sans","Helvetica Neue",Arial,sans-serif;font-size:20px;font-weight:700;letter-spacing:-.02em}
 .admin-brand img{width:25px;height:29px;object-fit:contain}
 .admin-badge{display:inline-flex;align-items:center;min-height:22px;padding:3px 8px;border:1px solid color-mix(in srgb,var(--sky) 48%,var(--border));border-radius:999px;color:var(--interactive);font-family:"Inter",sans-serif;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
-.admin-section-nav{display:flex;align-items:center;gap:4px;margin-left:auto;color:var(--secondary);font-size:13px;font-weight:650}
-.admin-section-nav a{padding:7px 10px;border-radius:8px;text-decoration:none}
-.admin-section-nav a:hover,.admin-section-nav a.active{background:var(--surface);color:var(--interactive)}
-.admin-nav{display:flex;align-items:center;gap:18px;color:var(--secondary);font-size:13px}
-.admin-nav a{text-decoration:none}
-.admin-nav a:hover{color:var(--interactive)}
-.admin-user{color:var(--graphite);font-weight:650}
+.admin-section-nav{display:flex;align-items:center;justify-content:center;gap:4px;justify-self:center;color:var(--secondary);font-size:13px;font-weight:650}
+.admin-section-nav a,.admin-nav a,.link-button{display:inline-flex;align-items:center;min-height:32px;padding:6px 8px;border:1px solid transparent;border-radius:var(--admin-control-radius);background:none;text-decoration:none;color:var(--secondary);font-weight:650;transition:background-color .15s ease,border-color .15s ease,color .15s ease}
+.admin-section-nav a:hover,.admin-nav a:hover,.link-button:hover,.admin-section-nav a:active,.admin-nav a:active,.link-button:active{background:color-mix(in srgb,var(--sky) 12%,transparent);color:var(--interactive)}
+.admin-section-nav a.active{background:color-mix(in srgb,var(--sky) 13%,var(--off-white));border-color:color-mix(in srgb,var(--sky) 28%,var(--border));color:var(--interactive);box-shadow:none}
+.admin-nav{display:flex;align-items:center;justify-self:end;min-width:0;gap:8px;color:var(--secondary);font-size:13px;white-space:nowrap}
+.admin-nav form{display:flex;align-items:center;margin:0}
+.admin-user{padding:6px 0;color:var(--graphite);font-weight:650;white-space:nowrap}
 .timezone-control{display:flex;align-items:center;gap:7px;color:var(--secondary);font-size:11px;font-weight:650;white-space:nowrap}
-.timezone-control select{max-width:205px;min-height:32px;padding:5px 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--graphite);font-size:11px}
-.admin-nav form{margin:0}
-.link-button{padding:0;border:0;background:none;color:var(--interactive);font-weight:650;text-decoration:underline;text-underline-offset:3px}
+.timezone-control select{width:clamp(150px,17vw,205px);min-height:var(--admin-control-height);padding:8px var(--admin-control-padding-x);border:1px solid var(--border);border-radius:var(--admin-control-radius);background:var(--surface);color:var(--graphite);font-size:var(--admin-control-font-size)}
+.admin-website-link{white-space:nowrap}
 .dashboard{width:min(calc(100% - 48px),var(--max-width));margin:0 auto;padding:40px 0 64px}
 .heading-row{display:flex;align-items:flex-end;justify-content:space-between;gap:32px;margin-bottom:28px}
 .eyebrow,.section-kicker{margin:0 0 8px;color:var(--interactive);font-size:12px;font-weight:750;letter-spacing:.14em;text-transform:uppercase}
@@ -2185,8 +2187,9 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .admin-action-dialog textarea{resize:vertical}
 .dialog-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-@media(max-width:800px){.admin-topbar-inner,.dashboard{width:min(calc(100% - 32px),var(--max-width))}.admin-section-nav{margin-left:0}.heading-row{align-items:flex-start;flex-direction:column;gap:12px}.updated-at{margin:0}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.diagnostic-model-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-bar input{width:min(100%,360px)}.filter-bar{align-items:stretch}.filter-bar label,.filter-bar select,.filter-bar input{flex:1 1 170px}.public-status{align-items:flex-start;flex-direction:column}.public-status-value{width:100%;justify-content:space-between;flex-wrap:wrap}.status-guide-grid{grid-template-columns:1fr}.campaign-fields{grid-template-columns:1fr}.campaign-field-wide{grid-column:auto}.attribution-preview{grid-template-columns:1fr}.sync-summary{white-space:normal!important}.device-detail-grid{grid-template-columns:1fr}.device-support-review form{grid-template-columns:1fr}.diagnostic-operation-heading{flex-direction:column}.diagnostic-actions{justify-content:flex-start}.diagnostic-detail-summary{grid-template-columns:1fr}.diagnostic-actions-grid{grid-template-columns:1fr}.github-review{grid-column:auto}}
-@media(max-width:560px){.admin-topbar-inner{align-items:flex-start;flex-direction:column;padding:14px 0}.admin-section-nav{width:100%;overflow:auto}.admin-section-nav a{white-space:nowrap}.admin-nav{width:100%;justify-content:space-between;gap:10px;flex-wrap:wrap}.timezone-control{width:100%;justify-content:space-between}.timezone-control select{max-width:none;flex:1}.dashboard{padding-top:28px}.metrics{gap:8px}.metric{min-height:92px;padding:14px}.metric strong{font-size:26px}.diagnostic-model-metrics{gap:8px}.diagnostic-model-metrics article{padding:12px}.auth-card{width:calc(100% - 32px);padding:24px}.section-heading{align-items:flex-start;flex-direction:column;gap:4px}.campaign-card{padding:16px}.campaign-preset-row{grid-template-columns:1fr;gap:8px}.generated-url-row{grid-template-columns:1fr}.copy-button{width:100%}.copy-status{min-height:18px}.device-dialog-inner,.diagnostic-detail-inner{padding:18px}.device-detail-grid dl div,.device-detail-secondary dl div{grid-template-columns:1fr;gap:2px}.device-detail-grid dd,.device-detail-secondary dd{text-align:left}.diagnostic-technical-details dl{grid-template-columns:1fr}.diagnostic-summary-action{float:none;display:block;margin-top:6px}.github-link-form{grid-template-columns:1fr}.github-link-form button{width:100%}}
+@media(max-width:800px){.admin-topbar-inner,.dashboard{width:min(calc(100% - 32px),var(--max-width))}.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}.heading-row{align-items:flex-start;flex-direction:column;gap:12px}.updated-at{margin:0}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.diagnostic-model-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-bar input{width:min(100%,360px)}.filter-bar{align-items:stretch}.filter-bar label,.filter-bar select,.filter-bar input{flex:1 1 170px}.public-status{align-items:flex-start;flex-direction:column}.public-status-value{width:100%;justify-content:space-between;flex-wrap:wrap}.status-guide-grid{grid-template-columns:1fr}.campaign-fields{grid-template-columns:1fr}.campaign-field-wide{grid-column:auto}.attribution-preview{grid-template-columns:1fr}.sync-summary{white-space:normal!important}.device-detail-grid{grid-template-columns:1fr}.device-support-review form{grid-template-columns:1fr}.diagnostic-operation-heading{flex-direction:column}.diagnostic-actions{justify-content:flex-start}.diagnostic-detail-summary{grid-template-columns:1fr}.diagnostic-actions-grid{grid-template-columns:1fr}.github-review{grid-column:auto}}
+@media(max-width:980px){.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}}
+@media(max-width:560px){.admin-topbar-inner{align-items:flex-start;flex-direction:column;padding:14px 0}.admin-header-left,.admin-section-nav,.admin-nav{width:100%}.admin-section-nav{order:0;overflow:auto;justify-content:flex-start}.admin-section-nav a{white-space:nowrap}.admin-nav{justify-content:space-between;gap:10px;flex-wrap:wrap}.timezone-control{width:100%;justify-content:space-between}.timezone-control select{width:auto;flex:1}.dashboard{padding-top:28px}.metrics{gap:8px}.metric{min-height:92px;padding:14px}.metric strong{font-size:26px}.diagnostic-model-metrics{gap:8px}.diagnostic-model-metrics article{padding:12px}.auth-card{width:calc(100% - 32px);padding:24px}.section-heading{align-items:flex-start;flex-direction:column;gap:4px}.campaign-card{padding:16px}.campaign-preset-row{grid-template-columns:1fr;gap:8px}.generated-url-row{grid-template-columns:1fr}.copy-button{width:100%}.copy-status{min-height:18px}.device-dialog-inner,.diagnostic-detail-inner{padding:18px}.device-detail-grid dl div,.device-detail-secondary dl div{grid-template-columns:1fr;gap:2px}.device-detail-grid dd,.device-detail-secondary dd{text-align:left}.diagnostic-technical-details dl{grid-template-columns:1fr}.diagnostic-summary-action{float:none;display:block;margin-top:6px}.github-link-form{grid-template-columns:1fr}.github-link-form button{width:100%}}
 @media(max-width:800px){.device-summary-strip{align-items:flex-start;flex-direction:column;gap:6px}.device-summary-sync{text-align:left;white-space:normal}.device-filter-bar .results-count{width:100%;margin:2px 4px 0}.device-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.device-detail-grid{grid-template-columns:1fr}.device-catalog-details dl div{grid-template-columns:1fr;gap:2px}.device-catalog-details dd{text-align:left}.device-detail-grid dd{text-align:left}.device-filter-bar .results-count{margin-left:0}.device-dialog-inner{padding:18px}}
 @media(max-width:900px){.device-table-wrap{overflow-x:auto;overflow-y:visible}.device-table-wrap table{min-width:1050px}.device-table-wrap thead th{top:0}}

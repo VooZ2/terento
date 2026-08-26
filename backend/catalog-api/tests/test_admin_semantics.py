@@ -212,6 +212,32 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertNotIn("Evidence status", body)
         self.assertNotIn("Last tested", body)
 
+    def test_shared_admin_header_keeps_three_zones_and_lightweight_utility_actions(self):
+        body = devices_page([], None, {"username": "operator"}, "csrf").decode()
+
+        self.assertIn(
+            '<a class="admin-brand" href="/admin" aria-label="Terento admin home">',
+            body,
+        )
+        self.assertNotIn('href="https://terento.app/" aria-label="Terento home"', body)
+        self.assertIn('class="admin-header-zone admin-header-left"', body)
+        self.assertIn('class="admin-section-nav" aria-label="Admin sections"', body)
+        self.assertIn('class="admin-nav" aria-label="Admin navigation"', body)
+        self.assertIn(
+            'class="admin-website-link" href="https://terento.app/"',
+            body,
+        )
+        self.assertIn('target="_blank" rel="noopener noreferrer"', body)
+        self.assertIn('Website <span aria-hidden="true">↗</span>', body)
+        self.assertIn('aria-label="Signed in as operator"', body)
+        self.assertNotIn('>Account</a>', body)
+        self.assertIn("Auto · ${browserTimeZone}", body)
+        self.assertIn("Automatic browser time zone: ${browserTimeZone}", body)
+        self.assertIn(
+            "grid-template-columns:minmax(180px,1fr) max-content minmax(385px,1fr)",
+            body,
+        )
+
     def test_modal_campaign_and_timezone_details_keep_the_refined_workflows(self):
         devices_body = devices_page([], None, {"username": "operator"}, "csrf").decode()
         campaign_body = campaign_links_page({"username": "operator"}, "csrf").decode()
