@@ -17,7 +17,7 @@ ALLOWED_KEYS = {
     "operationId", "mapResultIndex", "selectedMapCount", "appBuild", "releaseLabel",
     "failureStage", "failureCode", "nativeFailureCode", "writeStarted",
     "remoteObjectCreated", "cleanupAttempted", "cleanupSucceeded",
-    "transferProgressBucket",
+    "transferProgressBucket", "rawMTPModel", "identityResolutionCode",
 }
 FORBIDDEN_KEY_PARTS = ("serial", "unitid", "unit_id", "path", "manifest", "username", "token", "password")
 
@@ -85,6 +85,16 @@ def validate_event(raw: bytes) -> dict[str, Any]:
         value = event.get(key)
         if value is not None and (not isinstance(value, str) or len(value) > 160 or "/Users/" in value or "file://" in value):
             raise EvidenceValidationError(f"invalid_{key}")
+    raw_mtp_model = event.get("rawMTPModel")
+    if raw_mtp_model is not None and (
+        not isinstance(raw_mtp_model, str)
+        or not raw_mtp_model.strip()
+        or len(raw_mtp_model) > 160
+        or "/Users/" in raw_mtp_model
+        or "file://" in raw_mtp_model
+        or any(ord(character) < 32 for character in raw_mtp_model)
+    ):
+        raise EvidenceValidationError("invalid_rawMTPModel")
     compatibility_identity = str(event.get("compatibilityIdentity") or event["model"]).strip()
     if not compatibility_identity:
         raise EvidenceValidationError("invalid_compatibilityIdentity")
@@ -166,6 +176,7 @@ def _validate_v3(event: dict[str, Any]) -> None:
         "INSTALL_FAILED_CLEANUP", "INSTALL_BLOCKED_TRANSACTION_ALREADY_RUNNING",
         "INSTALL_FAILED_INVALID_STATE_TRANSITION", "INSTALL_BLOCKED_VERIFICATION_REQUIRED",
         "INSTALL_NOT_STARTED_AFTER_EARLIER_FAILURE",
+        "INSTALL_BLOCKED_STABLE_WATCH_IDENTITY_UNAVAILABLE",
     }
     if event.get("failureCode") not in failure_codes | {None}:
         raise EvidenceValidationError("invalid_failure_code")
@@ -173,10 +184,15 @@ def _validate_v3(event: dict[str, Any]) -> None:
         "TARGET_ALREADY_EXISTS", "REMOTE_FILE_MISSING", "OBJECT_ID_MISMATCH",
         "UNSUPPORTED_DEVICE", "DEVICE_DISCONNECTED", "SEND_OBJECT_FAILED",
         "READBACK_FAILED", "DELETE_FAILED", "MTP_OPEN_FAILED", "GARMIN_ROOT_COUNT_INVALID",
-        "PREFLIGHT_MTP_READ_FAILED",
+        "PREFLIGHT_MTP_READ_FAILED", "LIVE_IDENTITY_MISMATCH",
+        "STABLE_WATCH_IDENTITY_UNAVAILABLE", "GARMIN_DEVICE_XML_INVALID",
     }
     if event.get("nativeFailureCode") not in native_codes | {None}:
         raise EvidenceValidationError("invalid_native_failure_code")
+    if event.get("identityResolutionCode") not in {
+        None, "MTP_SERIAL", "GARMIN_UNIT_ID", "UNAVAILABLE"
+    }:
+        raise EvidenceValidationError("invalid_identity_resolution_code")
     if event["phaseOutcome"] == "SUCCEEDED" and any(event.get(key) is not None for key in ("failureStage", "failureCode", "nativeFailureCode")):
         raise EvidenceValidationError("inconsistent_success_diagnostics")
     if event["phaseOutcome"] in {"FAILED", "NOT_STARTED"} and (

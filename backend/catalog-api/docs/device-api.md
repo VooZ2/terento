@@ -24,10 +24,12 @@ response shape fails closed and preserves the previous catalog.
 
 ## Device catalog versus compatibility
 
-`/devices/catalog.json` answers only: “This Garmin product exists in the
-official current retail catalog.” It does not answer whether Terento can
-connect to it or install maps on it. Compatibility status is deliberately
-absent from this public contract. Retail rows are collector-managed; inactive
+`/devices/catalog.json` primarily answers: “This Garmin product exists in the
+official current retail catalog.” Its additive nullable `mapCapable` field
+reports only the reviewed Garmin Map Manager capability classification used by
+the beta client; it is not public compatibility evidence and does not by
+itself authorize a write. Compatibility status is deliberately absent from
+this public contract. Retail rows are collector-managed; inactive
 retail rows remain in the database for continuity, while reviewed historical
 rows have `record_source = HISTORICAL_REVIEWED` and
 `collector_managed = false` and are intentionally excluded from this endpoint.

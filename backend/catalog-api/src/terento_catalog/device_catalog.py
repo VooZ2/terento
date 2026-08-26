@@ -82,6 +82,7 @@ def build_device_catalog(
                 "partNumber": _clean_text(row["part_number"]),
                 "productURL": _public_https_url(row.get("product_url")),
                 "active": row["active"],
+                "mapCapable": bool(row["map_capable"]) if row.get("map_capable") is not None else None,
                 "asset": asset,
             }
         )
