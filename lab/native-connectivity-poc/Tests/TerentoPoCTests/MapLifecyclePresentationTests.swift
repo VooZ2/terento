@@ -171,6 +171,34 @@ func runMapLifecyclePresentationTests() throws {
         "three valid actions use one ordered action group"
     )
 
+    let withheldUpdate = resolver.resolve(
+        item: managed,
+        comparison: comparison(status: .updateAvailable),
+        hasIntegrityRecord: true,
+        hasValidatedUpdateProfile: true,
+        acquisitionAvailability: .withheldRussia
+    )
+    try require(withheldUpdate.allows(.backup), "withheld managed map retains safe backup")
+    try require(withheldUpdate.allows(.remove), "withheld managed map retains safe removal")
+    try require(!withheldUpdate.allows(.update), "withheld managed map does not expose update")
+    try require(
+        withheldUpdate.status == "Updates are not offered for this map"
+            && comparison(status: .updateAvailable).status == .updateAvailable,
+        "withheld update presentation preserves factual UPDATE_AVAILABLE state"
+    )
+    let withheldWithoutProfile = resolver.resolve(
+        item: managed,
+        comparison: comparison(status: .updateAvailable),
+        hasIntegrityRecord: true,
+        hasValidatedUpdateProfile: false,
+        acquisitionAvailability: .withheldCrimea
+    )
+    try require(
+        withheldWithoutProfile.status == "Updates are not offered for this map"
+            && withheldWithoutProfile.actions == [.backup, .remove],
+        "withheld update policy remains neutral without a validated update profile"
+    )
+
     let transferable = resolver.resolve(
         item: managed,
         comparison: comparison(status: .upToDate),

@@ -23,19 +23,12 @@ private enum InstallationTimelineLayout {
     static let manageProgressWidth: CGFloat = 220
 }
 
-private enum AboutUpdateState: Equatable {
-    case idle
-    case checking
-    case latest
-    case available(TerentoAppUpdateManifest)
-    case unavailable(String)
-}
-
 struct ConnectScreen: View {
     @ObservedObject var deviceEngine: DeviceEngine
     @ObservedObject var mapEngine: MapEngine
     @ObservedObject var lifecycleViewModel: MapLifecycleViewModel
     @ObservedObject var evidenceController: InstallationEvidenceController
+    @ObservedObject var appUpdateController: AppUpdateController
     @State private var selectedSection: TerentoSection = .device
     @State private var localInstallStep: LocalInstallStep = .choose
     @State private var troubleshootingExpanded = false
@@ -44,7 +37,7 @@ struct ConnectScreen: View {
     @State private var availableMapsExpanded = true
     @State private var otherMapsExpanded = false
     @State private var freizeitkarteMapsExpanded = true
-    @State private var aboutUpdateState: AboutUpdateState = .idle
+    @State private var updatePrompt: TerentoAppUpdateManifest?
     @State private var mapSearchText = ""
     @FocusState private var mapSearchFieldFocused: Bool
     @State private var resolvedDeviceAsset = ResolvedDeviceAsset.fallback
@@ -123,6 +116,15 @@ struct ConnectScreen: View {
             || installationOperationIsActive
     }
 
+    private var updatePresentationIsSafe: Bool {
+        !deviceEngine.isReading
+            && deviceEngine.state != .ejecting
+            && !mapEngine.isBusy
+            && !lifecycleViewModel.isBusy
+            && !installationOperationIsActive
+            && updatePrompt == nil
+    }
+
     var body: some View {
         HStack(spacing: 0) {
             TerentoSidebar(
@@ -190,6 +192,12 @@ struct ConnectScreen: View {
         .onChange(of: mapEngine.state) { newState in
             updatePresenceMonitoring(for: newState)
         }
+        .onChange(of: mapSelectionItems) { items in
+            selectedMapIDs = MapSelectionPresentationModel.validSelectionIDs(
+                selectedMapIDs,
+                items: items
+            )
+        }
         .onChange(of: mapEngine.installationPhase) { phase in
             updatePresenceMonitoring(for: mapEngine.state)
             recordInstallationEvidenceIfNeeded()
@@ -212,6 +220,32 @@ struct ConnectScreen: View {
 
             selectedSection = .installMaps
             localInstallStep = .done
+        }
+        .onAppear {
+            presentUpdatePromptIfSafe()
+        }
+        .onChange(of: appUpdateController.state) { _ in
+            presentUpdatePromptIfSafe()
+        }
+        .onChange(of: updatePresentationIsSafe) { _ in
+            presentUpdatePromptIfSafe()
+        }
+        .sheet(item: $updatePrompt) { update in
+            AppUpdatePromptView(
+                update: update,
+                onDownload: {
+                    if appUpdateController.openDownload(for: update) {
+                        updatePrompt = nil
+                    }
+                },
+                onLater: {
+                    appUpdateController.deferPrompt(for: update)
+                    updatePrompt = nil
+                },
+                onReleaseNotes: {
+                    _ = appUpdateController.openReleaseNotes(for: update)
+                }
+            )
         }
     }
 
@@ -340,35 +374,15 @@ struct ConnectScreen: View {
     }
 
     private func checkForAppUpdate() {
-        guard aboutUpdateState != .checking else {
-            return
-        }
-
-        aboutUpdateState = .checking
-        Task { @MainActor in
-            do {
-                let result = try await TerentoAppUpdateService().check()
-                switch result {
-                case .latest:
-                    aboutUpdateState = .latest
-                case let .available(update):
-                    aboutUpdateState = .available(update)
-                }
-            } catch {
-                aboutUpdateState = .unavailable(
-                    error.localizedDescription
-                )
-            }
-        }
+        appUpdateController.checkForUpdates()
     }
 
-    private func openAppUpdate(_ update: TerentoAppUpdateManifest) {
-        guard NSWorkspace.shared.open(update.downloadURL) else {
-            aboutUpdateState = .unavailable(
-                "The update download could not be opened. Try again later."
-            )
+    private func presentUpdatePromptIfSafe() {
+        guard let update = appUpdateController.claimPromptIfSafe(updatePresentationIsSafe) else {
             return
         }
+
+        updatePrompt = update
     }
 
     /// Leaves a failed install flow without discarding its recovery record,
@@ -609,7 +623,7 @@ struct ConnectScreen: View {
                                 .foregroundStyle(TerentoColors.secondaryText)
                                 .fixedSize(horizontal: false, vertical: true)
 
-                            Text("Version \(TerentoAppMetadata.version)")
+                            Text(TerentoAppMetadata.displayVersion)
                                 .font(.terentoUI(size: 14, weight: .medium))
                                 .foregroundStyle(TerentoColors.secondaryText)
                         }
@@ -623,7 +637,7 @@ struct ConnectScreen: View {
                         .padding(.top, 14)
 
                     aboutSection(title: "Updates") {
-                        switch aboutUpdateState {
+                        switch appUpdateController.state {
                         case .idle:
                             Text("Check whether a newer Terento version is available.")
                                 .font(.terentoUI(size: 15, weight: .medium))
@@ -643,7 +657,7 @@ struct ConnectScreen: View {
                             }
                             .disabled(true)
                             .padding(.top, 8)
-                        case .latest:
+                        case .upToDate:
                             Text("You're using the latest version.")
                                 .font(.terentoUI(size: 15, weight: .medium))
                                 .foregroundStyle(TerentoColors.secondaryText)
@@ -657,11 +671,37 @@ struct ConnectScreen: View {
                                 .font(.terentoUI(size: 15, weight: .medium))
                                 .foregroundStyle(TerentoColors.secondaryText)
 
-                            SecondaryButton(title: "Install update") {
-                                openAppUpdate(update)
+                            HStack(spacing: 12) {
+                                SecondaryButton(title: "Download") {
+                                    _ = appUpdateController.openDownload(for: update)
+                                }
+
+                                if update.releaseNotesURL != nil {
+                                    Button("What’s new ↗") {
+                                        _ = appUpdateController.openReleaseNotes(for: update)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .foregroundStyle(TerentoColors.interactive)
+                                }
                             }
                             .padding(.top, 8)
-                        case let .unavailable(message):
+                        case let .incompatible(update):
+                            Text(
+                                "A newer version of Terento is available, but it requires macOS "
+                                    + "\(update.minimumMacOS ?? "a newer version") or later."
+                            )
+                                .font(.terentoUI(size: 15, weight: .medium))
+                                .foregroundStyle(TerentoColors.secondaryText)
+
+                            if update.releaseNotesURL != nil {
+                                Button("What’s new ↗") {
+                                    _ = appUpdateController.openReleaseNotes(for: update)
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(TerentoColors.interactive)
+                                .padding(.top, 8)
+                            }
+                        case let .failed(message):
                             Text(message)
                                 .font(.terentoUI(size: 15, weight: .medium))
                                 .foregroundStyle(TerentoColors.secondaryText)
@@ -693,6 +733,11 @@ struct ConnectScreen: View {
                         Text("Device state, maps, and Terento manifests stay on this Mac. Optional privacy-minimised installation reports are sent only when you choose to share them.")
                             .font(.terentoUI(size: 15, weight: .medium))
                             .foregroundStyle(TerentoColors.secondaryText)
+
+                        Text("Terento may contact terento.app when the app starts to check whether a newer version is available. This request is not used for analytics or user tracking.")
+                            .font(.terentoUI(size: 13, weight: .regular))
+                            .foregroundStyle(TerentoColors.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
 
                         Toggle("Share compatibility reports", isOn: compatibilitySharingBinding)
                             .toggleStyle(.checkbox)
@@ -2189,6 +2234,47 @@ private struct TerentoBrandLockup: View {
     }
 }
 
+private struct AppUpdatePromptView: View {
+    let update: TerentoAppUpdateManifest
+    let onDownload: () -> Void
+    let onLater: () -> Void
+    let onReleaseNotes: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 7) {
+                Text("Terento \(update.releaseLabel) is available")
+                    .font(.title3.weight(.semibold))
+
+                Text(
+                    update.summary?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+                        ? update.summary!
+                        : "A newer version of Terento is ready."
+                )
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            HStack {
+                if update.releaseNotesURL != nil {
+                    Button("What’s new ↗", action: onReleaseNotes)
+                        .buttonStyle(.plain)
+                        .foregroundStyle(TerentoColors.interactive)
+                }
+
+                Spacer()
+
+                Button("Later", action: onLater)
+                    .keyboardShortcut(.cancelAction)
+                Button("Download", action: onDownload)
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(24)
+        .frame(width: 420)
+    }
+}
+
 private struct SidebarConnectionStatus: View {
     let state: DeviceConnectionState
     let canEject: Bool
@@ -3011,8 +3097,8 @@ private struct ManageMapRow: View {
     var body: some View {
         TerentoMapRow(
             title: item.title,
-            detail: operation?.phase == .completed ? "Action complete" : item.manageDetailLabel,
-            note: operation?.message,
+            detail: operation?.phase == .completed ? "Action complete" : manageDetail,
+            note: operation?.message ?? availability.reason,
             contentSpacing: 9,
             rowVerticalPadding: 10
         ) {
@@ -3031,6 +3117,12 @@ private struct ManageMapRow: View {
                 )
             }
         }
+    }
+
+    private var manageDetail: String {
+        availability.status == "Updates are not offered for this map"
+            ? availability.status
+            : item.manageDetailLabel
     }
 
     private func perform(_ action: MapLifecycleAction) {
@@ -3454,6 +3546,7 @@ struct MapSelectionRow: View {
         TerentoMapRow(
             title: item.title,
             detail: detail,
+            note: item.acquisitionAvailability.detailedExplanation,
             contentSpacing: 9,
             rowVerticalPadding: 10,
             showsDivider: showsDivider
@@ -3463,7 +3556,9 @@ struct MapSelectionRow: View {
                     Toggle("", isOn: $isSelected)
                         .toggleStyle(.checkbox)
                         .labelsHidden()
-                } else if showsSelectionControl && !isAlreadyInstalledSearchResult {
+                } else if showsSelectionControl
+                    && item.acquisitionAvailability == .available
+                    && !isAlreadyInstalledSearchResult {
                     Image(systemName: statusIcon)
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(statusColor)
@@ -3476,12 +3571,16 @@ struct MapSelectionRow: View {
                     .frame(width: 24)
             }
         } trailing: {
-            if showsSize {
+            if showsSize && item.acquisitionAvailability == .available {
                 Text(item.installSizeBytes.map(formatBytes) ?? "Size calculated before installation")
                     .font(.terentoUI(size: 13, weight: .medium))
                     .foregroundStyle(TerentoColors.secondaryText)
                     .multilineTextAlignment(.trailing)
                     .frame(maxWidth: 190, alignment: .trailing)
+            } else if item.acquisitionAvailability != .available {
+                Text("Unavailable")
+                    .font(.terentoUI(size: 13, weight: .medium))
+                    .foregroundStyle(TerentoColors.secondaryText)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -3490,7 +3589,7 @@ struct MapSelectionRow: View {
             guard isAvailable, item.isSelectable else { return }
             isSelected.toggle()
         }
-        .opacity(item.isSelectable || item.comparison.status == .upToDate ? 1 : 0.78)
+        .opacity(item.acquisitionAvailability != .available || item.isSelectable || item.comparison.status == .upToDate ? 1 : 0.78)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(isAvailable && item.isSelectable && showsSelectionControl
@@ -3499,6 +3598,10 @@ struct MapSelectionRow: View {
     }
 
     private var detail: String {
+        if let status = item.acquisitionAvailability.shortStatus {
+            return status
+        }
+
         if isAlreadyInstalledSearchResult {
             return "Already installed"
         }
@@ -3558,6 +3661,10 @@ struct MapSelectionRow: View {
     }
 
     private var accessibilityLabel: String {
+        if item.acquisitionAvailability != .available {
+            return item.acquisitionAccessibilityLabel ?? "\(item.title), unavailable"
+        }
+
         if isAlreadyInstalledSearchResult {
             return "\(item.title), Already installed"
         }

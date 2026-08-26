@@ -54,6 +54,11 @@ Terento keeps the process intentionally small:
 - lets you back up or remove maps installed by Terento; and
 - leaves Garmin's own maps and other unknown files alone.
 
+The complete Freizeitkarte catalog remains visible. Under Terento's current
+acquisition policy, downloads and updates are not offered for russia or
+Crimea; installed Terento-owned maps still retain safe backup and explicit
+removal controls.
+
 <p align="center">
   <img
     src=".github/assets/terento-install-maps.png"

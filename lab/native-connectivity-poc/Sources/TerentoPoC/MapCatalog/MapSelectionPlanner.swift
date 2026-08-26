@@ -22,12 +22,24 @@ struct MapSelectionItem: Identifiable, Equatable, Sendable {
     let comparison: MapComparison
     let displayName: String
     let installSizeBytes: UInt64?
-    let action: MapSelectionAction
+    let lifecycleAction: MapSelectionAction
+    let canonicalRegionIdentity: CanonicalMapRegionIdentity?
+    let acquisitionAvailability: MapAcquisitionAvailability
     let preflightStatus: InstallationPreflightStatus?
     let isRecommended: Bool
 
     var title: String {
         displayName
+    }
+
+    var action: MapSelectionAction { lifecycleAction }
+
+    var acquisitionAccessibilityLabel: String? {
+        guard acquisitionAvailability != .available,
+              let explanation = acquisitionAvailability.detailedExplanation else {
+            return nil
+        }
+        return "\(title). Map download unavailable. \(explanation)"
     }
 
     var installedVersionLabel: String? {
@@ -54,6 +66,7 @@ struct MapSelectionItem: Identifiable, Equatable, Sendable {
     }
 
     var isSelectable: Bool {
+        guard acquisitionAvailability == .available else { return false }
         switch action {
         case .install:
             return preflightStatus == .readyNewInstall
@@ -130,6 +143,7 @@ struct MapRegionRecommendation: Sendable {
 
 struct MapSelectionPlanner: Sendable {
     private let storagePlanner: StoragePlanner
+    private let acquisitionPolicy = MapPackageAcquisitionPolicyResolver()
 
     init(storagePlanner: StoragePlanner = StoragePlanner()) {
         self.storagePlanner = storagePlanner
@@ -166,14 +180,20 @@ struct MapSelectionPlanner: Sendable {
 
         return uniqueComparisons.values
             .map { comparison in
-                MapSelectionItem(
-                    id: comparison.catalogMap.id,
-                    package: comparison.catalogMap,
+                let package = comparison.catalogMap
+                let identity = acquisitionPolicy.canonicalIdentity(for: package)
+                let availability = acquisitionPolicy.availability(for: package)
+                return MapSelectionItem(
+                    id: package.id,
+                    package: package,
                     comparison: comparison,
-                    displayName: displayNames[comparison.catalogMap.id]
-                        ?? MapDisplayNameNormalizer.normalize(comparison.catalogMap.name),
-                    installSizeBytes: comparison.catalogMap.installSizeBytes,
-                    action: action(for: comparison.status),
+                    displayName: availability == .withheldCrimea
+                        ? "Crimea"
+                        : displayNames[package.id] ?? MapDisplayNameNormalizer.normalize(package.name),
+                    installSizeBytes: package.installSizeBytes,
+                    lifecycleAction: action(for: comparison.status),
+                    canonicalRegionIdentity: identity,
+                    acquisitionAvailability: availability,
                     preflightStatus: preflightStatuses[comparison.id],
                     isRecommended: recommendedRegionID.map {
                         MapIdentity.normalizeRegion(comparison.catalogMap.regionId)
@@ -202,11 +222,14 @@ struct MapSelectionPlanner: Sendable {
         currentFreeSpace: UInt64
     ) -> InstallationPlan {
         let selectedItems = items.filter { selectedIDs.contains($0.id) }
-        let installItems = selectedItems.filter { $0.action == .install }
+        let installItems = selectedItems.filter {
+            $0.action == .install && $0.acquisitionAvailability == .available
+        }
         let updateItems = selectedItems.filter { $0.action == .update }
         let noActionItems = selectedItems.filter { $0.action == .noAction }
 
         let blockedItems = selectedItems.filter { item in
+            guard item.acquisitionAvailability == .available else { return true }
             switch item.action {
             case .install:
                 return item.preflightStatus != .readyNewInstall
@@ -219,7 +242,7 @@ struct MapSelectionPlanner: Sendable {
         // represented in a defensive plan for lifecycle tests, but it must
         // never consume the Install screen's storage projection.
         let selectedSizes = selectedItems
-            .filter { $0.action == .install }
+            .filter { $0.action == .install && $0.acquisitionAvailability == .available }
             .map(\.installSizeBytes)
         let storagePlan = storagePlanner.plan(
             currentFreeSpace: currentFreeSpace,
@@ -232,6 +255,9 @@ struct MapSelectionPlanner: Sendable {
         if selectedItems.isEmpty {
             status = .noSelection
             reason = "Select a map to continue."
+        } else if selectedItems.contains(where: { $0.acquisitionAvailability != .available }) {
+            status = .blocked
+            reason = "Downloads are not offered for this region under Terento's current policy."
         } else if !updateItems.isEmpty {
             status = .blocked
             reason = "Map updates require a separate safe replacement step."

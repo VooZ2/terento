@@ -21,7 +21,10 @@ swiftc \
     "$project_root/Tests/TerentoPoCTests/Stage41AcquisitionTests.swift" \
     -o "$binary_path"
 
-"$binary_path"
+(
+    cd "$project_root"
+    "$binary_path"
+)
 
 bundled_catalog="$project_root/Sources/TerentoPoC/Resources/Maps/catalog.json"
 if ! jq -e '
@@ -38,7 +41,7 @@ if ! jq -e '
     exit 1
 fi
 
-print "PASS: bundled fallback contains all 63 downloadable packages with final IMG sizes"
+printf '%s\n' "PASS: bundled fallback contains all 63 downloadable packages with final IMG sizes"
 
 if grep -Eq 'LibMTPBridge|MTPTransport|SendObject|DeleteObject|MoveObject|RenameObject|Backup' \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapPackageAcquisition.swift"; then
@@ -46,4 +49,16 @@ if grep -Eq 'LibMTPBridge|MTPTransport|SendObject|DeleteObject|MoveObject|Rename
     exit 1
 fi
 
-print "PASS: acquisition layer has no Garmin transport or write dependency"
+printf '%s\n' "PASS: acquisition layer has no Garmin transport or write dependency"
+
+if [[ $(grep -c 'downloadClient.download' \
+        "$project_root/Sources/TerentoPoC/MapCatalog/MapPackageAcquisition.swift") -ne 1 ]] \
+    || ! grep -Fq 'acquirer.acquire(' \
+        "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift" \
+    || ! grep -Fq 'acquirer.acquire(' \
+        "$project_root/Sources/TerentoPoC/Installation/SafeUpdateTransaction.swift"; then
+    print -u2 "FAIL: acquisition policy gate is not shared by install and Safe Update before the sole HTTP call"
+    exit 1
+fi
+
+printf '%s\n' "PASS: install and Safe Update share the final acquisition gate before the sole HTTP call"

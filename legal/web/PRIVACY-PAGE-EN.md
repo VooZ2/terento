@@ -10,6 +10,11 @@ It does not cover the privacy practices of Freizeitkarte or OpenStreetMap. Map f
 
 The website and app do not provide an account or login and do not require an email address. Device state, maps, Terento manifests and local installation records stay on your Mac. Local installation records are not sent to Terento unless you choose to share compatibility reports.
 
+The app may contact `terento.app` when it starts to check whether a newer
+version is available. This automatic update request is not used for analytics
+or user tracking; it only fetches release metadata. Terento does not download,
+mount or install the DMG in the background.
+
 ## Compatibility reports
 
 For a new installation, the macOS beta shows a visible compatibility-sharing

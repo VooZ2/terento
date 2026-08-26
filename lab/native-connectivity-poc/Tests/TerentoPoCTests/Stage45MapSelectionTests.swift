@@ -29,8 +29,12 @@ struct Stage45MapSelectionTests {
         testInstallReviewAvailabilityMatchesRealState()
         testSelectedMapDividerPolicy()
         testInstallationFlowPresentation()
+        testWithheldCatalogRowsRemainVisibleAndNonSelectable()
+        testCrimeaSearchAliasesAndPresentation()
+        testStaleWithheldSelectionIsClearedAndBlocked()
+        testAcquisitionAccessibilityLabels()
 
-        print("PASS: 20 Stage 4.5 map selection tests")
+        print("PASS: 24 Stage 4.5 map selection tests")
     }
 
     private static func testCatalogRegionsProduceOneCanonicalList() {
@@ -671,6 +675,117 @@ struct Stage45MapSelectionTests {
                     preflightSucceeded: false
                 ),
             "active installation owns its UI state while independent MTP conflicts remain visible"
+        )
+    }
+
+    private static func testWithheldCatalogRowsRemainVisibleAndNonSelectable() {
+        let russia = makeComparison(
+            id: "freizeitkarte-rus-central",
+            region: "RUS-CENTRAL",
+            name: "Russian Federation, Central Federal District",
+            status: .notInstalled,
+            identifier: "RUS_CENTRAL"
+        )
+        let items = MapSelectionPlanner().items(
+            comparisons: [russia],
+            preflightStatuses: [russia.id: .readyNewInstall],
+            recommendedRegionID: nil
+        )
+        expect(
+            MapSelectionPresentationModel.available(items, query: "").count == 1
+                && items.first?.acquisitionAvailability == .withheldRussia
+                && items.first?.lifecycleAction == .install
+                && items.first?.isSelectable == false
+                && items.first?.package == russia.catalogMap,
+            "withheld russia packages remain unchanged and visible while acquisition is non-selectable"
+        )
+    }
+
+    private static func testCrimeaSearchAliasesAndPresentation() {
+        let crimea = makeComparison(
+            id: "freizeitkarte-rus-crimea",
+            region: "RUS-CRIMEA",
+            name: "Russian Federation, Crimean Federal District",
+            status: .notInstalled,
+            identifier: "RUS_CRIMEA"
+        )
+        let items = MapSelectionPlanner().items(
+            comparisons: [crimea],
+            preflightStatuses: [crimea.id: .readyNewInstall],
+            recommendedRegionID: nil
+        )
+        let queries = ["Crimea", "Ukraine", "RUS-CRIMEA", "RUS_CRIMEA", "freizeitkarte-rus-crimea"]
+        expect(
+            items.first?.title == "Crimea"
+                && items.first?.acquisitionAvailability.detailedExplanation
+                    == "Crimea is part of Ukraine and is temporarily occupied by russia."
+                && queries.allSatisfy { MapSelectionPresentationModel.available(items, query: $0).count == 1 },
+            "Crimea uses the policy title and is searchable by geographic and provider identities"
+        )
+    }
+
+    private static func testStaleWithheldSelectionIsClearedAndBlocked() {
+        let crimea = makeComparison(
+            id: "freizeitkarte-rus-crimea",
+            region: "RUS-CRIMEA",
+            name: "Russian Federation, Crimean Federal District",
+            status: .notInstalled,
+            identifier: "RUS_CRIMEA"
+        )
+        let items = MapSelectionPlanner().items(
+            comparisons: [crimea],
+            preflightStatuses: [crimea.id: .readyNewInstall],
+            recommendedRegionID: nil
+        )
+        let staleIDs: Set<String> = [crimea.id]
+        let plan = MapSelectionPlanner().plan(
+            items: items,
+            selectedIDs: staleIDs,
+            currentFreeSpace: 15 * gigabyte
+        )
+        expect(
+            MapSelectionPresentationModel.validSelectionIDs(staleIDs, items: items).isEmpty
+                && plan.status == .blocked
+                && !plan.canContinue
+                && plan.installItems.isEmpty,
+            "stale withheld selections are cleared and cannot enter the install plan"
+        )
+    }
+
+    private static func testAcquisitionAccessibilityLabels() {
+        let russia = makeComparison(
+            id: "freizeitkarte-rus-central",
+            region: "RUS-CENTRAL",
+            name: "Russian Federation, Central Federal District",
+            status: .notInstalled,
+            identifier: "RUS_CENTRAL"
+        )
+        let crimea = makeComparison(
+            id: "freizeitkarte-rus-crimea",
+            region: "RUS-CRIMEA",
+            name: "Russian Federation, Crimean Federal District",
+            status: .notInstalled,
+            identifier: "RUS_CRIMEA"
+        )
+        let germany = makeComparison(region: "DEU", name: "Germany", status: .notInstalled)
+        let items = MapSelectionPlanner().items(
+            comparisons: [russia, crimea, germany],
+            preflightStatuses: [
+                russia.id: .readyNewInstall,
+                crimea.id: .readyNewInstall,
+                germany.id: .readyNewInstall
+            ],
+            recommendedRegionID: nil
+        )
+        let byID = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
+        expect(
+            byID[russia.id]?.acquisitionAccessibilityLabel
+                == "Russian Federation, Central Federal District. Map download unavailable. Terento does not offer map downloads for russia while its war of aggression against Ukraine continues."
+                && byID[crimea.id]?.acquisitionAccessibilityLabel
+                    == "Crimea. Map download unavailable. Crimea is part of Ukraine and is temporarily occupied by russia."
+                && byID[germany.id]?.acquisitionAccessibilityLabel == nil
+                && byID[germany.id]?.isSelectable == true,
+            "VoiceOver labels distinguish withheld rows while normal selection stays accessible"
         )
     }
 

@@ -41,6 +41,7 @@ struct MapLifecyclePresentationResolver: Sendable {
         comparison: MapComparison?,
         hasIntegrityRecord: Bool,
         hasValidatedUpdateProfile: Bool,
+        acquisitionAvailability: MapAcquisitionAvailability = .available,
         hasStableWatchIdentity: Bool = false,
         failedInstallRecovery: Bool = false
     ) -> MapLifecycleActionAvailability {
@@ -104,6 +105,9 @@ struct MapLifecyclePresentationResolver: Sendable {
 
         if let comparison {
             switch comparison.status {
+            case .updateAvailable where acquisitionAvailability != .available:
+                status = "Updates are not offered for this map"
+                reason = acquisitionAvailability.detailedExplanation
             case .updateAvailable where hasValidatedUpdateProfile:
                 actions.insert(.update)
                 status = "Update available"

@@ -34,9 +34,12 @@ struct Stage41AcquisitionTests {
         await testMismatchedVersionIsRejected()
         await testArtifactUsesIMGSizeAndHash()
         await testFailedAcquisitionLeavesNoArtifact()
+        testAcquisitionPolicyIdentityMapping()
+        testBundledCatalogPolicyCounts()
+        await testWithheldAcquisitionFailsBeforeWorkspaceAndHTTP()
         testNoDeviceWriteDependency()
 
-        print("PASS: 20 Stage 4.1 acquisition tests")
+        print("PASS: 23 Stage 4.1 acquisition tests")
     }
 
     private static func testCatalogResolvesFrance() {
@@ -582,6 +585,100 @@ struct Stage41AcquisitionTests {
         expect(true, "acquisition layer is transport-independent and read-only")
     }
 
+    private static func testAcquisitionPolicyIdentityMapping() {
+        let resolver = MapPackageAcquisitionPolicyResolver()
+        let aliases = [
+            ("RUS-CRIMEA", "RUS-CRIMEA", "freizeitkarte-rus-crimea"),
+            ("RUS_CRIMEA", "RUS_CRIMEA", "freizeitkarte-rus-crimea"),
+            ("freizeitkarte-rus-crimea", "RUS-CRIMEA", "freizeitkarte-rus-crimea")
+        ]
+        let crimeaResults = aliases.map { identifier, region, id in
+            resolver.canonicalIdentity(for: policyPackage(id: id, region: region, identifier: identifier))
+        }
+        let futureRussia = resolver.availability(
+            for: policyPackage(id: "freizeitkarte-rus-future", region: "RUS-FUTURE", identifier: "RUS_FUTURE")
+        )
+        let safeRegions = ["BLR", "UKR", "DEU"].map {
+            resolver.availability(for: policyPackage(id: "freizeitkarte-\($0.lowercased())", region: $0, identifier: $0))
+        }
+        expect(
+            crimeaResults.allSatisfy { $0 == CanonicalMapRegionIdentity(countryCode: "UA", locality: "CRIMEA") }
+                && futureRussia == .withheldRussia
+                && safeRegions.allSatisfy { $0 == .available },
+            "provider aliases map Crimea first, future RUS variants fail closed, and non-russia regions stay available"
+        )
+    }
+
+    private static func testBundledCatalogPolicyCounts() {
+        do {
+            let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            let data = try Data(contentsOf: root.appendingPathComponent("Sources/TerentoPoC/Resources/Maps/catalog.json"))
+            let packages = try MapCatalogDocumentDecoder().decode(data).packages
+            let resolver = MapPackageAcquisitionPolicyResolver()
+            let grouped = Dictionary(grouping: packages, by: resolver.availability(for:))
+            let crimea = grouped[.withheldCrimea]?.first
+            expect(
+                packages.count == 63
+                    && grouped[.available]?.count == 56
+                    && grouped[.withheldRussia]?.count == 6
+                    && grouped[.withheldCrimea]?.count == 1
+                    && crimea?.name == "Russian Federation, Crimean Federal District"
+                    && ["BLR", "UKR", "DEU"].allSatisfy { region in
+                        packages.first(where: { $0.regionId == region }).map {
+                            resolver.availability(for: $0) == .available
+                        } == true
+                    },
+                "bundled catalog preserves all 63 provider records while policy withholds exactly six russia packages and Crimea"
+            )
+        } catch {
+            expect(false, "bundled catalog preserves all 63 provider records while policy withholds exactly six russia packages and Crimea")
+        }
+    }
+
+    private static func testWithheldAcquisitionFailsBeforeWorkspaceAndHTTP() async {
+        let counter = AcquisitionSideEffectCounter()
+        let fixtures: [(MapPackage, MapAcquisitionAvailability)] = [
+            (policyPackage(id: "freizeitkarte-rus-crimea", region: "RUS-CRIMEA", identifier: "RUS_CRIMEA"), .withheldCrimea),
+            (policyPackage(id: "freizeitkarte-rus-volga", region: "RUS-VOLGA", identifier: "RUS_VOLGA"), .withheldRussia)
+        ]
+        var typedFailures: [MapAcquisitionAvailability] = []
+        for (package, expectedAvailability) in fixtures {
+            do {
+                _ = try await MapPackageAcquirer(
+                    downloadClient: CountingDownloadClient(counter: counter),
+                    workspaceFactory: {
+                        counter.workspaceCreations += 1
+                        return try makeWorkspace()
+                    }
+                ).acquire(package: package)
+            } catch let error as MapAcquisitionError {
+                if error == .acquisitionWithheld(expectedAvailability) {
+                    typedFailures.append(expectedAvailability)
+                }
+            } catch {}
+        }
+        expect(
+            Set(typedFailures) == [.withheldCrimea, .withheldRussia]
+                && counter.workspaceCreations == 0
+                && counter.downloads == 0,
+            "withheld acquisition fails before workspace creation and HTTP"
+        )
+    }
+
+    private static func policyPackage(id: String, region: String, identifier: String) -> MapPackage {
+        MapPackage(
+            id: id,
+            providerId: "freizeitkarte",
+            regionId: region,
+            name: id,
+            version: version(2026, 8),
+            sizeBytes: 100,
+            sourceURL: URL(string: "https://download.freizeitkarte-osm.de/test.zip"),
+            releaseDate: nil,
+            identifier: identifier
+        )
+    }
+
     private static func acquire(
         package: MapPackage,
         source: URL,
@@ -723,6 +820,20 @@ struct Stage41AcquisitionTests {
 
 final class URLRecorder: @unchecked Sendable {
     var url: URL?
+}
+
+final class AcquisitionSideEffectCounter: @unchecked Sendable {
+    var workspaceCreations = 0
+    var downloads = 0
+}
+
+struct CountingDownloadClient: MapPackageDownloadClient, Sendable {
+    let counter: AcquisitionSideEffectCounter
+
+    func download(from url: URL) async throws -> MapPackageDownloadResponse {
+        counter.downloads += 1
+        throw MapAcquisitionError.downloadFailed("unexpected HTTP call")
+    }
 }
 
 struct StubDownloadClient: MapPackageDownloadClient, Sendable {
