@@ -99,3 +99,21 @@ or app-specific password is read from or written to the repository.
 This pipeline does not publish to GitHub, upload release files, or modify Apple
 Developer settings. The `dist/` artifacts are local release outputs until they
 are explicitly attached to a GitHub prerelease.
+
+## Update metadata release checklist
+
+Before distributing a public build:
+
+- increment `CFBundleVersion` monotonically and set the public release label;
+- set the intended `TERENTO_RELEASE_CHANNEL` (`beta` or `stable`);
+- update `site/updates/macos-arm64.json` with the matching version, build,
+  minimum macOS, channel, and canonical DMG `downloadURL`;
+- provide a concise plain-text `summary` and the canonical `releaseNotesURL`;
+- publish and notarize the DMG using this existing process;
+- validate the manifest after publication and confirm its download and notes
+  URLs remain official Terento destinations.
+
+The app performs only a background metadata check and a user-confirmed
+`NSWorkspace` hand-off. It does not download, mount, or replace the app in the
+background. Do not add Sparkle, in-place replacement, rollback, forced update,
+or periodic polling as part of this release flow.

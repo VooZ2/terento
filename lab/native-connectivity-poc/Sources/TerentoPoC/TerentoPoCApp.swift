@@ -5,15 +5,20 @@ import SwiftUI
 struct TerentoPoCApp: App {
     @StateObject private var deviceEngine = DeviceEngine()
     @StateObject private var mapEngine = MapEngine()
+    @StateObject private var appUpdateController = AppUpdateController()
     @Environment(\.openWindow) private var openWindow
 
     var body: some Scene {
         WindowGroup("Terento") {
             ContentView(
                 deviceEngine: deviceEngine,
-                mapEngine: mapEngine
+                mapEngine: mapEngine,
+                appUpdateController: appUpdateController
             )
             .background(TerentoWindowConfigurator())
+            .task {
+                appUpdateController.startAutomaticCheck()
+            }
         }
         .defaultSize(
             width: TerentoWindowPresentation.defaultWidth,
@@ -42,7 +47,7 @@ struct TerentoPoCApp: App {
             }
         }
         Window("About Terento", id: "about") {
-            AboutTerentoView()
+            AboutTerentoView(appUpdateController: appUpdateController)
         }
         .defaultSize(width: 360, height: 330)
         .windowResizability(.contentSize)

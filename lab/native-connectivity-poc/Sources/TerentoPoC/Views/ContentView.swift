@@ -3,12 +3,18 @@ import SwiftUI
 struct ContentView: View {
     @ObservedObject var deviceEngine: DeviceEngine
     @ObservedObject var mapEngine: MapEngine
+    @ObservedObject var appUpdateController: AppUpdateController
     @StateObject private var lifecycleViewModel: MapLifecycleViewModel
     @StateObject private var evidenceController = InstallationEvidenceController()
 
-    init(deviceEngine: DeviceEngine, mapEngine: MapEngine) {
+    init(
+        deviceEngine: DeviceEngine,
+        mapEngine: MapEngine,
+        appUpdateController: AppUpdateController
+    ) {
         self.deviceEngine = deviceEngine
         self.mapEngine = mapEngine
+        self.appUpdateController = appUpdateController
         _lifecycleViewModel = StateObject(
             wrappedValue: MapLifecycleViewModel(
                 deviceEngine: deviceEngine,
@@ -22,7 +28,8 @@ struct ContentView: View {
             deviceEngine: deviceEngine,
             mapEngine: mapEngine,
             lifecycleViewModel: lifecycleViewModel,
-            evidenceController: evidenceController
+            evidenceController: evidenceController,
+            appUpdateController: appUpdateController
         )
     }
 }
