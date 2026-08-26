@@ -1,95 +1,114 @@
-# Terento v1.0.0-beta.5
+# Terento v1.0.0-beta.6
 
 Release date: 2026-08-26
 
-Beta.5 synchronizes the native device compatibility presentation with the
-canonical Terento API. Exact reviewed Garmin variants now retain their model,
-case size, display type, public evidence status, and map capability without a
-local hardcoded status or cross-variant cache inheritance.
+Beta.6 broadens the Garmin smartwatch beta from one tested USB identity to
+reviewed Garmin Map Manager model families, while strengthening the checks
+that protect the connected watch and Terento-managed maps. It also adds
+privacy-minimised failure diagnostics so unsuccessful beta installations can
+be investigated without asking users to send raw logs.
 
-For the reviewed fēnix 8 USB identity, the connected-device screen can now
-show the exact 47 mm AMOLED variant even when the raw MTP model omits the
-display token. Unreviewed size-only identities still fail closed rather than
-guessing AMOLED or Solar.
+This remains a pre-MVP beta for hardware validation. A model being listed by
+Garmin as map-capable allows a guarded beta installation attempt; it is not a
+claim that Terento has already verified that exact model. Freizeitkarte
+remains the only map provider.
 
-This is a pre-MVP beta release for the Terento macOS application. It is
-intended for development and hardware validation; it is not a stable
-production release. Apple Silicon users can download the notarized ZIP or DMG
-from the GitHub release assets. Freizeitkarte is the only map provider in this
-beta.
+## Highlights
 
-## Included
+- Map installation is no longer limited to the fēnix 8 USB PID used by the
+  original hardware test. Reviewed map-capable smartwatch families, including
+  fēnix, epix, Forerunner, Enduro, tactix, quatix, MARQ, Descent, D2 Mach and
+  Venu X1 families, may enter the guarded beta installation flow.
+- Every production write is bound to the live MTP session. The native layer
+  verifies the connected Garmin VID/PID, manufacturer, raw MTP model and one
+  unambiguous `/GARMIN` target before writing. The laboratory Write Test and
+  Interruption Test remain restricted to their validated `0x51b8` identity.
+- fēnix 8 and fēnix 8 Pro are now separate identities in the app, private
+  diagnostics and compatibility data. Case size alone never guesses AMOLED,
+  Solar or MicroLED.
+- Watches without a stable MTP serial can use the Garmin Unit ID from one
+  bounded `/GARMIN/GarminDevice.xml` read for local ownership. The serial and
+  Unit ID values are never uploaded, logged or stored in the manifest.
+- Terento-managed maps can be recovered after moving the same watch to a new
+  Mac or losing the previous local manifest. Recovery verifies the complete
+  map before adopting it and cannot transfer ownership to a different watch.
+- Remove refreshes the live device inventory and resolves current-session MTP
+  handles before deletion. It still removes only a verified Terento-managed
+  map. Backup remains an explicit user choice and is not run automatically.
 
-- guarded Garmin smartwatch discovery, compatibility evaluation, map
-  inventory, source acquisition, installation, backup, removal, and safe
-  update foundations;
-- local manifest-backed ownership and fail-closed protection for unknown and
-  Garmin-owned device files;
-- metadata-only Freizeitkarte catalog and Garmin device catalog services;
-- serialized MTP lifecycle handling and disconnect-safe map lifecycle UI;
-- a native macOS application target with bundled arm64 libmtp/libusb runtime;
-- catalog-driven Freizeitkarte installation for one or several selected maps,
-  including split-header composite-region identity handling, fresh
-  device-backed inventory on Install/Manage navigation, and bounded Finishing
-  progress;
-- beta installation failures now save local operation diagnostics to
-  `~/Library/Logs/Terento/log.txt`, including the selected preflight map and
-  latest scanned Freizeitkarte objects, with a `Show log.txt` action on the
-  failure screen;
-- an About page with app version, update checking, support links, and local
-  privacy statement;
-- API-backed Testing, Tested, Supported, and Verified compatibility status,
-  exact AMOLED/Solar variant isolation, and a bounded exact-identity offline
-  cache;
-- the public Terento landing page with English, German, French, Polish, Czech,
-  and Italian indexable versions, translated metadata, reciprocal `hreflang`,
-  sitemap entries, and a local language preference; and
-- production deployment of the multilingual public landing page at
-  `https://terento.app`.
+## Installation diagnostics and compatibility evidence
+
+- The visible compatibility-sharing choice remains selected by default and
+  can be turned off without limiting installation or removal.
+- Opted-in reports now include one random operation ID per Install action,
+  exact Terento beta/build, a controlled failure stage and code, whether a
+  write or cleanup started, and a coarse transfer-progress range.
+- Download, extraction, validation and preflight failures can be diagnosed but
+  do not reduce a watch model's installation compatibility rate when device
+  writing never started.
+- Multiple selected maps share one operation ID while retaining individual map
+  results. Reports for the same exact model/variant aggregate into one evidence
+  row instead of creating duplicate model rows.
+- Private admin diagnostics show only the sanitized raw MTP model label and
+  whether local identity came from an MTP serial, Garmin Unit ID or was
+  unavailable. They never receive the identifier value, local path, MTP object
+  ID, manifest, map hash, raw error text or log file.
+- The three legacy Swiss-map failures from issue #32 were retained for private
+  investigation but quarantined from the incorrect base fēnix 8 identity.
+
+## Catalog, UI and offline behavior
+
+- The app consumes the canonical API compatibility status instead of deriving
+  Testing, Tested, Supported or Verified locally.
+- The bundled Freizeitkarte fallback contains the complete current 63-package
+  metadata set, including measured final IMG installation sizes. It is used
+  only when the live catalog is unavailable and is presented as potentially
+  stale; it does not limit the remote catalog.
+- Verification wording now distinguishes sampled transfer verification from a
+  complete file proof.
+- App metadata and compatibility reports carry the exact
+  `1.0.0-beta.6` / build `5` identity.
+
+## Safety and privacy
+
+- Garmin-owned, unknown and manually managed files remain read-only.
+- New installs never overwrite an existing target. Update still follows
+  write-new → verify → remove-old and never deletes the working map first.
+- Safe Update behavior is unchanged in beta.6. Its automated suite passes, but
+  the real-device update gate remains pending a genuinely newer Freizeitkarte
+  release.
+- Device manifests and physical-watch ownership keys remain local. There is no
+  account, login, cloud device profile, required email or server-side Garmin
+  identifier storage.
 
 ## Validation status
 
-- Full automated Stage 2–7 validation and Swift/Xcode Release builds pass.
-- The About → Updates flow checks a release metadata endpoint and opens the
-  verified release download for user-confirmed installation. It does not
-  silently replace the running app.
-- The application is Developer ID signed, notarized, stapled, Gatekeeper
-  validated, and distributed as arm64 ZIP and DMG assets containing one
-  `Terento.app`.
-- The harmless write/read/delete roundtrip has passed on one validated Garmin
-  smartwatch profile, including after reconnect.
-- Read-only backup and safe-delete hardware gates have passed for the tested
-  device and exact Terento-owned map.
-- Safe Update is implemented and covered by automated tests, but its physical
-  real-device update gate remains pending a genuinely newer Freizeitkarte
-  release.
-- The public beta release is `v1.0.0-beta.5` with notarized arm64 ZIP and DMG
-  assets published at the [GitHub release page](https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.5).
+- Backend validation: 95 tests passed; backward-compatible migrations 017 and
+  018 are deployed before the beta.6 client.
+- Full automated native Stage 2–7, Install, Recover, Remove, manifest,
+  compatibility, privacy and unchanged Safe Update suites pass.
+- Swift/Xcode arm64 Release build, bundled libmtp/libusb checks, Developer ID
+  signing verification and GitHub CI pass.
+- The fēnix 8 Pro issue #32 correction is based on the reported pre-write
+  failure and automated regression coverage. Public beta evidence is still
+  needed for that exact model.
 
 ## Known limitations
 
-- This beta does not claim universal Garmin smartwatch support. Hardware
-  evidence is specific to one tested Garmin smartwatch profile and
-  connectivity path.
-- The complete first real-product success condition is not declared passed
-  until the end-to-end install/update flow is repeated and verified on real
-  hardware without changing non-Terento files.
-- Freizeitkarte remains the only supported map provider in this phase.
-- The catalog contains metadata only; Terento does not host or mirror map
-  binaries.
-- No PKG, App Store package, or universal Intel/Apple Silicon binary is
-  included in this beta.
+- Map-capable means eligible for a guarded beta attempt, not independently
+  verified compatibility. Exact model status continues to be based on opted-in
+  successful installations.
+- A watch that exposes neither a stable MTP serial nor a valid Garmin Unit ID
+  remains read-only because Terento cannot safely separate two identical
+  physical watches for ownership and later removal.
+- Safe Update has not yet passed its real-device newer-map gate.
+- Freizeitkarte is the only supported map provider. Terento does not host or
+  mirror map binaries.
+- macOS 13 or later on Apple Silicon is required. Intel Macs, App Store, PKG,
+  Windows and Linux distributions are not included.
 
-## Privacy and safety
+## Release artifacts
 
-No account, login, cloud device profile, server-side Garmin Unit ID storage, or
-required email is introduced by this checkpoint. Device manifests remain local
-to the Mac. Terento modifies only files it can prove it owns and prefers a
-safe failure over destructive guessing.
-
-## Release checksums
-
-```text
-Terento-1.0.0-beta.5-macOS-arm64.dmg  a96326e73ebc453e2b46fad3c3e0759e0340a58e26415e3f8b2a85b07583c9c3
-Terento-1.0.0-beta.5-macOS-arm64.zip  bdb807430e533f9ccb3f9f79929e21395844643f3079891cd057a957186a8707
-```
+The final notarized ZIP and DMG checksums are added from the exact published
+artifacts during the release step. Published artifacts and the tag are not
+created until the remaining release gate passes.
