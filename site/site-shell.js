@@ -14,42 +14,48 @@
       close: "Close menu", about: "About", compatibility: "Compatibility",
       faq: "FAQ", download: "Download", language: "Choose language",
       footer: "Footer navigation", status: "Open-source project", legal: "Legal",
-      privacy: "Privacy", stats: "Visit statistics (Umami) do not use cookies.",
+      privacy: "Privacy", support: "Support Terento",
+      stats: "Visit statistics (Umami) do not use cookies.",
     },
     de: {
       home: "Terento Startseite", primary: "Hauptnavigation", menu: "Menü",
       close: "Menü schließen", about: "Über uns", compatibility: "Kompatibilität",
       faq: "FAQ", download: "Download", language: "Sprache wählen",
       footer: "Footer-Navigation", status: "Open-Source-Projekt", legal: "Rechtliches",
-      privacy: "Datenschutz", stats: "Besuchsstatistik (Umami) verwendet keine Cookies.",
+      privacy: "Datenschutz", support: "Support Terento",
+      stats: "Besuchsstatistik (Umami) verwendet keine Cookies.",
     },
     fr: {
       home: "Accueil Terento", primary: "Navigation principale", menu: "Menu",
       close: "Fermer le menu", about: "À propos", compatibility: "Compatibilité",
       faq: "FAQ", download: "Télécharger", language: "Choisir la langue",
       footer: "Navigation du pied de page", status: "Projet open source", legal: "Mentions légales",
-      privacy: "Confidentialité", stats: "Les statistiques de visites (Umami) n’utilisent pas de cookies.",
+      privacy: "Confidentialité", support: "Support Terento",
+      stats: "Les statistiques de visites (Umami) n’utilisent pas de cookies.",
     },
     pl: {
       home: "Strona główna Terento", primary: "Główna nawigacja", menu: "Menu",
       close: "Zamknij menu", about: "O projekcie", compatibility: "Kompatybilność",
       faq: "FAQ", download: "Pobierz", language: "Wybierz język",
       footer: "Nawigacja w stopce", status: "Projekt open source", legal: "Informacje prawne",
-      privacy: "Prywatność", stats: "Statystyki odwiedzin (Umami) nie używają plików cookie.",
+      privacy: "Prywatność", support: "Support Terento",
+      stats: "Statystyki odwiedzin (Umami) nie używają plików cookie.",
     },
     cs: {
       home: "Domů Terento", primary: "Hlavní navigace", menu: "Menu",
       close: "Zavřít menu", about: "O projektu", compatibility: "Kompatibilita",
       faq: "FAQ", download: "Stáhnout", language: "Vybrat jazyk",
       footer: "Navigace v zápatí", status: "Open-source projekt", legal: "Právní informace",
-      privacy: "Soukromí", stats: "Statistiky návštěvnosti (Umami) nepoužívají cookies.",
+      privacy: "Soukromí", support: "Support Terento",
+      stats: "Statistiky návštěvnosti (Umami) nepoužívají cookies.",
     },
     it: {
       home: "Home Terento", primary: "Navigazione principale", menu: "Menu",
       close: "Chiudi il menu", about: "Informazioni", compatibility: "Compatibilità",
       faq: "FAQ", download: "Scarica", language: "Scegli la lingua",
       footer: "Navigazione del piè di pagina", status: "Progetto open source", legal: "Note legali",
-      privacy: "Privacy", stats: "Le statistiche delle visite (Umami) non usano cookie.",
+      privacy: "Privacy", support: "Support Terento",
+      stats: "Le statistiche delle visite (Umami) non usano cookie.",
     },
   };
 
@@ -112,7 +118,10 @@
           <img src="/assets/logo-sky.svg" alt="" width="32" height="32">
           <span>Terento</span>
         </a>
-        <p class="footer-status">${copy.status}</p>
+        <div class="footer-meta">
+          <p class="footer-status">${copy.status}</p>
+          <a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">${copy.support}</a>
+        </div>
       </div>
       <nav class="footer-nav" aria-label="${copy.footer}">
         ${navLink("about")}${navLink("compatibility")}${navLink("faq")}${navLink("download")}
