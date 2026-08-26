@@ -1958,7 +1958,7 @@ def _admin_timezone_script() -> str:
       select.replaceChildren(...timeZones.map((value) => {
         const option = document.createElement('option');
         option.value = value;
-        option.textContent = value === 'browser' ? `Automatic (browser) · ${browserTimeZone}` : value;
+        option.textContent = value === 'browser' ? `Browser · ${browserTimeZone}` : value;
         return option;
       }));
       select.value = selectedTimeZone;
@@ -1977,6 +1977,7 @@ ADMIN_STYLES = """
 @font-face{font-family:"Inter";src:url("https://terento.app/assets/fonts/inter-variable.woff2") format("woff2");font-weight:100 900;font-display:swap}
 :root{--off-white:#F7F3EC;--graphite:#222A2B;--sky:#7898A8;--lichen:#9AA58B;--stone:#B39A78;--interactive:#577787;--interactive-hover:#4F6E7E;--secondary:#6D706F;--surface:#FFFFFF;--surface-muted:#F1EEE7;--border:#D7DDDA;--danger:#9A493D;--success-bg:#E8F0E5;--admin-control-height:38px;--admin-control-radius:8px;--admin-control-padding-x:10px;--admin-control-font-size:13px;--admin-placeholder:#858B89;--admin-focus-ring:3px solid color-mix(in srgb,var(--sky) 58%,white);--admin-topbar-height:68px;--max-width:1440px}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html{min-width:0}
 body{margin:0;min-width:0;background:var(--off-white);color:var(--graphite);font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 a{color:inherit}
@@ -2113,12 +2114,13 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .device-filter-bar .filter-search{flex:1 1 310px}
 .device-filter-bar input{width:100%}
 .device-filter-bar .results-count{align-self:center;margin:0 4px 0 auto;white-space:nowrap}
-.device-table-wrap{overflow-x:auto;overflow-y:visible}
-.device-table-wrap table{min-width:1050px;table-layout:fixed}
-.device-table-wrap th:nth-child(1){width:21%}.device-table-wrap th:nth-child(2){width:19%}.device-table-wrap th:nth-child(3){width:9%}.device-table-wrap th:nth-child(4){width:14%}.device-table-wrap th:nth-child(5){width:11%}.device-table-wrap th:nth-child(6){width:7%}.device-table-wrap th:nth-child(7){width:7%}.device-table-wrap th:nth-child(8){width:12%}
+.device-table-wrap{overflow:visible}
+.device-table-wrap table{min-width:0;table-layout:fixed}
+.device-table-wrap th:nth-child(1){width:20%}.device-table-wrap th:nth-child(2){width:18%}.device-table-wrap th:nth-child(3){width:9%}.device-table-wrap th:nth-child(4){width:14%}.device-table-wrap th:nth-child(5){width:11%}.device-table-wrap th:nth-child(6){width:9%}.device-table-wrap th:nth-child(7){width:8%}.device-table-wrap th:nth-child(8){width:11%}
+.device-table-wrap thead{position:static}
 .device-table-wrap thead th{position:sticky;top:calc(var(--admin-topbar-height) + var(--device-filter-height, 54px) + 18px);z-index:10}
 .device-table-wrap th,.device-table-wrap td{white-space:normal;overflow-wrap:anywhere}
-.device-table-wrap th:nth-child(3),.device-table-wrap th:nth-child(4),.device-table-wrap th:nth-child(5),.device-table-wrap th:nth-child(6),.device-table-wrap th:nth-child(7),.device-table-wrap td:nth-child(3),.device-table-wrap td:nth-child(4),.device-table-wrap td:nth-child(5),.device-table-wrap td:nth-child(6),.device-table-wrap td:nth-child(7){white-space:nowrap}
+.device-table-wrap td:nth-child(3),.device-table-wrap td:nth-child(4),.device-table-wrap td:nth-child(5),.device-table-wrap td:nth-child(6),.device-table-wrap td:nth-child(7){white-space:nowrap}
 .device-table-wrap tbody tr{cursor:pointer}
 .device-table-wrap tbody tr:hover{background:color-mix(in srgb,var(--surface-muted) 52%,white)}
 .device-table-wrap tbody tr:focus-visible{outline:3px solid color-mix(in srgb,var(--sky) 58%,white);outline-offset:-3px}
@@ -2187,6 +2189,7 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 @media(max-width:560px){.admin-topbar-inner{align-items:flex-start;flex-direction:column;padding:14px 0}.admin-section-nav{width:100%;overflow:auto}.admin-section-nav a{white-space:nowrap}.admin-nav{width:100%;justify-content:space-between;gap:10px;flex-wrap:wrap}.timezone-control{width:100%;justify-content:space-between}.timezone-control select{max-width:none;flex:1}.dashboard{padding-top:28px}.metrics{gap:8px}.metric{min-height:92px;padding:14px}.metric strong{font-size:26px}.diagnostic-model-metrics{gap:8px}.diagnostic-model-metrics article{padding:12px}.auth-card{width:calc(100% - 32px);padding:24px}.section-heading{align-items:flex-start;flex-direction:column;gap:4px}.campaign-card{padding:16px}.campaign-preset-row{grid-template-columns:1fr;gap:8px}.generated-url-row{grid-template-columns:1fr}.copy-button{width:100%}.copy-status{min-height:18px}.device-dialog-inner,.diagnostic-detail-inner{padding:18px}.device-detail-grid dl div,.device-detail-secondary dl div{grid-template-columns:1fr;gap:2px}.device-detail-grid dd,.device-detail-secondary dd{text-align:left}.diagnostic-technical-details dl{grid-template-columns:1fr}.diagnostic-summary-action{float:none;display:block;margin-top:6px}.github-link-form{grid-template-columns:1fr}.github-link-form button{width:100%}}
 @media(max-width:800px){.device-summary-strip{align-items:flex-start;flex-direction:column;gap:6px}.device-summary-sync{text-align:left;white-space:normal}.device-filter-bar .results-count{width:100%;margin:2px 4px 0}.device-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.device-detail-grid{grid-template-columns:1fr}.device-catalog-details dl div{grid-template-columns:1fr;gap:2px}.device-catalog-details dd{text-align:left}.device-detail-grid dd{text-align:left}.device-filter-bar .results-count{margin-left:0}.device-dialog-inner{padding:18px}}
+@media(max-width:900px){.device-table-wrap{overflow-x:auto;overflow-y:visible}.device-table-wrap table{min-width:1050px}.device-table-wrap thead th{top:0}}
 @media(max-height:760px){.device-dialog-inner{max-height:calc(100vh - 32px);overflow:auto}.device-dialog-header{position:sticky;top:-1px;z-index:2;padding-bottom:10px;background:var(--surface)}}
 """
 
