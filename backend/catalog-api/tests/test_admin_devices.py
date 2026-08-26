@@ -331,6 +331,17 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertIn("mapOrder = {unknown: 0, no: 1, yes: 2}", body)
         self.assertIn("authorizationOrder = {NOT_EVALUATED: 0, UNSUPPORTED: 1, SUPPORTED: 2}", body)
         self.assertIn("if (aValue === null || aValue === undefined || aValue === '')", body)
+        self.assertIn('th[aria-sort="ascending"] .device-sort-button', body)
+        self.assertIn('th[aria-sort="descending"] .device-sort-button', body)
+        self.assertIn("opacity:.2", body)
+        self.assertIn(".device-dialog .admin-timestamp{white-space:nowrap}", body)
+
+    def test_device_variant_display_normalizes_case_size_without_mutating_input(self):
+        row = device_row(variant="51mm, AMOLED", case_size_mm=51)
+        body = devices_page([row], None, {"username": "operator"}, "csrf").decode()
+        self.assertIn("51 mm, AMOLED", body)
+        self.assertNotIn("51mm, AMOLED", body)
+        self.assertEqual(row["variant"], "51mm, AMOLED")
 
 
 if __name__ == "__main__":
