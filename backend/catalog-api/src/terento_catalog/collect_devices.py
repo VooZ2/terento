@@ -28,7 +28,7 @@ def collect_devices_once(
         raise
 
     if not dry_run:
-        database.upsert_collected_devices(
+        changes = database.upsert_collected_devices(
             result.records,
             collection_complete=result.complete,
         )
@@ -41,6 +41,12 @@ def collect_devices_once(
             canonical_count=result.canonical_devices,
             warning_count=len(result.warnings),
             diagnostics={"warnings": list(result.warnings)},
+            records_total_before=changes["records_total_before"],
+            records_total_after=changes["records_total_after"],
+            records_added=changes["records_added"],
+            records_updated=changes["records_updated"],
+            added_ids=changes["added_ids"],
+            seen_ids=changes["seen_ids"],
         )
 
     for warning in result.warnings:

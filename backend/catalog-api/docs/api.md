@@ -13,7 +13,7 @@ aggregate route. No route serves map binaries.
 
 ## `POST /compatibility/events`
 
-Accepts at most 16 KiB of allowlisted schema-version-1 or schema-version-2 JSON after client
+Accepts at most 16 KiB of allowlisted schema-version-1, schema-version-2, or schema-version-3 JSON after client
 opt-in. Event UUIDs are idempotent. Unknown fields, local paths, malformed
 payloads, non-Freizeitkarte providers, and privacy-prohibited data are
 rejected. A random per-event deletion token is required; older beta payloads
@@ -32,13 +32,26 @@ optional `reconnectVerified` and `mapVisibleAfterReconnect` observations.
 Older beta clients remain accepted when the newer identity fields are absent;
 such model-only evidence must not be matched to a sibling exact variant.
 Reconnect is never required for any compatibility status. The canonical
-aggregate uses the exact successful
-opt-in installation count: `TESTING` for zero successful installations on
+aggregate groups by `canonicalDeviceId` when available and uses exact
+`compatibilityIdentity` only as the fallback for older uncanonicalized events.
+It then uses the successful opt-in installation count: `TESTING` for zero successful installations on
 recognized map-capable evidence, `TESTED` for 1–2, `SUPPORTED` for 3–4, and
 `VERIFIED` for 5 or more. Failed reports, opt-out local installs, and duplicate
 event IDs do not increase the successful count. Firmware variation, physical
 device count, operator review, reconnect, and map visibility are retained only
 as optional evidence dimensions and do not promote a status.
+
+Version 3 groups all map results from one Install press under a random
+`operationId` and records the exact app release/build plus controlled failure
+stage/code, write/remote-object/cleanup booleans, and a coarse transfer
+progress bucket. It never accepts raw native messages, local paths, object
+IDs, manifests, hashes, serials, Unit IDs, or local watch keys. Selected maps
+not reached after an earlier failure use `NOT_STARTED`. Download, extraction,
+source-validation, and preflight failures remain visible in the private
+operation detail but `writeStarted=false` excludes them from device
+compatibility rates. Compatibility thresholds count distinct write-started
+operations, not child map rows; a multi-map operation succeeds only when all
+of its selected map results verify. Legacy events remain one operation each.
 
 ## `DELETE /compatibility/events`
 
@@ -62,7 +75,9 @@ bootstrap secret. Passwords use salted PBKDF2-SHA256;
 opaque sessions and CSRF values are stored only as SHA-256 hashes. Cookies are
 Secure, HttpOnly, SameSite=Strict, and scoped to `/admin`. Login/setup attempts
 are rate limited. Pages include no-store, noindex and restrictive CSP headers.
-Raw event payloads are not displayed. `/internal/compatibility/` redirects to
+The error count links to a private per-operation detail with child map results,
+release/build, failure stage and allowlisted codes. Raw event payloads and raw
+diagnostic text are not displayed. `/internal/compatibility/` redirects to
 this route for the earlier local implementation.
 
 ## `GET https://api.terento.app/admin/campaign-links`
@@ -76,6 +91,33 @@ keeps the canonical parameter order `utm_source`, `utm_medium`,
 admin session, CSRF cookie, no-store response policy, and noindex policy as
 `GET https://api.terento.app/admin`.
 
+## `GET https://api.terento.app/admin/devices`
+
+Returns the authenticated Garmin device observability page. The page is
+limited to Garmin catalog records and combines catalogue metadata, map
+capability, separate operator support state, exact-ID installation
+aggregates, approved cached assets or allowlisted Garmin `sourceAsset`
+thumbnails, and latest successful sync metadata. Map-capable Yes/No uses a
+stored `device_model.map_capable` value when present; otherwise the page
+classifies the canonical model with the same Map Manager prefix list as the
+native macOS client. Unknown remains only for models outside that list. The
+page keeps the dense list paginated in the browser and opens a detail dialog
+for technical fields, including which image origin was used
+(controlled Terento asset vs official Garmin product media).
+
+`GET https://api.terento.app/admin/devices.json` returns the same additive
+data as JSON for admin tooling. The endpoint uses the existing admin session,
+is no-store/noindex, and joins installation events only through
+`canonical_device_model_id`. It is not part of the native or public device
+catalog API contracts.
+
+The page labels the operator field `Support decision` and shows a separate,
+classifier-derived `Evidence status`. `POST /admin/devices/support` accepts
+the CSRF-protected `device_id` and one of `SUPPORTED`, `UNSUPPORTED`, or
+`NOT_EVALUATED`; it updates only `device_model.support_status`. It cannot
+change evidence events, install counts, evidence status, or any native device
+write authorization.
+
 ## `GET /compatibility/public/top-models.json`
 
 Prepared for a later public TOP-models widget. The route returns 404 unless
@@ -85,8 +127,9 @@ statistics. Results are ordered by successful installation count and include
 attempted, successful, failed, canonical model, exact identity, case size,
 display type, canonical device-catalog ID, map-capability, last-evidence, and
 canonical-status fields; firmware and raw event records are omitted. All
-four canonical statuses may be public after review. The public `/compatibility/` page calls this
-endpoint when the public compatibility flag is enabled. The endpoint remains
+four canonical statuses may be public after review. The native macOS client
+continues to use this existing route. The public website uses the additive
+`/compatibility/public/models.json` projection below. The endpoint remains
 default-disabled and the page shows no public evidence when the flag or
 approved aggregate data is absent.
 
@@ -112,6 +155,24 @@ when MTP omits the display token. This is reviewed identity evidence, not an
 inference from case size or artwork. An unreviewed 47 mm identity without
 display evidence must not match either the AMOLED or Solar row, including via
 the native offline cache.
+
+## `GET /compatibility/public/models.json`
+
+Additive evidence-first projection for the public Compatibility page. It uses
+the same default-disabled flag and `APPROVED`/`public_statistics_enabled`
+review gate as the existing route, but it is a separate contract so the
+website does not need to join the retail device catalog. Historical evidence
+rows can therefore appear even when Garmin no longer lists that model in its
+current retail category. The response contains exact identity, evidence
+counts, `evidenceStatus`, family/variant display metadata, and an optional
+`image` object. `image` follows controlled Terento asset → allowlisted Garmin
+`garmin-source` URL → `null`; a null image is a valid public card state.
+
+This endpoint does not expose `supportStatus`, operator review decisions,
+transport profiles, write authorization, Unit IDs, or raw event data. The
+website uses only `evidenceStatus` for its compatibility badge. Existing
+native/web clients are not required to call this endpoint, and
+`/devices/catalog.json` remains unchanged.
 
 ## `GET /health`
 

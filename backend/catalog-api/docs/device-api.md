@@ -11,7 +11,7 @@ The source category is the initial scope for Garmin watch/wearable discovery.
 The collector does not expand into unrelated automotive, marine, cycling,
 handheld, dog, or other product categories. Garmin's retail category is not a
 complete historical device database, so known older models may be inserted
-later from separately reviewed sources.
+from separately reviewed sources.
 
 The current official JSON request is:
 
@@ -25,10 +25,41 @@ response shape fails closed and preserves the previous catalog.
 ## Device catalog versus compatibility
 
 `/devices/catalog.json` answers only: “This Garmin product exists in the
-official catalog.” It does not answer whether Terento can connect to it or
-install maps on it. Compatibility status is deliberately absent from this
-public contract. The existing validated fēnix 8 USB identity (`VID 0x091e`,
-`PID 0x51b8`) is stored separately and is not copied to other devices.
+official current retail catalog.” It does not answer whether Terento can
+connect to it or install maps on it. Compatibility status is deliberately
+absent from this public contract. Retail rows are collector-managed; inactive
+retail rows remain in the database for continuity, while reviewed historical
+rows have `record_source = HISTORICAL_REVIEWED` and
+`collector_managed = false` and are intentionally excluded from this endpoint.
+The existing validated fēnix 8 USB identity (`VID 0x091e`, `PID 0x51b8`) is
+stored separately and is not copied to other devices.
+
+The historical registry in `terento_catalog.historical_devices` is versioned
+and sourced from Garmin's official Connect IQ compatible-device references.
+It includes fēnix 7, fēnix 7S/7X, fēnix 6 variants, epix Gen 2, and Forerunner
+955. A consented evidence event can resolve to one of these rows even when
+the current retail collector has never returned it. Historical rows are never
+deactivated by retail absence.
+
+The private admin view is additive and is not part of this public contract.
+`/admin/devices.json` is authenticated and may include catalogue sync
+metadata, map-capability state, operator support state, installation
+aggregates joined by the exact canonical device record ID, and image
+observability fields (`asset`, `sourceAsset`, `image`). When
+`device_model.map_capable` is NULL, the admin payload classifies the
+canonical model with the same Map Manager prefix list as the native client.
+The HTML page may render an allowlisted `res.garmin.com` `sourceAsset` as a
+thumbnail when no controlled `AVAILABLE` asset exists; that image is not
+proxied by Terento. Public clients must continue to use
+`/devices/catalog.json` for catalog data.
+
+## Admin time display
+
+Authenticated `/admin` pages keep API and storage timestamps in UTC ISO 8601,
+then render them in the visitor's browser time zone by default. The header
+includes a time-zone selector for manual IANA-zone changes; the choice is
+stored only in that browser's local storage. This changes presentation only
+and does not alter API fields, database values, or collector schedules.
 
 ## Canonicalization
 
@@ -104,7 +135,11 @@ metadata. If `sourceAsset` is not yet present, the macOS client may derive the
 same official product-media path from a validated catalog part number. The
 client downloads that source image directly to the user's Mac and caches it
 locally; the catalog API never relays the image. Invalid or incomplete source
-metadata is ignored and the generic fallback remains.
+metadata is ignored and the generic fallback remains. Authenticated admin HTML
+pages, including `/admin/devices`, may additionally load allowlisted
+`https://res.garmin.com` URLs as thumbnails so operators can verify that a
+catalog row has a model-matched official product image. The catalog API still
+never downloads, mirrors, or proxies those bytes.
 
 ## Asset delivery and fallback contract
 
@@ -136,7 +171,22 @@ validated WebP under `/assets/devices/` and changes the record to `AVAILABLE`.
 The public API never serves review storage. The runtime limit is 8 MiB and
 dimensions must be valid and between 1 and 16384 pixels.
 
-## Failure and inactive policy
+## Historical evidence and inactive policy
+
+Compatibility ingestion resolves a reviewed historical identity in the same
+database transaction as event insertion. If no reviewed identity matches, the
+event remains stored under its privacy-minimised textual identity instead of
+being rejected because it is absent from the retail catalog. This resolution
+does not grant a device write and is not consulted by the native write safety
+profile.
+
+The collector writes only current retail rows. A historical row is not part of
+the collector's absence counter and remains active in the database regardless
+of how many weekly retail collections omit it. Current retail rows are never
+deleted automatically; a model is marked inactive only after it is absent
+from three consecutive successful complete collections.
+
+## Failure policy
 
 The collector writes only after the category response has passed shape and
 scope validation. A product-page enrichment failure keeps the successful
