@@ -80,15 +80,29 @@ struct SafeDeleteTarget: Equatable, Sendable {
             itemID: objectID
         )
     }
+
+    func resolvingObjectID(_ objectID: UInt32) -> SafeDeleteTarget {
+        SafeDeleteTarget(
+            deviceKey: deviceKey,
+            mapIdentity: mapIdentity,
+            ownership: ownership,
+            objectID: objectID,
+            expectedPath: expectedPath,
+            expectedFilename: expectedFilename,
+            expectedSizeBytes: expectedSizeBytes,
+            expectedSHA256: expectedSHA256,
+            backup: backup,
+            expectedVersion: expectedVersion
+        )
+    }
 }
 
 struct SafeDeleteDeviceObject: Equatable, Sendable {
     let file: InstalledMapFile
-    /// A native transport may omit the content hash when the caller has
-    /// explicitly selected metadata-only removal. The manifest hash is still
-    /// required on the target; this value is present for backup-protected
-    /// flows such as Safe Update.
-    let sha256: String?
+    /// Full SHA-256 of the freshly resolved live object. Manual removal may
+    /// use a temporary local read for this proof, but must not retain it as a
+    /// user backup unless the user explicitly requested Backup.
+    let sha256: String
 }
 
 /// Transport boundary for SafeDeleteAdapter. The inspect operation must be
@@ -198,8 +212,18 @@ struct SafeDeleteAdapter: Sendable {
             )
         }
 
+
+        guard let currentObjectID = current.file.itemID, currentObjectID != 0 else {
+            return result(
+                target,
+                status: .blockedIntegrityCheck,
+                message: "The map no longer has a valid live object identity. Nothing was removed."
+            )
+        }
+        let resolvedTarget = target.resolvingObjectID(currentObjectID)
+
         do {
-            try transport.deleteExactObject(target)
+            try transport.deleteExactObject(resolvedTarget)
         } catch let error as SafeDeleteTransportError {
             return result(target, status: status(for: error), message: message(for: error))
         } catch {
@@ -225,7 +249,7 @@ struct SafeDeleteAdapter: Sendable {
                 let remaining = try rescan()
                 observedSuccessfulRescan = true
                 let stillPresent = remaining.contains {
-                    $0.itemID == target.objectID || $0.path == target.expectedPath
+                    $0.itemID == currentObjectID || $0.path == target.expectedPath
                 }
                 if !stillPresent {
                     return result(
@@ -315,12 +339,12 @@ struct SafeDeleteAdapter: Sendable {
         _ object: SafeDeleteDeviceObject,
         target: SafeDeleteTarget
     ) -> Bool {
-        object.file.itemID == target.objectID
+        object.file.itemID != nil
+            && object.file.itemID != 0
             && object.file.path == target.expectedPath
             && object.file.filename == target.expectedFilename
             && object.file.sizeBytes == target.expectedSizeBytes
-            && (object.sha256 == nil
-                || normalizedHash(object.sha256 ?? "") == normalizedHash(target.expectedSHA256))
+            && normalizedHash(object.sha256) == normalizedHash(target.expectedSHA256)
     }
 
     private func status(for error: SafeDeleteTransportError) -> SafeDeleteStatus {

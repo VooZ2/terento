@@ -10,7 +10,7 @@ struct CompatibilityDecision: Sendable, Equatable {
     let reason: String
 
     var displayName: String {
-        registryEntry?.displayName ?? (identity.manufacturer + " " + identity.model)
+        registryEntry?.displayName ?? (identity.manufacturer + " " + identity.presentationModel)
     }
 }
 

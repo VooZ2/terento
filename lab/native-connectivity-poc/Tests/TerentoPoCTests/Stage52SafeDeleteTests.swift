@@ -8,6 +8,7 @@ protocol DeviceFileReader: Sendable {
 
 private final class FakeSafeDeleteTransport: SafeDeleteTransport, @unchecked Sendable {
     var events: [String] = []
+    var deletedObjectIDs: [UInt32] = []
     var currentObject: SafeDeleteDeviceObject?
     var deleteError: SafeDeleteTransportError?
 
@@ -21,6 +22,7 @@ private final class FakeSafeDeleteTransport: SafeDeleteTransport, @unchecked Sen
 
     func deleteExactObject(_ target: SafeDeleteTarget) throws {
         events.append("delete")
+        deletedObjectIDs.append(target.objectID)
         if let deleteError {
             throw deleteError
         }
@@ -170,7 +172,10 @@ private func testManagedMapDeletesAfterVerifiedBackup() throws {
 
 private func testManagedMapDeletesWithoutBackup() throws {
     let prepared = validTarget()
-    let current = SafeDeleteDeviceObject(file: prepared.target.sourceFile, sha256: nil)
+    let current = SafeDeleteDeviceObject(
+        file: prepared.target.sourceFile,
+        sha256: prepared.target.expectedSHA256
+    )
     let (result, transport) = run(
         target: prepared.target,
         current: current,
@@ -180,6 +185,29 @@ private func testManagedMapDeletesWithoutBackup() throws {
 
     try require(result.status == .success, "manual remove must not require a local backup")
     try require(transport.events == ["inspect", "delete"], "backup-free remove must still inspect before deleting")
+}
+
+private func testReconnectUsesFreshLiveObjectID() throws {
+    let prepared = validTarget()
+    let liveFile = InstalledMapFile(
+        path: prepared.target.expectedPath,
+        filename: prepared.target.expectedFilename,
+        sizeBytes: prepared.target.expectedSizeBytes,
+        itemID: 777
+    )
+    let current = SafeDeleteDeviceObject(
+        file: liveFile,
+        sha256: prepared.target.expectedSHA256
+    )
+    let (result, transport) = run(
+        target: prepared.target,
+        current: current,
+        requiresVerifiedBackup: false,
+        scans: [[]]
+    )
+
+    try require(result.status == .success, "reconnected managed map should resolve its fresh live object ID")
+    try require(transport.deletedObjectIDs == [777], "delete must use only the freshly resolved live object ID")
 }
 
 private func testBaseManagedFilenameAllowsRecordedMapVersion() throws {
@@ -347,8 +375,8 @@ private func testPostDeleteRescanAndExactIdentityAreRequired() throws {
 
     var wrongIdentity = prepared.target.sourceFile
     wrongIdentity = InstalledMapFile(
-        path: wrongIdentity.path,
-        filename: wrongIdentity.filename,
+        path: "/GARMIN/terento_freizeitkarte_est.img",
+        filename: "terento_freizeitkarte_est.img",
         sizeBytes: wrongIdentity.sizeBytes,
         itemID: 102
     )
@@ -448,6 +476,7 @@ struct Stage52SafeDeleteTests {
         let tests: [(String, () throws -> Void)] = [
             ("managed map deletes after verified backup", testManagedMapDeletesAfterVerifiedBackup),
             ("managed map deletes without backup", testManagedMapDeletesWithoutBackup),
+            ("reconnect uses fresh live object ID", testReconnectUsesFreshLiveObjectID),
             ("base managed filename allows recorded map version", testBaseManagedFilenameAllowsRecordedMapVersion),
             ("composite region managed filename can be removed", testCompositeRegionManagedFilenameCanBeRemoved),
             ("managed filename must match normalized identity", testManagedFilenameMustMatchNormalizedIdentity),

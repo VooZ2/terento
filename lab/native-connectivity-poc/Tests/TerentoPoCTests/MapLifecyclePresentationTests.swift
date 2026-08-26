@@ -171,6 +171,19 @@ func runMapLifecyclePresentationTests() throws {
         "three valid actions use one ordered action group"
     )
 
+    let transferable = resolver.resolve(
+        item: managed,
+        comparison: comparison(status: .upToDate),
+        hasIntegrityRecord: true,
+        hasValidatedUpdateProfile: true,
+        hasStableWatchIdentity: true
+    )
+    try require(
+        ManageMapRowActionPresentation.actions(for: transferable)
+            == [.backup, .transferOwnership, .remove],
+        "managed map can export a private ownership file for another Mac"
+    )
+
     let recoveryRecord = TerentoFailedInstallRecoveryRecord(
         deviceKey: "fenix-8-091e-51b8",
         packageID: "freizeitkarte-ltu",
@@ -273,6 +286,22 @@ func runMapLifecyclePresentationTests() throws {
         "no valid actions leaves the row action area empty"
     )
 
+
+    let recoverable = resolver.resolve(
+        item: lifecycleItem(
+            installed: installedMap(managementState: .detectedNotManaged),
+            classification: .externalRecognized
+        ),
+        comparison: comparison(item: installedMap(managementState: .detectedNotManaged)),
+        hasIntegrityRecord: false,
+        hasValidatedUpdateProfile: true,
+        hasStableWatchIdentity: true
+    )
+    try require(
+        recoverable.actions == [.recoverOwnership],
+        "read-only Terento filename exposes only explicit ownership recovery"
+    )
+
     let ambiguous = resolver.resolve(
         item: lifecycleItem(installed: installedMap(itemID: nil), classification: .ambiguous),
         comparison: nil,
@@ -316,7 +345,10 @@ func runMapLifecyclePresentationTests() throws {
         bytesPerSecond: 10
     )
     try require(progress.fractionCompleted == 0.5, "lifecycle progress reports a fraction")
-    try require(MapLifecycleAction.allCases.count == 3, "only backup, remove, and update actions are exposed")
+    try require(
+        MapLifecycleAction.allCases.count == 5,
+        "only backup, transfer, recover, remove, and unchanged update actions are exposed"
+    )
 }
 
 @main

@@ -34,6 +34,7 @@ swiftc \
   -module-cache-path "$module_cache_dir" \
   "$project_root/Sources/TerentoPoC/Models/MTPModels.swift" \
   "$project_root/Sources/TerentoPoC/Compatibility/DeviceIdentity.swift" \
+  "$project_root/Sources/TerentoPoC/Compatibility/MapCapability.swift" \
   "$project_root/Sources/TerentoPoC/Compatibility/GarminDeviceIdentityAdapter.swift" \
   "$project_root/Sources/TerentoPoC/MapCatalog/MapVersion.swift" \
   "$project_root/Sources/TerentoPoC/MapCatalog/MapIdentity.swift" \

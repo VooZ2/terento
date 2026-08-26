@@ -9,11 +9,14 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
     private let lifecycleLease: MTPOperationLease?
     private let deviceReader: MTPTransport
     private let mapTransport: MTPMapInstallationTransport
+    private let operationProfile: DeviceMapOperationProfile
 
     init(
+        operationProfile: DeviceMapOperationProfile,
         operationGate: MTPOperationGate = .shared,
         lifecycleLease: MTPOperationLease? = nil
     ) {
+        self.operationProfile = operationProfile
         self.operationGate = operationGate
         self.lifecycleLease = lifecycleLease
         self.deviceReader = MTPTransport(
@@ -21,6 +24,7 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
             lifecycleLease: lifecycleLease
         )
         self.mapTransport = MTPMapInstallationTransport(
+            operationProfile: operationProfile,
             operationGate: operationGate,
             lifecycleLease: lifecycleLease
         )
@@ -32,6 +36,7 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
         onProgress: (@Sendable (TransferProgress) -> Void)?
     ) throws -> MapLifecycleBackupTransfer {
         try MTPReadBackupAdapter(
+            operationProfile: operationProfile,
             operationGate: operationGate,
             lifecycleLease: lifecycleLease
         ).readExistingFile(
@@ -52,7 +57,9 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
             )
         )
 
-        guard object.file == target.sourceFile,
+        guard object.file.path == target.expectedPath,
+              object.file.filename == target.expectedFilename,
+              object.file.sizeBytes == target.expectedSizeBytes,
               object.identity == target.mapIdentity,
               object.ownership == .managedByTerento,
               let hash = object.sha256 else {
@@ -332,6 +339,8 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
             return .metadataMismatch
         case .unsupportedDevice:
             return .operationFailed("This device is not enabled for the validated update path.")
+        case .liveIdentityMismatch:
+            return .operationFailed("The connected Garmin device changed after the update was authorized.")
         case .operationFailed(let message, _):
             return .operationFailed(message)
         }

@@ -1,6 +1,8 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const {
   canonicalFamilyKey,
   familyOptions,
@@ -50,4 +52,12 @@ assert.equal(
 );
 assert.equal(exactVariantLabel({ variant: "51 mm, AMOLED" }), "51 mm, AMOLED");
 
-console.log("Compatibility family data tests passed (canonical options, duplicates, selection, exact variants).");
+const compatibilitySource = fs.readFileSync(
+  path.join(__dirname, "..", "site", "compatibility", "compatibility.js"),
+  "utf8"
+);
+assert.match(compatibilitySource, /\/compatibility\/public\/models\.json/);
+assert.match(compatibilitySource, /watch-image-placeholder/);
+assert.doesNotMatch(compatibilitySource, /\/devices\/catalog\.json/);
+
+console.log("Compatibility family/data/API-source tests passed.");

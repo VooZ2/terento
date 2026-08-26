@@ -20,6 +20,7 @@ struct Stage41AcquisitionTests {
         testArchivePathSafety()
         await testExtractedSymlinkSafety()
         await testDownloaderUsesCatalogURL()
+        testReviewedProviderURLPolicy()
         await testFailedHTTPIsTyped()
         await testEmptyDownloadIsTyped()
         await testRenamedIMGIsIdentifiedByContent()
@@ -34,7 +35,7 @@ struct Stage41AcquisitionTests {
         await testFailedAcquisitionLeavesNoArtifact()
         testNoDeviceWriteDependency()
 
-        print("PASS: 18 Stage 4.1 acquisition tests")
+        print("PASS: 19 Stage 4.1 acquisition tests")
     }
 
     private static func testCatalogResolvesLatvia() {
@@ -160,6 +161,37 @@ struct Stage41AcquisitionTests {
             )
         } catch {
             expect(false, "downloader receives the catalog URL instead of a UI-hardcoded URL")
+        }
+    }
+
+    private static func testReviewedProviderURLPolicy() {
+        let policy = ReviewedProviderURLPolicy.freizeitkarte
+        let allowed = URL(string: "https://download.freizeitkarte-osm.de/garmin/latest/LTU+_en_gmapsupp.img.zip")!
+        let rejected = [
+            URL(string: "http://download.freizeitkarte-osm.de/garmin/latest/LTU.zip")!,
+            URL(string: "https://download.freizeitkarte-osm.de.example/LTU.zip")!,
+            URL(string: "https://example.com/LTU.zip")!,
+            URL(string: "https://user:secret@download.freizeitkarte-osm.de/LTU.zip")!
+        ]
+
+        do {
+            try policy.validate(allowed)
+            guard rejected.allSatisfy({ url in
+                do {
+                    try policy.validate(url)
+                    return false
+                } catch MapAcquisitionError.untrustedSourceURL {
+                    return true
+                } catch {
+                    return false
+                }
+            }) else {
+                expect(false, "provider URL policy accepts only the reviewed HTTPS host")
+                return
+            }
+            expect(true, "provider URL policy accepts only the reviewed HTTPS host")
+        } catch {
+            expect(false, "provider URL policy accepts only the reviewed HTTPS host")
         }
     }
 

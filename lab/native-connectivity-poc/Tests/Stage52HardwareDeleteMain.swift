@@ -59,7 +59,11 @@ struct Stage52HardwareDeleteMain {
 
         guard identity.usbVendorId == Self.expectedVendorID,
               identity.usbProductId == Self.expectedProductID,
-              let installProfile = DeviceInstallProfileRegistry.local.profile(for: identity) else {
+              let installProfile = DeviceInstallProfileRegistry.local.profile(for: identity),
+              let operationProfile = DeviceMapOperationProfile(
+                identity: identity,
+                installProfile: installProfile
+              ) else {
             throw Stage52HardwareGateFailure.message(
                 "The connected device is not the validated fēnix 8 profile. No map was changed."
             )
@@ -165,7 +169,7 @@ struct Stage52HardwareDeleteMain {
                     )
                 }
             },
-            transport: MTPSafeDeleteTransport(),
+            transport: MTPSafeDeleteTransport(operationProfile: operationProfile),
             requiresVerifiedBackup: false
         )
 

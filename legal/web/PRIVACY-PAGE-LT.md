@@ -26,11 +26,18 @@ jį galima atžymėti prieš diegiant. Atžymėjimas neblokuoja diegimo ir nema�
 programos funkcionalumo.
 
 Jei pasirinkimas paliekamas įjungtas ir diegimas tęsiamas, siunčiami tik
-privatumą tausojantys suderinamumo duomenys: laikrodžio modelis ar šeima,
-firmware, USB VID/PID, MTP transportas, teikėjas, regionas, versijos ir
-diegimo rezultatas. Ataskaitose nėra Garmin Unit ID, serijos numerio,
-paskyros, el. pašto, vietinių kelių, manifestų, žemėlapių failų ar diagnostikos
-žurnalų.
+privatumą tausojantys suderinamumo duomenys: atsitiktiniai įvykio ir vieno
+diegimo paspaudimo operacijos ID, laikas, laikrodžio modelis ar šeima,
+išvalyta žalia MTP modelio etiketė, firmware, USB VID/PID, MTP transportas,
+kategorija, nurodanti tik ar vietinė tapatybė gauta iš MTP serijos numerio,
+Garmin Unit ID, ar buvo neprieinama, teikėjas, pasirinkti regionai,
+žemėlapio ir tiksli Terento beta/build versija, kiekvieno žemėlapio rezultatas,
+kontroliuojamas nesėkmės etapas ir kodas, ar prasidėjo rašymas bei cleanup, ir
+apytikslis perdavimo progreso intervalas. Iki rašymo įvykusios teikėjo ar
+validavimo klaidos neblogina laikrodžio suderinamumo statistikos. Ataskaitose
+nėra Garmin Unit ID ar serijos numerio reikšmės, vietinio laikrodžio rakto, paskyros,
+el. pašto, vietinių kelių, MTP object ID, manifestų, žemėlapių failų ar hash,
+nefiltruoto klaidos teksto ar diagnostikos žurnalų.
 
 Dalijimąsi galima sustabdyti, o įkeltas ataskaitas ištrinti programoje per
 **About Terento → Privacy**.

@@ -109,14 +109,40 @@ struct MTPTransport: Sendable {
             storages = []
         }
 
+        let xmlStatus: GarminDeviceXMLReadStatus
+        switch Int(rawSnapshot.garmin_device_xml_status) {
+        case Int(TERENTO_GARMIN_DEVICE_XML_AVAILABLE): xmlStatus = .available
+        case Int(TERENTO_GARMIN_DEVICE_XML_AMBIGUOUS): xmlStatus = .ambiguous
+        case Int(TERENTO_GARMIN_DEVICE_XML_OVERSIZED): xmlStatus = .oversized
+        case Int(TERENTO_GARMIN_DEVICE_XML_READ_FAILED): xmlStatus = .readFailed
+        default: xmlStatus = .unavailable
+        }
+        let xmlData: Data?
+        if xmlStatus == .available,
+           let bytes = rawSnapshot.garmin_device_xml,
+           rawSnapshot.garmin_device_xml_size > 0 {
+            xmlData = Data(bytes: bytes, count: rawSnapshot.garmin_device_xml_size)
+        } else {
+            xmlData = nil
+        }
+
         return DeviceSnapshot(
             manufacturer: string(from: rawSnapshot.manufacturer, fallback: "Garmin"),
             model: string(from: rawSnapshot.model, fallback: "Garmin smartwatch"),
             deviceVersion: string(from: rawSnapshot.device_version, fallback: "Unknown"),
             vendorID: rawSnapshot.vendor_id,
             productID: rawSnapshot.product_id,
-            storages: storages
+            storages: storages,
+            serialNumber: optionalString(from: rawSnapshot.serial_number),
+            garminDeviceXMLStatus: xmlStatus,
+            garminDeviceXML: xmlData
         )
+    }
+
+    private func optionalString(from pointer: UnsafeMutablePointer<CChar>?) -> String? {
+        guard let pointer else { return nil }
+        let value = String(cString: pointer).trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
     }
 
     func readFileInventory() throws -> [DeviceFile] {

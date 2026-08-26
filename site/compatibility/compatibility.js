@@ -23,14 +23,6 @@
   };
   const transparentImageCache = new Map();
 
-  // A small, reviewed source fallback keeps a newly verified model visible
-  // while its normalized API asset is going through the separate asset review
-  // workflow. The browser downloads this official Garmin media directly; the
-  // API never proxies or hosts it.
-  const officialImageFallbacks = new Map([
-    ["garmin-fenix-8-51-amoled", "https://res.garmin.com/en/products/010-02905-10/v/cf-lg.jpg"],
-  ]);
-
   const elements = {
     grid: document.querySelector("#watch-grid"),
     empty: document.querySelector("#compatibility-empty"),
@@ -111,6 +103,9 @@
       failed: Number.isFinite(failed) ? failed : 0,
       status,
       lastSuccess: row.lastSuccess || row.last_success || row.lastSuccessfulInstallation || row.last_successful_installation || null,
+      family: String(row.family || "other").trim(),
+      familyName: String(row.familyName || row.family_name || row.family || "Other").trim(),
+      imageUrl: row.image?.url || row.imageUrl || null,
     };
   }
 
@@ -128,22 +123,6 @@
       base,
       size: sizeMatch ? Number(sizeMatch[1]) : null,
       display: displayMatch ? displayMatch[1] : "",
-    };
-  }
-
-  function catalogKey(identity, size = identity.size, display = identity.display) {
-    return [identity.base, size || "", display || ""].join("|");
-  }
-
-  function catalogEntry(device, imageUrl) {
-    return {
-      model: device.model,
-      family: canonicalFamilyKey(device.family || device.familyName),
-      familyName: device.familyName || device.family || "Other",
-      variants: device.variant ? [device.variant] : [],
-      caseSizeMm: device.caseSizeMm ?? null,
-      displayType: device.displayType || "",
-      imageUrl,
     };
   }
 
@@ -207,10 +186,13 @@
     const lastTestedMarkup = lastTested
       ? `<p class="watch-card-meta">Last tested ${escapeHtml(lastTested)}</p>`
       : "";
+    const imageMarkup = row.imageUrl
+      ? `<img data-remote-src="${escapeHtml(row.imageUrl)}" alt="${escapeHtml(row.model)}" loading="lazy">`
+      : `<div class="watch-image-placeholder" role="img" aria-label="Image unavailable">Image unavailable</div>`;
     return `
       <article class="watch-card">
         <div class="watch-card-image">
-          <img data-remote-src="${escapeHtml(row.imageUrl)}" alt="${escapeHtml(row.model)}" loading="lazy">
+          ${imageMarkup}
         </div>
         <div class="watch-card-body">
           <div class="watch-card-heading">
@@ -276,63 +258,21 @@
     }
   }
 
-  function catalogImages(devices) {
-    const models = new Map();
-    for (const device of devices) {
-      const imageUrl = device.asset?.status === "AVAILABLE" && device.asset.url
-        ? device.asset.url
-        : device.sourceAsset?.url || officialImageFallbacks.get(device.id);
-      if (!imageUrl) continue;
-      const identity = parseModelIdentity(device.model || device.canonicalModel);
-      if (!identity.base) continue;
-      const exactKey = catalogKey(identity, device.caseSizeMm, normalize(device.displayType));
-      const sizeKey = catalogKey(identity, device.caseSizeMm, "");
-      const modelKey = catalogKey(identity, null, "");
-      const entry = catalogEntry(device, imageUrl);
-      // Exact variant and size keys are intentionally never overwritten by a
-      // less-specific catalog record. The model key remains a fallback only
-      // for evidence that did not include a size.
-      if (!models.has(exactKey)) models.set(exactKey, entry);
-      if (device.caseSizeMm && !models.has(sizeKey)) models.set(sizeKey, entry);
-      if (!models.has(modelKey)) models.set(modelKey, entry);
-    }
-    return models;
-  }
-
-  function mergeRows(devices, stats) {
-    const images = catalogImages(devices);
+  function mergeRows(stats) {
     return stats
       .filter((row) => row.attempted > 0)
-      .map((row) => {
-        const identity = parseModelIdentity(row.compatibilityIdentity || row.model);
-        if (!identity.base) return null;
-        const size = row.caseSizeMm || identity.size;
-        const display = normalize(row.displayType || identity.display);
-        const exactKey = catalogKey(identity, size, display);
-        const sizeKey = catalogKey(identity, size, "");
-        const modelKey = catalogKey(identity, null, "");
-        const catalog = images.get(exactKey)
-          || (identity.size ? images.get(sizeKey) : images.get(modelKey));
-        if (!catalog) return null;
-        return {
-          ...row,
-          ...catalog,
-          model: catalog.model || row.model,
-          variants: [exactVariantLabel(row, catalog.variants)].filter(Boolean),
-        };
-      })
-      .filter((row) => row && row.status);
+      .map((row) => ({
+        ...row,
+        family: canonicalFamilyKey(row.family || row.familyName),
+        variants: [exactVariantLabel(row)].filter(Boolean),
+      }))
+      .filter((row) => row.status);
   }
 
   async function load({ quiet = false } = {}) {
     try {
       const refreshToken = Date.now();
-      const [catalogResponse, publicStatsResponse] = await Promise.all([
-        fetch(`${API_ORIGIN}/devices/catalog.json?refresh=${refreshToken}`, { cache: "no-store", headers: { Accept: "application/json" } }),
-        fetch(`${API_ORIGIN}/compatibility/public/top-models.json?limit=500&refresh=${refreshToken}`, { cache: "no-store", headers: { Accept: "application/json" } }),
-      ]);
-      if (!catalogResponse.ok) throw new Error("catalog_unavailable");
-      const catalog = await catalogResponse.json();
+      const publicStatsResponse = await fetch(`${API_ORIGIN}/compatibility/public/models.json?limit=500&refresh=${refreshToken}`, { cache: "no-store", headers: { Accept: "application/json" } });
       let stats = [];
       if (publicStatsResponse.ok) {
         const payload = await publicStatsResponse.json();
@@ -340,8 +280,7 @@
       } else if (isLocalPreview) {
         stats = previewStats.map(parseStat);
       }
-      const devices = Array.isArray(catalog.devices) ? catalog.devices : [];
-      state.rows = mergeRows(devices, stats);
+      state.rows = mergeRows(stats);
       populateFamilies();
       updateSummary();
       render();

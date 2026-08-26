@@ -82,6 +82,7 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
     case downloadFailed(String)
     case downloadIncomplete(expected: UInt64?, actual: UInt64)
     case invalidPackage(String)
+    case extractionFailed(String)
     case unsupportedPackageFormat
     case unsafeArchivePath(String)
     case sourceIdentityMismatch(expected: MapIdentity, actual: MapIdentity?)
@@ -89,6 +90,7 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
     case noIMGFound
     case ambiguousIMG
     case workspaceFailed(String)
+    case untrustedSourceURL(String)
 
     var errorDescription: String? {
         switch self {
@@ -101,6 +103,8 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
             return "The map package is incomplete: received \(actual) bytes."
         case .invalidPackage(let message):
             return "The downloaded map package is invalid: \(message)"
+        case .extractionFailed(let message):
+            return "The map package could not be extracted: \(message)"
         case .unsupportedPackageFormat:
             return "The provider package format is not supported."
         case .unsafeArchivePath(let path):
@@ -115,7 +119,72 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
             return "The package contains more than one possible Garmin map image."
         case .workspaceFailed(let message):
             return "The temporary map workspace could not be prepared: \(message)"
+        case .untrustedSourceURL:
+            return "The map provider address is not in Terento's reviewed HTTPS source list. Refresh the catalog and try again."
         }
+    }
+}
+
+struct ReviewedProviderURLPolicy: Sendable {
+    static let freizeitkarte = ReviewedProviderURLPolicy(
+        allowedHosts: ["download.freizeitkarte-osm.de"]
+    )
+
+    let allowedHosts: Set<String>
+
+    init(allowedHosts: Set<String>) {
+        self.allowedHosts = Set(allowedHosts.map { $0.lowercased() })
+    }
+
+    func validate(_ url: URL) throws {
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              components.scheme?.lowercased() == "https",
+              let host = components.host?.lowercased(),
+              allowedHosts.contains(host),
+              components.user == nil,
+              components.password == nil,
+              components.port == nil || components.port == 443 else {
+            throw MapAcquisitionError.untrustedSourceURL(url.absoluteString)
+        }
+    }
+}
+
+private final class ReviewedProviderRedirectDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    private let policy: ReviewedProviderURLPolicy
+    private let lock = NSLock()
+    private var rejectedURL: URL?
+
+    init(policy: ReviewedProviderURLPolicy) {
+        self.policy = policy
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping (URLRequest?) -> Void
+    ) {
+        guard let url = request.url else {
+            completionHandler(nil)
+            return
+        }
+
+        do {
+            try policy.validate(url)
+            completionHandler(request)
+        } catch {
+            lock.lock()
+            rejectedURL = url
+            lock.unlock()
+            completionHandler(nil)
+        }
+    }
+
+    func takeRejectedURL() -> URL? {
+        lock.lock()
+        defer { lock.unlock() }
+        return rejectedURL
     }
 }
 
@@ -143,6 +212,12 @@ extension MapPackageDownloadClient {
 }
 
 struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
+    private let sourcePolicy: ReviewedProviderURLPolicy
+
+    init(sourcePolicy: ReviewedProviderURLPolicy = .freizeitkarte) {
+        self.sourcePolicy = sourcePolicy
+    }
+
     func download(from url: URL) async throws -> MapPackageDownloadResponse {
         try await download(from: url, onProgress: nil)
     }
@@ -151,15 +226,29 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
         from url: URL,
         onProgress: (@Sendable (MapDownloadProgress) -> Void)?
     ) async throws -> MapPackageDownloadResponse {
+        try sourcePolicy.validate(url)
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.cachePolicy = .reloadIgnoringLocalCacheData
         request.timeoutInterval = 120
+        let redirectDelegate = ReviewedProviderRedirectDelegate(policy: sourcePolicy)
+        let session = URLSession(
+            configuration: .ephemeral,
+            delegate: redirectDelegate,
+            delegateQueue: nil
+        )
+        defer { session.finishTasksAndInvalidate() }
 
         do {
-            let (bytes, response) = try await URLSession.shared.bytes(for: request)
+            let (bytes, response) = try await session.bytes(for: request)
+            if let rejectedURL = redirectDelegate.takeRejectedURL() {
+                throw MapAcquisitionError.untrustedSourceURL(rejectedURL.absoluteString)
+            }
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw MapAcquisitionError.downloadFailed("The provider returned no HTTP response.")
+            }
+            if let finalURL = httpResponse.url {
+                try sourcePolicy.validate(finalURL)
             }
 
             let temporaryURL = FileManager.default.temporaryDirectory
@@ -281,7 +370,7 @@ struct SystemZIPArchiveExtractor: MapPackageArchiveExtractor, Sendable {
         do {
             try process.run()
         } catch {
-            throw MapAcquisitionError.invalidPackage("The ZIP extractor could not be started.")
+            throw MapAcquisitionError.extractionFailed("The ZIP extractor could not be started.")
         }
 
         process.waitUntilExit()
@@ -290,7 +379,7 @@ struct SystemZIPArchiveExtractor: MapPackageArchiveExtractor, Sendable {
                 data: errorPipe.fileHandleForReading.readDataToEndOfFile(),
                 encoding: .utf8
             )?.trimmingCharacters(in: .whitespacesAndNewlines)
-            throw MapAcquisitionError.invalidPackage(
+            throw MapAcquisitionError.extractionFailed(
                 message.flatMap { $0.isEmpty ? nil : $0 }
                     ?? "The ZIP archive could not be extracted."
             )
@@ -309,12 +398,12 @@ struct SystemZIPArchiveExtractor: MapPackageArchiveExtractor, Sendable {
         do {
             try process.run()
         } catch {
-            throw MapAcquisitionError.invalidPackage("The ZIP inspector could not be started.")
+            throw MapAcquisitionError.extractionFailed("The ZIP inspector could not be started.")
         }
 
         process.waitUntilExit()
         guard process.terminationStatus == 0 else {
-            throw MapAcquisitionError.invalidPackage("The ZIP archive could not be inspected.")
+            throw MapAcquisitionError.extractionFailed("The ZIP archive could not be inspected.")
         }
 
         let output = outputPipe.fileHandleForReading.readDataToEndOfFile()

@@ -3,7 +3,7 @@ import Foundation
 
 enum MapInstallationStatus: String, Codable, Equatable, Sendable {
     case confirmationRequired = "CONFIRMATION_REQUIRED"
-    case installVerified = "INSTALL_VERIFIED"
+    case installVerified = "INSTALL_VERIFIED_SAMPLED_READBACK_V1"
     case blockedExistingMapConflict = "BLOCKED_EXISTING_MAP_CONFLICT"
     case blockedInsufficientSpace = "BLOCKED_INSUFFICIENT_SPACE"
     case blockedUnknownTarget = "BLOCKED_UNKNOWN_TARGET"
@@ -32,6 +32,11 @@ struct MapInstallationDiagnostics: Equatable, Sendable {
     let projectedFreeSpace: UInt64?
     let existingFilesProtectionPassed: Bool
     let unrelatedFilesProtectionPassed: Bool
+    let writeStarted: Bool
+    let remoteObjectCreated: Bool
+    let cleanupAttempted: Bool
+    let cleanupSucceeded: Bool
+    let nativeFailureCode: InstallationNativeFailureCode?
 
     static func initial(
         artifact: ValidatedMapArtifact?,
@@ -55,7 +60,12 @@ struct MapInstallationDiagnostics: Equatable, Sendable {
             freeSpaceAfter: nil,
             projectedFreeSpace: nil,
             existingFilesProtectionPassed: true,
-            unrelatedFilesProtectionPassed: true
+            unrelatedFilesProtectionPassed: true,
+            writeStarted: false,
+            remoteObjectCreated: false,
+            cleanupAttempted: false,
+            cleanupSucceeded: false,
+            nativeFailureCode: nil
         )
     }
 }
@@ -252,6 +262,20 @@ struct MapInstallationCoordinator: Sendable {
             )
         }
 
+        // MapEngine performs this before downloading. Repeat it at the
+        // mutation coordinator so no alternate caller can write a map that
+        // cannot be owned safely after reconnect.
+        guard request.identity.localHardwareIdentifier?
+            .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else {
+            return blocked(
+                status: .blockedUnsupportedDevice,
+                failure: .stableWatchIdentityUnavailable,
+                preflight: preflight,
+                transaction: transaction,
+                diagnostics: diagnostics
+            )
+        }
+
         guard preflight.status == .readyNewInstall else {
             return blockedForPreflight(
                 preflight,
@@ -412,6 +436,7 @@ struct MapInstallationCoordinator: Sendable {
             try transaction.transition(to: .writing)
             onPhase?(.installing)
             onPhaseProgress?(.installing, 0)
+            diagnostics = diagnostics.withLifecycle(writeStarted: true)
 
             do {
                 try recoveryStore.record(recoveryRecord)
@@ -452,7 +477,7 @@ struct MapInstallationCoordinator: Sendable {
                     diagnostics: diagnostics.withProgress(
                         progress: progressState.value,
                         elapsedMilliseconds: elapsedMilliseconds(since: startedAt)
-                    ),
+                    ).withNativeFailureCode(Self.nativeFailureCode(for: error, during: .write)),
                     remoteObjectID: createdItemID,
                     shouldCleanup: createdItemID != nil,
                     recoveryRecord: recoveryRecord
@@ -497,7 +522,7 @@ struct MapInstallationCoordinator: Sendable {
                         hash: nil,
                         progress: progressState.value,
                         elapsedMilliseconds: elapsedMilliseconds(since: startedAt)
-                    ),
+                    ).withNativeFailureCode(Self.nativeFailureCode(for: error, during: .verification)),
                     remoteObjectID: written.itemID,
                     shouldCleanup: true,
                     recoveryRecord: recoveryRecord
@@ -844,6 +869,7 @@ struct MapInstallationCoordinator: Sendable {
             }
         }
 
+        let cleanupAttempted = shouldCleanup && remoteObjectID != nil && remoteObjectID != 0
         let finalFailure = cleanupFailure ?? failure
         if transaction.state != .failed && transaction.state != .completed {
             try? transaction.fail(finalFailure)
@@ -857,7 +883,13 @@ struct MapInstallationCoordinator: Sendable {
             preflight: preflight,
             transaction: transaction,
             verification: verification,
-            diagnostics: diagnostics,
+            diagnostics: diagnostics.withLifecycle(
+                remoteObjectCreated: diagnostics.remoteObjectExists || remoteObjectID != nil,
+                cleanupAttempted: cleanupAttempted,
+                cleanupSucceeded: cleanupAttempted && cleanupFailure == nil
+            ).withNativeFailureCode(
+                cleanupFailure == nil ? diagnostics.nativeFailureCode : .deleteFailed
+            ),
             installedMap: nil
         )
     }
@@ -881,12 +913,33 @@ struct MapInstallationCoordinator: Sendable {
                 return .remoteFileMissing
             case .unsupportedDevice:
                 return .unknownInstallTarget
+            case .liveIdentityMismatch:
+                return .unknownInstallTarget
             case .operationFailed(_, _):
                 return phase == .write ? .writeFailed : .deviceDisconnected
             }
         }
 
         return phase == .write ? .writeFailed : .deviceDisconnected
+    }
+
+    private static func nativeFailureCode(
+        for error: Error,
+        during phase: FailurePhase
+    ) -> InstallationNativeFailureCode? {
+        guard let error = error as? InstallationTransportError else {
+            return phase == .write ? .sendObjectFailed : .readbackFailed
+        }
+        switch error {
+        case .targetAlreadyExists: return .targetAlreadyExists
+        case .remoteFileMissing: return .remoteFileMissing
+        case .objectIdentityMismatch: return .objectIDMismatch
+        case .unsupportedDevice: return .unsupportedDevice
+        case .liveIdentityMismatch: return .liveIdentityMismatch
+        case .deviceDisconnected: return .deviceDisconnected
+        case .operationFailed:
+            return phase == .write ? .sendObjectFailed : .readbackFailed
+        }
     }
 
     private static func createdItemID(from error: Error) -> UInt32? {
@@ -1140,7 +1193,12 @@ private extension MapInstallationDiagnostics {
             freeSpaceAfter: freeSpaceAfter,
             projectedFreeSpace: projectedFreeSpace,
             existingFilesProtectionPassed: existingFilesProtectionPassed,
-            unrelatedFilesProtectionPassed: unrelatedFilesProtectionPassed
+            unrelatedFilesProtectionPassed: unrelatedFilesProtectionPassed,
+            writeStarted: writeStarted,
+            remoteObjectCreated: remoteObjectCreated,
+            cleanupAttempted: cleanupAttempted,
+            cleanupSucceeded: cleanupSucceeded,
+            nativeFailureCode: nativeFailureCode
         )
     }
 
@@ -1163,7 +1221,12 @@ private extension MapInstallationDiagnostics {
             freeSpaceAfter: freeSpaceAfter,
             projectedFreeSpace: projectedFreeSpace,
             existingFilesProtectionPassed: existingFilesProtectionPassed,
-            unrelatedFilesProtectionPassed: unrelatedFilesProtectionPassed
+            unrelatedFilesProtectionPassed: unrelatedFilesProtectionPassed,
+            writeStarted: writeStarted,
+            remoteObjectCreated: remoteObjectCreated,
+            cleanupAttempted: cleanupAttempted,
+            cleanupSucceeded: cleanupSucceeded,
+            nativeFailureCode: nativeFailureCode
         )
     }
 
@@ -1204,7 +1267,12 @@ private extension MapInstallationDiagnostics {
             freeSpaceAfter: freeSpaceAfter,
             projectedFreeSpace: projectedFreeSpace,
             existingFilesProtectionPassed: existingFilesProtectionPassed,
-            unrelatedFilesProtectionPassed: unrelatedFilesProtectionPassed
+            unrelatedFilesProtectionPassed: unrelatedFilesProtectionPassed,
+            writeStarted: writeStarted,
+            remoteObjectCreated: exists || remoteObjectCreated,
+            cleanupAttempted: cleanupAttempted,
+            cleanupSucceeded: cleanupSucceeded,
+            nativeFailureCode: nativeFailureCode
         )
     }
 
@@ -1232,7 +1300,12 @@ private extension MapInstallationDiagnostics {
             freeSpaceAfter: freeSpaceAfter,
             projectedFreeSpace: projectedFreeSpace,
             existingFilesProtectionPassed: existingFilesProtectionPassed,
-            unrelatedFilesProtectionPassed: unrelatedFilesProtectionPassed
+            unrelatedFilesProtectionPassed: unrelatedFilesProtectionPassed,
+            writeStarted: writeStarted,
+            remoteObjectCreated: remoteObjectCreated,
+            cleanupAttempted: cleanupAttempted,
+            cleanupSucceeded: cleanupSucceeded,
+            nativeFailureCode: nativeFailureCode
         )
     }
 
@@ -1259,7 +1332,64 @@ private extension MapInstallationDiagnostics {
             freeSpaceAfter: freeSpaceAfter,
             projectedFreeSpace: projectedFreeSpace,
             existingFilesProtectionPassed: existingFilesUnchanged,
-            unrelatedFilesProtectionPassed: unrelatedUnchanged
+            unrelatedFilesProtectionPassed: unrelatedUnchanged,
+            writeStarted: writeStarted,
+            remoteObjectCreated: remoteObjectCreated,
+            cleanupAttempted: cleanupAttempted,
+            cleanupSucceeded: cleanupSucceeded,
+            nativeFailureCode: nativeFailureCode
+        )
+    }
+
+    func withLifecycle(
+        writeStarted: Bool? = nil,
+        remoteObjectCreated: Bool? = nil,
+        cleanupAttempted: Bool? = nil,
+        cleanupSucceeded: Bool? = nil
+    ) -> MapInstallationDiagnostics {
+        MapInstallationDiagnostics(
+            sourceSizeBytes: sourceSizeBytes,
+            sourceSHA256: sourceSHA256,
+            targetPath: targetPath,
+            bytesTransferred: bytesTransferred,
+            transferTotalBytes: transferTotalBytes,
+            elapsedMilliseconds: elapsedMilliseconds,
+            remoteObjectExists: remoteObjectExists,
+            remoteSizeBytes: remoteSizeBytes,
+            remoteSHA256: remoteSHA256,
+            metadataProvider: metadataProvider,
+            metadataRegion: metadataRegion,
+            metadataVersion: metadataVersion,
+            metadataWarning: metadataWarning,
+            freeSpaceBefore: freeSpaceBefore,
+            freeSpaceAfter: freeSpaceAfter,
+            projectedFreeSpace: projectedFreeSpace,
+            existingFilesProtectionPassed: existingFilesProtectionPassed,
+            unrelatedFilesProtectionPassed: unrelatedFilesProtectionPassed,
+            writeStarted: writeStarted ?? self.writeStarted,
+            remoteObjectCreated: remoteObjectCreated ?? self.remoteObjectCreated,
+            cleanupAttempted: cleanupAttempted ?? self.cleanupAttempted,
+            cleanupSucceeded: cleanupSucceeded ?? self.cleanupSucceeded,
+            nativeFailureCode: nativeFailureCode
+        )
+    }
+
+    func withNativeFailureCode(_ code: InstallationNativeFailureCode?) -> MapInstallationDiagnostics {
+        let copy = withLifecycle()
+        return MapInstallationDiagnostics(
+            sourceSizeBytes: copy.sourceSizeBytes, sourceSHA256: copy.sourceSHA256,
+            targetPath: copy.targetPath, bytesTransferred: copy.bytesTransferred,
+            transferTotalBytes: copy.transferTotalBytes, elapsedMilliseconds: copy.elapsedMilliseconds,
+            remoteObjectExists: copy.remoteObjectExists, remoteSizeBytes: copy.remoteSizeBytes,
+            remoteSHA256: copy.remoteSHA256, metadataProvider: copy.metadataProvider,
+            metadataRegion: copy.metadataRegion, metadataVersion: copy.metadataVersion,
+            metadataWarning: copy.metadataWarning, freeSpaceBefore: copy.freeSpaceBefore,
+            freeSpaceAfter: copy.freeSpaceAfter, projectedFreeSpace: copy.projectedFreeSpace,
+            existingFilesProtectionPassed: copy.existingFilesProtectionPassed,
+            unrelatedFilesProtectionPassed: copy.unrelatedFilesProtectionPassed,
+            writeStarted: copy.writeStarted, remoteObjectCreated: copy.remoteObjectCreated,
+            cleanupAttempted: copy.cleanupAttempted, cleanupSucceeded: copy.cleanupSucceeded,
+            nativeFailureCode: code
         )
     }
 }

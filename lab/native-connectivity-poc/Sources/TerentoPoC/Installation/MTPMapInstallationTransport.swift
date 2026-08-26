@@ -33,11 +33,14 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
     private static let targetDirectory = "/GARMIN"
     private let operationGate: MTPOperationGate
     private let lifecycleLease: MTPOperationLease?
+    private let operationProfile: DeviceMapOperationProfile?
 
     init(
+        operationProfile: DeviceMapOperationProfile? = nil,
         operationGate: MTPOperationGate = .shared,
         lifecycleLease: MTPOperationLease? = nil
     ) {
+        self.operationProfile = operationProfile
         self.operationGate = operationGate
         self.lifecycleLease = lifecycleLease
     }
@@ -64,6 +67,9 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
         targetFilename: String,
         progress: @escaping @Sendable (TransferProgress) -> Void
     ) throws -> MTPWrittenMapObject {
+        guard let operationProfile else {
+            throw InstallationTransportError.unsupportedDevice
+        }
         var itemID: UInt32 = 0
         var sizeBytes: UInt64 = 0
         var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
@@ -73,19 +79,22 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
         // its context. Keep the box alive for the complete C call anyway so
         // this remains safe if the bridge implementation changes later.
         let result: Int32 = withExtendedLifetime(progressBox) {
-            sourceURL.path.withCString { sourcePath in
-                targetFilename.withCString { filename in
-                    errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
-                        terento_mtp_install_map_file(
-                            sourcePath,
-                            filename,
-                            &itemID,
-                            &sizeBytes,
-                            terentoMTPProgressCallback,
-                            UnsafeRawPointer(Unmanaged.passUnretained(progressBox).toOpaque()),
-                            errorPointer.baseAddress,
-                            errorPointer.count
-                        )
+            withNativeMapOperationProfile(operationProfile) { nativeProfile in
+                sourceURL.path.withCString { sourcePath in
+                    targetFilename.withCString { filename in
+                        errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
+                            terento_mtp_install_map_file(
+                                nativeProfile,
+                                sourcePath,
+                                filename,
+                                &itemID,
+                                &sizeBytes,
+                                terentoMTPProgressCallback,
+                                UnsafeRawPointer(Unmanaged.passUnretained(progressBox).toOpaque()),
+                                errorPointer.baseAddress,
+                                errorPointer.count
+                            )
+                        }
                     }
                 }
             }
@@ -146,6 +155,9 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
         sampleLength: UInt32,
         progress: @escaping @Sendable (TransferProgress) -> Void
     ) throws -> MTPReadBackMapObject {
+        guard let operationProfile else {
+            throw InstallationTransportError.unsupportedDevice
+        }
         guard targetPath == "\(Self.targetDirectory)/\(targetFilename)" else {
             throw InstallationTransportError.operationFailed(
                 "The managed map target path is invalid.",
@@ -160,25 +172,28 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
         let progressBox = MTPProgressBox(callback: progress)
 
         let result: Int32 = withExtendedLifetime(progressBox) {
-            sampleOffsets.withUnsafeBufferPointer { offsetsBuffer in
-                sourceURL.path.withCString { sourcePath in
-                    targetFilename.withCString { filename in
-                        errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
-                            terento_mtp_verify_managed_map_samples(
-                                sourcePath,
-                                filename,
-                                expectedItemID,
-                                expectedSizeBytes,
-                                offsetsBuffer.baseAddress,
-                                offsetsBuffer.count,
-                                sampleLength,
-                                &sampledBytes,
-                                &matchedSamples,
-                                terentoMTPProgressCallback,
-                                UnsafeRawPointer(Unmanaged.passUnretained(progressBox).toOpaque()),
-                                errorPointer.baseAddress,
-                                errorPointer.count
-                            )
+            withNativeMapOperationProfile(operationProfile) { nativeProfile in
+                sampleOffsets.withUnsafeBufferPointer { offsetsBuffer in
+                    sourceURL.path.withCString { sourcePath in
+                        targetFilename.withCString { filename in
+                            errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
+                                terento_mtp_verify_managed_map_samples(
+                                    nativeProfile,
+                                    sourcePath,
+                                    filename,
+                                    expectedItemID,
+                                    expectedSizeBytes,
+                                    offsetsBuffer.baseAddress,
+                                    offsetsBuffer.count,
+                                    sampleLength,
+                                    &sampledBytes,
+                                    &matchedSamples,
+                                    terentoMTPProgressCallback,
+                                    UnsafeRawPointer(Unmanaged.passUnretained(progressBox).toOpaque()),
+                                    errorPointer.baseAddress,
+                                    errorPointer.count
+                                )
+                            }
                         }
                     }
                 }
@@ -203,30 +218,51 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
     }
 
     func deleteExact(targetFilename: String, expectedItemID: UInt32) throws {
+        try deleteExact(
+            targetFilename: targetFilename,
+            expectedItemID: expectedItemID,
+            expectedSizeBytes: nil
+        )
+    }
+
+    func deleteExact(
+        targetFilename: String,
+        expectedItemID: UInt32,
+        expectedSizeBytes: UInt64?
+    ) throws {
         try operationGate.withOperation(
             kind: .remove,
             lifecycleLease: lifecycleLease
         ) {
             try deleteExactUncoordinated(
                 targetFilename: targetFilename,
-                expectedItemID: expectedItemID
+                expectedItemID: expectedItemID,
+                expectedSizeBytes: expectedSizeBytes
             )
         }
     }
 
     private func deleteExactUncoordinated(
         targetFilename: String,
-        expectedItemID: UInt32
+        expectedItemID: UInt32,
+        expectedSizeBytes: UInt64?
     ) throws {
+        guard let operationProfile else {
+            throw InstallationTransportError.unsupportedDevice
+        }
         var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
-        let result = targetFilename.withCString { filename in
-            errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
-                terento_mtp_delete_managed_map(
-                    filename,
-                    expectedItemID,
-                    errorPointer.baseAddress,
-                    errorPointer.count
-                )
+        let result = withNativeMapOperationProfile(operationProfile) { nativeProfile in
+            targetFilename.withCString { filename in
+                errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
+                    terento_mtp_delete_managed_map(
+                        nativeProfile,
+                        filename,
+                        expectedItemID,
+                        expectedSizeBytes ?? 0,
+                        errorPointer.baseAddress,
+                        errorPointer.count
+                    )
+                }
             }
         }
 
@@ -249,6 +285,8 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
             return .objectIdentityMismatch
         case Int32(TERENTO_MTP_MAP_UNSUPPORTED_DEVICE):
             return .unsupportedDevice
+        case Int32(TERENTO_MTP_MAP_IDENTITY_MISMATCH):
+            return .liveIdentityMismatch
         default:
             let readable = message.isEmpty ? "The native MTP map operation failed." : message
             if readable.localizedCaseInsensitiveContains("disconnect")
@@ -269,6 +307,7 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
 
 extension MapInstallationCoordinator {
     static func live(
+        operationProfile: DeviceMapOperationProfile? = nil,
         manifestStore: any TerentoManifestStore = LocalTerentoManifestStore(),
         recoveryStore: any TerentoFailedInstallRecoveryStore = LocalTerentoFailedInstallRecoveryStore(),
         operationGate: MTPOperationGate = .shared,
@@ -276,6 +315,7 @@ extension MapInstallationCoordinator {
     ) -> MapInstallationCoordinator {
         MapInstallationCoordinator(
             transport: MTPMapInstallationTransport(
+                operationProfile: operationProfile,
                 operationGate: operationGate,
                 lifecycleLease: lifecycleLease
             ),

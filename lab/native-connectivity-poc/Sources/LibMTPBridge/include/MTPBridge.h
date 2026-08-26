@@ -22,9 +22,21 @@ typedef struct {
     char *manufacturer;
     char *model;
     char *device_version;
+    char *serial_number;
+    uint8_t garmin_device_xml_status;
+    size_t garmin_device_xml_size;
+    unsigned char *garmin_device_xml;
     size_t storage_count;
     TerentoMTPStorage *storages;
 } TerentoMTPDeviceSnapshot;
+
+enum {
+    TERENTO_GARMIN_DEVICE_XML_UNAVAILABLE = 0,
+    TERENTO_GARMIN_DEVICE_XML_AVAILABLE = 1,
+    TERENTO_GARMIN_DEVICE_XML_AMBIGUOUS = 2,
+    TERENTO_GARMIN_DEVICE_XML_OVERSIZED = 3,
+    TERENTO_GARMIN_DEVICE_XML_READ_FAILED = 4
+};
 
 typedef struct {
     uint32_t item_id;
@@ -46,6 +58,20 @@ typedef struct {
     unsigned char *bytes;
 } TerentoMTPByteBuffer;
 
+/*
+ * Per-operation production authorization prepared from the same live snapshot
+ * Swift used for its reviewed map-capability decision. C compares only these
+ * directly observable values with the device it opens itself.
+ */
+typedef struct {
+    uint32_t version;
+    uint16_t vendor_id;
+    uint16_t product_id;
+    const char *manufacturer;
+    const char *model;
+    const char *target_directory;
+} TerentoMTPMapOperationProfile;
+
 /* A real transfer callback. Returning non-zero cancels the transfer. */
 typedef int (*TerentoMTPProgressCallback)(
     uint64_t sent,
@@ -57,7 +83,8 @@ enum {
     TERENTO_MTP_MAP_TARGET_EXISTS = -20,
     TERENTO_MTP_MAP_REMOTE_FILE_MISSING = -21,
     TERENTO_MTP_MAP_OBJECT_ID_MISMATCH = -22,
-    TERENTO_MTP_MAP_UNSUPPORTED_DEVICE = -23
+    TERENTO_MTP_MAP_UNSUPPORTED_DEVICE = -23,
+    TERENTO_MTP_MAP_IDENTITY_MISMATCH = -24
 };
 
 /* Read-only USB presence probe. Returns the number of connected Garmin USB devices. */
@@ -105,9 +132,12 @@ void terento_mtp_free_byte_buffer(TerentoMTPByteBuffer *buffer);
 
 /* Read-only operation: validate one exact existing object and read it locally. */
 int terento_mtp_read_existing_file_to_local(
+    const TerentoMTPMapOperationProfile *profile,
     uint32_t expected_item_id,
     const char *expected_path,
+    uint64_t expected_size_bytes,
     const char *local_path,
+    uint32_t *resolved_item_id,
     uint64_t *size_bytes,
     char *error_message,
     size_t error_message_capacity
@@ -144,9 +174,10 @@ int terento_mtp_delete_test_file(
 /*
  * Production write path. The Swift layer validates the exact catalog package;
  * the native layer independently enforces the Terento-managed filename
- * grammar and validated fēnix 8 profile.
+ * grammar and the live device facts in the per-operation production profile.
  */
 int terento_mtp_install_map_file(
+    const TerentoMTPMapOperationProfile *profile,
     const char *local_path,
     const char *target_filename,
     uint32_t *item_id,
@@ -163,6 +194,7 @@ int terento_mtp_install_map_file(
  * never copied back to the Mac.
  */
 int terento_mtp_verify_managed_map_samples(
+    const TerentoMTPMapOperationProfile *profile,
     const char *local_path,
     const char *target_filename,
     uint32_t expected_item_id,
@@ -180,8 +212,10 @@ int terento_mtp_verify_managed_map_samples(
 
 /* Delete only the exact manifest-authorized managed target object. */
 int terento_mtp_delete_managed_map(
+    const TerentoMTPMapOperationProfile *profile,
     const char *target_filename,
     uint32_t expected_item_id,
+    uint64_t expected_size_bytes,
     char *error_message,
     size_t error_message_capacity
 );

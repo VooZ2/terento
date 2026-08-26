@@ -1,5 +1,7 @@
+import AppKit
 import Foundation
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct MapLifecycleConfirmation: Identifiable, Equatable, Sendable {
     let itemID: String
@@ -133,13 +135,106 @@ final class MapLifecycleViewModel: ObservableObject {
             hasIntegrityRecord: context.hasIntegrityRecord,
             hasValidatedUpdateProfile: context.profile?.matches(context.identity) == true
                 && context.profile?.supportsMapWrite == true,
+            hasStableWatchIdentity: context.identity.localHardwareIdentifier?.isEmpty == false,
             failedInstallRecovery: context.failedInstallRecovery != nil
+        )
+    }
+
+    func requestTransferOwnership(itemID: String) {
+        guard let context = lifecycleContext(for: itemID),
+              availability(for: context.item).allows(.transferOwnership),
+              let manifest = try? LocalTerentoManifestStore().read(deviceKey: context.deviceKey) else {
+            return
+        }
+
+        let paths = Set(context.item.installedMaps.map(\.sourceFile.path))
+        let entries = manifest.entries.filter { paths.contains($0.devicePath) }
+        guard !entries.isEmpty,
+              let document = try? TerentoManifestExportService().makeDocument(
+                manifest: TerentoManifest(entries: entries),
+                identity: context.identity
+              ),
+              let data = try? TerentoManifestExportService().encode(document) else {
+            fail(itemID: itemID, action: .transferOwnership, message: "Terento could not prepare the ownership file.")
+            return
+        }
+
+        let panel = NSSavePanel()
+        panel.title = "Save Terento ownership file"
+        panel.nameFieldStringValue = "Terento-\(context.item.id)-ownership.json"
+        panel.allowedContentTypes = [.json]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try data.write(to: url, options: .atomic)
+            setOperation(
+                itemID: itemID,
+                action: .transferOwnership,
+                phase: .completed,
+                progress: nil,
+                message: "Ownership file saved. Keep it private and import it only for this watch."
+            )
+        } catch {
+            fail(itemID: itemID, action: .transferOwnership, message: "The ownership file could not be saved.")
+        }
+    }
+
+    func requestRecoverOwnership(itemID: String) {
+        guard let context = lifecycleContext(for: itemID),
+              availability(for: context.item).allows(.recoverOwnership),
+              !isBusy else { return }
+
+        // Explicit, same-Mac beta migration. A legacy model/VID/PID manifest
+        // is never consumed during discovery and never assigned on connect;
+        // pressing Recover deliberately binds only the exact matching entry
+        // after the complete live IMG verification below.
+        if let document = legacyRecoveryDocument(for: context) {
+            recoverOwnership(itemID: itemID, document: document)
+            return
+        }
+
+        let panel = NSOpenPanel()
+        panel.title = "Choose a Terento ownership file"
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK,
+              let url = panel.url,
+              let data = try? Data(contentsOf: url),
+              let document = try? TerentoManifestExportService().decode(data) else {
+            return
+        }
+        recoverOwnership(itemID: itemID, document: document)
+    }
+
+    private func legacyRecoveryDocument(
+        for context: MapLifecycleContext
+    ) -> TerentoManifestExportDocument? {
+        guard let legacyManifest = try? LocalTerentoManifestStore().read(
+            deviceKey: context.identity.legacyManifestDeviceKey
+        ) else {
+            return nil
+        }
+        let liveFiles = context.item.installedMaps.map(\.sourceFile)
+        let entries = legacyManifest.entries.filter { entry in
+            liveFiles.contains { file in
+                file.path == entry.devicePath
+                    && file.filename == entry.filename
+                    && file.sizeBytes == entry.sizeBytes
+            }
+        }
+        guard entries.count == 1 else { return nil }
+        return try? TerentoManifestExportService().makeDocument(
+            manifest: TerentoManifest(entries: entries),
+            identity: context.identity
         )
     }
 
     func requestBackup(itemID: String) {
         guard let context = lifecycleContext(for: itemID),
               availability(for: context.item).allows(.backup),
+              let operationProfile = DeviceMapOperationProfile(
+                identity: context.identity,
+                installProfile: context.profile
+              ),
               !isBusy else {
             return
         }
@@ -175,6 +270,7 @@ final class MapLifecycleViewModel: ObservableObject {
 
                     return ReadBackupAdapter(
                         transport: MTPReadBackupAdapter(
+                            operationProfile: operationProfile,
                             operationGate: operationGate,
                             lifecycleLease: lease
                         )
@@ -266,6 +362,10 @@ final class MapLifecycleViewModel: ObservableObject {
         switch confirmation.action {
         case .backup:
             requestBackup(itemID: confirmation.itemID)
+        case .transferOwnership:
+            requestTransferOwnership(itemID: confirmation.itemID)
+        case .recoverOwnership:
+            requestRecoverOwnership(itemID: confirmation.itemID)
         case .remove:
             remove(itemID: confirmation.itemID)
         case .update:
@@ -283,7 +383,7 @@ final class MapLifecycleViewModel: ObservableObject {
             return "Remove this map?"
         case .update:
             return "Update this map?"
-        case .backup, .none:
+        case .backup, .transferOwnership, .recoverOwnership, .none:
             return "Confirm map action"
         }
     }
@@ -298,9 +398,91 @@ final class MapLifecycleViewModel: ObservableObject {
             return "Terento will verify the exact Terento-managed map, remove only that object, and confirm that it is gone. Other maps will be left untouched. No local backup is created."
         case .update:
             return "Terento will download and verify the new map, keep the current map as a backup, then replace only the exact Terento-managed object."
-        case .backup, .none:
+        case .backup, .transferOwnership, .recoverOwnership, .none:
             return "Terento will perform only the selected safe map action."
         }
+    }
+
+    private func recoverOwnership(
+        itemID: String,
+        document: TerentoManifestExportDocument
+    ) {
+        guard let context = lifecycleContext(for: itemID),
+              context.item.installedMaps.count == 1,
+              let operationProfile = DeviceMapOperationProfile(
+                identity: context.identity,
+                installProfile: context.profile
+              ),
+              let operationToken = operationController.begin() else { return }
+
+        let operationEpoch = lifecycleEpoch
+        let operationGate = self.operationGate
+        let operationController = self.operationController
+        inFlightOperationCount += 1
+        setOperation(
+            itemID: itemID,
+            action: .recoverOwnership,
+            phase: .verifying,
+            progress: nil,
+            message: "Verifying the complete map before restoring ownership…"
+        )
+
+        let task = Task { [weak self] in
+            let result: Result<ManagedMapRecoveryResult, Error>
+            do {
+                let recovered = try await CancellableDetached.run(priority: .userInitiated) {
+                    let lease = try await operationGate.beginLifecycleAsync()
+                    defer { operationGate.endLifecycle(lease) }
+                    guard operationController.isCurrent(operationToken) else {
+                        throw CancellationError()
+                    }
+                    let deviceTransport = MTPTransport(
+                        operationGate: operationGate,
+                        lifecycleLease: lease
+                    )
+                    let liveFiles = try deviceTransport.readFileInventory()
+                    return try ManagedMapRecoveryCoordinator().recover(
+                        document: document,
+                        identity: context.identity,
+                        liveFiles: liveFiles,
+                        reader: MTPReadBackupAdapter(
+                            operationProfile: operationProfile,
+                            operationGate: operationGate,
+                            lifecycleLease: lease
+                        )
+                    )
+                }
+                result = .success(recovered)
+            } catch {
+                result = .failure(error)
+            }
+
+            guard let self else { return }
+            let isCurrent = operationController.isCurrent(operationToken)
+            operationController.finish(operationToken)
+            operationTasks.removeValue(forKey: itemID)
+            inFlightOperationCount = max(0, inFlightOperationCount - 1)
+            guard isCurrent, lifecycleEpoch == operationEpoch else { return }
+
+            switch result {
+            case .success:
+                setOperation(
+                    itemID: itemID,
+                    action: .recoverOwnership,
+                    phase: .completed,
+                    progress: nil,
+                    message: "Terento ownership was recovered for this watch."
+                )
+                mapEngine.refreshCurrentDeviceMaps()
+            case .failure(let error):
+                fail(
+                    itemID: itemID,
+                    action: .recoverOwnership,
+                    message: error.localizedDescription
+                )
+            }
+        }
+        operationTasks[itemID] = task
     }
 
     fileprivate func receive(
@@ -357,6 +539,10 @@ final class MapLifecycleViewModel: ObservableObject {
               let region = context.item.region,
               let mapIdentity = MapIdentity(provider: provider, region: region),
               let expectedHash = context.expectedSHA256ByItemID[objectID],
+              let operationProfile = DeviceMapOperationProfile(
+                identity: context.identity,
+                installProfile: context.profile
+              ),
               connectedDeviceProvider(),
               !isBusy else {
             fail(itemID: itemID, action: .remove, message: "This map could not be verified for safe removal. Nothing was changed.")
@@ -417,6 +603,7 @@ final class MapLifecycleViewModel: ObservableObject {
                     }
 
                     let transport = MTPSafeDeleteTransport(
+                        operationProfile: operationProfile,
                         operationGate: operationGate,
                         lifecycleLease: lease
                     )
@@ -494,6 +681,10 @@ final class MapLifecycleViewModel: ObservableObject {
               let version = context.item.version,
               let expectedHash = context.expectedSHA256ByItemID[objectID],
               let profile = context.profile,
+              let operationProfile = DeviceMapOperationProfile(
+                identity: context.identity,
+                installProfile: profile
+              ),
               connectedDeviceProvider(),
               !isBusy else {
             fail(itemID: itemID, action: .update, message: "This map is not ready for a safe update. Nothing was changed.")
@@ -568,6 +759,7 @@ final class MapLifecycleViewModel: ObservableObject {
                         request: liveRequest,
                         provider: MapPackageAcquisitionProvider(),
                         transport: MTPSafeUpdateTransport(
+                            operationProfile: operationProfile,
                             operationGate: operationGate,
                             lifecycleLease: lease
                         ),

@@ -223,6 +223,8 @@ struct Stage42InstallationTests {
         passed += testTargetPolicyRejectsUnsupportedProviderBeforeTransport()
         passed += testTargetPolicyAcceptsAnotherFreizeitkarteRegion()
         passed += testTargetPolicyAcceptsMapCapableBetaProfile()
+        passed += testMapCapableNonLabPIDCompletesGenericLifecycle()
+        passed += testMissingStableWatchIdentityBlocksBeforeMutation()
         passed += testTargetPolicyRejectsBetaProfileWithoutGarminRoot()
         passed += testCoordinatorUsesBusyTransactionGate()
         passed += testNonValidatedArtifactBlocksWrite()
@@ -253,7 +255,7 @@ struct Stage42InstallationTests {
                 && result.verification?.isVerified == true
                 && harness.transport.writeCount == 1
                 && harness.transport.deleteCount == 0,
-            "valid new install reaches INSTALL_VERIFIED"
+            "valid new install reaches INSTALL_VERIFIED_SAMPLED_READBACK_V1"
         )
     }
 
@@ -406,6 +408,52 @@ struct Stage42InstallationTests {
         }
     }
 
+    private static func testMapCapableNonLabPIDCompletesGenericLifecycle() -> Int {
+        let identity = betaIdentity()
+        let profile = DeviceInstallProfileRegistry.local.profile(
+            for: identity,
+            deviceFiles: Harness.makeBeforeFiles(installedLatvia: false)
+        )
+        let harness = Harness(profile: profile, identity: identity)
+        let result = harness.run()
+
+        return expect(
+            result.status == .installVerified
+                && harness.transport.writeCount == 1
+                && harness.transport.readBackCount == 1
+                && harness.manifest.entries.count == 1,
+            "non-0x51b8 map-capable fixture completes the generic install lifecycle"
+        )
+    }
+
+    private static func testMissingStableWatchIdentityBlocksBeforeMutation() -> Int {
+        let identity = DeviceIdentity(
+            manufacturer: "Garmin",
+            model: "fenix 8 - 51mm",
+            family: "fēnix",
+            variant: "51mm",
+            usbVendorId: 0x091e,
+            usbProductId: 0x7777,
+            firmware: "2244",
+            storageCapacity: 31 * gigabyte,
+            freeSpace: 16 * gigabyte
+        )
+        let profile = DeviceInstallProfileRegistry.local.profile(
+            for: identity,
+            deviceFiles: Harness.makeBeforeFiles(installedLatvia: false)
+        )
+        let harness = Harness(profile: profile, identity: identity)
+        let result = harness.run()
+
+        return expect(
+            result.status == .blockedUnsupportedDevice
+                && result.failure == .stableWatchIdentityUnavailable
+                && harness.transport.writeCount == 0
+                && harness.manifest.entries.isEmpty,
+            "missing stable watch identity is rechecked before mutation"
+        )
+    }
+
     private static func betaIdentity() -> DeviceIdentity {
         DeviceIdentity(
             manufacturer: "Garmin",
@@ -416,7 +464,9 @@ struct Stage42InstallationTests {
             usbProductId: 0x7777,
             firmware: "2244",
             storageCapacity: 31 * gigabyte,
-            freeSpace: 16 * gigabyte
+            freeSpace: 16 * gigabyte,
+            localHardwareIdentifier: "UNIT-ID-PRO-51",
+            localIdentityResolution: .garminUnitID
         )
     }
 
@@ -558,7 +608,7 @@ struct Stage42InstallationTests {
         let harness = makeHarness()
         let result = harness.run()
         return expect(
-            result.verification?.status == .verified
+            result.verification?.status == .verifiedSampledReadBack
                 && result.verification?.mode == .sampledReadBack
                 && result.verification?.sampleCount == result.verification?.matchedSampleCount
                 && result.diagnostics.remoteObjectExists
@@ -649,6 +699,7 @@ struct Stage42InstallationTests {
             installedLatvia: Bool = false,
             availableStorage: UInt64 = 15 * gigabyte,
             profile: DeviceInstallProfile? = DeviceInstallProfileRegistry.local.profiles.first,
+            identity: DeviceIdentity? = nil,
             artifact: ValidatedMapArtifact? = nil,
             noArtifact: Bool = false,
             userConfirmed: Bool = true
@@ -661,12 +712,13 @@ struct Stage42InstallationTests {
             let package = Self.makePackage(size: UInt64(remoteData.count))
             let installed = installedLatvia ? Self.makeLatviaMap(size: UInt64(remoteData.count)) : nil
             let before = Self.makeBeforeFiles(installedLatvia: installedLatvia)
+            let resolvedIdentity = identity ?? Self.identity()
             let resolvedArtifact = artifact ?? Self.makeArtifact(
                 package: package,
                 data: remoteData
             )
             request = MapInstallationRequest(
-                identity: Self.identity(),
+                identity: resolvedIdentity,
                 selectedMap: package,
                 comparison: MapComparison(
                     providerName: "Freizeitkarte",
@@ -714,7 +766,8 @@ struct Stage42InstallationTests {
                 usbProductId: 0x51b8,
                 firmware: "2243",
                 storageCapacity: 31 * gigabyte,
-                freeSpace: 15 * gigabyte
+                freeSpace: 15 * gigabyte,
+                localHardwareIdentifier: "MTP-SERIAL-FENIX-47"
             )
         }
 
@@ -783,7 +836,7 @@ struct Stage42InstallationTests {
             }
         }
 
-        private static func makeBeforeFiles(installedLatvia: Bool) -> [DeviceFile] {
+        fileprivate static func makeBeforeFiles(installedLatvia: Bool) -> [DeviceFile] {
             var files = [
                 DeviceFile(
                     itemID: 9,

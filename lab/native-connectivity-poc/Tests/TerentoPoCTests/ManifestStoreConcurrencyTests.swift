@@ -6,7 +6,8 @@ struct ManifestStoreConcurrencyTests {
         try testConcurrentReadModifyWritePreservesAllEntries()
         try testOlderEntryCannotReplaceNewerEntry()
         try testUnsafeDeviceKeyIsRejected()
-        print("PASS: 3 manifest store concurrency tests")
+        try testPhysicalWatchKeysAreStableAndDistinct()
+        print("PASS: 4 manifest store tests")
     }
 
     private static func testConcurrentReadModifyWritePreservesAllEntries() throws {
@@ -90,6 +91,35 @@ struct ManifestStoreConcurrencyTests {
         } catch TerentoManifestStoreError.invalidDeviceKey {
             print("PASS: unsafe manifest device key is rejected")
         }
+    }
+
+    private static func testPhysicalWatchKeysAreStableAndDistinct() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("terento-device-key-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let deriver = LocalPhysicalDeviceKeyDeriver(rootDirectory: root)
+        let watchA = try deriver.derive(source: "mtp-serial", value: "SERIAL-A")
+        let watchAAgain = try deriver.derive(source: "mtp-serial", value: "SERIAL-A")
+        let watchB = try deriver.derive(source: "mtp-serial", value: "SERIAL-B")
+        let unitIDA = try deriver.derive(source: "garmin-unit-id", value: "UNIT-A")
+        let unitIDB = try deriver.derive(source: "garmin-unit-id", value: "UNIT-B")
+        let sameValueDifferentSource = try deriver.derive(source: "garmin-unit-id", value: "SERIAL-A")
+        let secretURL = root.appendingPathComponent(".device-key-secret")
+        let attributes = try FileManager.default.attributesOfItem(atPath: secretURL.path)
+        let permissions = (attributes[.posixPermissions] as? NSNumber)?.intValue
+
+        guard watchA == watchAAgain,
+              watchA != watchB,
+              unitIDA != unitIDB,
+              watchA != sameValueDifferentSource,
+              watchA.hasPrefix("watch-v2-"),
+              !watchA.contains("SERIAL-A"),
+              permissions == 0o600 else {
+            throw TestFailure(message: "physical watch keys were not stable, distinct, private, and permission-restricted")
+        }
+
+        print("PASS: identical models can use stable, distinct physical-watch namespaces")
     }
 
     private static func requireVersion() throws -> MapVersion {

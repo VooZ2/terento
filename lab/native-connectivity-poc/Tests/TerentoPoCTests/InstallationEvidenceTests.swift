@@ -83,13 +83,73 @@ struct InstallationEvidenceTests {
             finishingResult: .verified, terentoVersion: "test", macOSVersion: "test"
         )
         expect(broadRegionEvent.region == "BALEARICS", "evidence uses concrete package identity, not its broad catalog group")
+        let reviewedIdentity = DeviceIdentity(
+            manufacturer: "Garmin", model: "fenix 8 - 47mm", family: "fēnix",
+            variant: "47 mm, AMOLED", usbVendorId: 0x091e, usbProductId: 0x51b8,
+            firmware: "2244", storageCapacity: 32_000_000_000,
+            freeSpace: 10_000_000_000
+        )
+        let reviewedEvent = InstallationEvidenceEvent(
+            identity: reviewedIdentity, package: package, outcome: .succeeded,
+            finishingResult: .verified, terentoVersion: "test", macOSVersion: "test"
+        )
+        expect(
+            reviewedEvent.canonicalDeviceId == "garmin-fenix-8-47-amoled"
+                && reviewedEvent.displayType == "AMOLED",
+            "reviewed exact identity is sent with canonical device and display fields"
+        )
+        let reviewedPayload = String(decoding: try JSONEncoder().encode(reviewedEvent), as: UTF8.self)
+        expect(
+            reviewedPayload.contains("\"canonicalDeviceId\":\"garmin-fenix-8-47-amoled\"")
+                && reviewedPayload.contains("\"displayType\":\"AMOLED\"")
+                && reviewedPayload.contains("\"appBuild\":")
+                && reviewedPayload.contains("\"operationId\":"),
+            "schema v3 payload encodes canonical identity and operation fields"
+        )
         let failed = makeEvent(outcome: .failed, finishing: .failed)
         let failedInserted = try store.append(failed, queueForUpload: false)
         expect(failedInserted, "failed started installation is stored")
         let encoded = try JSONEncoder().encode(failed)
         let payload = String(decoding: encoded, as: UTF8.self)
-        expect(!payload.lowercased().contains("serial"), "payload has no serial number")
+        expect(!payload.contains("stage401-") && !payload.contains("1234567890"), "payload has no serial or Unit ID value")
         expect(!payload.contains("/Users/"), "payload has no local path")
+
+        let proIdentity = DeviceIdentity(
+            manufacturer: "Garmin", model: "fenix 8 - 51mm", family: "fēnix",
+            variant: "51mm", usbVendorId: 0x091e, usbProductId: 0x7777,
+            firmware: "2326", storageCapacity: 1, freeSpace: 1,
+            localHardwareIdentifier: "1234567890", localIdentityResolution: .garminUnitID,
+            deviceDescription: "fēnix 8 Pro - 51mm"
+        )
+        let proEvent = InstallationEvidenceEvent(
+            identity: proIdentity, package: package, outcome: .succeeded,
+            finishingResult: .verified, terentoVersion: "test", macOSVersion: "test"
+        )
+        expect(
+            proEvent.model == "fēnix 8 Pro"
+                && proEvent.compatibilityIdentity == "fēnix 8 Pro · 51 mm"
+                && proEvent.canonicalDeviceId == nil
+                && proEvent.rawMTPModel == "fenix 8 - 51mm"
+                && proEvent.identityResolutionCode == "GARMIN_UNIT_ID",
+            "Pro remains a separate evidence model while an unknown display stays non-exact"
+        )
+
+        let controlCharacterIdentity = DeviceIdentity(
+            manufacturer: "Garmin", model: "fenix 8\nPro - 51mm", family: "fēnix",
+            variant: "51mm", usbVendorId: 0x091e, usbProductId: 0x7777,
+            firmware: "2326", storageCapacity: 1, freeSpace: 1,
+            localHardwareIdentifier: "local-only"
+        )
+        let sanitizedEvent = InstallationEvidenceEvent(
+            identity: controlCharacterIdentity, package: package, outcome: .failed,
+            finishingResult: .failed, failureStage: .preflight,
+            failureCode: "INSTALL_BLOCKED_STABLE_WATCH_IDENTITY_UNAVAILABLE",
+            writeStarted: false, terentoVersion: "test", macOSVersion: "test"
+        )
+        expect(
+            sanitizedEvent.rawMTPModel == "fenix 8Pro - 51mm",
+            "raw MTP diagnostic label removes control characters before upload"
+        )
     }
 
     static func testStatisticsAndPromotionThresholds() {
@@ -124,6 +184,37 @@ struct InstallationEvidenceTests {
 
         let withFailure = CompatibilityEvidenceCalculator.summarize(three + [makeEvent(outcome: .failed, finishing: .failed)], forModel: model)
         expect(withFailure.attemptedInstallCount == 4 && withFailure.failedInstallCount == 1 && withFailure.successRate == 0.75, "failures affect the denominator but not promotion")
+
+        let operationID = UUID()
+        let firstMap = InstallationEvidenceEvent(
+            identity: identity, package: package, outcome: .failed,
+            finishingResult: .failed, errorCategory: .transport,
+            operationId: operationID, mapResultIndex: 0, selectedMapCount: 2,
+            failureStage: .write, failureCode: "INSTALL_FAILED_WRITE",
+            nativeFailureCode: .sendObjectFailed, writeStarted: true,
+            transferProgressBucket: .oneToTwentyFour,
+            terentoVersion: "test", macOSVersion: "test"
+        )
+        let secondMap = InstallationEvidenceEvent(
+            identity: identity, package: package, outcome: .notStarted,
+            finishingResult: .notReached, errorCategory: .transport,
+            operationId: operationID, mapResultIndex: 1, selectedMapCount: 2,
+            failureStage: .preflight,
+            failureCode: "INSTALL_NOT_STARTED_AFTER_EARLIER_FAILURE",
+            writeStarted: false, terentoVersion: "test", macOSVersion: "test"
+        )
+        let grouped = CompatibilityEvidenceCalculator.summarize([firstMap, secondMap], forModel: model)
+        expect(grouped.attemptedInstallCount == 1 && grouped.failedInstallCount == 1, "one multi-map click counts as one failed write-started operation")
+
+        let prewrite = InstallationEvidenceEvent(
+            identity: identity, package: package, outcome: .failed,
+            finishingResult: .failed, errorCategory: .acquisition,
+            operationId: UUID(), failureStage: .download,
+            failureCode: "INSTALL_BLOCKED_DOWNLOAD_FAILED",
+            writeStarted: false, terentoVersion: "test", macOSVersion: "test"
+        )
+        let excluded = CompatibilityEvidenceCalculator.summarize([prewrite], forModel: model)
+        expect(excluded.attemptedInstallCount == 0 && excluded.failedInstallCount == 0, "pre-write failure is diagnostic and excluded from watch compatibility")
     }
 
     static func testDiagnosticSanitization() {
@@ -162,7 +253,8 @@ struct InstallationEvidenceTests {
             store: LocalInstallationEvidenceStore(rootURL: staleRoot),
             uploader: UploadRecorder()
         )
-        expect(stale.currentConsentChoice == .declined, "an older consent notice is invalidated")
+        expect(stale.currentConsentChoice == nil, "an older consent notice requires a fresh visible choice")
+        expect(stale.compatibilitySharingEnabled, "the fresh visible choice keeps the documented checked default")
         expect(stale.store.pendingUploads().isEmpty, "invalidating stale consent clears its upload queue")
 
         let declinedRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
