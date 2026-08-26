@@ -26,6 +26,7 @@ from terento_catalog.db import Database
 
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "021_canonical_admin_semantics.sql"
+IDENTITY_STATE_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "022_canonical_identity_state_consistency.sql"
 
 
 class RecordingResult:
@@ -346,7 +347,11 @@ class AdminSemanticsTests(unittest.TestCase):
                 "diagnostic_status": "RESOLVED",
             }],
         ).decode()
-        self.assertEqual(body.count("class='metric'"), 4)
+        self.assertNotIn("class='metric'", body)
+        self.assertIn('class="admin-summary-strip installation-summary-strip"', body)
+        self.assertIn("2 attempts · 1 successful · 1 error", body)
+        self.assertNotIn('id="evidence-title"', body)
+        self.assertNotIn("<h2 id=\"evidence-title\">Installations</h2>", body)
         self.assertIn("1 error", body)
         self.assertIn("/admin/diagnostics?identity=f%C4%93nix+8+%C2%B7+51+mm%2C+AMOLED&amp;state=open", body)
         self.assertIn("data-diagnostics-url='/admin/diagnostics?identity=", body)
@@ -356,6 +361,101 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertNotIn("Diagnostic record", body)
         self.assertNotIn("Raw MTP model", body)
         self.assertNotIn("resolve-diagnostic-dialog", body)
+
+    def test_dashboard_groups_raw_identity_variants_by_canonical_device(self):
+        canonical_id = "garmin-fenix-8-47-amoled"
+        row = {
+            "model": "fēnix 8",
+            "variant": "47 mm, AMOLED",
+            "compatibility_identity": "fēnix 8 · 47 mm AMOLED",
+            "canonical_device_model_id": canonical_id,
+            "attempted_install_count": 5,
+            "successful_install_count": 5,
+            "failed_install_count": 0,
+            "recognized_map_capable_evidence": True,
+        }
+        operations = [
+            {
+                "operation_key": f"operation-{index}",
+                "compatibility_identity": identity,
+                "canonical_device_model_id": canonical_id,
+                "phase_outcome": "SUCCEEDED",
+                "automatic_finishing_result": "VERIFIED",
+                "identity_resolution_state": state,
+            }
+            for index, (identity, state) in enumerate((
+                ("fēnix 8 · 47 mm AMOLED", "RESOLVED"),
+                ("fēnix 8 · 47 mm, AMOLED", "UNRESOLVED"),
+            ), start=1)
+        ]
+        body = dashboard_page(
+            [row], {"username": "operator"}, "csrf", operations=operations,
+        ).decode()
+        self.assertIn("canonical_device_id=garmin-fenix-8-47-amoled", body)
+        self.assertNotIn("Identity pending</span>", body)
+        self.assertNotIn(" error</a>", body)
+
+    def test_unresolved_identity_is_separate_from_numeric_errors(self):
+        identity = "Unknown Garmin · 47 mm"
+        body = dashboard_page(
+            [{
+                "model": "Unknown Garmin",
+                "variant": "47 mm",
+                "compatibility_identity": identity,
+                "attempted_install_count": 1,
+                "successful_install_count": 1,
+                "recognized_map_capable_evidence": False,
+            }],
+            {"username": "operator"},
+            "csrf",
+            operations=[{
+                "operation_key": "pending-success",
+                "compatibility_identity": identity,
+                "phase_outcome": "SUCCEEDED",
+                "automatic_finishing_result": "VERIFIED",
+                "identity_resolution_state": "UNRESOLVED",
+            }],
+        ).decode()
+        evidence_row = body.split("class='evidence-model-row'", 1)[1].split("</tr>", 1)[0]
+        self.assertIn("Identity pending", evidence_row)
+        self.assertNotIn("error-count", evidence_row)
+        self.assertIn("<td><span class='muted-value'>—</span></td>", evidence_row)
+
+    def test_canonical_diagnostics_include_all_raw_identity_spellings(self):
+        canonical_id = "garmin-fenix-8-47-amoled"
+        events = [{
+            "operation_key": f"operation-{index}",
+            "event_id": f"event-{index}",
+            "occurred_at": f"2026-08-25T1{index}:00:00+00:00",
+            "compatibility_identity": identity,
+            "canonical_device_model_id": canonical_id,
+            "phase_outcome": "SUCCEEDED",
+            "automatic_finishing_result": "VERIFIED",
+            "identity_resolution_state": "RESOLVED",
+            "write_started": True,
+        } for index, identity in enumerate((
+            "fēnix 8 · 47 mm AMOLED",
+            "fēnix 8 · 47 mm, AMOLED",
+        ), start=1)]
+        body = diagnostics_page(
+            [{
+                "model": "fēnix 8",
+                "variant": "47 mm, AMOLED",
+                "compatibility_identity": "fēnix 8 · 47 mm AMOLED",
+                "canonical_device_model_id": canonical_id,
+                "attempted_install_count": 2,
+                "successful_install_count": 2,
+                "recognized_map_capable_evidence": True,
+            }],
+            {"username": "operator"}, "csrf",
+            identity="fēnix 8 · 47 mm AMOLED",
+            canonical_device_model_id=canonical_id,
+            operations=events,
+        ).decode()
+        self.assertIn("2 records", body)
+        self.assertIn("Diagnostic ID: <code>operation-1</code>", body)
+        self.assertIn("Diagnostic ID: <code>operation-2</code>", body)
+        self.assertIn("canonical_device_id=garmin-fenix-8-47-amoled", body)
 
     def test_diagnostics_page_separates_state_columns_and_collapsed_detail_actions(self):
         identity = "fēnix 8 · 51 mm, AMOLED"
@@ -394,6 +494,13 @@ class AdminSemanticsTests(unittest.TestCase):
             "canonical_device_model_id": None,
             "linked_github_issue": None,
         }
+        succeeded = {
+            **pending,
+            "operation_key": "succeeded-operation",
+            "event_id": "event-succeeded",
+            "identity_resolution_state": "RESOLVED",
+            "canonical_device_model_id": "garmin-fenix-8-51-amoled",
+        }
         resolved = {**failed, "operation_key": "resolved-operation", "event_id": "event-resolved", "diagnostic_status": "RESOLVED", "linked_github_issue": None}
         body = diagnostics_page(
             [{
@@ -407,7 +514,7 @@ class AdminSemanticsTests(unittest.TestCase):
             {"username": "operator"},
             "csrf",
             identity=identity,
-            operations=[failed, pending],
+            operations=[failed, pending, succeeded],
             resolved_operations=[resolved],
             identity_devices=[{
                 "id": "garmin-fenix-8-51-amoled",
@@ -417,7 +524,7 @@ class AdminSemanticsTests(unittest.TestCase):
             }],
         ).decode()
         table = body.split("class='diagnostic-list-table'", 1)[1].split("</table>", 1)[0]
-        for label in ("Date", "Region", "Result", "Stage", "Code", "Issue", "State", "Action"):
+        for label in ("Date", "Region", "Result", "Stage", "Code", "Issue", "Review", "Action"):
             self.assertIn(f">{label}<", table)
         self.assertNotIn("Raw MTP model", table)
         self.assertIn("Open", body)
@@ -435,6 +542,17 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("#32 · Open", body)
         self.assertIn("Diagnostic ID:", body)
         self.assertIn("Technical details", body)
+        self.assertIn("<option value='all' selected>All</option><option value='succeeded'>Succeeded</option><option value='failed'>Failed</option><option value='open'>Open</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity pending</option><option value='with-issue'>With issue</option>", body)
+        self.assertEqual(body.count("action='/admin/diagnostics/resolve'"), 1)
+        self.assertEqual(body.count("action='/admin/diagnostics/reopen'"), 1)
+        self.assertEqual(body.count("action='/admin/diagnostics/identity'"), 1)
+        self.assertIn("data-diagnostic-state='history'", body)
+        self.assertIn("data-diagnostic-result='succeeded'", body)
+        self.assertIn("new URLSearchParams(window.location.search).get('state')", body)
+        self.assertIn("selected === 'succeeded'", body)
+        self.assertIn("selected === 'failed'", body)
+        self.assertIn("selected === 'open' && row.dataset.reviewOpen === 'true'", body)
+        self.assertIn("selected === 'identity-pending' && row.dataset.identityPending === 'true'", body)
 
     def test_issue_link_update_is_additive_and_does_not_change_evidence_outcome(self):
         source = inspect.getsource(Database.update_diagnostic_issue)
@@ -483,6 +601,20 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("WHEN successful_count < 5 THEN ''SUPPORTED''", migration)
         self.assertNotIn("WHEN successful_count = 1 THEN ''SUPPORTED''", migration)
         self.assertNotIn("compatibility_evidence_event\nSET phase_outcome", migration)
+
+    def test_identity_state_backfill_is_scoped_and_audited(self):
+        migration = IDENTITY_STATE_MIGRATION.read_text(encoding="utf-8")
+        audit_position = migration.index("INSERT INTO compatibility_identity_resolution_audit")
+        update_position = migration.index("UPDATE compatibility_evidence_event")
+        self.assertLess(audit_position, update_position)
+        self.assertIn("canonical_device_model_id IS NOT NULL", migration)
+        self.assertIn("identity_resolution_state = 'UNRESOLVED'", migration)
+        self.assertIn("NOT EXISTS", migration)
+        for protected_field in (
+            "phase_outcome =", "automatic_finishing_result =", "occurred_at =",
+            "diagnostic_status =", "successful_install_count =",
+        ):
+            self.assertNotIn(protected_field, migration)
 
 
 if __name__ == "__main__":

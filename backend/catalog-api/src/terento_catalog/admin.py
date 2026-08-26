@@ -90,8 +90,7 @@ def format_timestamp(value: Any) -> str:
         return "—"
     parsed = _parse_timestamp(value)
     if parsed is not None:
-        months = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-        return f"{parsed.day:02d} {months[parsed.month - 1]} {parsed.year}, {parsed.hour:02d}:{parsed.minute:02d} UTC"
+        return parsed.strftime("%Y-%m-%d %H:%M")
     return str(value)
 
 
@@ -238,10 +237,31 @@ def _identity_is_pending(results: list[dict[str, Any]]) -> bool:
     if not results:
         return False
     first = results[0]
+    if first.get("canonical_device_model_id"):
+        return False
     state = str(first.get("identity_resolution_state") or "").strip().upper()
     if state in {"RESOLVED", "NOT_IDENTIFIABLE"}:
         return False
-    return not first.get("canonical_device_model_id") or state in {"", "UNRESOLVED", "PENDING"}
+    return state in {"", "UNRESOLVED", "PENDING"}
+
+
+def _identity_group_key(value: dict[str, Any]) -> str:
+    canonical_id = str(value.get("canonical_device_model_id") or "").strip()
+    if canonical_id:
+        return f"canonical:{canonical_id}"
+    identity = str(value.get("compatibility_identity") or value.get("model") or "Unknown").strip()
+    return f"identity:{identity}"
+
+
+def _diagnostics_url(value: dict[str, Any], *, state: str | None = None) -> str:
+    identity = str(value.get("compatibility_identity") or value.get("model") or "Unknown").strip()
+    parameters = {"identity": identity}
+    canonical_id = str(value.get("canonical_device_model_id") or "").strip()
+    if canonical_id:
+        parameters["canonical_device_id"] = canonical_id
+    if state:
+        parameters["state"] = state
+    return "/admin/diagnostics?" + urlencode(parameters)
 
 
 def _operation_is_problematic(results: list[dict[str, Any]]) -> bool:
@@ -272,7 +292,7 @@ def _diagnostic_summary_by_identity(events: list[dict[str, Any]]) -> dict[str, d
     by_identity: dict[str, dict[str, int]] = {}
     grouped: dict[str, dict[str, list[dict[str, Any]]]] = {}
     for event in events:
-        identity = str(event.get("compatibility_identity") or event.get("model") or "Unknown").strip()
+        identity = _identity_group_key(event)
         key = _operation_key(event)
         if identity and key:
             grouped.setdefault(identity, {}).setdefault(key, []).append(event)
@@ -297,21 +317,14 @@ def _error_cell(row: dict[str, Any], diagnostic_summary: dict[str, int] | None =
     summary = diagnostic_summary or {}
     count = int(summary.get("errors") or 0)
     identity = str(row.get("compatibility_identity") or row.get("model") or "unknown")
-    target = "/admin/diagnostics?" + urlencode({"identity": identity, "state": "open"})
-    parts: list[str] = []
+    target = _diagnostics_url(row, state="open")
     if count:
-        parts.append(
+        return (
             f"<a class='error-count' href='{html.escape(target, quote=True)}' "
             f"aria-label='View {count} unresolved errors for {html.escape(identity)}'>"
             f"{count} error{'s' if count != 1 else ''}</a>"
         )
-    if int(summary.get("identity_pending") or 0):
-        pending = int(summary["identity_pending"])
-        parts.append(
-            f"<span class='identity-pending-indicator' aria-label='{pending} identity pending'>"
-            f"Identity pending</span>"
-        )
-    return "<span class='muted-value'>—</span>" if not parts else " ".join(parts)
+    return "<span class='muted-value'>—</span>"
 
 
 def _diagnostics_id(identity: str) -> str:
@@ -320,6 +333,8 @@ def _diagnostics_id(identity: str) -> str:
 
 def _diagnostic_state_badge(value: str) -> str:
     normalized = str(value).upper()
+    if normalized == "NONE":
+        return "<span class='muted-value'>—</span>"
     if normalized == "RESOLVED":
         state, label = "RESOLVED", "Resolved"
     elif normalized in {"IDENTITY_PENDING", "UNRESOLVED", "PENDING"}:
@@ -511,7 +526,7 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     devices_class = " class='active'" if active == "devices" else ""
     return f"""<header class="admin-topbar"><div class="admin-topbar-inner">
       <div class="admin-header-zone admin-header-left">{_admin_brand()}</div>
-      <nav class="admin-section-nav" aria-label="Admin sections"><a{evidence_class} href="/admin">Installation evidence</a><a{devices_class} href="/admin/devices">Devices</a><a{campaign_class} href="/admin/campaign-links">Campaign links</a></nav>
+      <nav class="admin-section-nav" aria-label="Admin sections"><a{evidence_class} href="/admin">Installations</a><a{devices_class} href="/admin/devices">Devices</a><a{campaign_class} href="/admin/campaign-links">Campaign links</a></nav>
       <nav class="admin-nav" aria-label="Admin navigation"><label class="timezone-control"><span class="sr-only">Time zone</span><select id="admin-timezone" aria-label="Time zone" title="Time zone"><option value="browser">Automatic (browser)</option><option value="UTC">UTC</option><option value="Europe/Vilnius">Europe/Vilnius</option><option value="Europe/London">Europe/London</option><option value="Europe/Berlin">Europe/Berlin</option><option value="America/New_York">America/New_York</option><option value="America/Los_Angeles">America/Los_Angeles</option><option value="Asia/Tokyo">Asia/Tokyo</option></select></label><a class="admin-website-link" href="https://terento.app/" target="_blank" rel="noopener noreferrer" aria-label="Open Terento website in a new tab">Website <span aria-hidden="true">↗</span></a><span class="admin-user" aria-label="Signed in as {username}">{username}</span>
       <form method="post" action="/admin/logout"><input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}"><button class="link-button" type="submit">Sign out</button></form></nav>
     </div></header>"""
@@ -547,7 +562,7 @@ def login_page(*, error: str | None = None) -> bytes:
           {brand}
           <p class="eyebrow">Admin</p>
           <h1 id="auth-title">Sign in</h1>
-          <p class="lede">Private installation evidence for Terento.</p>
+          <p class="lede">Private installation activity and compatibility evidence for Terento.</p>
           {error}
           <form method="post" action="/admin/login">
             <label>Username<input name="username" autocomplete="username" required></label>
@@ -567,41 +582,42 @@ def dashboard_page(
 ) -> bytes:
     attempts = sum(int(row.get("attempted_install_count") or 0) for row in rows)
     successes = sum(int(row.get("successful_install_count") or 0) for row in rows)
-    failures = sum(int(row.get("failed_install_count") or 0) for row in rows)
     latest = _latest_data_timestamp(rows)
     status_values = [status.value for status in CANONICAL_STATUS_ORDER]
     status_options = "".join(
         f"<option value='{status.lower()}'>{status.title()}</option>"
         for status in status_values
     )
-    cards = "".join(
-        f"<article class='metric'><span>{label}</span><strong>{value}</strong></article>"
-        for label, value in (("Models", len(rows)), ("Install attempts", attempts), ("Successful", successes), ("Failed", failures))
-    )
     diagnostic_summary = _diagnostic_summary_by_identity(operations or [])
-    table_rows = "".join(_statistics_row(row, diagnostic_summary.get(str(row.get("compatibility_identity") or row.get("model") or ""), {})) for row in rows)
+    errors = sum(int(summary.get("errors") or 0) for summary in diagnostic_summary.values())
+    table_rows = "".join(
+        _statistics_row(row, diagnostic_summary.get(_identity_group_key(row), {}))
+        for row in rows
+    )
     empty = "<p class='empty'>No installation evidence yet.</p>" if not rows else ""
-    latest_copy = f"Updated {_timestamp_markup(latest)}" if latest else "No evidence received yet"
+    latest_copy = f"<strong>Updated</strong> {_timestamp_markup(latest)}" if latest else "No evidence received yet"
     content = f"""
       {_admin_header(user, csrf_token)}
       <main class="dashboard" id="main-content">
-        <div class="heading-row"><div><p class="eyebrow">Evidence</p><h1>Installation evidence</h1><p class="lede">Installation evidence received from Terento installations.</p></div><p class="updated-at">{latest_copy}</p></div>
-        <section class="metrics" aria-label="Evidence summary">{cards}</section>{empty}
-        <section class="evidence-section" aria-labelledby="evidence-title">
-          <div class="section-heading"><div><p class="section-kicker">Evidence</p><h2 id="evidence-title">Installation evidence</h2></div><p class="table-help">Times follow the selected time zone</p></div>
-          <form class="filter-bar" id="evidence-filters" role="search">
+        <div class="heading-row"><div><p class="eyebrow">Evidence</p><h1>Installations</h1><p class="lede">Installation activity and compatibility evidence from Terento users.</p></div></div>
+        <section class="admin-summary-strip installation-summary-strip" aria-label="Evidence summary and latest update">
+          <p class="admin-summary-metrics"><strong>{len(rows)} {'model' if len(rows) == 1 else 'models'}</strong><span> · {attempts} {'attempt' if attempts == 1 else 'attempts'} · {successes} successful · {errors} {'error' if errors == 1 else 'errors'}</span></p>
+          <p class="admin-summary-context">{latest_copy}</p>
+        </section>{empty}
+        <section class="evidence-section" aria-label="Installation evidence table">
+          <form class="filter-bar admin-filter-bar" id="evidence-filters" role="search">
             <label class="filter-search"> <span class="sr-only">Search models</span><input id="evidence-search" type="search" placeholder="Search models" autocomplete="off"></label>
             <label><span class="sr-only">Filter by status</span><select id="evidence-status"><option value="all">All statuses</option>{status_options}</select></label>
             <label><span class="sr-only">Sort models</span><select id="evidence-sort"><option value="attempts">Most attempts</option><option value="errors">Most errors</option><option value="latest">Latest activity</option><option value="model">Model name</option></select></label>
+            <p class="results-count" id="results-count" aria-live="polite">{len(rows)} {"model" if len(rows) == 1 else "models"}</p>
           </form>
-          <p class="results-count" id="results-count" aria-live="polite">{len(rows)} {"model" if len(rows) == 1 else "models"}</p>
-          <div class="table-wrap evidence-table-wrap"><table><caption class="sr-only">Installation evidence by exact device identity</caption><thead><tr><th scope="col">Model</th><th scope="col">Variant</th><th scope="col">Attempts</th><th scope="col">Success</th><th scope="col">Errors</th><th scope="col">Status</th><th scope="col">Last success</th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
-          <p class="table-help evidence-table-note">Errors are unresolved diagnostic operations. Identity pending is shown separately and does not change the evidence status. Resolved historical diagnostics remain available from the model detail.</p>
+          <div class="table-wrap evidence-table-wrap"><table class="admin-table"><caption class="sr-only">Installations by exact device identity</caption><thead><tr><th scope="col">Model</th><th scope="col">Variant</th><th scope="col">Attempts</th><th scope="col">Success</th><th scope="col">Errors</th><th scope="col">Status</th><th scope="col">Last success</th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
+          <p class="table-help evidence-table-note">Times follow the selected time zone. Errors are unresolved diagnostic operations. Identity pending is shown separately and does not change the evidence status. Resolved historical diagnostics remain available from the model detail.</p>
         </section>
       </main>
       <script>{_dashboard_script()}</script>
     """
-    return _layout("Installation evidence", content)
+    return _layout("Installations", content)
 
 
 def _display_identity(identity: str, row: dict[str, Any] | None = None) -> tuple[str, str]:
@@ -643,11 +659,11 @@ def _identity_device_options(devices: list[dict[str, Any]] | None, current_id: A
 def _operation_state(results: list[dict[str, Any]], *, resolved: bool) -> str:
     if resolved:
         return "resolved"
-    if _operation_is_problematic(results):
+    if _operation_is_problematic(results) or _operation_issue(results):
         return "open"
     if _identity_is_pending(results):
         return "identity-pending"
-    return "open"
+    return "history"
 
 
 def _operation_result(results: list[dict[str, Any]]) -> str:
@@ -738,13 +754,19 @@ def _diagnostic_detail_dialog(
     resolved: bool,
     csrf_token: str,
     identity_devices: list[dict[str, Any]] | None,
+    canonical_device_model_id: str | None = None,
 ) -> str:
     first = results[0]
     dialog_id = "diagnostic-detail-" + hashlib.sha256(operation_key.encode("utf-8")).hexdigest()[:16]
     model, variant = _display_identity(identity)
     issue = _operation_issue(results)
     result_label = _operation_result(results)
-    return_to = "/admin/diagnostics?" + urlencode({"identity": identity})
+    state = _operation_state(results, resolved=resolved)
+    identity_pending = _identity_is_pending(results)
+    return_to = _diagnostics_url({
+        "compatibility_identity": identity,
+        "canonical_device_model_id": canonical_device_model_id,
+    })
     options, current_label = _identity_device_options(identity_devices, first.get("canonical_device_model_id"))
     search_id = f"identity-search-{dialog_id}"
     canonical_id = f"identity-canonical-{dialog_id}"
@@ -770,7 +792,7 @@ def _diagnostic_detail_dialog(
             <input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'>
             <button type='submit' class='secondary-button'>Reopen diagnostic</button>
           </form>"""
-    else:
+    elif state == "open":
         lifecycle_action = f"""
           <form method='post' action='/admin/diagnostics/resolve' class='diagnostic-action-form'>
             <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>
@@ -781,6 +803,8 @@ def _diagnostic_detail_dialog(
             <label>Resolution note <span class='optional-label'>Optional</span><textarea name='resolution_note' rows='3'></textarea></label>
             <button type='submit'>Resolve diagnostic</button>
           </form>"""
+    else:
+        lifecycle_action = ""
     identity_form = f"""
       <form method='post' action='/admin/diagnostics/identity' class='diagnostic-action-form identity-review-form'>
         <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>
@@ -795,7 +819,7 @@ def _diagnostic_detail_dialog(
         <label>Reason <span class='optional-label'>Optional</span><input name='identity_reason' placeholder='Exact model confirmed by operator'></label>
         <label>Review note <span class='optional-label'>Optional</span><textarea name='identity_note' rows='3'></textarea></label>
         <button type='submit'>Save identity review</button>
-      </form>"""
+      </form>""" if identity_pending else ""
     issue_form = f"""
       <section class='diagnostic-action-form github-review' aria-labelledby='github-review-{dialog_id}'>
         <h4 id='github-review-{dialog_id}'>GitHub issue</h4>
@@ -810,6 +834,14 @@ def _diagnostic_detail_dialog(
         </form>
         {f"<form method='post' action='/admin/diagnostics/issue' class='github-remove-form'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='operation_key' value='{html.escape(operation_key, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'><input type='hidden' name='linked_github_issue' value=''><button type='submit' class='secondary-button'>Remove link</button></form>" if issue else ''}
       </section>"""
+    review_state = ""
+    if resolved:
+        review_state = f"<div><dt>Review state</dt><dd>{_diagnostic_state_badge('RESOLVED')}{resolution}</dd></div>"
+    elif state == "open":
+        identity_badge = f" {_diagnostic_state_badge('IDENTITY_PENDING')}" if identity_pending else ""
+        review_state = f"<div><dt>Review state</dt><dd>{_diagnostic_state_badge('OPEN')}{identity_badge}</dd></div>"
+    elif identity_pending:
+        review_state = f"<div><dt>Review state</dt><dd>{_diagnostic_state_badge('IDENTITY_PENDING')}</dd></div>"
     technical_details = f"<details class='diagnostic-technical-details diagnostic-technical-all'><summary>Technical details</summary><p class='diagnostic-id'>Diagnostic ID: <code>{html.escape(operation_key)}</code></p>{technical}</details>"
     return f"""
       <dialog class='diagnostic-detail-dialog' id='{dialog_id}' aria-labelledby='{dialog_id}-title'>
@@ -818,12 +850,12 @@ def _diagnostic_detail_dialog(
           <dl class='diagnostic-detail-summary'>
             <div><dt>Device</dt><dd>{html.escape(model)}</dd></div>
             <div><dt>Variant</dt><dd>{html.escape(variant)}</dd></div>
-            <div><dt>Date/time</dt><dd>{_timestamp_markup(first.get('occurred_at'))}</dd></div>
+            <div><dt>Date</dt><dd>{_timestamp_markup(first.get('occurred_at'))}</dd></div>
             <div><dt>Region</dt><dd>{html.escape(_operation_text(results, 'region'))}</dd></div>
             <div><dt>Result</dt><dd>{_diagnostic_result(result_label)}</dd></div>
             <div><dt>App version</dt><dd>{html.escape(str(first.get('release_label') or first.get('terento_version') or '—'))}{f" (build {html.escape(str(first.get('app_build')))})" if first.get('app_build') else ''}</dd></div>
-            <div><dt>Lifecycle state</dt><dd>{_diagnostic_state_badge('RESOLVED' if resolved else 'ACTIVE')}{resolution}</dd></div>
-            <div><dt>Linked GitHub issue</dt><dd>{_github_issue_link(issue)}</dd></div>
+            {review_state}
+            <div><dt>Linked issue</dt><dd>{_github_issue_link(issue)}</dd></div>
           </dl>
           <div class='diagnostic-actions-grid'>{lifecycle_action}{identity_form}{issue_form}</div>
           {technical_details}
@@ -837,27 +869,35 @@ def diagnostics_page(
     operations: list[dict[str, Any]] | None = None,
     resolved_operations: list[dict[str, Any]] | None = None,
     identity_devices: list[dict[str, Any]] | None = None,
+    canonical_device_model_id: str | None = None,
 ) -> bytes:
     identity = identity.strip()
+    canonical_device_model_id = str(canonical_device_model_id or "").strip() or None
+
+    def matches(value: dict[str, Any]) -> bool:
+        if canonical_device_model_id:
+            return str(value.get("canonical_device_model_id") or "").strip() == canonical_device_model_id
+        return str(value.get("compatibility_identity") or value.get("model") or "").strip() == identity
+
     model_row = next(
-        (row for row in rows if str(row.get("compatibility_identity") or row.get("model") or "").strip() == identity),
+        (row for row in rows if matches(row)),
         None,
     )
     active_events = [
         event for event in (operations or [])
-        if str(event.get("compatibility_identity") or event.get("model") or "").strip() == identity
+        if matches(event)
     ]
     resolved_events = [
         event for event in (resolved_operations or [])
-        if str(event.get("compatibility_identity") or event.get("model") or "").strip() == identity
+        if matches(event)
     ]
     active_groups = _group_operations(active_events)
     resolved_groups = _group_operations(resolved_events)
     active_diagnostics = {
         key: results for key, results in active_groups.items()
-        if _operation_is_problematic(results) or _identity_is_pending(results)
+        if _operation_is_problematic(results) or _operation_issue(results)
     }
-    diagnostic_groups = [(key, results, False) for key, results in active_diagnostics.items()]
+    diagnostic_groups = [(key, results, False) for key, results in active_groups.items()]
     diagnostic_groups.extend((key, results, True) for key, results in resolved_groups.items())
     diagnostic_groups.sort(key=lambda item: _timestamp_iso(item[1][0].get("occurred_at")), reverse=True)
     model, variant = _display_identity(identity, model_row)
@@ -868,7 +908,7 @@ def diagnostics_page(
     )
     errors = sum(1 for results in active_diagnostics.values() if _operation_is_problematic(results))
     status = _row_compatibility_status(model_row) if model_row else None
-    filters = """<label><span class='sr-only'>Filter diagnostics</span><select id='diagnostic-state-filter'><option value='open' selected>Open</option><option value='all'>All</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity pending</option><option value='failed'>Failed</option><option value='with-issue'>With issue</option></select></label>"""
+    filters = """<label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all' selected>All</option><option value='succeeded'>Succeeded</option><option value='failed'>Failed</option><option value='open'>Open</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity pending</option><option value='with-issue'>With issue</option></select></label>"""
     rows_markup: list[str] = []
     dialogs: list[str] = []
     for index, (operation_key, results, resolved) in enumerate(diagnostic_groups):
@@ -876,38 +916,48 @@ def diagnostics_page(
         state = _operation_state(results, resolved=resolved)
         result = _operation_result(results)
         issue = _operation_issue(results)
+        identity_pending = _identity_is_pending(results)
+        review_badge = _diagnostic_state_badge(
+            "RESOLVED" if resolved else ("OPEN" if state == "open" else ("IDENTITY_PENDING" if identity_pending else "NONE"))
+        )
+        if state == "open" and identity_pending:
+            review_badge += " " + _diagnostic_state_badge("IDENTITY_PENDING")
         dialog_id = "diagnostic-detail-" + hashlib.sha256(operation_key.encode("utf-8")).hexdigest()[:16]
         rows_markup.append(
-            f"<tr data-diagnostic-state='{state}' data-identity-pending='{'true' if _identity_is_pending(results) else 'false'}' data-diagnostic-result='{html.escape(result.lower(), quote=True)}' data-has-issue='{'true' if issue else 'false'}'>"
+            f"<tr data-diagnostic-state='{state}' data-review-open='{'true' if state == 'open' else 'false'}' data-review-resolved='{'true' if resolved else 'false'}' data-identity-pending='{'true' if identity_pending else 'false'}' data-diagnostic-result='{html.escape(result.lower(), quote=True)}' data-has-issue='{'true' if issue else 'false'}'>"
             f"<td>{_timestamp_markup(first.get('occurred_at'))}</td>"
             f"<td>{html.escape(_operation_text(results, 'region'))}</td>"
             f"<td>{_diagnostic_result(result)}</td>"
             f"<td>{html.escape(_operation_text(results, 'failure_stage'))}</td>"
             f"<td>{html.escape(_operation_text(results, 'failure_code'))}</td>"
             f"<td>{_github_issue_link(issue)}</td>"
-            f"<td>{_diagnostic_state_badge('RESOLVED' if resolved else ('IDENTITY_PENDING' if state == 'identity-pending' else 'OPEN'))}</td>"
+            f"<td>{review_badge}</td>"
             f"<td><button type='button' class='secondary-button diagnostic-review' data-dialog-id='{dialog_id}' aria-label='Review diagnostic {index + 1}'>Review</button></td>"
             "</tr>"
         )
-        dialogs.append(_diagnostic_detail_dialog(identity, operation_key, results, resolved=resolved, csrf_token=csrf_token, identity_devices=identity_devices))
-    rows_body = "".join(rows_markup) or "<tr><td colspan='8' class='empty'>No diagnostics for this model.</td></tr>"
+        dialogs.append(_diagnostic_detail_dialog(
+            identity, operation_key, results, resolved=resolved,
+            csrf_token=csrf_token, identity_devices=identity_devices,
+            canonical_device_model_id=canonical_device_model_id,
+        ))
+    rows_body = "".join(rows_markup) or "<tr><td colspan='8' class='empty'>No installation history for this model.</td></tr>"
     content = f"""
       {_admin_header(user, csrf_token)}
       <main class='dashboard diagnostics-page' id='main-content'>
-        <p class='back-link'><a href='/admin'>← Installation evidence</a></p>
+        <p class='back-link'><a href='/admin'>← Installations</a></p>
         <div class='heading-row'><div><p class='eyebrow'>Diagnostics</p><h1>{html.escape(model)}{f' · {html.escape(variant)}' if variant != '—' else ''}</h1><p class='lede'>Exact model and variant diagnostic history.</p></div></div>
         <section class='diagnostic-model-metrics' aria-label='Model diagnostic summary'><article><span>Attempts</span><strong>{attempts}</strong></article><article><span>Successful</span><strong>{successes}</strong></article><article><span>Errors</span><strong>{errors}</strong></article><article><span>Compatibility status</span><strong>{_status_badge(status.value if status else '')}</strong></article></section>
         <section class='diagnostics-detail-section' aria-labelledby='diagnostic-list-title'>
-          <div class='section-heading'><div><p class='section-kicker'>Review queue</p><h2 id='diagnostic-list-title'>Diagnostics</h2></div><p class='table-help'>Successful normal evidence remains historical evidence, not an open problem.</p></div>
+          <div class='section-heading'><div><p class='section-kicker'>Evidence history</p><h2 id='diagnostic-list-title'>Installations</h2></div><p class='table-help'>Successful normal evidence remains historical evidence, not an open problem.</p></div>
           <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'>{filters}</form>
-          <p class='results-count' id='diagnostic-results-count' aria-live='polite'>{len(diagnostic_groups)} diagnostics</p>
-          <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table'><caption class='sr-only'>Diagnostic records for exact model and variant</caption><thead><tr><th scope='col'>Date</th><th scope='col'>Region</th><th scope='col'>Result</th><th scope='col'>Stage</th><th scope='col'>Code</th><th scope='col'>Issue</th><th scope='col'>State</th><th scope='col'>Action</th></tr></thead><tbody id='diagnostic-rows'>{rows_body}</tbody></table></div>
+          <p class='results-count' id='diagnostic-results-count' aria-live='polite'>{len(diagnostic_groups)} records</p>
+          <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table'><caption class='sr-only'>Installation and diagnostic records for exact model and variant</caption><thead><tr><th scope='col'>Date</th><th scope='col'>Region</th><th scope='col'>Result</th><th scope='col'>Stage</th><th scope='col'>Code</th><th scope='col'>Issue</th><th scope='col'>Review</th><th scope='col'>Action</th></tr></thead><tbody id='diagnostic-rows'>{rows_body}</tbody></table></div>
         </section>
         {''.join(dialogs)}
       </main>
       <script>{_diagnostics_script()}</script>
     """
-    return _layout("Diagnostic details", content)
+    return _layout("Installation details", content)
 
 
 def _diagnostic_details(rows: list[dict[str, Any]], events: list[dict[str, Any]], csrf_token: str) -> str:
@@ -1226,24 +1276,23 @@ def devices_page(
       {_admin_header(user, csrf_token, active="devices")}
       <main class="dashboard devices-page" id="main-content">
         <div class="heading-row"><div><p class="eyebrow">Catalog</p><h1>Devices</h1><p class="lede">Garmin device catalog, map capability, authorization, and compatibility evidence.</p></div></div>
-        <section class="device-summary-strip" aria-label="Device catalog summary and sync">
+        <section class="admin-summary-strip device-summary-strip" aria-label="Device catalog summary and sync">
           <p class="device-summary-metrics"><strong>{summary['models']} models</strong><span> · {summary['mapCapable']} map-capable · {summary['approved']} approved · {summary['successful']} successful installs</span></p>
           <p class="device-summary-sync"><strong>Last sync</strong> {completed}<span> · {html.escape(sync_line)}</span>{f"<span> · {html.escape(str(sync_data['status'] or '').title())}</span>" if sync_data['status'] else ''}</p>
         </section>
         <section class="evidence-section" aria-labelledby="device-list-title">
           <div class="section-heading"><div><p class="section-kicker">Inventory</p><h2 id="device-list-title">Known models</h2></div><p class="table-help">Times follow the selected time zone</p></div>
           <p class="sr-only">Compatibility status and installation counts remain backend-derived.</p>
-          <form class="filter-bar device-filter-bar" id="device-filters" role="search">
+          <form class="filter-bar admin-filter-bar device-filter-bar" id="device-filters" role="search">
             <label class="filter-search"><span class="sr-only">Search devices</span><input id="device-search" type="search" placeholder="Search devices" autocomplete="off"></label>
             <label><span class="sr-only">Filter by family</span><select id="device-family"><option value="all">All families</option>{family_options}</select></label>
             <label><span class="sr-only">Filter by map capability</span><select id="device-map"><option value="all">All maps</option><option value="yes">Maps: Yes</option><option value="no">Maps: No</option><option value="unknown">Maps: Unknown</option></select></label>
             <label><span class="sr-only">Filter by installation authorization</span><select id="device-support"><option value="all">All authorizations</option><option value="SUPPORTED">Approved</option><option value="UNSUPPORTED">Blocked</option><option value="NOT_EVALUATED">Pending</option></select></label>
             <label><span class="sr-only">Filter by compatibility status</span><select id="device-status"><option value="all">All statuses</option><option value="TESTING">Testing</option><option value="TESTED">Tested</option><option value="SUPPORTED">Supported</option><option value="VERIFIED">Verified</option><option value="unavailable">Unavailable</option></select></label>
-            <label><span class="sr-only">Sort devices</span><select id="device-sort"><option value="model">Model name</option><option value="newest">Newest in catalog</option><option value="updated">Recently updated</option><option value="installs">Most attempts</option><option value="evidence">Last evidence</option></select></label>
             <p class="results-count" id="device-results-count" aria-live="polite">{len(payload['devices'])} {'model' if len(payload['devices']) == 1 else 'models'}</p>
           </form>
           {empty}
-          <div class="table-wrap device-table-wrap"><table><caption class="sr-only">Device catalog and Terento installation evidence</caption><thead><tr><th scope="col" aria-label="Model">Model</th><th scope="col" aria-label="Variant">Variant</th><th scope="col" aria-label="Map capability" title="Map capability">Maps</th><th scope="col" aria-label="Installation authorization" title="Installation authorization">Authorization</th><th scope="col" aria-label="Compatibility status" title="Compatibility status">Status</th><th scope="col" aria-label="Install attempts" title="Install attempts">Attempts</th><th scope="col" aria-label="Successful installations" title="Successful installations">Success</th><th scope="col" aria-label="Last evidence" title="Last evidence">Last evidence</th></tr></thead><tbody id="device-rows">{rows_html}</tbody></table></div>
+          <div class="table-wrap device-table-wrap"><table class="admin-table"><caption class="sr-only">Device catalog and Terento installation evidence</caption><thead><tr><th scope="col" aria-sort="ascending"><button type="button" class="device-sort-button" data-device-sort="model" aria-label="Model">Model <span aria-hidden="true">↑</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="variant" aria-label="Variant">Variant <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="maps" aria-label="Map capability" title="Map capability">Maps <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="authorization" aria-label="Installation authorization" title="Installation authorization">Authorization <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="status" aria-label="Compatibility status" title="Compatibility status">Status <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="attempts" aria-label="Install attempts" title="Install attempts">Attempts <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="success" aria-label="Successful installations" title="Successful installations">Success <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="evidence" aria-label="Last evidence" title="Last evidence">Last evidence <span aria-hidden="true">↕</span></button></th></tr></thead><tbody id="device-rows">{rows_html}</tbody></table></div>
           <div class="device-pagination" id="device-pagination" hidden><button type="button" id="device-previous">Previous</button><span id="device-page-status"></span><button type="button" id="device-next">Next</button></div>
         </section>
       </main>
@@ -1282,7 +1331,7 @@ def campaign_links_page(user: dict[str, Any], csrf_token: str) -> bytes:
         <div class="heading-row"><div><p class="eyebrow">Campaigns</p><h1>Campaign links</h1><p class="lede">Create consistent tracking links for Terento campaigns.</p></div></div>
         <section class="campaign-card" aria-labelledby="campaign-builder-title">
           <div class="section-heading"><div><p class="section-kicker">Attribution</p><h2 id="campaign-builder-title">Campaign link builder</h2></div><p class="table-help">Links are generated locally in this browser.</p></div>
-          <div class="campaign-preset-row">
+          <div class="filter-bar admin-filter-bar campaign-preset-row">
             <label class="campaign-label" for="campaign-preset">Preset { _campaign_info("campaign-preset", "Preset", "<p>Choose a common campaign setup, then edit any field before copying.</p><p><strong>Recommendation:</strong> use the Reddit preset for a community post.</p>") }</label>
             <select id="campaign-preset"><option value="reddit-community" selected>Reddit community post</option><option value="">Custom</option></select>
           </div>
@@ -1359,10 +1408,17 @@ def _statistics_row(row: dict[str, Any], diagnostic_summary: dict[str, int] | No
     status = status_value.value if status_value else ""
     search_text = " ".join((model, variant, str(row.get("family") or ""), identity)).strip()
     activity = max((_timestamp_iso(row.get(key)) for key in ("last_success", "last_failure", "last_evidence")), default="")
-    diagnostics_url = "/admin/diagnostics?" + urlencode({"identity": identity})
+    diagnostics_url = _diagnostics_url(row)
     error_count = int((diagnostic_summary or {}).get("errors") or 0)
+    pending_count = int((diagnostic_summary or {}).get("identity_pending") or 0)
+    model_cell = html.escape(model)
+    if pending_count:
+        model_cell += (
+            f" <span class='identity-pending-indicator' aria-label='{pending_count} identity pending'>"
+            "Identity pending</span>"
+        )
     cells = (
-        html.escape(model), html.escape(variant),
+        model_cell, html.escape(variant),
         html.escape(str(row.get("attempted_install_count", 0))), html.escape(str(row.get("successful_install_count", 0))),
         _error_cell(row, diagnostic_summary), _status_badge(status), _timestamp_markup(row.get("last_success")),
     )
@@ -1396,7 +1452,7 @@ def _devices_script() -> str:
       const map = document.querySelector('#device-map');
       const support = document.querySelector('#device-support');
       const status = document.querySelector('#device-status');
-      const sort = document.querySelector('#device-sort');
+      const sortButtons = [...document.querySelectorAll('[data-device-sort]')];
       const count = document.querySelector('#device-results-count');
       const pagination = document.querySelector('#device-pagination');
       const previous = document.querySelector('#device-previous');
@@ -1406,18 +1462,18 @@ def _devices_script() -> str:
       const dialogTitle = document.querySelector('#device-dialog-title');
       const dialogBody = document.querySelector('#device-dialog-body');
       const close = document.querySelector('#device-dialog-close');
-      if (!body || !form || !search || !family || !map || !support || !status || !sort || !count || !dialog) return;
+      if (!body || !form || !search || !family || !map || !support || !status || !count || !dialog) return;
 
       const pageSize = 50;
       let page = 0;
+      let sortKey = 'model';
+      let sortDirection = 'ascending';
       let lastFocused = null;
       const escapeHtml = (value) => String(value ?? '—')
         .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
       const display = (value) => value === null || value === undefined || value === '' ? '—' : value;
-      const utcDate = (value) => value ? new Intl.DateTimeFormat('en-GB', {
-        day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC', timeZoneName: 'short'
-      }).format(new Date(value)) : '—';
+      const utcDate = (value) => value ? new Date(value).toISOString().slice(0, 16).replace('T', ' ') : '—';
       const date = (value) => value ? `<time class="admin-timestamp" data-admin-timestamp="${escapeHtml(value)}">${escapeHtml(window.TerentoAdminTime ? window.TerentoAdminTime.format(value) : utcDate(value))}</time>` : '—';
       const mapValue = (device) => device.mapCapable === true ? 'yes' : device.mapCapable === false ? 'no' : 'unknown';
       const authorizationLabel = (value) => ({APPROVED: 'Approved', BLOCKED: 'Blocked', PENDING: 'Pending'})[value] || 'Pending';
@@ -1425,7 +1481,36 @@ def _devices_script() -> str:
       const statusBadge = (value) => value ? `<span class="status-badge status-${String(value).toLowerCase()}">${escapeHtml(evidenceLabel(value))}</span>` : '<span class="status-badge status-unavailable">Unavailable</span>';
       const mapBadge = (label, value) => `<span class="admin-state admin-state-map-${value}">${escapeHtml(label)}</span>`;
       const authorizationBadge = (value) => `<span class="admin-state admin-state-authorization-${String(value || 'PENDING').toLowerCase()}">${escapeHtml(authorizationLabel(value))}</span>`;
-      const deviceSearch = (device) => [device.model, device.canonicalModel, device.family, device.familyName, device.variant, device.caseSizeMm, device.partNumber, device.displayType].filter(Boolean).join(' ').toLocaleLowerCase();
+      const deviceSearch = (device) => [device.id, device.model, device.canonicalModel, device.family, device.familyName, device.variant, device.caseSizeMm, device.partNumber, device.displayType].filter(Boolean).join(' ').toLocaleLowerCase();
+      const textCompare = (a, b) => String(a || '').localeCompare(String(b || ''), undefined, {sensitivity: 'base', numeric: true});
+      const statusOrder = {unavailable: 0, TESTING: 1, TESTED: 2, SUPPORTED: 3, VERIFIED: 4};
+      const mapOrder = {unknown: 0, no: 1, yes: 2};
+      const authorizationOrder = {NOT_EVALUATED: 0, UNSUPPORTED: 1, SUPPORTED: 2};
+      const sortValue = (device, key) => ({
+        model: device.model,
+        variant: device.variant,
+        maps: mapOrder[mapValue(device)],
+        authorization: authorizationOrder[device.supportStatus || 'NOT_EVALUATED'],
+        status: statusOrder[device.evidenceStatus || 'unavailable'],
+        attempts: Number(device.installationStats.attempts || 0),
+        success: Number(device.installationStats.successful || 0),
+        evidence: device.installationStats.lastEvidenceAt ? Date.parse(device.installationStats.lastEvidenceAt) : null,
+      })[key];
+      const compareDevices = (a, b) => {
+        const aValue = sortValue(a, sortKey);
+        const bValue = sortValue(b, sortKey);
+        if (aValue === null || aValue === undefined || aValue === '') return bValue === null || bValue === undefined || bValue === '' ? textCompare(a.id, b.id) : 1;
+        if (bValue === null || bValue === undefined || bValue === '') return -1;
+        const comparison = typeof aValue === 'number' && typeof bValue === 'number' ? aValue - bValue : textCompare(aValue, bValue);
+        return (sortDirection === 'descending' ? -comparison : comparison) || textCompare(a.id, b.id);
+      };
+      const updateSortHeaders = () => sortButtons.forEach((button) => {
+        const active = button.dataset.deviceSort === sortKey;
+        const header = button.closest('th');
+        const indicator = button.querySelector('span');
+        if (header) header.setAttribute('aria-sort', active ? sortDirection : 'none');
+        if (indicator) indicator.textContent = active ? (sortDirection === 'ascending' ? '↑' : '↓') : '↕';
+      });
       const matching = () => {
         const query = search.value.trim().toLocaleLowerCase();
         return devices.filter((device) => {
@@ -1435,14 +1520,7 @@ def _devices_script() -> str:
           const matchesAuthorization = support.value === 'all' || (device.supportStatus || 'NOT_EVALUATED') === support.value;
           const matchesStatus = status.value === 'all' || (device.evidenceStatus || 'unavailable') === status.value;
           return matchesSearch && matchesFamily && matchesMap && matchesAuthorization && matchesStatus;
-        }).sort((a, b) => {
-          if (sort.value === 'newest') return String(b.catalog.firstSeenAt || '').localeCompare(String(a.catalog.firstSeenAt || ''));
-          if (sort.value === 'updated') return String(b.catalog.updatedAt || '').localeCompare(String(a.catalog.updatedAt || ''));
-          if (sort.value === 'installs') return (b.installationStats.attempts || 0) - (a.installationStats.attempts || 0);
-          if (sort.value === 'evidence') return String(b.installationStats.lastEvidenceAt || '').localeCompare(String(a.installationStats.lastEvidenceAt || ''));
-          return String(a.model || '').localeCompare(String(b.model || ''), undefined, {sensitivity: 'base', numeric: true})
-            || String(a.variant || '').localeCompare(String(b.variant || ''), undefined, {sensitivity: 'base', numeric: true});
-        });
+        }).sort(compareDevices);
       };
       const usbIdentity = (identities) => {
         const known = (identities || []).filter((identity) => identity.vendorId !== null && identity.vendorId !== undefined && identity.productId !== null && identity.productId !== undefined);
@@ -1464,14 +1542,14 @@ def _devices_script() -> str:
         const canonicalRow = device.canonicalModel && device.canonicalModel.toLocaleLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '') !== device.model.toLocaleLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '') ? `<div><dt>Canonical model</dt><dd>${escapeHtml(device.canonicalModel)}</dd></div>` : '';
         dialogTitle.innerHTML = `<span>${escapeHtml(device.model)}</span><span class="modal-subtitle">${escapeHtml(device.variant)}</span>${statusBadge(device.evidenceStatus)}`;
         dialogBody.innerHTML = `
-          <div class="device-modal-hero">${imageMarkup}<div><p class="device-image-source">${escapeHtml(imageSourceLabel)}</p><p class="table-help">Image provenance is catalog metadata only.</p></div></div>
+          <div class="device-modal-hero">${imageMarkup}</div>
           <div class="device-detail-grid">
             <section><p class="detail-kicker">Identity</p><dl>
               <div><dt>Model</dt><dd>${escapeHtml(device.model)}</dd></div>${canonicalRow}
               <div><dt>Variant</dt><dd>${escapeHtml(device.variant)}</dd></div>
               <div><dt>Family</dt><dd>${escapeHtml(device.familyName || device.family)}</dd></div>
               <div><dt>Part number</dt><dd>${escapeHtml(device.partNumber)}</dd></div>
-              <div><dt>Catalog ID</dt><dd class="technical-value">${escapeHtml(device.id)}</dd></div>
+              <div><dt>Catalog ID</dt><dd class="technical-value device-catalog-id">${escapeHtml(device.id)}</dd></div>
             </dl></section>
             <section><p class="detail-kicker">Capability &amp; authorization</p><dl>
               <div><dt>Map capability</dt><dd>${mapBadge(mapLabel, mapValue(device))}</dd></div>
@@ -1479,7 +1557,7 @@ def _devices_script() -> str:
               <div><dt>USB identity <button class="info-control info-control-inline" type="button" title="VID/PID is shown only when it was recorded from this exact catalog profile. No value is inferred." aria-label="USB identity information">i</button></dt><dd class="technical-value">${usbIdentity(device.usbIdentities)}</dd></div>
             </dl></section>
             <section><p class="detail-kicker">Compatibility evidence</p><dl>
-              <div><dt>Compatibility status</dt><dd>${statusBadge(device.evidenceStatus)}</dd></div>
+              <div><dt>Compatibility status</dt><dd class="detail-status-value">${escapeHtml(evidenceLabel(device.evidenceStatus))}</dd></div>
               <div><dt>Attempts</dt><dd>${stats.attempts}</dd></div>
               <div><dt>Successful</dt><dd>${stats.successful}</dd></div>
               <div><dt>Failed</dt><dd>${stats.failed}</dd></div>
@@ -1510,6 +1588,7 @@ def _devices_script() -> str:
             <div><dt>Updated</dt><dd>${date(catalog.updatedAt)}</dd></div>
             <div><dt>Last seen</dt><dd>${date(catalog.lastSeenAt)}</dd></div>
             <div><dt>New in latest sync</dt><dd>${catalog.newInLatestSync ? 'Yes' : 'No'}</dd></div>
+            <div><dt>Image provenance</dt><dd>Catalog metadata only</dd></div>
             <div><dt>Image source</dt><dd title="${escapeHtml(imageSourceUrl)}">${escapeHtml(imageSourceLabel)}</dd></div>
             <div><dt>Match</dt><dd>${escapeHtml(imageMatchLabel)}</dd></div>
           </dl>${device.productURL ? `<p class="device-product-link"><a href="${escapeHtml(device.productURL)}" target="_blank" rel="noreferrer">Open Garmin product page</a></p>` : ''}</details>
@@ -1569,7 +1648,14 @@ def _devices_script() -> str:
       };
       const reset = () => { page = 0; refresh(); };
       form.addEventListener('submit', (event) => event.preventDefault());
-      [search, family, map, support, status, sort].forEach((control) => control.addEventListener(control === search ? 'input' : 'change', reset));
+      [search, family, map, support, status].forEach((control) => control.addEventListener(control === search ? 'input' : 'change', reset));
+      sortButtons.forEach((button) => button.addEventListener('click', () => {
+        const key = button.dataset.deviceSort;
+        if (sortKey === key) sortDirection = sortDirection === 'ascending' ? 'descending' : 'ascending';
+        else { sortKey = key; sortDirection = 'ascending'; }
+        updateSortHeaders();
+        reset();
+      }));
       previous.addEventListener('click', () => { page -= 1; refresh(); });
       next.addEventListener('click', () => { page += 1; refresh(); });
       body.addEventListener('click', (event) => {
@@ -1599,6 +1685,7 @@ def _devices_script() -> str:
         if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
       });
+      updateSortHeaders();
       refresh();
     })();"""
 
@@ -1824,17 +1911,22 @@ def _diagnostics_script() -> str:
       const rows = [...body.querySelectorAll('tr[data-diagnostic-state]')];
       const dialogs = [...document.querySelectorAll('.diagnostic-detail-dialog')];
       let lastFocused = null;
+      const requestedFilter = new URLSearchParams(window.location.search).get('state');
+      if (requestedFilter && [...filter.options].some((option) => option.value === requestedFilter)) filter.value = requestedFilter;
       const refresh = () => {
           const selected = filter.value;
           const visible = rows.filter((row) => {
-            const matches = selected === 'all' || selected === row.dataset.diagnosticState
+            const matches = selected === 'all'
+            || (selected === 'succeeded' && row.dataset.diagnosticResult === 'succeeded')
+            || (selected === 'open' && row.dataset.reviewOpen === 'true')
+            || (selected === 'resolved' && row.dataset.reviewResolved === 'true')
             || (selected === 'identity-pending' && row.dataset.identityPending === 'true')
             || (selected === 'failed' && row.dataset.diagnosticResult === 'failed')
             || (selected === 'with-issue' && row.dataset.hasIssue === 'true');
           row.hidden = !matches;
           return matches;
         });
-        const label = visible.length === 1 ? 'diagnostic' : 'diagnostics';
+        const label = visible.length === 1 ? 'record' : 'records';
         count.textContent = `${visible.length} ${label}`;
       };
       const close = (dialog) => {
@@ -1939,12 +2031,18 @@ def _admin_timezone_script() -> str:
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return String(value);
         try {
-          return new Intl.DateTimeFormat('en-GB', {
-            day: '2-digit', month: 'short', year: 'numeric',
-            hour: '2-digit', minute: '2-digit', timeZone: activeTimeZone(), timeZoneName: 'short'
-          }).format(date);
+          const parts = Object.fromEntries(
+            new Intl.DateTimeFormat('en-CA', {
+              year: 'numeric', month: '2-digit', day: '2-digit',
+              hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+              timeZone: activeTimeZone()
+            }).formatToParts(date)
+              .filter((part) => part.type !== 'literal')
+              .map((part) => [part.type, part.value])
+          );
+          return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
         } catch (_) {
-          return date.toISOString();
+          return date.toISOString().slice(0, 16).replace('T', ' ');
         }
       };
       const render = () => {
@@ -2016,25 +2114,21 @@ h1,h2{margin:0;font-family:"Instrument Sans","Helvetica Neue",Arial,sans-serif;l
 h1{font-size:clamp(32px,3.5vw,44px);line-height:1.06}
 h2{font-size:22px;line-height:1.15}
 .lede{max-width:680px;margin:12px 0 0;color:var(--secondary);font-size:16px}
-.updated-at{margin:0 0 5px;color:var(--secondary);font-size:13px;white-space:nowrap}
-.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:34px}
-.metric{min-height:104px;padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:14px}
-.metric span{display:block;color:var(--secondary);font-size:13px;font-weight:600}
-.metric strong{display:block;margin-top:5px;font-family:"Instrument Sans","Helvetica Neue",Arial,sans-serif;font-size:30px;line-height:1.1;letter-spacing:-.025em}
 .evidence-section{margin-top:2px}
 .section-heading{display:flex;align-items:end;justify-content:space-between;gap:20px;margin-bottom:14px}
 .section-heading .section-kicker{margin-bottom:5px}
 .table-help,.results-count{margin:0;color:var(--secondary);font-size:12px}
-.filter-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 9px;padding:8px;background:var(--surface-muted);border:1px solid var(--border);border-radius:12px}
-.filter-bar label{margin:0}
-.filter-bar input,.filter-bar select{min-height:var(--admin-control-height);padding:8px var(--admin-control-padding-x)}
-.filter-bar input{width:min(360px,42vw)}
+.filter-bar{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;margin:0 0 10px;padding:8px;background:var(--surface-muted);border:1px solid var(--border);border-radius:12px}
+.filter-bar label{display:flex;align-items:stretch;margin:0}
+.filter-bar input,.filter-bar select{height:var(--admin-control-height);min-height:var(--admin-control-height);padding:8px var(--admin-control-padding-x);border-radius:var(--admin-control-radius);font:600 var(--admin-control-font-size)/1.2 "Instrument Sans","Helvetica Neue",Arial,sans-serif}
+.filter-bar .filter-search{flex:1 1 310px}
+.filter-bar input{width:100%}
 .filter-bar select{min-width:150px}
-.filter-bar input::placeholder{color:var(--secondary)}
-.results-count{margin:0 0 8px 3px}
+.filter-bar input::placeholder{color:var(--admin-placeholder);font-weight:500}
+.filter-bar .results-count{align-self:center;margin:0 4px 0 auto;white-space:nowrap}
 .table-wrap{max-height:none;overflow-x:auto;overflow-y:visible;background:var(--surface);border:1px solid var(--border);border-radius:14px}
 table{border-collapse:collapse;width:100%;min-width:1060px}
-th,td{padding:12px 14px;border-bottom:1px solid color-mix(in srgb,var(--border) 78%,transparent);text-align:left;white-space:nowrap;vertical-align:middle}
+th,td{padding:10px 14px;border-bottom:1px solid color-mix(in srgb,var(--border) 78%,transparent);text-align:left;white-space:nowrap;vertical-align:middle}
 thead th{background:var(--surface);box-shadow:0 1px 0 var(--border);color:var(--secondary);font-size:11px;font-weight:750;letter-spacing:.07em;text-transform:uppercase}
 tbody tr:last-child td{border-bottom:0}
 tbody tr[hidden]{display:none}
@@ -2074,8 +2168,10 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .account{margin-top:48px}
 .campaign-card{padding:24px;background:var(--surface);border:1px solid var(--border);border-radius:14px}
 .campaign-card>.section-heading{margin-bottom:22px}
-.campaign-preset-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,360px);align-items:center;gap:16px;margin-bottom:20px;padding:13px 14px;background:var(--surface-muted);border:1px solid var(--border);border-radius:10px}
-.campaign-preset-row select,.campaign-field input,.campaign-field select{width:100%;min-height:var(--admin-control-height);padding:8px var(--admin-control-padding-x);border-radius:var(--admin-control-radius)}
+.campaign-preset-row{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding:8px;background:var(--surface-muted);border:1px solid var(--border);border-radius:12px}
+.campaign-preset-row .campaign-label{margin:0;white-space:nowrap}
+.campaign-preset-row select{width:min(360px,100%);margin-left:auto}
+.campaign-field input,.campaign-field select{width:100%;min-height:var(--admin-control-height);padding:8px var(--admin-control-padding-x);border-radius:var(--admin-control-radius)}
 .campaign-form{margin:0}
 .campaign-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 16px}
 .campaign-field{min-width:0}
@@ -2108,21 +2204,22 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .preview-grid div{padding:10px 12px;background:var(--surface-muted);border-radius:8px}
 .preview-grid dt{color:var(--secondary);font-size:11px;font-weight:650}
 .preview-grid dd{margin:2px 0 0;overflow-wrap:anywhere;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
-.device-summary-strip{display:flex;align-items:center;justify-content:space-between;gap:24px;margin:0 0 28px;padding:13px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;color:var(--secondary);font-size:13px}
-.device-summary-strip p{margin:0;min-width:0}
-.device-summary-metrics strong,.device-summary-sync strong{color:var(--graphite);font-weight:750}
-.device-summary-sync{text-align:right;white-space:nowrap}
-.device-filter-bar{position:sticky;top:calc(var(--admin-topbar-height) + 8px);z-index:20;align-items:stretch;margin-bottom:10px;background:var(--off-white);box-shadow:0 2px 0 rgba(34,42,43,.05)}
-.device-filter-bar .filter-search{flex:1 1 310px}
-.device-filter-bar input{width:100%}
-.device-filter-bar .results-count{align-self:center;margin:0 4px 0 auto;white-space:nowrap}
+.admin-summary-strip{display:flex;align-items:center;justify-content:space-between;gap:24px;margin:0 0 28px;padding:13px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;color:var(--secondary);font-size:13px}
+.admin-summary-strip p{margin:0;min-width:0}
+.admin-summary-metrics strong,.admin-summary-context strong,.device-summary-metrics strong,.device-summary-sync strong{color:var(--graphite);font-weight:750}
+.admin-summary-context,.device-summary-sync{text-align:right;white-space:nowrap}
+.device-filter-bar{position:sticky;top:calc(var(--admin-topbar-height) + 8px);z-index:20;align-items:stretch;margin-bottom:10px;background:var(--surface-muted);box-shadow:0 2px 0 rgba(34,42,43,.05)}
 .device-table-wrap{overflow:visible}
 .device-table-wrap table{min-width:0;table-layout:fixed}
 .device-table-wrap th:nth-child(1){width:20%}.device-table-wrap th:nth-child(2){width:18%}.device-table-wrap th:nth-child(3){width:9%}.device-table-wrap th:nth-child(4){width:14%}.device-table-wrap th:nth-child(5){width:11%}.device-table-wrap th:nth-child(6){width:9%}.device-table-wrap th:nth-child(7){width:8%}.device-table-wrap th:nth-child(8){width:11%}
 .device-table-wrap thead{position:static}
 .device-table-wrap thead th{position:sticky;top:calc(var(--admin-topbar-height) + var(--device-filter-height, 54px) + 18px);z-index:10}
 .device-table-wrap th,.device-table-wrap td{white-space:normal;overflow-wrap:anywhere}
-.device-table-wrap td:nth-child(3),.device-table-wrap td:nth-child(4),.device-table-wrap td:nth-child(5),.device-table-wrap td:nth-child(6),.device-table-wrap td:nth-child(7){white-space:nowrap}
+.device-sort-button{display:inline-flex;align-items:center;gap:5px;width:auto;min-height:0;margin:0;padding:0;border:0;background:transparent;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;white-space:nowrap;cursor:pointer}
+.device-sort-button:hover{color:var(--graphite)}.device-sort-button:focus-visible{outline:2px solid var(--interactive);outline-offset:1px}
+.device-sort-button span{min-width:10px;color:var(--interactive);font-size:12px}
+.device-table-wrap td:nth-child(3),.device-table-wrap td:nth-child(4),.device-table-wrap td:nth-child(5),.device-table-wrap td:nth-child(6),.device-table-wrap td:nth-child(7),.device-table-wrap td:nth-child(8){white-space:nowrap}
+.device-table-wrap tbody td{padding-top:6px;padding-bottom:6px}
 .device-table-wrap tbody tr{cursor:pointer}
 .device-table-wrap tbody tr:hover{background:color-mix(in srgb,var(--surface-muted) 52%,white)}
 .device-table-wrap tbody tr:focus-visible{outline:3px solid color-mix(in srgb,var(--sky) 58%,white);outline-offset:-3px}
@@ -2152,8 +2249,9 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .device-dialog-header h2{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:25px}
 .modal-subtitle{color:var(--secondary);font:500 14px "Inter",sans-serif;letter-spacing:0}
 .dialog-close{width:36px;min-height:36px;padding:0;font-size:20px;line-height:1}
-.device-modal-hero{display:flex;align-items:center;gap:14px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.device-modal-hero{display:flex;align-items:center;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
 .device-modal-hero .device-detail-image{margin:0;width:72px;height:72px;border-radius:12px}
+.device-catalog-id{color:var(--secondary);font-size:11px;font-weight:500}.detail-status-value{color:var(--secondary);font-weight:650}
 .device-image-source{margin:0 0 3px;color:var(--graphite);font-size:13px;font-weight:700}
 .device-detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
 .device-detail-grid section{min-width:0;padding-top:2px}
@@ -2187,10 +2285,10 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .admin-action-dialog textarea{resize:vertical}
 .dialog-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-@media(max-width:800px){.admin-topbar-inner,.dashboard{width:min(calc(100% - 32px),var(--max-width))}.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}.heading-row{align-items:flex-start;flex-direction:column;gap:12px}.updated-at{margin:0}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.diagnostic-model-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-bar input{width:min(100%,360px)}.filter-bar{align-items:stretch}.filter-bar label,.filter-bar select,.filter-bar input{flex:1 1 170px}.public-status{align-items:flex-start;flex-direction:column}.public-status-value{width:100%;justify-content:space-between;flex-wrap:wrap}.status-guide-grid{grid-template-columns:1fr}.campaign-fields{grid-template-columns:1fr}.campaign-field-wide{grid-column:auto}.attribution-preview{grid-template-columns:1fr}.sync-summary{white-space:normal!important}.device-detail-grid{grid-template-columns:1fr}.device-support-review form{grid-template-columns:1fr}.diagnostic-operation-heading{flex-direction:column}.diagnostic-actions{justify-content:flex-start}.diagnostic-detail-summary{grid-template-columns:1fr}.diagnostic-actions-grid{grid-template-columns:1fr}.github-review{grid-column:auto}}
+@media(max-width:800px){.admin-topbar-inner,.dashboard{width:min(calc(100% - 32px),var(--max-width))}.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}.heading-row{align-items:flex-start;flex-direction:column;gap:12px}.diagnostic-model-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-bar{align-items:stretch}.filter-bar label,.filter-bar select,.filter-bar input{flex:1 1 170px}.filter-bar .results-count{width:100%;margin:2px 4px 0}.public-status{align-items:flex-start;flex-direction:column}.public-status-value{width:100%;justify-content:space-between;flex-wrap:wrap}.status-guide-grid{grid-template-columns:1fr}.campaign-fields{grid-template-columns:1fr}.campaign-field-wide{grid-column:auto}.attribution-preview{grid-template-columns:1fr}.sync-summary{white-space:normal!important}.device-detail-grid{grid-template-columns:1fr}.device-support-review form{grid-template-columns:1fr}.diagnostic-operation-heading{flex-direction:column}.diagnostic-actions{justify-content:flex-start}.diagnostic-detail-summary{grid-template-columns:1fr}.diagnostic-actions-grid{grid-template-columns:1fr}.github-review{grid-column:auto}}
 @media(max-width:980px){.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}}
-@media(max-width:560px){.admin-topbar-inner{align-items:flex-start;flex-direction:column;padding:14px 0}.admin-header-left,.admin-section-nav,.admin-nav{width:100%}.admin-section-nav{order:0;overflow:auto;justify-content:flex-start}.admin-section-nav a{white-space:nowrap}.admin-nav{justify-content:space-between;gap:10px;flex-wrap:wrap}.timezone-control{width:100%;justify-content:space-between}.timezone-control select{width:auto;flex:1}.dashboard{padding-top:28px}.metrics{gap:8px}.metric{min-height:92px;padding:14px}.metric strong{font-size:26px}.diagnostic-model-metrics{gap:8px}.diagnostic-model-metrics article{padding:12px}.auth-card{width:calc(100% - 32px);padding:24px}.section-heading{align-items:flex-start;flex-direction:column;gap:4px}.campaign-card{padding:16px}.campaign-preset-row{grid-template-columns:1fr;gap:8px}.generated-url-row{grid-template-columns:1fr}.copy-button{width:100%}.copy-status{min-height:18px}.device-dialog-inner,.diagnostic-detail-inner{padding:18px}.device-detail-grid dl div,.device-detail-secondary dl div{grid-template-columns:1fr;gap:2px}.device-detail-grid dd,.device-detail-secondary dd{text-align:left}.diagnostic-technical-details dl{grid-template-columns:1fr}.diagnostic-summary-action{float:none;display:block;margin-top:6px}.github-link-form{grid-template-columns:1fr}.github-link-form button{width:100%}}
-@media(max-width:800px){.device-summary-strip{align-items:flex-start;flex-direction:column;gap:6px}.device-summary-sync{text-align:left;white-space:normal}.device-filter-bar .results-count{width:100%;margin:2px 4px 0}.device-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.admin-topbar-inner{align-items:flex-start;flex-direction:column;padding:14px 0}.admin-header-left,.admin-section-nav,.admin-nav{width:100%}.admin-section-nav{order:0;overflow:auto;justify-content:flex-start}.admin-section-nav a{white-space:nowrap}.admin-nav{justify-content:space-between;gap:10px;flex-wrap:wrap}.timezone-control{width:100%;justify-content:space-between}.timezone-control select{width:auto;flex:1}.dashboard{padding-top:28px}.diagnostic-model-metrics{gap:8px}.diagnostic-model-metrics article{padding:12px}.auth-card{width:calc(100% - 32px);padding:24px}.section-heading{align-items:flex-start;flex-direction:column;gap:4px}.campaign-card{padding:16px}.campaign-preset-row{align-items:stretch;flex-direction:column;gap:8px}.campaign-preset-row .campaign-label,.campaign-preset-row select{flex:none}.campaign-preset-row select{width:100%;height:var(--admin-control-height);margin-left:0}.generated-url-row{grid-template-columns:1fr}.copy-button{width:100%}.copy-status{min-height:18px}.device-dialog-inner,.diagnostic-detail-inner{padding:18px}.device-detail-grid dl div,.device-detail-secondary dl div{grid-template-columns:1fr;gap:2px}.device-detail-grid dd,.device-detail-secondary dd{text-align:left}.diagnostic-technical-details dl{grid-template-columns:1fr}.diagnostic-summary-action{float:none;display:block;margin-top:6px}.github-link-form{grid-template-columns:1fr}.github-link-form button{width:100%}}
+@media(max-width:800px){.admin-summary-strip{align-items:flex-start;flex-direction:column;gap:6px}.admin-summary-context,.device-summary-sync{text-align:left;white-space:normal}.device-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.device-detail-grid{grid-template-columns:1fr}.device-catalog-details dl div{grid-template-columns:1fr;gap:2px}.device-catalog-details dd{text-align:left}.device-detail-grid dd{text-align:left}.device-filter-bar .results-count{margin-left:0}.device-dialog-inner{padding:18px}}
 @media(max-width:900px){.device-table-wrap{overflow-x:auto;overflow-y:visible}.device-table-wrap table{min-width:1050px}.device-table-wrap thead th{top:0}}
 @media(max-height:760px){.device-dialog-inner{max-height:calc(100vh - 32px);overflow:auto}.device-dialog-header{position:sticky;top:-1px;z-index:2;padding-bottom:10px;background:var(--surface)}}

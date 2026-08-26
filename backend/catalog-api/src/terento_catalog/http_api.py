@@ -413,6 +413,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if request_path in {"/admin/diagnostics", "/admin/diagnostics/"}:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
                 identity = query.get("identity", [""])[0].strip()
+                canonical_device_id = query.get("canonical_device_id", [""])[0].strip()
                 if not identity:
                     self._redirect("/admin", send_body=send_body)
                     return
@@ -427,6 +428,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         operations=service.compatibility_operation_details(),
                         resolved_operations=service.compatibility_resolved_operation_details(),
                         identity_devices=identity_devices,
+                        canonical_device_model_id=canonical_device_id,
                     )
                 except Exception:
                     LOGGER.exception("compatibility diagnostics failed")

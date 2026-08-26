@@ -273,6 +273,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertIsNone(database.parameters["errorCategory"])
         self.assertIsNone(database.parameters["displayType"])
         self.assertIsNone(database.parameters["canonicalDeviceId"])
+        self.assertEqual(database.parameters["identityResolutionState"], "UNRESOLVED")
         self.assertEqual(len(database.parameters["deletionTokenHash"]), 64)
 
     def test_historical_fenix_7_evidence_is_canonicalized_without_retail_row(self):
@@ -288,6 +289,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
             database.parameters["canonicalDeviceId"],
             "garmin-fenix-7-47",
         )
+        self.assertEqual(database.parameters["identityResolutionState"], "RESOLVED")
 
     def test_admin_dashboard_uses_compact_english_evidence_layout(self):
         row = {
@@ -309,8 +311,11 @@ class CompatibilityEvidenceTests(unittest.TestCase):
             "public_statistics_enabled": True,
         }
         body = dashboard_page([row], {"username": "gediminas"}, "csrf", public_stats_enabled=True).decode()
-        self.assertIn("Installation evidence", body)
-        self.assertIn(">Install attempts<", body)
+        self.assertIn("Installations", body)
+        self.assertIn("Installation activity and compatibility evidence from Terento users.", body)
+        self.assertIn("1 attempt · 1 successful · 0 errors", body)
+        self.assertIn('class="admin-summary-strip installation-summary-strip"', body)
+        self.assertIn('class="filter-bar admin-filter-bar"', body)
         self.assertIn(">51 mm<", body)
         self.assertIn("Latest activity", body)
         self.assertNotIn("Public compatibility", body)
@@ -324,7 +329,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertIn("Times follow the selected time zone", body)
         self.assertIn("data-admin-timestamp", body)
         self.assertIn("admin-timezone", body)
-        self.assertEqual(format_timestamp(row["last_success"]), "25 Aug 2026, 16:04 UTC")
+        self.assertEqual(format_timestamp(row["last_success"]), "2026-08-25 16:04")
 
         unknown_variant = dict(row)
         unknown_variant.pop("compatibility_identity")
@@ -437,6 +442,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertFalse(database.parameters["mapVisibleAfterReconnect"])
         self.assertEqual(database.parameters["displayType"], "AMOLED")
         self.assertEqual(database.parameters["canonicalDeviceId"], "garmin-fenix-8-51-amoled")
+        self.assertEqual(database.parameters["identityResolutionState"], "RESOLVED")
 
     def test_schema_v3_accepts_structured_diagnostics_and_rejects_raw_or_inconsistent_data(self):
         payload = event(
@@ -531,7 +537,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         devices, devices_body = self.request("GET", "/admin/devices", headers={"Cookie": cookie_header})
         self.assertEqual(devices.status, 200)
         self.assertIn(b">Devices<", devices_body)
-        self.assertIn(b">Maps<", devices_body)
+        self.assertIn(b'data-device-sort="maps"', devices_body)
         self.assertIn(
             "img-src https://terento.app https://api.terento.app https://res.garmin.com data:",
             devices.headers["Content-Security-Policy"],

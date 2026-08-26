@@ -61,7 +61,10 @@ Authenticated `/admin` pages keep API and storage timestamps in UTC ISO 8601,
 then render them in the visitor's browser time zone by default. The header
 includes a time-zone selector for manual IANA-zone changes; the choice is
 stored only in that browser's local storage. This changes presentation only
-and does not alter API fields, database values, or collector schedules.
+and does not alter API fields, database values, or collector schedules. One
+shared formatter renders admin timestamps as `YYYY-MM-DD HH:mm` in the selected
+zone; the zone remains available from the selector and timestamp tooltip rather
+than being repeated beside every value.
 
 ## Canonicalization
 
