@@ -88,7 +88,10 @@ implementation.
 ## `GET https://api.terento.app/admin/diagnostics?identity=...`
 
 Returns an authenticated, no-store/noindex diagnostic drill-down for one exact
-compatibility identity. The list uses the compact columns Date, Region, Result,
+compatibility identity. Dashboard links add the internal `canonical_device_id`
+query parameter when available, so harmless formatting differences in legacy
+identity labels remain in one model history; identity text remains the fallback
+for records without a canonical link. The list uses the compact columns Date, Region, Result,
 Stage, Code, Issue, and State, and defaults to Open. A Review action opens the
 detail dialog with the separate evidence/lifecycle summary, Resolve/Reopen,
 auditable identity selector, GitHub issue link/create actions, and collapsed
@@ -146,6 +149,10 @@ flow opens a sanitized prefilled GitHub form; it does not create an issue for
 every error or auto-close an issue when a diagnostic is resolved. Neither
 action deletes evidence or changes the original install outcome. Admin counts
 are grouped by distinct install operation, not raw per-map evidence rows.
+When ingestion validates or resolves a canonical Garmin model, the server also
+marks the internal identity-review state resolved without requiring a new client
+field. Migration 022 audits and aligns older canonical rows; it does not change
+installation outcomes, diagnostic lifecycle, timestamps, or compatibility counts.
 
 ## `GET /compatibility/public/top-models.json`
 

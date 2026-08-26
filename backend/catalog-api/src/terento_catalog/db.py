@@ -45,7 +45,7 @@ class Database:
         query = """
             INSERT INTO compatibility_evidence_event (
                 event_id, occurred_at, model, compatibility_identity, variant, case_size_mm,
-                display_type, canonical_device_model_id,
+                display_type, canonical_device_model_id, identity_resolution_state,
                 family, firmware_version,
                 usb_vendor_id, usb_product_id, transport, provider, region,
                 map_release, terento_version, macos_version, phase_outcome,
@@ -57,7 +57,7 @@ class Database:
                 raw_mtp_model, identity_resolution_code
             ) VALUES (
                 %(id)s, %(timestamp)s, %(model)s, %(compatibilityIdentity)s, %(variant)s, %(caseSizeMm)s,
-                %(displayType)s, %(canonicalDeviceId)s,
+                %(displayType)s, %(canonicalDeviceId)s, %(identityResolutionState)s,
                 %(family)s, %(firmwareVersion)s,
                 %(usbVendorID)s, %(usbProductID)s, %(transport)s, %(provider)s, %(region)s,
                 %(mapRelease)s, %(terentoVersion)s, %(macOSVersion)s, %(phaseOutcome)s,
@@ -120,6 +120,10 @@ class Database:
                 self._ensure_historical_device(connection, historical)
                 canonical_id = historical.id
             values["canonicalDeviceId"] = canonical_id
+            # A canonical link established by the server is a completed
+            # identity resolution. Keep this internal state out of the client
+            # payload contract and derive it only after canonical validation.
+            values["identityResolutionState"] = "RESOLVED" if canonical_id else "UNRESOLVED"
             inserted = connection.execute(query, values).fetchone() is not None
         return inserted
 

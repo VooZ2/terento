@@ -238,10 +238,31 @@ def _identity_is_pending(results: list[dict[str, Any]]) -> bool:
     if not results:
         return False
     first = results[0]
+    if first.get("canonical_device_model_id"):
+        return False
     state = str(first.get("identity_resolution_state") or "").strip().upper()
     if state in {"RESOLVED", "NOT_IDENTIFIABLE"}:
         return False
-    return not first.get("canonical_device_model_id") or state in {"", "UNRESOLVED", "PENDING"}
+    return state in {"", "UNRESOLVED", "PENDING"}
+
+
+def _identity_group_key(value: dict[str, Any]) -> str:
+    canonical_id = str(value.get("canonical_device_model_id") or "").strip()
+    if canonical_id:
+        return f"canonical:{canonical_id}"
+    identity = str(value.get("compatibility_identity") or value.get("model") or "Unknown").strip()
+    return f"identity:{identity}"
+
+
+def _diagnostics_url(value: dict[str, Any], *, state: str | None = None) -> str:
+    identity = str(value.get("compatibility_identity") or value.get("model") or "Unknown").strip()
+    parameters = {"identity": identity}
+    canonical_id = str(value.get("canonical_device_model_id") or "").strip()
+    if canonical_id:
+        parameters["canonical_device_id"] = canonical_id
+    if state:
+        parameters["state"] = state
+    return "/admin/diagnostics?" + urlencode(parameters)
 
 
 def _operation_is_problematic(results: list[dict[str, Any]]) -> bool:
@@ -272,7 +293,7 @@ def _diagnostic_summary_by_identity(events: list[dict[str, Any]]) -> dict[str, d
     by_identity: dict[str, dict[str, int]] = {}
     grouped: dict[str, dict[str, list[dict[str, Any]]]] = {}
     for event in events:
-        identity = str(event.get("compatibility_identity") or event.get("model") or "Unknown").strip()
+        identity = _identity_group_key(event)
         key = _operation_key(event)
         if identity and key:
             grouped.setdefault(identity, {}).setdefault(key, []).append(event)
@@ -297,21 +318,14 @@ def _error_cell(row: dict[str, Any], diagnostic_summary: dict[str, int] | None =
     summary = diagnostic_summary or {}
     count = int(summary.get("errors") or 0)
     identity = str(row.get("compatibility_identity") or row.get("model") or "unknown")
-    target = "/admin/diagnostics?" + urlencode({"identity": identity, "state": "open"})
-    parts: list[str] = []
+    target = _diagnostics_url(row, state="open")
     if count:
-        parts.append(
+        return (
             f"<a class='error-count' href='{html.escape(target, quote=True)}' "
             f"aria-label='View {count} unresolved errors for {html.escape(identity)}'>"
             f"{count} error{'s' if count != 1 else ''}</a>"
         )
-    if int(summary.get("identity_pending") or 0):
-        pending = int(summary["identity_pending"])
-        parts.append(
-            f"<span class='identity-pending-indicator' aria-label='{pending} identity pending'>"
-            f"Identity pending</span>"
-        )
-    return "<span class='muted-value'>—</span>" if not parts else " ".join(parts)
+    return "<span class='muted-value'>—</span>"
 
 
 def _diagnostics_id(identity: str) -> str:
@@ -581,7 +595,10 @@ def dashboard_page(
         for label, value in (("Models", len(rows)), ("Install attempts", attempts), ("Successful", successes), ("Failed", failures))
     )
     diagnostic_summary = _diagnostic_summary_by_identity(operations or [])
-    table_rows = "".join(_statistics_row(row, diagnostic_summary.get(str(row.get("compatibility_identity") or row.get("model") or ""), {})) for row in rows)
+    table_rows = "".join(
+        _statistics_row(row, diagnostic_summary.get(_identity_group_key(row), {}))
+        for row in rows
+    )
     empty = "<p class='empty'>No installation evidence yet.</p>" if not rows else ""
     latest_copy = f"Updated {_timestamp_markup(latest)}" if latest else "No evidence received yet"
     content = f"""
@@ -740,6 +757,7 @@ def _diagnostic_detail_dialog(
     resolved: bool,
     csrf_token: str,
     identity_devices: list[dict[str, Any]] | None,
+    canonical_device_model_id: str | None = None,
 ) -> str:
     first = results[0]
     dialog_id = "diagnostic-detail-" + hashlib.sha256(operation_key.encode("utf-8")).hexdigest()[:16]
@@ -748,7 +766,10 @@ def _diagnostic_detail_dialog(
     result_label = _operation_result(results)
     state = _operation_state(results, resolved=resolved)
     identity_pending = _identity_is_pending(results)
-    return_to = "/admin/diagnostics?" + urlencode({"identity": identity})
+    return_to = _diagnostics_url({
+        "compatibility_identity": identity,
+        "canonical_device_model_id": canonical_device_model_id,
+    })
     options, current_label = _identity_device_options(identity_devices, first.get("canonical_device_model_id"))
     search_id = f"identity-search-{dialog_id}"
     canonical_id = f"identity-canonical-{dialog_id}"
@@ -851,19 +872,27 @@ def diagnostics_page(
     operations: list[dict[str, Any]] | None = None,
     resolved_operations: list[dict[str, Any]] | None = None,
     identity_devices: list[dict[str, Any]] | None = None,
+    canonical_device_model_id: str | None = None,
 ) -> bytes:
     identity = identity.strip()
+    canonical_device_model_id = str(canonical_device_model_id or "").strip() or None
+
+    def matches(value: dict[str, Any]) -> bool:
+        if canonical_device_model_id:
+            return str(value.get("canonical_device_model_id") or "").strip() == canonical_device_model_id
+        return str(value.get("compatibility_identity") or value.get("model") or "").strip() == identity
+
     model_row = next(
-        (row for row in rows if str(row.get("compatibility_identity") or row.get("model") or "").strip() == identity),
+        (row for row in rows if matches(row)),
         None,
     )
     active_events = [
         event for event in (operations or [])
-        if str(event.get("compatibility_identity") or event.get("model") or "").strip() == identity
+        if matches(event)
     ]
     resolved_events = [
         event for event in (resolved_operations or [])
-        if str(event.get("compatibility_identity") or event.get("model") or "").strip() == identity
+        if matches(event)
     ]
     active_groups = _group_operations(active_events)
     resolved_groups = _group_operations(resolved_events)
@@ -909,7 +938,11 @@ def diagnostics_page(
             f"<td><button type='button' class='secondary-button diagnostic-review' data-dialog-id='{dialog_id}' aria-label='Review diagnostic {index + 1}'>Review</button></td>"
             "</tr>"
         )
-        dialogs.append(_diagnostic_detail_dialog(identity, operation_key, results, resolved=resolved, csrf_token=csrf_token, identity_devices=identity_devices))
+        dialogs.append(_diagnostic_detail_dialog(
+            identity, operation_key, results, resolved=resolved,
+            csrf_token=csrf_token, identity_devices=identity_devices,
+            canonical_device_model_id=canonical_device_model_id,
+        ))
     rows_body = "".join(rows_markup) or "<tr><td colspan='8' class='empty'>No installation history for this model.</td></tr>"
     content = f"""
       {_admin_header(user, csrf_token)}
@@ -1378,10 +1411,17 @@ def _statistics_row(row: dict[str, Any], diagnostic_summary: dict[str, int] | No
     status = status_value.value if status_value else ""
     search_text = " ".join((model, variant, str(row.get("family") or ""), identity)).strip()
     activity = max((_timestamp_iso(row.get(key)) for key in ("last_success", "last_failure", "last_evidence")), default="")
-    diagnostics_url = "/admin/diagnostics?" + urlencode({"identity": identity})
+    diagnostics_url = _diagnostics_url(row)
     error_count = int((diagnostic_summary or {}).get("errors") or 0)
+    pending_count = int((diagnostic_summary or {}).get("identity_pending") or 0)
+    model_cell = html.escape(model)
+    if pending_count:
+        model_cell += (
+            f" <span class='identity-pending-indicator' aria-label='{pending_count} identity pending'>"
+            "Identity pending</span>"
+        )
     cells = (
-        html.escape(model), html.escape(variant),
+        model_cell, html.escape(variant),
         html.escape(str(row.get("attempted_install_count", 0))), html.escape(str(row.get("successful_install_count", 0))),
         _error_cell(row, diagnostic_summary), _status_badge(status), _timestamp_markup(row.get("last_success")),
     )

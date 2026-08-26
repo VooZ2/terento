@@ -273,6 +273,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertIsNone(database.parameters["errorCategory"])
         self.assertIsNone(database.parameters["displayType"])
         self.assertIsNone(database.parameters["canonicalDeviceId"])
+        self.assertEqual(database.parameters["identityResolutionState"], "UNRESOLVED")
         self.assertEqual(len(database.parameters["deletionTokenHash"]), 64)
 
     def test_historical_fenix_7_evidence_is_canonicalized_without_retail_row(self):
@@ -288,6 +289,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
             database.parameters["canonicalDeviceId"],
             "garmin-fenix-7-47",
         )
+        self.assertEqual(database.parameters["identityResolutionState"], "RESOLVED")
 
     def test_admin_dashboard_uses_compact_english_evidence_layout(self):
         row = {
@@ -438,6 +440,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertFalse(database.parameters["mapVisibleAfterReconnect"])
         self.assertEqual(database.parameters["displayType"], "AMOLED")
         self.assertEqual(database.parameters["canonicalDeviceId"], "garmin-fenix-8-51-amoled")
+        self.assertEqual(database.parameters["identityResolutionState"], "RESOLVED")
 
     def test_schema_v3_accepts_structured_diagnostics_and_rejects_raw_or_inconsistent_data(self):
         payload = event(
