@@ -1788,6 +1788,7 @@ def devices_page(
     empty = "<p class='empty'>No Garmin device records are available.</p>" if not rows_html else ""
     payload_json = json.dumps({**payload, "csrfToken": csrf_token}, ensure_ascii=False).replace("<", "\\u003c")
     table_header = _device_table_header()
+    table_columns = _device_table_columns()
     content = f"""
       {_admin_header(user, csrf_token, active="devices")}
       <main class="dashboard devices-page" id="main-content">
@@ -1808,8 +1809,8 @@ def devices_page(
             <p class="results-count" id="device-results-count" aria-live="polite">{summary['mapCapable']} results</p>
           </form>
           {empty}
-          <div class="device-sticky-header" id="device-sticky-header"><div class="device-sticky-header-scroll"><table class="admin-table"><caption class="sr-only">Device catalog columns</caption>{table_header}</table></div></div>
-          <div class="table-wrap device-table-wrap"><table class="admin-table"><caption class="sr-only">Device catalog and Terento installation evidence</caption>{table_header}<tbody id="device-rows">{rows_html}</tbody></table></div>
+          <div class="device-sticky-header" id="device-sticky-header"><div class="device-sticky-header-scroll"><table class="admin-table"><caption class="sr-only">Device catalog columns</caption>{table_columns}{table_header}</table></div></div>
+          <div class="table-wrap device-table-wrap"><table class="admin-table"><caption class="sr-only">Device catalog and Terento installation evidence</caption>{table_columns}{table_header}<tbody id="device-rows">{rows_html}</tbody></table></div>
           <div class="device-pagination" id="device-pagination" hidden><button type="button" id="device-previous">Previous</button><span id="device-page-status"></span><button type="button" id="device-next">Next</button></div>
         </section>
       </main>
@@ -1820,6 +1821,10 @@ def devices_page(
 
 def _device_table_header() -> str:
     return """<thead><tr><th scope="col" aria-sort="ascending"><button type="button" class="device-sort-button" data-device-sort="model" aria-label="Model">Model <span aria-hidden="true">↑</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="variant" aria-label="Variant">Variant <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="maps" aria-label="Map capability" title="Map capability">Maps <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="authorization" aria-label="Installation authorization" title="Installation authorization">Authorization <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="status" aria-label="Compatibility status" title="Compatibility status">Status <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="attempts" aria-label="Install attempts" title="Install attempts">Attempts <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="success" aria-label="Successful installations" title="Successful installations">Successful <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="evidence" aria-label="Last successful installation" title="Last successful installation">Last success <span aria-hidden="true">↕</span></button></th></tr></thead>"""
+
+
+def _device_table_columns() -> str:
+    return """<colgroup class="device-table-columns"><col class="device-column-model"><col class="device-column-variant"><col class="device-column-maps"><col class="device-column-authorization"><col class="device-column-status"><col class="device-column-attempts"><col class="device-column-successful"><col class="device-column-last-success"></colgroup>"""
 
 
 def _campaign_info(control_id: str, title: str, body: str) -> str:
@@ -2002,6 +2007,7 @@ def _devices_script() -> str:
       const showNewButton = document.querySelector('#device-show-new');
       const tableScroll = document.querySelector('.device-table-wrap');
       const stickyHeaderScroll = document.querySelector('.device-sticky-header-scroll');
+      const stickyHeaderTable = stickyHeaderScroll?.querySelector('table');
       if (!body || !form || !search || !family || !map || !support || !status || !count) return;
 
       const pageSize = 50;
@@ -2145,11 +2151,15 @@ def _devices_script() -> str:
         event.preventDefault();
         window.location.assign(row.dataset.deviceUrl);
       });
-      tableScroll?.addEventListener('scroll', () => {
-        if (stickyHeaderScroll) stickyHeaderScroll.scrollLeft = tableScroll.scrollLeft;
-      }, {passive: true});
+      const syncStickyHeader = () => {
+        if (tableScroll && stickyHeaderTable) {
+          stickyHeaderTable.style.transform = `translateX(${-tableScroll.scrollLeft}px)`;
+        }
+      };
+      tableScroll?.addEventListener('scroll', syncStickyHeader, {passive: true});
       updateSortHeaders();
       refresh();
+      syncStickyHeader();
     })();"""
     return script.replace(
         "__TERENTO_LAST_SUCCESS_COMPARATOR__",
@@ -2853,7 +2863,7 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .device-table-wrap{overflow:visible;border-top:0;border-radius:0 0 14px 14px}
 .device-sticky-header{display:none}
 .device-table-wrap table,.device-sticky-header table{min-width:0;table-layout:fixed}
-.device-table-wrap th:nth-child(1),.device-sticky-header th:nth-child(1){width:20%}.device-table-wrap th:nth-child(2),.device-sticky-header th:nth-child(2){width:18%}.device-table-wrap th:nth-child(3),.device-sticky-header th:nth-child(3){width:9%}.device-table-wrap th:nth-child(4),.device-sticky-header th:nth-child(4){width:14%}.device-table-wrap th:nth-child(5),.device-sticky-header th:nth-child(5){width:11%}.device-table-wrap th:nth-child(6),.device-sticky-header th:nth-child(6){width:9%}.device-table-wrap th:nth-child(7),.device-sticky-header th:nth-child(7){width:8%}.device-table-wrap th:nth-child(8),.device-sticky-header th:nth-child(8){width:11%}
+.device-column-model{width:20%}.device-column-variant{width:18%}.device-column-maps{width:9%}.device-column-authorization{width:14%}.device-column-status{width:11%}.device-column-attempts{width:9%}.device-column-successful{width:8%}.device-column-last-success{width:11%}
 .device-table-wrap thead{position:static}
 .device-table-wrap thead th{position:sticky;top:calc(var(--admin-topbar-height) + var(--device-filter-height, 54px));z-index:21}
 .device-table-wrap th,.device-table-wrap td{white-space:normal;overflow-wrap:anywhere}
@@ -2874,7 +2884,7 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .device-thumb-placeholder{position:relative;border:1px solid var(--border)}
 .device-thumb-placeholder:before{content:"";position:absolute;left:10px;top:8px;width:16px;height:21px;border:2px solid var(--sky);border-radius:5px}
 .device-thumb-placeholder:after{content:"";position:absolute;left:15px;top:13px;width:6px;height:2px;border-radius:2px;background:var(--sky);box-shadow:0 8px 0 var(--sky)}
-.new-badge{display:inline-flex;align-items:center;min-height:20px;padding:2px 7px;border:1px solid color-mix(in srgb,var(--lichen) 65%,var(--border));border-radius:999px;background:#EEF2E9;color:#52624C;font-size:10px;font-weight:750;letter-spacing:.06em;text-transform:uppercase}
+.new-badge{display:inline-flex;align-items:center;min-height:20px;padding:2px 7px;border:1px solid color-mix(in srgb,var(--lichen) 65%,var(--border));border-radius:999px;background:#EEF2E9;color:#52624C;font-size:10px;font-weight:750;letter-spacing:.06em;white-space:nowrap;text-transform:uppercase}
 .summary-filter-link{margin:0;padding:0;border:0;background:none;color:var(--interactive);font:inherit;font-weight:750;text-decoration:underline;text-underline-offset:3px}
 .admin-state{display:inline-flex;align-items:center;min-height:26px;padding:5px 9px;border:1px solid transparent;border-radius:999px;font-size:11px;font-weight:750;line-height:1;white-space:nowrap}
 .admin-state-map-yes,.admin-state-authorization-approved,.admin-state-publication-published{background:#E7EEE2;border-color:#B4C6A7;color:#4B6142}

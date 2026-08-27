@@ -983,6 +983,38 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertFalse(oversized_prefilled)
         self.assertEqual(oversized_url, "https://github.com/VooZ2/terento/issues/new")
 
+    def test_oversized_github_report_renders_browser_copy_fallback_without_query_data(self):
+        device = _admin_device_payload([{
+            "device_id": "garmin-oversized-report", "model": "x" * 8_000,
+            "variant": "51 mm", "family_name": "fēnix", "map_capable": True,
+            "support_status": "SUPPORTED", "active": True,
+            "attempted_install_count": 1, "successful_install_count": 0,
+            "failed_install_count": 1, "usb_identities": [],
+        }], None)["devices"][0]
+        operation = {
+            "operation_key": "oversized-report", "event_id": "oversized-event",
+            "canonical_device_model_id": device["id"],
+            "occurred_at": "2026-08-28T00:00:00+00:00",
+            "phase_outcome": "FAILED", "failure_stage": "write",
+            "failure_code": "INSTALL_FAILED_WRITE", "write_started": True,
+        }
+        body = device_detail_page(
+            device, {"username": "operator"}, "csrf", operations=[operation],
+        ).decode()
+        self.assertIn(
+            "href='https://github.com/VooZ2/terento/issues/new'", body,
+        )
+        self.assertIn("data-prefilled='false'", body)
+        self.assertIn("Report is too large to prefill; copy it instead.", body)
+        self.assertIn("data-copy-issue-report", body)
+        self.assertIn("data-issue-body=", body)
+        self.assertIn("if (link.dataset.prefilled === 'false')", body)
+        self.assertIn("event.preventDefault();", body)
+        self.assertIn("copyText(`${link.dataset.issueTitle}\\n\\n${body}`, status);", body)
+        fallback_start = body.index("data-github-create")
+        fallback_markup = body[max(0, fallback_start - 500):fallback_start + 500]
+        self.assertNotIn("issues/new?", fallback_markup)
+
     def test_admin_actions_have_single_submit_loading_and_inline_failure_enhancement(self):
         device = _admin_device_payload([{
             "device_id": "garmin-fenix-8", "model": "fēnix 8", "variant": "47 mm",

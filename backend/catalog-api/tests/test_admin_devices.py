@@ -373,8 +373,24 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertIn('th[aria-sort="ascending"] .device-sort-button', body)
         self.assertIn('th[aria-sort="descending"] .device-sort-button', body)
         self.assertIn('class="device-sticky-header"', body)
-        self.assertIn("stickyHeaderScroll.scrollLeft = tableScroll.scrollLeft", body)
+        self.assertIn("stickyHeaderTable.style.transform = `translateX(${-tableScroll.scrollLeft}px)`", body)
+        self.assertIn("tableScroll?.addEventListener('scroll', syncStickyHeader", body)
         self.assertIn(".device-table-wrap thead{display:none}", body)
+        columns = (
+            '<colgroup class="device-table-columns">'
+            '<col class="device-column-model"><col class="device-column-variant">'
+            '<col class="device-column-maps"><col class="device-column-authorization">'
+            '<col class="device-column-status"><col class="device-column-attempts">'
+            '<col class="device-column-successful"><col class="device-column-last-success">'
+            '</colgroup>'
+        )
+        self.assertEqual(body.count(columns), 2)
+        for column, width in (
+            ("model", 20), ("variant", 18), ("maps", 9), ("authorization", 14),
+            ("status", 11), ("attempts", 9), ("successful", 8), ("last-success", 11),
+        ):
+            self.assertIn(f".device-column-{column}{{width:{width}%}}", body)
+        self.assertIn("white-space:nowrap;text-transform:uppercase", body)
         self.assertIn("opacity:.2", body)
         self.assertNotIn("<dialog id='device-dialog'", body)
         self.assertIn("parameters.has(key) ? parameters.get(key) : saved[key]", body)
@@ -406,6 +422,26 @@ class AdminDevicesTests(unittest.TestCase):
         ):
             self.assertIn(value, detail)
         self.assertNotIn("Change history", detail)
+
+    def test_narrow_sticky_header_and_body_share_canonical_column_geometry(self):
+        body = devices_page(
+            [device_row(model="A long Garmin model name", first_seen_collection_run_id=8,
+                        last_seen_collection_run_id=8)],
+            {"id": 8}, {"username": "operator"}, "csrf",
+        ).decode()
+        columns = (
+            '<colgroup class="device-table-columns">'
+            '<col class="device-column-model"><col class="device-column-variant">'
+            '<col class="device-column-maps"><col class="device-column-authorization">'
+            '<col class="device-column-status"><col class="device-column-attempts">'
+            '<col class="device-column-successful"><col class="device-column-last-success">'
+            '</colgroup>'
+        )
+        self.assertEqual(body.count(columns), 2)
+        self.assertIn("table-layout:fixed", body)
+        self.assertIn("stickyHeaderTable.style.transform = `translateX(${-tableScroll.scrollLeft}px)`", body)
+        self.assertIn("tableScroll?.addEventListener('scroll', syncStickyHeader", body)
+        self.assertIn("white-space:nowrap;text-transform:uppercase", body)
 
     def test_device_variant_display_normalizes_case_size_without_mutating_input(self):
         row = device_row(variant="51mm, AMOLED", case_size_mm=51)
