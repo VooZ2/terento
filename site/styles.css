@@ -22,7 +22,13 @@
   --graphite: #222A2B;
   --interactive: #577787;
   --interactive-hover: #4F6E7E;
-  --secondary: #6D706F;
+  --link-text: #416979;
+  --link-text-hover: #315466;
+  --accent-text: #416979;
+  --muted-text: #626764;
+  --eyebrow-text: #5E6361;
+  --focus-ring: #416979;
+  --secondary: var(--muted-text);
   --surface: #FFFFFF;
   --surface-muted: #F1EEE7;
   --border: #D7DDDA;
@@ -39,7 +45,13 @@
     --graphite: #F7F3EC;
     --surface: #2B3536;
     --surface-muted: #283132;
-    --secondary: #C9D0CD;
+    --muted-text: #C9D0CD;
+    --eyebrow-text: #C9D0CD;
+    --link-text: #9CB6C2;
+    --link-text-hover: #C1D6DD;
+    --accent-text: #9CB6C2;
+    --focus-ring: #9CB6C2;
+    --secondary: var(--muted-text);
     --border: #465355;
     --sky: #9CB6C2;
     --lichen: #A4B39B;
@@ -82,8 +94,9 @@ a {
 }
 
 a:focus-visible,
+button:focus-visible,
 summary:focus-visible {
-  outline: 3px solid var(--sky);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 5px;
 }
 
@@ -144,7 +157,7 @@ summary:focus-visible {
   display: flex;
   align-items: center;
   gap: 28px;
-  color: var(--secondary);
+  color: var(--muted-text);
   font-size: 15px;
   font-weight: 500;
 }
@@ -158,7 +171,7 @@ summary:focus-visible {
 .primary-nav a:hover,
 .footer-nav a:hover,
 .text-link:hover {
-  color: var(--interactive-hover);
+  color: var(--link-text-hover);
 }
 
 .menu-toggle,
@@ -225,7 +238,7 @@ summary:focus-visible {
 }
 
 .mobile-nav-links a[aria-current="page"] {
-  color: var(--interactive);
+  color: var(--link-text);
 }
 
 .mobile-nav-language {
@@ -441,7 +454,7 @@ summary:focus-visible {
   align-items: center;
   gap: 9px;
   margin: 0 0 20px;
-  color: var(--secondary);
+  color: var(--eyebrow-text);
   font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.01em;
@@ -481,7 +494,7 @@ h1 {
 .hero-lede {
   max-width: 610px;
   margin-bottom: 20px;
-  color: var(--secondary);
+  color: var(--muted-text);
   font-size: clamp(18px, 2vw, 21px);
   line-height: 1.48;
 }
@@ -497,7 +510,7 @@ h1 {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: var(--interactive);
+  color: var(--link-text);
   font-size: 15px;
   font-weight: 600;
 }
@@ -597,19 +610,19 @@ h1 {
 
 .download-action-secondary {
   background: transparent;
-  color: var(--interactive);
+  color: var(--link-text);
 }
 
 .download-action-secondary:hover,
 .download-action-secondary:focus-visible {
   background: var(--surface-muted);
-  color: var(--interactive-hover);
+  color: var(--link-text-hover);
 }
 
 .download-action-tertiary {
   border-color: transparent;
   background: transparent;
-  color: var(--secondary);
+  color: var(--muted-text);
 }
 
 .download-action-tertiary:hover,
@@ -675,7 +688,7 @@ h1 {
   display: inline-flex;
   gap: 6px;
   margin-top: 14px;
-  color: var(--interactive);
+  color: var(--link-text);
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -726,7 +739,7 @@ h1 {
 }
 
 .download-item a {
-  color: var(--interactive);
+  color: var(--link-text);
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -789,7 +802,7 @@ h1 {
 .legal-intro a,
 .legal-status a,
 .legal-item a {
-  color: var(--interactive);
+  color: var(--link-text);
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -798,7 +811,7 @@ h1 {
 .legal-intro a:hover,
 .legal-status a:hover,
 .legal-item a:hover {
-  color: var(--interactive-hover);
+  color: var(--link-text-hover);
 }
 
 .legal-item code {
@@ -894,8 +907,10 @@ h1 {
 .steps {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  margin-top: 72px;
+  margin: 72px 0 0;
+  padding: 0;
   border-top: 1px solid var(--border);
+  list-style: none;
 }
 
 .step {
@@ -914,7 +929,7 @@ h1 {
 
 .step-number {
   margin-bottom: 38px;
-  color: var(--sky);
+  color: var(--accent-text);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: .08em;
@@ -1157,7 +1172,7 @@ summary::-webkit-details-marker {
 summary::after {
   content: "+";
   flex: 0 0 auto;
-  color: var(--interactive);
+  color: var(--link-text);
   font-size: 25px;
   font-weight: 400;
   line-height: 1;
@@ -1365,7 +1380,7 @@ details p {
 .consent-button {
   min-height: 42px;
   padding: 9px 15px;
-  border: 1px solid var(--interactive);
+  border: 1px solid var(--link-text);
   border-radius: 9px;
   font: inherit;
   font-size: 14px;
@@ -1376,7 +1391,7 @@ details p {
 .consent-button-primary,
 .consent-button-secondary {
   background: var(--surface-muted);
-  color: var(--interactive);
+  color: var(--link-text);
 }
 
 .consent-button-primary:hover,
@@ -1798,7 +1813,7 @@ details p {
 }
 
 .compatibility-how summary:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--sky) 24%, transparent);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 1px;
 }
 
@@ -1889,8 +1904,8 @@ details p {
 
 .compatibility-filters input:focus,
 .compatibility-filters select:focus {
-  border-color: var(--sky);
-  outline: 3px solid color-mix(in srgb, var(--sky) 24%, transparent);
+  border-color: var(--focus-ring);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 1px;
 }
 

@@ -93,15 +93,15 @@ for (const declaration of [
   "display: inline-flex",
   "align-items: center",
   "gap: 8px",
-  "color: var(--interactive)",
+  "color: var(--link-text)",
   "font-size: 15px",
   "font-weight: 600",
 ]) {
   assert.match(sharedTextLink[1], new RegExp(declaration.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 }
 assert.match(styles, /\.primary-nav a,\s*\.footer-nav a,\s*\.text-link\s*\{[^}]*text-decoration: none/s);
-assert.match(styles, /\.text-link:hover\s*\{[^}]*color: var\(--interactive-hover\)/s);
-assert.match(styles, /a:focus-visible,\s*summary:focus-visible\s*\{[^}]*outline: 3px solid var\(--sky\)/s);
+assert.match(styles, /\.text-link:hover\s*\{[^}]*color: var\(--link-text-hover\)/s);
+assert.match(styles, /a:focus-visible,\s*button:focus-visible,\s*summary:focus-visible\s*\{[^}]*outline: 3px solid var\(--focus-ring\)/s);
 assert.doesNotMatch(scopeModifier[1], /display|align-items|gap|color|font-size|font-weight|text-decoration/);
 
 console.log("Home copy, localized status, shared CTA, and CTA interaction-contract tests passed.");
