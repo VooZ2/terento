@@ -52,10 +52,10 @@
   }[status] || "Compatibility unavailable");
 
   const statusDescription = (status) => ({
-    TESTING: "Terento has recognized this model as map-capable, but no successful shared installation has been received yet.",
+    TESTING: "Terento can install maps on this model, but we’re waiting for the first successful installation shared by the community to confirm compatibility.",
     TESTED: "1–2 successful installations have been shared by Terento users.",
-    SUPPORTED: "3–4 successful installations have been shared by Terento users.",
-    VERIFIED: "5 or more successful installations have been shared by Terento users.",
+    SUPPORTED: "3–4 successful installations have confirmed compatibility.",
+    VERIFIED: "5 or more successful installations have confirmed compatibility.",
   }[status] || "Compatibility evidence is not available yet.");
 
   function createStatusBadge(status, ariaLabel = statusLabel(status)) {
