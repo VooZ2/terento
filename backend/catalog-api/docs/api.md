@@ -150,6 +150,15 @@ disables public statistics. Every change is audited. This action does not
 change evidence events, calculated status, installation counts, installation
 authorization, or any existing public/native/device API field.
 
+The shared authenticated admin navigation shows `Needs review` only when an
+actionable queue is non-empty. Its count is split into distinct active failed
+installation operations, unresolved-identity operations, and exact eligible
+models awaiting first public publication. The popover links failures and
+identity work to Installation evidence and publication work to Devices.
+Resolved diagnostics, `NOT_IDENTIFIABLE` identities, rejected publication
+reviews, and already-published models are excluded. The summary is private,
+no-store, and does not add fields to any public or native API response.
+
 `POST /admin/diagnostics/resolve` and `/admin/diagnostics/reopen` change only
 the retained diagnostic lifecycle, while `POST /admin/diagnostics/identity`
 assigns or leaves an exact canonical Garmin record and writes an identity audit
