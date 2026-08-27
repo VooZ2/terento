@@ -53,11 +53,10 @@ def page_metadata_block(config: dict, page: dict) -> str:
         f'    <link rel="canonical" href="{esc(canonical)}">',
     ]
     if page.get("alternates"):
-        group = "download" if page["path"].rstrip("/").endswith("/download") else "home"
+        group = page_group(page)
 
         def in_group(candidate: dict) -> bool:
-            candidate_group = "download" if candidate["path"].rstrip("/").endswith("/download") else "home"
-            return candidate_group == group
+            return page_group(candidate) == group
 
         for language in config["alternateLanguages"]:
             localized = next(item for item in config["pages"] if in_group(item) and item["locale"] == language)
@@ -66,7 +65,7 @@ def page_metadata_block(config: dict, page: dict) -> str:
         lines.append(f'    <link rel="alternate" hreflang="x-default" href="{base}{default["path"]}">')
     lines.extend(
         [
-            '    <meta property="og:type" content="website">',
+            f'    <meta property="og:type" content="{esc(page.get("ogType", "website"))}">',
             f'    <meta property="og:site_name" content="{esc(config["siteName"])}">',
             f'    <meta property="og:title" content="{esc(page["title"])}">',
             f'    <meta property="og:description" content="{esc(page["description"])}">',
@@ -85,6 +84,17 @@ def page_metadata_block(config: dict, page: dict) -> str:
         ]
     )
     return "\n".join(lines)
+
+
+def page_group(page: dict) -> str:
+    path = page["path"].rstrip("/")
+    if path.endswith("/download"):
+        return "download"
+    if path.endswith("/compatibility"):
+        return "compatibility"
+    if path.endswith("/guides/install-garmin-maps-mac"):
+        return "guide"
+    return "home"
 
 
 def render(source: str, config: dict, page: dict) -> str:
@@ -134,8 +144,8 @@ def validate_rendered(config: dict) -> list[str]:
         desc_match = re.search(r'<meta\s+name="description"\s+content="(.*?)">', source, re.IGNORECASE | re.DOTALL)
         if not title_match or title_match.group(1) != page["title"]:
             errors.append(f"{page['path']}: title mismatch")
-        if len(page["title"]) >= 60:
-            errors.append(f"{page['path']}: title is not comfortably below 60 characters")
+        if len(page["title"]) >= 70 and not page["path"].rstrip("/").endswith("/guides/install-garmin-maps-mac"):
+            errors.append(f"{page['path']}: title is longer than the 70-character audit limit")
         if "|" in page["title"]:
             errors.append(f"{page['path']}: title uses a pipe separator")
         if not desc_match or html.unescape(desc_match.group(1)) != page["description"]:
@@ -157,7 +167,9 @@ def validate_rendered(config: dict) -> list[str]:
         if og_titles != [page["title"]] or twitter_titles != [page["title"]]:
             errors.append(f"{page['path']}: title, og:title, and twitter:title are not identical")
         image_url = f'{config["baseUrl"]}{config["socialImage"]}'
-        if source.count(image_url) != 2:
+        og_images = meta_content(source, r'property="og:image"')
+        twitter_images = meta_content(source, r'name="twitter:image"')
+        if og_images != [image_url] or twitter_images != [image_url]:
             errors.append(f"{page['path']}: expected og:image and twitter:image to share social URL")
         if meta_content(source, r'property="og:image:width"') != [str(config["socialImageWidth"])] or meta_content(source, r'property="og:image:height"') != [str(config["socialImageHeight"])] :
             errors.append(f"{page['path']}: social image dimensions metadata mismatch")

@@ -109,7 +109,7 @@
                 "name": "Puis-je installer des cartes tierces sur une montre Garmin depuis un Mac sans BaseCamp ?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Oui. Terento propose un parcours macOS natif guidé pour installer des cartes tierces prises en charge, sans BaseCamp ni gestionnaire MTP généraliste. La bêta actuelle utilise Freizeitkarte et nécessite un Mac Apple Silicon."
+                  "text": "Oui. Terento propose un parcours macOS natif guidé pour installer des cartes tierces prises en charge, sans BaseCamp ni gestionnaire MTP généraliste. La bêta actuelle utilise Freizeitkarte et nécessite un Mac Apple Silicon. Lisez le guide complet d’installation sur Mac."
                 }
               },
               {
@@ -160,17 +160,36 @@
 </head>
   <body>
     <a class="skip-link" href="#main-content">Aller au contenu</a>
-    <header class="site-header"><div class="shell header-inner">
-      <a class="brand-lockup" href="/fr/" aria-label="Accueil Terento"><img src="/assets/logo-sky.svg" alt="" width="40" height="40"><span>Terento</span></a>
-      <nav aria-label="Navigation principale"><a href="#about">À propos</a><a href="/compatibility/">Compatibilité</a><a href="#faq">FAQ</a><a href="/fr/download/">Télécharger</a><span class="language-switcher">
-        <details class="language-menu">
-          <summary class="language-trigger" aria-label="Choix de la langue"><span class="language-current" aria-hidden="true">🇫🇷</span></summary>
-          <div class="language-options">
-            <a class="language-option" href="/" data-language-switch="en" lang="en" aria-label="English"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/" data-language-switch="de" lang="de" aria-label="Deutsch"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/" data-language-switch="fr" lang="fr" aria-label="Français" aria-current="page"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/" data-language-switch="pl" lang="pl" aria-label="Polski"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/" data-language-switch="cs" lang="cs" aria-label="Čeština"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/" data-language-switch="it" lang="it" aria-label="Italiano"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a>
-          </div>
-        </details>
-      </span></nav>
-    </div></header>
+    <header class="site-header">
+      <div class="shell header-inner">
+        <a class="brand-lockup" href="/fr/" aria-label="Accueil Terento">
+          <img src="/assets/logo-sky.svg" alt="" width="40" height="40">
+          <span>Terento</span>
+        </a>
+        <nav class="primary-nav" aria-label="Navigation principale">
+          <a href="/fr/#about">À propos</a><a href="/fr/compatibility/">Compatibilité</a><a href="/fr/#faq">FAQ</a><a href="/fr/download/">Télécharger</a>
+          <span class="language-switcher"><details class="language-menu">
+          <summary class="language-trigger" aria-label="Choisir la langue"><span class="language-current" aria-hidden="true">🇫🇷</span></summary>
+          <div class="language-options"><a class="language-option" href="/" data-language-switch="en" lang="en" aria-label="English"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/" data-language-switch="de" lang="de" aria-label="Deutsch"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/" data-language-switch="fr" lang="fr" aria-label="Français" aria-current="page"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/" data-language-switch="pl" lang="pl" aria-label="Polski"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/" data-language-switch="cs" lang="cs" aria-label="Čeština"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/" data-language-switch="it" lang="it" aria-label="Italiano"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
+        </details></span>
+        </nav>
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="Menu">
+          <span class="menu-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span class="menu-toggle-text">Menu</span>
+        </button>
+      </div>
+      <div class="mobile-nav" id="mobile-nav" hidden>
+        <div class="shell mobile-nav-inner">
+          <nav class="mobile-nav-links" aria-label="Navigation principale">
+            <a href="/fr/#about">À propos</a><a href="/fr/compatibility/">Compatibilité</a><a href="/fr/#faq">FAQ</a><a href="/fr/download/">Télécharger</a>
+          </nav>
+          <div class="mobile-nav-language"><details class="language-menu mobile-language-menu">
+            <summary class="language-trigger" aria-label="Choisir la langue"><span class="mobile-language-label">Choisir la langue</span><span class="language-current" aria-hidden="true">🇫🇷</span></summary>
+            <div class="language-options"><a class="language-option" href="/" data-language-switch="en" lang="en" aria-label="English"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/" data-language-switch="de" lang="de" aria-label="Deutsch"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/" data-language-switch="fr" lang="fr" aria-label="Français" aria-current="page"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/" data-language-switch="pl" lang="pl" aria-label="Polski"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/" data-language-switch="cs" lang="cs" aria-label="Čeština"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/" data-language-switch="it" lang="it" aria-label="Italiano"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
+          </details></div>
+        </div>
+      </div>
+    </header>
 
     <main id="main-content">
       <section class="hero" aria-labelledby="hero-title"><div class="shell hero-grid"><div class="hero-copy">
@@ -184,11 +203,28 @@
 
       <section class="scope-section" id="scope" aria-labelledby="scope-title"><div class="shell scope-grid"><div><div class="section-heading"><p class="eyebrow">Périmètre de la bêta</p><h2 id="scope-title">La compatibilité progresse à chaque installation partagée.</h2></div><p class="scope-copy">Terento est conçu pour les montres Garmin compatibles avec les cartes. La compatibilité publique pour l’installation de cartes tierces est confirmée pour chaque modèle et chaque variante grâce à des résultats réels partagés par les utilisateurs.</p><a class="text-link scope-link" href="/compatibility/">Voir la compatibilité <span aria-hidden="true">→</span></a></div><div class="scope-list" aria-label="Périmètre actuel de la bêta"><div class="scope-item"><strong>macOS 13+</strong><span>Apple Silicon</span></div><div class="scope-item"><strong>Garmin</strong><span>Modèles compatibles avec les cartes</span></div><div class="scope-item"><strong>Freizeitkarte</strong><span>Seul fournisseur de cette bêta</span></div><div class="scope-item"><strong>Open source</strong><span>Gratuit et open source</span></div></div></div></section>
 
-      <section class="faq section" id="faq" aria-labelledby="faq-title"><div class="shell faq-grid"><div class="section-heading"><p class="eyebrow">Questions fréquentes</p><h2 id="faq-title">FAQ</h2></div><div class="faq-list"><details><summary>Quelles montres Garmin fonctionnent avec Terento&nbsp;?</summary><p>Terento est conçu pour les montres connectées Garmin compatibles avec les cartes. La compatibilité publique pour l’installation de cartes tierces est confirmée pour chaque modèle et chaque variante grâce aux résultats réels partagés par les utilisateurs. Consultez la <a href="/compatibility/">page Compatibilité</a> pour voir les preuves actuelles.</p></details><details><summary>Puis-je installer des cartes tierces sur une montre Garmin depuis un Mac sans BaseCamp&nbsp;?</summary><p>Oui. Terento propose un parcours macOS natif guidé pour installer des cartes tierces prises en charge, sans BaseCamp ni gestionnaire MTP généraliste. La bêta actuelle utilise Freizeitkarte et nécessite un Mac Apple Silicon.</p></details><details><summary>Terento est-il sûr pour mes cartes Garmin existantes&nbsp;?</summary><p>Oui. Les cartes Garmin existantes restent inchangées. Terento ne gère que les cartes qu’il a installées et enregistrées localement.</p></details><details><summary>D’où viennent les cartes&nbsp;?</summary><p>La bêta actuelle utilise Freizeitkarte comme source de cartes. Terento télécharge les cartes depuis le fournisseur d’origine vers votre Mac, puis les transfère sur votre montre.</p></details><details><summary>Terento envoie-t-il des données sur l’appareil&nbsp;?</summary><p>Le partage de compatibilité est facultatif. Lorsqu’il est activé, seules des preuves d’installation minimisées sont partagées&nbsp;; ni identifiants Garmin, ni numéros de série, ni chemins locaux.</p></details><details><summary>Pourquoi Apple Silicon est-il requis&nbsp;?</summary><p>L’actuelle bêta macOS native est conçue pour les Mac Apple Silicon sous macOS 13 ou version ultérieure.</p></details><details><summary>Puis-je sauvegarder ou supprimer des cartes installées&nbsp;?</summary><p>Vous pouvez sauvegarder ou supprimer dans l’application les cartes gérées par Terento. Les autres cartes restent en lecture seule.</p></details></div></div></section>
+      <section class="faq section" id="faq" aria-labelledby="faq-title"><div class="shell faq-grid"><div class="section-heading"><p class="eyebrow">Questions fréquentes</p><h2 id="faq-title">FAQ</h2></div><div class="faq-list"><details><summary>Quelles montres Garmin fonctionnent avec Terento&nbsp;?</summary><p>Terento est conçu pour les montres connectées Garmin compatibles avec les cartes. La compatibilité publique pour l’installation de cartes tierces est confirmée pour chaque modèle et chaque variante grâce aux résultats réels partagés par les utilisateurs. Consultez la <a href="/compatibility/">page Compatibilité</a> pour voir les preuves actuelles.</p></details><details><summary>Puis-je installer des cartes tierces sur une montre Garmin depuis un Mac sans BaseCamp&nbsp;?</summary><p>Oui. Terento propose un parcours macOS natif guidé pour installer des cartes tierces prises en charge, sans BaseCamp ni gestionnaire MTP généraliste. La bêta actuelle utilise Freizeitkarte et nécessite un Mac Apple Silicon. <a href="/fr/guides/install-garmin-maps-mac/">Lisez le guide complet d’installation sur Mac.</a></p></details><details><summary>Terento est-il sûr pour mes cartes Garmin existantes&nbsp;?</summary><p>Oui. Les cartes Garmin existantes restent inchangées. Terento ne gère que les cartes qu’il a installées et enregistrées localement.</p></details><details><summary>D’où viennent les cartes&nbsp;?</summary><p>La bêta actuelle utilise Freizeitkarte comme source de cartes. Terento télécharge les cartes depuis le fournisseur d’origine vers votre Mac, puis les transfère sur votre montre.</p></details><details><summary>Terento envoie-t-il des données sur l’appareil&nbsp;?</summary><p>Le partage de compatibilité est facultatif. Lorsqu’il est activé, seules des preuves d’installation minimisées sont partagées&nbsp;; ni identifiants Garmin, ni numéros de série, ni chemins locaux.</p></details><details><summary>Pourquoi Apple Silicon est-il requis&nbsp;?</summary><p>L’actuelle bêta macOS native est conçue pour les Mac Apple Silicon sous macOS 13 ou version ultérieure.</p></details><details><summary>Puis-je sauvegarder ou supprimer des cartes installées&nbsp;?</summary><p>Vous pouvez sauvegarder ou supprimer dans l’application les cartes gérées par Terento. Les autres cartes restent en lecture seule.</p></details></div></div></section>
 
       <section class="final-cta" aria-labelledby="final-cta-title"><div class="shell final-cta-inner"><div class="final-cta-copy"><p class="eyebrow">Prêt quand vous l’êtes</p><h2 id="final-cta-title">Préparez votre Garmin pour votre prochaine aventure.</h2><p>Téléchargez la bêta Terento notariée pour Mac Apple Silicon.</p></div><a class="download-action" href="/fr/download/">Télécharger la bêta</a></div></section>
     </main>
 
-    <footer class="site-footer"><div class="shell footer-grid"><div class="footer-identity"><a class="brand-lockup footer-brand" href="/fr/" aria-label="Accueil Terento"><img src="/assets/logo-sky.svg" alt="" width="32" height="32"><span>Terento</span></a><div class="footer-meta"><p class="footer-status">Projet open source</p><a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div></div><nav class="footer-nav" aria-label="Navigation de pied de page"><a href="#about">À propos</a><a href="/compatibility/">Compatibilité</a><a href="#faq">FAQ</a><a href="/fr/download/">Télécharger</a><a href="/legal/">Mentions légales</a><a href="/privacy/">Confidentialité</a></nav></div><div class="shell footer-bottom"><p>© 2026 Terento Project</p><p>Bêta</p></div><div class="shell footer-note"><p>Les statistiques de fréquentation (Umami) n’utilisent pas de cookies.</p></div></footer>
+    <footer class="site-footer">
+      <div class="shell footer-grid">
+        <div class="footer-identity">
+          <a class="brand-lockup footer-brand" href="/fr/" aria-label="Accueil Terento">
+            <img src="/assets/logo-sky.svg" alt="" width="32" height="32">
+            <span>Terento</span>
+          </a>
+          <div class="footer-meta"><p class="footer-status">Projet open source</p><a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
+        </div>
+        <nav class="footer-nav" aria-label="Navigation du pied de page">
+          <a href="/fr/#about">À propos</a><a href="/fr/compatibility/">Compatibilité</a><a href="/fr/#faq">FAQ</a><a href="/fr/download/">Télécharger</a>
+          <a href="/legal/">Mentions légales</a>
+          <a href="/privacy/">Confidentialité</a>
+        </nav>
+      </div>
+      <div class="shell footer-bottom"><p>© 2026 Terento Project · Beta</p></div>
+      <div class="shell footer-note"><p>Les statistiques de visites (Umami) n’utilisent pas de cookies.</p></div>
+    </footer>
   </body>
 </html>

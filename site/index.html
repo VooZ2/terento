@@ -108,7 +108,7 @@
                 "name": "Can I install third-party maps on a Garmin watch from a Mac without BaseCamp?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Yes. Terento provides a guided native macOS workflow for installing supported third-party maps without BaseCamp or a general-purpose MTP file manager. The current beta uses Freizeitkarte and requires an Apple Silicon Mac."
+                  "text": "Yes. Terento provides a guided native macOS workflow for installing supported third-party maps without BaseCamp or a general-purpose MTP file manager. The current beta uses Freizeitkarte and requires an Apple Silicon Mac. Read the full Mac installation guide."
                 }
               },
               {
@@ -166,27 +166,28 @@
           <img src="/assets/logo-sky.svg" alt="" width="40" height="40">
           <span>Terento</span>
         </a>
-        <nav aria-label="Primary navigation">
-          <a href="#about">About</a>
-          <a href="/compatibility/">Compatibility</a>
-          <a href="#faq">FAQ</a>
-          <a href="/download/">Download</a>
-          <span class="language-switcher">
-            <details class="language-menu">
-              <summary class="language-trigger" aria-label="Choose language">
-                <span class="language-current" aria-hidden="true">🇬🇧</span>
-              </summary>
-              <div class="language-options">
-                <a class="language-option" href="/" data-language-switch="en" lang="en" aria-label="English" aria-current="page"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a>
-                <a class="language-option" href="/de/" data-language-switch="de" lang="de" aria-label="Deutsch"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a>
-                <a class="language-option" href="/fr/" data-language-switch="fr" lang="fr" aria-label="Français"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a>
-                <a class="language-option" href="/pl/" data-language-switch="pl" lang="pl" aria-label="Polski"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a>
-                <a class="language-option" href="/cs/" data-language-switch="cs" lang="cs" aria-label="Čeština"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a>
-                <a class="language-option" href="/it/" data-language-switch="it" lang="it" aria-label="Italiano"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a>
-              </div>
-            </details>
-          </span>
+        <nav class="primary-nav" aria-label="Primary navigation">
+          <a href="/#about">About</a><a href="/compatibility/">Compatibility</a><a href="/#faq">FAQ</a><a href="/download/">Download</a>
+          <span class="language-switcher"><details class="language-menu">
+          <summary class="language-trigger" aria-label="Choose language"><span class="language-current" aria-hidden="true">🇬🇧</span></summary>
+          <div class="language-options"><a class="language-option" href="/" data-language-switch="en" lang="en" aria-label="English" aria-current="page"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/" data-language-switch="de" lang="de" aria-label="Deutsch"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/" data-language-switch="fr" lang="fr" aria-label="Français"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/" data-language-switch="pl" lang="pl" aria-label="Polski"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/" data-language-switch="cs" lang="cs" aria-label="Čeština"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/" data-language-switch="it" lang="it" aria-label="Italiano"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
+        </details></span>
         </nav>
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="Menu">
+          <span class="menu-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span class="menu-toggle-text">Menu</span>
+        </button>
+      </div>
+      <div class="mobile-nav" id="mobile-nav" hidden>
+        <div class="shell mobile-nav-inner">
+          <nav class="mobile-nav-links" aria-label="Primary navigation">
+            <a href="/#about">About</a><a href="/compatibility/">Compatibility</a><a href="/#faq">FAQ</a><a href="/download/">Download</a>
+          </nav>
+          <div class="mobile-nav-language"><details class="language-menu mobile-language-menu">
+            <summary class="language-trigger" aria-label="Choose language"><span class="mobile-language-label">Choose language</span><span class="language-current" aria-hidden="true">🇬🇧</span></summary>
+            <div class="language-options"><a class="language-option" href="/" data-language-switch="en" lang="en" aria-label="English" aria-current="page"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/" data-language-switch="de" lang="de" aria-label="Deutsch"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/" data-language-switch="fr" lang="fr" aria-label="Français"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/" data-language-switch="pl" lang="pl" aria-label="Polski"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/" data-language-switch="cs" lang="cs" aria-label="Čeština"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/" data-language-switch="it" lang="it" aria-label="Italiano"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
+          </details></div>
+        </div>
       </div>
     </header>
 
@@ -314,7 +315,7 @@
             </details>
             <details>
               <summary>Can I install third-party maps on a Garmin watch from a Mac without BaseCamp?</summary>
-              <p>Yes. Terento provides a guided native macOS workflow for installing supported third-party maps without BaseCamp or a general-purpose MTP file manager. The current beta uses Freizeitkarte and requires an Apple Silicon Mac.</p>
+              <p>Yes. Terento provides a guided native macOS workflow for installing supported third-party maps without BaseCamp or a general-purpose MTP file manager. The current beta uses Freizeitkarte and requires an Apple Silicon Mac. <a href="/guides/install-garmin-maps-mac/">Read the full Mac installation guide.</a></p>
             </details>
             <details>
               <summary>Is Terento safe for existing Garmin maps?</summary>
@@ -362,21 +363,13 @@
           <div class="footer-meta"><p class="footer-status">Open-source project</p><a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
         </div>
         <nav class="footer-nav" aria-label="Footer navigation">
-          <a href="#about">About</a>
-          <a href="/compatibility/">Compatibility</a>
-          <a href="#faq">FAQ</a>
-          <a href="/download/">Download</a>
+          <a href="/#about">About</a><a href="/compatibility/">Compatibility</a><a href="/#faq">FAQ</a><a href="/download/">Download</a>
           <a href="/legal/">Legal</a>
           <a href="/privacy/">Privacy</a>
         </nav>
       </div>
-      <div class="shell footer-bottom">
-        <p>© 2026 Terento Project</p>
-        <p>Beta</p>
-      </div>
-      <div class="shell footer-note">
-        <p>Visit statistics (Umami) do not use cookies.</p>
-      </div>
+      <div class="shell footer-bottom"><p>© 2026 Terento Project · Beta</p></div>
+      <div class="shell footer-note"><p>Visit statistics (Umami) do not use cookies.</p></div>
     </footer>
   </body>
 </html>

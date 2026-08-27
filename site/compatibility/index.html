@@ -48,25 +48,28 @@
           <img src="/assets/logo-sky.svg" alt="" width="40" height="40">
           <span>Terento</span>
         </a>
-        <nav aria-label="Primary navigation">
-          <a href="/#about">About</a>
-          <a href="/compatibility/" aria-current="page">Compatibility</a>
-          <a href="/#faq">FAQ</a>
-          <a href="/download/">Download</a>
-          <span class="language-switcher">
-            <details class="language-menu">
-              <summary class="language-trigger" aria-label="Choose language"><span class="language-current" aria-hidden="true">🇬🇧</span></summary>
-              <div class="language-options">
-                <a class="language-option" href="/compatibility/" data-language-switch="en" lang="en" aria-label="English" aria-current="page"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a>
-                <a class="language-option" href="/de/compatibility/" data-language-switch="de" lang="de" aria-label="Deutsch"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a>
-                <a class="language-option" href="/fr/compatibility/" data-language-switch="fr" lang="fr" aria-label="Français"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a>
-                <a class="language-option" href="/pl/compatibility/" data-language-switch="pl" lang="pl" aria-label="Polski"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a>
-                <a class="language-option" href="/cs/compatibility/" data-language-switch="cs" lang="cs" aria-label="Čeština"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a>
-                <a class="language-option" href="/it/compatibility/" data-language-switch="it" lang="it" aria-label="Italiano"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a>
-              </div>
-            </details>
-          </span>
+        <nav class="primary-nav" aria-label="Primary navigation">
+          <a href="/#about">About</a><a href="/compatibility/" aria-current="page">Compatibility</a><a href="/#faq">FAQ</a><a href="/download/">Download</a>
+          <span class="language-switcher"><details class="language-menu">
+          <summary class="language-trigger" aria-label="Choose language"><span class="language-current" aria-hidden="true">🇬🇧</span></summary>
+          <div class="language-options"><a class="language-option" href="/compatibility/" data-language-switch="en" lang="en" aria-label="English" aria-current="page"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/compatibility/" data-language-switch="de" lang="de" aria-label="Deutsch"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/compatibility/" data-language-switch="fr" lang="fr" aria-label="Français"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/compatibility/" data-language-switch="pl" lang="pl" aria-label="Polski"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/compatibility/" data-language-switch="cs" lang="cs" aria-label="Čeština"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/compatibility/" data-language-switch="it" lang="it" aria-label="Italiano"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
+        </details></span>
         </nav>
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="Menu">
+          <span class="menu-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span class="menu-toggle-text">Menu</span>
+        </button>
+      </div>
+      <div class="mobile-nav" id="mobile-nav" hidden>
+        <div class="shell mobile-nav-inner">
+          <nav class="mobile-nav-links" aria-label="Primary navigation">
+            <a href="/#about">About</a><a href="/compatibility/" aria-current="page">Compatibility</a><a href="/#faq">FAQ</a><a href="/download/">Download</a>
+          </nav>
+          <div class="mobile-nav-language"><details class="language-menu mobile-language-menu">
+            <summary class="language-trigger" aria-label="Choose language"><span class="mobile-language-label">Choose language</span><span class="language-current" aria-hidden="true">🇬🇧</span></summary>
+            <div class="language-options"><a class="language-option" href="/compatibility/" data-language-switch="en" lang="en" aria-label="English" aria-current="page"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/compatibility/" data-language-switch="de" lang="de" aria-label="Deutsch"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/compatibility/" data-language-switch="fr" lang="fr" aria-label="Français"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/compatibility/" data-language-switch="pl" lang="pl" aria-label="Polski"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/compatibility/" data-language-switch="cs" lang="cs" aria-label="Čeština"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/compatibility/" data-language-switch="it" lang="it" aria-label="Italiano"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
+          </details></div>
+        </div>
       </div>
     </header>
 
@@ -135,7 +138,7 @@
           <p class="compatibility-empty" id="compatibility-empty" hidden>No tried models match these filters.</p>
           <p class="compatibility-error" id="compatibility-error" hidden>Compatibility results are temporarily unavailable. Please try again later.</p>
           <div class="compatibility-community-cta">
-            <p>Have another Garmin smartwatch with map support? Try the beta and share the result.</p>
+            <div><p>Have another Garmin smartwatch with map support? Try the beta and share the result.</p><a class="text-link compatibility-guide-link" href="/guides/install-garmin-maps-mac/">First time installing third-party maps? Read the Mac guide <span aria-hidden="true">→</span></a></div>
             <a class="text-link compatibility-community-link" href="/download/" data-umami-event="download-cta-click" data-umami-event-location="compatibility-community-testing">Download the beta <span aria-hidden="true">→</span></a>
           </div>
         </div>
@@ -152,17 +155,13 @@
           <div class="footer-meta"><p class="footer-status">Open-source project</p><a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
         </div>
         <nav class="footer-nav" aria-label="Footer navigation">
-          <a href="/#about">About</a>
-          <a href="/#faq">FAQ</a>
-          <a href="/download/">Download</a>
+          <a href="/#about">About</a><a href="/compatibility/" aria-current="page">Compatibility</a><a href="/#faq">FAQ</a><a href="/download/">Download</a>
           <a href="/legal/">Legal</a>
           <a href="/privacy/">Privacy</a>
         </nav>
       </div>
-      <div class="shell footer-bottom">
-        <p>© 2026 Terento Project</p>
-        <p>Beta</p>
-      </div>
+      <div class="shell footer-bottom"><p>© 2026 Terento Project · Beta</p></div>
+      <div class="shell footer-note"><p>Visit statistics (Umami) do not use cookies.</p></div>
     </footer>
 
     <script defer src="/compatibility/compatibility-data.js?v=20260827-7"></script>

@@ -65,11 +65,18 @@
   const path = window.location.pathname.replace(/\/+$/, "") || "/";
   const pageContext = document.documentElement.dataset.page || "home";
   const isCompatibility = pageContext === "compatibility" || path === "/compatibility" || path === `/${language}/compatibility`;
-  const isDownload = path === "/download" || path === `/${language}/download`;
-  const pageRoute = isCompatibility ? "compatibility/" : isDownload ? "download/" : "";
+  const isDownload = pageContext === "download" || path === "/download" || path === `/${language}/download`;
+  const isGuide = pageContext === "guide" || /\/guides\/install-garmin-maps-mac$/.test(path);
+  const pageRoute = isCompatibility
+    ? "compatibility/"
+    : isDownload
+      ? "download/"
+      : isGuide
+        ? "guides/install-garmin-maps-mac/"
+        : "";
   const link = (key) => ({
     about: `${localizedRoot}#about`,
-    compatibility: `${localizedRoot}${pageRoute === "compatibility/" ? pageRoute : "compatibility/"}`,
+    compatibility: `${localizedRoot}compatibility/`,
     faq: `${localizedRoot}#faq`,
     download: `${localizedRoot}download/`,
   }[key]);
