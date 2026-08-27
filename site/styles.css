@@ -1043,14 +1043,7 @@ h1 {
 }
 
 .scope-link {
-  display: inline-flex;
-  gap: 8px;
   margin-top: 22px;
-  color: var(--interactive);
-  font-size: 15px;
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
 .final-cta {
