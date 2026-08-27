@@ -178,6 +178,21 @@ class CatalogService:
             note=note,
         )
 
+    def update_public_compatibility_review(
+        self,
+        device_id: str,
+        *,
+        action: str,
+        admin_user_id: int | None,
+        note: str | None = None,
+    ) -> bool:
+        return self.database.update_public_compatibility_review(
+            device_id,
+            action=action,
+            admin_user_id=admin_user_id,
+            note=note,
+        )
+
     def admin_is_configured(self) -> bool:
         return self.database.admin_user_count() > 0
 
@@ -528,6 +543,26 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         return
                 except ValueError:
                     self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_installation_authorization"}, send_body=True, cache_control="no-store")
+                    return
+                self._redirect("/admin/devices", send_body=True)
+                return
+            if request_path == "/admin/devices/public-compatibility":
+                try:
+                    device_id = form.get("device_id", "").strip()
+                    action = form.get("publication_action", "").strip().upper()
+                    if not device_id or action not in {"PUBLISH", "UNPUBLISH"}:
+                        raise ValueError("invalid public compatibility review")
+                    updated = service.update_public_compatibility_review(
+                        device_id,
+                        action=action,
+                        admin_user_id=int(session["id"]),
+                        note=form.get("note", "").strip() or None,
+                    )
+                    if not updated:
+                        self._send_json(HTTPStatus.NOT_FOUND, {"error": "device_not_found"}, send_body=True, cache_control="no-store")
+                        return
+                except ValueError:
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_public_compatibility_review"}, send_body=True, cache_control="no-store")
                     return
                 self._redirect("/admin/devices", send_body=True)
                 return

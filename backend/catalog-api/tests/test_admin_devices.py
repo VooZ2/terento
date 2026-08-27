@@ -41,6 +41,10 @@ def device_row(**changes):
         "first_seen_collection_run_id": 7,
         "last_seen_collection_run_id": 7,
         "usb_identities": [{"vendorId": 2334, "productId": 20920}],
+        "public_compatibility_identity": "fēnix 8 · 47 mm AMOLED",
+        "public_review_status": "PENDING",
+        "public_statistics_enabled": False,
+        "public_display_name": None,
     }
     row.update(changes)
     return row
@@ -182,6 +186,41 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertEqual(device["evidenceStatus"], "TESTED")
         self.assertEqual(device["installationStats"]["successful"], 1)
 
+    def test_public_compatibility_review_is_separate_and_exact(self) -> None:
+        pending = _admin_device_payload([device_row()], None)["devices"][0]
+        self.assertTrue(pending["publicCompatibility"]["eligible"])
+        self.assertFalse(pending["publicCompatibility"]["published"])
+        self.assertEqual(pending["publicCompatibility"]["reviewStatus"], "PENDING")
+
+        published = _admin_device_payload(
+            [device_row(
+                public_review_status="APPROVED",
+                public_statistics_enabled=True,
+                public_display_name="fēnix 8 · 47 mm, AMOLED",
+            )],
+            None,
+        )["devices"][0]
+        self.assertTrue(published["publicCompatibility"]["published"])
+        self.assertEqual(
+            published["publicCompatibility"]["compatibilityIdentity"],
+            "fēnix 8 · 47 mm AMOLED",
+        )
+
+        no_evidence = _admin_device_payload(
+            [device_row(
+                attempted_install_count=0,
+                successful_install_count=0,
+                failed_install_count=0,
+                first_success=None,
+                last_success=None,
+                last_evidence=None,
+                public_compatibility_identity=None,
+            )],
+            None,
+        )["devices"][0]
+        self.assertFalse(no_evidence["publicCompatibility"]["eligible"])
+        self.assertFalse(no_evidence["publicCompatibility"]["published"])
+
     def test_garmin_source_image_is_used_when_controlled_asset_is_missing(self) -> None:
         source = "https://res.garmin.com/en/products/010-02905-10/v/cf-lg.jpg"
         payload = _admin_device_payload(
@@ -292,6 +331,9 @@ class AdminDevicesTests(unittest.TestCase):
             "data-device-sort=\"authorization\"", "data-device-sort=\"status\"",
             "data-device-sort=\"attempts\"", "data-device-sort=\"success\"", "data-device-sort=\"evidence\"",
             "aria-sort=\"ascending\"", "Catalog metadata only", "device-catalog-id", "detail-status-value",
+            "Public compatibility", "Public listing", "Approve and publish",
+            "/admin/devices/public-compatibility", "publication_action",
+            "Operator approval is required before this exact model is listed publicly",
         ):
             self.assertIn(value, body)
         table_header = body[body.index("<thead>"):body.index("</thead>")]

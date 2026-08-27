@@ -1134,6 +1134,15 @@ def _admin_device_payload(
         authorization_label, _, authorization_code = _admin_installation_authorization(
             row.get("support_status")
         )
+        public_identity = str(row.get("public_compatibility_identity") or "").strip()
+        public_review_status = str(row.get("public_review_status") or "PENDING").upper()
+        public_enabled = bool(row.get("public_statistics_enabled", False))
+        public_eligible = bool(public_identity and evidence_status)
+        public_published = bool(
+            public_eligible
+            and public_review_status == "APPROVED"
+            and public_enabled
+        )
         if asset_url:
             image = {"url": asset_url, "origin": "controlled", "status": "AVAILABLE"}
         elif source_image_url:
@@ -1159,6 +1168,14 @@ def _admin_device_payload(
             "installationAuthorization": authorization_code,
             "installationAuthorizationLabel": authorization_label,
             "evidenceStatus": evidence_status.value if evidence_status else None,
+            "publicCompatibility": {
+                "eligible": public_eligible,
+                "published": public_published,
+                "reviewStatus": public_review_status,
+                "statisticsEnabled": public_enabled,
+                "compatibilityIdentity": public_identity or None,
+                "displayName": row.get("public_display_name"),
+            },
             "recordSource": str(row.get("record_source") or "CURRENT_RETAIL").upper(),
             "collectorManaged": bool(row.get("collector_managed", True)),
             "asset": {"status": "AVAILABLE", "url": asset_url} if asset_url else {"status": "MISSING"},
@@ -1492,6 +1509,11 @@ def _devices_script() -> str:
       const statusBadge = (value) => value ? `<span class="status-badge status-${String(value).toLowerCase()}">${escapeHtml(evidenceLabel(value))}</span>` : '<span class="status-badge status-unavailable">Unavailable</span>';
       const mapBadge = (label, value) => `<span class="admin-state admin-state-map-${value}">${escapeHtml(label)}</span>`;
       const authorizationBadge = (value) => `<span class="admin-state admin-state-authorization-${String(value || 'PENDING').toLowerCase()}">${escapeHtml(authorizationLabel(value))}</span>`;
+      const publicationBadge = (publication) => publication?.published
+        ? '<span class="admin-state admin-state-publication-published">Published</span>'
+        : publication?.eligible
+          ? '<span class="admin-state admin-state-publication-pending">Approval required</span>'
+          : '<span class="admin-state admin-state-publication-unavailable">Not eligible</span>';
       const deviceSearch = (device) => [device.id, device.model, device.canonicalModel, device.family, device.familyName, device.variant, device.caseSizeMm, device.partNumber, device.displayType].filter(Boolean).join(' ').toLocaleLowerCase();
       const textCompare = (a, b) => String(a || '').localeCompare(String(b || ''), undefined, {sensitivity: 'base', numeric: true});
       const statusOrder = {unavailable: 0, TESTING: 1, TESTED: 2, SUPPORTED: 3, VERIFIED: 4};
@@ -1544,6 +1566,7 @@ def _devices_script() -> str:
         lastFocused = document.activeElement;
         const stats = device.installationStats;
         const catalog = device.catalog;
+        const publication = device.publicCompatibility || {};
         const mapLabel = device.mapCapable === true ? 'Yes' : device.mapCapable === false ? 'No' : 'Unknown';
         const image = device.image || {};
         const imageSourceLabel = image.origin === 'controlled' ? 'Terento · approved asset' : image.origin === 'garmin-source' ? 'Garmin · exact model' : image.origin === 'fallback' ? 'Terento · neutral fallback' : 'Not available';
@@ -1569,6 +1592,7 @@ def _devices_script() -> str:
             </dl></section>
             <section><p class="detail-kicker">Compatibility evidence</p><dl>
               <div><dt>Compatibility status</dt><dd class="detail-status-value">${escapeHtml(evidenceLabel(device.evidenceStatus))}</dd></div>
+              <div><dt>Public listing</dt><dd>${publicationBadge(publication)}</dd></div>
               <div><dt>Attempts</dt><dd>${stats.attempts}</dd></div>
               <div><dt>Successful</dt><dd>${stats.successful}</dd></div>
               <div><dt>Failed</dt><dd>${stats.failed}</dd></div>
@@ -1591,6 +1615,22 @@ def _devices_script() -> str:
               <label>Note <span class="optional-label">Optional</span><textarea name="note" rows="2" placeholder="Why this authorization changed"></textarea></label>
               <div class="dialog-actions"><button type="button" class="secondary-button" data-authorization-cancel>Cancel</button><button type="submit" disabled>Save</button></div>
             </form>
+          </section>
+          <section class="device-public-review" aria-labelledby="device-public-review-title">
+            <p class="detail-kicker" id="device-public-review-title">Public compatibility</p>
+            <div class="authorization-current"><span>Current</span><span class="authorization-current-value">${publicationBadge(publication)}</span></div>
+            <p class="review-help">${publication.published
+              ? `Visible on terento.app/compatibility/ with the evidence status ${escapeHtml(evidenceLabel(device.evidenceStatus))}.`
+              : publication.eligible
+                ? `Evidence is ready. Operator approval is required before this exact model is listed publicly.`
+                : `Exact recognized map-capable evidence is required before publication.`}</p>
+            ${publication.eligible ? `<form method="post" action="/admin/devices/public-compatibility">
+              <input type="hidden" name="csrf_token" value="${escapeHtml(terentoAdminDevices.csrfToken)}">
+              <input type="hidden" name="device_id" value="${escapeHtml(device.id)}">
+              <input type="hidden" name="publication_action" value="${publication.published ? 'UNPUBLISH' : 'PUBLISH'}">
+              <label>Note <span class="optional-label">Optional</span><textarea name="note" rows="2" placeholder="Why this public review changed"></textarea></label>
+              <div class="dialog-actions"><button type="submit" class="${publication.published ? 'secondary-button' : ''}">${publication.published ? 'Remove from public compatibility' : 'Approve and publish'}</button></div>
+            </form>` : ''}
           </section>
           <details class="device-catalog-details"><summary>Catalog details</summary><dl>
             <div><dt>Active</dt><dd>${device.active ? 'Yes' : 'No'}</dd></div>
@@ -2247,9 +2287,9 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .device-thumb-placeholder:after{content:"";position:absolute;left:15px;top:13px;width:6px;height:2px;border-radius:2px;background:var(--sky);box-shadow:0 8px 0 var(--sky)}
 .new-badge{display:inline-flex;align-items:center;min-height:20px;padding:2px 7px;border:1px solid color-mix(in srgb,var(--lichen) 65%,var(--border));border-radius:999px;background:#EEF2E9;color:#52624C;font-size:10px;font-weight:750;letter-spacing:.06em;text-transform:uppercase}
 .admin-state{display:inline-flex;align-items:center;min-height:26px;padding:5px 9px;border:1px solid transparent;border-radius:999px;font-size:11px;font-weight:750;line-height:1;white-space:nowrap}
-.admin-state-map-yes,.admin-state-authorization-approved{background:#E7EEE2;border-color:#B4C6A7;color:#4B6142}
+.admin-state-map-yes,.admin-state-authorization-approved,.admin-state-publication-published{background:#E7EEE2;border-color:#B4C6A7;color:#4B6142}
 .admin-state-map-no,.admin-state-authorization-blocked{background:#F0E9E5;border-color:#D6BDB2;color:#7A493D}
-.admin-state-map-unknown,.admin-state-authorization-pending{background:var(--surface-muted);border-color:var(--border);color:var(--secondary)}
+.admin-state-map-unknown,.admin-state-authorization-pending,.admin-state-publication-pending,.admin-state-publication-unavailable{background:var(--surface-muted);border-color:var(--border);color:var(--secondary)}
 .numeric{font-variant-numeric:tabular-nums}
 .device-pagination{display:flex;align-items:center;justify-content:center;gap:16px;margin:14px 0 0;color:var(--secondary);font-size:13px}
 .device-pagination button,.dialog-close{min-height:34px;padding:7px 11px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--interactive);font-weight:700}
@@ -2284,14 +2324,15 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .technical-value{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px!important}
 .device-product-link{margin:14px 0 0;padding-top:12px;border-top:1px solid var(--border);font-size:13px;font-weight:700}
 .device-product-link a{color:var(--interactive);text-underline-offset:3px}
-.device-support-review{margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
-.device-support-review form{display:grid;grid-template-columns:minmax(150px,.75fr) minmax(0,1.25fr);align-items:end;gap:10px 12px;margin-top:10px}
+.device-support-review,.device-public-review{margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
+.device-support-review form,.device-public-review form{display:grid;grid-template-columns:minmax(150px,.75fr) minmax(0,1.25fr);align-items:end;gap:10px 12px;margin-top:10px}
 .authorization-current{display:flex;align-items:center;gap:10px;margin:0;padding:8px 10px;background:var(--surface-muted);border-radius:8px;color:var(--secondary);font-size:12px}
 .authorization-current-value{margin-right:auto}
-.device-support-review label{display:block;color:var(--secondary);font-size:12px;font-weight:650}
-.device-support-review select,.device-support-review input,.device-support-review textarea,.admin-action-dialog select,.admin-action-dialog input,.admin-action-dialog textarea{display:block;width:100%;margin-top:5px}
-.device-support-review textarea{min-height:64px}
-.device-support-review .dialog-actions{grid-column:1/-1;margin-top:0}
+.device-support-review label,.device-public-review label{display:block;color:var(--secondary);font-size:12px;font-weight:650}
+.device-support-review select,.device-support-review input,.device-support-review textarea,.device-public-review input,.device-public-review textarea,.admin-action-dialog select,.admin-action-dialog input,.admin-action-dialog textarea{display:block;width:100%;margin-top:5px}
+.device-support-review textarea,.device-public-review textarea{min-height:64px}
+.device-support-review .dialog-actions,.device-public-review .dialog-actions{grid-column:1/-1;margin-top:0}
+.review-help{margin:8px 0 0;color:var(--secondary);font-size:12px;line-height:1.45}
 .secondary-button{min-height:32px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--interactive);font-size:12px;font-weight:700}
 .secondary-button:hover{border-color:var(--interactive);background:var(--success-bg)}
 .admin-action-dialog{width:min(520px,calc(100% - 32px));padding:22px;border:0;border-radius:14px;background:var(--surface);color:var(--graphite);box-shadow:0 24px 80px rgba(34,42,43,.24)}

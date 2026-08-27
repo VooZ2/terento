@@ -140,6 +140,16 @@ alias retained) updates only `device_model.support_status` and records an
 audit entry. It cannot change evidence events, operation-level install counts,
 compatibility status, or any native device write authorization.
 
+The detail dialog also exposes the independent `Public compatibility` review.
+An exact catalog record becomes eligible only after it has recognized,
+map-capable compatibility evidence. CSRF-protected
+`POST /admin/devices/public-compatibility` accepts an explicit `PUBLISH` or
+`UNPUBLISH` action. Publishing sets the exact-identity review to `APPROVED`
+and enables public statistics; withdrawing returns it to `PENDING` and
+disables public statistics. Every change is audited. This action does not
+change evidence events, calculated status, installation counts, installation
+authorization, or any existing public/native/device API field.
+
 `POST /admin/diagnostics/resolve` and `/admin/diagnostics/reopen` change only
 the retained diagnostic lifecycle, while `POST /admin/diagnostics/identity`
 assigns or leaves an exact canonical Garmin record and writes an identity audit

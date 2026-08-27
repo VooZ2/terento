@@ -47,6 +47,7 @@ class FakeEvidenceDatabase:
         self.sessions = {}
         self.device_support_status = "SUPPORTED"
         self.authorization_audit = []
+        self.public_review_actions = []
 
     def insert_compatibility_event(self, value):
         if value["id"] in self.events:
@@ -144,6 +145,10 @@ class FakeEvidenceDatabase:
             "first_seen_collection_run_id": 1,
             "last_seen_collection_run_id": 1,
             "usb_identities": [],
+            "public_compatibility_identity": "fēnix 8 · 47 mm AMOLED",
+            "public_review_status": "PENDING",
+            "public_statistics_enabled": False,
+            "public_display_name": None,
         }], {
             "id": 1,
             "status": "SUCCEEDED",
@@ -190,6 +195,17 @@ class FakeEvidenceDatabase:
             "device_id": device_id,
             "admin_user_id": admin_user_id,
             "reason": reason,
+            "note": note,
+        })
+        return True
+
+    def update_public_compatibility_review(self, device_id, action, admin_user_id=None, note=None):
+        if device_id != "garmin-fenix-8-47-amoled":
+            return False
+        self.public_review_actions.append({
+            "device_id": device_id,
+            "action": action,
+            "admin_user_id": admin_user_id,
             "note": note,
         })
         return True
@@ -561,6 +577,23 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertEqual(reviewed.status, 303)
         self.assertEqual(self.database.device_support_status, "SUPPORTED")
         self.assertEqual(self.database.authorization_audit[-1]["reason"], "Validated on hardware")
+
+        publication_body = urlencode({
+            "csrf_token": csrf_token,
+            "device_id": "garmin-fenix-8-47-amoled",
+            "publication_action": "PUBLISH",
+            "note": "Exact identity reviewed for public listing",
+        })
+        published, _ = self.request("POST", "/admin/devices/public-compatibility", publication_body, {
+            "Content-Type": "application/x-www-form-urlencoded", "Cookie": cookie_header,
+        })
+        self.assertEqual(published.status, 303)
+        self.assertEqual(self.database.public_review_actions[-1], {
+            "device_id": "garmin-fenix-8-47-amoled",
+            "action": "PUBLISH",
+            "admin_user_id": 1,
+            "note": "Exact identity reviewed for public listing",
+        })
 
         unauthenticated_campaign, _ = self.request("GET", "/admin/campaign-links")
         self.assertEqual(unauthenticated_campaign.status, 303)
