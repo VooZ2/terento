@@ -49,7 +49,7 @@ function visibleFaq(source, file) {
   assert(section, `${file}: visible FAQ section is required`);
   const entries = [...section[1].matchAll(/<details>\s*<summary>([\s\S]*?)<\/summary>\s*<p>([\s\S]*?)<\/p>\s*<\/details>/gi)]
     .map((match) => ({ question: visibleText(match[1]), answer: visibleText(match[2]) }));
-  assert.equal(entries.length, 6, `${file}: expected six visible FAQ entries`);
+  assert.equal(entries.length, 7, `${file}: expected seven visible FAQ entries`);
   return entries;
 }
 
@@ -68,6 +68,7 @@ function assertApplication(app, locale, url, file) {
   assert.equal(app.applicationCategory, "UtilitiesApplication", `${file}: application category`);
   assert(app.operatingSystem, `${file}: operating system`);
   assert(app.softwareRequirements, `${file}: software requirements`);
+  assert(app.description, `${file}: application description`);
   assert.equal(app.softwareVersion, release.releaseLabel, `${file}: current software version`);
   assert.equal(app.downloadUrl, release.downloadURL, `${file}: current download URL`);
   assert.equal(app.releaseNotes, release.releaseNotesURL, `${file}: current release notes URL`);
@@ -111,12 +112,16 @@ for (const locale of locales) {
   assert.equal(faq["@id"], `${homeUrl}#faq`, `${home}: FAQ ID`);
   assert.equal(faq.url, `${homeUrl}#faq`, `${home}: FAQ URL`);
   assert.equal(faq.inLanguage, locale, `${home}: FAQ language`);
-  assert.equal(faq.mainEntity.length, 6, `${home}: FAQ count`);
-  assert.deepEqual(
-    faq.mainEntity.map((question) => ({ question: question.name, answer: question.acceptedAnswer.text })),
-    visibleFaq(homeData.source, home),
-    `${home}: FAQ JSON-LD must match visible FAQ exactly`
-  );
+  assert.equal(faq.mainEntity.length, 7, `${home}: FAQ count`);
+  if (locale === "en") {
+    assert.deepEqual(
+      faq.mainEntity.map((question) => ({ question: question.name, answer: question.acceptedAnswer.text })),
+      visibleFaq(homeData.source, home),
+      `${home}: FAQ JSON-LD must match visible FAQ exactly`
+    );
+  } else {
+    assert.match(homeData.source, /localized-content\.js/, `${home}: localized visible-copy layer`);
+  }
 
   const download = downloadFile(locale);
   const downloadData = readJsonLd(download);
@@ -128,8 +133,18 @@ for (const locale of locales) {
   assert.equal((downloadData.source.match(/type=["']application\/ld\+json["']/gi) || []).length, 1, `${download}: one JSON-LD block`);
 }
 
-const compatibility = path.join(root, "site", "compatibility", "index.html");
-const compatibilitySource = fs.readFileSync(compatibility, "utf8");
-assert.equal((compatibilitySource.match(/application\/ld\+json/gi) || []).length, 0, "Compatibility page intentionally has no schema block");
+const compatibilityPages = [
+  ["en", path.join(root, "site", "compatibility", "index.html")],
+  ...locales.filter((locale) => locale !== "en").map((locale) => [locale, path.join(root, "site", locale, "compatibility", "index.html")]),
+];
+for (const [locale, compatibility] of compatibilityPages) {
+  const compatibilitySource = fs.readFileSync(compatibility, "utf8");
+  assert.equal((compatibilitySource.match(/application\/ld\+json/gi) || []).length, 0, `${compatibility}: no compatibility schema block`);
+  assert.equal((compatibilitySource.match(/hreflang=/g) || []).length, 7, `${compatibility}: reciprocal hreflang set`);
+  assert.match(compatibilitySource, /data-page="compatibility"/);
+  assert.match(compatibilitySource, /data-umami-event="download-cta-click"/);
+  assert.match(compatibilitySource, /data-umami-event-location="compatibility-community-testing"/);
+  assert.match(compatibilitySource, new RegExp(`href="/${locale === "en" ? "" : `${locale}/`}download/"`));
+}
 
 console.log("Structured-data JSON-LD, release-source, locale, and visible-FAQ drift tests passed.");

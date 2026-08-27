@@ -63,11 +63,13 @@
   const copy = translations[language] || translations.en;
   const localizedRoot = language === "en" ? "/" : `/${language}/`;
   const path = window.location.pathname.replace(/\/+$/, "") || "/";
-  const isCompatibility = path === "/compatibility";
+  const pageContext = document.documentElement.dataset.page || "home";
+  const isCompatibility = pageContext === "compatibility" || path === "/compatibility" || path === `/${language}/compatibility`;
   const isDownload = path === "/download" || path === `/${language}/download`;
+  const pageRoute = isCompatibility ? "compatibility/" : isDownload ? "download/" : "";
   const link = (key) => ({
     about: `${localizedRoot}#about`,
-    compatibility: "/compatibility/",
+    compatibility: `${localizedRoot}${pageRoute === "compatibility/" ? pageRoute : "compatibility/"}`,
     faq: `${localizedRoot}#faq`,
     download: `${localizedRoot}download/`,
   }[key]);
@@ -75,7 +77,8 @@
     || (key === "download" && isDownload);
 
   const languageOptions = () => languages.map((item) => {
-    const href = item.code === "en" ? "/" : `/${item.code}/`;
+    const route = pageRoute;
+    const href = item.code === "en" ? `/${route}` : `/${item.code}/${route}`;
     const current = item.code === language ? ' aria-current="page"' : "";
     return `<a class="language-option" href="${href}" data-language-switch="${item.code}" lang="${item.code}" aria-label="${item.name}"${current}><span class="language-option-flag" aria-hidden="true">${item.flag}</span><span>${item.name}</span></a>`;
   }).join("");

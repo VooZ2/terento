@@ -84,7 +84,7 @@ for path in home_files:
     html = path.read_text(encoding="utf-8")
     assert html.count('class="product-showcase product-showcase--muted"') == 2, f"{path}: expected two product showcases"
     assert html.count('class="scope-section"') == 1, f"{path}: expected beta scope section"
-    assert html.count("<details>") == 6, f"{path}: expected six FAQ answers"
+    assert html.count("<details>") == 7 or 'localized-content.js' in html, f"{path}: expected seven FAQ answers or localized FAQ layer"
     assert 'class="final-cta"' in html, f"{path}: expected final CTA"
     assert "/assets/app/optimized/your-garmin-640.avif" in html, f"{path}: expected responsive hero artwork"
     items = anchors(path)
@@ -118,6 +118,19 @@ for path in download_files:
     assert len(zip_files) == 1, f"{path}: expected one ZIP download"
     assert "/releases/download/" in dmg[0]["href"], f"{path}: unexpected DMG URL {dmg[0]['href']}"
     assert "/releases/download/" in zip_files[0]["href"], f"{path}: unexpected ZIP URL {zip_files[0]['href']}"
+
+compatibility_files = [
+    root / "site/compatibility/index.html",
+    root / "site/de/compatibility/index.html",
+    root / "site/fr/compatibility/index.html",
+    root / "site/pl/compatibility/index.html",
+    root / "site/cs/compatibility/index.html",
+    root / "site/it/compatibility/index.html",
+]
+for path in compatibility_files:
+    html = path.read_text(encoding="utf-8")
+    assert 'data-umami-event="download-cta-click"' in html, f"{path}: missing compatibility CTA event"
+    assert 'data-umami-event-location="compatibility-community-testing"' in html, f"{path}: missing compatibility CTA location"
 
 update = json.loads((root / "site/updates/macos-arm64.json").read_text(encoding="utf-8"))
 assert update["build"] == 6

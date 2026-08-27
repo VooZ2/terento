@@ -11,6 +11,7 @@ const {
   publicModelName,
   successfulInstallLabel,
 } = require("../site/compatibility/compatibility-data.js");
+const compatibilityLocaleApi = require("../site/compatibility/compatibility-locales.js");
 
 const row = (family, familyName, variant, report = 1) => ({
   family,
@@ -62,6 +63,13 @@ assert.equal(publicModelName("fēnix 8 · 47 mm AMOLED"), "fēnix 8");
 assert.equal(publicModelName("fēnix 8 Pro · 51 mm, AMOLED"), "fēnix 8 Pro");
 assert.equal(successfulInstallLabel(1), "1 successful install");
 assert.equal(successfulInstallLabel(5), "5 successful installs");
+assert.deepEqual(compatibilityLocaleApi.statusCodes, ["VERIFIED", "SUPPORTED", "TESTED", "TESTING"]);
+for (const locale of ["en", "de", "fr", "pl", "cs", "it"]) {
+  const copy = compatibilityLocaleApi.getLocale(locale);
+  assert.ok(copy.metaTitle && copy.metaDescription && copy.hero, `${locale}: compatibility metadata and hero copy`);
+  assert.equal(Object.keys(copy.statuses).length, 4, `${locale}: all status translations`);
+  assert.equal(copy.successfulInstallLabel(1).includes("1"), true, `${locale}: localized install count`);
+}
 
 const compatibilitySource = fs.readFileSync(
   path.join(__dirname, "..", "site", "compatibility", "compatibility.js"),
@@ -93,23 +101,31 @@ assert.doesNotMatch(compatibilitySource, /\/devices\/catalog\.json/);
 assert.match(compatibilitySource, /publicModelName\(row\.model\)/);
 assert.match(compatibilitySource, /aria-label="\$\{escapeHtml\(accessibleName\)\}"/);
 assert.doesNotMatch(compatibilitySource, /Last tested/);
-assert.match(compatibilitySource, /Latest installation/);
-assert.match(compatibilitySource, /Terento can install maps on this model/);
-assert.match(compatibilitySource, /3–4 successful installations have confirmed compatibility/);
-assert.match(compatibilitySource, /5 or more successful installations have confirmed compatibility/);
+assert.match(compatibilitySource, /locale\.card\.latest/);
+const compatibilityLocalesSource = fs.readFileSync(
+  path.join(__dirname, "..", "site", "compatibility", "compatibility-locales.js"),
+  "utf8"
+);
+assert.match(compatibilityLocalesSource, /Terento can install third-party maps on this model/);
+assert.match(compatibilityLocalesSource, /3–4 successful installations have confirmed compatibility/);
+assert.match(compatibilityLocalesSource, /5 or more successful installations have confirmed compatibility/);
+assert.match(compatibilitySource, /statusCodes = \["VERIFIED", "SUPPORTED", "TESTED", "TESTING"\]/);
 assert.match(compatibilitySource, /watch-card-model-row/);
 assert.match(compatibilitySource, /watch-variant/);
 assert.match(compatibilitySource, /successfulInstallLabel\(row\.successful\)/);
 assert.equal((compatibilityPage.match(/<h1\b/gi) || []).length, 1);
 assert.match(compatibilityPage, /<h1 id="compatibility-title">Garmin compatibility<\/h1>/);
-assert.match(compatibilityPage, /See which Garmin watches have real Terento installation results\. Compatibility is confirmed by exact model and grows as more successful installations are shared by the community\./);
+assert.match(compatibilityPage, /See real Terento installation results for third-party maps by exact Garmin watch model and variant\. Compatibility grows as more successful installations are shared by users\./);
 assert.doesNotMatch(compatibilityPage, /Garmin watch compatibility with Terento/);
 assert.doesNotMatch(compatibilityPage, /Garmin models with evidence/);
 assert.doesNotMatch(compatibilityPage, /class="section-heading compatibility-heading"/);
 assert.doesNotMatch(compatibilityPage, /aria-labelledby="directory-title"/);
 assert.match(compatibilityPage, /data-summary-model-label>models with evidence/);
-assert.match(compatibilityPage, /More models ready for community testing/);
-assert.match(compatibilityPage, /Public compatibility is based on real installation evidence from exact Garmin models and variants\. Each successful installation shared by the community helps us confirm compatibility with greater confidence\./);
+assert.match(compatibilityPage, /More models ready for testing/);
+assert.match(compatibilityPage, /Public compatibility is based on real installation evidence from exact Garmin models and variants\. Each successful installation shared by users helps us confirm compatibility with greater confidence\./);
+assert.match(compatibilityPage, /Garmin Watch Compatibility — Terento/);
+assert.match(compatibilityPage, /data-umami-event="download-cta-click"/);
+assert.match(compatibilityPage, /data-umami-event-location="compatibility-community-testing"/);
 assert.doesNotMatch(compatibilityPage, /\b3 models tested\b/);
 assert.ok(compatibilityPage.indexOf('id="compatibility-summary"') < compatibilityPage.indexOf('class="compatibility-how"'));
 assert.ok(compatibilityPage.indexOf('class="compatibility-how"') < compatibilityPage.indexOf('id="compatibility-filters"'));
@@ -121,8 +137,8 @@ assert.match(siteStyles, /\.watch-card-model-row\s*\{[^}]*gap:\s*12px/s);
 assert.match(siteStyles, /\.watch-card-model-row h3\s*\{[^}]*min-width:\s*0/s);
 
 assert.match(homePage, /<h2 id="scope-title">Compatibility grows with every shared installation\.<\/h2>/);
-assert.match(homePage, /Terento works with map-capable Garmin smartwatches, while public compatibility is confirmed model by model from real community installations\./);
-assert.match(homePage, /Terento is designed for Garmin smartwatches with map support\. Public compatibility is confirmed by exact model and variant using real installation results shared by the community\. See the <a href="\/compatibility\/">Compatibility page<\/a> for the current evidence\./);
+assert.match(homePage, /Terento is designed for Garmin smartwatches with map support\. Public compatibility for third-party map installation is confirmed model by model from real results shared by users\./);
+assert.match(homePage, /Terento is designed for Garmin smartwatches with map support\. Public compatibility for third-party map installation is confirmed by exact model and variant using real results shared by users\. See the <a href="\/compatibility\/">Compatibility page<\/a> for the current evidence\./);
 assert.doesNotMatch(homePage, /Selected scope, not every Garmin\.|small, evidence-led set/);
 
 const localizedScopeHeadings = {
@@ -134,6 +150,7 @@ const localizedScopeHeadings = {
 };
 for (const [locale, page] of localizedHomePages) {
   assert.match(page, new RegExp(`<h2 id="scope-title">${localizedScopeHeadings[locale].replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/h2>`));
+  assert.match(page, /localized-content\.js/);
   assert.match(page, /public|öffentliche|publique|publiczna|veřejná|pubblica/i);
   assert.doesNotMatch(page, /small, evidence-led|kleine, evidenzbasierte|petit ensemble|niewielkiej, opartej|malou, důkazy|piccolo insieme/);
 }

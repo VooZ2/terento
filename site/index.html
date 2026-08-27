@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="en" data-language="en">
   <head>
-    <script defer src="/site-shell.js?v=20260826-1"></script>
+    <script defer src="/site-shell.js?v=20260827-2"></script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
-    <meta name="description" content="A native macOS app for installing and managing Freizeitkarte maps on Garmin smartwatches. Apple Silicon Mac required.">
+    <meta name="description" content="Free, open-source macOS app for installing and managing third-party maps on Garmin smartwatches. Apple Silicon required; compatibility is confirmed model by model.">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://terento.app/">
     <link rel="alternate" hreflang="en" href="https://terento.app/">
@@ -17,8 +17,8 @@
     <link rel="alternate" hreflang="x-default" href="https://terento.app/">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Terento">
-    <meta property="og:title" content="Terento — Garmin Maps for Mac">
-    <meta property="og:description" content="A native macOS app for installing and managing Freizeitkarte maps on Garmin smartwatches. Apple Silicon Mac required.">
+    <meta property="og:title" content="Terento — Third-Party Maps for Garmin on Mac">
+    <meta property="og:description" content="Free, open-source macOS app for installing and managing third-party maps on Garmin smartwatches. Apple Silicon required; compatibility is confirmed model by model.">
     <meta property="og:url" content="https://terento.app/">
     <meta property="og:image" content="https://terento.app/assets/social/terento-og.png">
     <meta property="og:image:type" content="image/png">
@@ -27,10 +27,10 @@
     <meta property="og:image:alt" content="Terento showing a connected Garmin smartwatch on macOS">
     <meta property="og:locale" content="en_US">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Terento — Garmin Maps for Mac">
-    <meta name="twitter:description" content="A native macOS app for installing and managing Freizeitkarte maps on Garmin smartwatches. Apple Silicon Mac required.">
+    <meta name="twitter:title" content="Terento — Third-Party Maps for Garmin on Mac">
+    <meta name="twitter:description" content="Free, open-source macOS app for installing and managing third-party maps on Garmin smartwatches. Apple Silicon required; compatibility is confirmed model by model.">
     <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
-    <title>Terento — Garmin Maps for Mac</title>
+    <title>Terento — Third-Party Maps for Garmin on Mac</title>
 
 
     <link rel="icon" href="/favicon.ico?v=20260820-4" sizes="any">
@@ -39,7 +39,7 @@
     <link rel="mask-icon" href="/safari-pinned-tab.svg?v=20260820-4" color="#7898A8">
     <link rel="manifest" href="/manifest.webmanifest">
 
-    <link rel="stylesheet" href="/styles.css?v=569a3e7">
+    <link rel="stylesheet" href="/styles.css?v=20260827-compatibility">
     <script defer src="/language.js?v=20260824-2"></script>
     <script defer src="/privacy-consent.js?v=20260826-2"></script>
     <script type="application/ld+json">
@@ -63,6 +63,7 @@
             "url": "https://terento.app/",
             "applicationCategory": "UtilitiesApplication",
             "operatingSystem": "macOS 13 or later on Apple Silicon",
+            "description": "Free, open-source macOS app for installing and managing third-party maps on Garmin smartwatches. Apple Silicon required; compatibility is confirmed model by model.",
             "softwareVersion": "1.0.0-beta.7",
             "softwareRequirements": "Apple Silicon Mac required.",
             "downloadUrl": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.7/Terento-1.0.0-beta.7-macOS-arm64.dmg",
@@ -83,7 +84,7 @@
             "name": "Terento",
             "url": "https://terento.app/",
             "inLanguage": "en",
-            "description": "A native macOS app for installing and managing Freizeitkarte maps on Garmin smartwatches. Apple Silicon Mac required.",
+            "description": "Free, open-source macOS app for installing and managing third-party maps on Garmin smartwatches. Apple Silicon required; compatibility is confirmed model by model.",
             "publisher": {
               "@id": "https://terento.app/#organization"
             }
@@ -99,7 +100,15 @@
                 "name": "Which Garmin watches work with Terento?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Terento is designed for Garmin smartwatches with map support. Public compatibility is confirmed by exact model and variant using real installation results shared by the community. See the Compatibility page for the current evidence."
+                  "text": "Terento is designed for Garmin smartwatches with map support. Public compatibility for third-party map installation is confirmed by exact model and variant using real results shared by users. See the Compatibility page for the current evidence."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can I install third-party maps on a Garmin watch from a Mac without BaseCamp?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. Terento provides a guided native macOS workflow for installing supported third-party maps without BaseCamp or a general-purpose MTP file manager. The current beta uses Freizeitkarte and requires an Apple Silicon Mac."
                 }
               },
               {
@@ -115,7 +124,7 @@
                 "name": "Where do the maps come from?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "This beta uses Freizeitkarte as its only map source. Maps are downloaded from the original provider to your Mac and device."
+                  "text": "The current beta uses Freizeitkarte as its map source. Terento downloads maps from the original provider to your Mac, then transfers them to your watch."
                 }
               },
               {
@@ -187,7 +196,7 @@
           <div class="hero-copy">
             <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Open-source project · Beta</p>
             <h1 id="hero-title">Your device, ready for where you're going.</h1>
-            <p class="hero-lede">A native macOS app for installing and managing maps on Garmin smartwatches.</p>
+            <p class="hero-lede">A native macOS app for installing and managing third-party maps on Garmin smartwatches.</p>
             <p class="hero-requirement">Apple Silicon Mac required.</p>
             <p class="hero-status">Beta available · Compatibility is confirmed model by model.</p>
             <a class="text-link" href="/download/">Download the beta <span aria-hidden="true">↘</span></a>
@@ -212,7 +221,7 @@
             <h2 id="experience-title">Connect <span aria-hidden="true">→</span> Install <span aria-hidden="true">→</span> Go</h2>
           </div>
           <div class="problem-statement">
-            <p>Installing maps shouldn't require file managers, device folders or outdated transfer tools.</p>
+            <p>Installing third-party maps shouldn't require file managers, device folders or outdated transfer tools.</p>
             <p>Terento brings the essential workflow into a native macOS app.</p>
           </div>
           <ol class="steps">
@@ -224,7 +233,7 @@
             <li class="step">
               <p class="step-number" aria-hidden="true">02</p>
               <h3>Install</h3>
-              <p>Choose Freizeitkarte regions and see the storage impact first.</p>
+              <p>Choose regions and see the storage impact first.</p>
             </li>
             <li class="step">
               <p class="step-number" aria-hidden="true">03</p>
@@ -240,7 +249,7 @@
           <div class="product-showcase-copy">
             <p class="eyebrow">Choose maps</p>
             <h2 id="install-maps-title">Install maps</h2>
-            <p>Choose the Freizeitkarte regions you want and see the storage impact before installation.</p>
+            <p>Choose the regions you want and see the storage impact before installation.</p>
           </div>
           <div class="product-showcase-media">
             <figure class="app-shot app-shot--feature">
@@ -257,7 +266,7 @@
       <section class="product-showcase product-showcase--muted" aria-labelledby="manage-maps-title">
         <div class="shell product-showcase-grid">
           <div class="product-showcase-copy">
-            <p class="eyebrow">Lifecycle management</p>
+            <p class="eyebrow">Installed maps</p>
             <h2 id="manage-maps-title">Manage maps</h2>
             <p>See what's installed, back up or safely remove maps added by Terento. Other maps stay read-only.</p>
           </div>
@@ -280,7 +289,7 @@
               <p class="eyebrow">Beta scope</p>
               <h2 id="scope-title">Compatibility grows with every shared installation.</h2>
             </div>
-            <p class="scope-copy">Terento works with map-capable Garmin smartwatches, while public compatibility is confirmed model by model from real community installations.</p>
+            <p class="scope-copy">Terento is designed for Garmin smartwatches with map support. Public compatibility for third-party map installation is confirmed model by model from real results shared by users.</p>
             <a class="text-link scope-link" href="/compatibility/">See compatibility <span aria-hidden="true">→</span></a>
           </div>
           <div class="scope-list" aria-label="Current beta scope">
@@ -301,7 +310,11 @@
           <div class="faq-list">
             <details>
               <summary>Which Garmin watches work with Terento?</summary>
-              <p>Terento is designed for Garmin smartwatches with map support. Public compatibility is confirmed by exact model and variant using real installation results shared by the community. See the <a href="/compatibility/">Compatibility page</a> for the current evidence.</p>
+              <p>Terento is designed for Garmin smartwatches with map support. Public compatibility for third-party map installation is confirmed by exact model and variant using real results shared by users. See the <a href="/compatibility/">Compatibility page</a> for the current evidence.</p>
+            </details>
+            <details>
+              <summary>Can I install third-party maps on a Garmin watch from a Mac without BaseCamp?</summary>
+              <p>Yes. Terento provides a guided native macOS workflow for installing supported third-party maps without BaseCamp or a general-purpose MTP file manager. The current beta uses Freizeitkarte and requires an Apple Silicon Mac.</p>
             </details>
             <details>
               <summary>Is Terento safe for existing Garmin maps?</summary>
@@ -309,7 +322,7 @@
             </details>
             <details>
               <summary>Where do the maps come from?</summary>
-              <p>This beta uses Freizeitkarte as its only map source. Maps are downloaded from the original provider to your Mac and device.</p>
+              <p>The current beta uses Freizeitkarte as its map source. Terento downloads maps from the original provider to your Mac, then transfers them to your watch.</p>
             </details>
             <details>
               <summary>Does Terento upload device data?</summary>

@@ -1,6 +1,8 @@
 (() => {
   const data = globalThis.TerentoCompatibilityData;
   if (!data) throw new Error("compatibility_data_unavailable");
+  const locale = globalThis.TerentoCompatibilityLocale;
+  if (!locale) throw new Error("compatibility_locale_unavailable");
   const API_ORIGIN = "https://api.terento.app";
   const FALLBACK_IMAGE_URL = "/assets/generic-garmin-watch.png?v=20260826-1";
   const isLocalPreview = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
@@ -42,21 +44,13 @@
     statusList: document.querySelector("#compatibility-status-list"),
   };
 
-  const { normalize, canonicalFamilyKey, familyOptions, filterByFamily, exactVariantLabel, publicModelName, successfulInstallLabel } = data;
+  const { normalize, canonicalFamilyKey, familyOptions, filterByFamily, exactVariantLabel, publicModelName } = data;
+  const statusCodes = ["VERIFIED", "SUPPORTED", "TESTED", "TESTING"];
+  const statusOrder = statusCodes.reduce((result, status, index) => ({ ...result, [status]: index }), {});
 
-  const statusLabel = (status) => ({
-    VERIFIED: "Verified",
-    SUPPORTED: "Supported",
-    TESTED: "Tested",
-    TESTING: "Testing",
-  }[status] || "Compatibility unavailable");
+  const statusLabel = (status) => locale.statuses[status]?.label || locale.card.unavailable;
 
-  const statusDescription = (status) => ({
-    TESTING: "Terento can install maps on this model, but we’re waiting for the first successful installation shared by the community to confirm compatibility.",
-    TESTED: "1–2 successful installations have been shared by Terento users.",
-    SUPPORTED: "3–4 successful installations have confirmed compatibility.",
-    VERIFIED: "5 or more successful installations have confirmed compatibility.",
-  }[status] || "Compatibility evidence is not available yet.");
+  const statusDescription = (status) => locale.statuses[status]?.description || locale.card.unavailable;
 
   function createStatusBadge(status, ariaLabel = statusLabel(status)) {
     const statusClass = String(status).toLocaleLowerCase();
@@ -64,7 +58,7 @@
   }
 
   function renderStatusExplanations() {
-    elements.statusList.innerHTML = ["TESTING", "TESTED", "SUPPORTED", "VERIFIED"].map((status) => `
+    elements.statusList.innerHTML = statusCodes.map((status) => `
       <div class="compatibility-status-row">
         ${createStatusBadge(status)}
         <p>${escapeHtml(statusDescription(status))}</p>
@@ -75,7 +69,7 @@
     if (!value) return "";
     const date = new Date(value);
     if (Number.isNaN(date.valueOf())) return "";
-    return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(date);
+    return new Intl.DateTimeFormat(locale.dateLocale, { dateStyle: "medium" }).format(date);
   };
 
   const escapeHtml = (value) => String(value ?? "")
@@ -162,11 +156,11 @@
     const variantLabel = row.variants[0] || exactVariantLabel(row) || "Smartwatch";
     const latestInstallation = formatDate(row.lastSuccess);
     const latestInstallationMarkup = latestInstallation
-      ? `<p class="watch-card-meta">Latest installation ${escapeHtml(latestInstallation)}</p>`
+      ? `<p class="watch-card-meta">${escapeHtml(locale.card.latest)} ${escapeHtml(latestInstallation)}</p>`
       : "";
     const imageUrl = row.imageUrl || FALLBACK_IMAGE_URL;
-    const installLabel = successfulInstallLabel(row.successful);
-    const accessibleName = [modelName, variantLabel, statusLabel(row.status), installLabel, latestInstallation && `Latest installation ${latestInstallation}`]
+    const installLabel = locale.successfulInstallLabel(row.successful);
+    const accessibleName = [modelName, variantLabel, statusLabel(row.status), installLabel, latestInstallation && `${locale.card.latest} ${latestInstallation}`]
       .filter(Boolean)
       .join(", ");
     const imageMarkup = `<img data-remote-src="${escapeHtml(imageUrl)}" alt="" loading="lazy">`;
@@ -199,7 +193,7 @@
       .sort((a, b) => {
         if (state.sort === "name") return a.model.localeCompare(b.model);
         if (state.sort === "successes") return b.successful - a.successful || b.attempted - a.attempted || a.model.localeCompare(b.model);
-        if (state.sort === "status") return statusLabel(a.status).localeCompare(statusLabel(b.status)) || a.model.localeCompare(b.model);
+        if (state.sort === "status") return (statusOrder[a.status] ?? Number.MAX_SAFE_INTEGER) - (statusOrder[b.status] ?? Number.MAX_SAFE_INTEGER) || a.model.localeCompare(b.model);
         return b.attempted - a.attempted || b.successful - a.successful || a.model.localeCompare(b.model);
       });
 
@@ -207,8 +201,8 @@
     hydrateImages();
     elements.empty.hidden = filtered.length > 0;
     elements.results.textContent = filtered.length === state.rows.length
-      ? `${filtered.length} ${filtered.length === 1 ? "model" : "models"}`
-      : `${filtered.length} of ${state.rows.length} models`;
+      ? `${filtered.length.toLocaleString(locale.dateLocale)} ${filtered.length === 1 ? locale.results.modelOne : locale.results.modelMany}`
+      : `${filtered.length.toLocaleString(locale.dateLocale)} ${locale.results.of} ${state.rows.length.toLocaleString(locale.dateLocale)} ${locale.results.modelMany}`;
     elements.grid.setAttribute("aria-busy", "false");
   }
 
@@ -222,9 +216,9 @@
 
   function updateSummary() {
     const modelCount = state.rows.length;
-    elements.summaryModels.textContent = modelCount.toLocaleString("en");
-    elements.summaryModelLabel.textContent = modelCount === 1 ? "model with evidence" : "models with evidence";
-    elements.summarySuccesses.textContent = state.rows.reduce((sum, row) => sum + row.successful, 0).toLocaleString("en");
+    elements.summaryModels.textContent = modelCount.toLocaleString(locale.dateLocale);
+    elements.summaryModelLabel.textContent = modelCount === 1 ? locale.summary.modelOne : locale.summary.modelMany;
+    elements.summarySuccesses.textContent = state.rows.reduce((sum, row) => sum + row.successful, 0).toLocaleString(locale.dateLocale);
     const latest = state.rows
       .map((row) => row.lastSuccess)
       .filter(Boolean)

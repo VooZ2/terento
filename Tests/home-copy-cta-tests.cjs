@@ -57,7 +57,7 @@ const anchorFor = (page, className) => {
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=569a3e7">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20260827-compatibility">/, `${locale}: Home stylesheet cache bust`);
   const status = page.match(/<p class="hero-status">([^<]+)<\/p>/);
   assert.ok(status, `${locale}: missing hero status`);
   assert.equal(status[1], expected.status, `${locale}: hero status copy`);
@@ -78,8 +78,9 @@ for (const [locale, expected] of locales) {
 }
 
 const englishHome = pageFor("en");
-assert.match(englishHome, /<p class="hero-lede">A native macOS app for installing and managing maps on Garmin smartwatches\.<\/p>/);
+assert.match(englishHome, /<p class="hero-lede">A native macOS app for installing and managing third-party maps on Garmin smartwatches\.<\/p>/);
 assert.doesNotMatch(englishHome, /<p class="hero-lede">A native macOS app for installing and managing Freizeitkarte maps on Garmin smartwatches\.<\/p>/);
+assert.match(englishHome, /<meta name="description" content="Free, open-source macOS app for installing and managing third-party maps on Garmin smartwatches\. Apple Silicon required; compatibility is confirmed model by model\.">/);
 assert.match(englishHome, /Beta available · Compatibility is confirmed model by model\./);
 assert.doesNotMatch(englishHome, /Compatibility varies by Garmin model\./);
 

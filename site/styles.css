@@ -2078,6 +2078,27 @@ details p {
   border-left: 3px solid var(--stone);
 }
 
+.compatibility-community-cta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  margin-top: 34px;
+  padding-top: 22px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  color: var(--secondary);
+  font-size: 14px;
+}
+
+.compatibility-community-cta p {
+  margin: 0;
+}
+
+.compatibility-community-link {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 @media (max-width: 960px) {
   .watch-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2137,6 +2158,12 @@ details p {
 
   .watch-grid {
     grid-template-columns: 1fr;
+  }
+
+  .compatibility-community-cta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
   }
 
   .watch-card-image {
