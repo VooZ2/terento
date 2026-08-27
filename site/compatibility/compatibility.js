@@ -42,7 +42,7 @@
     statusList: document.querySelector("#compatibility-status-list"),
   };
 
-  const { normalize, canonicalFamilyKey, familyOptions, filterByFamily, exactVariantLabel } = data;
+  const { normalize, canonicalFamilyKey, familyOptions, filterByFamily, exactVariantLabel, publicModelName, successfulInstallLabel } = data;
 
   const statusLabel = (status) => ({
     VERIFIED: "Verified",
@@ -110,28 +110,6 @@
     };
   }
 
-  function parseModelIdentity(value) {
-    const normalized = normalize(value).replace(/^garmin\s+/, "");
-    const sizeMatch = normalized.match(/\b(\d{2})\s*mm\b/);
-    const displayMatch = normalized.match(/\b(amoled|solar|microled)\b/);
-    const base = normalized
-      .replace(/\b\d{2}\s*mm\b/g, " ")
-      .replace(/\b(?:amoled|solar|microled)\b/g, " ")
-      .replace(/[·–—-]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-    return {
-      base,
-      size: sizeMatch ? Number(sizeMatch[1]) : null,
-      display: displayMatch ? displayMatch[1] : "",
-    };
-  }
-
-  function metricText(row) {
-    if (row.successful < 1) return "No successful installs yet";
-    return `${row.successful} successful install${row.successful === 1 ? "" : "s"}`;
-  }
-
   async function transparentImageData(url) {
     if (transparentImageCache.has(url)) return transparentImageCache.get(url);
     const response = await fetch(url, { mode: "cors" });
@@ -180,31 +158,34 @@
   }
 
   function createCard(row) {
-    const variantLabel = row.variants.length > 3
-      ? `${row.variants.length} variants`
-      : (row.variants.join(" · ") || "Smartwatch");
-    const lastTested = formatDate(row.lastSuccess);
-    const lastTestedMarkup = lastTested
-      ? `<p class="watch-card-meta">Last tested ${escapeHtml(lastTested)}</p>`
+    const modelName = publicModelName(row.model);
+    const variantLabel = row.variants[0] || exactVariantLabel(row) || "Smartwatch";
+    const latestInstallation = formatDate(row.lastSuccess);
+    const latestInstallationMarkup = latestInstallation
+      ? `<p class="watch-card-meta">Latest installation ${escapeHtml(latestInstallation)}</p>`
       : "";
     const imageUrl = row.imageUrl || FALLBACK_IMAGE_URL;
-    const imageMarkup = `<img data-remote-src="${escapeHtml(imageUrl)}" alt="${escapeHtml(row.model)}" loading="lazy">`;
+    const installLabel = successfulInstallLabel(row.successful);
+    const accessibleName = [modelName, variantLabel, statusLabel(row.status), installLabel, latestInstallation && `Latest installation ${latestInstallation}`]
+      .filter(Boolean)
+      .join(", ");
+    const imageMarkup = `<img data-remote-src="${escapeHtml(imageUrl)}" alt="" loading="lazy">`;
     return `
-      <article class="watch-card">
+      <article class="watch-card" aria-label="${escapeHtml(accessibleName)}">
         <div class="watch-card-image">
           ${imageMarkup}
         </div>
         <div class="watch-card-body">
           <div class="watch-card-heading">
-            <div>
-              <p class="watch-family">${escapeHtml(row.familyName || "Garmin")}</p>
-              <h3>${escapeHtml(row.model)}</h3>
-              <p class="watch-variant">${escapeHtml(variantLabel)}</p>
+            <p class="watch-family">${escapeHtml(row.familyName || "Garmin")}</p>
+            <div class="watch-card-model-row">
+              <h3>${escapeHtml(modelName)}</h3>
+              ${createStatusBadge(row.status, `${statusLabel(row.status)}: ${statusDescription(row.status)}`)}
             </div>
-            ${createStatusBadge(row.status, `${statusLabel(row.status)}: ${statusDescription(row.status)}`)}
+            <p class="watch-variant">${escapeHtml(variantLabel)}</p>
           </div>
-          <p class="watch-install-count">${escapeHtml(metricText(row))}</p>
-          ${lastTestedMarkup}
+          <p class="watch-install-count">${escapeHtml(installLabel)}</p>
+          ${latestInstallationMarkup}
         </div>
       </article>`;
   }

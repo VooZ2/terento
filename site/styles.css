@@ -1962,10 +1962,19 @@ details p {
 }
 
 .watch-card-heading {
+  display: block;
+}
+
+.watch-card-model-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.watch-card-model-row h3 {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .watch-family {
@@ -2136,9 +2145,8 @@ details p {
     padding: 14px 15px 16px;
   }
 
-  .watch-card-heading {
-    display: grid;
-    gap: 7px;
+  .watch-card-model-row {
+    gap: 8px;
   }
 
   .watch-card h3 {
@@ -2149,10 +2157,6 @@ details p {
     min-height: 0;
     margin-top: 5px;
     font-size: 13px;
-  }
-
-  .status-badge {
-    justify-self: start;
   }
 
   .watch-install-count {

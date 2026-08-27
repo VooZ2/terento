@@ -8,6 +8,8 @@ const {
   familyOptions,
   filterByFamily,
   exactVariantLabel,
+  publicModelName,
+  successfulInstallLabel,
 } = require("../site/compatibility/compatibility-data.js");
 
 const row = (family, familyName, variant, report = 1) => ({
@@ -51,6 +53,15 @@ assert.equal(
   "51 mm, AMOLED"
 );
 assert.equal(exactVariantLabel({ variant: "51 mm, AMOLED" }), "51 mm, AMOLED");
+assert.equal(
+  exactVariantLabel({ model: "fēnix 8 Pro · 51 mm, AMOLED", variant: "51mm", caseSizeMm: 51 }),
+  "51 mm, AMOLED"
+);
+assert.equal(exactVariantLabel({ variant: "47 mm AMOLED" }), "47 mm, AMOLED");
+assert.equal(publicModelName("fēnix 8 · 47 mm AMOLED"), "fēnix 8");
+assert.equal(publicModelName("fēnix 8 Pro · 51 mm, AMOLED"), "fēnix 8 Pro");
+assert.equal(successfulInstallLabel(1), "1 successful install");
+assert.equal(successfulInstallLabel(5), "5 successful installs");
 
 const compatibilitySource = fs.readFileSync(
   path.join(__dirname, "..", "site", "compatibility", "compatibility.js"),
@@ -68,6 +79,13 @@ assert.match(compatibilitySource, /\/compatibility\/public\/models\.json/);
 assert.match(compatibilitySource, /generic-garmin-watch\.png/);
 assert.doesNotMatch(compatibilitySource, /watch-image-placeholder/);
 assert.doesNotMatch(compatibilitySource, /\/devices\/catalog\.json/);
+assert.match(compatibilitySource, /publicModelName\(row\.model\)/);
+assert.match(compatibilitySource, /aria-label="\$\{escapeHtml\(accessibleName\)\}"/);
+assert.doesNotMatch(compatibilitySource, /Last tested/);
+assert.match(compatibilitySource, /Latest installation/);
+assert.match(compatibilitySource, /watch-card-model-row/);
+assert.match(compatibilitySource, /watch-variant/);
+assert.match(compatibilitySource, /successfulInstallLabel\(row\.successful\)/);
 assert.equal((compatibilityPage.match(/<h1\b/gi) || []).length, 1);
 assert.match(compatibilityPage, /<h1 id="compatibility-title">Garmin compatibility<\/h1>/);
 assert.match(compatibilityPage, /See which Garmin watches have real Terento installation results\. Compatibility is tracked by exact model and updated as more installations are shared\./);
@@ -84,5 +102,7 @@ assert.ok(compatibilityPage.indexOf('id="compatibility-filters"') < compatibilit
 assert.doesNotMatch(siteStyles, /\.compatibility-heading\b/);
 assert.match(siteStyles, /\.compatibility-directory\s*\{[^}]*padding:\s*clamp\(28px, 4vw, 48px\)/s);
 assert.match(siteStyles, /\.compatibility-summary-item\s*\{[^}]*white-space:\s*nowrap/s);
+assert.match(siteStyles, /\.watch-card-model-row\s*\{[^}]*gap:\s*12px/s);
+assert.match(siteStyles, /\.watch-card-model-row h3\s*\{[^}]*min-width:\s*0/s);
 
 console.log("Compatibility family/data/API-source tests passed.");
