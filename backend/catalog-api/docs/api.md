@@ -50,10 +50,11 @@ allowlisted identity-source category (`MTP_SERIAL`, `GARMIN_UNIT_ID`, or
 IDs, manifests, hashes, serials, Unit IDs, or local watch keys. Selected maps
 not reached after an earlier failure use `NOT_STARTED`. Download, extraction,
 source-validation, and preflight failures remain visible in the private
-operation detail but `writeStarted=false` excludes them from device
-compatibility rates. Compatibility thresholds count distinct write-started
-operations, not child map rows; a multi-map operation succeeds only when all
-of its selected map results verify. Legacy events remain one operation each.
+operation detail and, when retained as terminal operations, contribute to
+aggregate attempts, failures, and rates even when `writeStarted=false`.
+Compatibility thresholds count successful distinct operations, not child map
+rows; a multi-map operation succeeds only when all of its selected map results
+verify. Legacy events remain one operation each.
 
 ## `DELETE /compatibility/events`
 
@@ -78,10 +79,11 @@ opaque sessions and CSRF values are stored only as SHA-256 hashes. Cookies are
 Secure, HttpOnly, SameSite=Strict, and scoped to `/admin`. Login/setup attempts
 are rate limited. Pages include no-store, noindex and restrictive CSP headers.
 The first screen stops at the model summary, filters, and one-row-per-exact-
-model/variant table. `Errors` counts only unresolved problematic operations;
-successful evidence and resolved historical diagnostics are not counted as
-open errors. Identity-pending evidence is shown separately. Selecting a model
-or its error count opens the private per-model diagnostics view below.
+model/variant table. Attempts, successes, and Errors count all retained
+distinct installation operations, including resolved and legacy diagnostics.
+The separate Needs review queue counts only unresolved problematic operations;
+identity-pending evidence is shown separately. Selecting a model or its error
+count opens the private per-model diagnostics view below.
 `/internal/compatibility/` redirects to this route for the earlier local
 implementation.
 

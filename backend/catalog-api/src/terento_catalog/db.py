@@ -1316,22 +1316,20 @@ class Database:
             ) AS usb ON TRUE
             LEFT JOIN LATERAL (
                 SELECT
-                    count(*) FILTER (WHERE o.write_started) AS attempts,
-                    count(*) FILTER (WHERE o.write_started AND o.operation_succeeded) AS successful,
-                    count(*) FILTER (WHERE o.write_started AND NOT o.operation_succeeded) AS failed,
-                    min(o.occurred_at) FILTER (WHERE o.write_started AND o.operation_succeeded) AS first_success,
-                    max(o.occurred_at) FILTER (WHERE o.write_started AND o.operation_succeeded) AS last_success,
+                    count(*) AS attempts,
+                    count(*) FILTER (WHERE o.operation_succeeded) AS successful,
+                    count(*) FILTER (WHERE NOT o.operation_succeeded) AS failed,
+                    min(o.occurred_at) FILTER (WHERE o.operation_succeeded) AS first_success,
+                    max(o.occurred_at) FILTER (WHERE o.operation_succeeded) AS last_success,
                     max(o.occurred_at) AS last_evidence
                 FROM (
                     SELECT
                         COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text) AS operation_key,
-                        bool_or(COALESCE(e.write_started, true)) AS write_started,
                         bool_and(e.phase_outcome = 'SUCCEEDED' AND e.automatic_finishing_result = 'VERIFIED')
                             AND count(*) = max(COALESCE(e.selected_map_count, 1)) AS operation_succeeded,
                         min(e.occurred_at) AS occurred_at
                     FROM compatibility_evidence_event AS e
                     WHERE e.canonical_device_model_id = dm.id
-                      AND e.diagnostic_status = 'ACTIVE'
                     GROUP BY COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text)
                 ) AS o
             ) AS evidence ON TRUE
