@@ -1743,11 +1743,7 @@ details p {
 }
 
 .compatibility-directory {
-  padding: clamp(48px, 6vw, 78px) 0 112px;
-}
-
-.compatibility-heading {
-  margin-bottom: 22px;
+  padding: clamp(28px, 4vw, 48px) 0 112px;
 }
 
 .compatibility-summary {
@@ -1755,13 +1751,15 @@ details p {
 }
 
 .compatibility-summary-line {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 5px 10px;
+  display: block;
   margin: 0;
   color: var(--secondary);
   font-size: 15px;
+}
+
+.compatibility-summary-item {
+  display: inline;
+  white-space: nowrap;
 }
 
 .compatibility-summary-line strong {
@@ -1843,8 +1841,7 @@ details p {
   padding-bottom: 0;
 }
 
-.compatibility-summary-separator,
-.compatibility-summary-updated > span {
+.compatibility-summary-separator {
   color: var(--border);
 }
 
@@ -2085,12 +2082,8 @@ details p {
   }
 
   .compatibility-directory {
-    padding-top: 40px;
+    padding-top: 28px;
     padding-bottom: 72px;
-  }
-
-  .compatibility-heading {
-    margin-bottom: 18px;
   }
 
   .compatibility-summary {
@@ -2098,7 +2091,6 @@ details p {
   }
 
   .compatibility-summary-line {
-    gap: 4px 8px;
     font-size: 13px;
   }
 
