@@ -85,7 +85,7 @@ for (const locale of locales) {
   assert.deepEqual(faq.mainEntity.map((item) => ({ name: item.name, text: item.acceptedAnswer.text })), visibleFaq, locale + ": FAQ schema matches visible FAQ");
 }
 
-assert.match(read(path.join(root, "site", "site-shell.js")), /isGuide/);
+assert.match(read(path.join(root, "site", "site-shell.js")), /pageType[^\n]*guide|pageType === "guide"/);
 assert.match(read(path.join(root, "site", "site-shell.js")), /guides\/install-garmin-maps-mac\//);
 for (const locale of locales) {
   const prefix = locale === "en" ? "" : locale + "/";
@@ -97,15 +97,15 @@ for (const locale of locales) {
     const footer = source.match(/<nav class="footer-nav"[^>]*>([\s\S]*?)<\/nav>/)?.[1];
     assert.ok(primary && footer, relative + ": static shell navs");
     const hrefs = (fragment) => [...fragment.matchAll(/<a href="([^"]+)"/g)].map((match) => match[1]);
-    assert.deepEqual(hrefs(primary).slice(0, 4), [rootPath + "#about", rootPath + "compatibility/", rootPath + "#faq", rootPath + "download/"], relative + ": primary nav");
+    assert.deepEqual(hrefs(primary).slice(0, 5), [rootPath + "#about", rootPath + "compatibility/", rootPath + slug, rootPath + "#faq", rootPath + "download/"], relative + ": primary nav");
     assert.deepEqual(hrefs(footer), [rootPath + "#about", rootPath + "compatibility/", rootPath + "#faq", rootPath + "download/", "/legal/", "/privacy/"], relative + ": footer nav");
     assert.match(source, /Support Terento/);
     const languageOptions = source.match(/<div class="language-options">([\s\S]*?)<\/div>/)?.[1];
     assert.ok(languageOptions, relative + ": language options");
     for (const candidate of locales) assert.ok(languageOptions.includes('href="' + localePath(candidate, route) + '"'), relative + ": language route");
     const mainPrimary = primary.split('<span class="language-switcher">')[0];
-    if (route === "compatibility/" || route === "download/") assert.match(mainPrimary, /aria-current="page"/);
-    if (route === slug) assert.doesNotMatch(mainPrimary, /aria-current="page"/);
+    if (route === "compatibility/" || route === "download/" || route === slug) assert.match(mainPrimary, /aria-current="page"/);
+    if (route !== "compatibility/" && route !== "download/" && route !== slug) assert.doesNotMatch(mainPrimary, /aria-current="page"/);
   }
   const prefixPath = prefix;
   const home = read(path.join(root, "site", prefixPath + "index.html"));
@@ -119,4 +119,26 @@ const sitemap = read(path.join(root, "site", "sitemap.xml"));
 for (const locale of locales) assert.ok(sitemap.includes(baseUrl + localePath(locale, slug)), locale + ": sitemap guide URL");
 assert.doesNotMatch(sitemap, /utm_|#/i);
 assert.match(read(path.join(root, "README.md")), /Mac installation guide/);
+const styles = read(path.join(root, "site", "styles.css"));
+assert.doesNotMatch(styles, /\.guide-content\s*\{[^}]*max-width\s*:/s, "Guide must use the shared shell width");
+assert.match(styles, /\.guide-step\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 72px minmax\(300px, \.9fr\)/s);
+assert.match(styles, /\.guide-step-copy\s*\{[^}]*grid-column:\s*3/s);
+assert.match(styles, /\.guide-screenshot\s*\{[^}]*grid-column:\s*1/s);
+assert.match(styles, /\.guide-step-content\s*\{[^}]*display:\s*contents/s);
+assert.doesNotMatch(styles, /zigzag|zig-zag/i);
+const shell = read(path.join(root, "site", "site-shell.js"));
+for (const label of ["Guide", "Anleitung", "Guide", "Poradnik", "Průvodce", "Guida"]) assert.ok(shell.includes(`guide: "${label}"`), `shell Guide label: ${label}`);
+assert.match(shell, /navLink\("about"\).*navLink\("compatibility"\).*navLink\("guide"\).*navLink\("faq"\).*navLink\("download"\)/s);
+const languageScript = read(path.join(root, "site", "language.js"));
+assert.match(languageScript, /shellLanguageMenu/);
+assert.match(languageScript, /shellLanguageMenu\?\.update\?\.\(language\)/);
+assert.match(read(path.join(root, "site", "legal-language.js")), /bindLanguageLinks/);
+assert.match(read(path.join(root, "site", "privacy-language.js")), /bindLanguageLinks/);
+for (const file of ["site/legal/index.html", "site/privacy/index.html"]) {
+  const source = read(path.join(root, file));
+  assert.match(source, /data-page="(?:legal|privacy)"/);
+  const primary = source.match(/<nav class="primary-nav"[^>]*>([\s\S]*?)<\/nav>/)?.[1];
+  assert.ok(primary, file + ": static shell nav");
+  assert.deepEqual([...primary.matchAll(/<a href="([^"]+)"/g)].slice(0, 5).map((match) => match[1]), ["/#about", "/compatibility/", "/guides/install-garmin-maps-mac/", "/#faq", "/download/"], file + ": primary nav");
+}
 console.log("Guide content, localization, shell, metadata, schema, links, and Umami contract tests passed.");

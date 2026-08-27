@@ -120,6 +120,8 @@ assert.match(compatibilitySource, /statusCodes = \["VERIFIED", "SUPPORTED", "TES
 assert.match(compatibilitySource, /watch-card-model-row/);
 assert.match(compatibilitySource, /watch-variant/);
 assert.match(compatibilitySource, /successfulInstallLabel\(row\.successful\)/);
+assert.match(compatibilitySource, /image\.src = image\.dataset\.remoteSrc/);
+assert.doesNotMatch(compatibilitySource, /createImageBitmap|document\.createElement\("canvas"\)|getImageData|toDataURL|trimmedCanvas/);
 assert.equal((compatibilityPage.match(/<h1\b/gi) || []).length, 1);
 assert.match(compatibilityPage, /<h1 id="compatibility-title">Garmin compatibility<\/h1>/);
 assert.match(compatibilityPage, /See real Terento installation results for third-party maps by exact Garmin watch model and variant\. Compatibility grows as more successful installations are shared by users\./);
@@ -143,9 +145,12 @@ assert.match(siteStyles, /\.compatibility-directory\s*\{[^}]*padding:\s*clamp\(2
 assert.match(siteStyles, /\.compatibility-summary-item\s*\{[^}]*white-space:\s*nowrap/s);
 assert.match(siteStyles, /\.watch-card-model-row\s*\{[^}]*gap:\s*12px/s);
 assert.match(siteStyles, /\.watch-card-model-row h3\s*\{[^}]*min-width:\s*0/s);
-assert.match(siteStyles, /\.watch-card-image img\s*\{[^}]*min-width:\s*0[^}]*min-height:\s*0[^}]*width:\s*100%[^}]*height:\s*100%[^}]*object-fit:\s*contain[^}]*transform:\s*scale\(1\.04\)/s);
+assert.match(siteStyles, /\.watch-card-image\s*\{[^}]*aspect-ratio:\s*1\.58[^}]*padding:\s*14px/s);
+assert.match(siteStyles, /\.watch-card-image img\s*\{[^}]*min-width:\s*0[^}]*min-height:\s*0[^}]*width:\s*100%[^}]*height:\s*100%[^}]*object-fit:\s*contain/s);
+assert.doesNotMatch(siteStyles, /\.watch-card-image img\s*\{[^}]*transform:\s*scale/s);
 assert.match(siteStyles, /\.compatibility-community-cta\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto[^}]*margin-top:\s*48px[^}]*padding:\s*24px 28px[^}]*border:\s*1px solid var\(--border\)[^}]*background:\s*var\(--surface\)/s);
 assert.match(siteStyles, /\.compatibility-community-link\s*\{[^}]*width:\s*100%/s);
+assert.match(siteStyles, /\.watch-grid\s*\{\s*grid-template-columns:\s*1fr;/s);
 for (const [locale, page] of localizedCompatibilityPages) {
   assert.match(page, /<div class="compatibility-community-cta">[\s\S]*?<div class="compatibility-community-copy">[\s\S]*?<p class="eyebrow">[^<]+<\/p>[\s\S]*?<h2>[^<]+<\/h2>[\s\S]*?<p>[^<]+<\/p>[\s\S]*?<a class="text-link compatibility-guide-link"/s, `${locale}: localized community CTA structure`);
   assert.match(page, /<a class="download-action download-action-primary compatibility-community-link"/);

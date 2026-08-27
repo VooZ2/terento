@@ -24,8 +24,6 @@
     family: "ALL",
     sort: "attempts",
   };
-  const transparentImageCache = new Map();
-
   const elements = {
     grid: document.querySelector("#watch-grid"),
     empty: document.querySelector("#compatibility-empty"),
@@ -104,94 +102,12 @@
     };
   }
 
-  async function transparentImageData(url) {
-    if (transparentImageCache.has(url)) return transparentImageCache.get(url);
-    const response = await fetch(url, { mode: "cors" });
-    if (!response.ok) throw new Error("image_unavailable");
-    const bitmap = await createImageBitmap(await response.blob());
-    const canvas = document.createElement("canvas");
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    const context = canvas.getContext("2d", { willReadFrequently: true });
-    if (!context) throw new Error("canvas_unavailable");
-    context.drawImage(bitmap, 0, 0);
-    bitmap.close();
-    const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
-    for (let index = 0; index < pixels.data.length; index += 4) {
-      const pixelY = Math.floor(index / 4 / canvas.width);
-      const red = pixels.data[index];
-      const green = pixels.data[index + 1];
-      const blue = pixels.data[index + 2];
-      const minimum = Math.min(red, green, blue);
-      const maximum = Math.max(red, green, blue);
-      const neutral = maximum - minimum < 18;
-      const lowerShadow = pixelY > canvas.height * 0.84 && neutral && minimum > 130;
-      if (lowerShadow) {
-        pixels.data[index + 3] = 0;
-      } else if (neutral && minimum > 224) {
-        pixels.data[index + 3] = Math.max(0, Math.min(255, (238 - minimum) * 18));
-      }
-    }
-    context.putImageData(pixels, 0, 0);
-    let minX = canvas.width;
-    let minY = canvas.height;
-    let maxX = -1;
-    let maxY = -1;
-    const alphaData = pixels.data;
-    for (let y = 0; y < canvas.height; y += 1) {
-      for (let x = 0; x < canvas.width; x += 1) {
-        if (alphaData[(y * canvas.width + x) * 4 + 3] <= 20) continue;
-        minX = Math.min(minX, x);
-        minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x);
-        maxY = Math.max(maxY, y);
-      }
-    }
-
-    let dataUrl;
-    if (maxX >= minX && maxY >= minY) {
-      const visibleWidth = maxX - minX + 1;
-      const visibleHeight = maxY - minY + 1;
-      const marginX = Math.max(8, Math.round(visibleWidth * 0.035));
-      const marginY = Math.max(8, Math.round(visibleHeight * 0.035));
-      const cropX = Math.max(0, minX - marginX);
-      const cropY = Math.max(0, minY - marginY);
-      const cropRight = Math.min(canvas.width, maxX + marginX + 1);
-      const cropBottom = Math.min(canvas.height, maxY + marginY + 1);
-      const trimmedCanvas = document.createElement("canvas");
-      trimmedCanvas.width = cropRight - cropX;
-      trimmedCanvas.height = cropBottom - cropY;
-      const trimmedContext = trimmedCanvas.getContext("2d");
-      if (trimmedContext) {
-        trimmedContext.drawImage(
-          canvas,
-          cropX,
-          cropY,
-          trimmedCanvas.width,
-          trimmedCanvas.height,
-          0,
-          0,
-          trimmedCanvas.width,
-          trimmedCanvas.height,
-        );
-        dataUrl = trimmedCanvas.toDataURL("image/png");
-      }
-    }
-    dataUrl ||= canvas.toDataURL("image/png");
-    transparentImageCache.set(url, dataUrl);
-    return dataUrl;
-  }
-
   function hydrateImages() {
     const images = [...elements.grid.querySelectorAll("img[data-remote-src]")];
-    images.forEach(async (image) => {
-      try {
-        image.src = await transparentImageData(image.dataset.remoteSrc);
-      } catch (error) {
-        image.src = image.dataset.remoteSrc;
-      } finally {
-        image.classList.add("is-ready");
-      }
+    images.forEach((image) => {
+      image.addEventListener("load", () => image.classList.add("is-ready"), { once: true });
+      image.addEventListener("error", () => image.classList.add("is-ready"), { once: true });
+      image.src = image.dataset.remoteSrc;
     });
   }
 

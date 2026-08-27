@@ -9,13 +9,16 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+SHELL_VERSION = "20260829-guide-nav"
+STYLE_VERSION = "20260829-guide-timeline"
+LANGUAGE_VERSION = "20260829-compat-language"
 LOCALES = {
-    "en": {"flag": "🇬🇧", "name": "English", "home": "Terento home", "primary": "Primary navigation", "menu": "Menu", "close": "Close menu", "about": "About", "compatibility": "Compatibility", "faq": "FAQ", "download": "Download", "language": "Choose language", "footer": "Footer navigation", "status": "Open-source project", "legal": "Legal", "privacy": "Privacy", "support": "Support Terento", "stats": "Visit statistics (Umami) do not use cookies."},
-    "de": {"flag": "🇩🇪", "name": "Deutsch", "home": "Terento Startseite", "primary": "Hauptnavigation", "menu": "Menü", "close": "Menü schließen", "about": "Über uns", "compatibility": "Kompatibilität", "faq": "FAQ", "download": "Download", "language": "Sprache wählen", "footer": "Footer-Navigation", "status": "Open-Source-Projekt", "legal": "Rechtliches", "privacy": "Datenschutz", "support": "Support Terento", "stats": "Besuchsstatistik (Umami) verwendet keine Cookies."},
-    "fr": {"flag": "🇫🇷", "name": "Français", "home": "Accueil Terento", "primary": "Navigation principale", "menu": "Menu", "close": "Fermer le menu", "about": "À propos", "compatibility": "Compatibilité", "faq": "FAQ", "download": "Télécharger", "language": "Choisir la langue", "footer": "Navigation du pied de page", "status": "Projet open source", "legal": "Mentions légales", "privacy": "Confidentialité", "support": "Support Terento", "stats": "Les statistiques de visites (Umami) n’utilisent pas de cookies."},
-    "pl": {"flag": "🇵🇱", "name": "Polski", "home": "Strona główna Terento", "primary": "Główna nawigacja", "menu": "Menu", "close": "Zamknij menu", "about": "O projekcie", "compatibility": "Kompatybilność", "faq": "FAQ", "download": "Pobierz", "language": "Wybierz język", "footer": "Nawigacja w stopce", "status": "Projekt open source", "legal": "Informacje prawne", "privacy": "Prywatność", "support": "Support Terento", "stats": "Statystyki odwiedzin (Umami) nie używają plików cookie."},
-    "cs": {"flag": "🇨🇿", "name": "Čeština", "home": "Domů Terento", "primary": "Hlavní navigace", "menu": "Menu", "close": "Zavřít menu", "about": "O projektu", "compatibility": "Kompatibilita", "faq": "FAQ", "download": "Stáhnout", "language": "Vybrat jazyk", "footer": "Navigace v zápatí", "status": "Open-source projekt", "legal": "Právní informace", "privacy": "Soukromí", "support": "Support Terento", "stats": "Statistiky návštěvnosti (Umami) nepoužívají cookies."},
-    "it": {"flag": "🇮🇹", "name": "Italiano", "home": "Home Terento", "primary": "Navigazione principale", "menu": "Menu", "close": "Chiudi menu", "about": "Informazioni", "compatibility": "Compatibilità", "faq": "FAQ", "download": "Scarica", "language": "Scegli la lingua", "footer": "Navigazione del piè di pagina", "status": "Progetto open source", "legal": "Note legali", "privacy": "Privacy", "support": "Support Terento", "stats": "Le statistiche delle visite (Umami) non usano cookie."},
+    "en": {"flag": "🇬🇧", "name": "English", "home": "Terento home", "primary": "Primary navigation", "menu": "Menu", "close": "Close menu", "about": "About", "compatibility": "Compatibility", "guide": "Guide", "faq": "FAQ", "download": "Download", "language": "Choose language", "footer": "Footer navigation", "status": "Open-source project", "legal": "Legal", "privacy": "Privacy", "support": "Support Terento", "stats": "Visit statistics (Umami) do not use cookies."},
+    "de": {"flag": "🇩🇪", "name": "Deutsch", "home": "Terento Startseite", "primary": "Hauptnavigation", "menu": "Menü", "close": "Menü schließen", "about": "Über uns", "compatibility": "Kompatibilität", "guide": "Anleitung", "faq": "FAQ", "download": "Download", "language": "Sprache wählen", "footer": "Footer-Navigation", "status": "Open-Source-Projekt", "legal": "Rechtliches", "privacy": "Datenschutz", "support": "Support Terento", "stats": "Besuchsstatistik (Umami) verwendet keine Cookies."},
+    "fr": {"flag": "🇫🇷", "name": "Français", "home": "Accueil Terento", "primary": "Navigation principale", "menu": "Menu", "close": "Fermer le menu", "about": "À propos", "compatibility": "Compatibilité", "guide": "Guide", "faq": "FAQ", "download": "Télécharger", "language": "Choisir la langue", "footer": "Navigation du pied de page", "status": "Projet open source", "legal": "Mentions légales", "privacy": "Confidentialité", "support": "Support Terento", "stats": "Les statistiques de visites (Umami) n’utilisent pas de cookies."},
+    "pl": {"flag": "🇵🇱", "name": "Polski", "home": "Strona główna Terento", "primary": "Główna nawigacja", "menu": "Menu", "close": "Zamknij menu", "about": "O projekcie", "compatibility": "Kompatybilność", "guide": "Poradnik", "faq": "FAQ", "download": "Pobierz", "language": "Wybierz język", "footer": "Nawigacja w stopce", "status": "Projekt open source", "legal": "Informacje prawne", "privacy": "Prywatność", "support": "Support Terento", "stats": "Statystyki odwiedzin (Umami) nie używają plików cookie."},
+    "cs": {"flag": "🇨🇿", "name": "Čeština", "home": "Domů Terento", "primary": "Hlavní navigace", "menu": "Menu", "close": "Zavřít menu", "about": "O projektu", "compatibility": "Kompatibilita", "guide": "Průvodce", "faq": "FAQ", "download": "Stáhnout", "language": "Vybrat jazyk", "footer": "Navigace v zápatí", "status": "Open-source projekt", "legal": "Právní informace", "privacy": "Soukromí", "support": "Support Terento", "stats": "Statistiky návštěvnosti (Umami) nepoužívají cookies."},
+    "it": {"flag": "🇮🇹", "name": "Italiano", "home": "Home Terento", "primary": "Navigazione principale", "menu": "Menu", "close": "Chiudi menu", "about": "Informazioni", "compatibility": "Compatibilità", "guide": "Guida", "faq": "FAQ", "download": "Scarica", "language": "Scegli la lingua", "footer": "Navigazione del piè di pagina", "status": "Progetto open source", "legal": "Note legali", "privacy": "Privacy", "support": "Support Terento", "stats": "Le statistiche delle visite (Umami) non usano cookie."},
 }
 
 
@@ -43,8 +46,8 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
     download = route_for(locale, "download/")
     guide = route_for(locale, "guides/install-garmin-maps-mac/")
     route_for_language = route if page in {"compatibility", "download", "guide"} else ""
-    nav = {"about": f"{root}#about", "compatibility": compatibility, "faq": f"{root}#faq", "download": download}
-    active = {"compatibility": page == "compatibility", "download": page == "download"}
+    nav = {"about": f"{root}#about", "compatibility": compatibility, "guide": guide, "faq": f"{root}#faq", "download": download}
+    active = {"compatibility": page == "compatibility", "guide": page == "guide", "download": page == "download"}
     def nav_link(key: str) -> str:
         current = ' aria-current="page"' if active.get(key) else ""
         return f'<a href="{nav[key]}"{current}>{copy[key]}</a>'
@@ -59,7 +62,7 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
           <span>Terento</span>
         </a>
         <nav class="primary-nav" aria-label="{copy["primary"]}">
-          {nav_link("about")}{nav_link("compatibility")}{nav_link("faq")}{nav_link("download")}
+          {nav_link("about")}{nav_link("compatibility")}{nav_link("guide")}{nav_link("faq")}{nav_link("download")}
           <span class="language-switcher">{language_menu}</span>
         </nav>
         <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="{copy["menu"]}">
@@ -70,7 +73,7 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
       <div class="mobile-nav" id="mobile-nav" hidden>
         <div class="shell mobile-nav-inner">
           <nav class="mobile-nav-links" aria-label="{copy["primary"]}">
-            {nav_link("about")}{nav_link("compatibility")}{nav_link("faq")}{nav_link("download")}
+            {nav_link("about")}{nav_link("compatibility")}{nav_link("guide")}{nav_link("faq")}{nav_link("download")}
           </nav>
           <div class="mobile-nav-language"><details class="language-menu mobile-language-menu">
             <summary class="language-trigger" aria-label="{copy["language"]}"><span class="mobile-language-label">{copy["language"]}</span><span class="language-current" aria-hidden="true">{copy["flag"]}</span></summary>
@@ -127,6 +130,9 @@ def main() -> None:
         source, footer_count = re.subn(r'<footer class="site-footer">[\s\S]*?</footer>', footer, source, count=1)
         if not footer_count:
             raise SystemExit(f"missing footer in {relative}")
+        source = re.sub(r'(/site-shell\.js\?v=)[^"\s]+', rf'\g<1>{SHELL_VERSION}', source)
+        source = re.sub(r'(/styles\.css\?v=)[^"\s]+', rf'\g<1>{STYLE_VERSION}', source)
+        source = re.sub(r'(/language\.js\?v=)[^"\s]+', rf'\g<1>{LANGUAGE_VERSION}', source)
         path.write_text(source, encoding="utf-8")
     print("Synchronized static public headers and footers.")
 

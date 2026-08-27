@@ -1936,7 +1936,7 @@ details p {
   place-items: center;
   aspect-ratio: 1.58;
   overflow: hidden;
-  padding: 8px;
+  padding: 14px;
   background: var(--surface-muted);
 }
 
@@ -1948,7 +1948,6 @@ details p {
   height: 100%;
   object-fit: contain;
   opacity: 0;
-  transform: scale(1.04);
   transition: opacity .2s ease;
 }
 
@@ -2212,10 +2211,6 @@ details p {
   font-weight: 650;
 }
 
-.guide-content {
-  max-width: 1020px;
-}
-
 .guide-preflight,
 .guide-steps,
 .troubleshooting,
@@ -2227,6 +2222,15 @@ details p {
   align-items: start;
   padding: clamp(72px, 9vw, 120px) 0;
   border-bottom: 1px solid var(--border);
+}
+
+.guide-steps {
+  display: block;
+}
+
+.guide-steps > .guide-section-heading {
+  max-width: 620px;
+  margin-bottom: clamp(42px, 6vw, 64px);
 }
 
 .guide-section-heading {
@@ -2294,18 +2298,43 @@ details p {
 .guide-step {
   position: relative;
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
-  gap: 22px;
+  grid-template-columns: minmax(0, 1fr) 72px minmax(300px, .9fr);
+  column-gap: clamp(28px, 4vw, 48px);
   padding: 0 0 74px;
 }
 
 .guide-step:not(:last-child)::before {
-  position: absolute;
-  top: 56px;
-  bottom: 0;
-  left: 27px;
+  grid-column: 2;
+  grid-row: 1;
+  align-self: stretch;
+  justify-self: center;
+  width: 1px;
+  margin-top: 56px;
+  margin-bottom: -74px;
   border-left: 1px solid var(--border);
   content: "";
+  z-index: 0;
+}
+
+.guide-step-marker {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: center;
+}
+
+.guide-step-content {
+  display: contents;
+}
+
+.guide-step-copy {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.guide-screenshot {
+  grid-column: 1;
+  grid-row: 1;
+  width: 100%;
 }
 
 .guide-step-marker {
@@ -2325,10 +2354,6 @@ details p {
 }
 
 .guide-step-content {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(250px, .82fr);
-  gap: clamp(24px, 4vw, 48px);
-  align-items: start;
   min-width: 0;
 }
 
@@ -2502,16 +2527,29 @@ details p {
   }
 
   .guide-step:not(:last-child)::before {
-    left: 26px;
+    grid-column: 1;
+    grid-row: 1;
+    margin-top: 52px;
+    margin-bottom: -56px;
   }
 
   .guide-step-marker {
+    grid-column: 1;
+    grid-row: 1;
     width: 52px;
     height: 52px;
   }
 
   .guide-step-content {
     display: block;
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .guide-step-copy,
+  .guide-screenshot {
+    grid-column: auto;
+    grid-row: auto;
   }
 
   .guide-screenshot {
@@ -2528,6 +2566,37 @@ details p {
   .guide-after-steps .download-action,
   .guide-bottom-cta .download-action {
     width: 100%;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1099px) {
+  .guide-step {
+    grid-template-columns: 72px minmax(0, 1fr);
+    column-gap: 22px;
+  }
+
+  .guide-step:not(:last-child)::before {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .guide-step-marker {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .guide-step-content {
+    display: grid;
+    grid-column: 2;
+    grid-row: 1;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .guide-step-copy,
+  .guide-screenshot {
+    grid-column: 1;
+    grid-row: auto;
   }
 }
 
@@ -2568,7 +2637,8 @@ details p {
   }
 
   .guide-step:not(:last-child)::before {
-    left: 22px;
+    margin-top: 44px;
+    margin-bottom: -56px;
   }
 
   .guide-step-marker {
@@ -2658,12 +2728,7 @@ details p {
 
   .watch-card-image {
     aspect-ratio: 1.55;
-    padding: 0;
-  }
-
-  .watch-card-image img {
-    width: 100%;
-    height: 100%;
+    padding: 12px;
   }
 
   .watch-card-body {
@@ -2703,62 +2768,5 @@ details p {
   .compatibility-status-row {
     grid-template-columns: 1fr;
     gap: 8px;
-  }
-}
-
-@media (min-width: 375px) and (max-width: 640px) {
-  .watch-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-
-  .watch-card {
-    border-radius: 16px;
-  }
-
-  .watch-card-image {
-    aspect-ratio: 1.38;
-    padding: 0;
-  }
-
-  .watch-card-image img {
-    width: 100%;
-    height: 100%;
-  }
-
-  .watch-card-body {
-    padding: 12px 12px 13px;
-  }
-
-  .watch-family {
-    margin-bottom: 4px;
-    font-size: 10px;
-  }
-
-  .watch-card h3 {
-    font-size: 19px;
-    line-height: 1.08;
-  }
-
-  .watch-variant {
-    margin-top: 4px;
-    font-size: 11px;
-    line-height: 1.2;
-  }
-
-  .status-badge {
-    padding: 5px 7px;
-    font-size: 9px;
-  }
-
-  .watch-install-count {
-    margin-top: 13px;
-    font-size: 11px;
-    line-height: 1.25;
-  }
-
-  .watch-card-meta {
-    font-size: 10px;
-    line-height: 1.25;
   }
 }
