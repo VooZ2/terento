@@ -864,8 +864,8 @@ def _sanitised_issue_value(value: Any, *, max_length: int | None = None) -> str:
         text,
     )
     text = re.sub(
-        r"(?i)\b[A-Z]:\\Users\\[^\\\s]+(?:\\[^\s]*)?",
-        r"C:\\Users\\<redacted>\\[redacted]",
+        r"(?i)\b[A-Z]:[\\/]Users[\\/][^\\/\s]+(?:[\\/][^\s]*)?",
+        "[redacted path]",
         text,
     )
     text = re.sub(
@@ -1787,6 +1787,7 @@ def devices_page(
     )
     empty = "<p class='empty'>No Garmin device records are available.</p>" if not rows_html else ""
     payload_json = json.dumps({**payload, "csrfToken": csrf_token}, ensure_ascii=False).replace("<", "\\u003c")
+    table_header = _device_table_header()
     content = f"""
       {_admin_header(user, csrf_token, active="devices")}
       <main class="dashboard devices-page" id="main-content">
@@ -1807,13 +1808,18 @@ def devices_page(
             <p class="results-count" id="device-results-count" aria-live="polite">{summary['mapCapable']} results</p>
           </form>
           {empty}
-          <div class="table-wrap device-table-wrap"><table class="admin-table"><caption class="sr-only">Device catalog and Terento installation evidence</caption><thead><tr><th scope="col" aria-sort="ascending"><button type="button" class="device-sort-button" data-device-sort="model" aria-label="Model">Model <span aria-hidden="true">↑</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="variant" aria-label="Variant">Variant <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="maps" aria-label="Map capability" title="Map capability">Maps <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="authorization" aria-label="Installation authorization" title="Installation authorization">Authorization <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="status" aria-label="Compatibility status" title="Compatibility status">Status <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="attempts" aria-label="Install attempts" title="Install attempts">Attempts <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="success" aria-label="Successful installations" title="Successful installations">Successful <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="evidence" aria-label="Last successful installation" title="Last successful installation">Last success <span aria-hidden="true">↕</span></button></th></tr></thead><tbody id="device-rows">{rows_html}</tbody></table></div>
+          <div class="device-sticky-header" id="device-sticky-header"><div class="device-sticky-header-scroll"><table class="admin-table"><caption class="sr-only">Device catalog columns</caption>{table_header}</table></div></div>
+          <div class="table-wrap device-table-wrap"><table class="admin-table"><caption class="sr-only">Device catalog and Terento installation evidence</caption>{table_header}<tbody id="device-rows">{rows_html}</tbody></table></div>
           <div class="device-pagination" id="device-pagination" hidden><button type="button" id="device-previous">Previous</button><span id="device-page-status"></span><button type="button" id="device-next">Next</button></div>
         </section>
       </main>
       <script>const terentoAdminDevices = {payload_json};{_devices_script()}</script>
     """
     return _layout("Devices", content)
+
+
+def _device_table_header() -> str:
+    return """<thead><tr><th scope="col" aria-sort="ascending"><button type="button" class="device-sort-button" data-device-sort="model" aria-label="Model">Model <span aria-hidden="true">↑</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="variant" aria-label="Variant">Variant <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="maps" aria-label="Map capability" title="Map capability">Maps <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="authorization" aria-label="Installation authorization" title="Installation authorization">Authorization <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="status" aria-label="Compatibility status" title="Compatibility status">Status <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="attempts" aria-label="Install attempts" title="Install attempts">Attempts <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="success" aria-label="Successful installations" title="Successful installations">Successful <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="evidence" aria-label="Last successful installation" title="Last successful installation">Last success <span aria-hidden="true">↕</span></button></th></tr></thead>"""
 
 
 def _campaign_info(control_id: str, title: str, body: str) -> str:
@@ -1964,8 +1970,21 @@ def _status_badge(value: str) -> str:
     )
 
 
+def _device_last_success_comparator_script() -> str:
+    return r"""(a, b, direction, textCompare) => {
+        const timestamp = (device) => device.installationStats.lastSuccessfulAt
+          ? Date.parse(device.installationStats.lastSuccessfulAt) : null;
+        const aValue = timestamp(a);
+        const bValue = timestamp(b);
+        if (aValue === null) return bValue === null ? textCompare(a.id, b.id) : 1;
+        if (bValue === null) return -1;
+        const comparison = aValue - bValue;
+        return (direction === 'descending' ? -comparison : comparison) || textCompare(a.id, b.id);
+      }"""
+
+
 def _devices_script() -> str:
-    return r"""(() => {
+    script = r"""(() => {
       const devices = terentoAdminDevices.devices || [];
       const body = document.querySelector('#device-rows');
       const form = document.querySelector('#device-filters');
@@ -1981,6 +2000,8 @@ def _devices_script() -> str:
       const next = document.querySelector('#device-next');
       const pageStatus = document.querySelector('#device-page-status');
       const showNewButton = document.querySelector('#device-show-new');
+      const tableScroll = document.querySelector('.device-table-wrap');
+      const stickyHeaderScroll = document.querySelector('.device-sticky-header-scroll');
       if (!body || !form || !search || !family || !map || !support || !status || !count) return;
 
       const pageSize = 50;
@@ -2010,6 +2031,7 @@ def _devices_script() -> str:
       const statusOrder = {unavailable: 0, TESTING: 1, TESTED: 2, SUPPORTED: 3, VERIFIED: 4};
       const mapOrder = {unknown: 0, no: 1, yes: 2};
       const authorizationOrder = {NOT_EVALUATED: 0, UNSUPPORTED: 1, SUPPORTED: 2};
+      const compareLastSuccess = __TERENTO_LAST_SUCCESS_COMPARATOR__;
       const sortValue = (device, key) => ({
         model: device.model,
         variant: device.variant,
@@ -2018,9 +2040,10 @@ def _devices_script() -> str:
         status: statusOrder[device.evidenceStatus || 'unavailable'],
         attempts: Number(device.installationStats.attempts || 0),
         success: Number(device.installationStats.successful || 0),
-        evidence: device.installationStats.lastEvidenceAt ? Date.parse(device.installationStats.lastEvidenceAt) : null,
+        evidence: device.installationStats.lastSuccessfulAt ? Date.parse(device.installationStats.lastSuccessfulAt) : null,
       })[key];
       const compareDevices = (a, b) => {
+        if (sortKey === 'evidence') return compareLastSuccess(a, b, sortDirection, textCompare);
         const aValue = sortValue(a, sortKey);
         const bValue = sortValue(b, sortKey);
         if (aValue === null || aValue === undefined || aValue === '') return bValue === null || bValue === undefined || bValue === '' ? textCompare(a.id, b.id) : 1;
@@ -2122,9 +2145,16 @@ def _devices_script() -> str:
         event.preventDefault();
         window.location.assign(row.dataset.deviceUrl);
       });
+      tableScroll?.addEventListener('scroll', () => {
+        if (stickyHeaderScroll) stickyHeaderScroll.scrollLeft = tableScroll.scrollLeft;
+      }, {passive: true});
       updateSortHeaders();
       refresh();
     })();"""
+    return script.replace(
+        "__TERENTO_LAST_SUCCESS_COMPARATOR__",
+        _device_last_success_comparator_script(),
+    )
 
 
 def _campaign_links_script() -> str:
@@ -2316,10 +2346,10 @@ def _dashboard_script() -> str:
       restoreSelect(status, 'status', 'all');
       restoreSelect(sort, 'sort', 'attempts');
       const refresh = () => {
-        const query = search.value.trim().toLocaleLowerCase();
+        const searchQuery = search.value.trim().toLocaleLowerCase();
         const selectedStatus = status.value;
         const visible = rows.filter((row) => {
-          const matchesSearch = !query || row.dataset.search.toLocaleLowerCase().includes(query);
+          const matchesSearch = !searchQuery || row.dataset.search.toLocaleLowerCase().includes(searchQuery);
           const matchesStatus = selectedStatus === 'all' || row.dataset.status === selectedStatus;
           row.hidden = !(matchesSearch && matchesStatus);
           return !row.hidden;
@@ -2334,11 +2364,11 @@ def _dashboard_script() -> str:
         count.textContent = `${visible.length} ${visible.length === 1 ? 'variant' : 'variants'}`;
         const state = {search: search.value, status: status.value, sort: sort.value};
         try { sessionStorage.setItem(storageKey, JSON.stringify(state)); } catch (_) { /* optional */ }
-        const query = new URLSearchParams();
-        if (search.value) query.set('search', search.value);
-        if (status.value !== 'all') query.set('status', status.value);
-        if (sort.value !== 'attempts') query.set('sort', sort.value);
-        history.replaceState(null, '', query.size ? `${window.location.pathname}?${query}` : window.location.pathname);
+        const stateQuery = new URLSearchParams();
+        if (search.value) stateQuery.set('search', search.value);
+        if (status.value !== 'all') stateQuery.set('status', status.value);
+        if (sort.value !== 'attempts') stateQuery.set('sort', sort.value);
+        history.replaceState(null, '', stateQuery.size ? `${window.location.pathname}?${stateQuery}` : window.location.pathname);
       };
       form.addEventListener('submit', (event) => event.preventDefault());
       [search, status, sort].forEach((control) => control.addEventListener('input', refresh));
@@ -2356,8 +2386,32 @@ def _dashboard_script() -> str:
     })();"""
 
 
+def _client_issue_note_sanitizer_script() -> str:
+    """Return the browser sanitizer used before note preview and URL creation."""
+    return r"""(value) => value
+          .slice(0, 500)
+          .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+          .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '[redacted markup]')
+          .replace(/<[^>]+>/g, '[redacted markup]')
+          .replace(/\b(?:ghp|github_pat)_[A-Za-z0-9_-]+/gi, '[redacted token]')
+          .replace(/\bBearer\s+[^\s,;]+/gi, 'Bearer [redacted]')
+          .replace(/\b(?:Authorization|Proxy-Authorization|Cookie|Set-Cookie)\s*:\s*[^\s,;]+(?:\s+[^\s,;]+)?/gi, '[redacted header]')
+          .replace(/([?&](?:token|access_token|api_key|apikey|secret)=)[^&\s]+/gi, '$1[redacted]')
+          .replace(/[?&](?:title|body)=[^&\s]+/gi, '[redacted query value]')
+          .replace(/\b(?:token|access[_ -]?token|api[_ -]?key|apikey|secret|password|cookie|authorization)\s*[:=]\s*\S+/gi, '[redacted credential]')
+          .replace(/\b[A-Z][A-Z0-9_]{2,}\s*=\s*\S+/g, '[redacted environment value]')
+          .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[redacted email]')
+          .replace(/\/Users\/[^/\s]+(?:\/[^\s]*)?/gi, '[redacted path]')
+          .replace(/(?:\/private|\/var\/folders|\/home|\/Volumes)\/[^\s]+/gi, '[redacted path]')
+          .replace(/\b[A-Z]:[\\/]Users[\\/][^\\/\s]+(?:[\\/][^\s]*)?/gi, '[redacted path]')
+          .replace(/\b(?:serial(?:[_ -]?number)?|unit[_ -]?id|device[_ -]?id|user[_ -]?id|account[_ -]?id)\s*[:=]\s*\S+/gi, '[redacted private identifier]')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .replace(/([\\`*_{}\[\]<>#+!|])/g, '\\$1')"""
+
+
 def _diagnostics_script() -> str:
-    return r"""(() => {
+    script = r"""(() => {
       const filter = document.querySelector('#diagnostic-state-filter');
       const body = document.querySelector('#diagnostic-rows');
       const count = document.querySelector('#diagnostic-results-count');
@@ -2473,24 +2527,7 @@ def _diagnostics_script() -> str:
         const note = container?.querySelector('[data-issue-note]');
         const preview = container?.querySelector('[data-issue-preview-body]');
         const status = container?.querySelector('[data-copy-status]');
-        const sanitiseNote = (value) => value
-          .slice(0, 500)
-          .replace(/[\u0000-\u001f\u007f]+/g, ' ')
-          .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '[redacted markup]')
-          .replace(/<[^>]+>/g, '[redacted markup]')
-          .replace(/\b(?:ghp|github_pat)_[A-Za-z0-9_-]+/gi, '[redacted token]')
-          .replace(/\bBearer\s+[^\s,;]+/gi, 'Bearer [redacted]')
-          .replace(/\b(?:Authorization|Proxy-Authorization|Cookie|Set-Cookie)\s*:\s*[^\s,;]+(?:\s+[^\s,;]+)?/gi, '[redacted header]')
-          .replace(/([?&](?:token|access_token|api_key|apikey|secret)=)[^&\s]+/gi, '$1[redacted]')
-          .replace(/[?&](?:title|body)=[^&\s]+/gi, '[redacted query value]')
-          .replace(/\b(?:token|access[_ -]?token|api[_ -]?key|apikey|secret|password|cookie|authorization)\s*[:=]\s*\S+/gi, '[redacted credential]')
-          .replace(/\b[A-Z][A-Z0-9_]{2,}\s*=\s*\S+/g, '[redacted environment value]')
-          .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[redacted email]')
-          .replace(/\/Users\/[^/\s]+(?:\/[^\s]*)?/gi, '/Users/<redacted>/[redacted]')
-          .replace(/\b[A-Z]:\\Users\\[^\\\s]+(?:\\[^\s]*)?/gi, 'C:\\Users\\<redacted>\\[redacted]')
-          .replace(/\s+/g, ' ')
-          .trim()
-          .replace(/([\\`*_{}\[\]<>#+!|])/g, '\\$1');
+        const sanitiseNote = __TERENTO_CLIENT_ISSUE_NOTE_SANITIZER__;
         const sync = () => {
           const noteValue = sanitiseNote(note?.value || '');
           const body = link.dataset.issueBody + (noteValue ? `\n\n## Admin note\n\n${noteValue}` : '');
@@ -2567,6 +2604,10 @@ def _diagnostics_script() -> str:
       });
       refresh();
     })();"""
+    return script.replace(
+        "__TERENTO_CLIENT_ISSUE_NOTE_SANITIZER__",
+        _client_issue_note_sanitizer_script(),
+    )
 
 
 def _admin_timezone_script() -> str:
@@ -2810,8 +2851,9 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .admin-summary-context,.device-summary-sync{text-align:right;white-space:nowrap}
 .device-filter-bar{position:sticky;top:var(--admin-topbar-height);z-index:22;align-items:stretch;margin-bottom:0;background:var(--surface);border-radius:12px 12px 0 0;box-shadow:0 2px 0 rgba(34,42,43,.07)}
 .device-table-wrap{overflow:visible;border-top:0;border-radius:0 0 14px 14px}
-.device-table-wrap table{min-width:0;table-layout:fixed}
-.device-table-wrap th:nth-child(1){width:20%}.device-table-wrap th:nth-child(2){width:18%}.device-table-wrap th:nth-child(3){width:9%}.device-table-wrap th:nth-child(4){width:14%}.device-table-wrap th:nth-child(5){width:11%}.device-table-wrap th:nth-child(6){width:9%}.device-table-wrap th:nth-child(7){width:8%}.device-table-wrap th:nth-child(8){width:11%}
+.device-sticky-header{display:none}
+.device-table-wrap table,.device-sticky-header table{min-width:0;table-layout:fixed}
+.device-table-wrap th:nth-child(1),.device-sticky-header th:nth-child(1){width:20%}.device-table-wrap th:nth-child(2),.device-sticky-header th:nth-child(2){width:18%}.device-table-wrap th:nth-child(3),.device-sticky-header th:nth-child(3){width:9%}.device-table-wrap th:nth-child(4),.device-sticky-header th:nth-child(4){width:14%}.device-table-wrap th:nth-child(5),.device-sticky-header th:nth-child(5){width:11%}.device-table-wrap th:nth-child(6),.device-sticky-header th:nth-child(6){width:9%}.device-table-wrap th:nth-child(7),.device-sticky-header th:nth-child(7){width:8%}.device-table-wrap th:nth-child(8),.device-sticky-header th:nth-child(8){width:11%}
 .device-table-wrap thead{position:static}
 .device-table-wrap thead th{position:sticky;top:calc(var(--admin-topbar-height) + var(--device-filter-height, 54px));z-index:21}
 .device-table-wrap th,.device-table-wrap td{white-space:normal;overflow-wrap:anywhere}
@@ -2896,7 +2938,7 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 @media(max-width:560px){.admin-section-nav{overflow:visible;flex-wrap:wrap}.needs-review-popover{left:0;right:auto}}
 @media(max-width:800px){.admin-summary-strip{align-items:flex-start;flex-direction:column;gap:6px}.admin-summary-context,.device-summary-sync{text-align:left;white-space:normal}.device-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.device-detail-grid{grid-template-columns:1fr}.device-catalog-details dl div{grid-template-columns:1fr;gap:2px}.device-catalog-details dd{text-align:left}.device-detail-grid dd{text-align:left}.device-filter-bar .results-count{margin-left:0}.device-dialog-inner{padding:18px}}
-@media(max-width:1100px){.device-table-wrap{overflow-x:auto;overflow-y:visible}.device-table-wrap table{min-width:1050px}.device-table-wrap thead th{top:calc(var(--admin-topbar-height) + var(--device-filter-height, 54px))}.model-statistics{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:1100px){.device-sticky-header{display:block;position:sticky;top:calc(var(--admin-topbar-height) + var(--device-filter-height, 54px));z-index:21;overflow:hidden;border:1px solid var(--border);border-bottom:0;background:var(--surface)}.device-sticky-header-scroll{overflow:hidden}.device-sticky-header table,.device-table-wrap table{min-width:1050px}.device-sticky-header th{position:static}.device-table-wrap{overflow-x:auto;overflow-y:hidden}.device-table-wrap thead{display:none}.model-statistics{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:800px){.model-page-header{grid-template-columns:auto minmax(0,1fr)}.model-public-link{grid-column:1/-1;width:max-content}.model-statistics{grid-template-columns:repeat(2,minmax(0,1fr))}.administration-grid{grid-template-columns:1fr}.model-review-alert{align-items:flex-start;flex-direction:column}.model-information-list div{grid-template-columns:1fr;gap:3px}.model-information-list dd{text-align:left}}
 @media(max-height:760px){.device-dialog-inner{max-height:calc(100vh - 32px);overflow:auto}.device-dialog-header{position:sticky;top:-1px;z-index:2;padding-bottom:10px;background:var(--surface)}}
 """

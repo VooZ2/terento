@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 import inspect
+import json
 from pathlib import Path
+import shutil
+import subprocess
 import unittest
 from urllib.parse import parse_qs, urlsplit
 
@@ -10,7 +13,14 @@ from terento_catalog.admin import (
     GITHUB_ADMIN_NOTE_MAX_LENGTH,
     GITHUB_ISSUE_URL_MAX_LENGTH,
     _admin_device_payload,
+    _admin_timezone_script,
+    _campaign_links_script,
+    _client_issue_note_sanitizer_script,
+    _dashboard_script,
+    _device_last_success_comparator_script,
+    _devices_script,
     _diagnostic_summary_by_identity,
+    _diagnostics_script,
     _github_issue_report,
     _github_issue_url,
     _render_diagnostic_details,
@@ -101,6 +111,37 @@ class ReviewSummaryDatabase(Database):
 
 
 class AdminSemanticsTests(unittest.TestCase):
+    @staticmethod
+    def _node() -> str:
+        node = shutil.which("node") or shutil.which("nodejs")
+        if not node:
+            raise AssertionError("Node.js is required for Admin JavaScript regression tests")
+        return node
+
+    def _run_node(self, source: str, *arguments: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [self._node(), "-e", source, *arguments],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+    def test_every_generated_admin_script_passes_node_syntax_check(self):
+        scripts = {
+            "dashboard": _dashboard_script(),
+            "devices": _devices_script(),
+            "diagnostics-and-model": _diagnostics_script(),
+            "timezone": _admin_timezone_script(),
+            "campaign-links": _campaign_links_script(),
+        }
+        for name, script in scripts.items():
+            with self.subTest(script=name):
+                result = subprocess.run(
+                    [self._node(), "--check"], input=script,
+                    capture_output=True, text=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_variant_formatting_normalizes_sizes_without_dropping_functional_labels(self):
         self.assertEqual(
             _normalise_variant("47mm, Solar, inReach"),
@@ -824,6 +865,69 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertNotIn("session", sanitised)
         self.assertNotIn("/private/var", sanitised)
         self.assertNotIn("12345678", sanitised)
+
+    def test_browser_and_server_admin_note_sanitizers_remove_private_values_before_url_creation(self):
+        fake_values = (
+            "serialNumber=SERIAL-123", "unitId=UNIT-456", "unit_id=UNIT-ALT-456",
+            "deviceId=DEVICE-789", "device_id=DEVICE-ALT-789",
+            "/private/tmp/private.log", "/var/folders/aa/private.log",
+            "/Volumes/Garmin/private.log", "/Users/alice/private.log",
+            r"C:\Users\alice\private.log", "C:/Users/alice/private.log",
+            "owner@example.com", "api_key=FAKE-SECRET", "?token=FAKE-QUERY",
+            "Authorization: Bearer FAKE-AUTH", "DATABASE_URL=postgres://private",
+            "<script>alert('private')</script>", "&title=INJECTED", "?body=INJECTED",
+        )
+        sanitizer = _client_issue_note_sanitizer_script()
+        source = f"""
+          const sanitiseNote = {sanitizer};
+          const note = JSON.parse(process.argv[1]);
+          const body = `Safe report\\n\\n## Admin note\\n\\n${{sanitiseNote(note)}}`;
+          const url = `https://github.com/VooZ2/terento/issues/new?${{new URLSearchParams({{title: 'Safe title', body}})}}`;
+          process.stdout.write(JSON.stringify({{body, url, decoded: Object.fromEntries(new URL(url).searchParams)}}));
+        """
+        for private_value in fake_values:
+            with self.subTest(private_value=private_value):
+                client = json.loads(self._run_node(source, json.dumps(private_value)).stdout)
+                server = _sanitised_issue_value(private_value)
+                self.assertNotIn(private_value, client["body"])
+                self.assertNotIn(private_value, client["url"])
+                self.assertNotIn(private_value, str(client["decoded"]))
+                self.assertNotIn(private_value, server)
+                self.assertEqual(set(client["decoded"]), {"title", "body"})
+
+    def test_last_success_sort_uses_success_timestamp_and_keeps_missing_values_last(self):
+        comparator = _device_last_success_comparator_script()
+        source = f"""
+          const compareLastSuccess = {comparator};
+          const textCompare = (a, b) => String(a || '').localeCompare(String(b || ''));
+          const devices = JSON.parse(process.argv[1]);
+          const order = (direction) => devices.slice()
+            .sort((a, b) => compareLastSuccess(a, b, direction, textCompare))
+            .map((device) => device.id);
+          process.stdout.write(JSON.stringify({{ascending: order('ascending'), descending: order('descending')}}));
+        """
+        devices = [{
+            "id": "older-success",
+            "installationStats": {
+                "lastSuccessfulAt": "2026-08-20T10:00:00Z",
+                "lastEvidenceAt": "2026-08-28T10:00:00Z",
+            },
+        }, {
+            "id": "newer-success",
+            "installationStats": {
+                "lastSuccessfulAt": "2026-08-25T10:00:00Z",
+                "lastEvidenceAt": "2026-08-25T10:00:00Z",
+            },
+        }, {
+            "id": "failed-only",
+            "installationStats": {
+                "lastSuccessfulAt": None,
+                "lastEvidenceAt": "2026-08-27T10:00:00Z",
+            },
+        }]
+        result = json.loads(self._run_node(source, json.dumps(devices)).stdout)
+        self.assertEqual(result["ascending"], ["older-success", "newer-success", "failed-only"])
+        self.assertEqual(result["descending"], ["newer-success", "older-success", "failed-only"])
 
     def test_github_issue_report_redacts_hostile_allowlisted_values_and_encodes_one_query(self):
         fake_values = (
