@@ -43,7 +43,109 @@
     <script defer src="/language.js?v=20260824-2"></script>
     <script defer src="/privacy-consent.js?v=20260826-2"></script>
     <script type="application/ld+json">
-      {"@context":"https://schema.org","@type":"WebSite","name":"Terento","url":"https://terento.app/cs/","inLanguage":"cs","description":"Terento je bezplatná open-source beta pro macOS k instalaci map Freizeitkarte do vybraných hodinek Garmin. Vyžaduje Mac s Apple Silicon; Macy s Intelem nejsou podporovány."}
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://terento.app/#organization",
+            "name": "Terento",
+            "url": "https://terento.app/",
+            "logo": "https://terento.app/assets/logo-sky.svg",
+            "sameAs": [
+              "https://github.com/VooZ2/terento"
+            ]
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://terento.app/#software",
+            "name": "Terento",
+            "url": "https://terento.app/cs/",
+            "applicationCategory": "UtilitiesApplication",
+            "operatingSystem": "macOS 13 nebo novější na Apple Silicon",
+            "softwareVersion": "1.0.0-beta.7",
+            "softwareRequirements": "Mac s Apple Silicon. Macy s Intelem nejsou podporovány.",
+            "downloadUrl": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.7/Terento-1.0.0-beta.7-macOS-arm64.dmg",
+            "releaseNotes": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.7",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "EUR"
+            },
+            "inLanguage": "cs",
+            "publisher": {
+              "@id": "https://terento.app/#organization"
+            }
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://terento.app/cs/#website",
+            "name": "Terento",
+            "url": "https://terento.app/cs/",
+            "inLanguage": "cs",
+            "description": "Terento je bezplatná open-source beta pro macOS k instalaci map Freizeitkarte do vybraných hodinek Garmin. Vyžaduje Mac s Apple Silicon; Macy s Intelem nejsou podporovány.",
+            "publisher": {
+              "@id": "https://terento.app/#organization"
+            }
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://terento.app/cs/#faq",
+            "url": "https://terento.app/cs/#faq",
+            "inLanguage": "cs",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Které hodinky Garmin fungují s Terento?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Terento je určeno pro hodinky Garmin s podporou map. Veřejná kompatibilita se potvrzuje pro přesný model a variantu pomocí skutečných výsledků instalací sdílených komunitou. Aktuální důkazy najdete na stránce Kompatibilita."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Je Terento bezpečné pro stávající mapy Garmin?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Ano. Stávající mapy Garmin zůstávají beze změny. Terento spravuje pouze mapy, které nainstalovalo a lokálně zaznamenalo."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Odkud mapy pocházejí?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Tato beta používá Freizeitkarte jako jediný zdroj map. Mapy se stahují od původního poskytovatele do Macu a zařízení."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Odesílá Terento data o zařízení?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Sdílení údajů o kompatibilitě je volitelné. Po zapnutí se sdílejí pouze minimalizované důkazy instalace; bez Garmin Unit ID, sériových čísel a místních cest."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Proč je vyžadován Apple Silicon?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Aktuální nativní beta pro macOS je vytvořena pro Macy s Apple Silicon a macOS 13 nebo novějším."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Mohu zálohovat nebo odstranit nainstalované mapy?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "V aplikaci můžete zálohovat nebo odstranit mapy spravované Terentem. Ostatní mapy zůstávají jen pro čtení."
+                }
+              }
+            ]
+          }
+        ]
+      }
     </script>
 </head>
   <body>

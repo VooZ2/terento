@@ -43,7 +43,109 @@
     <script defer src="/language.js?v=20260824-2"></script>
     <script defer src="/privacy-consent.js?v=20260826-2"></script>
     <script type="application/ld+json">
-      {"@context":"https://schema.org","@type":"WebSite","name":"Terento","url":"https://terento.app/pl/","inLanguage":"pl","description":"Terento to bezpłatna, otwartoźródłowa beta macOS do instalowania map Freizeitkarte na wybranych zegarkach Garmin. Wymaga Maca z Apple Silicon; Maki z Intelem nie są obsługiwane."}
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://terento.app/#organization",
+            "name": "Terento",
+            "url": "https://terento.app/",
+            "logo": "https://terento.app/assets/logo-sky.svg",
+            "sameAs": [
+              "https://github.com/VooZ2/terento"
+            ]
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://terento.app/#software",
+            "name": "Terento",
+            "url": "https://terento.app/pl/",
+            "applicationCategory": "UtilitiesApplication",
+            "operatingSystem": "macOS 13 lub nowszy na Apple Silicon",
+            "softwareVersion": "1.0.0-beta.7",
+            "softwareRequirements": "Mac z Apple Silicon. Maki z Intelem nie są obsługiwane.",
+            "downloadUrl": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.7/Terento-1.0.0-beta.7-macOS-arm64.dmg",
+            "releaseNotes": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.7",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "EUR"
+            },
+            "inLanguage": "pl",
+            "publisher": {
+              "@id": "https://terento.app/#organization"
+            }
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://terento.app/pl/#website",
+            "name": "Terento",
+            "url": "https://terento.app/pl/",
+            "inLanguage": "pl",
+            "description": "Terento to bezpłatna, otwartoźródłowa beta macOS do instalowania map Freizeitkarte na wybranych zegarkach Garmin. Wymaga Maca z Apple Silicon; Maki z Intelem nie są obsługiwane.",
+            "publisher": {
+              "@id": "https://terento.app/#organization"
+            }
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://terento.app/pl/#faq",
+            "url": "https://terento.app/pl/#faq",
+            "inLanguage": "pl",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Jakie zegarki Garmin działają z Terento?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Terento jest przeznaczone dla zegarków Garmin obsługujących mapy. Publiczna kompatybilność jest potwierdzana dla konkretnego modelu i wariantu na podstawie rzeczywistych rezultatów instalacji udostępnionych przez społeczność. Aktualne dowody znajdziesz na stronie kompatybilności."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Czy Terento jest bezpieczne dla istniejących map Garmin?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Tak. Istniejące mapy Garmin pozostają niezmienione. Terento zarządza tylko mapami, które zainstalowało i zapisało lokalnie."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Skąd pochodzą mapy?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Ta beta korzysta wyłącznie z Freizeitkarte. Mapy są pobierane od pierwotnego dostawcy na Maca i urządzenie."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Czy Terento wysyła dane o urządzeniu?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Udostępnianie danych o kompatybilności jest opcjonalne. Po włączeniu wysyłane są tylko zminimalizowane dowody instalacji; bez identyfikatorów Garmin, numerów seryjnych i lokalnych ścieżek."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Dlaczego wymagany jest Apple Silicon?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Obecna natywna beta macOS jest zbudowana dla Maców z Apple Silicon i macOS 13 lub nowszym."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Czy mogę wykonać kopię lub usunąć zainstalowane mapy?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "W aplikacji możesz wykonać kopię lub usunąć mapy zarządzane przez Terento. Pozostałe mapy pozostają tylko do odczytu."
+                }
+              }
+            ]
+          }
+        ]
+      }
     </script>
 </head>
   <body>

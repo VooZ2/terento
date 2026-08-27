@@ -45,10 +45,106 @@
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "WebSite",
-        "name": "Terento",
-        "url": "https://terento.app/",
-        "description": "A native macOS app for installing and managing Freizeitkarte maps on Garmin smartwatches. Apple Silicon Mac required."
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://terento.app/#organization",
+            "name": "Terento",
+            "url": "https://terento.app/",
+            "logo": "https://terento.app/assets/logo-sky.svg",
+            "sameAs": [
+              "https://github.com/VooZ2/terento"
+            ]
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://terento.app/#software",
+            "name": "Terento",
+            "url": "https://terento.app/",
+            "applicationCategory": "UtilitiesApplication",
+            "operatingSystem": "macOS 13 or later on Apple Silicon",
+            "softwareVersion": "1.0.0-beta.7",
+            "softwareRequirements": "Apple Silicon Mac required.",
+            "downloadUrl": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.7/Terento-1.0.0-beta.7-macOS-arm64.dmg",
+            "releaseNotes": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.7",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "EUR"
+            },
+            "inLanguage": "en",
+            "publisher": {
+              "@id": "https://terento.app/#organization"
+            }
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://terento.app/#website",
+            "name": "Terento",
+            "url": "https://terento.app/",
+            "inLanguage": "en",
+            "description": "A native macOS app for installing and managing Freizeitkarte maps on Garmin smartwatches. Apple Silicon Mac required.",
+            "publisher": {
+              "@id": "https://terento.app/#organization"
+            }
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://terento.app/#faq",
+            "url": "https://terento.app/#faq",
+            "inLanguage": "en",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Which Garmin watches work with Terento?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Terento is designed for Garmin smartwatches with map support. Public compatibility is confirmed by exact model and variant using real installation results shared by the community. See the Compatibility page for the current evidence."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is Terento safe for existing Garmin maps?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. Existing Garmin maps are left unchanged. Terento manages only maps it has installed and recorded locally."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Where do the maps come from?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "This beta uses Freizeitkarte as its only map source. Maps are downloaded from the original provider to your Mac and device."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Does Terento upload device data?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Compatibility sharing is optional. When enabled, only privacy-minimised installation evidence is shared; Garmin unit IDs, serial numbers and local paths are not."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Why is Apple Silicon required?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "The current native macOS beta is built for Apple Silicon Macs running macOS 13 or later."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can I back up or remove installed maps?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "You can back up or remove Terento-managed maps from the app. Other maps remain read-only."
+                }
+              }
+            ]
+          }
+        ]
       }
     </script>
 </head>

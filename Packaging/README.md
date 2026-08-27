@@ -110,6 +110,9 @@ Before distributing a public build:
 - update `site/updates/macos-arm64.json` with the matching version, build,
   minimum macOS, channel, and canonical DMG `downloadURL`;
 - provide a concise plain-text `summary` and the canonical `releaseNotesURL`;
+- regenerate the public JSON-LD from the release manifest and visible FAQ
+  content with `python3 scripts/normalize-structured-data.py --write`, then
+  run it again with `--check` before publishing;
 - publish and notarize the DMG using this existing process;
 - validate the manifest after publication and confirm its download and notes
   URLs remain official Terento destinations.
@@ -118,3 +121,11 @@ The app performs only a background metadata check and a user-confirmed
 `NSWorkspace` hand-off. It does not download, mount, or replace the app in the
 background. Do not add Sparkle, in-place replacement, rollback, forced update,
 or periodic polling as part of this release flow.
+
+Public structured data keeps `https://terento.app/#software` and
+`https://terento.app/#organization` stable across locales. Home pages render
+one graph containing the publisher, application, website, and the localized
+visible FAQ; Download pages render only the application and reference the
+publisher. The renderer reads release version, download, and notes URLs from
+`site/updates/macos-arm64.json` and derives FAQ JSON-LD from each page's
+visible `#faq` section.
