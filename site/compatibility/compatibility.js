@@ -42,7 +42,16 @@
     statusList: document.querySelector("#compatibility-status-list"),
   };
 
-  const { normalize, canonicalFamilyKey, familyOptions, filterByFamily, exactVariantLabel } = data;
+  const {
+    normalize,
+    canonicalFamilyKey,
+    familyOptions,
+    filterByFamily,
+    exactVariantLabel,
+    publicModelName,
+    successfulInstallLabel,
+    resultCountLabel,
+  } = data;
 
   const statusLabel = (status) => ({
     VERIFIED: "Verified",
@@ -56,7 +65,7 @@
     TESTED: "1–2 successful installations have been shared by Terento users.",
     SUPPORTED: "3–4 successful installations have been shared by Terento users.",
     VERIFIED: "5 or more successful installations have been shared by Terento users.",
-  }[status] || "Compatibility evidence is not available yet.");
+  }[status] || "Compatibility details are not available yet.");
 
   function createStatusBadge(status, ariaLabel = statusLabel(status)) {
     const statusClass = String(status).toLocaleLowerCase();
@@ -110,28 +119,6 @@
     };
   }
 
-  function parseModelIdentity(value) {
-    const normalized = normalize(value).replace(/^garmin\s+/, "");
-    const sizeMatch = normalized.match(/\b(\d{2})\s*mm\b/);
-    const displayMatch = normalized.match(/\b(amoled|solar|microled)\b/);
-    const base = normalized
-      .replace(/\b\d{2}\s*mm\b/g, " ")
-      .replace(/\b(?:amoled|solar|microled)\b/g, " ")
-      .replace(/[·–—-]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-    return {
-      base,
-      size: sizeMatch ? Number(sizeMatch[1]) : null,
-      display: displayMatch ? displayMatch[1] : "",
-    };
-  }
-
-  function metricText(row) {
-    if (row.successful < 1) return "No successful installs yet";
-    return `${row.successful} successful install${row.successful === 1 ? "" : "s"}`;
-  }
-
   async function transparentImageData(url) {
     if (transparentImageCache.has(url)) return transparentImageCache.get(url);
     const response = await fetch(url, { mode: "cors" });
@@ -183,9 +170,9 @@
     const variantLabel = row.variants.length > 3
       ? `${row.variants.length} variants`
       : (row.variants.join(" · ") || "Smartwatch");
-    const lastTested = formatDate(row.lastSuccess);
-    const lastTestedMarkup = lastTested
-      ? `<p class="watch-card-meta">Last tested ${escapeHtml(lastTested)}</p>`
+    const latestInstallation = formatDate(row.lastSuccess);
+    const latestInstallationMarkup = latestInstallation
+      ? `<p class="watch-card-meta">Latest installation ${escapeHtml(latestInstallation)}</p>`
       : "";
     const imageUrl = row.imageUrl || FALLBACK_IMAGE_URL;
     const imageMarkup = `<img data-remote-src="${escapeHtml(imageUrl)}" alt="${escapeHtml(row.model)}" loading="lazy">`;
@@ -196,15 +183,17 @@
         </div>
         <div class="watch-card-body">
           <div class="watch-card-heading">
-            <div>
+            <div class="watch-card-title">
               <p class="watch-family">${escapeHtml(row.familyName || "Garmin")}</p>
-              <h3>${escapeHtml(row.model)}</h3>
+              <div class="watch-card-title-row">
+                <h3>${escapeHtml(publicModelName(row.model))}</h3>
+                ${createStatusBadge(row.status, `${statusLabel(row.status)}: ${statusDescription(row.status)}`)}
+              </div>
               <p class="watch-variant">${escapeHtml(variantLabel)}</p>
             </div>
-            ${createStatusBadge(row.status, `${statusLabel(row.status)}: ${statusDescription(row.status)}`)}
           </div>
-          <p class="watch-install-count">${escapeHtml(metricText(row))}</p>
-          ${lastTestedMarkup}
+          <p class="watch-install-count">${escapeHtml(successfulInstallLabel(row.successful))}</p>
+          ${latestInstallationMarkup}
         </div>
       </article>`;
   }
@@ -225,9 +214,8 @@
     elements.grid.innerHTML = filtered.map(createCard).join("");
     hydrateImages();
     elements.empty.hidden = filtered.length > 0;
-    elements.results.textContent = filtered.length === state.rows.length
-      ? `${filtered.length} ${filtered.length === 1 ? "model" : "models"}`
-      : `${filtered.length} of ${state.rows.length} models`;
+    elements.results.textContent = resultCountLabel(filtered.length, state.rows.length);
+    elements.results.hidden = filtered.length === state.rows.length;
     elements.grid.setAttribute("aria-busy", "false");
   }
 
@@ -242,7 +230,7 @@
   function updateSummary() {
     const modelCount = state.rows.length;
     elements.summaryModels.textContent = modelCount.toLocaleString("en");
-    elements.summaryModelLabel.textContent = modelCount === 1 ? "model with evidence" : "models with evidence";
+    elements.summaryModelLabel.textContent = modelCount === 1 ? "model tested" : "models tested";
     elements.summarySuccesses.textContent = state.rows.reduce((sum, row) => sum + row.successful, 0).toLocaleString("en");
     const latest = state.rows
       .map((row) => row.lastSuccess)
@@ -301,8 +289,7 @@
   elements.sort.addEventListener("change", (event) => { state.sort = event.target.value; render(); });
   renderStatusExplanations();
   load();
-  // Public evidence is deliberately cached at the API edge, so a quiet
-  // refresh uses a cache-busting query and keeps model counts/statuses current
-  // while the page remains open. Existing filters stay in the local state.
+  // Refresh uses a cache-busting query so model counts and statuses stay
+  // current while the page remains open. Existing filters stay in local state.
   window.setInterval(() => load({ quiet: true }), 60_000);
 })();

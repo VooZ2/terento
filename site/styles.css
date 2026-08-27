@@ -1775,15 +1775,15 @@ details p {
 .compatibility-how {
   width: fit-content;
   max-width: 760px;
-  margin: 0 0 18px;
+  margin: 0 0 16px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--surface-muted);
 }
 
 .compatibility-how summary {
   min-height: 0;
-  padding: 10px 14px;
+  padding: 9px 12px;
   color: var(--graphite);
   cursor: pointer;
   font-size: 14px;
@@ -1812,25 +1812,29 @@ details p {
 }
 
 .compatibility-how-body {
-  padding: 8px 14px 14px;
+  padding: 7px 12px 12px;
   color: var(--secondary);
   font-size: 13px;
 }
 
 .compatibility-how-body p {
-  margin: 0;
+  margin: 0 0 8px;
+}
+
+.compatibility-how-body p:last-of-type {
+  margin-bottom: 0;
 }
 
 .compatibility-status-list {
-  margin-top: 22px;
+  margin-top: 18px;
 }
 
 .compatibility-status-row {
   display: grid;
   grid-template-columns: 92px minmax(0, 1fr);
   align-items: center;
-  gap: 18px;
-  padding: 12px 0;
+  gap: 16px;
+  padding: 10px 0;
   border-top: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
 }
 
@@ -1852,10 +1856,10 @@ details p {
   display: grid;
   grid-template-columns: minmax(230px, 1.6fr) repeat(3, minmax(150px, 1fr));
   gap: 8px;
-  margin: 0 0 16px;
-  padding: 6px;
+  margin: 0 0 14px;
+  padding: 5px;
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 14px;
   background: var(--surface-muted);
 }
 
@@ -1868,8 +1872,8 @@ details p {
 .compatibility-filters input,
 .compatibility-filters select {
   width: 100%;
-  min-height: 46px;
-  padding: 0 14px;
+  min-height: 42px;
+  padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface-muted);
@@ -1915,13 +1919,15 @@ details p {
 .watch-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
+  gap: 16px;
 }
 
 .watch-card {
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: 18px;
   background: var(--surface);
   box-shadow: 0 8px 22px color-mix(in srgb, var(--graphite) 5%, transparent);
 }
@@ -1929,15 +1935,15 @@ details p {
 .watch-card-image {
   display: grid;
   place-items: center;
-  aspect-ratio: 1.58;
+  aspect-ratio: 2;
   overflow: hidden;
-  padding: 16px;
+  padding: 10px;
   background: var(--surface-muted);
 }
 
 .watch-card-image img {
-  width: 72%;
-  height: 72%;
+  width: 160px;
+  height: 160px;
   padding: 4px;
   object-fit: contain;
   opacity: 0;
@@ -1961,14 +1967,28 @@ details p {
 }
 
 .watch-card-body {
-  padding: 18px 20px 20px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 15px 17px 17px;
 }
 
 .watch-card-heading {
   display: flex;
   align-items: flex-start;
+  gap: 10px;
+}
+
+.watch-card-title {
+  min-width: 0;
+  flex: 1;
+}
+
+.watch-card-title-row {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
 }
 
 .watch-family {
@@ -1981,17 +2001,19 @@ details p {
 }
 
 .watch-card h3 {
+  min-width: 0;
   margin: 0;
   font-family: var(--font-brand);
-  font-size: 24px;
+  font-size: 23px;
   font-weight: 600;
   letter-spacing: -.04em;
   line-height: 1.05;
+  overflow-wrap: anywhere;
 }
 
 .watch-variant {
   min-height: 24px;
-  margin: 6px 0 0;
+  margin: 5px 0 0;
   color: var(--secondary);
   font-size: 14px;
 }
@@ -2001,9 +2023,9 @@ details p {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  min-height: 28px;
-  min-width: 74px;
-  padding: 6px 10px;
+  min-height: 26px;
+  min-width: 72px;
+  padding: 5px 9px;
   border: 1px solid transparent;
   border-radius: 999px;
   font-size: 11px;
@@ -2038,7 +2060,7 @@ details p {
 }
 
 .watch-install-count {
-  margin: 18px 0 6px;
+  margin: auto 0 5px;
   color: var(--graphite);
   font-size: 15px;
   font-weight: 650;
@@ -2064,9 +2086,14 @@ details p {
   border-left: 3px solid var(--stone);
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1100px) {
   .watch-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .watch-card-image {
+    height: 220px;
+    aspect-ratio: auto;
   }
 
   .compatibility-filters {
@@ -2115,7 +2142,7 @@ details p {
 
   .compatibility-filters input,
   .compatibility-filters select {
-    min-height: 48px;
+    min-height: 44px;
   }
 
   .compatibility-results-count {
@@ -2131,13 +2158,14 @@ details p {
   }
 
   .watch-card-image {
-    aspect-ratio: 1.55;
-    padding: 10px;
+    height: auto;
+    aspect-ratio: 1.95;
+    padding: 8px;
   }
 
   .watch-card-image img {
-    width: 64%;
-    height: 64%;
+    width: 130px;
+    height: 130px;
   }
 
   .watch-card-body {
@@ -2145,8 +2173,7 @@ details p {
   }
 
   .watch-card-heading {
-    display: grid;
-    gap: 7px;
+    gap: 8px;
   }
 
   .watch-card h3 {
@@ -2160,7 +2187,8 @@ details p {
   }
 
   .status-badge {
-    justify-self: start;
+    min-height: 25px;
+    padding: 5px 8px;
   }
 
   .watch-install-count {
@@ -2185,59 +2213,9 @@ details p {
   }
 }
 
-@media (min-width: 375px) and (max-width: 640px) {
-  .watch-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-
-  .watch-card {
-    border-radius: 16px;
-  }
-
-  .watch-card-image {
-    aspect-ratio: 1.38;
-    padding: 8px;
-  }
-
+@media (max-width: 340px) {
   .watch-card-image img {
-    width: 74%;
-    height: 74%;
-  }
-
-  .watch-card-body {
-    padding: 12px 12px 13px;
-  }
-
-  .watch-family {
-    margin-bottom: 4px;
-    font-size: 10px;
-  }
-
-  .watch-card h3 {
-    font-size: 19px;
-    line-height: 1.08;
-  }
-
-  .watch-variant {
-    margin-top: 4px;
-    font-size: 11px;
-    line-height: 1.2;
-  }
-
-  .status-badge {
-    padding: 5px 7px;
-    font-size: 9px;
-  }
-
-  .watch-install-count {
-    margin-top: 13px;
-    font-size: 11px;
-    line-height: 1.25;
-  }
-
-  .watch-card-meta {
-    font-size: 10px;
-    line-height: 1.25;
+    width: 120px;
+    height: 120px;
   }
 }

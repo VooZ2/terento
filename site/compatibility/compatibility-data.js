@@ -29,16 +29,56 @@
     : rows.filter((row) => canonicalFamilyKey(row.family) === canonicalFamilyKey(family));
 
   const exactVariantLabel = (row, fallbackVariants = []) => {
-    const size = Number(row.caseSizeMm ?? row.case_size_mm);
-    const display = String(row.displayType ?? row.display_type ?? "").trim();
+    const variant = String(row.variant || "").trim();
+    const model = String(row.model || "").trim();
+    const explicitSize = Number(row.caseSizeMm ?? row.case_size_mm);
+    const sizeMatch = variant.match(/\b(\d{2})\s*mm\b/i) || model.match(/\b(\d{2})\s*mm\b/i);
+    const size = Number.isInteger(explicitSize) && explicitSize > 0
+      ? explicitSize
+      : sizeMatch ? Number(sizeMatch[1]) : null;
+    const display = String(row.displayType ?? row.display_type ?? "").trim()
+      || (variant.match(/\b(amoled|solar|microled)\b/i) || model.match(/\b(amoled|solar|microled)\b/i) || [])[1]
+      || "";
     const exactParts = [];
     if (Number.isInteger(size) && size > 0) exactParts.push(`${size} mm`);
     if (display) exactParts.push(display);
     if (exactParts.length) return exactParts.join(", ");
-    const variant = String(row.variant || "").trim();
     if (variant) return variant;
     return fallbackVariants.map((value) => String(value).trim()).filter(Boolean).join(" · ");
   };
 
-  return Object.freeze({ normalize, canonicalFamilyKey, familyOptions, filterByFamily, exactVariantLabel });
+  const publicModelName = (model) => {
+    const original = String(model || "").trim();
+    const withoutVariant = original
+      .replace(/\b\d{2}\s*mm\b/gi, "")
+      .replace(/\b(?:amoled|solar|microled)\b/gi, "")
+      .replace(/\s*[·–—]\s*/g, " ")
+      .replace(/,\s*$/, "")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+    return withoutVariant.replace(/^Garmin\s+/i, "") || original;
+  };
+
+  const successfulInstallLabel = (count) => {
+    const total = Number(count);
+    if (!Number.isFinite(total) || total < 1) return "No successful installs yet";
+    return `${total} successful install${total === 1 ? "" : "s"}`;
+  };
+
+  const resultCountLabel = (visible, total) => {
+    if (visible === total) return "";
+    const modelLabel = total === 1 ? "model" : "models";
+    return `${visible} of ${total} Garmin ${modelLabel}`;
+  };
+
+  return Object.freeze({
+    normalize,
+    canonicalFamilyKey,
+    familyOptions,
+    filterByFamily,
+    exactVariantLabel,
+    publicModelName,
+    successfulInstallLabel,
+    resultCountLabel,
+  });
 });
