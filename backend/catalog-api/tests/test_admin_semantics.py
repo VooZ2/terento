@@ -75,6 +75,23 @@ class RecordingDatabase(Database):
         yield Connection()
 
 
+class ReviewSummaryDatabase(Database):
+    def __init__(self):
+        super().__init__("unused")
+
+    @contextmanager
+    def connection(self):
+        class Connection:
+            def execute(self, query, parameters=None):
+                return RecordingResult(row={
+                    "installation_issues": 1,
+                    "identity_pending": 2,
+                    "ready_to_publish": 3,
+                })
+
+        yield Connection()
+
+
 class AdminSemanticsTests(unittest.TestCase):
     def test_variant_formatting_normalizes_sizes_without_dropping_functional_labels(self):
         self.assertEqual(
@@ -190,6 +207,45 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("REFERENCES device_model(id) ON DELETE RESTRICT", migration)
         self.assertNotIn("DROP TABLE", migration)
         self.assertNotIn("DROP VIEW", migration)
+
+    def test_needs_review_summary_counts_actionable_tasks(self):
+        summary = ReviewSummaryDatabase().admin_review_summary()
+        self.assertEqual(summary, {
+            "installationIssues": 1,
+            "identityPending": 2,
+            "readyToPublish": 3,
+            "total": 6,
+        })
+        source = inspect.getsource(Database.admin_review_summary)
+        self.assertIn("diagnostic_status = 'ACTIVE'", source)
+        self.assertIn("GROUP BY COALESCE(operation_id::text", source)
+        self.assertIn("canonical_device_model_id IS NOT NULL", source)
+        self.assertIn("review_status = 'PENDING'", source)
+        self.assertIn("review_status = 'APPROVED' AND public_statistics_enabled = false", source)
+
+    def test_shared_navigation_shows_actionable_review_breakdown(self):
+        body = devices_page([], None, {
+            "username": "operator",
+            "admin_review_summary": {
+                "installationIssues": 1,
+                "identityPending": 2,
+                "readyToPublish": 3,
+                "total": 6,
+            },
+        }, "csrf").decode()
+        self.assertIn('aria-label="Needs review: 6"', body)
+        self.assertIn('class="needs-review-count">6</span>', body)
+        self.assertIn("Installation issues</span><strong>1", body)
+        self.assertIn("Identity pending</span><strong>2", body)
+        self.assertIn("Ready to publish</span><strong>3", body)
+        self.assertIn("needs-review-popover", body)
+
+        zero_body = devices_page([], None, {
+            "username": "operator",
+            "admin_review_summary": {"total": 0},
+        }, "csrf").decode()
+        zero_header = zero_body[zero_body.index("<header"):zero_body.index("</header>")]
+        self.assertNotIn("needs-review-menu", zero_header)
 
     def test_resolve_and_reopen_persist_lifecycle_metadata_without_deleting_evidence(self):
         database = RecordingDatabase(

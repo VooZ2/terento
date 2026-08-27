@@ -49,6 +49,14 @@ class FakeEvidenceDatabase:
         self.authorization_audit = []
         self.public_review_actions = []
 
+    def admin_review_summary(self):
+        return {
+            "installationIssues": 1,
+            "identityPending": 1,
+            "readyToPublish": 1,
+            "total": 3,
+        }
+
     def insert_compatibility_event(self, value):
         if value["id"] in self.events:
             return False
@@ -553,6 +561,9 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         devices, devices_body = self.request("GET", "/admin/devices", headers={"Cookie": cookie_header})
         self.assertEqual(devices.status, 200)
         self.assertIn(b">Devices<", devices_body)
+        self.assertIn(b"Needs review", devices_body)
+        self.assertIn(b'aria-label="Needs review: 3"', devices_body)
+        self.assertIn(b"Ready to publish", devices_body)
         self.assertIn(b'data-device-sort="maps"', devices_body)
         self.assertIn(
             "img-src https://terento.app https://api.terento.app https://res.garmin.com data:",

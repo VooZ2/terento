@@ -323,6 +323,47 @@ class Database:
         with self.connection() as connection:
             return list(connection.execute(query, (limit,)).fetchall())
 
+    def admin_review_summary(self) -> dict[str, int]:
+        """Return actionable operator-review counts without exposing events."""
+        query = """
+            WITH operation_reviews AS (
+                SELECT
+                    COALESCE(operation_id::text, 'legacy:' || event_id::text) AS operation_key,
+                    bool_or(phase_outcome = 'FAILED') AS has_failure,
+                    bool_or(
+                        canonical_device_model_id IS NULL
+                        AND COALESCE(identity_resolution_state, 'UNRESOLVED')
+                            NOT IN ('RESOLVED', 'NOT_IDENTIFIABLE')
+                    ) AS identity_pending
+                FROM compatibility_evidence_event
+                WHERE diagnostic_status = 'ACTIVE'
+                GROUP BY COALESCE(operation_id::text, 'legacy:' || event_id::text)
+            ), publication_reviews AS (
+                SELECT count(*) AS ready_to_publish
+                FROM compatibility_model_statistics
+                WHERE canonical_device_model_id IS NOT NULL
+                  AND calculated_status IN ('TESTING', 'TESTED', 'SUPPORTED', 'VERIFIED')
+                  AND (
+                      review_status = 'PENDING'
+                      OR (review_status = 'APPROVED' AND public_statistics_enabled = false)
+                  )
+            )
+            SELECT
+                count(*) FILTER (WHERE has_failure) AS installation_issues,
+                count(*) FILTER (WHERE identity_pending) AS identity_pending,
+                (SELECT ready_to_publish FROM publication_reviews) AS ready_to_publish
+            FROM operation_reviews
+        """
+        with self.connection() as connection:
+            row = connection.execute(query).fetchone()
+        summary = {
+            "installationIssues": int((row or {}).get("installation_issues") or 0),
+            "identityPending": int((row or {}).get("identity_pending") or 0),
+            "readyToPublish": int((row or {}).get("ready_to_publish") or 0),
+        }
+        summary["total"] = sum(summary.values())
+        return summary
+
     def admin_user_count(self) -> int:
         with self.connection() as connection:
             row = connection.execute("SELECT count(*) AS count FROM admin_user").fetchone()

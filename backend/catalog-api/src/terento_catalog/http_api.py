@@ -193,6 +193,9 @@ class CatalogService:
             note=note,
         )
 
+    def admin_review_summary(self) -> dict[str, int]:
+        return self.database.admin_review_summary()
+
     def admin_is_configured(self) -> bool:
         return self.database.admin_user_count() > 0
 
@@ -425,6 +428,16 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 service.logout_admin(session_token)
                 self._redirect("/admin/login", send_body=send_body, clear_cookie=True)
                 return
+            try:
+                session = {**session, "admin_review_summary": service.admin_review_summary()}
+            except Exception:
+                LOGGER.exception("admin review summary failed")
+                session = {**session, "admin_review_summary": {
+                    "installationIssues": 0,
+                    "identityPending": 0,
+                    "readyToPublish": 0,
+                    "total": 0,
+                }}
             if request_path in {"/admin/diagnostics", "/admin/diagnostics/"}:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
                 identity = query.get("identity", [""])[0].strip()

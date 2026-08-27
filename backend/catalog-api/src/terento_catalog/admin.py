@@ -524,9 +524,24 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     evidence_class = " class='active'" if active == "evidence" else ""
     campaign_class = " class='active'" if active == "campaigns" else ""
     devices_class = " class='active'" if active == "devices" else ""
+    review = user.get("admin_review_summary") or {}
+    installation_issues = int(review.get("installationIssues") or 0)
+    identity_pending = int(review.get("identityPending") or 0)
+    ready_to_publish = int(review.get("readyToPublish") or 0)
+    review_total = int(review.get("total") or (
+        installation_issues + identity_pending + ready_to_publish
+    ))
+    review_menu = f"""<details class="needs-review-menu">
+        <summary aria-label="Needs review: {review_total}">Needs review <span class="needs-review-count">{review_total}</span></summary>
+        <div class="needs-review-popover" role="group" aria-label="Review queue">
+          <a href="/admin"><span>Installation issues</span><strong>{installation_issues}</strong></a>
+          <a href="/admin"><span>Identity pending</span><strong>{identity_pending}</strong></a>
+          <a href="/admin/devices"><span>Ready to publish</span><strong>{ready_to_publish}</strong></a>
+        </div>
+      </details>""" if review_total else ""
     return f"""<header class="admin-topbar"><div class="admin-topbar-inner">
       <div class="admin-header-zone admin-header-left">{_admin_brand()}</div>
-      <nav class="admin-section-nav" aria-label="Admin sections"><a{evidence_class} href="/admin">Installations</a><a{devices_class} href="/admin/devices">Devices</a><a{campaign_class} href="/admin/campaign-links">Campaign links</a></nav>
+      <nav class="admin-section-nav" aria-label="Admin sections"><a{evidence_class} href="/admin">Installations</a><a{devices_class} href="/admin/devices">Devices</a><a{campaign_class} href="/admin/campaign-links">Campaign links</a>{review_menu}</nav>
       <nav class="admin-nav" aria-label="Admin navigation"><label class="timezone-control"><span class="sr-only">Time zone</span><select id="admin-timezone" aria-label="Time zone" title="Time zone"><option value="browser">Automatic (browser)</option><option value="UTC">UTC</option><option value="Europe/Vilnius">Europe/Vilnius</option><option value="Europe/London">Europe/London</option><option value="Europe/Berlin">Europe/Berlin</option><option value="America/New_York">America/New_York</option><option value="America/Los_Angeles">America/Los_Angeles</option><option value="Asia/Tokyo">Asia/Tokyo</option></select></label><a class="admin-website-link" href="https://terento.app/" target="_blank" rel="noopener noreferrer" aria-label="Open Terento website in a new tab">Website <span aria-hidden="true">↗</span></a><span class="admin-user" aria-label="Signed in as {username}">{username}</span>
       <form method="post" action="/admin/logout"><input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}"><button class="link-button" type="submit">Sign out</button></form></nav>
     </div></header>"""
@@ -2152,6 +2167,14 @@ button{cursor:pointer}
 .admin-section-nav a,.admin-nav a,.link-button{display:inline-flex;align-items:center;min-height:32px;padding:6px 8px;border:1px solid transparent;border-radius:var(--admin-control-radius);background:none;text-decoration:none;color:var(--secondary);font-weight:650;transition:background-color .15s ease,border-color .15s ease,color .15s ease}
 .admin-section-nav a:hover,.admin-nav a:hover,.link-button:hover,.admin-section-nav a:active,.admin-nav a:active,.link-button:active{background:color-mix(in srgb,var(--sky) 12%,transparent);color:var(--interactive)}
 .admin-section-nav a.active{background:color-mix(in srgb,var(--sky) 13%,var(--off-white));border-color:color-mix(in srgb,var(--sky) 28%,var(--border));color:var(--interactive);box-shadow:none}
+.needs-review-menu{position:relative}
+.needs-review-menu summary{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:6px 8px;border:1px solid color-mix(in srgb,var(--stone) 45%,var(--border));border-radius:var(--admin-control-radius);background:color-mix(in srgb,var(--stone) 10%,var(--off-white));color:var(--graphite);cursor:pointer;list-style:none;font-weight:700}
+.needs-review-menu summary::-webkit-details-marker{display:none}
+.needs-review-menu summary:focus-visible{outline:3px solid var(--admin-focus-ring);outline-offset:2px}
+.needs-review-count{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--stone);color:white;font-size:10px;font-weight:800}
+.needs-review-popover{position:absolute;z-index:20;top:calc(100% + 7px);right:0;width:230px;padding:7px;border:1px solid var(--border);border-radius:10px;background:var(--surface);box-shadow:0 14px 34px rgba(34,42,43,.16)}
+.needs-review-popover a{display:flex!important;justify-content:space-between;gap:12px;width:100%;padding:8px 9px!important;color:var(--graphite)!important}
+.needs-review-popover strong{font-variant-numeric:tabular-nums}
 .admin-nav{display:flex;align-items:center;justify-self:end;min-width:0;gap:8px;color:var(--secondary);font-size:13px;white-space:nowrap}
 .admin-nav form{display:flex;align-items:center;margin:0}
 .admin-user{padding:6px 0;color:var(--graphite);font-weight:650;white-space:nowrap}
@@ -2344,6 +2367,7 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 @media(max-width:800px){.admin-topbar-inner,.dashboard{width:min(calc(100% - 32px),var(--max-width))}.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}.heading-row{align-items:flex-start;flex-direction:column;gap:12px}.diagnostic-model-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-bar{align-items:stretch}.filter-bar label,.filter-bar select,.filter-bar input{flex:1 1 170px}.filter-bar .results-count{width:100%;margin:2px 4px 0}.public-status{align-items:flex-start;flex-direction:column}.public-status-value{width:100%;justify-content:space-between;flex-wrap:wrap}.status-guide-grid{grid-template-columns:1fr}.campaign-fields{grid-template-columns:1fr}.campaign-field-wide{grid-column:auto}.attribution-preview{grid-template-columns:1fr}.sync-summary{white-space:normal!important}.device-detail-grid{grid-template-columns:1fr}.device-support-review form{grid-template-columns:1fr}.diagnostic-operation-heading{flex-direction:column}.diagnostic-actions{justify-content:flex-start}.diagnostic-detail-summary{grid-template-columns:1fr}.diagnostic-actions-grid{grid-template-columns:1fr}.github-review{grid-column:auto}}
 @media(max-width:980px){.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}}
 @media(max-width:560px){.admin-topbar-inner{align-items:flex-start;flex-direction:column;padding:14px 0}.admin-header-left,.admin-section-nav,.admin-nav{width:100%}.admin-section-nav{order:0;overflow:auto;justify-content:flex-start}.admin-section-nav a{white-space:nowrap}.admin-nav{justify-content:space-between;gap:10px;flex-wrap:wrap}.timezone-control{width:100%;justify-content:space-between}.timezone-control select{width:auto;flex:1}.dashboard{padding-top:28px}.diagnostic-model-metrics{gap:8px}.diagnostic-model-metrics article{padding:12px}.auth-card{width:calc(100% - 32px);padding:24px}.section-heading{align-items:flex-start;flex-direction:column;gap:4px}.campaign-card{padding:16px}.campaign-preset-row{align-items:stretch;flex-direction:column;gap:8px}.campaign-preset-row .campaign-label,.campaign-preset-row select{flex:none}.campaign-preset-row select{width:100%;height:var(--admin-control-height);margin-left:0}.generated-url-row{grid-template-columns:1fr}.copy-button{width:100%}.copy-status{min-height:18px}.device-dialog-inner,.diagnostic-detail-inner{padding:18px}.device-detail-grid dl div,.device-detail-secondary dl div{grid-template-columns:1fr;gap:2px}.device-detail-grid dd,.device-detail-secondary dd{text-align:left}.diagnostic-technical-details dl{grid-template-columns:1fr}.diagnostic-summary-action{float:none;display:block;margin-top:6px}.github-link-form{grid-template-columns:1fr}.github-link-form button{width:100%}}
+@media(max-width:560px){.admin-section-nav{overflow:visible;flex-wrap:wrap}.needs-review-popover{left:0;right:auto}}
 @media(max-width:800px){.admin-summary-strip{align-items:flex-start;flex-direction:column;gap:6px}.admin-summary-context,.device-summary-sync{text-align:left;white-space:normal}.device-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.device-detail-grid{grid-template-columns:1fr}.device-catalog-details dl div{grid-template-columns:1fr;gap:2px}.device-catalog-details dd{text-align:left}.device-detail-grid dd{text-align:left}.device-filter-bar .results-count{margin-left:0}.device-dialog-inner{padding:18px}}
 @media(max-width:1100px){.device-table-wrap{overflow-x:auto;overflow-y:visible}.device-table-wrap table{min-width:1050px}.device-table-wrap thead th{top:0}}
