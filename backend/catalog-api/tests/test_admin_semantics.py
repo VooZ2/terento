@@ -597,13 +597,17 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Open", body)
         self.assertIn("Identity pending", body)
         self.assertIn("Resolved", body)
-        self.assertIn("Review", body)
+        self.assertIn(">Details</button>", body)
+        self.assertIn("aria-label='View installation details", body)
+        self.assertNotIn("aria-label='Review diagnostic", body)
         self.assertIn("Resolve diagnostic", body)
         self.assertIn("Reopen diagnostic", body)
         self.assertIn("HISTORICAL_SUPERSEDED", body)
         self.assertIn("Search model, family, variant, case size, or canonical ID", body)
         self.assertIn("Canonical ID:", body)
         self.assertIn("Create GitHub issue", body)
+        self.assertIn("Link or create issue", body)
+        self.assertEqual(body.count("github-review-collapsed"), 1)
         self.assertIn("Change linked issue", body)
         self.assertIn("Remove link", body)
         self.assertIn("#32 · Open", body)
@@ -620,6 +624,14 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("selected === 'failed'", body)
         self.assertIn("selected === 'open' && row.dataset.reviewOpen === 'true'", body)
         self.assertIn("selected === 'identity-pending' && row.dataset.identityPending === 'true'", body)
+
+    def test_installations_helper_copy_is_concise_and_keeps_identity_out_of_errors(self):
+        body = dashboard_page([], {"username": "operator"}, "csrf").decode()
+        self.assertIn(
+            "Errors include unresolved installation problems. Resolved records remain available in model history.",
+            body,
+        )
+        self.assertNotIn("Errors are unresolved diagnostic operations", body)
 
     def test_issue_link_update_is_additive_and_does_not_change_evidence_outcome(self):
         source = inspect.getsource(Database.update_diagnostic_issue)

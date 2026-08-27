@@ -612,7 +612,7 @@ def dashboard_page(
             <p class="results-count" id="results-count" aria-live="polite">{len(rows)} {"model" if len(rows) == 1 else "models"}</p>
           </form>
           <div class="table-wrap evidence-table-wrap"><table class="admin-table"><caption class="sr-only">Installations by exact device identity</caption><thead><tr><th scope="col">Model</th><th scope="col">Variant</th><th scope="col">Attempts</th><th scope="col">Success</th><th scope="col">Errors</th><th scope="col">Status</th><th scope="col">Last success</th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
-          <p class="table-help evidence-table-note">Times follow the selected time zone. Errors are unresolved diagnostic operations. Identity pending is shown separately and does not change the evidence status. Resolved historical diagnostics remain available from the model detail.</p>
+          <p class="table-help evidence-table-note">Errors include unresolved installation problems. Resolved records remain available in model history.</p>
         </section>
       </main>
       <script>{_dashboard_script()}</script>
@@ -820,10 +820,7 @@ def _diagnostic_detail_dialog(
         <label>Review note <span class='optional-label'>Optional</span><textarea name='identity_note' rows='3'></textarea></label>
         <button type='submit'>Save identity review</button>
       </form>""" if identity_pending else ""
-    issue_form = f"""
-      <section class='diagnostic-action-form github-review' aria-labelledby='github-review-{dialog_id}'>
-        <h4 id='github-review-{dialog_id}'>GitHub issue</h4>
-        <p class='github-current'>{_github_issue_link(issue) if issue else '<span class="muted-value">No linked issue</span>'}</p>
+    issue_controls = f"""
         <div class='github-actions'><a class='secondary-button' href='{html.escape(_github_create_issue_url(identity, results), quote=True)}' target='_blank' rel='noreferrer'>Create GitHub issue</a></div>
         <form method='post' action='/admin/diagnostics/issue' class='github-link-form'>
           <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>
@@ -832,8 +829,22 @@ def _diagnostic_detail_dialog(
           <label>{'Change' if issue else 'Link'} issue <span class='optional-label'>e.g. #32</span><input name='linked_github_issue' placeholder='#32' inputmode='numeric' pattern='#?[0-9]{{1,10}}'></label>
           <button type='submit' class='secondary-button'>{'Change linked issue' if issue else 'Link issue'}</button>
         </form>
-        {f"<form method='post' action='/admin/diagnostics/issue' class='github-remove-form'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='operation_key' value='{html.escape(operation_key, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'><input type='hidden' name='linked_github_issue' value=''><button type='submit' class='secondary-button'>Remove link</button></form>" if issue else ''}
-      </section>"""
+        {f"<form method='post' action='/admin/diagnostics/issue' class='github-remove-form'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='operation_key' value='{html.escape(operation_key, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'><input type='hidden' name='linked_github_issue' value=''><button type='submit' class='secondary-button'>Remove link</button></form>" if issue else ''}"""
+    collapse_issue_form = result_label == "SUCCEEDED" and state == "history" and not issue
+    if collapse_issue_form:
+        issue_form = f"""
+          <section class='diagnostic-action-form github-review github-review-collapsed' aria-labelledby='github-review-{dialog_id}'>
+            <h4 id='github-review-{dialog_id}'>GitHub issue</h4>
+            <p class='github-current'><span class="muted-value">No linked issue</span></p>
+            <details class='github-issue-disclosure'><summary>Link or create issue</summary><div class='github-issue-controls'>{issue_controls}</div></details>
+          </section>"""
+    else:
+        issue_form = f"""
+          <section class='diagnostic-action-form github-review' aria-labelledby='github-review-{dialog_id}'>
+            <h4 id='github-review-{dialog_id}'>GitHub issue</h4>
+            <p class='github-current'>{_github_issue_link(issue) if issue else '<span class="muted-value">No linked issue</span>'}</p>
+            {issue_controls}
+          </section>"""
     review_state = ""
     if resolved:
         review_state = f"<div><dt>Review state</dt><dd>{_diagnostic_state_badge('RESOLVED')}{resolution}</dd></div>"
@@ -932,7 +943,7 @@ def diagnostics_page(
             f"<td>{html.escape(_operation_text(results, 'failure_code'))}</td>"
             f"<td>{_github_issue_link(issue)}</td>"
             f"<td>{review_badge}</td>"
-            f"<td><button type='button' class='secondary-button diagnostic-review' data-dialog-id='{dialog_id}' aria-label='Review diagnostic {index + 1}'>Review</button></td>"
+            f"<td><button type='button' class='secondary-button diagnostic-review' data-dialog-id='{dialog_id}' aria-label='View installation details {index + 1}'>Details</button></td>"
             "</tr>"
         )
         dialogs.append(_diagnostic_detail_dialog(
@@ -1146,7 +1157,7 @@ def _admin_device_payload(
             "familyName": row.get("family_name"),
             "model": row.get("model"),
             "canonicalModel": row.get("canonical_model"),
-            "variant": row.get("variant"),
+            "variant": _normalise_variant(row.get("variant")),
             "caseSizeMm": row.get("case_size_mm"),
             "displayType": row.get("display_type"),
             "partNumber": row.get("part_number"),
@@ -2178,6 +2189,7 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .error-count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;padding:2px 7px;border:1px solid color-mix(in srgb,var(--danger) 35%,var(--border));border-radius:999px;color:var(--danger);font-weight:700}
 .evidence-table-wrap table{min-width:760px}.evidence-model-row{cursor:pointer}.evidence-model-row:hover{background:color-mix(in srgb,var(--surface-muted) 52%,white)}.evidence-model-row:focus-visible{outline:3px solid color-mix(in srgb,var(--sky) 58%,white);outline-offset:-3px}.evidence-model-row td:nth-child(3),.evidence-model-row td:nth-child(4){font-variant-numeric:tabular-nums}.error-count{text-decoration:none}.identity-pending-indicator{display:inline-flex;align-items:center;margin-left:6px;padding:3px 6px;border:1px solid var(--border);border-radius:999px;color:var(--secondary);font-size:10px;font-weight:700;white-space:nowrap}.evidence-table-note{margin:10px 3px 0}.back-link{margin:0 0 20px;color:var(--interactive);font-size:13px;font-weight:700}.back-link a{text-underline-offset:3px}.diagnostic-model-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 30px}.diagnostic-model-metrics article{min-height:82px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px}.diagnostic-model-metrics span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.diagnostic-model-metrics strong{display:block;margin-top:4px;font-family:"Instrument Sans","Helvetica Neue",Arial,sans-serif;font-size:25px;line-height:1.15}.diagnostic-model-metrics .status-badge{margin-top:5px}.diagnostic-filter-bar{justify-content:flex-start}.diagnostic-list-wrap{max-height:min(70vh,720px)}.diagnostic-list-table{min-width:920px}.diagnostic-list-table th,.diagnostic-list-table td{white-space:normal;overflow-wrap:anywhere}.diagnostic-list-table td:first-child{white-space:nowrap}.diagnostic-list-table th:last-child,.diagnostic-list-table td:last-child{text-align:right}.diagnostic-list-table tbody tr:hover{background:color-mix(in srgb,var(--surface-muted) 52%,white)}.diagnostic-state{display:inline-flex;align-items:center;min-height:24px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;font-size:10px;font-weight:750;line-height:1;white-space:nowrap}.diagnostic-state-open{background:#F0E9E5;border-color:#D6BDB2;color:#7A493D}.diagnostic-state-resolved{background:#E7EEE2;border-color:#B4C6A7;color:#4B6142}.diagnostic-state-identity_pending{background:var(--surface-muted);color:var(--secondary)}.diagnostic-list-table .github-issue,.github-current .github-issue{color:var(--interactive);font-weight:700;white-space:nowrap}.diagnostic-detail-dialog{width:min(860px,calc(100% - 32px));max-height:min(900px,calc(100% - 32px));padding:0;border:0;border-radius:16px;background:var(--surface);color:var(--graphite);box-shadow:0 24px 80px rgba(34,42,43,.24)}.diagnostic-detail-dialog::backdrop{background:rgba(34,42,43,.34)}.diagnostic-detail-inner{max-height:min(900px,calc(100vh - 32px));padding:24px;overflow:auto}.diagnostic-detail-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;margin:0;border-top:1px solid var(--border)}.diagnostic-detail-summary div{display:grid;grid-template-columns:minmax(95px,.8fr) minmax(0,1.2fr);gap:12px;padding:9px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 72%,transparent)}.diagnostic-detail-summary dt{color:var(--secondary);font-size:12px}.diagnostic-detail-summary dd{margin:0;overflow-wrap:anywhere;font-size:13px;font-weight:650;text-align:right}.diagnostic-actions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:22px}.diagnostic-action-form{min-width:0;padding:14px;background:var(--surface-muted);border-radius:10px}.diagnostic-action-form h4{margin:0 0 10px;font-size:13px}.diagnostic-action-form label{display:block;margin:10px 0;color:var(--graphite);font-size:12px;font-weight:650}.diagnostic-action-form input,.diagnostic-action-form select,.diagnostic-action-form textarea{display:block;width:100%;margin-top:5px;min-height:36px;padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--graphite);font-size:12px}.diagnostic-action-form textarea{resize:vertical}.diagnostic-action-form button{margin-top:6px}.identity-selection{margin:8px 0;color:var(--secondary);font-size:11px}.identity-selection code{color:var(--graphite);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere}.github-review{grid-column:1/-1}.github-current{margin:0 0 8px;font-size:13px}.github-actions{margin:0 0 4px}.github-link-form{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:10px}.github-link-form label{margin:0}.github-link-form button{white-space:nowrap}.github-remove-form{display:inline-block;margin:8px 0 0}.diagnostic-technical-all{margin-top:16px}.diagnostic-technical-all>summary{font-size:13px}
 .diagnostic-action-form input,.diagnostic-action-form select,.diagnostic-action-form textarea{min-height:var(--admin-control-height);padding:8px var(--admin-control-padding-x);border-radius:var(--admin-control-radius)}
+.github-issue-disclosure{margin-top:8px}.github-issue-disclosure>summary{width:max-content;cursor:pointer;color:var(--interactive);font-size:12px;font-weight:750;text-underline-offset:3px}.github-issue-disclosure>summary:hover{text-decoration:underline}.github-issue-controls{margin-top:12px}
 .diagnostic-operation table{min-width:0}.diagnostic-id{font-size:11px!important;color:var(--secondary)!important}.diagnostic-id code{font-size:10px;color:var(--secondary)}.diagnostic-summary-table{min-width:0!important;table-layout:fixed}.diagnostic-summary-table th,.diagnostic-summary-table td{white-space:normal;overflow-wrap:anywhere}.diagnostic-summary-table th:nth-child(1){width:18%}.diagnostic-summary-table th:nth-child(2){width:18%}.diagnostic-summary-table th:nth-child(3){width:18%}.diagnostic-summary-table th:nth-child(4){width:20%}.diagnostic-summary-table th:nth-child(5){width:12%}.diagnostic-summary-table th:nth-child(6){width:14%}.diagnostic-code-value{display:inline-flex;flex-direction:column;gap:2px;overflow-wrap:anywhere}.diagnostic-native-code{color:var(--secondary);font-size:10px;font-weight:500}.diagnostic-result{display:inline-flex;align-items:center;min-height:22px;padding:4px 7px;border:1px solid var(--border);border-radius:999px;font-size:10px;font-weight:750;line-height:1;white-space:nowrap}.diagnostic-result-succeeded{background:#E7EEE2;border-color:#B4C6A7;color:#4B6142}.diagnostic-result-failed{background:#F0E9E5;border-color:#D6BDB2;color:#7A493D}.diagnostic-result-not-started,.diagnostic-result-unknown{background:var(--surface-muted);color:var(--secondary)}.diagnostic-group-title{font-weight:700}.diagnostic-group-meta{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;margin-left:8px}.diagnostic-chip{display:inline-flex;align-items:center;min-height:21px;padding:3px 7px;border:1px solid var(--border);border-radius:999px;background:var(--surface-muted);color:var(--secondary);font-size:10px;font-weight:750;line-height:1;white-space:nowrap}.diagnostic-chip.github-issue{color:var(--interactive)}.diagnostic-summary-action{float:right;color:var(--secondary);font-size:11px;font-weight:600}.diagnostic-technical-details{margin:10px 0 0;padding:9px 11px;background:var(--surface-muted);border-radius:8px}.diagnostic-technical-details summary{cursor:pointer;color:var(--secondary);font-size:12px;font-weight:700}.diagnostic-technical-details dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px;margin:10px 0 0}.diagnostic-technical-details dl div{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-top:1px solid color-mix(in srgb,var(--border) 72%,transparent)}.diagnostic-technical-details dt{color:var(--secondary);font-size:11px}.diagnostic-technical-details dd{margin:0;text-align:right;font:500 11px ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere}
 .status-badge{display:inline-flex;align-items:center;justify-content:center;min-width:74px;min-height:28px;padding:6px 10px;border:1px solid transparent;border-radius:999px;font-size:11px;font-weight:750;letter-spacing:.03em;line-height:1;text-transform:uppercase}
 .status-tested{background:#EDE8DF;border-color:#CFC2AE;color:#5B5144}
@@ -2211,7 +2223,8 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .campaign-preset-row{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding:8px;background:var(--surface-muted);border:1px solid var(--border);border-radius:12px}
 .campaign-preset-row .campaign-label{margin:0;white-space:nowrap}
 .campaign-preset-row select{width:min(360px,100%);margin-left:auto}
-.campaign-field input,.campaign-field select{width:100%;min-height:var(--admin-control-height);padding:8px var(--admin-control-padding-x);border-radius:var(--admin-control-radius)}
+.campaign-field input,.campaign-field select,.campaign-preset-row select{height:var(--admin-control-height);min-height:var(--admin-control-height);box-sizing:border-box;padding:8px var(--admin-control-padding-x);border:1px solid var(--border);border-radius:var(--admin-control-radius);background:var(--surface);font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:var(--admin-control-font-size);font-weight:500;line-height:1.3}
+.campaign-field input,.campaign-field select{width:100%}
 .campaign-form{margin:0}
 .campaign-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 16px}
 .campaign-field{min-width:0}
@@ -2257,7 +2270,7 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .device-table-wrap th,.device-table-wrap td{white-space:normal;overflow-wrap:anywhere}
 .device-sort-button{display:inline-flex;align-items:center;gap:5px;width:auto;min-height:0;margin:0;padding:0;border:0;background:transparent;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;white-space:nowrap;cursor:pointer}
 .device-sort-button:hover{color:var(--graphite)}.device-sort-button:focus-visible{outline:2px solid var(--interactive);outline-offset:1px}
-.device-sort-button span{min-width:10px;color:var(--interactive);font-size:12px}
+.device-sort-button span{min-width:10px;color:var(--secondary);font-size:12px;opacity:.2;transition:color .15s ease,opacity .15s ease}.device-sort-button:hover span,.device-sort-button:focus-visible span{opacity:.6}.device-table-wrap th[aria-sort="ascending"] .device-sort-button,.device-table-wrap th[aria-sort="descending"] .device-sort-button{color:var(--graphite);font-weight:800}.device-table-wrap th[aria-sort="ascending"] .device-sort-button span,.device-table-wrap th[aria-sort="descending"] .device-sort-button span{color:var(--interactive);opacity:1}
 .device-table-wrap td:nth-child(3),.device-table-wrap td:nth-child(4),.device-table-wrap td:nth-child(5),.device-table-wrap td:nth-child(6),.device-table-wrap td:nth-child(7),.device-table-wrap td:nth-child(8){white-space:nowrap}
 .device-table-wrap tbody td{padding-top:6px;padding-bottom:6px}
 .device-table-wrap tbody tr{cursor:pointer}
@@ -2298,8 +2311,10 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .detail-kicker{margin:0 0 8px;color:var(--interactive);font-size:11px;font-weight:750;letter-spacing:.12em;text-transform:uppercase}
 .device-detail-grid dl{margin:0;border-top:1px solid var(--border)}
 .device-detail-grid dl div{display:grid;grid-template-columns:minmax(120px,.8fr) minmax(0,1.2fr);gap:12px;padding:8px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 70%,transparent)}
+.device-detail-grid section:last-child dl div{grid-template-columns:minmax(84px,.7fr) minmax(120px,1.3fr)}
 .device-detail-grid dt{color:var(--secondary);font-size:12px}
 .device-detail-grid dd{margin:0;overflow-wrap:anywhere;font-size:13px;font-weight:650;text-align:right}
+.device-dialog .admin-timestamp{white-space:nowrap}
 .device-catalog-details{margin-top:18px;padding-top:14px;border-top:1px solid var(--border);color:var(--secondary)}
 .device-catalog-details summary{cursor:pointer;color:var(--interactive);font-size:12px;font-weight:750;list-style-position:inside}
 .device-catalog-details dl{max-width:720px;margin:12px 0 0;border-top:1px solid var(--border)}
@@ -2331,7 +2346,7 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 @media(max-width:560px){.admin-topbar-inner{align-items:flex-start;flex-direction:column;padding:14px 0}.admin-header-left,.admin-section-nav,.admin-nav{width:100%}.admin-section-nav{order:0;overflow:auto;justify-content:flex-start}.admin-section-nav a{white-space:nowrap}.admin-nav{justify-content:space-between;gap:10px;flex-wrap:wrap}.timezone-control{width:100%;justify-content:space-between}.timezone-control select{width:auto;flex:1}.dashboard{padding-top:28px}.diagnostic-model-metrics{gap:8px}.diagnostic-model-metrics article{padding:12px}.auth-card{width:calc(100% - 32px);padding:24px}.section-heading{align-items:flex-start;flex-direction:column;gap:4px}.campaign-card{padding:16px}.campaign-preset-row{align-items:stretch;flex-direction:column;gap:8px}.campaign-preset-row .campaign-label,.campaign-preset-row select{flex:none}.campaign-preset-row select{width:100%;height:var(--admin-control-height);margin-left:0}.generated-url-row{grid-template-columns:1fr}.copy-button{width:100%}.copy-status{min-height:18px}.device-dialog-inner,.diagnostic-detail-inner{padding:18px}.device-detail-grid dl div,.device-detail-secondary dl div{grid-template-columns:1fr;gap:2px}.device-detail-grid dd,.device-detail-secondary dd{text-align:left}.diagnostic-technical-details dl{grid-template-columns:1fr}.diagnostic-summary-action{float:none;display:block;margin-top:6px}.github-link-form{grid-template-columns:1fr}.github-link-form button{width:100%}}
 @media(max-width:800px){.admin-summary-strip{align-items:flex-start;flex-direction:column;gap:6px}.admin-summary-context,.device-summary-sync{text-align:left;white-space:normal}.device-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.device-detail-grid{grid-template-columns:1fr}.device-catalog-details dl div{grid-template-columns:1fr;gap:2px}.device-catalog-details dd{text-align:left}.device-detail-grid dd{text-align:left}.device-filter-bar .results-count{margin-left:0}.device-dialog-inner{padding:18px}}
-@media(max-width:900px){.device-table-wrap{overflow-x:auto;overflow-y:visible}.device-table-wrap table{min-width:1050px}.device-table-wrap thead th{top:0}}
+@media(max-width:1100px){.device-table-wrap{overflow-x:auto;overflow-y:visible}.device-table-wrap table{min-width:1050px}.device-table-wrap thead th{top:0}}
 @media(max-height:760px){.device-dialog-inner{max-height:calc(100vh - 32px);overflow:auto}.device-dialog-header{position:sticky;top:-1px;z-index:2;padding-bottom:10px;background:var(--surface)}}
 """
 

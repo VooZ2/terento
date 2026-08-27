@@ -342,7 +342,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertNotIn("Logged in as", body)
         self.assertIn(">Attempts<", body)
         self.assertIn("logo-sky.svg", body)
-        self.assertIn("Times follow the selected time zone", body)
+        self.assertIn("Errors include unresolved installation problems", body)
         self.assertIn("data-admin-timestamp", body)
         self.assertIn("admin-timezone", body)
         self.assertEqual(format_timestamp(row["last_success"]), "2026-08-25 16:04")
@@ -419,7 +419,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertNotIn("fēnix 8 Pro · 51 mm", body)
         self.assertNotIn("Historical pre-beta.6 failure", body)
         self.assertNotIn("INSTALL_BLOCKED_UNKNOWN_TARGET", body)
-        self.assertIn("Resolved historical diagnostics", body)
+        self.assertIn("Resolved records remain available in model history", body)
 
     def test_issue_32_quarantine_is_narrow_and_non_destructive(self):
         from pathlib import Path
