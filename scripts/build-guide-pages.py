@@ -236,7 +236,7 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
             <div class="guide-preflight-copy">
               <ul class="guide-checklist">{''.join(f'<li>{esc(item)}</li>' for item in copy["checklist"])}</ul>
               <p>{esc(copy["compatibility_note"])}</p>
-              <a class="text-link" href="{compatibility}" data-umami-event="compatibility-link-click" data-umami-event-location="guide-preflight">{esc(copy["see_compatibility"])} <span aria-hidden="true">→</span></a>
+              <a class="text-link" href="{compatibility}" data-umami-event="compatibility-link-click" data-umami-event-location="guide-preflight">{esc(copy["see_compatibility_evidence"])} <span aria-hidden="true">→</span></a>
             </div>
           </section>
 
@@ -287,6 +287,7 @@ COMMON = {
         "intro": "Installing third-party maps on a Garmin watch from a Mac can involve MTP, manual file transfers or older desktop tools. Terento provides a native Apple Silicon workflow: connect your watch, choose a region, review storage and install.",
         "download_beta": "Download the beta",
         "see_compatibility": "See compatibility",
+        "see_compatibility_evidence": "See current compatibility evidence",
         "current_beta": "Current beta uses Freizeitkarte",
         "last_reviewed": "Last reviewed",
         "reviewed_date": "August 28, 2026",
@@ -394,6 +395,13 @@ def merged_copy(locale: str) -> dict[str, object]:
         return COMMON["en"]
     base = COMMON["en"].copy()
     base.update(TRANSLATIONS[locale])
+    base["see_compatibility_evidence"] = {
+        "de": "Aktuelle Kompatibilitätsnachweise ansehen",
+        "fr": "Voir les preuves actuelles de compatibilité",
+        "pl": "Zobacz aktualne dowody kompatybilności",
+        "cs": "Zobrazit aktuální doklady kompatibility",
+        "it": "Vedi le prove attuali di compatibilità",
+    }[locale]
     return base
 
 
