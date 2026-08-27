@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from datetime import datetime, timezone
 
-from terento_catalog.admin import _admin_device_payload, devices_page
+from terento_catalog.admin import _admin_device_payload, device_detail_page, devices_page
 
 
 UTC = timezone.utc
@@ -310,7 +310,7 @@ class AdminDevicesTests(unittest.TestCase):
         ).decode()
         self.assertIn("Counts unavailable for this historical run", body)
 
-    def test_page_has_required_filters_modal_and_neutral_image_fallback(self):
+    def test_page_has_required_filters_shared_detail_link_and_neutral_image_fallback(self):
         body = devices_page(
             [device_row()],
             None,
@@ -320,20 +320,17 @@ class AdminDevicesTests(unittest.TestCase):
         for value in (
             "Devices", "Garmin device catalog, map capability, authorization, and compatibility evidence.",
             "Search devices", "All families", "All maps", "Maps: Yes", "Maps: No",
-            "Maps: Unknown", "Approved", "Blocked", "Pending", "Last evidence",
-            "device-dialog", "admin-timezone",
+            "Maps: Unknown", "Approved", "Blocked", "Pending", "Last success",
+            "admin-timezone",
             "Automatic (browser)", "data-admin-timestamp", "TerentoAdminTime",
             "selected time zone", "admin-summary-strip device-summary-strip", "position:sticky",
             "--admin-control-height", "--admin-focus-ring", "--admin-placeholder",
-            "table-layout:fixed", "overflow-y:visible", "Catalog details", "data-authorization-change",
-            "data-authorization-form hidden", "data-authorization-cancel", "disabled>Save</button>",
+            "table-layout:fixed", "overflow-y:visible",
             "data-device-sort=\"model\"", "data-device-sort=\"variant\"", "data-device-sort=\"maps\"",
             "data-device-sort=\"authorization\"", "data-device-sort=\"status\"",
             "data-device-sort=\"attempts\"", "data-device-sort=\"success\"", "data-device-sort=\"evidence\"",
-            "aria-sort=\"ascending\"", "Catalog metadata only", "device-catalog-id", "detail-status-value",
-            "Public compatibility", "Public listing", "Approve and publish",
-            "/admin/devices/public-compatibility", "publication_action",
-            "Operator approval is required before this exact model is listed publicly",
+            "aria-sort=\"ascending\"", "/admin/devices/garmin-fenix-8-47-amoled?from=devices",
+            'id="device-map"><option value="yes" selected', "results",
         ):
             self.assertIn(value, body)
         table_header = body[body.index("<thead>"):body.index("</thead>")]
@@ -349,7 +346,6 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertNotIn(">Auth.<", body)
         self.assertNotIn("src='None'", body)
         self.assertIn("generic-garmin-watch.png", body)
-        self.assertIn("Compatibility status and installation counts remain backend-derived", body)
         self.assertIn("Compatibility status", body)
         self.assertIn("title=\"Installation authorization\"", body)
         self.assertNotIn("Support decision", body)
@@ -376,7 +372,36 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertIn('th[aria-sort="ascending"] .device-sort-button', body)
         self.assertIn('th[aria-sort="descending"] .device-sort-button', body)
         self.assertIn("opacity:.2", body)
-        self.assertIn(".device-dialog .admin-timestamp{white-space:nowrap}", body)
+        self.assertNotIn("<dialog id='device-dialog'", body)
+        self.assertIn("parameters.has(key) ? parameters.get(key) : saved[key]", body)
+        self.assertIn("setSelect(map, 'maps', 'yes')", body)
+        self.assertIn("if (showNew) return device.catalog?.newInLatestSync === true", body)
+        self.assertIn("map.value = 'all'", body)
+
+        payload = _admin_device_payload([device_row()], None)
+        detail = device_detail_page(
+            payload["devices"][0], {"username": "operator"}, "csrf",
+            operations=[{
+                "operation_key": "install-1",
+                "canonical_device_model_id": "garmin-fenix-8-47-amoled",
+                "occurred_at": "2026-08-25T16:04:00+00:00",
+                "phase_outcome": "FAILED",
+                "write_started": True,
+                "failure_stage": "write",
+                "failure_code": "SEND_OBJECT_FAILED",
+                "region": "DEU+",
+                "linked_github_issue": "#32",
+            }],
+        ).decode()
+        for value in (
+            "Installation history", "Administration", "Device information",
+            "Technical details", "Installation authorization", "Public compatibility",
+            "Failed results remain historical", "Open errors", "Prepare GitHub issue",
+            "Copy issue report", "Copy diagnostic ID", "Copy technical report",
+            "/admin/devices/authorization", "/admin/devices/public-compatibility",
+        ):
+            self.assertIn(value, detail)
+        self.assertNotIn("Change history", detail)
 
     def test_device_variant_display_normalizes_case_size_without_mutating_input(self):
         row = device_row(variant="51mm, AMOLED", case_size_mm=51)

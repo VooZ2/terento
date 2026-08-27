@@ -4,15 +4,23 @@ from contextlib import contextmanager
 import inspect
 from pathlib import Path
 import unittest
+from urllib.parse import parse_qs, urlsplit
 
 from terento_catalog.admin import (
+    GITHUB_ADMIN_NOTE_MAX_LENGTH,
+    GITHUB_ISSUE_URL_MAX_LENGTH,
     _admin_device_payload,
+    _diagnostic_summary_by_identity,
+    _github_issue_report,
+    _github_issue_url,
     _render_diagnostic_details,
+    _sanitised_issue_value,
     _identity_comparison_key,
     _normalise_variant,
     _status_badge,
     campaign_links_page,
     dashboard_page,
+    device_detail_page,
     diagnostics_page,
     devices_page,
 )
@@ -326,7 +334,7 @@ class AdminSemanticsTests(unittest.TestCase):
         admin_source = (ROOT / "src" / "terento_catalog" / "admin.py").read_text(encoding="utf-8")
         body = devices_page([], None, {"username": "operator"}, "csrf").decode()
         for label in (
-            "Installation authorization", "Compatibility status", "Last evidence",
+            "Installation authorization", "Compatibility status", "Last success",
             "aria-label=\"Map capability\"", "aria-label=\"Installation authorization\"",
             "aria-label=\"Successful installations\"", "position:sticky", "z-index:3",
         ):
@@ -358,31 +366,31 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Auto · ${browserTimeZone}", body)
         self.assertIn("Automatic browser time zone: ${browserTimeZone}", body)
         self.assertIn(
-            "grid-template-columns:minmax(180px,1fr) max-content minmax(385px,1fr)",
+            "grid-template-columns:minmax(300px,1fr) max-content minmax(335px,1fr)",
             body,
         )
 
     def test_modal_campaign_and_timezone_details_keep_the_refined_workflows(self):
         devices_body = devices_page([], None, {"username": "operator"}, "csrf").decode()
+        device = _admin_device_payload([{
+            "device_id": "garmin-fenix-8-47-amoled", "model": "fēnix 8",
+            "variant": "47 mm, AMOLED", "family_name": "fēnix", "map_capable": True,
+            "support_status": "SUPPORTED", "active": True,
+            "attempted_install_count": 0, "successful_install_count": 0,
+            "failed_install_count": 0, "usb_identities": [],
+        }], None)["devices"][0]
+        detail_body = device_detail_page(
+            device, {"username": "operator"}, "csrf",
+        ).decode()
         campaign_body = campaign_links_page({"username": "operator"}, "csrf").decode()
         dashboard_body = dashboard_page([], {"username": "operator"}, "csrf").decode()
-        for label in ("Identity", "Capability &amp; authorization", "Compatibility evidence", "Catalog"):
-            self.assertIn(label, devices_body)
-        self.assertIn("VID ${value(identity.vendorId)}", devices_body)
-        self.assertIn("0x${Number(number).toString(16)", devices_body)
-        self.assertIn("Not known", devices_body)
-        self.assertIn("No exact USB identity is currently recorded", devices_body)
-        self.assertIn("Installation authorization", devices_body)
-        self.assertIn(">Current<", devices_body)
-        self.assertIn("Change to", devices_body)
-        self.assertIn('textarea name="note"', devices_body)
-        self.assertIn("data-authorization-change", devices_body)
-        self.assertIn("data-authorization-cancel", devices_body)
-        self.assertIn(">Save</button>", devices_body)
-        self.assertIn("disabled>Save</button>", devices_body)
-        self.assertIn("Catalog details", devices_body)
-        self.assertIn("Garmin · exact model", devices_body)
-        self.assertIn("Official product media", devices_body)
+        for label in ("Installation history", "Administration", "Device information", "Technical details"):
+            self.assertIn(label, detail_body)
+        self.assertIn("Installation authorization", detail_body)
+        self.assertIn('textarea name=\'note\'', detail_body)
+        self.assertIn("Save authorization", detail_body)
+        self.assertIn("Garmin device", detail_body)
+        self.assertNotIn("Change history", detail_body)
         self.assertIn("placeholder=\"garmin maps\"", campaign_body)
         self.assertIn("Usually used for paid-search keywords or targeting", campaign_body)
         self.assertIn("syncPresetLabel", campaign_body)
@@ -443,6 +451,7 @@ class AdminSemanticsTests(unittest.TestCase):
             "model": "fēnix 8",
             "variant": "51 mm, AMOLED",
             "compatibility_identity": identity,
+            "canonical_device_model_id": "garmin-fenix-8-51-amoled",
             "attempted_install_count": 2,
             "successful_install_count": 1,
             "failed_install_count": 1,
@@ -458,13 +467,22 @@ class AdminSemanticsTests(unittest.TestCase):
             operations=[{
                 "operation_key": "failed-operation",
                 "compatibility_identity": identity,
+                "canonical_device_model_id": "garmin-fenix-8-51-amoled",
                 "phase_outcome": "FAILED",
                 "failure_code": "SEND_OBJECT_FAILED",
+                "identity_resolution_state": "RESOLVED",
+            }, {
+                "operation_key": "successful-operation",
+                "compatibility_identity": identity,
+                "canonical_device_model_id": "garmin-fenix-8-51-amoled",
+                "phase_outcome": "SUCCEEDED",
+                "automatic_finishing_result": "VERIFIED",
                 "identity_resolution_state": "RESOLVED",
             }],
             resolved_operations=[{
                 "operation_key": "resolved-operation",
                 "compatibility_identity": identity,
+                "canonical_device_model_id": "garmin-fenix-8-51-amoled",
                 "phase_outcome": "FAILED",
                 "failure_code": "OLD_FAILURE",
                 "diagnostic_status": "RESOLVED",
@@ -472,12 +490,12 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertNotIn("class='metric'", body)
         self.assertIn('class="admin-summary-strip installation-summary-strip"', body)
-        self.assertIn("2 attempts · 1 successful · 1 error", body)
+        self.assertIn("3 attempts · 1 successful · 2 failed · 1 open error", body)
         self.assertNotIn('id="evidence-title"', body)
         self.assertNotIn("<h2 id=\"evidence-title\">Installations</h2>", body)
-        self.assertIn("1 error", body)
-        self.assertIn("/admin/diagnostics?identity=f%C4%93nix+8+%C2%B7+51+mm%2C+AMOLED&amp;state=open", body)
-        self.assertIn("data-diagnostics-url='/admin/diagnostics?identity=", body)
+        self.assertIn("1 open error", body)
+        self.assertIn("/admin/devices/garmin-fenix-8-51-amoled?from=installations&amp;state=open#installations", body)
+        self.assertIn("data-diagnostics-url='/admin/devices/garmin-fenix-8-51-amoled?from=installations#installations'", body)
         self.assertIn("Most errors", body)
         self.assertIn("Latest activity", body)
         self.assertIn("Model name", body)
@@ -514,7 +532,7 @@ class AdminSemanticsTests(unittest.TestCase):
         body = dashboard_page(
             [row], {"username": "operator"}, "csrf", operations=operations,
         ).decode()
-        self.assertIn("canonical_device_id=garmin-fenix-8-47-amoled", body)
+        self.assertIn("/admin/devices/garmin-fenix-8-47-amoled?from=installations#installations", body)
         self.assertNotIn("Identity pending</span>", body)
         self.assertNotIn(" error</a>", body)
 
@@ -542,7 +560,7 @@ class AdminSemanticsTests(unittest.TestCase):
         evidence_row = body.split("class='evidence-model-row'", 1)[1].split("</tr>", 1)[0]
         self.assertIn("Identity pending", evidence_row)
         self.assertNotIn("error-count", evidence_row)
-        self.assertIn("<td><span class='muted-value'>—</span></td>", evidence_row)
+        self.assertIn("<td>0</td>", evidence_row)
 
     def test_canonical_diagnostics_include_all_raw_identity_spellings(self):
         canonical_id = "garmin-fenix-8-47-amoled"
@@ -661,12 +679,13 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("HISTORICAL_SUPERSEDED", body)
         self.assertIn("Search model, family, variant, case size, or canonical ID", body)
         self.assertIn("Canonical ID:", body)
-        self.assertIn("Create GitHub issue", body)
-        self.assertIn("Link or create issue", body)
+        self.assertIn("Prepare GitHub issue", body)
+        self.assertIn("Copy issue report", body)
+        self.assertIn("Link issue", body)
         self.assertEqual(body.count("github-review-collapsed"), 1)
         self.assertIn("Change linked issue", body)
-        self.assertIn("Remove link", body)
-        self.assertIn("#32 · Open", body)
+        self.assertIn("Unlink issue", body)
+        self.assertIn("#32 <span aria-hidden='true'>↗</span>", body)
         self.assertIn("Diagnostic ID:", body)
         self.assertIn("Technical details", body)
         self.assertIn("<option value='all' selected>All</option><option value='succeeded'>Succeeded</option><option value='failed'>Failed</option><option value='open'>Open</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity pending</option><option value='with-issue'>With issue</option>", body)
@@ -680,14 +699,199 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("selected === 'failed'", body)
         self.assertIn("selected === 'open' && row.dataset.reviewOpen === 'true'", body)
         self.assertIn("selected === 'identity-pending' && row.dataset.identityPending === 'true'", body)
+        self.assertIn("if (event.key === 'Escape')", body)
+        self.assertIn("close(dialog)", body)
 
     def test_installations_helper_copy_is_concise_and_keeps_identity_out_of_errors(self):
         body = dashboard_page([], {"username": "operator"}, "csrf").decode()
         self.assertIn(
-            "Errors include unresolved installation problems. Resolved records remain available in model history.",
+            "Failed is historical and includes resolved failures. Open errors includes only unresolved failed installations.",
             body,
         )
         self.assertNotIn("Errors are unresolved diagnostic operations", body)
+
+    def test_shared_model_page_keeps_resolved_failures_historical_and_open_errors_active_only(self):
+        device = _admin_device_payload([{
+            "device_id": "garmin-fenix-8-51-amoled", "model": "fēnix 8",
+            "variant": "51 mm, AMOLED", "family_name": "fēnix", "map_capable": True,
+            "support_status": "SUPPORTED", "active": True,
+            "attempted_install_count": 1, "successful_install_count": 1,
+            "failed_install_count": 0, "last_success": "2026-08-27T07:53:00+00:00",
+            "usb_identities": [],
+        }], None)["devices"][0]
+        active = [{
+            "operation_key": "successful-install", "canonical_device_model_id": device["id"],
+            "occurred_at": "2026-08-27T07:53:00+00:00", "phase_outcome": "SUCCEEDED",
+            "automatic_finishing_result": "VERIFIED", "write_started": True,
+        }]
+        resolved = [{
+            "operation_key": "resolved-failure", "canonical_device_model_id": device["id"],
+            "occurred_at": "2026-08-26T07:53:00+00:00", "phase_outcome": "FAILED",
+            "failure_stage": "write", "failure_code": "SEND_OBJECT_FAILED",
+            "write_started": False, "diagnostic_status": "RESOLVED",
+        }, {
+            "operation_key": "resolved-success-anomaly", "canonical_device_model_id": device["id"],
+            "occurred_at": "2026-08-25T07:53:00+00:00", "phase_outcome": "SUCCEEDED",
+            "automatic_finishing_result": "VERIFIED", "write_started": True,
+            "diagnostic_status": "RESOLVED",
+        }]
+        body = device_detail_page(
+            device, {"username": "operator"}, "csrf",
+            operations=active, resolved_operations=resolved,
+        ).decode()
+        statistics = body.split("class='diagnostic-model-metrics model-statistics'", 1)[1].split("</section>", 1)[0]
+        for label, value in (("Attempts", "2"), ("Successful", "1"), ("Failed", "1"), ("Open errors", "0")):
+            self.assertIn(f"<span>{label}</span><strong>{value}</strong>", statistics)
+        self.assertIn("status-tested", statistics)
+        self.assertIn("diagnostic-state-resolved", body)
+        self.assertIn("data-diagnostic-result='failed'", body)
+        self.assertIn("data-review-resolved='true'", body)
+        self.assertNotIn("USB identity</dt>", body)
+        self.assertNotIn("Firmware</dt>", body)
+        self.assertIn("maxlength='500'", body)
+        self.assertIn("link.closest('.github-issue-controls, .github-review')", body)
+        self.assertNotIn("\x08", body)
+
+    def test_failed_installation_counts_do_not_depend_on_write_started(self):
+        identity = "fēnix 8 · 51 mm, AMOLED"
+        device_id = "garmin-fenix-8-51-amoled"
+        successful = [{
+            "operation_key": f"success-{index}", "compatibility_identity": identity,
+            "canonical_device_model_id": device_id, "phase_outcome": "SUCCEEDED",
+            "automatic_finishing_result": "VERIFIED", "write_started": True,
+        } for index in range(7)]
+        open_failed = [{
+            "operation_key": "open-failed", "compatibility_identity": identity,
+            "canonical_device_model_id": device_id, "phase_outcome": "FAILED",
+            "failure_stage": "write", "failure_code": "INSTALL_FAILED_WRITE",
+            "write_started": True,
+        }]
+        resolved_failed = [{
+            "operation_key": "resolved-failed-write", "compatibility_identity": identity,
+            "canonical_device_model_id": device_id, "phase_outcome": "FAILED",
+            "failure_stage": "verify", "failure_code": "INSTALL_FAILED_SIZE_MISMATCH",
+            "write_started": True, "diagnostic_status": "RESOLVED",
+        }, {
+            "operation_key": "resolved-failed-prewrite", "compatibility_identity": identity,
+            "canonical_device_model_id": device_id, "phase_outcome": "FAILED",
+            "failure_stage": "preflight", "failure_code": "INSTALL_BLOCKED_INSUFFICIENT_SPACE",
+            "write_started": False, "diagnostic_status": "RESOLVED",
+        }]
+        summary = _diagnostic_summary_by_identity(successful + open_failed, resolved_failed)[f"canonical:{device_id}"]
+        self.assertEqual(summary["attempts"], 10)
+        self.assertEqual(summary["successful"], 7)
+        self.assertEqual(summary["failed"], 3)
+        self.assertEqual(summary["open_errors"], 1)
+
+        device = _admin_device_payload([{
+            "device_id": device_id, "model": "fēnix 8", "variant": "51 mm, AMOLED",
+            "family_name": "fēnix", "map_capable": True, "support_status": "SUPPORTED",
+            "active": True, "attempted_install_count": 8, "successful_install_count": 7,
+            "failed_install_count": 1, "usb_identities": [],
+        }], None)["devices"][0]
+        body = device_detail_page(
+            device, {"username": "operator"}, "csrf",
+            operations=successful + open_failed, resolved_operations=resolved_failed,
+        ).decode()
+        statistics = body.split("class='diagnostic-model-metrics model-statistics'", 1)[1].split("</section>", 1)[0]
+        for label, value in (("Attempts", "10"), ("Successful", "7"), ("Failed", "3"), ("Open errors", "1")):
+            self.assertIn(f"<span>{label}</span><strong>{value}</strong>", statistics)
+        self.assertIn("status-verified", statistics)
+
+    def test_github_issue_report_uses_an_allowlist_and_redacts_sensitive_values(self):
+        results = [{
+            "operation_key": "install-32", "phase_outcome": "FAILED",
+            "failure_stage": "write", "failure_code": "SEND_OBJECT_FAILED",
+            "raw_mtp_model": "private raw value", "firmware_version": "20.19",
+            "authorization": "Bearer secret", "email": "owner@example.com",
+            "private_path": "/Users/alice/Documents/private.log",
+        }]
+        title, body = _github_issue_report("fēnix 8 · 51 mm, AMOLED", results)
+        self.assertIn("[Install][Write]", title)
+        self.assertIn(r"SEND\_OBJECT\_FAILED", body)
+        self.assertIn("install-32", body)
+        self.assertIn("private raw value", body)
+        self.assertIn("20.19", body)
+        for forbidden in ("Bearer secret", "owner@example.com", "/Users/alice"):
+            self.assertNotIn(forbidden, title + body)
+        sanitised = _sanitised_issue_value(
+            "owner@example.com /Users/alice/Documents/log.txt /private/var/log.txt "
+            "api_key=secret cookie=session serialNumber=12345678"
+        )
+        self.assertNotIn("owner@example.com", sanitised)
+        self.assertNotIn("/Users/alice", sanitised)
+        self.assertNotIn("secret", sanitised)
+        self.assertNotIn("session", sanitised)
+        self.assertNotIn("/private/var", sanitised)
+        self.assertNotIn("12345678", sanitised)
+
+    def test_github_issue_report_redacts_hostile_allowlisted_values_and_encodes_one_query(self):
+        fake_values = (
+            "ghp_FAKE_TOKEN_123", "github_pat_FAKE", "Bearer FAKE_TOKEN",
+            "Authorization: Bearer FAKE", "token=FAKEQUERY", "access_token=FAKE",
+            "api_key=FAKE", "DATABASE_URL=postgres://fake", "test@example.com",
+            "/Users/gediminas/private/file", r"C:\Users\gediminas\private\file",
+            "<script>alert(1)</script>", "&title=injected", "?body=injected",
+        )
+        results = [{
+            "operation_key": "&title=injected", "event_id": "?body=injected",
+            "phase_outcome": "FAILED", "failure_stage": "write",
+            "failure_code": "ghp_FAKE_TOKEN_123", "native_failure_code": "github_pat_FAKE",
+            "error_category": "Authorization: Bearer FAKE", "region": "token=FAKEQUERY",
+            "map_release": "DATABASE_URL=postgres://fake", "release_label": "test@example.com",
+            "firmware_version": "/Users/gediminas/private/file",
+            "raw_mtp_model": "<script>alert(1)</script>",
+            "transport": r"C:\Users\gediminas\private\file", "write_started": False,
+            "remote_object_created": False, "cleanup_attempted": False,
+        }]
+        title, body = _github_issue_report(
+            "Bearer FAKE_TOKEN · access_token=FAKE api_key=FAKE", results,
+        )
+        url, prefilled = _github_issue_url(
+            "Bearer FAKE_TOKEN · access_token=FAKE api_key=FAKE", results,
+        )
+        decoded = parse_qs(urlsplit(url).query)
+        combined = title + body + str(decoded)
+        for forbidden in fake_values:
+            self.assertNotIn(forbidden, combined)
+        self.assertTrue(prefilled)
+        self.assertEqual(set(decoded), {"title", "body"})
+        self.assertEqual(decoded["title"], [title])
+        self.assertEqual(decoded["body"], [body])
+        self.assertNotIn("<script", body)
+
+    def test_github_admin_note_is_sanitised_bounded_and_oversized_report_uses_copy_fallback(self):
+        results = [{
+            "operation_key": "install-32", "event_id": "event-32",
+            "phase_outcome": "FAILED", "failure_stage": "write",
+            "failure_code": "INSTALL_FAILED_WRITE",
+        }]
+        note = "Normal note **markdown** <script>alert(1)</script> ghp_FAKE_TOKEN_123 " + "x" * 700
+        _, body = _github_issue_report("fēnix 8 · 51 mm", results, admin_note=note)
+        rendered_note = body.split("## Admin note\n\n", 1)[1]
+        self.assertLessEqual(len(rendered_note), GITHUB_ADMIN_NOTE_MAX_LENGTH + 40)
+        self.assertNotIn("<script", rendered_note)
+        self.assertNotIn("ghp_FAKE_TOKEN_123", rendered_note)
+        normal_url, normal_prefilled = _github_issue_url("fēnix 8 · 51 mm", results, admin_note="Reviewed")
+        self.assertTrue(normal_prefilled)
+        self.assertLessEqual(len(normal_url), GITHUB_ISSUE_URL_MAX_LENGTH)
+        oversized_url, oversized_prefilled = _github_issue_url("x" * 8_000 + " · 51 mm", results)
+        self.assertFalse(oversized_prefilled)
+        self.assertEqual(oversized_url, "https://github.com/VooZ2/terento/issues/new")
+
+    def test_admin_actions_have_single_submit_loading_and_inline_failure_enhancement(self):
+        device = _admin_device_payload([{
+            "device_id": "garmin-fenix-8", "model": "fēnix 8", "variant": "47 mm",
+            "family_name": "fēnix", "map_capable": True, "support_status": "SUPPORTED",
+            "active": True, "attempted_install_count": 0, "successful_install_count": 0,
+            "failed_install_count": 0, "usb_identities": [],
+        }], None)["devices"][0]
+        body = device_detail_page(device, {"username": "operator"}, "csrf").decode()
+        self.assertGreaterEqual(body.count("admin-async-action"), 2)
+        self.assertIn("form.dataset.submitting === 'true'", body)
+        self.assertIn("submit.textContent = 'Saving…'", body)
+        self.assertIn("Could not save. Check the values and try again.", body)
+        self.assertIn("controls.forEach((control) =>", body)
 
     def test_issue_link_update_is_additive_and_does_not_change_evidence_outcome(self):
         source = inspect.getsource(Database.update_diagnostic_issue)

@@ -337,7 +337,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         body = dashboard_page([row], {"username": "gediminas"}, "csrf", public_stats_enabled=True).decode()
         self.assertIn("Installations", body)
         self.assertIn("Installation activity and compatibility evidence from Terento users.", body)
-        self.assertIn("1 attempt · 1 successful · 0 errors", body)
+        self.assertIn("1 attempt · 1 successful · 0 failed · 0 open errors", body)
         self.assertIn('class="admin-summary-strip installation-summary-strip"', body)
         self.assertIn('class="filter-bar admin-filter-bar"', body)
         self.assertIn(">51 mm<", body)
@@ -350,7 +350,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertNotIn("Logged in as", body)
         self.assertIn(">Attempts<", body)
         self.assertIn("logo-sky.svg", body)
-        self.assertIn("Errors include unresolved installation problems", body)
+        self.assertIn("Failed is historical and includes resolved failures", body)
         self.assertIn("data-admin-timestamp", body)
         self.assertIn("admin-timezone", body)
         self.assertEqual(format_timestamp(row["last_success"]), "2026-08-25 16:04")
@@ -388,7 +388,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         body = dashboard_page(
             [row], {"username": "operator"}, "csrf", operations=[operation]
         ).decode()
-        self.assertIn("aria-label='View 1 unresolved errors", body)
+        self.assertIn("aria-label='View 1 open errors", body)
         self.assertIn("/admin/diagnostics?identity=", body)
         self.assertNotIn("Diagnostic record", body)
         self.assertNotIn("1.0.0-beta.6 (build 5)", body)
@@ -427,7 +427,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertNotIn("fēnix 8 Pro · 51 mm", body)
         self.assertNotIn("Historical pre-beta.6 failure", body)
         self.assertNotIn("INSTALL_BLOCKED_UNKNOWN_TARGET", body)
-        self.assertIn("Resolved records remain available in model history", body)
+        self.assertIn("Failed is historical and includes resolved failures", body)
 
     def test_issue_32_quarantine_is_narrow_and_non_destructive(self):
         from pathlib import Path
@@ -569,6 +569,18 @@ class CompatibilityEvidenceTests(unittest.TestCase):
             "img-src https://terento.app https://api.terento.app https://res.garmin.com data:",
             devices.headers["Content-Security-Policy"],
         )
+
+        detail, detail_body = self.request(
+            "GET", "/admin/devices/garmin-fenix-8-47-amoled?from=devices",
+            headers={"Cookie": cookie_header},
+        )
+        self.assertEqual(detail.status, 200)
+        self.assertIn(b"Installation history", detail_body)
+        self.assertIn(b"Administration", detail_body)
+        self.assertIn(b"Device information", detail_body)
+        self.assertIn(b"Technical details", detail_body)
+        self.assertIn(b"/admin/devices/authorization", detail_body)
+        self.assertNotIn(b"Change history", detail_body)
 
         devices_json, devices_json_body = self.request("GET", "/admin/devices.json", headers={"Cookie": cookie_header})
         self.assertEqual(devices_json.status, 200)

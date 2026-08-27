@@ -10,7 +10,7 @@ import secrets
 import unicodedata
 from datetime import datetime, timezone
 from typing import Any
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 from .campaign_links import CAMPAIGN_SUGGESTIONS, MEDIUM_OPTIONS, SOURCE_OPTIONS
 from .asset_attribution import generic_fallback_image
@@ -27,6 +27,9 @@ from .map_capability import classify_map_capable
 PASSWORD_MIN_LENGTH = 14
 USERNAME_PATTERN = re.compile(r"[A-Za-z0-9._-]{3,64}")
 PBKDF2_ITERATIONS = 600_000
+GITHUB_ADMIN_NOTE_MAX_LENGTH = 500
+GITHUB_ISSUE_URL_MAX_LENGTH = 7_000
+GITHUB_NEW_ISSUE_URL = "https://github.com/VooZ2/terento/issues/new"
 
 
 class AdminValidationError(ValueError):
@@ -253,6 +256,17 @@ def _identity_group_key(value: dict[str, Any]) -> str:
     return f"identity:{identity}"
 
 
+def _device_detail_url(
+    device_id: Any, *, origin: str = "devices", state: str | None = None,
+    anchor: str | None = None,
+) -> str:
+    parameters = {"from": "installations" if origin == "installations" else "devices"}
+    if state:
+        parameters["state"] = state
+    url = f"/admin/devices/{quote(str(device_id or '').strip(), safe='')}?{urlencode(parameters)}"
+    return f"{url}#{quote(anchor, safe='')}" if anchor else url
+
+
 def _diagnostics_url(value: dict[str, Any], *, state: str | None = None) -> str:
     identity = str(value.get("compatibility_identity") or value.get("model") or "Unknown").strip()
     parameters = {"identity": identity}
@@ -262,6 +276,15 @@ def _diagnostics_url(value: dict[str, Any], *, state: str | None = None) -> str:
     if state:
         parameters["state"] = state
     return "/admin/diagnostics?" + urlencode(parameters)
+
+
+def _model_detail_url(value: dict[str, Any], *, state: str | None = None) -> str:
+    canonical_id = str(value.get("canonical_device_model_id") or "").strip()
+    if canonical_id:
+        return _device_detail_url(
+            canonical_id, origin="installations", state=state, anchor="installations",
+        )
+    return _diagnostics_url(value, state=state)
 
 
 def _operation_is_problematic(results: list[dict[str, Any]]) -> bool:
@@ -288,7 +311,9 @@ def _operation_is_problematic(results: list[dict[str, Any]]) -> bool:
     return False
 
 
-def _diagnostic_summary_by_identity(events: list[dict[str, Any]]) -> dict[str, dict[str, int]]:
+def _diagnostic_summary_by_identity(
+    events: list[dict[str, Any]], resolved_events: list[dict[str, Any]] | None = None,
+) -> dict[str, dict[str, int]]:
     by_identity: dict[str, dict[str, int]] = {}
     grouped: dict[str, dict[str, list[dict[str, Any]]]] = {}
     for event in events:
@@ -296,10 +321,41 @@ def _diagnostic_summary_by_identity(events: list[dict[str, Any]]) -> dict[str, d
         key = _operation_key(event)
         if identity and key:
             grouped.setdefault(identity, {}).setdefault(key, []).append(event)
-    for identity, operations in grouped.items():
-        errors = sum(1 for results in operations.values() if _operation_is_problematic(results))
+    resolved_grouped: dict[str, dict[str, list[dict[str, Any]]]] = {}
+    for event in resolved_events or []:
+        identity = _identity_group_key(event)
+        key = _operation_key(event)
+        if identity and key:
+            resolved_grouped.setdefault(identity, {}).setdefault(key, []).append(event)
+    for identity in set(grouped) | set(resolved_grouped):
+        operations = grouped.get(identity, {})
+        historical = resolved_grouped.get(identity, {})
+        historical_failures = sum(
+            1 for results in historical.values()
+            if _operation_counts_as_installation_attempt(results) and _operation_result(results) == "FAILED"
+        )
+        attempts = (
+            sum(1 for results in operations.values() if _operation_counts_as_installation_attempt(results))
+            + historical_failures
+        )
+        successful = sum(
+            1 for results in operations.values()
+            if _operation_counts_as_installation_attempt(results) and _operation_result(results) == "SUCCEEDED"
+        )
+        open_errors = sum(
+            1 for results in operations.values()
+            if _operation_counts_as_installation_attempt(results) and _operation_result(results) == "FAILED"
+        )
+        failed = open_errors + historical_failures
         pending = sum(1 for results in operations.values() if _identity_is_pending(results))
-        by_identity[identity] = {"errors": errors, "identity_pending": pending}
+        by_identity[identity] = {
+            "errors": open_errors,
+            "open_errors": open_errors,
+            "failed": failed,
+            "attempts": attempts,
+            "successful": successful,
+            "identity_pending": pending,
+        }
     return by_identity
 
 
@@ -317,7 +373,7 @@ def _error_cell(row: dict[str, Any], diagnostic_summary: dict[str, int] | None =
     summary = diagnostic_summary or {}
     count = int(summary.get("errors") or 0)
     identity = str(row.get("compatibility_identity") or row.get("model") or "unknown")
-    target = _diagnostics_url(row, state="open")
+    target = _model_detail_url(row, state="open")
     if count:
         return (
             f"<a class='error-count' href='{html.escape(target, quote=True)}' "
@@ -444,27 +500,39 @@ def _diagnostic_summary_rows(results: list[dict[str, Any]]) -> str:
 
 
 def _diagnostic_technical_details(result: dict[str, Any], result_number: int) -> str:
-    fields = (
-        ("Raw MTP model", result.get("raw_mtp_model")),
-        ("Local identity", result.get("identity_resolution_code")),
-        ("Native code", result.get("native_failure_code")),
-        ("Object created", _diagnostic_boolean(result.get("remote_object_created"))),
-        ("Transfer progress", result.get("transfer_progress_bucket")),
-        ("Map result", result.get("map_result_index")),
-        ("Selected maps", result.get("selected_map_count")),
-        ("Cleanup attempted", _diagnostic_boolean(result.get("cleanup_attempted"))),
-        ("Cleanup succeeded", _diagnostic_boolean(result.get("cleanup_succeeded"))),
-        ("Error category", result.get("error_category")),
-        ("Transport", result.get("transport")),
-    )
+    fields: list[tuple[str, Any]] = []
+    for label, key in (
+        ("Raw MTP model", "raw_mtp_model"),
+        ("Local identity", "identity_resolution_code"),
+        ("Native code", "native_failure_code"),
+        ("Transfer progress", "transfer_progress_bucket"),
+        ("Map result", "map_result_index"),
+        ("Selected maps", "selected_map_count"),
+        ("Error category", "error_category"),
+        ("Transport", "transport"),
+    ):
+        value = result.get(key)
+        if value is not None and value != "":
+            fields.append((label, value))
+    for label, key in (
+        ("Object created", "remote_object_created"),
+        ("Cleanup attempted", "cleanup_attempted"),
+        ("Cleanup succeeded", "cleanup_succeeded"),
+    ):
+        if result.get(key) is not None:
+            fields.append((label, _diagnostic_boolean(result.get(key))))
     rows = "".join(
         f"<div><dt>{html.escape(label)}</dt><dd>{value if isinstance(value, str) and value.startswith('<span') else _diagnostic_value(value)}</dd></div>"
         for label, value in fields
     )
+    content = (
+        f"<dl>{rows}</dl>" if rows else
+        "<p class='diagnostic-technical-empty'>Detailed diagnostics were not collected for this installation.</p>"
+    )
     return (
         f"<details class='diagnostic-technical-details'>"
         f"<summary>Technical details · map result {result_number}</summary>"
-        f"<dl>{rows}</dl></details>"
+        f"{content}</details>"
     )
 
 
@@ -512,10 +580,11 @@ def _diagnostic_group_summary(identity: str, operations: dict[str, list[dict[str
     )
 
 
-def _admin_brand() -> str:
-    return """<a class="admin-brand" href="/admin" aria-label="Terento admin home">
+def _admin_brand(*, show_badge: bool = True) -> str:
+    badge = '<span class="admin-badge">Admin</span>' if show_badge else ""
+    return f"""<a class="admin-brand" href="/admin" aria-label="Terento admin home">
       <img src="https://terento.app/assets/logo-sky.svg" alt="" width="25" height="29">
-      <span>Terento</span><span class="admin-badge">Admin</span>
+      <span>Terento</span>{badge}
     </a>"""
 
 
@@ -540,9 +609,9 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
         </div>
       </details>""" if review_total else ""
     return f"""<header class="admin-topbar"><div class="admin-topbar-inner">
-      <div class="admin-header-zone admin-header-left">{_admin_brand()}</div>
+      <div class="admin-header-zone admin-header-left">{_admin_brand(show_badge=False)}<span class="admin-badge">Admin area</span><a class="admin-website-link" href="https://terento.app/" target="_blank" rel="noopener noreferrer" aria-label="Open Terento website in a new tab">Website <span aria-hidden="true">↗</span></a></div>
       <nav class="admin-section-nav" aria-label="Admin sections"><a{evidence_class} href="/admin">Installations</a><a{devices_class} href="/admin/devices">Devices</a><a{campaign_class} href="/admin/campaign-links">Campaign links</a>{review_menu}</nav>
-      <nav class="admin-nav" aria-label="Admin navigation"><label class="timezone-control"><span class="sr-only">Time zone</span><select id="admin-timezone" aria-label="Time zone" title="Time zone"><option value="browser">Automatic (browser)</option><option value="UTC">UTC</option><option value="Europe/Vilnius">Europe/Vilnius</option><option value="Europe/London">Europe/London</option><option value="Europe/Berlin">Europe/Berlin</option><option value="America/New_York">America/New_York</option><option value="America/Los_Angeles">America/Los_Angeles</option><option value="Asia/Tokyo">Asia/Tokyo</option></select></label><a class="admin-website-link" href="https://terento.app/" target="_blank" rel="noopener noreferrer" aria-label="Open Terento website in a new tab">Website <span aria-hidden="true">↗</span></a><span class="admin-user" aria-label="Signed in as {username}">{username}</span>
+      <nav class="admin-nav" aria-label="Admin navigation"><label class="timezone-control"><span class="sr-only">Time zone</span><select id="admin-timezone" aria-label="Time zone" title="Time zone"><option value="browser">Automatic (browser)</option><option value="UTC">UTC</option><option value="Europe/Vilnius">Europe/Vilnius</option><option value="Europe/London">Europe/London</option><option value="Europe/Berlin">Europe/Berlin</option><option value="America/New_York">America/New_York</option><option value="America/Los_Angeles">America/Los_Angeles</option><option value="Asia/Tokyo">Asia/Tokyo</option></select></label><span class="admin-user" aria-label="Signed in as {username}">{username}</span>
       <form method="post" action="/admin/logout"><input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}"><button class="link-button" type="submit">Sign out</button></form></nav>
     </div></header>"""
 
@@ -595,16 +664,25 @@ def dashboard_page(
     resolved_operations: list[dict[str, Any]] | None = None,
     public_stats_enabled: bool = False,
 ) -> bytes:
-    attempts = sum(int(row.get("attempted_install_count") or 0) for row in rows)
-    successes = sum(int(row.get("successful_install_count") or 0) for row in rows)
     latest = _latest_data_timestamp(rows)
     status_values = [status.value for status in CANONICAL_STATUS_ORDER]
     status_options = "".join(
         f"<option value='{status.lower()}'>{status.title()}</option>"
         for status in status_values
     )
-    diagnostic_summary = _diagnostic_summary_by_identity(operations or [])
-    errors = sum(int(summary.get("errors") or 0) for summary in diagnostic_summary.values())
+    diagnostic_summary = _diagnostic_summary_by_identity(
+        operations or [], resolved_operations or [],
+    )
+    def metric(row: dict[str, Any], summary_key: str, row_key: str) -> int:
+        summary = diagnostic_summary.get(_identity_group_key(row), {})
+        return int(summary[summary_key]) if summary_key in summary else int(row.get(row_key) or 0)
+
+    attempts = sum(metric(row, "attempts", "attempted_install_count") for row in rows)
+    successes = sum(metric(row, "successful", "successful_install_count") for row in rows)
+    failures = sum(metric(row, "failed", "failed_install_count") for row in rows)
+    open_errors = sum(
+        int(summary.get("open_errors") or 0) for summary in diagnostic_summary.values()
+    )
     table_rows = "".join(
         _statistics_row(row, diagnostic_summary.get(_identity_group_key(row), {}))
         for row in rows
@@ -616,7 +694,7 @@ def dashboard_page(
       <main class="dashboard" id="main-content">
         <div class="heading-row"><div><p class="eyebrow">Evidence</p><h1>Installations</h1><p class="lede">Installation activity and compatibility evidence from Terento users.</p></div></div>
         <section class="admin-summary-strip installation-summary-strip" aria-label="Evidence summary and latest update">
-          <p class="admin-summary-metrics"><strong>{len(rows)} {'model' if len(rows) == 1 else 'models'}</strong><span> · {attempts} {'attempt' if attempts == 1 else 'attempts'} · {successes} successful · {errors} {'error' if errors == 1 else 'errors'}</span></p>
+          <p class="admin-summary-metrics"><strong>{len(rows)} {'variant' if len(rows) == 1 else 'variants'}</strong><span> · {attempts} {'attempt' if attempts == 1 else 'attempts'} · {successes} successful · {failures} failed · {open_errors} open {'error' if open_errors == 1 else 'errors'}</span></p>
           <p class="admin-summary-context">{latest_copy}</p>
         </section>{empty}
         <section class="evidence-section" aria-label="Installation evidence table">
@@ -624,10 +702,10 @@ def dashboard_page(
             <label class="filter-search"> <span class="sr-only">Search models</span><input id="evidence-search" type="search" placeholder="Search models" autocomplete="off"></label>
             <label><span class="sr-only">Filter by status</span><select id="evidence-status"><option value="all">All statuses</option>{status_options}</select></label>
             <label><span class="sr-only">Sort models</span><select id="evidence-sort"><option value="attempts">Most attempts</option><option value="errors">Most errors</option><option value="latest">Latest activity</option><option value="model">Model name</option></select></label>
-            <p class="results-count" id="results-count" aria-live="polite">{len(rows)} {"model" if len(rows) == 1 else "models"}</p>
+            <p class="results-count" id="results-count" aria-live="polite">{len(rows)} {"variant" if len(rows) == 1 else "variants"}</p>
           </form>
-          <div class="table-wrap evidence-table-wrap"><table class="admin-table"><caption class="sr-only">Installations by exact device identity</caption><thead><tr><th scope="col">Model</th><th scope="col">Variant</th><th scope="col">Attempts</th><th scope="col">Success</th><th scope="col">Errors</th><th scope="col">Status</th><th scope="col">Last success</th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
-          <p class="table-help evidence-table-note">Errors include unresolved installation problems. Resolved records remain available in model history.</p>
+          <div class="table-wrap evidence-table-wrap"><table class="admin-table"><caption class="sr-only">Installations by exact device identity</caption><thead><tr><th scope="col">Model</th><th scope="col">Variant</th><th scope="col">Attempts</th><th scope="col">Successful</th><th scope="col">Failed</th><th scope="col">Open errors</th><th scope="col">Status</th><th scope="col">Last success</th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
+          <p class="table-help evidence-table-note">Failed is historical and includes resolved failures. Open errors includes only unresolved failed installations.</p>
         </section>
       </main>
       <script>{_dashboard_script()}</script>
@@ -699,6 +777,18 @@ def _operation_result(results: list[dict[str, Any]]) -> str:
     return next(iter(sorted(outcomes)), "UNKNOWN")
 
 
+def _operation_write_started(results: list[dict[str, Any]]) -> bool:
+    return any(result.get("write_started") is not False for result in results)
+
+
+def _operation_counts_as_installation_attempt(results: list[dict[str, Any]]) -> bool:
+    """Count persisted final results independently of device-write progress."""
+    result = _operation_result(results)
+    if result in {"FAILED", "SUCCEEDED", "INCOMPLETE", "BLOCKED"}:
+        return True
+    return _operation_write_started(results)
+
+
 def _operation_text(results: list[dict[str, Any]], field: str, *, fallback: str = "—") -> str:
     values = []
     for result in results:
@@ -730,35 +820,193 @@ def _github_issue_link(value: Any) -> str:
     return (
         f"<a class='github-issue' href='https://github.com/VooZ2/terento/issues/{number}' "
         f"target='_blank' rel='noreferrer' aria-label='Open GitHub issue {number}'>"
-        f"#{number} · Open</a>"
+        f"#{number} <span aria-hidden='true'>↗</span></a>"
     )
 
 
-def _sanitised_issue_value(value: Any) -> str:
-    return re.sub(r"[\x00-\x1f\x7f]+", " ", str(value or "—")).strip()[:160]
+def _sanitised_issue_value(value: Any, *, max_length: int | None = None) -> str:
+    """Sanitise one allowlisted report value before Markdown or URL encoding."""
+    text = re.sub(r"[\x00-\x1f\x7f]+", " ", str(value or "")).strip()
+    text = re.sub(r"(?is)<script\b[^>]*>.*?</script>", "[redacted markup]", text)
+    text = re.sub(r"(?s)<[^>]+>", "[redacted markup]", text)
+    text = re.sub(r"(?i)\b(?:ghp|github_pat)_[A-Za-z0-9_\-]+", "[redacted token]", text)
+    text = re.sub(r"(?i)\bBearer\s+[^\s,;]+", "Bearer [redacted]", text)
+    text = re.sub(
+        r"(?i)\b(authorization|proxy-authorization|cookie|set-cookie)\s*:\s*[^\s,;]+(?:\s+[^\s,;]+)?",
+        lambda match: f"{match.group(1)}: [redacted]",
+        text,
+    )
+    text = re.sub(
+        r"(?i)([?&](?:token|access_token|api_key|apikey|secret)=)[^&\s]+",
+        lambda match: f"{match.group(1)}[redacted]",
+        text,
+    )
+    text = re.sub(
+        r"(?i)[?&](?:title|body)=[^&\s]+",
+        "[redacted query value]",
+        text,
+    )
+    text = re.sub(
+        r"(?i)\b(token|access[_ -]?token|api[_ -]?key|apikey|secret|password|cookie|authorization)\s*[:=]\s*\S+",
+        lambda match: f"{match.group(1)}=[redacted]",
+        text,
+    )
+    text = re.sub(r"\b[A-Z][A-Z0-9_]{2,}\s*=\s*\S+", "[redacted environment value]", text)
+    text = re.sub(
+        r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b",
+        "[redacted email]",
+        text,
+    )
+    text = re.sub(r"(?i)/Users/[^/\s]+(?:/[^\s]*)?", "/Users/<redacted>/[redacted]", text)
+    text = re.sub(
+        r"(?i)(?:/private|/var/folders|/home|/Volumes)/(?:[^\s]+)",
+        "[redacted path]",
+        text,
+    )
+    text = re.sub(
+        r"(?i)\b[A-Z]:\\Users\\[^\\\s]+(?:\\[^\s]*)?",
+        r"C:\\Users\\<redacted>\\[redacted]",
+        text,
+    )
+    text = re.sub(
+        r"(?i)\b(serial(?:[_ -]?number)?|unit[_ -]?id|device[_ -]?id|user[_ -]?id|account[_ -]?id)\s*[:=]\s*\S+",
+        lambda match: f"{match.group(1)}=[redacted]",
+        text,
+    )
+    text = re.sub(r"\s+", " ", text).strip()
+    if max_length is not None:
+        text = text[:max_length]
+    return text
 
 
-def _github_create_issue_url(identity: str, results: list[dict[str, Any]]) -> str:
+def _markdown_issue_value(value: Any, *, max_length: int | None = None) -> str:
+    text = _sanitised_issue_value(value, max_length=max_length)
+    return re.sub(r"([\\`*_{}\[\]<>#+!|])", r"\\\1", text)
+
+
+def _operation_report_value(results: list[dict[str, Any]], *fields: str) -> str:
+    for field in fields:
+        value = _operation_text(results, field, fallback="")
+        if value:
+            return _markdown_issue_value(value)
+    return ""
+
+
+def _operation_report_boolean(results: list[dict[str, Any]], field: str) -> str:
+    values: list[str] = []
+    for result in results:
+        if field not in result or result.get(field) is None:
+            continue
+        label = "Yes" if bool(result.get(field)) else "No"
+        if label not in values:
+            values.append(label)
+    return ", ".join(values)
+
+
+def _github_issue_report(
+    identity: str,
+    results: list[dict[str, Any]],
+    *,
+    device: dict[str, Any] | None = None,
+    admin_note: str | None = None,
+) -> tuple[str, str]:
+    """Build a public report exclusively from explicitly allowlisted fields."""
     model, variant = _display_identity(identity)
     first = results[0] if results else {}
-    title = f"Terento installation diagnostic: {_sanitised_issue_value(model)}"
-    if variant != "—":
-        title += f" · {_sanitised_issue_value(variant)}"
-    body = "\n".join(
-        (
-            "Terento installation diagnostic",
-            "",
-            f"Device: {_sanitised_issue_value(model)}",
-            f"Variant: {_sanitised_issue_value(variant)}",
-            f"Result: {_sanitised_issue_value(_operation_result(results))}",
-            f"Stage: {_sanitised_issue_value(_operation_text(results, 'failure_stage'))}",
-            f"Code: {_sanitised_issue_value(_operation_text(results, 'failure_code'))}",
-            f"Diagnostic reference: {_sanitised_issue_value(_operation_key(first))}",
-            "",
-            "Please add reproduction context without including personal data, Garmin unit identifiers, or local file paths.",
-        )
+    device = device or {}
+    result = _markdown_issue_value(_operation_result(results))
+    stage = _operation_report_value(results, "failure_stage")
+    code = _operation_report_value(results, "failure_code")
+    native_code = _operation_report_value(results, "native_failure_code")
+    model_value = _markdown_issue_value(model)
+    variant_value = _markdown_issue_value(variant) if variant != "—" else ""
+    title_stage = _sanitised_issue_value(_operation_text(results, "failure_stage", fallback=""))
+    title_code = _sanitised_issue_value(_operation_text(results, "failure_code", fallback=""))
+    title_model = _sanitised_issue_value(model)
+    title_variant = _sanitised_issue_value(variant) if variant != "—" else ""
+    model_variant = " · ".join(value for value in (title_model, title_variant) if value)
+    title = (
+        f"[Install][{title_stage.title()}] {model_variant}"
+        if result == "FAILED" and title_stage else
+        f"[Installation failure] {model_variant}"
+        if result == "FAILED" else
+        f"[Installation anomaly] {model_variant}"
     )
-    return "https://github.com/VooZ2/terento/issues/new?" + urlencode({"title": title, "body": body})
+    if title_code:
+        title += f" — {title_code}"
+
+    family = _markdown_issue_value(
+        device.get("familyName") or device.get("family_name") or device.get("family")
+        or _operation_text(results, "family", fallback="")
+    )
+    part_number = _markdown_issue_value(device.get("partNumber") or device.get("part_number"))
+    sections: list[tuple[str, list[tuple[str, str]]]] = [
+        ("Summary", [
+            ("Result", result),
+            ("Failure stage", stage),
+            ("Error category", _operation_report_value(results, "error_category")),
+            ("Error code", code),
+        ]),
+        ("Device", [
+            ("Model", model_value),
+            ("Variant", variant_value),
+            ("Family", family),
+            ("Part number", part_number),
+            ("Firmware", _operation_report_value(results, "firmware_version")),
+            ("Raw MTP model", _operation_report_value(results, "raw_mtp_model")),
+        ]),
+        ("Installation", [
+            ("Operation", "Map installation"),
+            ("Map", _operation_report_value(results, "provider")),
+            ("Region", _operation_report_value(results, "region")),
+            ("Map version", _operation_report_value(results, "map_release")),
+            ("App version", _operation_report_value(results, "release_label", "terento_version")),
+            ("Build", _operation_report_value(results, "app_build")),
+            ("Timestamp", _operation_report_value(results, "occurred_at")),
+        ]),
+        ("Failure details", [
+            ("Write started", _operation_report_boolean(results, "write_started")),
+            ("Transfer progress", _operation_report_value(results, "transfer_progress_bucket")),
+            ("Object created", _operation_report_boolean(results, "remote_object_created")),
+            ("Cleanup attempted", _operation_report_boolean(results, "cleanup_attempted")),
+            ("Cleanup succeeded", _operation_report_boolean(results, "cleanup_succeeded")),
+            ("Transport", _operation_report_value(results, "transport")),
+            ("Native error", native_code),
+        ]),
+        ("Reference", [
+            ("Diagnostic ID", _markdown_issue_value(_operation_key(first))),
+            ("Installation ID", _operation_report_value(results, "event_id")),
+        ]),
+    ]
+    rendered_sections: list[str] = []
+    for heading, fields in sections:
+        rows = [f"- {label}: {value}" for label, value in fields if value]
+        if rows:
+            rendered_sections.append(f"## {heading}\n\n" + "\n".join(rows))
+    note = _markdown_issue_value(admin_note, max_length=GITHUB_ADMIN_NOTE_MAX_LENGTH)
+    if note:
+        rendered_sections.append(f"## Admin note\n\n{note}")
+    return _sanitised_issue_value(title, max_length=180), "\n\n".join(rendered_sections)
+
+
+def _github_issue_url(
+    identity: str,
+    results: list[dict[str, Any]],
+    *,
+    device: dict[str, Any] | None = None,
+    admin_note: str | None = None,
+) -> tuple[str, bool]:
+    title, body = _github_issue_report(identity, results, device=device, admin_note=admin_note)
+    candidate = GITHUB_NEW_ISSUE_URL + "?" + urlencode({"title": title, "body": body})
+    if len(candidate) > GITHUB_ISSUE_URL_MAX_LENGTH:
+        return GITHUB_NEW_ISSUE_URL, False
+    return candidate, True
+
+
+def _github_create_issue_url(
+    identity: str, results: list[dict[str, Any]], *, device: dict[str, Any] | None = None,
+) -> str:
+    return _github_issue_url(identity, results, device=device)[0]
 
 
 def _diagnostic_detail_dialog(
@@ -770,6 +1018,7 @@ def _diagnostic_detail_dialog(
     csrf_token: str,
     identity_devices: list[dict[str, Any]] | None,
     canonical_device_model_id: str | None = None,
+    return_to: str | None = None,
 ) -> str:
     first = results[0]
     dialog_id = "diagnostic-detail-" + hashlib.sha256(operation_key.encode("utf-8")).hexdigest()[:16]
@@ -778,7 +1027,7 @@ def _diagnostic_detail_dialog(
     result_label = _operation_result(results)
     state = _operation_state(results, resolved=resolved)
     identity_pending = _identity_is_pending(results)
-    return_to = _diagnostics_url({
+    return_to = return_to or _diagnostics_url({
         "compatibility_identity": identity,
         "canonical_device_model_id": canonical_device_model_id,
     })
@@ -801,7 +1050,7 @@ def _diagnostic_detail_dialog(
         )
     if resolved:
         lifecycle_action = f"""
-          <form method='post' action='/admin/diagnostics/reopen' class='diagnostic-action-form'>
+          <form method='post' action='/admin/diagnostics/reopen' class='diagnostic-action-form admin-async-action'>
             <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>
             <input type='hidden' name='operation_key' value='{html.escape(operation_key, quote=True)}'>
             <input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'>
@@ -809,7 +1058,7 @@ def _diagnostic_detail_dialog(
           </form>"""
     elif state == "open":
         lifecycle_action = f"""
-          <form method='post' action='/admin/diagnostics/resolve' class='diagnostic-action-form'>
+          <form method='post' action='/admin/diagnostics/resolve' class='diagnostic-action-form admin-async-action' data-confirm='Mark this error as resolved? The installation will remain failed in history and statistics.'>
             <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>
             <input type='hidden' name='operation_key' value='{html.escape(operation_key, quote=True)}'>
             <input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'>
@@ -821,7 +1070,7 @@ def _diagnostic_detail_dialog(
     else:
         lifecycle_action = ""
     identity_form = f"""
-      <form method='post' action='/admin/diagnostics/identity' class='diagnostic-action-form identity-review-form'>
+      <form method='post' action='/admin/diagnostics/identity' class='diagnostic-action-form identity-review-form admin-async-action'>
         <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>
         <input type='hidden' name='operation_key' value='{html.escape(operation_key, quote=True)}'>
         <input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'>
@@ -835,23 +1084,30 @@ def _diagnostic_detail_dialog(
         <label>Review note <span class='optional-label'>Optional</span><textarea name='identity_note' rows='3'></textarea></label>
         <button type='submit'>Save identity review</button>
       </form>""" if identity_pending else ""
+    report_device = next((
+        device for device in (identity_devices or [])
+        if str(device.get("id") or device.get("device_id") or "") == str(canonical_device_model_id or "")
+    ), None)
+    issue_title, issue_body = _github_issue_report(identity, results, device=report_device)
+    issue_url, issue_prefilled = _github_issue_url(identity, results, device=report_device)
     issue_controls = f"""
-        <div class='github-actions'><a class='secondary-button' href='{html.escape(_github_create_issue_url(identity, results), quote=True)}' target='_blank' rel='noreferrer'>Create GitHub issue</a></div>
-        <form method='post' action='/admin/diagnostics/issue' class='github-link-form'>
+        <div class='github-actions'><a class='secondary-button' href='{html.escape(issue_url, quote=True)}' data-github-create data-issue-title='{html.escape(issue_title, quote=True)}' data-issue-body='{html.escape(issue_body, quote=True)}' data-prefilled='{'true' if issue_prefilled else 'false'}' data-url-limit='{GITHUB_ISSUE_URL_MAX_LENGTH}' target='_blank' rel='noreferrer'>Prepare GitHub issue</a><button class='secondary-button' type='button' data-copy-issue-report>Copy issue report</button><span class='copy-status' data-copy-status role='status' aria-live='polite'>{'Report is too large to prefill; copy it instead.' if not issue_prefilled else ''}</span></div>
+        <details class='github-issue-preview'><summary>Preview issue report</summary><label>Title<input value='{html.escape(issue_title, quote=True)}' readonly data-issue-preview-title></label><label>Body<textarea rows='8' readonly data-issue-preview-body>{html.escape(issue_body)}</textarea></label><label>Admin note <span class='optional-label'>Optional · maximum {GITHUB_ADMIN_NOTE_MAX_LENGTH} characters</span><textarea rows='3' maxlength='{GITHUB_ADMIN_NOTE_MAX_LENGTH}' data-issue-note></textarea></label></details>
+        <form method='post' action='/admin/diagnostics/issue' class='github-link-form admin-async-action'>
           <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>
           <input type='hidden' name='operation_key' value='{html.escape(operation_key, quote=True)}'>
           <input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'>
           <label>{'Change' if issue else 'Link'} issue <span class='optional-label'>e.g. #32</span><input name='linked_github_issue' placeholder='#32' inputmode='numeric' pattern='#?[0-9]{{1,10}}'></label>
           <button type='submit' class='secondary-button'>{'Change linked issue' if issue else 'Link issue'}</button>
         </form>
-        {f"<form method='post' action='/admin/diagnostics/issue' class='github-remove-form'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='operation_key' value='{html.escape(operation_key, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'><input type='hidden' name='linked_github_issue' value=''><button type='submit' class='secondary-button'>Remove link</button></form>" if issue else ''}"""
+        {f"<form method='post' action='/admin/diagnostics/issue' class='github-remove-form admin-async-action' data-confirm='Unlink this GitHub issue from the installation?'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='operation_key' value='{html.escape(operation_key, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'><input type='hidden' name='linked_github_issue' value=''><button type='submit' class='secondary-button'>Unlink issue</button></form>" if issue else ''}"""
     collapse_issue_form = result_label == "SUCCEEDED" and state == "history" and not issue
     if collapse_issue_form:
         issue_form = f"""
           <section class='diagnostic-action-form github-review github-review-collapsed' aria-labelledby='github-review-{dialog_id}'>
             <h4 id='github-review-{dialog_id}'>GitHub issue</h4>
             <p class='github-current'><span class="muted-value">No linked issue</span></p>
-            <details class='github-issue-disclosure'><summary>Link or create issue</summary><div class='github-issue-controls'>{issue_controls}</div></details>
+            <details class='github-issue-disclosure'><summary>Report an anomaly or link issue</summary><div class='github-issue-controls'>{issue_controls}</div></details>
           </section>"""
     else:
         issue_form = f"""
@@ -868,7 +1124,7 @@ def _diagnostic_detail_dialog(
         review_state = f"<div><dt>Review state</dt><dd>{_diagnostic_state_badge('OPEN')}{identity_badge}</dd></div>"
     elif identity_pending:
         review_state = f"<div><dt>Review state</dt><dd>{_diagnostic_state_badge('IDENTITY_PENDING')}</dd></div>"
-    technical_details = f"<details class='diagnostic-technical-details diagnostic-technical-all'><summary>Technical details</summary><p class='diagnostic-id'>Diagnostic ID: <code>{html.escape(operation_key)}</code></p>{technical}</details>"
+    technical_details = f"<details class='diagnostic-technical-details diagnostic-technical-all'><summary>Technical details</summary><p class='diagnostic-id'>Diagnostic ID: <code>{html.escape(operation_key)}</code></p><div class='technical-copy-actions'><button type='button' class='secondary-button' data-copy-diagnostic-id='{html.escape(operation_key, quote=True)}'>Copy diagnostic ID</button><button type='button' class='secondary-button' data-copy-technical-report data-report='{html.escape(issue_body, quote=True)}'>Copy technical report</button><span class='copy-status' data-copy-status role='status' aria-live='polite'></span></div>{technical}</details>"
     return f"""
       <dialog class='diagnostic-detail-dialog' id='{dialog_id}' aria-labelledby='{dialog_id}-title'>
         <div class='diagnostic-detail-inner'>
@@ -881,12 +1137,227 @@ def _diagnostic_detail_dialog(
             <div><dt>Result</dt><dd>{_diagnostic_result(result_label)}</dd></div>
             <div><dt>App version</dt><dd>{html.escape(str(first.get('release_label') or first.get('terento_version') or '—'))}{f" (build {html.escape(str(first.get('app_build')))})" if first.get('app_build') else ''}</dd></div>
             {review_state}
-            <div><dt>Linked issue</dt><dd>{_github_issue_link(issue)}</dd></div>
           </dl>
           <div class='diagnostic-actions-grid'>{lifecycle_action}{identity_form}{issue_form}</div>
           {technical_details}
         </div>
       </dialog>"""
+
+
+def _detail_rows(items: list[tuple[str, Any, bool]]) -> str:
+    rows: list[str] = []
+    for label, value, is_markup in items:
+        if value is None or value == "" or value == "—":
+            continue
+        rendered = str(value) if is_markup else html.escape(str(value))
+        rows.append(f"<div><dt>{html.escape(label)}</dt><dd>{rendered}</dd></div>")
+    return "".join(rows)
+
+
+def _usb_identity_details(identities: list[dict[str, Any]] | None) -> str:
+    values: list[str] = []
+    for identity in identities or []:
+        vendor = identity.get("vendorId")
+        product = identity.get("productId")
+        if vendor is None or product is None:
+            continue
+        try:
+            values.append(f"VID 0x{int(vendor):04X} · PID 0x{int(product):04X}")
+        except (TypeError, ValueError):
+            continue
+    return ", ".join(values)
+
+
+def device_detail_page(
+    device: dict[str, Any], user: dict[str, Any], csrf_token: str, *,
+    operations: list[dict[str, Any]] | None = None,
+    resolved_operations: list[dict[str, Any]] | None = None,
+    identity_devices: list[dict[str, Any]] | None = None,
+    origin: str = "devices",
+    requested_state: str | None = None,
+) -> bytes:
+    device_id = str(device.get("id") or "").strip()
+    model = str(device.get("model") or "Unknown Garmin model")
+    variant = _normalise_variant(device.get("variant"))
+    identity = " · ".join(part for part in (model, variant if variant != "—" else "") if part)
+
+    def matches(event: dict[str, Any]) -> bool:
+        return str(event.get("canonical_device_model_id") or "").strip() == device_id
+
+    active_events = [event for event in (operations or []) if matches(event)]
+    resolved_events = [event for event in (resolved_operations or []) if matches(event)]
+    active_groups = _group_operations(active_events)
+    resolved_groups = _group_operations(resolved_events)
+    history = [(key, results, False) for key, results in active_groups.items()]
+    history.extend((key, results, True) for key, results in resolved_groups.items())
+    history.sort(key=lambda item: _timestamp_iso(item[1][0].get("occurred_at")), reverse=True)
+
+    stats = device.get("installationStats") or {}
+    resolved_failed = sum(
+        1 for results in resolved_groups.values()
+        if _operation_counts_as_installation_attempt(results) and _operation_result(results) == "FAILED"
+    )
+    attempts = int(stats.get("attempts") or 0) + resolved_failed
+    successful = int(stats.get("successful") or 0)
+    failed = int(stats.get("failed") or 0) + resolved_failed
+    open_errors = sum(
+        1 for results in active_groups.values()
+        if _operation_counts_as_installation_attempt(results) and _operation_result(results) == "FAILED"
+    )
+    status = calculate_compatibility_status(
+        successful_install_count=successful,
+        recognized_map_capable_evidence=device.get("mapCapable") is True,
+    )
+    status_value = status.value if status else ""
+    publication = device.get("publicCompatibility") or {}
+    map_label, map_kind = _admin_map_capability(device.get("mapCapable"))
+    authorization_label, authorization_kind, _ = _admin_installation_authorization(
+        device.get("supportStatus")
+    )
+    summary_badges = "".join((
+        _admin_status_badge(f"Maps: {map_label}", f"map-{map_kind}"),
+        _status_badge(status_value),
+        _admin_status_badge(authorization_label, f"authorization-{authorization_kind}"),
+        _admin_status_badge("Published", "publication-published") if publication.get("published") else "",
+    ))
+    image_url = (device.get("image") or {}).get("url")
+    image = (
+        f"<img class='model-page-image' src='{html.escape(str(image_url), quote=True)}' alt='' loading='eager'>"
+        if image_url else ""
+    )
+    back_href = "/admin" if origin == "installations" else "/admin/devices"
+    back_label = "Back to Installations" if origin == "installations" else "Back to Devices"
+    detail_url = _device_detail_url(device_id, origin=origin)
+    public_link = (
+        "<a class='secondary-button model-public-link' href='https://terento.app/compatibility/' target='_blank' rel='noreferrer'>View public page <span aria-hidden='true'>↗</span></a>"
+        if publication.get("published") else ""
+    )
+    alert = (
+        f"<aside class='model-review-alert' role='status'><span><strong>{open_errors} installation {'error needs' if open_errors == 1 else 'errors need'} review.</strong> Resolved failures remain in the historical failed count.</span><a href='#installations' data-filter-open-errors>Review open errors</a></aside>"
+        if open_errors else ""
+    )
+
+    rows_markup: list[str] = []
+    dialogs: list[str] = []
+    for index, (operation_key, results, resolved) in enumerate(history):
+        first = results[0]
+        result = _operation_result(results)
+        issue = _operation_issue(results)
+        is_open_error = not resolved and result == "FAILED"
+        is_resolved_error = resolved and result == "FAILED"
+        region = _operation_text(results, "region", fallback="")
+        map_release = _operation_text(results, "map_release", fallback="")
+        map_copy = html.escape(region or "Map not recorded")
+        if map_release:
+            map_copy += f"<small>{html.escape(map_release)}</small>"
+        if result == "FAILED":
+            error_state = _diagnostic_state_badge("RESOLVED" if resolved else "OPEN")
+            error_detail = " · ".join(filter(None, (
+                _operation_text(results, "failure_stage", fallback=""),
+                _operation_text(results, "failure_code", fallback=""),
+            )))
+            error_markup = error_state + (
+                f"<small>{html.escape(error_detail)}</small>" if error_detail else ""
+            )
+        else:
+            error_markup = "<span class='muted-value'>No error</span>"
+        release = first.get("release_label") or first.get("terento_version") or ""
+        if first.get("app_build"):
+            release = f"{release} (build {first['app_build']})".strip()
+        release_markup = html.escape(str(release)) if release else "<span class='muted-value'>—</span>"
+        dialog_id = "diagnostic-detail-" + hashlib.sha256(operation_key.encode("utf-8")).hexdigest()[:16]
+        rows_markup.append(
+            f"<tr data-diagnostic-state='{'resolved-error' if is_resolved_error else 'open' if is_open_error else 'history'}' data-review-open='{'true' if is_open_error else 'false'}' data-review-resolved='{'true' if is_resolved_error else 'false'}' data-diagnostic-result='{html.escape(result.lower(), quote=True)}' data-has-issue='{'true' if issue else 'false'}'>"
+            f"<td>{_timestamp_markup(first.get('occurred_at'))}</td>"
+            f"<td class='history-map'>{map_copy}</td>"
+            f"<td>{_diagnostic_result(result)}</td>"
+            f"<td class='history-error'>{error_markup}</td>"
+            f"<td>{_github_issue_link(issue)}</td>"
+            f"<td>{release_markup}</td>"
+            f"<td><button type='button' class='secondary-button diagnostic-review' data-dialog-id='{dialog_id}' aria-label='View installation details {index + 1}'>Details</button></td>"
+            "</tr>"
+        )
+        dialogs.append(_diagnostic_detail_dialog(
+            identity, operation_key, results, resolved=resolved,
+            csrf_token=csrf_token, identity_devices=identity_devices,
+            canonical_device_model_id=device_id, return_to=detail_url + "#installations",
+        ))
+    history_rows = "".join(rows_markup) or "<tr><td colspan='7' class='empty'>No installation history for this device.</td></tr>"
+
+    public_copy = (
+        f"Published on terento.app/compatibility/ as {html.escape(status.value.title() if status else 'Unavailable')}."
+        if publication.get("published") else
+        "Not shown on the public compatibility page."
+    )
+    public_form = ""
+    if publication.get("eligible"):
+        action = "UNPUBLISH" if publication.get("published") else "PUBLISH"
+        confirm = (
+            " data-confirm='This device will no longer appear on the public compatibility page.'"
+            if action == "UNPUBLISH" else ""
+        )
+        public_form = f"""<form method='post' action='/admin/devices/public-compatibility' class='admin-async-action'{confirm}>
+          <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='device_id' value='{html.escape(device_id, quote=True)}'><input type='hidden' name='publication_action' value='{action}'><input type='hidden' name='return_to' value='{html.escape(detail_url, quote=True)}'>
+          <label>Note <span class='optional-label'>Optional</span><textarea name='note' rows='2'></textarea></label><button type='submit' class='{'secondary-button' if action == 'UNPUBLISH' else ''}'>{'Remove from public compatibility' if action == 'UNPUBLISH' else 'Approve and publish'}</button>
+        </form>"""
+
+    lifecycle = (
+        "Historical" if device.get("recordSource") == "HISTORICAL_REVIEWED" else
+        "Inactive" if device.get("active") is False else "Current retail"
+    )
+    catalog_source = (
+        "Historical reviewed registry" if device.get("recordSource") == "HISTORICAL_REVIEWED" else
+        "Garmin retail catalog"
+    )
+    catalog = device.get("catalog") or {}
+    device_info = _detail_rows([
+        ("Model", model, False), ("Variant", variant, False),
+        ("Family", device.get("familyName") or device.get("family"), False),
+        ("Part number", device.get("partNumber"), False),
+        ("Lifecycle", lifecycle, False),
+        ("Map capability", _admin_status_badge(map_label, f"map-{map_kind}"), True),
+        ("Catalog source", catalog_source, False),
+        ("Last synced", _timestamp_markup(catalog.get("lastSeenAt")) if catalog.get("lastSeenAt") else None, True),
+    ])
+    all_events = active_events + resolved_events
+    firmware = ", ".join(sorted({str(item.get("firmware_version")).strip() for item in all_events if item.get("firmware_version")}))
+    raw_models = ", ".join(sorted({str(item.get("raw_mtp_model")).strip() for item in all_events if item.get("raw_mtp_model")}))
+    transports = ", ".join(sorted({str(item.get("transport")).strip() for item in all_events if item.get("transport")}))
+    technical_rows = _detail_rows([
+        ("Catalog ID", device_id, False),
+        ("USB identity", _usb_identity_details(device.get("usbIdentities")), False),
+        ("Firmware", firmware, False),
+        ("Raw MTP model", raw_models, False),
+        ("Transport", transports, False),
+    ])
+    if not technical_rows:
+        technical_rows = "<p class='diagnostic-technical-empty'>Detailed technical data is not available for this record.</p>"
+
+    active_header = "evidence" if origin == "installations" else "devices"
+    content = f"""
+      {_admin_header(user, csrf_token, active=active_header)}
+      <main class='dashboard model-detail-page' id='main-content'>
+        <p class='back-link'><a href='{back_href}'>← {back_label}</a></p>
+        <header class='model-page-header'>{image}<div class='model-page-heading'><p class='eyebrow'>Garmin device</p><h1>{html.escape(model)}{f' · <span>{html.escape(variant)}</span>' if variant != '—' else ''}</h1><div class='model-page-badges'>{summary_badges}</div></div>{public_link}</header>
+        <section class='diagnostic-model-metrics model-statistics' aria-label='Model installation statistics'><article><span>Attempts</span><strong>{attempts}</strong></article><article><span>Successful</span><strong>{successful}</strong></article><article><span>Failed</span><strong>{failed}</strong></article><article><span>Open errors</span><strong>{open_errors}</strong></article><article><span>Compatibility status</span><strong>{_status_badge(status_value)}</strong></article></section>
+        {alert}
+        <section class='diagnostics-detail-section model-page-section' id='installations' aria-labelledby='installation-history-title'>
+          <div class='section-heading'><div><p class='section-kicker'>Operational history</p><h2 id='installation-history-title'>Installation history</h2></div><p class='table-help'>Failed results remain historical after their error is resolved.</p></div>
+          <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'><label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all'>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='open'>Open errors</option><option value='resolved-errors'>Resolved errors</option></select></label></form>
+          <p class='results-count' id='diagnostic-results-count' aria-live='polite'>{len(history)} records</p>
+          <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table model-history-table'><caption class='sr-only'>Installation history for this exact model and variant</caption><thead><tr><th scope='col'>Date</th><th scope='col'>Map</th><th scope='col'>Result</th><th scope='col'>Error</th><th scope='col'>GitHub issue</th><th scope='col'>App version</th><th scope='col'>Action</th></tr></thead><tbody id='diagnostic-rows'>{history_rows}</tbody></table></div>
+        </section>
+        <section class='model-page-section model-administration' aria-labelledby='administration-title'><div class='section-heading'><div><p class='section-kicker'>Controls</p><h2 id='administration-title'>Administration</h2></div></div><div class='administration-grid'>
+          <article><h3>Installation authorization</h3><form method='post' action='/admin/devices/authorization' class='admin-async-action' data-authorization-form data-current-authorization='{html.escape(str(device.get('supportStatus') or 'NOT_EVALUATED'), quote=True)}'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='device_id' value='{html.escape(device_id, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(detail_url, quote=True)}'><label>Status<select name='support_status'><option value='SUPPORTED'{' selected' if device.get('supportStatus') == 'SUPPORTED' else ''}>Approved</option><option value='UNSUPPORTED'{' selected' if device.get('supportStatus') == 'UNSUPPORTED' else ''}>Blocked</option><option value='NOT_EVALUATED'{' selected' if device.get('supportStatus') == 'NOT_EVALUATED' else ''}>Pending</option></select></label><label>Note <span class='optional-label'>Optional</span><textarea name='note' rows='2'></textarea></label><button type='submit'>Save authorization</button></form></article>
+          <article><h3>Public compatibility</h3><p>{public_copy}</p>{public_form}</article>
+        </div></section>
+        <section class='model-page-section' aria-labelledby='device-information-title'><div class='section-heading'><div><p class='section-kicker'>Catalog record</p><h2 id='device-information-title'>Device information</h2></div></div><dl class='model-information-list'>{device_info}</dl></section>
+        <details class='model-technical-details'><summary>Technical details</summary><dl class='model-information-list'>{technical_rows}</dl></details>
+        {''.join(dialogs)}
+      </main>
+      <script>{_diagnostics_script()}</script>
+    """
+    return _layout(f"{model} {variant}", content)
 
 
 def diagnostics_page(
@@ -1064,7 +1535,7 @@ def _render_diagnostic_details(
             lifecycle = _diagnostic_state_badge(diagnostic_status)
             identity_state = str(first.get("identity_resolution_state") or "UNRESOLVED").upper()
             if diagnostic_status == "RESOLVED":
-                action = f"""<form method='post' action='/admin/diagnostics/reopen' class='diagnostic-inline-form'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='operation_key' value='{html.escape(str(operation_key), quote=True)}'><button type='submit' class='secondary-button'>Reopen</button></form>"""
+                action = f"""<form method='post' action='/admin/diagnostics/reopen' class='diagnostic-inline-form admin-async-action'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='operation_key' value='{html.escape(str(operation_key), quote=True)}'><button type='submit' class='secondary-button'>Reopen</button></form>"""
             else:
                 action = f"""<button type='button' class='secondary-button' data-resolve-operation='{html.escape(str(operation_key), quote=True)}'>Resolve</button>"""
             identity_action = f"""<button type='button' class='secondary-button' data-identity-operation='{html.escape(str(operation_key), quote=True)}'>Resolve identity</button>"""
@@ -1274,16 +1745,17 @@ def _admin_device_row(device: dict[str, Any], index: int) -> str:
         "<span class='device-thumb device-thumb-placeholder' aria-hidden='true'></span>"
     )
     new_badge = "<span class='new-badge'>New</span>" if catalog.get("newInLatestSync") else ""
-    last_evidence = _timestamp_markup(stats.get("lastEvidenceAt")) if stats.get("lastEvidenceAt") else "—"
-    return f"""<tr data-device-index='{index}' data-search='{html.escape(search, quote=True)}' data-model='{html.escape(model.lower(), quote=True)}' data-updated='{html.escape(str(catalog.get('updatedAt') or ''), quote=True)}' data-installs='{stats['attempts']}' data-evidence='{html.escape(str(stats.get('lastEvidenceAt') or ''), quote=True)}' data-status='{html.escape(evidence_status.lower())}' tabindex='0' aria-label='Open details for {html.escape(model)}{f', {html.escape(variant)}' if variant != '—' else ''}'>
-      <td><button class='device-model-button' type='button' data-device-index='{index}'>{image}<span class='device-model-copy'><strong>{html.escape(model)}</strong>{new_badge}</span></button></td>
+    last_success = _timestamp_markup(stats.get("lastSuccessfulAt")) if stats.get("lastSuccessfulAt") else "—"
+    detail_url = _device_detail_url(device.get("id"), origin="devices")
+    return f"""<tr data-device-index='{index}' data-device-url='{html.escape(detail_url, quote=True)}' data-search='{html.escape(search, quote=True)}' data-model='{html.escape(model.lower(), quote=True)}' data-updated='{html.escape(str(catalog.get('updatedAt') or ''), quote=True)}' data-installs='{stats['attempts']}' data-evidence='{html.escape(str(stats.get('lastSuccessfulAt') or ''), quote=True)}' data-status='{html.escape(evidence_status.lower())}' tabindex='0' role='link' aria-label='Open {html.escape(model)}{f', {html.escape(variant)}' if variant != '—' else ''}'>
+      <td><a class='device-model-button' href='{html.escape(detail_url, quote=True)}'>{image}<span class='device-model-copy'><strong>{html.escape(model)}</strong>{new_badge}</span></a></td>
       <td>{html.escape(variant)}</td>
       <td>{_admin_status_badge(map_label, f'map-{map_kind}')}</td>
       <td>{_admin_status_badge(authorization_label, f'authorization-{authorization_kind}')}</td>
       <td>{_status_badge(evidence_status)}</td>
       <td class='numeric'>{stats['attempts']}</td>
       <td class='numeric'>{stats['successful']}</td>
-      <td>{last_evidence}</td>
+      <td>{last_success}</td>
     </tr>"""
 
 
@@ -1296,7 +1768,7 @@ def devices_page(
     sync_data = payload["sync"]
     completed = _timestamp_markup(sync_data["completedAt"]) if sync_data["completedAt"] else "No successful sync recorded"
     sync_line = (
-        f"{sync_data['recordsAdded']} new · {sync_data['recordsUpdated']} updated"
+        f"<button type='button' class='summary-filter-link' id='device-show-new'>{sync_data['recordsAdded']} new</button> · {sync_data['recordsUpdated']} updated"
         if sync_data["id"] is not None and sync_data["recordsAdded"] is not None
         else ("Counts unavailable for this historical run" if sync_data["id"] is not None else "No sync recorded")
     )
@@ -1320,26 +1792,25 @@ def devices_page(
       <main class="dashboard devices-page" id="main-content">
         <div class="heading-row"><div><p class="eyebrow">Catalog</p><h1>Devices</h1><p class="lede">Garmin device catalog, map capability, authorization, and compatibility evidence.</p></div></div>
         <section class="admin-summary-strip device-summary-strip" aria-label="Device catalog summary and sync">
-          <p class="device-summary-metrics"><strong>{summary['models']} models</strong><span> · {summary['mapCapable']} map-capable · {summary['approved']} approved · {summary['successful']} successful installs</span></p>
-          <p class="device-summary-sync"><strong>Last sync</strong> {completed}<span> · {html.escape(sync_line)}</span>{f"<span> · {html.escape(str(sync_data['status'] or '').title())}</span>" if sync_data['status'] else ''}</p>
+          <p class="device-summary-metrics"><strong>{summary['models']} devices</strong><span> · {summary['mapCapable']} map-capable · {summary['approved']} approved · {summary['successful']} successful installs</span></p>
+          <p class="device-summary-sync"><strong>Last sync</strong> {completed}<span> · {sync_line}</span>{f"<span> · {html.escape(str(sync_data['status'] or '').title())}</span>" if sync_data['status'] else ''}</p>
         </section>
         <section class="evidence-section" aria-labelledby="device-list-title">
-          <div class="section-heading"><div><p class="section-kicker">Inventory</p><h2 id="device-list-title">Known models</h2></div><p class="table-help">Times follow the selected time zone</p></div>
+          <div class="section-heading"><div><p class="section-kicker">Inventory</p><h2 id="device-list-title">Known devices</h2></div><p class="table-help">Times follow the selected time zone</p></div>
           <p class="sr-only">Compatibility status and installation counts remain backend-derived.</p>
           <form class="filter-bar admin-filter-bar device-filter-bar" id="device-filters" role="search">
             <label class="filter-search"><span class="sr-only">Search devices</span><input id="device-search" type="search" placeholder="Search devices" autocomplete="off"></label>
             <label><span class="sr-only">Filter by family</span><select id="device-family"><option value="all">All families</option>{family_options}</select></label>
-            <label><span class="sr-only">Filter by map capability</span><select id="device-map"><option value="all">All maps</option><option value="yes">Maps: Yes</option><option value="no">Maps: No</option><option value="unknown">Maps: Unknown</option></select></label>
+            <label><span class="sr-only">Filter by map capability</span><select id="device-map"><option value="yes" selected>Maps: Yes</option><option value="no">Maps: No</option><option value="unknown">Maps: Unknown</option><option value="all">All maps</option></select></label>
             <label><span class="sr-only">Filter by installation authorization</span><select id="device-support"><option value="all">All authorizations</option><option value="SUPPORTED">Approved</option><option value="UNSUPPORTED">Blocked</option><option value="NOT_EVALUATED">Pending</option></select></label>
             <label><span class="sr-only">Filter by compatibility status</span><select id="device-status"><option value="all">All statuses</option><option value="TESTING">Testing</option><option value="TESTED">Tested</option><option value="SUPPORTED">Supported</option><option value="VERIFIED">Verified</option><option value="unavailable">Unavailable</option></select></label>
-            <p class="results-count" id="device-results-count" aria-live="polite">{len(payload['devices'])} {'model' if len(payload['devices']) == 1 else 'models'}</p>
+            <p class="results-count" id="device-results-count" aria-live="polite">{summary['mapCapable']} results</p>
           </form>
           {empty}
-          <div class="table-wrap device-table-wrap"><table class="admin-table"><caption class="sr-only">Device catalog and Terento installation evidence</caption><thead><tr><th scope="col" aria-sort="ascending"><button type="button" class="device-sort-button" data-device-sort="model" aria-label="Model">Model <span aria-hidden="true">↑</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="variant" aria-label="Variant">Variant <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="maps" aria-label="Map capability" title="Map capability">Maps <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="authorization" aria-label="Installation authorization" title="Installation authorization">Authorization <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="status" aria-label="Compatibility status" title="Compatibility status">Status <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="attempts" aria-label="Install attempts" title="Install attempts">Attempts <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="success" aria-label="Successful installations" title="Successful installations">Success <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="evidence" aria-label="Last evidence" title="Last evidence">Last evidence <span aria-hidden="true">↕</span></button></th></tr></thead><tbody id="device-rows">{rows_html}</tbody></table></div>
+          <div class="table-wrap device-table-wrap"><table class="admin-table"><caption class="sr-only">Device catalog and Terento installation evidence</caption><thead><tr><th scope="col" aria-sort="ascending"><button type="button" class="device-sort-button" data-device-sort="model" aria-label="Model">Model <span aria-hidden="true">↑</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="variant" aria-label="Variant">Variant <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="maps" aria-label="Map capability" title="Map capability">Maps <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="authorization" aria-label="Installation authorization" title="Installation authorization">Authorization <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="status" aria-label="Compatibility status" title="Compatibility status">Status <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="attempts" aria-label="Install attempts" title="Install attempts">Attempts <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="success" aria-label="Successful installations" title="Successful installations">Successful <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="evidence" aria-label="Last successful installation" title="Last successful installation">Last success <span aria-hidden="true">↕</span></button></th></tr></thead><tbody id="device-rows">{rows_html}</tbody></table></div>
           <div class="device-pagination" id="device-pagination" hidden><button type="button" id="device-previous">Previous</button><span id="device-page-status"></span><button type="button" id="device-next">Next</button></div>
         </section>
       </main>
-      <dialog class="device-dialog" id="device-dialog" aria-labelledby="device-dialog-title"><div class="device-dialog-inner"><div class="device-dialog-header"><div><p class="section-kicker">Garmin device record</p><h2 id="device-dialog-title">Device details</h2></div><button class="dialog-close" type="button" id="device-dialog-close" aria-label="Close device details">×</button></div><div id="device-dialog-body"></div></div></dialog>
       <script>const terentoAdminDevices = {payload_json};{_devices_script()}</script>
     """
     return _layout("Devices", content)
@@ -1447,13 +1918,17 @@ def account_page(user: dict[str, Any], csrf_token: str, *, error: str | None = N
 
 def _statistics_row(row: dict[str, Any], diagnostic_summary: dict[str, int] | None = None) -> str:
     model, variant, identity = _identity_parts(row)
-    status_value = _row_compatibility_status(row)
+    summary = diagnostic_summary or {}
+    attempted = int(summary["attempts"]) if "attempts" in summary else int(row.get("attempted_install_count") or 0)
+    successful = int(summary["successful"]) if "successful" in summary else int(row.get("successful_install_count") or 0)
+    failed = int(summary["failed"]) if "failed" in summary else int(row.get("failed_install_count") or 0)
+    open_errors = int(summary.get("open_errors") or 0)
+    status_value = _row_compatibility_status({**row, "successful_install_count": successful})
     status = status_value.value if status_value else ""
     search_text = " ".join((model, variant, str(row.get("family") or ""), identity)).strip()
     activity = max((_timestamp_iso(row.get(key)) for key in ("last_success", "last_failure", "last_evidence")), default="")
-    diagnostics_url = _diagnostics_url(row)
-    error_count = int((diagnostic_summary or {}).get("errors") or 0)
-    pending_count = int((diagnostic_summary or {}).get("identity_pending") or 0)
+    diagnostics_url = _model_detail_url(row)
+    pending_count = int(summary.get("identity_pending") or 0)
     model_cell = html.escape(model)
     if pending_count:
         model_cell += (
@@ -1461,12 +1936,16 @@ def _statistics_row(row: dict[str, Any], diagnostic_summary: dict[str, int] | No
             "Identity pending</span>"
         )
     cells = (
-        model_cell, html.escape(variant),
-        html.escape(str(row.get("attempted_install_count", 0))), html.escape(str(row.get("successful_install_count", 0))),
-        _error_cell(row, diagnostic_summary), _status_badge(status), _timestamp_markup(row.get("last_success")),
+        model_cell, html.escape(variant), html.escape(str(attempted)),
+        html.escape(str(successful)), html.escape(str(failed)),
+        (
+            f"<a class='error-count' href='{html.escape(_model_detail_url(row, state='open'), quote=True)}' aria-label='View {open_errors} open errors'>{open_errors}</a>"
+            if open_errors else "0"
+        ),
+        _status_badge(status), _timestamp_markup(row.get("last_success")),
     )
     return (
-        f"<tr class='evidence-model-row' data-search='{html.escape(search_text, quote=True)}' data-status='{html.escape(status.lower(), quote=True)}' data-activity='{html.escape(activity, quote=True)}' data-attempts='{int(row.get('attempted_install_count') or 0)}' data-errors='{error_count}' data-diagnostics-url='{html.escape(diagnostics_url, quote=True)}' tabindex='0' role='link' aria-label='Review diagnostics for {html.escape(model)}{f', {html.escape(variant)}' if variant != '—' else ''}'>"
+        f"<tr class='evidence-model-row' data-search='{html.escape(search_text, quote=True)}' data-status='{html.escape(status.lower(), quote=True)}' data-activity='{html.escape(activity, quote=True)}' data-attempts='{attempted}' data-errors='{open_errors}' data-diagnostics-url='{html.escape(diagnostics_url, quote=True)}' tabindex='0' role='link' aria-label='Open {html.escape(model)}{f', {html.escape(variant)}' if variant != '—' else ''}'>"
         + "".join(f"<td>{cell}</td>" for cell in cells)
         + f"</tr>"
     )
@@ -1501,34 +1980,31 @@ def _devices_script() -> str:
       const previous = document.querySelector('#device-previous');
       const next = document.querySelector('#device-next');
       const pageStatus = document.querySelector('#device-page-status');
-      const dialog = document.querySelector('#device-dialog');
-      const dialogTitle = document.querySelector('#device-dialog-title');
-      const dialogBody = document.querySelector('#device-dialog-body');
-      const close = document.querySelector('#device-dialog-close');
-      if (!body || !form || !search || !family || !map || !support || !status || !count || !dialog) return;
+      const showNewButton = document.querySelector('#device-show-new');
+      if (!body || !form || !search || !family || !map || !support || !status || !count) return;
 
       const pageSize = 50;
       let page = 0;
       let sortKey = 'model';
       let sortDirection = 'ascending';
-      let lastFocused = null;
-      const escapeHtml = (value) => String(value ?? '—')
-        .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
-      const display = (value) => value === null || value === undefined || value === '' ? '—' : value;
-      const utcDate = (value) => value ? new Date(value).toISOString().slice(0, 16).replace('T', ' ') : '—';
-      const date = (value) => value ? `<time class="admin-timestamp" data-admin-timestamp="${escapeHtml(value)}">${escapeHtml(window.TerentoAdminTime ? window.TerentoAdminTime.format(value) : utcDate(value))}</time>` : '—';
+      let showNew = false;
+      const storageKey = 'terento.admin.devices.filters';
+      const parameters = new URLSearchParams(window.location.search);
+      let saved = {};
+      try { saved = JSON.parse(sessionStorage.getItem(storageKey) || '{}'); } catch (_) { saved = {}; }
+      const setSelect = (control, key, fallback) => {
+        const requested = parameters.has(key) ? parameters.get(key) : saved[key];
+        control.value = [...control.options].some((option) => option.value === requested) ? requested : fallback;
+      };
+      search.value = parameters.has('search') ? parameters.get('search') : (saved.search || '');
+      setSelect(family, 'family', 'all');
+      setSelect(map, 'maps', 'yes');
+      setSelect(support, 'authorization', 'all');
+      setSelect(status, 'status', 'all');
+      sortKey = parameters.get('sort') || saved.sort || 'model';
+      sortDirection = parameters.get('direction') || saved.direction || 'ascending';
+      showNew = parameters.get('new') === '1' || (!parameters.size && saved.new === true);
       const mapValue = (device) => device.mapCapable === true ? 'yes' : device.mapCapable === false ? 'no' : 'unknown';
-      const authorizationLabel = (value) => ({APPROVED: 'Approved', BLOCKED: 'Blocked', PENDING: 'Pending'})[value] || 'Pending';
-      const evidenceLabel = (value) => ({TESTING: 'Testing', TESTED: 'Tested', SUPPORTED: 'Supported', VERIFIED: 'Verified'})[value] || 'Unavailable';
-      const statusBadge = (value) => value ? `<span class="status-badge status-${String(value).toLowerCase()}">${escapeHtml(evidenceLabel(value))}</span>` : '<span class="status-badge status-unavailable">Unavailable</span>';
-      const mapBadge = (label, value) => `<span class="admin-state admin-state-map-${value}">${escapeHtml(label)}</span>`;
-      const authorizationBadge = (value) => `<span class="admin-state admin-state-authorization-${String(value || 'PENDING').toLowerCase()}">${escapeHtml(authorizationLabel(value))}</span>`;
-      const publicationBadge = (publication) => publication?.published
-        ? '<span class="admin-state admin-state-publication-published">Published</span>'
-        : publication?.eligible
-          ? '<span class="admin-state admin-state-publication-pending">Approval required</span>'
-          : '<span class="admin-state admin-state-publication-unavailable">Not eligible</span>';
       const deviceSearch = (device) => [device.id, device.model, device.canonicalModel, device.family, device.familyName, device.variant, device.caseSizeMm, device.partNumber, device.displayType].filter(Boolean).join(' ').toLocaleLowerCase();
       const textCompare = (a, b) => String(a || '').localeCompare(String(b || ''), undefined, {sensitivity: 'base', numeric: true});
       const statusOrder = {unavailable: 0, TESTING: 1, TESTED: 2, SUPPORTED: 3, VERIFIED: 4};
@@ -1559,9 +2035,28 @@ def _devices_script() -> str:
         if (header) header.setAttribute('aria-sort', active ? sortDirection : 'none');
         if (indicator) indicator.textContent = active ? (sortDirection === 'ascending' ? '↑' : '↓') : '↕';
       });
+      const saveState = () => {
+        const state = {
+          search: search.value, family: family.value, maps: map.value,
+          authorization: support.value, status: status.value,
+          sort: sortKey, direction: sortDirection, new: showNew,
+        };
+        try { sessionStorage.setItem(storageKey, JSON.stringify(state)); } catch (_) { /* optional */ }
+        const query = new URLSearchParams();
+        if (search.value) query.set('search', search.value);
+        query.set('maps', map.value);
+        if (family.value !== 'all') query.set('family', family.value);
+        if (support.value !== 'all') query.set('authorization', support.value);
+        if (status.value !== 'all') query.set('status', status.value);
+        if (sortKey !== 'model') query.set('sort', sortKey);
+        if (sortDirection !== 'ascending') query.set('direction', sortDirection);
+        if (showNew) query.set('new', '1');
+        history.replaceState(null, '', `${window.location.pathname}?${query.toString()}`);
+      };
       const matching = () => {
         const query = search.value.trim().toLocaleLowerCase();
         return devices.filter((device) => {
+          if (showNew) return device.catalog?.newInLatestSync === true;
           const matchesSearch = !query || deviceSearch(device).includes(query);
           const matchesFamily = family.value === 'all' || family.value === (device.familyName || device.family);
           const matchesMap = map.value === 'all' || mapValue(device) === map.value;
@@ -1569,126 +2064,6 @@ def _devices_script() -> str:
           const matchesStatus = status.value === 'all' || (device.evidenceStatus || 'unavailable') === status.value;
           return matchesSearch && matchesFamily && matchesMap && matchesAuthorization && matchesStatus;
         }).sort(compareDevices);
-      };
-      const usbIdentity = (identities) => {
-        const known = (identities || []).filter((identity) => identity.vendorId !== null && identity.vendorId !== undefined && identity.productId !== null && identity.productId !== undefined);
-        if (!known.length) return '<span class="muted-value" title="No exact USB identity is currently recorded for this catalog profile.">Not known</span>';
-        const value = (number) => number === null || number === undefined || number === '' || !Number.isFinite(Number(number)) ? 'Not known' : `0x${Number(number).toString(16).padStart(4, '0').toUpperCase()}`;
-        return known.map((identity) => `<span title="USB identity observed for this exact catalog profile. Decimal: ${escapeHtml(identity.vendorId)} · ${escapeHtml(identity.productId)}">VID ${value(identity.vendorId)} · PID ${value(identity.productId)}</span>`).join(', ');
-      };
-      const openDevice = (device) => {
-        if (!device) return;
-        lastFocused = document.activeElement;
-        const stats = device.installationStats;
-        const catalog = device.catalog;
-        const publication = device.publicCompatibility || {};
-        const mapLabel = device.mapCapable === true ? 'Yes' : device.mapCapable === false ? 'No' : 'Unknown';
-        const image = device.image || {};
-        const imageSourceLabel = image.origin === 'controlled' ? 'Terento · approved asset' : image.origin === 'garmin-source' ? 'Garmin · exact model' : image.origin === 'fallback' ? 'Terento · neutral fallback' : 'Not available';
-        const imageMatchLabel = image.origin === 'controlled' ? 'Approved Terento asset' : image.origin === 'garmin-source' ? 'Official product media' : image.origin === 'fallback' ? 'Generic fallback' : 'No image';
-        const imageSourceUrl = device.sourceAsset?.url || image.url || '';
-        const imageMarkup = image.url ? `<img class="device-detail-image" src="${escapeHtml(image.url)}" alt="">` : '';
-        const canonicalRow = device.canonicalModel && device.canonicalModel.toLocaleLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '') !== device.model.toLocaleLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '') ? `<div><dt>Canonical model</dt><dd>${escapeHtml(device.canonicalModel)}</dd></div>` : '';
-        dialogTitle.innerHTML = `<span>${escapeHtml(device.model)}</span><span class="modal-subtitle">${escapeHtml(device.variant)}</span>${statusBadge(device.evidenceStatus)}`;
-        dialogBody.innerHTML = `
-          <div class="device-modal-hero">${imageMarkup}</div>
-          <div class="device-detail-grid">
-            <section><p class="detail-kicker">Identity</p><dl>
-              <div><dt>Model</dt><dd>${escapeHtml(device.model)}</dd></div>${canonicalRow}
-              <div><dt>Variant</dt><dd>${escapeHtml(device.variant)}</dd></div>
-              <div><dt>Family</dt><dd>${escapeHtml(device.familyName || device.family)}</dd></div>
-              <div><dt>Part number</dt><dd>${escapeHtml(device.partNumber)}</dd></div>
-              <div><dt>Catalog ID</dt><dd class="technical-value device-catalog-id">${escapeHtml(device.id)}</dd></div>
-            </dl></section>
-            <section><p class="detail-kicker">Capability &amp; authorization</p><dl>
-              <div><dt>Map capability</dt><dd>${mapBadge(mapLabel, mapValue(device))}</dd></div>
-              <div><dt>Installation authorization</dt><dd>${authorizationBadge(device.installationAuthorization)}</dd></div>
-              <div><dt>USB identity <button class="info-control info-control-inline" type="button" title="VID/PID is shown only when it was recorded from this exact catalog profile. No value is inferred." aria-label="USB identity information">i</button></dt><dd class="technical-value">${usbIdentity(device.usbIdentities)}</dd></div>
-            </dl></section>
-            <section><p class="detail-kicker">Compatibility evidence</p><dl>
-              <div><dt>Compatibility status</dt><dd class="detail-status-value">${escapeHtml(evidenceLabel(device.evidenceStatus))}</dd></div>
-              <div><dt>Public listing</dt><dd>${publicationBadge(publication)}</dd></div>
-              <div><dt>Attempts</dt><dd>${stats.attempts}</dd></div>
-              <div><dt>Successful</dt><dd>${stats.successful}</dd></div>
-              <div><dt>Failed</dt><dd>${stats.failed}</dd></div>
-              <div><dt>Rate</dt><dd>${stats.successRate === null ? '—' : `${stats.successRate}%`}</dd></div>
-              <div><dt>First success</dt><dd>${date(stats.firstSuccessfulAt)}</dd></div>
-              <div><dt>Last evidence</dt><dd>${date(stats.lastEvidenceAt)}</dd></div>
-            </dl></section>
-          </div>
-          <section class="device-support-review" aria-labelledby="device-support-review-title">
-            <p class="detail-kicker" id="device-support-review-title">Installation authorization</p>
-            <div class="authorization-current" data-authorization-current><span>Current</span><span class="authorization-current-value">${authorizationBadge(device.installationAuthorization)}</span><button type="button" class="secondary-button" data-authorization-change>Change</button></div>
-            <form method="post" action="/admin/devices/authorization" data-authorization-form hidden>
-              <input type="hidden" name="csrf_token" value="${escapeHtml(terentoAdminDevices.csrfToken)}">
-              <input type="hidden" name="device_id" value="${escapeHtml(device.id)}">
-              <label for="authorization-${escapeHtml(device.id)}">Change to<select id="authorization-${escapeHtml(device.id)}" name="support_status">
-                <option value="SUPPORTED"${device.supportStatus === 'SUPPORTED' ? ' selected' : ''}>Approved</option>
-                <option value="UNSUPPORTED"${device.supportStatus === 'UNSUPPORTED' ? ' selected' : ''}>Blocked</option>
-                <option value="NOT_EVALUATED"${device.supportStatus === 'NOT_EVALUATED' ? ' selected' : ''}>Pending</option>
-              </select></label>
-              <label>Note <span class="optional-label">Optional</span><textarea name="note" rows="2" placeholder="Why this authorization changed"></textarea></label>
-              <div class="dialog-actions"><button type="button" class="secondary-button" data-authorization-cancel>Cancel</button><button type="submit" disabled>Save</button></div>
-            </form>
-          </section>
-          <section class="device-public-review" aria-labelledby="device-public-review-title">
-            <p class="detail-kicker" id="device-public-review-title">Public compatibility</p>
-            <div class="authorization-current"><span>Current</span><span class="authorization-current-value">${publicationBadge(publication)}</span></div>
-            <p class="review-help">${publication.published
-              ? `Visible on terento.app/compatibility/ with the evidence status ${escapeHtml(evidenceLabel(device.evidenceStatus))}.`
-              : publication.eligible
-                ? `Evidence is ready. Operator approval is required before this exact model is listed publicly.`
-                : `Exact recognized map-capable evidence is required before publication.`}</p>
-            ${publication.eligible ? `<form method="post" action="/admin/devices/public-compatibility">
-              <input type="hidden" name="csrf_token" value="${escapeHtml(terentoAdminDevices.csrfToken)}">
-              <input type="hidden" name="device_id" value="${escapeHtml(device.id)}">
-              <input type="hidden" name="publication_action" value="${publication.published ? 'UNPUBLISH' : 'PUBLISH'}">
-              <label>Note <span class="optional-label">Optional</span><textarea name="note" rows="2" placeholder="Why this public review changed"></textarea></label>
-              <div class="dialog-actions"><button type="submit" class="${publication.published ? 'secondary-button' : ''}">${publication.published ? 'Remove from public compatibility' : 'Approve and publish'}</button></div>
-            </form>` : ''}
-          </section>
-          <details class="device-catalog-details"><summary>Catalog details</summary><dl>
-            <div><dt>Active</dt><dd>${device.active ? 'Yes' : 'No'}</dd></div>
-            <div><dt>First seen</dt><dd>${date(catalog.firstSeenAt)}</dd></div>
-            <div><dt>Created</dt><dd>${date(catalog.createdAt)}</dd></div>
-            <div><dt>Updated</dt><dd>${date(catalog.updatedAt)}</dd></div>
-            <div><dt>Last seen</dt><dd>${date(catalog.lastSeenAt)}</dd></div>
-            <div><dt>New in latest sync</dt><dd>${catalog.newInLatestSync ? 'Yes' : 'No'}</dd></div>
-            <div><dt>Image provenance</dt><dd>Catalog metadata only</dd></div>
-            <div><dt>Image source</dt><dd title="${escapeHtml(imageSourceUrl)}">${escapeHtml(imageSourceLabel)}</dd></div>
-            <div><dt>Match</dt><dd>${escapeHtml(imageMatchLabel)}</dd></div>
-          </dl>${device.productURL ? `<p class="device-product-link"><a href="${escapeHtml(device.productURL)}" target="_blank" rel="noreferrer">Open Garmin product page</a></p>` : ''}</details>
-        `;
-        const authorizationForm = dialog.querySelector('[data-authorization-form]');
-        const authorizationChange = dialog.querySelector('[data-authorization-change]');
-        const authorizationCancel = dialog.querySelector('[data-authorization-cancel]');
-        const authorizationSelect = authorizationForm?.querySelector('select');
-        const authorizationSave = authorizationForm?.querySelector('button[type="submit"]');
-        const initialAuthorization = authorizationSelect?.value;
-        const syncAuthorizationForm = () => {
-          if (authorizationSave) authorizationSave.disabled = !authorizationSelect || authorizationSelect.value === initialAuthorization;
-        };
-        authorizationChange?.addEventListener('click', () => {
-          if (!authorizationForm) return;
-          authorizationForm.hidden = false;
-          authorizationChange.hidden = true;
-          authorizationSelect?.focus();
-          syncAuthorizationForm();
-        });
-        authorizationSelect?.addEventListener('change', syncAuthorizationForm);
-        authorizationCancel?.addEventListener('click', () => {
-          if (!authorizationForm) return;
-          authorizationSelect.value = initialAuthorization;
-          const note = authorizationForm.querySelector('textarea');
-          if (note) note.value = '';
-          authorizationForm.hidden = true;
-          authorizationChange.hidden = false;
-          syncAuthorizationForm();
-          authorizationChange.focus();
-        });
-        syncAuthorizationForm();
-        if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open', '');
-        dialog.querySelector('[data-authorization-change]')?.focus();
       };
       const refresh = () => {
         const visible = matching();
@@ -1706,13 +2081,14 @@ def _devices_script() -> str:
           row.hidden = false;
           body.appendChild(row);
         });
-        count.textContent = visible.length === devices.length ? `${visible.length} ${visible.length === 1 ? 'model' : 'models'}` : `${visible.length} of ${devices.length} models`;
+        count.textContent = `${visible.length} ${visible.length === 1 ? 'result' : 'results'}`;
         pagination.hidden = visible.length <= pageSize;
         pageStatus.textContent = `Page ${page + 1} of ${totalPages}`;
         previous.disabled = page === 0;
         next.disabled = page >= totalPages - 1;
+        saveState();
       };
-      const reset = () => { page = 0; refresh(); };
+      const reset = () => { showNew = false; page = 0; refresh(); };
       form.addEventListener('submit', (event) => event.preventDefault());
       [search, family, map, support, status].forEach((control) => control.addEventListener(control === search ? 'input' : 'change', reset));
       sortButtons.forEach((button) => button.addEventListener('click', () => {
@@ -1722,34 +2098,29 @@ def _devices_script() -> str:
         updateSortHeaders();
         reset();
       }));
+      showNewButton?.addEventListener('click', () => {
+        search.value = '';
+        family.value = 'all';
+        map.value = 'all';
+        support.value = 'all';
+        status.value = 'all';
+        showNew = true;
+        page = 0;
+        refresh();
+      });
       previous.addEventListener('click', () => { page -= 1; refresh(); });
       next.addEventListener('click', () => { page += 1; refresh(); });
       body.addEventListener('click', (event) => {
-        const button = event.target.closest('button[data-device-index]');
         const row = event.target.closest('tr[data-device-index]');
-        if (button || !row) return;
-        openDevice(devices[Number(row.dataset.deviceIndex)]);
+        if (!row || event.target.closest('a,button,input,select,textarea')) return;
+        window.location.assign(row.dataset.deviceUrl);
       });
       body.addEventListener('keydown', (event) => {
         if (event.key !== 'Enter' && event.key !== ' ') return;
         const row = event.target.closest('tr[data-device-index]');
-        if (!row || event.target.closest('button')) return;
+        if (!row || event.target.closest('a,button')) return;
         event.preventDefault();
-        openDevice(devices[Number(row.dataset.deviceIndex)]);
-      });
-      body.querySelectorAll('button[data-device-index]').forEach((button) => button.addEventListener('click', () => openDevice(devices[Number(button.dataset.deviceIndex)])));
-      const closeDialog = () => { dialog.close(); lastFocused?.focus(); };
-      close.addEventListener('click', closeDialog);
-      dialog.addEventListener('cancel', () => window.setTimeout(() => lastFocused?.focus(), 0));
-      dialog.addEventListener('click', (event) => { if (event.target === dialog) closeDialog(); });
-      dialog.addEventListener('keydown', (event) => {
-        if (event.key !== 'Tab') return;
-        const focusable = [...dialog.querySelectorAll('button,select,input,textarea,a')].filter((element) => !element.disabled && element.offsetParent !== null);
-        if (!focusable.length) return;
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+        window.location.assign(row.dataset.deviceUrl);
       });
       updateSortHeaders();
       refresh();
@@ -1933,6 +2304,17 @@ def _dashboard_script() -> str:
       const count = document.querySelector('#results-count');
       if (!form || !search || !status || !sort || !body || !count) return;
       const rows = [...body.querySelectorAll('tr')];
+      const storageKey = 'terento.admin.installations.filters';
+      const parameters = new URLSearchParams(window.location.search);
+      let saved = {};
+      try { saved = JSON.parse(sessionStorage.getItem(storageKey) || '{}'); } catch (_) { saved = {}; }
+      search.value = parameters.has('search') ? parameters.get('search') : (saved.search || '');
+      const restoreSelect = (control, key, fallback) => {
+        const value = parameters.has(key) ? parameters.get(key) : saved[key];
+        control.value = [...control.options].some((option) => option.value === value) ? value : fallback;
+      };
+      restoreSelect(status, 'status', 'all');
+      restoreSelect(sort, 'sort', 'attempts');
       const refresh = () => {
         const query = search.value.trim().toLocaleLowerCase();
         const selectedStatus = status.value;
@@ -1949,8 +2331,14 @@ def _dashboard_script() -> str:
           return Number(b.dataset.attempts || 0) - Number(a.dataset.attempts || 0);
         });
         visible.forEach((row) => body.appendChild(row));
-        const label = visible.length === 1 ? 'model' : 'models';
-        count.textContent = visible.length === rows.length ? `${visible.length} ${label}` : `${visible.length} of ${rows.length} ${label}`;
+        count.textContent = `${visible.length} ${visible.length === 1 ? 'variant' : 'variants'}`;
+        const state = {search: search.value, status: status.value, sort: sort.value};
+        try { sessionStorage.setItem(storageKey, JSON.stringify(state)); } catch (_) { /* optional */ }
+        const query = new URLSearchParams();
+        if (search.value) query.set('search', search.value);
+        if (status.value !== 'all') query.set('status', status.value);
+        if (sort.value !== 'attempts') query.set('sort', sort.value);
+        history.replaceState(null, '', query.size ? `${window.location.pathname}?${query}` : window.location.pathname);
       };
       form.addEventListener('submit', (event) => event.preventDefault());
       [search, status, sort].forEach((control) => control.addEventListener('input', refresh));
@@ -1969,7 +2357,7 @@ def _dashboard_script() -> str:
 
 
 def _diagnostics_script() -> str:
-    return """(() => {
+    return r"""(() => {
       const filter = document.querySelector('#diagnostic-state-filter');
       const body = document.querySelector('#diagnostic-rows');
       const count = document.querySelector('#diagnostic-results-count');
@@ -1986,6 +2374,7 @@ def _diagnostics_script() -> str:
             || (selected === 'succeeded' && row.dataset.diagnosticResult === 'succeeded')
             || (selected === 'open' && row.dataset.reviewOpen === 'true')
             || (selected === 'resolved' && row.dataset.reviewResolved === 'true')
+            || (selected === 'resolved-errors' && row.dataset.reviewResolved === 'true' && row.dataset.diagnosticResult === 'failed')
             || (selected === 'identity-pending' && row.dataset.identityPending === 'true')
             || (selected === 'failed' && row.dataset.diagnosticResult === 'failed')
             || (selected === 'with-issue' && row.dataset.hasIssue === 'true');
@@ -2006,6 +2395,134 @@ def _diagnostics_script() -> str:
         if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open', '');
         dialog.querySelector('button, input, select, textarea')?.focus();
       };
+      document.querySelector('[data-filter-open-errors]')?.addEventListener('click', () => {
+        filter.value = 'open';
+        refresh();
+      });
+      document.querySelectorAll('form[data-confirm]').forEach((form) => form.addEventListener('submit', (event) => {
+        if (!window.confirm(form.dataset.confirm || 'Continue?')) event.preventDefault();
+      }));
+      document.querySelectorAll('[data-authorization-form]').forEach((form) => form.addEventListener('submit', (event) => {
+        const current = form.dataset.currentAuthorization;
+        const next = form.querySelector('select[name="support_status"]')?.value;
+        if (current === 'SUPPORTED' && next !== 'SUPPORTED'
+          && !window.confirm('Reduce installation authorization? This changes the operator decision but does not alter compatibility evidence or installation history.')) {
+          event.preventDefault();
+        }
+      }));
+      document.querySelectorAll('form.admin-async-action').forEach((form) => form.addEventListener('submit', async (event) => {
+        if (event.defaultPrevented) return;
+        event.preventDefault();
+        if (form.dataset.submitting === 'true') return;
+        const formData = new FormData(form);
+        const payload = new URLSearchParams();
+        formData.forEach((value, key) => payload.append(key, String(value)));
+        const controls = [...form.querySelectorAll('button,input,select,textarea')];
+        const submit = form.querySelector('button[type="submit"]');
+        const originalLabel = submit?.textContent || '';
+        let status = form.querySelector('.admin-action-status');
+        if (!status) {
+          status = document.createElement('p');
+          status.className = 'admin-action-status';
+          status.setAttribute('role', 'status');
+          status.setAttribute('aria-live', 'polite');
+          form.appendChild(status);
+        }
+        form.dataset.submitting = 'true';
+        controls.forEach((control) => {
+          control.dataset.preSubmitDisabled = control.disabled ? 'true' : 'false';
+          control.disabled = true;
+        });
+        if (submit) submit.textContent = 'Saving…';
+        status.textContent = 'Saving…';
+        try {
+          const response = await fetch(form.action, {
+            method: 'POST',
+            body: payload,
+            credentials: 'same-origin',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'},
+            redirect: 'follow',
+          });
+          if (!response.ok) throw new Error(`Save failed (${response.status})`);
+          if (response.redirected) {
+            window.location.assign(response.url);
+          } else {
+            window.location.reload();
+          }
+        } catch (_) {
+          controls.forEach((control) => {
+            control.disabled = control.dataset.preSubmitDisabled === 'true';
+            delete control.dataset.preSubmitDisabled;
+          });
+          if (submit) submit.textContent = originalLabel;
+          status.textContent = 'Could not save. Check the values and try again.';
+          delete form.dataset.submitting;
+          submit?.focus();
+        }
+      }));
+      const copyText = async (value, status) => {
+        try {
+          await navigator.clipboard.writeText(value);
+          if (status) status.textContent = 'Copied';
+        } catch (_) {
+          if (status) status.textContent = 'Copy failed';
+        }
+      };
+      document.querySelectorAll('[data-github-create]').forEach((link) => {
+        const container = link.closest('.github-issue-controls, .github-review');
+        const note = container?.querySelector('[data-issue-note]');
+        const preview = container?.querySelector('[data-issue-preview-body]');
+        const status = container?.querySelector('[data-copy-status]');
+        const sanitiseNote = (value) => value
+          .slice(0, 500)
+          .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+          .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '[redacted markup]')
+          .replace(/<[^>]+>/g, '[redacted markup]')
+          .replace(/\b(?:ghp|github_pat)_[A-Za-z0-9_-]+/gi, '[redacted token]')
+          .replace(/\bBearer\s+[^\s,;]+/gi, 'Bearer [redacted]')
+          .replace(/\b(?:Authorization|Proxy-Authorization|Cookie|Set-Cookie)\s*:\s*[^\s,;]+(?:\s+[^\s,;]+)?/gi, '[redacted header]')
+          .replace(/([?&](?:token|access_token|api_key|apikey|secret)=)[^&\s]+/gi, '$1[redacted]')
+          .replace(/[?&](?:title|body)=[^&\s]+/gi, '[redacted query value]')
+          .replace(/\b(?:token|access[_ -]?token|api[_ -]?key|apikey|secret|password|cookie|authorization)\s*[:=]\s*\S+/gi, '[redacted credential]')
+          .replace(/\b[A-Z][A-Z0-9_]{2,}\s*=\s*\S+/g, '[redacted environment value]')
+          .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[redacted email]')
+          .replace(/\/Users\/[^/\s]+(?:\/[^\s]*)?/gi, '/Users/<redacted>/[redacted]')
+          .replace(/\b[A-Z]:\\Users\\[^\\\s]+(?:\\[^\s]*)?/gi, 'C:\\Users\\<redacted>\\[redacted]')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .replace(/([\\`*_{}\[\]<>#+!|])/g, '\\$1');
+        const sync = () => {
+          const noteValue = sanitiseNote(note?.value || '');
+          const body = link.dataset.issueBody + (noteValue ? `\n\n## Admin note\n\n${noteValue}` : '');
+          const candidate = `https://github.com/VooZ2/terento/issues/new?${new URLSearchParams({title: link.dataset.issueTitle, body})}`;
+          const limit = Number(link.dataset.urlLimit || 7000);
+          const prefilled = candidate.length <= limit;
+          link.href = prefilled ? candidate : 'https://github.com/VooZ2/terento/issues/new';
+          link.dataset.prefilled = prefilled ? 'true' : 'false';
+          link.textContent = prefilled ? 'Prepare GitHub issue' : 'Copy report to continue';
+          if (status) status.textContent = prefilled ? '' : 'Report is too large to prefill; copy it instead.';
+          if (preview) preview.value = body;
+          return body;
+        };
+        note?.addEventListener('input', sync);
+        link.addEventListener('click', (event) => {
+          const body = sync();
+          if (link.dataset.prefilled === 'false') {
+            event.preventDefault();
+            copyText(`${link.dataset.issueTitle}\n\n${body}`, status);
+          }
+        });
+        container?.querySelector('[data-copy-issue-report]')?.addEventListener('click', () => {
+          copyText(`${link.dataset.issueTitle}\n\n${sync()}`, status);
+        });
+        sync();
+      });
+      document.querySelectorAll('[data-copy-diagnostic-id]').forEach((button) => button.addEventListener('click', () => {
+        copyText(button.dataset.copyDiagnosticId, button.parentElement?.querySelector('[data-copy-status]'));
+      }));
+      document.querySelectorAll('[data-copy-technical-report]').forEach((button) => button.addEventListener('click', () => {
+        copyText(button.dataset.report, button.parentElement?.querySelector('[data-copy-status]'));
+      }));
       filter.addEventListener('input', refresh);
       document.querySelectorAll('.diagnostic-review').forEach((button) => button.addEventListener('click', () => open(document.getElementById(button.dataset.dialogId), button)));
       document.querySelectorAll('[data-close-dialog]').forEach((button) => button.addEventListener('click', () => close(button.closest('dialog'))));
@@ -2013,6 +2530,11 @@ def _diagnostics_script() -> str:
         dialog.addEventListener('click', (event) => { if (event.target === dialog) close(dialog); });
         dialog.addEventListener('cancel', () => window.setTimeout(() => lastFocused?.focus(), 0));
         dialog.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            close(dialog);
+            return;
+          }
           if (event.key !== 'Tab') return;
           const focusable = [...dialog.querySelectorAll('button,select,input,textarea,a')]
             .filter((element) => !element.disabled && element.offsetParent !== null);
@@ -2154,12 +2676,12 @@ textarea{min-height:78px;resize:vertical}
 input::placeholder,textarea::placeholder{color:var(--admin-placeholder);opacity:1;font-weight:400}
 input:disabled,select:disabled,textarea:disabled,button:disabled{cursor:not-allowed;background:var(--surface-muted);border-color:color-mix(in srgb,var(--border) 78%,var(--surface-muted));color:var(--secondary);opacity:1}
 button{cursor:pointer}
-.admin-action-dialog button:not(.secondary-button),.auth-card button:not(.link-button),.copy-button,.device-support-review button[type="submit"]{min-height:var(--admin-control-height);padding:8px 12px;border:0;border-radius:var(--admin-control-radius);background:var(--interactive);color:#fff;font-weight:700}
-.admin-action-dialog button:not(.secondary-button):hover,.auth-card button:not(.link-button):hover,.copy-button:hover,.device-support-review button[type="submit"]:hover{background:var(--interactive-hover)}
+.admin-action-dialog button:not(.secondary-button),.auth-card button:not(.link-button),.copy-button,.device-support-review button[type="submit"],.model-administration button[type="submit"]{min-height:var(--admin-control-height);padding:8px 12px;border:0;border-radius:var(--admin-control-radius);background:var(--interactive);color:#fff;font-weight:700}
+.admin-action-dialog button:not(.secondary-button):hover,.auth-card button:not(.link-button):hover,.copy-button:hover,.device-support-review button[type="submit"]:hover,.model-administration button[type="submit"]:hover{background:var(--interactive-hover)}
 .admin-topbar{position:sticky;top:0;z-index:30;border-bottom:1px solid color-mix(in srgb,var(--border) 78%,transparent);background:var(--off-white);box-shadow:0 1px 0 rgba(34,42,43,.04)}
-.admin-topbar-inner{width:min(calc(100% - 48px),var(--max-width));min-height:68px;margin:0 auto;display:grid;grid-template-columns:minmax(180px,1fr) max-content minmax(385px,1fr);align-items:center;gap:16px}
+.admin-topbar-inner{width:min(calc(100% - 48px),var(--max-width));min-height:68px;margin:0 auto;display:grid;grid-template-columns:minmax(300px,1fr) max-content minmax(335px,1fr);align-items:center;gap:16px}
 .admin-header-zone{min-width:0}
-.admin-header-left{display:flex;align-items:center;justify-self:start}
+.admin-header-left{display:flex;align-items:center;justify-self:start;gap:9px}
 .admin-brand{display:inline-flex;align-items:center;gap:10px;text-decoration:none;color:var(--graphite);font-family:"Instrument Sans","Helvetica Neue",Arial,sans-serif;font-size:20px;font-weight:700;letter-spacing:-.02em}
 .admin-brand img{width:25px;height:29px;object-fit:contain}
 .admin-badge{display:inline-flex;align-items:center;min-height:22px;padding:3px 8px;border:1px solid color-mix(in srgb,var(--sky) 48%,var(--border));border-radius:999px;color:var(--interactive);font-family:"Inter",sans-serif;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
@@ -2181,6 +2703,7 @@ button{cursor:pointer}
 .timezone-control{display:flex;align-items:center;gap:7px;color:var(--secondary);font-size:11px;font-weight:650;white-space:nowrap}
 .timezone-control select{width:clamp(150px,17vw,205px);min-height:var(--admin-control-height);padding:8px var(--admin-control-padding-x);border:1px solid var(--border);border-radius:var(--admin-control-radius);background:var(--surface);color:var(--graphite);font-size:var(--admin-control-font-size)}
 .admin-website-link{white-space:nowrap}
+.admin-header-left .admin-website-link{min-height:30px;padding:5px 7px;color:var(--secondary);font-size:12px;font-weight:650;text-decoration:none}
 .dashboard{width:min(calc(100% - 48px),var(--max-width));margin:0 auto;padding:40px 0 64px}
 .heading-row{display:flex;align-items:flex-end;justify-content:space-between;gap:32px;margin-bottom:28px}
 .eyebrow,.section-kicker{margin:0 0 8px;color:var(--interactive);font-size:12px;font-weight:750;letter-spacing:.14em;text-transform:uppercase}
@@ -2273,6 +2796,7 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .copy-button:hover{background:var(--interactive-hover)}
 .copy-button:disabled{cursor:not-allowed;opacity:.45}
 .copy-status{min-width:54px;color:var(--interactive);font-size:12px;font-weight:700}
+.admin-action-status{margin:8px 0 0;color:var(--interactive);font-size:12px;font-weight:700}.admin-async-action [disabled]{cursor:wait;opacity:.68}
 .attribution-preview{display:grid;grid-template-columns:minmax(220px,.65fr) minmax(0,1.35fr);gap:24px;margin-top:26px;padding-top:21px;border-top:1px solid var(--border)}
 .attribution-preview h2{font-size:20px}
 .attribution-preview .table-help{margin-top:8px;max-width:420px}
@@ -2284,12 +2808,12 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .admin-summary-strip p{margin:0;min-width:0}
 .admin-summary-metrics strong,.admin-summary-context strong,.device-summary-metrics strong,.device-summary-sync strong{color:var(--graphite);font-weight:750}
 .admin-summary-context,.device-summary-sync{text-align:right;white-space:nowrap}
-.device-filter-bar{position:sticky;top:calc(var(--admin-topbar-height) + 8px);z-index:20;align-items:stretch;margin-bottom:10px;background:var(--surface-muted);box-shadow:0 2px 0 rgba(34,42,43,.05)}
-.device-table-wrap{overflow:visible}
+.device-filter-bar{position:sticky;top:var(--admin-topbar-height);z-index:22;align-items:stretch;margin-bottom:0;background:var(--surface);border-radius:12px 12px 0 0;box-shadow:0 2px 0 rgba(34,42,43,.07)}
+.device-table-wrap{overflow:visible;border-top:0;border-radius:0 0 14px 14px}
 .device-table-wrap table{min-width:0;table-layout:fixed}
 .device-table-wrap th:nth-child(1){width:20%}.device-table-wrap th:nth-child(2){width:18%}.device-table-wrap th:nth-child(3){width:9%}.device-table-wrap th:nth-child(4){width:14%}.device-table-wrap th:nth-child(5){width:11%}.device-table-wrap th:nth-child(6){width:9%}.device-table-wrap th:nth-child(7){width:8%}.device-table-wrap th:nth-child(8){width:11%}
 .device-table-wrap thead{position:static}
-.device-table-wrap thead th{position:sticky;top:calc(var(--admin-topbar-height) + var(--device-filter-height, 54px) + 18px);z-index:10}
+.device-table-wrap thead th{position:sticky;top:calc(var(--admin-topbar-height) + var(--device-filter-height, 54px));z-index:21}
 .device-table-wrap th,.device-table-wrap td{white-space:normal;overflow-wrap:anywhere}
 .device-sort-button{display:inline-flex;align-items:center;gap:5px;width:auto;min-height:0;margin:0;padding:0;border:0;background:transparent;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;white-space:nowrap;cursor:pointer}
 .device-sort-button:hover{color:var(--graphite)}.device-sort-button:focus-visible{outline:2px solid var(--interactive);outline-offset:1px}
@@ -2299,7 +2823,7 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .device-table-wrap tbody tr{cursor:pointer}
 .device-table-wrap tbody tr:hover{background:color-mix(in srgb,var(--surface-muted) 52%,white)}
 .device-table-wrap tbody tr:focus-visible{outline:3px solid color-mix(in srgb,var(--sky) 58%,white);outline-offset:-3px}
-.device-model-button{display:flex;align-items:center;gap:10px;width:100%;padding:0;border:0;background:none;color:inherit;text-align:left}
+.device-model-button{display:flex;align-items:center;gap:10px;width:100%;padding:0;border:0;background:none;color:inherit;text-align:left;text-decoration:none}
 .device-model-button strong{display:block;font-weight:700}
 .device-model-copy{display:flex;align-items:center;gap:8px;min-width:0}
 .device-model-copy strong{min-width:0;overflow-wrap:anywhere}
@@ -2309,6 +2833,7 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .device-thumb-placeholder:before{content:"";position:absolute;left:10px;top:8px;width:16px;height:21px;border:2px solid var(--sky);border-radius:5px}
 .device-thumb-placeholder:after{content:"";position:absolute;left:15px;top:13px;width:6px;height:2px;border-radius:2px;background:var(--sky);box-shadow:0 8px 0 var(--sky)}
 .new-badge{display:inline-flex;align-items:center;min-height:20px;padding:2px 7px;border:1px solid color-mix(in srgb,var(--lichen) 65%,var(--border));border-radius:999px;background:#EEF2E9;color:#52624C;font-size:10px;font-weight:750;letter-spacing:.06em;text-transform:uppercase}
+.summary-filter-link{margin:0;padding:0;border:0;background:none;color:var(--interactive);font:inherit;font-weight:750;text-decoration:underline;text-underline-offset:3px}
 .admin-state{display:inline-flex;align-items:center;min-height:26px;padding:5px 9px;border:1px solid transparent;border-radius:999px;font-size:11px;font-weight:750;line-height:1;white-space:nowrap}
 .admin-state-map-yes,.admin-state-authorization-approved,.admin-state-publication-published{background:#E7EEE2;border-color:#B4C6A7;color:#4B6142}
 .admin-state-map-no,.admin-state-authorization-blocked{background:#F0E9E5;border-color:#D6BDB2;color:#7A493D}
@@ -2356,6 +2881,7 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .device-support-review textarea,.device-public-review textarea{min-height:64px}
 .device-support-review .dialog-actions,.device-public-review .dialog-actions{grid-column:1/-1;margin-top:0}
 .review-help{margin:8px 0 0;color:var(--secondary);font-size:12px;line-height:1.45}
+.model-page-header{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:20px;margin:0 0 24px}.model-page-image{width:96px;height:96px;object-fit:contain;border-radius:14px;background:var(--surface)}.model-page-heading h1 span{color:var(--secondary);font-size:.55em;font-weight:500;letter-spacing:-.01em}.model-page-badges{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:12px}.model-public-link{align-self:start;text-decoration:none}.model-statistics{grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:20px}.model-review-alert{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 0 26px;padding:12px 14px;border:1px solid color-mix(in srgb,var(--stone) 48%,var(--border));border-radius:10px;background:color-mix(in srgb,var(--stone) 9%,var(--surface));font-size:13px}.model-review-alert a{color:var(--interactive);font-weight:750;white-space:nowrap}.model-page-section{scroll-margin-top:calc(var(--admin-topbar-height) + 18px);margin-top:34px}.model-history-table{min-width:980px}.model-history-table th:nth-child(1){width:15%}.model-history-table th:nth-child(2){width:16%}.model-history-table th:nth-child(3){width:11%}.model-history-table th:nth-child(4){width:23%}.model-history-table th:nth-child(5){width:12%}.model-history-table th:nth-child(6){width:15%}.model-history-table th:nth-child(7){width:8%}.history-map small,.history-error small{display:block;margin-top:3px;color:var(--secondary);font-size:10px}.administration-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.administration-grid article{padding:18px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}.administration-grid h3{margin:0 0 12px;font:700 17px "Instrument Sans",sans-serif}.administration-grid p{color:var(--secondary);font-size:13px}.administration-grid form{display:grid;gap:10px}.administration-grid label{color:var(--secondary);font-size:12px;font-weight:650}.administration-grid label select,.administration-grid label textarea{display:block;width:100%;margin-top:5px}.model-information-list{margin:0;border:1px solid var(--border);border-radius:12px;background:var(--surface)}.model-information-list div{display:grid;grid-template-columns:minmax(170px,.7fr) minmax(0,1.3fr);gap:18px;padding:10px 14px;border-bottom:1px solid color-mix(in srgb,var(--border) 72%,transparent)}.model-information-list div:last-child{border-bottom:0}.model-information-list dt{color:var(--secondary);font-size:12px}.model-information-list dd{margin:0;overflow-wrap:anywhere;font-size:13px;font-weight:650;text-align:right}.model-technical-details{margin-top:18px;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}.model-technical-details>summary{cursor:pointer;color:var(--interactive);font-weight:750}.model-technical-details .model-information-list{margin-top:12px}.github-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.github-issue-preview{margin:10px 0}.github-issue-preview>summary{cursor:pointer;color:var(--interactive);font-size:12px;font-weight:750}.github-issue-preview input,.github-issue-preview textarea{font-family:ui-monospace,SFMono-Regular,Menlo,monospace!important}.technical-copy-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0}.diagnostic-technical-empty{margin:10px 0;color:var(--secondary);font-size:12px}
 .secondary-button{min-height:32px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--interactive);font-size:12px;font-weight:700}
 .secondary-button:hover{border-color:var(--interactive);background:var(--success-bg)}
 .admin-action-dialog{width:min(520px,calc(100% - 32px));padding:22px;border:0;border-radius:14px;background:var(--surface);color:var(--graphite);box-shadow:0 24px 80px rgba(34,42,43,.24)}
@@ -2370,7 +2896,8 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 @media(max-width:560px){.admin-section-nav{overflow:visible;flex-wrap:wrap}.needs-review-popover{left:0;right:auto}}
 @media(max-width:800px){.admin-summary-strip{align-items:flex-start;flex-direction:column;gap:6px}.admin-summary-context,.device-summary-sync{text-align:left;white-space:normal}.device-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.device-detail-grid{grid-template-columns:1fr}.device-catalog-details dl div{grid-template-columns:1fr;gap:2px}.device-catalog-details dd{text-align:left}.device-detail-grid dd{text-align:left}.device-filter-bar .results-count{margin-left:0}.device-dialog-inner{padding:18px}}
-@media(max-width:1100px){.device-table-wrap{overflow-x:auto;overflow-y:visible}.device-table-wrap table{min-width:1050px}.device-table-wrap thead th{top:0}}
+@media(max-width:1100px){.device-table-wrap{overflow-x:auto;overflow-y:visible}.device-table-wrap table{min-width:1050px}.device-table-wrap thead th{top:calc(var(--admin-topbar-height) + var(--device-filter-height, 54px))}.model-statistics{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:800px){.model-page-header{grid-template-columns:auto minmax(0,1fr)}.model-public-link{grid-column:1/-1;width:max-content}.model-statistics{grid-template-columns:repeat(2,minmax(0,1fr))}.administration-grid{grid-template-columns:1fr}.model-review-alert{align-items:flex-start;flex-direction:column}.model-information-list div{grid-template-columns:1fr;gap:3px}.model-information-list dd{text-align:left}}
 @media(max-height:760px){.device-dialog-inner{max-height:calc(100vh - 32px);overflow:auto}.device-dialog-header{position:sticky;top:-1px;z-index:2;padding-bottom:10px;background:var(--surface)}}
 """
 
