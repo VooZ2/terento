@@ -9,7 +9,7 @@ MIGRATION = (
     / "migrations"
     / "015_canonical_compatibility_aggregation.sql"
 )
-ALL_EVENTS_MIGRATION = MIGRATION.parent / "024_count_all_installation_events.sql"
+CURRENT_MIGRATION = MIGRATION.parent / "025_device_card_failure_epoch.sql"
 
 
 class CompatibilityAggregationMigrationTests(unittest.TestCase):
@@ -77,14 +77,16 @@ class CompatibilityAggregationMigrationTests(unittest.TestCase):
         self.assertIn("release_label IS NULL", migration)
         self.assertNotIn("DELETE FROM compatibility_evidence_event", migration)
 
-    def test_all_retained_operations_are_counted_independently_of_diagnostic_lifecycle(self) -> None:
-        migration = ALL_EVENTS_MIGRATION.read_text(encoding="utf-8")
-        self.assertIn("retained in all compatibility counts and rates", migration)
-        self.assertIn("count(*) AS attempted_install_count", migration)
-        self.assertIn("count(*) FILTER (WHERE o.operation_succeeded) AS successful_install_count", migration)
-        self.assertIn("count(*) FILTER (WHERE NOT o.operation_succeeded) AS failed_install_count", migration)
-        self.assertNotIn("WHERE e.diagnostic_status = 'ACTIVE'", migration)
-        self.assertNotIn("WHERE o.write_started", migration)
+    def test_current_aggregate_excludes_resolved_and_prewrite_history(self) -> None:
+        migration = CURRENT_MIGRATION.read_text(encoding="utf-8")
+        self.assertIn("compatibility_device_card_failure_epoch", migration)
+        self.assertIn("WHERE e.diagnostic_status = 'ACTIVE'", migration)
+        self.assertIn("count(*) FILTER (WHERE o.write_started) AS attempted_install_count", migration)
+        self.assertIn(
+            "count(*) FILTER (WHERE o.write_started AND NOT o.operation_succeeded) AS failed_install_count",
+            migration,
+        )
+        self.assertIn("excluded from current compatibility statistics", migration)
 
     def test_admin_has_a_separate_historical_diagnostics_section(self) -> None:
         admin_source = (
@@ -95,7 +97,7 @@ class CompatibilityAggregationMigrationTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("Resolved / historical diagnostics", admin_source)
         self.assertIn("resolved_operations", admin_source)
-        self.assertIn("remain included in compatibility counts and rates", admin_source)
+        self.assertIn("excluded from current compatibility counts or rates", admin_source)
 
 
 if __name__ == "__main__":

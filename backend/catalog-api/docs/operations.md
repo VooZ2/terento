@@ -54,13 +54,19 @@ does not request product-image binaries and it never changes an asset to
 Migration `019_resolved_legacy_diagnostics.sql` is applied automatically by
 the normal forward migration command. It marks failed pre-beta.6 events as
 `RESOLVED` without erasing the old reports. Migration
-`024_count_all_installation_events.sql` keeps that lifecycle label for review
-history while rebuilding the aggregate view so all retained distinct
-installation operations contribute to attempts, successes, failures, rates,
-and public compatibility projections. The old events remain in the database
-and are visible in the exact model's authenticated diagnostics drill-down
-when the operator selects `All` or `Resolved`; only the Needs review queue
-excludes resolved work.
+`024_count_all_installation_events.sql` briefly broadened all aggregates;
+migration `025_device_card_failure_epoch.sql` supersedes that behavior. The
+main Installations and public compatibility view again counts only active,
+write-started operations. The old events remain in the database and are
+visible in the exact model's authenticated diagnostics drill-down when the
+operator selects `All` or `Resolved`.
+
+Migration 025 also records its application time in
+`compatibility_device_card_failure_epoch`. Device cards exclude failures
+received before that timestamp and count every distinct failure received
+afterward, including pre-write failures. Successful device-card history is
+preserved. Do not edit the epoch after deployment unless a separately reviewed
+counter reset is explicitly requested.
 
 Migration `021_canonical_admin_semantics.sql` keeps its SQL
 compatibility-status classifier parameter as `BIGINT`, matching PostgreSQL's

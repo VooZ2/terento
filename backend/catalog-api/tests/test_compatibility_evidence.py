@@ -350,7 +350,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertNotIn("Logged in as", body)
         self.assertIn(">Attempts<", body)
         self.assertIn("logo-sky.svg", body)
-        self.assertIn("Attempts, successes, and errors include all retained installation operations", body)
+        self.assertIn("Errors include unresolved installation problems", body)
         self.assertIn("data-admin-timestamp", body)
         self.assertIn("admin-timezone", body)
         self.assertEqual(format_timestamp(row["last_success"]), "2026-08-25 16:04")
@@ -388,19 +388,19 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         body = dashboard_page(
             [row], {"username": "operator"}, "csrf", operations=[operation]
         ).decode()
-        self.assertIn("aria-label='View 1 failed installations", body)
+        self.assertIn("aria-label='View 1 unresolved errors", body)
         self.assertIn("/admin/diagnostics?identity=", body)
         self.assertNotIn("Diagnostic record", body)
         self.assertNotIn("1.0.0-beta.6 (build 5)", body)
         self.assertNotIn("fenix 8 pro - 51mm", body)
         self.assertNotIn("GARMIN_UNIT_ID", body)
 
-    def test_admin_dashboard_includes_resolved_legacy_failures_in_all_event_counts(self):
-        aggregate_row = {
+    def test_admin_dashboard_separates_resolved_legacy_failures_from_active_data(self):
+        active_row = {
             "model": "fēnix 8", "compatibility_identity": "fēnix 8 · 47 mm AMOLED",
             "variant": "47 mm, AMOLED", "firmware_versions": "2244",
-            "attempted_install_count": 2, "successful_install_count": 1,
-            "failed_install_count": 1, "success_rate": 50,
+            "attempted_install_count": 1, "successful_install_count": 1,
+            "failed_install_count": 0, "success_rate": 100,
             "calculated_status": "TESTED", "last_success": datetime(2026, 8, 26, tzinfo=timezone.utc),
             "last_failure": None, "error_categories": {},
         }
@@ -416,19 +416,18 @@ class CompatibilityEvidenceTests(unittest.TestCase):
             "release_label": "1.0.0", "app_build": None,
             "raw_mtp_model": None, "identity_resolution_code": "UNAVAILABLE",
             "diagnostic_status": "RESOLVED",
-            "resolution_note": "Historical pre-beta.6 failure; retained in all compatibility counts and rates.",
+            "resolution_note": "Historical pre-beta.6 failure; excluded from current compatibility statistics.",
             "map_result_index": 0,
         }
         body = dashboard_page(
-            [aggregate_row], {"username": "operator"}, "csrf",
+            [active_row], {"username": "operator"}, "csrf",
             operations=[], resolved_operations=[resolved],
         ).decode()
         self.assertNotIn("Resolved / historical diagnostics", body)
         self.assertNotIn("fēnix 8 Pro · 51 mm", body)
+        self.assertNotIn("Historical pre-beta.6 failure", body)
         self.assertNotIn("INSTALL_BLOCKED_UNKNOWN_TARGET", body)
-        self.assertIn("2 attempts · 1 successful · 1 error", body)
-        self.assertIn("aria-label='View 1 failed installations", body)
-        self.assertIn("state=all", body)
+        self.assertIn("Resolved records remain available in model history", body)
 
     def test_issue_32_quarantine_is_narrow_and_non_destructive(self):
         from pathlib import Path

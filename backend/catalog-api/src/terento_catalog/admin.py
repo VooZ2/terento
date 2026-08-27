@@ -315,17 +315,13 @@ def _normalise_github_issue_reference(value: Any) -> str | None:
 
 def _error_cell(row: dict[str, Any], diagnostic_summary: dict[str, int] | None = None) -> str:
     summary = diagnostic_summary or {}
-    count = (
-        int(row.get("failed_install_count") or 0)
-        if "failed_install_count" in row
-        else int(summary.get("errors") or 0)
-    )
+    count = int(summary.get("errors") or 0)
     identity = str(row.get("compatibility_identity") or row.get("model") or "unknown")
-    target = _diagnostics_url(row, state="all")
+    target = _diagnostics_url(row, state="open")
     if count:
         return (
             f"<a class='error-count' href='{html.escape(target, quote=True)}' "
-            f"aria-label='View {count} failed installations for {html.escape(identity)}'>"
+            f"aria-label='View {count} unresolved errors for {html.escape(identity)}'>"
             f"{count} error{'s' if count != 1 else ''}</a>"
         )
     return "<span class='muted-value'>—</span>"
@@ -608,7 +604,7 @@ def dashboard_page(
         for status in status_values
     )
     diagnostic_summary = _diagnostic_summary_by_identity(operations or [])
-    errors = sum(int(row.get("failed_install_count") or 0) for row in rows)
+    errors = sum(int(summary.get("errors") or 0) for summary in diagnostic_summary.values())
     table_rows = "".join(
         _statistics_row(row, diagnostic_summary.get(_identity_group_key(row), {}))
         for row in rows
@@ -631,7 +627,7 @@ def dashboard_page(
             <p class="results-count" id="results-count" aria-live="polite">{len(rows)} {"model" if len(rows) == 1 else "models"}</p>
           </form>
           <div class="table-wrap evidence-table-wrap"><table class="admin-table"><caption class="sr-only">Installations by exact device identity</caption><thead><tr><th scope="col">Model</th><th scope="col">Variant</th><th scope="col">Attempts</th><th scope="col">Success</th><th scope="col">Errors</th><th scope="col">Status</th><th scope="col">Last success</th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
-          <p class="table-help evidence-table-note">Attempts, successes, and errors include all retained installation operations. The Needs review queue contains only unresolved problems.</p>
+          <p class="table-help evidence-table-note">Errors include unresolved installation problems. Resolved records remain available in model history.</p>
         </section>
       </main>
       <script>{_dashboard_script()}</script>
@@ -923,6 +919,10 @@ def diagnostics_page(
     ]
     active_groups = _group_operations(active_events)
     resolved_groups = _group_operations(resolved_events)
+    active_diagnostics = {
+        key: results for key, results in active_groups.items()
+        if _operation_is_problematic(results) or _operation_issue(results)
+    }
     diagnostic_groups = [(key, results, False) for key, results in active_groups.items()]
     diagnostic_groups.extend((key, results, True) for key, results in resolved_groups.items())
     diagnostic_groups.sort(key=lambda item: _timestamp_iso(item[1][0].get("occurred_at")), reverse=True)
@@ -932,11 +932,7 @@ def diagnostics_page(
         1 for results in list(active_groups.values()) + list(resolved_groups.values())
         if _operation_result(results) == "SUCCEEDED"
     )
-    errors = int(model_row.get("failed_install_count") or 0) if model_row else sum(
-        1
-        for results in list(active_groups.values()) + list(resolved_groups.values())
-        if _operation_is_problematic(results)
-    )
+    errors = sum(1 for results in active_diagnostics.values() if _operation_is_problematic(results))
     status = _row_compatibility_status(model_row) if model_row else None
     filters = """<label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all' selected>All</option><option value='succeeded'>Succeeded</option><option value='failed'>Failed</option><option value='open'>Open</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity pending</option><option value='with-issue'>With issue</option></select></label>"""
     rows_markup: list[str] = []
@@ -1010,7 +1006,7 @@ def _resolved_diagnostic_details(events: list[dict[str, Any]], csrf_token: str) 
         identities=None,
         heading="Resolved / historical diagnostics",
         summary_prefix="",
-        note="These records are retained for diagnosis and remain included in compatibility counts and rates.",
+        note="These records are retained for diagnosis but are excluded from current compatibility counts or rates.",
         csrf_token=csrf_token,
     )
 
@@ -1456,11 +1452,7 @@ def _statistics_row(row: dict[str, Any], diagnostic_summary: dict[str, int] | No
     search_text = " ".join((model, variant, str(row.get("family") or ""), identity)).strip()
     activity = max((_timestamp_iso(row.get(key)) for key in ("last_success", "last_failure", "last_evidence")), default="")
     diagnostics_url = _diagnostics_url(row)
-    error_count = (
-        int(row.get("failed_install_count") or 0)
-        if "failed_install_count" in row
-        else int((diagnostic_summary or {}).get("errors") or 0)
-    )
+    error_count = int((diagnostic_summary or {}).get("errors") or 0)
     pending_count = int((diagnostic_summary or {}).get("identity_pending") or 0)
     model_cell = html.escape(model)
     if pending_count:

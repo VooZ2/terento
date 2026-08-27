@@ -26,7 +26,7 @@ from terento_catalog.db import Database
 
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "021_canonical_admin_semantics.sql"
-ALL_EVENTS_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "024_count_all_installation_events.sql"
+CURRENT_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "025_device_card_failure_epoch.sql"
 IDENTITY_STATE_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "022_canonical_identity_state_consistency.sql"
 PUBLIC_REVIEW_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "023_public_compatibility_review_audit.sql"
 
@@ -310,15 +310,21 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertFalse(any("phase_outcome" in query for query, _ in database.calls if "UPDATE compatibility_evidence_event" in query))
 
     def test_operation_level_aggregation_is_shared_by_admin_and_current_view(self):
-        db_source = (ROOT / "src" / "terento_catalog" / "db.py").read_text(encoding="utf-8")
-        migration = ALL_EVENTS_MIGRATION.read_text(encoding="utf-8")
+        db_source = inspect.getsource(Database.admin_device_snapshot)
+        migration = CURRENT_MIGRATION.read_text(encoding="utf-8")
         operation_group = "GROUP BY COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text)"
         self.assertIn(operation_group, db_source)
-        self.assertIn("count(*) AS attempts", db_source)
-        self.assertIn("count(*) FILTER (WHERE NOT o.operation_succeeded) AS failed", db_source)
+        self.assertIn("compatibility_device_card_failure_epoch AS epoch", db_source)
+        self.assertIn("WHERE o.operation_succeeded OR o.received_at >= epoch.starts_at", db_source)
+        self.assertIn(
+            "WHERE NOT o.operation_succeeded AND o.received_at >= epoch.starts_at",
+            db_source,
+        )
+        self.assertNotIn("e.diagnostic_status = 'ACTIVE'", db_source)
         self.assertIn("operation_stats AS (", migration)
-        self.assertIn("count(*) AS attempted_install_count", migration)
-        self.assertIn("count(*) FILTER (WHERE NOT o.operation_succeeded) AS failed_install_count", migration)
+        self.assertIn("starts_at TIMESTAMPTZ NOT NULL DEFAULT now()", migration)
+        self.assertIn("WHERE e.diagnostic_status = 'ACTIVE'", migration)
+        self.assertIn("count(*) FILTER (WHERE o.write_started) AS attempted_install_count", migration)
         self.assertIn("terento_compatibility_status(e.successful_install_count, dm.map_capable IS TRUE)", migration)
         status_migration = MIGRATION.read_text(encoding="utf-8")
         self.assertIn(
@@ -480,7 +486,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertNotIn('id="evidence-title"', body)
         self.assertNotIn("<h2 id=\"evidence-title\">Installations</h2>", body)
         self.assertIn("1 error", body)
-        self.assertIn("/admin/diagnostics?identity=f%C4%93nix+8+%C2%B7+51+mm%2C+AMOLED&amp;state=all", body)
+        self.assertIn("/admin/diagnostics?identity=f%C4%93nix+8+%C2%B7+51+mm%2C+AMOLED&amp;state=open", body)
         self.assertIn("data-diagnostics-url='/admin/diagnostics?identity=", body)
         self.assertIn("Most errors", body)
         self.assertIn("Latest activity", body)
@@ -688,7 +694,7 @@ class AdminSemanticsTests(unittest.TestCase):
     def test_installations_helper_copy_is_concise_and_keeps_identity_out_of_errors(self):
         body = dashboard_page([], {"username": "operator"}, "csrf").decode()
         self.assertIn(
-            "Attempts, successes, and errors include all retained installation operations. The Needs review queue contains only unresolved problems.",
+            "Errors include unresolved installation problems. Resolved records remain available in model history.",
             body,
         )
         self.assertNotIn("Errors are unresolved diagnostic operations", body)
