@@ -393,7 +393,7 @@ summary:focus-visible {
   display: grid;
   width: 64px;
   gap: 3px;
-  padding: 8px;
+  padding: 0;
   border: 1px solid var(--border);
   border-radius: 14px;
   background: var(--surface);
@@ -1936,16 +1936,19 @@ details p {
   place-items: center;
   aspect-ratio: 1.58;
   overflow: hidden;
-  padding: 16px;
+  padding: 8px;
   background: var(--surface-muted);
 }
 
 .watch-card-image img {
-  width: 72%;
-  height: 72%;
-  padding: 4px;
+  display: block;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   opacity: 0;
+  transform: scale(1.04);
   transition: opacity .2s ease;
 }
 
@@ -2079,32 +2082,47 @@ details p {
 }
 
 .compatibility-community-cta {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 20px;
-  margin-top: 34px;
-  padding-top: 22px;
-  border-top: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
-  color: var(--secondary);
-  font-size: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px 32px;
+  margin-top: 48px;
+  padding: 24px 28px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--graphite);
 }
 
-.compatibility-community-cta p {
-  margin: 0;
-}
-
-.compatibility-community-cta > div {
+.compatibility-community-copy {
   min-width: 0;
 }
 
+.compatibility-community-copy .eyebrow {
+  margin: 0 0 8px;
+}
+
+.compatibility-community-copy h2 {
+  max-width: 720px;
+  margin: 0;
+  font-size: clamp(24px, 3vw, 32px);
+  line-height: 1.08;
+}
+
+.compatibility-community-copy > p:not(.eyebrow) {
+  margin: 9px 0 0;
+  color: var(--secondary);
+  font-size: 15px;
+}
+
 .compatibility-guide-link {
-  margin-top: 9px;
+  display: inline-flex;
+  margin-top: 13px;
   font-size: 13px;
 }
 
 .compatibility-community-link {
-  flex: 0 0 auto;
+  justify-self: end;
   white-space: nowrap;
 }
 
@@ -2626,19 +2644,26 @@ details p {
   }
 
   .compatibility-community-cta {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 12px;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 18px;
+    margin-top: 40px;
+    padding: 20px;
+  }
+
+  .compatibility-community-link {
+    justify-self: stretch;
+    width: 100%;
   }
 
   .watch-card-image {
     aspect-ratio: 1.55;
-    padding: 10px;
+    padding: 0;
   }
 
   .watch-card-image img {
-    width: 64%;
-    height: 64%;
+    width: 100%;
+    height: 100%;
   }
 
   .watch-card-body {
@@ -2693,12 +2718,12 @@ details p {
 
   .watch-card-image {
     aspect-ratio: 1.38;
-    padding: 8px;
+    padding: 0;
   }
 
   .watch-card-image img {
-    width: 74%;
-    height: 74%;
+    width: 100%;
+    height: 100%;
   }
 
   .watch-card-body {

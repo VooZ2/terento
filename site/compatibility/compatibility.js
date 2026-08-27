@@ -133,7 +133,51 @@
       }
     }
     context.putImageData(pixels, 0, 0);
-    const dataUrl = canvas.toDataURL("image/png");
+    let minX = canvas.width;
+    let minY = canvas.height;
+    let maxX = -1;
+    let maxY = -1;
+    const alphaData = pixels.data;
+    for (let y = 0; y < canvas.height; y += 1) {
+      for (let x = 0; x < canvas.width; x += 1) {
+        if (alphaData[(y * canvas.width + x) * 4 + 3] <= 20) continue;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+
+    let dataUrl;
+    if (maxX >= minX && maxY >= minY) {
+      const visibleWidth = maxX - minX + 1;
+      const visibleHeight = maxY - minY + 1;
+      const marginX = Math.max(8, Math.round(visibleWidth * 0.035));
+      const marginY = Math.max(8, Math.round(visibleHeight * 0.035));
+      const cropX = Math.max(0, minX - marginX);
+      const cropY = Math.max(0, minY - marginY);
+      const cropRight = Math.min(canvas.width, maxX + marginX + 1);
+      const cropBottom = Math.min(canvas.height, maxY + marginY + 1);
+      const trimmedCanvas = document.createElement("canvas");
+      trimmedCanvas.width = cropRight - cropX;
+      trimmedCanvas.height = cropBottom - cropY;
+      const trimmedContext = trimmedCanvas.getContext("2d");
+      if (trimmedContext) {
+        trimmedContext.drawImage(
+          canvas,
+          cropX,
+          cropY,
+          trimmedCanvas.width,
+          trimmedCanvas.height,
+          0,
+          0,
+          trimmedCanvas.width,
+          trimmedCanvas.height,
+        );
+        dataUrl = trimmedCanvas.toDataURL("image/png");
+      }
+    }
+    dataUrl ||= canvas.toDataURL("image/png");
     transparentImageCache.set(url, dataUrl);
     return dataUrl;
   }

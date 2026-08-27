@@ -83,6 +83,13 @@ const homePage = fs.readFileSync(
   path.join(__dirname, "..", "site", "index.html"),
   "utf8"
 );
+const localizedCompatibilityPages = new Map([
+  ["de", fs.readFileSync(path.join(__dirname, "..", "site", "de", "compatibility", "index.html"), "utf8")],
+  ["fr", fs.readFileSync(path.join(__dirname, "..", "site", "fr", "compatibility", "index.html"), "utf8")],
+  ["pl", fs.readFileSync(path.join(__dirname, "..", "site", "pl", "compatibility", "index.html"), "utf8")],
+  ["cs", fs.readFileSync(path.join(__dirname, "..", "site", "cs", "compatibility", "index.html"), "utf8")],
+  ["it", fs.readFileSync(path.join(__dirname, "..", "site", "it", "compatibility", "index.html"), "utf8")],
+]);
 const localizedHomePages = new Map([
   ["de", fs.readFileSync(path.join(__dirname, "..", "site", "de", "index.html"), "utf8")],
   ["fr", fs.readFileSync(path.join(__dirname, "..", "site", "fr", "index.html"), "utf8")],
@@ -126,6 +133,7 @@ assert.match(compatibilityPage, /Public compatibility is based on real installat
 assert.match(compatibilityPage, /Garmin Watch Compatibility — Terento/);
 assert.match(compatibilityPage, /data-umami-event="download-cta-click"/);
 assert.match(compatibilityPage, /data-umami-event-location="compatibility-community-testing"/);
+assert.match(compatibilityPage, /<div class="compatibility-community-cta">[\s\S]*?<p class="eyebrow">Community testing<\/p>[\s\S]*?<h2>Have another Garmin smartwatch with map support\?<\/h2>[\s\S]*?<p>Try the beta and share the result\.<\/p>[\s\S]*?<a class="download-action download-action-primary compatibility-community-link"/);
 assert.doesNotMatch(compatibilityPage, /\b3 models tested\b/);
 assert.ok(compatibilityPage.indexOf('id="compatibility-summary"') < compatibilityPage.indexOf('class="compatibility-how"'));
 assert.ok(compatibilityPage.indexOf('class="compatibility-how"') < compatibilityPage.indexOf('id="compatibility-filters"'));
@@ -135,6 +143,14 @@ assert.match(siteStyles, /\.compatibility-directory\s*\{[^}]*padding:\s*clamp\(2
 assert.match(siteStyles, /\.compatibility-summary-item\s*\{[^}]*white-space:\s*nowrap/s);
 assert.match(siteStyles, /\.watch-card-model-row\s*\{[^}]*gap:\s*12px/s);
 assert.match(siteStyles, /\.watch-card-model-row h3\s*\{[^}]*min-width:\s*0/s);
+assert.match(siteStyles, /\.watch-card-image img\s*\{[^}]*min-width:\s*0[^}]*min-height:\s*0[^}]*width:\s*100%[^}]*height:\s*100%[^}]*object-fit:\s*contain[^}]*transform:\s*scale\(1\.04\)/s);
+assert.match(siteStyles, /\.compatibility-community-cta\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto[^}]*margin-top:\s*48px[^}]*padding:\s*24px 28px[^}]*border:\s*1px solid var\(--border\)[^}]*background:\s*var\(--surface\)/s);
+assert.match(siteStyles, /\.compatibility-community-link\s*\{[^}]*width:\s*100%/s);
+for (const [locale, page] of localizedCompatibilityPages) {
+  assert.match(page, /<div class="compatibility-community-cta">[\s\S]*?<div class="compatibility-community-copy">[\s\S]*?<p class="eyebrow">[^<]+<\/p>[\s\S]*?<h2>[^<]+<\/h2>[\s\S]*?<p>[^<]+<\/p>[\s\S]*?<a class="text-link compatibility-guide-link"/s, `${locale}: localized community CTA structure`);
+  assert.match(page, /<a class="download-action download-action-primary compatibility-community-link"/);
+  assert.doesNotMatch(page, /<a class="text-link compatibility-community-link"/);
+}
 
 assert.match(homePage, /<h2 id="scope-title">Compatibility grows with every shared installation\.<\/h2>/);
 assert.match(homePage, /Terento is designed for Garmin smartwatches with map support\. Public compatibility for third-party map installation is confirmed model by model from real results shared by users\./);

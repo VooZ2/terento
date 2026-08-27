@@ -13,31 +13,55 @@ COPY = {
         "home": "Read the full Mac installation guide.",
         "download": "New to third-party maps? Read the Mac installation guide",
         "compatibility": "First time installing third-party maps? Read the Mac guide",
+        "community_eyebrow": "Community testing",
+        "community_heading": "Have another Garmin smartwatch with map support?",
+        "community_body": "Try the beta and share the result.",
+        "community_download": "Download the beta",
     },
     "de": {
         "home": "Lies die vollständige Mac-Installationsanleitung.",
         "download": "Neu bei Drittanbieter-Karten? Lies die Mac-Installationsanleitung",
         "compatibility": "Zum ersten Mal Drittanbieter-Karten installieren? Lies die Mac-Anleitung",
+        "community_eyebrow": "Community-Tests",
+        "community_heading": "Hast du eine weitere Garmin-Smartwatch mit Kartenunterstützung?",
+        "community_body": "Teste die Beta und teile das Ergebnis.",
+        "community_download": "Beta herunterladen",
     },
     "fr": {
         "home": "Lisez le guide complet d’installation sur Mac.",
         "download": "Vous débutez avec les cartes tierces ? Lisez le guide d’installation sur Mac",
         "compatibility": "Vous installez des cartes tierces pour la première fois ? Lisez le guide Mac",
+        "community_eyebrow": "Tests communautaires",
+        "community_heading": "Vous avez une autre montre Garmin compatible avec les cartes ?",
+        "community_body": "Testez la bêta et partagez le résultat.",
+        "community_download": "Télécharger la bêta",
     },
     "pl": {
         "home": "Przeczytaj pełną instrukcję instalacji na Macu.",
         "download": "Dopiero zaczynasz z mapami innych firm? Przeczytaj instrukcję instalacji na Macu",
         "compatibility": "Instalujesz mapy innych firm pierwszy raz? Przeczytaj instrukcję na Macu",
+        "community_eyebrow": "Testy społeczności",
+        "community_heading": "Masz inny zegarek Garmin obsługujący mapy?",
+        "community_body": "Przetestuj betę i udostępnij wynik.",
+        "community_download": "Pobierz wersję beta",
     },
     "cs": {
         "home": "Přečtěte si úplného průvodce instalací na Macu.",
         "download": "Začínáte s mapami třetích stran? Přečtěte si průvodce instalací na Macu",
         "compatibility": "Instalujete mapy třetích stran poprvé? Přečtěte si průvodce pro Mac",
+        "community_eyebrow": "Komunitní testování",
+        "community_heading": "Máte jiné hodinky Garmin s podporou map?",
+        "community_body": "Vyzkoušejte betu a sdílejte výsledek.",
+        "community_download": "Stáhnout betu",
     },
     "it": {
         "home": "Leggi la guida completa all’installazione su Mac.",
         "download": "È la prima volta che installi mappe di terze parti? Leggi la guida per Mac",
         "compatibility": "Installi mappe di terze parti per la prima volta? Leggi la guida per Mac",
+        "community_eyebrow": "Test della community",
+        "community_heading": "Hai un altro smartwatch Garmin con supporto mappe?",
+        "community_body": "Prova la beta e condividi il risultato.",
+        "community_download": "Scarica la beta",
     },
 }
 
@@ -96,13 +120,22 @@ def add_download_link(locale: str) -> None:
 def add_compatibility_link(locale: str) -> None:
     path = path_for(locale, "compatibility/index.html")
     source = path.read_text(encoding="utf-8")
-    marker = '<a class="text-link compatibility-community-link"'
     guide = f'<a class="text-link compatibility-guide-link" href="{localized_guide(locale)}">{COPY[locale]["compatibility"]} <span aria-hidden="true">→</span></a>'
-    if guide not in source:
-        source = source.replace(marker, guide + marker, 1)
+    download = f'<a class="download-action download-action-primary compatibility-community-link" href="{localized_download(locale)}" data-umami-event="download-cta-click" data-umami-event-location="compatibility-community-testing">{COPY[locale]["community_download"]}</a>'
+    community = (
+        '<div class="compatibility-community-cta">'
+        '<div class="compatibility-community-copy">'
+        f'<p class="eyebrow">{COPY[locale]["community_eyebrow"]}</p>'
+        f'<h2>{COPY[locale]["community_heading"]}</h2>'
+        f'<p>{COPY[locale]["community_body"]}</p>'
+        f'{guide}'
+        '</div>'
+        f'{download}'
+        '</div></div></section>'
+    )
     source = re.sub(
-        r'(<div class="compatibility-community-cta">)<p>([\s\S]*?)</p>(<a class="text-link compatibility-guide-link"[\s\S]*?</a>)',
-        r'\1<div><p>\2</p>\3</div>',
+        r'<div class="compatibility-community-cta">[\s\S]*?</div>\s*</div>\s*</section>',
+        community,
         source,
         count=1,
     )
