@@ -57,7 +57,7 @@ const anchorFor = (page, className) => {
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=631b028">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=569a3e7">/, `${locale}: Home stylesheet cache bust`);
   const status = page.match(/<p class="hero-status">([^<]+)<\/p>/);
   assert.ok(status, `${locale}: missing hero status`);
   assert.equal(status[1], expected.status, `${locale}: hero status copy`);
