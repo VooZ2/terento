@@ -78,6 +78,8 @@ for (const [locale, expected] of locales) {
 }
 
 const englishHome = pageFor("en");
+assert.match(englishHome, /<p class="hero-lede">A native macOS app for installing and managing maps on Garmin smartwatches\.<\/p>/);
+assert.doesNotMatch(englishHome, /<p class="hero-lede">A native macOS app for installing and managing Freizeitkarte maps on Garmin smartwatches\.<\/p>/);
 assert.match(englishHome, /Beta available · Compatibility is confirmed model by model\./);
 assert.doesNotMatch(englishHome, /Compatibility varies by Garmin model\./);
 
