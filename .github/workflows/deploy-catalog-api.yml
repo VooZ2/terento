@@ -218,16 +218,16 @@ jobs:
           status="$(printf '%s\n' "$headers" | awk 'toupper($1) ~ /^HTTP\// {code=$2} END {print code}')"
           location="$(printf '%s\n' "$headers" | awk 'tolower($1)=="location:" {print $2; exit}' | tr -d '\r')"
           if [ "$health" != '{"status":"ok"}' ] \
-            || ! printf '%s\n' "$maps" | grep -q '"catalogVersion"' \
-            || ! printf '%s\n' "$devices" | grep -q '"catalogVersion"' \
-            || ! printf '%s\n' "$login" | grep -q '<title>Admin sign in · Terento</title>' \
+            || ! grep -Fq '"catalogVersion"' <<<"$maps" \
+            || ! grep -Fq '"catalogVersion"' <<<"$devices" \
+            || ! grep -Fq '<title>Admin sign in · Terento</title>' <<<"$login" \
             || [ "$status" != "303" ] \
             || [ "$location" != "/admin/login" ] \
-            || ! printf '%s\n' "$headers" | grep -qi "script-src 'none'"; then
+            || ! grep -Fqi "script-src 'none'" <<<"$headers"; then
             printf '%s\n' "Public catalog verification failed" >&2
             printf '%s\n' "$headers" >&2
             exit 1
           fi
 
           compatibility_script="$(curl --fail --silent --show-error --connect-timeout 5 --max-time 10 https://terento.app/compatibility/compatibility.js)"
-          printf '%s\n' "$compatibility_script" | grep -q 'https://api.terento.app'
+          grep -Fq 'https://api.terento.app' <<<"$compatibility_script"
