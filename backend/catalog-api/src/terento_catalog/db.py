@@ -425,6 +425,123 @@ class Database:
                 )
         return True
 
+    def update_public_compatibility_review(
+        self,
+        device_id: str,
+        *,
+        action: str,
+        admin_user_id: int | None = None,
+        note: str | None = None,
+    ) -> bool:
+        """Publish or withdraw one exact device's evidence projection.
+
+        This operator review changes only the legacy public-review gate. It
+        never changes evidence events, calculated status, install counts, or
+        device installation authorization.
+        """
+        normalized_action = action.strip().upper()
+        if normalized_action not in {"PUBLISH", "UNPUBLISH"}:
+            raise ValueError("unsupported public compatibility review action")
+        note = (note or "").strip() or None
+        with self.connection() as connection:
+            device = connection.execute(
+                """
+                SELECT id, model, variant
+                FROM device_model
+                WHERE id = %s AND manufacturer = 'Garmin'
+                FOR UPDATE
+                """,
+                (device_id,),
+            ).fetchone()
+            if device is None:
+                return False
+            statistics = connection.execute(
+                """
+                SELECT compatibility_identity, calculated_status
+                FROM compatibility_model_statistics
+                WHERE canonical_device_model_id = %s
+                ORDER BY last_evidence DESC NULLS LAST
+                LIMIT 1
+                """,
+                (device_id,),
+            ).fetchone()
+            if statistics is None:
+                if normalized_action == "PUBLISH":
+                    raise ValueError("compatibility evidence is required before publication")
+                return True
+            compatibility_identity = str(statistics["compatibility_identity"])
+            if normalized_action == "PUBLISH" and str(statistics["calculated_status"] or "") not in {
+                "TESTING", "TESTED", "SUPPORTED", "VERIFIED",
+            }:
+                raise ValueError("recognized map-capable evidence is required before publication")
+            public_display_name = (
+                f"{device['model']} · {device['variant']}"
+                if device["variant"] else str(device["model"])
+            )
+            review = connection.execute(
+                """
+                SELECT model, review_status, public_statistics_enabled, public_display_name
+                FROM compatibility_model_review
+                WHERE COALESCE(NULLIF(identity_key, ''), model) = %s
+                FOR UPDATE
+                """,
+                (compatibility_identity,),
+            ).fetchone()
+            new_review_status = "APPROVED" if normalized_action == "PUBLISH" else "PENDING"
+            new_enabled = normalized_action == "PUBLISH"
+            previous_status = str(review["review_status"]) if review else None
+            previous_enabled = bool(review["public_statistics_enabled"]) if review else None
+            changed = (
+                review is None
+                or previous_status != new_review_status
+                or previous_enabled != new_enabled
+                or str(review["public_display_name"] or "") != public_display_name
+            )
+            if review is None:
+                connection.execute(
+                    """
+                    INSERT INTO compatibility_model_review (
+                        model, identity_key, review_status,
+                        public_statistics_enabled, public_display_name, updated_at
+                    ) VALUES (%s, %s, %s, %s, %s, now())
+                    """,
+                    (
+                        compatibility_identity, compatibility_identity,
+                        new_review_status, new_enabled, public_display_name,
+                    ),
+                )
+            elif changed:
+                connection.execute(
+                    """
+                    UPDATE compatibility_model_review
+                    SET review_status = %s,
+                        public_statistics_enabled = %s,
+                        public_display_name = %s,
+                        updated_at = now()
+                    WHERE model = %s
+                    """,
+                    (new_review_status, new_enabled, public_display_name, review["model"]),
+                )
+            if changed:
+                connection.execute(
+                    """
+                    INSERT INTO public_compatibility_review_audit (
+                        device_model_id, compatibility_identity,
+                        previous_review_status, new_review_status,
+                        previous_public_statistics_enabled,
+                        new_public_statistics_enabled,
+                        public_display_name, note, changed_by
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        device_id, compatibility_identity,
+                        previous_status, new_review_status,
+                        previous_enabled, new_enabled,
+                        public_display_name, note, admin_user_id,
+                    ),
+                )
+        return True
+
     def update_diagnostic_lifecycle(
         self,
         operation_key: str,
@@ -1121,6 +1238,10 @@ class Database:
                 evidence.first_success,
                 evidence.last_success,
                 evidence.last_evidence,
+                public_review.compatibility_identity AS public_compatibility_identity,
+                public_review.review_status AS public_review_status,
+                COALESCE(public_review.public_statistics_enabled, false) AS public_statistics_enabled,
+                public_review.public_display_name,
                 latest.id AS latest_successful_sync_id,
                 latest.started_at AS latest_successful_sync_started_at,
                 latest.finished_at AS latest_successful_sync_finished_at,
@@ -1173,6 +1294,15 @@ class Database:
                     GROUP BY COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text)
                 ) AS o
             ) AS evidence ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT s.compatibility_identity, s.review_status,
+                       s.public_statistics_enabled, s.public_display_name,
+                       s.last_evidence
+                FROM compatibility_model_statistics AS s
+                WHERE s.canonical_device_model_id = dm.id
+                ORDER BY s.last_evidence DESC NULLS LAST
+                LIMIT 1
+            ) AS public_review ON TRUE
             LEFT JOIN LATERAL (
                 SELECT r.*
                 FROM device_collection_run AS r

@@ -27,6 +27,7 @@ from terento_catalog.db import Database
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "021_canonical_admin_semantics.sql"
 IDENTITY_STATE_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "022_canonical_identity_state_consistency.sql"
+PUBLIC_REVIEW_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "023_public_compatibility_review_audit.sql"
 
 
 class RecordingResult:
@@ -42,11 +43,14 @@ class RecordingResult:
 
 
 class RecordingDatabase(Database):
-    def __init__(self, *, diagnostic_rows=None, identity_rows=None, canonical_row=None):
+    def __init__(self, *, diagnostic_rows=None, identity_rows=None, canonical_row=None,
+                 statistics_row=None, public_review_row=None):
         super().__init__("unused")
         self.diagnostic_rows = diagnostic_rows or []
         self.identity_rows = identity_rows or []
         self.canonical_row = canonical_row
+        self.statistics_row = statistics_row
+        self.public_review_row = public_review_row
         self.calls = []
 
     @contextmanager
@@ -62,6 +66,10 @@ class RecordingDatabase(Database):
                     return RecordingResult(row=database.canonical_row)
                 if "SELECT event_id, compatibility_identity, canonical_device_model_id" in query:
                     return RecordingResult(rows=database.identity_rows)
+                if "SELECT compatibility_identity, calculated_status" in query:
+                    return RecordingResult(row=database.statistics_row)
+                if "FROM compatibility_model_review" in query:
+                    return RecordingResult(row=database.public_review_row)
                 return RecordingResult()
 
         yield Connection()
@@ -123,6 +131,65 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("installation authorization", source)
         self.assertNotIn("compatibility_evidence_event", source)
         self.assertIn("device_authorization_audit", source)
+
+    def test_public_compatibility_review_is_explicit_audited_and_does_not_change_evidence(self):
+        database = RecordingDatabase(
+            canonical_row={
+                "id": "garmin-fenix-8-pro-51-amoled",
+                "model": "fēnix 8 Pro",
+                "variant": "51 mm, AMOLED",
+            },
+            statistics_row={
+                "compatibility_identity": "fēnix 8 Pro · 51 mm",
+                "calculated_status": "TESTED",
+            },
+        )
+        self.assertTrue(database.update_public_compatibility_review(
+            "garmin-fenix-8-pro-51-amoled",
+            action="PUBLISH",
+            admin_user_id=7,
+            note="Exact model reviewed",
+        ))
+        review_insert = next(
+            (query, params) for query, params in database.calls
+            if "INSERT INTO compatibility_model_review" in query
+        )
+        self.assertEqual(review_insert[1][0], "fēnix 8 Pro · 51 mm")
+        self.assertEqual(review_insert[1][2:5], (
+            "APPROVED", True, "fēnix 8 Pro · 51 mm, AMOLED",
+        ))
+        audit = next(
+            (query, params) for query, params in database.calls
+            if "INSERT INTO public_compatibility_review_audit" in query
+        )
+        self.assertEqual(audit[1][0], "garmin-fenix-8-pro-51-amoled")
+        self.assertEqual(audit[1][7], "Exact model reviewed")
+        mutating_queries = [
+            query for query, _ in database.calls
+            if query.lstrip().startswith("UPDATE") or query.lstrip().startswith("INSERT")
+        ]
+        self.assertFalse(any("compatibility_evidence_event" in query for query in mutating_queries))
+        self.assertFalse(any("UPDATE device_model" in query for query in mutating_queries))
+
+    def test_public_compatibility_publish_requires_eligible_evidence(self):
+        database = RecordingDatabase(
+            canonical_row={"id": "garmin-watch", "model": "Watch", "variant": "47 mm"},
+            statistics_row=None,
+        )
+        with self.assertRaisesRegex(ValueError, "evidence is required"):
+            database.update_public_compatibility_review(
+                "garmin-watch", action="PUBLISH", admin_user_id=7,
+            )
+        self.assertFalse(any(
+            "INSERT INTO compatibility_model_review" in query for query, _ in database.calls
+        ))
+
+    def test_public_review_migration_is_additive_and_audited(self):
+        migration = PUBLIC_REVIEW_MIGRATION.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE public_compatibility_review_audit", migration)
+        self.assertIn("REFERENCES device_model(id) ON DELETE RESTRICT", migration)
+        self.assertNotIn("DROP TABLE", migration)
+        self.assertNotIn("DROP VIEW", migration)
 
     def test_resolve_and_reopen_persist_lifecycle_metadata_without_deleting_evidence(self):
         database = RecordingDatabase(
