@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="cs" data-language="cs">
   <head>
-    <script defer src="/site-shell.js?v=20260829-guide-nav"></script>
+    <script defer src="/site-shell.js?v=20260829-faq-routing"></script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -39,10 +39,10 @@
     <link rel="mask-icon" href="/safari-pinned-tab.svg?v=20260820-4" color="#7898A8">
     <link rel="manifest" href="/manifest.webmanifest">
 
-    <link rel="stylesheet" href="/styles.css?v=20260829-guide-timeline">
+    <link rel="stylesheet" href="/styles.css?v=20260829-faq-consolidation">
     <script defer src="/language.js?v=20260829-compat-language"></script>
     <script defer src="/privacy-consent.js?v=20260826-2"></script>
-    <script defer src="/localized-content.js?v=20260827-1"></script>
+    <script defer src="/localized-content.js?v=20260829-faq-consolidation"></script>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -101,7 +101,7 @@
                 "name": "Které hodinky Garmin fungují s Terento?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Terento je určeno pro hodinky Garmin s podporou map. Veřejná kompatibilita instalace map třetích stran se potvrzuje pro přesný model a variantu pomocí skutečných výsledků sdílených uživateli. Aktuální důkazy najdete na stránce Kompatibilita."
+                  "text": "Terento je určeno pro hodinky Garmin s podporou map. Veřejná kompatibilita instalace map třetích stran se potvrzuje pro každý přesný model a variantu na základě skutečných výsledků sdílených uživateli. Aktuální důkazy najdete na stránce Kompatibilita."
                 }
               },
               {
@@ -109,7 +109,23 @@
                 "name": "Mohu instalovat mapy třetích stran do hodinek Garmin z Macu bez BaseCamp?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Ano. Terento nabízí řízený nativní postup pro macOS k instalaci podporovaných map třetích stran bez BaseCampu a bez univerzálního správce souborů MTP. Aktuální beta používá Freizeitkarte a vyžaduje Mac s Apple Silicon. Přečtěte si úplného průvodce instalací na Macu."
+                  "text": "Ano. Terento nabízí řízený nativní postup pro macOS k instalaci podporovaných map třetích stran bez BaseCampu a bez univerzálního správce souborů MTP. Aktuální beta používá Freizeitkarte a vyžaduje Mac s Apple Silicon. Přečtěte si instalační příručku pro Mac."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Proč se moje hodinky Garmin nezobrazí hned ve Finderu ani v Terento?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Mnoho novějších hodinek Garmin používá MTP a nemusí se zobrazit jako běžný disk ve Finderu. Rozpoznání v Terento může po připojení trvat 1–2 minuty. Nechte hodinky připojené a zavřete Garmin Express, OpenMTP nebo jinou aplikaci, která je může právě používat."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Nahrazuje Terento Garmin Express?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Ne. Terento se zaměřuje na instalaci a správu podporovaných map třetích stran. Garmin Express zůstává důležitý pro oficiální aktualizace zařízení Garmin a související služby."
                 }
               },
               {
@@ -126,6 +142,14 @@
                 "acceptedAnswer": {
                   "@type": "Answer",
                   "text": "Aktuální beta používá Freizeitkarte jako zdroj map. Terento stáhne mapy od původního poskytovatele do Macu a poté je přenese do hodinek."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Co mám dělat, když instalace selže?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Otevřete issue na GitHubu nebo pošlete diagnostický log e-mailem na adresu hello@terento.app. Zpráva pomůže problém prošetřit bez ruční kontroly složek zařízení."
                 }
               },
               {
@@ -201,7 +225,7 @@
 
       <section class="scope-section" id="scope" aria-labelledby="scope-title"><div class="shell scope-grid"><div><div class="section-heading"><p class="eyebrow">Rozsah bety</p><h2 id="scope-title">Kompatibilita roste s každou sdílenou instalací.</h2></div><p class="scope-copy">Terento je určeno pro hodinky Garmin s podporou map. Veřejná kompatibilita instalace map třetích stran se potvrzuje pro každý přesný model a variantu na základě skutečných výsledků sdílených uživateli.</p><a class="text-link scope-link" href="/compatibility/">Zobrazit kompatibilitu <span aria-hidden="true">→</span></a></div><div class="scope-list" aria-label="Aktuální rozsah bety"><div class="scope-item"><strong>macOS 13+</strong><span>Apple Silicon</span></div><div class="scope-item"><strong>Garmin</strong><span>Modely s podporou map</span></div><div class="scope-item"><strong>Freizeitkarte</strong><span>Jediný zdroj map v této betě</span></div><div class="scope-item"><strong>Open source</strong><span>Bezplatný a open source</span></div></div></div></section>
 
-      <section class="faq section" id="faq" aria-labelledby="faq-title"><div class="shell faq-grid"><div class="section-heading"><p class="eyebrow">Dobré otázky</p><h2 id="faq-title">FAQ</h2></div><div class="faq-list"><details><summary>Které hodinky Garmin fungují s Terento?</summary><p>Terento je určeno pro hodinky Garmin s podporou map. Veřejná kompatibilita instalace map třetích stran se potvrzuje pro každý přesný model a variantu na základě skutečných výsledků sdílených uživateli. Aktuální důkazy najdete na stránce <a href="/cs/compatibility/">Kompatibilita</a>.</p></details><details><summary>Mohu instalovat mapy třetích stran do hodinek Garmin z Macu bez BaseCampu?</summary><p>Ano. Terento nabízí řízený nativní postup pro macOS k instalaci podporovaných map třetích stran bez BaseCampu a bez univerzálního správce souborů MTP. Aktuální beta používá Freizeitkarte a vyžaduje Mac s Apple Silicon. <a href="/cs/guides/install-garmin-maps-mac/">Přečtěte si úplného průvodce instalací na Macu.</a></p></details><details><summary>Je Terento bezpečné pro stávající mapy Garmin?</summary><p>Ano. Stávající mapy Garmin zůstávají beze změny. Terento spravuje pouze mapy, které nainstalovalo a lokálně zaznamenalo.</p></details><details><summary>Odkud mapy pocházejí?</summary><p>Aktuální beta používá Freizeitkarte jako zdroj map. Terento stáhne mapy od původního poskytovatele do Macu a poté je přenese do hodinek.</p></details><details><summary>Odesílá Terento data o zařízení?</summary><p>Sdílení údajů o kompatibilitě je volitelné. Po zapnutí se sdílejí pouze minimalizované důkazy instalace; bez Garmin Unit ID, sériových čísel a místních cest.</p></details><details><summary>Proč je vyžadován Apple Silicon?</summary><p>Aktuální nativní beta pro macOS je vytvořena pro Macy s Apple Silicon a macOS 13 nebo novějším.</p></details><details><summary>Mohu zálohovat nebo odstranit nainstalované mapy?</summary><p>V aplikaci můžete zálohovat nebo odstranit mapy spravované Terentem. Ostatní mapy zůstávají jen pro čtení.</p></details></div></div></section>
+      <section class="faq section" id="faq" aria-labelledby="faq-title"><div class="shell faq-grid"><div class="section-heading"><p class="eyebrow">Dobré otázky</p><h2 id="faq-title">FAQ</h2></div><div class="faq-list"><details><summary>Které hodinky Garmin fungují s Terento?</summary><p>Terento je určeno pro hodinky Garmin s podporou map. Veřejná kompatibilita instalace map třetích stran se potvrzuje pro každý přesný model a variantu na základě skutečných výsledků sdílených uživateli. Aktuální důkazy najdete na stránce <a href="/cs/compatibility/">Kompatibilita</a>.</p></details><details><summary>Mohu instalovat mapy třetích stran do hodinek Garmin z Macu bez BaseCamp?</summary><p>Ano. Terento nabízí řízený nativní postup pro macOS k instalaci podporovaných map třetích stran bez BaseCampu a bez univerzálního správce souborů MTP. Aktuální beta používá Freizeitkarte a vyžaduje Mac s Apple Silicon. <a href="/cs/guides/install-garmin-maps-mac/">Přečtěte si instalační příručku pro Mac.</a></p></details><details><summary>Proč se moje hodinky Garmin nezobrazí hned ve Finderu ani v Terento?</summary><p>Mnoho novějších hodinek Garmin používá MTP a nemusí se zobrazit jako běžný disk ve Finderu. Rozpoznání v Terento může po připojení trvat 1–2 minuty. Nechte hodinky připojené a zavřete Garmin Express, OpenMTP nebo jinou aplikaci, která je může právě používat.</p></details><details><summary>Nahrazuje Terento Garmin Express?</summary><p>Ne. Terento se zaměřuje na instalaci a správu podporovaných map třetích stran. Garmin Express zůstává důležitý pro oficiální aktualizace zařízení Garmin a související služby.</p></details><details><summary>Je Terento bezpečné pro stávající mapy Garmin?</summary><p>Ano. Stávající mapy Garmin zůstávají beze změny. Terento spravuje pouze mapy, které nainstalovalo a lokálně zaznamenalo.</p></details><details><summary>Odkud mapy pocházejí?</summary><p>Aktuální beta používá Freizeitkarte jako zdroj map. Terento stáhne mapy od původního poskytovatele do Macu a poté je přenese do hodinek.</p></details><details><summary>Co mám dělat, když instalace selže?</summary><p>Otevřete issue na GitHubu nebo pošlete diagnostický log e-mailem na adresu <a href="mailto:hello@terento.app?subject=Terento%20installation%20issue">hello@terento.app</a>. Zpráva pomůže problém prošetřit bez ruční kontroly složek zařízení.</p><div class="faq-support-actions"><a class="text-link" href="https://github.com/VooZ2/terento/issues" target="_blank" rel="noopener noreferrer" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="github-issue">Otevřít issue <span aria-hidden="true">→</span></a><a class="text-link" href="mailto:hello@terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email">Poslat log e-mailem <span aria-hidden="true">→</span></a></div></details><details><summary>Odesílá Terento data o zařízení?</summary><p>Sdílení údajů o kompatibilitě je volitelné. Po zapnutí se sdílejí pouze minimalizované důkazy instalace; bez Garmin Unit ID, sériových čísel a místních cest.</p></details><details><summary>Proč je vyžadován Apple Silicon?</summary><p>Aktuální nativní beta pro macOS je vytvořena pro Macy s Apple Silicon a macOS 13 nebo novějším.</p></details><details><summary>Mohu zálohovat nebo odstranit nainstalované mapy?</summary><p>V aplikaci můžete zálohovat nebo odstranit mapy spravované Terentem. Ostatní mapy zůstávají jen pro čtení.</p></details></div></div></section>
 
       <section class="final-cta" aria-labelledby="final-cta-title"><div class="shell final-cta-inner"><div class="final-cta-copy"><p class="eyebrow">Připraveno, až budete</p><h2 id="final-cta-title">Připravte hodinky Garmin na další cestu.</h2><p>Stáhněte si notarizovanou betu Terento pro Mac s Apple Silicon.</p></div><a class="download-action" href="/cs/download/">Stáhnout betu</a></div></section>
     </main>

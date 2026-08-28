@@ -1194,6 +1194,17 @@ details p {
   font-size: 15px;
 }
 
+.faq-support-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+  margin: -4px 48px 24px 0;
+}
+
+.faq-support-actions .text-link {
+  font-size: 14px;
+}
+
 .site-footer {
   padding: 52px 0 calc(32px + env(safe-area-inset-bottom));
   background: var(--footer-bg);
@@ -2214,8 +2225,7 @@ details p {
 .guide-preflight,
 .guide-steps,
 .troubleshooting,
-.guide-context,
-.guide-faq {
+.guide-context {
   display: grid;
   grid-template-columns: minmax(220px, .7fr) minmax(0, 1.3fr);
   gap: clamp(42px, 8vw, 112px);
@@ -2454,8 +2464,7 @@ details p {
 }
 
 .troubleshooting-item > p a,
-.guide-context-copy a,
-.guide-faq a {
+.guide-context-copy a {
   color: var(--link-text);
   font-weight: 650;
   text-decoration: underline;
@@ -2477,16 +2486,28 @@ details p {
   margin-top: 18px;
 }
 
-.guide-faq {
-  background: var(--surface-muted);
+.guide-faq-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 28px 0;
+  border-bottom: 1px solid var(--border);
 }
 
-.guide-faq .faq-list {
-  min-width: 0;
+.guide-faq-link-copy {
+  margin: 0;
+  color: var(--secondary);
+  font-size: 15px;
 }
 
-.guide-faq details p {
-  margin-right: 0;
+.guide-faq-link-copy .eyebrow {
+  margin: 0 0 8px;
+  color: var(--graphite);
+}
+
+.guide-faq-link-copy > p:last-child {
+  margin: 0;
 }
 
 .guide-bottom-cta {
@@ -2505,8 +2526,7 @@ details p {
   .guide-preflight,
   .guide-steps,
   .troubleshooting,
-  .guide-context,
-  .guide-faq {
+  .guide-context {
     grid-template-columns: 1fr;
     gap: 34px;
     padding: 64px 0;
@@ -2514,6 +2534,13 @@ details p {
 
   .guide-section-heading {
     max-width: 620px;
+  }
+
+  .guide-faq-link {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 18px;
+    padding: 24px 0;
   }
 
   .guide-checklist {

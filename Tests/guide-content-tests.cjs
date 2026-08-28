@@ -79,10 +79,11 @@ for (const locale of locales) {
   assert.equal(article.inLanguage, locale);
   assert.equal(article.mainEntityOfPage["@id"], baseUrl + publicPath);
   assert.equal(oneEntity(data, "BreadcrumbList", file).itemListElement.length, 3);
-  const faq = oneEntity(data, "FAQPage", file);
-  const visibleFaq = [...source.matchAll(/<details><summary>([\s\S]*?)<\/summary><p>([\s\S]*?)<\/p><\/details>/g)].map((match) => ({ name: visibleText(match[1]), text: visibleText(match[2]) }));
-  assert.equal(faq.mainEntity.length, 5, locale + ": five FAQ schema entries");
-  assert.deepEqual(faq.mainEntity.map((item) => ({ name: item.name, text: item.acceptedAnswer.text })), visibleFaq, locale + ": FAQ schema matches visible FAQ");
+  assert.equal(data["@graph"].filter((item) => item["@type"] === "FAQPage").length, 0, locale + ": Guide has no FAQ schema");
+  assert.doesNotMatch(source, /<section class="guide-faq"\b|id="faq"/i, locale + ": Guide FAQ section removed");
+  assert.match(source, /<section class="guide-faq-link"[^>]*aria-label="[^"]+"/);
+  assert.match(source, new RegExp('href="' + localePath(locale) + '#faq"'));
+  assert.match(source, /data-umami-event="faq-link-click" data-umami-event-location="guide-troubleshooting"/);
 }
 
 assert.match(read(path.join(root, "site", "site-shell.js")), /pageType[^\n]*guide|pageType === "guide"/);

@@ -13,6 +13,7 @@ const homeFile = (locale) => locale === "en"
   ? path.join(root, "site", "index.html")
   : path.join(root, "site", locale, "index.html");
 const downloadFile = (locale) => path.join(root, "site", locale === "en" ? "download" : path.join(locale, "download"), "index.html");
+const guideFile = (locale) => path.join(root, "site", locale === "en" ? "guides/install-garmin-maps-mac" : path.join(locale, "guides/install-garmin-maps-mac"), "index.html");
 
 const release = JSON.parse(fs.readFileSync(path.join(root, "site", "updates", "macos-arm64.json"), "utf8"));
 
@@ -47,9 +48,9 @@ function visibleText(fragment) {
 function visibleFaq(source, file) {
   const section = source.match(/<section\b[^>]*\bid=["']faq["'][^>]*>([\s\S]*?)<\/section>/i);
   assert(section, `${file}: visible FAQ section is required`);
-  const entries = [...section[1].matchAll(/<details>\s*<summary>([\s\S]*?)<\/summary>\s*<p>([\s\S]*?)<\/p>\s*<\/details>/gi)]
+  const entries = [...section[1].matchAll(/<details>\s*<summary>([\s\S]*?)<\/summary>\s*<p>([\s\S]*?)<\/p>\s*(?:<div class="faq-support-actions">[\s\S]*?<\/div>\s*)?<\/details>/gi)]
     .map((match) => ({ question: visibleText(match[1]), answer: visibleText(match[2]) }));
-  assert.equal(entries.length, 7, `${file}: expected seven visible FAQ entries`);
+  assert.equal(entries.length, 10, `${file}: expected ten visible FAQ entries`);
   return entries;
 }
 
@@ -112,16 +113,12 @@ for (const locale of locales) {
   assert.equal(faq["@id"], `${homeUrl}#faq`, `${home}: FAQ ID`);
   assert.equal(faq.url, `${homeUrl}#faq`, `${home}: FAQ URL`);
   assert.equal(faq.inLanguage, locale, `${home}: FAQ language`);
-  assert.equal(faq.mainEntity.length, 7, `${home}: FAQ count`);
-  if (locale === "en") {
-    assert.deepEqual(
-      faq.mainEntity.map((question) => ({ question: question.name, answer: question.acceptedAnswer.text })),
-      visibleFaq(homeData.source, home),
-      `${home}: FAQ JSON-LD must match visible FAQ exactly`
-    );
-  } else {
-    assert.match(homeData.source, /localized-content\.js/, `${home}: localized visible-copy layer`);
-  }
+  assert.equal(faq.mainEntity.length, 10, `${home}: FAQ count`);
+  assert.deepEqual(
+    faq.mainEntity.map((question) => ({ question: question.name, answer: question.acceptedAnswer.text })),
+    visibleFaq(homeData.source, home),
+    `${home}: FAQ JSON-LD must match visible FAQ exactly`
+  );
 
   const download = downloadFile(locale);
   const downloadData = readJsonLd(download);
@@ -131,6 +128,16 @@ for (const locale of locales) {
   assertApplication(entity(downloadData.data, "SoftwareApplication", download), locale, downloadUrl, download);
   assert.equal((downloadData.data["@graph"] || []).length, 0, `${download}: no duplicate graph entities`);
   assert.equal((downloadData.source.match(/type=["']application\/ld\+json["']/gi) || []).length, 1, `${download}: one JSON-LD block`);
+}
+
+for (const locale of locales) {
+  const guide = guideFile(locale);
+  const guideData = readJsonLd(guide);
+  const graph = guideData.data["@graph"] || [];
+  assert.equal(graph.filter((item) => item["@type"] === "Article").length, 1, `${guide}: Article entity`);
+  assert.equal(graph.filter((item) => item["@type"] === "BreadcrumbList").length, 1, `${guide}: BreadcrumbList entity`);
+  assert.equal(graph.filter((item) => item["@type"] === "FAQPage").length, 0, `${guide}: Guide must not publish FAQPage schema`);
+  assert.doesNotMatch(guideData.source, /<section class="guide-faq"\b|id="faq"/i, `${guide}: Guide FAQ section removed`);
 }
 
 const compatibilityPages = [

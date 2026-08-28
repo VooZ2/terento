@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="de" data-language="de" data-page="guide">
   <head>
-    <script defer src="/site-shell.js?v=20260829-guide-nav"></script>
+    <script defer src="/site-shell.js?v=20260829-faq-routing"></script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -31,14 +31,12 @@
     <meta name="twitter:description" content="Installiere Drittanbieter-Karten auf einer kompatiblen Garmin-Uhr mit einem Apple-Silicon-Mac und Terento. Verbinde die Uhr, wähle eine Region, prüfe den Speicher und installiere sicher.">
     <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
     <title>So installierst du Drittanbieter-Karten auf einer Garmin-Uhr vom Mac aus — Terento</title>
-
-
     <link rel="icon" href="/favicon.ico?v=20260820-4" sizes="any">
     <link rel="icon" href="/favicon.svg?v=20260820-4" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260820-4">
     <link rel="mask-icon" href="/safari-pinned-tab.svg?v=20260820-4" color="#7898A8">
     <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="stylesheet" href="/styles.css?v=20260829-guide-timeline">
+    <link rel="stylesheet" href="/styles.css?v=20260829-faq-consolidation">
     <script defer src="/language.js?v=20260829-compat-language"></script>
     <script defer src="/privacy-consent.js?v=20260826-2"></script>
     <script type="application/ld+json">
@@ -89,59 +87,11 @@
           "item": "https://terento.app/de/guides/install-garmin-maps-mac/"
         }
       ]
-    },
-    {
-      "@type": "FAQPage",
-      "@id": "https://terento.app/de/guides/install-garmin-maps-mac/#faq",
-      "url": "https://terento.app/de/guides/install-garmin-maps-mac/#faq",
-      "inLanguage": "de",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "Kann ich Drittanbieter-Karten auf einer Garmin-Uhr vom Mac aus ohne BaseCamp installieren?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Ja. Terento bietet einen geführten nativen macOS-Ablauf zum Installieren unterstützter Drittanbieter-Karten. Die aktuelle Beta verwendet Freizeitkarte und erfordert einen Apple-Silicon-Mac."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Warum erscheint meine Garmin-Uhr nicht im Finder?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Viele neuere Garmin-Uhren verwenden MTP und erscheinen möglicherweise nicht als normales Finder-Laufwerk. Terento kommuniziert mit kompatiblen Geräten, ohne dass du Finder-Zugriff brauchst."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Wie lange sollte die Garmin-Erkennung dauern?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Die MTP-Erkennung kann nach dem Verbinden 1–2 Minuten dauern. Lass die Uhr verbunden und schließe andere Programme, die sie bereits verwenden könnten."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Ersetzt Terento Garmin Express?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Nein. Terento konzentriert sich auf die Installation und Verwaltung unterstützter Drittanbieter-Karten. Garmin Express bleibt für offizielle Garmin-Geräteupdates und Dienste relevant."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Was soll ich tun, wenn die Installation fehlschlägt?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Öffne ein Issue auf GitHub oder sende das Diagnoseprotokoll per E-Mail an hello@terento.app. Der Bericht hilft, den Fehler zu erkennen, ohne dass du Geräteordner manuell prüfen musst."
-          }
-        }
-      ]
     }
   ]
 }
     </script>
-</head>
+  </head>
   <body>
     <a class="skip-link" href="#main-content">Zum Inhalt springen</a>
     <header class="site-header">
@@ -316,14 +266,14 @@
             </section></div>
           </section>
 
+          <section class="guide-faq-link" aria-label="Mehr Hilfe">
+            <div class="guide-faq-link-copy"><p class="eyebrow">Mehr Hilfe</p><p>Noch Fragen?</p></div>
+            <a class="text-link" href="/de/#faq" data-umami-event="faq-link-click" data-umami-event-location="guide-troubleshooting">Die vollständige FAQ ansehen <span aria-hidden="true">→</span></a>
+          </section>
+
           <section class="guide-context" aria-labelledby="context-title">
             <div class="guide-section-heading"><p class="eyebrow">Kurz erklärt</p><h2 id="context-title">Warum ein nativer Mac-Ablauf sinnvoll ist</h2></div>
             <div class="guide-context-copy"><p>Garmin beschreibt <a href="https://support.garmin.com/en-GB/?faq=bcmC4za1sy9hykGnopP8l7&amp;identifier=310&amp;tab=topics" rel="noopener noreferrer">BaseCamp</a> für den Mac derzeit als für Intel-Macs vorgesehen und weist darauf hin, dass Rosetta die Nutzung auf Apple Silicon ermöglichen kann. Für <a href="https://support.garmin.com/en-US/?faq=4QVp7mKSIA1LDk5fc1OHX8" rel="noopener noreferrer">Garmin Express</a> gibt Garmin einen ähnlichen Hinweis. Apple erklärt, wie <a href="https://support.apple.com/en-ca/102527" rel="noopener noreferrer">Rosetta</a> Intel-Apps auf Apple Silicon ausführt. Terento ist nativ für Apple Silicon und konzentriert sich auf die Installation und Verwaltung von Drittanbieter-Karten.</p><p>Terento ersetzt Garmin Express nicht für offizielle Geräteupdates und BaseCamp nicht für weitergehende Routenplanung.</p></div>
-          </section>
-
-          <section class="guide-faq" id="faq" aria-labelledby="faq-title">
-            <div class="guide-section-heading"><p class="eyebrow">Häufige Fragen</p><h2 id="faq-title">FAQ</h2></div>
-            <div class="faq-list"><details><summary>Kann ich Drittanbieter-Karten auf einer Garmin-Uhr vom Mac aus ohne BaseCamp installieren?</summary><p>Ja. Terento bietet einen geführten nativen macOS-Ablauf zum Installieren unterstützter Drittanbieter-Karten. Die aktuelle Beta verwendet Freizeitkarte und erfordert einen Apple-Silicon-Mac.</p></details><details><summary>Warum erscheint meine Garmin-Uhr nicht im Finder?</summary><p>Viele neuere Garmin-Uhren verwenden MTP und erscheinen möglicherweise nicht als normales Finder-Laufwerk. Terento kommuniziert mit kompatiblen Geräten, ohne dass du Finder-Zugriff brauchst.</p></details><details><summary>Wie lange sollte die Garmin-Erkennung dauern?</summary><p>Die MTP-Erkennung kann nach dem Verbinden 1–2 Minuten dauern. Lass die Uhr verbunden und schließe andere Programme, die sie bereits verwenden könnten.</p></details><details><summary>Ersetzt Terento Garmin Express?</summary><p>Nein. Terento konzentriert sich auf die Installation und Verwaltung unterstützter Drittanbieter-Karten. Garmin Express bleibt für offizielle Garmin-Geräteupdates und Dienste relevant.</p></details><details><summary>Was soll ich tun, wenn die Installation fehlschlägt?</summary><p>Öffne ein Issue auf <a href="https://github.com/VooZ2/terento/issues" rel="noopener noreferrer">GitHub</a> oder sende das Diagnoseprotokoll per E-Mail an <a href="mailto:hello@terento.app?subject=Terento%20installation%20issue">hello@terento.app</a>. Der Bericht hilft, den Fehler zu erkennen, ohne dass du Geräteordner manuell prüfen musst.</p></details></div>
           </section>
 
           <section class="guide-bottom-cta" aria-labelledby="guide-bottom-title">

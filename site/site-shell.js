@@ -97,10 +97,11 @@
     const active = (key) => (key === "compatibility" && pageType === "compatibility")
       || (key === "download" && pageType === "download")
       || (key === "guide" && pageType === "guide");
+    const homeHash = pageType === "home" && window.location.hash === "#faq" ? "#faq" : "";
     const languageOptions = languages.map((item) => {
       const href = item.code === "en" ? `/${pageRoute}` : `/${item.code}/${pageRoute}`;
       const current = item.code === language ? ' aria-current="page"' : "";
-      return `<a class="language-option" href="${href}" data-language-switch="${item.code}" lang="${item.code}" aria-label="${item.name}"${current}><span class="language-option-flag" aria-hidden="true">${item.flag}</span><span>${item.name}</span></a>`;
+      return `<a class="language-option" href="${href}${homeHash}" data-language-switch="${item.code}" lang="${item.code}" aria-label="${item.name}"${current}><span class="language-option-flag" aria-hidden="true">${item.flag}</span><span>${item.name}</span></a>`;
     }).join("");
     const languageMenu = (mobile = false) => `<details class="language-menu${mobile ? " mobile-language-menu" : ""}">
     <summary class="language-trigger" aria-label="${copy.language}">${mobile ? `<span class="mobile-language-label">${copy.language}</span>` : ""}<span class="language-current" data-language-current aria-hidden="true">${languages.find((item) => item.code === language)?.flag || "🇬🇧"}</span></summary>

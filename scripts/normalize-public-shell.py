@@ -9,8 +9,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SHELL_VERSION = "20260829-guide-nav"
-STYLE_VERSION = "20260829-guide-timeline"
+SHELL_VERSION = "20260829-faq-routing"
+STYLE_VERSION = "20260829-faq-consolidation"
 LANGUAGE_VERSION = "20260829-compat-language"
 LOCALES = {
     "en": {"flag": "🇬🇧", "name": "English", "home": "Terento home", "primary": "Primary navigation", "menu": "Menu", "close": "Close menu", "about": "About", "compatibility": "Compatibility", "guide": "Guide", "faq": "FAQ", "download": "Download", "language": "Choose language", "footer": "Footer navigation", "status": "Open-source project", "legal": "Legal", "privacy": "Privacy", "support": "Support Terento", "stats": "Visit statistics (Umami) do not use cookies."},

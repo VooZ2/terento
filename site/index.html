@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en" data-language="en">
   <head>
-    <script defer src="/site-shell.js?v=20260829-guide-nav"></script>
+    <script defer src="/site-shell.js?v=20260829-faq-routing"></script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -39,7 +39,7 @@
     <link rel="mask-icon" href="/safari-pinned-tab.svg?v=20260820-4" color="#7898A8">
     <link rel="manifest" href="/manifest.webmanifest">
 
-    <link rel="stylesheet" href="/styles.css?v=20260829-guide-timeline">
+    <link rel="stylesheet" href="/styles.css?v=20260829-faq-consolidation">
     <script defer src="/language.js?v=20260829-compat-language"></script>
     <script defer src="/privacy-consent.js?v=20260826-2"></script>
     <script type="application/ld+json">
@@ -108,7 +108,23 @@
                 "name": "Can I install third-party maps on a Garmin watch from a Mac without BaseCamp?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Yes. Terento provides a guided native macOS workflow for installing supported third-party maps without BaseCamp or a general-purpose MTP file manager. The current beta uses Freizeitkarte and requires an Apple Silicon Mac. Read the full Mac installation guide."
+                  "text": "Yes. Terento provides a guided native macOS workflow for installing supported third-party maps without BaseCamp or a general-purpose MTP file manager. The current beta uses Freizeitkarte and requires an Apple Silicon Mac. Read the Mac installation guide."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Why doesn’t my Garmin watch appear in Finder or Terento immediately?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Many newer Garmin watches use MTP and may not appear as normal Finder drives. Terento detection can take 1–2 minutes after connection. Keep the watch connected and close Garmin Express, OpenMTP or another app that may already be using it."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Does Terento replace Garmin Express?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. Terento focuses on installing and managing supported third-party maps. Garmin Express remains relevant for official Garmin device updates and services."
                 }
               },
               {
@@ -125,6 +141,14 @@
                 "acceptedAnswer": {
                   "@type": "Answer",
                   "text": "The current beta uses Freizeitkarte as its map source. Terento downloads maps from the original provider to your Mac, then transfers them to your watch."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What should I do if installation fails?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Open a GitHub issue or email the diagnostic log to hello@terento.app. The report helps investigate the failure without requiring manual inspection of device folders."
                 }
               },
               {
@@ -315,7 +339,15 @@
             </details>
             <details>
               <summary>Can I install third-party maps on a Garmin watch from a Mac without BaseCamp?</summary>
-              <p>Yes. Terento provides a guided native macOS workflow for installing supported third-party maps without BaseCamp or a general-purpose MTP file manager. The current beta uses Freizeitkarte and requires an Apple Silicon Mac. <a href="/guides/install-garmin-maps-mac/">Read the full Mac installation guide.</a></p>
+              <p>Yes. Terento provides a guided native macOS workflow for installing supported third-party maps without BaseCamp or a general-purpose MTP file manager. The current beta uses Freizeitkarte and requires an Apple Silicon Mac. <a href="/guides/install-garmin-maps-mac/">Read the Mac installation guide.</a></p>
+            </details>
+            <details>
+              <summary>Why doesn’t my Garmin watch appear in Finder or Terento immediately?</summary>
+              <p>Many newer Garmin watches use MTP and may not appear as normal Finder drives. Terento detection can take 1–2 minutes after connection. Keep the watch connected and close Garmin Express, OpenMTP or another app that may already be using it.</p>
+            </details>
+            <details>
+              <summary>Does Terento replace Garmin Express?</summary>
+              <p>No. Terento focuses on installing and managing supported third-party maps. Garmin Express remains relevant for official Garmin device updates and services.</p>
             </details>
             <details>
               <summary>Is Terento safe for existing Garmin maps?</summary>
@@ -324,6 +356,14 @@
             <details>
               <summary>Where do the maps come from?</summary>
               <p>The current beta uses Freizeitkarte as its map source. Terento downloads maps from the original provider to your Mac, then transfers them to your watch.</p>
+            </details>
+            <details>
+              <summary>What should I do if installation fails?</summary>
+              <p>Open a GitHub issue or email the diagnostic log to <a href="mailto:hello@terento.app?subject=Terento%20installation%20issue">hello@terento.app</a>. The report helps investigate the failure without requiring manual inspection of device folders.</p>
+              <div class="faq-support-actions">
+                <a class="text-link" href="https://github.com/VooZ2/terento/issues" target="_blank" rel="noopener noreferrer" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="github-issue">Open an issue <span aria-hidden="true">→</span></a>
+                <a class="text-link" href="mailto:hello@terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email">Email the log <span aria-hidden="true">→</span></a>
+              </div>
             </details>
             <details>
               <summary>Does Terento upload device data?</summary>

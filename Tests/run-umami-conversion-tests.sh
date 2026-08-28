@@ -84,7 +84,7 @@ for path in home_files:
     html = path.read_text(encoding="utf-8")
     assert html.count('class="product-showcase product-showcase--muted"') == 2, f"{path}: expected two product showcases"
     assert html.count('class="scope-section"') == 1, f"{path}: expected beta scope section"
-    assert html.count("<details>") == 7 or 'localized-content.js' in html, f"{path}: expected seven FAQ answers or localized FAQ layer"
+    assert html.count("<details>") == 10, f"{path}: expected ten FAQ answers"
     assert 'class="final-cta"' in html, f"{path}: expected final CTA"
     assert "/assets/app/optimized/your-garmin-640.avif" in html, f"{path}: expected responsive hero artwork"
     items = anchors(path)

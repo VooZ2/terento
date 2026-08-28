@@ -31,7 +31,8 @@ FAQ_SECTION_RE = re.compile(
 )
 FAQ_ENTRY_RE = re.compile(
     r"<details>\s*<summary>(?P<question>[\s\S]*?)</summary>\s*"
-    r"<p>(?P<answer>[\s\S]*?)</p>\s*</details>",
+    r"<p>(?P<answer>[\s\S]*?)</p>\s*"
+    r"(?:<div class=\"faq-support-actions\">[\s\S]*?</div>\s*)?</details>",
     re.IGNORECASE,
 )
 
@@ -107,24 +108,50 @@ def application(
         "applicationCategory",
         "operatingSystem",
         "softwareRequirements",
+        "description",
     )
     missing = [field for field in required_source_fields if not source_application.get(field)]
     if missing:
         raise ValueError(f"{locale}: missing localized application fields: {', '.join(missing)}")
-    return {
+    app = {
         "@type": "SoftwareApplication",
         "@id": SOFTWARE_ID,
         "name": "Terento",
         "url": url,
         "applicationCategory": source_application["applicationCategory"],
         "operatingSystem": source_application["operatingSystem"],
-        "softwareVersion": release["releaseLabel"],
-        "softwareRequirements": source_application["softwareRequirements"],
         "downloadUrl": release["downloadURL"],
         "releaseNotes": release["releaseNotesURL"],
         "offers": {"@type": "Offer", "price": "0", "priceCurrency": "EUR"},
         "inLanguage": locale,
         "publisher": {"@id": ORGANIZATION_ID},
+    }
+    source_order = list(source_application)
+    description_before_version = source_order.index("description") < source_order.index("softwareVersion")
+    if description_before_version:
+        app["description"] = source_application["description"]
+    app["softwareVersion"] = release["releaseLabel"]
+    app["softwareRequirements"] = source_application["softwareRequirements"]
+    if not description_before_version:
+        app["description"] = source_application["description"]
+    return {
+        key: app[key]
+        for key in (
+            "@type",
+            "@id",
+            "name",
+            "url",
+            "applicationCategory",
+            "operatingSystem",
+            "description" if description_before_version else "softwareVersion",
+            "softwareVersion" if description_before_version else "softwareRequirements",
+            "softwareRequirements" if description_before_version else "description",
+            "downloadUrl",
+            "releaseNotes",
+            "offers",
+            "inLanguage",
+            "publisher",
+        )
     }
 
 
@@ -192,7 +219,9 @@ def build_pages() -> list[tuple[Path, str]]:
     for locale, page in homes.items():
         path = ROOT / page["file"]
         source = path.read_text(encoding="utf-8")
-        current_website = entity(json_ld(source, path), "WebSite", path)
+        current_json_ld = json_ld(source, path)
+        current_website = entity(current_json_ld, "WebSite", path)
+        current_application = entity(current_json_ld, "SoftwareApplication", path)
         url = canonical_url(page)
         website = {
             "@type": "WebSite",
@@ -207,7 +236,7 @@ def build_pages() -> list[tuple[Path, str]]:
             "@context": "https://schema.org",
             "@graph": [
                 organization(),
-                application(download_data[locale], locale, url, release),
+                application(current_application, locale, url, release),
                 website,
                 faq_page(visible_faq(source, path), locale, url),
             ],
