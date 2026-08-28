@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from datetime import datetime, timezone
 
-from terento_catalog.admin import _admin_device_payload, devices_page
+from terento_catalog.admin import _admin_device_payload, device_detail_page, devices_page
 
 
 UTC = timezone.utc
@@ -310,7 +310,7 @@ class AdminDevicesTests(unittest.TestCase):
         ).decode()
         self.assertIn("Counts unavailable for this historical run", body)
 
-    def test_page_has_required_filters_modal_and_neutral_image_fallback(self):
+    def test_page_has_required_filters_shared_detail_link_and_neutral_image_fallback(self):
         body = devices_page(
             [device_row()],
             None,
@@ -320,20 +320,17 @@ class AdminDevicesTests(unittest.TestCase):
         for value in (
             "Devices", "Garmin device catalog, map capability, authorization, and compatibility evidence.",
             "Search devices", "All families", "All maps", "Maps: Yes", "Maps: No",
-            "Maps: Unknown", "Approved", "Blocked", "Pending", "Last evidence",
-            "device-dialog", "admin-timezone",
+            "Maps: Unknown", "Approved", "Blocked", "Pending", "Last success",
+            "admin-timezone",
             "Automatic (browser)", "data-admin-timestamp", "TerentoAdminTime",
             "selected time zone", "admin-summary-strip device-summary-strip", "position:sticky",
             "--admin-control-height", "--admin-focus-ring", "--admin-placeholder",
-            "table-layout:fixed", "overflow-y:visible", "Catalog details", "data-authorization-change",
-            "data-authorization-form hidden", "data-authorization-cancel", "disabled>Save</button>",
+            "table-layout:fixed", "overflow-y:visible",
             "data-device-sort=\"model\"", "data-device-sort=\"variant\"", "data-device-sort=\"maps\"",
             "data-device-sort=\"authorization\"", "data-device-sort=\"status\"",
             "data-device-sort=\"attempts\"", "data-device-sort=\"success\"", "data-device-sort=\"evidence\"",
-            "aria-sort=\"ascending\"", "Catalog metadata only", "device-catalog-id", "detail-status-value",
-            "Public compatibility", "Public listing", "Approve and publish",
-            "/admin/devices/public-compatibility", "publication_action",
-            "Operator approval is required before this exact model is listed publicly",
+            "aria-sort=\"ascending\"", "/admin/devices/garmin-fenix-8-47-amoled?from=devices",
+            'id="device-map"><option value="yes" selected', "results",
         ):
             self.assertIn(value, body)
         table_header = body[body.index("<thead>"):body.index("</thead>")]
@@ -349,7 +346,6 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertNotIn(">Auth.<", body)
         self.assertNotIn("src='None'", body)
         self.assertIn("generic-garmin-watch.png", body)
-        self.assertIn("Compatibility status and installation counts remain backend-derived", body)
         self.assertIn("Compatibility status", body)
         self.assertIn("title=\"Installation authorization\"", body)
         self.assertNotIn("Support decision", body)
@@ -369,14 +365,83 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertIn("sortDirection === 'ascending' ? 'descending' : 'ascending'", body)
         self.assertIn("attempts: Number(device.installationStats.attempts || 0)", body)
         self.assertIn("success: Number(device.installationStats.successful || 0)", body)
-        self.assertIn("Date.parse(device.installationStats.lastEvidenceAt)", body)
+        self.assertIn("Date.parse(device.installationStats.lastSuccessfulAt)", body)
+        self.assertNotIn("Date.parse(device.installationStats.lastEvidenceAt)", body)
         self.assertIn("mapOrder = {unknown: 0, no: 1, yes: 2}", body)
         self.assertIn("authorizationOrder = {NOT_EVALUATED: 0, UNSUPPORTED: 1, SUPPORTED: 2}", body)
         self.assertIn("if (aValue === null || aValue === undefined || aValue === '')", body)
         self.assertIn('th[aria-sort="ascending"] .device-sort-button', body)
         self.assertIn('th[aria-sort="descending"] .device-sort-button', body)
+        self.assertIn('class="device-sticky-header"', body)
+        self.assertIn("stickyHeaderTable.style.transform = `translateX(${-tableScroll.scrollLeft}px)`", body)
+        self.assertIn("tableScroll?.addEventListener('scroll', syncStickyHeader", body)
+        self.assertIn(".device-table-wrap thead{display:none}", body)
+        columns = (
+            '<colgroup class="device-table-columns">'
+            '<col class="device-column-model"><col class="device-column-variant">'
+            '<col class="device-column-maps"><col class="device-column-authorization">'
+            '<col class="device-column-status"><col class="device-column-attempts">'
+            '<col class="device-column-successful"><col class="device-column-last-success">'
+            '</colgroup>'
+        )
+        self.assertEqual(body.count(columns), 2)
+        for column, width in (
+            ("model", 20), ("variant", 18), ("maps", 9), ("authorization", 14),
+            ("status", 11), ("attempts", 9), ("successful", 8), ("last-success", 11),
+        ):
+            self.assertIn(f".device-column-{column}{{width:{width}%}}", body)
+        self.assertIn("white-space:nowrap;text-transform:uppercase", body)
         self.assertIn("opacity:.2", body)
-        self.assertIn(".device-dialog .admin-timestamp{white-space:nowrap}", body)
+        self.assertNotIn("<dialog id='device-dialog'", body)
+        self.assertIn("parameters.has(key) ? parameters.get(key) : saved[key]", body)
+        self.assertIn("setSelect(map, 'maps', 'yes')", body)
+        self.assertIn("if (showNew) return device.catalog?.newInLatestSync === true", body)
+        self.assertIn("map.value = 'all'", body)
+
+        payload = _admin_device_payload([device_row()], None)
+        detail = device_detail_page(
+            payload["devices"][0], {"username": "operator"}, "csrf",
+            operations=[{
+                "operation_key": "install-1",
+                "canonical_device_model_id": "garmin-fenix-8-47-amoled",
+                "occurred_at": "2026-08-25T16:04:00+00:00",
+                "phase_outcome": "FAILED",
+                "write_started": True,
+                "failure_stage": "write",
+                "failure_code": "SEND_OBJECT_FAILED",
+                "region": "DEU+",
+                "linked_github_issue": "#32",
+            }],
+        ).decode()
+        for value in (
+            "Installation history", "Administration", "Device information",
+            "Technical details", "Installation authorization", "Public compatibility",
+            "Failed results remain historical", "Open errors", "Prepare GitHub issue",
+            "Copy issue report", "Copy diagnostic ID", "Copy technical report",
+            "/admin/devices/authorization", "/admin/devices/public-compatibility",
+        ):
+            self.assertIn(value, detail)
+        self.assertNotIn("Change history", detail)
+
+    def test_narrow_sticky_header_and_body_share_canonical_column_geometry(self):
+        body = devices_page(
+            [device_row(model="A long Garmin model name", first_seen_collection_run_id=8,
+                        last_seen_collection_run_id=8)],
+            {"id": 8}, {"username": "operator"}, "csrf",
+        ).decode()
+        columns = (
+            '<colgroup class="device-table-columns">'
+            '<col class="device-column-model"><col class="device-column-variant">'
+            '<col class="device-column-maps"><col class="device-column-authorization">'
+            '<col class="device-column-status"><col class="device-column-attempts">'
+            '<col class="device-column-successful"><col class="device-column-last-success">'
+            '</colgroup>'
+        )
+        self.assertEqual(body.count(columns), 2)
+        self.assertIn("table-layout:fixed", body)
+        self.assertIn("stickyHeaderTable.style.transform = `translateX(${-tableScroll.scrollLeft}px)`", body)
+        self.assertIn("tableScroll?.addEventListener('scroll', syncStickyHeader", body)
+        self.assertIn("white-space:nowrap;text-transform:uppercase", body)
 
     def test_device_variant_display_normalizes_case_size_without_mutating_input(self):
         row = device_row(variant="51mm, AMOLED", case_size_mm=51)

@@ -12,13 +12,14 @@ from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 from .admin import (
     AdminValidationError,
     account_page,
     campaign_links_page,
     dashboard_page,
+    device_detail_page,
     diagnostics_page,
     devices_page,
     _admin_device_payload,
@@ -448,6 +449,24 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 try:
                     statistics = service.compatibility_statistics()
                     identity_devices = service.admin_devices().get("devices", [])
+                    if not canonical_device_id:
+                        matching_statistic = next((
+                            row for row in statistics
+                            if str(row.get("compatibility_identity") or row.get("model") or "").strip() == identity
+                            and row.get("canonical_device_model_id")
+                        ), None)
+                        canonical_device_id = str(
+                            (matching_statistic or {}).get("canonical_device_model_id") or ""
+                        )
+                    if canonical_device_id:
+                        state = query.get("state", [""])[0].strip()
+                        if state not in {"", "all", "succeeded", "failed", "open", "resolved-errors"}:
+                            state = ""
+                        target = f"/admin/devices/{canonical_device_id}?from=installations"
+                        if state:
+                            target += f"&state={state}"
+                        self._redirect(target + "#installations", send_body=send_body)
+                        return
                     body = diagnostics_page(
                         statistics,
                         session,
@@ -469,11 +488,42 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     body = dashboard_page(
                         service.compatibility_statistics(), session, csrf_token,
                         operations=service.compatibility_operation_details(),
+                        resolved_operations=service.compatibility_resolved_operation_details(),
                         public_stats_enabled=service.public_compatibility_stats_enabled,
                     )
                 except Exception:
                     LOGGER.exception("compatibility statistics failed")
                     self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "statistics_unavailable"}, send_body=send_body, cache_control="no-store")
+                    return
+                self._send_admin_html(body, send_body=send_body)
+                return
+            if request_path.startswith("/admin/devices/") and request_path != "/admin/devices/":
+                device_id = unquote(request_path.removeprefix("/admin/devices/")).strip()
+                if not device_id or "/" in device_id:
+                    self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=send_body, cache_control="no-store")
+                    return
+                try:
+                    payload = service.admin_devices()
+                    device = next(
+                        (item for item in payload.get("devices", []) if str(item.get("id")) == device_id),
+                        None,
+                    )
+                    if device is None:
+                        self._send_json(HTTPStatus.NOT_FOUND, {"error": "device_not_found"}, send_body=send_body, cache_control="no-store")
+                        return
+                    query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                    origin = query.get("from", ["devices"])[0]
+                    body = device_detail_page(
+                        device, session, csrf_token,
+                        operations=service.compatibility_operation_details(),
+                        resolved_operations=service.compatibility_resolved_operation_details(),
+                        identity_devices=payload.get("devices", []),
+                        origin="installations" if origin == "installations" else "devices",
+                        requested_state=query.get("state", [""])[0].strip() or None,
+                    )
+                except Exception:
+                    LOGGER.exception("admin device detail failed")
+                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "admin_device_unavailable"}, send_body=send_body, cache_control="no-store")
                     return
                 self._send_admin_html(body, send_body=send_body)
                 return
@@ -557,7 +607,10 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 except ValueError:
                     self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_installation_authorization"}, send_body=True, cache_control="no-store")
                     return
-                self._redirect("/admin/devices", send_body=True)
+                self._redirect(
+                    self._safe_admin_return(form.get("return_to"), "/admin/devices"),
+                    send_body=True,
+                )
                 return
             if request_path == "/admin/devices/public-compatibility":
                 try:
@@ -577,7 +630,10 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 except ValueError:
                     self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_public_compatibility_review"}, send_body=True, cache_control="no-store")
                     return
-                self._redirect("/admin/devices", send_body=True)
+                self._redirect(
+                    self._safe_admin_return(form.get("return_to"), "/admin/devices"),
+                    send_body=True,
+                )
                 return
             if request_path in {"/admin/diagnostics/resolve", "/admin/diagnostics/reopen"}:
                 try:
@@ -639,7 +695,13 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
         @staticmethod
         def _safe_admin_return(value: str | None, default: str) -> str:
             target = (value or "").strip()
-            if target.startswith("/admin/diagnostics") and "//" not in target:
+            if (
+                target.startswith("/admin/diagnostics")
+                or re.fullmatch(
+                    r"/admin/devices/[A-Za-z0-9._~-]+(?:\?[^#\s]*)?(?:#[-A-Za-z0-9._~]+)?",
+                    target,
+                )
+            ) and "//" not in target:
                 return target
             return default
 
