@@ -43,3 +43,10 @@ jobs:
             echo "=== ${test_script} ==="
             "${test_script}"
           done
+      - name: Validate public website
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          Tests/run-guide-generator-parity-tests.sh
+          Tests/run-structured-data-tests.sh
+          Tests/run-guide-content-tests.sh

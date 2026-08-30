@@ -8,6 +8,14 @@ const root = path.join(__dirname, "..");
 const baseUrl = "https://terento.app";
 const slug = "guides/install-garmin-maps-mac/";
 const locales = ["en", "de", "fr", "pl", "cs", "it"];
+const breadcrumbNames = {
+  en: ["Home", "Install third-party maps on Garmin from a Mac"],
+  de: ["Startseite", "Drittanbieter-Karten auf Garmin vom Mac installieren"],
+  fr: ["Accueil", "Installer des cartes tierces sur Garmin depuis un Mac"],
+  pl: ["Strona główna", "Instalowanie map innych firm na Garminie z Maca"],
+  cs: ["Domů", "Instalace map třetích stran do Garminu z Macu"],
+  it: ["Home", "Installare mappe di terze parti su Garmin da Mac"],
+};
 const localePath = (locale, suffix) => locale === "en" ? "/" + (suffix || "") : "/" + locale + "/" + (suffix || "");
 const read = (file) => fs.readFileSync(file, "utf8");
 const guideFile = (locale) => path.join(root, "site", locale === "en" ? slug : path.join(locale, slug), "index.html");
@@ -69,6 +77,7 @@ for (const locale of locales) {
   assert.match(source, /https:\/\/support\.garmin\.com\/en-US\/\?faq=4QVp7mKSIA1LDk5fc1OHX8/);
   assert.match(source, /https:\/\/support\.apple\.com\/en-ca\/102527/);
   assert.match(source, /does not replace Garmin Express|ersetzt Garmin Express nicht|ne remplace pas Garmin Express|nie zastępuje Garmin Express|nenahrazuje Garmin Express|non sostituisce Garmin Express/i);
+  assert.doesNotMatch(source, /class="breadcrumbs"|<nav\b[^>]*(?:breadcrumb|Brotkrümel|Fil d’Ariane|Okruszki|Drobečková)/i, locale + ": no visible Guide breadcrumb navigation");
 
   const data = jsonLd(source, file);
   assert.equal(data["@context"], "https://schema.org");
@@ -78,12 +87,26 @@ for (const locale of locales) {
   assert.equal(article.about["@id"], baseUrl + "/#software");
   assert.equal(article.inLanguage, locale);
   assert.equal(article.mainEntityOfPage["@id"], baseUrl + publicPath);
-  assert.equal(oneEntity(data, "BreadcrumbList", file).itemListElement.length, 3);
+  assert.deepEqual(
+    oneEntity(data, "BreadcrumbList", file).itemListElement.map(({ "@type": type, position, name, item }) => ({ type, position, name, item })),
+    [
+      { type: "ListItem", position: 1, name: breadcrumbNames[locale][0], item: baseUrl + localePath(locale) },
+      { type: "ListItem", position: 2, name: breadcrumbNames[locale][1], item: baseUrl + publicPath },
+    ],
+    locale + ": two-item localized BreadcrumbList"
+  );
   assert.equal(data["@graph"].filter((item) => item["@type"] === "FAQPage").length, 0, locale + ": Guide has no FAQ schema");
   assert.doesNotMatch(source, /<section class="guide-faq"\b|id="faq"/i, locale + ": Guide FAQ section removed");
   assert.match(source, /<section class="guide-faq-link"[^>]*aria-label="[^"]+"/);
   assert.match(source, new RegExp('href="' + localePath(locale) + '#faq"'));
   assert.match(source, /data-umami-event="faq-link-click" data-umami-event-location="guide-troubleshooting"/);
+}
+
+for (const locale of locales) {
+  const guideIndex = locale === "en"
+    ? path.join(root, "site", "guides", "index.html")
+    : path.join(root, "site", locale, "guides", "index.html");
+  assert.equal(fs.existsSync(guideIndex), false, locale + ": no artificial Guides index page");
 }
 
 assert.match(read(path.join(root, "site", "site-shell.js")), /pageType[^\n]*guide|pageType === "guide"/);

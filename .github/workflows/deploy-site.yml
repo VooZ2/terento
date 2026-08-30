@@ -33,6 +33,14 @@ jobs:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
+      - name: Validate public website
+        shell: bash
+        run: |
+          set -euo pipefail
+          Tests/run-guide-generator-parity-tests.sh
+          Tests/run-structured-data-tests.sh
+          Tests/run-guide-content-tests.sh
+
       - name: Validate deployment configuration
         shell: bash
         run: |

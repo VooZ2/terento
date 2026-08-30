@@ -2146,29 +2146,6 @@ details p {
   border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
 }
 
-.breadcrumbs {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: clamp(42px, 7vw, 84px);
-  color: var(--secondary);
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.breadcrumbs a {
-  color: var(--link-text);
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.breadcrumbs a:hover {
-  color: var(--link-text-hover);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
 .guide-intro h1 {
   max-width: 980px;
   margin: 14px 0 24px;
@@ -2630,11 +2607,6 @@ details p {
 @media (max-width: 430px) {
   .guide-intro {
     padding-top: 28px;
-  }
-
-  .breadcrumbs {
-    margin-bottom: 38px;
-    font-size: 12px;
   }
 
   .guide-actions {
