@@ -11,7 +11,8 @@ GUIDE = "guides/install-garmin-maps-mac/"
 COPY = {
     "en": {
         "home": "Read the full Mac installation guide.",
-        "download": "New to third-party maps? Read the Mac installation guide",
+        "download_guide": "Read the Mac installation guide",
+        "download_compatibility": "Check compatibility",
         "compatibility": "First time installing third-party maps? Read the Mac guide",
         "community_eyebrow": "Community testing",
         "community_heading": "Have another Garmin smartwatch with map support?",
@@ -20,7 +21,8 @@ COPY = {
     },
     "de": {
         "home": "Lies die vollständige Mac-Installationsanleitung.",
-        "download": "Neu bei Drittanbieter-Karten? Lies die Mac-Installationsanleitung",
+        "download_guide": "Mac-Installationsanleitung lesen",
+        "download_compatibility": "Kompatibilität prüfen",
         "compatibility": "Zum ersten Mal Drittanbieter-Karten installieren? Lies die Mac-Anleitung",
         "community_eyebrow": "Community-Tests",
         "community_heading": "Hast du eine weitere Garmin-Smartwatch mit Kartenunterstützung?",
@@ -29,7 +31,8 @@ COPY = {
     },
     "fr": {
         "home": "Lisez le guide complet d’installation sur Mac.",
-        "download": "Vous débutez avec les cartes tierces ? Lisez le guide d’installation sur Mac",
+        "download_guide": "Lire le guide d’installation sur Mac",
+        "download_compatibility": "Vérifier la compatibilité",
         "compatibility": "Vous installez des cartes tierces pour la première fois ? Lisez le guide Mac",
         "community_eyebrow": "Tests communautaires",
         "community_heading": "Vous avez une autre montre Garmin compatible avec les cartes ?",
@@ -38,7 +41,8 @@ COPY = {
     },
     "pl": {
         "home": "Przeczytaj pełną instrukcję instalacji na Macu.",
-        "download": "Dopiero zaczynasz z mapami innych firm? Przeczytaj instrukcję instalacji na Macu",
+        "download_guide": "Przeczytaj instrukcję instalacji na Macu",
+        "download_compatibility": "Sprawdź kompatybilność",
         "compatibility": "Instalujesz mapy innych firm pierwszy raz? Przeczytaj instrukcję na Macu",
         "community_eyebrow": "Testy społeczności",
         "community_heading": "Masz inny zegarek Garmin obsługujący mapy?",
@@ -47,7 +51,8 @@ COPY = {
     },
     "cs": {
         "home": "Přečtěte si úplného průvodce instalací na Macu.",
-        "download": "Začínáte s mapami třetích stran? Přečtěte si průvodce instalací na Macu",
+        "download_guide": "Přečíst průvodce instalací na Macu",
+        "download_compatibility": "Ověřit kompatibilitu",
         "compatibility": "Instalujete mapy třetích stran poprvé? Přečtěte si průvodce pro Mac",
         "community_eyebrow": "Komunitní testování",
         "community_heading": "Máte jiné hodinky Garmin s podporou map?",
@@ -56,7 +61,8 @@ COPY = {
     },
     "it": {
         "home": "Leggi la guida completa all’installazione su Mac.",
-        "download": "È la prima volta che installi mappe di terze parti? Leggi la guida per Mac",
+        "download_guide": "Leggi la guida all’installazione su Mac",
+        "download_compatibility": "Verifica la compatibilità",
         "compatibility": "Installi mappe di terze parti per la prima volta? Leggi la guida per Mac",
         "community_eyebrow": "Test della community",
         "community_heading": "Hai un altro smartwatch Garmin con supporto mappe?",
@@ -80,6 +86,55 @@ def localized_download(locale: str) -> str:
 
 def localized_compatibility(locale: str) -> str:
     return f"/{'' if locale == 'en' else f'{locale}/'}compatibility/"
+
+
+def download_link(label: str, href: str) -> str:
+    """Return an intrinsic-width link whose final word stays with its arrow."""
+    prefix, tail = label.rsplit(" ", 1)
+    return (
+        f'<a class="download-info-link" href="{href}">'
+        f'<span class="download-info-link-text">{prefix}</span> '
+        '<span class="download-info-link-tail">'
+        f'<span class="download-info-link-text">{tail}</span>'
+        '<span class="download-info-link-arrow" aria-hidden="true">→</span>'
+        '</span></a>'
+    )
+
+
+def normalize_download_layout(source: str) -> str:
+    """Bring legacy localized Download markup onto the shared three-column layout."""
+    pattern = re.compile(
+        r'<div class="download-grid">'
+        r'<div class="section-heading"><p class="eyebrow">(?P<label>.*?)</p>'
+        r'<h2>(?P<version>.*?)</h2>'
+        r'<p class="supporting-copy">(?P<release>.*?)</p></div>'
+        r'<div class="download-list">(?P<sections>[\s\S]*?)</div></div>'
+    )
+    match = pattern.search(source)
+    if not match:
+        return source
+    replacement = (
+        f'<p class="download-release">{match.group("label")}: '
+        f'<strong>{match.group("version")}</strong> '
+        '<span aria-hidden="true">·</span> '
+        f'{match.group("release")}</p>'
+        f'<div class="download-sections">{match.group("sections")}</div>'
+    )
+    return source[:match.start()] + replacement + source[match.end():]
+
+
+def replace_download_section_link(source: str, section_index: int, anchor: str) -> str:
+    sections = list(re.finditer(r'<section class="download-item">[\s\S]*?</section>', source))
+    if len(sections) < 2:
+        raise RuntimeError("Download page must contain at least two information sections")
+    match = sections[section_index]
+    section = re.sub(
+        r'<a class="(?:download-compatibility-link|download-info-link)"[\s\S]*?</a>',
+        '',
+        match.group(0),
+    )
+    section = section.replace('</section>', f'{anchor}</section>', 1)
+    return source[:match.start()] + section + source[match.end():]
 
 
 def add_home_link(locale: str) -> None:
@@ -107,13 +162,14 @@ def add_home_link(locale: str) -> None:
 
 def add_download_link(locale: str) -> None:
     path = path_for(locale, "download/index.html")
-    source = path.read_text(encoding="utf-8")
-    marker = '<div class="download-sections">' if '<div class="download-sections">' in source else '<div class="download-grid">'
-    start = source.index(marker)
-    end = source.index("</ul>", start) + len("</ul>")
-    anchor = f'<a class="download-compatibility-link" href="{localized_guide(locale)}">{COPY[locale]["download"]} <span aria-hidden="true">→</span></a>'
-    if anchor not in source:
-        source = source[:end] + anchor + source[end:]
+    source = normalize_download_layout(path.read_text(encoding="utf-8"))
+    guide = download_link(COPY[locale]["download_guide"], localized_guide(locale))
+    compatibility = download_link(
+        COPY[locale]["download_compatibility"],
+        localized_compatibility(locale),
+    )
+    source = replace_download_section_link(source, 1, compatibility)
+    source = replace_download_section_link(source, 0, guide)
     path.write_text(source, encoding="utf-8")
 
 

@@ -40,6 +40,7 @@ jobs:
           Tests/run-guide-generator-parity-tests.sh
           Tests/run-structured-data-tests.sh
           Tests/run-guide-content-tests.sh
+          Tests/run-public-page-layout-contract-tests.sh
 
       - name: Validate deployment configuration
         shell: bash
