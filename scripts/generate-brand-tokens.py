@@ -12,6 +12,10 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 TOKENS_PATH = ROOT / "brand" / "DESIGN_TOKENS.json"
 BRAND_CSS_PATH = ROOT / "brand" / "tokens.css"
+APP_TOKENS_PATH = (
+    ROOT / "lab" / "native-connectivity-poc" / "Sources" / "TerentoPoC"
+    / "Views" / "DesignSystem" / "TerentoTokens.generated.swift"
+)
 SITE_CSS_PATH = ROOT / "site" / "styles.css"
 ADMIN_MODULE_PATH = (
     ROOT / "backend" / "catalog-api" / "src" / "terento_catalog"
@@ -76,6 +80,82 @@ def semantic(tokens: dict, platform: str, mode: str, name: str) -> str:
 def font_stack(tokens: dict, name: str, fallback: str) -> str:
     family = value_at(tokens, "typography", "fontFamily", name)
     return f'"{family}", {fallback}'
+
+
+def swift_color_literal(tokens: dict, *path: str) -> str:
+    value = value_at(tokens, "color", *path)
+    if not (value.startswith("#") and len(value) == 7):
+        raise ValueError(f"Swift app token must be a #RRGGBB color: {value}")
+    return f"0x{value[1:].upper()}"
+
+
+def app_swift_tokens(tokens: dict) -> str:
+    lines = [
+        f"// {GENERATED_HEADER}",
+        "import SwiftUI",
+        "",
+        "enum TerentoGeneratedTokens {",
+        "    enum Brand {",
+        f"        static let sky = Color(terentoHex: {swift_color_literal(tokens, 'brand', 'sky')})",
+        f"        static let lichen = Color(terentoHex: {swift_color_literal(tokens, 'brand', 'lichen')})",
+        f"        static let warmStone = Color(terentoHex: {swift_color_literal(tokens, 'brand', 'stone')})",
+        f"        static let offWhite = Color(terentoHex: {swift_color_literal(tokens, 'brand', 'offWhite')})",
+        f"        static let graphite = Color(terentoHex: {swift_color_literal(tokens, 'brand', 'graphite')})",
+        "    }",
+        "",
+        "    enum Functional {",
+        f"        static let interactivePrimary = Color(terentoHex: {swift_color_literal(tokens, 'functional', 'interactivePrimary')})",
+        f"        static let interactiveHover = Color(terentoHex: {swift_color_literal(tokens, 'functional', 'interactiveHover')})",
+        f"        static let secondaryText = Color(terentoHex: {swift_color_literal(tokens, 'functional', 'secondaryText')})",
+        f"        static let lichenDark = Color(terentoHex: {swift_color_literal(tokens, 'functional', 'lichenDark')})",
+        f"        static let stoneDark = Color(terentoHex: {swift_color_literal(tokens, 'functional', 'stoneDark')})",
+        f"        static let errorRust = Color(terentoHex: {swift_color_literal(tokens, 'functional', 'errorRust')})",
+        f"        static let selectedTint = Color(terentoHex: {swift_color_literal(tokens, 'functional', 'selectedTint')})",
+        "    }",
+        "",
+        "    enum Light {",
+    ]
+    for name in (
+        "backgroundPrimary", "backgroundSecondary", "surfacePrimary", "surfaceElevated",
+        "textPrimary", "textSecondary", "textMuted", "textDisabled", "borderSubtle",
+        "selectedBackground", "selectedBorder", "focusRing", "progressTrack", "progressFill",
+    ):
+        lines.append(
+            f"        static let {name} = Color(terentoHex: "
+            f"{swift_color_literal(tokens, 'light', name)})"
+        )
+    lines.extend((
+        "    }",
+        "",
+        "    enum Status {",
+    ))
+    for name in ("success", "warning", "error", "info"):
+        lines.append(
+            f"        static let {name} = Color(terentoHex: "
+            f"{swift_color_literal(tokens, 'status', 'light', name)})"
+        )
+    lines.extend((
+        "    }",
+        "",
+        "    enum Typography {",
+        f'        static let brandFontName = {json.dumps(value_at(tokens, "typography", "fontFamily", "brand"), ensure_ascii=False)}',
+        f'        static let uiFontName = {json.dumps(value_at(tokens, "typography", "fontFamily", "ui"), ensure_ascii=False)}',
+        f'        static let monoFontName = {json.dumps(value_at(tokens, "typography", "fontFamily", "mono"), ensure_ascii=False)}',
+        "    }",
+        "}",
+        "",
+        "private extension Color {",
+        "    init(terentoHex hex: UInt32) {",
+        "        self.init(",
+        "            red: Double((hex >> 16) & 0xFF) / 255,",
+        "            green: Double((hex >> 8) & 0xFF) / 255,",
+        "            blue: Double(hex & 0xFF) / 255",
+        "        )",
+        "    }",
+        "}",
+        "",
+    ))
+    return "\n".join(lines)
 
 
 BRAND_FONT_FALLBACK = '"Helvetica Neue", Arial, sans-serif'
@@ -348,6 +428,7 @@ def expected_outputs(tokens: dict) -> dict[Path, str]:
     admin_css = admin_token_css(tokens)
     return {
         BRAND_CSS_PATH: canonical_css(tokens),
+        APP_TOKENS_PATH: app_swift_tokens(tokens),
         SITE_CSS_PATH: replace_site_block(site_source, site_token_block(tokens)),
         ADMIN_MODULE_PATH: admin_module(admin_css),
     }
@@ -374,7 +455,10 @@ def main() -> int:
     for path, content in outputs.items():
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
-    print("Generated brand/tokens.css, site/styles.css token block, and admin token module.")
+    print(
+        "Generated brand/tokens.css, the app Swift token file, "
+        "site/styles.css token block, and admin token module."
+    )
     return 0
 
 

@@ -14,6 +14,11 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 TOKENS_PATH = ROOT / "brand" / "DESIGN_TOKENS.json"
+APP_TOKENS_PATH = (
+    ROOT / "lab" / "native-connectivity-poc" / "Sources" / "TerentoPoC"
+    / "Views" / "DesignSystem" / "TerentoTokens.generated.swift"
+)
+CONNECT_SCREEN_PATH = ROOT / "lab" / "native-connectivity-poc" / "Sources" / "TerentoPoC" / "Views" / "ConnectScreen.swift"
 SITE_CSS_PATH = ROOT / "site" / "styles.css"
 ADMIN_SOURCE_PATH = ROOT / "backend" / "catalog-api" / "src" / "terento_catalog" / "admin.py"
 ADMIN_MODULE_PATH = ROOT / "backend" / "catalog-api" / "src" / "terento_catalog" / "admin_brand_tokens_generated.py"
@@ -83,6 +88,19 @@ def main() -> int:
     }
     for path, expected in locked_values.items():
         assert token_value(tokens, *path) == expected, f"locked token changed: {'.'.join(path)}"
+
+    app_tokens = APP_TOKENS_PATH.read_text(encoding="utf-8")
+    assert "Generated from brand/DESIGN_TOKENS.json. Do not edit manually." in app_tokens
+    for value in locked_values.values():
+        assert f"0x{value[1:]}" in app_tokens, f"app output is missing canonical value {value}"
+    assert 'brandFontName = "Instrument Sans"' in app_tokens
+    assert 'uiFontName = "Inter"' in app_tokens
+    assert 'monoFontName = "JetBrains Mono"' in app_tokens
+
+    connect_screen = CONNECT_SCREEN_PATH.read_text(encoding="utf-8")
+    assert "private enum TerentoColors" not in connect_screen
+    assert "private extension Font" not in connect_screen
+    assert "Color(hex:" not in connect_screen
 
     assert hashlib.sha256(LOGO_PATH.read_bytes()).hexdigest() == LOGO_SHA256, "canonical logo geometry changed"
 

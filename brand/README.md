@@ -78,15 +78,16 @@ Spacing and radius values in the token files are explicitly marked provisional. 
 
 ## Generated non-app outputs
 
-`DESIGN_TOKENS.json` is the source of truth for shared non-app brand values.
-Regenerate derived outputs with:
+`DESIGN_TOKENS.json` is the source of truth for shared brand values, including
+the native app token output. Regenerate derived outputs with:
 
 ```sh
 python3 scripts/generate-brand-tokens.py
 python3 scripts/generate-brand-tokens.py --check
 ```
 
-The generator owns `tokens.css`, the generated token block in
-`site/styles.css`, and `admin_brand_tokens_generated.py`. Do not edit those
-generated sections manually. App token generation is outside the Phase 1B
-scope.
+The generator owns `tokens.css`, the native app
+`Views/DesignSystem/TerentoTokens.generated.swift`, the generated token block
+in `site/styles.css`, and `admin_brand_tokens_generated.py`. Do not edit these
+generated outputs manually. The app output is deterministic and checked for
+drift by the same `--check` command.
