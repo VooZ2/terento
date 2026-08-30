@@ -112,6 +112,22 @@ To run the native window:
 swift run TerentoPoC
 ```
 
+To verify the beta.8 provider-neutral Stage 1 foundation and its related
+regression boundaries:
+
+```sh
+./Tests/run-stage1-provider-neutral-tests.sh
+./Tests/run-stage41-acquisition-tests.sh
+./Tests/run-stage42-installation-tests.sh
+./Tests/run-stage45-map-selection-tests.sh
+./Tests/run-stage53-safe-update-tests.sh
+```
+
+These checks validate the provider-neutral catalog and acquisition seams while
+preserving the existing Freizeitkarte path. They do not claim OpenTopoMap
+installation, custom `.img` import, external-map removal, web/API or `/admin`
+implementation, or real-device map visibility.
+
 To run the explicit developer-only Write Test after connecting the validated
 Garmin fēnix 8 and closing other Garmin/MTP applications:
 

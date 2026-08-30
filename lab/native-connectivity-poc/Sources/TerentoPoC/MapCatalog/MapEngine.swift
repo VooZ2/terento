@@ -133,11 +133,17 @@ struct MapInventoryEngine<Reader: DeviceFileReader>: Sendable {
         let scan = GarminMapScanner().scan(
             files: files,
             reader: reader,
-            ownershipRecords: ownershipRecords
+            ownershipRecords: ownershipRecords,
+            recognizedProviderIDs: Set(
+                catalog.providers.map { MapIdentity.normalizeProvider($0.id) }
+            )
         )
         let comparisons = catalog.packages.compactMap { package -> MapComparison? in
             guard let provider = catalog.provider(for: package.providerId),
-                  let region = catalog.region(for: package.regionId) else {
+                  let region = catalog.region(
+                      for: package.regionId,
+                      providerId: package.providerId
+                  ) else {
                 return nil
             }
 
@@ -800,7 +806,9 @@ final class MapEngine: ObservableObject {
         installationErrorMessage = nil
 
         let packages = plan.installItems.map(\.package)
-        let acquirer = MapPackageAcquirer()
+        let acquirer = MapPackageAcquirer(
+            providerHealthChecker: FoundationMapProviderHealthChecker()
+        )
         let stateRelay = MapEngineAcquisitionRelay(engine: self)
         let progressRelay = MapEngineDownloadProgressRelay(engine: self)
         activeTask?.cancel()
@@ -1120,7 +1128,7 @@ final class MapEngine: ObservableObject {
         switch error {
         case .acquisitionWithheld:
             return (.preflight, .sourceArtifactInvalid)
-        case .downloadFailed, .downloadIncomplete, .untrustedSourceURL:
+        case .downloadFailed, .providerUnavailable, .downloadIncomplete, .untrustedSourceURL:
             return (.download, .downloadFailed)
         case .workspaceFailed, .unsafeArchivePath, .extractionFailed:
             return (.extract, .sourceValidationFailed)

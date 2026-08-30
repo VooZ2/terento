@@ -138,7 +138,11 @@ protocol SafeUpdateArtifactProvider: Sendable {
 struct MapPackageAcquisitionProvider: SafeUpdateArtifactProvider, Sendable {
     private let acquirer: MapPackageAcquirer
 
-    init(acquirer: MapPackageAcquirer = MapPackageAcquirer()) {
+    init(
+        acquirer: MapPackageAcquirer = MapPackageAcquirer(
+            providerHealthChecker: FoundationMapProviderHealthChecker()
+        )
+    ) {
         self.acquirer = acquirer
     }
 

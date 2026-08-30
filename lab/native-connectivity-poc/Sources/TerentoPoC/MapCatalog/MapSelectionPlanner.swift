@@ -152,16 +152,22 @@ struct MapSelectionPlanner: Sendable {
     func items(
         comparisons: [MapComparison],
         preflightStatuses: [String: InstallationPreflightStatus],
-        recommendedRegionID: String?
+        recommendedRegionID: String?,
+        providerIDs: Set<String>? = nil
     ) -> [MapSelectionItem] {
         var uniqueComparisons: [String: MapComparison] = [:]
+        let normalizedProviderIDs = providerIDs.map {
+            Set($0.map(MapIdentity.normalizeProvider))
+        }
         let displayNames = MapDisplayNameNormalizer.displayNames(
             for: comparisons.map(\.catalogMap)
         )
 
         for comparison in comparisons {
-            guard MapIdentity.normalizeProvider(comparison.catalogMap.providerId)
-                == "freizeitkarte" else {
+            if let normalizedProviderIDs,
+               !normalizedProviderIDs.contains(
+                   MapIdentity.normalizeProvider(comparison.catalogMap.providerId)
+               ) {
                 continue
             }
 

@@ -282,7 +282,8 @@ struct GarminMapScanner: Sendable {
     func scan(
         files: [DeviceFile],
         reader: DeviceFileReader,
-        ownershipRecords: [MapOwnershipRecord] = []
+        ownershipRecords: [MapOwnershipRecord] = [],
+        recognizedProviderIDs: Set<String>? = nil
     ) -> MapScanResult {
         let mapFiles = files.filter(isMapFile)
         let candidateFiles = mapFiles.filter { !isKnownGarminOwned($0) }
@@ -312,11 +313,15 @@ struct GarminMapScanner: Sendable {
                 continue
             }
 
-            // Classification is content-first. A BaseCamp-renamed
-            // Freizeitkarte file is accepted; Garmin-owned images are
-            // excluded before inspection. Other parsed map images are listed
-            // read-only, but never enter Freizeitkarte comparison logic.
-            guard metadata.provider == "Freizeitkarte" else {
+            // Classification is content-first. Garmin-owned images are
+            // excluded before inspection. When a catalog is available, its
+            // provider IDs decide which parsed community images can enter
+            // comparison logic; unknown parsed providers remain read-only.
+            let normalizedProvider = MapIdentity.normalizeProvider(metadata.provider ?? "")
+            let isRecognizedProvider = metadata.provider != nil
+                && (recognizedProviderIDs == nil
+                    || recognizedProviderIDs?.contains(normalizedProvider) == true)
+            guard isRecognizedProvider else {
                 skippedNonFreizeitkarteFiles += 1
                 otherMaps.append(
                     InstalledMap(

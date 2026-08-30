@@ -81,6 +81,7 @@ enum MapPackageFormat: String, Codable, Equatable, Sendable {
 enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
     case acquisitionWithheld(MapAcquisitionAvailability)
     case downloadFailed(String)
+    case providerUnavailable(providerId: String, statusCode: Int?)
     case downloadIncomplete(expected: UInt64?, actual: UInt64)
     case invalidPackage(String)
     case extractionFailed(String)
@@ -99,6 +100,8 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
             return availability.detailedExplanation
         case .downloadFailed(let message):
             return "The map package could not be downloaded: \(message)"
+        case .providerUnavailable:
+            return "The selected map provider is currently down. Try again later."
         case .downloadIncomplete(let expected, let actual):
             if let expected {
                 return "The map package is incomplete: expected \(expected) bytes, received \(actual)."
@@ -152,6 +155,167 @@ struct ReviewedProviderURLPolicy: Sendable {
     }
 }
 
+/// Source-host policy is selected from the package provider, never from a
+/// global/default provider. A future provider adds its reviewed policy to
+/// this registry without changing the acquisition pipeline.
+struct ReviewedProviderURLPolicyRegistry: Sendable {
+    static let bundled = ReviewedProviderURLPolicyRegistry(
+        policies: ["freizeitkarte": .freizeitkarte]
+    )
+
+    private let policies: [String: ReviewedProviderURLPolicy]
+
+    init(policies: [String: ReviewedProviderURLPolicy]) {
+        self.policies = Dictionary(
+            uniqueKeysWithValues: policies.map {
+                (MapIdentity.normalizeProvider($0.key), $0.value)
+            }
+        )
+    }
+
+    func policy(for providerId: String) -> ReviewedProviderURLPolicy? {
+        policies[MapIdentity.normalizeProvider(providerId)]
+    }
+}
+
+struct MapProviderHealthProbeResult: Equatable, Sendable {
+    let providerId: String
+    let health: MapProviderHealth
+    let statusCode: Int?
+    let checkedAt: Date
+
+    var isDown: Bool {
+        health == .down
+    }
+}
+
+protocol MapProviderHealthChecking: Sendable {
+    func check(package: MapPackage) async -> MapProviderHealthProbeResult
+}
+
+struct NoopMapProviderHealthChecker: MapProviderHealthChecking, Sendable {
+    func check(package: MapPackage) async -> MapProviderHealthProbeResult {
+        MapProviderHealthProbeResult(
+            providerId: package.providerId,
+            health: .unknown,
+            statusCode: nil,
+            checkedAt: Date()
+        )
+    }
+}
+
+/// A bounded source check used only to improve an app download failure. It
+/// does not download a map binary and does not persist provider health.
+struct FoundationMapProviderHealthChecker: MapProviderHealthChecking, Sendable {
+    private let sourcePolicyRegistry: ReviewedProviderURLPolicyRegistry
+    private let timeout: TimeInterval
+
+    init(
+        sourcePolicyRegistry: ReviewedProviderURLPolicyRegistry = .bundled,
+        timeout: TimeInterval = 10
+    ) {
+        self.sourcePolicyRegistry = sourcePolicyRegistry
+        self.timeout = timeout
+    }
+
+    func check(package: MapPackage) async -> MapProviderHealthProbeResult {
+        let unknown = MapProviderHealthProbeResult(
+            providerId: package.providerId,
+            health: .unknown,
+            statusCode: nil,
+            checkedAt: Date()
+        )
+
+        guard let sourceURL = package.downloadURL,
+              let policy = sourcePolicyRegistry.policy(for: package.providerId) else {
+            return unknown
+        }
+
+        do {
+            try policy.validate(sourceURL)
+            let response = try await request(
+                sourceURL: sourceURL,
+                policy: policy,
+                method: "HEAD"
+            )
+
+            if response.statusCode == 405 || response.statusCode == 501 {
+                let rangeResponse = try await request(
+                    sourceURL: sourceURL,
+                    policy: policy,
+                    method: "GET",
+                    range: "bytes=0-0"
+                )
+                return classify(response: rangeResponse, providerId: package.providerId)
+            }
+            return classify(response: response, providerId: package.providerId)
+        } catch {
+            return unknown
+        }
+    }
+
+    private func classify(
+        response: HealthHTTPResponse,
+        providerId: String
+    ) -> MapProviderHealthProbeResult {
+        let health: MapProviderHealth
+        switch response.statusCode {
+        case 200...399:
+            health = .healthy
+        case 429, 404, 410:
+            health = .degraded
+        case 500...599:
+            health = .down
+        default:
+            health = .unknown
+        }
+
+        return MapProviderHealthProbeResult(
+            providerId: providerId,
+            health: health,
+            statusCode: response.statusCode,
+            checkedAt: Date()
+        )
+    }
+
+    private func request(
+        sourceURL: URL,
+        policy: ReviewedProviderURLPolicy,
+        method: String,
+        range: String? = nil
+    ) async throws -> HealthHTTPResponse {
+        var request = URLRequest(url: sourceURL)
+        request.httpMethod = method
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.timeoutInterval = timeout
+        if let range {
+            request.setValue(range, forHTTPHeaderField: "Range")
+        }
+
+        let redirectDelegate = ReviewedProviderRedirectDelegate(policy: policy)
+        let session = URLSession(
+            configuration: .ephemeral,
+            delegate: redirectDelegate,
+            delegateQueue: nil
+        )
+        defer { session.finishTasksAndInvalidate() }
+
+        let (_, response) = try await session.data(for: request)
+        guard redirectDelegate.takeRejectedURL() == nil,
+              let httpResponse = response as? HTTPURLResponse else {
+            throw MapAcquisitionError.downloadFailed("The provider health response was invalid.")
+        }
+        if let finalURL = httpResponse.url {
+            try policy.validate(finalURL)
+        }
+        return HealthHTTPResponse(statusCode: httpResponse.statusCode)
+    }
+
+    private struct HealthHTTPResponse: Sendable {
+        let statusCode: Int
+    }
+}
+
 private final class ReviewedProviderRedirectDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
     private let policy: ReviewedProviderURLPolicy
     private let lock = NSLock()
@@ -200,12 +364,27 @@ protocol MapPackageDownloadClient: Sendable {
     func download(from url: URL) async throws -> MapPackageDownloadResponse
 
     func download(
+        package: MapPackage,
+        onProgress: (@Sendable (MapDownloadProgress) -> Void)?
+    ) async throws -> MapPackageDownloadResponse
+
+    func download(
         from url: URL,
         onProgress: (@Sendable (MapDownloadProgress) -> Void)?
     ) async throws -> MapPackageDownloadResponse
 }
 
 extension MapPackageDownloadClient {
+    func download(
+        package: MapPackage,
+        onProgress: (@Sendable (MapDownloadProgress) -> Void)?
+    ) async throws -> MapPackageDownloadResponse {
+        guard let sourceURL = package.downloadURL else {
+            throw MapAcquisitionError.downloadFailed("The catalog package has no source URL.")
+        }
+        return try await download(from: sourceURL, onProgress: onProgress)
+    }
+
     func download(
         from url: URL,
         onProgress: (@Sendable (MapDownloadProgress) -> Void)?
@@ -215,10 +394,15 @@ extension MapPackageDownloadClient {
 }
 
 struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
-    private let sourcePolicy: ReviewedProviderURLPolicy
+    private let sourcePolicyRegistry: ReviewedProviderURLPolicyRegistry
+    private let directSourcePolicy: ReviewedProviderURLPolicy?
 
-    init(sourcePolicy: ReviewedProviderURLPolicy = .freizeitkarte) {
-        self.sourcePolicy = sourcePolicy
+    init(
+        sourcePolicyRegistry: ReviewedProviderURLPolicyRegistry = .bundled,
+        sourcePolicy: ReviewedProviderURLPolicy? = nil
+    ) {
+        self.sourcePolicyRegistry = sourcePolicyRegistry
+        self.directSourcePolicy = sourcePolicy
     }
 
     func download(from url: URL) async throws -> MapPackageDownloadResponse {
@@ -226,7 +410,39 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
     }
 
     func download(
+        package: MapPackage,
+        onProgress: (@Sendable (MapDownloadProgress) -> Void)?
+    ) async throws -> MapPackageDownloadResponse {
+        guard let sourceURL = package.downloadURL else {
+            throw MapAcquisitionError.downloadFailed("The catalog package has no source URL.")
+        }
+        guard let policy = sourcePolicyRegistry.policy(for: package.providerId) else {
+            throw MapAcquisitionError.untrustedSourceURL(sourceURL.absoluteString)
+        }
+        return try await download(
+            from: sourceURL,
+            policy: policy,
+            onProgress: onProgress
+        )
+    }
+
+    func download(
         from url: URL,
+        onProgress: (@Sendable (MapDownloadProgress) -> Void)?
+    ) async throws -> MapPackageDownloadResponse {
+        guard let directSourcePolicy else {
+            throw MapAcquisitionError.untrustedSourceURL(url.absoluteString)
+        }
+        return try await download(
+            from: url,
+            policy: directSourcePolicy,
+            onProgress: onProgress
+        )
+    }
+
+    private func download(
+        from url: URL,
+        policy sourcePolicy: ReviewedProviderURLPolicy,
         onProgress: (@Sendable (MapDownloadProgress) -> Void)?
     ) async throws -> MapPackageDownloadResponse {
         try sourcePolicy.validate(url)
@@ -480,22 +696,46 @@ struct ValidatedMapArtifact: Equatable, Sendable {
     let catalogDownloadSizeBytes: UInt64?
     let downloadSizeMatchesCatalog: Bool
     let packageFormat: MapPackageFormat
+
+    /// Bridge to the provider-neutral lifecycle seam. The legacy fields stay
+    /// available for the current FZK write coordinator while later sources
+    /// can hand the same neutral artifact shape to the shared pipeline.
+    var mapArtifact: MapArtifact {
+        MapArtifact(
+            id: catalogPackageID,
+            source: .provider,
+            kind: .main,
+            required: true,
+            providerId: provider,
+            providerRegionId: region,
+            canonicalRegionId: canonicalRegion,
+            version: version,
+            sourceURL: sourcePackageURL,
+            localURL: localIMGURL,
+            sizeBytes: installSizeBytes,
+            checksum: sha256,
+            validationState: .validated
+        )
+    }
 }
 
 struct MapPackageAcquirer: Sendable {
     private let downloadClient: any MapPackageDownloadClient
+    private let providerHealthChecker: any MapProviderHealthChecking
     private let archiveExtractor: any MapPackageArchiveExtractor
     private let workspaceFactory: @Sendable () throws -> MapAcquisitionWorkspace
     private let parser = GarminIMGMetadataParser()
 
     init(
         downloadClient: any MapPackageDownloadClient = FoundationMapPackageDownloadClient(),
+        providerHealthChecker: any MapProviderHealthChecking = NoopMapProviderHealthChecker(),
         archiveExtractor: any MapPackageArchiveExtractor = SystemZIPArchiveExtractor(),
         workspaceFactory: @escaping @Sendable () throws -> MapAcquisitionWorkspace = {
             try MapAcquisitionWorkspace.make()
         }
     ) {
         self.downloadClient = downloadClient
+        self.providerHealthChecker = providerHealthChecker
         self.archiveExtractor = archiveExtractor
         self.workspaceFactory = workspaceFactory
     }
@@ -561,7 +801,7 @@ struct MapPackageAcquirer: Sendable {
         let response: MapPackageDownloadResponse
         do {
             response = try await downloadClient.download(
-                from: sourceURL,
+                package: package,
                 onProgress: { progress in
                     let totalBytes = progress.totalBytes > 0
                         ? progress.totalBytes
@@ -574,13 +814,19 @@ struct MapPackageAcquirer: Sendable {
                 }
             )
         } catch let error as MapAcquisitionError {
-            throw error
+            throw await providerAwareDownloadError(error, package: package)
         } catch {
-            throw MapAcquisitionError.downloadFailed(error.localizedDescription)
+            throw await providerAwareDownloadError(
+                .downloadFailed(error.localizedDescription),
+                package: package
+            )
         }
 
         guard (200...299).contains(response.statusCode) else {
-            throw MapAcquisitionError.downloadFailed("Provider returned HTTP \(response.statusCode).")
+            throw await providerAwareDownloadError(
+                .downloadFailed("Provider returned HTTP \(response.statusCode)."),
+                package: package
+            )
         }
 
         state(.validatingDownload, onStateChange)
@@ -812,5 +1058,35 @@ struct MapPackageAcquirer: Sendable {
         _ onStateChange: (@Sendable (MapAcquisitionState) -> Void)?
     ) {
         onStateChange?(state)
+    }
+
+    private func providerAwareDownloadError(
+        _ error: MapAcquisitionError,
+        package: MapPackage
+    ) async -> MapAcquisitionError {
+        guard shouldProbeProvider(for: error) else {
+            return error
+        }
+
+        let probe = await providerHealthChecker.check(package: package)
+        guard probe.isDown else {
+            return error
+        }
+        return .providerUnavailable(
+            providerId: package.providerId,
+            statusCode: probe.statusCode
+        )
+    }
+
+    private func shouldProbeProvider(for error: MapAcquisitionError) -> Bool {
+        switch error {
+        case .downloadFailed, .downloadIncomplete:
+            return true
+        case .acquisitionWithheld, .providerUnavailable, .invalidPackage,
+             .extractionFailed, .unsupportedPackageFormat, .unsafeArchivePath,
+             .sourceIdentityMismatch, .sourceVersionMismatch, .noIMGFound,
+             .ambiguousIMG, .workspaceFailed, .untrustedSourceURL:
+            return false
+        }
     }
 }
