@@ -184,7 +184,6 @@
       document.querySelector(".download-intro")?.after(requirement);
     }
     text(".download-requirement", copy.requirement);
-    document.querySelector(".download-compatibility-link")?.setAttribute("href", `/${language}/compatibility/`);
     const sections = [...document.querySelectorAll(".download-item")];
     if (sections[0]) sections[0].querySelector("ul")?.replaceChildren(...copy.requirements.map((item) => { const li = document.createElement("li"); li.textContent = item; return li; }));
     if (sections[1]) textFrom(sections[1], copy.status);
