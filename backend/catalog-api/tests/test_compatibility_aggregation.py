@@ -56,14 +56,14 @@ class CompatibilityAggregationMigrationTests(unittest.TestCase):
         self.assertIn("usb_product_id = 20920", sql)
         self.assertNotIn("garmin-fenix-8-51-amoled'\nWHERE", sql)
 
-    def test_dashboard_result_count_describes_aggregate_rows_as_models(self) -> None:
+    def test_dashboard_result_count_describes_exact_model_variant_rows_as_variants(self) -> None:
         admin_source = (
             Path(__file__).resolve().parents[1]
             / "src"
             / "terento_catalog"
             / "admin.py"
         ).read_text(encoding="utf-8")
-        self.assertIn("visible.length === 1 ? 'model' : 'models'", admin_source)
+        self.assertIn("visible.length === 1 ? 'variant' : 'variants'", admin_source)
         self.assertNotIn("visible.length === 1 ? 'report' : 'reports'", admin_source)
 
     def test_legacy_failures_have_a_non_destructive_resolved_lifecycle(self) -> None:
