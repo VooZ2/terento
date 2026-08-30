@@ -30,7 +30,9 @@ jobs:
           sudo xcode-select -s "$xcode_16_path/Contents/Developer"
           swift --version
       - name: Install libmtp
-        run: brew install libmtp
+        run: |
+          brew untap aws/tap || true
+          brew install libmtp
       - name: Build and test
         run: |
           set -euo pipefail
