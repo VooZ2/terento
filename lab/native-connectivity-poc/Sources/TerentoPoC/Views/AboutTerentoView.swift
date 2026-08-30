@@ -31,14 +31,17 @@ struct AboutTerentoView: View {
 
             VStack(spacing: 4) {
                 Text("Terento")
-                    .font(.system(size: 24, weight: .semibold))
+                    .font(.terentoHeading(size: 24, weight: .semibold))
+                    .foregroundStyle(TerentoColors.graphite)
                 Text(TerentoAppMetadata.displayVersion)
-                    .foregroundStyle(.secondary)
+                    .font(.terentoUI(size: 13, weight: .regular))
+                    .foregroundStyle(TerentoColors.secondaryText)
             }
 
             Text(TerentoAppMetadata.description)
+                .font(.terentoUI(size: 13, weight: .regular))
                 .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(TerentoColors.secondaryText)
                 .frame(maxWidth: 300)
 
             HStack(spacing: 16) {
@@ -46,7 +49,8 @@ struct AboutTerentoView: View {
                 Link("GitHub", destination: TerentoAppLinks.repository)
                 Link("Report an issue", destination: TerentoAppLinks.issues)
             }
-            .font(.callout)
+            .font(.terentoUI(size: 13, weight: .medium))
+            .tint(TerentoColors.interactive)
         }
         .padding(28)
         .frame(width: 360)

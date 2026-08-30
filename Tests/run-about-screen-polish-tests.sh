@@ -20,6 +20,20 @@ if ! grep -Fq 'Text(TerentoAppMetadata.displayVersion)' \
     exit 1
 fi
 
+standalone_about_source="$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/Views/AboutTerentoView.swift"
+for treatment in \
+    '.font(.terentoHeading(size: 24, weight: .semibold))' \
+    '.foregroundStyle(TerentoColors.graphite)' \
+    '.font(.terentoUI(size: 13, weight: .regular))' \
+    '.foregroundStyle(TerentoColors.secondaryText)' \
+    '.font(.terentoUI(size: 13, weight: .medium))' \
+    '.tint(TerentoColors.interactive)'; do
+    if ! grep -Fq "$treatment" "$standalone_about_source"; then
+        print -u2 "FAIL: standalone About is missing the established brand treatment: $treatment"
+        exit 1
+    fi
+done
+
 if grep -Fq 'Install update' <<<"$about_content" \
     || ! grep -Fq 'SecondaryButton(title: "Download")' <<<"$about_content" \
     || ! grep -Fq 'What’s new' <<<"$about_content"; then
