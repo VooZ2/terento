@@ -171,7 +171,7 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260820-4">
     <link rel="mask-icon" href="/safari-pinned-tab.svg?v=20260820-4" color="#7898A8">
     <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="stylesheet" href="/styles.css?v=20260828-guide">
+    <link rel="stylesheet" href="/styles.css?v=20260830-brand-tokens">
     <script defer src="/language.js?v=20260824-2"></script>
     <script defer src="/privacy-consent.js?v=20260826-2"></script>
     <script type="application/ld+json">

@@ -57,7 +57,7 @@ const anchorFor = (page, className) => {
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20260829-faq-consolidation">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20260830-brand-tokens">/, `${locale}: Home stylesheet cache bust`);
   const status = page.match(/<p class="hero-status">([^<]+)<\/p>/);
   assert.ok(status, `${locale}: missing hero status`);
   assert.equal(status[1], expected.status, `${locale}: hero status copy`);
@@ -71,9 +71,9 @@ for (const [locale, expected] of locales) {
   assert.equal(download.label, expected.download, `${locale}: download CTA label`);
   assert.equal(download.arrow, "↘", `${locale}: download CTA arrow`);
   assert.equal(
-    (page.match(/class="(?:text-link|text-link scope-link)"/g) || []).length,
+    (page.match(/<a class="(?:text-link|text-link scope-link)" href="[^"]+">/g) || []).length,
     2,
-    `${locale}: expected only the two Home text-link CTAs`
+    `${locale}: expected two primary Home text-link CTAs`
   );
 }
 

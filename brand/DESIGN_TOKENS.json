@@ -150,6 +150,10 @@
         "$value": "#A9B1AE",
         "$type": "color"
       },
+      "textDisabled": {
+        "$value": "#7F8986",
+        "$type": "color"
+      },
       "borderSubtle": {
         "$value": "#465355",
         "$type": "color"
@@ -210,6 +214,173 @@
         "info": {
           "$value": "#9CB6C2",
           "$type": "color"
+        }
+      }
+    }
+  },
+  "semantic": {
+    "web": {
+      "light": {
+        "linkText": {
+          "$value": "#416979",
+          "$type": "color",
+          "$description": "Accessible link text on Alpine Off-White."
+        },
+        "linkTextHover": {
+          "$value": "#315466",
+          "$type": "color",
+          "$description": "Accessible link hover text on Alpine Off-White."
+        },
+        "mutedTextStrong": {
+          "$value": "#626764",
+          "$type": "color",
+          "$description": "Stronger muted web text on light neutral surfaces."
+        },
+        "eyebrowText": {
+          "$value": "#5E6361",
+          "$type": "color",
+          "$description": "Accessible eyebrow and overline text on light neutral surfaces."
+        }
+      },
+      "dark": {
+        "linkText": {
+          "$value": "#9CB6C2",
+          "$type": "color",
+          "$description": "Accessible link text on Graphite dark surfaces."
+        },
+        "linkTextHover": {
+          "$value": "#C1D6DD",
+          "$type": "color",
+          "$description": "Accessible link hover text on Graphite dark surfaces."
+        },
+        "mutedTextStrong": {
+          "$value": "{color.dark.textSecondary.$value}",
+          "$type": "color",
+          "$description": "Secondary muted web text on dark surfaces."
+        },
+        "eyebrowText": {
+          "$value": "{color.dark.textSecondary.$value}",
+          "$type": "color",
+          "$description": "Eyebrow and overline text on dark surfaces."
+        }
+      }
+    },
+    "admin": {
+      "light": {
+        "destructiveText": {
+          "$value": "#9A493D",
+          "$type": "color",
+          "$description": "Danger and required-field text in the light admin UI."
+        },
+        "successSurface": {
+          "$value": "#E8F0E5",
+          "$type": "color",
+          "$description": "Subtle success and affirmative hover surface in the admin UI."
+        },
+        "placeholderText": {
+          "$value": "#858B89",
+          "$type": "color",
+          "$description": "Placeholder text in admin form controls."
+        },
+        "statusNeutralSurface": {
+          "$value": "#F0F1ED",
+          "$type": "color",
+          "$description": "Neutral surface for testing, disabled, and unavailable states."
+        },
+        "statusNeutralBorder": {
+          "$value": "#D8DDD8",
+          "$type": "color",
+          "$description": "Neutral border for testing and disabled states."
+        },
+        "statusNeutralText": {
+          "$value": "#60706C",
+          "$type": "color",
+          "$description": "Neutral status text for testing and disabled states."
+        },
+        "statusTestedSurface": {
+          "$value": "#EDE8DF",
+          "$type": "color",
+          "$description": "Tested-status surface in the admin UI."
+        },
+        "statusTestedBorder": {
+          "$value": "#CFC2AE",
+          "$type": "color",
+          "$description": "Tested-status border in the admin UI."
+        },
+        "statusTestedText": {
+          "$value": "#5B5144",
+          "$type": "color",
+          "$description": "Tested-status text in the admin UI."
+        },
+        "statusSupportedSurface": {
+          "$value": "#E3EDF0",
+          "$type": "color",
+          "$description": "Supported-status surface in the admin UI."
+        },
+        "statusSupportedBorder": {
+          "$value": "#ABC3CD",
+          "$type": "color",
+          "$description": "Supported-status border in the admin UI."
+        },
+        "statusSupportedText": {
+          "$value": "#375E6D",
+          "$type": "color",
+          "$description": "Supported-status text in the admin UI."
+        },
+        "statusSuccessSurface": {
+          "$value": "#E7EEE2",
+          "$type": "color",
+          "$description": "Positive status surface for verified and enabled states."
+        },
+        "statusSuccessBorder": {
+          "$value": "#B4C6A7",
+          "$type": "color",
+          "$description": "Positive status border for verified and enabled states."
+        },
+        "statusSuccessText": {
+          "$value": "#4B6142",
+          "$type": "color",
+          "$description": "Positive status text for verified and enabled states."
+        },
+        "statusErrorSurface": {
+          "$value": "#F0E9E5",
+          "$type": "color",
+          "$description": "Negative status surface for blocked and failed states."
+        },
+        "statusErrorBorder": {
+          "$value": "#D6BDB2",
+          "$type": "color",
+          "$description": "Negative status border for blocked and failed states."
+        },
+        "statusErrorText": {
+          "$value": "#7A493D",
+          "$type": "color",
+          "$description": "Negative status text for blocked and failed states."
+        },
+        "errorSurface": {
+          "$value": "#FBEAE6",
+          "$type": "color",
+          "$description": "Explicit error-message surface in the admin UI."
+        },
+        "errorText": {
+          "$value": "#81372D",
+          "$type": "color",
+          "$description": "Explicit error-message text in the admin UI."
+        },
+        "successText": {
+          "$value": "#365B3B",
+          "$type": "color",
+          "$description": "Explicit success-message text in the admin UI."
+        },
+        "newBadgeSurface": {
+          "$value": "#EEF2E9",
+          "$type": "color",
+          "$description": "Subtle surface for a newly available admin item."
+        },
+        "newBadgeText": {
+          "$value": "#52624C",
+          "$type": "color",
+          "$description": "Text for the newly available admin-item badge."
         }
       }
     }

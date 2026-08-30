@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20260829-faq-routing"
-STYLE_VERSION = "20260830-final-text-cta"
+STYLE_VERSION = "20260830-brand-tokens"
 LANGUAGE_VERSION = "20260829-compat-language"
 LOCALIZED_CONTENT_VERSION = "20260830-download-links"
 LOCALES = {
