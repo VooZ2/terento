@@ -688,7 +688,6 @@ h1 {
 }
 
 .download-info-link {
-  display: inline-flex;
   flex-wrap: wrap;
   align-items: baseline;
   align-self: flex-start;
@@ -697,20 +696,22 @@ h1 {
   max-width: 100%;
   margin-top: auto;
   padding-top: 14px;
-  color: var(--link-text);
-  font-weight: 600;
   line-height: 1.45;
   text-decoration: none;
 }
 
+.download-info-link:visited {
+  color: var(--link-text);
+}
+
 .download-info-link:hover,
-.download-info-link:focus-visible {
+.download-info-link:focus-visible,
+.download-info-link:active {
   color: var(--link-text-hover);
 }
 
-.download-info-link-text {
-  text-decoration: underline;
-  text-underline-offset: 3px;
+.download-info-link-label {
+  text-decoration: none;
 }
 
 .download-info-link-tail {
@@ -769,7 +770,7 @@ h1 {
   margin-top: 8px;
 }
 
-.download-item a {
+.download-item a:not(.text-link) {
   color: var(--link-text);
   font-weight: 600;
   text-decoration: underline;
@@ -1767,6 +1768,12 @@ details p {
 }
 
 .compatibility-hero-inner {
+  text-align: left;
+}
+
+.compatibility-hero-copy {
+  max-width: 900px;
+  margin-inline: 0;
   text-align: left;
 }
 

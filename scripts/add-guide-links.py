@@ -92,10 +92,10 @@ def download_link(label: str, href: str) -> str:
     """Return an intrinsic-width link whose final word stays with its arrow."""
     prefix, tail = label.rsplit(" ", 1)
     return (
-        f'<a class="download-info-link" href="{href}">'
-        f'<span class="download-info-link-text">{prefix}</span> '
+        f'<a class="text-link download-info-link" href="{href}">'
+        f'<span class="download-info-link-label">{prefix}</span> '
         '<span class="download-info-link-tail">'
-        f'<span class="download-info-link-text">{tail}</span>'
+        f'<span class="download-info-link-label">{tail}</span>'
         '<span class="download-info-link-arrow" aria-hidden="true">→</span>'
         '</span></a>'
     )
@@ -129,7 +129,7 @@ def replace_download_section_link(source: str, section_index: int, anchor: str) 
         raise RuntimeError("Download page must contain at least two information sections")
     match = sections[section_index]
     section = re.sub(
-        r'<a class="(?:download-compatibility-link|download-info-link)"[\s\S]*?</a>',
+        r'<a class="(?:download-compatibility-link|(?:text-link )?download-info-link)"[\s\S]*?</a>',
         '',
         match.group(0),
     )
@@ -176,6 +176,15 @@ def add_download_link(locale: str) -> None:
 def add_compatibility_link(locale: str) -> None:
     path = path_for(locale, "compatibility/index.html")
     source = path.read_text(encoding="utf-8")
+    if 'class="compatibility-hero-copy"' not in source:
+        source, hero_count = re.subn(
+            r'(<section class="compatibility-hero"[^>]*>\s*<div class="shell compatibility-hero-inner">)([\s\S]*?)(</div>\s*</section>)',
+            r'\1<div class="compatibility-hero-copy">\2</div>\3',
+            source,
+            count=1,
+        )
+        if not hero_count:
+            raise RuntimeError(f"Compatibility hero not found for {locale}")
     guide = f'<a class="text-link compatibility-guide-link" href="{localized_guide(locale)}">{COPY[locale]["compatibility"]} <span aria-hidden="true">→</span></a>'
     download = f'<a class="download-action download-action-primary compatibility-community-link" href="{localized_download(locale)}" data-umami-event="download-cta-click" data-umami-event-location="compatibility-community-testing">{COPY[locale]["community_download"]}</a>'
     community = (

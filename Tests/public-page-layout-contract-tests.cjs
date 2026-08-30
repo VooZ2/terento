@@ -5,7 +5,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 const styles = read("site/styles.css");
-const styleVersion = "20260830-page-intros";
+const styleVersion = "20260830-final-text-cta";
 const localizedContentVersion = "20260830-download-links";
 
 const cssBlock = (selector) => {
@@ -25,14 +25,24 @@ assert.doesNotMatch(cssBlock(".hero"), /internal-page-intro/);
 assert.match(cssBlock(".shell"), /width:\s*min\(calc\(100% - 48px\), var\(--max-width\)\)/);
 assert.doesNotMatch(cssBlock(".compatibility-hero-inner"), /max-width|margin(?:-inline)?:\s*auto|text-align:\s*center/);
 assert.match(cssBlock(".compatibility-hero-inner"), /text-align:\s*left/);
+assert.match(cssBlock(".compatibility-hero-copy"), /max-width:\s*900px/);
+assert.match(cssBlock(".compatibility-hero-copy"), /margin-inline:\s*0/);
+assert.match(cssBlock(".compatibility-hero-copy"), /text-align:\s*left/);
 
 const linkBlock = cssBlock(".download-info-link");
-assert.match(linkBlock, /display:\s*inline-flex/);
 assert.match(linkBlock, /width:\s*fit-content/);
 assert.match(linkBlock, /max-width:\s*100%/);
 assert.match(linkBlock, /margin-top:\s*auto/);
 assert.doesNotMatch(linkBlock, /justify-content:\s*space-between|(?:^|\n)\s*width:\s*100%/);
+assert.match(styles, /\.text-link\s*\{[^}]*display:\s*inline-flex/);
+assert.match(styles, /\.text-link\s*\{[^}]*font-size:\s*15px/);
+assert.match(styles, /\.text-link\s*\{[^}]*font-weight:\s*600/);
+assert.match(cssBlock(".download-info-link:visited"), /color:\s*var\(--link-text\)/);
+assert.match(cssBlock(".download-info-link:hover,\n.download-info-link:focus-visible,\n.download-info-link:active"), /color:\s*var\(--link-text-hover\)/);
+assert.doesNotMatch(cssBlock(".download-info-link-label"), /underline/);
 assert.match(cssBlock(".download-info-link-tail"), /white-space:\s*nowrap/);
+assert.match(cssBlock(".download-info-link-arrow"), /text-decoration:\s*none/);
+assert.match(styles, /\.download-item a:not\(\.text-link\)\s*\{/);
 assert.match(cssBlock(".download-sections .download-item"), /display:\s*flex/);
 assert.match(styles, /\.download-sections \.download-info-link\s*\{\s*margin-top:\s*0;/s);
 assert.match(styles, /a:focus-visible,[\s\S]*?outline:\s*3px solid var\(--focus-ring\)/);
@@ -95,7 +105,7 @@ for (const [locale, contract] of Object.entries(locales)) {
   assert.doesNotMatch(html, /class="download-grid"/);
   assert.doesNotMatch(html, /New to third-party maps\?|Neu bei Drittanbieter-Karten\?|Vous débutez avec les cartes tierces|Dopiero zaczynasz z mapami innych firm|Začínáte s mapami třetích stran|È la prima volta che installi mappe di terze parti/);
 
-  const anchors = [...html.matchAll(/<a class="download-info-link" href="([^"]+)">([\s\S]*?)<\/a>/g)];
+  const anchors = [...html.matchAll(/<a class="text-link download-info-link" href="([^"]+)">([\s\S]*?)<\/a>/g)];
   assert.equal(anchors.length, 2, `${locale} must expose exactly two Download information links`);
   assert.deepEqual(anchors.map((match) => match[1]), [contract.guide, contract.compatibility]);
   assert.deepEqual(anchors.map((match) => visibleText(match[2])), [contract.guideLabel, contract.compatibilityLabel]);
@@ -107,6 +117,13 @@ for (const [locale, contract] of Object.entries(locales)) {
   if (locale !== "en") {
     assert.match(html, new RegExp(`/localized-content\\.js\\?v=${localizedContentVersion}`));
   }
+}
+
+for (const locale of Object.keys(locales)) {
+  const prefix = locale === "en" ? "" : `${locale}/`;
+  const html = read(`site/${prefix}compatibility/index.html`);
+  assert.equal((html.match(/class="compatibility-hero-copy"/g) || []).length, 1, `${locale} must use one constrained hero copy wrapper`);
+  assert.match(html, /<div class="shell compatibility-hero-inner"><div class="compatibility-hero-copy">/);
 }
 
 assert.doesNotMatch(read("site/localized-content.js"), /download-compatibility-link/);
