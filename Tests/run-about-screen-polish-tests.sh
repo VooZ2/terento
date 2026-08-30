@@ -44,9 +44,20 @@ for treatment in \
     '.font(.terentoUI(size: 13, weight: .regular))' \
     '.foregroundStyle(TerentoColors.secondaryText)' \
     '.font(.terentoUI(size: 13, weight: .medium))' \
+    '.foregroundStyle(TerentoColors.interactive)' \
     '.tint(TerentoColors.interactive)'; do
     if ! grep -Fq "$treatment" "$standalone_about_source"; then
         print -u2 "FAIL: standalone About is missing the established brand treatment: $treatment"
+        exit 1
+    fi
+done
+
+for link in \
+    'Link("Website", destination: TerentoAppLinks.website)' \
+    'Link("GitHub", destination: TerentoAppLinks.repository)' \
+    'Link("Report an issue", destination: TerentoAppLinks.issues)'; do
+    if ! grep -Fq "$link" "$standalone_about_source"; then
+        print -u2 "FAIL: standalone About link or destination is missing: $link"
         exit 1
     fi
 done

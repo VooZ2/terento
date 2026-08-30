@@ -55,6 +55,7 @@ struct AboutTerentoView: View {
                     Link("Report an issue", destination: TerentoAppLinks.issues)
                 }
                 .font(.terentoUI(size: 13, weight: .medium))
+                .foregroundStyle(TerentoColors.interactive)
                 .tint(TerentoColors.interactive)
             }
         }
