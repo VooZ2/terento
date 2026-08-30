@@ -224,7 +224,7 @@ lossy base-model identity from affecting public aggregation.
 Migration 019 adds the internal `diagnostic_status` lifecycle (`ACTIVE` or
 `RESOLVED`) and resolution metadata. Failed events from clients before the
 beta.6 structured-diagnostics rollout are marked `RESOLVED`, not deleted. They
-remain available in the private exact-model diagnostics drill-down, but are
+remain available in the private exact-model diagnostics drill-down but are
 excluded from current compatibility counts, rates, status badges, and public
 evidence projections. New beta.6 and later events remain active by default.
 
@@ -234,16 +234,16 @@ authorization audit rows. It also installs the canonical threshold function
 used by the live compatibility view: recognized map-capable evidence is
 required, then 0 successful operations is `TESTING`, 1–2 is `TESTED`, 3–4 is
 `SUPPORTED`, and 5+ is `VERIFIED`; unrecognized or non-map records have no
-compatibility status. The view and private admin snapshot count distinct
-write-started install operations, while retaining per-map evidence for
+compatibility status. Migration 025 restores the view to distinct active,
+write-started installation operations while retaining per-map evidence for
 diagnosis. Historical reviewed records are not deactivated by the retail
-collector. Compatibility evidence, canonical links, and operator
-installation authorization remain separate from device write authorization.
+collector. Compatibility evidence, canonical links, and operator installation
+authorization remain separate from device write authorization.
 
 `compatibility_model_statistics` is a live SQL view over the evidence event
 table and model review metadata. It includes only `ACTIVE` diagnostic events;
-resolved historical failures remain queryable through the private operation
-diagnostics path. Events with a `canonical_device_model_id` are
+resolved history remains queryable through the private diagnostics path.
+Events with a `canonical_device_model_id` are
 grouped by that exact Garmin catalog record; textual `compatibility_identity`
 is only the fallback for older uncanonicalized events. Formatting changes
 between app versions therefore increase one variant's report and success
@@ -279,7 +279,12 @@ The private `/admin/devices.json` aggregate joins evidence only through
 `compatibility_evidence_event.canonical_device_model_id = device_model.id`.
 It returns one row per exact Garmin catalog record, so display model strings
 cannot merge separate variants. The HTML `/admin/devices` page uses the same
-query and keeps technical USB identities inside the detail dialog.
+query and keeps technical USB identities inside the detail dialog. Migration
+025 stores one server-time row in `compatibility_device_card_failure_epoch`.
+Device-card Attempts include all retained successful operations plus failed
+operations received on or after that epoch; Failed includes only those
+post-epoch failures. Resolving a post-epoch failure does not remove it from the
+card, while every failure received before the epoch remains excluded.
 
 ## Administrator authentication
 

@@ -9,6 +9,7 @@ MIGRATION = (
     / "migrations"
     / "015_canonical_compatibility_aggregation.sql"
 )
+CURRENT_MIGRATION = MIGRATION.parent / "025_device_card_failure_epoch.sql"
 
 
 class CompatibilityAggregationMigrationTests(unittest.TestCase):
@@ -74,8 +75,18 @@ class CompatibilityAggregationMigrationTests(unittest.TestCase):
         self.assertIn("resolution_code = 'LEGACY_PRE_BETA6'", migration)
         self.assertIn("phase_outcome = 'FAILED'", migration)
         self.assertIn("release_label IS NULL", migration)
-        self.assertIn("WHERE e.diagnostic_status = 'ACTIVE'", migration)
         self.assertNotIn("DELETE FROM compatibility_evidence_event", migration)
+
+    def test_current_aggregate_excludes_resolved_and_prewrite_history(self) -> None:
+        migration = CURRENT_MIGRATION.read_text(encoding="utf-8")
+        self.assertIn("compatibility_device_card_failure_epoch", migration)
+        self.assertIn("WHERE e.diagnostic_status = 'ACTIVE'", migration)
+        self.assertIn("count(*) FILTER (WHERE o.write_started) AS attempted_install_count", migration)
+        self.assertIn(
+            "count(*) FILTER (WHERE o.write_started AND NOT o.operation_succeeded) AS failed_install_count",
+            migration,
+        )
+        self.assertIn("excluded from current compatibility statistics", migration)
 
     def test_admin_has_a_separate_historical_diagnostics_section(self) -> None:
         admin_source = (

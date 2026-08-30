@@ -50,10 +50,11 @@ allowlisted identity-source category (`MTP_SERIAL`, `GARMIN_UNIT_ID`, or
 IDs, manifests, hashes, serials, Unit IDs, or local watch keys. Selected maps
 not reached after an earlier failure use `NOT_STARTED`. Download, extraction,
 source-validation, and preflight failures remain visible in the private
-operation detail but `writeStarted=false` excludes them from device
-compatibility rates. Compatibility thresholds count distinct write-started
-operations, not child map rows; a multi-map operation succeeds only when all
-of its selected map results verify. Legacy events remain one operation each.
+operation detail but do not enter the main Installations or compatibility-rate
+aggregate when `writeStarted=false`. Compatibility thresholds count successful
+distinct write-started operations, not child map rows; a multi-map operation
+succeeds only when all of its selected map results verify. Legacy events remain
+one operation each.
 
 ## `DELETE /compatibility/events`
 
@@ -78,10 +79,12 @@ opaque sessions and CSRF values are stored only as SHA-256 hashes. Cookies are
 Secure, HttpOnly, SameSite=Strict, and scoped to `/admin`. Login/setup attempts
 are rate limited. Pages include no-store, noindex and restrictive CSP headers.
 The first screen stops at the model summary, filters, and one-row-per-exact-
-model/variant table. `Errors` counts only unresolved problematic operations;
-successful evidence and resolved historical diagnostics are not counted as
-open errors. Identity-pending evidence is shown separately. Selecting a model
-or its error count opens the private per-model diagnostics view below.
+model/variant table. Attempts and successes use active, write-started
+operations; Errors counts unresolved problematic operations. Resolved and
+legacy diagnostics remain available only in model history and do not enter
+these summary counters. Identity-pending evidence is shown separately.
+Selecting a model or its error count opens the private per-model diagnostics
+view below.
 `/internal/compatibility/` redirects to this route for the earlier local
 implementation.
 
@@ -130,6 +133,14 @@ data as JSON for admin tooling. The endpoint uses the existing admin session,
 is no-store/noindex, and joins installation events only through
 `canonical_device_model_id`. It is not part of the native or public device
 catalog API contracts.
+
+Device-card installation statistics preserve successful operation history but
+exclude every failure received before migration
+`025_device_card_failure_epoch.sql`. From that migration's production
+application time onward, each distinct failed operation contributes one card
+Attempt and one Failed result even when the device write did not start. This
+epoch rule is private to the device card and does not change the Installations
+dashboard or public compatibility aggregate.
 
 The page labels the operator field `Installation authorization` and shows a
 separate, classifier-derived `Compatibility status`. The visible values are

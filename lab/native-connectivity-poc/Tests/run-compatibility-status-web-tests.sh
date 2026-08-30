@@ -23,11 +23,10 @@ assert js.count("createStatusBadge(") >= 3, "cards and explanation must use the 
 assert "How compatibility works" in html
 assert "status-info" not in js and "status-info" not in css
 assert "info-circle" not in js and "(i)" not in js
-assert "Compatibility is based on real installation reports shared by Terento users." in html
-assert "Thanks for helping us understand which Garmin models work." in html
+assert "Public compatibility is based on real installation evidence from exact Garmin models and variants." in html
+assert "models with evidence" in html
 assert "Unknown</dt>" not in html
 assert 'option value="TESTING"' in html
-assert "Garmin models with evidence" in html
 assert "compatibilityIdentity" in js
 assert "caseSizeMm" in js
 assert 'successful > 0 ? "SUPPORTED"' not in js, "web must not promote status from install counts"

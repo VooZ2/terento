@@ -123,6 +123,9 @@ The easiest way to get the latest public beta is from:
 
 **[Download Terento](https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_download)**
 
+New to installing third-party maps from a Mac? Read the
+**[Mac installation guide](https://terento.app/guides/install-garmin-maps-mac)**.
+
 The macOS app is notarized and does not require Homebrew.
 
 DMG, ZIP, release notes, and previous versions are also available on

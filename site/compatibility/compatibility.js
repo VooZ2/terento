@@ -1,6 +1,8 @@
 (() => {
   const data = globalThis.TerentoCompatibilityData;
   if (!data) throw new Error("compatibility_data_unavailable");
+  const locale = globalThis.TerentoCompatibilityLocale;
+  if (!locale) throw new Error("compatibility_locale_unavailable");
   const API_ORIGIN = "https://api.terento.app";
   const FALLBACK_IMAGE_URL = "/assets/generic-garmin-watch.png?v=20260826-1";
   const isLocalPreview = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
@@ -22,8 +24,6 @@
     family: "ALL",
     sort: "attempts",
   };
-  const transparentImageCache = new Map();
-
   const elements = {
     grid: document.querySelector("#watch-grid"),
     empty: document.querySelector("#compatibility-empty"),
@@ -42,21 +42,13 @@
     statusList: document.querySelector("#compatibility-status-list"),
   };
 
-  const { normalize, canonicalFamilyKey, familyOptions, filterByFamily, exactVariantLabel } = data;
+  const { normalize, canonicalFamilyKey, familyOptions, filterByFamily, exactVariantLabel, publicModelName } = data;
+  const statusCodes = ["VERIFIED", "SUPPORTED", "TESTED", "TESTING"];
+  const statusOrder = statusCodes.reduce((result, status, index) => ({ ...result, [status]: index }), {});
 
-  const statusLabel = (status) => ({
-    VERIFIED: "Verified",
-    SUPPORTED: "Supported",
-    TESTED: "Tested",
-    TESTING: "Testing",
-  }[status] || "Compatibility unavailable");
+  const statusLabel = (status) => locale.statuses[status]?.label || locale.card.unavailable;
 
-  const statusDescription = (status) => ({
-    TESTING: "Terento has recognized this model as map-capable, but no successful shared installation has been received yet.",
-    TESTED: "1–2 successful installations have been shared by Terento users.",
-    SUPPORTED: "3–4 successful installations have been shared by Terento users.",
-    VERIFIED: "5 or more successful installations have been shared by Terento users.",
-  }[status] || "Compatibility evidence is not available yet.");
+  const statusDescription = (status) => locale.statuses[status]?.description || locale.card.unavailable;
 
   function createStatusBadge(status, ariaLabel = statusLabel(status)) {
     const statusClass = String(status).toLocaleLowerCase();
@@ -64,7 +56,7 @@
   }
 
   function renderStatusExplanations() {
-    elements.statusList.innerHTML = ["TESTING", "TESTED", "SUPPORTED", "VERIFIED"].map((status) => `
+    elements.statusList.innerHTML = statusCodes.map((status) => `
       <div class="compatibility-status-row">
         ${createStatusBadge(status)}
         <p>${escapeHtml(statusDescription(status))}</p>
@@ -75,7 +67,7 @@
     if (!value) return "";
     const date = new Date(value);
     if (Number.isNaN(date.valueOf())) return "";
-    return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(date);
+    return new Intl.DateTimeFormat(locale.dateLocale, { dateStyle: "medium" }).format(date);
   };
 
   const escapeHtml = (value) => String(value ?? "")
@@ -110,101 +102,44 @@
     };
   }
 
-  function parseModelIdentity(value) {
-    const normalized = normalize(value).replace(/^garmin\s+/, "");
-    const sizeMatch = normalized.match(/\b(\d{2})\s*mm\b/);
-    const displayMatch = normalized.match(/\b(amoled|solar|microled)\b/);
-    const base = normalized
-      .replace(/\b\d{2}\s*mm\b/g, " ")
-      .replace(/\b(?:amoled|solar|microled)\b/g, " ")
-      .replace(/[·–—-]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-    return {
-      base,
-      size: sizeMatch ? Number(sizeMatch[1]) : null,
-      display: displayMatch ? displayMatch[1] : "",
-    };
-  }
-
-  function metricText(row) {
-    if (row.successful < 1) return "No successful installs yet";
-    return `${row.successful} successful install${row.successful === 1 ? "" : "s"}`;
-  }
-
-  async function transparentImageData(url) {
-    if (transparentImageCache.has(url)) return transparentImageCache.get(url);
-    const response = await fetch(url, { mode: "cors" });
-    if (!response.ok) throw new Error("image_unavailable");
-    const bitmap = await createImageBitmap(await response.blob());
-    const canvas = document.createElement("canvas");
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    const context = canvas.getContext("2d", { willReadFrequently: true });
-    if (!context) throw new Error("canvas_unavailable");
-    context.drawImage(bitmap, 0, 0);
-    bitmap.close();
-    const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
-    for (let index = 0; index < pixels.data.length; index += 4) {
-      const pixelY = Math.floor(index / 4 / canvas.width);
-      const red = pixels.data[index];
-      const green = pixels.data[index + 1];
-      const blue = pixels.data[index + 2];
-      const minimum = Math.min(red, green, blue);
-      const maximum = Math.max(red, green, blue);
-      const neutral = maximum - minimum < 18;
-      const lowerShadow = pixelY > canvas.height * 0.84 && neutral && minimum > 130;
-      if (lowerShadow) {
-        pixels.data[index + 3] = 0;
-      } else if (neutral && minimum > 224) {
-        pixels.data[index + 3] = Math.max(0, Math.min(255, (238 - minimum) * 18));
-      }
-    }
-    context.putImageData(pixels, 0, 0);
-    const dataUrl = canvas.toDataURL("image/png");
-    transparentImageCache.set(url, dataUrl);
-    return dataUrl;
-  }
-
   function hydrateImages() {
     const images = [...elements.grid.querySelectorAll("img[data-remote-src]")];
-    images.forEach(async (image) => {
-      try {
-        image.src = await transparentImageData(image.dataset.remoteSrc);
-      } catch (error) {
-        image.src = image.dataset.remoteSrc;
-      } finally {
-        image.classList.add("is-ready");
-      }
+    images.forEach((image) => {
+      image.addEventListener("load", () => image.classList.add("is-ready"), { once: true });
+      image.addEventListener("error", () => image.classList.add("is-ready"), { once: true });
+      image.src = image.dataset.remoteSrc;
     });
   }
 
   function createCard(row) {
-    const variantLabel = row.variants.length > 3
-      ? `${row.variants.length} variants`
-      : (row.variants.join(" · ") || "Smartwatch");
-    const lastTested = formatDate(row.lastSuccess);
-    const lastTestedMarkup = lastTested
-      ? `<p class="watch-card-meta">Last tested ${escapeHtml(lastTested)}</p>`
+    const modelName = publicModelName(row.model);
+    const variantLabel = row.variants[0] || exactVariantLabel(row) || "Smartwatch";
+    const latestInstallation = formatDate(row.lastSuccess);
+    const latestInstallationMarkup = latestInstallation
+      ? `<p class="watch-card-meta">${escapeHtml(locale.card.latest)} ${escapeHtml(latestInstallation)}</p>`
       : "";
     const imageUrl = row.imageUrl || FALLBACK_IMAGE_URL;
-    const imageMarkup = `<img data-remote-src="${escapeHtml(imageUrl)}" alt="${escapeHtml(row.model)}" loading="lazy">`;
+    const installLabel = locale.successfulInstallLabel(row.successful);
+    const accessibleName = [modelName, variantLabel, statusLabel(row.status), installLabel, latestInstallation && `${locale.card.latest} ${latestInstallation}`]
+      .filter(Boolean)
+      .join(", ");
+    const imageMarkup = `<img data-remote-src="${escapeHtml(imageUrl)}" alt="" loading="lazy">`;
     return `
-      <article class="watch-card">
+      <article class="watch-card" aria-label="${escapeHtml(accessibleName)}">
         <div class="watch-card-image">
           ${imageMarkup}
         </div>
         <div class="watch-card-body">
           <div class="watch-card-heading">
-            <div>
-              <p class="watch-family">${escapeHtml(row.familyName || "Garmin")}</p>
-              <h3>${escapeHtml(row.model)}</h3>
-              <p class="watch-variant">${escapeHtml(variantLabel)}</p>
+            <p class="watch-family">${escapeHtml(row.familyName || "Garmin")}</p>
+            <div class="watch-card-model-row">
+              <h3>${escapeHtml(modelName)}</h3>
+              ${createStatusBadge(row.status, `${statusLabel(row.status)}: ${statusDescription(row.status)}`)}
             </div>
-            ${createStatusBadge(row.status, `${statusLabel(row.status)}: ${statusDescription(row.status)}`)}
+            <p class="watch-variant">${escapeHtml(variantLabel)}</p>
           </div>
-          <p class="watch-install-count">${escapeHtml(metricText(row))}</p>
-          ${lastTestedMarkup}
+          <p class="watch-install-count">${escapeHtml(installLabel)}</p>
+          ${latestInstallationMarkup}
         </div>
       </article>`;
   }
@@ -218,7 +153,7 @@
       .sort((a, b) => {
         if (state.sort === "name") return a.model.localeCompare(b.model);
         if (state.sort === "successes") return b.successful - a.successful || b.attempted - a.attempted || a.model.localeCompare(b.model);
-        if (state.sort === "status") return statusLabel(a.status).localeCompare(statusLabel(b.status)) || a.model.localeCompare(b.model);
+        if (state.sort === "status") return (statusOrder[a.status] ?? Number.MAX_SAFE_INTEGER) - (statusOrder[b.status] ?? Number.MAX_SAFE_INTEGER) || a.model.localeCompare(b.model);
         return b.attempted - a.attempted || b.successful - a.successful || a.model.localeCompare(b.model);
       });
 
@@ -226,8 +161,8 @@
     hydrateImages();
     elements.empty.hidden = filtered.length > 0;
     elements.results.textContent = filtered.length === state.rows.length
-      ? `${filtered.length} ${filtered.length === 1 ? "model" : "models"}`
-      : `${filtered.length} of ${state.rows.length} models`;
+      ? `${filtered.length.toLocaleString(locale.dateLocale)} ${filtered.length === 1 ? locale.results.modelOne : locale.results.modelMany}`
+      : `${filtered.length.toLocaleString(locale.dateLocale)} ${locale.results.of} ${state.rows.length.toLocaleString(locale.dateLocale)} ${locale.results.modelMany}`;
     elements.grid.setAttribute("aria-busy", "false");
   }
 
@@ -241,9 +176,9 @@
 
   function updateSummary() {
     const modelCount = state.rows.length;
-    elements.summaryModels.textContent = modelCount.toLocaleString("en");
-    elements.summaryModelLabel.textContent = modelCount === 1 ? "model with evidence" : "models with evidence";
-    elements.summarySuccesses.textContent = state.rows.reduce((sum, row) => sum + row.successful, 0).toLocaleString("en");
+    elements.summaryModels.textContent = modelCount.toLocaleString(locale.dateLocale);
+    elements.summaryModelLabel.textContent = modelCount === 1 ? locale.summary.modelOne : locale.summary.modelMany;
+    elements.summarySuccesses.textContent = state.rows.reduce((sum, row) => sum + row.successful, 0).toLocaleString(locale.dateLocale);
     const latest = state.rows
       .map((row) => row.lastSuccess)
       .filter(Boolean)

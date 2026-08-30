@@ -23,7 +23,13 @@
     });
   };
 
-  window.TerentoLanguageMenu = { update: updateLanguageMenu };
+  const shellLanguageMenu = window.TerentoLanguageMenu;
+  window.TerentoLanguageMenu = {
+    update(language) {
+      shellLanguageMenu?.update?.(language);
+      updateLanguageMenu(language);
+    },
+  };
 
   const languageFromTag = (tag) => {
     if (typeof tag !== "string") return null;

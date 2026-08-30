@@ -20,105 +20,199 @@
       "file": "site/index.html",
       "path": "/",
       "locale": "en",
-      "title": "Terento — Garmin Maps for Mac",
-      "description": "A native macOS app for installing and managing Freizeitkarte maps on Garmin smartwatches. Apple Silicon Mac required.",
+      "title": "Terento — Third-Party Maps for Garmin on Mac",
+      "description": "Free, open-source macOS app for installing and managing third-party maps on Garmin smartwatches. Apple Silicon required; compatibility is confirmed model by model.",
       "alternates": true
     },
     {
       "file": "site/de/index.html",
       "path": "/de/",
       "locale": "de",
-      "title": "Terento — Garmin-Karten für Mac",
-      "description": "Terento ist eine kostenlose Open-Source-Beta für macOS zur Installation von Freizeitkarte-Karten auf ausgewählten Garmin-Smartwatches. Erfordert einen Apple-Silicon-Mac; Intel-Macs werden nicht unterstützt.",
+      "title": "Terento — Drittanbieter-Karten für Garmin auf dem Mac",
+      "description": "Kostenlose Open-Source-macOS-App zum Installieren und Verwalten von Drittanbieter-Karten auf Garmin-Smartwatches. Apple Silicon erforderlich; die Kompatibilität wird für jedes Modell bestätigt.",
       "alternates": true
     },
     {
       "file": "site/fr/index.html",
       "path": "/fr/",
       "locale": "fr",
-      "title": "Terento — Cartes Garmin pour Mac",
-      "description": "Terento est une bêta macOS gratuite et open source pour installer des cartes Freizeitkarte sur certaines montres Garmin. Nécessite un Mac Apple Silicon ; les Mac Intel ne sont pas pris en charge.",
+      "title": "Terento — Cartes tierces pour Garmin sur Mac",
+      "description": "Application macOS gratuite et open source pour installer et gérer des cartes tierces sur les montres Garmin. Apple Silicon requis ; la compatibilité est confirmée modèle par modèle.",
       "alternates": true
     },
     {
       "file": "site/pl/index.html",
       "path": "/pl/",
       "locale": "pl",
-      "title": "Terento — Mapy Garmin na Mac",
-      "description": "Terento to bezpłatna, otwartoźródłowa beta macOS do instalowania map Freizeitkarte na wybranych zegarkach Garmin. Wymaga Maca z Apple Silicon; Maki z Intelem nie są obsługiwane.",
+      "title": "Terento — Mapy innych firm dla Garmina na Macu",
+      "description": "Bezpłatna, otwartoźródłowa aplikacja macOS do instalowania i zarządzania mapami innych firm na zegarkach Garmin. Wymaga Apple Silicon; kompatybilność jest potwierdzana dla każdego modelu.",
       "alternates": true
     },
     {
       "file": "site/cs/index.html",
       "path": "/cs/",
       "locale": "cs",
-      "title": "Terento — Mapy Garmin pro Mac",
-      "description": "Terento je bezplatná open-source beta pro macOS k instalaci map Freizeitkarte do vybraných hodinek Garmin. Vyžaduje Mac s Apple Silicon; Macy s Intelem nejsou podporovány.",
+      "title": "Terento — Mapy třetích stran pro Garmin na Macu",
+      "description": "Bezplatná open-source aplikace pro macOS k instalaci a správě map třetích stran na hodinkách Garmin. Vyžaduje Apple Silicon; kompatibilita se potvrzuje pro každý model.",
       "alternates": true
     },
     {
       "file": "site/it/index.html",
       "path": "/it/",
       "locale": "it",
-      "title": "Terento — Mappe Garmin per Mac",
-      "description": "Terento è una beta macOS gratuita e open source per installare mappe Freizeitkarte su alcuni smartwatch Garmin. Richiede un Mac Apple Silicon; i Mac Intel non sono supportati.",
+      "title": "Terento — Mappe di terze parti per Garmin su Mac",
+      "description": "Applicazione macOS gratuita e open source per installare e gestire mappe di terze parti sugli smartwatch Garmin. Apple Silicon richiesto; la compatibilità è confermata modello per modello.",
       "alternates": true
     },
     {
       "file": "site/download/index.html",
       "path": "/download/",
       "locale": "en",
-      "title": "Download — Terento",
-      "description": "Download the Terento beta for installing Freizeitkarte maps on Garmin smartwatches on an Apple Silicon Mac running macOS 13 or later.",
+      "title": "Download Terento for Mac — Third-Party Maps for Garmin",
+      "description": "Download the free, notarized Terento beta for Apple Silicon Macs to install and manage third-party maps on compatible Garmin smartwatches.",
       "alternates": true
     },
     {
       "file": "site/de/download/index.html",
       "path": "/de/download/",
       "locale": "de",
-      "title": "Herunterladen — Terento",
-      "description": "Terento Beta für Apple-Silicon-Macs mit macOS 13 oder neuer herunterladen. Intel-Macs werden nicht unterstützt. Freizeitkarte-Karten auf Garmin-Smartwatches testen.",
+      "title": "Terento für Mac herunterladen — Drittanbieter-Karten für Garmin",
+      "description": "Lade die kostenlose, notarielle Terento-Beta für Apple-Silicon-Macs herunter, um Drittanbieter-Karten auf kompatiblen Garmin-Smartwatches zu installieren und zu verwalten.",
       "alternates": true
     },
     {
       "file": "site/fr/download/index.html",
       "path": "/fr/download/",
       "locale": "fr",
-      "title": "Télécharger — Terento",
-      "description": "Téléchargez la bêta Terento pour les Mac Apple Silicon sous macOS 13 ou version ultérieure. Les Mac Intel ne sont pas pris en charge. Testez l’installation de cartes Freizeitkarte sur les montres Garmin.",
+      "title": "Télécharger Terento pour Mac — Cartes tierces pour Garmin",
+      "description": "Téléchargez la bêta Terento gratuite et notariée pour Mac Apple Silicon afin d’installer et de gérer des cartes tierces sur les montres Garmin compatibles.",
       "alternates": true
     },
     {
       "file": "site/pl/download/index.html",
       "path": "/pl/download/",
       "locale": "pl",
-      "title": "Pobierz — Terento",
-      "description": "Pobierz wersję beta Terento dla Maców z Apple Silicon i macOS 13 lub nowszym. Maki z Intelem nie są obsługiwane. Testuj instalację map Freizeitkarte na zegarkach Garmin.",
+      "title": "Pobierz Terento na Maca — Mapy innych firm dla Garmina",
+      "description": "Pobierz bezpłatną, notaryzowaną betę Terento na Maci z Apple Silicon, aby instalować i zarządzać mapami innych firm na zgodnych zegarkach Garmin.",
       "alternates": true
     },
     {
       "file": "site/cs/download/index.html",
       "path": "/cs/download/",
       "locale": "cs",
-      "title": "Stáhnout — Terento",
-      "description": "Stáhněte si betu Terento pro Macy s Apple Silicon a macOS 13 nebo novějším. Macy s Intelem nejsou podporovány. Testujte instalaci map Freizeitkarte do hodinek Garmin.",
+      "title": "Stáhnout Terento pro Mac — Mapy třetích stran pro Garmin",
+      "description": "Stáhněte si bezplatnou, notářsky ověřenou betu Terento pro Macy s Apple Silicon k instalaci a správě map třetích stran na kompatibilních hodinkách Garmin.",
       "alternates": true
     },
     {
       "file": "site/it/download/index.html",
       "path": "/it/download/",
       "locale": "it",
-      "title": "Scarica — Terento",
-      "description": "Scarica la beta di Terento per Mac Apple Silicon con macOS 13 o versioni successive. I Mac Intel non sono supportati. Prova l’installazione di mappe Freizeitkarte sugli smartwatch Garmin.",
+      "title": "Scarica Terento per Mac — Mappe di terze parti per Garmin",
+      "description": "Scarica la beta gratuita e notarizzata di Terento per Mac Apple Silicon per installare e gestire mappe di terze parti sugli smartwatch Garmin compatibili.",
       "alternates": true
     },
     {
       "file": "site/compatibility/index.html",
       "path": "/compatibility/",
       "locale": "en",
-      "title": "Garmin Compatibility — Terento",
-      "description": "See Garmin watch compatibility with Terento, including tested models and successful community map installations.",
-      "alternates": false
+      "title": "Garmin Watch Compatibility — Terento",
+      "description": "See real Terento third-party map installation results by exact Garmin watch model and variant. Compatibility is confirmed through successful installs shared by users.",
+      "alternates": true
+    },
+    {
+      "file": "site/de/compatibility/index.html",
+      "path": "/de/compatibility/",
+      "locale": "de",
+      "title": "Kompatibilität von Garmin-Uhren — Terento",
+      "description": "Sieh dir echte Terento-Ergebnisse für die Installation von Drittanbieter-Karten nach genauem Garmin-Uhrenmodell und Variante an. Die Kompatibilität wird durch erfolgreiche, von Nutzern geteilte Installationen bestätigt.",
+      "alternates": true
+    },
+    {
+      "file": "site/fr/compatibility/index.html",
+      "path": "/fr/compatibility/",
+      "locale": "fr",
+      "title": "Compatibilité des montres Garmin — Terento",
+      "description": "Consultez les résultats réels d’installation de cartes tierces avec Terento pour chaque modèle et variante de montre Garmin. La compatibilité est confirmée par des installations réussies partagées par les utilisateurs.",
+      "alternates": true
+    },
+    {
+      "file": "site/pl/compatibility/index.html",
+      "path": "/pl/compatibility/",
+      "locale": "pl",
+      "title": "Kompatybilność zegarków Garmin — Terento",
+      "description": "Zobacz rzeczywiste wyniki instalacji map innych firm przez Terento dla konkretnego modelu i wariantu zegarka Garmin. Kompatybilność jest potwierdzana na podstawie udanych instalacji udostępnionych przez użytkowników.",
+      "alternates": true
+    },
+    {
+      "file": "site/cs/compatibility/index.html",
+      "path": "/cs/compatibility/",
+      "locale": "cs",
+      "title": "Kompatibilita hodinek Garmin — Terento",
+      "description": "Prohlédněte si skutečné výsledky instalace map třetích stran pomocí Terento pro konkrétní model a variantu hodinek Garmin. Kompatibilita se potvrzuje úspěšnými instalacemi sdílenými uživateli.",
+      "alternates": true
+    },
+    {
+      "file": "site/it/compatibility/index.html",
+      "path": "/it/compatibility/",
+      "locale": "it",
+      "title": "Compatibilità degli smartwatch Garmin — Terento",
+      "description": "Scopri i risultati reali di installazione di mappe di terze parti con Terento per ogni modello e variante di smartwatch Garmin. La compatibilità è confermata dalle installazioni riuscite condivise dagli utenti.",
+      "alternates": true
+    },
+    {
+      "file": "site/guides/install-garmin-maps-mac/index.html",
+      "path": "/guides/install-garmin-maps-mac/",
+      "locale": "en",
+      "title": "How to Install Third-Party Maps on a Garmin Watch from a Mac — Terento",
+      "description": "Install third-party maps on a compatible Garmin watch from an Apple Silicon Mac with Terento. Connect, choose a region, review storage and install safely.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/de/guides/install-garmin-maps-mac/index.html",
+      "path": "/de/guides/install-garmin-maps-mac/",
+      "locale": "de",
+      "title": "So installierst du Drittanbieter-Karten auf einer Garmin-Uhr vom Mac aus — Terento",
+      "description": "Installiere Drittanbieter-Karten auf einer kompatiblen Garmin-Uhr mit einem Apple-Silicon-Mac und Terento. Verbinde die Uhr, wähle eine Region, prüfe den Speicher und installiere sicher.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/fr/guides/install-garmin-maps-mac/index.html",
+      "path": "/fr/guides/install-garmin-maps-mac/",
+      "locale": "fr",
+      "title": "Installer des cartes tierces sur une montre Garmin depuis un Mac — Terento",
+      "description": "Installez des cartes tierces sur une montre Garmin compatible depuis un Mac Apple Silicon avec Terento. Connectez la montre, choisissez une région, vérifiez le stockage et installez en toute sécurité.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/pl/guides/install-garmin-maps-mac/index.html",
+      "path": "/pl/guides/install-garmin-maps-mac/",
+      "locale": "pl",
+      "title": "Jak instalować mapy innych firm na zegarku Garmin z Maca — Terento",
+      "description": "Instaluj mapy innych firm na zgodnym zegarku Garmin z Maca z Apple Silicon za pomocą Terento. Podłącz zegarek, wybierz region, sprawdź pamięć i bezpiecznie zainstaluj mapę.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/cs/guides/install-garmin-maps-mac/index.html",
+      "path": "/cs/guides/install-garmin-maps-mac/",
+      "locale": "cs",
+      "title": "Jak nainstalovat mapy třetích stran do hodinek Garmin z Macu — Terento",
+      "description": "Nainstalujte mapy třetích stran do kompatibilních hodinek Garmin z Macu s Apple Silicon pomocí Terento. Připojte hodinky, vyberte region, zkontrolujte úložiště a bezpečně instalujte.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/it/guides/install-garmin-maps-mac/index.html",
+      "path": "/it/guides/install-garmin-maps-mac/",
+      "locale": "it",
+      "title": "Come installare mappe di terze parti su uno smartwatch Garmin da Mac — Terento",
+      "description": "Installa mappe di terze parti su uno smartwatch Garmin compatibile da un Mac Apple Silicon con Terento. Collega l’orologio, scegli una regione, controlla lo spazio e installa in sicurezza.",
+      "ogType": "article",
+      "alternates": true
     },
     {
       "file": "site/legal/index.html",

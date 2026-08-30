@@ -1316,24 +1316,30 @@ class Database:
             ) AS usb ON TRUE
             LEFT JOIN LATERAL (
                 SELECT
-                    count(*) FILTER (WHERE o.write_started) AS attempts,
-                    count(*) FILTER (WHERE o.write_started AND o.operation_succeeded) AS successful,
-                    count(*) FILTER (WHERE o.write_started AND NOT o.operation_succeeded) AS failed,
-                    min(o.occurred_at) FILTER (WHERE o.write_started AND o.operation_succeeded) AS first_success,
-                    max(o.occurred_at) FILTER (WHERE o.write_started AND o.operation_succeeded) AS last_success,
-                    max(o.occurred_at) AS last_evidence
+                    count(*) FILTER (
+                        WHERE o.operation_succeeded OR o.received_at >= epoch.starts_at
+                    ) AS attempts,
+                    count(*) FILTER (WHERE o.operation_succeeded) AS successful,
+                    count(*) FILTER (
+                        WHERE NOT o.operation_succeeded AND o.received_at >= epoch.starts_at
+                    ) AS failed,
+                    min(o.occurred_at) FILTER (WHERE o.operation_succeeded) AS first_success,
+                    max(o.occurred_at) FILTER (WHERE o.operation_succeeded) AS last_success,
+                    max(o.occurred_at) FILTER (
+                        WHERE o.operation_succeeded OR o.received_at >= epoch.starts_at
+                    ) AS last_evidence
                 FROM (
                     SELECT
                         COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text) AS operation_key,
-                        bool_or(COALESCE(e.write_started, true)) AS write_started,
                         bool_and(e.phase_outcome = 'SUCCEEDED' AND e.automatic_finishing_result = 'VERIFIED')
                             AND count(*) = max(COALESCE(e.selected_map_count, 1)) AS operation_succeeded,
-                        min(e.occurred_at) AS occurred_at
+                        min(e.occurred_at) AS occurred_at,
+                        min(e.received_at) AS received_at
                     FROM compatibility_evidence_event AS e
                     WHERE e.canonical_device_model_id = dm.id
-                      AND e.diagnostic_status = 'ACTIVE'
                     GROUP BY COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text)
                 ) AS o
+                CROSS JOIN compatibility_device_card_failure_epoch AS epoch
             ) AS evidence ON TRUE
             LEFT JOIN LATERAL (
                 SELECT s.compatibility_identity, s.review_status,

@@ -20,6 +20,22 @@
     it:{title:"Privacy — Terento",description:"Informativa privacy per il sito e la beta macOS di Terento, inclusi i rapporti di compatibilità facoltativi e le statistiche basate sul consenso.",locale:"it_IT",about:"Il progetto",faq:"FAQ",legal:"Note legali",privacy:"Privacy",skip:"Vai al contenuto",home:"Home Terento",primaryNav:"Navigazione principale",languageSelection:"Selezione della lingua",footerNav:"Navigazione del piè di pagina",footerStatus:"Progetto open source",inDevelopment:"Beta",footerCopy:"Le statistiche delle visite (Umami) non usano cookie."}
   };
 
+  const bindLanguageLinks = () => {
+    document.querySelectorAll("[data-language-switch]").forEach((link) => {
+      link.addEventListener("click", (event) => {
+        const language = link.dataset.languageSwitch;
+        if (!copy[language]) return;
+        event.preventDefault();
+        try {
+          window.localStorage.setItem("terento-language", language);
+        } catch {
+          // The language preference is optional.
+        }
+        apply(language);
+      });
+    });
+  };
+
   const apply = (language) => {
     const selectedLanguage = copy[language] ? language : "en";
     const selected = copy[selectedLanguage];
@@ -45,21 +61,8 @@
       if (value) element.setAttribute("aria-label", value);
     });
     document.querySelector("[data-footer-copy]").textContent = selected.footerCopy;
+    bindLanguageLinks();
   };
-
-  document.querySelectorAll("[data-language-switch]").forEach((link) => {
-    link.addEventListener("click", (event) => {
-      const language = link.dataset.languageSwitch;
-      if (!copy[language]) return;
-      event.preventDefault();
-      try {
-        window.localStorage.setItem("terento-language", language);
-      } catch {
-        // The language preference is optional.
-      }
-      apply(language);
-    });
-  });
 
   let initialLanguage = "en";
   try {

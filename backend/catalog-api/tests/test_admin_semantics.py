@@ -44,6 +44,7 @@ from terento_catalog.db import Database
 
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "021_canonical_admin_semantics.sql"
+CURRENT_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "025_device_card_failure_epoch.sql"
 IDENTITY_STATE_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "022_canonical_identity_state_consistency.sql"
 PUBLIC_REVIEW_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "023_public_compatibility_review_audit.sql"
 
@@ -358,17 +359,26 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertFalse(any("phase_outcome" in query for query, _ in database.calls if "UPDATE compatibility_evidence_event" in query))
 
     def test_operation_level_aggregation_is_shared_by_admin_and_current_view(self):
-        db_source = (ROOT / "src" / "terento_catalog" / "db.py").read_text(encoding="utf-8")
-        migration = MIGRATION.read_text(encoding="utf-8")
+        db_source = inspect.getsource(Database.admin_device_snapshot)
+        migration = CURRENT_MIGRATION.read_text(encoding="utf-8")
         operation_group = "GROUP BY COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text)"
         self.assertIn(operation_group, db_source)
-        self.assertIn("count(*) FILTER (WHERE o.write_started)", db_source)
+        self.assertIn("compatibility_device_card_failure_epoch AS epoch", db_source)
+        self.assertIn("WHERE o.operation_succeeded OR o.received_at >= epoch.starts_at", db_source)
+        self.assertIn(
+            "WHERE NOT o.operation_succeeded AND o.received_at >= epoch.starts_at",
+            db_source,
+        )
+        self.assertNotIn("e.diagnostic_status = 'ACTIVE'", db_source)
         self.assertIn("operation_stats AS (", migration)
-        self.assertIn("count(*) FILTER (WHERE o.write_started)", migration)
+        self.assertIn("starts_at TIMESTAMPTZ NOT NULL DEFAULT now()", migration)
+        self.assertIn("WHERE e.diagnostic_status = 'ACTIVE'", migration)
+        self.assertIn("count(*) FILTER (WHERE o.write_started) AS attempted_install_count", migration)
         self.assertIn("terento_compatibility_status(e.successful_install_count, dm.map_capable IS TRUE)", migration)
+        status_migration = MIGRATION.read_text(encoding="utf-8")
         self.assertIn(
             "terento_compatibility_status(successful_count BIGINT, recognized BOOLEAN)",
-            migration,
+            status_migration,
         )
 
     def test_admin_vocabulary_and_accessible_sticky_tables_are_canonical(self):
