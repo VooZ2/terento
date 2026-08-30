@@ -5,6 +5,8 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 const styles = read("site/styles.css");
+const styleVersion = "20260830-page-intros";
+const localizedContentVersion = "20260830-download-links";
 
 const cssBlock = (selector) => {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -88,6 +90,7 @@ const visibleText = (html) => html
 
 for (const [locale, contract] of Object.entries(locales)) {
   const html = read(contract.file);
+  assert.match(html, new RegExp(`/styles\\.css\\?v=${styleVersion}`));
   assert.equal((html.match(/class="download-sections"/g) || []).length, 1, `${locale} must use one three-column information grid`);
   assert.doesNotMatch(html, /class="download-grid"/);
   assert.doesNotMatch(html, /New to third-party maps\?|Neu bei Drittanbieter-Karten\?|Vous débutez avec les cartes tierces|Dopiero zaczynasz z mapami innych firm|Začínáte s mapami třetích stran|È la prima volta che installi mappe di terze parti/);
@@ -100,6 +103,9 @@ for (const [locale, contract] of Object.entries(locales)) {
     assert.match(match[2], /class="download-info-link-tail"/);
     assert.match(match[2], /class="download-info-link-arrow" aria-hidden="true">→<\/span>/);
     assert.doesNotMatch(match[1], /utm_/i);
+  }
+  if (locale !== "en") {
+    assert.match(html, new RegExp(`/localized-content\\.js\\?v=${localizedContentVersion}`));
   }
 }
 
