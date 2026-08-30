@@ -11,8 +11,15 @@ architecture, safety, documentation, and delivery.
   into `beta`.
 - Keep the draft PR current: commit narrowly, push the branch, and update the
   existing draft PR. Do not open an overlapping app PR or merge this branch.
-- Stage 2A is governance only. Do not change app runtime code, resources,
+- Stage 2A governance is complete as the documentation baseline. Stage 0 of
+  the beta.8 Map Manager expansion is also documentation-only. Do not change
+  app runtime code, resources,
   screenshots, Xcode packaging, release metadata, or version numbers here.
+- Later beta.8 Map Manager stages may extend the approved Map Manager scope
+  only after their explicit product, UI/UX, and root hard-scope gates have
+  passed. Each stage is a separate reviewed functional change and must be
+  validated locally before it is added to PR #61. Keep one integration PR; do
+  not hide functional work inside visual refinement commits.
 - Intermediate Stage 2 work is not a release. Do not create tags, GitHub
   Releases, DMG/ZIP/notarized artifacts, update manifests, public downloads,
   or website announcements.
@@ -31,6 +38,10 @@ Preserve the existing SwiftUI structure and workflow:
 The user should see a finished Terento version of this product, not a new
 product concept. Do not move the app to a new architecture or source layout
 as part of visual work.
+
+The beta.8 Map Manager expansion may extend the existing Manage maps surface
+after its relevant UI/UX decision gate. Stage 0 does not authorize a new
+information architecture or runtime behavior.
 
 ## Refinement boundary
 
@@ -54,6 +65,12 @@ would:
 
 Major redesign approval is a separate decision gate. Default to a small
 refinement when the goal can be met without crossing this boundary.
+
+The beta.8 functional Map Manager scope is intentionally outside visual
+refinement. Provider selection, custom `.img` import, external single-map
+Remove, ownership presentation, and safety confirmations require their own
+UI/UX decisions before implementation. Stage 0 records those gates but does
+not implement them.
 
 ## Brand, typography, and accessibility
 
