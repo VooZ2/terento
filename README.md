@@ -199,6 +199,7 @@ pull requests are welcome.
 Start with:
 
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — development setup and safe device testing
+- [`brand/BRAND_GUIDELINES.md`](brand/BRAND_GUIDELINES.md) — approved visual and user-facing rules
 - [`SECURITY.md`](SECURITY.md) — reporting security issues
 - [`Packaging/README.md`](Packaging/README.md) — build, signing, and release details
 

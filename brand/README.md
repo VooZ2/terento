@@ -51,8 +51,26 @@ Typography:
 
 Exploratory preview boards are intentionally kept outside the public
 repository. This directory contains only the approved identity baseline and
-derived logo exports; use truthful product copy such as “Terento is in
-development.”
+derived logo exports. Public-facing claims must match functionality available
+in the current release; beta pages must state relevant platform,
+compatibility, and feature limits, and future-state mockups are not proof of
+shipped functionality.
+
+## Source hierarchy
+
+Use these sources in order:
+
+1. `logo/logo.svg` for immutable logo geometry
+2. `DESIGN_TOKENS.json` for numeric token values
+3. `BRAND_GUIDELINES.md` for usage and intent
+4. generated or platform-specific implementation files
+5. screenshots, mockups, boards, PDFs, and presentations as human-facing
+   references only
+
+The canonical SVG and machine-readable token file outrank visual examples.
+PDFs, presentation files, and screenshots must not be used to extract or
+redefine implementation values, and the Brandbook is not an implementation
+dependency.
 
 ## Implementation defaults
 

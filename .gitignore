@@ -5,7 +5,7 @@
 /docs/
 /internal/
 /lab/test-site/
-/AGENTS.md
+/AGENTS.override.md
 
 # Local Codex task prompts are working instructions, not public project docs.
 /legal/web/CODEX-PROMPT*.md

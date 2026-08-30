@@ -5,8 +5,9 @@ Thank you for taking an interest in Terento. Contributions, bug reports, documen
 ## Project status
 
 Terento is an active beta and pre-MVP project for macOS. It is not a stable
-production release. The current public beta is `v1.0.0-beta.6` and includes a
-notarized Apple Silicon DMG and ZIP; there is no PKG or App Store package.
+production release. The current release identity, supported artifacts, and
+availability are maintained in `RELEASE_NOTES.md`, GitHub Releases, and the
+current release metadata; do not copy a version number into this document.
 
 The production app is the root Xcode macOS target and consumes the SwiftPM
 source module in `lab/native-connectivity-poc/`. The SwiftPM target also
@@ -20,6 +21,22 @@ general map-installation test.
 - Search existing issues and pull requests before opening a new one.
 - For security vulnerabilities, follow SECURITY.md instead of opening a public issue.
 - Do not upload Garmin device dumps, map binaries, private logs, credentials, API keys, or personal data.
+
+## Brand and user-facing changes
+
+Before changing user-facing UI, public copy, CSS, admin UI, icons,
+illustrations, screenshots, marketing documentation, or visual assets, read:
+
+- `AGENTS.md`
+- `brand/BRAND_GUIDELINES.md`
+- `brand/DESIGN_TOKENS.json`
+- the nearest scoped `AGENTS.md`
+
+A normal feature PR must not silently introduce a new brand color, font, logo
+variant, visual direction, or competing component language. Visual and copy
+changes must preserve product truth, accessibility, clear status
+communication, and the existing device-safety boundaries. A dedicated,
+separately reviewed brand-system decision is required for exceptions.
 
 ## Development environment
 

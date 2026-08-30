@@ -3,9 +3,28 @@
 Status: **Approved visual direction / implementation baseline**
 Date: **2026-08-20**
 
+Governance/editorial revision: **2026-08-30**. This revision clarifies source
+precedence and release-neutral product-truth rules. The approved visual
+identity values remain unchanged.
+
 These guidelines capture the visual system validated in the four final Terento boards. They are intended to be used by Codex, designers, maintainers, and future contributors.
 
 The visual identity is now implementation work, not an exploration round.
+
+## Source of truth
+
+Use the following precedence order:
+
+1. `brand/logo/logo.svg` — canonical and immutable logo geometry.
+2. `brand/DESIGN_TOKENS.json` — canonical numeric token values.
+3. This document — canonical usage, accessibility, voice, and product-truth
+   rules.
+4. Generated or platform-specific implementation files — implementations of
+   the canonical sources.
+5. Screenshots, mockups, boards, PDFs, and presentations — editorial
+   references only, never implementation sources.
+
+The Brandbook PDF and presentation files are not implementation dependencies.
 
 ---
 
@@ -450,7 +469,7 @@ Technical detail belongs in diagnostics.
 
 ---
 
-## 12. Website and pre-release claims
+## 12. Website and product-truth claims
 
 The final validation boards demonstrate the future product state. They are not proof that those features already exist.
 
@@ -463,11 +482,15 @@ Examples such as:
 
 are approved design-copy examples for a future state, not automatic permission to publish those claims now.
 
-For the current pre-release site, prefer truthful language such as:
+Public-facing claims must match functionality available in the current
+release. Beta pages must state relevant platform, compatibility, and feature
+limits. Future-state mockups and validation copy are not proof of shipped
+functionality.
 
-> Terento is in development.
-
-and link to the project/repository only when appropriate.
+Do not imply unsupported automatic updating, broad device support, or
+availability. Do not understate functionality that is already publicly
+released. Link to the project or repository when appropriate, and keep every
+release-specific claim aligned with the current release metadata.
 
 ---
 
