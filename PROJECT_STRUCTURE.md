@@ -19,6 +19,7 @@ repository, subject to the normal review of the current worktree:
 | `legal/` | Public legal web source and publication inputs |
 | `backend/catalog-api/` | Metadata-only catalog service |
 | `brand/` | Approved brand assets and guidelines; exploratory previews remain local |
+| `AGENTS.md` | Repository-wide Codex and contributor instructions |
 | `LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md` | Source and dependency notices |
 
 ## Local-only or operational areas
@@ -32,7 +33,7 @@ boundary:
 | `docs/` | Local task and deployment notes |
 | `deploy/` | Environment-specific deployment/operator material |
 | `lab/test-site/` | Local test-site experiments |
-| `AGENTS.md` | Local Codex/repository operating instructions |
+| `AGENTS.override.md` | Local machine or operator-specific Codex overrides; ignored and must never be committed |
 | `.cursor/` | Local editor/agent state and debug logs |
 
 ## Generated and ignored output
@@ -65,13 +66,12 @@ The local packaging pipeline and `dist/` output are separate from the public
 website and from source publication. The pipeline can produce notarized arm64
 ZIP and DMG artifacts, but organizing this tree does not publish them.
 
-The current public release is `v1.0.0-beta.6`. The Xcode marketing version is
-`1.0.0`, build `5`; the release tag and artifact names carry the `-beta.6`
-label. The corresponding GitHub prerelease contains the notarized arm64 ZIP
-and DMG. Keep this release identity aligned across Xcode settings, release
-notes, the Git tag, the update manifest, and artifact names.
+Release identity, artifact availability, and release-specific provenance are
+maintained in `RELEASE_NOTES.md`, GitHub Releases, and current release
+metadata. Keep that identity aligned across Xcode settings, release notes,
+the Git tag, the update manifest, and artifact names; do not duplicate a
+version number in this repository map.
 
-The current working tree also contains user changes across application code,
-tests, website/legal content, and packaging files. Those changes must be
-reviewed and committed as separate logical changes; this cleanup does not
-stage, commit, or publish them.
+Changes to application code, tests, website/legal content, and packaging must
+be reviewed and committed as separate logical changes; this repository-map
+update does not change those boundaries or publish them.
