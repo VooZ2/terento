@@ -51,3 +51,9 @@ jobs:
           Tests/run-structured-data-tests.sh
           Tests/run-guide-content-tests.sh
           Tests/run-public-page-layout-contract-tests.sh
+      - name: Validate non-app brand tokens
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          python3 scripts/generate-brand-tokens.py --check
+          Tests/run-brand-contract-tests.sh

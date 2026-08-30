@@ -1,3 +1,4 @@
+/* Generated from brand/DESIGN_TOKENS.json. Do not edit manually. */
 :root {
   /* Terento — core brand */
   --terento-sky: #7898A8;
@@ -15,6 +16,37 @@
   --terento-error-rust: #8A4F47;
   --terento-selected-tint: #E7EEF1;
 
+  /* Shared web semantic derivatives */
+  --terento-web-link-text: #416979;
+  --terento-web-link-text-hover: #315466;
+  --terento-web-muted-text-strong: #626764;
+  --terento-web-eyebrow-text: #5E6361;
+
+  /* Admin semantic derivatives */
+  --terento-admin-destructive-text: #9A493D;
+  --terento-admin-success-surface: #E8F0E5;
+  --terento-admin-placeholder-text: #858B89;
+  --terento-admin-status-neutral-surface: #F0F1ED;
+  --terento-admin-status-neutral-border: #D8DDD8;
+  --terento-admin-status-neutral-text: #60706C;
+  --terento-admin-status-tested-surface: #EDE8DF;
+  --terento-admin-status-tested-border: #CFC2AE;
+  --terento-admin-status-tested-text: #5B5144;
+  --terento-admin-status-supported-surface: #E3EDF0;
+  --terento-admin-status-supported-border: #ABC3CD;
+  --terento-admin-status-supported-text: #375E6D;
+  --terento-admin-status-success-surface: #E7EEE2;
+  --terento-admin-status-success-border: #B4C6A7;
+  --terento-admin-status-success-text: #4B6142;
+  --terento-admin-status-error-surface: #F0E9E5;
+  --terento-admin-status-error-border: #D6BDB2;
+  --terento-admin-status-error-text: #7A493D;
+  --terento-admin-error-surface: #FBEAE6;
+  --terento-admin-error-text: #81372D;
+  --terento-admin-success-text: #365B3B;
+  --terento-admin-new-badge-surface: #EEF2E9;
+  --terento-admin-new-badge-text: #52624C;
+
   /* Light mode */
   --background-primary: #F7F3EC;
   --background-secondary: #F1EEE7;
@@ -30,14 +62,12 @@
   --interactive-primary-hover: #4F6E7E;
   --interactive-primary-text: #FFFFFF;
   --focus-ring: #577787;
-  --selected-background: #E7EEF1;
-  --selected-border: #577787;
-
   --status-success: #5F6D53;
   --status-warning: #7B6246;
   --status-error: #8A4F47;
   --status-info: #577787;
-
+  --selected-background: #E7EEF1;
+  --selected-border: #577787;
   --progress-track: #DDE6E5;
   --progress-fill: #577787;
 
@@ -101,14 +131,10 @@
   --interactive-primary-hover: #4F6E7E;
   --interactive-primary-text: #FFFFFF;
   --focus-ring: #9CB6C2;
-  --selected-background: #32444A;
-  --selected-border: #7898A8;
-
   --status-success: #A4B39B;
   --status-warning: #C2A779;
   --status-error: #C9857C;
   --status-info: #9CB6C2;
-
   --progress-track: #465355;
   --progress-fill: #7898A8;
 }

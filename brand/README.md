@@ -75,3 +75,18 @@ dependency.
 ## Implementation defaults
 
 Spacing and radius values in the token files are explicitly marked provisional. The core logo, color family, typography roles, and accessibility derivatives are the validated identity decisions. Final spacing/radius tuning should happen in the real web/product implementation.
+
+## Generated non-app outputs
+
+`DESIGN_TOKENS.json` is the source of truth for shared non-app brand values.
+Regenerate derived outputs with:
+
+```sh
+python3 scripts/generate-brand-tokens.py
+python3 scripts/generate-brand-tokens.py --check
+```
+
+The generator owns `tokens.css`, the generated token block in
+`site/styles.css`, and `admin_brand_tokens_generated.py`. Do not edit those
+generated sections manually. App token generation is outside the Phase 1B
+scope.
