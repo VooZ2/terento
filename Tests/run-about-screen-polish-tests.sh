@@ -21,6 +21,23 @@ if ! grep -Fq 'Text(TerentoAppMetadata.displayVersion)' \
 fi
 
 standalone_about_source="$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/Views/AboutTerentoView.swift"
+for presentation in \
+    'TerentoColors.canvas' \
+    '.background(TerentoColors.canvas)' \
+    '.preferredColorScheme(.light)' \
+    '.frame(width: 300)' \
+    '.fixedSize(horizontal: false, vertical: true)'; do
+    if ! grep -Fq "$presentation" "$standalone_about_source"; then
+        print -u2 "FAIL: standalone About is missing the required presentation treatment: $presentation"
+        exit 1
+    fi
+done
+
+if grep -Fq '.lineLimit(1)' "$standalone_about_source"; then
+    print -u2 "FAIL: standalone About description is constrained to one line"
+    exit 1
+fi
+
 for treatment in \
     '.font(.terentoHeading(size: 24, weight: .semibold))' \
     '.foregroundStyle(TerentoColors.graphite)' \

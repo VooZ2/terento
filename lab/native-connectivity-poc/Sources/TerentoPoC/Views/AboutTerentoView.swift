@@ -22,37 +22,45 @@ struct AboutTerentoView: View {
     @ObservedObject var appUpdateController: AppUpdateController
 
     var body: some View {
-        VStack(spacing: 14) {
-            Image(nsImage: NSApplication.shared.applicationIconImage)
-                .resizable()
-                .interpolation(.high)
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 84, height: 84)
+        ZStack {
+            TerentoColors.canvas
+                .ignoresSafeArea()
 
-            VStack(spacing: 4) {
-                Text("Terento")
-                    .font(.terentoHeading(size: 24, weight: .semibold))
-                    .foregroundStyle(TerentoColors.graphite)
-                Text(TerentoAppMetadata.displayVersion)
+            VStack(spacing: 14) {
+                Image(nsImage: NSApplication.shared.applicationIconImage)
+                    .resizable()
+                    .interpolation(.high)
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 84, height: 84)
+
+                VStack(spacing: 4) {
+                    Text("Terento")
+                        .font(.terentoHeading(size: 24, weight: .semibold))
+                        .foregroundStyle(TerentoColors.graphite)
+                    Text(TerentoAppMetadata.displayVersion)
+                        .font(.terentoUI(size: 13, weight: .regular))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                }
+
+                Text(TerentoAppMetadata.description)
                     .font(.terentoUI(size: 13, weight: .regular))
+                    .multilineTextAlignment(.center)
                     .foregroundStyle(TerentoColors.secondaryText)
-            }
+                    .frame(width: 300)
+                    .fixedSize(horizontal: false, vertical: true)
 
-            Text(TerentoAppMetadata.description)
-                .font(.terentoUI(size: 13, weight: .regular))
-                .multilineTextAlignment(.center)
-                .foregroundStyle(TerentoColors.secondaryText)
-                .frame(maxWidth: 300)
-
-            HStack(spacing: 16) {
-                Link("Website", destination: TerentoAppLinks.website)
-                Link("GitHub", destination: TerentoAppLinks.repository)
-                Link("Report an issue", destination: TerentoAppLinks.issues)
+                HStack(spacing: 16) {
+                    Link("Website", destination: TerentoAppLinks.website)
+                    Link("GitHub", destination: TerentoAppLinks.repository)
+                    Link("Report an issue", destination: TerentoAppLinks.issues)
+                }
+                .font(.terentoUI(size: 13, weight: .medium))
+                .tint(TerentoColors.interactive)
             }
-            .font(.terentoUI(size: 13, weight: .medium))
-            .tint(TerentoColors.interactive)
         }
         .padding(28)
         .frame(width: 360)
+        .background(TerentoColors.canvas)
+        .preferredColorScheme(.light)
     }
 }

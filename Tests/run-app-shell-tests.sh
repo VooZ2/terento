@@ -31,10 +31,25 @@ rg -Fq '#F7F3EC' "$repo_root/Packaging/generate-app-icon.swift"
 rg -Fq 'ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon' "$project_file"
 rg -Fq 'CFBundleIconName' "$repo_root/app/Terento/Info.plist"
 
+rg -Fq 'CommandGroup(replacing: .appInfo)' "$app_source"
 rg -Fq 'CommandGroup(replacing: .help)' "$app_source"
 rg -Fq 'Window("About Terento", id: "about")' "$app_source"
 rg -Fq 'Image(nsImage: NSApplication.shared.applicationIconImage)' "$about_source"
-for label in 'Terento Website' 'Documentation' 'Report an Issue' 'GitHub Repository' 'About Terento'; do
+app_info_commands="$(sed -n '/CommandGroup(replacing: .appInfo)/,/CommandGroup(replacing: .help)/p' "$app_source")"
+if ! grep -Fq 'Button("About Terento")' <<<"$app_info_commands" \
+    || ! grep -Fq 'openWindow(id: "about")' <<<"$app_info_commands" \
+    || [[ "$(rg -Fc 'Button("About Terento")' "$app_source")" != "1" ]]; then
+    print -u2 "FAIL: standard macOS About is not the single custom About route"
+    exit 1
+fi
+
+help_commands="$(sed -n '/CommandGroup(replacing: .help)/,/^            }/p' "$app_source")"
+if grep -Fq 'Button("About Terento")' <<<"$help_commands"; then
+    print -u2 "FAIL: Help still contains a duplicate About entry"
+    exit 1
+fi
+
+for label in 'Terento Website' 'Documentation' 'Report an Issue' 'GitHub Repository'; do
     rg -Fq "Button(\"$label\")" "$app_source"
 done
 for url in 'https://terento.app' 'https://github.com/VooZ2/terento#readme' 'https://github.com/VooZ2/terento/issues' 'https://github.com/VooZ2/terento'; do
