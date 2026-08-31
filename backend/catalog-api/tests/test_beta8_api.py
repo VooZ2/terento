@@ -467,7 +467,9 @@ class Beta8APITests(unittest.TestCase):
             def measure_zip(self, url):
                 return Measurement()
 
-        snapshot = OpenTopoMapProviderAdapter(fetcher=Fetcher()).collect()
+        snapshot = OpenTopoMapProviderAdapter(
+            fetcher=Fetcher(), expected_main_package_count=1, max_workers=1
+        ).collect()
         package = snapshot.packages[0]
         self.assertEqual(package.id, "opentopomap-azores")
         self.assertEqual(package.provider_region_id, "azores")
@@ -476,8 +478,51 @@ class Beta8APITests(unittest.TestCase):
         self.assertEqual(package.source_updated_at.isoformat(), "2026-05-24T20:24:18+00:00")
         self.assertEqual(
             [artifact.id for artifact in package.artifacts],
-            ["opentopomap-azores-main", "opentopomap-azores-contours"],
+            ["opentopomap-azores-main"],
         )
+        self.assertEqual(package.capabilities, ("main",))
+
+        class RecordingFetcher(Fetcher):
+            def __init__(self):
+                self.measured_urls = []
+
+            def measure_zip(self, url):
+                self.measured_urls.append(url)
+                return Measurement()
+
+        recording_fetcher = RecordingFetcher()
+        OpenTopoMapProviderAdapter(
+            fetcher=recording_fetcher, expected_main_package_count=1, max_workers=1
+        ).collect()
+        self.assertEqual(recording_fetcher.measured_urls, [
+            "https://garmin.opentopomap.org/europe/azores/otm-azores.zip"
+        ])
+
+        with self.assertRaisesRegex(RuntimeError, "expected 2, found 1"):
+            OpenTopoMapProviderAdapter(
+                fetcher=Fetcher(), expected_main_package_count=2
+            ).collect()
+
+    def test_otm_snapshot_cleanup_hides_deferred_contours(self):
+        source = (
+            Path(__file__).parents[1]
+            / "src"
+            / "terento_catalog"
+            / "db.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("if definition.id == \"opentopomap\":", source)
+        self.assertIn("DELETE FROM map_artifact", source)
+        self.assertIn("availability = 'RETIRED'", source)
+        self.assertIn("Beta.8 publishes main maps only", source)
+
+    def test_collection_failure_audit_keeps_provider_error_detail(self):
+        source = (
+            Path(__file__).parents[1]
+            / "src"
+            / "terento_catalog"
+            / "http_api.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn('"detail": str(exc)[:500]', source)
 
     def test_provider_health_checks_mime_zip_and_img(self):
         class Measurement:

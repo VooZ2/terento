@@ -6,10 +6,12 @@ URLs only; they never proxy or persist provider map binaries.
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from html.parser import HTMLParser
 import re
+import time
 from typing import Any, Protocol
 from urllib.parse import unquote, urljoin, urlparse
 from urllib.request import Request, urlopen
@@ -118,6 +120,11 @@ KNOWN_PROVIDER_DEFINITIONS: dict[str, ProviderDefinition] = {
     item.id: item for item in (FREIZEITKARTE, OPENTOPO_MAP)
 }
 
+# Beta.8 exposes only OpenTopoMap's ready-to-install Garmin main archives.
+# Optional contours remain outside the collection gate until their own
+# validation contract is accepted.
+OPENTOPO_MAP_BETA8_MAIN_PACKAGE_COUNT = 177
+
 
 class FreizeitkarteProviderAdapter:
     definition = FREIZEITKARTE
@@ -214,15 +221,30 @@ class OpenTopoMapProviderAdapter:
         *,
         fetcher: OpenTopoMapFetcher | None = None,
         catalog_url: str | None = None,
+        expected_main_package_count: int = OPENTOPO_MAP_BETA8_MAIN_PACKAGE_COUNT,
+        max_workers: int = 4,
+        measurement_attempts: int = 2,
     ) -> None:
         self.fetcher = fetcher or OpenTopoMapFetcher()
         self.catalog_url = catalog_url or self.definition.catalog_url
+        self.expected_main_package_count = expected_main_package_count
+        self.max_workers = max(1, min(max_workers, 4))
+        self.measurement_attempts = max(1, min(measurement_attempts, 3))
 
     def collect(self) -> ProviderSnapshot:
         html = self.fetcher.fetch_text(self.catalog_url)
-        links = parse_opentopomap_catalog(html, self.catalog_url)
+        links = [
+            link
+            for link in parse_opentopomap_catalog(html, self.catalog_url)
+            if link.kind == "main"
+        ]
+        if len(links) != self.expected_main_package_count:
+            raise ProviderCollectionError(
+                "OpenTopoMap main catalog count changed: "
+                f"expected {self.expected_main_package_count}, found {len(links)}"
+            )
         packages_by_region: dict[str, dict[str, Any]] = {}
-        measurements: dict[str, Any] = {}
+        measurements = self._measure_links(links)
         for link in links:
             package = packages_by_region.setdefault(
                 link.region,
@@ -236,10 +258,7 @@ class OpenTopoMapProviderAdapter:
                 raise ProviderCollectionError(
                     f"OpenTopoMap has duplicate {link.kind} artifact for {link.region}"
                 )
-            measurement = measurements.get(link.source_url)
-            if measurement is None:
-                measurement = self.fetcher.measure_zip(link.source_url)
-                measurements[link.source_url] = measurement
+            measurement = measurements[link.source_url]
             if measurement.download_size_bytes <= 0:
                 raise ProviderCollectionError(
                     f"OpenTopoMap artifact {link.source_url} has invalid size"
@@ -268,11 +287,7 @@ class OpenTopoMapProviderAdapter:
         fallback_release = _release_label(html)
         packages = []
         for region, value in sorted(packages_by_region.items()):
-            artifacts = tuple(
-                value["artifacts"][kind]
-                for kind in ("main", "contours")
-                if kind in value["artifacts"]
-            )
+            artifacts = (value["artifacts"]["main"],)
             source_updated_at = next(
                 (
                     artifact.source_updated_at
@@ -313,6 +328,37 @@ class OpenTopoMapProviderAdapter:
             packages=tuple(packages),
             collected_at=datetime.now(timezone.utc),
         )
+
+    def _measure_links(self, links: list[OpenTopoMapLink]) -> dict[str, Any]:
+        unique_urls = tuple(dict.fromkeys(link.source_url for link in links))
+        measurements: dict[str, Any] = {}
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            pending = {
+                executor.submit(self._measure_with_retry, url): url
+                for url in unique_urls
+            }
+            for future in as_completed(pending):
+                url = pending[future]
+                try:
+                    measurements[url] = future.result()
+                except Exception as exc:
+                    raise ProviderCollectionError(
+                        f"OpenTopoMap artifact inspection failed for {url}: "
+                        f"{type(exc).__name__}: {exc}"
+                    ) from exc
+        return measurements
+
+    def _measure_with_retry(self, url: str) -> Any:
+        failure: Exception | None = None
+        for attempt in range(self.measurement_attempts):
+            try:
+                return self.fetcher.measure_zip(url)
+            except Exception as exc:  # provider/network failure is retried narrowly
+                failure = exc
+                if attempt + 1 < self.measurement_attempts:
+                    time.sleep(0.25 * (attempt + 1))
+        assert failure is not None
+        raise failure
 
 
 @dataclass(frozen=True)

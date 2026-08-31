@@ -1337,6 +1337,34 @@ class Database:
                         (definition.id, artifact.source_url),
                     )
 
+            if definition.id == "opentopomap":
+                # Beta.8 publishes main maps only. A complete replacement
+                # snapshot must hide any contours or packages left by an
+                # earlier collector run without touching map binaries.
+                package_ids = [package.id for package in snapshot.packages]
+                artifact_ids = [
+                    artifact.id
+                    for package in snapshot.packages
+                    for artifact in package.artifacts
+                ]
+                connection.execute(
+                    """
+                    DELETE FROM map_artifact
+                    WHERE package_id IN (
+                        SELECT id FROM map_package WHERE provider_id = %s
+                    ) AND NOT (id = ANY(%s))
+                    """,
+                    (definition.id, artifact_ids),
+                )
+                connection.execute(
+                    """
+                    UPDATE map_package
+                    SET availability = 'RETIRED', updated_at = now()
+                    WHERE provider_id = %s AND NOT (id = ANY(%s))
+                    """,
+                    (definition.id, package_ids),
+                )
+
     def provider_rows(self) -> list[dict[str, Any]]:
         query = """
             SELECT
