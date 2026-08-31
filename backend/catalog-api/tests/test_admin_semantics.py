@@ -26,6 +26,7 @@ from terento_catalog.admin import (
     _render_diagnostic_details,
     _sanitised_issue_value,
     _identity_comparison_key,
+    _map_statistics_summary,
     _normalise_variant,
     _map_statistics_script,
     _provider_detail_script,
@@ -36,6 +37,9 @@ from terento_catalog.admin import (
     device_detail_page,
     diagnostics_page,
     devices_page,
+    map_statistics_page,
+    provider_detail_page,
+    providers_page,
 )
 from terento_catalog.compatibility_status import (
     CANONICAL_STATUS_ORDER,
@@ -546,8 +550,10 @@ class AdminSemanticsTests(unittest.TestCase):
             }],
         ).decode()
         self.assertNotIn("class='metric'", body)
-        self.assertIn('class="admin-summary-strip installation-summary-strip"', body)
-        self.assertIn("3 attempts · 1 successful · 2 failed · 1 open error", body)
+        self.assertIn('class="admin-kpi-grid installation-kpis"', body)
+        self.assertIn("<span>Install attempts</span><strong>3</strong>", body)
+        self.assertIn("<span>Successful</span><strong>1</strong>", body)
+        self.assertIn("Historical failures: 1", body)
         self.assertNotIn('id="evidence-title"', body)
         self.assertNotIn("<h2 id=\"evidence-title\">Installations</h2>", body)
         self.assertIn("1 open error", body)
@@ -617,7 +623,7 @@ class AdminSemanticsTests(unittest.TestCase):
         evidence_row = body.split("class='evidence-model-row'", 1)[1].split("</tr>", 1)[0]
         self.assertIn("Identity pending", evidence_row)
         self.assertNotIn("error-count", evidence_row)
-        self.assertIn("<td>0</td>", evidence_row)
+        self.assertIn("historical-number'>0</td>", evidence_row)
 
     def test_canonical_diagnostics_include_all_raw_identity_spellings(self):
         canonical_id = "garmin-fenix-8-47-amoled"
@@ -761,11 +767,159 @@ class AdminSemanticsTests(unittest.TestCase):
 
     def test_installations_helper_copy_is_concise_and_keeps_identity_out_of_errors(self):
         body = dashboard_page([], {"username": "operator"}, "csrf").decode()
-        self.assertIn(
-            "Failed is historical and includes resolved failures. Open errors includes only unresolved failed installations.",
-            body,
-        )
+        self.assertIn("Historical failures: 0", body)
         self.assertNotIn("Errors are unresolved diagnostic operations", body)
+
+    def test_beta8_installations_summary_uses_five_kpis_and_historical_failure_note(self):
+        body = dashboard_page(
+            [{
+                "model": "fēnix 8",
+                "variant": "47 mm, AMOLED",
+                "attempted_install_count": 3,
+                "successful_install_count": 2,
+                "failed_install_count": 2,
+                "recognized_map_capable_evidence": True,
+            }],
+            {"username": "operator"},
+            "csrf",
+        ).decode()
+        self.assertIn("<p class=\"eyebrow\">Compatibility</p>", body)
+        self.assertIn('class="admin-kpi-grid installation-kpis"', body)
+        for label in ("Variants", "Install attempts", "Successful", "Success rate", "Open errors"):
+            self.assertIn(f"<span>{label}</span>", body)
+        self.assertIn("<span>Success rate</span><strong>66.7%</strong>", body)
+        self.assertIn("Historical failures: 2", body)
+        self.assertIn("<th scope=\"col\">Status</th><th scope=\"col\">Attempts</th>", body)
+        self.assertNotIn("installation-summary-strip", body)
+
+    def test_map_statistics_does_not_render_event_derived_zeros_without_data(self):
+        self.assertEqual(
+            _map_statistics_summary([]),
+            {
+                "hasEventData": False,
+                "completedDownloads": None,
+                "failedDownloads": None,
+                "downloadSuccessRate": None,
+                "completedInstalls": None,
+                "failedInstalls": None,
+                "installSuccessRate": None,
+            },
+        )
+        body = map_statistics_page(
+            {"rows": []},
+            [{"id": "freizeitkarte", "name": "Freizeitkarte", "health": "HEALTHY"}],
+            {"username": "operator"},
+            "csrf",
+        ).decode()
+        self.assertIn("No map operation data yet", body)
+        self.assertIn("<strong data-stat='completedDownloads'>—</strong>", body)
+        self.assertIn("<strong data-stat='failedDownloads'>—</strong>", body)
+        self.assertIn("<strong data-stat='completedInstalls'>—</strong>", body)
+        self.assertIn("<strong data-stat='failedInstalls'>—</strong>", body)
+        self.assertIn("<section class='provider-card map-events-card' hidden>", body)
+        self.assertIn("id='map-statistics-more-filters'", body)
+        self.assertNotIn("<strong data-stat='completedDownloads'>0</strong>", body)
+
+    def test_map_statistics_shows_zero_counts_only_when_event_data_exists(self):
+        body = map_statistics_page(
+            {"rows": [{
+                "provider_id": "freizeitkarte",
+                "event_type": "DOWNLOAD_STARTED",
+                "outcome": "STARTED",
+                "operation_count": 1,
+            }]},
+            [{"id": "freizeitkarte", "name": "Freizeitkarte", "health": "HEALTHY"}],
+            {"username": "operator"},
+            "csrf",
+        ).decode()
+        self.assertIn("<strong data-stat='completedDownloads'>0</strong>", body)
+        self.assertIn("<strong data-stat='failedDownloads'>0</strong>", body)
+        self.assertIn("map-statistics-empty' id='map-statistics-empty' hidden", body)
+        self.assertNotIn("map-events-card' hidden", body)
+
+    def test_provider_list_uses_compact_columns_and_summary(self):
+        body = providers_page(
+            [{
+                "id": "opentopomap",
+                "name": "OpenTopoMap",
+                "adapterId": "opentopomap",
+                "status": "PAUSED",
+                "health": "HEALTHY",
+                "packageCount": 177,
+                "lastCatalogSync": "2026-08-31T12:00:00+00:00",
+                "lastHealthCheck": "2026-08-31T12:05:00+00:00",
+            }],
+            {"username": "operator"},
+            "csrf",
+        ).decode()
+        self.assertIn("1 providers", body)
+        self.assertIn("0 active · 1 healthy · 177 packages · 0 issues", body)
+        self.assertIn("<th scope='col'>Provider</th><th scope='col'>Activity</th><th scope='col'>Health</th><th scope='col'>Packages</th>", body)
+        self.assertIn("<th scope='col'>Last check</th><th scope='col'>Issues</th>", body)
+        self.assertNotIn(">Adapter<", body)
+        self.assertNotIn("Open map statistics", body)
+        self.assertIn("<small>opentopomap</small>", body)
+
+    def test_provider_detail_uses_progressive_disclosure_and_human_audit_actions(self):
+        body = provider_detail_page(
+            {
+                "provider": {
+                    "id": "opentopomap",
+                    "name": "OpenTopoMap",
+                    "adapterId": "opentopomap",
+                    "status": "PAUSED",
+                    "healthStatus": "HEALTHY",
+                    "packageCount": 1,
+                    "lastCatalogSync": "2026-08-31T12:00:00+00:00",
+                    "lastHealthCheck": "2026-08-31T12:05:00+00:00",
+                    "website": "https://opentopomap.org/",
+                    "license": "ODbL",
+                    "attribution": "OpenTopoMap",
+                    "sources": [
+                        {"source_type": "WEBSITE", "source_url": "https://opentopomap.org/", "enabled": True},
+                        {"source_type": "DOWNLOAD", "source_url": "https://example.test/map.zip", "enabled": True, "validation_status": "FAILED"},
+                    ],
+                    "maps": [{
+                        "id": "opentopomap-lithuania",
+                        "name": "Lithuania",
+                        "region": "LT",
+                        "release": "2026-08",
+                        "artifact_count": 1,
+                        "availability": "AVAILABLE",
+                        "broken_artifact_count": 0,
+                    }],
+                    "healthHistory": [{
+                        "status": "HEALTHY",
+                        "checked_at": "2026-08-31T12:05:00+00:00",
+                        "website_status": "HEALTHY",
+                        "catalog_status": "HEALTHY",
+                        "redirect_status": "HEALTHY",
+                        "download_status": "HEALTHY",
+                        "mime_status": "HEALTHY",
+                        "magic_status": "HEALTHY",
+                        "zip_status": "HEALTHY",
+                        "img_status": "HEALTHY",
+                        "last_update_status": "HEALTHY",
+                        "http_status": 200,
+                        "artifact_count": 1,
+                        "duration_ms": 120,
+                    }],
+                    "activationGate": {"canActivate": False, "blockers": [{"message": "Collect a catalog first."}]},
+                },
+            },
+            [{"id": "run-1", "status": "SUCCEEDED", "package_count": 1, "artifact_count": 1}],
+            [{"admin_user_id": "operator", "action": "provider.status_changed", "old_status": "ACTIVE", "new_status": "PAUSED", "reason": "Testing", "occurred_at": "2026-08-31T12:10:00+00:00", "target": "opentopomap", "details": {"source": "test"}}],
+            {"username": "operator"},
+            "csrf",
+        ).decode()
+        for text in ("Packages", "Broken", "Last catalog sync", "Last health check", "Check now", "Collect catalog", "More", "Retire provider", "Provider metadata", "Original links", "Package download sources", "Regions and packages", "Latest health check", "View check details", "Collection history", "Provider history"):
+            self.assertIn(text, body)
+        self.assertIn("id='provider-source-pagination'", body)
+        self.assertIn("id='provider-package-pagination'", body)
+        self.assertIn("Status changed", body)
+        self.assertIn("provider.status_changed", body)
+        self.assertIn("audit-technical-details", body)
+        self.assertNotIn("<span>Activity</span>", body)
 
     def test_shared_model_page_keeps_resolved_failures_historical_and_open_errors_active_only(self):
         device = _admin_device_payload([{
