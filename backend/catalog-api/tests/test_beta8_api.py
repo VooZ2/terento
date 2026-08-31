@@ -178,6 +178,21 @@ class Beta8APITests(unittest.TestCase):
         self.assertIn("migration-027", migration)
         self.assertNotIn("DELETE FROM map_provider", migration)
 
+    def test_beta8_otm_pause_repair_is_explicit_and_audited(self):
+        migration = (
+            Path(__file__).parents[1]
+            / "src"
+            / "terento_catalog"
+            / "migrations"
+            / "028_force_otm_beta8_paused.sql"
+        ).read_text(encoding="utf-8")
+        self.assertIn("p.id = 'opentopomap'", migration)
+        self.assertIn("p.status = 'ACTIVE'", migration)
+        self.assertIn("SET status = 'PAUSED'", migration)
+        self.assertIn("provider.status_repaired", migration)
+        self.assertIn("migration-028", migration)
+        self.assertIn("explicitActivationRequired", migration)
+
     def test_provider_neutral_catalog_keeps_legacy_fields_and_artifacts(self):
         document = build_catalog([
             {
