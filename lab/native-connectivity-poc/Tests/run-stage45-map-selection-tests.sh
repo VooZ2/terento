@@ -80,8 +80,10 @@ if ! grep -Fq 'Text("Terento will install these maps to your Garmin. Existing Ga
     exit 1
 fi
 
-if ! grep -Fq 'Text("Help improve Terento")' "$connect_screen" \
+if ! grep -Fq 'Text("Help improve Garmin compatibility")' "$connect_screen" \
     || ! grep -Fq 'Share anonymous installation results to help improve Garmin compatibility.' "$connect_screen" \
+    || ! grep -Fq 'Text("Share anonymous map statistics")' "$connect_screen" \
+    || ! grep -Fq 'This is off until you choose it.' "$connect_screen" \
     || ! grep -Fq '.tint(TerentoColors.interactive)' "$connect_screen" \
     || grep -Fq 'Help improve Terento for other watch owners' "$connect_screen" \
     || grep -Fq 'No Garmin Unit ID or serial number is collected.' "$connect_screen"; then
@@ -150,8 +152,8 @@ if grep -Fq 'This map cannot be installed safely from this flow yet.' "$connect_
     exit 1
 fi
 
-if ! grep -Fq 'mapEngine.beginInstallation(plan: plan)' "$connect_screen" \
-    || ! grep -Fq 'func beginInstallation(plan: InstallationPlan)' \
+if ! grep -Fq 'mapEngine.beginInstallation(plan: plan, operationId: operationID)' "$connect_screen" \
+    || ! grep -Fq 'func beginInstallation(plan: InstallationPlan, operationId: UUID = UUID())' \
         "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift" \
     || ! grep -Fq 'func installSelectedMaps()' \
         "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift"; then
@@ -199,9 +201,11 @@ fi
 
 if ! grep -Fq 'evidencePrimaryFailureMapIndex = activePackageIndex' \
         "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift" \
-    || ! grep -Fq 'evidencePrimaryFailureMapIndex = activeMapIndex.value' \
+    || ! grep -Fq 'let failureIndex = activeMapIndex.value' \
         "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift" \
-    || ! grep -Fq 'index == primaryFailureIndex ? mapEngine.installationResult : nil' \
+    || ! grep -Fq 'evidencePrimaryFailureMapIndex = failureIndex' \
+        "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift" \
+    || ! grep -Fq 'results.isEmpty && index == primaryFailureIndex ? mapEngine.installationResult : nil' \
         "$connect_screen"; then
     print -u2 "FAIL: multi-map diagnostics do not preserve the actual failed map index"
     exit 1
