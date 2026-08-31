@@ -62,7 +62,7 @@ if ! grep -Fq 'defaultWidth' "$project_root/Sources/TerentoPoC/TerentoPoCApp.swi
     exit 1
 fi
 
-if ! grep -Fq 'mapEngine.beginInstallation(plan: plan)' "$connect_screen" \
+if ! grep -Fq 'mapEngine.beginInstallation(plan: plan, operationId: operationID)' "$connect_screen" \
     || ! grep -Fq 'shouldContinueAfterPreflight' \
         "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift" \
     || grep -Fq 'else if mapEngine.installationPhase == .awaitingConfirmation' "$connect_screen"; then
@@ -84,12 +84,13 @@ if ! grep -Fq 'ProgressView()' "$connect_screen" \
 fi
 
 if ! grep -Fq 'ManageActionButton' "$connect_screen" \
+    || grep -Fq 'ManageAdvancedActionTrigger' "$connect_screen" \
     || grep -Fq 'Image(systemName: "ellipsis")' "$connect_screen" \
     || ! grep -Fq 'ManageActionGroup' "$connect_screen" \
     || ! grep -Fq '.buttonStyle(.borderless)' "$connect_screen" \
     || ! grep -Fq '@FocusState' "$connect_screen" \
     || ! grep -Fq '.onHover' "$connect_screen" \
-    || ! grep -Fq 'frame(minWidth: 44, minHeight: 30)' "$connect_screen" \
+    || ! grep -Fq 'action == .update ? 72 : 68' "$connect_screen" \
     || ! grep -Fq 'ManageOperationProgress' "$connect_screen" \
     || ! grep -Fq 'ProgressView(value: progress.fractionCompleted)' \
         "$project_root/Sources/TerentoPoC/Views/ConnectScreen.swift"; then
@@ -155,7 +156,8 @@ finish_content="$(awk '
     capture { print }
 ' "$connect_screen")"
 if [[ "$finish_content" != *'TerentoPageHeader'* \
-    || "$finish_content" != *'MapSelectionRow'* \
+    || "$finish_content" != *'InstallationMapsList'* \
+    || "$finish_content" != *'InstalledMapsSectionHeader'* \
     || "$finish_content" != *'Back to device'* \
     || "$finish_content" != *'Your map is ready and verified'* \
     || "$finish_content" == *'Installation was verified successfully'* \
@@ -169,13 +171,14 @@ if grep -Fq 'title: "Freizeitkarte maps"' "$connect_screen" \
     || ! grep -Fq 'title: group.title' "$connect_screen" \
     || ! grep -Fq 'title: "Available maps"' "$connect_screen" \
     || grep -Eiq 'community maps?' "$connect_screen" \
-    || ! grep -Fq 'title: "Other maps"' "$connect_screen" \
+    || ! grep -Fq 'title: "Imported maps"' "$connect_screen" \
+    || ! grep -Fq 'title: "External maps"' "$connect_screen" \
     || grep -Fq 'DisclosureGroup(isExpanded: $freizeitkarteMapsExpanded)' "$connect_screen"; then
     print -u2 "FAIL: Manage Maps section taxonomy or shared section presentation is incomplete"
     exit 1
 fi
 
-if ! grep -Fq 'item.manageDetailLabel' "$connect_screen" \
+if ! grep -Fq 'item.manageMetadataLabel' "$connect_screen" \
     || grep -Fq 'availability.reason ?? item.noteLabel' "$connect_screen" \
     || ! grep -Fq 'Incomplete installation' \
         "$project_root/Sources/TerentoPoC/Installation/MapLifecycle.swift"; then

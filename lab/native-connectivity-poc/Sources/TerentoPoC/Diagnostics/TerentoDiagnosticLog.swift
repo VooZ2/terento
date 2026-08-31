@@ -194,9 +194,15 @@ enum TerentoDiagnosticLog {
     }
 
     private static var appVersion: String {
-        Bundle.main.object(
+        let releaseLabel = Bundle.main.object(
+            forInfoDictionaryKey: "TerentoReleaseLabel"
+        ) as? String
+        let shortVersion = Bundle.main.object(
             forInfoDictionaryKey: "CFBundleShortVersionString"
-        ) as? String ?? "development"
+        ) as? String
+        return releaseLabel?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            ? releaseLabel!
+            : shortVersion ?? "development"
     }
 
     private static func timestamp() -> String {

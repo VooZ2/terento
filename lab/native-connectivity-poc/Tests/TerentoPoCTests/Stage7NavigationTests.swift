@@ -50,7 +50,8 @@ struct Stage7NavigationTests {
         expect(
             TerentoPageLayout.sectionHeaderMinHeight == 26
                 && TerentoPageLayout.sectionHeaderChevronWidth == 14
-                && TerentoPageLayout.sectionHeaderChevronHeight == 18
+                && TerentoPageLayout.sectionHeaderChevronHeight
+                    == TerentoPageLayout.sectionHeaderMinHeight
                 && TerentoPageLayout.sectionHeaderItemSpacing == 8,
             "Install and Manage share section-header geometry"
         )

@@ -3,7 +3,7 @@ import Foundation
 /// User-facing actions exposed by the map lifecycle screen. The availability
 /// decision is kept outside SwiftUI so a button can never become a second
 /// implementation of the lifecycle safety rules.
-enum MapLifecycleAction: String, CaseIterable, Equatable, Sendable {
+enum MapLifecycleAction: String, CaseIterable, Equatable, Hashable, Sendable {
     case backup
     case transferOwnership
     case recoverOwnership
@@ -32,6 +32,39 @@ enum ManageMapRowActionPresentation: Sendable {
         for availability: MapLifecycleActionAvailability
     ) -> [MapLifecycleAction] {
         displayOrder.filter(availability.allows)
+    }
+
+    static func primaryActions(
+        for availability: MapLifecycleActionAvailability
+    ) -> [MapLifecycleAction] {
+        [.update, .remove].filter(availability.allows)
+    }
+
+    static func advancedActions(
+        for availability: MapLifecycleActionAvailability
+    ) -> [MapLifecycleAction] {
+        [.backup, .transferOwnership, .recoverOwnership].filter(availability.allows)
+    }
+
+    /// Production Manage Maps deliberately exposes only product actions.
+    /// Backup and ownership export/recovery remain internal lifecycle
+    /// capabilities and cannot leak into the normal beta.8 action surface.
+    static func productionActions(
+        for availability: MapLifecycleActionAvailability
+    ) -> [MapLifecycleAction] {
+        [.update, .remove].filter(availability.allows)
+    }
+
+    static func productionPrimaryActions(
+        for availability: MapLifecycleActionAvailability
+    ) -> [MapLifecycleAction] {
+        [.update, .remove].filter(availability.allows)
+    }
+
+    static func productionMenuActions(
+        for availability: MapLifecycleActionAvailability
+    ) -> [MapLifecycleAction] {
+        return []
     }
 }
 

@@ -123,6 +123,31 @@ struct MapVersionComparisonTests {
             fallbackPackage.displayVersionLabel == nil,
             "historical 2000-01 fallback is hidden from display"
         )
+
+        for invalidLabel in ["unknown", "N/A", "not-a-release", "1970-01"] {
+            let invalidPackage = MapPackage(
+                id: "provider-invalid-\(invalidLabel)",
+                providerId: "provider",
+                regionId: "XX",
+                name: "Unknown",
+                version: MapVersion(year: 2000, month: 1)!,
+                sizeBytes: 100,
+                sourceURL: nil,
+                releaseDate: nil,
+                identifier: nil,
+                releaseMetadata: MapReleaseMetadata(
+                    releaseId: invalidLabel,
+                    versionLabel: invalidLabel,
+                    generatedAt: nil,
+                    sourceUpdatedAt: nil
+                )
+            )
+
+            expect(
+                invalidPackage.displayVersionLabel == nil,
+                "invalid release label \(invalidLabel) is omitted from display"
+            )
+        }
     }
 
     private static func testOtherInstalledRegionStillMeansInstallAvailable() {

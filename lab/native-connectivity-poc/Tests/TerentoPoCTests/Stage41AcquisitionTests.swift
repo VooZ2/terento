@@ -30,6 +30,7 @@ struct Stage41AcquisitionTests {
         await testOpenTopoMapAcquisitionUsesOfficialURLAndIdentity()
         testRegionalProviderTokensRemainConcrete()
         testSharedCatalogRegionsUseDistinctManagedTargets()
+        await testSharedCatalogRegionUsesConcreteSourceIdentity()
         await testWrongIdentityIsRejected()
         await testMatchingVersionPasses()
         await testMismatchedVersionIsRejected()
@@ -40,7 +41,7 @@ struct Stage41AcquisitionTests {
         await testWithheldAcquisitionFailsBeforeWorkspaceAndHTTP()
         testNoDeviceWriteDependency()
 
-        print("PASS: 24 Stage 4.1 acquisition tests")
+        print("PASS: 25 Stage 4.1 acquisition tests")
     }
 
     private static func testCatalogResolvesFrance() {
@@ -523,6 +524,51 @@ struct Stage41AcquisitionTests {
                 ],
             "catalog packages sharing AZORES use distinct managed targets"
         )
+    }
+
+    private static func testSharedCatalogRegionUsesConcreteSourceIdentity() async {
+        let image = makeRegionalVariantIMG(token: "BALEARICS")
+        let package = MapPackage(
+            id: "freizeitkarte-balearics",
+            providerId: "freizeitkarte",
+            regionId: "AZORES",
+            name: "Balearics",
+            version: version(2026, 5),
+            sizeBytes: UInt64(image.count),
+            sourceURL: URL(string: "https://provider.example/balearics.img"),
+            releaseDate: "2026-05-03",
+            identifier: "BALEARICS",
+            providerRegionId: "BALEARICS",
+            canonicalRegionId: "AZORES"
+        )
+
+        do {
+            let source = try temporaryFile(data: image)
+            defer { try? FileManager.default.removeItem(at: source) }
+            let workspace = try makeWorkspace()
+            defer { try? workspace.cleanup() }
+            let artifact = try await MapPackageAcquirer(
+                downloadClient: StubDownloadClient(
+                    response: MapPackageDownloadResponse(
+                        statusCode: 200,
+                        temporaryFileURL: source
+                    )
+                )
+            ).acquire(package: package, canonicalRegion: "Balearics", workspace: workspace)
+
+            expect(
+                package.regionId == "AZORES"
+                    && package.canonicalRegionId == "BALEARICS"
+                    && artifact.region == "BALEARICS"
+                    && artifact.targetFilename == "terento_freizeitkarte_balearics.img",
+                "shared catalog region validates against the concrete Freizeitkarte package identity"
+            )
+        } catch {
+            expect(
+                false,
+                "shared catalog region validates against the concrete Freizeitkarte package identity"
+            )
+        }
     }
 
     private static func testWrongIdentityIsRejected() async {

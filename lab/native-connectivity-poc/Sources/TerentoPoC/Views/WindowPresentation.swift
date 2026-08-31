@@ -14,7 +14,7 @@ enum TerentoPageLayout: Sendable {
     static let sectionContentTopPadding: CGFloat = 6
     static let sectionHeaderMinHeight: CGFloat = 26
     static let sectionHeaderChevronWidth: CGFloat = 14
-    static let sectionHeaderChevronHeight: CGFloat = 18
+    static let sectionHeaderChevronHeight: CGFloat = sectionHeaderMinHeight
     static let sectionHeaderItemSpacing: CGFloat = 8
     static let footerMinHeight: CGFloat = 50
     static let footerBottomPadding: CGFloat = 42

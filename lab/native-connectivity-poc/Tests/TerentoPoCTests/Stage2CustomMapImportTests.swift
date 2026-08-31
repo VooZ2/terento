@@ -221,8 +221,10 @@ struct Stage2CustomMapImportTests {
             "custom managed maps expose removal but never expose Update"
         )
         expect(
-            item.manageDetailLabel == "Installed · From this Mac",
-            "custom managed maps show their local source without an update claim"
+            !item.manageMetadataLabel.contains("Installed")
+                && !item.manageMetadataLabel.contains("From this Mac")
+                && !item.manageMetadataLabel.isEmpty,
+            "custom managed maps show only compact installed-size metadata"
         )
     }
 

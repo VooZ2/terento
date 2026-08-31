@@ -6,6 +6,7 @@ struct ContentView: View {
     @ObservedObject var appUpdateController: AppUpdateController
     @StateObject private var lifecycleViewModel: MapLifecycleViewModel
     @StateObject private var evidenceController = InstallationEvidenceController()
+    @StateObject private var mapStatisticsController = MapStatisticsEventController()
 
     init(
         deviceEngine: DeviceEngine,
@@ -29,6 +30,7 @@ struct ContentView: View {
             mapEngine: mapEngine,
             lifecycleViewModel: lifecycleViewModel,
             evidenceController: evidenceController,
+            mapStatisticsController: mapStatisticsController,
             appUpdateController: appUpdateController
         )
     }

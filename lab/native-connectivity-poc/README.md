@@ -98,6 +98,21 @@ watch use, reconnect persistence, Manage maps discovery, one-map Remove, and
 the one-provider selection lock on the tested watch. Broader device evidence
 remains a separate release claim.
 
+The final beta.8 app presentation keeps only `Update` and `Remove` in normal
+Manage maps rows. `Update` appears only from the canonical provider-neutral
+lifecycle comparison and reuses the existing safe-update transaction; Backup
+and ownership-recovery tooling remain implemented for internal validation but
+are not exposed through a production overflow menu. The active installation
+page measures the real window viewport, keeps a 28-point bottom breathing
+space when content fits, sizes one- to three-map lists to their visible rows,
+and retains native scrolling for four or more maps or reduced window height.
+
+Map-operation statistics use a separate, explicit opt-in from compatibility
+evidence. Provider maps enqueue idempotent download/install lifecycle events
+without Garmin identifiers, serials, local paths, manifests, binary content,
+or diagnostic logs. Delivery is best-effort through a local retry queue and
+never blocks installation.
+
 For this SwiftPM PoC target, the normal SwiftUI window contains no map write or
 device modification path. The production Xcode app owns the guarded map
 installation and optional compatibility-report flow. The separate
@@ -161,6 +176,9 @@ regression boundaries:
 ./Tests/run-stage42-installation-tests.sh
 ./Tests/run-stage45-map-selection-tests.sh
 ./Tests/run-stage53-safe-update-tests.sh
+./Tests/run-map-statistics-event-tests.sh
+./Tests/run-beta8-installation-progress-failure-polish-tests.sh
+./Tests/run-beta8-manage-maps-polish-tests.sh
 ```
 
 These checks validate the provider-neutral catalog and acquisition seams,
@@ -173,7 +191,9 @@ firmware re-enumerates handles between sessions. The owner has separately
 confirmed one OpenTopoMap installation
 and Manage maps visibility on real hardware; these native tests do not turn
 that result into a broader device-support claim or exercise the separate
-web/admin UI. The metadata API contract is covered by backend tests; these
+web/admin UI. The focused beta.8 checks also cover the independent statistics
+consent/queue contract, measured installation viewport, and production
+`Update`/`Remove` action matrix. The metadata API contract is covered by backend tests; these
 native tests do not exercise it. The external-map safety tests cover only the
 local one-file Remove boundary; they are not hardware evidence.
 

@@ -73,8 +73,7 @@ if [[ "$(grep -Fc 'MapSelectionStorageSummary(' "$connect_screen")" -lt 2 ]]; th
     exit 1
 fi
 
-if ! grep -Fq 'Terento will install these maps to your Garmin.' "$connect_screen" \
-    || ! grep -Fq 'Existing Garmin maps will not be changed.' "$connect_screen" \
+if ! grep -Fq 'Text("Terento will install these maps to your Garmin. Existing Garmin maps will not be changed.")' "$connect_screen" \
     || grep -Fq 'Terento will install the selected maps to your Garmin.' "$connect_screen" \
     || grep -Fq 'Existing Garmin system maps are left unchanged.' "$connect_screen"; then
     print -u2 "FAIL: Review safety disclosure is missing"
@@ -82,7 +81,8 @@ if ! grep -Fq 'Terento will install these maps to your Garmin.' "$connect_screen
 fi
 
 if ! grep -Fq 'Text("Help improve Terento")' "$connect_screen" \
-    || ! grep -Fq 'Share anonymous installation data to help us understand device compatibility and improve support for other Garmin users.' "$connect_screen" \
+    || ! grep -Fq 'Share anonymous installation results to help improve Garmin compatibility.' "$connect_screen" \
+    || ! grep -Fq '.tint(TerentoColors.interactive)' "$connect_screen" \
     || grep -Fq 'Help improve Terento for other watch owners' "$connect_screen" \
     || grep -Fq 'No Garmin Unit ID or serial number is collected.' "$connect_screen"; then
     print -u2 "FAIL: Review compatibility opt-in copy is too long or outdated"
@@ -117,7 +117,8 @@ fi
 
 if ! grep -Fq 'return "No maps are available."' "$connect_screen" \
     || ! grep -Fq 'return "No maps are available from \(selectedMapProviderLabel)."' "$connect_screen" \
-    || ! grep -Fq 'Text(selectedMapProviderLabel)' "$connect_screen" \
+    || ! grep -Fq '.labelsHidden()' "$connect_screen" \
+    || ! grep -Fq '.accessibilityLabel("Map provider")' "$connect_screen" \
     || grep -Fq 'Button("Manage maps")' "$connect_screen" \
     || ! grep -Fq 'baseDetail = "Already installed"' "$connect_screen" \
     || ! grep -Fq 'return item.comparison.installedMap == nil' \
@@ -133,8 +134,11 @@ if ! grep -Fq 'case .update:' "$connect_screen" \
 fi
 
 if ! grep -Fq 'InstallReviewAvailabilityResolver' "$connect_screen" \
-    || ! grep -Fq 'frame(height: selectedMapListHeight)' "$connect_screen" \
-    || ! grep -Fq 'padding(.top, 10)' "$connect_screen"; then
+    || ! grep -Fq 'ReadyToInstallSelectedMapsHeader(count: plan.selectedItems.count)' "$connect_screen" \
+    || ! grep -Fq 'ReadyToInstallSelectedMapsList(items: plan.selectedItems)' "$connect_screen" \
+    || ! grep -Fq 'private static let visibleRowCapacity = 3' "$connect_screen" \
+    || ! grep -Fq 'idealHeight: Self.maximumListHeight' "$connect_screen" \
+    || ! grep -Fq 'Spacer(minLength: TerentoPageLayout.sectionSpacing)' "$connect_screen"; then
     print -u2 "FAIL: Review CTA or content-aware selected-map sizing is missing"
     exit 1
 fi

@@ -9,7 +9,7 @@ enum MapCatalogSource: String, Sendable, Equatable {
         case .remote:
             return "Remote catalog"
         case .bundledFallback:
-            return "Offline catalog — may be out of date"
+            return "Using local catalog — may be out of date"
         }
     }
 }

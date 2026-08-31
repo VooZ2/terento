@@ -32,6 +32,7 @@ struct InstallationEvidenceTests {
         testStatisticsAndPromotionThresholds()
         try await testConsentAndUploadIsolation()
         testDiagnosticSanitization()
+        testPreparedInstallationIssue()
         print("PASS: installation evidence, privacy, consent, upload, report, and promotion tests")
     }
 
@@ -217,12 +218,70 @@ struct InstallationEvidenceTests {
         expect(excluded.attemptedInstallCount == 0 && excluded.failedInstallCount == 0, "pre-write failure is diagnostic and excluded from watch compatibility")
     }
 
+    @MainActor
     static func testDiagnosticSanitization() {
-        let report = DiagnosticReportSanitizer.sanitize("User /Users/alice/private Unit ID: 123 Serial Number=ABC token: secret")
+        let report = DiagnosticReportSanitizer.sanitize("User /Users/alice/private Unit ID: 123 Serial Number=ABC token: secret Authorization: Bearer-private")
         expect(!report.contains("alice"), "diagnostic report removes usernames and local paths")
-        expect(!report.contains("123") && !report.contains("ABC") && !report.contains("secret"), "diagnostic report removes identifiers and secrets")
+        expect(!report.contains("123") && !report.contains("ABC") && !report.contains("secret") && !report.contains("Bearer-private"), "diagnostic report removes identifiers and secrets")
         let backendPayload = DiagnosticReportSanitizer.sanitize("{\"serial\":\"ABC\",\"detail\":\"safe status\"}")
         expect(!backendPayload.contains("ABC") && backendPayload.contains("safe status"), "JSON backend payload redacts restricted identifiers")
+        let signedURL = DiagnosticReportSanitizer.sanitize("https://example.test/map?token=secret-value&region=LTU")
+        expect(!signedURL.contains("secret-value") && signedURL.contains("region=LTU"), "diagnostic report removes signed URL token values")
+    }
+
+    @MainActor
+    static func testPreparedInstallationIssue() {
+        let operationID = UUID(uuidString: "12345678-1234-1234-1234-1234567890AB")!
+        let diagnosticID = UUID(uuidString: "ABCDEFAB-1234-1234-1234-ABCDEFABCDEF")!
+        let timestamp = Date(timeIntervalSince1970: 1_786_000_000)
+        let unsafeIdentity = DeviceIdentity(
+            manufacturer: "Garmin", model: "fenix 8", family: "fēnix", variant: "47 mm AMOLED",
+            usbVendorId: 0x091e, usbProductId: 0x2841, firmware: "20.19",
+            storageCapacity: 32_000_000_000, freeSpace: 10_000_000_000,
+            localHardwareIdentifier: "SERIAL-PRIVATE"
+        )
+        let draft = InstallationIssueReport.generate(
+            identity: unsafeIdentity,
+            maps: [
+                InstallationIssueMap(
+                    provider: "OpenTopoMap",
+                    region: "Lithuania",
+                    package: "LTU",
+                    release: "2026-08-30",
+                    artifactSizeBytes: 276_800_000
+                ),
+                InstallationIssueMap(
+                    provider: "OpenTopoMap",
+                    region: "Azores",
+                    package: "AZORES",
+                    release: "2026-08-30",
+                    artifactSizeBytes: 16_200_000
+                )
+            ],
+            stage: "Downloading",
+            error: "Token: private-token /Users/alice/map.img",
+            operationID: operationID,
+            failureStages: ["source-validation", "preflight"],
+            errorCategory: "sourceValidation",
+            errorCodes: ["INSTALL_BLOCKED_SOURCE_VALIDATION_FAILED", "INSTALL_NOT_STARTED_AFTER_EARLIER_FAILURE"],
+            diagnosticID: diagnosticID,
+            timestamp: timestamp,
+            appVersion: "0.8.0-beta.8",
+            appBuild: "108",
+            operatingSystem: "macOS 15.6"
+        )
+        expect(draft.title == "Installation stopped during Downloading — OpenTopoMap / Lithuania", "prepared issue title uses the real stage, provider, and region")
+        expect(draft.body.contains("## Summary") && draft.body.contains("Failure stage: source-validation, preflight") && draft.body.contains("INSTALL_BLOCKED_SOURCE_VALIDATION_FAILED"), "prepared issue includes structured failure summary")
+        expect(draft.body.contains("Provider: OpenTopoMap") && draft.body.contains("Region: LTU, AZORES") && draft.body.contains("Map version: 2026-08-30"), "prepared issue includes concise multi-map metadata")
+        expect(draft.body.contains("App version: 0.8.0-beta.8") && draft.body.contains("Model: fēnix 8") && draft.body.contains("Variant: 47 mm AMOLED"), "prepared issue includes safe environment metadata")
+        expect(draft.body.lowercased().contains(operationID.uuidString.lowercased()) && draft.body.lowercased().contains(diagnosticID.uuidString.lowercased()), "prepared issue includes diagnostic and installation references")
+        expect(!draft.body.contains("alice") && !draft.body.contains("private-token") && !draft.body.contains("SERIAL-PRIVATE") && !draft.body.contains("/Users/"), "prepared issue excludes local paths, tokens, and device identifiers")
+
+        let components = URLComponents(url: draft.url, resolvingAgainstBaseURL: false)
+        let query = Dictionary(uniqueKeysWithValues: (components?.queryItems ?? []).map { ($0.name, $0.value ?? "") })
+        expect(components?.path == "/VooZ2/terento/issues/new" && query["title"] == draft.title && query["diagnostic-report"] == draft.body && query["template"] == "installation-failure.yml" && query["body"] == nil, "prepared issue URL targets the YAML form's diagnostic field")
+        var copiedReport: String?
+        expect(!InstallationIssueReport.copyAndOpenGitHub(draft, clipboard: { copiedReport = $0 }, using: { _ in false }) && copiedReport == draft.body, "GitHub open failure still leaves the sanitized report on the clipboard")
     }
 
     @MainActor

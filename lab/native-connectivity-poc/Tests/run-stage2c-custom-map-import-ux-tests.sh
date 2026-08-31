@@ -16,11 +16,11 @@ if ! grep -Fq '@State private var customMapImportExpanded = false' "$connect_scr
 fi
 
 if [[ "$panel_content" != *'Text("Import a map from Mac")'* \
-    || "$panel_content" != *'Install a compatible Garmin .img file from this Mac.'* \
+    || "$panel_content" != *'Install a third-party map (.img) from this Mac.'* \
     || "$panel_content" != *'customMapImportExpanded.toggle()'* \
     || "$panel_content" != *'customMapDropZone'* \
     || "$panel_content" != *'isShowingCustomMapImporter = true'* \
-    || "$panel_content" != *'Processed locally. The file is not uploaded.'* ]]; then
+    || "$panel_content" != *'Processed locally on your Mac. Not sent to Terento servers.'* ]]; then
     print -u2 "FAIL: collapsed/expanded custom import presentation contract is incomplete"
     exit 1
 fi
@@ -28,7 +28,8 @@ fi
 if [[ "$panel_content" == *'Import .img from Mac'* \
     || "$panel_content" == *'Text("or")'* \
     || "$panel_content" == *'.frame(minHeight: 104)'* \
-    || "$panel_content" == *'Add a Garmin map file from this Mac.'* ]]; then
+    || "$panel_content" == *'Add a Garmin map file from this Mac.'* \
+    || "$panel_content" == *'Text("Browse")'* ]]; then
     print -u2 "FAIL: old oversized or duplicated custom import presentation remains"
     exit 1
 fi
@@ -41,16 +42,19 @@ if ! grep -Fq 'allowsMultipleSelection: false' "$connect_screen" \
 fi
 
 if ! grep -Fq 'CustomMapImportConfirmationSheet' "$connect_screen" \
-    || ! grep -Fq 'Text("Review imported map")' "$connect_screen" \
-    || ! grep -Fq 'Button("Cancel", action: onCancel)' "$connect_screen" \
-    || ! grep -Fq 'Button("Continue import", action: onContinue)' "$connect_screen" \
-    || ! grep -Fq 'Terento does not execute or upload imported map files.' "$connect_screen" \
+    || ! grep -Fq 'TerentoConfirmationDialog' "$connect_screen" \
+    || ! grep -Fq 'title: "Import this map?"' "$connect_screen" \
+    || ! grep -Fq 'primaryLabel: "Continue import"' "$connect_screen" \
+    || ! grep -Fq 'Terento can verify that this is a Garmin map file, but cannot verify who created it or whether you trust its source.' "$connect_screen" \
+    || ! grep -Fq 'Imported map files are transferred directly from your Mac to your watch. They are not sent to Terento servers.' "$connect_screen" \
     || ! grep -Fq '.preferredColorScheme(.light)' "$connect_screen"; then
     print -u2 "FAIL: imported-map confirmation presentation contract is incomplete"
     exit 1
 fi
 
 if grep -Fq 'Review custom map risk' "$connect_screen" \
+    || grep -Fq 'Review imported map' "$connect_screen" \
+    || grep -Fq 'does not execute or upload imported map files' "$connect_screen" \
     || grep -Fq 'Text("I understand")' "$connect_screen" \
     || grep -Fq 'Text("Cancel import")' "$connect_screen"; then
     print -u2 "FAIL: legacy custom-map risk alert copy remains"
