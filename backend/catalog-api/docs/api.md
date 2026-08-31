@@ -72,14 +72,15 @@ by the service health cycle.
 
 Returns an aggregate HTML operator dashboard after database-backed login. The
 dashboard uses the Terento branded English admin shell, exact model/variant
-columns, a compact shared summary strip, and client-side search/status/sort controls;
-these controls do not change backend aggregation. The first administrator can
+columns, five installation KPI cards, a separate historical-failure note, and
+client-side search/status/sort controls; these controls do not change backend
+aggregation. The first administrator can
 be created only once through `/admin/setup` with the environment-provided
 bootstrap secret. Passwords use salted PBKDF2-SHA256;
 opaque sessions and CSRF values are stored only as SHA-256 hashes. Cookies are
 Secure, HttpOnly, SameSite=Strict, and scoped to `/admin`. Login/setup attempts
 are rate limited. Pages include no-store, noindex and restrictive CSP headers.
-The first screen stops at the model summary, filters, and one-row-per-exact-
+The first screen stops at the KPI summary, filters, and one-row-per-exact-
 model/variant table. Attempts and successes use active, write-started
 operations; Errors counts unresolved problematic operations. Resolved and
 legacy diagnostics remain available only in model history and do not enter
@@ -384,14 +385,17 @@ provider binaries or executable adapter configuration.
 ## `GET /admin/providers` and `GET /admin/providers/{id}`
 
 These authenticated, no-store/noindex HTML pages provide the operator views
-for the provider registry and one provider. The list shows provider name,
-known adapter, lifecycle/health state, active package count, catalog sync,
-last download test, broken package/link count, and the latest error. The detail
-page shows metadata, license/attribution, original source links, regions and
-packages, health-check history, collection-run history, and retained audit
-history. It also provides `Check now`, `Collect catalog`, `Pause`/`Activate`,
-and `Retire` controls. A request without a valid admin session redirects to
-`/admin/login`; the page never serves map binaries.
+for the provider registry and one provider. The list shows provider name and
+secondary ID, lifecycle/health state, package count, catalog sync, last check,
+and issues, with a compact total/active/healthy/package/issue summary. The
+detail page shows metadata, license/attribution, provider-level original
+source links, and progressive-disclosure sections for download sources,
+regions/packages, health details/history, collection history, and retained
+provider history. Large source and package lists have client-side search,
+broken-only filters, and pagination. It also provides `Check now`, `Collect
+catalog`, `Pause`/`Activate`, and an overflow `Retire` control. A request
+without a valid admin session redirects to `/admin/login`; the page never
+serves map binaries.
 
 `GET /admin/providers/{id}.json` and `GET /admin/providers/{id}/audit` are
 private JSON projections for operator tooling and carry the same session gate.
@@ -479,9 +483,13 @@ Authenticated, no-store/noindex HTML dashboard for the same aggregate read
 model. It supports 7-day, 30-day, 90-day, and all-time ranges plus provider,
 map, region, and event-type filters. It displays completed/failed downloads,
 download and install success rates, top maps/regions, per-provider popularity,
-provider health, and broken provider package/link counts. Missing events remain
-unknown/empty; they are not silently presented as zero. Unauthenticated
-requests redirect to `/admin/login`.
+provider health, and broken provider package/link counts. Primary KPI cards
+show completed downloads, download success, completed installs, and install
+success; reliability is shown separately for failed installs, failed downloads,
+and provider issues. Map/region/event filters are under `More filters`, event
+detail is collapsed, and missing events use an explicit empty state and em
+dashes rather than silently presented zeros. Unauthenticated requests redirect
+to `/admin/login`.
 
 ## `GET /devices/catalog.json`
 
