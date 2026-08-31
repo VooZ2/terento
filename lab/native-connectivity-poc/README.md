@@ -85,6 +85,13 @@ the operator to disconnect the watch, and then verifies cleanup after reconnect.
 It never accepts an IMG/map source and refuses to remove an object unless the
 exact object identity returned by the same transfer matches.
 
+The beta.8 production lifecycle path forwards native MTP read progress through
+the local read-back adapter. Backup and one-file external Remove can therefore
+show measured byte progress; Remove additionally reports determinate progress
+through exact verification, deletion, and bounded post-delete rescans. This
+does not change the PoC's read-only scope or claim hardware evidence for the
+production lifecycle path.
+
 ## Dependencies
 
 - macOS 13 or newer
@@ -117,16 +124,22 @@ regression boundaries:
 
 ```sh
 ./Tests/run-stage1-provider-neutral-tests.sh
+./Tests/run-stage2-custom-map-import-tests.sh
+./Tests/run-stage2c-custom-map-import-ux-tests.sh
+./Tests/run-stage3-generic-lifecycle-tests.sh
 ./Tests/run-stage41-acquisition-tests.sh
 ./Tests/run-stage42-installation-tests.sh
 ./Tests/run-stage45-map-selection-tests.sh
 ./Tests/run-stage53-safe-update-tests.sh
 ```
 
-These checks validate the provider-neutral catalog and acquisition seams while
-preserving the existing Freizeitkarte path. They do not claim OpenTopoMap
-installation, custom `.img` import, external-map removal, web/API or `/admin`
-implementation, or real-device map visibility.
+These checks validate the provider-neutral catalog and acquisition seams,
+custom `.img` staging/validation, compact custom-import presentation and
+confirmation, generic provider/custom inventory grouping, optional artifact
+storage planning, and the existing Freizeitkarte path. They do not claim
+OpenTopoMap installation, custom-map visibility on real hardware, or web/API
+or `/admin` implementation. The external-map safety tests cover only the
+local one-file Remove boundary; they are not hardware evidence.
 
 To run the explicit developer-only Write Test after connecting the validated
 Garmin fēnix 8 and closing other Garmin/MTP applications:

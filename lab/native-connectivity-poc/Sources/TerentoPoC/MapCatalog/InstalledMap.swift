@@ -337,7 +337,11 @@ struct GarminMapScanner: Sendable {
                         sizeBytes: file.sizeBytes,
                         sourceFile: installedFile,
                         metadataStatus: .parsed,
-                        managementState: .unknown
+                        managementState: MapOwnershipMatcher().managementState(
+                            for: installedFile,
+                            metadata: metadata,
+                            records: ownershipRecords
+                        )
                     )
                 )
                 continue

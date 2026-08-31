@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 enum LocalInstallStep: String, CaseIterable, Identifiable {
     case choose = "Choose"
@@ -36,9 +37,13 @@ struct ConnectScreen: View {
     @State private var selectedInstallationPlan: InstallationPlan?
     @State private var availableMapsExpanded = true
     @State private var otherMapsExpanded = false
-    @State private var freizeitkarteMapsExpanded = true
+    @State private var expandedProviderMapGroups: Set<String> = ["freizeitkarte"]
+    @State private var customMapImportExpanded = false
+    @State private var customMapImportDidContinue = false
     @State private var updatePrompt: TerentoAppUpdateManifest?
     @State private var mapSearchText = ""
+    @State private var isShowingCustomMapImporter = false
+    @State private var customMapDropTargeted = false
     @FocusState private var mapSearchFieldFocused: Bool
     @State private var resolvedDeviceAsset = ResolvedDeviceAsset.fallback
     @State private var privacyActionMessage: String?
@@ -77,19 +82,42 @@ struct ConnectScreen: View {
         mapEngine.mapSelectionItems
     }
 
+    private var providerMapSelectionItems: [MapSelectionItem] {
+        mapSelectionItems.filter { $0.package.sourceKind == .provider }
+    }
+
+    private var customMapSelectionItems: [MapSelectionItem] {
+        mapSelectionItems.filter { $0.package.sourceKind == .custom }
+    }
+
     private var availableSelectionItems: [MapSelectionItem] {
-        MapSelectionPresentationModel.available(mapSelectionItems, query: "")
+        MapSelectionPresentationModel.available(providerMapSelectionItems, query: "")
     }
 
     private var filteredAvailableSelectionItems: [MapSelectionItem] {
         MapSelectionPresentationModel.available(
-            mapSelectionItems,
+            providerMapSelectionItems,
             query: mapSearchText
         )
     }
 
+    private var customMapImportIsBusy: Bool {
+        mapEngine.customMapImportState == .validating
+    }
+
+    private var planContainsOnlyCustomMaps: Bool {
+        guard let plan = selectedInstallationPlan,
+              !plan.installItems.isEmpty else {
+            return false
+        }
+        return plan.installItems.allSatisfy { $0.package.sourceKind == .custom }
+    }
+
     private var currentInstallationPlan: InstallationPlan? {
-        mapEngine.installationPlan(for: selectedMapIDs)
+        guard mapEngine.customMapImportReadyForInstallation else {
+            return nil
+        }
+        return mapEngine.installationPlan(for: selectedMapIDs)
     }
 
     private var installationFlowHasStarted: Bool {
@@ -191,6 +219,14 @@ struct ConnectScreen: View {
         }
         .onChange(of: mapEngine.state) { newState in
             updatePresenceMonitoring(for: newState)
+        }
+        .onChange(of: mapEngine.customMapImportState) { _ in
+            updatePresenceMonitoring(for: mapEngine.state)
+        }
+        .onChange(of: mapEngine.customMapImportCandidate?.id) { candidateID in
+            guard let candidateID else { return }
+            customMapImportExpanded = true
+            selectedMapIDs.insert(candidateID)
         }
         .onChange(of: mapSelectionItems) { items in
             selectedMapIDs = MapSelectionPresentationModel.validSelectionIDs(
@@ -308,6 +344,7 @@ struct ConnectScreen: View {
 
         if section == .manageMaps {
             otherMapsExpanded = false
+            expandedProviderMapGroups.insert("freizeitkarte")
         }
 
         selectedSection = section
@@ -320,12 +357,7 @@ struct ConnectScreen: View {
     }
 
     private func updatePresenceMonitoring(for mapState: MapEngineState) {
-        let mapWorkIsBusy = switch mapState {
-        case .loadingCatalog, .scanning, .acquiringArtifact, .preparingInstallation, .installing:
-            true
-        case .idle, .scanned, .failed:
-            false
-        }
+        let mapWorkIsBusy = mapEngine.isBusy || mapState == .loadingCatalog || mapState == .scanning
         let installationFlowIsActive = InstallationFlowPresentation.isActive(
             mapEngine.installationPhase
         )
@@ -866,29 +898,24 @@ struct ConnectScreen: View {
             }
 
             if let lifecycleInventory = mapEngine.mapLifecycleInventory() {
-                let hasManagedMaps = !lifecycleInventory.freizeitkarte.isEmpty
+                let hasProviderMaps = !lifecycleInventory.providerGroups.isEmpty
 
-                if hasManagedMaps {
+                ForEach(Array(lifecycleInventory.providerGroups.enumerated()), id: \.element.id) { index, group in
                     TerentoMapSection(
-                        title: "Freizeitkarte",
-                        count: lifecycleInventory.freizeitkarte.count,
-                        isExpanded: $freizeitkarteMapsExpanded
+                        title: group.title,
+                        count: group.items.count,
+                        isExpanded: providerGroupExpansionBinding(for: group.id)
                     ) {
-                        ForEach(lifecycleInventory.freizeitkarte) { item in
-                            ManageMapRow(
-                                item: item,
-                                availability: lifecycleViewModel.availability(for: item),
-                                operation: lifecycleViewModel.operation(for: item.id),
-                                isLifecycleBusy: mapManagementActionsBusy,
-                                onBackup: { lifecycleViewModel.requestBackup(itemID: item.id) },
-                                onTransferOwnership: { lifecycleViewModel.requestTransferOwnership(itemID: item.id) },
-                                onRecoverOwnership: { lifecycleViewModel.requestRecoverOwnership(itemID: item.id) },
-                                onRemove: { lifecycleViewModel.requestRemove(itemID: item.id) },
-                                onUpdate: { lifecycleViewModel.requestUpdate(itemID: item.id) }
-                            )
+                        ForEach(group.items) { item in
+                            managedMapRow(item)
                         }
                     }
-                    .padding(.top, TerentoPageLayout.firstSectionTopPadding)
+                    .padding(
+                        .top,
+                        index == 0
+                            ? TerentoPageLayout.firstSectionTopPadding
+                            : TerentoPageLayout.sectionSpacing
+                    )
                 }
 
                 if !lifecycleInventory.otherMaps.isEmpty {
@@ -913,7 +940,7 @@ struct ConnectScreen: View {
                     }
                     .padding(
                         .top,
-                        hasManagedMaps
+                        hasProviderMaps
                             ? TerentoPageLayout.sectionSpacing
                             : TerentoPageLayout.firstSectionTopPadding
                     )
@@ -964,33 +991,16 @@ struct ConnectScreen: View {
                 }
             )
         }
-        .confirmationDialog(
-            lifecycleViewModel.confirmationTitle,
-            isPresented: Binding(
-                get: { lifecycleViewModel.pendingConfirmation != nil },
-                set: { isPresented in
-                    if !isPresented {
-                        lifecycleViewModel.cancelPendingAction()
-                    }
-                }
-            ),
-            titleVisibility: .visible
-        ) {
-            Button(
-                lifecycleViewModel.pendingConfirmation?.action == .remove
-                    ? "Remove map"
-                    : "Update map",
-                role: lifecycleViewModel.pendingConfirmation?.action == .remove
-                    ? .destructive
-                    : nil
-            ) {
-                lifecycleViewModel.confirmPendingAction()
-            }
-            Button("Cancel", role: .cancel) {
-                lifecycleViewModel.cancelPendingAction()
-            }
-        } message: {
-            Text(lifecycleViewModel.confirmationMessage)
+        .sheet(item: $lifecycleViewModel.pendingConfirmation) { confirmation in
+            MapLifecycleConfirmationSheet(
+                title: confirmation.action == .remove ? "Remove this map?" : "Update this map?",
+                subtitle: lifecycleViewModel.confirmationSubtitle,
+                message: lifecycleViewModel.confirmationMessage,
+                actionTitle: confirmation.action == .remove ? "Remove map" : "Update map",
+                isDestructive: confirmation.action == .remove,
+                onCancel: { lifecycleViewModel.cancelPendingAction() },
+                onConfirm: { lifecycleViewModel.confirmPendingAction() }
+            )
         }
     }
 
@@ -1060,6 +1070,34 @@ struct ConnectScreen: View {
         }
     }
 
+    private func providerGroupExpansionBinding(for providerID: String) -> Binding<Bool> {
+        Binding(
+            get: { expandedProviderMapGroups.contains(providerID) },
+            set: { isExpanded in
+                if isExpanded {
+                    expandedProviderMapGroups.insert(providerID)
+                } else {
+                    expandedProviderMapGroups.remove(providerID)
+                }
+            }
+        )
+    }
+
+    @ViewBuilder
+    private func managedMapRow(_ item: MapLifecycleItem) -> some View {
+        ManageMapRow(
+            item: item,
+            availability: lifecycleViewModel.availability(for: item),
+            operation: lifecycleViewModel.operation(for: item.id),
+            isLifecycleBusy: mapManagementActionsBusy,
+            onBackup: { lifecycleViewModel.requestBackup(itemID: item.id) },
+            onTransferOwnership: { lifecycleViewModel.requestTransferOwnership(itemID: item.id) },
+            onRecoverOwnership: { lifecycleViewModel.requestRecoverOwnership(itemID: item.id) },
+            onRemove: { lifecycleViewModel.requestRemove(itemID: item.id) },
+            onUpdate: { lifecycleViewModel.requestUpdate(itemID: item.id) }
+        )
+    }
+
     private func deviceVariantLine(_ snapshot: DeviceSnapshot) -> String {
         ConnectedDeviceSubtitleFormatter.format(
             identity: identity ?? GarminDeviceIdentityAdapter().makeIdentity(from: snapshot),
@@ -1113,7 +1151,7 @@ struct ConnectScreen: View {
                             note: "Map information will appear here when your watch is ready."
                         )
                         .padding(.top, 18)
-                    } else if mapSelectionItems.isEmpty {
+                    } else if mapEngine.state != .scanned {
                         MapStatusRow(
                             title: "Maps are not ready yet",
                             detail: "Connect your Garmin watch first",
@@ -1162,49 +1200,56 @@ struct ConnectScreen: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             } mapRegion: {
-                if mapEngine.state == .scanned, !mapSelectionItems.isEmpty, availableMapsExpanded {
-                    if filteredAvailableSelectionItems.isEmpty {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text(mapSearchText.isEmpty
-                                ? "No new Freizeitkarte maps are available to install."
-                                : "No maps match your search.")
-                                .font(.terentoUI(size: 13, weight: .medium))
-                                .foregroundStyle(TerentoColors.secondaryText)
+                if mapEngine.state == .scanned {
+                    VStack(alignment: .leading, spacing: 0) {
+                        if availableMapsExpanded {
+                            if providerMapSelectionItems.isEmpty || filteredAvailableSelectionItems.isEmpty {
+                                VStack(alignment: .leading, spacing: 10) {
+                                    Text(mapSearchText.isEmpty
+                                        ? "No new Freizeitkarte maps are available to install."
+                                        : "No maps match your search.")
+                                        .font(.terentoUI(size: 13, weight: .medium))
+                                        .foregroundStyle(TerentoColors.secondaryText)
 
-                            if mapSearchText.isEmpty {
-                                Button("Manage maps") {
-                                    navigate(to: .manageMaps)
+                                    if mapSearchText.isEmpty {
+                                        Button("Manage maps") {
+                                            navigate(to: .manageMaps)
+                                        }
+                                        .buttonStyle(.borderless)
+                                        .font(.terentoUI(size: 13, weight: .semibold))
+                                        .foregroundStyle(TerentoColors.interactive)
+                                        .accessibilityHint("Opens installed map management.")
+                                    }
                                 }
-                                .buttonStyle(.borderless)
-                                .font(.terentoUI(size: 13, weight: .semibold))
-                                .foregroundStyle(TerentoColors.interactive)
-                                .accessibilityHint("Opens installed map management.")
+                                .frame(maxWidth: .infinity, alignment: .topLeading)
+                                .padding(.top, 10)
+                            } else {
+                                TerentoBoundedMapSelectionRegion {
+                                    LazyVStack(spacing: 0) {
+                                        ForEach(filteredAvailableSelectionItems) { item in
+                                            MapSelectionRow(
+                                                item: item,
+                                                isSelected: Binding(
+                                                    get: { selectedMapIDs.contains(item.id) },
+                                                    set: { selected in
+                                                        guard item.isSelectable else { return }
+                                                        if selected {
+                                                            selectedMapIDs.insert(item.id)
+                                                        } else {
+                                                            selectedMapIDs.remove(item.id)
+                                                        }
+                                                    }
+                                                ),
+                                                isAvailable: true
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
-                        .padding(.top, 10)
-                    } else {
-                        TerentoBoundedMapSelectionRegion {
-                            LazyVStack(spacing: 0) {
-                                ForEach(filteredAvailableSelectionItems) { item in
-                                    MapSelectionRow(
-                                        item: item,
-                                        isSelected: Binding(
-                                            get: { selectedMapIDs.contains(item.id) },
-                                            set: { selected in
-                                                guard item.isSelectable else { return }
-                                                if selected {
-                                                    selectedMapIDs.insert(item.id)
-                                                } else {
-                                                    selectedMapIDs.remove(item.id)
-                                                }
-                                            }
-                                        ),
-                                        isAvailable: true
-                                    )
-                                }
-                            }
-                        }
+
+                        customMapImportPanel
+                            .padding(.top, providerMapSelectionItems.isEmpty ? 12 : 22)
                     }
                 } else {
                     Color.clear
@@ -1241,6 +1286,241 @@ struct ConnectScreen: View {
                 .disabled(!(currentInstallationPlan?.canContinue ?? false))
             }
         }
+        .fileImporter(
+            isPresented: $isShowingCustomMapImporter,
+            allowedContentTypes: [UTType(filenameExtension: "img") ?? .data],
+            allowsMultipleSelection: false
+        ) { result in
+            guard case let .success(urls) = result,
+                  let url = urls.first else {
+                return
+            }
+            mapEngine.importCustomMap(fileURL: url)
+        }
+        .alert(
+            item: Binding(
+                get: { mapEngine.customMapImportWarning },
+                set: { _ in mapEngine.dismissCustomMapImportWarning() }
+            )
+        ) { warning in
+            Alert(
+                title: Text("File could not be confirmed as a map"),
+                message: Text(warning.message),
+                dismissButton: .default(Text("Choose another file")) {
+                    mapEngine.dismissCustomMapImportWarning()
+                }
+            )
+        }
+        .sheet(
+            item: Binding(
+                get: { mapEngine.customMapImportRisk },
+                set: { _ in mapEngine.dismissCustomMapImportRisk() }
+            ),
+            onDismiss: {
+                if !customMapImportDidContinue {
+                    mapEngine.clearCustomMapImport()
+                }
+                customMapImportDidContinue = false
+            }
+        ) { risk in
+            CustomMapImportConfirmationSheet(
+                filename: risk.filename,
+                onCancel: {
+                    mapEngine.clearCustomMapImport()
+                },
+                onContinue: {
+                    customMapImportDidContinue = true
+                    mapEngine.acknowledgeCustomMapImportRisk()
+                }
+            )
+        }
+    }
+
+    private var customMapImportPanel: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                customMapImportExpanded.toggle()
+            } label: {
+                HStack(alignment: .center, spacing: 10) {
+                    Image(systemName: customMapImportExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                        .frame(width: 14, height: 18)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Import a map from Mac")
+                            .font(.terentoUI(size: 15, weight: .semibold))
+                            .foregroundStyle(TerentoColors.graphite)
+
+                        Text("Install a compatible Garmin .img file from this Mac.")
+                            .font(.terentoUI(size: 12, weight: .medium))
+                            .foregroundStyle(TerentoColors.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 8)
+                }
+                .frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 14)
+            .accessibilityLabel("Import a map from Mac")
+            .accessibilityValue(customMapImportExpanded ? "Expanded" : "Collapsed")
+            .accessibilityHint("Shows or hides the local Garmin IMG import controls.")
+
+            if customMapImportExpanded {
+                VStack(alignment: .leading, spacing: 10) {
+                    if let candidate = mapEngine.customMapImportCandidate {
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(TerentoColors.lichenDark)
+                                .accessibilityHidden(true)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Custom map")
+                                    .font(.terentoUI(size: 14, weight: .semibold))
+                                    .foregroundStyle(TerentoColors.graphite)
+                                Text("\(candidate.originalFilename) · \(formatBytes(candidate.sizeBytes))")
+                                    .font(.terentoUI(size: 12, weight: .medium))
+                                    .foregroundStyle(TerentoColors.secondaryText)
+                                Text("Map structure checked · source is not verified.")
+                                    .font(.terentoUI(size: 12, weight: .medium))
+                                    .foregroundStyle(TerentoColors.secondaryText)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+
+                            Spacer(minLength: 8)
+
+                            Button("Remove") {
+                                mapEngine.clearCustomMapImport()
+                            }
+                            .buttonStyle(.borderless)
+                            .font(.terentoUI(size: 13, weight: .semibold))
+                            .foregroundStyle(TerentoColors.interactive)
+                            .disabled(mapEngine.isBusy)
+                            .accessibilityLabel("Remove staged custom map")
+                            .accessibilityHint("Removes the local staged file. It does not change the Garmin watch.")
+                        }
+                        .padding(10)
+                        .background(TerentoColors.canvas, in: RoundedRectangle(cornerRadius: 9))
+                    } else {
+                        customMapDropZone
+                    }
+
+                    Text("Processed locally. The file is not uploaded.")
+                        .font(.terentoUI(size: 11, weight: .medium))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if let errorMessage = mapEngine.customMapImportErrorMessage,
+                       mapEngine.customMapImportCandidate == nil {
+                        Text(errorMessage)
+                            .font(.terentoUI(size: 12, weight: .medium))
+                            .foregroundStyle(TerentoColors.error)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.bottom, 14)
+            }
+        }
+        .background(TerentoColors.surface, in: RoundedRectangle(cornerRadius: 12))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(TerentoColors.border.opacity(0.72), lineWidth: 1)
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    private var customMapDropZone: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: customMapDropTargeted ? "arrow.down.doc.fill" : "arrow.down.doc")
+                .font(.system(size: 19, weight: .medium))
+                .foregroundStyle(TerentoColors.interactive)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(customMapImportIsBusy ? "Checking map file…" : "Drop a .img file here")
+                    .font(.terentoUI(size: 13, weight: .semibold))
+                    .foregroundStyle(TerentoColors.graphite)
+
+                if customMapImportIsBusy {
+                    Text("Checking it before installation")
+                        .font(.terentoUI(size: 11, weight: .medium))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            if !customMapImportIsBusy {
+                Button("Browse") {
+                    isShowingCustomMapImporter = true
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(mapEngine.isBusy)
+                .accessibilityHint("Opens a file picker for a Garmin IMG map file.")
+            } else {
+                ProgressView()
+                    .controlSize(.small)
+                    .accessibilityLabel("Checking map file")
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 72, maxHeight: 80, alignment: .leading)
+        .padding(.horizontal, 14)
+        .background(
+            customMapDropTargeted
+                ? TerentoColors.interactive.opacity(0.10)
+                : TerentoColors.canvas,
+            in: RoundedRectangle(cornerRadius: 9)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 9)
+                .stroke(
+                    customMapDropTargeted
+                        ? TerentoColors.interactive
+                        : TerentoColors.border,
+                    style: StrokeStyle(lineWidth: 1, dash: [6, 4])
+                )
+        }
+        .contentShape(Rectangle())
+        .onDrop(
+            of: [UTType.fileURL.identifier],
+            isTargeted: $customMapDropTargeted,
+            perform: loadDroppedCustomMap
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Drop a Garmin IMG map file or browse for one")
+        .accessibilityHint("The selected file will be checked locally before it can be installed.")
+    }
+
+    private func loadDroppedCustomMap(_ providers: [NSItemProvider]) -> Bool {
+        guard let provider = providers.first else { return false }
+
+        provider.loadItem(
+            forTypeIdentifier: UTType.fileURL.identifier,
+            options: nil
+        ) { item, _ in
+            let url: URL?
+            if let itemURL = item as? URL {
+                url = itemURL
+            } else if let itemURL = item as? NSURL {
+                url = itemURL as URL
+            } else if let data = item as? Data {
+                url = URL(dataRepresentation: data, relativeTo: nil)
+            } else {
+                url = nil
+            }
+
+            guard let url else { return }
+            DispatchQueue.main.async {
+                mapEngine.importCustomMap(fileURL: url)
+            }
+        }
+        return true
     }
 
     private var unifiedMapInventory: UnifiedMapInventory? {
@@ -1306,9 +1586,6 @@ struct ConnectScreen: View {
 
     private func reviewInstallContent(_ plan: InstallationPlan) -> some View {
         let supportedInstallFlow = !plan.installItems.isEmpty
-            && plan.installItems.allSatisfy {
-                MapIdentity.normalizeProvider($0.package.providerId) == "freizeitkarte"
-            }
         let selectedMapListHeight = min(
             CGFloat(220),
             max(CGFloat(52), CGFloat(plan.selectedItems.count) * 48 + 4)
@@ -1323,7 +1600,9 @@ struct ConnectScreen: View {
                 || lifecycleViewModel.isBusy
         )
 
-        return TerentoInstallFooterPageShell {
+        return TerentoInstallFooterPageShell(
+            bodyScrolls: mapEngine.installationPhase == .failed
+        ) {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Ready to install")
                     .font(.terentoHeading(size: 42, weight: .semibold))
@@ -1358,6 +1637,7 @@ struct ConnectScreen: View {
                 }
                 .padding(.vertical, 2)
             }
+            .scrollIndicators(.hidden)
             .frame(height: selectedMapListHeight)
             .padding(.top, 8)
             .accessibilityLabel("Selected maps list")
@@ -1432,7 +1712,9 @@ struct ConnectScreen: View {
             max(CGFloat(48), CGFloat(plan.selectedItems.count) * 44)
         )
 
-        return TerentoInstallFooterPageShell {
+        return TerentoInstallFooterPageShell(
+            bodyScrolls: mapEngine.installationPhase == .failed
+        ) {
             VStack(alignment: .leading, spacing: 0) {
                 if mapEngine.installationPhase == .failed {
                     Text("Installation stopped")
@@ -1467,6 +1749,7 @@ struct ConnectScreen: View {
                         }
                     }
                 }
+                .scrollIndicators(.hidden)
                 .frame(height: selectedMapListHeight)
                 .padding(.top, 14)
                 .accessibilityLabel("Maps being installed")
@@ -1563,7 +1846,9 @@ struct ConnectScreen: View {
 
             installationStepRow(
                 title: "Preparing",
-                detail: "Verifying files and preparing the Garmin image",
+                detail: planContainsOnlyCustomMaps
+                    ? "Checking the custom IMG and preparing the Garmin image"
+                    : "Verifying files and preparing the Garmin image",
                 state: installationStepState(for: .preparing),
                 progress: mapEngine.installationPhase == .preparing
                     && mapEngine.installationPhaseProgressIsMeasured
@@ -1738,10 +2023,15 @@ struct ConnectScreen: View {
 
     private func installationStepState(for phase: InstallationProcessPhase) -> InstallationStepState {
         let current = mapEngine.installationPhase
+        let customOnly = planContainsOnlyCustomMaps
+
+        if phase == .downloading, customOnly {
+            return .complete
+        }
 
         if current == .failed {
             if mapEngine.acquisitionState == .failed {
-                return phase == .downloading ? .failed : .pending
+                return phase == (customOnly ? .preparing : .downloading) ? .failed : .pending
             }
 
             if let result = mapEngine.installationResult {
@@ -1853,6 +2143,9 @@ struct ConnectScreen: View {
     }
 
     private var downloadStepDetail: String {
+        if planContainsOnlyCustomMaps {
+            return "Custom map is already on this Mac"
+        }
         if mapEngine.acquisitionState == .downloading {
             return "Downloading the map package to this Mac"
         }
@@ -2275,6 +2568,156 @@ private struct AppUpdatePromptView: View {
     }
 }
 
+private struct CustomMapImportConfirmationSheet: View {
+    let filename: String
+    let onCancel: () -> Void
+    let onContinue: () -> Void
+
+    private var safeFilename: String {
+        let basename = URL(fileURLWithPath: filename).lastPathComponent
+        return basename.isEmpty ? "Selected map file" : basename
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(TerentoColors.warning)
+                    .accessibilityLabel("Warning")
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Review imported map")
+                        .font(.terentoHeading(size: 20, weight: .semibold))
+                        .foregroundStyle(TerentoColors.graphite)
+
+                    Text(safeFilename)
+                        .font(.terentoUI(size: 13, weight: .semibold))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            Text("Terento detected a Garmin .img map file, but can’t verify its source or contents. Continue only if you trust where the file came from.")
+                .font(.terentoUI(size: 14, weight: .regular))
+                .foregroundStyle(TerentoColors.graphite)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text("Terento does not execute or upload imported map files.")
+                .font(.terentoUI(size: 12, weight: .medium))
+                .foregroundStyle(TerentoColors.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 10) {
+                Spacer(minLength: 0)
+
+                Button("Cancel", action: onCancel)
+                    .buttonStyle(.plain)
+                    .font(.terentoUI(size: 14, weight: .semibold))
+                    .foregroundStyle(TerentoColors.graphite)
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: 38)
+                    .background(TerentoColors.canvas, in: RoundedRectangle(cornerRadius: 8))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(TerentoColors.border, lineWidth: 1)
+                    }
+                    .keyboardShortcut(.cancelAction)
+
+                Button("Continue import", action: onContinue)
+                    .buttonStyle(.plain)
+                    .font(.terentoUI(size: 14, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: 38)
+                    .background(TerentoColors.interactive, in: RoundedRectangle(cornerRadius: 8))
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(24)
+        .frame(width: 430)
+        .background(TerentoColors.canvas)
+        .preferredColorScheme(.light)
+    }
+}
+
+private struct MapLifecycleConfirmationSheet: View {
+    let title: String
+    let subtitle: String
+    let message: String
+    let actionTitle: String
+    let isDestructive: Bool
+    let onCancel: () -> Void
+    let onConfirm: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: isDestructive ? "trash" : "arrow.triangle.2.circlepath")
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(isDestructive ? TerentoColors.error : TerentoColors.interactive)
+                    .frame(width: 24, height: 24)
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(title)
+                        .font(.terentoHeading(size: 20, weight: .semibold))
+                        .foregroundStyle(TerentoColors.graphite)
+
+                    Text(subtitle)
+                        .font(.terentoUI(size: 13, weight: .semibold))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                        .lineLimit(2)
+                }
+            }
+
+            Text(message)
+                .font(.terentoUI(size: 14, weight: .regular))
+                .foregroundStyle(TerentoColors.graphite)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(isDestructive
+                ? "Other maps will be left untouched. No local backup is created."
+                : "Terento will keep the current map until the new one is verified.")
+                .font(.terentoUI(size: 12, weight: .medium))
+                .foregroundStyle(TerentoColors.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 10) {
+                Spacer(minLength: 0)
+
+                Button("Cancel", action: onCancel)
+                    .buttonStyle(.plain)
+                    .font(.terentoUI(size: 14, weight: .semibold))
+                    .foregroundStyle(TerentoColors.graphite)
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: 38)
+                    .background(TerentoColors.canvas, in: RoundedRectangle(cornerRadius: 8))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(TerentoColors.border, lineWidth: 1)
+                    }
+                    .keyboardShortcut(.cancelAction)
+
+                Button(actionTitle, action: onConfirm)
+                    .buttonStyle(.plain)
+                    .font(.terentoUI(size: 14, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: 38)
+                    .background(
+                        isDestructive ? TerentoColors.error : TerentoColors.interactive,
+                        in: RoundedRectangle(cornerRadius: 8)
+                    )
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(24)
+        .frame(width: 430)
+        .background(TerentoColors.canvas)
+        .preferredColorScheme(.light)
+    }
+}
+
 private struct SidebarConnectionStatus: View {
     let state: DeviceConnectionState
     let canEject: Bool
@@ -2660,6 +3103,7 @@ private struct TerentoFooterPageShell<Content: View, Footer: View>: View {
                     alignment: .center
                 )
                 .frame(maxWidth: .infinity, alignment: .topLeading)
+                .padding(.top, 18)
                 .padding(.horizontal, TerentoPageLayout.horizontalPadding)
                 .padding(.bottom, bottomPadding)
         }
@@ -3097,8 +3541,7 @@ private struct ManageMapRow: View {
     var body: some View {
         TerentoMapRow(
             title: item.title,
-            detail: operation?.phase == .completed ? "Action complete" : manageDetail,
-            note: operation?.message ?? availability.reason,
+            detail: manageDetail,
             contentSpacing: 9,
             rowVerticalPadding: 10
         ) {
@@ -3120,7 +3563,18 @@ private struct ManageMapRow: View {
     }
 
     private var manageDetail: String {
-        availability.status == "Updates are not offered for this map"
+        if let operation {
+            switch operation.phase {
+            case .completed:
+                return "Action complete"
+            case .failed:
+                return operation.message
+            case .idle, .awaitingConfirmation, .backingUp, .removing, .updating, .verifying:
+                break
+            }
+        }
+
+        return availability.status == "Updates are not offered for this map"
             ? availability.status
             : item.manageDetailLabel
     }
@@ -3266,6 +3720,10 @@ private struct ManageActionButton: View {
 private struct ManageOperationProgress: View {
     let operation: MapLifecycleOperationState
 
+    private var isRemoval: Bool {
+        operation.action == .remove
+    }
+
     private var progress: SafeUpdateProgress? {
         guard let progress = operation.progress,
               progress.totalBytes > 0 else {
@@ -3287,6 +3745,10 @@ private struct ManageOperationProgress: View {
                     Text("\(Int(progress.fractionCompleted * 100))%")
                         .font(.terentoUI(size: 13, weight: .semibold))
                         .foregroundStyle(TerentoColors.graphite)
+                } else if isRemoval {
+                    Text("0%")
+                        .font(.terentoUI(size: 13, weight: .semibold))
+                        .foregroundStyle(TerentoColors.graphite)
                 }
             }
 
@@ -3296,14 +3758,31 @@ private struct ManageOperationProgress: View {
                     .tint(TerentoColors.interactive)
                     .frame(height: InstallationTimelineLayout.progressBarHeight)
 
-                HStack(spacing: 8) {
-                    Text("\(formatBytes(progress.bytesCompleted)) of \(formatBytes(progress.totalBytes))")
-                    if progress.bytesPerSecond > 0 {
-                        Text("\(formatBytesPerSecond(progress.bytesPerSecond))/s")
+                if isRemoval {
+                    Text("Verifying map removal")
+                        .font(.terentoUI(size: 10, weight: .medium))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                        .lineLimit(1)
+                } else {
+                    HStack(spacing: 8) {
+                        Text("\(formatBytes(progress.bytesCompleted)) of \(formatBytes(progress.totalBytes))")
+                        if progress.bytesPerSecond > 0 {
+                            Text("\(formatBytesPerSecond(progress.bytesPerSecond))/s")
+                        }
                     }
+                    .font(.terentoUI(size: 10, weight: .medium))
+                    .foregroundStyle(TerentoColors.secondaryText)
                 }
-                .font(.terentoUI(size: 10, weight: .medium))
-                .foregroundStyle(TerentoColors.secondaryText)
+            } else if isRemoval {
+                ProgressView(value: 0)
+                    .progressViewStyle(.linear)
+                    .tint(TerentoColors.interactive)
+                    .frame(height: InstallationTimelineLayout.progressBarHeight)
+
+                Text("Verifying map removal")
+                    .font(.terentoUI(size: 10, weight: .medium))
+                    .foregroundStyle(TerentoColors.secondaryText)
+                    .lineLimit(1)
             } else {
                 ProgressView()
                     .progressViewStyle(.linear)
@@ -3318,7 +3797,12 @@ private struct ManageOperationProgress: View {
     }
 
     private var accessibilityValue: String {
-        guard let progress else { return "In progress" }
+        guard let progress else {
+            return isRemoval ? "0 percent" : "In progress"
+        }
+        if isRemoval {
+            return "\(Int(progress.fractionCompleted * 100)) percent"
+        }
         var value = "\(Int(progress.fractionCompleted * 100)) percent, "
             + "\(formatBytes(progress.bytesCompleted)) of \(formatBytes(progress.totalBytes))"
         if progress.bytesPerSecond > 0 {
@@ -3600,6 +4084,10 @@ struct MapSelectionRow: View {
     private var detail: String {
         if let status = item.acquisitionAvailability.shortStatus {
             return status
+        }
+
+        if item.package.sourceKind == .custom {
+            return "From this Mac"
         }
 
         if isAlreadyInstalledSearchResult {

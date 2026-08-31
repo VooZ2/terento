@@ -458,6 +458,7 @@ struct MapPackageAcquisitionPolicyResolver: Sendable {
 }
 
 struct MapPackage: Codable, Equatable, Identifiable, Sendable {
+    let sourceKind: MapSourceKind
     let id: String
     let providerId: String
     let regionId: String
@@ -487,6 +488,9 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
     let capabilities: [String]
     let releaseMetadata: MapReleaseMetadata?
     let artifacts: [MapArtifact]
+    /// Distinguishes explicit artifact metadata from the compatibility main
+    /// artifact synthesized for legacy package records.
+    let hasExplicitArtifactCollection: Bool
 
     init(
         id: String,
@@ -507,8 +511,10 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         tags: [String] = [],
         capabilities: [String] = [],
         releaseMetadata: MapReleaseMetadata? = nil,
-        artifacts: [MapArtifact]? = nil
+        artifacts: [MapArtifact]? = nil,
+        sourceKind: MapSourceKind = .provider
     ) {
+        self.sourceKind = sourceKind
         self.id = id
         self.providerId = providerId
         self.regionId = regionId
@@ -531,9 +537,11 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         self.tags = tags
         self.capabilities = capabilities
         self.releaseMetadata = releaseMetadata
+        self.hasExplicitArtifactCollection = artifacts != nil
         self.artifacts = artifacts ?? [
             MapArtifact(
                 id: "\(id)-main",
+                source: sourceKind,
                 kind: .main,
                 required: true,
                 providerId: providerId,
@@ -567,6 +575,32 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         artifacts.filter { !$0.required }
     }
 
+    var defaultArtifactPlan: MapArtifactPlan {
+        if hasExplicitArtifactCollection || installSizeBytes != nil {
+            return MapArtifactPlan(packageID: id, artifacts: artifacts)
+        }
+
+        // `sizeBytes` is historically the archive/download size. A legacy
+        // record with no measured install size must remain unresolved even
+        // though its synthesized compatibility artifact carries that value.
+        return MapArtifactPlan(
+            packageID: id,
+            artifacts: artifacts.map { artifact in
+                artifact.kind == .main ? artifact.withSize(nil) : artifact
+            }
+        )
+    }
+
+    func artifactPlan(
+        includingOptionalArtifactIDs optionalArtifactIDs: Set<String> = []
+    ) -> MapArtifactPlan {
+        MapArtifactPlan(
+            packageID: id,
+            artifacts: artifacts,
+            includingOptionalArtifactIDs: optionalArtifactIDs
+        )
+    }
+
     var hasUsableMainArtifact: Bool {
         guard let mainArtifact else { return false }
         return mainArtifact.sourceURL != nil || mainArtifact.localURL != nil
@@ -592,7 +626,8 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
             tags: tags,
             capabilities: capabilities,
             releaseMetadata: releaseMetadata,
-            artifacts: artifacts
+            artifacts: artifacts,
+            sourceKind: sourceKind
         )
     }
 
@@ -616,10 +651,13 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         case capabilities
         case releaseMetadata
         case artifacts
+        case sourceKind
+        case hasExplicitArtifactCollection
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        sourceKind = try container.decodeIfPresent(MapSourceKind.self, forKey: .sourceKind) ?? .provider
         id = try container.decode(String.self, forKey: .id)
         providerId = try container.decode(String.self, forKey: .providerId)
         regionId = try container.decode(String.self, forKey: .regionId)
@@ -669,10 +707,16 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
             MapReleaseMetadata.self,
             forKey: .releaseMetadata
         )
-        artifacts = try container.decodeIfPresent([MapArtifact].self, forKey: .artifacts)
+        let decodedArtifacts = try container.decodeIfPresent([MapArtifact].self, forKey: .artifacts)
+        hasExplicitArtifactCollection = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .hasExplicitArtifactCollection
+        ) ?? (decodedArtifacts != nil)
+        artifacts = decodedArtifacts
             ?? [
                 MapArtifact(
                     id: "\(id)-main",
+                    source: sourceKind,
                     kind: .main,
                     required: true,
                     providerId: providerId,

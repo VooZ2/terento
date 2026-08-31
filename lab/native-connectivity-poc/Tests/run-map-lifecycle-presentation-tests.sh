@@ -13,6 +13,7 @@ swiftc \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapVersion.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapIdentity.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapModels.swift" \
+    "$project_root/Sources/TerentoPoC/MapCatalog/MapArtifactPlanning.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/InstalledMap.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapOwnership.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapComparison.swift" \
@@ -35,8 +36,8 @@ if grep -Eiq 'terento_mtp_|SendObject|DeleteObject|MoveObject|RenameObject' \
     exit 1
 fi
 
-if ! grep -Fq 'confirmationDialog' "$project_root/Sources/TerentoPoC/Views/ConnectScreen.swift" \
-    || ! grep -Fq '.destructive' "$project_root/Sources/TerentoPoC/Views/ConnectScreen.swift" \
+if ! grep -Fq '.sheet(item: $lifecycleViewModel.pendingConfirmation)' "$project_root/Sources/TerentoPoC/Views/ConnectScreen.swift" \
+    || ! grep -Fq 'isDestructive: confirmation.action == .remove' "$project_root/Sources/TerentoPoC/Views/ConnectScreen.swift" \
     || ! grep -Fq '.accessibilityLabel(operation.message)' "$project_root/Sources/TerentoPoC/Views/ConnectScreen.swift" \
     || ! grep -Fq 'lifecycleEpoch' "$project_root/Sources/TerentoPoC/Installation/MapLifecycleViewModel.swift"; then
     print -u2 "FAIL: lifecycle UI safety/accessibility hooks are incomplete"

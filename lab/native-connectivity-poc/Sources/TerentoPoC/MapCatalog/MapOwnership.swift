@@ -26,6 +26,19 @@ struct MapOwnershipMatcher: Sendable {
         metadata: GarminIMGMetadata,
         records: [MapOwnershipRecord]
     ) -> MapManagementState {
+        // Custom IMG files intentionally have no provider/region/version
+        // identity. Exact manifest coordinates still allow their owner state
+        // to be shown and managed without turning a heuristic match into a
+        // destructive authorization grant.
+        if records.contains(where: { entry in
+            MapIdentity.normalizeProvider(entry.providerId) == "custom"
+                && entry.devicePath == file.path
+                && entry.filename == file.filename
+                && entry.sizeBytes == file.sizeBytes
+        }) {
+            return .managedByTerento
+        }
+
         guard let provider = metadata.provider,
               let region = metadata.region,
               let version = metadata.version else {

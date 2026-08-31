@@ -196,7 +196,8 @@ struct MapSelectionPlanner: Sendable {
                     displayName: availability == .withheldCrimea
                         ? "Crimea"
                         : displayNames[package.id] ?? MapDisplayNameNormalizer.normalize(package.name),
-                    installSizeBytes: package.installSizeBytes,
+                    installSizeBytes: package.defaultArtifactPlan.installSizeBytes
+                        ?? package.installSizeBytes,
                     lifecycleAction: action(for: comparison.status),
                     canonicalRegionIdentity: identity,
                     acquisitionAvailability: availability,

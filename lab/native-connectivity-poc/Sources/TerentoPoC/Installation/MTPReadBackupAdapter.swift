@@ -3,6 +3,30 @@ import Foundation
 import LibMTPBridge
 #endif
 
+private final class MTPReadProgressBox: @unchecked Sendable {
+    let callback: @Sendable (TransferProgress) -> Void
+
+    init(callback: @escaping @Sendable (TransferProgress) -> Void) {
+        self.callback = callback
+    }
+}
+
+private func terentoMTPReadProgressCallback(
+    _ sent: UInt64,
+    _ total: UInt64,
+    _ context: UnsafeRawPointer?
+) -> Int32 {
+    guard let context else {
+        return 0
+    }
+
+    let box = Unmanaged<MTPReadProgressBox>
+        .fromOpaque(UnsafeMutableRawPointer(mutating: context))
+        .takeUnretainedValue()
+    box.callback(TransferProgress(bytesTransferred: sent, totalBytes: total))
+    return 0
+}
+
 /// Native read-only adapter for the Stage 5.1 backup boundary.
 ///
 /// The bridge function used here validates the exact MTP object ID and path
@@ -60,21 +84,51 @@ struct MTPReadBackupAdapter: MapLifecycleReadTransport, Sendable {
         var resolvedItemID: UInt32 = 0
         var sizeBytes: UInt64 = 0
         var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
-        let result = withNativeMapOperationProfile(operationProfile) { nativeProfile in
-            file.path.withCString { expectedPath in
-                destinationURL.path.withCString { localPath in
-                    errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
-                        terento_mtp_read_existing_file_to_local(
-                            nativeProfile,
-                            itemID,
-                            expectedPath,
-                            file.sizeBytes,
-                            localPath,
-                            &resolvedItemID,
-                            &sizeBytes,
-                            errorPointer.baseAddress,
-                            errorPointer.count
-                        )
+        let result: Int32
+        if let onProgress {
+            let progressBox = MTPReadProgressBox(callback: onProgress)
+            result = withExtendedLifetime(progressBox) {
+                withNativeMapOperationProfile(operationProfile) { nativeProfile in
+                    file.path.withCString { expectedPath in
+                        destinationURL.path.withCString { localPath in
+                            errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
+                                terento_mtp_read_existing_file_to_local(
+                                    nativeProfile,
+                                    itemID,
+                                    expectedPath,
+                                    file.sizeBytes,
+                                    localPath,
+                                    &resolvedItemID,
+                                    &sizeBytes,
+                                    terentoMTPReadProgressCallback,
+                                    UnsafeRawPointer(Unmanaged.passUnretained(progressBox).toOpaque()),
+                                    errorPointer.baseAddress,
+                                    errorPointer.count
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            result = withNativeMapOperationProfile(operationProfile) { nativeProfile in
+                file.path.withCString { expectedPath in
+                    destinationURL.path.withCString { localPath in
+                        errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
+                            terento_mtp_read_existing_file_to_local(
+                                nativeProfile,
+                                itemID,
+                                expectedPath,
+                                file.sizeBytes,
+                                localPath,
+                                &resolvedItemID,
+                                &sizeBytes,
+                                nil,
+                                nil,
+                                errorPointer.baseAddress,
+                                errorPointer.count
+                            )
+                        }
                     }
                 }
             }

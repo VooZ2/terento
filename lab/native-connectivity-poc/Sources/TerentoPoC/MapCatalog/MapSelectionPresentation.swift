@@ -32,7 +32,9 @@ enum MapSelectionPresentationModel: Sendable {
         }
 
         let recognizedCatalogIDs = Set(
-            inventory.freizeitkarte.compactMap { entry -> String? in
+            inventory.providerGroups
+                .flatMap(\.entries)
+                .compactMap { entry -> String? in
                 guard entry.isInstalled,
                       !entry.installedMaps.isEmpty,
                       entry.installedMaps.allSatisfy({ $0.metadataStatus == .parsed }),
@@ -42,7 +44,7 @@ enum MapSelectionPresentationModel: Sendable {
                 }
 
                 return entry.comparison?.id
-            }
+                }
         )
 
         return installed(items).filter { recognizedCatalogIDs.contains($0.id) }

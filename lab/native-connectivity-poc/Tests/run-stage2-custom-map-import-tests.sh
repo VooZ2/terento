@@ -2,11 +2,11 @@
 set -euo pipefail
 
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
-build_dir="$(mktemp -d "${TMPDIR:-/tmp}/terento-stage42-installation-tests.XXXXXX")"
-binary_path="$build_dir/stage42-installation-tests"
+build_dir="$(mktemp -d "${TMPDIR:-/tmp}/terento-stage2-custom-map-tests.XXXXXX")"
+binary_path="$build_dir/stage2-custom-map-tests"
 
 swiftc \
-    -module-name TerentoStage42InstallationTests \
+    -module-name TerentoStage2CustomMapImportTests \
     "$project_root/Sources/TerentoPoC/Models/MTPModels.swift" \
     "$project_root/Sources/TerentoPoC/Compatibility/DeviceIdentity.swift" \
     "$project_root/Sources/TerentoPoC/Compatibility/MapCapability.swift" \
@@ -17,6 +17,8 @@ swiftc \
     "$project_root/Sources/TerentoPoC/MapCatalog/InstalledMap.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapOwnership.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapComparison.swift" \
+    "$project_root/Sources/TerentoPoC/MapCatalog/MapInventoryList.swift" \
+    "$project_root/Sources/TerentoPoC/MapCatalog/MapPresentation.swift" \
     "$project_root/Sources/TerentoPoC/Installation/InstallationSafetyModels.swift" \
     "$project_root/Sources/TerentoPoC/Installation/StoragePlanner.swift" \
     "$project_root/Sources/TerentoPoC/Installation/InstallProfile.swift" \
@@ -29,18 +31,11 @@ swiftc \
     "$project_root/Sources/TerentoPoC/Installation/TerentoManifestStore.swift" \
     "$project_root/Sources/TerentoPoC/Installation/Stage42TargetPolicy.swift" \
     "$project_root/Sources/TerentoPoC/Installation/MapInstallationCoordinator.swift" \
+    "$project_root/Sources/TerentoPoC/Installation/MapLifecycle.swift" \
+    "$project_root/Sources/TerentoPoC/Installation/MapLifecyclePresentation.swift" \
     "$project_root/Sources/TerentoPoC/Installation/MapSourceValidator.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapPackageAcquisition.swift" \
-    "$project_root/Tests/TerentoPoCTests/Stage42InstallationTests.swift" \
+    "$project_root/Tests/TerentoPoCTests/Stage2CustomMapImportTests.swift" \
     -o "$binary_path"
 
 "$binary_path"
-
-if grep -En "LIBMTP|MTPBridge|SendObject|DeleteObject|MoveObject|RenameObject" \
-    "$project_root/Sources/TerentoPoC/Installation/MapInstallationCoordinator.swift" \
-    "$project_root/Sources/TerentoPoC/Installation/InstallationTransportProtocols.swift"; then
-    print -u2 "FAIL: Stage 4.2 domain coordinator contains a native transport dependency"
-    exit 1
-fi
-
-print "PASS: Stage 4.2 domain coordinator is transport-injected and read-only in tests"

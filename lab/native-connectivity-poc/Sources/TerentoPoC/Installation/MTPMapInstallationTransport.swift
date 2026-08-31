@@ -242,6 +242,43 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
         }
     }
 
+    func deleteExternalExact(
+        targetFilename: String,
+        expectedItemID: UInt32,
+        expectedSizeBytes: UInt64
+    ) throws {
+        try operationGate.withOperation(
+            kind: .remove,
+            lifecycleLease: lifecycleLease
+        ) {
+            guard let operationProfile else {
+                throw InstallationTransportError.unsupportedDevice
+            }
+            var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
+            let result = withNativeMapOperationProfile(operationProfile) { nativeProfile in
+                targetFilename.withCString { filename in
+                    errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
+                        terento_mtp_delete_external_map(
+                            nativeProfile,
+                            filename,
+                            expectedItemID,
+                            expectedSizeBytes,
+                            errorPointer.baseAddress,
+                            errorPointer.count
+                        )
+                    }
+                }
+            }
+
+            guard result == 0 else {
+                throw Self.mapError(
+                    result: result,
+                    message: errorMessage(from: errorBuffer)
+                )
+            }
+        }
+    }
+
     private func deleteExactUncoordinated(
         targetFilename: String,
         expectedItemID: UInt32,

@@ -117,15 +117,18 @@ struct MapInventoryEngine<Reader: DeviceFileReader>: Sendable {
     let reader: Reader
     let catalog: MapCatalog
     let ownershipRecords: [MapOwnershipRecord]
+    let additionalPackages: [MapPackage]
 
     init(
         reader: Reader,
         catalog: MapCatalog,
-        ownershipRecords: [MapOwnershipRecord] = []
+        ownershipRecords: [MapOwnershipRecord] = [],
+        additionalPackages: [MapPackage] = []
     ) {
         self.reader = reader
         self.catalog = catalog
         self.ownershipRecords = ownershipRecords
+        self.additionalPackages = additionalPackages
     }
 
     func scan() throws -> MapInventoryResult {
@@ -138,7 +141,20 @@ struct MapInventoryEngine<Reader: DeviceFileReader>: Sendable {
                 catalog.providers.map { MapIdentity.normalizeProvider($0.id) }
             )
         )
-        let comparisons = catalog.packages.compactMap { package -> MapComparison? in
+        let packages = catalog.packages + additionalPackages.filter { additional in
+            !catalog.packages.contains(where: { $0.id == additional.id })
+        }
+        let comparisons = packages.compactMap { package -> MapComparison? in
+            if package.sourceKind == .custom {
+                return MapComparison(
+                    providerName: "Custom map",
+                    regionName: "Custom map",
+                    catalogMap: package,
+                    installedMap: nil,
+                    status: .notInstalled
+                )
+            }
+
             guard let provider = catalog.provider(for: package.providerId),
                   let region = catalog.region(
                       for: package.regionId,
@@ -174,6 +190,12 @@ enum MapEngineState: Equatable {
     case failed
 }
 
+private struct MapInventoryScanOutput: Sendable {
+    let inventory: MapInventoryResult
+    let ownershipManifestDeviceKeys: Set<String>
+    let preferredOwnershipManifestDeviceKey: String?
+}
+
 @MainActor
 final class MapEngine: ObservableObject {
     @Published private(set) var state: MapEngineState = .idle
@@ -183,6 +205,11 @@ final class MapEngine: ObservableObject {
     @Published private(set) var acquisitionState: MapAcquisitionState = .idle
     @Published private(set) var acquisitionProgress: MapDownloadProgress?
     @Published private(set) var acquisitionErrorMessage: String?
+    @Published private(set) var customMapImportState: CustomMapImportState = .idle
+    @Published private(set) var customMapImportCandidate: CustomMapImportCandidate?
+    @Published private(set) var customMapImportErrorMessage: String?
+    @Published private(set) var customMapImportWarning: CustomMapImportWarning?
+    @Published private(set) var customMapImportRisk: CustomMapImportRisk?
     @Published private(set) var installationResult: MapInstallationResult?
     @Published private(set) var installationBatchResults: [MapInstallationResult] = []
     @Published private(set) var installationProgress: TransferProgress?
@@ -207,8 +234,11 @@ final class MapEngine: ObservableObject {
     private var loadedCatalog: MapCatalog?
     private var currentIdentity: DeviceIdentity?
     private var currentAvailableStorage: UInt64?
+    private var ownershipManifestDeviceKeys: Set<String> = []
+    private var preferredOwnershipManifestDeviceKey: String?
     private var installationSpeedEstimator = TransferSpeedEstimator()
     private var installationAuthorizationGranted = false
+    private var customMapImportAcknowledged = false
     private var selectedInstallationPlan: InstallationPlan?
 
     var validatedArtifact: ValidatedMapArtifact? {
@@ -216,6 +246,10 @@ final class MapEngine: ObservableObject {
             return nil
         }
         return validatedArtifacts[firstPackageID]
+    }
+
+    var customMapImportReadyForInstallation: Bool {
+        customMapImportCandidate == nil || customMapImportAcknowledged
     }
 
     init(
@@ -235,6 +269,7 @@ final class MapEngine: ObservableObject {
         operationGate.invalidateLifecycleOperations()
         activeTask?.cancel()
         activeTask = nil
+        discardCustomMapImport()
         state = .idle
         result = nil
         selectedPreflight = nil
@@ -261,6 +296,8 @@ final class MapEngine: ObservableObject {
         loadedCatalog = nil
         currentIdentity = nil
         currentAvailableStorage = nil
+        ownershipManifestDeviceKeys.removeAll()
+        preferredOwnershipManifestDeviceKey = nil
         installationSpeedEstimator.reset()
         installationAuthorizationGranted = false
         selectedInstallationPlan = nil
@@ -274,6 +311,8 @@ final class MapEngine: ObservableObject {
         guard state != .loadingCatalog, state != .scanning else {
             return
         }
+
+        discardCustomMapImport()
 
         let preservedInstallationResult = preservingInstallationResult ? installationResult : nil
         let preservedInstallationPhase = preservingInstallationResult ? installationPhase : .idle
@@ -310,7 +349,7 @@ final class MapEngine: ObservableObject {
 
         let operationGate = self.operationGate
         let catalogLoader = self.catalogLoader
-        let ownershipRecords = Self.loadOwnershipRecords(for: deviceIdentity)
+        ownershipManifestDeviceKeys = Self.manifestDeviceKeys(for: deviceIdentity)
         activeTask?.cancel()
         activeTask = Task { [weak self] in
             do {
@@ -327,7 +366,7 @@ final class MapEngine: ObservableObject {
                 self?.catalogUpdatedAt = loaded.catalog.updatedAt
                 self?.state = .scanning
 
-                let inventory = try await CancellableDetached.run(priority: .userInitiated) {
+                let scanOutput = try await CancellableDetached.run(priority: .userInitiated) {
                     let lease = try await operationGate.beginLifecycleAsync()
                     defer { operationGate.endLifecycle(lease) }
 
@@ -335,18 +374,42 @@ final class MapEngine: ObservableObject {
                         operationGate: operationGate,
                         lifecycleLease: lease
                     )
-                    return try MapInventoryEngine(
+
+                    // DeviceEngine's initial identity and the identity read
+                    // immediately before a map scan can use different
+                    // identifiers (for example a legacy model key first and
+                    // an MTP serial after the native session is ready). Read
+                    // both manifest namespaces for this same live device so
+                    // an exact ownership record is not lost between phases.
+                    let liveIdentity = (try? lifecycleReader.readSnapshot())
+                        .map { CompatibilityEngine().evaluate(snapshot: $0).identity }
+                    let manifestKeys = Self.manifestDeviceKeys(
+                        for: [deviceIdentity, liveIdentity]
+                    )
+                    let ownershipRecords = Self.loadOwnershipRecords(
+                        forDeviceKeys: manifestKeys,
+                        recoveryIdentities: [deviceIdentity, liveIdentity]
+                    )
+                    let inventory = try MapInventoryEngine(
                         reader: lifecycleReader,
                         catalog: loaded.catalog,
                         ownershipRecords: ownershipRecords
                     ).scan()
+                    return MapInventoryScanOutput(
+                        inventory: inventory,
+                        ownershipManifestDeviceKeys: manifestKeys,
+                        preferredOwnershipManifestDeviceKey: liveIdentity?.localManifestDeviceKey
+                            ?? deviceIdentity?.localManifestDeviceKey
+                    )
                 }
 
                 guard !Task.isCancelled else { return }
 
-                self?.result = inventory
+                self?.ownershipManifestDeviceKeys = scanOutput.ownershipManifestDeviceKeys
+                self?.preferredOwnershipManifestDeviceKey = scanOutput.preferredOwnershipManifestDeviceKey
+                self?.result = scanOutput.inventory
                 TerentoDiagnosticLog.recordMapInventoryScan(
-                    inventory,
+                    scanOutput.inventory,
                     trigger: preservingInstallationResult
                         ? "post-operation-refresh"
                         : "device-or-navigation-refresh"
@@ -368,6 +431,137 @@ final class MapEngine: ObservableObject {
         }
     }
 
+    /// Validates and stages a user-selected raw IMG without changing the
+    /// device. A ready candidate is added to the same selection/preflight
+    /// model as provider maps, so the later installation path stays shared.
+    func importCustomMap(fileURL: URL) {
+        guard state == .scanned,
+              installationPhase == .idle,
+              !isBusy else {
+            return
+        }
+
+        discardCustomMapImport()
+        customMapImportState = .validating
+        customMapImportErrorMessage = nil
+        customMapImportRisk = nil
+        customMapImportWarning = nil
+
+        let acquirer = CustomMapSourceAcquirer()
+        activeTask?.cancel()
+        activeTask = Task { [weak self] in
+            do {
+                let candidate = try await CancellableDetached.run(priority: .userInitiated) {
+                    try acquirer.prepare(fileURL: fileURL)
+                }
+
+                guard !Task.isCancelled else {
+                    try? FileManager.default.removeItem(at: candidate.workspaceRootURL)
+                    return
+                }
+                self?.customMapImportCandidate = candidate
+                self?.customMapImportState = .ready
+                self?.customMapImportErrorMessage = nil
+                self?.appendCustomComparison(candidate.package)
+                self?.customMapImportRisk = CustomMapImportRisk(
+                    filename: candidate.originalFilename,
+                    message: "Garmin IMG structure was detected, but Terento cannot verify who produced this file, whether its map data is complete, or guarantee that it is free from malicious content. Terento will not execute it or upload it. Continue only if you trust the source."
+                )
+            } catch {
+                guard !Task.isCancelled else { return }
+                self?.customMapImportState = .failed
+                self?.customMapImportErrorMessage = error.localizedDescription
+                if let acquisitionError = error as? MapAcquisitionError,
+                   case .customMapNotConfirmed = acquisitionError {
+                    self?.customMapImportWarning = CustomMapImportWarning(
+                        filename: fileURL.lastPathComponent,
+                        message: error.localizedDescription
+                    )
+                }
+            }
+        }
+    }
+
+    /// Discards only a local staged import. It never touches the Garmin.
+    func clearCustomMapImport() {
+        activeTask?.cancel()
+        activeTask = nil
+        discardCustomMapImport()
+    }
+
+    func dismissCustomMapImportWarning() {
+        customMapImportWarning = nil
+    }
+
+    func acknowledgeCustomMapImportRisk() {
+        guard customMapImportCandidate != nil else { return }
+        customMapImportAcknowledged = true
+        customMapImportRisk = nil
+    }
+
+    func dismissCustomMapImportRisk() {
+        customMapImportRisk = nil
+    }
+
+    private func appendCustomComparison(_ package: MapPackage) {
+        guard let result else { return }
+        guard !result.comparisons.contains(where: { $0.catalogMap.id == package.id }) else {
+            return
+        }
+
+        let customComparison = MapComparison(
+            providerName: "Custom map",
+            regionName: "Custom map",
+            catalogMap: package,
+            installedMap: nil,
+            status: .notInstalled
+        )
+        self.result = MapInventoryResult(
+            scan: result.scan,
+            deviceFiles: result.deviceFiles,
+            comparisons: result.comparisons + [customComparison]
+        )
+    }
+
+    private func discardCustomMapImport() {
+        if let workspaceRootURL = customMapImportCandidate?.workspaceRootURL {
+            try? FileManager.default.removeItem(at: workspaceRootURL)
+        }
+        customMapImportCandidate = nil
+        customMapImportState = .idle
+        customMapImportErrorMessage = nil
+        customMapImportWarning = nil
+        customMapImportRisk = nil
+        customMapImportAcknowledged = false
+        if let result {
+            self.result = MapInventoryResult(
+                scan: result.scan,
+                deviceFiles: result.deviceFiles,
+                comparisons: result.comparisons.filter {
+                    $0.catalogMap.sourceKind != .custom
+                }
+            )
+        }
+    }
+
+    private nonisolated static func manifestDeviceKeys(
+        for identity: DeviceIdentity?
+    ) -> Set<String> {
+        guard let identity else {
+            return []
+        }
+
+        return manifestDeviceKeys(for: [identity])
+    }
+
+    private nonisolated static func manifestDeviceKeys(
+        for identities: [DeviceIdentity?]
+    ) -> Set<String> {
+        Set(identities.compactMap { identity in
+            identity?.localManifestDeviceKey
+        })
+    }
+
     private nonisolated static func loadOwnershipRecords(
         for identity: DeviceIdentity?
     ) -> [MapOwnershipRecord] {
@@ -375,30 +569,47 @@ final class MapEngine: ObservableObject {
             return []
         }
 
-        let manifest = try? LocalTerentoManifestStore().read(
-            deviceKey: identity.localManifestDeviceKey
+        return loadOwnershipRecords(
+            forDeviceKeys: manifestDeviceKeys(for: identity),
+            recoveryIdentities: [identity]
         )
-        let manifestRecords = (manifest?.entries ?? []).map { entry in
-            MapOwnershipRecord(
-                devicePath: entry.devicePath,
-                filename: entry.filename,
-                providerId: entry.providerId,
-                regionId: entry.regionId,
-                version: entry.version,
-                sizeBytes: entry.sizeBytes
+    }
+
+    private nonisolated static func loadOwnershipRecords(
+        forDeviceKeys deviceKeys: Set<String>,
+        recoveryIdentities: [DeviceIdentity?] = []
+    ) -> [MapOwnershipRecord] {
+        let manifestRecords = deviceKeys.sorted().flatMap { deviceKey in
+            let manifest = try? LocalTerentoManifestStore().read(
+                deviceKey: deviceKey
             )
+            return (manifest?.entries ?? []).map { entry in
+                MapOwnershipRecord(
+                    devicePath: entry.devicePath,
+                    filename: entry.filename,
+                    providerId: entry.providerId,
+                    regionId: entry.regionId,
+                    version: entry.version,
+                    sizeBytes: entry.sizeBytes
+                )
+            }
         }
 
-        let recoveryRecords = loadFailedInstallRecoveryRecords(for: identity).map { record in
-            MapOwnershipRecord(
-                devicePath: record.devicePath,
-                filename: record.filename,
-                providerId: record.providerId,
-                regionId: record.regionId,
-                version: record.version,
-                sizeBytes: record.sizeBytes
-            )
-        }
+        let recoveryRecords = recoveryIdentities
+            .compactMap { $0 }
+            .flatMap { identity in
+                loadFailedInstallRecoveryRecords(for: identity)
+            }
+            .map { record in
+                MapOwnershipRecord(
+                    devicePath: record.devicePath,
+                    filename: record.filename,
+                    providerId: record.providerId,
+                    regionId: record.regionId,
+                    version: record.version,
+                    sizeBytes: record.sizeBytes
+                )
+            }
 
         return manifestRecords + recoveryRecords
     }
@@ -543,12 +754,45 @@ final class MapEngine: ObservableObject {
             return nil
         }
 
-        let manifestEntries = (try? LocalTerentoManifestStore().read(
-            deviceKey: identity.localManifestDeviceKey
-        ))?.entries ?? []
+        let manifestEntries = ownershipManifestEntries(for: identity)
+        let itemManifestEntry = item.installedMaps.compactMap { installedMap in
+            manifestEntries.first { entry in
+                entry.devicePath == installedMap.sourceFile.path
+                    && entry.filename == installedMap.sourceFile.filename
+                    && entry.sizeBytes == installedMap.sourceFile.sizeBytes
+            }
+        }.first
+        let itemDeviceKey = itemManifestEntry?.deviceKey ?? identity.localManifestDeviceKey
+        let itemMapIdentity = MapIdentity(provider: item.provider, region: item.region)
+        let manifestMapIdentity = itemMapIdentity == nil
+            ? item.installedMaps
+                .compactMap { installedMap in
+                    manifestEntries.first { entry in
+                        entry.devicePath == installedMap.sourceFile.path
+                            && entry.filename == installedMap.sourceFile.filename
+                            && entry.sizeBytes == installedMap.sourceFile.sizeBytes
+                            && MapIdentity.normalizeProvider(entry.providerId) == "custom"
+                    }
+                }
+                .compactMap { MapIdentity(provider: $0.providerId, region: $0.regionId) }
+                .first
+            : nil
         let hashes = Dictionary(uniqueKeysWithValues: item.installedMaps.compactMap { installedMap -> (UInt32, String)? in
             guard let objectID = installedMap.sourceFile.itemID else {
                 return nil
+            }
+
+            if installedMap.provider == nil,
+               installedMap.region == nil,
+               let manifestEntry = manifestEntries.first(where: { entry in
+                   entry.devicePath == installedMap.sourceFile.path
+                       && entry.filename == installedMap.sourceFile.filename
+                       && entry.sizeBytes == installedMap.sourceFile.sizeBytes
+                       && MapIdentity.normalizeProvider(entry.providerId) == "custom"
+                       && (installedMap.version == nil || entry.version == installedMap.version)
+               }),
+               !manifestEntry.sha256.isEmpty {
+                return (objectID, manifestEntry.sha256)
             }
 
             if let version = installedMap.version,
@@ -593,10 +837,36 @@ final class MapEngine: ObservableObject {
                 for: identity,
                 deviceFiles: result.deviceFiles
             ),
-            deviceKey: identity.localManifestDeviceKey,
+            deviceKey: itemDeviceKey,
             expectedSHA256ByItemID: hashes,
+            mapIdentity: itemMapIdentity ?? manifestMapIdentity,
             failedInstallRecovery: item.failedInstallRecovery
         )
+    }
+
+    private func ownershipManifestEntries(
+        for identity: DeviceIdentity
+    ) -> [TerentoManifestEntry] {
+        let keys = ownershipManifestDeviceKeys.isEmpty
+            ? Set([identity.localManifestDeviceKey])
+            : ownershipManifestDeviceKeys.union([identity.localManifestDeviceKey])
+
+        var orderedKeys: [String] = []
+        if let preferredOwnershipManifestDeviceKey,
+           keys.contains(preferredOwnershipManifestDeviceKey) {
+            orderedKeys.append(preferredOwnershipManifestDeviceKey)
+        }
+        if keys.contains(identity.localManifestDeviceKey),
+           !orderedKeys.contains(identity.localManifestDeviceKey) {
+            orderedKeys.append(identity.localManifestDeviceKey)
+        }
+        orderedKeys.append(contentsOf: keys.sorted().filter {
+            !orderedKeys.contains($0)
+        })
+
+        return orderedKeys.flatMap { deviceKey in
+            (try? LocalTerentoManifestStore().read(deviceKey: deviceKey))?.entries ?? []
+        }
     }
 
     /// Refreshes the device-derived inventory after a successful lifecycle
@@ -627,6 +897,10 @@ final class MapEngine: ObservableObject {
     /// catalog/inventory phase before a native session is opened. Eject must
     /// remain unavailable for the whole operation, not only during transfer.
     var isBusy: Bool {
+        if customMapImportState == .validating {
+            return true
+        }
+
         switch state {
         case .loadingCatalog, .scanning, .acquiringArtifact,
              .preparingInstallation, .installing:
@@ -745,6 +1019,7 @@ final class MapEngine: ObservableObject {
         guard state == .scanned,
               installationPhase == .idle,
               plan.canContinue,
+              customMapImportReadyForInstallation,
               !plan.installItems.isEmpty else {
             return
         }
@@ -787,7 +1062,8 @@ final class MapEngine: ObservableObject {
     private func prepareInstallationArtifacts() {
         guard state == .scanned,
               let plan = selectedInstallationPlan,
-              plan.canContinue else {
+              plan.canContinue,
+              customMapImportReadyForInstallation else {
             return
         }
 
@@ -809,6 +1085,8 @@ final class MapEngine: ObservableObject {
         let acquirer = MapPackageAcquirer(
             providerHealthChecker: FoundationMapProviderHealthChecker()
         )
+        let customAcquirer = CustomMapSourceAcquirer()
+        let customCandidate = customMapImportCandidate
         let stateRelay = MapEngineAcquisitionRelay(engine: self)
         let progressRelay = MapEngineDownloadProgressRelay(engine: self)
         activeTask?.cancel()
@@ -819,13 +1097,30 @@ final class MapEngine: ObservableObject {
                 for (index, package) in packages.enumerated() {
                     activePackageIndex = index
                     try Task.checkCancellation()
-                    let artifact = try await CancellableDetached.run(priority: .userInitiated) {
-                        try await acquirer.acquire(
-                            package: package,
-                            canonicalRegion: package.canonicalRegionId,
-                            onStateChange: { state in stateRelay.send(state) },
-                            onDownloadProgress: { progress in progressRelay.send(progress) }
-                        )
+                    let artifact: ValidatedMapArtifact
+                    if package.sourceKind == .custom {
+                        guard let customCandidate,
+                              customCandidate.package.id == package.id else {
+                            throw MapAcquisitionError.invalidPackage(
+                                "The selected custom map is no longer available."
+                            )
+                        }
+                        stateRelay.send(.validatingDownload)
+                        artifact = try await CancellableDetached.run(priority: .userInitiated) {
+                            try customAcquirer.revalidate(customCandidate)
+                        }
+                        stateRelay.send(.inspectingIMG)
+                        stateRelay.send(.hashing)
+                        stateRelay.send(.validated)
+                    } else {
+                        artifact = try await CancellableDetached.run(priority: .userInitiated) {
+                            try await acquirer.acquire(
+                                package: package,
+                                canonicalRegion: package.canonicalRegionId,
+                                onStateChange: { state in stateRelay.send(state) },
+                                onDownloadProgress: { progress in progressRelay.send(progress) }
+                            )
+                        }
                     }
                     artifacts[package.id] = artifact
                 }
@@ -998,6 +1293,11 @@ final class MapEngine: ObservableObject {
 
         let operationGate = self.operationGate
         let artifacts = validatedArtifacts
+        let sessionIdentity = currentIdentity
+        let sessionManifestDeviceKeys = ownershipManifestDeviceKeys
+        let customPackages = plan.installItems
+            .map(\.package)
+            .filter { $0.sourceKind == .custom }
         let catalog = loadedCatalog
         let progressRelay = MapEngineProgressRelay(engine: self)
         let phaseRelay = MapEnginePhaseRelay(engine: self)
@@ -1032,7 +1332,14 @@ final class MapEngine: ObservableObject {
                         let inventory = try MapInventoryEngine(
                             reader: lifecycleReader,
                             catalog: catalog,
-                            ownershipRecords: Self.loadOwnershipRecords(for: identity)
+                            ownershipRecords: Self.loadOwnershipRecords(
+                                forDeviceKeys: Set(
+                                    sessionManifestDeviceKeys
+                                        .union(Self.manifestDeviceKeys(for: identity))
+                                ),
+                                recoveryIdentities: [sessionIdentity, identity]
+                            ),
+                            additionalPackages: customPackages
                         ).scan()
                         guard let comparison = inventory.comparisons.first(where: {
                             $0.catalogMap.id == item.package.id
@@ -1134,6 +1441,8 @@ final class MapEngine: ObservableObject {
             return (.extract, .sourceValidationFailed)
         case .unsupportedPackageFormat, .invalidPackage, .sourceIdentityMismatch,
              .sourceVersionMismatch, .noIMGFound, .ambiguousIMG:
+            return (.sourceValidation, .sourceValidationFailed)
+        case .customMapNotConfirmed:
             return (.sourceValidation, .sourceValidationFailed)
         }
     }

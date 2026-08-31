@@ -124,12 +124,18 @@ protocol MapInstallationArtifactValidator: Sendable {
 }
 
 /// Catalog-driven artifact validator. It prevents an arbitrary local IMG from
-/// reaching the write transport while allowing each validated Freizeitkarte
-/// package to use its own identity, version, size, hash, and managed filename.
+/// reaching the write transport while allowing provider packages and
+/// user-confirmed custom IMG files to use their own validated identity, size,
+/// hash, and managed filename.
 struct Stage42ArtifactValidator: MapInstallationArtifactValidator, Sendable {
     static let allowedProvider = "freizeitkarte"
 
     func validate(artifact: ValidatedMapArtifact, package: MapPackage) throws {
+        if package.sourceKind == .custom {
+            try validateCustom(artifact: artifact, package: package)
+            return
+        }
+
         let expectedFilename = try TerentoManagedFilenameGenerator().filename(
             providerId: package.providerId,
             regionId: package.canonicalRegionId
@@ -155,6 +161,58 @@ struct Stage42ArtifactValidator: MapInstallationArtifactValidator, Sendable {
 
         let fileManager = FileManager.default
         guard fileManager.isReadableFile(atPath: artifact.localIMGURL.path) else {
+            throw Stage42ArtifactValidationError.sourceUnavailable
+        }
+
+        let attributes = try fileManager.attributesOfItem(atPath: artifact.localIMGURL.path)
+        guard let number = attributes[.size] as? NSNumber,
+              number.uint64Value == artifact.installSizeBytes else {
+            throw Stage42ArtifactValidationError.sourceSizeMismatch
+        }
+
+        let actualHash = try Self.sha256(of: artifact.localIMGURL)
+        guard actualHash.caseInsensitiveCompare(artifact.sha256) == .orderedSame else {
+            throw Stage42ArtifactValidationError.sourceHashMismatch
+        }
+    }
+
+    private func validateCustom(
+        artifact: ValidatedMapArtifact,
+        package: MapPackage
+    ) throws {
+        let expectedFilename = try TerentoManagedFilenameGenerator().filename(
+            providerId: package.providerId,
+            regionId: package.canonicalRegionId
+        )
+
+        guard !package.id.isEmpty,
+              MapIdentity.normalizeProvider(package.providerId) == "custom",
+              !package.regionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              artifact.sourceKind == .custom,
+              artifact.catalogPackageID == package.id,
+              MapIdentity.normalizeProvider(artifact.provider) == "custom",
+              let expectedIdentity = package.identity,
+              MapIdentity.normalizeRegion(artifact.region) == expectedIdentity.region,
+              artifact.version == package.version,
+              artifact.targetFilename == expectedFilename,
+              TerentoManagedFilenameGenerator().isValid(artifact.targetFilename),
+              artifact.installSizeBytes > 0,
+              artifact.sha256.count == 64,
+              artifact.sha256.allSatisfy(\.isHexDigit),
+              artifact.downloadSizeMatchesCatalog,
+              artifact.packageFormat == .rawIMG else {
+            throw Stage42ArtifactValidationError.notExactValidatedArtifact
+        }
+
+        let fileManager = FileManager.default
+        guard fileManager.isReadableFile(atPath: artifact.localIMGURL.path) else {
+            throw Stage42ArtifactValidationError.sourceUnavailable
+        }
+
+        let values = try artifact.localIMGURL.resourceValues(
+            forKeys: [.isRegularFileKey, .isSymbolicLinkKey]
+        )
+        guard values.isRegularFile == true, values.isSymbolicLink != true else {
             throw Stage42ArtifactValidationError.sourceUnavailable
         }
 
@@ -1027,7 +1085,24 @@ struct MapInstallationCoordinator: Sendable {
                     rawVersion: nil,
                     name: nil,
                     family: nil,
-                    warning: "The validated IMG could not be parsed during final verification.",
+                    warning: expectedPackage.sourceKind == .custom
+                        ? "The custom IMG could not be parsed during final verification."
+                        : "The validated IMG could not be parsed during final verification.",
+                    failure: expectedPackage.sourceKind == .custom
+                        ? .metadataMismatch
+                        : nil
+                )
+            }
+
+            if expectedPackage.sourceKind == .custom {
+                return MetadataResult(
+                    provider: metadata.provider,
+                    region: metadata.region,
+                    version: metadata.version,
+                    rawVersion: metadata.rawVersion,
+                    name: metadata.name,
+                    family: metadata.family,
+                    warning: "Custom map structure verified. Provider updates are unavailable for this file.",
                     failure: nil
                 )
             }
@@ -1092,11 +1167,12 @@ struct MapInstallationCoordinator: Sendable {
         target: DeviceFile,
         metadata: MetadataResult
     ) -> InstalledMap {
-        InstalledMap(
-            name: metadata.name ?? package.name,
-            provider: metadata.provider ?? artifact.provider,
-            region: metadata.region ?? artifact.region,
-            family: metadata.family ?? "Freizeitkarte_\(artifact.region)+",
+        let isCustom = package.sourceKind == .custom
+        return InstalledMap(
+            name: isCustom ? "Custom map" : (metadata.name ?? package.name),
+            provider: isCustom ? nil : (metadata.provider ?? artifact.provider),
+            region: isCustom ? nil : (metadata.region ?? artifact.region),
+            family: isCustom ? (metadata.family ?? "Custom map") : (metadata.family ?? "Freizeitkarte_\(artifact.region)+"),
             rawVersion: metadata.rawVersion ?? artifact.rawRelease,
             version: metadata.version ?? artifact.version,
             identifier: package.identifier,
