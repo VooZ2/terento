@@ -948,6 +948,13 @@ def provider_detail_page(
     if status != "RETIRED":
         next_status = "PAUSED" if status == "ACTIVE" else "ACTIVE"
         state_button = _provider_action_button(provider_id, "state", "Pause" if next_status == "PAUSED" else "Activate", status=next_status, secondary=True)
+    collect_control = (
+        "<span class='provider-action-note'>Collected by the scheduled operator job</span>"
+        if provider_id == "opentopomap"
+        else _provider_action_button(
+            provider_id, "collect", "Collect catalog", secondary=True
+        )
+    )
     rows_packages = "".join(_provider_package_row(package) for package in packages)
     rows_sources = "".join(_provider_source_row(source) for source in sources)
     rows_health = "".join(_provider_health_row(item) for item in health_history)
@@ -965,7 +972,7 @@ def provider_detail_page(
         <div class='heading-row'><div><p class='eyebrow'>Provider detail</p><h1>{html.escape(name)}</h1><p class='lede'><code>{html.escape(provider_id)}</code> · adapter <code>{html.escape(str(provider.get('adapterId') or '—'))}</code></p></div><div class='provider-heading-status'>{_provider_status_badge(status)} {_provider_status_badge(health, kind='health')}</div></div>
         <section class='provider-action-bar' data-provider-id='{html.escape(provider_id, quote=True)}' aria-label='Provider actions'>
           {_provider_action_button(provider_id, 'check', 'Check now')}
-          {_provider_action_button(provider_id, 'collect', 'Collect catalog', secondary=True)}
+          {collect_control}
           {state_button}
           {_provider_action_button(provider_id, 'retire', 'Retire', secondary=True, disabled=status == 'RETIRED')}
           <p class='admin-action-status' id='provider-action-status' aria-live='polite'></p>

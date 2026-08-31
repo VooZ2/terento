@@ -1336,6 +1336,33 @@ class Database:
                         """,
                         (definition.id, artifact.source_url),
                     )
+            if definition.id == "opentopomap":
+                # OTM snapshots are complete. Beta.8 is main-only, so a
+                # repeated collection must also remove metadata for deferred
+                # contours instead of leaving a mixed public catalog behind.
+                package_ids = [package.id for package in snapshot.packages]
+                artifact_ids = [
+                    artifact.id
+                    for package in snapshot.packages
+                    for artifact in package.artifacts
+                ]
+                connection.execute(
+                    """
+                    DELETE FROM map_artifact
+                    WHERE package_id IN (
+                        SELECT id FROM map_package WHERE provider_id = %s
+                    ) AND NOT (id = ANY(%s))
+                    """,
+                    (definition.id, artifact_ids),
+                )
+                connection.execute(
+                    """
+                    UPDATE map_package
+                    SET availability = 'RETIRED', updated_at = now()
+                    WHERE provider_id = %s AND NOT (id = ANY(%s))
+                    """,
+                    (definition.id, package_ids),
+                )
 
     def provider_rows(self) -> list[dict[str, Any]]:
         query = """
@@ -1461,6 +1488,67 @@ class Database:
                 """,
                 (provider_id, limit),
             ).fetchall())
+
+    def provider_activation_readiness(self, provider_id: str) -> dict[str, Any]:
+        """Return fail-closed catalog evidence used before provider activation."""
+
+        with self.connection() as connection:
+            row = connection.execute(
+                """
+                SELECT
+                    p.last_catalog_sync,
+                    h.status AS health,
+                    r.status AS run_status,
+                    COALESCE(r.package_count, 0) AS run_package_count,
+                    COALESCE(r.artifact_count, 0) AS run_artifact_count,
+                    COALESCE(c.package_count, 0) AS package_count,
+                    COALESCE(c.available_package_count, 0) AS available_package_count,
+                    COALESCE(c.main_artifact_count, 0) AS main_artifact_count,
+                    COALESCE(c.validated_main_count, 0) AS validated_main_count,
+                    COALESCE(c.other_artifact_count, 0) AS other_artifact_count
+                FROM map_provider p
+                LEFT JOIN LATERAL (
+                    SELECT status FROM provider_health_check
+                    WHERE provider_id = p.id
+                    ORDER BY checked_at DESC, id DESC LIMIT 1
+                ) h ON TRUE
+                LEFT JOIN LATERAL (
+                    SELECT status, package_count, artifact_count
+                    FROM catalog_collection_run
+                    WHERE provider_id = p.id
+                    ORDER BY started_at DESC, id DESC LIMIT 1
+                ) r ON TRUE
+                LEFT JOIN LATERAL (
+                    SELECT
+                        count(DISTINCT mp.id) FILTER (
+                            WHERE mp.availability <> 'RETIRED'
+                        ) AS package_count,
+                        count(DISTINCT mp.id) FILTER (
+                            WHERE mp.availability = 'AVAILABLE'
+                        ) AS available_package_count,
+                        count(ma.id) FILTER (
+                            WHERE ma.kind = 'main' AND mp.availability <> 'RETIRED'
+                        ) AS main_artifact_count,
+                        count(ma.id) FILTER (
+                            WHERE ma.kind = 'main'
+                              AND ma.validation_status = 'VALIDATED'
+                              AND ma.size_bytes > 0
+                              AND ma.install_size_bytes > 0
+                              AND ma.install_payload_path IS NOT NULL
+                              AND mp.availability <> 'RETIRED'
+                        ) AS validated_main_count,
+                        count(ma.id) FILTER (
+                            WHERE ma.kind <> 'main' AND mp.availability <> 'RETIRED'
+                        ) AS other_artifact_count
+                    FROM map_package mp
+                    LEFT JOIN map_artifact ma ON ma.package_id = mp.id
+                    WHERE mp.provider_id = p.id
+                ) c ON TRUE
+                WHERE p.id = %s
+                """,
+                (provider_id,),
+            ).fetchone()
+        return dict(row) if row is not None else {}
 
     def provider_health_history(self, provider_id: str, limit: int = 50) -> list[dict[str, Any]]:
         with self.connection() as connection:

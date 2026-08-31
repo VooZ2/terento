@@ -69,7 +69,8 @@ PYTHONPATH=backend/catalog-api/src python3 -m unittest discover -s backend/catal
   metadata.
 - CSRF-protected `POST /admin/providers/<id>/check`, `/state`, `/collect`, and
   `/retire` operate only on known server-side adapters; they cannot upload
-  parser or executable provider code.
+  parser or executable provider code. The long OpenTopoMap sweep is rejected
+  from the HTTP collection action and runs only as the scheduler/operator job.
 - `POST /map-events` accepts a separate rate-limited, idempotent,
   privacy-minimised map-operation event contract. `GET
   /admin/map-statistics.json` exposes its private aggregates and never returns
@@ -148,17 +149,28 @@ weekly on Monday at 03:00 UTC (`COLLECTOR_SCHEDULE_UTC=MON 03:00`). A manual
 collection can still be run immediately after a provider release or source
 change.
 
-Scheduled catalog collection remains a separate process. The authenticated
-admin `/collect` action may run one known adapter on demand and records a
-collection run; health checks perform only bounded source probes. Neither path
-downloads, stores, proxies, mirrors, or serves a provider map binary.
+Scheduled catalog collection remains a separate process. It runs independent
+Freizeitkarte, OpenTopoMap, and Garmin-device jobs, so one source failure does
+not suppress the others. The authenticated admin `/collect` action remains
+available for the short FZK adapter; OTM uses the dedicated command below
+because inspecting 177 archives must not hold an HTTP request. Health checks
+perform only bounded source probes. No path downloads, stores, proxies,
+mirrors, or serves a provider map binary.
+
+```sh
+terento-catalog-collect --provider opentopomap --dry-run
+terento-catalog-collect --provider opentopomap
+```
 
 The reviewed OpenTopoMap adapter derives stable package identity from the
 official `otm-<region>.zip` filename and reads each country row's generated-at
-timestamp. It accepts all current official Garmin region shapes, excludes
-Basecamp archives, and relates the shared Canada contours archive to both
-Canada main packages. OpenTopoMap remains `PAUSED` until the beta.8 deployment
-gate is accepted; deploying the adapter does not activate it automatically.
+timestamp. Beta.8 collects exactly 177 current Garmin main archives, excludes
+Basecamp and contours, and validates every ZIP/IMG size using bounded range
+requests. A changed row count fails the complete snapshot before DB writes.
+Activation also fails closed unless the latest health is `HEALTHY`, the latest
+run succeeded, and all 177 available main artifacts are validated. OpenTopoMap
+remains `PAUSED` until an operator accepts that gate; collection never
+activates it automatically.
 
 Provider health is an availability summary. A provider can be `HEALTHY` when
 its website and catalog are reachable even before package downloads have been

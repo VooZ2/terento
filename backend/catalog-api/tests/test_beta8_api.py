@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from terento_catalog.catalog import build_catalog
 from terento_catalog.admin import token_hash
+from terento_catalog.admin import provider_detail_page
 from terento_catalog.http_api import CatalogService, make_handler
 from terento_catalog.map_events import (
     MapEventValidationError,
@@ -124,6 +125,9 @@ class FakeProviderDatabase:
             return False
         self.status = status
         return True
+
+    def provider_activation_readiness(self, provider_id):
+        return {}
 
     def csrf_valid(self, session, token):
         return token == "csrf"
@@ -251,6 +255,71 @@ class Beta8APITests(unittest.TestCase):
         self.assertIsNone(unknown_artifact["sizeBytes"])
         self.assertEqual(len(unknown_install["providers"][0]["maps"]), 1)
 
+    def test_opentopomap_activation_requires_complete_healthy_main_catalog(self):
+        expected = 177
+
+        class Database(FakeProviderDatabase):
+            def __init__(self):
+                super().__init__()
+                self.status = "PAUSED"
+                self.readiness = {
+                    "health": "HEALTHY",
+                    "run_status": "SUCCEEDED",
+                    "run_package_count": expected,
+                    "run_artifact_count": expected,
+                    "package_count": expected,
+                    "available_package_count": expected,
+                    "main_artifact_count": expected,
+                    "validated_main_count": expected,
+                    "other_artifact_count": 0,
+                    "last_catalog_sync": datetime(2026, 8, 31, tzinfo=UTC),
+                }
+
+            def provider_activation_readiness(self, provider_id):
+                return self.readiness
+
+            def set_provider_status(self, provider_id, status, **kwargs):
+                self.status = status
+                return provider_id == "opentopomap"
+
+        database = Database()
+        service = CatalogService(database)
+        result = service.set_provider_status(
+            "opentopomap", "ACTIVE", admin_user_id=7
+        )
+        self.assertEqual(result, {"id": "opentopomap", "status": "ACTIVE"})
+
+        database.status = "PAUSED"
+        database.readiness["validated_main_count"] = expected - 1
+        with self.assertRaisesRegex(
+            ValueError, "provider_catalog_not_ready_for_activation"
+        ):
+            service.set_provider_status("opentopomap", "ACTIVE", admin_user_id=7)
+        self.assertEqual(database.status, "PAUSED")
+
+    def test_opentopomap_admin_collection_requires_operator_job(self):
+        with self.assertRaisesRegex(
+            ValueError, "provider_collection_requires_operator_job"
+        ):
+            CatalogService(FakeProviderDatabase()).collect_provider("opentopomap")
+
+        page = provider_detail_page(
+            {
+                "provider": {
+                    "id": "opentopomap",
+                    "name": "OpenTopoMap",
+                    "status": "PAUSED",
+                    "health": "HEALTHY",
+                }
+            },
+            [],
+            [],
+            {"id": 7, "username": "admin"},
+            "csrf",
+        )
+        self.assertNotIn(b"Collect catalog", page)
+        self.assertIn(b"scheduled operator job", page)
+
     def test_map_event_validation_is_private_and_normalizes_identifiers(self):
         event = validate_map_event(json.dumps({
             "schemaVersion": 1,
@@ -363,7 +432,9 @@ class Beta8APITests(unittest.TestCase):
             def measure_zip(self, url):
                 return Measurement()
 
-        snapshot = OpenTopoMapProviderAdapter(fetcher=Fetcher()).collect()
+        snapshot = OpenTopoMapProviderAdapter(
+            fetcher=Fetcher(), expected_main_package_count=1
+        ).collect()
         package = snapshot.packages[0]
         self.assertEqual(package.id, "opentopomap-azores")
         self.assertEqual(package.provider_region_id, "azores")
@@ -372,8 +443,51 @@ class Beta8APITests(unittest.TestCase):
         self.assertEqual(package.source_updated_at.isoformat(), "2026-05-24T20:24:18+00:00")
         self.assertEqual(
             [artifact.id for artifact in package.artifacts],
-            ["opentopomap-azores-main", "opentopomap-azores-contours"],
+            ["opentopomap-azores-main"],
         )
+
+    def test_opentopomap_beta8_collection_is_main_only_and_count_guarded(self):
+        html = """
+        <table>
+          <tr class="country"><td>Andorra</td>
+            <td><a href="europe/andorra/otm-andorra.zip">Garmin</a></td>
+            <td><a href="europe/andorra/otm-andorra-contours.zip">Contours</a></td>
+            <td>2026-05-24 20:24:18</td></tr>
+          <tr class="country"><td>Azores</td>
+            <td><a href="europe/azores/otm-azores.zip">Garmin</a></td>
+            <td><a href="europe/azores/otm-azores-contours.zip">Contours</a></td>
+            <td>2026-05-24 20:24:18</td></tr>
+        </table>
+        """
+
+        class Measurement:
+            download_size_bytes = 100
+            install_size_bytes = 120
+            payload_path = "map.img"
+
+        class Fetcher:
+            def __init__(self):
+                self.measured = []
+
+            def fetch_text(self, url):
+                return html
+
+            def measure_zip(self, url):
+                self.measured.append(url)
+                return Measurement()
+
+        fetcher = Fetcher()
+        snapshot = OpenTopoMapProviderAdapter(
+            fetcher=fetcher, expected_main_package_count=2
+        ).collect()
+        self.assertEqual(len(snapshot.packages), 2)
+        self.assertEqual(len(fetcher.measured), 2)
+        self.assertTrue(all("contours" not in url for url in fetcher.measured))
+        self.assertTrue(all(package.capabilities == ("main",) for package in snapshot.packages))
+        with self.assertRaisesRegex(RuntimeError, "expected 3, found 2"):
+            OpenTopoMapProviderAdapter(
+                fetcher=Fetcher(), expected_main_package_count=3
+            ).collect()
 
     def test_provider_health_checks_mime_zip_and_img(self):
         class Measurement:

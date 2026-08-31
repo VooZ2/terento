@@ -8,6 +8,8 @@ from .collectors import FreizeitkarteCollector
 from .config import Settings
 from .db import Database
 from .provider_catalog import (
+    KNOWN_PROVIDER_DEFINITIONS,
+    OpenTopoMapProviderAdapter,
     ProviderAdapter,
     ProviderCollectionError,
     snapshot_from_freizeitkarte_records,
@@ -101,7 +103,13 @@ def collect_provider_once(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Collect all official Freizeitkarte Garmin metadata"
+        description="Collect one reviewed map provider's Garmin metadata"
+    )
+    parser.add_argument(
+        "--provider",
+        choices=tuple(sorted(KNOWN_PROVIDER_DEFINITIONS)),
+        default="freizeitkarte",
+        help="reviewed provider adapter to collect (default: freizeitkarte)",
     )
     parser.add_argument(
         "--dry-run",
@@ -111,14 +119,23 @@ def main() -> None:
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     settings = Settings.from_env()
-    count = collect_once(
-        Database(
-            settings.database_url,
-            connect_timeout_seconds=settings.database_connect_timeout_seconds,
-        ),
-        dry_run=args.dry_run,
+    database = Database(
+        settings.database_url,
+        connect_timeout_seconds=settings.database_connect_timeout_seconds,
     )
-    print(json.dumps({"collector": "freizeitkarte", "records": count}))
+    if args.provider == "freizeitkarte":
+        count = collect_once(database, dry_run=args.dry_run)
+        result: dict[str, int | str] = {
+            "provider": "freizeitkarte",
+            "packages": count,
+        }
+    else:
+        result = collect_provider_once(
+            database,
+            OpenTopoMapProviderAdapter(),
+            dry_run=args.dry_run,
+        )
+    print(json.dumps(result))
 
 
 if __name__ == "__main__":

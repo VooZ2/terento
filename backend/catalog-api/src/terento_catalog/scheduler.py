@@ -4,10 +4,11 @@ import logging
 import time
 from datetime import datetime, timedelta, timezone
 
-from .collect import collect_once
+from .collect import collect_once, collect_provider_once
 from .collect_devices import collect_devices_once
 from .config import Settings
 from .db import Database
+from .provider_catalog import OpenTopoMapProviderAdapter
 
 LOGGER = logging.getLogger(__name__)
 WEEKDAYS = {
@@ -37,18 +38,27 @@ def run_schedule(database: Database, schedule_utc: str) -> None:
         wait_seconds = max(1, (target - now).total_seconds())
         LOGGER.info("next metadata collection at %s", target.isoformat())
         time.sleep(wait_seconds)
+        run_collection_cycle(database)
+
+
+def run_collection_cycle(database: Database) -> None:
+    """Run independent weekly metadata jobs without cross-provider blocking."""
+
+    jobs = (
+        ("Freizeitkarte", lambda: collect_once(database)),
+        (
+            "OpenTopoMap",
+            lambda: collect_provider_once(database, OpenTopoMapProviderAdapter()),
+        ),
+        ("Garmin device", lambda: collect_devices_once(database)),
+    )
+    for label, job in jobs:
         try:
-            collect_once(database)
+            job()
         except Exception:
-            # A failed provider fetch must not stop the next scheduled attempt.
-            LOGGER.exception("scheduled Freizeitkarte collection failed")
-            continue
-        try:
-            collect_devices_once(database)
-        except Exception:
-            # Garmin discovery is independent from the map catalog. A failed
-            # device fetch must not invalidate the successful map collection.
-            LOGGER.exception("scheduled Garmin device collection failed")
+            # One upstream failure must not suppress the other independent
+            # provider/device metadata jobs or the next scheduled cycle.
+            LOGGER.exception("scheduled %s collection failed", label)
 
 
 def run_daily(database: Database, schedule_utc: str) -> None:

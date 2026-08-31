@@ -63,7 +63,7 @@ from .map_events import (
 from .provider_catalog import (
     KNOWN_PROVIDER_DEFINITIONS,
     FreizeitkarteProviderAdapter,
-    OpenTopoMapProviderAdapter,
+    OPENTOPO_MAP_BETA8_MAIN_PACKAGE_COUNT,
 )
 from .provider_health import check_provider as run_provider_health_check
 
@@ -198,12 +198,13 @@ class CatalogService:
         if definition is None:
             raise LookupError("provider_not_found")
         self.database.ensure_provider_definition(definition)
-        if provider_id == "freizeitkarte":
-            adapter = FreizeitkarteProviderAdapter()
-        elif provider_id == "opentopomap":
-            adapter = OpenTopoMapProviderAdapter()
-        else:  # pragma: no cover - guarded by the known registry
+        if provider_id == "opentopomap":
+            # Inspecting 177 remote ZIP central directories is intentionally a
+            # dedicated operator job, not a long-running HTTP request.
+            raise ValueError("provider_collection_requires_operator_job")
+        if provider_id != "freizeitkarte":  # pragma: no cover - known registry guard
             raise LookupError("provider_adapter_not_found")
+        adapter = FreizeitkarteProviderAdapter()
         try:
             result = _format_json_value(collect_provider_once(self.database, adapter))
         except Exception as exc:
@@ -239,6 +240,23 @@ class CatalogService:
         if status not in {"ACTIVE", "PAUSED", "RETIRED"}:
             raise ValueError("invalid_provider_status")
         self.database.ensure_provider_definition(definition)
+        if provider_id == "opentopomap" and status == "ACTIVE":
+            evidence = self.database.provider_activation_readiness(provider_id)
+            expected = OPENTOPO_MAP_BETA8_MAIN_PACKAGE_COUNT
+            ready = (
+                evidence.get("health") == "HEALTHY"
+                and evidence.get("run_status") == "SUCCEEDED"
+                and evidence.get("run_package_count") == expected
+                and evidence.get("run_artifact_count") == expected
+                and evidence.get("package_count") == expected
+                and evidence.get("available_package_count") == expected
+                and evidence.get("main_artifact_count") == expected
+                and evidence.get("validated_main_count") == expected
+                and evidence.get("other_artifact_count") == 0
+                and evidence.get("last_catalog_sync") is not None
+            )
+            if not ready:
+                raise ValueError("provider_catalog_not_ready_for_activation")
         if not self.database.set_provider_status(
             provider_id,
             status,

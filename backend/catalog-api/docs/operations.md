@@ -43,8 +43,25 @@ The scheduled sweep is weekly on Monday at 03:00 UTC:
 COLLECTOR_SCHEDULE_UTC=MON 03:00
 ```
 
-The scheduler collects Freizeitkarte maps first and Garmin device metadata
-second. A failed or partial provider run does not clear the previous catalog.
+The scheduler independently collects Freizeitkarte, OpenTopoMap main maps,
+and Garmin device metadata. A failed job does not suppress the other jobs or
+clear the previous known-good catalog.
+
+For the initial OpenTopoMap population, audit first and then run the same
+metadata-only command without `--dry-run`:
+
+```sh
+terento-catalog-collect --provider opentopomap --dry-run
+terento-catalog-collect --provider opentopomap
+```
+
+The beta.8 OTM gate requires `177 packages / 177 artifacts`, all artifacts
+`VALIDATED`, and zero contours. The command inspects ZIP central-directory and
+IMG metadata with bounded `HEAD`/`Range` requests; it does not retain the map
+archives. Keep OTM `PAUSED` until `/admin/providers/opentopomap` shows the
+successful run, 177 active packages, zero broken packages, and `HEALTHY`.
+Only then may an operator change it to `ACTIVE`. A failed activation request
+does not modify provider state.
 The Garmin collector creates a `MISSING` asset baseline for new devices; it
 does not request product-image binaries and it never changes an asset to
 `AVAILABLE`.
