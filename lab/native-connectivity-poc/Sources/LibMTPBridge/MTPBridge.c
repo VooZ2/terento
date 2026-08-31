@@ -874,6 +874,8 @@ int terento_mtp_read_existing_file_to_local(
     const char *local_path,
     uint32_t *resolved_item_id,
     uint64_t *size_bytes,
+    TerentoMTPProgressCallback progress_callback,
+    const void *progress_context,
     char *error_message,
     size_t error_message_capacity
 ) {
@@ -961,7 +963,13 @@ int terento_mtp_read_existing_file_to_local(
     }
 
     LIBMTP_Clear_Errorstack(device);
-    if (LIBMTP_Get_File_To_File(device, live_item_id, local_path, NULL, NULL) != 0) {
+    if (LIBMTP_Get_File_To_File(
+            device,
+            live_item_id,
+            local_path,
+            progress_callback,
+            (void *)progress_context
+        ) != 0) {
         set_device_error(
             error_message,
             error_message_capacity,
@@ -1414,6 +1422,82 @@ static int validate_stage42_target(
     return 0;
 }
 
+static int validate_external_map_target(
+    const char *target_filename,
+    char *error_message,
+    size_t error_message_capacity
+) {
+    if (target_filename == NULL) {
+        set_error(error_message, error_message_capacity, "The external map filename is unavailable");
+        return -1;
+    }
+
+    size_t length = strlen(target_filename);
+    if (length <= 4 || length > 255
+        || strcasecmp(target_filename + length - 4, ".img") != 0) {
+        set_error(
+            error_message,
+            error_message_capacity,
+            "The external map filename is not a valid IMG target"
+        );
+        return -1;
+    }
+
+    for (size_t index = 0; index < length; index += 1) {
+        unsigned char character = (unsigned char)target_filename[index];
+        if (!(isalnum(character) || character == '_' || character == '-'
+              || character == '.')) {
+            set_error(
+                error_message,
+                error_message_capacity,
+                "The external map filename contains unsafe characters"
+            );
+            return -1;
+        }
+    }
+
+    if (strstr(target_filename, "..") != NULL) {
+        set_error(
+            error_message,
+            error_message_capacity,
+            "The external map filename contains an unsafe path sequence"
+        );
+        return -1;
+    }
+
+    const char *protected_names[] = {
+        "gmapbmap.img",
+        "gmaptz.img",
+        "gmappmap.img",
+        "gmapprom.img",
+        "gmapdem.img",
+        "gmap3d.img",
+        "gmaprgn.img"
+    };
+    for (size_t index = 0; index < sizeof(protected_names) / sizeof(protected_names[0]); index += 1) {
+        if (strcasecmp(target_filename, protected_names[index]) == 0) {
+            set_error(
+                error_message,
+                error_message_capacity,
+                "The external map target is a protected Garmin file"
+            );
+            return -1;
+        }
+    }
+
+    if ((target_filename[0] == 'd' || target_filename[0] == 'D')
+        && strcasecmp(target_filename + length - 4, ".img") == 0) {
+        set_error(
+            error_message,
+            error_message_capacity,
+            "The external map target is a protected Garmin file"
+        );
+        return -1;
+    }
+
+    return 0;
+}
+
 static int validate_stage42_source(
     const char *local_path,
     struct stat *file_stat,
@@ -1714,6 +1798,7 @@ static int validate_managed_map_object(
     const char *target_filename,
     uint32_t expected_item_id,
     uint64_t expected_size_bytes,
+    uint32_t *resolved_item_id,
     uint64_t *actual_size_bytes,
     char *error_message,
     size_t error_message_capacity
@@ -1752,7 +1837,11 @@ static int validate_managed_map_object(
         set_error(error_message, error_message_capacity, "The transferred map was not found on the Garmin device");
         return TERENTO_MTP_MAP_REMOTE_FILE_MISSING;
     }
-    if (match_count != 1 || actual_item_id != expected_item_id) {
+    /* MTP object IDs may be re-enumerated by Garmin firmware after a write.
+       A zero expected ID deliberately requests resolution by the exact
+       managed filename and validated size instead. */
+    if (match_count != 1
+        || (expected_item_id != 0 && actual_item_id != expected_item_id)) {
         set_error(error_message, error_message_capacity, "The managed map object identity did not match exactly");
         return TERENTO_MTP_MAP_OBJECT_ID_MISMATCH;
     }
@@ -1761,6 +1850,9 @@ static int validate_managed_map_object(
         return TERENTO_MTP_MAP_OBJECT_ID_MISMATCH;
     }
 
+    if (resolved_item_id != NULL) {
+        *resolved_item_id = actual_item_id;
+    }
     if (actual_size_bytes != NULL) {
         *actual_size_bytes = remote_size;
     }
@@ -1773,6 +1865,7 @@ int terento_mtp_verify_managed_map_samples(
     const char *target_filename,
     uint32_t expected_item_id,
     uint64_t expected_size_bytes,
+    uint32_t *resolved_item_id,
     const uint64_t *sample_offsets,
     size_t sample_count,
     uint32_t sample_length,
@@ -1791,6 +1884,7 @@ int terento_mtp_verify_managed_map_samples(
         return TERENTO_MTP_MAP_UNSUPPORTED_DEVICE;
     }
     if (local_path == NULL || expected_item_id == 0 || expected_size_bytes == 0
+        || resolved_item_id == NULL
         || sample_offsets == NULL || sample_count == 0 || sample_count > 32
         || sample_length == 0 || sampled_bytes == NULL || matched_samples == NULL) {
         set_error(error_message, error_message_capacity, "The sampled map verification request is invalid");
@@ -1799,6 +1893,7 @@ int terento_mtp_verify_managed_map_samples(
 
     *sampled_bytes = 0;
     *matched_samples = 0;
+    *resolved_item_id = 0;
     set_error(error_message, error_message_capacity, "");
 
     if (validate_stage42_target(target_filename, error_message, error_message_capacity) != 0) {
@@ -1875,11 +1970,15 @@ int terento_mtp_verify_managed_map_samples(
                     goto sample_cleanup;
                 }
 
+                /* Resolve the current ID: the SendObject ID can be stale in
+                   a fresh session even though the exact target is present. */
+                uint32_t current_item_id = 0;
                 result = validate_managed_map_object(
                     device,
                     target_filename,
-                    expected_item_id,
+                    0,
                     expected_size_bytes,
+                    &current_item_id,
                     NULL,
                     error_message,
                     error_message_capacity
@@ -1887,6 +1986,12 @@ int terento_mtp_verify_managed_map_samples(
                 if (result != 0) {
                     goto sample_cleanup;
                 }
+                if (current_item_id == 0) {
+                    set_error(error_message, error_message_capacity, "The managed map object identity could not be resolved");
+                    result = TERENTO_MTP_MAP_OBJECT_ID_MISMATCH;
+                    goto sample_cleanup;
+                }
+                *resolved_item_id = current_item_id;
             }
 
             unsigned char *raw_bytes = NULL;
@@ -1894,7 +1999,7 @@ int terento_mtp_verify_managed_map_samples(
             LIBMTP_Clear_Errorstack(device);
             int read_result = LIBMTP_GetPartialObject(
                 device,
-                expected_item_id,
+                *resolved_item_id,
                 offset,
                 requested,
                 &raw_bytes,
@@ -2060,6 +2165,105 @@ int terento_mtp_delete_managed_map(
     result = 0;
 
 cleanup:
+    LIBMTP_Release_Device(device);
+    return result;
+}
+
+int terento_mtp_delete_external_map(
+    const TerentoMTPMapOperationProfile *profile,
+    const char *target_filename,
+    uint32_t expected_item_id,
+    uint64_t expected_size_bytes,
+    char *error_message,
+    size_t error_message_capacity
+) {
+    if (validate_map_operation_profile(
+            profile,
+            error_message,
+            error_message_capacity
+        ) != 0) {
+        return TERENTO_MTP_MAP_UNSUPPORTED_DEVICE;
+    }
+    if (expected_item_id == 0) {
+        set_error(error_message, error_message_capacity, "External map removal requires an exact object identity");
+        return -1;
+    }
+
+    set_error(error_message, error_message_capacity, "");
+    if (validate_external_map_target(target_filename, error_message, error_message_capacity) != 0) {
+        return -2;
+    }
+
+    uint16_t vendor_id = 0;
+    uint16_t product_id = 0;
+    LIBMTP_mtpdevice_t *device = open_single_garmin_device(
+        &vendor_id,
+        &product_id,
+        error_message,
+        error_message_capacity,
+        1
+    );
+    if (device == NULL) {
+        return -3;
+    }
+
+    int result = validate_live_map_operation_device(
+        profile,
+        vendor_id,
+        product_id,
+        device,
+        error_message,
+        error_message_capacity
+    );
+    if (result != 0) {
+        result = map_live_validation_error(result);
+        goto external_cleanup;
+    }
+
+    uint32_t storage_id = 0;
+    uint32_t folder_id = 0;
+    result = find_single_garmin_folder(device, &storage_id, &folder_id, error_message, error_message_capacity);
+    if (result != 0) {
+        goto external_cleanup;
+    }
+
+    uint32_t actual_item_id = 0;
+    uint64_t remote_size = 0;
+    size_t match_count = 0;
+    result = find_stage42_map_file(
+        device,
+        storage_id,
+        folder_id,
+        target_filename,
+        &actual_item_id,
+        &remote_size,
+        &match_count,
+        error_message,
+        error_message_capacity
+    );
+    if (result != 0) {
+        goto external_cleanup;
+    }
+    if (match_count != 1
+        || (expected_size_bytes == 0 && actual_item_id != expected_item_id)
+        || (expected_size_bytes != 0 && remote_size != expected_size_bytes)) {
+        set_error(error_message, error_message_capacity, "External map removal refused: exact target identity did not match");
+        result = TERENTO_MTP_MAP_OBJECT_ID_MISMATCH;
+        goto external_cleanup;
+    }
+
+    LIBMTP_Clear_Errorstack(device);
+    if (LIBMTP_Delete_Object(device, actual_item_id) != 0) {
+        set_device_error(error_message, error_message_capacity, device, "The external map could not be removed");
+        result = -4;
+        goto external_cleanup;
+    }
+
+    /* The Swift lifecycle layer performs authoritative post-delete checking
+       in a fresh MTP session because this object list may be stale. */
+    result = 0;
+
+external_cleanup:
     LIBMTP_Release_Device(device);
     return result;
 }

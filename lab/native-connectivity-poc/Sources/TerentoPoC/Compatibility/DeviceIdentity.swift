@@ -205,25 +205,8 @@ struct GarminDeviceModelNormalizer: Sendable {
         if normalized.hasPrefix("garmin ") {
             normalized.removeFirst("garmin ".count)
         }
-        let knownPrefixes = [
-            "approach",
-            "d2 mach",
-            "descent",
-            "enduro",
-            "epix",
-            "fenix",
-            "forerunner",
-            "instinct",
-            "lily",
-            "marq",
-            "quatix",
-            "tactix",
-            "venu",
-            "vivoactive",
-            "vivomove"
-        ]
-
-        guard knownPrefixes.contains(where: normalized.hasPrefix) else {
+        guard !normalized.isEmpty,
+              !normalized.hasPrefix("unknown") else {
             return nil
         }
 

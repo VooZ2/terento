@@ -27,6 +27,11 @@ struct TerentoPoCApp: App {
         .windowResizability(.automatic)
         .windowStyle(.titleBar)
         .commands {
+            CommandGroup(replacing: .appInfo) {
+                Button("About Terento") {
+                    openWindow(id: "about")
+                }
+            }
             CommandGroup(replacing: .help) {
                 Button("Terento Website") {
                     openExternalURL(TerentoAppLinks.website)
@@ -39,10 +44,6 @@ struct TerentoPoCApp: App {
                 }
                 Button("GitHub Repository") {
                     openExternalURL(TerentoAppLinks.repository)
-                }
-                Divider()
-                Button("About Terento") {
-                    openWindow(id: "about")
                 }
             }
         }

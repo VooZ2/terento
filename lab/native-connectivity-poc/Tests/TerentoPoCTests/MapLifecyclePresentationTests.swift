@@ -163,7 +163,7 @@ func runMapLifecyclePresentationTests() throws {
     try require(update.allows(.update), "older managed map allows update")
     try require(update.status == "Update available", "update status is user-facing")
     try require(
-        managed.manageDetailLabel == "Installed · Release 26.05",
+        managed.manageDetailLabel == "Freizeitkarte · 2026-05 · Installed",
         "managed row uses concise release metadata"
     )
     try require(
@@ -247,7 +247,7 @@ func runMapLifecyclePresentationTests() throws {
     try require(!recovery.allows(.backup), "failed install recovery does not expose backup as a separate action")
     try require(recovery.status == "Failed install recovery", "failed install recovery has a distinct status")
     try require(
-        recoveryItem.manageDetailLabel == "Incomplete installation · Release 26.05",
+        recoveryItem.manageDetailLabel == "Freizeitkarte · 2026-05 · Incomplete installation",
         "recovery row uses explicit incomplete-installation metadata"
     )
 
@@ -306,8 +306,8 @@ func runMapLifecyclePresentationTests() throws {
         lifecycleItem(
             installed: installedMap(managementState: .detectedNotManaged),
             classification: .externalRecognized
-        ).manageDetailLabel == "Installed · Read-only",
-        "read-only row uses concise status metadata"
+        ).manageDetailLabel == "Freizeitkarte · 2026-05 · Installed · Third-party map",
+        "third-party row uses concise status metadata"
     )
     try require(
         ManageMapRowActionPresentation.actions(for: external) == [],
@@ -328,6 +328,51 @@ func runMapLifecyclePresentationTests() throws {
     try require(
         recoverable.actions == [.recoverOwnership],
         "read-only Terento filename exposes only explicit ownership recovery"
+    )
+
+    let rawExternalMap = InstalledMap(
+        name: "OpenTopoMap Lithuani",
+        provider: nil,
+        region: nil,
+        family: "OpenTopoMap Lithuani",
+        rawVersion: nil,
+        version: nil,
+        identifier: nil,
+        productId: nil,
+        familyId: nil,
+        sizeBytes: 100,
+        sourceFile: InstalledMapFile(
+            path: "/GARMIN/otm-lithuania-contours.img",
+            filename: "otm-lithuania-contours.img",
+            sizeBytes: 100,
+            itemID: 43
+        ),
+        metadataStatus: .parsed,
+        managementState: .detectedNotManaged
+    )
+    let removableExternal = MapLifecycleItem(
+        id: rawExternalMap.sourceFile.path,
+        title: rawExternalMap.name,
+        sourceKind: .provider,
+        provider: nil,
+        region: nil,
+        version: nil,
+        rawVersion: nil,
+        sizeBytes: rawExternalMap.sizeBytes,
+        installedMaps: [rawExternalMap],
+        classification: .externalRecognized
+    )
+    let externalRemoval = resolver.resolve(
+        item: removableExternal,
+        comparison: nil,
+        hasIntegrityRecord: false,
+        hasValidatedUpdateProfile: true,
+        hasStableWatchIdentity: true
+    )
+    try require(
+        externalRemoval.actions == [.remove]
+            && externalRemoval.status == "External map",
+        "a parsed third-party map exposes one-by-one removal"
     )
 
     let ambiguous = resolver.resolve(

@@ -47,7 +47,11 @@ struct MapCapabilityTests {
             registry.evaluate(identity: identity(model: "Garmin Future Watch")) == .unknown,
             "an unrecognised Garmin model fails closed with unknown map support"
         )
-        print("PASS: 10 Map Manager capability tests")
+        expect(
+            registry.evaluate(identity: identity(model: "Garmin Future Watch")).canAttemptTerentoMapInstall,
+            "an unrecognised Garmin model may attempt beta installation after live device safety checks"
+        )
+        print("PASS: 11 Map Manager capability tests")
     }
 
     private static func identity(model: String) -> DeviceIdentity {

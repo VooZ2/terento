@@ -263,7 +263,9 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
         )
 
         return files.compactMap { file in
-            let metadata = prefixes[file.itemID].flatMap { GarminIMGMetadataParser().parse($0) }
+            let metadata = prefixes[file.itemID].flatMap {
+                GarminIMGMetadataParser().parse($0, filename: file.filename)
+            }
             guard let metadata,
                   let identity = MapIdentity(provider: metadata.provider, region: metadata.region) else {
                 return nil
@@ -297,7 +299,10 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
             for: mtpFile,
             maxLength: GarminIMGMetadataParser.prefixLength
         )
-        guard let metadata = GarminIMGMetadataParser().parse(prefix) else {
+        guard let metadata = GarminIMGMetadataParser().parse(
+            prefix,
+            filename: file.filename
+        ) else {
             throw SafeUpdateTransportError.metadataMismatch
         }
         return metadata

@@ -15,40 +15,53 @@ enum TerentoAppMetadata {
         let label = releaseLabel?.isEmpty == false ? releaseLabel! : version
         return "Version \(label) (\(build))"
     }()
-    static let description = "Open-source macOS app for installing and managing Freizeitkarte maps on Garmin devices."
+    static let description = "Open-source macOS app for installing and managing maps on Garmin smartwatches."
 }
 
 struct AboutTerentoView: View {
     @ObservedObject var appUpdateController: AppUpdateController
 
     var body: some View {
-        VStack(spacing: 14) {
-            Image(nsImage: NSApplication.shared.applicationIconImage)
-                .resizable()
-                .interpolation(.high)
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 84, height: 84)
+        ZStack {
+            TerentoColors.canvas
+                .ignoresSafeArea()
 
-            VStack(spacing: 4) {
-                Text("Terento")
-                    .font(.system(size: 24, weight: .semibold))
-                Text(TerentoAppMetadata.displayVersion)
-                    .foregroundStyle(.secondary)
+            VStack(spacing: 14) {
+                Image(nsImage: NSApplication.shared.applicationIconImage)
+                    .resizable()
+                    .interpolation(.high)
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 84, height: 84)
+
+                VStack(spacing: 4) {
+                    Text("Terento")
+                        .font(.terentoHeading(size: 24, weight: .semibold))
+                        .foregroundStyle(TerentoColors.graphite)
+                    Text(TerentoAppMetadata.displayVersion)
+                        .font(.terentoUI(size: 13, weight: .regular))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                }
+
+                Text(TerentoAppMetadata.description)
+                    .font(.terentoUI(size: 13, weight: .regular))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(TerentoColors.secondaryText)
+                    .frame(width: 300)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 16) {
+                    Link("Website", destination: TerentoAppLinks.website)
+                    Link("GitHub", destination: TerentoAppLinks.repository)
+                    Link("Report an issue", destination: TerentoAppLinks.issues)
+                }
+                .font(.terentoUI(size: 13, weight: .medium))
+                .foregroundStyle(TerentoColors.interactive)
+                .tint(TerentoColors.interactive)
             }
-
-            Text(TerentoAppMetadata.description)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: 300)
-
-            HStack(spacing: 16) {
-                Link("Website", destination: TerentoAppLinks.website)
-                Link("GitHub", destination: TerentoAppLinks.repository)
-                Link("Report an issue", destination: TerentoAppLinks.issues)
-            }
-            .font(.callout)
         }
         .padding(28)
         .frame(width: 360)
+        .background(TerentoColors.canvas)
+        .preferredColorScheme(.light)
     }
 }

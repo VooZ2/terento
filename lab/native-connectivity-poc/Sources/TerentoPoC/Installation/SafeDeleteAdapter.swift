@@ -47,6 +47,9 @@ struct SafeDeleteTarget: Equatable, Sendable {
     /// Set for a versioned map produced by Stage 5.3. Existing Stage 5.2
     /// base-filename targets leave this nil for source compatibility.
     let expectedVersion: MapVersion?
+    /// Explicitly authorizes the beta one-by-one removal path for a parsed
+    /// third-party map. This remains false for every manifest-backed target.
+    let allowsExternalRemoval: Bool
 
     init(
         deviceKey: String,
@@ -58,7 +61,8 @@ struct SafeDeleteTarget: Equatable, Sendable {
         expectedSizeBytes: UInt64,
         expectedSHA256: String,
         backup: VerifiedBackupFile?,
-        expectedVersion: MapVersion? = nil
+        expectedVersion: MapVersion? = nil,
+        allowsExternalRemoval: Bool = false
     ) {
         self.deviceKey = deviceKey
         self.mapIdentity = mapIdentity
@@ -70,6 +74,7 @@ struct SafeDeleteTarget: Equatable, Sendable {
         self.expectedSHA256 = expectedSHA256
         self.backup = backup
         self.expectedVersion = expectedVersion
+        self.allowsExternalRemoval = allowsExternalRemoval
     }
 
     var sourceFile: InstalledMapFile {
@@ -92,7 +97,8 @@ struct SafeDeleteTarget: Equatable, Sendable {
             expectedSizeBytes: expectedSizeBytes,
             expectedSHA256: expectedSHA256,
             backup: backup,
-            expectedVersion: expectedVersion
+            expectedVersion: expectedVersion,
+            allowsExternalRemoval: allowsExternalRemoval
         )
     }
 }
@@ -111,6 +117,64 @@ struct SafeDeleteDeviceObject: Equatable, Sendable {
 protocol SafeDeleteTransport: Sendable {
     func inspectExactObject(_ target: SafeDeleteTarget) throws -> SafeDeleteDeviceObject
     func deleteExactObject(_ target: SafeDeleteTarget) throws
+}
+
+extension SafeDeleteTransport {
+    func inspectExactObject(
+        _ target: SafeDeleteTarget,
+        onProgress: (@Sendable (TransferProgress) -> Void)?
+    ) throws -> SafeDeleteDeviceObject {
+        try inspectExactObject(target)
+    }
+}
+
+enum SafeDeleteProgressState: Equatable, Sendable {
+    case verifying
+    case postVerifying
+    case completed
+}
+
+struct SafeDeleteProgress: Equatable, Sendable {
+    let state: SafeDeleteProgressState
+    let bytesCompleted: UInt64
+    let totalBytes: UInt64
+    let bytesPerSecond: Double
+
+    var fractionCompleted: Double {
+        guard totalBytes > 0 else { return 0 }
+        return min(1, Double(bytesCompleted) / Double(totalBytes))
+    }
+}
+
+private final class SafeDeleteProgressReporter: @unchecked Sendable {
+    private let totalBytes: UInt64
+    private let onProgress: (@Sendable (SafeDeleteProgress) -> Void)?
+
+    init(
+        totalBytes: UInt64,
+        onProgress: (@Sendable (SafeDeleteProgress) -> Void)?
+    ) {
+        self.totalBytes = totalBytes
+        self.onProgress = onProgress
+    }
+
+    func report(
+        state: SafeDeleteProgressState,
+        fraction: Double,
+        bytesPerSecond: Double = 0
+    ) {
+        guard let onProgress else { return }
+        let boundedFraction = min(1, max(0, fraction))
+        let completed = UInt64(
+            (Double(totalBytes) * boundedFraction).rounded(.down)
+        )
+        onProgress(SafeDeleteProgress(
+            state: state,
+            bytesCompleted: completed,
+            totalBytes: totalBytes,
+            bytesPerSecond: bytesPerSecond
+        ))
+    }
 }
 
 struct SafeDeleteResult: Equatable, Sendable {
@@ -139,7 +203,8 @@ struct SafeDeleteAdapter: Sendable {
         deviceConnected: Bool,
         rescan: @escaping @Sendable () throws -> [InstalledMapFile],
         transport: any SafeDeleteTransport,
-        requiresVerifiedBackup: Bool = true
+        requiresVerifiedBackup: Bool = true,
+        onProgress: (@Sendable (SafeDeleteProgress) -> Void)? = nil
     ) -> SafeDeleteResult {
         guard confirmed else {
             return result(
@@ -157,7 +222,7 @@ struct SafeDeleteAdapter: Sendable {
             )
         }
 
-        guard isEligibleManagedTarget(target) else {
+        guard isEligibleTarget(target) else {
             return result(
                 target,
                 status: .blockedOwnership,
@@ -182,7 +247,7 @@ struct SafeDeleteAdapter: Sendable {
                 )
             }
 
-            guard isVerifiedBackup(backup, for: target) else {
+                guard isVerifiedBackup(backup, for: target) else {
                 return result(
                     target,
                     status: .blockedIntegrityCheck,
@@ -191,9 +256,22 @@ struct SafeDeleteAdapter: Sendable {
             }
         }
 
+        let progressReporter = SafeDeleteProgressReporter(
+            totalBytes: target.expectedSizeBytes,
+            onProgress: onProgress
+        )
+
+        progressReporter.report(state: .verifying, fraction: 0)
+
         let current: SafeDeleteDeviceObject
         do {
-            current = try transport.inspectExactObject(target)
+            current = try transport.inspectExactObject(target, onProgress: { transfer in
+                progressReporter.report(
+                    state: .verifying,
+                    fraction: transfer.fractionCompleted * 0.84,
+                    bytesPerSecond: transfer.bytesPerSecond
+                )
+            })
         } catch let error as SafeDeleteTransportError {
             return result(target, status: status(for: error), message: message(for: error))
         } catch {
@@ -221,6 +299,7 @@ struct SafeDeleteAdapter: Sendable {
             )
         }
         let resolvedTarget = target.resolvingObjectID(currentObjectID)
+        progressReporter.report(state: .verifying, fraction: 0.88)
 
         do {
             try transport.deleteExactObject(resolvedTarget)
@@ -234,6 +313,8 @@ struct SafeDeleteAdapter: Sendable {
             )
         }
 
+        progressReporter.report(state: .postVerifying, fraction: 0.93)
+
         // DeleteObject completes before the watch has necessarily published
         // its refreshed object list. Wait briefly, then use fresh read-only
         // MTP sessions for bounded verification retries. This never retries
@@ -246,16 +327,23 @@ struct SafeDeleteAdapter: Sendable {
             }
 
             do {
+                progressReporter.report(
+                    state: .postVerifying,
+                    fraction: 0.94 + (Double(attempt) * 0.02)
+                )
                 let remaining = try rescan()
                 observedSuccessfulRescan = true
                 let stillPresent = remaining.contains {
                     $0.itemID == currentObjectID || $0.path == target.expectedPath
                 }
                 if !stillPresent {
+                    progressReporter.report(state: .completed, fraction: 1)
                     return result(
                         target,
                         status: .success,
-                        message: "The Terento-managed map was removed and verified as absent."
+                        message: target.ownership == .detectedNotManaged
+                            ? "The third-party map was removed and verified as absent."
+                            : "The Terento-managed map was removed and verified as absent."
                     )
                 }
             } catch {
@@ -278,29 +366,43 @@ struct SafeDeleteAdapter: Sendable {
         )
     }
 
-    private func isEligibleManagedTarget(_ target: SafeDeleteTarget) -> Bool {
-        guard target.ownership == .managedByTerento,
-              target.expectedPath == "/GARMIN/\(target.expectedFilename)" else {
+    private func isEligibleTarget(_ target: SafeDeleteTarget) -> Bool {
+        switch target.ownership {
+        case .managedByTerento:
+            guard target.expectedPath == "/GARMIN/\(target.expectedFilename)" else {
+                return false
+            }
+
+            let generator = TerentoManagedFilenameGenerator()
+            // The exact path, filename, size, identity, and hash still come
+            // from the manifest-backed lifecycle context. Match normalized
+            // identity here because composite provider regions such as
+            // ESP_CANARIAS lose separators when represented as MapIdentity.
+            return generator.matchesIdentity(
+                target.expectedFilename,
+                providerId: target.mapIdentity.provider,
+                regionId: target.mapIdentity.region,
+                version: target.expectedVersion
+            )
+        case .detectedNotManaged:
+            return target.allowsExternalRemoval
+                && isSafeExternalMapTarget(target)
+        case .unknown:
             return false
         }
-
-        let generator = TerentoManagedFilenameGenerator()
-        // The exact path, filename, size, identity, and hash still come from
-        // the manifest-backed lifecycle context. Match normalized identity
-        // here because composite provider regions such as ESP_CANARIAS lose
-        // separators when represented as MapIdentity (`ESPCANARIAS`).
-        return generator.matchesIdentity(
-            target.expectedFilename,
-            providerId: target.mapIdentity.provider,
-            regionId: target.mapIdentity.region,
-            version: target.expectedVersion
-        )
     }
 
     private func isValidIntegrityRecord(_ target: SafeDeleteTarget) -> Bool {
         guard target.objectID != 0,
               target.expectedSizeBytes > 0 else {
             return false
+        }
+
+        if target.ownership == .detectedNotManaged {
+            // External maps do not have a trusted local manifest hash. The
+            // transport must produce a fresh complete hash immediately before
+            // deletion; matchesExpectedObject validates that live proof.
+            return true
         }
 
         let hash = normalizedHash(target.expectedSHA256)
@@ -339,12 +441,49 @@ struct SafeDeleteAdapter: Sendable {
         _ object: SafeDeleteDeviceObject,
         target: SafeDeleteTarget
     ) -> Bool {
-        object.file.itemID != nil
+        let exactFile = object.file.itemID != nil
             && object.file.itemID != 0
             && object.file.path == target.expectedPath
             && object.file.filename == target.expectedFilename
             && object.file.sizeBytes == target.expectedSizeBytes
-            && normalizedHash(object.sha256) == normalizedHash(target.expectedSHA256)
+
+        guard exactFile else { return false }
+
+        let liveHash = normalizedHash(object.sha256)
+        guard liveHash.count == 64,
+              liveHash.allSatisfy(\.isHexDigit) else {
+            return false
+        }
+
+        if target.ownership == .detectedNotManaged {
+            return true
+        }
+
+        return liveHash == normalizedHash(target.expectedSHA256)
+    }
+
+    private func isSafeExternalMapTarget(_ target: SafeDeleteTarget) -> Bool {
+        guard target.expectedPath == "/GARMIN/\(target.expectedFilename)",
+              target.expectedFilename.lowercased().hasSuffix(".img"),
+              !target.expectedFilename.contains("/"),
+              !target.expectedFilename.contains("\\"),
+              !target.expectedFilename.contains(".."),
+              !target.expectedFilename.contains("\0") else {
+            return false
+        }
+
+        let lowercased = target.expectedFilename.lowercased()
+        let protectedNames = Set([
+            "gmapbmap.img",
+            "gmaptz.img",
+            "gmappmap.img",
+            "gmapprom.img",
+            "gmapdem.img",
+            "gmap3d.img",
+            "gmaprgn.img"
+        ])
+        return !protectedNames.contains(lowercased)
+            && !(lowercased.hasPrefix("d") && lowercased.hasSuffix(".img"))
     }
 
     private func status(for error: SafeDeleteTransportError) -> SafeDeleteStatus {
@@ -363,7 +502,7 @@ struct SafeDeleteAdapter: Sendable {
         case .deviceDisconnected:
             return "The Garmin device was disconnected. Nothing else was changed."
         case .objectNotFound:
-            return "The managed map was not found on the Garmin device. Nothing was removed."
+            return "The map was not found on the Garmin device. Nothing was removed."
         case .operationFailed:
             return "The map could not be validated or removed. Nothing else was changed."
         }
@@ -405,6 +544,7 @@ struct SafeDeleteAdapter: Sendable {
 enum MapLifecycleOwnershipSource: Sendable {
     case manifest
     case failedInstallRecovery
+    case external
 }
 
 struct MapLifecycleManager: Sendable {
@@ -429,7 +569,8 @@ struct MapLifecycleManager: Sendable {
         rescan: @escaping @Sendable () throws -> [InstalledMapFile],
         transport: any SafeDeleteTransport,
         ownershipSource: MapLifecycleOwnershipSource = .manifest,
-        requiresVerifiedBackup: Bool = true
+        requiresVerifiedBackup: Bool = true,
+        onProgress: (@Sendable (SafeDeleteProgress) -> Void)? = nil
     ) -> SafeDeleteResult {
         let result = safeDeleteAdapter.delete(
             target: target,
@@ -437,10 +578,15 @@ struct MapLifecycleManager: Sendable {
             deviceConnected: deviceConnected,
             rescan: rescan,
             transport: transport,
-            requiresVerifiedBackup: requiresVerifiedBackup
+            requiresVerifiedBackup: requiresVerifiedBackup,
+            onProgress: onProgress
         )
 
         guard result.isSuccess else {
+            return result
+        }
+
+        if case .external = ownershipSource {
             return result
         }
 
@@ -471,6 +617,9 @@ struct MapLifecycleManager: Sendable {
                     devicePath: target.expectedPath,
                     filename: target.expectedFilename
                 )) == true
+            case .external:
+                manifestRemoved = false
+                recoveryRemoved = false
             }
 
             guard manifestRemoved || recoveryRemoved else {

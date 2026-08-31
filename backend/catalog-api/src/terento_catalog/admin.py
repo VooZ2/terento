@@ -594,6 +594,8 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     evidence_class = " class='active'" if active == "evidence" else ""
     campaign_class = " class='active'" if active == "campaigns" else ""
     devices_class = " class='active'" if active == "devices" else ""
+    providers_class = " class='active'" if active == "providers" else ""
+    map_statistics_class = " class='active'" if active == "map-statistics" else ""
     review = user.get("admin_review_summary") or {}
     installation_issues = int(review.get("installationIssues") or 0)
     identity_pending = int(review.get("identityPending") or 0)
@@ -611,7 +613,7 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
       </details>""" if review_total else ""
     return f"""<header class="admin-topbar"><div class="admin-topbar-inner">
       <div class="admin-header-zone admin-header-left">{_admin_brand(show_badge=False)}<span class="admin-badge">Admin area</span><a class="admin-website-link" href="https://terento.app/" target="_blank" rel="noopener noreferrer" aria-label="Open Terento website in a new tab">Website <span aria-hidden="true">↗</span></a></div>
-      <nav class="admin-section-nav" aria-label="Admin sections"><a{evidence_class} href="/admin">Installations</a><a{devices_class} href="/admin/devices">Devices</a><a{campaign_class} href="/admin/campaign-links">Campaign links</a>{review_menu}</nav>
+      <nav class="admin-section-nav" aria-label="Admin sections"><a{evidence_class} href="/admin">Installations</a><a{devices_class} href="/admin/devices">Devices</a><a{providers_class} href="/admin/providers">Providers</a><a{map_statistics_class} href="/admin/map-statistics">Map statistics</a><a{campaign_class} href="/admin/campaign-links">Campaign links</a>{review_menu}</nav>
       <nav class="admin-nav" aria-label="Admin navigation"><label class="timezone-control"><span class="sr-only">Time zone</span><select id="admin-timezone" aria-label="Time zone" title="Time zone"><option value="browser">Automatic (browser)</option><option value="UTC">UTC</option><option value="Europe/Vilnius">Europe/Vilnius</option><option value="Europe/London">Europe/London</option><option value="Europe/Berlin">Europe/Berlin</option><option value="America/New_York">America/New_York</option><option value="America/Los_Angeles">America/Los_Angeles</option><option value="Asia/Tokyo">Asia/Tokyo</option></select></label><span class="admin-user" aria-label="Signed in as {username}">{username}</span>
       <form method="post" action="/admin/logout"><input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}"><button class="link-button" type="submit">Sign out</button></form></nav>
     </div></header>"""
@@ -712,6 +714,481 @@ def dashboard_page(
       <script>{_dashboard_script()}</script>
     """
     return _layout("Installations", content)
+
+
+def _admin_json(value: Any) -> str:
+    """Serialize data for an inert/nonce-protected inline admin script."""
+
+    encoded = json.dumps(value, ensure_ascii=False, default=_admin_json_default)
+    # Keep server-provided text from terminating a script element or becoming
+    # HTML markup when an adapter/source value is unexpectedly user-controlled.
+    return (
+        encoded.replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("&", "\\u0026")
+        .replace("\u2028", "\\u2028")
+        .replace("\u2029", "\\u2029")
+    )
+
+
+def _admin_json_default(value: Any) -> Any:
+    if isinstance(value, datetime):
+        normalized = value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        return normalized.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return str(value)
+
+
+def _provider_status_badge(value: Any, *, kind: str = "status") -> str:
+    normalized = str(value or "UNKNOWN").strip().upper()
+    labels = {
+        "ACTIVE": "Active",
+        "PAUSED": "Paused",
+        "RETIRED": "Retired",
+        "HEALTHY": "Healthy",
+        "DEGRADED": "Degraded",
+        "DOWN": "Down",
+        "UNKNOWN": "Unknown",
+        "RUNNING": "Running",
+        "SUCCEEDED": "Succeeded",
+        "FAILED": "Failed",
+    }
+    css_value = re.sub(r"[^a-z0-9_-]", "-", normalized.lower()) or "unknown"
+    label = labels.get(normalized, normalized.title())
+    return f"<span class='provider-status provider-status-{html.escape(css_value)}'>{html.escape(label)}</span>"
+
+
+def _provider_url(value: Any, *, label: str | None = None) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return "<span class='muted-value'>—</span>"
+    escaped = html.escape(raw, quote=True)
+    text = html.escape(label or raw)
+    if raw.startswith(("https://", "http://")):
+        return f"<a href='{escaped}' target='_blank' rel='noopener noreferrer'>{text} <span aria-hidden='true'>↗</span></a>"
+    return text
+
+
+def _provider_bytes(value: Any) -> str:
+    try:
+        amount = int(value)
+    except (TypeError, ValueError):
+        return "—"
+    if amount < 0:
+        return "—"
+    units = ("B", "KiB", "MiB", "GiB")
+    number = float(amount)
+    unit = units[0]
+    for candidate in units:
+        unit = candidate
+        if number < 1024 or candidate == units[-1]:
+            break
+        number /= 1024
+    return f"{int(number) if number.is_integer() else number:.1f} {unit}"
+
+
+def _provider_action_button(
+    provider_id: str,
+    action: str,
+    label: str,
+    *,
+    status: str | None = None,
+    secondary: bool = False,
+    disabled: bool = False,
+) -> str:
+    attributes = (
+        f" data-provider-status='{html.escape(status, quote=True)}'" if status else ""
+    )
+    class_name = "secondary-button" if secondary else ""
+    disabled_attribute = " disabled" if disabled else ""
+    return (
+        f"<button type='button' class='{class_name}' data-provider-action='{html.escape(action, quote=True)}'"
+        f" data-provider-id='{html.escape(provider_id, quote=True)}'{attributes}{disabled_attribute}>"
+        f"{html.escape(label)}</button>"
+    )
+
+
+def _provider_summary_row(provider: dict[str, Any]) -> str:
+    provider_id = str(provider.get("id") or "").strip()
+    name = str(provider.get("name") or provider_id or "Unknown provider")
+    status = str(provider.get("status") or "UNKNOWN")
+    health = str(provider.get("health") or "UNKNOWN")
+    broken = int(provider.get("brokenUrlCount") or provider.get("brokenPackageCount") or 0)
+    provider_href = html.escape(quote(provider_id, safe=""), quote=True)
+    broken_markup = (
+        f"<span class='provider-broken-count'>{broken}</span>" if broken else "0"
+    )
+    error = str(provider.get("lastHealthError") or "").strip()
+    error_markup = (
+        f"<span class='provider-error' title='{html.escape(error, quote=True)}'>{html.escape(error)}</span>"
+        if error else "<span class='muted-value'>—</span>"
+    )
+    return (
+        f"<tr data-provider-search='{html.escape(' '.join((provider_id, name, str(provider.get('adapterId') or ''), status, health)).casefold(), quote=True)}'>"
+        f"<td><a class='provider-name-link' href='/admin/providers/{provider_href}'><strong>{html.escape(name)}</strong><small>{html.escape(provider_id)}</small></a></td>"
+        f"<td><code>{html.escape(str(provider.get('adapterId') or '—'))}</code></td>"
+        f"<td>{_provider_status_badge(status)}</td>"
+        f"<td>{_provider_status_badge(health, kind='health')}</td>"
+        f"<td class='numeric'>{int(provider.get('packageCount') or 0)}</td>"
+        f"<td>{_timestamp_markup(provider.get('lastCatalogSync'))}</td>"
+        f"<td>{_timestamp_markup(provider.get('lastDownloadTest') or provider.get('lastHealthCheck'))}</td>"
+        f"<td class='numeric'>{broken_markup}</td>"
+        f"<td>{error_markup}</td>"
+        "</tr>"
+    )
+
+
+def providers_page(
+    providers: list[dict[str, Any]] | dict[str, Any], user: dict[str, Any], csrf_token: str
+) -> bytes:
+    provider_rows = providers.get("providers", []) if isinstance(providers, dict) else providers
+    provider_rows = list(provider_rows or [])
+    rows = "".join(_provider_summary_row(provider) for provider in provider_rows)
+    empty = "<p class='empty'>No known providers are registered.</p>" if not provider_rows else ""
+    active = sum(1 for provider in provider_rows if str(provider.get("status")).upper() == "ACTIVE")
+    broken = sum(int(provider.get("brokenUrlCount") or provider.get("brokenPackageCount") or 0) for provider in provider_rows)
+    content = f"""
+      {_admin_header(user, csrf_token, active='providers')}
+      <main class='dashboard' id='main-content'>
+        <div class='heading-row'><div><p class='eyebrow'>Map operations</p><h1>Providers</h1><p class='lede'>Known provider adapters, catalog state, and the latest health evidence.</p></div><a class='button-link' href='/admin/map-statistics'>Open map statistics</a></div>
+        <section class='admin-summary-strip' aria-label='Provider summary'><p class='admin-summary-metrics'><strong>{len(provider_rows)} providers</strong><span> · {active} active · {broken} broken URLs</span></p><p class='admin-summary-context'>Provider binaries are never stored by this admin service.</p></section>
+        {empty}
+        <section class='provider-section' aria-label='Provider list'>
+          <form class='filter-bar provider-filter-bar' id='provider-filters' role='search'><label class='filter-search'><span class='sr-only'>Search providers</span><input id='provider-search' type='search' placeholder='Search providers' autocomplete='off'></label><p class='results-count' id='provider-results-count' aria-live='polite'>{len(provider_rows)} providers</p></form>
+          <div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Map provider status</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Adapter</th><th scope='col'>Activity</th><th scope='col'>Health</th><th scope='col'>Active packages</th><th scope='col'>Catalog sync</th><th scope='col'>Last download test</th><th scope='col'>Broken URLs</th><th scope='col'>Last error</th></tr></thead><tbody id='provider-rows'>{rows}</tbody></table></div>
+        </section>
+      </main>
+      <script>window.terentoAdminCsrf = {_admin_json(csrf_token)};{_providers_list_script()}</script>
+    """
+    return _layout("Providers", content)
+
+
+def _provider_package_row(package: dict[str, Any]) -> str:
+    broken_count = int(package.get("broken_artifact_count") or 0)
+    availability = str(package.get("availability") or "UNKNOWN")
+    row_class = " provider-package-broken" if broken_count else ""
+    broken_markup = _provider_status_badge("FAILED" if broken_count else availability)
+    return (
+        f"<tr class='{row_class.strip()}'><td><code>{html.escape(str(package.get('id') or '—'))}</code></td>"
+        f"<td>{html.escape(str(package.get('name') or '—'))}</td><td>{html.escape(str(package.get('region') or '—'))}</td>"
+        f"<td>{html.escape(str(package.get('release') or '—'))}</td><td class='numeric'>{int(package.get('artifact_count') or 0)}</td>"
+        f"<td>{broken_markup}{f' <small>{broken_count} broken</small>' if broken_count else ''}</td></tr>"
+    )
+
+
+def _provider_source_row(source: dict[str, Any]) -> str:
+    return (
+        f"<tr><td>{html.escape(str(source.get('source_type') or '—'))}</td>"
+        f"<td class='provider-url-cell'>{_provider_url(source.get('source_url'))}</td>"
+        f"<td>{_provider_status_badge('ACTIVE' if source.get('enabled', True) else 'PAUSED')}</td>"
+        f"<td>{_timestamp_markup(source.get('last_checked_at'))}</td></tr>"
+    )
+
+
+def _provider_health_row(health: dict[str, Any]) -> str:
+    components = (
+        ("website_status", "Website"), ("catalog_status", "Catalog"),
+        ("redirect_status", "Redirects"), ("download_status", "Download"),
+        ("mime_status", "MIME"), ("magic_status", "Magic bytes"),
+        ("zip_status", "ZIP"), ("img_status", "IMG"),
+        ("last_update_status", "Freshness"),
+    )
+    component_markup = " ".join(
+        f"<span class='provider-component'>{html.escape(label)}: {_provider_status_badge(health.get(key), kind='health')}</span>"
+        for key, label in components
+    )
+    error = str(health.get("error_code") or health.get("error_detail") or "").strip()
+    error_markup = html.escape(error) if error else "<span class='muted-value'>—</span>"
+    return (
+        f"<tr><td>{_timestamp_markup(health.get('checked_at'))}</td><td>{_provider_status_badge(health.get('status'), kind='health')}</td>"
+        f"<td><div class='provider-component-list'>{component_markup}</div></td><td>{html.escape(str(health.get('http_status') or '—'))}</td>"
+        f"<td>{html.escape(str(health.get('artifact_count') or '—'))}</td><td>{html.escape(str(health.get('duration_ms') or '—'))} ms</td>"
+        f"<td>{error_markup}</td></tr>"
+    )
+
+
+def _provider_run_row(run: dict[str, Any]) -> str:
+    error = str(run.get("error_code") or run.get("error_detail") or "").strip()
+    error_markup = html.escape(error) if error else "<span class='muted-value'>—</span>"
+    return (
+        f"<tr><td>{html.escape(str(run.get('id') or '—'))}</td><td>{_timestamp_markup(run.get('started_at'))}</td>"
+        f"<td>{_timestamp_markup(run.get('finished_at'))}</td><td>{_provider_status_badge(run.get('status'))}</td>"
+        f"<td class='numeric'>{int(run.get('package_count') or 0)}</td><td class='numeric'>{int(run.get('artifact_count') or 0)}</td>"
+        f"<td>{error_markup}</td></tr>"
+    )
+
+
+def _provider_audit_row(audit: dict[str, Any]) -> str:
+    details = audit.get("details")
+    details_text = json.dumps(details, ensure_ascii=False, separators=(",", ":")) if details else "—"
+    return (
+        f"<tr><td>{html.escape(str(audit.get('admin_user_id') or '—'))}</td><td>{html.escape(str(audit.get('action') or '—'))}</td>"
+        f"<td>{html.escape(str(audit.get('old_status') or '—'))}</td><td>{html.escape(str(audit.get('new_status') or '—'))}</td>"
+        f"<td>{html.escape(str(audit.get('reason') or '—'))}</td><td>{_timestamp_markup(audit.get('occurred_at'))}</td>"
+        f"<td>{html.escape(str(audit.get('target') or '—'))}<br><code>{html.escape(details_text)}</code></td></tr>"
+    )
+
+
+def provider_detail_page(
+    detail: dict[str, Any], runs: list[dict[str, Any]], audits: list[dict[str, Any]],
+    user: dict[str, Any], csrf_token: str,
+) -> bytes:
+    provider = detail.get("provider", detail)
+    provider_id = str(provider.get("id") or "").strip()
+    name = str(provider.get("name") or provider_id or "Provider")
+    status = str(provider.get("status") or "UNKNOWN").upper()
+    health_record = provider.get("health") if isinstance(provider.get("health"), dict) else {}
+    health = str(provider.get("healthStatus") or health_record.get("status") or provider.get("health") or "UNKNOWN").upper()
+    packages = list(provider.get("maps") or [])
+    sources = list(provider.get("sources") or [])
+    health_history = list(provider.get("healthHistory") or [])
+    broken_packages = sum(int(package.get("broken_artifact_count") or 0) for package in packages)
+    activation_gate = provider.get("activationGate")
+    if not isinstance(activation_gate, dict):
+        activation_gate = {}
+    can_activate = bool(activation_gate.get("canActivate"))
+    activation_blockers = [
+        str(item.get("message") or "")
+        for item in activation_gate.get("blockers", [])
+        if isinstance(item, dict) and str(item.get("message") or "")
+    ]
+    state_button = ""
+    if status != "RETIRED":
+        next_status = "PAUSED" if status == "ACTIVE" else "ACTIVE"
+        state_button = _provider_action_button(
+            provider_id,
+            "state",
+            "Pause" if next_status == "PAUSED" else "Activate",
+            status=next_status,
+            secondary=True,
+            disabled=next_status == "ACTIVE" and not can_activate,
+        )
+    activation_note = ""
+    if status != "ACTIVE" and status != "RETIRED" and not can_activate:
+        if not activation_blockers:
+            activation_blockers = ["Activation checks are not available."]
+        activation_note = (
+            "<p class='provider-activation-note' role='status'><strong>Activation blocked.</strong> "
+            + html.escape(" ".join(activation_blockers))
+            + "</p>"
+        )
+    rows_packages = "".join(_provider_package_row(package) for package in packages)
+    rows_sources = "".join(_provider_source_row(source) for source in sources)
+    rows_health = "".join(_provider_health_row(item) for item in health_history)
+    rows_runs = "".join(_provider_run_row(run) for run in runs)
+    rows_audits = "".join(_provider_audit_row(audit) for audit in audits)
+    empty_packages = "<p class='empty'>No catalog packages collected yet.</p>" if not packages else ""
+    empty_sources = "<p class='empty'>No provider source links recorded.</p>" if not sources else ""
+    empty_health = "<p class='empty'>No health checks recorded yet.</p>" if not health_history else ""
+    empty_runs = "<p class='empty'>No catalog collection runs recorded yet.</p>" if not runs else ""
+    empty_audits = "<p class='empty'>No provider audit entries recorded yet.</p>" if not audits else ""
+    content = f"""
+      {_admin_header(user, csrf_token, active='providers')}
+      <main class='dashboard provider-detail' id='main-content'>
+        <p class='back-link'><a href='/admin/providers'>← Back to providers</a></p>
+        <div class='heading-row'><div><p class='eyebrow'>Provider detail</p><h1>{html.escape(name)}</h1><p class='lede'><code>{html.escape(provider_id)}</code> · adapter <code>{html.escape(str(provider.get('adapterId') or '—'))}</code></p></div><div class='provider-heading-status'>{_provider_status_badge(status)} {_provider_status_badge(health, kind='health')}</div></div>
+        <section class='provider-action-bar' data-provider-id='{html.escape(provider_id, quote=True)}' aria-label='Provider actions'>
+          {_provider_action_button(provider_id, 'check', 'Check now')}
+          {_provider_action_button(provider_id, 'collect', 'Collect catalog', secondary=True)}
+          {state_button}
+          {_provider_action_button(provider_id, 'retire', 'Retire', secondary=True, disabled=status == 'RETIRED')}
+          {activation_note}
+          <p class='admin-action-status' id='provider-action-status' aria-live='polite'></p>
+        </section>
+        <section class='provider-metrics' aria-label='Provider summary'><article><span>Activity</span><strong>{_provider_status_badge(status)}</strong></article><article><span>Health</span><strong>{_provider_status_badge(health, kind='health')}</strong></article><article><span>Active packages</span><strong>{int(provider.get('packageCount') or len(packages))}</strong></article><article><span>Broken packages</span><strong>{broken_packages}</strong></article><article><span>Catalog sync</span><strong>{_timestamp_markup(provider.get('lastCatalogSync'))}</strong></article></section>
+        <section class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Metadata</p><h2>Provider metadata</h2></div></div><dl class='provider-information-list'><div><dt>Website</dt><dd>{_provider_url(provider.get('website'))}</dd></div><div><dt>License</dt><dd>{html.escape(str(provider.get('license') or '—'))}</dd></div><div><dt>Attribution</dt><dd>{html.escape(str(provider.get('attribution') or '—'))}</dd></div><div><dt>License URL</dt><dd>{_provider_url(provider.get('licenseUrl'))}</dd></div></dl></section>
+        <section class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Sources</p><h2>Original links</h2></div></div>{empty_sources}<div class='table-wrap provider-table-wrap'><table class='admin-table'><thead><tr><th scope='col'>Type</th><th scope='col'>Original URL</th><th scope='col'>Enabled</th><th scope='col'>Last checked</th></tr></thead><tbody>{rows_sources}</tbody></table></div></section>
+        <section class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Catalog</p><h2>Regions and packages</h2></div><p class='table-help'>{len(packages)} packages · {broken_packages} broken</p></div>{empty_packages}<div class='table-wrap provider-table-wrap'><table class='admin-table'><thead><tr><th scope='col'>Package</th><th scope='col'>Name</th><th scope='col'>Region</th><th scope='col'>Release</th><th scope='col'>Artifacts</th><th scope='col'>State</th></tr></thead><tbody>{rows_packages}</tbody></table></div></section>
+        <section class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Health</p><h2>Health check history</h2></div></div>{empty_health}<div class='table-wrap provider-table-wrap provider-history-wrap'><table class='admin-table'><thead><tr><th scope='col'>Checked</th><th scope='col'>Result</th><th scope='col'>Checks</th><th scope='col'>HTTP</th><th scope='col'>Artifacts</th><th scope='col'>Duration</th><th scope='col'>Error</th></tr></thead><tbody>{rows_health}</tbody></table></div></section>
+        <section class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Collection</p><h2>Catalog collection runs</h2></div></div>{empty_runs}<div class='table-wrap provider-table-wrap'><table class='admin-table'><thead><tr><th scope='col'>Run</th><th scope='col'>Started</th><th scope='col'>Finished</th><th scope='col'>Result</th><th scope='col'>Packages</th><th scope='col'>Artifacts</th><th scope='col'>Error</th></tr></thead><tbody>{rows_runs}</tbody></table></div></section>
+        <section class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Audit</p><h2>Provider history</h2></div><p class='table-help'>Status changes and provider actions are retained.</p></div>{empty_audits}<div class='table-wrap provider-table-wrap'><table class='admin-table'><thead><tr><th scope='col'>Admin user</th><th scope='col'>Action</th><th scope='col'>Old status</th><th scope='col'>New status</th><th scope='col'>Reason</th><th scope='col'>Timestamp</th><th scope='col'>Target/details</th></tr></thead><tbody>{rows_audits}</tbody></table></div></section>
+      </main>
+      <script>window.terentoAdminCsrf = {_admin_json(csrf_token)};{_provider_detail_script()}</script>
+    """
+    return _layout(name, content)
+
+
+def _map_statistics_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    def count(event_type: str, outcome: str | None = None) -> int:
+        return sum(
+            int(row.get("operation_count") or row.get("event_count") or 0)
+            for row in rows
+            if row.get("event_type") == event_type and (outcome is None or row.get("outcome") == outcome)
+        )
+
+    downloads = count("DOWNLOAD_SUCCEEDED", "SUCCEEDED")
+    failed_downloads = count("DOWNLOAD_FAILED", "FAILED")
+    download_attempts = downloads + failed_downloads
+    installs = count("INSTALL_SUCCEEDED", "SUCCEEDED")
+    failed_installs = count("INSTALL_FAILED", "FAILED")
+    install_attempts = installs + failed_installs
+    return {
+        "completedDownloads": downloads,
+        "failedDownloads": failed_downloads,
+        "downloadSuccessRate": (downloads / download_attempts * 100) if download_attempts else None,
+        "completedInstalls": installs,
+        "failedInstalls": failed_installs,
+        "installSuccessRate": (installs / install_attempts * 100) if install_attempts else None,
+    }
+
+
+def _map_statistics_rows(rows: list[dict[str, Any]]) -> str:
+    if not rows:
+        return "<tr><td colspan='7' class='muted-value'>No map events in this period.</td></tr>"
+    markup: list[str] = []
+    for row in rows:
+        markup.append(
+            f"<tr><td>{html.escape(str(row.get('provider_id') or '—'))}</td>"
+            f"<td><code>{html.escape(str(row.get('map_package_id') or '—'))}</code></td>"
+            f"<td>{html.escape(str(row.get('region') or '—'))}</td><td>{html.escape(str(row.get('event_type') or '—'))}</td>"
+            f"<td>{html.escape(str(row.get('outcome') or '—'))}</td><td class='numeric'>{int(row.get('operation_count') or row.get('event_count') or 0)}</td>"
+            f"<td>{_timestamp_markup(row.get('last_occurred_at'))}</td></tr>"
+        )
+    return "".join(markup)
+
+
+def map_statistics_page(
+    statistics: dict[str, Any], providers: list[dict[str, Any]], user: dict[str, Any],
+    csrf_token: str, *, selected_filters: dict[str, str] | None = None,
+) -> bytes:
+    rows = list(statistics.get("rows") or [])
+    summary = _map_statistics_summary(rows)
+    selected = selected_filters or {}
+    provider_options = "".join(
+        f"<option value='{html.escape(str(provider.get('id') or ''), quote=True)}'>{html.escape(str(provider.get('name') or provider.get('id') or ''))}</option>"
+        for provider in providers
+    )
+    content = f"""
+      {_admin_header(user, csrf_token, active='map-statistics')}
+      <main class='dashboard map-statistics-page' id='main-content'>
+        <div class='heading-row'><div><p class='eyebrow'>Map operations</p><h1>Map statistics</h1><p class='lede'>Popularity is shown together with download, install, and provider reliability signals.</p></div><a class='button-link' href='/admin/providers'>Manage providers</a></div>
+        <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search'><label><span class='sr-only'>Time range</span><select id='map-statistics-range'><option value='7'>7 days</option><option value='30'>30 days</option><option value='90'>90 days</option><option value='all'>All time</option></select></label><label><span class='sr-only'>Provider</span><select id='map-statistics-provider'><option value=''>All providers</option>{provider_options}</select></label><label><span class='sr-only'>Map</span><input id='map-statistics-map' type='search' placeholder='Map id'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event'><option value=''>All events</option><option value='DOWNLOAD_SUCCEEDED'>Download succeeded</option><option value='DOWNLOAD_FAILED'>Download failed</option><option value='INSTALL_SUCCEEDED'>Install succeeded</option><option value='INSTALL_FAILED'>Install failed</option><option value='DOWNLOAD_STARTED'>Download started</option></select></label><p class='results-count' id='map-statistics-status' aria-live='polite'>Loading…</p></form>
+        <section class='provider-metrics map-statistics-metrics' id='map-statistics-metrics' aria-label='Map statistics summary'><article><span>Completed downloads</span><strong data-stat='completedDownloads'>{summary['completedDownloads']}</strong></article><article><span>Download success</span><strong data-stat='downloadSuccessRate'>{_format_rate(summary['downloadSuccessRate'])}</strong></article><article><span>Completed installs</span><strong data-stat='completedInstalls'>{summary['completedInstalls']}</strong></article><article><span>Install success</span><strong data-stat='installSuccessRate'>{_format_rate(summary['installSuccessRate'])}</strong></article><article><span>Failed downloads</span><strong data-stat='failedDownloads'>{summary['failedDownloads']}</strong></article><article><span>Broken provider links</span><strong id='broken-provider-links'>{sum(int(provider.get('brokenUrlCount') or provider.get('brokenPackageCount') or 0) for provider in providers)}</strong></article></section>
+        <section class='provider-dashboard-grid'><article class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Downloads per provider</h2></div></div><div class='table-wrap provider-table-wrap'><table class='admin-table'><thead><tr><th scope='col'>Provider</th><th scope='col'>Downloads</th><th scope='col'>Installs</th><th scope='col'>Install success</th><th scope='col'>Health</th></tr></thead><tbody id='provider-statistic-rows'></tbody></table></div></article><article class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Top maps</h2></div></div><div class='table-wrap provider-table-wrap'><table class='admin-table'><thead><tr><th scope='col'>Map</th><th scope='col'>Region</th><th scope='col'>Completed downloads</th><th scope='col'>Last activity</th></tr></thead><tbody id='top-map-rows'></tbody></table></div><div class='section-heading provider-subheading'><div><p class='section-kicker'>Popularity</p><h2>Top regions</h2></div></div><div class='table-wrap provider-table-wrap'><table class='admin-table'><thead><tr><th scope='col'>Region</th><th scope='col'>Completed downloads</th><th scope='col'>Last activity</th></tr></thead><tbody id='top-region-rows'></tbody></table></div></article></section>
+        <section class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Event detail</p><h2>Map events</h2></div></div><div class='table-wrap provider-table-wrap'><table class='admin-table'><thead><tr><th scope='col'>Provider</th><th scope='col'>Map</th><th scope='col'>Region</th><th scope='col'>Event</th><th scope='col'>Outcome</th><th scope='col'>Operations</th><th scope='col'>Last activity</th></tr></thead><tbody id='map-statistics-rows'>{_map_statistics_rows(rows)}</tbody></table></div></section>
+      </main>
+      <script>window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};{_map_statistics_script()}</script>
+    """
+    return _layout("Map statistics", content)
+
+
+def _providers_list_script() -> str:
+    return r"""(() => {
+      const search = document.querySelector('#provider-search');
+      const rows = [...document.querySelectorAll('#provider-rows tr[data-provider-search]')];
+      const count = document.querySelector('#provider-results-count');
+      const csrf = window.terentoAdminCsrf;
+      const refresh = () => {
+        const query = (search?.value || '').trim().toLocaleLowerCase();
+        let visible = 0;
+        rows.forEach((row) => { const show = !query || row.dataset.providerSearch.includes(query); row.hidden = !show; if (show) visible += 1; });
+        if (count) count.textContent = `${visible} provider${visible === 1 ? '' : 's'}`;
+      };
+      search?.addEventListener('input', refresh);
+      document.querySelectorAll('[data-provider-action="check"]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          const id = button.dataset.providerId;
+          button.disabled = true;
+          try {
+            const response = await fetch(`/admin/providers/${encodeURIComponent(id)}/check`, {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf}, body: '{}'});
+            if (!response.ok) throw new Error(`Check failed (${response.status})`);
+            window.location.reload();
+          } catch (error) { button.disabled = false; window.alert(error.message || 'Provider check failed.'); }
+        });
+      });
+      refresh();
+    })();"""
+
+
+def _provider_detail_script() -> str:
+    return r"""(() => {
+      const csrf = window.terentoAdminCsrf;
+      const status = document.querySelector('#provider-action-status');
+      document.querySelectorAll('[data-provider-action]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          const action = button.dataset.providerAction;
+          const id = button.dataset.providerId;
+          if (action === 'retire' && !window.confirm('Retire this provider? Historical events and packages will be retained.')) return;
+          let reason = '';
+          if (action === 'retire' || action === 'state') reason = window.prompt('Reason for this provider status change (optional):', '') || '';
+          const body = action === 'state' ? JSON.stringify({status: button.dataset.providerStatus, reason}) : action === 'retire' ? JSON.stringify({reason}) : '{}';
+          const original = button.textContent;
+          button.disabled = true;
+          if (status) status.textContent = `${original}…`;
+          try {
+            const response = await fetch(`/admin/providers/${encodeURIComponent(id)}/${action}`, {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf}, body});
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || `Action failed (${response.status})`);
+            if (status) status.textContent = 'Saved. Refreshing…';
+            window.location.reload();
+          } catch (error) { button.disabled = false; if (status) status.textContent = error.message || 'Provider action failed.'; }
+        });
+      });
+    })();"""
+
+
+def _map_statistics_script() -> str:
+    return r"""(() => {
+      const csrf = window.terentoAdminCsrf;
+      const initial = window.terentoMapStatistics || {rows: []};
+      const providers = window.terentoAdminProviders || [];
+      const filters = window.terentoMapStatisticsFilters || {};
+      const range = document.querySelector('#map-statistics-range');
+      const provider = document.querySelector('#map-statistics-provider');
+      const map = document.querySelector('#map-statistics-map');
+      const region = document.querySelector('#map-statistics-region');
+      const event = document.querySelector('#map-statistics-event');
+      const status = document.querySelector('#map-statistics-status');
+      const formatRate = (value) => value === null || value === undefined ? '—' : `${Number(value).toFixed(Number(value) % 1 ? 1 : 0)}%`;
+      const operations = (row) => Number(row.operation_count || row.event_count || 0);
+      const count = (rows, eventType, outcome) => rows.filter((row) => row.event_type === eventType && (!outcome || row.outcome === outcome)).reduce((total, row) => total + operations(row), 0);
+      const healthByProvider = Object.fromEntries(providers.map((item) => [item.id, item.health || 'UNKNOWN']));
+      const providerName = Object.fromEntries(providers.map((item) => [item.id, item.name || item.id]));
+      const render = (payload) => {
+        const rows = payload.rows || [];
+        const downloads = count(rows, 'DOWNLOAD_SUCCEEDED', 'SUCCEEDED');
+        const failedDownloads = count(rows, 'DOWNLOAD_FAILED', 'FAILED');
+        const installs = count(rows, 'INSTALL_SUCCEEDED', 'SUCCEEDED');
+        const failedInstalls = count(rows, 'INSTALL_FAILED', 'FAILED');
+        const set = (key, value) => { const node = document.querySelector(`[data-stat="${key}"]`); if (node) node.textContent = value; };
+        set('completedDownloads', downloads); set('failedDownloads', failedDownloads); set('completedInstalls', installs);
+        set('downloadSuccessRate', formatRate(downloads + failedDownloads ? downloads / (downloads + failedDownloads) * 100 : null));
+        set('installSuccessRate', formatRate(installs + failedInstalls ? installs / (installs + failedInstalls) * 100 : null));
+        const byProvider = Object.fromEntries(providers.map((item) => [item.id, {downloads: 0, installs: 0, failedInstalls: 0}]));
+        rows.forEach((row) => { const id = row.provider_id || 'unknown'; byProvider[id] ||= {downloads: 0, installs: 0, failedInstalls: 0}; if (row.event_type === 'DOWNLOAD_SUCCEEDED' && row.outcome === 'SUCCEEDED') byProvider[id].downloads += operations(row); if (row.event_type === 'INSTALL_SUCCEEDED' && row.outcome === 'SUCCEEDED') byProvider[id].installs += operations(row); if (row.event_type === 'INSTALL_FAILED' && row.outcome === 'FAILED') byProvider[id].failedInstalls += operations(row); });
+        const providerRows = Object.entries(byProvider).sort((a, b) => b[1].downloads - a[1].downloads || a[0].localeCompare(b[0])).map(([id, item]) => `<tr><td>${escapeHtml(providerName[id] || id)}</td><td class="numeric">${item.downloads}</td><td class="numeric">${item.installs}</td><td>${formatRate(item.installs + item.failedInstalls ? item.installs / (item.installs + item.failedInstalls) * 100 : null)}</td><td>${badge(healthByProvider[id])}</td></tr>`).join('');
+        document.querySelector('#provider-statistic-rows').innerHTML = providerRows || emptyRow(5);
+        const byMap = {};
+        rows.filter((row) => row.event_type === 'DOWNLOAD_SUCCEEDED' && row.outcome === 'SUCCEEDED').forEach((row) => { const key = `${row.map_package_id || 'unknown'}\u0000${row.region || '—'}`; byMap[key] ||= {map: row.map_package_id || '—', region: row.region || '—', count: 0, last: row.last_occurred_at}; byMap[key].count += operations(row); if (String(row.last_occurred_at || '') > String(byMap[key].last || '')) byMap[key].last = row.last_occurred_at; });
+        const topMaps = Object.values(byMap).sort((a, b) => b.count - a.count || a.map.localeCompare(b.map)).slice(0, 10).map((item) => `<tr><td><code>${escapeHtml(item.map)}</code></td><td>${escapeHtml(item.region)}</td><td class="numeric">${item.count}</td><td>${formatTimestamp(item.last)}</td></tr>`).join('');
+        document.querySelector('#top-map-rows').innerHTML = topMaps || emptyRow(4);
+        const byRegion = {};
+        Object.values(byMap).forEach((item) => { byRegion[item.region] ||= {region: item.region, count: 0, last: item.last}; byRegion[item.region].count += item.count; if (String(item.last || '') > String(byRegion[item.region].last || '')) byRegion[item.region].last = item.last; });
+        const topRegions = Object.values(byRegion).sort((a, b) => b.count - a.count || a.region.localeCompare(b.region)).slice(0, 10).map((item) => `<tr><td>${escapeHtml(item.region)}</td><td class="numeric">${item.count}</td><td>${formatTimestamp(item.last)}</td></tr>`).join('');
+        document.querySelector('#top-region-rows').innerHTML = topRegions || emptyRow(3);
+        const detailRows = rows.map((row) => `<tr><td>${escapeHtml(row.provider_id || '—')}</td><td><code>${escapeHtml(row.map_package_id || '—')}</code></td><td>${escapeHtml(row.region || '—')}</td><td>${escapeHtml(row.event_type || '—')}</td><td>${escapeHtml(row.outcome || '—')}</td><td class="numeric">${operations(row)}</td><td>${formatTimestamp(row.last_occurred_at)}</td></tr>`).join('');
+        document.querySelector('#map-statistics-rows').innerHTML = detailRows || emptyRow(7);
+        if (status) status.textContent = `${rows.length} grouped event${rows.length === 1 ? '' : 's'}`;
+      };
+      const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[character]));
+      const formatTimestamp = (value) => { if (!value) return '—'; const date = new Date(value); return Number.isNaN(date.getTime()) ? String(value) : date.toISOString().slice(0, 16).replace('T', ' '); };
+      const badge = (value) => `<span class="provider-status provider-status-${String(value || 'UNKNOWN').toLowerCase()}">${escapeHtml(String(value || 'UNKNOWN').replace('_', ' '))}</span>`;
+      const emptyRow = (columns) => `<tr><td colspan="${columns}" class="muted-value">No events in this period.</td></tr>`;
+      const sync = async () => {
+        const parameters = new URLSearchParams();
+        if (provider.value) parameters.set('provider', provider.value);
+        if (map.value.trim()) parameters.set('map', map.value.trim());
+        if (region.value.trim()) parameters.set('region', region.value.trim());
+        if (event.value) parameters.set('eventType', event.value);
+        if (range.value !== 'all') { const days = Number(range.value); const from = new Date(Date.now() - days * 86400000); parameters.set('dateFrom', from.toISOString()); }
+        if (status) status.textContent = 'Loading…';
+        try { const response = await fetch(`/admin/map-statistics.json?${parameters}`, {credentials: 'same-origin', headers: {'Accept': 'application/json'}}); const payload = await response.json(); if (!response.ok) throw new Error(payload.error || 'Statistics unavailable'); render(payload); } catch (error) { if (status) status.textContent = error.message || 'Statistics unavailable'; }
+      };
+      const initialRange = filters.dateFrom ? 'all' : 'all'; range.value = initialRange; if (filters.provider) provider.value = filters.provider; if (filters.map) map.value = filters.map; if (filters.region) region.value = filters.region; if (filters.eventType) event.value = filters.eventType;
+      [range, provider, event].forEach((control) => control?.addEventListener('change', sync)); [map, region].forEach((control) => control?.addEventListener('change', sync));
+      render(initial);
+    })();"""
 
 
 def _display_identity(identity: str, row: dict[str, Any] | None = None) -> tuple[str, str]:
@@ -2847,6 +3324,8 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .copy-button:disabled{cursor:not-allowed;opacity:.45}
 .copy-status{min-width:54px;color:var(--interactive);font-size:12px;font-weight:700}
 .admin-action-status{margin:8px 0 0;color:var(--interactive);font-size:12px;font-weight:700}.admin-async-action [disabled]{cursor:wait;opacity:.68}
+.button-link,.provider-action-bar button{display:inline-flex;align-items:center;justify-content:center;min-height:var(--admin-control-height);padding:8px 12px;border:0;border-radius:var(--admin-control-radius);background:var(--interactive);color:var(--interactive-primary-text);font-weight:700;text-decoration:none}.button-link:hover,.provider-action-bar button:hover{background:var(--interactive-hover)}.provider-action-bar button.secondary-button{border:1px solid var(--border);background:var(--surface);color:var(--graphite)}.provider-action-bar button.secondary-button:hover{border-color:var(--interactive);background:var(--surface-muted);color:var(--interactive)}
+.provider-table-wrap table{min-width:980px}.provider-name-link{display:flex;flex-direction:column;gap:2px;text-decoration:none}.provider-name-link:hover strong{text-decoration:underline}.provider-name-link small{color:var(--secondary);font:500 11px var(--font-mono)}.provider-table-wrap code{font:500 11px var(--font-mono);overflow-wrap:anywhere}.provider-status{display:inline-flex;align-items:center;justify-content:center;min-height:25px;padding:5px 8px;border:1px solid var(--border);border-radius:999px;font-size:10px;font-weight:750;line-height:1;text-transform:uppercase;white-space:nowrap}.provider-status-active,.provider-status-healthy,.provider-status-succeeded{background:var(--status-success-surface);border-color:var(--status-success-border);color:var(--status-success-text)}.provider-status-paused,.provider-status-unknown,.provider-status-running{background:var(--surface-muted);color:var(--secondary)}.provider-status-retired,.provider-status-down,.provider-status-failed{background:var(--status-error-surface);border-color:var(--status-error-border);color:var(--status-error-text)}.provider-status-degraded{background:var(--status-tested-surface);border-color:var(--status-tested-border);color:var(--status-tested-text)}.provider-broken-count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;padding:2px 7px;border:1px solid color-mix(in srgb,var(--danger) 35%,var(--border));border-radius:999px;color:var(--danger);font-weight:750}.provider-error{display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--danger);font-size:12px}.provider-table-wrap .numeric{text-align:right;font-variant-numeric:tabular-nums}.provider-action-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 20px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px}.provider-action-bar .admin-action-status{flex:1 1 180px;margin:0}.provider-activation-note{flex:1 1 100%;margin:2px 0 0;padding:9px 11px;border:1px solid var(--status-tested-border);border-radius:8px;background:var(--status-tested-surface);color:var(--status-tested-text);font-size:12px;line-height:1.45}.provider-heading-status{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.provider-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:0 0 24px}.provider-metrics article{min-width:0;min-height:84px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px}.provider-metrics article>span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.provider-metrics article>strong{display:block;margin-top:6px;font-family:var(--font-brand);font-size:20px;line-height:1.15}.provider-metrics article>strong .admin-timestamp{font-size:15px}.provider-card{margin-top:24px;padding:22px 24px;background:var(--surface);border:1px solid var(--border);border-radius:14px}.provider-card .section-heading{margin-bottom:16px}.provider-card .section-heading h2{font-size:20px}.provider-information-list{margin:0;border-top:1px solid var(--border)}.provider-information-list div{display:grid;grid-template-columns:minmax(150px,.45fr) minmax(0,1.55fr);gap:18px;padding:10px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 72%,transparent)}.provider-information-list dt{color:var(--secondary);font-size:12px}.provider-information-list dd{margin:0;overflow-wrap:anywhere;font-size:13px;font-weight:650;text-align:right}.provider-information-list a,.provider-url-cell a{color:var(--interactive);text-underline-offset:3px}.provider-package-broken{background:color-mix(in srgb,var(--error-surface) 35%,var(--surface))}.provider-package-broken small{display:block;margin-top:3px;color:var(--danger);font-size:10px}.provider-component-list{display:flex;gap:5px;flex-wrap:wrap}.provider-component{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}.provider-component .provider-status{min-height:21px;padding:4px 6px;font-size:9px}.provider-history-wrap table{min-width:1240px}.provider-dashboard-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.provider-dashboard-grid .provider-card{min-width:0}.map-statistics-filter-bar label{flex:0 1 auto}.map-statistics-filter-bar input,.map-statistics-filter-bar select{min-width:130px}.map-statistics-filter-bar .results-count{flex:1 1 120px}.map-statistics-metrics{grid-template-columns:repeat(6,minmax(0,1fr));margin-top:18px}.map-statistics-metrics article>strong{font-size:24px}.map-statistics-metrics article>strong .admin-timestamp{font-size:20px}
 .attribution-preview{display:grid;grid-template-columns:minmax(220px,.65fr) minmax(0,1.35fr);gap:24px;margin-top:26px;padding-top:21px;border-top:1px solid var(--border)}
 .attribution-preview h2{font-size:20px}
 .attribution-preview .table-help{margin-top:8px;max-width:420px}
@@ -2949,6 +3428,8 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 @media(max-width:560px){.device-detail-grid{grid-template-columns:1fr}.device-catalog-details dl div{grid-template-columns:1fr;gap:2px}.device-catalog-details dd{text-align:left}.device-detail-grid dd{text-align:left}.device-filter-bar .results-count{margin-left:0}.device-dialog-inner{padding:18px}}
 @media(max-width:1100px){.device-sticky-header{display:block;position:sticky;top:calc(var(--admin-topbar-height) + var(--device-filter-height, 54px));z-index:21;overflow:hidden;border:1px solid var(--border);border-bottom:0;background:var(--surface)}.device-sticky-header-scroll{overflow:hidden}.device-sticky-header table,.device-table-wrap table{min-width:1050px}.device-sticky-header th{position:static}.device-table-wrap{overflow-x:auto;overflow-y:hidden}.device-table-wrap thead{display:none}.model-statistics{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:800px){.model-page-header{grid-template-columns:auto minmax(0,1fr)}.model-public-link{grid-column:1/-1;width:max-content}.model-statistics{grid-template-columns:repeat(2,minmax(0,1fr))}.administration-grid{grid-template-columns:1fr}.model-review-alert{align-items:flex-start;flex-direction:column}.model-information-list div{grid-template-columns:1fr;gap:3px}.model-information-list dd{text-align:left}}
+@media(max-width:1100px){.provider-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.map-statistics-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.provider-dashboard-grid{grid-template-columns:1fr}}
+@media(max-width:560px){.provider-card{padding:18px 16px}.provider-metrics,.map-statistics-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.provider-metrics article{padding:12px}.provider-information-list div{grid-template-columns:1fr;gap:3px}.provider-information-list dd{text-align:left}.provider-action-bar{align-items:stretch;flex-direction:column}.provider-action-bar button,.button-link{width:100%}.provider-action-bar .admin-action-status{flex-basis:auto}.map-statistics-filter-bar label,.map-statistics-filter-bar input,.map-statistics-filter-bar select{width:100%;min-width:0}.map-statistics-filter-bar .results-count{width:100%;margin-left:4px}}
 @media(max-height:760px){.device-dialog-inner{max-height:calc(100vh - 32px);overflow:auto}.device-dialog-header{position:sticky;top:-1px;z-index:2;padding-bottom:10px;background:var(--surface)}}
 """
 

@@ -73,7 +73,29 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
         var itemID: UInt32 = 0
         var sizeBytes: UInt64 = 0
         var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
-        let progressBox = MTPProgressBox(callback: progress)
+        let validatedSourceSize: UInt64? = {
+            guard let attributes = try? FileManager.default.attributesOfItem(atPath: sourceURL.path),
+                  let fileSize = attributes[.size] as? NSNumber else {
+                return nil
+            }
+            return fileSize.uint64Value
+        }()
+        let progressBox = MTPProgressBox { transfer in
+            guard let validatedSourceSize, validatedSourceSize > 0 else {
+                progress(transfer)
+                return
+            }
+
+            // libmtp progress callbacks are not consistent across all
+            // Garmin firmware versions. Keep the UI and diagnostics tied to
+            // the validated source artifact, never to an invalid callback
+            // total or a value beyond the file being transferred.
+            progress(TransferProgress(
+                bytesTransferred: min(transfer.bytesTransferred, validatedSourceSize),
+                totalBytes: validatedSourceSize,
+                bytesPerSecond: transfer.bytesPerSecond
+            ))
+        }
 
         // The C bridge invokes the callback synchronously and does not retain
         // its context. Keep the box alive for the complete C call anyway so
@@ -167,6 +189,7 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
 
         var sampledBytes: UInt64 = 0
         var matchedSamples: UInt32 = 0
+        var resolvedItemID: UInt32 = 0
         let requestedSampleCount = sampleOffsets.count
         var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
         let progressBox = MTPProgressBox(callback: progress)
@@ -183,6 +206,7 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
                                     filename,
                                     expectedItemID,
                                     expectedSizeBytes,
+                                    &resolvedItemID,
                                     offsetsBuffer.baseAddress,
                                     offsetsBuffer.count,
                                     sampleLength,
@@ -207,8 +231,12 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
             )
         }
 
+        guard resolvedItemID != 0 else {
+            throw InstallationTransportError.objectIdentityMismatch
+        }
+
         return MTPReadBackMapObject(
-            itemID: expectedItemID,
+            itemID: resolvedItemID,
             targetPath: targetPath,
             reportedSizeBytes: expectedSizeBytes,
             sampledBytes: sampledBytes,
@@ -239,6 +267,43 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
                 expectedItemID: expectedItemID,
                 expectedSizeBytes: expectedSizeBytes
             )
+        }
+    }
+
+    func deleteExternalExact(
+        targetFilename: String,
+        expectedItemID: UInt32,
+        expectedSizeBytes: UInt64
+    ) throws {
+        try operationGate.withOperation(
+            kind: .remove,
+            lifecycleLease: lifecycleLease
+        ) {
+            guard let operationProfile else {
+                throw InstallationTransportError.unsupportedDevice
+            }
+            var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
+            let result = withNativeMapOperationProfile(operationProfile) { nativeProfile in
+                targetFilename.withCString { filename in
+                    errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
+                        terento_mtp_delete_external_map(
+                            nativeProfile,
+                            filename,
+                            expectedItemID,
+                            expectedSizeBytes,
+                            errorPointer.baseAddress,
+                            errorPointer.count
+                        )
+                    }
+                }
+            }
+
+            guard result == 0 else {
+                throw Self.mapError(
+                    result: result,
+                    message: errorMessage(from: errorBuffer)
+                )
+            }
         }
     }
 

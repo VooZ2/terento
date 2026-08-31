@@ -19,6 +19,13 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
     }
 
     func inspectExactObject(_ target: SafeDeleteTarget) throws -> SafeDeleteDeviceObject {
+        try inspectExactObject(target, onProgress: nil)
+    }
+
+    func inspectExactObject(
+        _ target: SafeDeleteTarget,
+        onProgress: (@Sendable (TransferProgress) -> Void)?
+    ) throws -> SafeDeleteDeviceObject {
         let files: [DeviceFile]
         do {
             files = try MTPTransport(
@@ -66,7 +73,7 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
                 operationProfile: operationProfile,
                 operationGate: operationGate,
                 lifecycleLease: lifecycleLease
-            ).readExistingFile(
+                ).readExistingFile(
                 file: InstalledMapFile(
                     path: object.path,
                     filename: object.filename,
@@ -74,7 +81,7 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
                     itemID: object.itemID
                 ),
                 to: temporaryURL,
-                onProgress: nil
+                onProgress: onProgress
             )
 
             guard transfer.itemID != 0 else {
@@ -104,6 +111,14 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
             )
         }
 
+        if target.ownership == .detectedNotManaged {
+            guard try isRecognizedGarminIMG(at: temporaryURL) else {
+                throw SafeDeleteTransportError.operationFailed(
+                    "The selected third-party file is not a recognized Garmin map image. Nothing was removed."
+                )
+            }
+        }
+
         return SafeDeleteDeviceObject(
             file: InstalledMapFile(
                 path: object.path,
@@ -117,15 +132,24 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
 
     func deleteExactObject(_ target: SafeDeleteTarget) throws {
         do {
-            try MTPMapInstallationTransport(
+            let mapTransport = MTPMapInstallationTransport(
                 operationProfile: operationProfile,
                 operationGate: operationGate,
                 lifecycleLease: lifecycleLease
-            ).deleteExact(
-                targetFilename: target.expectedFilename,
-                expectedItemID: target.objectID,
-                expectedSizeBytes: target.expectedSizeBytes
             )
+            if target.ownership == .detectedNotManaged {
+                try mapTransport.deleteExternalExact(
+                    targetFilename: target.expectedFilename,
+                    expectedItemID: target.objectID,
+                    expectedSizeBytes: target.expectedSizeBytes
+                )
+            } else {
+                try mapTransport.deleteExact(
+                    targetFilename: target.expectedFilename,
+                    expectedItemID: target.objectID,
+                    expectedSizeBytes: target.expectedSizeBytes
+                )
+            }
         } catch let error as InstallationTransportError {
             switch error {
             case .deviceDisconnected(let message, _):
@@ -165,6 +189,13 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
             hasher.update(data: data)
         }
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+    }
+
+    private func isRecognizedGarminIMG(at url: URL) throws -> Bool {
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        let prefix = try handle.read(upToCount: GarminIMGMetadataParser.prefixLength) ?? Data()
+        return GarminIMGMetadataParser().parse(Array(prefix)) != nil
     }
 
 }

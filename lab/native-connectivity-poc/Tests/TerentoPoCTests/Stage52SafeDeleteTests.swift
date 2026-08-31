@@ -29,6 +29,14 @@ private final class FakeSafeDeleteTransport: SafeDeleteTransport, @unchecked Sen
     }
 }
 
+private final class ProgressCollector: @unchecked Sendable {
+    private(set) var values: [SafeDeleteProgress] = []
+
+    func append(_ value: SafeDeleteProgress) {
+        values.append(value)
+    }
+}
+
 private final class FakeManifestCleanupStore: TerentoManifestCleanupStore, @unchecked Sendable {
     var removed: [(deviceKey: String, devicePath: String, filename: String)] = []
     var shouldFail = false
@@ -100,6 +108,30 @@ private func validTarget(
     return (target, contents)
 }
 
+private func externalTarget() -> (target: SafeDeleteTarget, contents: Data) {
+    let contents = Data(repeating: 0x4F, count: 12)
+    let identity = MapIdentity(provider: "external", region: "otm-lithuania-contours")!
+    let file = InstalledMapFile(
+        path: "/GARMIN/otm-lithuania-contours.img",
+        filename: "otm-lithuania-contours.img",
+        sizeBytes: UInt64(contents.count),
+        itemID: 303
+    )
+    let target = SafeDeleteTarget(
+        deviceKey: "fenix-8-091e-51b8",
+        mapIdentity: identity,
+        ownership: .detectedNotManaged,
+        objectID: 303,
+        expectedPath: file.path,
+        expectedFilename: file.filename,
+        expectedSizeBytes: file.sizeBytes,
+        expectedSHA256: "",
+        backup: nil,
+        allowsExternalRemoval: true
+    )
+    return (target, contents)
+}
+
 private func targetWithVerifiedBackup() throws -> (target: SafeDeleteTarget, contents: Data, backupURL: URL) {
     let initial = validTarget()
     let backupURL = FileManager.default.temporaryDirectory
@@ -134,7 +166,8 @@ private func run(
     deviceConnected: Bool = true,
     requiresVerifiedBackup: Bool = true,
     scans: [[InstalledMapFile]],
-    transport: FakeSafeDeleteTransport? = nil
+    transport: FakeSafeDeleteTransport? = nil,
+    onProgress: (@Sendable (SafeDeleteProgress) -> Void)? = nil
 ) -> (SafeDeleteResult, FakeSafeDeleteTransport) {
     let transport = transport ?? FakeSafeDeleteTransport()
     transport.currentObject = current
@@ -145,7 +178,8 @@ private func run(
         deviceConnected: deviceConnected,
         rescan: { scanSequence.next() },
         transport: transport,
-        requiresVerifiedBackup: requiresVerifiedBackup
+        requiresVerifiedBackup: requiresVerifiedBackup,
+        onProgress: onProgress
     )
     return (result, transport)
 }
@@ -304,6 +338,62 @@ private func testExternalAndUnknownMapsAreBlocked() throws {
         try require(result.status == .blockedOwnership, "non-managed map must be blocked")
         try require(transport.events.isEmpty, "blocked ownership must not inspect or delete")
     }
+}
+
+private func testConfirmedExternalMapDeletesWithoutManifestCleanup() throws {
+    let prepared = externalTarget()
+    let current = SafeDeleteDeviceObject(
+        file: prepared.target.sourceFile,
+        sha256: sha256(prepared.contents)
+    )
+    let (result, transport) = run(
+        target: prepared.target,
+        current: current,
+        requiresVerifiedBackup: false,
+        scans: [[]]
+    )
+
+    try require(result.status == .success, "a confirmed parsed third-party map should be removable")
+    try require(transport.events == ["inspect", "delete"], "third-party removal must inspect before delete")
+
+    let cleanupStore = FakeManifestCleanupStore()
+    let managerTransport = FakeSafeDeleteTransport()
+    managerTransport.currentObject = current
+    let scanSequence = SafeDeleteScanSequence([[]])
+    let managedResult = MapLifecycleManager(manifestCleanupStore: cleanupStore).delete(
+        target: prepared.target,
+        confirmed: true,
+        deviceConnected: true,
+        rescan: { scanSequence.next() },
+        transport: managerTransport,
+        ownershipSource: .external,
+        requiresVerifiedBackup: false
+    )
+    try require(managedResult.status == .success, "third-party removal should not require manifest cleanup")
+    try require(cleanupStore.removed.isEmpty, "third-party removal must not create or delete ownership records")
+}
+
+private func testRemovalReportsMeasuredProgress() throws {
+    let prepared = validTarget()
+    let collector = ProgressCollector()
+    let (result, _) = run(
+        target: prepared.target,
+        current: deviceObject(for: prepared.target),
+        requiresVerifiedBackup: false,
+        scans: [ [] ],
+        onProgress: { progress in collector.append(progress) }
+    )
+
+    try require(result.status == .success, "progress reporting must not change a successful removal")
+    try require(!collector.values.isEmpty, "removal must report progress values")
+    try require(collector.values.first?.fractionCompleted == 0, "removal progress should start at zero")
+    try require(collector.values.last?.fractionCompleted == 1, "removal progress should finish at one hundred percent")
+    try require(
+        zip(collector.values, collector.values.dropFirst()).allSatisfy {
+            $0.fractionCompleted <= $1.fractionCompleted
+        },
+        "removal progress must never move backwards"
+    )
 }
 
 private func testHashMismatchAndMissingBackupAreBlocked() throws {
@@ -481,6 +571,8 @@ struct Stage52SafeDeleteTests {
             ("composite region managed filename can be removed", testCompositeRegionManagedFilenameCanBeRemoved),
             ("managed filename must match normalized identity", testManagedFilenameMustMatchNormalizedIdentity),
             ("external and unknown maps are blocked", testExternalAndUnknownMapsAreBlocked),
+            ("confirmed external map deletes without manifest cleanup", testConfirmedExternalMapDeletesWithoutManifestCleanup),
+            ("removal reports measured progress", testRemovalReportsMeasuredProgress),
             ("hash mismatch and missing backup are blocked", testHashMismatchAndMissingBackupAreBlocked),
             ("disconnect and confirmation are blocked", testDisconnectAndConfirmationAreBlocked),
             ("post-delete rescan and exact identity are required", testPostDeleteRescanAndExactIdentityAreRequired),

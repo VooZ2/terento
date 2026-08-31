@@ -46,6 +46,7 @@ enum MapLifecycleError: Error, Equatable, Sendable {
 struct MapLifecycleItem: Identifiable, Equatable, Sendable {
     let id: String
     let title: String
+    let sourceKind: MapSourceKind
     let provider: String?
     let region: String?
     let version: MapVersion?
@@ -58,6 +59,7 @@ struct MapLifecycleItem: Identifiable, Equatable, Sendable {
     init(
         id: String,
         title: String,
+        sourceKind: MapSourceKind? = nil,
         provider: String?,
         region: String?,
         version: MapVersion?,
@@ -69,6 +71,7 @@ struct MapLifecycleItem: Identifiable, Equatable, Sendable {
     ) {
         self.id = id
         self.title = title
+        self.sourceKind = sourceKind ?? (provider == nil ? .custom : .provider)
         self.provider = provider
         self.region = region
         self.version = version
@@ -103,7 +106,7 @@ struct MapLifecycleItem: Identifiable, Equatable, Sendable {
             return "Not installed"
         }
 
-        if let versionLabel = rawVersion ?? version?.description {
+        if let versionLabel = version?.description ?? rawVersion {
             return "Installed · \(versionLabel)"
         }
 
@@ -118,22 +121,46 @@ struct MapLifecycleItem: Identifiable, Equatable, Sendable {
             return "Not installed"
         }
 
-        let release = rawVersion ?? version?.description
         if failedInstallRecovery != nil {
-            return release.map { "Incomplete installation · \($0)" }
-                ?? "Incomplete installation"
+            let values = [providerVersionLabel, "Incomplete installation"]
+                .compactMap { $0 }
+            return values.joined(separator: " · ")
         }
 
         switch classification {
         case .terentoManaged:
-            return release.map { "Installed · \($0)" } ?? "Installed"
+            if sourceKind == .custom {
+                return "Installed · From this Mac"
+            }
+            return [providerVersionLabel, "Installed"].compactMap { $0 }.joined(separator: " · ")
         case .externalRecognized:
-            return "Installed · Read-only"
+            return [providerVersionLabel, "Installed · Third-party map"]
+                .compactMap { $0 }
+                .joined(separator: " · ")
         case .ambiguous:
             return "Installed · Read-only"
         case .system:
             return "Installed · Read-only"
         }
+    }
+
+    private var providerVersionLabel: String? {
+        guard sourceKind == .provider else { return nil }
+        let providerName: String
+        switch MapIdentity.normalizeProvider(provider ?? "") {
+        case "freizeitkarte":
+            providerName = "Freizeitkarte"
+        case "opentopomap":
+            providerName = "OpenTopoMap"
+        default:
+            providerName = provider?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        }
+
+        let values = [
+            providerName.isEmpty ? nil : providerName,
+            version?.description ?? rawVersion
+        ].compactMap { $0 }
+        return values.isEmpty ? nil : values.joined(separator: " · ")
     }
 
     var noteLabel: String {
@@ -143,9 +170,12 @@ struct MapLifecycleItem: Identifiable, Equatable, Sendable {
 
         switch classification {
         case .terentoManaged:
+            if sourceKind == .custom {
+                return "Imported from this Mac · Managed by Terento."
+            }
             return "Managed by Terento · backup and removal are available."
         case .externalRecognized:
-            return "Already on your watch · Terento will leave it unchanged."
+            return "Installed outside Terento · removal is available after confirmation."
         case .ambiguous:
             return "Read-only · Terento will leave it unchanged."
         case .system:
@@ -154,12 +184,58 @@ struct MapLifecycleItem: Identifiable, Equatable, Sendable {
     }
 }
 
+struct MapLifecycleProviderGroup: Identifiable, Equatable, Sendable {
+    let id: String
+    let providerId: String
+    let title: String
+    let items: [MapLifecycleItem]
+}
+
 struct MapLifecycleInventory: Equatable, Sendable {
-    let freizeitkarte: [MapLifecycleItem]
+    let providerGroups: [MapLifecycleProviderGroup]
     let otherMaps: [MapLifecycleItem]
 
+    init(
+        providerGroups: [MapLifecycleProviderGroup],
+        otherMaps: [MapLifecycleItem]
+    ) {
+        self.providerGroups = providerGroups.sorted {
+            let titleOrder = $0.title.localizedCaseInsensitiveCompare($1.title)
+            if titleOrder != .orderedSame {
+                return titleOrder == .orderedAscending
+            }
+            return $0.id < $1.id
+        }
+        self.otherMaps = otherMaps
+    }
+
+    /// Compatibility initializer for the historical Freizeitkarte section.
+    /// New lifecycle consumers use the provider-neutral groups.
+    init(
+        freizeitkarte: [MapLifecycleItem],
+        otherMaps: [MapLifecycleItem]
+    ) {
+        self.init(
+            providerGroups: freizeitkarte.isEmpty
+                ? []
+                : [MapLifecycleProviderGroup(
+                    id: "freizeitkarte",
+                    providerId: "freizeitkarte",
+                    title: "Freizeitkarte",
+                    items: freizeitkarte
+                )],
+            otherMaps: otherMaps
+        )
+    }
+
+    var freizeitkarte: [MapLifecycleItem] {
+        providerGroups.first {
+            MapIdentity.normalizeProvider($0.providerId) == "freizeitkarte"
+        }?.items ?? []
+    }
+
     var allItems: [MapLifecycleItem] {
-        freizeitkarte + otherMaps
+        providerGroups.flatMap(\.items) + otherMaps
     }
 
     func item(id: String) -> MapLifecycleItem? {
@@ -176,17 +252,24 @@ struct MapLifecycleInventoryBuilder: Sendable {
         from inventory: UnifiedMapInventory,
         recoveryRecords: [TerentoFailedInstallRecoveryRecord] = []
     ) -> MapLifecycleInventory {
-        let items = inventory.allEntries
-            .filter(\.isInstalled)
-            .map { makeItem($0, recoveryRecords: recoveryRecords) }
+        let providerGroups = inventory.providerGroups.compactMap { group -> MapLifecycleProviderGroup? in
+            let items = group.entries
+                .filter(\.isInstalled)
+                .map { makeItem($0, recoveryRecords: recoveryRecords) }
+            guard !items.isEmpty else { return nil }
+            return MapLifecycleProviderGroup(
+                id: group.id,
+                providerId: group.providerId,
+                title: group.title,
+                items: items
+            )
+        }
 
         return MapLifecycleInventory(
-            freizeitkarte: items.filter {
-                MapIdentity.normalizeProvider($0.provider ?? "") == "freizeitkarte"
-            },
-            otherMaps: items.filter {
-                MapIdentity.normalizeProvider($0.provider ?? "") != "freizeitkarte"
-            }
+            providerGroups: providerGroups,
+            otherMaps: inventory.otherMaps
+                .filter(\.isInstalled)
+                .map { makeItem($0, recoveryRecords: recoveryRecords) }
         )
     }
 
@@ -211,6 +294,7 @@ struct MapLifecycleInventoryBuilder: Sendable {
         return MapLifecycleItem(
             id: entry.key,
             title: entry.title,
+            sourceKind: entry.sourceKind,
             provider: entry.catalogPackage?.providerId ?? entry.installedMaps.first?.provider,
             region: entry.catalogPackage?.canonicalRegionId ?? entry.installedMaps.first?.region,
             version: entry.installedVersion,

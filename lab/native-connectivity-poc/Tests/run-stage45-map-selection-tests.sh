@@ -13,6 +13,7 @@ swiftc \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapVersion.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapIdentity.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapModels.swift" \
+    "$project_root/Sources/TerentoPoC/MapCatalog/MapArtifactPlanning.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/InstalledMap.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapOwnership.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapPresentation.swift" \
@@ -102,7 +103,7 @@ if ! grep -Fq 'else if plan.storagePlan.status == .blockedInsufficientSpace' "$c
 fi
 
 if grep -Eiq 'community maps?' "$connect_screen" \
-    || ! grep -Fq 'title: "Available Freizeitkarte maps"' "$connect_screen"; then
+    || ! grep -Fq 'title: "Available maps"' "$connect_screen"; then
     print -u2 "FAIL: primary map flow exposes origin terminology or hides the current source"
     exit 1
 fi
@@ -114,8 +115,11 @@ if grep -Fq 'installedMapsExpanded' "$connect_screen" \
     exit 1
 fi
 
-if ! grep -Fq 'No new Freizeitkarte maps are available to install.' "$connect_screen" \
-    || ! grep -Fq 'return "Already installed"' "$connect_screen" \
+if ! grep -Fq 'return "No maps are available."' "$connect_screen" \
+    || ! grep -Fq 'return "No maps are available from \(selectedMapProviderLabel)."' "$connect_screen" \
+    || ! grep -Fq 'Text(selectedMapProviderLabel)' "$connect_screen" \
+    || grep -Fq 'Button("Manage maps")' "$connect_screen" \
+    || ! grep -Fq 'baseDetail = "Already installed"' "$connect_screen" \
     || ! grep -Fq 'return item.comparison.installedMap == nil' \
         "$project_root/Sources/TerentoPoC/MapCatalog/MapSelectionPresentation.swift"; then
     printf '%s\n' "FAIL: Install empty state or installed-search presentation is missing" >&2

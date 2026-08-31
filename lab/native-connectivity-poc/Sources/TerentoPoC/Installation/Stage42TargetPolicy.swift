@@ -12,7 +12,7 @@ enum Stage42TargetPolicyError: LocalizedError, Equatable, Sendable {
         case .policyConfigurationInvalid:
             return "The map installation target policy is incomplete."
         case .unsupportedPackage:
-            return "Only validated Freizeitkarte catalog packages are enabled for this installation path."
+            return "Only validated map sources are enabled for this installation path."
         case .unsupportedVersion:
             return "The selected map version does not match the validated source artifact."
         case .unsupportedFilename:
@@ -27,7 +27,11 @@ enum Stage42TargetPolicyError: LocalizedError, Equatable, Sendable {
 /// matching filename grammar check, but invalid input must be rejected before
 /// any transport call is reached.
 struct Stage42TargetPolicy: Sendable {
-    static let allowedProvider = "freizeitkarte"
+    private let providerRegistry: MapProviderRegistry
+
+    init(providerRegistry: MapProviderRegistry = .bundled) {
+        self.providerRegistry = providerRegistry
+    }
 
     func validate(
         package: MapPackage,
@@ -36,11 +40,29 @@ struct Stage42TargetPolicy: Sendable {
         identity: DeviceIdentity,
         deviceFiles: [DeviceFile]
     ) throws {
+        if package.sourceKind == .custom {
+            try validateCustom(package: package, artifact: artifact)
+        } else {
+            try validateProvider(package: package, artifact: artifact)
+        }
+        try validateDeviceProfile(profile: profile, identity: identity, deviceFiles: deviceFiles)
+    }
+
+    private func validateProvider(
+        package: MapPackage,
+        artifact: ValidatedMapArtifact
+    ) throws {
+        let packageProvider = MapIdentity.normalizeProvider(package.providerId)
+        let artifactProvider = MapIdentity.normalizeProvider(artifact.provider)
+
         guard !package.id.isEmpty,
-              MapIdentity.normalizeProvider(package.providerId) == Self.allowedProvider,
+              package.sourceKind == .provider,
+              !packageProvider.isEmpty,
+              providerRegistry.adapter(for: packageProvider) != nil,
               !package.regionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              artifact.sourceKind == .provider,
               artifact.catalogPackageID == package.id,
-              MapIdentity.normalizeProvider(artifact.provider) == Self.allowedProvider,
+              artifactProvider == packageProvider,
               let expectedIdentity = package.identity,
               MapIdentity.normalizeRegion(artifact.region)
                 == expectedIdentity.region else {
@@ -59,9 +81,41 @@ struct Stage42TargetPolicy: Sendable {
               TerentoManagedFilenameGenerator().isValid(artifact.targetFilename) else {
             throw Stage42TargetPolicyError.unsupportedFilename
         }
+    }
 
+    private func validateCustom(
+        package: MapPackage,
+        artifact: ValidatedMapArtifact
+    ) throws {
+        guard !package.id.isEmpty,
+              MapIdentity.normalizeProvider(package.providerId) == "custom",
+              !package.regionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              artifact.sourceKind == .custom,
+              artifact.catalogPackageID == package.id,
+              MapIdentity.normalizeProvider(artifact.provider) == "custom",
+              let expectedIdentity = package.identity,
+              MapIdentity.normalizeRegion(artifact.region) == expectedIdentity.region,
+              package.version == artifact.version else {
+            throw Stage42TargetPolicyError.unsupportedPackage
+        }
+
+        let expectedFilename = try TerentoManagedFilenameGenerator().filename(
+            providerId: package.providerId,
+            regionId: package.canonicalRegionId
+        )
+        guard artifact.targetFilename == expectedFilename,
+              TerentoManagedFilenameGenerator().isValid(artifact.targetFilename) else {
+            throw Stage42TargetPolicyError.unsupportedFilename
+        }
+    }
+
+    private func validateDeviceProfile(
+        profile: DeviceInstallProfile?,
+        identity: DeviceIdentity,
+        deviceFiles: [DeviceFile]
+    ) throws {
         guard identity.usbVendorId == 0x091e,
-              GarminMapCapabilityRegistry.local.evaluate(identity: identity).canUseTerentoMaps,
+              GarminMapCapabilityRegistry.local.evaluate(identity: identity).canAttemptTerentoMapInstall,
               DeviceInstallProfileRegistry.hasSingleGarminRootFolder(in: deviceFiles),
               let profile,
               profile.matches(identity),

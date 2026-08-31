@@ -49,10 +49,10 @@ struct MapInventoryListTests {
 
         expect(
             list.freizeitkarte.count == 2
-                && titles.contains("Freizeitkarte France")
-                && titles.contains("Freizeitkarte Germany")
+                && titles.contains("France")
+                && titles.contains("Germany")
                 && list.otherMaps.isEmpty,
-            "Freizeitkarte regions appear once in one unified list"
+            "provider inventory regions use neutral country titles"
         )
     }
 
@@ -183,7 +183,7 @@ struct MapInventoryListTests {
             installedMaps: installedMaps,
             otherMaps: otherMaps,
             parsingFailures: 0,
-            skippedNonFreizeitkarteFiles: 0
+            skippedUnrecognizedProviderFiles: 0
         )
     }
 

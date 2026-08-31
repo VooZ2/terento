@@ -19,12 +19,17 @@ struct DeviceInstallProfile: Equatable, Sendable {
                   manufacturer,
                   options: [.caseInsensitive, .diacriticInsensitive]
               ) == .orderedSame,
-              identity.family == Optional(family),
               let canonicalModel = requiresValidatedCanonicalModel
                 ? identity.canonicalModel
                 : identity.catalogCanonicalModel else {
             return false
         }
+
+        let familyMatches = identity.family == Optional(family)
+            || (!requiresValidatedCanonicalModel
+                && identity.family == nil
+                && family == "Garmin")
+        guard familyMatches else { return false }
 
         return modelAliases
             .map(GarminDeviceModelNormalizer.normalize)
@@ -103,14 +108,14 @@ struct DeviceInstallProfileRegistry: Sendable {
         for identity: DeviceIdentity,
         deviceFiles: [DeviceFile]
     ) -> DeviceInstallProfile? {
+        let family = identity.family ?? "Garmin"
         guard identity.usbVendorId == 0x091e,
               identity.manufacturer.range(
                   of: "garmin",
                   options: [.caseInsensitive, .diacriticInsensitive]
               ) != nil,
-              GarminMapCapabilityRegistry.local.evaluate(identity: identity).canUseTerentoMaps,
+              GarminMapCapabilityRegistry.local.evaluate(identity: identity).canAttemptTerentoMapInstall,
               let canonicalModel = identity.catalogCanonicalModel,
-              let family = identity.family,
               Self.hasSingleGarminRootFolder(in: deviceFiles) else {
             return nil
         }

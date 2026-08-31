@@ -9,7 +9,8 @@ for function_name in \
     terento_mtp_read_existing_file_to_local \
     terento_mtp_install_map_file \
     terento_mtp_verify_managed_map_samples \
-    terento_mtp_delete_managed_map; do
+    terento_mtp_delete_managed_map \
+    terento_mtp_delete_external_map; do
     if ! grep -A3 "^int ${function_name}(" "$header" | grep -q 'TerentoMTPMapOperationProfile'; then
         print -u2 "FAIL: $function_name does not require the native operation profile"
         exit 1
@@ -45,6 +46,12 @@ fi
 if ! grep -A100 '^int terento_mtp_delete_managed_map(' "$bridge" \
     | grep -q 'expected_size_bytes != 0 && remote_size != expected_size_bytes'; then
     print -u2 "FAIL: manual delete cannot resolve the exact stable target in its live session"
+    exit 1
+fi
+
+if ! grep -A100 '^int terento_mtp_delete_external_map(' "$bridge" \
+    | grep -q 'expected_size_bytes != 0 && remote_size != expected_size_bytes'; then
+    print -u2 "FAIL: external delete cannot resolve the exact stable target in its live session"
     exit 1
 fi
 

@@ -129,22 +129,22 @@ if ! awk '
     /private var managedMapsContent/ { capture = 1 }
     /private func connectedDeviceContent/ { capture = 0 }
     capture { print }
-' "$connect_screen" | grep -Fq 'TerentoFooterPageShell' \
+' "$connect_screen" | grep -F 'TerentoFooterPageShell' >/dev/null \
     || ! awk '
         /private var mapsContent/ { capture = 1 }
         /private var unifiedMapInventory/ { capture = 0 }
         capture { print }
-    ' "$connect_screen" | grep -Fq 'TerentoInstallFooterPageShell' \
+    ' "$connect_screen" | grep -F 'TerentoInstallFooterPageShell' >/dev/null \
     || ! awk '
         /private func reviewInstallContent/ { capture = 1 }
         /private func activeInstallationContent/ { capture = 0 }
         capture { print }
-    ' "$connect_screen" | grep -Fq 'TerentoPageFooter' \
+    ' "$connect_screen" | grep -F 'TerentoPageFooter' >/dev/null \
     || ! awk '
         /private var finishContent/ { capture = 1 }
         /private func storageFillRatio/ { capture = 0 }
         capture { print }
-    ' "$connect_screen" | grep -Fq 'TerentoPageFooter'; then
+' "$connect_screen" | grep -F 'TerentoPageFooter' >/dev/null; then
     print -u2 "FAIL: footer shell migration is incomplete across Manage, Choose, Review, or Done"
     exit 1
 fi
@@ -166,8 +166,8 @@ fi
 
 if grep -Fq 'title: "Freizeitkarte maps"' "$connect_screen" \
     || grep -Fq 'title: "Managed maps"' "$connect_screen" \
-    || ! grep -Fq 'title: "Freizeitkarte"' "$connect_screen" \
-    || ! grep -Fq 'title: "Available Freizeitkarte maps"' "$connect_screen" \
+    || ! grep -Fq 'title: group.title' "$connect_screen" \
+    || ! grep -Fq 'title: "Available maps"' "$connect_screen" \
     || grep -Eiq 'community maps?' "$connect_screen" \
     || ! grep -Fq 'title: "Other maps"' "$connect_screen" \
     || grep -Fq 'DisclosureGroup(isExpanded: $freizeitkarteMapsExpanded)' "$connect_screen"; then

@@ -32,6 +32,24 @@ struct MapSelectionItem: Identifiable, Equatable, Sendable {
         displayName
     }
 
+    /// Provider rows always expose the provider and catalog release together.
+    /// This keeps the country title provider-neutral while retaining enough
+    /// context to distinguish identical regions in an `All providers` view.
+    var providerVersionLabel: String? {
+        guard package.sourceKind == .provider else { return nil }
+        let providerName = comparison.providerName.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        var parts: [String] = []
+        if !providerName.isEmpty {
+            parts.append(providerName)
+        }
+        if let versionLabel = package.displayVersionLabel {
+            parts.append(versionLabel)
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
     var action: MapSelectionAction { lifecycleAction }
 
     var acquisitionAccessibilityLabel: String? {
@@ -55,7 +73,7 @@ struct MapSelectionItem: Identifiable, Equatable, Sendable {
         case .notInstalled:
             return installSizeBytes == nil ? "Size calculated before installation" : ""
         case .updateAvailable:
-            return "Update available · \(installedVersionLabel ?? "Version unavailable") → \(package.version)"
+            return "Update available · \(installedVersionLabel ?? "Version unavailable") → \(package.displayVersionLabel ?? "Version unavailable")"
         case .upToDate:
             return "Installed · Up to date"
         case .newerInstalled:
@@ -152,16 +170,22 @@ struct MapSelectionPlanner: Sendable {
     func items(
         comparisons: [MapComparison],
         preflightStatuses: [String: InstallationPreflightStatus],
-        recommendedRegionID: String?
+        recommendedRegionID: String?,
+        providerIDs: Set<String>? = nil
     ) -> [MapSelectionItem] {
         var uniqueComparisons: [String: MapComparison] = [:]
+        let normalizedProviderIDs = providerIDs.map {
+            Set($0.map(MapIdentity.normalizeProvider))
+        }
         let displayNames = MapDisplayNameNormalizer.displayNames(
             for: comparisons.map(\.catalogMap)
         )
 
         for comparison in comparisons {
-            guard MapIdentity.normalizeProvider(comparison.catalogMap.providerId)
-                == "freizeitkarte" else {
+            if let normalizedProviderIDs,
+               !normalizedProviderIDs.contains(
+                   MapIdentity.normalizeProvider(comparison.catalogMap.providerId)
+               ) {
                 continue
             }
 
@@ -189,8 +213,13 @@ struct MapSelectionPlanner: Sendable {
                     comparison: comparison,
                     displayName: availability == .withheldCrimea
                         ? "Crimea"
-                        : displayNames[package.id] ?? MapDisplayNameNormalizer.normalize(package.name),
-                    installSizeBytes: package.installSizeBytes,
+                        : displayNames[package.id]
+                            ?? MapDisplayNameNormalizer.normalize(
+                                package.name,
+                                providerID: package.providerId
+                            ),
+                    installSizeBytes: package.defaultArtifactPlan.installSizeBytes
+                        ?? package.installSizeBytes,
                     lifecycleAction: action(for: comparison.status),
                     canonicalRegionIdentity: identity,
                     acquisitionAvailability: availability,
@@ -222,6 +251,11 @@ struct MapSelectionPlanner: Sendable {
         currentFreeSpace: UInt64
     ) -> InstallationPlan {
         let selectedItems = items.filter { selectedIDs.contains($0.id) }
+        let selectedProviderIDs = Set(
+            selectedItems
+                .filter { $0.package.sourceKind == .provider }
+                .map { MapIdentity.normalizeProvider($0.package.providerId) }
+        )
         let installItems = selectedItems.filter {
             $0.action == .install && $0.acquisitionAvailability == .available
         }
@@ -255,6 +289,9 @@ struct MapSelectionPlanner: Sendable {
         if selectedItems.isEmpty {
             status = .noSelection
             reason = "Select a map to continue."
+        } else if selectedProviderIDs.count > 1 {
+            status = .blocked
+            reason = "Select maps from one provider at a time."
         } else if selectedItems.contains(where: { $0.acquisitionAvailability != .available }) {
             status = .blocked
             reason = "Downloads are not offered for this region under Terento's current policy."

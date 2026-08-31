@@ -72,7 +72,7 @@ struct GarminIMGMetadataParser: Sendable {
     // a scan never downloads a complete map image over MTP.
     static let prefixLength = 4 * 1024
 
-    func parse(_ bytes: [UInt8]) -> GarminIMGMetadata? {
+    func parse(_ bytes: [UInt8], filename: String? = nil) -> GarminIMGMetadata? {
         guard bytes.count >= 0x84,
               text(bytes, offset: 0x10, length: 7) == "DSKIMG",
               text(bytes, offset: 0x41, length: 7) == "GARMIN" else {
@@ -87,6 +87,14 @@ struct GarminIMGMetadataParser: Sendable {
             description: description,
             detail: headerDetail
         )
+        let stitchedOpenTopoMapHeader = stitchedOpenTopoMapHeader(
+            description: description,
+            detail: headerDetail
+        )
+        let stitchedOpenTopoMapMetadata = stitchedOpenTopoMapMetadata(
+            description: description,
+            detail: headerDetail
+        )
         let stitchedMetadata = stitchedFreizeitkarteMetadata(
             description: description,
             detail: headerDetail
@@ -94,19 +102,37 @@ struct GarminIMGMetadataParser: Sendable {
         let combinedText = (
             headerStrings
                 + [stitchedHeader].compactMap { $0 }
+                + [stitchedOpenTopoMapHeader].compactMap { $0 }
+                + [stitchedOpenTopoMapMetadata].compactMap { $0 }
                 + [stitchedMetadata].compactMap { $0 }
                 + strings
         ).joined(separator: " ")
         let provider = provider(in: combinedText)
-        let region = provider == "Freizeitkarte"
-            ? freizeitkarteRegion(in: combinedText)
-            : nil
-        let rawVersion = releaseLabel(in: combinedText)
+        let region: String?
+        switch provider {
+        case "Freizeitkarte":
+            region = freizeitkarteRegion(in: combinedText)
+        case "OpenTopoMap":
+            region = openTopoMapRegion(
+                in: combinedText,
+                header: stitchedOpenTopoMapHeader,
+                filename: filename
+            )
+        default:
+            region = nil
+        }
+        let rawVersion = releaseLabel(in: combinedText, provider: provider)
         let name: String?
         if let provider, let region {
-            name = "\(provider) \(region)"
+            if provider == "OpenTopoMap" {
+                name = stitchedOpenTopoMapHeader
+                    ?? openTopoMapDisplayName(in: combinedText)
+                    ?? "\(provider) \(region)"
+            } else {
+                name = "\(provider) \(region)"
+            }
         } else {
-            name = description ?? headerDetail
+            name = stitchedOpenTopoMapHeader ?? stitchedHeader ?? description ?? headerDetail
         }
 
         let version = MapVersionNormalizer().parse(
@@ -173,10 +199,19 @@ struct GarminIMGMetadataParser: Sendable {
     }
 
     private func provider(in value: String) -> String? {
-        value.range(
+        if value.range(
             of: "freizeitkarte",
             options: [.caseInsensitive, .diacriticInsensitive]
-        ) == nil ? nil : "Freizeitkarte"
+        ) != nil {
+            return "Freizeitkarte"
+        }
+        if value.range(
+            of: "opentopomap",
+            options: [.caseInsensitive, .diacriticInsensitive]
+        ) != nil {
+            return "OpenTopoMap"
+        }
+        return nil
     }
 
     /// Garmin IMG descriptions are split across two fixed header fields when
@@ -235,6 +270,52 @@ struct GarminIMGMetadataParser: Sendable {
         return description + detail
     }
 
+    /// OpenTopoMap stores the last character of a country name in the next
+    /// fixed field. Reconstructing this bounded header gives imported maps a
+    /// useful display name without scanning or executing the rest of the IMG.
+    private func stitchedOpenTopoMapHeader(
+        description: String?,
+        detail: String?
+    ) -> String? {
+        guard let description,
+              let detail,
+              description.utf8.count == 20,
+              provider(in: description) == "OpenTopoMap" else {
+            return nil
+        }
+
+        let dateStart = detail.range(
+            of: #"\b(?:20\d{2}|0\d{2})[-/.](0?[1-9]|1[0-2])[-/.](0?[1-9]|[12]\d|3[01])\b"#,
+            options: .regularExpression
+        )?.lowerBound ?? detail.endIndex
+        let continuation = String(detail[..<dateStart])
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !continuation.isEmpty,
+              continuation.first?.isLetter == true else {
+            return nil
+        }
+        return description + continuation
+    }
+
+    /// OpenTopoMap's generated date can cross the binary gap between the
+    /// fixed description and detail fields (for example `202` +
+    /// `6-05-24`). Keep a separate bounded joined value for release parsing;
+    /// the provider and region parser continue to use sanitized identity
+    /// values.
+    private func stitchedOpenTopoMapMetadata(
+        description: String?,
+        detail: String?
+    ) -> String? {
+        guard let description,
+              let detail,
+              description.utf8.count == 20,
+              provider(in: description) == "OpenTopoMap" else {
+            return nil
+        }
+
+        return description + detail
+    }
+
     private func freizeitkarteRegion(in value: String) -> String? {
         // Some provider regions are composite identifiers, for example
         // ESP-CANARIAS. Prefer the longest token found in the header because
@@ -261,7 +342,131 @@ struct GarminIMGMetadataParser: Sendable {
         return region.uppercased()
     }
 
-    private func releaseLabel(in value: String) -> String? {
+    private func openTopoMapRegion(
+        in value: String,
+        header: String?,
+        filename: String?
+    ) -> String? {
+        // Managed filenames are an exact fallback for long OTM names whose
+        // fixed IMG header is truncated. The header/provider signature is
+        // still required before this value is used for identity matching.
+        if let filenameRegion = openTopoMapRegionFromFilename(filename) {
+            return filenameRegion
+        }
+
+        guard let header else {
+            let normalized = normalizedOpenTopoMapText(value)
+            let pattern = #"(?i)\bopentopomap\s+([a-z0-9][a-z0-9_-]*)\b"#
+            guard let regex = try? NSRegularExpression(pattern: pattern),
+                  let match = regex.firstMatch(
+                      in: normalized,
+                      range: NSRange(normalized.startIndex..<normalized.endIndex, in: normalized)
+                  ),
+                  let range = Range(match.range(at: 1), in: normalized) else {
+                return nil
+            }
+            return String(normalized[range])
+                .replacingOccurrences(of: " ", with: "")
+                .uppercased()
+        }
+
+        let normalizedHeader = normalizedOpenTopoMapText(header)
+        let providerPrefix = "opentopomap "
+        guard normalizedHeader.hasPrefix(providerPrefix) else { return nil }
+        let title = String(normalizedHeader.dropFirst(providerPrefix.count))
+        guard !title.isEmpty else { return nil }
+
+        // Keep the legacy LTU identity used by the first beta package. New
+        // OTM records use the provider's normalized region slug, so the
+        // generic path covers every official country and multi-country row.
+        if title == "lithuania" {
+            return "LTU"
+        }
+        return title.replacingOccurrences(of: " ", with: "").uppercased()
+    }
+    private func openTopoMapDisplayName(in value: String) -> String? {
+        let normalized = value
+            .folding(options: .diacriticInsensitive, locale: .current)
+            .lowercased()
+            .map { character in
+                character.isLetter || character.isNumber ? character : " "
+            }
+        let searchable = String(normalized)
+            .split(whereSeparator: { $0 == " " })
+            .joined(separator: " ")
+
+        let countryNames = [
+            "Albania", "Andorra", "Austria", "Belarus", "Belgium",
+            "Bosnia and Herzegovina", "Bulgaria", "Croatia", "Cyprus",
+            "Czech Republic", "Denmark", "Estonia", "Finland", "France",
+            "Germany", "Greece", "Hungary", "Iceland", "Ireland", "Italy",
+            "Kosovo", "Latvia", "Liechtenstein", "Lithuania", "Luxembourg",
+            "Malta", "Moldova", "Monaco", "Montenegro", "Netherlands",
+            "North Macedonia", "Norway", "Poland", "Portugal", "Romania",
+            "Russia", "San Marino", "Serbia", "Slovakia", "Slovenia",
+            "South Africa", "South Korea", "Spain", "Sweden", "Switzerland",
+            "Turkey", "Ukraine", "United Kingdom", "United States", "New Zealand"
+        ]
+
+        for country in countryNames {
+            let normalizedCountry = country
+                .folding(options: .diacriticInsensitive, locale: .current)
+                .lowercased()
+            if searchable.contains("opentopomap \(normalizedCountry)") {
+                return "OpenTopoMap \(country)"
+            }
+        }
+        return nil
+    }
+
+    private func normalizedOpenTopoMapText(_ value: String) -> String {
+        let normalized = value
+            .folding(options: .diacriticInsensitive, locale: .current)
+            .lowercased()
+            .map { character in
+                character.isLetter || character.isNumber ? character : " "
+            }
+        return String(normalized)
+            .split(whereSeparator: { $0 == " " })
+            .joined(separator: " ")
+    }
+
+    private func openTopoMapRegionFromFilename(_ filename: String?) -> String? {
+        guard let filename else { return nil }
+        let stem = filename
+            .split(separator: ".", omittingEmptySubsequences: false)
+            .dropLast()
+            .joined(separator: ".")
+        let normalized = stem
+            .folding(options: .diacriticInsensitive, locale: .current)
+            .lowercased()
+        let prefix: String
+        if normalized.hasPrefix("otm-") {
+            prefix = String(normalized.dropFirst(4))
+        } else if normalized.hasPrefix("terento_opentopomap_") {
+            prefix = String(normalized.dropFirst("terento_opentopomap_".count))
+        } else {
+            return nil
+        }
+        guard !prefix.isEmpty,
+              prefix.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" }) else {
+            return nil
+        }
+        let region = prefix
+            .replacingOccurrences(of: "_", with: "")
+            .replacingOccurrences(of: "-", with: "")
+        return region == "lithuania"
+            ? "LTU"
+            : region.uppercased()
+    }
+
+    private func releaseLabel(in value: String, provider: String?) -> String? {
+        if provider == "OpenTopoMap" {
+            if let label = OpenTopoMapVersionParser().generatedDateLabel(from: value) {
+                return label
+            }
+        }
+
         let pattern = #"(?i)\brelease\s+([0-9]{2,4}[-/.][0-9]{1,2})\b"#
         guard let regex = try? NSRegularExpression(pattern: pattern),
               let match = regex.firstMatch(
@@ -282,7 +487,8 @@ struct GarminMapScanner: Sendable {
     func scan(
         files: [DeviceFile],
         reader: DeviceFileReader,
-        ownershipRecords: [MapOwnershipRecord] = []
+        ownershipRecords: [MapOwnershipRecord] = [],
+        recognizedProviderIDs: Set<String>? = nil
     ) -> MapScanResult {
         let mapFiles = files.filter(isMapFile)
         let candidateFiles = mapFiles.filter { !isKnownGarminOwned($0) }
@@ -290,7 +496,7 @@ struct GarminMapScanner: Sendable {
         var installedMaps: [InstalledMap] = []
         var otherMaps: [InstalledMap] = []
         var unrecognizedIMGFiles = 0
-        var skippedNonFreizeitkarteFiles = mapFiles.count - candidateFiles.count
+        var skippedUnrecognizedProviderFiles = mapFiles.count - candidateFiles.count
         let prefixes = readPrefixes(
             for: candidateFiles,
             reader: reader
@@ -305,24 +511,48 @@ struct GarminMapScanner: Sendable {
             )
             inspectedFiles.append(installedFile)
 
-            let metadata = parser.parse(prefixes[file.itemID] ?? [])
+            let metadata = parser.parse(
+                prefixes[file.itemID] ?? [],
+                filename: file.filename
+            )
 
             guard let metadata else {
                 unrecognizedIMGFiles += 1
                 continue
             }
 
-            // Classification is content-first. A BaseCamp-renamed
-            // Freizeitkarte file is accepted; Garmin-owned images are
-            // excluded before inspection. Other parsed map images are listed
-            // read-only, but never enter Freizeitkarte comparison logic.
-            guard metadata.provider == "Freizeitkarte" else {
-                skippedNonFreizeitkarteFiles += 1
+            let ownershipMatcher = MapOwnershipMatcher()
+            let managementState = ownershipMatcher.managementState(
+                for: installedFile,
+                metadata: metadata,
+                records: ownershipRecords
+            )
+            let isManagedCustom = ownershipMatcher.isExactCustomRecord(
+                for: installedFile,
+                records: ownershipRecords
+            )
+            // A custom import remains custom even when its bytes happen to
+            // contain a provider signature. The exact manifest record is the
+            // authority for this presentation classification; it does not
+            // weaken the separate destructive-operation checks.
+            let effectiveProvider = isManagedCustom ? nil : metadata.provider
+            let effectiveRegion = isManagedCustom ? nil : metadata.region
+
+            // Classification is content-first. Garmin-owned images are
+            // excluded before inspection. When a catalog is available, its
+            // provider IDs decide which parsed community images can enter
+            // comparison logic; unknown parsed providers remain read-only.
+            let normalizedProvider = MapIdentity.normalizeProvider(effectiveProvider ?? "")
+            let isRecognizedProvider = effectiveProvider != nil
+                && (recognizedProviderIDs == nil
+                    || recognizedProviderIDs?.contains(normalizedProvider) == true)
+            guard isRecognizedProvider else {
+                skippedUnrecognizedProviderFiles += 1
                 otherMaps.append(
                     InstalledMap(
                         name: metadata.name ?? file.filename,
-                        provider: metadata.provider,
-                        region: metadata.region,
+                        provider: effectiveProvider,
+                        region: effectiveRegion,
                         family: metadata.family,
                         rawVersion: metadata.rawVersion,
                         version: metadata.version,
@@ -332,7 +562,7 @@ struct GarminMapScanner: Sendable {
                         sizeBytes: file.sizeBytes,
                         sourceFile: installedFile,
                         metadataStatus: .parsed,
-                        managementState: .unknown
+                        managementState: managementState
                     )
                 )
                 continue
@@ -341,8 +571,8 @@ struct GarminMapScanner: Sendable {
             installedMaps.append(
                 InstalledMap(
                     name: metadata.name ?? "Unknown map",
-                    provider: metadata.provider,
-                    region: metadata.region,
+                    provider: effectiveProvider,
+                    region: effectiveRegion,
                     family: metadata.family,
                     rawVersion: metadata.rawVersion,
                     version: metadata.version,
@@ -350,13 +580,9 @@ struct GarminMapScanner: Sendable {
                     productId: metadata.productId,
                     familyId: metadata.familyId,
                     sizeBytes: file.sizeBytes,
-                        sourceFile: installedFile,
-                        metadataStatus: .parsed,
-                        managementState: MapOwnershipMatcher().managementState(
-                            for: installedFile,
-                            metadata: metadata,
-                            records: ownershipRecords
-                        )
+                    sourceFile: installedFile,
+                    metadataStatus: .parsed,
+                    managementState: managementState
                 )
             )
         }
@@ -366,7 +592,7 @@ struct GarminMapScanner: Sendable {
             installedMaps: installedMaps,
             otherMaps: otherMaps,
             parsingFailures: unrecognizedIMGFiles,
-            skippedNonFreizeitkarteFiles: skippedNonFreizeitkarteFiles
+            skippedUnrecognizedProviderFiles: skippedUnrecognizedProviderFiles
         )
     }
 
@@ -440,7 +666,7 @@ struct MapScanResult: Sendable, Equatable {
     let installedMaps: [InstalledMap]
     let otherMaps: [InstalledMap]
     let parsingFailures: Int
-    let skippedNonFreizeitkarteFiles: Int
+    let skippedUnrecognizedProviderFiles: Int
 
     var scanEvidence: EvidenceResult {
         .pass

@@ -21,11 +21,31 @@ struct MapOwnershipRecord: Sendable, Equatable {
 /// SafeDeleteAdapter still re-reads the exact object and verifies its full
 /// SHA-256 against the manifest-backed backup before deleting anything.
 struct MapOwnershipMatcher: Sendable {
+    func isExactCustomRecord(
+        for file: InstalledMapFile,
+        records: [MapOwnershipRecord]
+    ) -> Bool {
+        records.contains { entry in
+            MapIdentity.normalizeProvider(entry.providerId) == "custom"
+                && entry.devicePath == file.path
+                && entry.filename == file.filename
+                && entry.sizeBytes == file.sizeBytes
+        }
+    }
+
     func managementState(
         for file: InstalledMapFile,
         metadata: GarminIMGMetadata,
         records: [MapOwnershipRecord]
     ) -> MapManagementState {
+        // Custom IMG files intentionally have no provider/region/version
+        // identity. Exact manifest coordinates still allow their owner state
+        // to be shown and managed without turning a heuristic match into a
+        // destructive authorization grant.
+        if isExactCustomRecord(for: file, records: records) {
+            return .managedByTerento
+        }
+
         guard let provider = metadata.provider,
               let region = metadata.region,
               let version = metadata.version else {

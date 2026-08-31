@@ -36,8 +36,16 @@ struct MapCatalogLoader: Sendable {
     func loadRemoteThenFallback() async throws -> MapCatalogLoadResult {
         do {
             let data = try await loadRemoteData()
+            let remoteCatalog = try decode(data)
+            // The API may roll out provider records independently from the
+            // app. Keep the remote catalog authoritative for records it knows
+            // and add only missing bundled records so a provider rollout does
+            // not make the app silently lose an enabled provider.
+            let catalog = (try? loadBundled())
+                .map { remoteCatalog.mergingSupplemental($0) }
+                ?? remoteCatalog
             return MapCatalogLoadResult(
-                catalog: try decode(data),
+                catalog: catalog,
                 source: .remote
             )
         } catch {
@@ -113,6 +121,37 @@ struct MapCatalogLoader: Sendable {
     }
 }
 
+extension MapCatalog {
+    func mergingSupplemental(_ supplemental: MapCatalog) -> MapCatalog {
+        let providerIDs = Set(
+            providers.map { MapIdentity.normalizeProvider($0.id) }
+        )
+        let regionKeys = Set(regions.map { region in
+            "\(MapIdentity.normalizeProvider(region.providerId ?? "")):\(MapIdentity.normalizeRegion(region.id))"
+        })
+        let packageIDs = Set(packages.map(\.id))
+
+        let additionalProviders = supplemental.providers.filter {
+            !providerIDs.contains(MapIdentity.normalizeProvider($0.id))
+        }
+        let additionalRegions = supplemental.regions.filter { region in
+            let key = "\(MapIdentity.normalizeProvider(region.providerId ?? "")):\(MapIdentity.normalizeRegion(region.id))"
+            return !regionKeys.contains(key)
+        }
+        let additionalPackages = supplemental.packages.filter {
+            !packageIDs.contains($0.id)
+        }
+
+        return MapCatalog(
+            catalogVersion: max(catalogVersion, supplemental.catalogVersion),
+            updatedAt: max(updatedAt, supplemental.updatedAt),
+            providers: providers + additionalProviders,
+            regions: regions + additionalRegions,
+            packages: packages + additionalPackages
+        )
+    }
+}
+
 struct MapCatalogDocumentDecoder: Sendable {
     func decode(_ data: Data) throws -> MapCatalog {
         do {
@@ -166,16 +205,19 @@ private struct MapCatalogDocument: Decodable {
                     name: providerDocument.name,
                     website: providerDocument.website,
                     attribution: providerDocument.attribution,
-                    licenseURL: providerDocument.licenseURL
+                    licenseURL: providerDocument.licenseURL,
+                    licenseInformation: providerDocument.licenseInformation
                 )
             )
 
             for map in providerDocument.maps {
                 let regionID = map.region
-                regionsByID[regionID] = MapRegion(
+                let scopedRegionKey = "\(MapIdentity.normalizeProvider(providerDocument.id)):\(regionID)"
+                regionsByID[scopedRegionKey] = MapRegion(
                     id: regionID,
                     name: map.name,
-                    country: map.country ?? map.name
+                    country: map.country ?? map.name,
+                    providerId: providerDocument.id
                 )
 
                 packages.append(
@@ -190,7 +232,15 @@ private struct MapCatalogDocument: Decodable {
                         releaseDate: map.releaseDate,
                         identifier: map.identifier,
                         downloadSizeBytes: map.downloadSizeBytes,
-                        installSizeBytes: map.installSizeBytes
+                        installSizeBytes: map.installSizeBytes,
+                        providerRegionId: map.providerRegionId,
+                        canonicalRegionId: map.canonicalRegionId,
+                        countryCodes: map.countryCodes ?? map.country.map { [$0] } ?? [],
+                        regionKind: map.regionKind ?? .country,
+                        tags: map.tags ?? [],
+                        capabilities: map.capabilities ?? [],
+                        releaseMetadata: map.releaseMetadata,
+                        artifacts: map.artifacts
                     )
                 )
             }
@@ -199,9 +249,24 @@ private struct MapCatalogDocument: Decodable {
         return MapCatalog(
             catalogVersion: catalogVersion,
             updatedAt: updatedAt,
-            providers: providers,
-            regions: Array(regionsByID.values),
-            packages: packages
+            providers: providers.sorted {
+                $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            },
+            regions: Array(regionsByID.values).sorted {
+                let nameOrder = $0.name.localizedCaseInsensitiveCompare($1.name)
+                if nameOrder != .orderedSame {
+                    return nameOrder == .orderedAscending
+                }
+                return $0.id < $1.id
+            },
+            packages: packages.sorted {
+                let providerOrder = MapIdentity.normalizeProvider($0.providerId)
+                    .compare(MapIdentity.normalizeProvider($1.providerId))
+                if providerOrder != .orderedSame {
+                    return providerOrder == .orderedAscending
+                }
+                return $0.id < $1.id
+            }
         )
     }
 
@@ -213,6 +278,7 @@ private struct ProviderDocument: Decodable {
     let website: URL?
     let attribution: String?
     let licenseURL: URL?
+    let licenseInformation: String?
     let maps: [MapDocument]
 }
 
@@ -228,4 +294,12 @@ private struct MapDocument: Decodable {
     let sourceURL: URL?
     let releaseDate: String?
     let identifier: String?
+    let providerRegionId: String?
+    let canonicalRegionId: String?
+    let countryCodes: [String]?
+    let regionKind: MapRegionKind?
+    let tags: [String]?
+    let capabilities: [String]?
+    let releaseMetadata: MapReleaseMetadata?
+    let artifacts: [MapArtifact]?
 }

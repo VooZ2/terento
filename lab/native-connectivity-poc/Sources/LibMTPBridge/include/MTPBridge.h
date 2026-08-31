@@ -139,6 +139,8 @@ int terento_mtp_read_existing_file_to_local(
     const char *local_path,
     uint32_t *resolved_item_id,
     uint64_t *size_bytes,
+    TerentoMTPProgressCallback progress_callback,
+    const void *progress_context,
     char *error_message,
     size_t error_message_capacity
 );
@@ -199,6 +201,7 @@ int terento_mtp_verify_managed_map_samples(
     const char *target_filename,
     uint32_t expected_item_id,
     uint64_t expected_size_bytes,
+    uint32_t *resolved_item_id,
     const uint64_t *sample_offsets,
     size_t sample_count,
     uint32_t sample_length,
@@ -212,6 +215,16 @@ int terento_mtp_verify_managed_map_samples(
 
 /* Delete only the exact manifest-authorized managed target object. */
 int terento_mtp_delete_managed_map(
+    const TerentoMTPMapOperationProfile *profile,
+    const char *target_filename,
+    uint32_t expected_item_id,
+    uint64_t expected_size_bytes,
+    char *error_message,
+    size_t error_message_capacity
+);
+
+/* Delete only one explicitly confirmed, externally recognized IMG object. */
+int terento_mtp_delete_external_map(
     const TerentoMTPMapOperationProfile *profile,
     const char *target_filename,
     uint32_t expected_item_id,

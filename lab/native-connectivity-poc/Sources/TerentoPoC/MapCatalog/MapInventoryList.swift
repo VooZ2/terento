@@ -63,6 +63,23 @@ struct MapInventoryEntry: Identifiable, Equatable, Sendable {
             : .detectedNotManaged
     }
 
+    /// A catalog package is authoritative for source kind. For an installed
+    /// custom map the catalog is intentionally absent, so the exact managed
+    /// custom record is the only fallback that can identify it as custom.
+    var sourceKind: MapSourceKind {
+        if let catalogPackage {
+            return catalogPackage.sourceKind
+        }
+
+        if installedMaps.contains(where: {
+            $0.provider == nil && $0.managementState == .managedByTerento
+        }) {
+            return .custom
+        }
+
+        return .provider
+    }
+
     var statusLabel: String {
         if isSelectedCatalogMap, let comparison {
             return comparison.status.userLabel
@@ -72,12 +89,58 @@ struct MapInventoryEntry: Identifiable, Equatable, Sendable {
     }
 }
 
+struct MapInventoryProviderGroup: Identifiable, Equatable, Sendable {
+    let id: String
+    let providerId: String
+    let title: String
+    let entries: [MapInventoryEntry]
+}
+
 struct UnifiedMapInventory: Equatable, Sendable {
-    let freizeitkarte: [MapInventoryEntry]
+    let providerGroups: [MapInventoryProviderGroup]
     let otherMaps: [MapInventoryEntry]
 
+    init(
+        providerGroups: [MapInventoryProviderGroup],
+        otherMaps: [MapInventoryEntry]
+    ) {
+        self.providerGroups = providerGroups.sorted {
+            let titleOrder = $0.title.localizedCaseInsensitiveCompare($1.title)
+            if titleOrder != .orderedSame {
+                return titleOrder == .orderedAscending
+            }
+            return $0.id < $1.id
+        }
+        self.otherMaps = otherMaps
+    }
+
+    /// Compatibility initializer for the existing Freizeitkarte lifecycle
+    /// callers. New code should use `providerGroups` directly.
+    init(
+        freizeitkarte: [MapInventoryEntry],
+        otherMaps: [MapInventoryEntry]
+    ) {
+        self.init(
+            providerGroups: freizeitkarte.isEmpty
+                ? []
+                : [MapInventoryProviderGroup(
+                    id: "freizeitkarte",
+                    providerId: "freizeitkarte",
+                    title: "Freizeitkarte",
+                    entries: freizeitkarte
+                )],
+            otherMaps: otherMaps
+        )
+    }
+
+    var freizeitkarte: [MapInventoryEntry] {
+        providerGroups.first {
+            MapIdentity.normalizeProvider($0.providerId) == "freizeitkarte"
+        }?.entries ?? []
+    }
+
     var allEntries: [MapInventoryEntry] {
-        freizeitkarte + otherMaps
+        providerGroups.flatMap(\.entries) + otherMaps
     }
 }
 
@@ -87,44 +150,64 @@ struct MapInventoryListBuilder: Sendable {
         comparisons: [MapComparison],
         selectedCatalogPackageID: String? = nil
     ) -> UnifiedMapInventory {
-        let freizeitkarteEntries = buildFreizeitkarteEntries(
-            scan: scan,
-            comparisons: comparisons,
-            selectedCatalogPackageID: selectedCatalogPackageID
+        let providerMaps = scan.installedMaps + scan.otherMaps.filter { $0.provider != nil }
+        let providerIDs = Set(
+            comparisons
+                .filter { $0.catalogMap.sourceKind == .provider }
+                .map { MapIdentity.normalizeProvider($0.catalogMap.providerId) }
+        ).union(
+            providerMaps.compactMap { map in
+                guard let provider = map.provider else { return nil }
+                let normalized = MapIdentity.normalizeProvider(provider)
+                return normalized.isEmpty ? nil : normalized
+            }
         )
 
+        let providerGroups = providerIDs.compactMap { providerID in
+            buildProviderGroup(
+                providerID: providerID,
+                installedMaps: providerMaps,
+                comparisons: comparisons,
+                selectedCatalogPackageID: selectedCatalogPackageID
+            )
+        }
+
         return UnifiedMapInventory(
-            freizeitkarte: freizeitkarteEntries,
-            otherMaps: buildOtherMapEntries(scan.otherMaps)
+            providerGroups: providerGroups,
+            otherMaps: buildOtherMapEntries(
+                scan.otherMaps.filter { $0.provider == nil }
+            )
         )
     }
 
-    private func buildFreizeitkarteEntries(
-        scan: MapScanResult,
+    private func buildProviderGroup(
+        providerID: String,
+        installedMaps: [InstalledMap],
         comparisons: [MapComparison],
         selectedCatalogPackageID: String?
-    ) -> [MapInventoryEntry] {
+    ) -> MapInventoryProviderGroup? {
         let installedGroups = groupedInstalledMaps(
-            scan.installedMaps,
-            namespace: "freizeitkarte"
+            installedMaps.filter {
+                MapIdentity.normalizeProvider($0.provider ?? "") == providerID
+            },
+            namespace: "provider-\(providerID)"
         )
         var comparisonsByKey: [String: MapComparison] = [:]
+        let providerComparisons = comparisons.filter {
+            $0.catalogMap.sourceKind == .provider
+                && MapIdentity.normalizeProvider($0.catalogMap.providerId) == providerID
+        }
         let displayNames = MapDisplayNameNormalizer.displayNames(
-            for: comparisons.map(\.catalogMap)
+            for: providerComparisons.map(\.catalogMap)
         )
 
-        for comparison in comparisons {
-            guard MapIdentity.normalizeProvider(comparison.catalogMap.providerId)
-                == "freizeitkarte" else {
-                continue
-            }
-
+        for comparison in providerComparisons {
             let key = identityKey(
                 provider: comparison.catalogMap.providerId,
                 region: comparison.catalogMap.regionId,
                 identifier: comparison.catalogMap.identifier,
                 fallback: comparison.catalogMap.id,
-                namespace: "freizeitkarte"
+                namespace: "provider-\(providerID)"
             )
 
             // Keep one deterministic row per exact catalog identity. A broad
@@ -141,7 +224,7 @@ struct MapInventoryListBuilder: Sendable {
             }
         }
 
-        return keys.compactMap { key in
+        let entries: [MapInventoryEntry] = keys.compactMap { (key: String) -> MapInventoryEntry? in
             let comparison = comparisonsByKey[key]
             let installedMaps = installedGroups[key] ?? []
             guard comparison != nil || !installedMaps.isEmpty else {
@@ -152,9 +235,12 @@ struct MapInventoryListBuilder: Sendable {
             if let comparison {
                 let displayName = displayNames[comparison.catalogMap.id]
                     ?? MapDisplayNameNormalizer.normalize(comparison.catalogMap.name)
-                title = "Freizeitkarte \(displayName)"
+                title = displayName
             } else if let installedMap = installedMaps.first {
-                title = installedMap.name
+                title = providerNeutralTitle(
+                    for: installedMap,
+                    providerID: providerID
+                )
             } else {
                 return nil
             }
@@ -175,6 +261,32 @@ struct MapInventoryListBuilder: Sendable {
 
             return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
         }
+
+        guard !entries.isEmpty else { return nil }
+
+        let title = providerComparisons.first?.providerName
+            ?? installedMaps.first(where: {
+                MapIdentity.normalizeProvider($0.provider ?? "") == providerID
+            })?.provider
+            ?? providerID
+
+        return MapInventoryProviderGroup(
+            id: providerID,
+            providerId: providerID,
+            title: title,
+            entries: entries
+        )
+    }
+
+    private func providerNeutralTitle(
+        for map: InstalledMap,
+        providerID: String
+    ) -> String {
+        let title = MapDisplayNameNormalizer.normalize(
+            map.name,
+            providerID: providerID
+        )
+        return title.isEmpty ? map.sourceFile.filename : title
     }
 
     private func buildOtherMapEntries(_ maps: [InstalledMap]) -> [MapInventoryEntry] {
@@ -184,7 +296,18 @@ struct MapInventoryListBuilder: Sendable {
                     return nil
                 }
 
-                let title = first.name.isEmpty ? first.sourceFile.filename : first.name
+                let title: String
+                if first.managementState == .managedByTerento,
+                   first.provider == nil {
+                    let parsedName = first.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let isGenericName = parsedName.isEmpty
+                        || ["custom map", "unknown map"].contains(parsedName.lowercased())
+                    title = isGenericName
+                        ? first.sourceFile.filename
+                        : parsedName
+                } else {
+                    title = first.name.isEmpty ? first.sourceFile.filename : first.name
+                }
 
                 return MapInventoryEntry(
                     key: key,
@@ -205,6 +328,17 @@ struct MapInventoryListBuilder: Sendable {
         namespace: String
     ) -> [String: [InstalledMap]] {
         Dictionary(grouping: maps) { map in
+            // A verified custom import must never be grouped with an
+            // unowned third-party IMG merely because both files expose the
+            // same human-readable header name. Keep each managed custom
+            // file as its own lifecycle item so it receives Custom map /
+            // Remove, while the unrelated external file remains read-only.
+            if namespace == "other",
+               map.provider == nil,
+               map.managementState == .managedByTerento {
+                return "\(namespace):custom:\(map.sourceFile.path)"
+            }
+
             if let identity = map.identity {
                 return identityKey(
                     provider: identity.provider,

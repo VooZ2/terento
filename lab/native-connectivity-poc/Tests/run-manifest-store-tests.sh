@@ -12,6 +12,7 @@ swiftc \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapVersion.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapIdentity.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapModels.swift" \
+    "$project_root/Sources/TerentoPoC/MapCatalog/MapArtifactPlanning.swift" \
     "$project_root/Sources/TerentoPoC/Installation/InstallationSafetyModels.swift" \
     "$project_root/Sources/TerentoPoC/Installation/TerentoManifestStore.swift" \
     "$project_root/Tests/TerentoPoCTests/ManifestStoreConcurrencyTests.swift" \

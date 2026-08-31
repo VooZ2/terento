@@ -14,6 +14,13 @@ enum MapAcquisitionState: String, Codable, Equatable, Sendable {
     case failed = "FAILED"
 }
 
+enum CustomMapImportState: String, Equatable, Sendable {
+    case idle
+    case validating
+    case ready
+    case failed
+}
+
 struct MapDownloadProgress: Equatable, Sendable {
     let bytesDownloaded: UInt64
     let totalBytes: UInt64
@@ -81,6 +88,7 @@ enum MapPackageFormat: String, Codable, Equatable, Sendable {
 enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
     case acquisitionWithheld(MapAcquisitionAvailability)
     case downloadFailed(String)
+    case providerUnavailable(providerId: String, statusCode: Int?)
     case downloadIncomplete(expected: UInt64?, actual: UInt64)
     case invalidPackage(String)
     case extractionFailed(String)
@@ -92,6 +100,7 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
     case ambiguousIMG
     case workspaceFailed(String)
     case untrustedSourceURL(String)
+    case customMapNotConfirmed(String)
 
     var errorDescription: String? {
         switch self {
@@ -99,6 +108,8 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
             return availability.detailedExplanation
         case .downloadFailed(let message):
             return "The map package could not be downloaded: \(message)"
+        case .providerUnavailable:
+            return "The selected map provider is currently down. Try again later."
         case .downloadIncomplete(let expected, let actual):
             if let expected {
                 return "The map package is incomplete: expected \(expected) bytes, received \(actual)."
@@ -124,6 +135,8 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
             return "The temporary map workspace could not be prepared: \(message)"
         case .untrustedSourceURL:
             return "The map provider address is not in Terento's reviewed HTTPS source list. Refresh the catalog and try again."
+        case .customMapNotConfirmed(let message):
+            return message
         }
     }
 }
@@ -131,6 +144,10 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
 struct ReviewedProviderURLPolicy: Sendable {
     static let freizeitkarte = ReviewedProviderURLPolicy(
         allowedHosts: ["download.freizeitkarte-osm.de"]
+    )
+
+    static let openTopoMap = ReviewedProviderURLPolicy(
+        allowedHosts: ["garmin.opentopomap.org"]
     )
 
     let allowedHosts: Set<String>
@@ -149,6 +166,170 @@ struct ReviewedProviderURLPolicy: Sendable {
               components.port == nil || components.port == 443 else {
             throw MapAcquisitionError.untrustedSourceURL(url.absoluteString)
         }
+    }
+}
+
+/// Source-host policy is selected from the package provider, never from a
+/// global/default provider. A future provider adds its reviewed policy to
+/// this registry without changing the acquisition pipeline.
+struct ReviewedProviderURLPolicyRegistry: Sendable {
+    static let bundled = ReviewedProviderURLPolicyRegistry(
+        policies: [
+            "freizeitkarte": .freizeitkarte,
+            "opentopomap": .openTopoMap
+        ]
+    )
+
+    private let policies: [String: ReviewedProviderURLPolicy]
+
+    init(policies: [String: ReviewedProviderURLPolicy]) {
+        self.policies = Dictionary(
+            uniqueKeysWithValues: policies.map {
+                (MapIdentity.normalizeProvider($0.key), $0.value)
+            }
+        )
+    }
+
+    func policy(for providerId: String) -> ReviewedProviderURLPolicy? {
+        policies[MapIdentity.normalizeProvider(providerId)]
+    }
+}
+
+struct MapProviderHealthProbeResult: Equatable, Sendable {
+    let providerId: String
+    let health: MapProviderHealth
+    let statusCode: Int?
+    let checkedAt: Date
+
+    var isDown: Bool {
+        health == .down
+    }
+}
+
+protocol MapProviderHealthChecking: Sendable {
+    func check(package: MapPackage) async -> MapProviderHealthProbeResult
+}
+
+struct NoopMapProviderHealthChecker: MapProviderHealthChecking, Sendable {
+    func check(package: MapPackage) async -> MapProviderHealthProbeResult {
+        MapProviderHealthProbeResult(
+            providerId: package.providerId,
+            health: .unknown,
+            statusCode: nil,
+            checkedAt: Date()
+        )
+    }
+}
+
+/// A bounded source check used only to improve an app download failure. It
+/// does not download a map binary and does not persist provider health.
+struct FoundationMapProviderHealthChecker: MapProviderHealthChecking, Sendable {
+    private let sourcePolicyRegistry: ReviewedProviderURLPolicyRegistry
+    private let timeout: TimeInterval
+
+    init(
+        sourcePolicyRegistry: ReviewedProviderURLPolicyRegistry = .bundled,
+        timeout: TimeInterval = 10
+    ) {
+        self.sourcePolicyRegistry = sourcePolicyRegistry
+        self.timeout = timeout
+    }
+
+    func check(package: MapPackage) async -> MapProviderHealthProbeResult {
+        let unknown = MapProviderHealthProbeResult(
+            providerId: package.providerId,
+            health: .unknown,
+            statusCode: nil,
+            checkedAt: Date()
+        )
+
+        guard let sourceURL = package.downloadURL,
+              let policy = sourcePolicyRegistry.policy(for: package.providerId) else {
+            return unknown
+        }
+
+        do {
+            try policy.validate(sourceURL)
+            let response = try await request(
+                sourceURL: sourceURL,
+                policy: policy,
+                method: "HEAD"
+            )
+
+            if response.statusCode == 405 || response.statusCode == 501 {
+                let rangeResponse = try await request(
+                    sourceURL: sourceURL,
+                    policy: policy,
+                    method: "GET",
+                    range: "bytes=0-0"
+                )
+                return classify(response: rangeResponse, providerId: package.providerId)
+            }
+            return classify(response: response, providerId: package.providerId)
+        } catch {
+            return unknown
+        }
+    }
+
+    private func classify(
+        response: HealthHTTPResponse,
+        providerId: String
+    ) -> MapProviderHealthProbeResult {
+        let health: MapProviderHealth
+        switch response.statusCode {
+        case 200...399:
+            health = .healthy
+        case 429, 404, 410:
+            health = .degraded
+        case 500...599:
+            health = .down
+        default:
+            health = .unknown
+        }
+
+        return MapProviderHealthProbeResult(
+            providerId: providerId,
+            health: health,
+            statusCode: response.statusCode,
+            checkedAt: Date()
+        )
+    }
+
+    private func request(
+        sourceURL: URL,
+        policy: ReviewedProviderURLPolicy,
+        method: String,
+        range: String? = nil
+    ) async throws -> HealthHTTPResponse {
+        var request = URLRequest(url: sourceURL)
+        request.httpMethod = method
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.timeoutInterval = timeout
+        if let range {
+            request.setValue(range, forHTTPHeaderField: "Range")
+        }
+
+        let redirectDelegate = ReviewedProviderRedirectDelegate(policy: policy)
+        let session = URLSession(
+            configuration: .ephemeral,
+            delegate: redirectDelegate,
+            delegateQueue: nil
+        )
+        defer { session.finishTasksAndInvalidate() }
+
+        let (_, response) = try await session.data(for: request)
+        guard redirectDelegate.takeRejectedURL() == nil,
+              let httpResponse = response as? HTTPURLResponse else {
+            throw MapAcquisitionError.downloadFailed("The provider health response was invalid.")
+        }
+        if let finalURL = httpResponse.url {
+            try policy.validate(finalURL)
+        }
+        return HealthHTTPResponse(statusCode: httpResponse.statusCode)
+    }
+
+    private struct HealthHTTPResponse: Sendable {
+        let statusCode: Int
     }
 }
 
@@ -200,12 +381,27 @@ protocol MapPackageDownloadClient: Sendable {
     func download(from url: URL) async throws -> MapPackageDownloadResponse
 
     func download(
+        package: MapPackage,
+        onProgress: (@Sendable (MapDownloadProgress) -> Void)?
+    ) async throws -> MapPackageDownloadResponse
+
+    func download(
         from url: URL,
         onProgress: (@Sendable (MapDownloadProgress) -> Void)?
     ) async throws -> MapPackageDownloadResponse
 }
 
 extension MapPackageDownloadClient {
+    func download(
+        package: MapPackage,
+        onProgress: (@Sendable (MapDownloadProgress) -> Void)?
+    ) async throws -> MapPackageDownloadResponse {
+        guard let sourceURL = package.downloadURL else {
+            throw MapAcquisitionError.downloadFailed("The catalog package has no source URL.")
+        }
+        return try await download(from: sourceURL, onProgress: onProgress)
+    }
+
     func download(
         from url: URL,
         onProgress: (@Sendable (MapDownloadProgress) -> Void)?
@@ -215,10 +411,15 @@ extension MapPackageDownloadClient {
 }
 
 struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
-    private let sourcePolicy: ReviewedProviderURLPolicy
+    private let sourcePolicyRegistry: ReviewedProviderURLPolicyRegistry
+    private let directSourcePolicy: ReviewedProviderURLPolicy?
 
-    init(sourcePolicy: ReviewedProviderURLPolicy = .freizeitkarte) {
-        self.sourcePolicy = sourcePolicy
+    init(
+        sourcePolicyRegistry: ReviewedProviderURLPolicyRegistry = .bundled,
+        sourcePolicy: ReviewedProviderURLPolicy? = nil
+    ) {
+        self.sourcePolicyRegistry = sourcePolicyRegistry
+        self.directSourcePolicy = sourcePolicy
     }
 
     func download(from url: URL) async throws -> MapPackageDownloadResponse {
@@ -226,7 +427,39 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
     }
 
     func download(
+        package: MapPackage,
+        onProgress: (@Sendable (MapDownloadProgress) -> Void)?
+    ) async throws -> MapPackageDownloadResponse {
+        guard let sourceURL = package.downloadURL else {
+            throw MapAcquisitionError.downloadFailed("The catalog package has no source URL.")
+        }
+        guard let policy = sourcePolicyRegistry.policy(for: package.providerId) else {
+            throw MapAcquisitionError.untrustedSourceURL(sourceURL.absoluteString)
+        }
+        return try await download(
+            from: sourceURL,
+            policy: policy,
+            onProgress: onProgress
+        )
+    }
+
+    func download(
         from url: URL,
+        onProgress: (@Sendable (MapDownloadProgress) -> Void)?
+    ) async throws -> MapPackageDownloadResponse {
+        guard let directSourcePolicy else {
+            throw MapAcquisitionError.untrustedSourceURL(url.absoluteString)
+        }
+        return try await download(
+            from: url,
+            policy: directSourcePolicy,
+            onProgress: onProgress
+        )
+    }
+
+    private func download(
+        from url: URL,
+        policy sourcePolicy: ReviewedProviderURLPolicy,
         onProgress: (@Sendable (MapDownloadProgress) -> Void)?
     ) async throws -> MapPackageDownloadResponse {
         try sourcePolicy.validate(url)
@@ -419,11 +652,13 @@ struct SystemZIPArchiveExtractor: MapPackageArchiveExtractor, Sendable {
 struct MapAcquisitionWorkspace: Sendable {
     let rootURL: URL
     let downloadURL: URL
+    let customIMGURL: URL
     let extractionURL: URL
 
     init(rootURL: URL) throws {
         self.rootURL = rootURL
         self.downloadURL = rootURL.appendingPathComponent("package.download")
+        self.customIMGURL = rootURL.appendingPathComponent("custom-map.img")
         self.extractionURL = rootURL.appendingPathComponent("extracted", isDirectory: true)
 
         do {
@@ -465,6 +700,7 @@ struct MapAcquisitionWorkspace: Sendable {
 }
 
 struct ValidatedMapArtifact: Equatable, Sendable {
+    let sourceKind: MapSourceKind
     let provider: String
     let region: String
     let canonicalRegion: String
@@ -480,22 +716,319 @@ struct ValidatedMapArtifact: Equatable, Sendable {
     let catalogDownloadSizeBytes: UInt64?
     let downloadSizeMatchesCatalog: Bool
     let packageFormat: MapPackageFormat
+
+    init(
+        provider: String,
+        region: String,
+        canonicalRegion: String,
+        rawRelease: String,
+        version: MapVersion,
+        localIMGURL: URL,
+        installSizeBytes: UInt64,
+        sha256: String,
+        sourcePackageURL: URL,
+        catalogPackageID: String,
+        targetFilename: String,
+        downloadSizeBytes: UInt64,
+        catalogDownloadSizeBytes: UInt64?,
+        downloadSizeMatchesCatalog: Bool,
+        packageFormat: MapPackageFormat,
+        sourceKind: MapSourceKind = .provider
+    ) {
+        self.sourceKind = sourceKind
+        self.provider = provider
+        self.region = region
+        self.canonicalRegion = canonicalRegion
+        self.rawRelease = rawRelease
+        self.version = version
+        self.localIMGURL = localIMGURL
+        self.installSizeBytes = installSizeBytes
+        self.sha256 = sha256
+        self.sourcePackageURL = sourcePackageURL
+        self.catalogPackageID = catalogPackageID
+        self.targetFilename = targetFilename
+        self.downloadSizeBytes = downloadSizeBytes
+        self.catalogDownloadSizeBytes = catalogDownloadSizeBytes
+        self.downloadSizeMatchesCatalog = downloadSizeMatchesCatalog
+        self.packageFormat = packageFormat
+    }
+
+    /// Bridge to the provider-neutral lifecycle seam. The legacy fields stay
+    /// available for the current FZK write coordinator while later sources
+    /// can hand the same neutral artifact shape to the shared pipeline.
+    var mapArtifact: MapArtifact {
+        MapArtifact(
+            id: catalogPackageID,
+            source: sourceKind,
+            kind: .main,
+            required: true,
+            providerId: provider,
+            providerRegionId: region,
+            canonicalRegionId: canonicalRegion,
+            version: version,
+            sourceURL: sourcePackageURL,
+            localURL: localIMGURL,
+            sizeBytes: installSizeBytes,
+            checksum: sha256,
+            validationState: .validated
+        )
+    }
+}
+
+struct CustomMapImportWarning: Identifiable, Equatable, Sendable {
+    let filename: String
+    let message: String
+
+    var id: String { filename }
+}
+
+struct CustomMapImportRisk: Identifiable, Equatable, Sendable {
+    let filename: String
+    let message: String
+
+    var id: String { filename }
+}
+
+struct CustomMapImportCandidate: Identifiable, Equatable, Sendable {
+    let id: String
+    let package: MapPackage
+    let artifact: ValidatedMapArtifact
+    let originalFilename: String
+    let metadata: GarminIMGMetadata
+    let workspaceRootURL: URL
+
+    var sizeBytes: UInt64 { artifact.installSizeBytes }
+}
+
+/// Prepares a user-selected raw IMG in a private cache workspace. The file is
+/// never executed, uploaded, or treated as an archive. Header parsing can
+/// establish only that the file looks like a Garmin IMG; it cannot prove map
+/// provenance, map quality, or that arbitrary embedded bytes are malware-free.
+struct CustomMapSourceAcquirer: Sendable {
+    private static let customProviderID = "custom"
+    private static let fallbackVersion = MapVersion(year: 2000, month: 1)!
+    private let workspaceFactory: @Sendable () throws -> MapAcquisitionWorkspace
+
+    init(
+        workspaceFactory: @escaping @Sendable () throws -> MapAcquisitionWorkspace = {
+            try MapAcquisitionWorkspace.make()
+        }
+    ) {
+        self.workspaceFactory = workspaceFactory
+    }
+
+    func prepare(fileURL: URL) throws -> CustomMapImportCandidate {
+        let didStartSecurityScopedAccess = fileURL.startAccessingSecurityScopedResource()
+        defer {
+            if didStartSecurityScopedAccess {
+                fileURL.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        try validateInputFile(fileURL)
+        let workspace = try workspaceFactory()
+
+        do {
+            try FileManager.default.copyItem(
+                at: fileURL,
+                to: workspace.customIMGURL
+            )
+            let validated = try MapSourceValidator().validateCustom(
+                fileURL: workspace.customIMGURL
+            )
+            let package = try makePackage(
+                validated: validated
+            )
+            let artifact = try makeArtifact(
+                package: package,
+                originalFileURL: fileURL,
+                validated: validated,
+                workspaceURL: workspace.customIMGURL
+            )
+            return CustomMapImportCandidate(
+                id: package.id,
+                package: package,
+                artifact: artifact,
+                originalFilename: fileURL.lastPathComponent,
+                metadata: validated.metadata,
+                workspaceRootURL: workspace.rootURL
+            )
+        } catch let error as MapAcquisitionError {
+            try? workspace.cleanup()
+            throw error
+        } catch let error as MapSourceValidationError {
+            try? workspace.cleanup()
+            if error == .invalidIMG {
+                throw MapAcquisitionError.customMapNotConfirmed(
+                    "Terento could not confirm that \(fileURL.lastPathComponent) is a Garmin map image. No file was prepared for installation."
+                )
+            }
+            throw MapAcquisitionError.invalidPackage(
+                "The selected IMG could not be safely checked."
+            )
+        } catch {
+            try? workspace.cleanup()
+            throw MapAcquisitionError.invalidPackage(
+                "The selected IMG could not be safely prepared."
+            )
+        }
+    }
+
+    /// Re-checks the cached copy immediately before preflight. This protects
+    /// the install path from a time-of-check/time-of-use change in the local
+    /// workspace and returns the already validated artifact only when its
+    /// content is still identical.
+    func revalidate(_ candidate: CustomMapImportCandidate) throws -> ValidatedMapArtifact {
+        try validateInputFile(candidate.artifact.localIMGURL)
+        do {
+            let validated = try MapSourceValidator().validateCustom(
+                fileURL: candidate.artifact.localIMGURL
+            )
+            guard validated.sizeBytes == candidate.artifact.installSizeBytes else {
+                throw MapAcquisitionError.invalidPackage(
+                    "The selected custom map changed after it was checked."
+                )
+            }
+            guard validated.sha256.caseInsensitiveCompare(candidate.artifact.sha256) == .orderedSame else {
+                throw MapAcquisitionError.invalidPackage(
+                    "The selected custom map changed after it was checked."
+                )
+            }
+            return candidate.artifact
+        } catch is MapSourceValidationError {
+            throw MapAcquisitionError.invalidPackage(
+                "The selected custom map is no longer readable or valid."
+            )
+        }
+    }
+
+    private func validateInputFile(_ fileURL: URL) throws {
+        guard fileURL.isFileURL,
+              fileURL.pathExtension.caseInsensitiveCompare("img") == .orderedSame else {
+            throw MapAcquisitionError.invalidPackage(
+                "Choose a raw Garmin .img map file. Installer packages and archives are not accepted here."
+            )
+        }
+
+        let values: URLResourceValues
+        do {
+            values = try fileURL.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey])
+        } catch {
+            throw MapAcquisitionError.invalidPackage(
+                "The selected file could not be inspected safely."
+            )
+        }
+
+        guard values.isRegularFile == true,
+              values.isSymbolicLink != true,
+              FileManager.default.isReadableFile(atPath: fileURL.path) else {
+            throw MapAcquisitionError.invalidPackage(
+                "The selected file is not a readable regular file."
+            )
+        }
+    }
+
+    private func makePackage(
+        validated: ValidatedMapSource
+    ) throws -> MapPackage {
+        let contentToken = String(validated.sha256.prefix(24))
+        let regionToken = "img_\(contentToken)"
+        let packageID = "custom-\(contentToken)"
+        let version = validated.metadata.version ?? Self.fallbackVersion
+        let artifactID = "\(packageID)-main"
+
+        return MapPackage(
+            id: packageID,
+            providerId: Self.customProviderID,
+            regionId: regionToken,
+            name: "Custom map",
+            version: version,
+            sizeBytes: validated.sizeBytes,
+            sourceURL: nil,
+            releaseDate: validated.metadata.rawVersion,
+            identifier: validated.sha256,
+            downloadSizeBytes: validated.sizeBytes,
+            installSizeBytes: validated.sizeBytes,
+            providerRegionId: regionToken,
+            canonicalRegionId: regionToken,
+            regionKind: .custom,
+            releaseMetadata: validated.metadata.rawVersion.map {
+                MapReleaseMetadata(
+                    releaseId: $0,
+                    versionLabel: $0,
+                    generatedAt: nil,
+                    sourceUpdatedAt: nil
+                )
+            },
+            artifacts: [
+                MapArtifact(
+                    id: artifactID,
+                    source: .custom,
+                    kind: .main,
+                    required: true,
+                    providerId: Self.customProviderID,
+                    providerRegionId: regionToken,
+                    canonicalRegionId: regionToken,
+                    version: version,
+                    sourceURL: nil,
+                    localURL: nil,
+                    sizeBytes: validated.sizeBytes,
+                    checksum: validated.sha256,
+                    validationState: .validated
+                )
+            ],
+            sourceKind: .custom
+        )
+    }
+
+    private func makeArtifact(
+        package: MapPackage,
+        originalFileURL: URL,
+        validated: ValidatedMapSource,
+        workspaceURL: URL
+    ) throws -> ValidatedMapArtifact {
+        let targetFilename = try TerentoManagedFilenameGenerator().filename(
+            providerId: package.providerId,
+            regionId: package.canonicalRegionId
+        )
+        return ValidatedMapArtifact(
+            provider: Self.customProviderID,
+            region: package.regionId,
+            canonicalRegion: package.canonicalRegionId,
+            rawRelease: validated.metadata.rawVersion ?? "",
+            version: package.version,
+            localIMGURL: workspaceURL,
+            installSizeBytes: validated.sizeBytes,
+            sha256: validated.sha256,
+            sourcePackageURL: originalFileURL,
+            catalogPackageID: package.id,
+            targetFilename: targetFilename,
+            downloadSizeBytes: validated.sizeBytes,
+            catalogDownloadSizeBytes: nil,
+            downloadSizeMatchesCatalog: true,
+            packageFormat: .rawIMG,
+            sourceKind: .custom
+        )
+    }
 }
 
 struct MapPackageAcquirer: Sendable {
     private let downloadClient: any MapPackageDownloadClient
+    private let providerHealthChecker: any MapProviderHealthChecking
     private let archiveExtractor: any MapPackageArchiveExtractor
     private let workspaceFactory: @Sendable () throws -> MapAcquisitionWorkspace
     private let parser = GarminIMGMetadataParser()
 
     init(
         downloadClient: any MapPackageDownloadClient = FoundationMapPackageDownloadClient(),
+        providerHealthChecker: any MapProviderHealthChecking = NoopMapProviderHealthChecker(),
         archiveExtractor: any MapPackageArchiveExtractor = SystemZIPArchiveExtractor(),
         workspaceFactory: @escaping @Sendable () throws -> MapAcquisitionWorkspace = {
             try MapAcquisitionWorkspace.make()
         }
     ) {
         self.downloadClient = downloadClient
+        self.providerHealthChecker = providerHealthChecker
         self.archiveExtractor = archiveExtractor
         self.workspaceFactory = workspaceFactory
     }
@@ -561,7 +1094,7 @@ struct MapPackageAcquirer: Sendable {
         let response: MapPackageDownloadResponse
         do {
             response = try await downloadClient.download(
-                from: sourceURL,
+                package: package,
                 onProgress: { progress in
                     let totalBytes = progress.totalBytes > 0
                         ? progress.totalBytes
@@ -574,13 +1107,19 @@ struct MapPackageAcquirer: Sendable {
                 }
             )
         } catch let error as MapAcquisitionError {
-            throw error
+            throw await providerAwareDownloadError(error, package: package)
         } catch {
-            throw MapAcquisitionError.downloadFailed(error.localizedDescription)
+            throw await providerAwareDownloadError(
+                .downloadFailed(error.localizedDescription),
+                package: package
+            )
         }
 
         guard (200...299).contains(response.statusCode) else {
-            throw MapAcquisitionError.downloadFailed("Provider returned HTTP \(response.statusCode).")
+            throw await providerAwareDownloadError(
+                .downloadFailed("Provider returned HTTP \(response.statusCode)."),
+                package: package
+            )
         }
 
         state(.validatingDownload, onStateChange)
@@ -779,7 +1318,10 @@ struct MapPackageAcquirer: Sendable {
             from: fileURL,
             maxLength: GarminIMGMetadataParser.prefixLength
         )
-        guard let metadata = parser.parse(prefix) else {
+        guard let metadata = parser.parse(
+            prefix,
+            filename: fileURL.lastPathComponent
+        ) else {
             throw MapAcquisitionError.invalidPackage("The IMG header could not be parsed.")
         }
         return metadata
@@ -812,5 +1354,36 @@ struct MapPackageAcquirer: Sendable {
         _ onStateChange: (@Sendable (MapAcquisitionState) -> Void)?
     ) {
         onStateChange?(state)
+    }
+
+    private func providerAwareDownloadError(
+        _ error: MapAcquisitionError,
+        package: MapPackage
+    ) async -> MapAcquisitionError {
+        guard shouldProbeProvider(for: error) else {
+            return error
+        }
+
+        let probe = await providerHealthChecker.check(package: package)
+        guard probe.isDown else {
+            return error
+        }
+        return .providerUnavailable(
+            providerId: package.providerId,
+            statusCode: probe.statusCode
+        )
+    }
+
+    private func shouldProbeProvider(for error: MapAcquisitionError) -> Bool {
+        switch error {
+        case .downloadFailed, .downloadIncomplete:
+            return true
+        case .acquisitionWithheld, .providerUnavailable, .invalidPackage,
+             .extractionFailed, .unsupportedPackageFormat, .unsafeArchivePath,
+             .sourceIdentityMismatch, .sourceVersionMismatch, .noIMGFound,
+             .ambiguousIMG, .workspaceFailed, .untrustedSourceURL,
+             .customMapNotConfirmed:
+            return false
+        }
     }
 }

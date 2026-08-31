@@ -39,6 +39,15 @@ private final class MapLifecycleProgressRelay: @unchecked Sendable {
             )
         }
     }
+
+    func sendRemoval(_ progress: SafeDeleteProgress) {
+        send(SafeUpdateProgress(
+            state: progress.state == .completed ? .completed : .verifying,
+            bytesCompleted: progress.bytesCompleted,
+            totalBytes: progress.totalBytes,
+            bytesPerSecond: progress.bytesPerSecond
+        ))
+    }
 }
 
 /// Presentation coordinator for the Stage 5 lifecycle actions.
@@ -395,8 +404,13 @@ final class MapLifecycleViewModel: ObservableObject {
         switch pendingConfirmation?.action {
         case .remove:
             if let itemID = pendingConfirmation?.itemID,
-               contextProvider(itemID)?.failedInstallRecovery != nil {
+               let context = contextProvider(itemID),
+               context.failedInstallRecovery != nil {
                 return "Terento will verify the exact map left by the failed installation, remove only that object, and confirm that it is gone."
+            }
+            if let itemID = pendingConfirmation?.itemID,
+               contextProvider(itemID)?.item.classification == .externalRecognized {
+                return "Terento will verify this exact third-party map, remove only that object, and confirm that it is gone. Other maps will be left untouched. No local backup is created."
             }
             return "Terento will verify the exact Terento-managed map, remove only that object, and confirm that it is gone. Other maps will be left untouched. No local backup is created."
         case .update:
@@ -404,6 +418,14 @@ final class MapLifecycleViewModel: ObservableObject {
         case .backup, .transferOwnership, .recoverOwnership, .none:
             return "Terento will perform only the selected safe map action."
         }
+    }
+
+    var confirmationSubtitle: String {
+        guard let itemID = pendingConfirmation?.itemID,
+              let item = contextProvider(itemID)?.item else {
+            return "Selected map"
+        }
+        return item.title
     }
 
     private func recoverOwnership(
@@ -518,7 +540,11 @@ final class MapLifecycleViewModel: ObservableObject {
                 ? "Preparing the map update…"
                 : "Working…"
         case .verifying:
-            message = "Verifying the map and device state…"
+            message = action == .remove
+                ? "Removing the map and verifying the result…"
+                : "Verifying the map and device state…"
+        case .removing:
+            message = "Removing the map and verifying the result…"
         default:
             message = operations[itemID]?.message ?? "Working…"
         }
@@ -538,10 +564,6 @@ final class MapLifecycleViewModel: ObservableObject {
               context.item.installedMaps.count == 1,
               let installedMap = context.item.installedMaps.first,
               let objectID = installedMap.sourceFile.itemID,
-              let provider = context.item.provider,
-              let region = context.item.region,
-              let mapIdentity = MapIdentity(provider: provider, region: region),
-              let expectedHash = context.expectedSHA256ByItemID[objectID],
               let operationProfile = DeviceMapOperationProfile(
                 identity: context.identity,
                 installProfile: context.profile
@@ -552,28 +574,54 @@ final class MapLifecycleViewModel: ObservableObject {
             return
         }
 
+        let isExternalRemoval = context.item.classification == .externalRecognized
+            && context.failedInstallRecovery == nil
+            && !TerentoManagedFilenameGenerator().isValid(installedMap.sourceFile.filename)
+        guard let mapIdentity = context.mapIdentity
+                ?? context.item.identity
+                ?? MapIdentity(provider: "external", region: context.item.id),
+              isExternalRemoval || context.expectedSHA256ByItemID[objectID] != nil else {
+            fail(itemID: itemID, action: .remove, message: "This map could not be verified for safe removal. Nothing was changed.")
+            return
+        }
+        let expectedHash = context.expectedSHA256ByItemID[objectID] ?? ""
+
         guard let operationToken = operationController.begin() else { return }
         let operationEpoch = lifecycleEpoch
         inFlightOperationCount += 1
+        let relay = MapLifecycleProgressRelay(
+            viewModel: self,
+            itemID: itemID,
+            action: .remove,
+            epoch: operationEpoch
+        )
         setOperation(
             itemID: itemID,
             action: .remove,
             phase: .removing,
-            progress: nil,
-            message: "Removing the Terento-managed map…"
+            progress: SafeUpdateProgress(
+                state: .verifying,
+                bytesCompleted: 0,
+                totalBytes: installedMap.sourceFile.sizeBytes,
+                bytesPerSecond: 0
+            ),
+            message: isExternalRemoval
+                ? "Removing the third-party map…"
+                : "Removing the Terento-managed map…"
         )
 
         let target = SafeDeleteTarget(
             deviceKey: context.deviceKey,
             mapIdentity: mapIdentity,
-            ownership: .managedByTerento,
+            ownership: isExternalRemoval ? .detectedNotManaged : .managedByTerento,
             objectID: objectID,
             expectedPath: installedMap.sourceFile.path,
             expectedFilename: installedMap.sourceFile.filename,
             expectedSizeBytes: installedMap.sourceFile.sizeBytes,
             expectedSHA256: expectedHash,
             backup: nil,
-            expectedVersion: context.item.version
+            expectedVersion: isExternalRemoval ? nil : context.item.version,
+            allowsExternalRemoval: isExternalRemoval
         )
         let recoveryStore = self.recoveryStore
         let operationGate = self.operationGate
@@ -629,10 +677,13 @@ final class MapLifecycleViewModel: ObservableObject {
                             }
                         },
                         transport: transport,
-                        ownershipSource: context.failedInstallRecovery == nil
-                            ? .manifest
-                            : .failedInstallRecovery,
-                        requiresVerifiedBackup: false
+                        ownershipSource: isExternalRemoval
+                            ? .external
+                            : (context.failedInstallRecovery == nil
+                                ? .manifest
+                                : .failedInstallRecovery),
+                        requiresVerifiedBackup: false,
+                        onProgress: { progress in relay.sendRemoval(progress) }
                     )
                 }
             } catch {

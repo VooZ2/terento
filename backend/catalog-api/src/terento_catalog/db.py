@@ -12,6 +12,8 @@ from .models import CollectedDevice, CollectedMap
 from .asset_attribution import normalize_asset_source
 from .historical_devices import historical_device_for_event
 from .map_capability import classify_map_capable
+from .provider_catalog import ProviderDefinition, ProviderSnapshot
+from .provider_health import ProviderHealthResult
 
 
 class Database:
@@ -796,49 +798,57 @@ class Database:
             SELECT
                 p.id AS provider_id,
                 p.name AS provider_name,
+                p.adapter_id AS provider_adapter_id,
+                p.status AS provider_status,
                 p.website AS provider_website,
-                p.license_information AS provider_license_information,
+                COALESCE(p.license, p.license_information) AS provider_license_information,
                 p.attribution AS provider_attribution,
                 p.license_url AS provider_license_url,
-                m.id AS map_id,
-                m.name AS map_name,
-                m.region,
-                m.country,
-                m.identifier,
-                m.managed_by_terento,
-                v.version_year,
-                v.version_month,
-                v.raw_version,
-                v.file_size_bytes,
-                v.download_size_bytes,
-                v.install_size_bytes,
-                v.install_payload_path,
-                v.size_measurement_method,
-                v.size_measured_at,
-                v.size_measurement_warning,
-                v.source_url,
-                v.release_date,
-                v.checksum_sha256,
-                v.updated_at AS version_updated_at
+                COALESCE(h.status, 'UNKNOWN') AS provider_health,
+                package.id AS package_id,
+                package.provider_region_id,
+                package.canonical_region_id,
+                package.name AS package_name,
+                package.region AS package_region,
+                package.country AS package_country,
+                package.release,
+                package.release_id,
+                package.version_label,
+                package.generated_at,
+                package.source_updated_at AS package_source_updated_at,
+                package.availability,
+                artifact.id AS artifact_id,
+                artifact.kind AS artifact_kind,
+                artifact.source_url AS artifact_source_url,
+                artifact.size_bytes AS artifact_size_bytes,
+                artifact.install_size_bytes AS artifact_install_size_bytes,
+                artifact.checksum_sha256 AS artifact_checksum_sha256,
+                artifact.content_type AS artifact_content_type,
+                artifact.required AS artifact_required,
+                artifact.validation_status AS artifact_validation_status
             FROM map_provider AS p
-            LEFT JOIN map AS m ON m.provider_id = p.id
+            LEFT JOIN map_package AS package ON package.provider_id = p.id
+                AND package.availability <> 'RETIRED'
+            LEFT JOIN map_artifact AS artifact ON artifact.package_id = package.id
             LEFT JOIN LATERAL (
-                SELECT mv.*
-                FROM map_version AS mv
-                WHERE mv.map_id = m.id
-                ORDER BY mv.version_year DESC, mv.version_month DESC, mv.updated_at DESC
+                SELECT ph.status
+                FROM provider_health_check AS ph
+                WHERE ph.provider_id = p.id
+                ORDER BY ph.checked_at DESC, ph.id DESC
                 LIMIT 1
-            ) AS v ON TRUE
-            ORDER BY p.id, m.id
+            ) AS h ON TRUE
+            ORDER BY p.id, package.id, artifact.kind
         """
         updated_at_query = """
             SELECT COALESCE(MAX(changed_at), TIMESTAMPTZ 'epoch') AS updated_at
             FROM (
                 SELECT updated_at AS changed_at FROM map_provider
                 UNION ALL
-                SELECT updated_at AS changed_at FROM map
+                SELECT updated_at AS changed_at FROM map_package
                 UNION ALL
-                SELECT updated_at AS changed_at FROM map_version
+                SELECT updated_at AS changed_at FROM map_artifact
+                UNION ALL
+                SELECT checked_at AS changed_at FROM provider_health_check
             ) AS changes
         """
         with self.connection() as connection:
@@ -856,24 +866,32 @@ class Database:
 
         provider_query = """
             INSERT INTO map_provider (
-                id, name, website, license_information, attribution, license_url
-            ) VALUES (%s, %s, %s, %s, %s, %s)
+                id, name, adapter_id, status, website, license, license_information,
+                attribution, license_url, last_catalog_sync
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, now())
             ON CONFLICT (id) DO UPDATE SET
                 name = EXCLUDED.name,
+                adapter_id = EXCLUDED.adapter_id,
                 website = EXCLUDED.website,
+                license = EXCLUDED.license,
                 license_information = EXCLUDED.license_information,
                 attribution = EXCLUDED.attribution,
                 license_url = EXCLUDED.license_url,
+                last_catalog_sync = now(),
                 updated_at = CASE
                     WHEN (
+                        map_provider.adapter_id,
                         map_provider.name,
                         map_provider.website,
+                        map_provider.license,
                         map_provider.license_information,
                         map_provider.attribution,
                         map_provider.license_url
                     ) IS DISTINCT FROM (
+                        EXCLUDED.adapter_id,
                         EXCLUDED.name,
                         EXCLUDED.website,
+                        EXCLUDED.license,
                         EXCLUDED.license_information,
                         EXCLUDED.attribution,
                         EXCLUDED.license_url
@@ -985,6 +1003,67 @@ class Database:
                 END
         """
 
+        package_query = """
+            INSERT INTO map_package (
+                id, provider_id, legacy_map_id, provider_region_id,
+                canonical_region_id, name, region, country, release,
+                release_id, version_label, source_updated_at, availability,
+                updated_at
+            ) VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                'AVAILABLE', now()
+            )
+            ON CONFLICT (id) DO UPDATE SET
+                provider_id = EXCLUDED.provider_id,
+                legacy_map_id = EXCLUDED.legacy_map_id,
+                provider_region_id = EXCLUDED.provider_region_id,
+                canonical_region_id = EXCLUDED.canonical_region_id,
+                name = EXCLUDED.name,
+                region = EXCLUDED.region,
+                country = EXCLUDED.country,
+                release = EXCLUDED.release,
+                release_id = EXCLUDED.release_id,
+                version_label = EXCLUDED.version_label,
+                source_updated_at = EXCLUDED.source_updated_at,
+                availability = 'AVAILABLE',
+                updated_at = CASE
+                    WHEN (
+                        map_package.provider_id, map_package.provider_region_id,
+                        map_package.canonical_region_id, map_package.name,
+                        map_package.region, map_package.country, map_package.release,
+                        map_package.release_id, map_package.version_label,
+                        map_package.source_updated_at, map_package.availability
+                    ) IS DISTINCT FROM (
+                        EXCLUDED.provider_id, EXCLUDED.provider_region_id,
+                        EXCLUDED.canonical_region_id, EXCLUDED.name,
+                        EXCLUDED.region, EXCLUDED.country, EXCLUDED.release,
+                        EXCLUDED.release_id, EXCLUDED.version_label,
+                        EXCLUDED.source_updated_at, 'AVAILABLE'
+                    ) THEN now()
+                    ELSE map_package.updated_at
+                END
+        """
+        artifact_query = """
+            INSERT INTO map_artifact (
+                id, package_id, kind, source_url, size_bytes, install_size_bytes,
+                checksum_sha256, content_type, required, validation_status,
+                install_payload_path, source_updated_at, updated_at
+            ) VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now()
+            )
+            ON CONFLICT (id) DO UPDATE SET
+                source_url = EXCLUDED.source_url,
+                size_bytes = EXCLUDED.size_bytes,
+                install_size_bytes = COALESCE(EXCLUDED.install_size_bytes, map_artifact.install_size_bytes),
+                checksum_sha256 = EXCLUDED.checksum_sha256,
+                content_type = EXCLUDED.content_type,
+                required = EXCLUDED.required,
+                validation_status = EXCLUDED.validation_status,
+                install_payload_path = COALESCE(EXCLUDED.install_payload_path, map_artifact.install_payload_path),
+                source_updated_at = EXCLUDED.source_updated_at,
+                updated_at = now()
+        """
+
         with self.connection() as connection:
             for record in records:
                 connection.execute(
@@ -992,7 +1071,10 @@ class Database:
                     (
                         record.provider.id,
                         record.provider.name,
+                        record.provider.id,
+                        "ACTIVE",
                         record.provider.website,
+                        record.provider.license_information,
                         record.provider.license_information,
                         record.provider.attribution,
                         record.provider.license_url,
@@ -1029,6 +1111,609 @@ class Database:
                         record.checksum_sha256,
                     ),
                 )
+                normalized_release = f"{record.version.year:04d}-{record.version.month:02d}"
+                connection.execute(
+                    package_query,
+                    (
+                        record.map.id,
+                        record.provider.id,
+                        record.map.id,
+                        record.map.identifier,
+                        record.map.region,
+                        record.map.name,
+                        record.map.region,
+                        record.map.country,
+                        normalized_release,
+                        record.raw_version,
+                        record.raw_version,
+                        record.release_date,
+                    ),
+                )
+                download_size = record.download_size_bytes or record.file_size_bytes
+                if download_size is not None:
+                    connection.execute(
+                        artifact_query,
+                        (
+                            f"{record.map.id}-main",
+                            record.map.id,
+                            "main",
+                            record.source_url,
+                            download_size,
+                            record.install_size_bytes,
+                            record.checksum_sha256,
+                            "application/zip",
+                            True,
+                            "VALIDATED" if record.install_size_bytes is not None else "NOT_VALIDATED",
+                            record.install_payload_path,
+                            record.release_date,
+                        ),
+                    )
+                    connection.execute(
+                        """
+                        INSERT INTO provider_source (provider_id, source_type, source_url, last_checked_at)
+                        VALUES (%s, 'DOWNLOAD', %s, now())
+                        ON CONFLICT (provider_id, source_type, source_url)
+                        DO UPDATE SET last_checked_at = now(), updated_at = now()
+                        """,
+                        (record.provider.id, record.source_url),
+                    )
+
+    def ensure_provider_definition(
+        self, definition: ProviderDefinition, *, status: str | None = None
+    ) -> None:
+        """Register only metadata for a known, prebuilt provider adapter."""
+
+        with self.connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO map_provider (
+                    id, name, adapter_id, status, website,
+                    license, license_information, attribution, license_url
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (id) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    adapter_id = EXCLUDED.adapter_id,
+                    website = EXCLUDED.website,
+                    license = EXCLUDED.license,
+                    license_information = EXCLUDED.license_information,
+                    attribution = EXCLUDED.attribution,
+                    license_url = EXCLUDED.license_url,
+                    updated_at = CASE
+                        WHEN (
+                            map_provider.name, map_provider.adapter_id,
+                            map_provider.website, map_provider.license,
+                            map_provider.license_information,
+                            map_provider.attribution, map_provider.license_url
+                        ) IS DISTINCT FROM (
+                            EXCLUDED.name, EXCLUDED.adapter_id,
+                            EXCLUDED.website, EXCLUDED.license, EXCLUDED.license_information,
+                            EXCLUDED.attribution, EXCLUDED.license_url
+                        ) THEN now()
+                        ELSE map_provider.updated_at
+                    END
+                """,
+                (
+                    definition.id,
+                    definition.name,
+                    definition.adapter_id,
+                    status or definition.default_status,
+                    definition.website,
+                    definition.license,
+                    definition.license,
+                    definition.attribution,
+                    definition.license_url,
+                ),
+            )
+            connection.execute(
+                """
+                INSERT INTO provider_source (provider_id, source_type, source_url)
+                VALUES (%s, 'WEBSITE', %s), (%s, 'CATALOG', %s), (%s, 'LICENSE', %s)
+                ON CONFLICT (provider_id, source_type, source_url) DO NOTHING
+                """,
+                (
+                    definition.id, definition.website,
+                    definition.id, definition.catalog_url,
+                    definition.id, definition.license_url,
+                ),
+            )
+
+    def begin_catalog_collection(self, provider_id: str) -> int:
+        with self.connection() as connection:
+            row = connection.execute(
+                """
+                INSERT INTO catalog_collection_run (provider_id, status)
+                VALUES (%s, 'RUNNING')
+                RETURNING id
+                """,
+                (provider_id,),
+            ).fetchone()
+        return int(row["id"])
+
+    def finish_catalog_collection(
+        self,
+        run_id: int,
+        *,
+        status: str,
+        package_count: int = 0,
+        artifact_count: int = 0,
+        error_code: str | None = None,
+        error_detail: str | None = None,
+    ) -> None:
+        with self.connection() as connection:
+            connection.execute(
+                """
+                UPDATE catalog_collection_run
+                SET finished_at = now(), status = %s, package_count = %s,
+                    artifact_count = %s, error_code = %s, error_detail = %s
+                WHERE id = %s
+                """,
+                (status, package_count, artifact_count, error_code, error_detail, run_id),
+            )
+
+    def upsert_provider_snapshot(self, snapshot: ProviderSnapshot) -> None:
+        """Persist a complete metadata snapshot without storing map payloads."""
+
+        definition = snapshot.definition
+        self.ensure_provider_definition(definition)
+        with self.connection() as connection:
+            connection.execute(
+                """
+                UPDATE map_provider
+                SET last_catalog_sync = %s, updated_at = now()
+                WHERE id = %s
+                """,
+                (snapshot.collected_at, definition.id),
+            )
+            for package in snapshot.packages:
+                connection.execute(
+                    """
+                    INSERT INTO map_package (
+                        id, provider_id, provider_region_id, canonical_region_id,
+                        name, region, country, release, release_id, version_label,
+                        generated_at, source_updated_at, availability, updated_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
+                    ON CONFLICT (id) DO UPDATE SET
+                        provider_id = EXCLUDED.provider_id,
+                        provider_region_id = EXCLUDED.provider_region_id,
+                        canonical_region_id = EXCLUDED.canonical_region_id,
+                        name = EXCLUDED.name,
+                        region = EXCLUDED.region,
+                        country = EXCLUDED.country,
+                        release = EXCLUDED.release,
+                        release_id = EXCLUDED.release_id,
+                        version_label = EXCLUDED.version_label,
+                        generated_at = EXCLUDED.generated_at,
+                        source_updated_at = EXCLUDED.source_updated_at,
+                        availability = EXCLUDED.availability,
+                        updated_at = now()
+                    """,
+                    (
+                        package.id, definition.id, package.provider_region_id,
+                        package.canonical_region_id, package.name, package.region,
+                        package.country, package.release, package.release_id,
+                        package.version_label, package.generated_at,
+                        package.source_updated_at, package.availability,
+                    ),
+                )
+                for artifact in package.artifacts:
+                    connection.execute(
+                        """
+                        INSERT INTO map_artifact (
+                            id, package_id, kind, source_url, size_bytes,
+                            install_size_bytes, checksum_sha256, content_type,
+                            required, validation_status, install_payload_path,
+                            source_updated_at, updated_at
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
+                        ON CONFLICT (id) DO UPDATE SET
+                            package_id = EXCLUDED.package_id,
+                            kind = EXCLUDED.kind,
+                            source_url = EXCLUDED.source_url,
+                            size_bytes = EXCLUDED.size_bytes,
+                            install_size_bytes = EXCLUDED.install_size_bytes,
+                            checksum_sha256 = EXCLUDED.checksum_sha256,
+                            content_type = EXCLUDED.content_type,
+                            required = EXCLUDED.required,
+                            validation_status = EXCLUDED.validation_status,
+                            install_payload_path = EXCLUDED.install_payload_path,
+                            source_updated_at = EXCLUDED.source_updated_at,
+                            updated_at = now()
+                        """,
+                        (
+                            artifact.id, package.id, artifact.kind, artifact.source_url,
+                            artifact.size_bytes, artifact.install_size_bytes,
+                            artifact.checksum_sha256, artifact.content_type,
+                            artifact.required, artifact.validation_status,
+                            artifact.install_payload_path, artifact.source_updated_at,
+                        ),
+                    )
+                    connection.execute(
+                        """
+                        INSERT INTO provider_source (
+                            provider_id, source_type, source_url, last_checked_at
+                        ) VALUES (%s, 'DOWNLOAD', %s, now())
+                        ON CONFLICT (provider_id, source_type, source_url)
+                        DO UPDATE SET last_checked_at = now(), updated_at = now()
+                        """,
+                        (definition.id, artifact.source_url),
+                    )
+
+            if definition.id == "opentopomap":
+                # Beta.8 publishes main maps only. A complete replacement
+                # snapshot must hide any contours or packages left by an
+                # earlier collector run without touching map binaries.
+                package_ids = [package.id for package in snapshot.packages]
+                artifact_ids = [
+                    artifact.id
+                    for package in snapshot.packages
+                    for artifact in package.artifacts
+                ]
+                connection.execute(
+                    """
+                    DELETE FROM map_artifact
+                    WHERE package_id IN (
+                        SELECT id FROM map_package WHERE provider_id = %s
+                    ) AND NOT (id = ANY(%s))
+                    """,
+                    (definition.id, artifact_ids),
+                )
+                connection.execute(
+                    """
+                    UPDATE map_package
+                    SET availability = 'RETIRED', updated_at = now()
+                    WHERE provider_id = %s AND NOT (id = ANY(%s))
+                    """,
+                    (definition.id, package_ids),
+                )
+
+    def provider_rows(self) -> list[dict[str, Any]]:
+        query = """
+            SELECT
+                p.id AS provider_id, p.name AS provider_name,
+                p.adapter_id, p.status, p.website,
+                COALESCE(p.license, p.license_information) AS license_information,
+                p.attribution, p.license_url, p.last_catalog_sync,
+                h.status AS health, h.checked_at AS last_checked_at,
+                h.error_code AS last_error,
+                COALESCE(pc.active_package_count, 0) AS active_package_count,
+                COALESCE(pc.broken_package_count, 0) AS broken_package_count
+            FROM map_provider AS p
+            LEFT JOIN LATERAL (
+                SELECT ph.status, ph.checked_at, ph.error_code
+                FROM provider_health_check AS ph
+                WHERE ph.provider_id = p.id
+                ORDER BY ph.checked_at DESC, ph.id DESC
+                LIMIT 1
+            ) AS h ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT
+                    count(DISTINCT mp.id) FILTER (WHERE mp.availability = 'AVAILABLE')
+                        AS active_package_count,
+                    count(DISTINCT mp.id) FILTER (
+                        WHERE EXISTS (
+                            SELECT 1 FROM map_artifact ma
+                            WHERE ma.package_id = mp.id
+                              AND ma.validation_status IN ('FAILED', 'UNAVAILABLE')
+                        )
+                    ) AS broken_package_count,
+                    count(DISTINCT ma.source_url) FILTER (
+                        WHERE ma.validation_status IN ('FAILED', 'UNAVAILABLE')
+                    ) AS broken_url_count
+                FROM map_package mp
+                LEFT JOIN map_artifact ma ON ma.package_id = mp.id
+                WHERE mp.provider_id = p.id
+            ) AS pc ON TRUE
+            ORDER BY p.name, p.id
+        """
+        with self.connection() as connection:
+            return list(connection.execute(query).fetchall())
+
+    def provider_detail(self, provider_id: str) -> dict[str, Any] | None:
+        with self.connection() as connection:
+            provider = connection.execute(
+                """
+                SELECT id AS provider_id, name AS provider_name, adapter_id, status,
+                       website, COALESCE(license, license_information) AS license_information,
+                       attribution, license_url,
+                       last_catalog_sync
+                FROM map_provider WHERE id = %s
+                """,
+                (provider_id,),
+            ).fetchone()
+            if provider is None:
+                return None
+            provider["sources"] = list(connection.execute(
+                """
+                SELECT source_type, source_url, enabled, last_checked_at
+                FROM provider_source WHERE provider_id = %s
+                ORDER BY source_type, source_url
+                """,
+                (provider_id,),
+            ).fetchall())
+            provider["packages"] = list(connection.execute(
+                """
+                SELECT mp.id, mp.name, mp.region, mp.release, mp.availability,
+                       count(ma.id) AS artifact_count,
+                       count(ma.id) FILTER (WHERE ma.kind = 'main')
+                           AS main_artifact_count,
+                       count(ma.id) FILTER (WHERE ma.validation_status IN ('FAILED', 'UNAVAILABLE'))
+                           AS broken_artifact_count,
+                       count(ma.id) FILTER (
+                           WHERE ma.required AND ma.validation_status <> 'VALIDATED'
+                       )
+                           AS unvalidated_artifact_count
+                FROM map_package mp
+                LEFT JOIN map_artifact ma ON ma.package_id = mp.id
+                WHERE mp.provider_id = %s
+                GROUP BY mp.id
+                ORDER BY mp.id
+                """,
+                (provider_id,),
+            ).fetchall())
+            provider["health"] = connection.execute(
+                """
+                SELECT * FROM provider_health_check
+                WHERE provider_id = %s
+                ORDER BY checked_at DESC, id DESC LIMIT 1
+                """,
+                (provider_id,),
+            ).fetchone()
+            provider["health_history"] = list(connection.execute(
+                """
+                SELECT * FROM provider_health_check
+                WHERE provider_id = %s
+                ORDER BY checked_at DESC, id DESC
+                LIMIT 50
+                """,
+                (provider_id,),
+            ).fetchall())
+            return provider
+
+    def provider_download_urls(self, provider_id: str) -> list[dict[str, Any]]:
+        with self.connection() as connection:
+            return list(connection.execute(
+                """
+                SELECT DISTINCT ma.source_url, mp.source_updated_at
+                FROM map_artifact ma
+                JOIN map_package mp ON mp.id = ma.package_id
+                WHERE mp.provider_id = %s
+                ORDER BY ma.source_url
+                LIMIT 8
+                """,
+                (provider_id,),
+            ).fetchall())
+
+    def provider_runs(self, provider_id: str, limit: int = 50) -> list[dict[str, Any]]:
+        with self.connection() as connection:
+            return list(connection.execute(
+                """
+                SELECT id, provider_id, started_at, finished_at, status,
+                       package_count, artifact_count, error_code, error_detail
+                FROM catalog_collection_run
+                WHERE provider_id = %s
+                ORDER BY started_at DESC, id DESC
+                LIMIT %s
+                """,
+                (provider_id, limit),
+            ).fetchall())
+
+    def provider_health_history(self, provider_id: str, limit: int = 50) -> list[dict[str, Any]]:
+        with self.connection() as connection:
+            return list(connection.execute(
+                """
+                SELECT * FROM provider_health_check
+                WHERE provider_id = %s
+                ORDER BY checked_at DESC, id DESC
+                LIMIT %s
+                """,
+                (provider_id, limit),
+            ).fetchall())
+
+    def record_provider_health(self, result: ProviderHealthResult) -> int:
+        values = result.as_database_values()
+        with self.connection() as connection:
+            row = connection.execute(
+                """
+                INSERT INTO provider_health_check (
+                    provider_id, status, website_status, catalog_status,
+                    redirect_status, download_status, mime_status, magic_status,
+                    zip_status, img_status, last_update_status, http_status, final_url,
+                    content_type, artifact_count, source_updated_at, error_code,
+                    error_detail, duration_ms
+                ) VALUES (
+                    %(provider_id)s, %(status)s, %(website_status)s, %(catalog_status)s,
+                    %(redirect_status)s, %(download_status)s, %(mime_status)s,
+                    %(magic_status)s, %(zip_status)s, %(img_status)s, %(last_update_status)s,
+                    %(http_status)s, %(final_url)s, %(content_type)s, %(artifact_count)s,
+                    %(source_updated_at)s, %(error_code)s, %(error_detail)s, %(duration_ms)s
+                ) RETURNING id
+                """,
+                values,
+            ).fetchone()
+        return int(row["id"])
+
+    def set_provider_status(
+        self,
+        provider_id: str,
+        status: str,
+        *,
+        admin_user_id: int,
+        request_id: str | None = None,
+        reason: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> bool:
+        with self.connection() as connection:
+            current = connection.execute(
+                "SELECT status FROM map_provider WHERE id = %s",
+                (provider_id,),
+            ).fetchone()
+            if current is None:
+                return False
+            old_status = str(current["status"] or "")
+            row = connection.execute(
+                """
+                UPDATE map_provider SET status = %s, updated_at = now()
+                WHERE id = %s RETURNING id
+                """,
+                (status, provider_id),
+            ).fetchone()
+            if row is None:
+                return False
+            self._insert_admin_audit(
+                connection,
+                admin_user_id=admin_user_id,
+                action="provider.status_changed",
+                provider_id=provider_id,
+                target=status,
+                request_id=request_id,
+                old_status=old_status,
+                new_status=status,
+                reason=reason or "No reason provided",
+                details={
+                    **(details or {}),
+                    "oldStatus": old_status,
+                    "newStatus": status,
+                    "reason": reason or "No reason provided",
+                },
+            )
+        return True
+
+    def _insert_admin_audit(
+        self,
+        connection: Any,
+        *,
+        admin_user_id: int | None,
+        action: str,
+        provider_id: str | None = None,
+        target: str | None = None,
+        request_id: str | None = None,
+        old_status: str | None = None,
+        new_status: str | None = None,
+        reason: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        connection.execute(
+            """
+            INSERT INTO admin_audit_log (
+                admin_user_id, action, provider_id, old_status, new_status,
+                reason, target, request_id, details
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb)
+            """,
+            (
+                admin_user_id, action, provider_id, old_status, new_status,
+                reason, target, request_id,
+                json.dumps(details or {}, ensure_ascii=False),
+            ),
+        )
+
+    def record_admin_audit(
+        self,
+        *,
+        admin_user_id: int | None,
+        action: str,
+        provider_id: str | None = None,
+        target: str | None = None,
+        request_id: str | None = None,
+        old_status: str | None = None,
+        new_status: str | None = None,
+        reason: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        with self.connection() as connection:
+            self._insert_admin_audit(
+                connection,
+                admin_user_id=admin_user_id,
+                action=action,
+                provider_id=provider_id,
+                target=target,
+                request_id=request_id,
+                old_status=old_status,
+                new_status=new_status,
+                reason=reason,
+                details=details,
+            )
+
+    def audit_rows(self, provider_id: str, limit: int = 50) -> list[dict[str, Any]]:
+        with self.connection() as connection:
+            return list(connection.execute(
+                """
+                SELECT id, admin_user_id, action, provider_id, old_status,
+                       new_status, reason, target, request_id, details, occurred_at
+                FROM admin_audit_log
+                WHERE provider_id = %s
+                ORDER BY occurred_at DESC, id DESC
+                LIMIT %s
+                """,
+                (provider_id, limit),
+            ).fetchall())
+
+    def insert_map_event(self, event: dict[str, Any]) -> bool:
+        with self.connection() as connection:
+            map_package_id = None
+            if event.get("mapId"):
+                package = connection.execute(
+                    "SELECT id FROM map_package WHERE id = %s",
+                    (event["mapId"],),
+                ).fetchone()
+                map_package_id = package["id"] if package else None
+            row = connection.execute(
+                """
+                INSERT INTO map_download_event (
+                    event_id, operation_id, provider_id, map_package_id,
+                    region, event_type, outcome, occurred_at, app_build
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT DO NOTHING
+                RETURNING event_id
+                """,
+                (
+                    event["id"], event["operationId"], event["providerId"],
+                    map_package_id, event.get("region"), event["eventType"],
+                    event["outcome"], event["timestamp"], event.get("appBuild"),
+                ),
+            ).fetchone()
+        return row is not None
+
+    def map_statistics(self, filters: dict[str, Any]) -> list[dict[str, Any]]:
+        clauses = ["1 = 1"]
+        values: list[Any] = []
+        if filters.get("provider"):
+            clauses.append("e.provider_id = %s")
+            values.append(filters["provider"])
+        if filters.get("map"):
+            clauses.append("e.map_package_id = %s")
+            values.append(filters["map"])
+        if filters.get("region"):
+            clauses.append("e.region = %s")
+            values.append(filters["region"])
+        if filters.get("eventType"):
+            clauses.append("e.event_type = %s")
+            values.append(filters["eventType"])
+        if filters.get("dateFrom"):
+            clauses.append("e.occurred_at >= %s")
+            values.append(filters["dateFrom"])
+        if filters.get("dateTo"):
+            clauses.append("e.occurred_at <= %s")
+            values.append(filters["dateTo"])
+        query = f"""
+            SELECT
+                e.provider_id,
+                e.map_package_id,
+                COALESCE(e.region, mp.region) AS region,
+                e.event_type,
+                e.outcome,
+                count(*) AS event_count,
+                count(DISTINCT e.operation_id) AS operation_count,
+                min(e.occurred_at) AS first_occurred_at,
+                max(e.occurred_at) AS last_occurred_at
+            FROM map_download_event AS e
+            LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
+            WHERE {' AND '.join(clauses)}
+            GROUP BY e.provider_id, e.map_package_id,
+                     COALESCE(e.region, mp.region), e.event_type, e.outcome
+            ORDER BY last_occurred_at DESC, e.provider_id,
+                     e.map_package_id NULLS LAST, e.event_type, e.outcome
+        """
+        with self.connection() as connection:
+            return list(connection.execute(query, values).fetchall())
 
     def map_size_targets(self) -> list[dict[str, Any]]:
         query = """

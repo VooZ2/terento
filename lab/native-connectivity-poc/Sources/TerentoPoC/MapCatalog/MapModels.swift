@@ -1,17 +1,331 @@
 import Foundation
 
+enum MapRegionKind: String, Codable, Equatable, Sendable {
+    case country
+    case multiCountry
+    case subregion
+    case custom
+
+    init(from decoder: Decoder) throws {
+        let value = try decoder.singleValueContainer().decode(String.self)
+        let normalized = value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        let kind: MapRegionKind?
+        switch normalized {
+        case "country": kind = .country
+        case "multicountry", "multi-country", "multi_country": kind = .multiCountry
+        case "subregion": kind = .subregion
+        case "custom": kind = .custom
+        default: kind = nil
+        }
+        guard let kind else {
+            throw DecodingError.dataCorruptedError(
+                in: try decoder.singleValueContainer(),
+                debugDescription: "Unknown map region kind: \(value)"
+            )
+        }
+        self = kind
+    }
+}
+
+enum MapSourceKind: String, Codable, Equatable, Sendable {
+    case provider
+    case custom
+}
+
+enum MapArtifactKind: String, Codable, Equatable, Hashable, Sendable {
+    case main
+    case contours
+
+    init(from decoder: Decoder) throws {
+        let value = try decoder.singleValueContainer().decode(String.self)
+        guard let kind = Self(rawValue: value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()) else {
+            throw DecodingError.dataCorruptedError(
+                in: try decoder.singleValueContainer(),
+                debugDescription: "Unknown map artifact kind: \(value)"
+            )
+        }
+        self = kind
+    }
+}
+
+enum MapArtifactValidationState: String, Codable, Equatable, Sendable {
+    case notValidated
+    case validating
+    case validated
+    case unavailable
+    case failed
+}
+
+/// Provider-native release information is intentionally string-based. A
+/// provider may publish a date, a build identifier, or a semantic release
+/// label; none of those formats should be forced into Freizeitkarte's
+/// year/month comparison model.
+struct MapReleaseMetadata: Codable, Equatable, Sendable {
+    let releaseId: String?
+    let versionLabel: String?
+    let generatedAt: String?
+    let sourceUpdatedAt: String?
+}
+
+/// One downloadable or locally staged map payload. `required` allows a
+/// package to expose an optional contours companion without making the main
+/// map unavailable when that companion is missing.
+struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
+    let id: String
+    let source: MapSourceKind
+    let kind: MapArtifactKind
+    let required: Bool
+    let providerId: String?
+    let providerRegionId: String?
+    let canonicalRegionId: String?
+    let version: MapVersion?
+    let releaseMetadata: MapReleaseMetadata?
+    let sourceURL: URL?
+    let localURL: URL?
+    let sizeBytes: UInt64?
+    let checksum: String?
+    let validationState: MapArtifactValidationState
+
+    init(
+        id: String,
+        source: MapSourceKind = .provider,
+        kind: MapArtifactKind,
+        required: Bool,
+        providerId: String? = nil,
+        providerRegionId: String? = nil,
+        canonicalRegionId: String? = nil,
+        version: MapVersion? = nil,
+        releaseMetadata: MapReleaseMetadata? = nil,
+        sourceURL: URL? = nil,
+        localURL: URL? = nil,
+        sizeBytes: UInt64? = nil,
+        checksum: String? = nil,
+        validationState: MapArtifactValidationState = .notValidated
+    ) {
+        self.id = id
+        self.source = source
+        self.kind = kind
+        self.required = required
+        self.providerId = providerId
+        self.providerRegionId = providerRegionId
+        self.canonicalRegionId = canonicalRegionId
+        self.version = version
+        self.releaseMetadata = releaseMetadata
+        self.sourceURL = sourceURL
+        self.localURL = localURL
+        self.sizeBytes = sizeBytes
+        self.checksum = checksum
+        self.validationState = validationState
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case source
+        case kind
+        case required
+        case providerId
+        case providerRegionId
+        case canonicalRegionId
+        case version
+        case releaseMetadata
+        case sourceURL
+        case localURL
+        case sizeBytes
+        case checksum
+        case validationState
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            id: try container.decode(String.self, forKey: .id),
+            source: try container.decodeIfPresent(MapSourceKind.self, forKey: .source) ?? .provider,
+            kind: try container.decodeIfPresent(MapArtifactKind.self, forKey: .kind) ?? .main,
+            required: try container.decodeIfPresent(Bool.self, forKey: .required) ?? true,
+            providerId: try container.decodeIfPresent(String.self, forKey: .providerId),
+            providerRegionId: try container.decodeIfPresent(String.self, forKey: .providerRegionId),
+            canonicalRegionId: try container.decodeIfPresent(String.self, forKey: .canonicalRegionId),
+            version: try container.decodeIfPresent(MapVersion.self, forKey: .version),
+            releaseMetadata: try container.decodeIfPresent(MapReleaseMetadata.self, forKey: .releaseMetadata),
+            sourceURL: try container.decodeIfPresent(URL.self, forKey: .sourceURL),
+            localURL: try container.decodeIfPresent(URL.self, forKey: .localURL),
+            sizeBytes: try container.decodeIfPresent(UInt64.self, forKey: .sizeBytes),
+            checksum: try container.decodeIfPresent(String.self, forKey: .checksum),
+            validationState: try container.decodeIfPresent(MapArtifactValidationState.self, forKey: .validationState) ?? .notValidated
+        )
+    }
+}
+
+enum MapProviderHealth: String, Codable, Equatable, Sendable {
+    case healthy
+    case degraded
+    case down
+    case unknown
+}
+
+enum MapProviderLifecycleStatus: String, Codable, Equatable, Sendable {
+    case active
+    case paused
+    case retired
+}
+
+struct MapProviderHealthStatus: Codable, Equatable, Sendable {
+    let providerId: String
+    let health: MapProviderHealth
+    let lifecycleStatus: MapProviderLifecycleStatus
+    let lastCheckedAt: Date?
+    let lastSuccessfulCatalogSync: Date?
+    let activePackageCount: Int
+    let brokenPackageCount: Int
+    let lastError: String?
+}
+
+enum MapSource: Equatable, Sendable {
+    case provider(package: MapPackage)
+    case custom(fileURL: URL, displayName: String)
+
+    var kind: MapSourceKind {
+        switch self {
+        case .provider:
+            return .provider
+        case .custom:
+            return .custom
+        }
+    }
+}
+
+/// A deliberately narrow adapter seam. Provider-specific URL and identity
+/// rules stay behind this interface; acquisition, inventory, and lifecycle
+/// code consume the neutral package/artifact model.
+protocol MapProviderAdapter: Sendable {
+    var id: String { get }
+    func canonicalRegionIdentity(for package: MapPackage) -> CanonicalMapRegionIdentity?
+    func artifacts(for package: MapPackage) -> [MapArtifact]
+}
+
+struct FreizeitkarteProviderAdapter: MapProviderAdapter, Sendable {
+    let id = "freizeitkarte"
+
+    func canonicalRegionIdentity(for package: MapPackage) -> CanonicalMapRegionIdentity? {
+        FreizeitkarteMapRegionIdentityMapper().map(package: package)
+    }
+
+    func artifacts(for package: MapPackage) -> [MapArtifact] {
+        package.artifacts
+    }
+}
+
+struct OpenTopoMapProviderAdapter: MapProviderAdapter, Sendable {
+    let id = "opentopomap"
+
+    func canonicalRegionIdentity(for package: MapPackage) -> CanonicalMapRegionIdentity? {
+        OpenTopoMapRegionIdentityMapper().map(package: package)
+    }
+
+    func artifacts(for package: MapPackage) -> [MapArtifact] {
+        package.artifacts
+    }
+}
+
+/// OpenTopoMap publishes country names in its Garmin page while the catalog
+/// keeps a stable ISO country code for product policy. This mapper is the
+/// only place where that provider-specific representation is interpreted.
+struct OpenTopoMapRegionIdentityMapper: Sendable {
+    func map(package: MapPackage) -> CanonicalMapRegionIdentity? {
+        guard MapIdentity.normalizeProvider(package.providerId) == "opentopomap" else {
+            return nil
+        }
+
+        let countryCode = package.countryCodes
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() }
+            .first { $0.count == 2 || $0.count == 3 }
+
+        guard let countryCode else {
+            return nil
+        }
+
+        return CanonicalMapRegionIdentity(countryCode: countryCode)
+    }
+}
+
+/// The registry has no implicit/default provider. Callers supply the
+/// adapters they have intentionally enabled, and presentation order is
+/// deterministic and alphabetical by display name.
+struct MapProviderRegistry: Sendable {
+    let adapters: [any MapProviderAdapter]
+
+    static let bundled = MapProviderRegistry(adapters: [
+        FreizeitkarteProviderAdapter(),
+        OpenTopoMapProviderAdapter()
+    ])
+
+    init(adapters: [any MapProviderAdapter]) {
+        self.adapters = adapters
+    }
+
+    func adapter(for providerId: String) -> (any MapProviderAdapter)? {
+        adapters.first {
+            MapIdentity.normalizeProvider($0.id) == MapIdentity.normalizeProvider(providerId)
+        }
+    }
+
+    func sortedProviders(from catalog: MapCatalog) -> [MapProvider] {
+        catalog.providers.sorted {
+            let nameOrder = $0.name.localizedCaseInsensitiveCompare($1.name)
+            if nameOrder != .orderedSame {
+                return nameOrder == .orderedAscending
+            }
+            return MapIdentity.normalizeProvider($0.id) < MapIdentity.normalizeProvider($1.id)
+        }
+    }
+}
+
 struct MapProvider: Codable, Equatable, Identifiable, Sendable {
     let id: String
     let name: String
     let website: URL?
     let attribution: String?
     let licenseURL: URL?
+    let licenseInformation: String?
+
+    init(
+        id: String,
+        name: String,
+        website: URL?,
+        attribution: String?,
+        licenseURL: URL?,
+        licenseInformation: String? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.website = website
+        self.attribution = attribution
+        self.licenseURL = licenseURL
+        self.licenseInformation = licenseInformation
+    }
 }
 
 struct MapRegion: Codable, Equatable, Identifiable, Sendable {
     let id: String
     let name: String
     let country: String?
+    /// Optional for legacy callers. Catalog regions are provider-scoped when
+    /// more than one provider uses the same region token.
+    let providerId: String?
+
+    init(
+        id: String,
+        name: String,
+        country: String?,
+        providerId: String? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.country = country
+        self.providerId = providerId
+    }
 }
 
 /// Provider-independent geographic identity used only for product policy and
@@ -168,11 +482,19 @@ struct MapAcquisitionPolicy: Sendable {
 /// Composes provider mapping with the provider-independent policy. Unknown
 /// non-russia identities remain available rather than being guessed.
 struct MapPackageAcquisitionPolicyResolver: Sendable {
-    private let mapper = FreizeitkarteMapRegionIdentityMapper()
+    private let providerRegistry: MapProviderRegistry
     private let policy = MapAcquisitionPolicy()
 
+    init(
+        adapters: [any MapProviderAdapter] = MapProviderRegistry.bundled.adapters
+    ) {
+        self.providerRegistry = MapProviderRegistry(adapters: adapters)
+    }
+
     func canonicalIdentity(for package: MapPackage) -> CanonicalMapRegionIdentity? {
-        mapper.map(package: package)
+        providerRegistry
+            .adapter(for: package.providerId)?
+            .canonicalRegionIdentity(for: package)
     }
 
     func availability(for package: MapPackage) -> MapAcquisitionAvailability {
@@ -185,9 +507,18 @@ struct MapPackageAcquisitionPolicyResolver: Sendable {
 }
 
 struct MapPackage: Codable, Equatable, Identifiable, Sendable {
+    let sourceKind: MapSourceKind
     let id: String
     let providerId: String
     let regionId: String
+    /// The provider's own region/package token. It is kept separate from
+    /// the catalog grouping field for providers that publish subregions or
+    /// multiple packages under one broad region.
+    let providerRegionId: String
+    /// Stable Terento identity used for joins, filenames, and manifests.
+    /// Providers may supply this explicitly; legacy catalogs derive it from
+    /// `identifier` or `regionId`.
+    let canonicalRegionId: String
     let name: String
     let version: MapVersion
     /// Backwards-compatible catalog size. Existing documents use this for the
@@ -200,6 +531,15 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
     let sourceURL: URL?
     let releaseDate: String?
     let identifier: String?
+    let countryCodes: [String]
+    let regionKind: MapRegionKind
+    let tags: [String]
+    let capabilities: [String]
+    let releaseMetadata: MapReleaseMetadata?
+    let artifacts: [MapArtifact]
+    /// Distinguishes explicit artifact metadata from the compatibility main
+    /// artifact synthesized for legacy package records.
+    let hasExplicitArtifactCollection: Bool
 
     init(
         id: String,
@@ -212,11 +552,27 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         releaseDate: String?,
         identifier: String?,
         downloadSizeBytes: UInt64? = nil,
-        installSizeBytes: UInt64? = nil
+        installSizeBytes: UInt64? = nil,
+        providerRegionId: String? = nil,
+        canonicalRegionId: String? = nil,
+        countryCodes: [String] = [],
+        regionKind: MapRegionKind = .country,
+        tags: [String] = [],
+        capabilities: [String] = [],
+        releaseMetadata: MapReleaseMetadata? = nil,
+        artifacts: [MapArtifact]? = nil,
+        sourceKind: MapSourceKind = .provider
     ) {
+        self.sourceKind = sourceKind
         self.id = id
         self.providerId = providerId
         self.regionId = regionId
+        let resolvedProviderRegionId = Self.nonEmpty(providerRegionId)
+            ?? Self.nonEmpty(identifier)
+            ?? regionId
+        self.providerRegionId = resolvedProviderRegionId
+        self.canonicalRegionId = Self.nonEmpty(canonicalRegionId)
+            ?? resolvedProviderRegionId
         self.name = name
         self.version = version
         self.sizeBytes = sizeBytes
@@ -225,31 +581,95 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         self.sourceURL = sourceURL
         self.releaseDate = releaseDate
         self.identifier = identifier
+        self.countryCodes = countryCodes
+        self.regionKind = regionKind
+        self.tags = tags
+        self.capabilities = capabilities
+        self.releaseMetadata = releaseMetadata
+        self.hasExplicitArtifactCollection = artifacts != nil
+        self.artifacts = artifacts ?? [
+            MapArtifact(
+                id: "\(id)-main",
+                source: sourceKind,
+                kind: .main,
+                required: true,
+                providerId: providerId,
+                providerRegionId: resolvedProviderRegionId,
+                canonicalRegionId: self.canonicalRegionId,
+                version: version,
+                releaseMetadata: releaseMetadata,
+                sourceURL: sourceURL,
+                sizeBytes: installSizeBytes ?? sizeBytes
+            )
+        ]
     }
 
     var downloadURL: URL? {
-        sourceURL
+        sourceURL ?? mainArtifact?.sourceURL
     }
 
     var expectedDownloadSizeBytes: UInt64? {
         downloadSizeBytes ?? sizeBytes
     }
 
-    /// The provider identifier is the concrete map identity. Most packages
-    /// use the same token for `regionId` and `identifier`, but a few provider
-    /// catalog entries intentionally share a broad region (for example
-    /// AZORES) while `identifier` distinguishes the actual package.
-    var canonicalRegionId: String {
-        guard let identifier = identifier?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !identifier.isEmpty else {
-            return regionId
-        }
-
-        return identifier
-    }
-
     var identity: MapIdentity? {
         MapIdentity(provider: providerId, region: canonicalRegionId)
+    }
+
+    var mainArtifact: MapArtifact? {
+        artifacts.first(where: { $0.kind == .main })
+    }
+
+    /// Provider-native labels are intended for user-facing display. The
+    /// normalized version remains available for comparisons and update logic.
+    var displayVersionLabel: String? {
+        if let label = releaseMetadata?.versionLabel?.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ), !label.isEmpty {
+            return label
+        }
+
+        // 2000-01 was the historical API serializer fallback. It is not a
+        // real map version and must never reach the user-facing UI.
+        guard version.year != 2000 || version.month != 1 else {
+            return nil
+        }
+        return version.description
+    }
+
+    var optionalArtifacts: [MapArtifact] {
+        artifacts.filter { !$0.required }
+    }
+
+    var defaultArtifactPlan: MapArtifactPlan {
+        if hasExplicitArtifactCollection || installSizeBytes != nil {
+            return MapArtifactPlan(packageID: id, artifacts: artifacts)
+        }
+
+        // `sizeBytes` is historically the archive/download size. A legacy
+        // record with no measured install size must remain unresolved even
+        // though its synthesized compatibility artifact carries that value.
+        return MapArtifactPlan(
+            packageID: id,
+            artifacts: artifacts.map { artifact in
+                artifact.kind == .main ? artifact.withSize(nil) : artifact
+            }
+        )
+    }
+
+    func artifactPlan(
+        includingOptionalArtifactIDs optionalArtifactIDs: Set<String> = []
+    ) -> MapArtifactPlan {
+        MapArtifactPlan(
+            packageID: id,
+            artifacts: artifacts,
+            includingOptionalArtifactIDs: optionalArtifactIDs
+        )
+    }
+
+    var hasUsableMainArtifact: Bool {
+        guard let mainArtifact else { return false }
+        return mainArtifact.sourceURL != nil || mainArtifact.localURL != nil
     }
 
     func withInstallSize(_ installSizeBytes: UInt64) -> MapPackage {
@@ -264,7 +684,16 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
             releaseDate: releaseDate,
             identifier: identifier,
             downloadSizeBytes: downloadSizeBytes,
-            installSizeBytes: installSizeBytes
+            installSizeBytes: installSizeBytes,
+            providerRegionId: providerRegionId,
+            canonicalRegionId: canonicalRegionId,
+            countryCodes: countryCodes,
+            regionKind: regionKind,
+            tags: tags,
+            capabilities: capabilities,
+            releaseMetadata: releaseMetadata,
+            artifacts: artifacts,
+            sourceKind: sourceKind
         )
     }
 
@@ -280,10 +709,21 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         case sourceURL
         case releaseDate
         case identifier
+        case providerRegionId
+        case canonicalRegionId
+        case countryCodes
+        case regionKind
+        case tags
+        case capabilities
+        case releaseMetadata
+        case artifacts
+        case sourceKind
+        case hasExplicitArtifactCollection
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        sourceKind = try container.decodeIfPresent(MapSourceKind.self, forKey: .sourceKind) ?? .provider
         id = try container.decode(String.self, forKey: .id)
         providerId = try container.decode(String.self, forKey: .providerId)
         regionId = try container.decode(String.self, forKey: .regionId)
@@ -312,6 +752,54 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         sourceURL = try container.decodeIfPresent(URL.self, forKey: .sourceURL)
         releaseDate = try container.decodeIfPresent(String.self, forKey: .releaseDate)
         identifier = try container.decodeIfPresent(String.self, forKey: .identifier)
+        let decodedProviderRegionId = try container.decodeIfPresent(
+            String.self,
+            forKey: .providerRegionId
+        )
+        let decodedCanonicalRegionId = try container.decodeIfPresent(
+            String.self,
+            forKey: .canonicalRegionId
+        )
+        providerRegionId = Self.nonEmpty(decodedProviderRegionId)
+            ?? Self.nonEmpty(identifier)
+            ?? regionId
+        canonicalRegionId = Self.nonEmpty(decodedCanonicalRegionId)
+            ?? providerRegionId
+        countryCodes = try container.decodeIfPresent([String].self, forKey: .countryCodes) ?? []
+        regionKind = try container.decodeIfPresent(MapRegionKind.self, forKey: .regionKind) ?? .country
+        tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
+        capabilities = try container.decodeIfPresent([String].self, forKey: .capabilities) ?? []
+        releaseMetadata = try container.decodeIfPresent(
+            MapReleaseMetadata.self,
+            forKey: .releaseMetadata
+        )
+        let decodedArtifacts = try container.decodeIfPresent([MapArtifact].self, forKey: .artifacts)
+        hasExplicitArtifactCollection = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .hasExplicitArtifactCollection
+        ) ?? (decodedArtifacts != nil)
+        artifacts = decodedArtifacts
+            ?? [
+                MapArtifact(
+                    id: "\(id)-main",
+                    source: sourceKind,
+                    kind: .main,
+                    required: true,
+                    providerId: providerId,
+                    providerRegionId: providerRegionId,
+                    canonicalRegionId: canonicalRegionId,
+                    version: version,
+                    releaseMetadata: releaseMetadata,
+                    sourceURL: sourceURL,
+                    sizeBytes: installSizeBytes ?? sizeBytes
+                )
+            ]
+    }
+
+    private static func nonEmpty(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }
 
@@ -326,11 +814,48 @@ struct MapCatalog: Equatable, Sendable {
         providers.first { $0.id == id }
     }
 
-    func region(for id: String) -> MapRegion? {
-        regions.first { $0.id == id }
+    func region(for id: String, providerId: String? = nil) -> MapRegion? {
+        if let providerId {
+            let normalizedProvider = MapIdentity.normalizeProvider(providerId)
+            if let scoped = regions.first(where: {
+                $0.id == id
+                    && MapIdentity.normalizeProvider($0.providerId ?? "") == normalizedProvider
+            }) {
+                return scoped
+            }
+        }
+        return regions.first { $0.id == id }
     }
 
     func packages(forProviderId providerId: String) -> [MapPackage] {
         packages.filter { $0.providerId == providerId }
+    }
+
+    var sortedProviders: [MapProvider] {
+        providers.sorted {
+            let nameOrder = $0.name.localizedCaseInsensitiveCompare($1.name)
+            if nameOrder != .orderedSame {
+                return nameOrder == .orderedAscending
+            }
+            return MapIdentity.normalizeProvider($0.id) < MapIdentity.normalizeProvider($1.id)
+        }
+    }
+
+    func sortedPackages(forProviderId providerId: String? = nil) -> [MapPackage] {
+        packages
+            .filter { providerId == nil || $0.providerId == providerId }
+            .sorted {
+                let providerOrder = MapIdentity.normalizeProvider($0.providerId)
+                    .compare(MapIdentity.normalizeProvider($1.providerId))
+                if providerOrder != .orderedSame {
+                    return providerOrder == .orderedAscending
+                }
+
+                let nameOrder = $0.name.localizedCaseInsensitiveCompare($1.name)
+                if nameOrder != .orderedSame {
+                    return nameOrder == .orderedAscending
+                }
+                return $0.id < $1.id
+            }
     }
 }

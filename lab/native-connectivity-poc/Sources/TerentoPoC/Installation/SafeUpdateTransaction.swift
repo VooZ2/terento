@@ -1,5 +1,32 @@
 import Foundation
 
+enum SafeUpdateState: String, Equatable, Sendable {
+    case idle = "IDLE"
+    case validating = "VALIDATING"
+    case revalidating = "REVALIDATING"
+    case acquiring = "ACQUIRING"
+    case backingUp = "BACKING_UP"
+    case writing = "WRITING"
+    case verifying = "VERIFYING"
+    case committing = "COMMITTING"
+    case postVerifying = "POST_VERIFYING"
+    case reconcilingManifest = "RECONCILING_MANIFEST"
+    case completed = "COMPLETED"
+    case failed = "FAILED"
+}
+
+struct SafeUpdateProgress: Equatable, Sendable {
+    let state: SafeUpdateState
+    let bytesCompleted: UInt64
+    let totalBytes: UInt64
+    let bytesPerSecond: Double
+
+    var fractionCompleted: Double {
+        guard totalBytes > 0 else { return 0 }
+        return min(1, Double(bytesCompleted) / Double(totalBytes))
+    }
+}
+
 /// Stage 5.3 is deliberately separate from SwiftUI. It coordinates the
 /// update order, but the transport remains an injected boundary so automated
 /// tests can prove that no device mutation happens before every safety gate.
@@ -31,33 +58,6 @@ enum SafeUpdateStatus: String, Equatable, Sendable {
     case failedCleanup = "UPDATE_FAILED_CLEANUP"
 
     var isSuccess: Bool { self == .success }
-}
-
-enum SafeUpdateState: String, Equatable, Sendable {
-    case idle = "IDLE"
-    case validating = "VALIDATING"
-    case revalidating = "REVALIDATING"
-    case acquiring = "ACQUIRING"
-    case backingUp = "BACKING_UP"
-    case writing = "WRITING"
-    case verifying = "VERIFYING"
-    case committing = "COMMITTING"
-    case postVerifying = "POST_VERIFYING"
-    case reconcilingManifest = "RECONCILING_MANIFEST"
-    case completed = "COMPLETED"
-    case failed = "FAILED"
-}
-
-struct SafeUpdateProgress: Equatable, Sendable {
-    let state: SafeUpdateState
-    let bytesCompleted: UInt64
-    let totalBytes: UInt64
-    let bytesPerSecond: Double
-
-    var fractionCompleted: Double {
-        guard totalBytes > 0 else { return 0 }
-        return min(1, Double(bytesCompleted) / Double(totalBytes))
-    }
 }
 
 struct SafeUpdateRemoteObject: Equatable, Sendable {
@@ -138,7 +138,11 @@ protocol SafeUpdateArtifactProvider: Sendable {
 struct MapPackageAcquisitionProvider: SafeUpdateArtifactProvider, Sendable {
     private let acquirer: MapPackageAcquirer
 
-    init(acquirer: MapPackageAcquirer = MapPackageAcquirer()) {
+    init(
+        acquirer: MapPackageAcquirer = MapPackageAcquirer(
+            providerHealthChecker: FoundationMapProviderHealthChecker()
+        )
+    ) {
         self.acquirer = acquirer
     }
 

@@ -73,10 +73,22 @@ struct MapLifecyclePresentationResolver: Sendable {
            item.hasExactObjectIdentity,
            hasValidatedUpdateProfile,
            hasStableWatchIdentity {
+            let hasTerentoManagedFilename = item.installedMaps.allSatisfy {
+                TerentoManagedFilenameGenerator().isValid($0.sourceFile.filename)
+            }
+
+            if hasTerentoManagedFilename {
+                return MapLifecycleActionAvailability(
+                    actions: [.recoverOwnership],
+                    status: "Recovery available",
+                    reason: "Verify this existing Terento map once to restore management."
+                )
+            }
+
             return MapLifecycleActionAvailability(
-                actions: [.recoverOwnership],
-                status: "Recovery available",
-                reason: "Verify this existing Terento map once to restore management."
+                actions: [.remove],
+                status: "External map",
+                reason: "Installed outside Terento. Remove only this map after confirmation."
             )
         }
 
@@ -100,6 +112,15 @@ struct MapLifecyclePresentationResolver: Sendable {
         if hasStableWatchIdentity {
             actions.insert(.transferOwnership)
         }
+
+        if item.sourceKind == .custom {
+            return MapLifecycleActionAvailability(
+                actions: actions,
+                status: "Custom map",
+                reason: "Imported from this Mac. Terento can remove it after confirmation."
+            )
+        }
+
         var status = comparison?.status.userLabel ?? "Installed"
         var reason: String?
 
@@ -142,6 +163,9 @@ struct MapLifecycleContext: Sendable {
     let profile: DeviceInstallProfile?
     let deviceKey: String
     let expectedSHA256ByItemID: [UInt32: String]
+    /// Custom maps have no provider metadata in the IMG header. The exact
+    /// manifest identity is carried separately for safe lifecycle operations.
+    let mapIdentity: MapIdentity?
     let failedInstallRecovery: TerentoFailedInstallRecoveryRecord?
 
     init(
@@ -153,6 +177,7 @@ struct MapLifecycleContext: Sendable {
         profile: DeviceInstallProfile?,
         deviceKey: String,
         expectedSHA256ByItemID: [UInt32: String],
+        mapIdentity: MapIdentity? = nil,
         failedInstallRecovery: TerentoFailedInstallRecoveryRecord? = nil
     ) {
         self.item = item
@@ -163,6 +188,7 @@ struct MapLifecycleContext: Sendable {
         self.profile = profile
         self.deviceKey = deviceKey
         self.expectedSHA256ByItemID = expectedSHA256ByItemID
+        self.mapIdentity = mapIdentity
         self.failedInstallRecovery = failedInstallRecovery
     }
 
