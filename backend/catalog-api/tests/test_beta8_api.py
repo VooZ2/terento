@@ -31,6 +31,8 @@ class FakeProviderDatabase:
         self.events: set[str] = set()
         self.status = "ACTIVE"
         self.audits: list[dict] = []
+        self.detail_overrides: dict[str, dict] = {}
+        self.run_overrides: dict[str, list[dict]] = {}
 
     def admin_user_count(self) -> int:
         return 1
@@ -66,6 +68,8 @@ class FakeProviderDatabase:
         }]
 
     def provider_detail(self, provider_id: str):
+        if provider_id in self.detail_overrides:
+            return self.detail_overrides[provider_id]
         if provider_id != "freizeitkarte":
             return None
         return {
@@ -108,7 +112,7 @@ class FakeProviderDatabase:
         return []
 
     def provider_runs(self, provider_id):
-        return []
+        return self.run_overrides.get(provider_id, [])
 
     def audit_rows(self, provider_id):
         return []
@@ -120,7 +124,7 @@ class FakeProviderDatabase:
         self.audits.append(kwargs)
 
     def set_provider_status(self, provider_id, status, **kwargs):
-        if provider_id != "freizeitkarte":
+        if provider_id not in {"freizeitkarte", "opentopomap"}:
             return False
         self.status = status
         return True
@@ -561,10 +565,63 @@ class Beta8APITests(unittest.TestCase):
             )
             self.assertEqual(state.status, 200)
             self.assertEqual(json.loads(state_body)["result"]["status"], "PAUSED")
+
+            blocked, blocked_body = self._request(
+                server,
+                "POST",
+                "/admin/providers/freizeitkarte/state",
+                json.dumps({"status": "active"}).encode(),
+                {"Content-Type": "application/json", "Cookie": cookie, "X-CSRF-Token": "csrf"},
+            )
+            self.assertEqual(blocked.status, 409)
+            self.assertEqual(
+                json.loads(blocked_body)["error"],
+                "provider_activation_blocked",
+            )
+            self.assertEqual(database.status, "PAUSED")
         finally:
             server.shutdown()
             server.server_close()
             thread.join(timeout=2)
+
+    def test_provider_activation_requires_complete_health_and_catalog_gate(self):
+        database = FakeProviderDatabase()
+        database.status = "PAUSED"
+        database.detail_overrides["opentopomap"] = {
+            "provider_id": "opentopomap",
+            "provider_name": "OpenTopoMap",
+            "adapter_id": "opentopomap",
+            "status": "PAUSED",
+            "last_catalog_sync": datetime(2026, 8, 31, tzinfo=UTC),
+            "health": {"status": "HEALTHY"},
+            "packages": [
+                {
+                    "availability": "AVAILABLE",
+                    "artifact_count": 1,
+                    "main_artifact_count": 1,
+                    "broken_artifact_count": 0,
+                    "unvalidated_artifact_count": 0,
+                }
+                for _ in range(177)
+            ],
+        }
+        database.run_overrides["opentopomap"] = [{
+            "status": "SUCCEEDED",
+            "package_count": 177,
+            "artifact_count": 177,
+        }]
+
+        service = CatalogService(database)
+        gate = service.provider_activation_gate("opentopomap")
+        self.assertTrue(gate["canActivate"])
+        self.assertEqual(gate["blockers"], [])
+        result = service.set_provider_status(
+            "opentopomap",
+            "ACTIVE",
+            admin_user_id=7,
+            reason="validated",
+        )
+        self.assertEqual(result, {"id": "opentopomap", "status": "ACTIVE"})
 
     def test_admin_pages_require_login_and_render_provider_statistics_views(self):
         database = FakeProviderDatabase()
@@ -589,6 +646,17 @@ class Beta8APITests(unittest.TestCase):
             self.assertIn(b"Provider metadata", detail_body)
             self.assertIn(b"Health check history", detail_body)
             self.assertIn(b"Collect catalog", detail_body)
+
+            database.status = "PAUSED"
+            blocked_detail, blocked_detail_body = self._request(
+                server,
+                "GET",
+                "/admin/providers/freizeitkarte",
+                headers={"Cookie": cookie},
+            )
+            self.assertEqual(blocked_detail.status, 200)
+            self.assertIn(b"data-provider-status='ACTIVE' disabled", blocked_detail_body)
+            self.assertIn(b"Activation blocked.", blocked_detail_body)
 
             statistics, statistics_body = self._request(server, "GET", "/admin/map-statistics", headers={"Cookie": cookie})
             self.assertEqual(statistics.status, 200)

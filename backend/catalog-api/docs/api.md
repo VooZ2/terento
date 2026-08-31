@@ -395,6 +395,12 @@ and `Retire` controls. A request without a valid admin session redirects to
 
 `GET /admin/providers/{id}.json` and `GET /admin/providers/{id}/audit` are
 private JSON projections for operator tooling and carry the same session gate.
+Provider detail also returns an `activationGate` projection. Its
+`canActivate` value is false until the latest health check is `HEALTHY`, a
+successful catalog collection is recorded, the stored current package set
+matches that collection, all current packages are `AVAILABLE`, and every
+required artifact is present, validated, and free of broken links. OpenTopoMap
+additionally requires the expected `177` packages and main artifacts.
 
 ## `GET /admin/providers/{id}/health`
 
@@ -423,8 +429,10 @@ Changes only the lifecycle state of a known prebuilt adapter. The JSON body is
 `{"status":"RETIRED"}`, with an optional bounded `reason`. The action requires
 the existing admin session and CSRF token and writes an `admin_audit_log`
 record with the admin user, provider, old status, new status, timestamp, and
-reason. It cannot upload parser code, execute arbitrary provider logic, or
-activate an unknown provider.
+reason. Changing to `ACTIVE` is rejected with HTTP `409` and
+`provider_activation_blocked` when `activationGate.canActivate` is false. The
+HTML `Activate` control is disabled in the same state. It cannot upload parser
+code, execute arbitrary provider logic, or activate an unknown provider.
 
 ## `POST /admin/providers/{id}/collect`
 
