@@ -141,12 +141,12 @@ def add_home_link(locale: str) -> None:
     path = path_for(locale, "index.html")
     source = path.read_text(encoding="utf-8")
     answer = {
-        "en": "Yes. Terento provides a guided native macOS workflow for installing supported third-party maps without BaseCamp or a general-purpose MTP file manager. The current beta uses Freizeitkarte and requires an Apple Silicon Mac.",
-        "de": "Ja. Terento bietet einen geführten nativen macOS-Ablauf zum Installieren unterstützter Drittanbieter-Karten ohne BaseCamp oder einen allgemeinen MTP-Dateimanager. Die aktuelle Beta verwendet Freizeitkarte und erfordert einen Apple-Silicon-Mac.",
-        "fr": "Oui. Terento propose un parcours macOS natif guidé pour installer des cartes tierces prises en charge, sans BaseCamp ni gestionnaire MTP généraliste. La bêta actuelle utilise Freizeitkarte et nécessite un Mac Apple Silicon.",
-        "pl": "Tak. Terento oferuje prowadzony, natywny dla macOS sposób instalowania obsługiwanych map innych firm bez BaseCamp i bez uniwersalnego menedżera plików MTP. Obecna beta korzysta z Freizeitkarte i wymaga Maca z Apple Silicon.",
-        "cs": "Ano. Terento nabízí řízený nativní postup pro macOS k instalaci podporovaných map třetích stran bez BaseCampu a bez univerzálního správce souborů MTP. Aktuální beta používá Freizeitkarte a vyžaduje Mac s Apple Silicon.",
-        "it": "Sì. Terento offre un flusso nativo guidato per macOS per installare mappe di terze parti supportate, senza BaseCamp né un file manager MTP generico. La beta attuale usa Freizeitkarte e richiede un Mac Apple Silicon.",
+        "en": "Yes. Terento provides a guided native macOS workflow for installing supported third-party maps without BaseCamp or a general-purpose MTP file manager. You can also import a supported third-party .img map from your Mac. Apple Silicon is required.",
+        "de": "Ja. Terento bietet einen geführten nativen macOS-Ablauf zum Installieren unterstützter Drittanbieter-Karten ohne BaseCamp oder einen allgemeinen MTP-Dateimanager. Du kannst auch eine unterstützte Drittanbieter-.img-Karte von deinem Mac importieren. Apple Silicon ist erforderlich.",
+        "fr": "Oui. Terento propose un parcours macOS natif guidé pour installer des cartes tierces prises en charge, sans BaseCamp ni gestionnaire MTP généraliste. Vous pouvez aussi importer une carte .img tierce prise en charge depuis votre Mac. Apple Silicon est requis.",
+        "pl": "Tak. Terento oferuje prowadzony, natywny dla macOS sposób instalowania obsługiwanych map innych firm bez BaseCamp i bez uniwersalnego menedżera plików MTP. Możesz też zaimportować obsługiwaną mapę .img innej firmy z Maca. Wymagany jest Apple Silicon.",
+        "cs": "Ano. Terento nabízí řízený nativní postup pro macOS k instalaci podporovaných map třetích stran bez BaseCampu a bez univerzálního správce souborů MTP. Můžete také přímo z Macu importovat podporovanou mapu .img třetí strany. Je vyžadován Apple Silicon.",
+        "it": "Sì. Terento offre un flusso nativo guidato per macOS per installare mappe di terze parti supportate, senza BaseCamp né un file manager MTP generico. Puoi anche importare dal Mac una mappa .img di terze parti supportata. È richiesto Apple Silicon.",
     }[locale]
     sentence = COPY[locale]["home"]
     visible = f'<p>{answer}</p>'

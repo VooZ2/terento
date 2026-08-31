@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20260829-faq-routing"
 STYLE_VERSION = "20260830-brand-tokens"
 LANGUAGE_VERSION = "20260829-compat-language"
-LOCALIZED_CONTENT_VERSION = "20260830-download-links"
+LOCALIZED_CONTENT_VERSION = "20260831-beta8-copy-final"
 LOCALES = {
     "en": {"flag": "🇬🇧", "name": "English", "home": "Terento home", "primary": "Primary navigation", "menu": "Menu", "close": "Close menu", "about": "About", "compatibility": "Compatibility", "guide": "Guide", "faq": "FAQ", "download": "Download", "language": "Choose language", "footer": "Footer navigation", "status": "Open-source project", "legal": "Legal", "privacy": "Privacy", "support": "Support Terento", "stats": "Visit statistics (Umami) do not use cookies."},
     "de": {"flag": "🇩🇪", "name": "Deutsch", "home": "Terento Startseite", "primary": "Hauptnavigation", "menu": "Menü", "close": "Menü schließen", "about": "Über uns", "compatibility": "Kompatibilität", "guide": "Anleitung", "faq": "FAQ", "download": "Download", "language": "Sprache wählen", "footer": "Footer-Navigation", "status": "Open-Source-Projekt", "legal": "Rechtliches", "privacy": "Datenschutz", "support": "Support Terento", "stats": "Besuchsstatistik (Umami) verwendet keine Cookies."},

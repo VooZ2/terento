@@ -21,6 +21,14 @@ const read = (file) => fs.readFileSync(file, "utf8");
 const guideFile = (locale) => path.join(root, "site", locale === "en" ? slug : path.join(locale, slug), "index.html");
 const metadata = JSON.parse(read(path.join(root, "site", "metadata.json")));
 const metadataByPath = new Map(metadata.pages.map((page) => [page.path, page]));
+const currentBetaSignals = {
+  en: /Provider maps \+ local \.img import/,
+  de: /Anbieter-Karten \+ lokaler \.img-Import/,
+  fr: /Cartes de fournisseurs \+ import \.img local/,
+  pl: /Mapy dostawców \+ lokalny import \.img/,
+  cs: /Mapy od poskytovatelů \+ místní import \.img/,
+  it: /Mappe dei provider \+ importazione \.img locale/,
+};
 
 function visibleText(fragment) {
   return fragment.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&apos;/g, "'").replace(/\s+/g, " ").trim();
@@ -58,6 +66,13 @@ for (const locale of locales) {
   assert.match(source, /USB/);
   assert.match(source, /free storage|freier Speicher|espace libre|wolnego miejsca|volného místa|spazio libero/i);
   assert.match(source, /1–2 minutes?|1–2 Minuten|1 à 2 minutes|1–2 minuty|1–2 minuti/);
+  assert.match(source, currentBetaSignals[locale], locale + ": provider-neutral current beta label");
+  assert.match(source, /Choose a map|Karte auswählen|Choisir une carte|Wybierz mapę|Vyberte mapu|Scegli una mappa/);
+  assert.match(source, /third-party \.img|Drittanbieter-\.img|carte \.img|mapę \.img|mapu \.img|mappa \.img/i, locale + ": local .img import guidance");
+  assert.doesNotMatch(source, /Current beta uses Freizeitkarte|aktuelle Beta verwendet Freizeitkarte|bêta actuelle utilise Freizeitkarte|obecna beta korzysta z Freizeitkarte|aktuální beta používá Freizeitkarte|beta attuale usa Freizeitkarte/i, locale + ": no provider-specific current-beta claim");
+  assert.match(source, /install-maps-1280\.avif[^\n]*width="1555" height="1012"/);
+  assert.match(source, /installing-maps-1280\.avif[^\n]*width="1568" height="1003"/);
+  assert.match(source, /your-garmin-1600\.avif[^\n]*width="2205" height="1348"/);
   assert.equal([...source.matchAll(/<li class="guide-step">[\s\S]*?<\/li>/g)].length, 5, locale + ": five ordered steps");
   assert.match(source, /<ol class="guide-timeline">/);
   assert.equal((source.match(/class="guide-screenshot"/g) || []).length, 3, locale + ": three screenshots");

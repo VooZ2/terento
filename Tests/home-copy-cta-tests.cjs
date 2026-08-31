@@ -75,6 +75,9 @@ for (const [locale, expected] of locales) {
     2,
     `${locale}: expected two primary Home text-link CTAs`
   );
+  assert.doesNotMatch(page, /<p class="hero-lede">[^<]*Freizeitkarte/i, `${locale}: hero copy is provider-neutral`);
+  assert.doesNotMatch(page, /back up|backup|sauvegarder|zálohovat|wykonać kopię|eseguire il backup/i, `${locale}: no backup marketing copy`);
+  assert.match(page, /Map providers|Kartenanbieter|Fournisseurs de cartes|Dostawcy map|Poskytovatelé map|Provider di mappe/i, `${locale}: provider-neutral scope label`);
 }
 
 const englishHome = pageFor("en");
