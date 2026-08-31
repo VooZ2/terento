@@ -16,12 +16,20 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BASE_URL = "https://terento.app"
 GUIDE_SLUG = "guides/install-garmin-maps-mac/"
-PUBLISHED = "2026-08-28"
-REVIEWED = "2026-08-28"
+PUBLISHED = "2026-08-28T00:00:00Z"
+REVIEWED = "2026-08-31T00:00:00Z"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 ISSUES_URL = "https://github.com/VooZ2/terento/issues"
 EMAIL_URL = "mailto:hello@terento.app?subject=Terento%20installation%20issue"
 EMAIL_ADDRESS = "hello@terento.app"
+REVIEWED_DISPLAY_DATES = {
+    "en": "August 31, 2026",
+    "de": "31. August 2026",
+    "fr": "31 août 2026",
+    "pl": "31 sierpnia 2026",
+    "cs": "31. srpna 2026",
+    "it": "31 agosto 2026",
+}
 GARMIN_BASECAMP_URL = "https://support.garmin.com/en-GB/?faq=bcmC4za1sy9hykGnopP8l7&identifier=310&tab=topics"
 GARMIN_EXPRESS_URL = "https://support.garmin.com/en-US/?faq=4QVp7mKSIA1LDk5fc1OHX8"
 APPLE_ROSETTA_URL = "https://support.apple.com/en-ca/102527"
@@ -73,6 +81,14 @@ def support_actions(copy: dict[str, str]) -> str:
 def guide_json_ld(locale: str, copy: dict[str, object], release: str) -> str:
     canonical = f"{BASE_URL}{localized_path(locale, GUIDE_SLUG)}"
     graph = [
+        {
+            "@type": "Organization",
+            "@id": f"{BASE_URL}/#organization",
+            "name": "Terento",
+            "url": f"{BASE_URL}/",
+            "logo": f"{BASE_URL}/assets/logo-sky.svg",
+            "sameAs": ["https://github.com/VooZ2/terento"],
+        },
         {
             "@type": "Article",
             "@id": f"{canonical}#article",
@@ -140,6 +156,7 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
     source_html = source_html.replace("[Garmin Express]", link("Garmin Express", GARMIN_EXPRESS_URL, external=True))
     source_html = source_html.replace("[Rosetta]", link("Rosetta", APPLE_ROSETTA_URL, external=True))
     guide_json = guide_json_ld(locale, copy, release_label)
+    reviewed_date = REVIEWED_DISPLAY_DATES[locale]
     return f'''<!doctype html>
 <html lang="{locale}" data-language="{locale}" data-page="guide">
   <head>
@@ -195,7 +212,7 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
               <a class="text-link" href="{compatibility}" data-umami-event="compatibility-link-click" data-umami-event-location="guide-preflight">{esc(copy["see_compatibility"])} <span aria-hidden="true">→</span></a>
             </div>
             <p class="guide-facts"><span>macOS 13+</span><span aria-hidden="true">·</span><span>Apple Silicon</span><span aria-hidden="true">·</span><span>{esc(copy["current_beta"])}</span></p>
-            <p class="guide-meta"><span><strong>{esc(copy["last_reviewed"])}:</strong> <time datetime="{REVIEWED}">{esc(copy["reviewed_date"])}</time></span><span aria-hidden="true">·</span><span><strong>{esc(copy["applies_to"])}:</strong> Terento {esc(release_label)}</span></p>
+            <p class="guide-meta"><span><strong>{esc(copy["last_reviewed"])}:</strong> <time datetime="{REVIEWED}">{esc(reviewed_date)}</time></span><span aria-hidden="true">·</span><span><strong>{esc(copy["applies_to"])}:</strong> Terento {esc(release_label)}</span></p>
           </div>
         </header>
 

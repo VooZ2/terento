@@ -97,6 +97,16 @@ for (const locale of locales) {
   const data = jsonLd(source, file);
   assert.equal(data["@context"], "https://schema.org");
   const article = oneEntity(data, "Article", file);
+  assert.equal(article.datePublished, "2026-08-28T00:00:00Z", `${file}: ISO publication datetime`);
+  assert.equal(article.dateModified, "2026-08-31T00:00:00Z", `${file}: ISO modified datetime`);
+  assert.deepEqual(oneEntity(data, "Organization", file), {
+    "@type": "Organization",
+    "@id": baseUrl + "/#organization",
+    name: "Terento",
+    url: baseUrl + "/",
+    logo: baseUrl + "/assets/logo-sky.svg",
+    sameAs: ["https://github.com/VooZ2/terento"],
+  }, `${file}: organization identity`);
   assert.equal(article.author["@id"], baseUrl + "/#organization");
   assert.equal(article.publisher["@id"], baseUrl + "/#organization");
   assert.equal(article.about["@id"], baseUrl + "/#software");

@@ -142,6 +142,12 @@ for (const locale of locales) {
   const guide = guideFile(locale);
   const guideData = readJsonLd(guide);
   const graph = guideData.data["@graph"] || [];
+  const guideOrganization = entity(guideData.data, "Organization", guide);
+  assert.equal(guideOrganization.name, "Terento", `${guide}: organization name`);
+  assert.equal(guideOrganization.url, `${baseUrl}/`, `${guide}: organization URL`);
+  const guideArticle = entity(guideData.data, "Article", guide);
+  assert.equal(guideArticle.datePublished, "2026-08-28T00:00:00Z", `${guide}: ISO publication datetime`);
+  assert.equal(guideArticle.dateModified, "2026-08-31T00:00:00Z", `${guide}: ISO modified datetime`);
   assert.equal(graph.filter((item) => item["@type"] === "Article").length, 1, `${guide}: Article entity`);
   assert.equal(graph.filter((item) => item["@type"] === "BreadcrumbList").length, 1, `${guide}: BreadcrumbList entity`);
   assert.equal(graph.filter((item) => item["@type"] === "FAQPage").length, 0, `${guide}: Guide must not publish FAQPage schema`);
