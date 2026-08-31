@@ -78,6 +78,12 @@ beta.8. It restores OpenTopoMap to `PAUSED` only when the provider is active,
 has no available packages, and has no audited activation. The repair is
 recorded in `admin_audit_log`; an explicitly audited activation is preserved.
 
+Migration `028_force_otm_beta8_paused.sql` is the explicit beta.8 release
+state correction. It pauses an existing `ACTIVE` OpenTopoMap record once and
+records the correction in `admin_audit_log`, so testing starts from the
+required paused state and a later activation remains an intentional admin
+action.
+
 ## Asset review and publication
 
 Asset work is explicit and non-destructive. A candidate is prepared into
