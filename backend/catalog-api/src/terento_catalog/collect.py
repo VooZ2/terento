@@ -7,16 +7,42 @@ import logging
 from .collectors import FreizeitkarteCollector
 from .config import Settings
 from .db import Database
+from .provider_catalog import (
+    ProviderAdapter,
+    ProviderCollectionError,
+    snapshot_from_freizeitkarte_records,
+)
 
 LOGGER = logging.getLogger(__name__)
 
 
 def collect_once(database: Database, *, dry_run: bool = False) -> int:
-    records = FreizeitkarteCollector().collect()
-    if not records:
-        raise RuntimeError("Freizeitkarte collector returned no records")
-    if not dry_run:
-        database.upsert_collected_maps(records)
+    run_id = None if dry_run else database.begin_catalog_collection("freizeitkarte")
+    try:
+        records = FreizeitkarteCollector().collect()
+        if not records:
+            raise RuntimeError("Freizeitkarte collector returned no records")
+        if not dry_run:
+            database.upsert_collected_maps(records)
+            # Keep the legacy tables populated for existing maintenance commands,
+            # while the public API reads the provider-neutral snapshot.
+            snapshot = snapshot_from_freizeitkarte_records(records)
+            database.upsert_provider_snapshot(snapshot)
+            database.finish_catalog_collection(
+                int(run_id),
+                status="SUCCEEDED",
+                package_count=len(snapshot.packages),
+                artifact_count=sum(len(item.artifacts) for item in snapshot.packages),
+            )
+    except Exception as exc:
+        if run_id is not None:
+            database.finish_catalog_collection(
+                int(run_id),
+                status="FAILED",
+                error_code=type(exc).__name__,
+                error_detail=str(exc)[:500],
+            )
+        raise
 
     for record in records:
         LOGGER.info(
@@ -35,6 +61,42 @@ def collect_once(database: Database, *, dry_run: bool = False) -> int:
                 record.size_measurement_warning,
             )
     return len(records)
+
+
+def collect_provider_once(
+    database: Database, adapter: ProviderAdapter, *, dry_run: bool = False
+) -> dict[str, int | str]:
+    """Collect one known provider and persist one auditable collection run."""
+
+    provider_id = adapter.definition.id
+    run_id = None if dry_run else database.begin_catalog_collection(provider_id)
+    try:
+        snapshot = adapter.collect()
+        if not snapshot.packages:
+            raise ProviderCollectionError("provider returned no packages")
+        if not dry_run:
+            database.upsert_provider_snapshot(snapshot)
+            database.finish_catalog_collection(
+                int(run_id),
+                status="SUCCEEDED",
+                package_count=len(snapshot.packages),
+                artifact_count=sum(len(item.artifacts) for item in snapshot.packages),
+            )
+        return {
+            "provider": provider_id,
+            "runId": int(run_id) if run_id is not None else 0,
+            "packages": len(snapshot.packages),
+            "artifacts": sum(len(item.artifacts) for item in snapshot.packages),
+        }
+    except Exception as exc:
+        if run_id is not None:
+            database.finish_catalog_collection(
+                int(run_id),
+                status="FAILED",
+                error_code=type(exc).__name__,
+                error_detail=str(exc)[:500],
+            )
+        raise
 
 
 def main() -> None:

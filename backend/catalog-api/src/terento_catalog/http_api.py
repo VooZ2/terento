@@ -13,6 +13,7 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlsplit
+from uuid import uuid4
 
 from .admin import (
     AdminValidationError,
@@ -22,6 +23,9 @@ from .admin import (
     device_detail_page,
     diagnostics_page,
     devices_page,
+    map_statistics_page,
+    provider_detail_page,
+    providers_page,
     _admin_device_payload,
     _normalise_github_issue_reference,
     hash_password,
@@ -50,6 +54,18 @@ from .compatibility_evidence import (
     validate_event,
 )
 from .compatibility_status import calculate_compatibility_status
+from .collect import collect_provider_once
+from .map_events import (
+    MapEventValidationError,
+    validate_map_event,
+    validate_statistics_filters,
+)
+from .provider_catalog import (
+    KNOWN_PROVIDER_DEFINITIONS,
+    FreizeitkarteProviderAdapter,
+    OpenTopoMapProviderAdapter,
+)
+from .provider_health import check_provider as run_provider_health_check
 
 LOGGER = logging.getLogger(__name__)
 
@@ -80,6 +96,175 @@ class CatalogService:
         rows, updated_at = self.database.device_catalog_snapshot()
         body = serialize_device_catalog(build_device_catalog(rows, updated_at))
         return body, device_catalog_etag(body), updated_at
+
+    def admin_providers(self) -> dict[str, Any]:
+        rows = {str(row["provider_id"]): row for row in self.database.provider_rows()}
+        providers: list[dict[str, Any]] = []
+        for provider_id, definition in KNOWN_PROVIDER_DEFINITIONS.items():
+            row = rows.get(provider_id, {})
+            providers.append(_provider_summary_payload(definition, row))
+        for provider_id, row in rows.items():
+            if provider_id not in KNOWN_PROVIDER_DEFINITIONS:
+                providers.append(_provider_summary_payload(None, row))
+        providers.sort(key=lambda item: (str(item["name"]).casefold(), item["id"]))
+        return {"schemaVersion": 1, "providers": providers}
+
+    def admin_provider_detail(self, provider_id: str) -> dict[str, Any] | None:
+        definition = KNOWN_PROVIDER_DEFINITIONS.get(provider_id)
+        detail = self.database.provider_detail(provider_id)
+        if detail is None and definition is None:
+            return None
+        return _provider_detail_payload(definition, detail or {})
+
+    def check_provider(
+        self,
+        provider_id: str,
+        *,
+        admin_user_id: int | None = None,
+        request_id: str | None = None,
+    ) -> dict[str, Any]:
+        definition = KNOWN_PROVIDER_DEFINITIONS.get(provider_id)
+        if definition is None:
+            raise LookupError("provider_not_found")
+        self.database.ensure_provider_definition(definition)
+        sources = self.database.provider_download_urls(provider_id)
+        source_updated_at = next(
+            (
+                _format_json_value(row.get("source_updated_at"))
+                for row in sources
+                if row.get("source_updated_at") is not None
+            ),
+            None,
+        )
+        result = run_provider_health_check(
+            definition,
+            download_urls=[str(row["source_url"]) for row in sources],
+            source_updated_at=source_updated_at,
+        )
+        health_id = self.database.record_provider_health(result)
+        self.database.record_admin_audit(
+            admin_user_id=admin_user_id,
+            action="provider.health_checked",
+            provider_id=provider_id,
+            target=str(health_id),
+            request_id=request_id,
+            details={"status": result.status},
+        )
+        health_payload = _format_json_value(result.as_database_values())
+        return {
+            "schemaVersion": 1,
+            "id": provider_id,
+            "healthCheckId": health_id,
+            "health": health_payload,
+        }
+
+    def provider_health(self, provider_id: str) -> dict[str, Any] | None:
+        detail = self.admin_provider_detail(provider_id)
+        if detail is None:
+            return None
+        return {
+            "schemaVersion": 1,
+            "id": provider_id,
+            "health": detail.get("health"),
+            "healthHistory": detail.get("healthHistory", []),
+        }
+
+    def provider_runs(self, provider_id: str) -> dict[str, Any] | None:
+        if self.admin_provider_detail(provider_id) is None:
+            return None
+        return {
+            "schemaVersion": 1,
+            "id": provider_id,
+            "runs": _format_json_value(self.database.provider_runs(provider_id)),
+        }
+
+    def provider_audit(self, provider_id: str) -> dict[str, Any] | None:
+        if self.admin_provider_detail(provider_id) is None:
+            return None
+        return {
+            "schemaVersion": 1,
+            "id": provider_id,
+            "audit": _format_json_value(self.database.audit_rows(provider_id)),
+        }
+
+    def collect_provider(
+        self,
+        provider_id: str,
+        *,
+        admin_user_id: int | None = None,
+        request_id: str | None = None,
+    ) -> dict[str, Any]:
+        definition = KNOWN_PROVIDER_DEFINITIONS.get(provider_id)
+        if definition is None:
+            raise LookupError("provider_not_found")
+        self.database.ensure_provider_definition(definition)
+        if provider_id == "freizeitkarte":
+            adapter = FreizeitkarteProviderAdapter()
+        elif provider_id == "opentopomap":
+            adapter = OpenTopoMapProviderAdapter()
+        else:  # pragma: no cover - guarded by the known registry
+            raise LookupError("provider_adapter_not_found")
+        try:
+            result = _format_json_value(collect_provider_once(self.database, adapter))
+        except Exception as exc:
+            self.database.record_admin_audit(
+                admin_user_id=admin_user_id,
+                action="provider.catalog_collection_failed",
+                provider_id=provider_id,
+                request_id=request_id,
+                details={"error": type(exc).__name__},
+            )
+            raise
+        self.database.record_admin_audit(
+            admin_user_id=admin_user_id,
+            action="provider.catalog_collected",
+            provider_id=provider_id,
+            request_id=request_id,
+            details=result,
+        )
+        return result
+
+    def set_provider_status(
+        self,
+        provider_id: str,
+        status: str,
+        *,
+        admin_user_id: int,
+        request_id: str | None = None,
+        reason: str | None = None,
+    ) -> dict[str, Any] | None:
+        definition = KNOWN_PROVIDER_DEFINITIONS.get(provider_id)
+        if definition is None:
+            raise LookupError("provider_not_found")
+        if status not in {"ACTIVE", "PAUSED", "RETIRED"}:
+            raise ValueError("invalid_provider_status")
+        self.database.ensure_provider_definition(definition)
+        if not self.database.set_provider_status(
+            provider_id,
+            status,
+            admin_user_id=admin_user_id,
+            request_id=request_id,
+            reason=reason,
+        ):
+            return None
+        return {"id": provider_id, "status": status}
+
+    def receive_map_event(self, body: bytes) -> tuple[dict[str, Any], bool]:
+        event = validate_map_event(body)
+        if event["providerId"] not in KNOWN_PROVIDER_DEFINITIONS:
+            raise MapEventValidationError("unknown_provider")
+        inserted = self.database.insert_map_event(event)
+        return event, inserted
+
+    def map_statistics(self, query: dict[str, str]) -> dict[str, Any]:
+        filters = validate_statistics_filters(query)
+        rows = self.database.map_statistics(filters)
+        return {
+            "schemaVersion": 1,
+            "filters": query,
+            "generatedAt": datetime.now(timezone.utc),
+            "rows": rows,
+        }
 
     def asset_response(self, request_path: str) -> tuple[bytes, str, str] | None:
         if self.asset_storage is None:
@@ -286,13 +471,81 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
 
         def do_POST(self) -> None:  # noqa: N802 - stdlib handler API
             request_path = urlsplit(self.path).path
+            if request_path == "/map-events":
+                self._handle_map_event()
+                return
             if request_path == "/compatibility/events":
                 self._handle_compatibility_event()
+                return
+            if re.fullmatch(r"/admin/providers/[a-z0-9][a-z0-9._-]{0,159}/(?:state|check|collect|retire)", request_path):
+                self._handle_provider_post(request_path)
                 return
             if request_path.startswith("/admin"):
                 self._handle_admin_post(request_path)
                 return
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=True, cache_control="no-store")
+
+        def _handle_map_event(self) -> None:
+            client = f"map-event:{self.client_address[0]}"
+            if self._rate_limited(client, limit=60, window=60):
+                self._send_json(
+                    HTTPStatus.TOO_MANY_REQUESTS,
+                    {"error": "rate_limited"},
+                    send_body=True,
+                    cache_control="no-store",
+                )
+                return
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                length = 0
+            if length <= 0 or length > 8 * 1024:
+                self._send_json(
+                    HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+                    {"error": "invalid_size"},
+                    send_body=True,
+                    cache_control="no-store",
+                )
+                return
+            content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+            if content_type != "application/json":
+                self._send_json(
+                    HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+                    {"error": "invalid_content_type"},
+                    send_body=True,
+                    cache_control="no-store",
+                )
+                return
+            recent = request_times[client]
+            recent.append(time.monotonic())
+            try:
+                event, inserted = service.receive_map_event(self.rfile.read(length))
+            except MapEventValidationError as exc:
+                self._send_json(
+                    HTTPStatus.BAD_REQUEST,
+                    {"error": str(exc)},
+                    send_body=True,
+                    cache_control="no-store",
+                )
+                return
+            except Exception:
+                LOGGER.exception("map event storage failed")
+                self._send_json(
+                    HTTPStatus.SERVICE_UNAVAILABLE,
+                    {"error": "map_events_unavailable"},
+                    send_body=True,
+                    cache_control="no-store",
+                )
+                return
+            self._send_json(
+                HTTPStatus.CREATED if inserted else HTTPStatus.OK,
+                {
+                    "status": "stored" if inserted else "duplicate",
+                    "operationId": event["operationId"],
+                },
+                send_body=True,
+                cache_control="no-store",
+            )
 
         def do_DELETE(self) -> None:  # noqa: N802 - stdlib handler API
             request_path = urlsplit(self.path).path
@@ -429,6 +682,135 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 service.logout_admin(session_token)
                 self._redirect("/admin/login", send_body=send_body, clear_cookie=True)
                 return
+            if request_path in {"/admin/providers.json", "/admin/providers.json/"}:
+                try:
+                    payload = service.admin_providers()
+                except Exception:
+                    LOGGER.exception("admin provider API failed")
+                    self._send_json(
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                        {"error": "providers_unavailable"},
+                        send_body=send_body,
+                        cache_control="no-store",
+                        noindex=True,
+                    )
+                    return
+                self._send_json(
+                    HTTPStatus.OK,
+                    payload,
+                    send_body=send_body,
+                    cache_control="no-store",
+                    noindex=True,
+                )
+                return
+            if request_path in {"/admin/map-statistics.json", "/admin/map-statistics.json/"}:
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                filters = {key: values[-1] for key, values in query.items()}
+                try:
+                    payload = service.map_statistics(filters)
+                except MapEventValidationError as exc:
+                    self._send_json(
+                        HTTPStatus.BAD_REQUEST,
+                        {"error": str(exc)},
+                        send_body=send_body,
+                        cache_control="no-store",
+                        noindex=True,
+                    )
+                    return
+                except Exception:
+                    LOGGER.exception("admin map statistics failed")
+                    self._send_json(
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                        {"error": "map_statistics_unavailable"},
+                        send_body=send_body,
+                        cache_control="no-store",
+                        noindex=True,
+                    )
+                    return
+                self._send_json(
+                    HTTPStatus.OK,
+                    payload,
+                    send_body=send_body,
+                    cache_control="no-store",
+                    noindex=True,
+                )
+                return
+            provider_json_match = re.fullmatch(
+                r"/admin/providers/([a-z0-9][a-z0-9._-]{0,159})\.json",
+                request_path,
+            )
+            if provider_json_match:
+                provider_id = provider_json_match.group(1)
+                try:
+                    payload = service.admin_provider_detail(provider_id)
+                except Exception:
+                    LOGGER.exception("admin provider detail API failed")
+                    self._send_json(
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                        {"error": "provider_unavailable"},
+                        send_body=send_body,
+                        cache_control="no-store",
+                        noindex=True,
+                    )
+                    return
+                if payload is None:
+                    self._send_json(
+                        HTTPStatus.NOT_FOUND,
+                        {"error": "provider_not_found"},
+                        send_body=send_body,
+                        cache_control="no-store",
+                        noindex=True,
+                    )
+                    return
+                self._send_json(
+                    HTTPStatus.OK,
+                    payload,
+                    send_body=send_body,
+                    cache_control="no-store",
+                    noindex=True,
+                )
+                return
+            provider_match = re.fullmatch(
+                r"/admin/providers/([a-z0-9][a-z0-9._-]{0,159})/(health|runs|audit)",
+                request_path,
+            )
+            if provider_match:
+                provider_id, resource = provider_match.groups()
+                try:
+                    payload = (
+                        service.provider_health(provider_id)
+                        if resource == "health"
+                        else service.provider_runs(provider_id)
+                        if resource == "runs"
+                        else service.provider_audit(provider_id)
+                    )
+                except Exception:
+                    LOGGER.exception("admin provider detail API failed")
+                    self._send_json(
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                        {"error": "provider_unavailable"},
+                        send_body=send_body,
+                        cache_control="no-store",
+                        noindex=True,
+                    )
+                    return
+                if payload is None:
+                    self._send_json(
+                        HTTPStatus.NOT_FOUND,
+                        {"error": "provider_not_found"},
+                        send_body=send_body,
+                        cache_control="no-store",
+                        noindex=True,
+                    )
+                    return
+                self._send_json(
+                    HTTPStatus.OK,
+                    payload,
+                    send_body=send_body,
+                    cache_control="no-store",
+                    noindex=True,
+                )
+                return
             try:
                 session = {**session, "admin_review_summary": service.admin_review_summary()}
             except Exception:
@@ -439,6 +821,97 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     "readyToPublish": 0,
                     "total": 0,
                 }}
+            if request_path in {"/admin/providers", "/admin/providers/"}:
+                try:
+                    body = providers_page(service.admin_providers(), session, csrf_token)
+                except Exception:
+                    LOGGER.exception("admin provider page failed")
+                    self._send_json(
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                        {"error": "providers_unavailable"},
+                        send_body=send_body,
+                        cache_control="no-store",
+                        noindex=True,
+                    )
+                    return
+                self._send_admin_html(body, send_body=send_body)
+                return
+            if request_path in {"/admin/map-statistics", "/admin/map-statistics/"}:
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                selected_filters = {
+                    key: values[-1]
+                    for key, values in query.items()
+                    if values and values[-1]
+                }
+                try:
+                    statistics = service.map_statistics(selected_filters)
+                    provider_payload = service.admin_providers()
+                    body = map_statistics_page(
+                        statistics,
+                        provider_payload.get("providers", []),
+                        session,
+                        csrf_token,
+                        selected_filters=selected_filters,
+                    )
+                except MapEventValidationError as exc:
+                    self._send_json(
+                        HTTPStatus.BAD_REQUEST,
+                        {"error": str(exc)},
+                        send_body=send_body,
+                        cache_control="no-store",
+                        noindex=True,
+                    )
+                    return
+                except Exception:
+                    LOGGER.exception("admin map statistics page failed")
+                    self._send_json(
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                        {"error": "map_statistics_unavailable"},
+                        send_body=send_body,
+                        cache_control="no-store",
+                        noindex=True,
+                    )
+                    return
+                self._send_admin_html(body, send_body=send_body)
+                return
+            provider_page_match = re.fullmatch(
+                r"/admin/providers/([a-z0-9][a-z0-9._-]{0,159})",
+                request_path,
+            )
+            if provider_page_match:
+                provider_id = provider_page_match.group(1)
+                try:
+                    detail = service.admin_provider_detail(provider_id)
+                    if detail is None:
+                        self._send_json(
+                            HTTPStatus.NOT_FOUND,
+                            {"error": "provider_not_found"},
+                            send_body=send_body,
+                            cache_control="no-store",
+                            noindex=True,
+                        )
+                        return
+                    runs_payload = service.provider_runs(provider_id) or {}
+                    audits = service.database.audit_rows(provider_id)
+                    body = provider_detail_page(
+                        detail,
+                        runs_payload.get("runs", []),
+                        audits,
+                        session,
+                        csrf_token,
+                    )
+                except Exception:
+                    LOGGER.exception("admin provider detail page failed")
+                    self._send_json(
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                        {"error": "provider_unavailable"},
+                        send_body=send_body,
+                        cache_control="no-store",
+                        noindex=True,
+                    )
+                    return
+                self._send_admin_html(body, send_body=send_body)
+                return
             if request_path in {"/admin/diagnostics", "/admin/diagnostics/"}:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
                 identity = query.get("identity", [""])[0].strip()
@@ -551,6 +1024,147 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 self._send_admin_html(account_page(session, csrf_token), send_body=send_body)
                 return
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=send_body, cache_control="no-store")
+
+        def _handle_provider_post(self, request_path: str) -> None:
+            match = re.fullmatch(
+                r"/admin/providers/([a-z0-9][a-z0-9._-]{0,159})/(state|check|collect|retire)",
+                request_path,
+            )
+            if not match:
+                self._send_json(
+                    HTTPStatus.NOT_FOUND,
+                    {"error": "not_found"},
+                    send_body=True,
+                    cache_control="no-store",
+                    noindex=True,
+                )
+                return
+            provider_id, action = match.groups()
+            session_token = self._session_cookie()
+            session = service.admin_session(session_token)
+            if not session:
+                self._send_json(
+                    HTTPStatus.UNAUTHORIZED,
+                    {"error": "admin_session_required"},
+                    send_body=True,
+                    cache_control="no-store",
+                    noindex=True,
+                )
+                return
+            body = self._read_json(allow_empty=action in {"check", "collect", "retire"})
+            if body is None:
+                return
+            csrf_token = (
+                self.headers.get("X-CSRF-Token")
+                or body.pop("csrfToken", None)
+                or body.pop("csrf_token", None)
+            )
+            if not csrf_token or not service.csrf_valid(session, csrf_token):
+                self._send_json(
+                    HTTPStatus.FORBIDDEN,
+                    {"error": "csrf_or_session_invalid"},
+                    send_body=True,
+                    cache_control="no-store",
+                    noindex=True,
+                )
+                return
+            rate_key = f"admin-provider:{action}:{provider_id}:{self.client_address[0]}"
+            if action in {"check", "collect"} and self._rate_limited(
+                rate_key, limit=5, window=60
+            ):
+                self._send_json(
+                    HTTPStatus.TOO_MANY_REQUESTS,
+                    {"error": "rate_limited"},
+                    send_body=True,
+                    cache_control="no-store",
+                    noindex=True,
+                )
+                return
+            request_id = self._request_id()
+            if action in {"check", "collect"}:
+                request_times[rate_key].append(time.monotonic())
+            try:
+                if action == "state":
+                    if not set(body).issubset({"status", "reason"}) or "status" not in body or not isinstance(body.get("status"), str):
+                        raise ValueError("invalid_provider_status")
+                    reason = body.get("reason")
+                    if reason is not None and (not isinstance(reason, str) or len(reason.strip()) > 500):
+                        raise ValueError("invalid_provider_reason")
+                    result = service.set_provider_status(
+                        provider_id,
+                        body["status"].upper(),
+                        admin_user_id=int(session["id"]),
+                        request_id=request_id,
+                        reason=reason.strip() if isinstance(reason, str) and reason.strip() else None,
+                    )
+                    if result is None:
+                        raise LookupError("provider_not_found")
+                elif action == "check":
+                    if body:
+                        raise ValueError("invalid_check_payload")
+                    result = service.check_provider(
+                        provider_id,
+                        admin_user_id=int(session["id"]),
+                        request_id=request_id,
+                    )
+                elif action == "retire":
+                    if set(body) - {"reason"}:
+                        raise ValueError("invalid_retire_payload")
+                    reason = body.get("reason")
+                    if reason is not None and (not isinstance(reason, str) or len(reason.strip()) > 500):
+                        raise ValueError("invalid_provider_reason")
+                    result = service.set_provider_status(
+                        provider_id,
+                        "RETIRED",
+                        admin_user_id=int(session["id"]),
+                        request_id=request_id,
+                        reason=reason.strip() if isinstance(reason, str) and reason.strip() else None,
+                    )
+                    if result is None:
+                        raise LookupError("provider_not_found")
+                else:
+                    if body:
+                        raise ValueError("invalid_collect_payload")
+                    result = service.collect_provider(
+                        provider_id,
+                        admin_user_id=int(session["id"]),
+                        request_id=request_id,
+                    )
+            except LookupError as exc:
+                self._send_json(
+                    HTTPStatus.NOT_FOUND,
+                    {"error": str(exc)},
+                    send_body=True,
+                    cache_control="no-store",
+                    noindex=True,
+                )
+                return
+            except ValueError as exc:
+                self._send_json(
+                    HTTPStatus.BAD_REQUEST,
+                    {"error": str(exc)},
+                    send_body=True,
+                    cache_control="no-store",
+                    noindex=True,
+                )
+                return
+            except Exception:
+                LOGGER.exception("admin provider action failed")
+                self._send_json(
+                    HTTPStatus.SERVICE_UNAVAILABLE,
+                    {"error": "provider_action_unavailable"},
+                    send_body=True,
+                    cache_control="no-store",
+                    noindex=True,
+                )
+                return
+            self._send_json(
+                HTTPStatus.OK,
+                {"status": "ok", "result": result},
+                send_body=True,
+                cache_control="no-store",
+                noindex=True,
+            )
 
         def _handle_admin_post(self, request_path: str) -> None:
             form = self._read_form()
@@ -854,6 +1468,60 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return None
             return {key: items[-1] for key, items in values.items()}
 
+        def _read_json(self, *, allow_empty: bool = False) -> dict[str, Any] | None:
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                length = 0
+            if length == 0 and allow_empty:
+                return {}
+            if length <= 0 or length > 16_384:
+                self._send_json(
+                    HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+                    {"error": "invalid_size"},
+                    send_body=True,
+                    cache_control="no-store",
+                    noindex=True,
+                )
+                return None
+            content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+            if content_type != "application/json":
+                self._send_json(
+                    HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+                    {"error": "invalid_content_type"},
+                    send_body=True,
+                    cache_control="no-store",
+                    noindex=True,
+                )
+                return None
+            try:
+                document = json.loads(self.rfile.read(length))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                self._send_json(
+                    HTTPStatus.BAD_REQUEST,
+                    {"error": "invalid_json"},
+                    send_body=True,
+                    cache_control="no-store",
+                    noindex=True,
+                )
+                return None
+            if not isinstance(document, dict):
+                self._send_json(
+                    HTTPStatus.BAD_REQUEST,
+                    {"error": "invalid_json_object"},
+                    send_body=True,
+                    cache_control="no-store",
+                    noindex=True,
+                )
+                return None
+            return document
+
+        def _request_id(self) -> str:
+            candidate = self.headers.get("X-Request-Id", "").strip()
+            if re.fullmatch(r"[A-Za-z0-9._:-]{1,120}", candidate):
+                return candidate
+            return str(uuid4())
+
         def _session_cookie(self) -> str | None:
             return self._cookie_value("terento_admin_session")
 
@@ -894,7 +1562,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             script_policy = f"script-src 'nonce-{nonce_match.group(1).decode('ascii')}'" if nonce_match else "script-src 'none'"
             self.send_header(
                 "Content-Security-Policy",
-                f"default-src 'none'; {script_policy}; style-src 'unsafe-inline' https://terento.app; font-src https://terento.app; img-src https://terento.app https://api.terento.app https://res.garmin.com data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+                f"default-src 'none'; {script_policy}; connect-src 'self'; style-src 'unsafe-inline' https://terento.app; font-src https://terento.app; img-src https://terento.app https://api.terento.app https://res.garmin.com data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
             )
             self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 
@@ -1026,18 +1694,21 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
         def _send_json(
             self,
             status: HTTPStatus,
-            document: dict[str, Any],
+            document: Any,
             *,
             send_body: bool,
             cache_control: str,
+            noindex: bool = False,
         ) -> None:
-            body = json.dumps(document, separators=(",", ":")).encode("utf-8")
+            body = json.dumps(document, default=_format_json_value, separators=(",", ":")).encode("utf-8")
             self.send_response(status)
             self._common_headers(
                 cache_control=cache_control,
                 content_type="application/json; charset=utf-8",
                 content_length=len(body),
             )
+            if noindex:
+                self.send_header("X-Robots-Tag", "noindex, nofollow")
             self.end_headers()
             if send_body:
                 self.wfile.write(body)
@@ -1067,6 +1738,67 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             LOGGER.info("%s - %s", self.address_string(), format % args)
 
     return Handler
+
+
+def _provider_summary_payload(
+    definition: Any,
+    row: dict[str, Any],
+) -> dict[str, Any]:
+    provider_id = str(row.get("provider_id") or getattr(definition, "id", ""))
+    package_count = row.get("active_package_count")
+    if package_count is None and row.get("packages") is not None:
+        package_count = sum(
+            1
+            for package in row.get("packages", [])
+            if package.get("availability") == "AVAILABLE"
+        )
+    return {
+        "id": provider_id,
+        "name": row.get("provider_name") or getattr(definition, "name", provider_id),
+        "adapterId": row.get("adapter_id") or getattr(definition, "adapter_id", provider_id),
+        "status": row.get("status") or getattr(definition, "default_status", "ACTIVE"),
+        "health": row.get("health") or "UNKNOWN",
+        "website": row.get("website") or getattr(definition, "website", None),
+        "license": row.get("license_information") or getattr(definition, "license", None),
+        "attribution": row.get("attribution") or getattr(definition, "attribution", None),
+        "licenseUrl": row.get("license_url") or getattr(definition, "license_url", None),
+        "lastCatalogSync": _format_json_value(row.get("last_catalog_sync")),
+        "lastHealthCheck": _format_json_value(row.get("last_checked_at")),
+        "lastDownloadTest": _format_json_value(row.get("last_checked_at")),
+        "lastHealthError": row.get("last_error"),
+        "packageCount": int(package_count or 0),
+        "brokenPackageCount": int(row.get("broken_package_count") or 0),
+        "brokenUrlCount": int(row.get("broken_url_count") or 0),
+    }
+
+
+def _provider_detail_payload(
+    definition: Any,
+    detail: dict[str, Any],
+) -> dict[str, Any]:
+    payload = _provider_summary_payload(definition, detail)
+    payload["sources"] = _format_json_value(detail.get("sources") or [])
+    payload["maps"] = _format_json_value(detail.get("packages") or [])
+    latest_health = detail.get("health") or {}
+    payload["health"] = _format_json_value(latest_health)
+    payload["healthStatus"] = latest_health.get("status") if isinstance(latest_health, dict) else "UNKNOWN"
+    payload["lastHealthCheck"] = _format_json_value(latest_health.get("checked_at")) if isinstance(latest_health, dict) else None
+    payload["lastDownloadTest"] = payload["lastHealthCheck"]
+    payload["healthHistory"] = _format_json_value(detail.get("health_history") or [])
+    return {"schemaVersion": 1, "provider": payload}
+
+
+def _format_json_value(value: Any) -> Any:
+    if isinstance(value, datetime):
+        normalized = value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        return normalized.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    if hasattr(value, "isoformat") and not isinstance(value, (str, bytes)):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {str(key): _format_json_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_format_json_value(item) for item in value]
+    return value
 
 
 def serve(service: CatalogService, host: str, port: int) -> None:

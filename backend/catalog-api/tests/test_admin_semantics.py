@@ -27,6 +27,9 @@ from terento_catalog.admin import (
     _sanitised_issue_value,
     _identity_comparison_key,
     _normalise_variant,
+    _map_statistics_script,
+    _provider_detail_script,
+    _providers_list_script,
     _status_badge,
     campaign_links_page,
     dashboard_page,
@@ -134,6 +137,9 @@ class AdminSemanticsTests(unittest.TestCase):
             "diagnostics-and-model": _diagnostics_script(),
             "timezone": _admin_timezone_script(),
             "campaign-links": _campaign_links_script(),
+            "providers": _providers_list_script(),
+            "provider-detail": _provider_detail_script(),
+            "map-statistics": _map_statistics_script(),
         }
         for name, script in scripts.items():
             with self.subTest(script=name):
