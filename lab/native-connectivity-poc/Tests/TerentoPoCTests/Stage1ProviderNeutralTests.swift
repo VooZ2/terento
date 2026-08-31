@@ -29,9 +29,11 @@ struct Stage1ProviderNeutralTests {
         testBundledCatalogIncludesOpenTopoMap()
         testBundledProvidersHaveReviewedInstallPaths()
         testRemoteCatalogReceivesBundledProviderSupplement()
+        testRemotePausedProviderDoesNotReceiveBundledPackages()
+        testProviderLifecycleMetadataDecodesFailClosed()
         await testDownloadFailureUsesConfirmedProviderDownState()
 
-        print("PASS: 17 Stage 1 provider-neutral core tests")
+        print("PASS: 19 Stage 1 provider-neutral core tests")
     }
 
     private static func testLegacyPackageGetsRequiredMainArtifact() {
@@ -506,6 +508,74 @@ struct Stage1ProviderNeutralTests {
             )
         } catch {
             expect(false, "a live catalog without OTM keeps the bundled OTM provider visible")
+        }
+    }
+
+    private static func testRemotePausedProviderDoesNotReceiveBundledPackages() {
+        do {
+            let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            let data = try Data(contentsOf: root.appendingPathComponent(
+                "Sources/TerentoPoC/Resources/Maps/catalog.json"
+            ))
+            let bundled = try MapCatalogDocumentDecoder().decode(data)
+            let pausedOTM = MapProvider(
+                id: "opentopomap",
+                name: "OpenTopoMap",
+                website: nil,
+                attribution: nil,
+                licenseURL: nil,
+                lifecycleStatus: .paused,
+                health: .healthy
+            )
+            let remote = MapCatalog(
+                catalogVersion: bundled.catalogVersion,
+                updatedAt: bundled.updatedAt,
+                providers: bundled.providers.filter { $0.id == "freizeitkarte" } + [pausedOTM],
+                regions: bundled.regions.filter { $0.providerId == "freizeitkarte" },
+                packages: bundled.packages.filter { $0.providerId == "freizeitkarte" }
+            )
+            let merged = remote.mergingSupplemental(bundled)
+            expect(
+                merged.provider(for: "opentopomap")?.lifecycleStatus == .paused
+                    && !merged.packages.contains { $0.providerId == "opentopomap" },
+                "a remote paused provider cannot be re-enabled by bundled packages"
+            )
+        } catch {
+            expect(false, "a remote paused provider cannot be re-enabled by bundled packages")
+        }
+    }
+
+    private static func testProviderLifecycleMetadataDecodesFailClosed() {
+        let json = """
+        {
+          "catalogVersion": 1,
+          "updatedAt": "2026-08-31T12:00:00Z",
+          "providers": [
+            {
+              "id": "opentopomap",
+              "name": "OpenTopoMap",
+              "status": "PAUSED",
+              "health": "DOWN",
+              "lastCheckedAt": "2026-08-31T11:55:00Z",
+              "lastSuccessfulCatalogSync": "2026-08-31T11:50:00Z",
+              "maps": []
+            }
+          ]
+        }
+        """
+        do {
+            let catalog = try MapCatalogDocumentDecoder().decode(Data(json.utf8))
+            let provider = catalog.providers.first
+            expect(
+                provider?.lifecycleStatus == .paused
+                    && provider?.health == .down
+                    && provider?.lastCheckedAt != nil
+                    && provider?.lastSuccessfulCatalogSync != nil
+                    && provider?.allowsNewInstallCatalog == false,
+                "provider lifecycle and health metadata decode into a fail-closed install state"
+            )
+        } catch {
+            expect(false, "provider lifecycle and health metadata decode into a fail-closed install state")
         }
     }
 

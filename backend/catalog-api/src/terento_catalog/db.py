@@ -805,6 +805,8 @@ class Database:
                 p.attribution AS provider_attribution,
                 p.license_url AS provider_license_url,
                 COALESCE(h.status, 'UNKNOWN') AS provider_health,
+                h.checked_at AS provider_last_checked_at,
+                p.last_catalog_sync AS provider_last_catalog_sync,
                 package.id AS package_id,
                 package.provider_region_id,
                 package.canonical_region_id,
@@ -831,7 +833,7 @@ class Database:
                 AND package.availability <> 'RETIRED'
             LEFT JOIN map_artifact AS artifact ON artifact.package_id = package.id
             LEFT JOIN LATERAL (
-                SELECT ph.status
+                SELECT ph.status, ph.checked_at
                 FROM provider_health_check AS ph
                 WHERE ph.provider_id = p.id
                 ORDER BY ph.checked_at DESC, ph.id DESC
@@ -1648,6 +1650,10 @@ class Database:
 
     def insert_map_event(self, event: dict[str, Any]) -> bool:
         with self.connection() as connection:
+            connection.execute(
+                "DELETE FROM map_download_event "
+                "WHERE occurred_at < now() - interval '24 months'"
+            )
             map_package_id = None
             if event.get("mapId"):
                 package = connection.execute(

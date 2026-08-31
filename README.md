@@ -151,6 +151,10 @@ Before a new installation, you can choose whether to share privacy-minimised
 installation results to help improve compatibility information for other
 Garmin users. Sharing can be turned off and does not affect installation.
 
+The app also offers a separate, off-by-default choice to share anonymous map
+download and installation outcomes. These events contain provider, map,
+region, outcome, random operation/event IDs, timestamp, and app build only.
+
 Reports do not include Garmin Unit IDs, serial numbers, accounts, file paths,
 map files, or raw diagnostic logs.
 
@@ -161,14 +165,17 @@ See the full
 
 ## Maps
 
-Terento currently works with
-[Freizeitkarte](https://www.freizeitkarte-osm.de/), which provides Garmin maps
-based on OpenStreetMap data.
+Terento beta.8 works with
+[Freizeitkarte](https://www.freizeitkarte-osm.de/) and
+[OpenTopoMap](https://garmin.opentopomap.org/), which provide Garmin maps based
+on OpenStreetMap data. OpenTopoMap contour packages are catalogued but remain
+outside the beta.8 installation UI.
 
-Maps are downloaded from the original Freizeitkarte infrastructure. Terento
-does not host, mirror, or repackage them.
+Maps are downloaded from the selected provider's original infrastructure.
+Terento does not host, mirror, or repackage them.
 
 - [Freizeitkarte](https://www.freizeitkarte-osm.de/)
+- [OpenTopoMap Garmin maps](https://garmin.opentopomap.org/)
 - [OpenStreetMap copyright](https://www.openstreetmap.org/copyright)
 
 Terento is an independent open-source project and is not affiliated with,

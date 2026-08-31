@@ -406,15 +406,15 @@ final class MapLifecycleViewModel: ObservableObject {
             if let itemID = pendingConfirmation?.itemID,
                let context = contextProvider(itemID),
                context.failedInstallRecovery != nil {
-                return "Terento will verify the exact map left by the failed installation, remove only that object, and confirm that it is gone."
+                return "Terento will verify the map left by the failed installation, remove only that map file, and confirm that it is gone."
             }
             if let itemID = pendingConfirmation?.itemID,
                contextProvider(itemID)?.item.classification == .externalRecognized {
-                return "Terento will verify this exact third-party map, remove only that object, and confirm that it is gone. Other maps will be left untouched. No local backup is created."
+                return "Terento will verify this third-party map, remove only that map file, and confirm that it is gone. Other maps will be left untouched. No local backup is created."
             }
-            return "Terento will verify the exact Terento-managed map, remove only that object, and confirm that it is gone. Other maps will be left untouched. No local backup is created."
+            return "Terento will verify the Terento-managed map, remove only that map file, and confirm that it is gone. Other maps will be left untouched. No local backup is created."
         case .update:
-            return "Terento will download and verify the new map, keep the current map as a backup, then replace only the exact Terento-managed object."
+            return "Terento will download and verify the new map, keep the current map as a backup, then replace only the verified Terento-managed map."
         case .backup, .transferOwnership, .recoverOwnership, .none:
             return "Terento will perform only the selected safe map action."
         }

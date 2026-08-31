@@ -136,10 +136,12 @@ extension MapCatalog {
         }
         let additionalRegions = supplemental.regions.filter { region in
             let key = "\(MapIdentity.normalizeProvider(region.providerId ?? "")):\(MapIdentity.normalizeRegion(region.id))"
-            return !regionKeys.contains(key)
+            let providerID = MapIdentity.normalizeProvider(region.providerId ?? "")
+            return !providerIDs.contains(providerID) && !regionKeys.contains(key)
         }
         let additionalPackages = supplemental.packages.filter {
-            !packageIDs.contains($0.id)
+            !providerIDs.contains(MapIdentity.normalizeProvider($0.providerId))
+                && !packageIDs.contains($0.id)
         }
 
         return MapCatalog(
@@ -199,16 +201,25 @@ private struct MapCatalogDocument: Decodable {
         var packages: [MapPackage] = []
 
         for providerDocument in self.providers {
-            providers.append(
-                MapProvider(
-                    id: providerDocument.id,
-                    name: providerDocument.name,
-                    website: providerDocument.website,
-                    attribution: providerDocument.attribution,
-                    licenseURL: providerDocument.licenseURL,
-                    licenseInformation: providerDocument.licenseInformation
-                )
+            let lifecycleStatus = MapProviderLifecycleStatus(apiValue: providerDocument.status)
+            let health = MapProviderHealth(apiValue: providerDocument.health)
+            let provider = MapProvider(
+                id: providerDocument.id,
+                name: providerDocument.name,
+                website: providerDocument.website,
+                attribution: providerDocument.attribution,
+                licenseURL: providerDocument.licenseURL,
+                licenseInformation: providerDocument.licenseInformation,
+                lifecycleStatus: lifecycleStatus,
+                health: health,
+                lastCheckedAt: providerDocument.lastCheckedAt,
+                lastSuccessfulCatalogSync: providerDocument.lastSuccessfulCatalogSync
             )
+            providers.append(
+                provider
+            )
+
+            guard provider.allowsNewInstallCatalog else { continue }
 
             for map in providerDocument.maps {
                 let regionID = map.region
@@ -279,6 +290,10 @@ private struct ProviderDocument: Decodable {
     let attribution: String?
     let licenseURL: URL?
     let licenseInformation: String?
+    let status: String?
+    let health: String?
+    let lastCheckedAt: Date?
+    let lastSuccessfulCatalogSync: Date?
     let maps: [MapDocument]
 }
 

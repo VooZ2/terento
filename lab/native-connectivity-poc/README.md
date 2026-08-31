@@ -54,7 +54,9 @@ is omitted from installable artifacts. The loader tries
 `https://api.terento.app/maps/catalog.json` first and falls back to
 `Resources/Maps/catalog.json`. If the live catalog is temporarily missing a
 bundled provider, the loader supplements it with the missing local metadata;
-neither path downloads a map binary.
+if the live catalog contains a paused, retired, or down provider, that remote
+state remains authoritative and bundled packages cannot re-enable it. Neither
+path downloads a map binary.
 
 Map scanning is deliberately content-first. Known Garmin-owned images are
 excluded before their prefix is read. Remaining `.img` candidates are read
@@ -111,7 +113,8 @@ Map-operation statistics use a separate, explicit opt-in from compatibility
 evidence. Provider maps enqueue idempotent download/install lifecycle events
 without Garmin identifiers, serials, local paths, manifests, binary content,
 or diagnostic logs. Delivery is best-effort through a local retry queue and
-never blocks installation.
+never blocks installation. Server-side raw map events are retained for no
+longer than 24 months before pruning.
 
 For this SwiftPM PoC target, the normal SwiftUI window contains no map write or
 device modification path. The production Xcode app owns the guarded map

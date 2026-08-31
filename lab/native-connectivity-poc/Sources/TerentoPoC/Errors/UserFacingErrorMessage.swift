@@ -43,10 +43,26 @@ enum UserFacingErrorMessage {
         }
 
         if message.contains("catalog") || message.contains("metadata") {
-            return "Map information is temporarily unavailable. Restart the test and try again."
+            return "Map information is temporarily unavailable. Choose Refresh and try again."
         }
 
         return "The watch's installed maps could not be read. Reconnect it and try again."
+    }
+
+    static func forInstallation(_ error: Error) -> String {
+        let message = error.localizedDescription.lowercased()
+        if message.contains("no mtp device")
+            || message.contains("no garmin")
+            || message.contains("disconnect") {
+            return "The Garmin watch disconnected. Reconnect it, refresh its maps, and try again."
+        }
+        if message.contains("space") || message.contains("storage") {
+            return "There is not enough available storage to install this map safely."
+        }
+        if isUSBInterfaceUnavailableError(message) || isBusyConnectionError(message) {
+            return "The Garmin watch is busy. Close other Garmin or file-transfer apps, reconnect it, and try again."
+        }
+        return "The map could not be installed safely. Reconnect the watch, refresh its maps, and try again."
     }
 
     private static func isUSBInterfaceUnavailableError(_ message: String) -> Bool {

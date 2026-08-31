@@ -73,7 +73,7 @@ PYTHONPATH=backend/catalog-api/src python3 -m unittest discover -s backend/catal
 - `POST /map-events` accepts a separate rate-limited, idempotent,
   privacy-minimised map-operation event contract. `GET
   /admin/map-statistics.json` exposes its private aggregates and never returns
-  raw events or device identifiers.
+  raw events or device identifiers. Raw map events are pruned after 24 months.
 - `POST /compatibility/events` accepts validated, rate-limited, idempotent
   privacy-minimised install events after client consent. It stores only
   allowlisted columns, hashes the per-event deletion token, and never stores

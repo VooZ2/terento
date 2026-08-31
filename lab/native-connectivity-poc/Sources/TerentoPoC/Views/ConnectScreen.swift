@@ -1443,6 +1443,14 @@ struct ConnectScreen: View {
         return provider.name
     }
 
+    private var selectedMapProvider: MapProvider? {
+        guard !selectedMapProviderID.isEmpty else { return nil }
+        return mapProviderOptions.first {
+            MapIdentity.normalizeProvider($0.id)
+                == MapIdentity.normalizeProvider(selectedMapProviderID)
+        }
+    }
+
     private var availableMapsEmptyMessage: String {
         let query = mapSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
         if !query.isEmpty {
@@ -1450,6 +1458,13 @@ struct ConnectScreen: View {
         }
 
         if !selectedMapProviderID.isEmpty {
+            if let provider = selectedMapProvider,
+               let status = provider.temporaryUnavailableReason {
+                if let checkedAt = provider.lastCheckedAt {
+                    return "\(status). Last checked: \(checkedAt.formatted(date: .abbreviated, time: .shortened))."
+                }
+                return "\(status)."
+            }
             return "No maps are available from \(selectedMapProviderLabel)."
         }
 
@@ -1767,8 +1782,8 @@ struct ConnectScreen: View {
                     .frame(maxWidth: 740, alignment: .leading)
                     .padding(.bottom, TerentoPageLayout.sectionSpacing)
 
-                } else if plan.storagePlan.status == .blockedInsufficientSpace {
-                    Text(plan.reason)
+                } else if let reason = installAvailability.userReason {
+                    Text(reason)
                         .font(.terentoUI(size: 15, weight: .semibold))
                         .foregroundStyle(TerentoColors.error)
                         .fixedSize(horizontal: false, vertical: true)
