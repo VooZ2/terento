@@ -162,6 +162,22 @@ class Beta8APITests(unittest.TestCase):
         self.assertNotIn("DROP TABLE", migration)
         self.assertNotIn("BYTEA", migration)
 
+    def test_otm_state_repair_is_conservative_and_audited(self):
+        migration = (
+            Path(__file__).parents[1]
+            / "src"
+            / "terento_catalog"
+            / "migrations"
+            / "027_restore_otm_paused_state.sql"
+        ).read_text(encoding="utf-8")
+        self.assertIn("UPDATE map_provider", migration)
+        self.assertIn("p.status = 'ACTIVE'", migration)
+        self.assertIn("package.availability = 'AVAILABLE'", migration)
+        self.assertIn("audit.action = 'provider.status_changed'", migration)
+        self.assertIn("provider.status_repaired", migration)
+        self.assertIn("migration-027", migration)
+        self.assertNotIn("DELETE FROM map_provider", migration)
+
     def test_provider_neutral_catalog_keeps_legacy_fields_and_artifacts(self):
         document = build_catalog([
             {

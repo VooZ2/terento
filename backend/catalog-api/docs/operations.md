@@ -73,6 +73,11 @@ compatibility-status classifier parameter as `BIGINT`, matching PostgreSQL's
 `count(*)` aggregate type, so the derived view can be rebuilt during a forward
 deployment.
 
+Migration `027_restore_otm_paused_state.sql` is a one-time safety repair for
+beta.8. It restores OpenTopoMap to `PAUSED` only when the provider is active,
+has no available packages, and has no audited activation. The repair is
+recorded in `admin_audit_log`; an explicitly audited activation is preserved.
+
 ## Asset review and publication
 
 Asset work is explicit and non-destructive. A candidate is prepared into
