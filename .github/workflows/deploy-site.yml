@@ -131,7 +131,7 @@ jobs:
             --label traefik.http.routers.terento-www.tls.certresolver=letsencrypt \
             --label traefik.http.routers.terento-www.middlewares=terento-www-redirect \
             --label traefik.http.middlewares.terento-www-redirect.redirectregex.regex='^https?://www\.terento\.app/(.*)' \
-            --label traefik.http.middlewares.terento-www-redirect.redirectregex.replacement='https://terento.app/$$1' \
+            --label traefik.http.middlewares.terento-www-redirect.redirectregex.replacement='https://terento.app/$1' \
             --label traefik.http.middlewares.terento-www-redirect.redirectregex.permanent=true \
             "$image"; then
             rollback_web
