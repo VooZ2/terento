@@ -90,7 +90,9 @@ normalized geographic presentation values. `availability` is independent of
 provider health and artifact validation (`AVAILABLE`, `WITHHELD`,
 `UNAVAILABLE`, or `RETIRED`). Existing `map` rows are linked through
 `legacy_map_id` during migration 026 so the current FZK client remains
-compatible.
+compatible. OpenTopoMap package IDs use the complete official region slug, so
+country and multi-region packages share the same provider-neutral shape and
+are not limited by a hardcoded country allowlist.
 
 ## `map_artifact`
 
@@ -117,6 +119,9 @@ Append-only bounded provider checks. It stores aggregate status and separate
 website, catalog, redirect, download, MIME, magic bytes, ZIP, IMG, and last-update results,
 plus final URL/content metadata, checked artifact count, timing, and a bounded
 error code/detail. It does not store response bodies or map archives.
+The aggregate describes checks that were actually performed: unavailable
+freshness metadata or not-yet-collected artifact probes remain individually
+`UNKNOWN` without masking healthy website/catalog availability.
 
 ## `catalog_collection_run`
 

@@ -288,14 +288,92 @@ class Beta8APITests(unittest.TestCase):
 
     def test_opentopomap_parser_accepts_only_provider_zip_sources(self):
         html = """
-        <a href="/maps/Lithuania_2026-05.zip">Lithuania Garmin map</a>
-        <a href="https://garmin.opentopomap.org/maps/Lithuania_contours.zip">contours</a>
-        <a href="https://evil.example/Lithuania.zip">evil</a>
+        <table>
+        <tr class="country"><td>Afghanistan</td>
+          <td><a href="asia/afghanistan/otm-afghanistan.zip">Garmin</a></td>
+          <td><a href="asia/afghanistan/otm-afghanistan-contours.zip">Garmin contours</a></td>
+          <td><a href="asia/afghanistan/otm-afghanistan-basecamp.zip">Basecamp</a></td>
+          <td>2026-05-26 08:33:53</td></tr>
+        <tr class="country"><td>US-Midwest</td>
+          <td><a href="north-america/us-midwest/otm-us-midwest.zip">Garmin</a></td>
+          <td><a href="north-america/us-midwest/otm-us-midwest-contours.zip">Garmin contours</a></td>
+          <td>2026-06-22 03:53:18</td></tr>
+        </table>
+        <a href="https://evil.example/otm-afghanistan.zip">evil</a>
         <a href="/maps/README.txt">readme</a>
         """
         links = parse_opentopomap_catalog(html, OPENTOPO_MAP.catalog_url)
-        self.assertEqual([(item.region, item.kind) for item in links], [("LT", "main"), ("LT", "contours")])
+        self.assertEqual(
+            [(item.provider_region_id, item.region, item.kind) for item in links],
+            [
+                ("afghanistan", "AFGHANISTAN", "main"),
+                ("afghanistan", "AFGHANISTAN", "contours"),
+                ("us-midwest", "USMIDWEST", "main"),
+                ("us-midwest", "USMIDWEST", "contours"),
+            ],
+        )
+        self.assertEqual(links[0].country_name, "Afghanistan")
+        self.assertEqual(links[0].source_updated_at.isoformat(), "2026-05-26T08:33:53+00:00")
         self.assertTrue(all("opentopomap.org" in item.source_url for item in links))
+
+    def test_opentopomap_parser_supports_all_provider_region_shapes(self):
+        html = """
+        <a href="europe/andorra/otm-andorra.zip">Garmin</a>
+        <a href="europe/azores/otm-azores.zip">Garmin</a>
+        <a href="europe/bosnia-herzegovina/otm-bosnia-herzegovina.zip">Garmin</a>
+        <a href="asia/russia-asian-part/otm-russia-asian-part.zip">Garmin</a>
+        <a href="north-america/us-midwest/otm-us-midwest.zip">Garmin</a>
+        <a href="north-america/canada-east/otm-canada-east.zip">Garmin</a>
+        <a href="north-america/canada-west/otm-canada-west.zip">Garmin</a>
+        <a href="north-america/canada/otm-canada-contours.zip">Garmin contours</a>
+        """
+        links = parse_opentopomap_catalog(html, OPENTOPO_MAP.catalog_url)
+        self.assertEqual(
+            [(item.provider_region_id, item.region) for item in links],
+            [
+                ("andorra", "ANDORRA"),
+                ("azores", "AZORES"),
+                ("bosnia-herzegovina", "BOSNIAHERZEGOVINA"),
+                ("russia-asian-part", "RUSSIAASIANPART"),
+                ("us-midwest", "USMIDWEST"),
+                ("canada-east", "CANADAEAST"),
+                ("canada-west", "CANADAWEST"),
+                ("canada-east", "CANADAEAST"),
+                ("canada-west", "CANADAWEST"),
+            ],
+        )
+
+    def test_opentopomap_adapter_preserves_provider_identity_and_release(self):
+        html = """
+        <table><tr class="country"><td>Azores</td>
+          <td><a href="europe/azores/otm-azores.zip">Garmin</a></td>
+          <td><a href="europe/azores/otm-azores-contours.zip">Garmin contours</a></td>
+          <td>2026-05-24 20:24:18</td></tr></table>
+        """
+
+        class Measurement:
+            download_size_bytes = 100
+            install_size_bytes = 120
+            payload_path = "otm-azores.img"
+
+        class Fetcher:
+            def fetch_text(self, url):
+                return html
+
+            def measure_zip(self, url):
+                return Measurement()
+
+        snapshot = OpenTopoMapProviderAdapter(fetcher=Fetcher()).collect()
+        package = snapshot.packages[0]
+        self.assertEqual(package.id, "opentopomap-azores")
+        self.assertEqual(package.provider_region_id, "azores")
+        self.assertEqual(package.canonical_region_id, "AZORES")
+        self.assertEqual(package.release, "2026-05")
+        self.assertEqual(package.source_updated_at.isoformat(), "2026-05-24T20:24:18+00:00")
+        self.assertEqual(
+            [artifact.id for artifact in package.artifacts],
+            ["opentopomap-azores-main", "opentopomap-azores-contours"],
+        )
 
     def test_provider_health_checks_mime_zip_and_img(self):
         class Measurement:
@@ -322,6 +400,32 @@ class Beta8APITests(unittest.TestCase):
         self.assertEqual(result.magic_status, "HEALTHY")
         self.assertEqual(result.zip_status, "HEALTHY")
         self.assertEqual(result.img_status, "HEALTHY")
+
+        no_date = check_provider(
+            OPENTOPO_MAP,
+            download_urls=["https://garmin.opentopomap.org/LT.zip"],
+            probe=Probe(),
+        )
+        self.assertEqual(no_date.status, "HEALTHY")
+        self.assertEqual(no_date.last_update_status, "UNKNOWN")
+
+        source_only = check_provider(OPENTOPO_MAP, probe=Probe())
+        self.assertEqual(source_only.status, "HEALTHY")
+        self.assertEqual(source_only.download_status, "UNKNOWN")
+
+        class FailedDownloadProbe(Probe):
+            def inspect(self, url, *, read_body=False):
+                if url.endswith("map.zip"):
+                    raise OSError("offline")
+                return super().inspect(url, read_body=read_body)
+
+        failed_download = check_provider(
+            OPENTOPO_MAP,
+            download_urls=["https://garmin.opentopomap.org/map.zip"],
+            probe=FailedDownloadProbe(),
+        )
+        self.assertEqual(failed_download.status, "DOWN")
+        self.assertEqual(failed_download.download_status, "DOWN")
 
     def test_http_map_events_and_admin_provider_routes(self):
         database = FakeProviderDatabase()

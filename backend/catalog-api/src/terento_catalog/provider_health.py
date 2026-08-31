@@ -213,24 +213,24 @@ def check_provider(
         magic_status = "UNKNOWN"
         zip_status = "UNKNOWN"
         img_status = "UNKNOWN"
+    elif download_status == "UNKNOWN":
+        download_status = "DOWN"
 
     last_update_status = _last_update_status(source_updated_at)
-    statuses = {
+    availability_statuses = {
         website_status,
         catalog_status,
         redirect_status,
-        download_status,
-        mime_status,
-        magic_status,
-        zip_status,
-        img_status,
-        last_update_status,
     }
-    if "DOWN" in statuses:
+    if checked_downloads:
+        availability_statuses.update(
+            {download_status, mime_status, magic_status, zip_status, img_status}
+        )
+    if "DOWN" in availability_statuses:
         status = "DOWN"
-    elif "DEGRADED" in statuses:
+    elif "DEGRADED" in availability_statuses or last_update_status == "DEGRADED":
         status = "DEGRADED"
-    elif "UNKNOWN" in statuses:
+    elif "UNKNOWN" in availability_statuses:
         status = "UNKNOWN"
     else:
         status = "HEALTHY"

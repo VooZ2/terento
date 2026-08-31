@@ -153,6 +153,19 @@ admin `/collect` action may run one known adapter on demand and records a
 collection run; health checks perform only bounded source probes. Neither path
 downloads, stores, proxies, mirrors, or serves a provider map binary.
 
+The reviewed OpenTopoMap adapter derives stable package identity from the
+official `otm-<region>.zip` filename and reads each country row's generated-at
+timestamp. It accepts all current official Garmin region shapes, excludes
+Basecamp archives, and relates the shared Canada contours archive to both
+Canada main packages. OpenTopoMap remains `PAUSED` until the beta.8 deployment
+gate is accepted; deploying the adapter does not activate it automatically.
+
+Provider health is an availability summary. A provider can be `HEALTHY` when
+its website and catalog are reachable even before package downloads have been
+collected; untested artifact fields and missing freshness metadata remain
+`UNKNOWN` individually. A checked but unreachable artifact makes the provider
+`DOWN`, while stale known metadata makes it `DEGRADED`.
+
 ## Garmin device collector
 
 The collector reads the official [Garmin smartwatch category](https://www.garmin.com/en-US/c/wearables-smartwatches/) through the official
