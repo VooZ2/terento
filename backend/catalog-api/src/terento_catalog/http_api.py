@@ -70,6 +70,14 @@ from .provider_health import check_provider as run_provider_health_check
 LOGGER = logging.getLogger(__name__)
 
 
+class ProviderActivationBlocked(ValueError):
+    """Raised when a provider has not passed the activation evidence gate."""
+
+    def __init__(self, gate: dict[str, Any]) -> None:
+        self.gate = gate
+        super().__init__("provider_activation_blocked")
+
+
 class CatalogService:
     def __init__(
         self, database: Database, asset_storage: AssetStorage | None = None,
@@ -114,7 +122,26 @@ class CatalogService:
         detail = self.database.provider_detail(provider_id)
         if detail is None and definition is None:
             return None
-        return _provider_detail_payload(definition, detail or {})
+        payload = _provider_detail_payload(definition, detail or {})
+        if detail is not None and definition is not None:
+            payload["provider"]["activationGate"] = self.provider_activation_gate(
+                provider_id,
+                detail=detail,
+            )
+        return payload
+
+    def provider_activation_gate(
+        self,
+        provider_id: str,
+        *,
+        detail: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        definition = KNOWN_PROVIDER_DEFINITIONS.get(provider_id)
+        if definition is None:
+            raise LookupError("provider_not_found")
+        resolved_detail = detail or self.database.provider_detail(provider_id) or {}
+        runs = self.database.provider_runs(provider_id)
+        return _provider_activation_gate(provider_id, resolved_detail, runs)
 
     def check_provider(
         self,
@@ -239,6 +266,10 @@ class CatalogService:
         if status not in {"ACTIVE", "PAUSED", "RETIRED"}:
             raise ValueError("invalid_provider_status")
         self.database.ensure_provider_definition(definition)
+        if status == "ACTIVE":
+            gate = self.provider_activation_gate(provider_id)
+            if not gate["canActivate"]:
+                raise ProviderActivationBlocked(gate)
         if not self.database.set_provider_status(
             provider_id,
             status,
@@ -1130,6 +1161,18 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         admin_user_id=int(session["id"]),
                         request_id=request_id,
                     )
+            except ProviderActivationBlocked as exc:
+                self._send_json(
+                    HTTPStatus.CONFLICT,
+                    {
+                        "error": "provider_activation_blocked",
+                        "activationGate": exc.gate,
+                    },
+                    send_body=True,
+                    cache_control="no-store",
+                    noindex=True,
+                )
+                return
             except LookupError as exc:
                 self._send_json(
                     HTTPStatus.NOT_FOUND,
@@ -1738,6 +1781,107 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             LOGGER.info("%s - %s", self.address_string(), format % args)
 
     return Handler
+
+
+def _provider_activation_gate(
+    provider_id: str,
+    detail: dict[str, Any],
+    runs: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Return the evidence required before a known provider may be activated."""
+
+    health = detail.get("health") if isinstance(detail.get("health"), dict) else {}
+    latest_run = runs[0] if runs else {}
+    packages = [
+        package
+        for package in detail.get("packages", [])
+        if str(package.get("availability") or "").upper() != "RETIRED"
+    ]
+    expected_package_count = 177 if provider_id == "opentopomap" else None
+    latest_package_count = _non_negative_int(latest_run.get("package_count"))
+    latest_artifact_count = _non_negative_int(latest_run.get("artifact_count"))
+    catalog_package_count = len(packages)
+    available_package_count = sum(
+        1 for package in packages
+        if str(package.get("availability") or "").upper() == "AVAILABLE"
+    )
+    broken_artifact_count = sum(
+        _non_negative_int(package.get("broken_artifact_count"))
+        for package in packages
+    )
+    unvalidated_artifact_count = sum(
+        _non_negative_int(package.get("unvalidated_artifact_count"))
+        for package in packages
+    )
+    missing_main_artifact_count = sum(
+        1
+        for package in packages
+        if _non_negative_int(package.get("main_artifact_count")) < 1
+    )
+
+    blockers: list[dict[str, str]] = []
+
+    def block(code: str, message: str) -> None:
+        blockers.append({"code": code, "message": message})
+
+    health_status = str(health.get("status") or "UNKNOWN").upper()
+    if health_status != "HEALTHY":
+        block("health_not_healthy", f"Latest provider health is {health_status}, not HEALTHY.")
+    if detail.get("last_catalog_sync") is None:
+        block("catalog_not_synced", "No successful catalog sync is recorded.")
+
+    collection_status = str(latest_run.get("status") or "NONE").upper()
+    if collection_status != "SUCCEEDED":
+        block("catalog_collection_not_succeeded", "No successful catalog collection is recorded.")
+    if latest_package_count < 1 or latest_artifact_count < 1:
+        block("catalog_collection_empty", "The latest successful collection has no packages and artifacts.")
+    if expected_package_count is not None:
+        if latest_package_count != expected_package_count:
+            block(
+                "catalog_package_count_mismatch",
+                f"The latest collection has {latest_package_count} packages; {expected_package_count} are required.",
+            )
+        if latest_artifact_count != expected_package_count:
+            block(
+                "catalog_artifact_count_mismatch",
+                f"The latest collection has {latest_artifact_count} artifacts; {expected_package_count} are required.",
+            )
+    if catalog_package_count != latest_package_count:
+        block(
+            "catalog_snapshot_incomplete",
+            f"The stored catalog has {catalog_package_count} current packages; the latest collection has {latest_package_count}.",
+        )
+    if available_package_count != catalog_package_count:
+        block("packages_not_available", "Every current package must be AVAILABLE.")
+    if broken_artifact_count:
+        block("broken_artifacts", f"{broken_artifact_count} broken artifact(s) remain.")
+    if unvalidated_artifact_count:
+        block("unvalidated_artifacts", f"{unvalidated_artifact_count} artifact(s) are not VALIDATED.")
+    if missing_main_artifact_count:
+        block("missing_main_artifacts", f"{missing_main_artifact_count} package(s) have no validated main artifact.")
+
+    return {
+        "canActivate": not blockers,
+        "blockers": blockers,
+        "expectedPackageCount": expected_package_count,
+        "latestHealthStatus": health_status,
+        "latestCollectionStatus": collection_status,
+        "latestCollectionPackageCount": latest_package_count,
+        "latestCollectionArtifactCount": latest_artifact_count,
+        "catalogPackageCount": catalog_package_count,
+        "availablePackageCount": available_package_count,
+        "brokenArtifactCount": broken_artifact_count,
+        "unvalidatedArtifactCount": unvalidated_artifact_count,
+        "missingMainArtifactCount": missing_main_artifact_count,
+        "lastCatalogSync": _format_json_value(detail.get("last_catalog_sync")),
+    }
+
+
+def _non_negative_int(value: Any) -> int:
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError):
+        return 0
 
 
 def _provider_summary_payload(

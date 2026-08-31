@@ -1405,8 +1405,14 @@ class Database:
                 """
                 SELECT mp.id, mp.name, mp.region, mp.release, mp.availability,
                        count(ma.id) AS artifact_count,
+                       count(ma.id) FILTER (WHERE ma.kind = 'main')
+                           AS main_artifact_count,
                        count(ma.id) FILTER (WHERE ma.validation_status IN ('FAILED', 'UNAVAILABLE'))
-                           AS broken_artifact_count
+                           AS broken_artifact_count,
+                       count(ma.id) FILTER (
+                           WHERE ma.required AND ma.validation_status <> 'VALIDATED'
+                       )
+                           AS unvalidated_artifact_count
                 FROM map_package mp
                 LEFT JOIN map_artifact ma ON ma.package_id = mp.id
                 WHERE mp.provider_id = %s
