@@ -620,6 +620,23 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         artifacts.first(where: { $0.kind == .main })
     }
 
+    /// Provider-native labels are intended for user-facing display. The
+    /// normalized version remains available for comparisons and update logic.
+    var displayVersionLabel: String? {
+        if let label = releaseMetadata?.versionLabel?.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ), !label.isEmpty {
+            return label
+        }
+
+        // 2000-01 was the historical API serializer fallback. It is not a
+        // real map version and must never reach the user-facing UI.
+        guard version.year != 2000 || version.month != 1 else {
+            return nil
+        }
+        return version.description
+    }
+
     var optionalArtifacts: [MapArtifact] {
         artifacts.filter { !$0.required }
     }

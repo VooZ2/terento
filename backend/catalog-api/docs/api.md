@@ -328,6 +328,13 @@ installation even when the catalog provides this metadata.
 `sourceURL` is always an original provider URL. The API never fetches that
 archive for the client and never streams its bytes.
 
+`version` is the comparable year/month value used by clients for update
+ordering. When a provider publishes a native release label such as FZK's
+`2/2026`, the API derives this comparable value from the provider source date
+(`2026-05` for a `2026-05-03` source date) and preserves the original label in
+`release` and `releaseMetadata.versionLabel`. The historical `2000-01`
+serializer sentinel is never emitted.
+
 The collector uses the release page as the provider-wide version signal. For
 each official regional page it selects the English Garmin package when
 available, otherwise the first published language variant. It validates the
