@@ -12,12 +12,16 @@ One row for the external map provider.
 
 | Column | Type | Meaning |
 | --- | --- | --- |
-| `id` | `text` | Stable Terento provider ID, currently `freizeitkarte` |
+| `id` | `text` | Stable Terento provider ID, currently `freizeitkarte` and `opentopomap` |
 | `name` | `text` | Display name |
+| `adapter_id` | `text` | Stable ID of a server-side prebuilt adapter; never uploaded through the API |
+| `status` | `text` | `ACTIVE`, `PAUSED`, or `RETIRED` lifecycle state |
 | `website` | `text` | Official provider map page |
+| `license` | `text` | Provider/data licensing summary (canonical beta.8 field) |
 | `license_information` | `text` | Provider/data licensing summary |
 | `attribution` | `text` | Attribution shown to clients |
 | `license_url` | `text` | Official license/source page |
+| `last_catalog_sync` | `timestamptz` | Last successful metadata snapshot time |
 | `created_at`, `updated_at` | `timestamptz` | Local catalog audit timestamps |
 
 ## `map`
@@ -70,6 +74,73 @@ no known download size, it remains in PostgreSQL but is omitted from the
 current public package list rather than being assigned a placeholder. An
 unknown install size does not hide a map; it is returned as `null` and blocks
 storage approval in the client.
+
+## `provider_source`
+
+Allowlisted provider source endpoints (`WEBSITE`, `CATALOG`, `LICENSE`, or
+`DOWNLOAD`). URLs are HTTPS-only and are metadata references, not server-side
+binary storage. The unique provider/type/URL key makes collection updates
+idempotent and `last_checked_at` supports health freshness reporting.
+
+## `map_package`
+
+Provider-neutral package identity and release metadata. `provider_region_id`
+preserves the provider token; `canonical_region_id` and `region` are the
+normalized geographic presentation values. `availability` is independent of
+provider health and artifact validation (`AVAILABLE`, `WITHHELD`,
+`UNAVAILABLE`, or `RETIRED`). Existing `map` rows are linked through
+`legacy_map_id` during migration 026 so the current FZK client remains
+compatible.
+
+## `map_artifact`
+
+One package payload, currently `main` or optional `contours`.
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| `kind` | `text` | `main` or `contours` |
+| `source_url` | `text` | Original provider URL; HTTPS only |
+| `size_bytes` | `bigint` | Provider archive/network size |
+| `install_size_bytes` | `bigint` | Extracted Garmin IMG size used by the native storage gate |
+| `checksum_sha256` | `text` | Optional provider checksum |
+| `content_type` | `text` | Observed/declared MIME type |
+| `required` | `boolean` | Whether the artifact is required for package usability |
+| `validation_status` | `text` | `NOT_VALIDATED`, `VALIDATING`, `VALIDATED`, `FAILED`, or `UNAVAILABLE` |
+| `install_payload_path` | `text` | Selected archive entry when applicable |
+
+The unique `(package_id, kind)` key prevents duplicate main/contours records.
+The server never stores the artifact bytes.
+
+## `provider_health_check`
+
+Append-only bounded provider checks. It stores aggregate status and separate
+website, catalog, redirect, download, MIME, magic bytes, ZIP, IMG, and last-update results,
+plus final URL/content metadata, checked artifact count, timing, and a bounded
+error code/detail. It does not store response bodies or map archives.
+
+## `catalog_collection_run`
+
+Append-only metadata collection execution record for a provider. It records
+`RUNNING`, `SUCCEEDED`, `PARTIAL`, or `FAILED`, timestamps, package/artifact
+counts, and bounded failure details.
+
+## `map_download_event`
+
+Privacy-minimised, idempotent map-operation statistics. It stores UUID event
+and operation IDs, known provider/package references, region, allowlisted event
+type/outcome, app build, and occurrence/receipt timestamps. It has no device
+identifier, raw JSON, local path, manifest, serial, Unit ID, or log field.
+`event_id` is the primary idempotency key; a secondary unique operation/event
+type/package key prevents accidental duplicates.
+
+## `admin_audit_log`
+
+Append-only audit records for provider health checks, collections, lifecycle
+state changes, and other provider administration. It stores the admin user
+reference, action, provider, structured old/new status, reason, target, request
+ID, bounded JSON details, and timestamp. It never stores provider code or
+binary payloads. Provider rows are retained; lifecycle retirement is a state
+transition, not deletion.
 
 ## `device_family`
 

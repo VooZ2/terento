@@ -5,11 +5,13 @@ It stores map-provider metadata and a separate Garmin smartwatch device
 catalog. It does not download, host, proxy, mirror, cache, repackage, or serve
 Freizeitkarte map binaries or Garmin product images.
 
-The pre-MVP map-provider hard gate remains Freizeitkarte only. A separate
-Garmin collector indexes official smartwatch-category metadata; it is a device
-catalog, not a compatibility registry. Opt-in compatibility evidence uses a
-separate schema and endpoints; it accepts no Unit ID, serial number, manifest,
-account, private log, or map binary.
+The public/MVP map-provider hard gate remains Freizeitkarte only. The local
+beta.8 API also carries the known, server-side OpenTopoMap adapter in a paused
+state; activation is an explicit operator action after its source gate. A
+separate Garmin collector indexes official smartwatch-category metadata; it is
+a device catalog, not a compatibility registry. Compatibility evidence and
+map-operation statistics use separate schemas and endpoints; neither accepts
+Unit IDs, serial numbers, manifests, accounts, private logs, or map binaries.
 
 ## Local development
 
@@ -45,8 +47,10 @@ PYTHONPATH=backend/catalog-api/src python3 -m unittest discover -s backend/catal
 ## Endpoints
 
 - `GET /health` checks database reachability and returns `{"status":"ok"}`.
-- `GET /maps/catalog.json` returns catalog version 1. The response includes
-  `ETag`, `Last-Modified`, and cache headers and supports conditional GETs.
+- `GET /maps/catalog.json` returns an additive provider-neutral `schemaVersion: 2`
+  projection while retaining catalog version 1 fields for the current FZK
+  client. The response includes `ETag`, `Last-Modified`, and cache headers and
+  supports conditional GETs.
 - `GET /devices/catalog.json` returns catalog version 2 for discovered Garmin
   smartwatch models, including `MISSING` or `AVAILABLE` asset metadata. It
   includes reusable legal metadata and validated `asset.source` attribution
@@ -54,6 +58,22 @@ PYTHONPATH=backend/catalog-api/src python3 -m unittest discover -s backend/catal
   compatibility status.
 - `GET /assets/devices/<name>.webp` serves validated runtime assets from the
   same API domain.
+- `GET /admin/providers`, `GET /admin/providers/<id>`, and
+  `GET /admin/map-statistics` serve authenticated, no-store/noindex provider
+  and map-statistics admin pages. Unauthenticated requests redirect to
+  `/admin/login`.
+- `GET /admin/providers.json`, `GET /admin/providers/<id>.json`,
+  `GET /admin/providers/<id>/health`, `GET /admin/providers/<id>/runs`, and
+  `GET /admin/providers/<id>/audit` expose the corresponding authenticated,
+  no-store provider registry, detail, health, collection-run, and audit
+  metadata.
+- CSRF-protected `POST /admin/providers/<id>/check`, `/state`, `/collect`, and
+  `/retire` operate only on known server-side adapters; they cannot upload
+  parser or executable provider code.
+- `POST /map-events` accepts a separate rate-limited, idempotent,
+  privacy-minimised map-operation event contract. `GET
+  /admin/map-statistics.json` exposes its private aggregates and never returns
+  raw events or device identifiers.
 - `POST /compatibility/events` accepts validated, rate-limited, idempotent
   privacy-minimised install events after client consent. It stores only
   allowlisted columns, hashes the per-event deletion token, and never stores
@@ -128,8 +148,10 @@ weekly on Monday at 03:00 UTC (`COLLECTOR_SCHEDULE_UTC=MON 03:00`). A manual
 collection can still be run immediately after a provider release or source
 change.
 
-All provider fetches happen in the collector process, never in an API request.
-The API only reads PostgreSQL and returns metadata.
+Scheduled catalog collection remains a separate process. The authenticated
+admin `/collect` action may run one known adapter on demand and records a
+collection run; health checks perform only bounded source probes. Neither path
+downloads, stores, proxies, mirrors, or serves a provider map binary.
 
 ## Garmin device collector
 

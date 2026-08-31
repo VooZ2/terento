@@ -6,10 +6,11 @@ Base URL in production:
 https://api.terento.app
 ```
 
-The map and device catalog routes are public read-only metadata. A separate
-opt-in compatibility-evidence boundary has one validated write route, one
-private authenticated operator route, and a default-disabled reviewed public
-aggregate route. No route serves map binaries.
+The map and device catalog routes are public read-only metadata. Compatibility
+evidence and map-operation statistics are separate data boundaries: the former
+is an explicit product-purpose sharing flow, while the latter accepts only
+privacy-minimised map operation events. Provider controls and statistics are
+private authenticated admin routes. No route serves map binaries.
 
 ## `POST /compatibility/events`
 
@@ -256,19 +257,26 @@ Responses use `Cache-Control: no-store`.
 
 ## `GET /maps/catalog.json`
 
-Returns catalog version 1. The response contains the latest known metadata for
-all currently indexed downloadable Freizeitkarte Garmin packages. The collector indexes
-official regional pages and keeps the original provider download URL; the API
-does not download or proxy the package.
+Returns an additive provider-neutral catalog. `schemaVersion: 2` identifies the
+new provider/package/artifact fields, while `catalogVersion: 1`, the legacy map
+fields, and `sourceURL` remain for the current FZK macOS client. The response
+contains all validated packages known to enabled or paused prebuilt adapters;
+catalog membership is distinct from acquisition availability. The collector
+keeps original provider download URLs and never downloads or proxies map
+packages through Terento.
 
 ```json
 {
+  "schemaVersion": 2,
   "catalogVersion": 1,
   "updatedAt": "2026-08-21T06:27:14Z",
   "providers": [
     {
       "id": "freizeitkarte",
       "name": "Freizeitkarte",
+      "adapterId": "freizeitkarte",
+      "status": "ACTIVE",
+      "health": "HEALTHY",
       "website": "https://www.freizeitkarte-osm.de/garmin/en/mitteleuropa.html",
       "attribution": "Map data © OpenStreetMap contributors; produced map © FZK project",
       "licenseURL": "https://www.freizeitkarte-osm.de/garmin/en/imprint.html",
@@ -285,7 +293,19 @@ does not download or proxy the package.
           "sizeBytes": 361187697,
           "sourceURL": "https://download.freizeitkarte-osm.de/garmin/latest/DEU+_en_gmapsupp.img.zip",
           "releaseDate": "2026-05-03",
-          "identifier": "DEU+"
+          "identifier": "DEU+",
+          "release": "2026-05",
+          "artifacts": [
+            {
+              "id": "freizeitkarte-deu-main",
+              "kind": "main",
+              "sourceUrl": "https://download.freizeitkarte-osm.de/garmin/latest/DEU+_en_gmapsupp.img.zip",
+              "sizeBytes": 429793280,
+              "downloadSizeBytes": 361187697,
+              "required": true,
+              "validationState": "validated"
+            }
+          ]
         }
       ]
     }
@@ -330,6 +350,123 @@ Last-Modified: <HTTP date>
 Clients should send `If-None-Match` or `If-Modified-Since` and accept HTTP 304.
 The `catalogVersion` value changes only for an intentional contract change;
 adding optional metadata fields does not require a version bump.
+
+For the new artifact contract, package `sizeBytes` and
+`downloadSizeBytes` describe the provider archive/network payload. Artifact
+`sizeBytes` is the final extracted Garmin IMG size when measured and is
+`null` when that measurement is unavailable;
+`downloadSizeBytes` is the archive size. This preserves the native client's
+storage gate while making both meanings explicit. Artifact `sourceUrl` is
+always an original provider URL. `checksumSha256` is optional until a
+provider-published checksum is available. `main` is required and `contours`
+is optional; artifact validation and package availability are independent.
+Providers are registered only through known server-side adapters. OpenTopoMap
+is visible in the local beta.8 candidate but remains `PAUSED` until its source
+and package validation gate is activated by an operator.
+
+## `GET /admin/providers.json`
+
+Returns the authenticated provider registry as a private, no-store/noindex
+JSON response. Each row contains `id`, `name`, `adapterId`, lifecycle
+`status` (`ACTIVE`, `PAUSED`, `RETIRED`), health (`HEALTHY`, `DEGRADED`,
+`DOWN`, `UNKNOWN`), official website, license and attribution metadata,
+catalog-sync/check timestamps, package counts, broken-package count, and the
+broken URL count, and the last health error. The endpoint never returns
+provider binaries or executable adapter configuration.
+
+## `GET /admin/providers` and `GET /admin/providers/{id}`
+
+These authenticated, no-store/noindex HTML pages provide the operator views
+for the provider registry and one provider. The list shows provider name,
+known adapter, lifecycle/health state, active package count, catalog sync,
+last download test, broken package/link count, and the latest error. The detail
+page shows metadata, license/attribution, original source links, regions and
+packages, health-check history, collection-run history, and retained audit
+history. It also provides `Check now`, `Collect catalog`, `Pause`/`Activate`,
+and `Retire` controls. A request without a valid admin session redirects to
+`/admin/login`; the page never serves map binaries.
+
+`GET /admin/providers/{id}.json` and `GET /admin/providers/{id}/audit` are
+private JSON projections for operator tooling and carry the same session gate.
+
+## `GET /admin/providers/{id}/health`
+
+Returns the latest provider health result and bounded health history. The
+health record separates website, catalog, redirect, download, MIME, magic
+bytes, ZIP, IMG, and last-update statuses. Checks use bounded `HEAD`/`GET`/`Range`
+requests and do not persist an archive on the server.
+
+## `POST /admin/providers/{id}/check`
+
+Runs one authenticated CSRF-protected health check and records an audit row.
+The request body is an empty JSON object. The response includes the health
+check ID and the component result. Health checks are operational metadata, not
+device compatibility evidence.
+
+## `GET /admin/providers/{id}/runs`
+
+Returns the append-only catalog collection runs for one known provider,
+including status, timestamps, package/artifact counts, and bounded error
+details.
+
+## `POST /admin/providers/{id}/state`
+
+Changes only the lifecycle state of a known prebuilt adapter. The JSON body is
+`{"status":"ACTIVE"}`, `{"status":"PAUSED"}`, or
+`{"status":"RETIRED"}`, with an optional bounded `reason`. The action requires
+the existing admin session and CSRF token and writes an `admin_audit_log`
+record with the admin user, provider, old status, new status, timestamp, and
+reason. It cannot upload parser code, execute arbitrary provider logic, or
+activate an unknown provider.
+
+## `POST /admin/providers/{id}/collect`
+
+Runs one known server-side adapter, stores metadata-only package/artifact
+records, records a `catalog_collection_run`, and returns counts. The body is
+an empty JSON object. Provider map binaries remain direct provider → user's
+Mac.
+
+## `POST /admin/providers/{id}/retire`
+
+Equivalent to a CSRF-protected state change to `RETIRED`; it accepts an empty
+JSON body or an optional bounded `reason`, and writes an audit record.
+Retiring a provider does not delete its historical metadata.
+
+## `POST /map-events`
+
+Accepts at most 8 KiB of schema-version-1 JSON and is rate limited per source
+address. This is deliberately separate from `/compatibility/events` and does
+not accept compatibility, device, manifest, path, serial, Unit ID, raw log, or
+raw error fields. The allowlisted fields are `id`, `operationId`, `timestamp`,
+`providerId`, optional `mapId`/`region`, `eventType`, `outcome`, and optional
+`appBuild`. Event types are `DOWNLOAD_STARTED`, `DOWNLOAD_SUCCEEDED`,
+`DOWNLOAD_FAILED`, `INSTALL_SUCCEEDED`, and `INSTALL_FAILED`; event IDs are
+UUIDs and are idempotent. The server stores only the normalized columns in
+`map_download_event`; it does not retain the raw JSON body. A successful
+insert returns `201`, a duplicate returns `200`, and both return the
+`operationId`.
+
+This endpoint is intended for explicit map-operation statistics consent and
+must not be used as unrelated background telemetry. It contains no raw device
+identifier and does not alter compatibility evidence.
+
+## `GET /admin/map-statistics.json`
+
+Returns private aggregate map-operation rows with `event_count`, distinct
+`operation_count`, first/last occurrence, provider, map, region, event type,
+and outcome. Supported query filters are `provider`, `map`, `region`,
+`dateFrom`, `dateTo`, and `eventType`. The response is no-store/noindex and
+does not expose individual event payloads or device identifiers.
+
+## `GET /admin/map-statistics`
+
+Authenticated, no-store/noindex HTML dashboard for the same aggregate read
+model. It supports 7-day, 30-day, 90-day, and all-time ranges plus provider,
+map, region, and event-type filters. It displays completed/failed downloads,
+download and install success rates, top maps/regions, per-provider popularity,
+provider health, and broken provider package/link counts. Missing events remain
+unknown/empty; they are not silently presented as zero. Unauthenticated
+requests redirect to `/admin/login`.
 
 ## `GET /devices/catalog.json`
 

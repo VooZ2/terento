@@ -219,6 +219,7 @@ jobs:
           location="$(printf '%s\n' "$headers" | awk 'tolower($1)=="location:" {print $2; exit}' | tr -d '\r')"
           if [ "$health" != '{"status":"ok"}' ] \
             || ! grep -Fq '"catalogVersion"' <<<"$maps" \
+            || ! jq -e '.schemaVersion == 2 and (.providers | type == "array") and any(.providers[]; .id == "freizeitkarte")' <<<"$maps" >/dev/null \
             || ! grep -Fq '"catalogVersion"' <<<"$devices" \
             || ! grep -Fq '<title>Admin sign in · Terento</title>' <<<"$login" \
             || [ "$status" != "303" ] \
