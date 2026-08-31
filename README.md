@@ -1,6 +1,6 @@
 # Terento
 
-> A simple way to get maps onto your Garmin smartwatch from a Mac.
+> A simple way to install third-party maps on your Garmin smartwatch from a Mac.
 
 [![Swift CI](https://github.com/VooZ2/terento/actions/workflows/swift-ci.yml/badge.svg?branch=beta)](https://github.com/VooZ2/terento/actions/workflows/swift-ci.yml)
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
@@ -18,18 +18,18 @@ Garmin stores its map files.
 
 <p align="center">
   <img
-    src=".github/assets/terento-ready-to-install.png"
-    alt="Terento showing a selected map, available storage, and the Install maps action"
+    src=".github/assets/terento-your-garmin.png"
+    alt="Terento showing a connected Garmin smartwatch and ready device state"
     width="100%"
   >
 </p>
 
 <p align="center">
-  <em>Review your map, storage, and installation choice before installing.</em>
+  <em>Connect your watch, check storage, and start with a clear device state.</em>
 </p>
 
 <p align="center">
-  <a href="https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_top_download">Download the beta</a>
+  <a href="https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_top_download">Download Terento beta.8</a>
   ·
   <a href="https://terento.app/compatibility/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_top_compatibility">Check compatibility</a>
   ·
@@ -38,7 +38,7 @@ Garmin stores its map files.
   <a href="https://terento.app/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_top_website">Website</a>
 </p>
 
-> **Early beta:** Compatibility varies by Garmin smartwatch model. Terento's
+> **Beta.8:** Compatibility varies by Garmin smartwatch model. Terento's
 > compatibility list is built from real installation reports and community
 > testing.
 
@@ -51,25 +51,37 @@ Terento keeps the process intentionally small:
 - downloads maps from their original source;
 - checks available storage before making changes;
 - installs and verifies the map;
-- lets you back up or remove maps installed by Terento; and
+- lets you update or remove maps installed by Terento; and
 - leaves Garmin's own maps and other unknown files alone.
 
 The complete Freizeitkarte catalog remains visible. Under Terento's current
 acquisition policy, downloads and updates are not offered for russia or
-Crimea; installed Terento-owned maps still retain safe backup and explicit
-removal controls.
+Crimea. Installed Terento-owned maps retain explicit update and removal
+controls, while Garmin and other unknown files remain protected.
 
 <p align="center">
   <img
     src=".github/assets/terento-install-maps.png"
-    alt="Choosing Freizeitkarte regions in Terento"
+    alt="Terento showing available map regions, providers, and Garmin storage"
     width="49%"
   >
   <img
     src=".github/assets/terento-manage-maps.png"
-    alt="Managing installed maps in Terento"
+    alt="Terento showing installed maps grouped by provider"
     width="49%"
   >
+</p>
+
+<p align="center">
+  <img
+    src=".github/assets/terento-installing-maps.png"
+    alt="Terento showing map transfer and installation verification progress"
+    width="100%"
+  >
+</p>
+
+<p align="center">
+  <em>Follow installation progress while Terento verifies the transfer.</em>
 </p>
 
 ## Why Terento
@@ -115,18 +127,18 @@ works.
 - USB connection
 - Internet connection for downloading maps
 
-Freizeitkarte is the only map source supported in the current beta.
+Freizeitkarte is the only map source supported in beta.8.
 
 ## Download
 
-The easiest way to get the latest public beta is from:
+The latest public release is beta.8:
 
-**[Download Terento](https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_download)**
+**[Download Terento beta.8](https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_download)**
 
 New to installing third-party maps from a Mac? Read the
 **[Mac installation guide](https://terento.app/guides/install-garmin-maps-mac)**.
 
-The macOS app is notarized and does not require Homebrew.
+The beta.8 macOS app is notarized and does not require Homebrew.
 
 DMG, ZIP, release notes, and previous versions are also available on
 [GitHub Releases](https://github.com/VooZ2/terento/releases).
@@ -134,7 +146,8 @@ DMG, ZIP, release notes, and previous versions are also available on
 ## A note about beta software
 
 Terento writes map files to your watch, so this is one of those projects where
-being careful matters.
+being careful matters. Beta.8 is still a public beta, and compatibility can
+vary between Garmin smartwatch models.
 
 There are safeguards around installation, replacement, and removal, and
 Terento avoids changing files it cannot confidently identify. Still, this is
@@ -166,16 +179,13 @@ See the full
 ## Maps
 
 Terento beta.8 works with
-[Freizeitkarte](https://www.freizeitkarte-osm.de/) and
-[OpenTopoMap](https://garmin.opentopomap.org/), which provide Garmin maps based
-on OpenStreetMap data. OpenTopoMap contour packages are catalogued but remain
-outside the beta.8 installation UI.
+[Freizeitkarte](https://www.freizeitkarte-osm.de/), which provides Garmin maps
+based on OpenStreetMap data.
 
 Maps are downloaded from the selected provider's original infrastructure.
 Terento does not host, mirror, or repackage them.
 
 - [Freizeitkarte](https://www.freizeitkarte-osm.de/)
-- [OpenTopoMap Garmin maps](https://garmin.opentopomap.org/)
 - [OpenStreetMap copyright](https://www.openstreetmap.org/copyright)
 
 Terento is an independent open-source project and is not affiliated with,
