@@ -15,7 +15,7 @@ The PoC only:
 3. reads storage IDs, capacities, free space, and descriptions;
 4. creates a stable in-memory device identity;
 5. evaluates that identity against a local exact-device registry;
-6. loads a bundled Freizeitkarte metadata catalog;
+6. loads a bundled provider-neutral metadata catalog;
 7. enumerates existing device files under the Garmin map locations;
 8. reads bounded prefixes of existing `.img` files;
 9. validates the Garmin IMG header signatures and parses conservative metadata when available;
@@ -45,28 +45,58 @@ variant. Reconnect, map visibility, physical-device count, firmware variation,
 and operator review do not promote a status. Exact model names and firmware
 values belong in internal compatibility records, not this public PoC overview.
 
-The metadata-only catalog records downloadable Freizeitkarte packages. The
-bundled fallback contains all 63 official packages. It records
-provider attribution, source and license URLs, release, and provider-listed
-package sizes. The loader tries
+The metadata-only catalog records downloadable Freizeitkarte and OpenTopoMap
+packages. The bundled fallback contains all 63 official Freizeitkarte
+packages plus all 177 official OpenTopoMap Garmin rows. It records provider
+attribution, source and license URLs, release, and provider-listed package
+sizes; 176 OTM contour artifacts are optional and the one empty contour source
+is omitted from installable artifacts. The loader tries
 `https://api.terento.app/maps/catalog.json` first and falls back to
-`Resources/Maps/catalog.json`; neither path downloads a map binary.
+`Resources/Maps/catalog.json`. If the live catalog is temporarily missing a
+bundled provider, the loader supplements it with the missing local metadata;
+neither path downloads a map binary.
 
 Map scanning is deliberately content-first. Known Garmin-owned images are
 excluded before their prefix is read. Remaining `.img` candidates are read
-through one small, read-only header prefix; the filename is retained only as a
-diagnostic path and is not used to identify a map. This means a `gmapsupp.img`
-file or a BaseCamp-renamed Freizeitkarte image can still be recognized from
-its IMG metadata. Non-Freizeitkarte images are ignored after inspection,
-without any write, rename, overwrite, or delete operation. The header parser
-recognizes the fixed `DSKIMG`/`GARMIN` signatures, the Freizeitkarte provider
-and an active provider region code such as `DEU`, and release labels such as
-`Release 26.05`.
+through one small, read-only header prefix. The filename is not sufficient to
+prove identity, but is retained as a bounded fallback for a recognized OTM
+header when the fixed header truncates a long country name. This means a
+`gmapsupp.img` file or a BaseCamp-renamed Freizeitkarte image can still be
+recognized from its IMG metadata. Recognized Freizeitkarte and OpenTopoMap
+images can be grouped by provider; unsupported or unrecognized images remain
+read-only after inspection, without any write, rename, overwrite, or delete
+operation. The header parser recognizes the fixed `DSKIMG`/`GARMIN` signatures,
+provider region identity, Freizeitkarte release labels such as `Release 26.05`,
+and OpenTopoMap generated dates such as `2026-05-24`. The OTM provider parser
+joins the two bounded fixed-header fields before parsing, so it accepts both
+the compact `0YY-MM-DD` form (`026-05-24`) and dates split at the field
+boundary (`202` + `6-05-24`, or `20` + `26-08-26`). All 177 current OTM main
+ZIP sources passed a read-only IMG-header audit; identity and release checks
+remain strict.
 
 The prefix is currently limited to 4 KiB. This is enough for the fixed header
 metadata observed on the fēnix 8 test device and avoids downloading complete
 map images just to identify them. `Release 26.05` is retained as raw metadata
-and normalized to the comparable version `2026-05` by the Freizeitkarte parser.
+and normalized to the comparable version `2026-05` by the Freizeitkarte
+parser; OpenTopoMap generated dates use its own parser, including compact
+`0YY-MM-DD` and full dates split across the two fixed header fields. A missing
+or conflicting release remains a fail-closed acquisition error.
+
+The local beta.8 Install maps flow presents an alphabetical provider dropdown
+without selecting a default provider. A batch may contain one or more maps
+from the selected provider only; rows from other providers become inactive and
+the planner rejects a defensive mixed-provider selection. Mixed-provider
+batch installation is deferred to beta.9/beta.10. OpenTopoMap's optional
+contours artifacts are catalogued, but their user-selectable installation flow
+is deferred beyond beta.8; beta.8 installs the main map artifact.
+Map rows use the country/region as the title, normalize legacy provider-
+decorated names such as `Lithuania · Otm Lithuania`, and show provider plus
+normalized release on the second line. Same-provider regional variants use a
+parenthesized qualifier only when needed.
+The owner has confirmed one-map and same-provider multi-map OTM installation,
+watch use, reconnect persistence, Manage maps discovery, one-map Remove, and
+the one-provider selection lock on the tested watch. Broader device evidence
+remains a separate release claim.
 
 For this SwiftPM PoC target, the normal SwiftUI window contains no map write or
 device modification path. The production Xcode app owns the guarded map
@@ -136,9 +166,15 @@ regression boundaries:
 These checks validate the provider-neutral catalog and acquisition seams,
 custom `.img` staging/validation, compact custom-import presentation and
 confirmation, generic provider/custom inventory grouping, optional artifact
-storage planning, and the existing Freizeitkarte path. They do not claim
-OpenTopoMap installation, custom-map visibility on real hardware, or web/API
-or `/admin` implementation. The external-map safety tests cover only the
+storage planning, model-admission safety, and the Freizeitkarte/OpenTopoMap
+source paths. The common multi-map lifecycle resolves MTP object IDs again by
+exact managed filename and validated size after a write, because some Garmin
+firmware re-enumerates handles between sessions. The owner has separately
+confirmed one OpenTopoMap installation
+and Manage maps visibility on real hardware; these native tests do not turn
+that result into a broader device-support claim or exercise the separate
+web/admin UI. The metadata API contract is covered by backend tests; these
+native tests do not exercise it. The external-map safety tests cover only the
 local one-file Remove boundary; they are not hardware evidence.
 
 To run the explicit developer-only Write Test after connecting the validated

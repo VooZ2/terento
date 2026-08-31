@@ -36,8 +36,16 @@ struct MapCatalogLoader: Sendable {
     func loadRemoteThenFallback() async throws -> MapCatalogLoadResult {
         do {
             let data = try await loadRemoteData()
+            let remoteCatalog = try decode(data)
+            // The API may roll out provider records independently from the
+            // app. Keep the remote catalog authoritative for records it knows
+            // and add only missing bundled records so a provider rollout does
+            // not make the app silently lose an enabled provider.
+            let catalog = (try? loadBundled())
+                .map { remoteCatalog.mergingSupplemental($0) }
+                ?? remoteCatalog
             return MapCatalogLoadResult(
-                catalog: try decode(data),
+                catalog: catalog,
                 source: .remote
             )
         } catch {
@@ -110,6 +118,37 @@ struct MapCatalogLoader: Sendable {
 
     private func decode(_ data: Data) throws -> MapCatalog {
         try MapCatalogDocumentDecoder().decode(data)
+    }
+}
+
+extension MapCatalog {
+    func mergingSupplemental(_ supplemental: MapCatalog) -> MapCatalog {
+        let providerIDs = Set(
+            providers.map { MapIdentity.normalizeProvider($0.id) }
+        )
+        let regionKeys = Set(regions.map { region in
+            "\(MapIdentity.normalizeProvider(region.providerId ?? "")):\(MapIdentity.normalizeRegion(region.id))"
+        })
+        let packageIDs = Set(packages.map(\.id))
+
+        let additionalProviders = supplemental.providers.filter {
+            !providerIDs.contains(MapIdentity.normalizeProvider($0.id))
+        }
+        let additionalRegions = supplemental.regions.filter { region in
+            let key = "\(MapIdentity.normalizeProvider(region.providerId ?? "")):\(MapIdentity.normalizeRegion(region.id))"
+            return !regionKeys.contains(key)
+        }
+        let additionalPackages = supplemental.packages.filter {
+            !packageIDs.contains($0.id)
+        }
+
+        return MapCatalog(
+            catalogVersion: max(catalogVersion, supplemental.catalogVersion),
+            updatedAt: max(updatedAt, supplemental.updatedAt),
+            providers: providers + additionalProviders,
+            regions: regions + additionalRegions,
+            packages: packages + additionalPackages
+        )
     }
 }
 

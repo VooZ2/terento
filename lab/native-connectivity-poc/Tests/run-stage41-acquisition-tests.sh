@@ -30,19 +30,29 @@ swiftc \
 bundled_catalog="$project_root/Sources/TerentoPoC/Resources/Maps/catalog.json"
 if ! jq -e '
     .catalogVersion == 1
-    and ([.providers[].maps[]] | length) == 63
-    and ([.providers[].maps[].id] | unique | length) == 63
+    and ([.providers[].maps[]] | length) == 240
+    and ([.providers[].maps[].id] | unique | length) == 240
+    and ([.providers[] | select(.id == "freizeitkarte")] | length) == 1
+    and ([.providers[] | select(.id == "opentopomap")] | length) == 1
     and all(.providers[].maps[];
         (.installSizeBytes | type == "number")
         and .installSizeBytes > 0
-        and (.sourceURL | startswith("https://download.freizeitkarte-osm.de/"))
+        and (.sourceURL | startswith("https://"))
     )
+    and all(.providers[] | select(.id == "freizeitkarte").maps[];
+        (.sourceURL | startswith("https://download.freizeitkarte-osm.de/"))
+    )
+    and ([.providers[] | select(.id == "opentopomap") | .maps[] | select(.id == "opentopomap-ltu")]
+        | length) == 1
+    and ([.providers[] | select(.id == "opentopomap") | .maps[] | select(.id == "opentopomap-ltu")
+        | .artifacts[] | select(.id == "opentopomap-ltu-contours" and .required == false)] | length) == 1
+    and ([.providers[] | select(.id == "opentopomap") | .maps[]] | length) == 177
 ' "$bundled_catalog" >/dev/null; then
-    print -u2 "FAIL: bundled catalog is not the complete validated API-schema snapshot"
+    print -u2 "FAIL: bundled catalog is not the complete provider-neutral snapshot"
     exit 1
 fi
 
-printf '%s\n' "PASS: bundled fallback contains all 63 downloadable packages with final IMG sizes"
+printf '%s\n' "PASS: bundled fallback contains 63 FZK + 177 OTM packages with final IMG sizes"
 
 if grep -Eq 'LibMTPBridge|MTPTransport|SendObject|DeleteObject|MoveObject|RenameObject|Backup' \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapPackageAcquisition.swift"; then

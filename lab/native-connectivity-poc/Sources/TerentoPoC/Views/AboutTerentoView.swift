@@ -15,7 +15,7 @@ enum TerentoAppMetadata {
         let label = releaseLabel?.isEmpty == false ? releaseLabel! : version
         return "Version \(label) (\(build))"
     }()
-    static let description = "Open-source macOS app for installing and managing Freizeitkarte maps on Garmin devices."
+    static let description = "Open-source macOS app for installing and managing maps on Garmin smartwatches."
 }
 
 struct AboutTerentoView: View {

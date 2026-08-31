@@ -27,6 +27,7 @@ struct Stage41AcquisitionTests {
         await testRenamedIMGIsIdentifiedByContent()
         await testCompositeRegionIdentityPasses()
         await testSplitReleaseHeaderPasses()
+        await testOpenTopoMapAcquisitionUsesOfficialURLAndIdentity()
         testRegionalProviderTokensRemainConcrete()
         testSharedCatalogRegionsUseDistinctManagedTargets()
         await testWrongIdentityIsRejected()
@@ -39,7 +40,7 @@ struct Stage41AcquisitionTests {
         await testWithheldAcquisitionFailsBeforeWorkspaceAndHTTP()
         testNoDeviceWriteDependency()
 
-        print("PASS: 23 Stage 4.1 acquisition tests")
+        print("PASS: 24 Stage 4.1 acquisition tests")
     }
 
     private static func testCatalogResolvesFrance() {
@@ -389,6 +390,58 @@ struct Stage41AcquisitionTests {
         }
     }
 
+    private static func testOpenTopoMapAcquisitionUsesOfficialURLAndIdentity() async {
+        let image = makeOpenTopoMapIMG()
+        let package = MapPackage(
+            id: "opentopomap-ltu",
+            providerId: "opentopomap",
+            regionId: "LTU",
+            name: "Lithuania",
+            version: version(2026, 5),
+            sizeBytes: UInt64(image.count),
+            sourceURL: URL(string: "https://garmin.opentopomap.org/europe/lithuania/otm-lithuania.zip"),
+            releaseDate: "2026-05-25",
+            identifier: "otm-lithuania",
+            providerRegionId: "lithuania",
+            canonicalRegionId: "LTU",
+            countryCodes: ["LT"]
+        )
+        let recorder = URLRecorder()
+
+        do {
+            let source = try temporaryFile(data: image)
+            defer { try? FileManager.default.removeItem(at: source) }
+            let workspace = try makeWorkspace()
+            defer { try? workspace.cleanup() }
+            let artifact = try await MapPackageAcquirer(
+                downloadClient: RecordingDownloadClient(
+                    recorder: recorder,
+                    response: MapPackageDownloadResponse(
+                        statusCode: 200,
+                        temporaryFileURL: source
+                    )
+                )
+            ).acquire(
+                package: package,
+                canonicalRegion: "Lithuania",
+                workspace: workspace
+            )
+            expect(
+                recorder.url == package.sourceURL
+                    && artifact.provider == "opentopomap"
+                    && artifact.region == "LTU"
+                    && artifact.version == version(2026, 5)
+                    && artifact.targetFilename == "terento_opentopomap_ltu.img",
+                "OpenTopoMap uses the official URL and the shared acquisition identity/target path"
+            )
+        } catch {
+            expect(
+                false,
+                "OpenTopoMap uses the official URL and the shared acquisition identity/target path"
+            )
+        }
+    }
+
     private static func testRegionalProviderTokensRemainConcrete() {
         let tokens = [
             "DEU+NORTH",
@@ -618,9 +671,11 @@ struct Stage41AcquisitionTests {
             let grouped = Dictionary(grouping: packages, by: resolver.availability(for:))
             let crimea = grouped[.withheldCrimea]?.first
             expect(
-                packages.count == 63
-                    && grouped[.available]?.count == 56
-                    && grouped[.withheldRussia]?.count == 6
+                packages.count == 240
+                    && packages.filter { $0.providerId == "freizeitkarte" }.count == 63
+                    && packages.filter { $0.providerId == "opentopomap" }.count == 177
+                    && grouped[.available]?.count == 231
+                    && grouped[.withheldRussia]?.count == 8
                     && grouped[.withheldCrimea]?.count == 1
                     && crimea?.name == "Russian Federation, Crimean Federal District"
                     && ["BLR", "UKR", "DEU"].allSatisfy { region in
@@ -628,10 +683,10 @@ struct Stage41AcquisitionTests {
                             resolver.availability(for: $0) == .available
                         } == true
                     },
-                "bundled catalog preserves all 63 provider records while policy withholds exactly six russia packages and Crimea"
+                "bundled catalog preserves 63 FZK plus 177 OTM packages while policy withholds russia packages and Crimea"
             )
         } catch {
-            expect(false, "bundled catalog preserves all 63 provider records while policy withholds exactly six russia packages and Crimea")
+            expect(false, "bundled catalog preserves 63 FZK plus 177 OTM packages while policy withholds russia packages and Crimea")
         }
     }
 
@@ -757,6 +812,15 @@ struct Stage41AcquisitionTests {
             )
         }
 
+        return data
+    }
+
+    private static func makeOpenTopoMapIMG() -> Data {
+        var data = Data(repeating: 0, count: 8192)
+        write("DSKIMG", at: 0x10, length: 7, into: &data)
+        write("GARMIN", at: 0x41, length: 7, into: &data)
+        write("OpenTopoMap Lithuani", at: 0x49, length: 20, into: &data)
+        write("a 2026-05-24", at: 0x65, length: 31, into: &data)
         return data
     }
 

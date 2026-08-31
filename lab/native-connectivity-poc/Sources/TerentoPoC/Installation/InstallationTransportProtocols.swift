@@ -73,6 +73,21 @@ protocol MapInstallationTransport: Sendable {
     ) throws -> MTPReadBackMapObject
 
     func deleteExact(targetFilename: String, expectedItemID: UInt32) throws
+    func deleteExact(
+        targetFilename: String,
+        expectedItemID: UInt32,
+        expectedSizeBytes: UInt64?
+    ) throws
+}
+
+extension MapInstallationTransport {
+    func deleteExact(
+        targetFilename: String,
+        expectedItemID: UInt32,
+        expectedSizeBytes: UInt64?
+    ) throws {
+        try deleteExact(targetFilename: targetFilename, expectedItemID: expectedItemID)
+    }
 }
 
 protocol InstallationInventoryReader: Sendable {

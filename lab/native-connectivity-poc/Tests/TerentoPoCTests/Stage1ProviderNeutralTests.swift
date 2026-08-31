@@ -21,9 +21,17 @@ struct Stage1ProviderNeutralTests {
         testCatalogRegionsAreProviderScoped()
         testSourceKindsKeepProviderAndCustomInputsExplicit()
         testSourcePolicyRegistryResolvesByProviderID()
+        testBundledOpenTopoMapProviderPolicy()
+        testOpenTopoMapIMGMetadataIsIdentified()
+        testOpenTopoMapCompactDateHeaderIsIdentified()
+        testOpenTopoMapSplitDateHeadersAreIdentified()
+        testEveryBundledOpenTopoMapRowAcceptsBothDateHeaderForms()
+        testBundledCatalogIncludesOpenTopoMap()
+        testBundledProvidersHaveReviewedInstallPaths()
+        testRemoteCatalogReceivesBundledProviderSupplement()
         await testDownloadFailureUsesConfirmedProviderDownState()
 
-        print("PASS: 8 Stage 1 provider-neutral core tests")
+        print("PASS: 17 Stage 1 provider-neutral core tests")
     }
 
     private static func testLegacyPackageGetsRequiredMainArtifact() {
@@ -234,6 +242,296 @@ struct Stage1ProviderNeutralTests {
         } catch {
             expect(false, "source host policy resolves by normalized provider ID")
         }
+    }
+
+    private static func testBundledOpenTopoMapProviderPolicy() {
+        let package = MapPackage(
+            id: "opentopomap-ltu",
+            providerId: "opentopomap",
+            regionId: "LTU",
+            name: "Lithuania",
+            version: version(2026, 5),
+            sizeBytes: 219_494_190,
+            sourceURL: URL(string: "https://garmin.opentopomap.org/europe/lithuania/otm-lithuania.zip"),
+            releaseDate: "2026-05-25",
+            identifier: "otm-lithuania",
+            countryCodes: ["LT"]
+        )
+        let resolver = MapPackageAcquisitionPolicyResolver()
+        let officialURL = package.sourceURL!
+
+        do {
+            try ReviewedProviderURLPolicyRegistry.bundled
+                .policy(for: package.providerId)!
+                .validate(officialURL)
+            expect(
+                resolver.canonicalIdentity(for: package)?.countryCode == "LT"
+                    && resolver.availability(for: package) == .available,
+                "bundled OpenTopoMap adapter resolves an official Lithuania package"
+            )
+        } catch {
+            expect(false, "bundled OpenTopoMap adapter resolves an official Lithuania package")
+        }
+    }
+
+    private static func testOpenTopoMapIMGMetadataIsIdentified() {
+        var bytes = Array(repeating: UInt8(0), count: 8192)
+        write("DSKIMG", at: 0x10, to: &bytes)
+        write("GARMIN", at: 0x41, to: &bytes)
+        write("OpenTopoMap Lithuani", at: 0x49, to: &bytes)
+        write("a 2026-05-24", at: 0x65, to: &bytes)
+
+        let metadata = GarminIMGMetadataParser().parse(bytes)
+        expect(
+            metadata?.provider == "OpenTopoMap"
+                && metadata?.region == "LTU"
+                && metadata?.name == "OpenTopoMap Lithuania"
+                && metadata?.version == version(2026, 5),
+            "OpenTopoMap Garmin IMG headers resolve provider, Lithuania, name, and release"
+        )
+
+        var longNameBytes = Array(repeating: UInt8(0), count: 8192)
+        write("DSKIMG", at: 0x10, to: &longNameBytes)
+        write("GARMIN", at: 0x41, to: &longNameBytes)
+        write("OpenTopoMap Saint-he", at: 0x49, to: &longNameBytes)
+        write("lena-ascension-an 2026-05-10", at: 0x65, to: &longNameBytes)
+        let longNameMetadata = GarminIMGMetadataParser().parse(
+            longNameBytes,
+            filename: "otm-saint-helena-ascension-and-tristan-da-cunha.img"
+        )
+        expect(
+            longNameMetadata?.region == "SAINTHELENAASCENSIONANDTRISTANDACUNHA",
+            "long OpenTopoMap IMG names use the exact provider filename when the fixed header is truncated"
+        )
+    }
+
+    private static func testOpenTopoMapCompactDateHeaderIsIdentified() {
+        var bytes = Array(repeating: UInt8(0), count: 8192)
+        write("DSKIMG", at: 0x10, to: &bytes)
+        write("GARMIN", at: 0x41, to: &bytes)
+        write("OpenTopoMap Azores 2", at: 0x49, to: &bytes)
+        write("026-05-24", at: 0x65, to: &bytes)
+
+        let metadata = GarminIMGMetadataParser().parse(
+            bytes,
+            filename: "otm-azores.img"
+        )
+        expect(
+            metadata?.provider == "OpenTopoMap"
+                && metadata?.region == "AZORES"
+                && metadata?.version == version(2026, 5)
+                && metadata?.rawVersion == "Generated 2026-05-24",
+            "OpenTopoMap compact Garmin date headers normalize to their 20YY release"
+        )
+    }
+
+    private static func testOpenTopoMapSplitDateHeadersAreIdentified() {
+        let parser = GarminIMGMetadataParser()
+        let cases: [(filename: String, description: String, detail: String, version: MapVersion)] = [
+            ("otm-alps.img", "OpenTopoMap Alps 202", "6-05-24", version(2026, 5)),
+            ("otm-benin.img", "OpenTopoMap Benin 20", "26-08-26", version(2026, 8))
+        ]
+
+        let allCasesPass = cases.allSatisfy { item in
+            var bytes = Array(repeating: UInt8(0), count: 8192)
+            write("DSKIMG", at: 0x10, to: &bytes)
+            write("GARMIN", at: 0x41, to: &bytes)
+            write(item.description, at: 0x49, to: &bytes)
+            write(item.detail, at: 0x65, to: &bytes)
+
+            let metadata = parser.parse(bytes, filename: item.filename)
+            return metadata?.provider == "OpenTopoMap"
+                && metadata?.version == item.version
+        }
+
+        expect(
+            allCasesPass,
+            "OpenTopoMap dates split across fixed IMG header fields normalize before version validation"
+        )
+    }
+
+    private static func testEveryBundledOpenTopoMapRowAcceptsBothDateHeaderForms() {
+        do {
+            let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            let data = try Data(contentsOf: root.appendingPathComponent(
+                "Sources/TerentoPoC/Resources/Maps/catalog.json"
+            ))
+            let catalog = try MapCatalogDocumentDecoder().decode(data)
+            let packages = catalog.packages.filter { $0.providerId == "opentopomap" }
+            let parser = GarminIMGMetadataParser()
+            let versionParser = OpenTopoMapVersionParser()
+
+            let allRowsPass = packages.count == 177 && packages.allSatisfy { package in
+                let providerRegion = package.providerRegionId
+                let canonicalRegion = package.canonicalRegionId
+                let version = package.version
+                let day = 24
+                let fullDate = String(format: "%04d-%02d-%02d", version.year, version.month, day)
+                let compactDate = String(format: "0%02d-%02d-%02d", version.year % 100, version.month, day)
+                let filename = "otm-\(providerRegion).img"
+
+                let fullVersion = versionParser.parse("Generated \(fullDate)")
+                let compactVersion = versionParser.parse("Generated \(compactDate)")
+                let fullMetadata = parser.parse(
+                    makeOpenTopoMapIMG(date: fullDate),
+                    filename: filename
+                )
+                let compactMetadata = parser.parse(
+                    makeOpenTopoMapIMG(date: compactDate),
+                    filename: filename
+                )
+                let splitMetadata = [
+                    makeOpenTopoMapIMG(
+                        description: "OpenTopoMap test 202",
+                        detail: "6-\(String(format: "%02d", version.month))-24"
+                    ),
+                    makeOpenTopoMapIMG(
+                        description: "OpenTopoMap test-#20",
+                        detail: "26-\(String(format: "%02d", version.month))-26"
+                    )
+                ].compactMap {
+                    parser.parse($0, filename: filename)
+                }
+
+                return fullVersion == version
+                    && compactVersion == version
+                    && fullMetadata?.provider == "OpenTopoMap"
+                    && compactMetadata?.provider == "OpenTopoMap"
+                    && fullMetadata?.region == canonicalRegion
+                    && compactMetadata?.region == canonicalRegion
+                    && fullMetadata?.version == version
+                    && compactMetadata?.version == version
+                    && splitMetadata.count == 2
+                    && splitMetadata.allSatisfy {
+                        $0.provider == "OpenTopoMap"
+                            && $0.region == canonicalRegion
+                            && $0.version == version
+                    }
+                    && package.mainArtifact?.version == version
+                    && package.optionalArtifacts.allSatisfy {
+                        $0.kind == .contours && $0.required == false && $0.version != nil
+                    }
+            }
+
+            let contourRows = packages.flatMap(\.optionalArtifacts).filter { $0.kind == .contours }
+            expect(
+                allRowsPass && contourRows.count == 176,
+                "all 177 OpenTopoMap rows accept full, compact, and split generated dates with strict identity/version checks"
+            )
+        } catch {
+            expect(
+                false,
+                "all 177 OpenTopoMap rows accept full, compact, and split generated dates with strict identity/version checks"
+            )
+        }
+    }
+
+    private static func testBundledCatalogIncludesOpenTopoMap() {
+        do {
+            let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            let data = try Data(contentsOf: root.appendingPathComponent(
+                "Sources/TerentoPoC/Resources/Maps/catalog.json"
+            ))
+            let catalog = try MapCatalogDocumentDecoder().decode(data)
+            let package = catalog.packages.first { $0.id == "opentopomap-ltu" }
+            let openTopoMapPackages = catalog.packages.filter {
+                $0.providerId == "opentopomap"
+            }
+            expect(catalog.providers.contains { $0.id == "opentopomap" }, "the bundled catalog exposes OpenTopoMap")
+            expect(openTopoMapPackages.count == 177, "the bundled catalog exposes all 177 OpenTopoMap Garmin rows")
+            expect(
+                package?.sourceURL?.host == "garmin.opentopomap.org"
+                    && package?.optionalArtifacts.contains { $0.kind == .contours } == true,
+                "the OpenTopoMap Lithuania entry keeps its official source and optional contours"
+            )
+        } catch {
+            print("Catalog decode error: \(error)")
+            expect(false, "the bundled OpenTopoMap catalogue decodes")
+        }
+    }
+
+    private static func testBundledProvidersHaveReviewedInstallPaths() {
+        do {
+            let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            let data = try Data(contentsOf: root.appendingPathComponent(
+                "Sources/TerentoPoC/Resources/Maps/catalog.json"
+            ))
+            let catalog = try MapCatalogDocumentDecoder().decode(data)
+            let providerIDs = Set(catalog.providers.map { MapIdentity.normalizeProvider($0.id) })
+            let registry = MapProviderRegistry.bundled
+            let sourcePolicies = ReviewedProviderURLPolicyRegistry.bundled
+            let allProvidersRegistered = providerIDs.allSatisfy {
+                registry.adapter(for: $0) != nil && sourcePolicies.policy(for: $0) != nil
+            }
+            let allPackageSourcesReviewed = catalog.packages.allSatisfy { package in
+                guard let sourceURL = package.downloadURL,
+                      let policy = sourcePolicies.policy(for: package.providerId) else {
+                    return false
+                }
+                do {
+                    try policy.validate(sourceURL)
+                    return true
+                } catch {
+                    return false
+                }
+            }
+            expect(
+                allProvidersRegistered && allPackageSourcesReviewed,
+                "every bundled provider and package uses a reviewed common install path"
+            )
+        } catch {
+            expect(false, "every bundled provider and package uses a reviewed common install path")
+        }
+    }
+
+    private static func testRemoteCatalogReceivesBundledProviderSupplement() {
+        do {
+            let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            let data = try Data(contentsOf: root.appendingPathComponent(
+                "Sources/TerentoPoC/Resources/Maps/catalog.json"
+            ))
+            let bundled = try MapCatalogDocumentDecoder().decode(data)
+            let remote = MapCatalog(
+                catalogVersion: bundled.catalogVersion,
+                updatedAt: bundled.updatedAt,
+                providers: bundled.providers.filter { $0.id == "freizeitkarte" },
+                regions: bundled.regions.filter { $0.providerId == "freizeitkarte" },
+                packages: bundled.packages.filter { $0.providerId == "freizeitkarte" }
+            )
+            let merged = remote.mergingSupplemental(bundled)
+            expect(
+                merged.providers.map(\.id).contains("opentopomap")
+                    && merged.packages.contains { $0.id == "opentopomap-ltu" },
+                "a live catalog without OTM keeps the bundled OTM provider visible"
+            )
+        } catch {
+            expect(false, "a live catalog without OTM keeps the bundled OTM provider visible")
+        }
+    }
+
+    private static func write(_ value: String, at offset: Int, to bytes: inout [UInt8]) {
+        for (index, byte) in value.utf8.enumerated() {
+            bytes[offset + index] = byte
+        }
+    }
+
+    private static func makeOpenTopoMapIMG(date: String) -> [UInt8] {
+        makeOpenTopoMapIMG(
+            description: "OpenTopoMap test",
+            detail: date
+        )
+    }
+
+    private static func makeOpenTopoMapIMG(
+        description: String,
+        detail: String
+    ) -> [UInt8] {
+        var bytes = Array(repeating: UInt8(0), count: 8192)
+        write("DSKIMG", at: 0x10, to: &bytes)
+        write("GARMIN", at: 0x41, to: &bytes)
+        write(description, at: 0x49, to: &bytes)
+        write(detail, at: 0x65, to: &bytes)
+        return bytes
     }
 
     private static func testDownloadFailureUsesConfirmedProviderDownState() async {

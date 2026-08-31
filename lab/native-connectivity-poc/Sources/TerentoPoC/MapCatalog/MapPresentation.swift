@@ -39,8 +39,12 @@ enum MapDisplayNameNormalizer: Sendable {
         "KGD": "Kaliningrad"
     ]
 
-    static func normalize(_ value: String) -> String {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    static func normalize(_ value: String, providerID: String? = nil) -> String {
+        var trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let providerID {
+            trimmed = stripProviderDecoration(trimmed, providerID: providerID)
+        }
+
         if let formalName = formalNames[trimmed] {
             return formalName
         }
@@ -54,27 +58,33 @@ enum MapDisplayNameNormalizer: Sendable {
         return trimmed
     }
 
-    /// Returns one display title per catalog package. Duplicate formal names
-    /// are made distinct only with identifiers already supplied by the
-    /// catalog; no geographic coverage is inferred.
+    /// Returns one display title per catalog package. Duplicate names are
+    /// scoped to one provider because the provider is already rendered in
+    /// the row detail. Only variants within the same provider get a region
+    /// qualifier; cross-provider names remain the same country title.
     static func displayNames(for packages: [MapPackage]) -> [String: String] {
         let baseNames = Dictionary(uniqueKeysWithValues: packages.map {
-            ($0.id, normalize($0.name))
+            ($0.id, baseDisplayName(for: $0))
         })
-        let duplicateBases = Set(
-            Dictionary(grouping: packages, by: { baseNames[$0.id] ?? $0.name })
+        let duplicateProviderNames = Set(
+            Dictionary(grouping: packages, by: { package in
+                duplicateKey(
+                    for: package,
+                    base: baseNames[package.id] ?? package.name
+                )
+            })
                 .filter { $0.value.count > 1 }
                 .keys
         )
 
         return Dictionary(uniqueKeysWithValues: packages.map { package in
             let base = baseNames[package.id] ?? package.name
-            guard duplicateBases.contains(base) else {
+            guard duplicateProviderNames.contains(duplicateKey(for: package, base: base)) else {
                 return (package.id, base)
             }
 
             let suffix = identifierSuffix(for: package)
-            return (package.id, suffix.isEmpty ? "\(base) · \(package.regionId)" : "\(base) · \(suffix)")
+            return (package.id, suffix.isEmpty ? "\(base) (\(package.regionId))" : "\(base) (\(suffix))")
         })
     }
 
@@ -118,6 +128,103 @@ enum MapDisplayNameNormalizer: Sendable {
             .split(separator: " ")
             .map { suffixNames[String($0)] ?? String($0).capitalized }
             .joined(separator: " ")
+    }
+
+    /// Older remote catalogs used provider-decorated names such as
+    /// `Lithuania · Otm Lithuania` or `OpenTopoMap Lithuania`. Keep that
+    /// metadata for diagnostics, but never let it become the country title.
+    private static func baseDisplayName(for package: MapPackage) -> String {
+        let rawName = package.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let fragments = rawName
+            .split(separator: "·", omittingEmptySubsequences: true)
+            .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+
+        let candidate: String
+        if fragments.count > 1 {
+            let leading = fragments[0]
+            let suffix = fragments.dropFirst().joined(separator: " · ")
+            if isProviderDecoration(suffix, providerID: package.providerId)
+                || isRegionDecoration(suffix, package: package) {
+                candidate = leading
+            } else {
+                candidate = rawName
+            }
+        } else {
+            candidate = rawName
+        }
+
+        return normalize(candidate, providerID: package.providerId)
+    }
+
+    private static func stripProviderDecoration(
+        _ value: String,
+        providerID: String
+    ) -> String {
+        let fragments = value
+            .split(separator: "·", omittingEmptySubsequences: true)
+            .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+        if fragments.count > 1 {
+            let suffix = fragments.dropFirst().joined(separator: " · ")
+            if isProviderDecoration(suffix, providerID: providerID) {
+                return fragments[0]
+            }
+        }
+
+        let lowercased = value.lowercased()
+        for prefix in providerPrefixes(for: providerID) {
+            if lowercased.hasPrefix(prefix) {
+                let stripped = String(value.dropFirst(prefix.count))
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                if !stripped.isEmpty {
+                    return stripped
+                }
+            }
+        }
+        return value
+    }
+
+    private static func isProviderDecoration(
+        _ value: String,
+        providerID: String
+    ) -> Bool {
+        let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lowercased = normalized.lowercased()
+        return providerPrefixes(for: providerID).contains {
+            lowercased.hasPrefix($0)
+        }
+    }
+
+    private static func isRegionDecoration(
+        _ value: String,
+        package: MapPackage
+    ) -> Bool {
+        let normalizedValue = normalizeToken(value)
+        guard !normalizedValue.isEmpty else { return false }
+
+        return [package.regionId, package.providerRegionId, package.identifier]
+            .compactMap { $0 }
+            .contains { normalizeToken($0) == normalizedValue }
+    }
+
+    private static func providerPrefixes(for providerID: String) -> [String] {
+        switch MapIdentity.normalizeProvider(providerID) {
+        case "freizeitkarte":
+            return ["freizeitkarte ", "fzk "]
+        case "opentopomap":
+            return ["opentopomap ", "otm "]
+        default:
+            return []
+        }
+    }
+
+    private static func normalizeToken(_ value: String) -> String {
+        value
+            .lowercased()
+            .filter { $0.isLetter || $0.isNumber }
+    }
+
+    private static func duplicateKey(for package: MapPackage, base: String) -> String {
+        "\(MapIdentity.normalizeProvider(package.providerId)):\(base.lowercased())"
     }
 }
 

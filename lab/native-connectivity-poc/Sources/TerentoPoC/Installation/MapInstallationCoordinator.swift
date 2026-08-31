@@ -128,7 +128,11 @@ protocol MapInstallationArtifactValidator: Sendable {
 /// user-confirmed custom IMG files to use their own validated identity, size,
 /// hash, and managed filename.
 struct Stage42ArtifactValidator: MapInstallationArtifactValidator, Sendable {
-    static let allowedProvider = "freizeitkarte"
+    private let providerRegistry: MapProviderRegistry
+
+    init(providerRegistry: MapProviderRegistry = .bundled) {
+        self.providerRegistry = providerRegistry
+    }
 
     func validate(artifact: ValidatedMapArtifact, package: MapPackage) throws {
         if package.sourceKind == .custom {
@@ -140,12 +144,17 @@ struct Stage42ArtifactValidator: MapInstallationArtifactValidator, Sendable {
             providerId: package.providerId,
             regionId: package.canonicalRegionId
         )
+        let packageProvider = MapIdentity.normalizeProvider(package.providerId)
+        let artifactProvider = MapIdentity.normalizeProvider(artifact.provider)
 
         guard !package.id.isEmpty,
-              MapIdentity.normalizeProvider(package.providerId) == Self.allowedProvider,
+              package.sourceKind == .provider,
+              !packageProvider.isEmpty,
+              providerRegistry.adapter(for: packageProvider) != nil,
               !package.regionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               artifact.catalogPackageID == package.id,
-              MapIdentity.normalizeProvider(artifact.provider) == Self.allowedProvider,
+              artifact.sourceKind == .provider,
+              artifactProvider == packageProvider,
               let expectedIdentity = package.identity,
               MapIdentity.normalizeRegion(artifact.region)
                 == expectedIdentity.region,
@@ -615,7 +624,7 @@ struct MapInstallationCoordinator: Sendable {
                     transaction: &transaction,
                     preflight: preflight,
                     diagnostics: verifiedDiagnostics,
-                    remoteObjectID: written.itemID,
+                    remoteObjectID: readBack.itemID,
                     shouldCleanup: true,
                     verification: verification,
                     recoveryRecord: recoveryRecord
@@ -637,7 +646,7 @@ struct MapInstallationCoordinator: Sendable {
                         version: metadataResult.version,
                         warning: metadataResult.warning
                     ),
-                    remoteObjectID: written.itemID,
+                    remoteObjectID: readBack.itemID,
                     shouldCleanup: true,
                     verification: verification,
                     recoveryRecord: recoveryRecord
@@ -656,7 +665,7 @@ struct MapInstallationCoordinator: Sendable {
                     transaction: &transaction,
                     preflight: preflight,
                     diagnostics: verifiedDiagnostics,
-                    remoteObjectID: written.itemID,
+                    remoteObjectID: readBack.itemID,
                     shouldCleanup: true,
                     verification: verification,
                     recoveryRecord: recoveryRecord
@@ -664,14 +673,17 @@ struct MapInstallationCoordinator: Sendable {
             }
 
             guard let targetObject = afterFiles.first(where: {
-                $0.path == targetPath && $0.itemID == written.itemID
+                !$0.isFolder
+                    && $0.path == targetPath
+                    && $0.filename == targetFilename
+                    && $0.sizeBytes == artifact.installSizeBytes
             }) else {
                 return failureResult(
                     failure: .remoteFileMissing,
                     transaction: &transaction,
                     preflight: preflight,
                     diagnostics: verifiedDiagnostics,
-                    remoteObjectID: written.itemID,
+                    remoteObjectID: readBack.itemID,
                     shouldCleanup: true,
                     verification: verification,
                     recoveryRecord: recoveryRecord
@@ -683,7 +695,7 @@ struct MapInstallationCoordinator: Sendable {
                 before: request.beforeDeviceFiles,
                 after: afterFiles,
                 targetPath: targetPath,
-                expectedItemID: written.itemID,
+                expectedItemID: targetObject.itemID,
                 expectedFilename: targetFilename,
                 expectedSizeBytes: artifact.installSizeBytes
             )
@@ -697,7 +709,7 @@ struct MapInstallationCoordinator: Sendable {
                         unrelatedUnchanged: false,
                         freeSpaceAfter: afterSnapshot.freeSpace
                     ),
-                    remoteObjectID: written.itemID,
+                    remoteObjectID: targetObject.itemID,
                     shouldCleanup: true,
                     verification: verification,
                     recoveryRecord: recoveryRecord
@@ -913,7 +925,8 @@ struct MapInstallationCoordinator: Sendable {
                 }
                 try transport.deleteExact(
                     targetFilename: cleanupFilename,
-                    expectedItemID: remoteObjectID
+                    expectedItemID: remoteObjectID,
+                    expectedSizeBytes: recoveryRecord?.sizeBytes
                 )
                 if let recoveryRecord {
                     _ = try? recoveryStore.remove(
@@ -1077,7 +1090,10 @@ struct MapInstallationCoordinator: Sendable {
                 from: url,
                 maxLength: GarminIMGMetadataParser.prefixLength
             )
-            guard let metadata = GarminIMGMetadataParser().parse(prefix) else {
+            guard let metadata = GarminIMGMetadataParser().parse(
+                prefix,
+                filename: url.lastPathComponent
+            ) else {
                 return MetadataResult(
                     provider: nil,
                     region: nil,
@@ -1172,7 +1188,9 @@ struct MapInstallationCoordinator: Sendable {
             name: isCustom ? "Custom map" : (metadata.name ?? package.name),
             provider: isCustom ? nil : (metadata.provider ?? artifact.provider),
             region: isCustom ? nil : (metadata.region ?? artifact.region),
-            family: isCustom ? (metadata.family ?? "Custom map") : (metadata.family ?? "Freizeitkarte_\(artifact.region)+"),
+            family: isCustom
+                ? (metadata.family ?? "Custom map")
+                : (metadata.family ?? artifact.provider),
             rawVersion: metadata.rawVersion ?? artifact.rawRelease,
             version: metadata.version ?? artifact.version,
             identifier: package.identifier,
@@ -1225,9 +1243,11 @@ struct MapInstallationCoordinator: Sendable {
         live: [DeviceFile],
         targetPath: String
     ) -> Bool {
-        // The target must still be absent immediately before the write. All
-        // existing objects must retain their full stable identity. DeviceFile
-        // has no volatile timestamp field, so it is intentionally excluded.
+        // The target must still be absent immediately before the write. Some
+        // Garmin firmware re-enumerates MTP object IDs after a new file is
+        // committed, so the protection comparison uses the stable file
+        // identity (storage, parent, path, filename, size and kind) rather
+        // than a session-scoped object handle.
         guard !live.contains(where: { $0.path == targetPath }) else {
             return false
         }
@@ -1238,7 +1258,7 @@ struct MapInstallationCoordinator: Sendable {
     }
 
     private static func comparable(_ file: DeviceFile) -> String {
-        "\(file.storageID)|\(file.itemID)|\(file.parentID)|\(file.path)|\(file.filename)|\(file.sizeBytes)|\(file.isFolder)"
+        "\(file.storageID)|\(file.parentID)|\(file.path)|\(file.filename)|\(file.sizeBytes)|\(file.isFolder)"
     }
 
     private func elapsedMilliseconds(since start: ContinuousClock.Instant) -> UInt64 {

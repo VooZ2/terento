@@ -657,6 +657,11 @@ final class MapEngine: ObservableObject {
         loadedCatalog?.packages.count ?? 0
     }
 
+    var availableMapProviders: [MapProvider] {
+        guard let loadedCatalog else { return [] }
+        return loadedCatalog.sortedProviders
+    }
+
     /// The canonical, catalog-backed list for the Choose screen. Unlike the
     /// diagnostic inventory, this list contains one row per provider/region
     /// and never adds a second row for an installed file.

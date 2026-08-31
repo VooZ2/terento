@@ -2,6 +2,51 @@ import Foundation
 
 /// Pure list rules keep UI partitioning and search deterministic and testable.
 enum MapSelectionPresentationModel: Sendable {
+    /// Beta.8 permits one provider per installation batch. The first selected
+    /// provider therefore locks rows from other providers until the current
+    /// selection is cleared. Custom files are provider-neutral and remain
+    /// selectable alongside one provider.
+    static func selectionProviderID(
+        selectedIDs: Set<String>,
+        items: [MapSelectionItem]
+    ) -> String? {
+        let providerIDs = Set(
+            items
+                .filter { selectedIDs.contains($0.id) && $0.package.sourceKind == .provider }
+                .map { MapIdentity.normalizeProvider($0.package.providerId) }
+        )
+        guard providerIDs.count == 1 else { return nil }
+        return providerIDs.first
+    }
+
+    static func isSelectionEnabled(
+        _ item: MapSelectionItem,
+        selectedIDs: Set<String>,
+        items: [MapSelectionItem]
+    ) -> Bool {
+        guard item.isSelectable else { return false }
+        guard item.package.sourceKind == .provider else { return true }
+
+        let selectedProviderIDs = Set(
+            items
+                .filter { selectedIDs.contains($0.id) && $0.package.sourceKind == .provider }
+                .map { MapIdentity.normalizeProvider($0.package.providerId) }
+        )
+
+        if selectedProviderIDs.count > 1 {
+            // Recoverable defensive state: allow deselection of the already
+            // selected rows, but prevent adding another provider.
+            return selectedIDs.contains(item.id)
+        }
+
+        guard let selectedProviderID = selectedProviderIDs.first else {
+            return true
+        }
+
+        return selectedIDs.contains(item.id)
+            || MapIdentity.normalizeProvider(item.package.providerId) == selectedProviderID
+    }
+
     static func validSelectionIDs(
         _ selectedIDs: Set<String>,
         items: [MapSelectionItem]

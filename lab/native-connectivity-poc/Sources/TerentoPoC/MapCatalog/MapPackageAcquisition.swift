@@ -146,6 +146,10 @@ struct ReviewedProviderURLPolicy: Sendable {
         allowedHosts: ["download.freizeitkarte-osm.de"]
     )
 
+    static let openTopoMap = ReviewedProviderURLPolicy(
+        allowedHosts: ["garmin.opentopomap.org"]
+    )
+
     let allowedHosts: Set<String>
 
     init(allowedHosts: Set<String>) {
@@ -170,7 +174,10 @@ struct ReviewedProviderURLPolicy: Sendable {
 /// this registry without changing the acquisition pipeline.
 struct ReviewedProviderURLPolicyRegistry: Sendable {
     static let bundled = ReviewedProviderURLPolicyRegistry(
-        policies: ["freizeitkarte": .freizeitkarte]
+        policies: [
+            "freizeitkarte": .freizeitkarte,
+            "opentopomap": .openTopoMap
+        ]
     )
 
     private let policies: [String: ReviewedProviderURLPolicy]
@@ -1311,7 +1318,10 @@ struct MapPackageAcquirer: Sendable {
             from: fileURL,
             maxLength: GarminIMGMetadataParser.prefixLength
         )
-        guard let metadata = parser.parse(prefix) else {
+        guard let metadata = parser.parse(
+            prefix,
+            filename: fileURL.lastPathComponent
+        ) else {
             throw MapAcquisitionError.invalidPackage("The IMG header could not be parsed.")
         }
         return metadata

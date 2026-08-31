@@ -106,7 +106,7 @@ struct MapLifecycleItem: Identifiable, Equatable, Sendable {
             return "Not installed"
         }
 
-        if let versionLabel = rawVersion ?? version?.description {
+        if let versionLabel = version?.description ?? rawVersion {
             return "Installed · \(versionLabel)"
         }
 
@@ -121,10 +121,10 @@ struct MapLifecycleItem: Identifiable, Equatable, Sendable {
             return "Not installed"
         }
 
-        let release = rawVersion ?? version?.description
         if failedInstallRecovery != nil {
-            return release.map { "Incomplete installation · \($0)" }
-                ?? "Incomplete installation"
+            let values = [providerVersionLabel, "Incomplete installation"]
+                .compactMap { $0 }
+            return values.joined(separator: " · ")
         }
 
         switch classification {
@@ -132,14 +132,35 @@ struct MapLifecycleItem: Identifiable, Equatable, Sendable {
             if sourceKind == .custom {
                 return "Installed · From this Mac"
             }
-            return release.map { "Installed · \($0)" } ?? "Installed"
+            return [providerVersionLabel, "Installed"].compactMap { $0 }.joined(separator: " · ")
         case .externalRecognized:
-            return "Installed · Third-party map"
+            return [providerVersionLabel, "Installed · Third-party map"]
+                .compactMap { $0 }
+                .joined(separator: " · ")
         case .ambiguous:
             return "Installed · Read-only"
         case .system:
             return "Installed · Read-only"
         }
+    }
+
+    private var providerVersionLabel: String? {
+        guard sourceKind == .provider else { return nil }
+        let providerName: String
+        switch MapIdentity.normalizeProvider(provider ?? "") {
+        case "freizeitkarte":
+            providerName = "Freizeitkarte"
+        case "opentopomap":
+            providerName = "OpenTopoMap"
+        default:
+            providerName = provider?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        }
+
+        let values = [
+            providerName.isEmpty ? nil : providerName,
+            version?.description ?? rawVersion
+        ].compactMap { $0 }
+        return values.isEmpty ? nil : values.joined(separator: " · ")
     }
 
     var noteLabel: String {

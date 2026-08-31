@@ -235,12 +235,12 @@ struct MapInventoryListBuilder: Sendable {
             if let comparison {
                 let displayName = displayNames[comparison.catalogMap.id]
                     ?? MapDisplayNameNormalizer.normalize(comparison.catalogMap.name)
-                let providerName = comparison.providerName.trimmingCharacters(
-                    in: .whitespacesAndNewlines
-                )
-                title = providerName.isEmpty ? displayName : "\(providerName) \(displayName)"
+                title = displayName
             } else if let installedMap = installedMaps.first {
-                title = installedMap.name
+                title = providerNeutralTitle(
+                    for: installedMap,
+                    providerID: providerID
+                )
             } else {
                 return nil
             }
@@ -276,6 +276,17 @@ struct MapInventoryListBuilder: Sendable {
             title: title,
             entries: entries
         )
+    }
+
+    private func providerNeutralTitle(
+        for map: InstalledMap,
+        providerID: String
+    ) -> String {
+        let title = MapDisplayNameNormalizer.normalize(
+            map.name,
+            providerID: providerID
+        )
+        return title.isEmpty ? map.sourceFile.filename : title
     }
 
     private func buildOtherMapEntries(_ maps: [InstalledMap]) -> [MapInventoryEntry] {

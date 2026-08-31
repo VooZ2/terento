@@ -73,18 +73,21 @@ enum TerentoDiagnosticLog {
         if let result {
             lines.append("Installation result: \(result.status.rawValue)")
             lines.append("Installation failure: \(result.failure?.rawValue ?? "none")")
+            lines.append("Original failure: \(result.originalFailure?.rawValue ?? "none")")
+            lines.append("Cleanup failure: \(result.cleanupFailure?.rawValue ?? "none")")
             lines.append("Remote object exists: \(result.diagnostics.remoteObjectExists)")
             lines.append("Source IMG bytes: \(result.diagnostics.sourceSizeBytes)")
             lines.append("Transfer callback bytes: \(result.diagnostics.bytesTransferred)/\(result.diagnostics.transferTotalBytes)")
             lines.append("Remote object bytes: \(result.diagnostics.remoteSizeBytes.map(String.init) ?? "none")")
             lines.append("Target path: \(result.diagnostics.targetPath ?? "none")")
+            lines.append("Native failure code: \(result.diagnostics.nativeFailureCode?.rawValue ?? "none")")
             if let metadataWarning = result.diagnostics.metadataWarning {
                 lines.append("Metadata warning: \(metadataWarning)")
             }
         }
 
         if let inventory {
-            lines.append("Scanned Freizeitkarte maps:")
+            lines.append("Scanned recognized provider maps:")
             if inventory.scan.installedMaps.isEmpty {
                 lines.append("- none")
             } else {
@@ -136,10 +139,10 @@ enum TerentoDiagnosticLog {
             "Trigger: \(trigger)",
             "Device files: \(inventory.deviceFiles.count)",
             "Inspected map files: \(inventory.scan.files.count)",
-            "Freizeitkarte maps: \(inventory.scan.installedMaps.count)",
+            "Recognized provider maps: \(inventory.scan.installedMaps.count)",
             "Other maps: \(inventory.scan.otherMaps.count)",
             "Parsing failures: \(inventory.scan.parsingFailures)",
-            "Skipped Garmin-owned files: \(inventory.scan.skippedNonFreizeitkarteFiles)",
+            "Skipped unrecognized/system files: \(inventory.scan.skippedUnrecognizedProviderFiles)",
             "Device file inventory:"
         ]
 
@@ -151,7 +154,7 @@ enum TerentoDiagnosticLog {
             })
         }
 
-        lines.append("Scanned Freizeitkarte maps:")
+        lines.append("Scanned recognized provider maps:")
         if inventory.scan.installedMaps.isEmpty {
             lines.append("- none")
         } else {

@@ -57,7 +57,7 @@ enum InstallationFailure: String, Codable, Error, Equatable, Sendable {
         case .remoteFileMissing:
             return "The transferred map could not be found on the Garmin device."
         case .metadataMismatch:
-            return "The transferred map identity did not match the selected Freizeitkarte map."
+            return "The transferred map identity did not match the selected map."
         case .manifestFailed:
             return "The map was transferred, but local ownership could not be recorded safely."
         case .protectionViolation:
