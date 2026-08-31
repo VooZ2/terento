@@ -6,7 +6,7 @@ const root = path.resolve(__dirname, "..");
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 const styles = read("site/styles.css");
 const styleVersion = "20260830-brand-tokens";
-const localizedContentVersion = "20260830-download-links";
+const localizedContentVersion = "20260831-beta8-copy-final";
 
 const cssBlock = (selector) => {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

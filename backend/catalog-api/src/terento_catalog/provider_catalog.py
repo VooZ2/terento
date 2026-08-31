@@ -125,6 +125,14 @@ KNOWN_PROVIDER_DEFINITIONS: dict[str, ProviderDefinition] = {
 # validation contract is accepted.
 OPENTOPO_MAP_BETA8_MAIN_PACKAGE_COUNT = 177
 
+# The beta.8 product policy needs a canonical identity for explicit OTM
+# russia packages. Other OTM regions may continue without country codes until
+# a reviewed complete geographic mapping is available.
+OPENTOPO_MAP_POLICY_COUNTRY_CODES: dict[str, tuple[str, ...]] = {
+    "russia-asian-part": ("RU",),
+    "russia-european-part": ("RU",),
+}
+
 
 class FreizeitkarteProviderAdapter:
     definition = FREIZEITKARTE
@@ -316,7 +324,9 @@ class OpenTopoMapProviderAdapter:
                     generated_at=source_updated_at,
                     source_updated_at=source_updated_at,
                     availability="AVAILABLE",
-                    country_codes=(),
+                    country_codes=OPENTOPO_MAP_POLICY_COUNTRY_CODES.get(
+                        value["provider_region_id"], ()
+                    ),
                     region_kind="multiCountry",
                     tags=(),
                     capabilities=tuple(artifact.kind for artifact in artifacts),

@@ -73,16 +73,18 @@ if [[ "$(grep -Fc 'MapSelectionStorageSummary(' "$connect_screen")" -lt 2 ]]; th
     exit 1
 fi
 
-if ! grep -Fq 'Terento will install these maps to your Garmin.' "$connect_screen" \
-    || ! grep -Fq 'Existing Garmin maps will not be changed.' "$connect_screen" \
+if ! grep -Fq 'Text("Terento will install these maps to your Garmin. Existing Garmin maps will not be changed.")' "$connect_screen" \
     || grep -Fq 'Terento will install the selected maps to your Garmin.' "$connect_screen" \
     || grep -Fq 'Existing Garmin system maps are left unchanged.' "$connect_screen"; then
     print -u2 "FAIL: Review safety disclosure is missing"
     exit 1
 fi
 
-if ! grep -Fq 'Text("Help improve Terento")' "$connect_screen" \
-    || ! grep -Fq 'Share anonymous installation data to help us understand device compatibility and improve support for other Garmin users.' "$connect_screen" \
+if ! grep -Fq 'Text("Help improve Garmin compatibility")' "$connect_screen" \
+    || ! grep -Fq 'Share anonymous installation results to help improve Garmin compatibility.' "$connect_screen" \
+    || ! grep -Fq 'Text("Share anonymous map statistics")' "$connect_screen" \
+    || ! grep -Fq 'This is off until you choose it.' "$connect_screen" \
+    || ! grep -Fq '.tint(TerentoColors.interactive)' "$connect_screen" \
     || grep -Fq 'Help improve Terento for other watch owners' "$connect_screen" \
     || grep -Fq 'No Garmin Unit ID or serial number is collected.' "$connect_screen"; then
     print -u2 "FAIL: Review compatibility opt-in copy is too long or outdated"
@@ -96,9 +98,9 @@ if grep -Fq 'shareCompatibilityEvidence' "$connect_screen" \
     exit 1
 fi
 
-if ! grep -Fq 'else if plan.storagePlan.status == .blockedInsufficientSpace' "$connect_screen" \
-    || grep -Fq 'if let reason = installAvailability.userReason' "$connect_screen"; then
-    print -u2 "FAIL: Review warning is not limited to insufficient storage"
+if ! grep -Fq 'else if let reason = installAvailability.userReason' "$connect_screen" \
+    || grep -Fq 'else if plan.storagePlan.status == .blockedInsufficientSpace' "$connect_screen"; then
+    print -u2 "FAIL: Review warning does not show the applicable disabled-install reason"
     exit 1
 fi
 
@@ -117,7 +119,8 @@ fi
 
 if ! grep -Fq 'return "No maps are available."' "$connect_screen" \
     || ! grep -Fq 'return "No maps are available from \(selectedMapProviderLabel)."' "$connect_screen" \
-    || ! grep -Fq 'Text(selectedMapProviderLabel)' "$connect_screen" \
+    || ! grep -Fq '.labelsHidden()' "$connect_screen" \
+    || ! grep -Fq '.accessibilityLabel("Map provider")' "$connect_screen" \
     || grep -Fq 'Button("Manage maps")' "$connect_screen" \
     || ! grep -Fq 'baseDetail = "Already installed"' "$connect_screen" \
     || ! grep -Fq 'return item.comparison.installedMap == nil' \
@@ -133,8 +136,11 @@ if ! grep -Fq 'case .update:' "$connect_screen" \
 fi
 
 if ! grep -Fq 'InstallReviewAvailabilityResolver' "$connect_screen" \
-    || ! grep -Fq 'frame(height: selectedMapListHeight)' "$connect_screen" \
-    || ! grep -Fq 'padding(.top, 10)' "$connect_screen"; then
+    || ! grep -Fq 'ReadyToInstallSelectedMapsHeader(count: plan.selectedItems.count)' "$connect_screen" \
+    || ! grep -Fq 'ReadyToInstallSelectedMapsList(items: plan.selectedItems)' "$connect_screen" \
+    || ! grep -Fq 'private static let visibleRowCapacity = 3' "$connect_screen" \
+    || ! grep -Fq 'idealHeight: Self.maximumListHeight' "$connect_screen" \
+    || ! grep -Fq 'Spacer(minLength: TerentoPageLayout.sectionSpacing)' "$connect_screen"; then
     print -u2 "FAIL: Review CTA or content-aware selected-map sizing is missing"
     exit 1
 fi
@@ -146,8 +152,8 @@ if grep -Fq 'This map cannot be installed safely from this flow yet.' "$connect_
     exit 1
 fi
 
-if ! grep -Fq 'mapEngine.beginInstallation(plan: plan)' "$connect_screen" \
-    || ! grep -Fq 'func beginInstallation(plan: InstallationPlan)' \
+if ! grep -Fq 'mapEngine.beginInstallation(plan: plan, operationId: operationID)' "$connect_screen" \
+    || ! grep -Fq 'func beginInstallation(plan: InstallationPlan, operationId: UUID = UUID())' \
         "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift" \
     || ! grep -Fq 'func installSelectedMaps()' \
         "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift"; then
@@ -195,9 +201,11 @@ fi
 
 if ! grep -Fq 'evidencePrimaryFailureMapIndex = activePackageIndex' \
         "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift" \
-    || ! grep -Fq 'evidencePrimaryFailureMapIndex = activeMapIndex.value' \
+    || ! grep -Fq 'let failureIndex = activeMapIndex.value' \
         "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift" \
-    || ! grep -Fq 'index == primaryFailureIndex ? mapEngine.installationResult : nil' \
+    || ! grep -Fq 'evidencePrimaryFailureMapIndex = failureIndex' \
+        "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift" \
+    || ! grep -Fq 'results.isEmpty && index == primaryFailureIndex ? mapEngine.installationResult : nil' \
         "$connect_screen"; then
     print -u2 "FAIL: multi-map diagnostics do not preserve the actual failed map index"
     exit 1

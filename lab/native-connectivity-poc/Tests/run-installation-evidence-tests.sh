@@ -8,6 +8,7 @@ swiftc -parse-as-library -module-name TerentoInstallationEvidenceTests \
   "$project_root/Sources/TerentoPoC/Models/MTPModels.swift" \
   "$project_root/Sources/TerentoPoC/Compatibility/DeviceIdentity.swift" \
   "$project_root/Sources/TerentoPoC/Compatibility/InstallationEvidence.swift" \
+  "$project_root/Sources/TerentoPoC/Diagnostics/InstallationIssueReport.swift" \
   "$project_root/Sources/TerentoPoC/MapCatalog/MapIdentity.swift" \
   "$project_root/Sources/TerentoPoC/MapCatalog/MapVersion.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapModels.swift" \

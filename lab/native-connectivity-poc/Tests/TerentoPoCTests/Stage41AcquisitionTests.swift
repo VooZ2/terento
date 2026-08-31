@@ -30,6 +30,7 @@ struct Stage41AcquisitionTests {
         await testOpenTopoMapAcquisitionUsesOfficialURLAndIdentity()
         testRegionalProviderTokensRemainConcrete()
         testSharedCatalogRegionsUseDistinctManagedTargets()
+        await testSharedCatalogRegionUsesConcreteSourceIdentity()
         await testWrongIdentityIsRejected()
         await testMatchingVersionPasses()
         await testMismatchedVersionIsRejected()
@@ -37,10 +38,11 @@ struct Stage41AcquisitionTests {
         await testFailedAcquisitionLeavesNoArtifact()
         testAcquisitionPolicyIdentityMapping()
         testBundledCatalogPolicyCounts()
+        testAcquisitionErrorsHaveSafeUserCopy()
         await testWithheldAcquisitionFailsBeforeWorkspaceAndHTTP()
         testNoDeviceWriteDependency()
 
-        print("PASS: 24 Stage 4.1 acquisition tests")
+        print("PASS: 26 Stage 4.1 acquisition tests")
     }
 
     private static func testCatalogResolvesFrance() {
@@ -525,6 +527,51 @@ struct Stage41AcquisitionTests {
         )
     }
 
+    private static func testSharedCatalogRegionUsesConcreteSourceIdentity() async {
+        let image = makeRegionalVariantIMG(token: "BALEARICS")
+        let package = MapPackage(
+            id: "freizeitkarte-balearics",
+            providerId: "freizeitkarte",
+            regionId: "AZORES",
+            name: "Balearics",
+            version: version(2026, 5),
+            sizeBytes: UInt64(image.count),
+            sourceURL: URL(string: "https://provider.example/balearics.img"),
+            releaseDate: "2026-05-03",
+            identifier: "BALEARICS",
+            providerRegionId: "BALEARICS",
+            canonicalRegionId: "AZORES"
+        )
+
+        do {
+            let source = try temporaryFile(data: image)
+            defer { try? FileManager.default.removeItem(at: source) }
+            let workspace = try makeWorkspace()
+            defer { try? workspace.cleanup() }
+            let artifact = try await MapPackageAcquirer(
+                downloadClient: StubDownloadClient(
+                    response: MapPackageDownloadResponse(
+                        statusCode: 200,
+                        temporaryFileURL: source
+                    )
+                )
+            ).acquire(package: package, canonicalRegion: "Balearics", workspace: workspace)
+
+            expect(
+                package.regionId == "AZORES"
+                    && package.canonicalRegionId == "BALEARICS"
+                    && artifact.region == "BALEARICS"
+                    && artifact.targetFilename == "terento_freizeitkarte_balearics.img",
+                "shared catalog region validates against the concrete Freizeitkarte package identity"
+            )
+        } catch {
+            expect(
+                false,
+                "shared catalog region validates against the concrete Freizeitkarte package identity"
+            )
+        }
+    }
+
     private static func testWrongIdentityIsRejected() async {
         let image = makeIMG(region: "DEU", release: "26.05")
         do {
@@ -677,6 +724,9 @@ struct Stage41AcquisitionTests {
                     && grouped[.available]?.count == 231
                     && grouped[.withheldRussia]?.count == 8
                     && grouped[.withheldCrimea]?.count == 1
+                    && packages
+                        .filter { $0.providerId == "opentopomap" && $0.providerRegionId.contains("russia") }
+                        .allSatisfy { resolver.availability(for: $0) == .withheldRussia }
                     && crimea?.name == "Russian Federation, Crimean Federal District"
                     && ["BLR", "UKR", "DEU"].allSatisfy { region in
                         packages.first(where: { $0.regionId == region }).map {
@@ -688,6 +738,24 @@ struct Stage41AcquisitionTests {
         } catch {
             expect(false, "bundled catalog preserves 63 FZK plus 177 OTM packages while policy withholds russia packages and Crimea")
         }
+    }
+
+    private static func testAcquisitionErrorsHaveSafeUserCopy() {
+        let messages = [
+            MapAcquisitionError.downloadFailed("/Users/alice/private/map.zip").userMessage,
+            MapAcquisitionError.downloadIncomplete(expected: 900, actual: 12).userMessage,
+            MapAcquisitionError.invalidPackage("unexpected bytes at /private/tmp/map.zip").userMessage,
+            MapAcquisitionError.workspaceFailed("/private/tmp/workspace").userMessage
+        ]
+        expect(
+            messages.allSatisfy {
+                !$0.contains("/Users/")
+                    && !$0.contains("/private/")
+                    && !$0.contains("900")
+                    && !$0.contains("12")
+            },
+            "acquisition failures keep paths and byte details in diagnostics, not user-facing copy"
+        )
     }
 
     private static func testWithheldAcquisitionFailsBeforeWorkspaceAndHTTP() async {

@@ -163,12 +163,29 @@ enum MapProviderHealth: String, Codable, Equatable, Sendable {
     case degraded
     case down
     case unknown
+
+    init(apiValue: String?) {
+        switch apiValue?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "healthy": self = .healthy
+        case "degraded": self = .degraded
+        case "down": self = .down
+        default: self = .unknown
+        }
+    }
 }
 
 enum MapProviderLifecycleStatus: String, Codable, Equatable, Sendable {
     case active
     case paused
     case retired
+
+    init(apiValue: String?) {
+        switch apiValue?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "paused": self = .paused
+        case "retired": self = .retired
+        default: self = .active
+        }
+    }
 }
 
 struct MapProviderHealthStatus: Codable, Equatable, Sendable {
@@ -242,11 +259,31 @@ struct OpenTopoMapRegionIdentityMapper: Sendable {
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() }
             .first { $0.count == 2 || $0.count == 3 }
 
-        guard let countryCode else {
-            return nil
+        if let countryCode {
+            return CanonicalMapRegionIdentity(countryCode: countryCode)
         }
 
-        return CanonicalMapRegionIdentity(countryCode: countryCode)
+        // Older and partially populated OTM catalogs omitted countryCodes.
+        // Keep the current acquisition policy fail-closed for the provider's
+        // explicit russia/Crimea identities instead of treating them as an
+        // unknown, therefore available, non-russia region.
+        let identityTokens = [
+            package.providerRegionId,
+            package.canonicalRegionId,
+            package.regionId,
+            package.identifier,
+            package.id
+        ]
+        .compactMap { $0?.uppercased() }
+        .map { $0.filter { $0.isLetter || $0.isNumber } }
+
+        if identityTokens.contains(where: { $0.contains("CRIMEA") }) {
+            return CanonicalMapRegionIdentity(countryCode: "UA", locality: "CRIMEA")
+        }
+        if identityTokens.contains(where: { $0.contains("RUSSIA") }) {
+            return CanonicalMapRegionIdentity(countryCode: "RU")
+        }
+        return nil
     }
 }
 
@@ -289,6 +326,10 @@ struct MapProvider: Codable, Equatable, Identifiable, Sendable {
     let attribution: String?
     let licenseURL: URL?
     let licenseInformation: String?
+    let lifecycleStatus: MapProviderLifecycleStatus
+    let health: MapProviderHealth
+    let lastCheckedAt: Date?
+    let lastSuccessfulCatalogSync: Date?
 
     init(
         id: String,
@@ -296,7 +337,11 @@ struct MapProvider: Codable, Equatable, Identifiable, Sendable {
         website: URL?,
         attribution: String?,
         licenseURL: URL?,
-        licenseInformation: String? = nil
+        licenseInformation: String? = nil,
+        lifecycleStatus: MapProviderLifecycleStatus = .active,
+        health: MapProviderHealth = .unknown,
+        lastCheckedAt: Date? = nil,
+        lastSuccessfulCatalogSync: Date? = nil
     ) {
         self.id = id
         self.name = name
@@ -304,6 +349,24 @@ struct MapProvider: Codable, Equatable, Identifiable, Sendable {
         self.attribution = attribution
         self.licenseURL = licenseURL
         self.licenseInformation = licenseInformation
+        self.lifecycleStatus = lifecycleStatus
+        self.health = health
+        self.lastCheckedAt = lastCheckedAt
+        self.lastSuccessfulCatalogSync = lastSuccessfulCatalogSync
+    }
+
+    var allowsNewInstallCatalog: Bool {
+        lifecycleStatus == .active && health != .down
+    }
+
+    var temporaryUnavailableReason: String? {
+        guard !allowsNewInstallCatalog else { return nil }
+        switch lifecycleStatus {
+        case .paused, .retired:
+            return "Temporarily unavailable"
+        case .active:
+            return health == .down ? "Temporarily unavailable" : nil
+        }
     }
 }
 
@@ -571,8 +634,11 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
             ?? Self.nonEmpty(identifier)
             ?? regionId
         self.providerRegionId = resolvedProviderRegionId
-        self.canonicalRegionId = Self.nonEmpty(canonicalRegionId)
-            ?? resolvedProviderRegionId
+        self.canonicalRegionId = Self.resolvedCanonicalRegionID(
+            providerId: providerId,
+            providerRegionId: resolvedProviderRegionId,
+            explicitCanonicalRegionId: canonicalRegionId
+        )
         self.name = name
         self.version = version
         self.sizeBytes = sizeBytes
@@ -625,7 +691,7 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
     var displayVersionLabel: String? {
         if let label = releaseMetadata?.versionLabel?.trimmingCharacters(
             in: .whitespacesAndNewlines
-        ), !label.isEmpty {
+        ), Self.isUserFacingReleaseLabel(label) {
             return label
         }
 
@@ -635,6 +701,23 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
             return nil
         }
         return version.description
+    }
+
+    private static func isUserFacingReleaseLabel(_ value: String) -> Bool {
+        let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty else { return false }
+
+        let placeholderValues: Set<String> = [
+            "unknown", "n/a", "na", "none", "null", "2000-01", "1970-01"
+        ]
+        guard !placeholderValues.contains(normalized.lowercased()) else {
+            return false
+        }
+
+        let dateOrSemanticVersion = #"(?i)(?:^|\b)(?:20\d{2}[-/.](?:0?[1-9]|1[0-2])(?:[-/.](?:0?[1-9]|[12]\d|3[01]))?|(?:0?[1-9]|1[0-2])/20\d{2}|v?\d+\.\d+(?:\.\d+)?)(?:\b|$)"#
+        let explicitBuildIdentifier = #"(?i)\b(?:build|release)[- _#]?[a-z0-9.-]*\d[a-z0-9.-]*\b"#
+        return normalized.range(of: dateOrSemanticVersion, options: .regularExpression) != nil
+            || normalized.range(of: explicitBuildIdentifier, options: .regularExpression) != nil
     }
 
     var optionalArtifacts: [MapArtifact] {
@@ -763,8 +846,11 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         providerRegionId = Self.nonEmpty(decodedProviderRegionId)
             ?? Self.nonEmpty(identifier)
             ?? regionId
-        canonicalRegionId = Self.nonEmpty(decodedCanonicalRegionId)
-            ?? providerRegionId
+        canonicalRegionId = Self.resolvedCanonicalRegionID(
+            providerId: providerId,
+            providerRegionId: providerRegionId,
+            explicitCanonicalRegionId: decodedCanonicalRegionId
+        )
         countryCodes = try container.decodeIfPresent([String].self, forKey: .countryCodes) ?? []
         regionKind = try container.decodeIfPresent(MapRegionKind.self, forKey: .regionKind) ?? .country
         tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
@@ -800,6 +886,23 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         guard let value else { return nil }
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+
+    /// Freizeitkarte's legacy/API catalog may group several concrete
+    /// packages under one broad region (AZORES also contains BALEARICS and
+    /// MADEIRA). Its provider-region token is the identity embedded in the
+    /// IMG and therefore the stable filename/manifest identity. Other
+    /// providers retain their explicit canonical identity (for example OTM
+    /// uses an ISO code while its provider-region value is a URL slug).
+    private static func resolvedCanonicalRegionID(
+        providerId: String,
+        providerRegionId: String,
+        explicitCanonicalRegionId: String?
+    ) -> String {
+        if MapIdentity.normalizeProvider(providerId) == "freizeitkarte" {
+            return providerRegionId
+        }
+        return nonEmpty(explicitCanonicalRegionId) ?? providerRegionId
     }
 }
 

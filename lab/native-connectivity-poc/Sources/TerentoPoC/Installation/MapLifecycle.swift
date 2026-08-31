@@ -113,54 +113,58 @@ struct MapLifecycleItem: Identifiable, Equatable, Sendable {
         return "Installed"
     }
 
-    /// Compact metadata for the consumer-facing Manage Maps row. Safety and
-    /// ownership remain in the lifecycle model; this label only avoids
-    /// repeating diagnostic prose below every row.
-    var manageDetailLabel: String {
+    /// Compact metadata for the consumer-facing Manage Maps row. Provider and
+    /// installation state are supplied by the section and page context, so a
+    /// normal row only needs its release, installed size, and optional package
+    /// component summary.
+    var manageMetadataLabel: String {
         guard isInstalled else {
-            return "Not installed"
+            return ""
         }
 
         if failedInstallRecovery != nil {
-            let values = [providerVersionLabel, "Incomplete installation"]
-                .compactMap { $0 }
-            return values.joined(separator: " · ")
-        }
-
-        switch classification {
-        case .terentoManaged:
-            if sourceKind == .custom {
-                return "Installed · From this Mac"
-            }
-            return [providerVersionLabel, "Installed"].compactMap { $0 }.joined(separator: " · ")
-        case .externalRecognized:
-            return [providerVersionLabel, "Installed · Third-party map"]
+            return [manageReleaseLabel, formattedInstalledSize, "Incomplete installation"]
                 .compactMap { $0 }
                 .joined(separator: " · ")
-        case .ambiguous:
-            return "Installed · Read-only"
-        case .system:
-            return "Installed · Read-only"
         }
+
+        var values = [manageReleaseLabel, formattedInstalledSize].compactMap { $0 }
+        if hasInstalledContours {
+            values.append("Contours included")
+        }
+        return values.joined(separator: " · ")
     }
 
-    private var providerVersionLabel: String? {
-        guard sourceKind == .provider else { return nil }
-        let providerName: String
-        switch MapIdentity.normalizeProvider(provider ?? "") {
-        case "freizeitkarte":
-            providerName = "Freizeitkarte"
-        case "opentopomap":
-            providerName = "OpenTopoMap"
-        default:
-            providerName = provider?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    private var manageReleaseLabel: String? {
+        let candidates = [version?.description, rawVersion]
+        let placeholders: Set<String> = [
+            "", "unknown", "n/a", "na", "none", "null", "2000-01", "1970-01"
+        ]
+        return candidates.compactMap { candidate -> String? in
+            guard let candidate else { return nil }
+            let value = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
+            return placeholders.contains(value.lowercased()) ? nil : value
+        }.first
+    }
+
+    private var formattedInstalledSize: String? {
+        guard sizeBytes > 0 else { return nil }
+        return ByteCountFormatter.string(
+            fromByteCount: Int64(min(sizeBytes, UInt64(Int64.max))),
+            countStyle: .decimal
+        )
+    }
+
+    private var hasInstalledContours: Bool {
+        guard MapIdentity.normalizeProvider(provider ?? "") == "opentopomap" else {
+            return false
         }
 
-        let values = [
-            providerName.isEmpty ? nil : providerName,
-            version?.description ?? rawVersion
-        ].compactMap { $0 }
-        return values.isEmpty ? nil : values.joined(separator: " · ")
+        return installedMaps.contains { map in
+            [map.name, map.family, map.sourceFile.filename]
+                .compactMap { $0 }
+                .contains { $0.localizedCaseInsensitiveContains("contour") }
+        }
     }
 
     var noteLabel: String {

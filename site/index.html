@@ -108,7 +108,7 @@
                 "name": "Can I install third-party maps on a Garmin watch from a Mac without BaseCamp?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Yes. Terento provides a guided native macOS workflow for installing supported third-party maps without BaseCamp or a general-purpose MTP file manager. The current beta uses Freizeitkarte and requires an Apple Silicon Mac. Read the Mac installation guide."
+                  "text": "Yes. Terento provides a guided native macOS workflow for installing supported third-party maps without BaseCamp or a general-purpose MTP file manager. You can also import a supported third-party .img map from your Mac. Apple Silicon is required. Read the Mac installation guide."
                 }
               },
               {
@@ -132,15 +132,15 @@
                 "name": "Is Terento safe for existing Garmin maps?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Yes. Existing Garmin maps are left unchanged. Terento manages only maps it has installed and recorded locally."
+                  "text": "Yes. Garmin/system maps remain protected. Terento only updates or removes supported third-party maps through explicit, validated actions."
                 }
               },
               {
                 "@type": "Question",
-                "name": "Where do the maps come from?",
+                "name": "Which third-party map providers does Terento support?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "The current beta uses Freizeitkarte as its map source. Terento downloads maps from the original provider to your Mac, then transfers them to your watch."
+                  "text": "Terento beta.8 supports third-party maps from Freizeitkarte and OpenTopoMap. The provider list is designed to expand with future beta releases. Maps are downloaded directly from the original provider to your Mac and then transferred to your watch; Terento does not host or repackage provider map files."
                 }
               },
               {
@@ -169,10 +169,10 @@
               },
               {
                 "@type": "Question",
-                "name": "Can I back up or remove installed maps?",
+                "name": "Can I update or remove installed maps?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "You can back up or remove Terento-managed maps from the app. Other maps remain read-only."
+                  "text": "You can update Terento-managed maps when a newer provider release is available and safely remove supported third-party maps from the app. Garmin/system maps remain protected."
                 }
               }
             ]
@@ -232,7 +232,7 @@
               <picture>
                 <source type="image/avif" srcset="/assets/app/optimized/your-garmin-640.avif 640w, /assets/app/optimized/your-garmin-960.avif 960w, /assets/app/optimized/your-garmin-1280.avif 1280w, /assets/app/optimized/your-garmin-1600.avif 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw">
                 <source type="image/webp" srcset="/assets/app/optimized/your-garmin-640.webp 640w, /assets/app/optimized/your-garmin-960.webp 960w, /assets/app/optimized/your-garmin-1280.webp 1280w, /assets/app/optimized/your-garmin-1600.webp 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw">
-                <img src="/assets/app/optimized/your-garmin-1600.png" width="2180" height="1320" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw" alt="Terento showing a connected Garmin smartwatch on macOS" fetchpriority="high" decoding="async">
+                <img src="/assets/app/optimized/your-garmin-1600.png" width="2205" height="1348" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw" alt="Terento showing a connected Garmin smartwatch on macOS" fetchpriority="high" decoding="async">
               </picture>
             </figure>
           </div>
@@ -279,9 +279,9 @@
           <div class="product-showcase-media">
             <figure class="app-shot app-shot--feature">
               <picture>
-                <source type="image/avif" srcset="/assets/app/optimized/install-maps-640.avif 640w, /assets/app/optimized/install-maps-960.avif 960w, /assets/app/optimized/install-maps-1280.avif 1280w, /assets/app/optimized/install-maps-1600.avif 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw">
-                <source type="image/webp" srcset="/assets/app/optimized/install-maps-640.webp 640w, /assets/app/optimized/install-maps-960.webp 960w, /assets/app/optimized/install-maps-1280.webp 1280w, /assets/app/optimized/install-maps-1600.webp 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw">
-                <img src="/assets/app/optimized/install-maps-1600.png" width="2186" height="1318" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw" alt="Freizeitkarte region selection in Terento" loading="lazy" decoding="async">
+                <source type="image/avif" srcset="/assets/app/optimized/install-maps-640.avif 640w, /assets/app/optimized/install-maps-960.avif 960w, /assets/app/optimized/install-maps-1280.avif 1280w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw">
+                <source type="image/webp" srcset="/assets/app/optimized/install-maps-640.webp 640w, /assets/app/optimized/install-maps-960.webp 960w, /assets/app/optimized/install-maps-1280.webp 1280w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw">
+                <img src="/assets/app/optimized/install-maps-1280.png" width="1555" height="1012" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw" alt="Terento showing third-party map providers and regions on macOS" loading="lazy" decoding="async">
               </picture>
             </figure>
           </div>
@@ -293,14 +293,14 @@
           <div class="product-showcase-copy">
             <p class="eyebrow">Installed maps</p>
             <h2 id="manage-maps-title">Manage maps</h2>
-            <p>See what's installed, back up or safely remove maps added by Terento. Other maps stay read-only.</p>
+            <p>See what's installed, update maps when newer releases are available, and safely remove supported third-party maps. Garmin/system maps remain protected.</p>
           </div>
           <div class="product-showcase-media">
             <figure class="app-shot app-shot--feature">
               <picture>
-                <source type="image/avif" srcset="/assets/app/optimized/manage-maps-640.avif 640w, /assets/app/optimized/manage-maps-960.avif 960w, /assets/app/optimized/manage-maps-1280.avif 1280w, /assets/app/optimized/manage-maps-1600.avif 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw">
-                <source type="image/webp" srcset="/assets/app/optimized/manage-maps-640.webp 640w, /assets/app/optimized/manage-maps-960.webp 960w, /assets/app/optimized/manage-maps-1280.webp 1280w, /assets/app/optimized/manage-maps-1600.webp 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw">
-                <img src="/assets/app/optimized/manage-maps-1600.png" width="2176" height="1322" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw" alt="Installed map management in Terento" loading="lazy" decoding="async">
+                <source type="image/avif" srcset="/assets/app/optimized/manage-maps-640.avif 640w, /assets/app/optimized/manage-maps-960.avif 960w, /assets/app/optimized/manage-maps-1280.avif 1280w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw">
+                <source type="image/webp" srcset="/assets/app/optimized/manage-maps-640.webp 640w, /assets/app/optimized/manage-maps-960.webp 960w, /assets/app/optimized/manage-maps-1280.webp 1280w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw">
+                <img src="/assets/app/optimized/manage-maps-1280.png" width="1561" height="1008" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw" alt="Terento showing installed third-party maps grouped by provider" loading="lazy" decoding="async">
               </picture>
             </figure>
           </div>
@@ -320,7 +320,7 @@
           <div class="scope-list" aria-label="Current beta scope">
             <div class="scope-item"><strong>macOS 13+</strong><span>Apple Silicon</span></div>
             <div class="scope-item"><strong>Garmin</strong><span>Models with map support</span></div>
-            <div class="scope-item"><strong>Freizeitkarte</strong><span>The only map source in this beta</span></div>
+            <div class="scope-item"><strong>Map providers</strong><span>Provider support expands with each beta.</span></div>
             <div class="scope-item"><strong>Open source</strong><span>Free and open-source</span></div>
           </div>
         </div>
@@ -339,7 +339,7 @@
             </details>
             <details>
               <summary>Can I install third-party maps on a Garmin watch from a Mac without BaseCamp?</summary>
-              <p>Yes. Terento provides a guided native macOS workflow for installing supported third-party maps without BaseCamp or a general-purpose MTP file manager. The current beta uses Freizeitkarte and requires an Apple Silicon Mac. <a href="/guides/install-garmin-maps-mac/">Read the Mac installation guide.</a></p>
+              <p>Yes. Terento provides a guided native macOS workflow for installing supported third-party maps without BaseCamp or a general-purpose MTP file manager. You can also import a supported third-party .img map from your Mac. Apple Silicon is required. <a href="/guides/install-garmin-maps-mac/">Read the Mac installation guide.</a></p>
             </details>
             <details>
               <summary>Why doesn’t my Garmin watch appear in Finder or Terento immediately?</summary>
@@ -351,11 +351,11 @@
             </details>
             <details>
               <summary>Is Terento safe for existing Garmin maps?</summary>
-              <p>Yes. Existing Garmin maps are left unchanged. Terento manages only maps it has installed and recorded locally.</p>
+              <p>Yes. Garmin/system maps remain protected. Terento only updates or removes supported third-party maps through explicit, validated actions.</p>
             </details>
             <details>
-              <summary>Where do the maps come from?</summary>
-              <p>The current beta uses Freizeitkarte as its map source. Terento downloads maps from the original provider to your Mac, then transfers them to your watch.</p>
+              <summary>Which third-party map providers does Terento support?</summary>
+              <p>Terento beta.8 supports third-party maps from Freizeitkarte and OpenTopoMap. The provider list is designed to expand with future beta releases. Maps are downloaded directly from the original provider to your Mac and then transferred to your watch; Terento does not host or repackage provider map files.</p>
             </details>
             <details>
               <summary>What should I do if installation fails?</summary>
@@ -374,8 +374,8 @@
               <p>The current native macOS beta is built for Apple Silicon Macs running macOS 13 or later.</p>
             </details>
             <details>
-              <summary>Can I back up or remove installed maps?</summary>
-              <p>You can back up or remove Terento-managed maps from the app. Other maps remain read-only.</p>
+              <summary>Can I update or remove installed maps?</summary>
+              <p>You can update Terento-managed maps when a newer provider release is available and safely remove supported third-party maps from the app. Garmin/system maps remain protected.</p>
             </details>
           </div>
         </div>

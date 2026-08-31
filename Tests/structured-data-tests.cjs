@@ -119,6 +119,14 @@ for (const locale of locales) {
     visibleFaq(homeData.source, home),
     `${home}: FAQ JSON-LD must match visible FAQ exactly`
   );
+  assert.match(faq.mainEntity[1].acceptedAnswer.text, /\.img/i, `${home}: BaseCamp answer mentions local .img import`);
+  assert.match(faq.mainEntity[4].acceptedAnswer.text, /protected|geschützt|protég|chronione|chráněné|protette/i, `${home}: safety answer protects Garmin/system maps`);
+  assert.match(faq.mainEntity[5].name, /provider|anbieter|fournisseur|dostawc|poskytovatel/i, `${home}: provider FAQ question`);
+  assert.match(faq.mainEntity[5].acceptedAnswer.text, /Freizeitkarte/i, `${home}: provider FAQ names Freizeitkarte`);
+  assert.match(faq.mainEntity[5].acceptedAnswer.text, /OpenTopoMap/i, `${home}: provider FAQ names OpenTopoMap`);
+  assert.match(faq.mainEntity[5].acceptedAnswer.text, /expand|wachsen|élargir|rozszerzać|rozšiřovat|crescere/i, `${home}: provider FAQ describes future expansion`);
+  assert.match(faq.mainEntity[9].name, /update|aktual|mettre|supprimer|usuwać|odstranit|aggiornare|rimuovere/i, `${home}: update/remove FAQ question`);
+  assert.doesNotMatch(homeData.source, /back up|backup|sauvegarder|zálohovat|wykonać kopię|eseguire il backup/i, `${home}: no backup promise in source`);
 
   const download = downloadFile(locale);
   const downloadData = readJsonLd(download);
@@ -134,6 +142,12 @@ for (const locale of locales) {
   const guide = guideFile(locale);
   const guideData = readJsonLd(guide);
   const graph = guideData.data["@graph"] || [];
+  const guideOrganization = entity(guideData.data, "Organization", guide);
+  assert.equal(guideOrganization.name, "Terento", `${guide}: organization name`);
+  assert.equal(guideOrganization.url, `${baseUrl}/`, `${guide}: organization URL`);
+  const guideArticle = entity(guideData.data, "Article", guide);
+  assert.equal(guideArticle.datePublished, "2026-08-28T00:00:00Z", `${guide}: ISO publication datetime`);
+  assert.equal(guideArticle.dateModified, "2026-08-31T00:00:00Z", `${guide}: ISO modified datetime`);
   assert.equal(graph.filter((item) => item["@type"] === "Article").length, 1, `${guide}: Article entity`);
   assert.equal(graph.filter((item) => item["@type"] === "BreadcrumbList").length, 1, `${guide}: BreadcrumbList entity`);
   assert.equal(graph.filter((item) => item["@type"] === "FAQPage").length, 0, `${guide}: Guide must not publish FAQPage schema`);

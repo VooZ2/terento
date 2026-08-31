@@ -163,12 +163,19 @@ func runMapLifecyclePresentationTests() throws {
     try require(update.allows(.update), "older managed map allows update")
     try require(update.status == "Update available", "update status is user-facing")
     try require(
-        managed.manageDetailLabel == "Freizeitkarte · 2026-05 · Installed",
-        "managed row uses concise release metadata"
+        managed.manageMetadataLabel.contains("2026-05")
+            && !managed.manageMetadataLabel.contains("Freizeitkarte")
+            && !managed.manageMetadataLabel.contains("Installed"),
+        "managed row uses release and size without repeating provider or installed state"
     )
     try require(
         ManageMapRowActionPresentation.actions(for: update) == [.update, .backup, .remove],
         "three valid actions use one ordered action group"
+    )
+    try require(
+        ManageMapRowActionPresentation.primaryActions(for: update) == [.update, .remove]
+            && ManageMapRowActionPresentation.advancedActions(for: update) == [.backup],
+        "backup moves to advanced actions while update and remove stay visible"
     )
 
     let withheldUpdate = resolver.resolve(
@@ -211,6 +218,23 @@ func runMapLifecyclePresentationTests() throws {
             == [.backup, .transferOwnership, .remove],
         "managed map can export a private ownership file for another Mac"
     )
+    try require(
+        ManageMapRowActionPresentation.primaryActions(for: transferable) == [.remove]
+            && ManageMapRowActionPresentation.advancedActions(for: transferable)
+                == [.backup, .transferOwnership],
+        "backup and ownership export are grouped under advanced actions"
+    )
+    try require(
+        ManageMapRowActionPresentation.productionActions(for: transferable) == [.remove]
+            && ManageMapRowActionPresentation.productionMenuActions(for: transferable).isEmpty,
+        "production rows hide backup and ownership tools while retaining removal"
+    )
+
+    try require(
+        ManageMapRowActionPresentation.productionActions(for: update) == [.update, .remove]
+            && ManageMapRowActionPresentation.productionPrimaryActions(for: update) == [.update, .remove],
+        "production update row exposes only Update and Remove"
+    )
 
     let recoveryRecord = TerentoFailedInstallRecoveryRecord(
         deviceKey: "fenix-8-091e-51b8",
@@ -247,7 +271,9 @@ func runMapLifecyclePresentationTests() throws {
     try require(!recovery.allows(.backup), "failed install recovery does not expose backup as a separate action")
     try require(recovery.status == "Failed install recovery", "failed install recovery has a distinct status")
     try require(
-        recoveryItem.manageDetailLabel == "Freizeitkarte · 2026-05 · Incomplete installation",
+        recoveryItem.manageMetadataLabel.contains("2026-05")
+            && recoveryItem.manageMetadataLabel.contains("Incomplete installation")
+            && !recoveryItem.manageMetadataLabel.contains("Freizeitkarte"),
         "recovery row uses explicit incomplete-installation metadata"
     )
 
@@ -265,6 +291,11 @@ func runMapLifecyclePresentationTests() throws {
         ManageMapRowActionPresentation.actions(for: upToDate) == [.backup, .remove],
         "two valid actions use the same ordered action group"
     )
+    try require(
+        ManageMapRowActionPresentation.productionActions(for: upToDate) == [.remove]
+            && ManageMapRowActionPresentation.productionMenuActions(for: upToDate).isEmpty,
+        "production up-to-date row exposes only Remove and no overflow"
+    )
 
     let backupOnly = MapLifecycleActionAvailability(
         actions: [.backup],
@@ -274,6 +305,16 @@ func runMapLifecyclePresentationTests() throws {
     try require(
         ManageMapRowActionPresentation.actions(for: backupOnly) == [.backup],
         "one valid action keeps the same action control style"
+    )
+    try require(
+        ManageMapRowActionPresentation.primaryActions(for: backupOnly).isEmpty
+            && ManageMapRowActionPresentation.advancedActions(for: backupOnly) == [.backup],
+        "backup-only rows expose the advanced menu without a primary button"
+    )
+    try require(
+        ManageMapRowActionPresentation.productionActions(for: backupOnly).isEmpty
+            && ManageMapRowActionPresentation.productionMenuActions(for: backupOnly).isEmpty,
+        "internal backup-only state has no production action surface"
     )
 
     let newer = resolver.resolve(
@@ -306,8 +347,8 @@ func runMapLifecyclePresentationTests() throws {
         lifecycleItem(
             installed: installedMap(managementState: .detectedNotManaged),
             classification: .externalRecognized
-        ).manageDetailLabel == "Freizeitkarte · 2026-05 · Installed · Third-party map",
-        "third-party row uses concise status metadata"
+        ).manageMetadataLabel.contains("2026-05"),
+        "external row keeps concise release and size metadata"
     )
     try require(
         ManageMapRowActionPresentation.actions(for: external) == [],
@@ -328,6 +369,16 @@ func runMapLifecyclePresentationTests() throws {
     try require(
         recoverable.actions == [.recoverOwnership],
         "read-only Terento filename exposes only explicit ownership recovery"
+    )
+    try require(
+        ManageMapRowActionPresentation.primaryActions(for: recoverable).isEmpty
+            && ManageMapRowActionPresentation.advancedActions(for: recoverable)
+                == [.recoverOwnership],
+        "ownership recovery is presented only in the advanced menu"
+    )
+    try require(
+        ManageMapRowActionPresentation.productionActions(for: recoverable).isEmpty,
+        "internal ownership recovery does not leak into production Manage Maps"
     )
 
     let rawExternalMap = InstalledMap(
@@ -391,7 +442,7 @@ func runMapLifecyclePresentationTests() throws {
         hasValidatedUpdateProfile: true
     )
     try require(missingIntegrity.actions.isEmpty, "missing integrity record blocks actions")
-    try require(missingIntegrity.status == "Needs verification", "missing integrity has a safe status")
+    try require(missingIntegrity.status == "Read-only", "missing integrity has a safe status")
 
     let notInstalled = resolver.resolve(
         item: lifecycleItem(installed: nil),

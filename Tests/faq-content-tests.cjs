@@ -39,11 +39,11 @@ const questionSignals = [
   [/Finder|Finderu|Finder|Finder|Finder|Finder/i, /Terento|MTP/i],
   [/Express/i, /Terento/],
   [/existing|vorhand|exist|istnie|stávaj|esist/i, /Terento|map/i],
-  [/maps|Karten|cartes|mapy|map|mappe/i, /Freizeitkarte/],
+  [/maps|Karten|cartes|mapy|map|mappe|provider|fournisseur|dostawc|poskytovatel/i, /Terento|map/i],
   [/fail|fehlsch|échou|nie powied|selže|riesce/i, /GitHub|hello@terento\.app/i],
   [/data|Daten|données|dane|údaje|dati/i, /optional|facultatif|opcjonal|volitel|facolt/i],
   [/Apple Silicon/i, /macOS|Mac/],
-  [/back|sicher|sauveg|kopi|záloh|backup/i, /Terento|map/i],
+  [/update|aktual|mettre|supprimer|usuwać|odstranit|aggiornare|rimuovere/i, /Terento|map/i],
 ];
 
 for (const locale of locales) {
@@ -54,6 +54,14 @@ for (const locale of locales) {
     assert.match(entry.question, questionSignals[index][0], `${home}: FAQ question ${index + 1} semantic order`);
     assert.match(entry.answer, questionSignals[index][1], `${home}: FAQ answer ${index + 1} content`);
   });
+  assert.match(entries[1].answer, /\.img/i, `${home}: BaseCamp answer mentions local .img import`);
+  assert.match(entries[4].answer, /protected|geschützt|protég|chronione|chráněné|protette/i, `${home}: safety answer protects Garmin/system maps`);
+  assert.match(entries[5].question, /provider|anbieter|fournisseur|dostawc|poskytovatel/i, `${home}: provider FAQ question`);
+  assert.match(entries[5].answer, /Freizeitkarte/i, `${home}: provider FAQ names Freizeitkarte`);
+  assert.match(entries[5].answer, /OpenTopoMap/i, `${home}: provider FAQ names OpenTopoMap`);
+  assert.match(entries[5].answer, /expand|wachsen|élargir|rozszerzać|rozšiřovat|crescere/i, `${home}: provider FAQ describes future expansion`);
+  assert.match(entries[9].answer, /protected|geschützt|protég|chronione|chráněné|protette/i, `${home}: update/remove answer protects Garmin/system maps`);
+  assert.doesNotMatch(source, /back up|backup|sauvegarder|zálohovat|wykonać kopię|zálohovat|eseguire il backup/i, `${home}: removed backup promise`);
   assert.match(entries[0].markup, new RegExp(`href="${localePath(locale, "compatibility/")}"`), `${home}: Compatibility link`);
   assert.match(entries[1].markup, new RegExp(`href="${localePath(locale, guideSlug)}"`), `${home}: Guide link`);
   assert.match(entries[6].markup, /href="https:\/\/github\.com\/VooZ2\/terento\/issues"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/);

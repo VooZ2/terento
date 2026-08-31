@@ -226,6 +226,7 @@ final class MapEngine: ObservableObject {
     @Published private(set) var catalogUpdatedAt: Date?
     @Published private(set) var errorMessage: String?
     @Published private(set) var userErrorMessage: String?
+    @Published private(set) var mapStatisticsEvents: [MapStatisticsEvent] = []
 
     private let reader: MTPTransport
     private let operationGate: MTPOperationGate
@@ -240,6 +241,7 @@ final class MapEngine: ObservableObject {
     private var installationAuthorizationGranted = false
     private var customMapImportAcknowledged = false
     private var selectedInstallationPlan: InstallationPlan?
+    private var mapStatisticsOperationID = UUID()
 
     var validatedArtifact: ValidatedMapArtifact? {
         guard let firstPackageID = selectedInstallationPlan?.installItems.first?.package.id else {
@@ -301,6 +303,7 @@ final class MapEngine: ObservableObject {
         installationSpeedEstimator.reset()
         installationAuthorizationGranted = false
         selectedInstallationPlan = nil
+        mapStatisticsEvents = []
     }
 
     func scanDeviceMaps(
@@ -1020,7 +1023,7 @@ final class MapEngine: ObservableObject {
     /// downloaded and validated first; device writes then run sequentially in
     /// one guarded operation. No second map is written if its own validation
     /// or preflight fails.
-    func beginInstallation(plan: InstallationPlan) {
+    func beginInstallation(plan: InstallationPlan, operationId: UUID = UUID()) {
         guard state == .scanned,
               installationPhase == .idle,
               plan.canContinue,
@@ -1030,6 +1033,8 @@ final class MapEngine: ObservableObject {
         }
 
         installationAuthorizationGranted = true
+        mapStatisticsOperationID = operationId
+        mapStatisticsEvents = []
         selectedInstallationPlan = plan
         selectedPreflight = nil
         installationResult = nil
@@ -1058,6 +1063,13 @@ final class MapEngine: ObservableObject {
             installationPhase = .failed
             installationPhaseProgress = nil
             state = .failed
+            if let package = plan.installItems.first?.package {
+                emitMapStatisticsEvent(
+                    package: package,
+                    type: .installFailed,
+                    outcome: .failed
+                )
+            }
             recordInstallationFailure(installationErrorMessage)
             return
         }
@@ -1118,6 +1130,11 @@ final class MapEngine: ObservableObject {
                         stateRelay.send(.hashing)
                         stateRelay.send(.validated)
                     } else {
+                        self?.emitMapStatisticsEvent(
+                            package: package,
+                            type: .downloadStarted,
+                            outcome: .unknown
+                        )
                         artifact = try await CancellableDetached.run(priority: .userInitiated) {
                             try await acquirer.acquire(
                                 package: package,
@@ -1126,6 +1143,11 @@ final class MapEngine: ObservableObject {
                                 onDownloadProgress: { progress in progressRelay.send(progress) }
                             )
                         }
+                        self?.emitMapStatisticsEvent(
+                            package: package,
+                            type: .downloadSucceeded,
+                            outcome: .succeeded
+                        )
                     }
                     artifacts[package.id] = artifact
                 }
@@ -1139,6 +1161,14 @@ final class MapEngine: ObservableObject {
                 }
             } catch {
                 guard !Task.isCancelled else { return }
+                if packages.indices.contains(activePackageIndex),
+                   packages[activePackageIndex].sourceKind == .provider {
+                    self?.emitMapStatisticsEvent(
+                        package: packages[activePackageIndex],
+                        type: .downloadFailed,
+                        outcome: .failed
+                    )
+                }
                 self?.evidencePrimaryFailureMapIndex = activePackageIndex
                 if let acquisitionError = error as? MapAcquisitionError {
                     let diagnostic = Self.evidenceDiagnostic(for: acquisitionError)
@@ -1149,8 +1179,10 @@ final class MapEngine: ObservableObject {
                     self?.evidenceFailure = .downloadFailed
                 }
                 self?.acquisitionState = .failed
-                self?.acquisitionErrorMessage = error.localizedDescription
-                self?.installationErrorMessage = error.localizedDescription
+                let userMessage = (error as? MapAcquisitionError)?.userMessage
+                    ?? UserFacingErrorMessage.forInstallation(error)
+                self?.acquisitionErrorMessage = userMessage
+                self?.installationErrorMessage = userMessage
                 self?.installationPhase = .failed
                 self?.state = .failed
                 self?.recordInstallationFailure(
@@ -1234,9 +1266,17 @@ final class MapEngine: ObservableObject {
                 self?.state = .scanned
 
                 if !allReady {
-                    self?.evidencePrimaryFailureMapIndex = results.firstIndex {
+                    let failureIndex = results.firstIndex {
                         $0.status != .confirmationRequired
                     } ?? activeMapIndex.value
+                    self?.evidencePrimaryFailureMapIndex = failureIndex
+                    if plan.installItems.indices.contains(failureIndex) {
+                        self?.emitMapStatisticsEvent(
+                            package: plan.installItems[failureIndex].package,
+                            type: .installFailed,
+                            outcome: .failed
+                        )
+                    }
                     self?.evidenceFailureStage = Self.evidenceStage(for: finalResult.failure)
                     self?.evidenceFailure = finalResult.failure
                     self?.recordInstallationFailure(finalResult.failure?.userLabel)
@@ -1253,7 +1293,15 @@ final class MapEngine: ObservableObject {
                 }
             } catch {
                 guard !Task.isCancelled else { return }
-                self?.evidencePrimaryFailureMapIndex = activeMapIndex.value
+                let failureIndex = activeMapIndex.value
+                self?.evidencePrimaryFailureMapIndex = failureIndex
+                if plan.installItems.indices.contains(failureIndex) {
+                    self?.emitMapStatisticsEvent(
+                        package: plan.installItems[failureIndex].package,
+                        type: .installFailed,
+                        outcome: .failed
+                    )
+                }
                 if let acquisitionError = error as? MapAcquisitionError {
                     let diagnostic = Self.evidenceDiagnostic(for: acquisitionError)
                     self?.evidenceFailureStage = diagnostic.stage
@@ -1262,7 +1310,8 @@ final class MapEngine: ObservableObject {
                     self?.evidenceFailureStage = .preflight
                     self?.evidenceFailure = .sourceArtifactInvalid
                 }
-                self?.installationErrorMessage = error.localizedDescription
+                self?.installationErrorMessage = (error as? MapAcquisitionError)?.userMessage
+                    ?? UserFacingErrorMessage.forInstallation(error)
                 self?.installationPhase = .failed
                 self?.installationPhaseProgress = nil
                 self?.state = .failed
@@ -1397,6 +1446,14 @@ final class MapEngine: ObservableObject {
                 guard !Task.isCancelled, let finalResult = results.last else { return }
                 let batchSucceeded = results.count == plan.installItems.count
                     && results.allSatisfy(\.isSuccess)
+                for (index, result) in results.enumerated()
+                where plan.installItems.indices.contains(index) {
+                    self?.emitMapStatisticsEvent(
+                        package: plan.installItems[index].package,
+                        type: result.isSuccess ? .installSucceeded : .installFailed,
+                        outcome: result.isSuccess ? .succeeded : .failed
+                    )
+                }
                 self?.installationResult = finalResult
                 self?.installationBatchResults = results
                 self?.selectedPreflight = finalResult.preflight
@@ -1418,11 +1475,20 @@ final class MapEngine: ObservableObject {
                 }
             } catch {
                 guard !Task.isCancelled else { return }
-                self?.evidencePrimaryFailureMapIndex = activeMapIndex.value
+                let failureIndex = activeMapIndex.value
+                self?.evidencePrimaryFailureMapIndex = failureIndex
+                if plan.installItems.indices.contains(failureIndex) {
+                    self?.emitMapStatisticsEvent(
+                        package: plan.installItems[failureIndex].package,
+                        type: .installFailed,
+                        outcome: .failed
+                    )
+                }
                 self?.evidenceFailureStage = .preflight
                 self?.evidenceFailure = .deviceDisconnected
                 self?.evidenceNativeFailureCode = .preflightMTPReadFailed
-                self?.installationErrorMessage = error.localizedDescription
+                self?.installationErrorMessage = (error as? MapAcquisitionError)?.userMessage
+                    ?? UserFacingErrorMessage.forInstallation(error)
                 self?.installationPhase = .failed
                 self?.installationPhaseProgress = nil
                 self?.state = .failed
@@ -1450,6 +1516,24 @@ final class MapEngine: ObservableObject {
         case .customMapNotConfirmed:
             return (.sourceValidation, .sourceValidationFailed)
         }
+    }
+
+    private func emitMapStatisticsEvent(
+        package: MapPackage,
+        type: MapStatisticsEventType,
+        outcome: MapStatisticsEventOutcome
+    ) {
+        // Custom local files have no registered provider catalog identity and
+        // are intentionally outside provider-popularity statistics.
+        guard package.sourceKind == .provider else { return }
+        mapStatisticsEvents.append(
+            MapStatisticsEvent(
+                operationId: mapStatisticsOperationID,
+                package: package,
+                eventType: type,
+                outcome: outcome
+            )
+        )
     }
 
     private static func evidenceStage(for failure: InstallationFailure?) -> EvidenceFailureStage {
