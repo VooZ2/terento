@@ -251,6 +251,75 @@ class Beta8APITests(unittest.TestCase):
         self.assertIsNone(unknown_artifact["sizeBytes"])
         self.assertEqual(len(unknown_install["providers"][0]["maps"]), 1)
 
+    def test_provider_native_release_uses_source_date_for_comparable_version(self):
+        document = build_catalog([
+            {
+                "provider_id": "freizeitkarte",
+                "provider_name": "Freizeitkarte",
+                "provider_adapter_id": "freizeitkarte",
+                "provider_status": "ACTIVE",
+                "provider_health": "HEALTHY",
+                "provider_website": "https://www.freizeitkarte-osm.de/",
+                "provider_attribution": "OSM",
+                "provider_license_information": "ODbL",
+                "package_id": "freizeitkarte-lithuania",
+                "provider_region_id": "LTU+",
+                "canonical_region_id": "LT",
+                "package_name": "Lithuania",
+                "package_region": "LT",
+                "release": "2/2026",
+                "release_id": "2/2026",
+                "version_label": "2/2026",
+                "package_source_updated_at": datetime(2026, 5, 3, tzinfo=UTC),
+                "country_codes": ["LT"],
+                "region_kind": "country",
+                "capabilities": ["main"],
+                "artifact_id": "freizeitkarte-lithuania-main",
+                "artifact_kind": "main",
+                "artifact_source_url": "https://download.freizeitkarte-osm.de/LTU.zip",
+                "artifact_size_bytes": 219000000,
+                "artifact_install_size_bytes": 276000000,
+                "artifact_required": True,
+                "artifact_validation_status": "VALIDATED",
+                "artifact_content_type": "application/zip",
+            },
+        ], datetime(2026, 8, 31, tzinfo=UTC))
+
+        package = document["providers"][0]["maps"][0]
+        self.assertEqual(package["release"], "2/2026")
+        self.assertEqual(package["version"], {"year": 2026, "month": 5})
+        self.assertEqual(package["releaseDate"], "2026-05-03T00:00:00+00:00")
+        self.assertEqual(
+            package["releaseMetadata"]["versionLabel"],
+            "2/2026",
+        )
+        self.assertNotEqual(package["version"], {"year": 2000, "month": 1})
+
+    def test_provider_neutral_catalog_does_not_emit_historical_version_sentinel(self):
+        document = build_catalog([
+            {
+                "provider_id": "freizeitkarte",
+                "provider_name": "Freizeitkarte",
+                "provider_adapter_id": "freizeitkarte",
+                "provider_status": "ACTIVE",
+                "provider_health": "UNKNOWN",
+                "package_id": "freizeitkarte-unknown",
+                "provider_region_id": "UNKNOWN",
+                "canonical_region_id": "XX",
+                "package_name": "Unknown",
+                "package_region": "XX",
+                "release": "unknown",
+                "artifact_id": "freizeitkarte-unknown-main",
+                "artifact_kind": "main",
+                "artifact_source_url": "https://download.freizeitkarte-osm.de/unknown.zip",
+                "artifact_size_bytes": 100,
+                "artifact_install_size_bytes": None,
+                "artifact_required": True,
+            },
+        ], datetime(2026, 8, 31, tzinfo=UTC))
+
+        self.assertEqual(document["providers"][0]["maps"], [])
+
     def test_map_event_validation_is_private_and_normalizes_identifiers(self):
         event = validate_map_event(json.dumps({
             "schemaVersion": 1,

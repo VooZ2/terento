@@ -161,7 +161,17 @@ def _build_provider_neutral_catalog(
         package = packages.get(key)
         if package is None:
             release = str(row.get("release") or "unknown")
-            year, month = _release_version(release)
+            normalized_version = _release_version(
+                release,
+                source_updated_at=row.get("package_source_updated_at"),
+            )
+            if normalized_version is None:
+                # A provider-native release label is not necessarily a
+                # calendar version. Do not expose the old technical sentinel
+                # (2000-01) when neither the label nor the provider date can
+                # establish a comparable version.
+                continue
+            year, month = normalized_version
             source_size = row.get("artifact_size_bytes")
             download_size = row.get("artifact_download_size_bytes") or source_size
             install_size = row.get("artifact_install_size_bytes")
@@ -238,11 +248,47 @@ def _build_provider_neutral_catalog(
     }
 
 
-def _release_version(value: str) -> tuple[int, int]:
+def _release_version(
+    value: str,
+    *,
+    source_updated_at: Any = None,
+) -> tuple[int, int] | None:
+    """Return a comparable year/month without inventing a provider version.
+
+    Some providers publish a release sequence such as Freizeitkarte's
+    ``2/2026``. That is a provider-native label, not February 2026. When the
+    provider also supplies a source date, that date is the authoritative
+    comparable version (for example ``2026-05-03`` becomes ``2026-05``).
+    """
+
+    if source_updated_at is not None:
+        year = getattr(source_updated_at, "year", None)
+        month = getattr(source_updated_at, "month", None)
+        if (
+            isinstance(year, int)
+            and isinstance(month, int)
+            and _valid_version(year, month)
+        ):
+            return year, month
+
     match = re.search(r"\b(20\d{2})[-/.](0?[1-9]|1[0-2])\b", value)
     if match:
-        return int(match.group(1)), int(match.group(2))
-    return 2000, 1
+        version = int(match.group(1)), int(match.group(2))
+        return version if _valid_version(*version) else None
+
+    # `2/2026` is intentionally not reversed to `2026-02`: the first number
+    # is a provider release sequence and only the source date can establish
+    # the calendar month used for comparisons.
+    if re.search(r"\b(?:0?[1-9]|1[0-2])/20\d{2}\b", value):
+        return None
+
+    return None
+
+
+def _valid_version(year: int, month: int) -> bool:
+    # 2000-01 was the historical serializer fallback and is never a valid
+    # public provider version.
+    return year >= 2000 and 1 <= month <= 12 and (year, month) != (2000, 1)
 
 
 def _native_validation_state(value: str) -> str:

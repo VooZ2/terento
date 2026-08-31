@@ -15,6 +15,7 @@ struct MapVersionComparisonTests {
         testEarlierCatalogVersionMeansInstalledVersionIsNewer()
         testInvalidVersionProducesUnknown()
         testEmbeddedDateFragmentIsUnknown()
+        testProviderNativeVersionLabelIsUsedForDisplay()
         testOtherInstalledRegionStillMeansInstallAvailable()
         testKnownDifferentRegionCannotMatchByIdentifier()
 
@@ -79,6 +80,48 @@ struct MapVersionComparisonTests {
         expect(
             version == nil,
             "an embedded date fragment is not treated as a map release"
+        )
+    }
+
+    private static func testProviderNativeVersionLabelIsUsedForDisplay() {
+        let package = MapPackage(
+            id: "freizeitkarte-lithuania",
+            providerId: "freizeitkarte",
+            regionId: "LT",
+            name: "Lithuania",
+            version: MapVersion(year: 2000, month: 1)!,
+            sizeBytes: 219_000_000,
+            sourceURL: nil,
+            releaseDate: "2026-05-03",
+            identifier: "LTU+",
+            releaseMetadata: MapReleaseMetadata(
+                releaseId: "2/2026",
+                versionLabel: "2/2026",
+                generatedAt: nil,
+                sourceUpdatedAt: "2026-05-03"
+            )
+        )
+
+        expect(
+            package.displayVersionLabel == "2/2026",
+            "provider-native release label is preferred for display"
+        )
+
+        let fallbackPackage = MapPackage(
+            id: "freizeitkarte-unknown",
+            providerId: "freizeitkarte",
+            regionId: "XX",
+            name: "Unknown",
+            version: MapVersion(year: 2000, month: 1)!,
+            sizeBytes: 100,
+            sourceURL: nil,
+            releaseDate: nil,
+            identifier: nil
+        )
+
+        expect(
+            fallbackPackage.displayVersionLabel == nil,
+            "historical 2000-01 fallback is hidden from display"
         )
     }
 

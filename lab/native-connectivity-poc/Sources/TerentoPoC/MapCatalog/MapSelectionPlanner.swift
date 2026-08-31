@@ -40,10 +40,14 @@ struct MapSelectionItem: Identifiable, Equatable, Sendable {
         let providerName = comparison.providerName.trimmingCharacters(
             in: .whitespacesAndNewlines
         )
-        guard !providerName.isEmpty else {
-            return package.version.description
+        var parts: [String] = []
+        if !providerName.isEmpty {
+            parts.append(providerName)
         }
-        return "\(providerName) · \(package.version.description)"
+        if let versionLabel = package.displayVersionLabel {
+            parts.append(versionLabel)
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     var action: MapSelectionAction { lifecycleAction }
@@ -69,7 +73,7 @@ struct MapSelectionItem: Identifiable, Equatable, Sendable {
         case .notInstalled:
             return installSizeBytes == nil ? "Size calculated before installation" : ""
         case .updateAvailable:
-            return "Update available · \(installedVersionLabel ?? "Version unavailable") → \(package.version)"
+            return "Update available · \(installedVersionLabel ?? "Version unavailable") → \(package.displayVersionLabel ?? "Version unavailable")"
         case .upToDate:
             return "Installed · Up to date"
         case .newerInstalled:
