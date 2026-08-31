@@ -137,6 +137,10 @@ def _build_provider_neutral_catalog(
                 "adapterId": row.get("provider_adapter_id") or provider_id,
                 "status": row.get("provider_status") or "ACTIVE",
                 "health": row.get("provider_health") or "UNKNOWN",
+                "lastCheckedAt": _format_optional_date(row.get("provider_last_checked_at")),
+                "lastSuccessfulCatalogSync": _format_optional_date(
+                    row.get("provider_last_catalog_sync")
+                ),
                 "website": row.get("provider_website"),
                 "attribution": row.get("provider_attribution"),
                 "licenseURL": row.get("provider_license_url"),

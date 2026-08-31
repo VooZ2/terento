@@ -38,10 +38,11 @@ struct Stage41AcquisitionTests {
         await testFailedAcquisitionLeavesNoArtifact()
         testAcquisitionPolicyIdentityMapping()
         testBundledCatalogPolicyCounts()
+        testAcquisitionErrorsHaveSafeUserCopy()
         await testWithheldAcquisitionFailsBeforeWorkspaceAndHTTP()
         testNoDeviceWriteDependency()
 
-        print("PASS: 25 Stage 4.1 acquisition tests")
+        print("PASS: 26 Stage 4.1 acquisition tests")
     }
 
     private static func testCatalogResolvesFrance() {
@@ -723,6 +724,9 @@ struct Stage41AcquisitionTests {
                     && grouped[.available]?.count == 231
                     && grouped[.withheldRussia]?.count == 8
                     && grouped[.withheldCrimea]?.count == 1
+                    && packages
+                        .filter { $0.providerId == "opentopomap" && $0.providerRegionId.contains("russia") }
+                        .allSatisfy { resolver.availability(for: $0) == .withheldRussia }
                     && crimea?.name == "Russian Federation, Crimean Federal District"
                     && ["BLR", "UKR", "DEU"].allSatisfy { region in
                         packages.first(where: { $0.regionId == region }).map {
@@ -734,6 +738,24 @@ struct Stage41AcquisitionTests {
         } catch {
             expect(false, "bundled catalog preserves 63 FZK plus 177 OTM packages while policy withholds russia packages and Crimea")
         }
+    }
+
+    private static func testAcquisitionErrorsHaveSafeUserCopy() {
+        let messages = [
+            MapAcquisitionError.downloadFailed("/Users/alice/private/map.zip").userMessage,
+            MapAcquisitionError.downloadIncomplete(expected: 900, actual: 12).userMessage,
+            MapAcquisitionError.invalidPackage("unexpected bytes at /private/tmp/map.zip").userMessage,
+            MapAcquisitionError.workspaceFailed("/private/tmp/workspace").userMessage
+        ]
+        expect(
+            messages.allSatisfy {
+                !$0.contains("/Users/")
+                    && !$0.contains("/private/")
+                    && !$0.contains("900")
+                    && !$0.contains("12")
+            },
+            "acquisition failures keep paths and byte details in diagnostics, not user-facing copy"
+        )
     }
 
     private static func testWithheldAcquisitionFailsBeforeWorkspaceAndHTTP() async {

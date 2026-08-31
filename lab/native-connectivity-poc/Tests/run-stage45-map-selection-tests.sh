@@ -98,9 +98,9 @@ if grep -Fq 'shareCompatibilityEvidence' "$connect_screen" \
     exit 1
 fi
 
-if ! grep -Fq 'else if plan.storagePlan.status == .blockedInsufficientSpace' "$connect_screen" \
-    || grep -Fq 'if let reason = installAvailability.userReason' "$connect_screen"; then
-    print -u2 "FAIL: Review warning is not limited to insufficient storage"
+if ! grep -Fq 'else if let reason = installAvailability.userReason' "$connect_screen" \
+    || grep -Fq 'else if plan.storagePlan.status == .blockedInsufficientSpace' "$connect_screen"; then
+    print -u2 "FAIL: Review warning does not show the applicable disabled-install reason"
     exit 1
 fi
 

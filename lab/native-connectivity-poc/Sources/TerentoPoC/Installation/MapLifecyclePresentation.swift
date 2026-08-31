@@ -136,7 +136,7 @@ struct MapLifecyclePresentationResolver: Sendable {
         guard item.hasExactObjectIdentity, hasIntegrityRecord else {
             return MapLifecycleActionAvailability(
                 actions: [],
-                status: "Needs verification",
+                status: "Read-only",
                 reason: "Terento needs to verify this map before changing it."
             )
         }

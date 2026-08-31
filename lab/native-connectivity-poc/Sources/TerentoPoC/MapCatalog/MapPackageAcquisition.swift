@@ -102,6 +102,33 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
     case untrustedSourceURL(String)
     case customMapNotConfirmed(String)
 
+    var userMessage: String {
+        switch self {
+        case .acquisitionWithheld(let availability):
+            return availability.detailedExplanation
+                ?? "This map is not available for download in Terento."
+        case .downloadFailed:
+            return "The map could not be downloaded. Check your connection and try again."
+        case .providerUnavailable:
+            return "The selected map provider is temporarily unavailable. Try again later."
+        case .downloadIncomplete:
+            return "The map download did not complete. Try again."
+        case .invalidPackage, .extractionFailed, .unsupportedPackageFormat,
+             .unsafeArchivePath, .noIMGFound, .ambiguousIMG:
+            return "The downloaded map could not be verified and opened safely. Refresh the catalog and try again."
+        case .sourceIdentityMismatch:
+            return "The downloaded map does not match the selected provider and region. Refresh the catalog and try again."
+        case .sourceVersionMismatch:
+            return "The downloaded map release does not match the catalog. Refresh the catalog and try again."
+        case .workspaceFailed:
+            return "Terento could not prepare the map on this Mac. Check available storage and try again."
+        case .untrustedSourceURL:
+            return "The map provider address could not be verified. Refresh the catalog and try again."
+        case .customMapNotConfirmed(let message):
+            return message
+        }
+    }
+
     var errorDescription: String? {
         switch self {
         case .acquisitionWithheld(let availability):

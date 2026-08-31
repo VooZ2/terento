@@ -162,6 +162,16 @@ class Beta8APITests(unittest.TestCase):
         self.assertNotIn("DROP TABLE", migration)
         self.assertNotIn("BYTEA", migration)
 
+    def test_map_events_are_pruned_after_documented_retention_period(self):
+        source = (
+            Path(__file__).parents[1]
+            / "src"
+            / "terento_catalog"
+            / "db.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn("DELETE FROM map_download_event", source)
+        self.assertIn("interval '24 months'", source)
+
     def test_otm_state_repair_is_conservative_and_audited(self):
         migration = (
             Path(__file__).parents[1]
@@ -502,6 +512,41 @@ class Beta8APITests(unittest.TestCase):
             OpenTopoMapProviderAdapter(
                 fetcher=Fetcher(), expected_main_package_count=2
             ).collect()
+
+    def test_opentopomap_russia_packages_emit_policy_country_code(self):
+        html = """
+        <table>
+          <tr class="country"><td>Russia-Asian-Part</td>
+            <td><a href="asia/russia-asian-part/otm-russia-asian-part.zip">Garmin</a></td>
+            <td>2026-05-24 20:24:18</td></tr>
+          <tr class="country"><td>Russia-European-Part</td>
+            <td><a href="europe/russia-european-part/otm-russia-european-part.zip">Garmin</a></td>
+            <td>2026-05-24 20:24:18</td></tr>
+        </table>
+        """
+
+        class Measurement:
+            download_size_bytes = 100
+            install_size_bytes = 120
+            payload_path = "otm-russia.img"
+
+        class Fetcher:
+            def fetch_text(self, url):
+                return html
+
+            def measure_zip(self, url):
+                return Measurement()
+
+        snapshot = OpenTopoMapProviderAdapter(
+            fetcher=Fetcher(), expected_main_package_count=2, max_workers=1
+        ).collect()
+        self.assertEqual(
+            [(package.provider_region_id, package.country_codes) for package in snapshot.packages],
+            [
+                ("russia-asian-part", ("RU",)),
+                ("russia-european-part", ("RU",)),
+            ],
+        )
 
     def test_otm_snapshot_cleanup_hides_deferred_contours(self):
         source = (

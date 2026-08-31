@@ -1179,8 +1179,10 @@ final class MapEngine: ObservableObject {
                     self?.evidenceFailure = .downloadFailed
                 }
                 self?.acquisitionState = .failed
-                self?.acquisitionErrorMessage = error.localizedDescription
-                self?.installationErrorMessage = error.localizedDescription
+                let userMessage = (error as? MapAcquisitionError)?.userMessage
+                    ?? UserFacingErrorMessage.forInstallation(error)
+                self?.acquisitionErrorMessage = userMessage
+                self?.installationErrorMessage = userMessage
                 self?.installationPhase = .failed
                 self?.state = .failed
                 self?.recordInstallationFailure(
@@ -1308,7 +1310,8 @@ final class MapEngine: ObservableObject {
                     self?.evidenceFailureStage = .preflight
                     self?.evidenceFailure = .sourceArtifactInvalid
                 }
-                self?.installationErrorMessage = error.localizedDescription
+                self?.installationErrorMessage = (error as? MapAcquisitionError)?.userMessage
+                    ?? UserFacingErrorMessage.forInstallation(error)
                 self?.installationPhase = .failed
                 self?.installationPhaseProgress = nil
                 self?.state = .failed
@@ -1484,7 +1487,8 @@ final class MapEngine: ObservableObject {
                 self?.evidenceFailureStage = .preflight
                 self?.evidenceFailure = .deviceDisconnected
                 self?.evidenceNativeFailureCode = .preflightMTPReadFailed
-                self?.installationErrorMessage = error.localizedDescription
+                self?.installationErrorMessage = (error as? MapAcquisitionError)?.userMessage
+                    ?? UserFacingErrorMessage.forInstallation(error)
                 self?.installationPhase = .failed
                 self?.installationPhaseProgress = nil
                 self?.state = .failed

@@ -442,7 +442,7 @@ func runMapLifecyclePresentationTests() throws {
         hasValidatedUpdateProfile: true
     )
     try require(missingIntegrity.actions.isEmpty, "missing integrity record blocks actions")
-    try require(missingIntegrity.status == "Needs verification", "missing integrity has a safe status")
+    try require(missingIntegrity.status == "Read-only", "missing integrity has a safe status")
 
     let notInstalled = resolver.resolve(
         item: lifecycleItem(installed: nil),
