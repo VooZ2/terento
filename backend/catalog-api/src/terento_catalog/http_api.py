@@ -239,7 +239,10 @@ class CatalogService:
                 action="provider.catalog_collection_failed",
                 provider_id=provider_id,
                 request_id=request_id,
-                details={"error": type(exc).__name__},
+                details={
+                    "error": type(exc).__name__,
+                    "detail": str(exc)[:500],
+                },
             )
             raise
         self.database.record_admin_audit(
