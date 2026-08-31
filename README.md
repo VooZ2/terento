@@ -127,7 +127,8 @@ works.
 - USB connection
 - Internet connection for downloading maps
 
-Freizeitkarte is the only map source supported in beta.8.
+Beta.8 supports Freizeitkarte and OpenTopoMap main-map packages. Optional
+OpenTopoMap contour packages are deferred to a later beta.
 
 ## Download
 
@@ -179,13 +180,15 @@ See the full
 ## Maps
 
 Terento beta.8 works with
-[Freizeitkarte](https://www.freizeitkarte-osm.de/), which provides Garmin maps
-based on OpenStreetMap data.
+[Freizeitkarte](https://www.freizeitkarte-osm.de/) and
+[OpenTopoMap](https://garmin.opentopomap.org/), which provide Garmin maps based
+on OpenStreetMap data.
 
 Maps are downloaded from the selected provider's original infrastructure.
 Terento does not host, mirror, or repackage them.
 
 - [Freizeitkarte](https://www.freizeitkarte-osm.de/)
+- [OpenTopoMap](https://garmin.opentopomap.org/)
 - [OpenStreetMap copyright](https://www.openstreetmap.org/copyright)
 
 Terento is an independent open-source project and is not affiliated with,
