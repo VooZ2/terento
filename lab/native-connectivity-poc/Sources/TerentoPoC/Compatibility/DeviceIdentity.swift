@@ -206,8 +206,7 @@ struct GarminDeviceModelNormalizer: Sendable {
             normalized.removeFirst("garmin ".count)
         }
         guard !normalized.isEmpty,
-              normalized != "unknown",
-              normalized != "unknown watch" else {
+              !normalized.hasPrefix("unknown") else {
             return nil
         }
 
