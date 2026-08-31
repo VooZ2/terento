@@ -161,6 +161,16 @@ if ! grep -Fq 'mapEngine.beginInstallation(plan: plan, operationId: operationID)
     exit 1
 fi
 
+if ! grep -Fq 'Task.sleep(for: .seconds(5))' \
+        "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift" \
+    || ! grep -Fq 'phaseRelay.send(.preparing)' \
+        "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift" \
+    || ! grep -Fq 'index + 1 < plan.installItems.count' \
+        "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift"; then
+    print -u2 "FAIL: sequential multi-map installs do not settle before reopening MTP"
+    exit 1
+fi
+
 if ! grep -Fq 'private func activeInstallationContent' "$connect_screen" \
     || ! grep -Fq 'Text("Installing maps")' "$connect_screen" \
     || ! grep -Fq 'Keep your Garmin connected until installation is complete.' "$connect_screen"; then

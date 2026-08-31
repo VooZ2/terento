@@ -198,6 +198,12 @@ private struct MapInventoryScanOutput: Sendable {
 
 @MainActor
 final class MapEngine: ObservableObject {
+    /// Garmin may briefly keep its MTP object database busy after accepting
+    /// and indexing a map. Opening the next MTP session immediately can block
+    /// indefinitely on affected firmware, even though the completed map was
+    /// already verified and recorded locally. Keep this provider-neutral:
+    /// every successful item in a multi-map batch receives the same bounded
+    /// settle window before the next device inventory is opened.
     @Published private(set) var state: MapEngineState = .idle
     @Published private(set) var result: MapInventoryResult?
     @Published private(set) var selectedPreflight: InstallationPreflightResult?
@@ -1439,6 +1445,16 @@ final class MapEngine: ObservableObject {
                         )
                         results.append(result)
                         guard result.isSuccess else { break }
+
+                        if index + 1 < plan.installItems.count {
+                            // Move away from a misleading Finishing 100% state
+                            // while the watch commits/indexes the completed
+                            // object. No MTP call or device write is active
+                            // during this bounded wait.
+                            phaseRelay.send(.preparing)
+                            phaseProgressRelay.send(.preparing, 0)
+                            try await Task.sleep(for: .seconds(5))
+                        }
                     }
                     return results
                 }
