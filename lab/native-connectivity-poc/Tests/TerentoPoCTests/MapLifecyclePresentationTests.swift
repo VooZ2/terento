@@ -163,7 +163,7 @@ func runMapLifecyclePresentationTests() throws {
     try require(update.allows(.update), "older managed map allows update")
     try require(update.status == "Update available", "update status is user-facing")
     try require(
-        managed.manageDetailLabel == "Installed · Release 26.05",
+        managed.manageDetailLabel == "Freizeitkarte · 2026-05 · Installed",
         "managed row uses concise release metadata"
     )
     try require(
@@ -247,7 +247,7 @@ func runMapLifecyclePresentationTests() throws {
     try require(!recovery.allows(.backup), "failed install recovery does not expose backup as a separate action")
     try require(recovery.status == "Failed install recovery", "failed install recovery has a distinct status")
     try require(
-        recoveryItem.manageDetailLabel == "Incomplete installation · Release 26.05",
+        recoveryItem.manageDetailLabel == "Freizeitkarte · 2026-05 · Incomplete installation",
         "recovery row uses explicit incomplete-installation metadata"
     )
 
@@ -306,7 +306,7 @@ func runMapLifecyclePresentationTests() throws {
         lifecycleItem(
             installed: installedMap(managementState: .detectedNotManaged),
             classification: .externalRecognized
-        ).manageDetailLabel == "Installed · Third-party map",
+        ).manageDetailLabel == "Freizeitkarte · 2026-05 · Installed · Third-party map",
         "third-party row uses concise status metadata"
     )
     try require(

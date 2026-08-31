@@ -73,6 +73,7 @@ private final class MockDeviceReader: InstallationDeviceReader, @unchecked Senda
     var files: [DeviceFile]
     private let initialFiles: [DeviceFile]
     private var inventoryReadCount = 0
+    var renumberExistingObjectIDs = false
     var snapshot: DeviceSnapshot
     var shouldFail = false
 
@@ -109,7 +110,23 @@ private final class MockDeviceReader: InstallationDeviceReader, @unchecked Senda
             )
         }
         defer { inventoryReadCount += 1 }
-        return inventoryReadCount == 0 ? initialFiles : files
+        let inventory = inventoryReadCount == 0 ? initialFiles : files
+        guard renumberExistingObjectIDs, inventoryReadCount > 0 else {
+            return inventory
+        }
+
+        return inventory.map { file in
+            guard file.path != targetPath else { return file }
+            return DeviceFile(
+                itemID: file.itemID + 1000,
+                parentID: file.parentID,
+                storageID: file.storageID,
+                path: file.path,
+                filename: file.filename,
+                sizeBytes: file.sizeBytes,
+                isFolder: file.isFolder
+            )
+        }
     }
 
     func readSnapshot() throws -> DeviceSnapshot {
@@ -139,6 +156,8 @@ private final class MockTransport: MapInstallationTransport, @unchecked Sendable
     var deleteCount = 0
     var deletedFilename: String?
     var deletedItemID: UInt32?
+    var deletedSizeBytes: UInt64?
+    var readBackItemID: UInt32 = 77
     var deleteError: InstallationTransportError?
 
     init(remoteData: Data) {
@@ -193,7 +212,7 @@ private final class MockTransport: MapInstallationTransport, @unchecked Sendable
         progress(TransferProgress(bytesTransferred: 0, totalBytes: sampledBytes))
         progress(TransferProgress(bytesTransferred: sampledBytes, totalBytes: sampledBytes))
         return MTPReadBackMapObject(
-            itemID: expectedItemID,
+            itemID: readBackItemID,
             targetPath: targetPath,
             reportedSizeBytes: reportedSize,
             sampledBytes: sampledBytes,
@@ -203,9 +222,22 @@ private final class MockTransport: MapInstallationTransport, @unchecked Sendable
     }
 
     func deleteExact(targetFilename: String, expectedItemID: UInt32) throws {
+        try deleteExact(
+            targetFilename: targetFilename,
+            expectedItemID: expectedItemID,
+            expectedSizeBytes: nil
+        )
+    }
+
+    func deleteExact(
+        targetFilename: String,
+        expectedItemID: UInt32,
+        expectedSizeBytes: UInt64?
+    ) throws {
         deleteCount += 1
         deletedFilename = targetFilename
         deletedItemID = expectedItemID
+        deletedSizeBytes = expectedSizeBytes
         if let deleteError {
             throw deleteError
         }
@@ -222,6 +254,8 @@ struct Stage42InstallationTests {
         passed += testUnknownProfileBlocksWrite()
         passed += testTargetPolicyRejectsUnsupportedProviderBeforeTransport()
         passed += testTargetPolicyAcceptsAnotherFreizeitkarteRegion()
+        passed += testTargetPolicyAcceptsOpenTopoMapProvider()
+        passed += testArtifactValidatorAcceptsOpenTopoMapProvider()
         passed += testTargetPolicyAcceptsMapCapableBetaProfile()
         passed += testMapCapableNonLabPIDCompletesGenericLifecycle()
         passed += testMissingStableWatchIdentityBlocksBeforeMutation()
@@ -236,6 +270,8 @@ struct Stage42InstallationTests {
         passed += testSizeMismatchIsFailure()
         passed += testSampleMismatchIsFailure()
         passed += testMatchingSizeAndSamplesVerify()
+        passed += testObjectIDMayChangeAcrossMTPReadSessions()
+        passed += testExistingObjectIDsMayBeReenumeratedAfterWrite()
         passed += testCleanupTargetsOnlyNewFranceObject()
         passed += testGermanyIsNeverCleanupTarget()
         passed += testSuccessMarksMapManaged()
@@ -314,14 +350,14 @@ struct Stage42InstallationTests {
                 identity: harness.request.identity,
                 deviceFiles: harness.request.beforeDeviceFiles
             )
-            return expect(false, "unsupported provider is rejected before transport")
+            return expect(false, "unknown provider is rejected before transport")
         } catch Stage42TargetPolicyError.unsupportedPackage {
             return expect(
                 harness.transport.writeCount == 0,
-                "unsupported provider is rejected before transport"
+                "unknown provider is rejected before transport"
             )
         } catch {
-            return expect(false, "unsupported provider is rejected before transport")
+            return expect(false, "unknown provider is rejected before transport")
         }
     }
 
@@ -346,6 +382,61 @@ struct Stage42InstallationTests {
             return expect(true, "another validated Freizeitkarte region is accepted")
         } catch {
             return expect(false, "another validated Freizeitkarte region is accepted")
+        }
+    }
+
+    private static func testTargetPolicyAcceptsOpenTopoMapProvider() -> Int {
+        let data = Harness.makeIMG(region: "LTU")
+        let package = Harness.makePackage(
+            size: UInt64(data.count),
+            regionID: "LTU",
+            name: "Lithuania",
+            providerID: "opentopomap",
+            packageID: "opentopomap-ltu"
+        )
+        let artifact = Harness.makeArtifact(
+            package: package,
+            data: data,
+            provider: "OpenTopoMap",
+            packageFormat: .zip
+        )
+        let harness = makeHarness()
+
+        do {
+            try Stage42TargetPolicy().validate(
+                package: package,
+                artifact: artifact,
+                profile: DeviceInstallProfileRegistry.local.profiles.first,
+                identity: harness.request.identity,
+                deviceFiles: harness.request.beforeDeviceFiles
+            )
+            return expect(true, "validated OpenTopoMap provider passes the final write policy")
+        } catch {
+            return expect(false, "validated OpenTopoMap provider passes the final write policy")
+        }
+    }
+
+    private static func testArtifactValidatorAcceptsOpenTopoMapProvider() -> Int {
+        let data = Harness.makeIMG(region: "LTU")
+        let package = Harness.makePackage(
+            size: UInt64(data.count),
+            regionID: "LTU",
+            name: "Lithuania",
+            providerID: "opentopomap",
+            packageID: "opentopomap-ltu"
+        )
+        let artifact = Harness.makeArtifact(
+            package: package,
+            data: data,
+            provider: "OpenTopoMap",
+            packageFormat: .zip
+        )
+
+        do {
+            try Stage42ArtifactValidator().validate(artifact: artifact, package: package)
+            return expect(true, "provider-neutral artifact validator accepts OpenTopoMap")
+        } catch {
+            return expect(false, "provider-neutral artifact validator accepts OpenTopoMap")
         }
     }
 
@@ -623,8 +714,32 @@ struct Stage42InstallationTests {
         _ = harness.run()
         return expect(
             harness.transport.deletedFilename == "terento_freizeitkarte_fra.img"
-                && harness.transport.deletedItemID == 77,
-            "cleanup can target only the exact new France object"
+                && harness.transport.deletedItemID == 77
+                && harness.transport.deletedSizeBytes == UInt64(harness.remoteData.count),
+            "cleanup can target only the exact new France object and size"
+        )
+    }
+
+    private static func testObjectIDMayChangeAcrossMTPReadSessions() -> Int {
+        let harness = makeHarness()
+        harness.transport.readBackItemID = 99
+        let result = harness.run()
+        return expect(
+            result.status == .installVerified
+                && harness.manifest.entries.first?.filename == "terento_freizeitkarte_fra.img",
+            "map verification does not require a volatile MTP object ID to remain unchanged"
+        )
+    }
+
+    private static func testExistingObjectIDsMayBeReenumeratedAfterWrite() -> Int {
+        let harness = makeHarness()
+        harness.renumberExistingObjectIDs = true
+        let result = harness.run()
+        return expect(
+            result.status == .installVerified
+                && result.diagnostics.existingFilesProtectionPassed
+                && result.diagnostics.unrelatedFilesProtectionPassed,
+            "re-enumerated existing MTP object IDs do not make a multi-map install fail"
         )
     }
 
@@ -694,6 +809,7 @@ struct Stage42InstallationTests {
         let recovery: MockFailedInstallRecoveryStore
         let request: MapInstallationRequest
         let remoteData: Data
+        var renumberExistingObjectIDs = false
 
         init(
             installedFrance: Bool = false,
@@ -744,6 +860,7 @@ struct Stage42InstallationTests {
                 files: Self.makeAfterFiles(),
                 initialFiles: request.beforeDeviceFiles
             )
+            reader.renumberExistingObjectIDs = renumberExistingObjectIDs
             let validator = AllowArtifactValidator()
             return MapInstallationCoordinator(
                 artifactValidator: validator,
@@ -774,11 +891,13 @@ struct Stage42InstallationTests {
         fileprivate static func makePackage(
             size: UInt64,
             regionID: String = "FRA",
-            name: String = "France"
+            name: String = "France",
+            providerID: String = "freizeitkarte",
+            packageID: String? = nil
         ) -> MapPackage {
             MapPackage(
-                id: "freizeitkarte-\(regionID.lowercased())",
-                providerId: "freizeitkarte",
+                id: packageID ?? "\(providerID)-\(regionID.lowercased())",
+                providerId: providerID,
                 regionId: regionID,
                 name: name,
                 version: MapVersion(year: 2026, month: 5)!,
@@ -791,7 +910,12 @@ struct Stage42InstallationTests {
             )
         }
 
-        fileprivate static func makeArtifact(package: MapPackage, data: Data) -> ValidatedMapArtifact {
+        fileprivate static func makeArtifact(
+            package: MapPackage,
+            data: Data,
+            provider: String? = nil,
+            packageFormat: MapPackageFormat = .rawIMG
+        ) -> ValidatedMapArtifact {
             let sourceURL = FileManager.default.temporaryDirectory
                 .appendingPathComponent("terento-stage42-mock-source-(UUID().uuidString).img")
             try! data.write(to: sourceURL, options: .atomic)
@@ -803,7 +927,7 @@ struct Stage42InstallationTests {
                 regionId: package.regionId
             )
             return ValidatedMapArtifact(
-                provider: "Freizeitkarte",
+                provider: provider ?? package.providerId,
                 region: package.regionId,
                 canonicalRegion: package.name,
                 rawRelease: "Release 26.05",
@@ -817,7 +941,7 @@ struct Stage42InstallationTests {
                 downloadSizeBytes: 100,
                 catalogDownloadSizeBytes: 100,
                 downloadSizeMatchesCatalog: true,
-                packageFormat: .rawIMG
+                packageFormat: packageFormat
             )
         }
 

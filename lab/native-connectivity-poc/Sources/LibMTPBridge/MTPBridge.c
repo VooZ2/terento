@@ -1798,6 +1798,7 @@ static int validate_managed_map_object(
     const char *target_filename,
     uint32_t expected_item_id,
     uint64_t expected_size_bytes,
+    uint32_t *resolved_item_id,
     uint64_t *actual_size_bytes,
     char *error_message,
     size_t error_message_capacity
@@ -1836,7 +1837,11 @@ static int validate_managed_map_object(
         set_error(error_message, error_message_capacity, "The transferred map was not found on the Garmin device");
         return TERENTO_MTP_MAP_REMOTE_FILE_MISSING;
     }
-    if (match_count != 1 || actual_item_id != expected_item_id) {
+    /* MTP object IDs may be re-enumerated by Garmin firmware after a write.
+       A zero expected ID deliberately requests resolution by the exact
+       managed filename and validated size instead. */
+    if (match_count != 1
+        || (expected_item_id != 0 && actual_item_id != expected_item_id)) {
         set_error(error_message, error_message_capacity, "The managed map object identity did not match exactly");
         return TERENTO_MTP_MAP_OBJECT_ID_MISMATCH;
     }
@@ -1845,6 +1850,9 @@ static int validate_managed_map_object(
         return TERENTO_MTP_MAP_OBJECT_ID_MISMATCH;
     }
 
+    if (resolved_item_id != NULL) {
+        *resolved_item_id = actual_item_id;
+    }
     if (actual_size_bytes != NULL) {
         *actual_size_bytes = remote_size;
     }
@@ -1857,6 +1865,7 @@ int terento_mtp_verify_managed_map_samples(
     const char *target_filename,
     uint32_t expected_item_id,
     uint64_t expected_size_bytes,
+    uint32_t *resolved_item_id,
     const uint64_t *sample_offsets,
     size_t sample_count,
     uint32_t sample_length,
@@ -1875,6 +1884,7 @@ int terento_mtp_verify_managed_map_samples(
         return TERENTO_MTP_MAP_UNSUPPORTED_DEVICE;
     }
     if (local_path == NULL || expected_item_id == 0 || expected_size_bytes == 0
+        || resolved_item_id == NULL
         || sample_offsets == NULL || sample_count == 0 || sample_count > 32
         || sample_length == 0 || sampled_bytes == NULL || matched_samples == NULL) {
         set_error(error_message, error_message_capacity, "The sampled map verification request is invalid");
@@ -1883,6 +1893,7 @@ int terento_mtp_verify_managed_map_samples(
 
     *sampled_bytes = 0;
     *matched_samples = 0;
+    *resolved_item_id = 0;
     set_error(error_message, error_message_capacity, "");
 
     if (validate_stage42_target(target_filename, error_message, error_message_capacity) != 0) {
@@ -1959,11 +1970,15 @@ int terento_mtp_verify_managed_map_samples(
                     goto sample_cleanup;
                 }
 
+                /* Resolve the current ID: the SendObject ID can be stale in
+                   a fresh session even though the exact target is present. */
+                uint32_t current_item_id = 0;
                 result = validate_managed_map_object(
                     device,
                     target_filename,
-                    expected_item_id,
+                    0,
                     expected_size_bytes,
+                    &current_item_id,
                     NULL,
                     error_message,
                     error_message_capacity
@@ -1971,6 +1986,12 @@ int terento_mtp_verify_managed_map_samples(
                 if (result != 0) {
                     goto sample_cleanup;
                 }
+                if (current_item_id == 0) {
+                    set_error(error_message, error_message_capacity, "The managed map object identity could not be resolved");
+                    result = TERENTO_MTP_MAP_OBJECT_ID_MISMATCH;
+                    goto sample_cleanup;
+                }
+                *resolved_item_id = current_item_id;
             }
 
             unsigned char *raw_bytes = NULL;
@@ -1978,7 +1999,7 @@ int terento_mtp_verify_managed_map_samples(
             LIBMTP_Clear_Errorstack(device);
             int read_result = LIBMTP_GetPartialObject(
                 device,
-                expected_item_id,
+                *resolved_item_id,
                 offset,
                 requested,
                 &raw_bytes,

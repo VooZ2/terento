@@ -226,9 +226,9 @@ struct Stage3GenericLifecycleTests {
         )
 
         expect(
-            scan.otherMaps.first?.name == "OpenTopoMap Lithuani"
+            scan.otherMaps.first?.name == "OpenTopoMap Lithuania"
                 && scan.otherMaps.first?.provider == nil
-                && inventory.otherMaps.first?.title == "OpenTopoMap Lithuani"
+                && inventory.otherMaps.first?.title == "OpenTopoMap Lithuania"
                 && inventory.otherMaps.first?.sourceKind == .custom
                 && inventory.otherMaps.first?.managementState == .managedByTerento,
             "an OpenTopoMap IMG header remains a managed Custom map when the exact manifest matches"
@@ -425,7 +425,7 @@ struct Stage3GenericLifecycleTests {
             installedMaps: installedMaps,
             otherMaps: otherMaps,
             parsingFailures: 0,
-            skippedNonFreizeitkarteFiles: 0
+            skippedUnrecognizedProviderFiles: 0
         )
     }
 

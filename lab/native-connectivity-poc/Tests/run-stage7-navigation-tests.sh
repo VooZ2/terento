@@ -167,7 +167,7 @@ fi
 if grep -Fq 'title: "Freizeitkarte maps"' "$connect_screen" \
     || grep -Fq 'title: "Managed maps"' "$connect_screen" \
     || ! grep -Fq 'title: group.title' "$connect_screen" \
-    || ! grep -Fq 'title: "Available Freizeitkarte maps"' "$connect_screen" \
+    || ! grep -Fq 'title: "Available maps"' "$connect_screen" \
     || grep -Eiq 'community maps?' "$connect_screen" \
     || ! grep -Fq 'title: "Other maps"' "$connect_screen" \
     || grep -Fq 'DisclosureGroup(isExpanded: $freizeitkarteMapsExpanded)' "$connect_screen"; then

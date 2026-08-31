@@ -20,6 +20,9 @@ struct Stage45MapSelectionTests {
         testInsufficientStorageBlocksPlan()
         testUnknownInstallSizeDoesNotPassStorageGate()
         testFormalCountryNamesArePresentationOnly()
+        testProviderTitlesAreCountryOnlyAndIncludeProviderVersionDetail()
+        testLegacyProviderDecoratedTitlesNormalizeToCountryNames()
+        testDifferentProvidersCannotShareInstallBatchInBeta8()
         testRegionalVariantsRemainDistinct()
         testInstalledAndAvailableListsAreSeparated()
         testAvailableSearchUsesDisplayAndRegionNames()
@@ -34,7 +37,7 @@ struct Stage45MapSelectionTests {
         testStaleWithheldSelectionIsClearedAndBlocked()
         testAcquisitionAccessibilityLabels()
 
-        print("PASS: 24 Stage 4.5 map selection tests")
+        print("PASS: 27 Stage 4.5 map selection tests")
     }
 
     private static func testCatalogRegionsProduceOneCanonicalList() {
@@ -308,6 +311,122 @@ struct Stage45MapSelectionTests {
         )
     }
 
+    private static func testProviderTitlesAreCountryOnlyAndIncludeProviderVersionDetail() {
+        let freizeitkarte = makeComparison(
+            id: "freizeitkarte-azores",
+            region: "AZORES",
+            name: "Azores · AZORES",
+            status: .notInstalled
+        )
+        let openTopoMap = makeComparison(
+            id: "opentopomap-azores",
+            providerID: "opentopomap",
+            providerName: "OpenTopoMap",
+            region: "AZORES",
+            name: "Azores · Otm Azores",
+            status: .notInstalled
+        )
+        let items = MapSelectionPlanner().items(
+            comparisons: [freizeitkarte, openTopoMap],
+            preflightStatuses: [
+                freizeitkarte.id: .readyNewInstall,
+                openTopoMap.id: .readyNewInstall
+            ],
+            recommendedRegionID: nil
+        )
+        let byID = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
+
+        expect(
+            byID[freizeitkarte.id]?.title == "Azores"
+                && byID[openTopoMap.id]?.title == "Azores"
+                && byID[freizeitkarte.id]?.providerVersionLabel == "Freizeitkarte · 2026-05"
+                && byID[openTopoMap.id]?.providerVersionLabel == "OpenTopoMap · 2026-05",
+            "provider rows keep the country title and put provider plus version in the detail"
+        )
+    }
+
+    private static func testLegacyProviderDecoratedTitlesNormalizeToCountryNames() {
+        let freizeitkarte = makeComparison(
+            id: "freizeitkarte-ltu",
+            region: "LTU",
+            name: "Republic of Lithuania",
+            status: .notInstalled
+        )
+        let openTopoMap = makeComparison(
+            id: "opentopomap-ltu",
+            providerID: "opentopomap",
+            providerName: "OpenTopoMap",
+            region: "LTU",
+            name: "Lithuania · Otm Lithuania",
+            status: .notInstalled,
+            identifier: "otm-lithuania"
+        )
+        let items = MapSelectionPlanner().items(
+            comparisons: [freizeitkarte, openTopoMap],
+            preflightStatuses: [
+                freizeitkarte.id: .readyNewInstall,
+                openTopoMap.id: .readyNewInstall
+            ],
+            recommendedRegionID: nil
+        )
+
+        let byID = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0) })
+        expect(
+            byID[freizeitkarte.id]?.title == "Lithuania"
+                && byID[openTopoMap.id]?.title == "Lithuania",
+            "legacy provider-decorated Lithuania titles are normalized consistently"
+        )
+    }
+
+    private static func testDifferentProvidersCannotShareInstallBatchInBeta8() {
+        let freizeitkarte = makeComparison(
+            id: "freizeitkarte-azores",
+            region: "AZORES",
+            name: "Azores",
+            status: .notInstalled
+        )
+        let openTopoMap = makeComparison(
+            id: "opentopomap-azores",
+            providerID: "opentopomap",
+            providerName: "OpenTopoMap",
+            region: "AZORES",
+            name: "Azores",
+            status: .notInstalled
+        )
+        let items = MapSelectionPlanner().items(
+            comparisons: [freizeitkarte, openTopoMap],
+            preflightStatuses: [
+                freizeitkarte.id: .readyNewInstall,
+                openTopoMap.id: .readyNewInstall
+            ],
+            recommendedRegionID: nil
+        )
+        let fzkItem = items.first { $0.id == freizeitkarte.id }!
+        let otmItem = items.first { $0.id == openTopoMap.id }!
+        let planner = MapSelectionPlanner()
+        let mixedPlan = planner.plan(
+            items: items,
+            selectedIDs: [freizeitkarte.id, openTopoMap.id],
+            currentFreeSpace: 15 * gigabyte
+        )
+
+        expect(
+            MapSelectionPresentationModel.isSelectionEnabled(
+                fzkItem,
+                selectedIDs: [freizeitkarte.id],
+                items: items
+            )
+                && !MapSelectionPresentationModel.isSelectionEnabled(
+                    otmItem,
+                    selectedIDs: [freizeitkarte.id],
+                    items: items
+                )
+                && mixedPlan.status == .blocked
+                && mixedPlan.reason == "Select maps from one provider at a time.",
+            "beta.8 locks the other provider and blocks mixed-provider install plans"
+        )
+    }
+
     private static func testRegionalVariantsRemainDistinct() {
         let north = makeComparison(
             id: "freizeitkarte-deu-north",
@@ -334,7 +453,7 @@ struct Stage45MapSelectionTests {
 
         expect(
             items.count == 2
-                && Set<String>(items.map { $0.title }) == ["Germany · North", "Germany · South"],
+                && Set<String>(items.map { $0.title }) == ["Germany (North)", "Germany (South)"],
             "catalog regional variants remain distinct and readable"
         )
     }
@@ -791,6 +910,8 @@ struct Stage45MapSelectionTests {
 
     private static func makeComparison(
         id: String? = nil,
+        providerID: String = "freizeitkarte",
+        providerName: String = "Freizeitkarte",
         region: String,
         name: String,
         installedMap: InstalledMap? = nil,
@@ -801,8 +922,8 @@ struct Stage45MapSelectionTests {
         includeInstallSize: Bool = true
     ) -> MapComparison {
         let package = MapPackage(
-            id: id ?? "freizeitkarte-\(region.lowercased())",
-            providerId: "freizeitkarte",
+            id: id ?? "\(providerID)-\(region.lowercased())",
+            providerId: providerID,
             regionId: region,
             name: name,
             version: MapVersion(year: 2026, month: 5)!,
@@ -814,7 +935,7 @@ struct Stage45MapSelectionTests {
         )
 
         return MapComparison(
-            providerName: "Freizeitkarte",
+            providerName: providerName,
             regionName: name,
             catalogMap: package,
             installedMap: installedMap,

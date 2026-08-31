@@ -201,6 +201,7 @@ int terento_mtp_verify_managed_map_samples(
     const char *target_filename,
     uint32_t expected_item_id,
     uint64_t expected_size_bytes,
+    uint32_t *resolved_item_id,
     const uint64_t *sample_offsets,
     size_t sample_count,
     uint32_t sample_length,

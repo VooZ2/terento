@@ -27,7 +27,11 @@ enum Stage42TargetPolicyError: LocalizedError, Equatable, Sendable {
 /// matching filename grammar check, but invalid input must be rejected before
 /// any transport call is reached.
 struct Stage42TargetPolicy: Sendable {
-    static let allowedProvider = "freizeitkarte"
+    private let providerRegistry: MapProviderRegistry
+
+    init(providerRegistry: MapProviderRegistry = .bundled) {
+        self.providerRegistry = providerRegistry
+    }
 
     func validate(
         package: MapPackage,
@@ -48,11 +52,17 @@ struct Stage42TargetPolicy: Sendable {
         package: MapPackage,
         artifact: ValidatedMapArtifact
     ) throws {
+        let packageProvider = MapIdentity.normalizeProvider(package.providerId)
+        let artifactProvider = MapIdentity.normalizeProvider(artifact.provider)
+
         guard !package.id.isEmpty,
-              MapIdentity.normalizeProvider(package.providerId) == Self.allowedProvider,
+              package.sourceKind == .provider,
+              !packageProvider.isEmpty,
+              providerRegistry.adapter(for: packageProvider) != nil,
               !package.regionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              artifact.sourceKind == .provider,
               artifact.catalogPackageID == package.id,
-              MapIdentity.normalizeProvider(artifact.provider) == Self.allowedProvider,
+              artifactProvider == packageProvider,
               let expectedIdentity = package.identity,
               MapIdentity.normalizeRegion(artifact.region)
                 == expectedIdentity.region else {
@@ -105,7 +115,7 @@ struct Stage42TargetPolicy: Sendable {
         deviceFiles: [DeviceFile]
     ) throws {
         guard identity.usbVendorId == 0x091e,
-              GarminMapCapabilityRegistry.local.evaluate(identity: identity).canUseTerentoMaps,
+              GarminMapCapabilityRegistry.local.evaluate(identity: identity).canAttemptTerentoMapInstall,
               DeviceInstallProfileRegistry.hasSingleGarminRootFolder(in: deviceFiles),
               let profile,
               profile.matches(identity),

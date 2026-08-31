@@ -37,11 +37,12 @@ struct ConnectScreen: View {
     @State private var selectedInstallationPlan: InstallationPlan?
     @State private var availableMapsExpanded = true
     @State private var otherMapsExpanded = false
-    @State private var expandedProviderMapGroups: Set<String> = ["freizeitkarte"]
+    @State private var expandedProviderMapGroups: Set<String> = []
     @State private var customMapImportExpanded = false
     @State private var customMapImportDidContinue = false
     @State private var updatePrompt: TerentoAppUpdateManifest?
     @State private var mapSearchText = ""
+    @State private var selectedMapProviderID = ""
     @State private var isShowingCustomMapImporter = false
     @State private var customMapDropTargeted = false
     @FocusState private var mapSearchFieldFocused: Bool
@@ -83,7 +84,16 @@ struct ConnectScreen: View {
     }
 
     private var providerMapSelectionItems: [MapSelectionItem] {
-        mapSelectionItems.filter { $0.package.sourceKind == .provider }
+        mapSelectionItems.filter { item in
+            guard item.package.sourceKind == .provider else { return false }
+            guard !selectedMapProviderID.isEmpty else { return true }
+            return MapIdentity.normalizeProvider(item.package.providerId)
+                == MapIdentity.normalizeProvider(selectedMapProviderID)
+        }
+    }
+
+    private var mapProviderOptions: [MapProvider] {
+        mapEngine.availableMapProviders
     }
 
     private var customMapSelectionItems: [MapSelectionItem] {
@@ -98,6 +108,14 @@ struct ConnectScreen: View {
         MapSelectionPresentationModel.available(
             providerMapSelectionItems,
             query: mapSearchText
+        )
+    }
+
+    private func isMapSelectionEnabled(_ item: MapSelectionItem) -> Bool {
+        MapSelectionPresentationModel.isSelectionEnabled(
+            item,
+            selectedIDs: selectedMapIDs,
+            items: mapSelectionItems
         )
     }
 
@@ -202,6 +220,7 @@ struct ConnectScreen: View {
                 localInstallStep = .choose
                 selectedMapIDs.removeAll()
                 selectedInstallationPlan = nil
+                selectedMapProviderID = ""
                 lifecycleViewModel.resetForDisconnectedDevice()
                 mapEngine.resetForDisconnectedDevice()
             }
@@ -233,6 +252,16 @@ struct ConnectScreen: View {
                 selectedMapIDs,
                 items: items
             )
+        }
+        .onChange(of: mapProviderOptions) { providers in
+            guard !selectedMapProviderID.isEmpty else { return }
+            let isStillAvailable = providers.contains {
+                MapIdentity.normalizeProvider($0.id)
+                    == MapIdentity.normalizeProvider(selectedMapProviderID)
+            }
+            if !isStillAvailable {
+                selectedMapProviderID = ""
+            }
         }
         .onChange(of: mapEngine.installationPhase) { phase in
             updatePresenceMonitoring(for: mapEngine.state)
@@ -344,7 +373,7 @@ struct ConnectScreen: View {
 
         if section == .manageMaps {
             otherMapsExpanded = false
-            expandedProviderMapGroups.insert("freizeitkarte")
+            expandedProviderMapGroups.formUnion(mapEngine.availableMapProviders.map(\.id))
         }
 
         selectedSection = section
@@ -1163,7 +1192,7 @@ struct ConnectScreen: View {
                     } else {
                         HStack(alignment: .center, spacing: 14) {
                             TerentoMapSectionHeader(
-                                title: "Available Freizeitkarte maps",
+                                title: "Available maps",
                                 count: availableSelectionItems.count,
                                 isExpanded: $availableMapsExpanded
                             )
@@ -1171,10 +1200,25 @@ struct ConnectScreen: View {
                             Spacer(minLength: 10)
 
                             if availableMapsExpanded {
-                                HStack(spacing: 5) {
+                                HStack(spacing: 8) {
+                                    Picker(selection: $selectedMapProviderID) {
+                                        Text("All providers").tag("")
+                                        ForEach(mapProviderOptions) { provider in
+                                            Text(provider.name).tag(provider.id)
+                                        }
+                                    } label: {
+                                        Text(selectedMapProviderLabel)
+                                            .lineLimit(1)
+                                    }
+                                    .pickerStyle(.menu)
+                                    .frame(minWidth: 175, idealWidth: 190, maxWidth: 220, alignment: .leading)
+                                    .accessibilityLabel("Map provider")
+                                    .accessibilityHint("Filters maps without choosing a default provider.")
+
                                     TextField("Search countries and regions", text: $mapSearchText)
                                         .textFieldStyle(.roundedBorder)
                                         .focused($mapSearchFieldFocused)
+                                        .frame(minWidth: 210, idealWidth: 260, maxWidth: 310)
 
                                     if !mapSearchText.isEmpty {
                                         Button {
@@ -1189,7 +1233,7 @@ struct ConnectScreen: View {
                                         .accessibilityLabel("Clear search")
                                     }
                                 }
-                                .frame(minWidth: 170, idealWidth: 238, maxWidth: 250)
+                                .frame(minWidth: 405, idealWidth: 475, maxWidth: 555, alignment: .trailing)
                                 .accessibilityLabel("Search available maps")
                                 .accessibilityHint("Filters maps by country, region, or region code.")
                                 .accessibilityValue("\(filteredAvailableSelectionItems.count) results")
@@ -1204,23 +1248,9 @@ struct ConnectScreen: View {
                     VStack(alignment: .leading, spacing: 0) {
                         if availableMapsExpanded {
                             if providerMapSelectionItems.isEmpty || filteredAvailableSelectionItems.isEmpty {
-                                VStack(alignment: .leading, spacing: 10) {
-                                    Text(mapSearchText.isEmpty
-                                        ? "No new Freizeitkarte maps are available to install."
-                                        : "No maps match your search.")
-                                        .font(.terentoUI(size: 13, weight: .medium))
-                                        .foregroundStyle(TerentoColors.secondaryText)
-
-                                    if mapSearchText.isEmpty {
-                                        Button("Manage maps") {
-                                            navigate(to: .manageMaps)
-                                        }
-                                        .buttonStyle(.borderless)
-                                        .font(.terentoUI(size: 13, weight: .semibold))
-                                        .foregroundStyle(TerentoColors.interactive)
-                                        .accessibilityHint("Opens installed map management.")
-                                    }
-                                }
+                                Text(availableMapsEmptyMessage)
+                                    .font(.terentoUI(size: 13, weight: .medium))
+                                    .foregroundStyle(TerentoColors.secondaryText)
                                 .frame(maxWidth: .infinity, alignment: .topLeading)
                                 .padding(.top, 10)
                             } else {
@@ -1232,7 +1262,11 @@ struct ConnectScreen: View {
                                                 isSelected: Binding(
                                                     get: { selectedMapIDs.contains(item.id) },
                                                     set: { selected in
-                                                        guard item.isSelectable else { return }
+                                                        guard MapSelectionPresentationModel.isSelectionEnabled(
+                                                            item,
+                                                            selectedIDs: selectedMapIDs,
+                                                            items: mapSelectionItems
+                                                        ) else { return }
                                                         if selected {
                                                             selectedMapIDs.insert(item.id)
                                                         } else {
@@ -1240,7 +1274,8 @@ struct ConnectScreen: View {
                                                         }
                                                     }
                                                 ),
-                                                isAvailable: true
+                                                isAvailable: true,
+                                                selectionEnabled: isMapSelectionEnabled(item)
                                             )
                                         }
                                     }
@@ -1334,6 +1369,30 @@ struct ConnectScreen: View {
                 }
             )
         }
+    }
+
+    private var selectedMapProviderLabel: String {
+        guard !selectedMapProviderID.isEmpty,
+              let provider = mapProviderOptions.first(where: {
+                  MapIdentity.normalizeProvider($0.id)
+                      == MapIdentity.normalizeProvider(selectedMapProviderID)
+              }) else {
+            return "All providers"
+        }
+        return provider.name
+    }
+
+    private var availableMapsEmptyMessage: String {
+        let query = mapSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !query.isEmpty {
+            return "No maps match your search."
+        }
+
+        if !selectedMapProviderID.isEmpty {
+            return "No maps are available from \(selectedMapProviderLabel)."
+        }
+
+        return "No maps are available."
     }
 
     private var customMapImportPanel: some View {
@@ -1699,7 +1758,7 @@ struct ConnectScreen: View {
                     }
                 }
                 .disabled(
-                    !mapSupport.canUseTerentoMaps
+                    !mapSupport.canAttemptTerentoMapInstall
                         || !installAvailability.isEnabled
                 )
             }
@@ -4006,6 +4065,7 @@ struct MapSelectionRow: View {
     let item: MapSelectionItem
     @Binding var isSelected: Bool
     let isAvailable: Bool
+    let selectionEnabled: Bool
     let showsSelectionControl: Bool
     let showsSize: Bool
     let showsDivider: Bool
@@ -4014,6 +4074,7 @@ struct MapSelectionRow: View {
         item: MapSelectionItem,
         isSelected: Binding<Bool>,
         isAvailable: Bool,
+        selectionEnabled: Bool = true,
         showsSelectionControl: Bool = true,
         showsSize: Bool? = nil,
         showsDivider: Bool = true
@@ -4021,6 +4082,7 @@ struct MapSelectionRow: View {
         self.item = item
         self._isSelected = isSelected
         self.isAvailable = isAvailable
+        self.selectionEnabled = selectionEnabled
         self.showsSelectionControl = showsSelectionControl
         self.showsSize = showsSize ?? (isAvailable && item.comparison.installedMap == nil)
         self.showsDivider = showsDivider
@@ -4036,16 +4098,16 @@ struct MapSelectionRow: View {
             showsDivider: showsDivider
         ) {
             HStack(spacing: 6) {
-                if isAvailable && item.isSelectable && showsSelectionControl {
+                if isAvailable && item.isSelectable && selectionEnabled && showsSelectionControl {
                     Toggle("", isOn: $isSelected)
                         .toggleStyle(.checkbox)
                         .labelsHidden()
                 } else if showsSelectionControl
                     && item.acquisitionAvailability == .available
                     && !isAlreadyInstalledSearchResult {
-                    Image(systemName: statusIcon)
+                    Image(systemName: selectionEnabled ? statusIcon : "lock.fill")
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(statusColor)
+                        .foregroundStyle(selectionEnabled ? statusColor : TerentoColors.secondaryText)
                         .frame(width: 18)
                 }
 
@@ -4070,60 +4132,79 @@ struct MapSelectionRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         .onTapGesture {
-            guard isAvailable, item.isSelectable else { return }
+            guard isAvailable, item.isSelectable, selectionEnabled else { return }
             isSelected.toggle()
         }
-        .opacity(item.acquisitionAvailability != .available || item.isSelectable || item.comparison.status == .upToDate ? 1 : 0.78)
+        .opacity(
+            item.acquisitionAvailability != .available
+                || !item.isSelectable
+                || selectionEnabled
+                ? 1
+                : 0.58
+        )
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
-        .accessibilityValue(isAvailable && item.isSelectable && showsSelectionControl
+        .accessibilityValue(isAvailable && item.isSelectable && selectionEnabled && showsSelectionControl
             ? (isSelected ? "Selected" : "Not selected")
             : detail)
+        .accessibilityHint(selectionEnabled ? "" : "Only one map provider can be selected per installation.")
     }
 
     private var detail: String {
+        let baseDetail: String
+
         if let status = item.acquisitionAvailability.shortStatus {
-            return status
-        }
-
-        if item.package.sourceKind == .custom {
+            baseDetail = status
+        } else if item.package.sourceKind == .custom {
             return "From this Mac"
-        }
-
-        if isAlreadyInstalledSearchResult {
-            return "Already installed"
-        }
-
-        switch item.comparison.status {
-        case .notInstalled:
-            if let preflightStatus = item.preflightStatus {
-                switch preflightStatus {
-                case .blockedUnsupportedDevice:
-                    return "This watch has no validated Terento install profile yet"
-                case .blockedUnknownTarget:
-                    return "Install target is not validated for this watch"
-                case .blockedAmbiguousMapIdentity:
-                    return "Map identity needs to be checked before installation"
-                case .blockedInsufficientSpace:
-                    return "Not enough space for a safe installation"
-                case .blockedUnknownInstallSize:
-                    return "Size calculated before installation"
-                case .error:
-                    return "Could not prepare this map for installation"
-                case .readyNewInstall, .readyWithExistingMapConflict:
-                    break
+        } else if isAlreadyInstalledSearchResult {
+            baseDetail = "Already installed"
+        } else {
+            switch item.comparison.status {
+            case .notInstalled:
+                if let preflightStatus = item.preflightStatus {
+                    switch preflightStatus {
+                    case .blockedUnsupportedDevice:
+                        baseDetail = "This watch has no validated Terento install profile yet"
+                    case .blockedUnknownTarget:
+                        baseDetail = "Install target is not validated for this watch"
+                    case .blockedAmbiguousMapIdentity:
+                        baseDetail = "Map identity needs to be checked before installation"
+                    case .blockedInsufficientSpace:
+                        baseDetail = "Not enough space for a safe installation"
+                    case .blockedUnknownInstallSize:
+                        baseDetail = "Size calculated before installation"
+                    case .error:
+                        baseDetail = "Could not prepare this map for installation"
+                    case .readyNewInstall, .readyWithExistingMapConflict:
+                        baseDetail = item.installSizeBytes == nil
+                            ? "Size calculated before installation"
+                            : ""
+                    }
+                } else {
+                    baseDetail = item.installSizeBytes == nil
+                        ? "Size calculated before installation"
+                        : ""
                 }
+            case .updateAvailable:
+                baseDetail = "Installed · Update available"
+            case .upToDate:
+                baseDetail = "Installed · Up to date"
+            case .newerInstalled:
+                baseDetail = "Installed · Newer version installed"
+            case .unknown:
+                baseDetail = "Installed · Version unavailable"
             }
-            return item.installSizeBytes == nil ? "Size calculated before installation" : ""
-        case .updateAvailable:
-            return "Installed · Update available"
-        case .upToDate:
-            return "Installed · Up to date"
-        case .newerInstalled:
-            return "Installed · Newer version installed"
-        case .unknown:
-            return "Installed · Version unavailable"
         }
+
+        guard item.package.sourceKind == .provider else {
+            return baseDetail
+        }
+
+        let providerVersion = item.providerVersionLabel
+        let values = [providerVersion, baseDetail.isEmpty ? nil : baseDetail]
+            .compactMap { $0 }
+        return values.joined(separator: " · ")
     }
 
     private var statusIcon: String {

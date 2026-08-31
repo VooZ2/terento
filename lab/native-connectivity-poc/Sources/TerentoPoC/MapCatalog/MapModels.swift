@@ -8,7 +8,18 @@ enum MapRegionKind: String, Codable, Equatable, Sendable {
 
     init(from decoder: Decoder) throws {
         let value = try decoder.singleValueContainer().decode(String.self)
-        guard let kind = Self(rawValue: value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()) else {
+        let normalized = value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        let kind: MapRegionKind?
+        switch normalized {
+        case "country": kind = .country
+        case "multicountry", "multi-country", "multi_country": kind = .multiCountry
+        case "subregion": kind = .subregion
+        case "custom": kind = .custom
+        default: kind = nil
+        }
+        guard let kind else {
             throw DecodingError.dataCorruptedError(
                 in: try decoder.singleValueContainer(),
                 debugDescription: "Unknown map region kind: \(value)"
@@ -206,11 +217,49 @@ struct FreizeitkarteProviderAdapter: MapProviderAdapter, Sendable {
     }
 }
 
+struct OpenTopoMapProviderAdapter: MapProviderAdapter, Sendable {
+    let id = "opentopomap"
+
+    func canonicalRegionIdentity(for package: MapPackage) -> CanonicalMapRegionIdentity? {
+        OpenTopoMapRegionIdentityMapper().map(package: package)
+    }
+
+    func artifacts(for package: MapPackage) -> [MapArtifact] {
+        package.artifacts
+    }
+}
+
+/// OpenTopoMap publishes country names in its Garmin page while the catalog
+/// keeps a stable ISO country code for product policy. This mapper is the
+/// only place where that provider-specific representation is interpreted.
+struct OpenTopoMapRegionIdentityMapper: Sendable {
+    func map(package: MapPackage) -> CanonicalMapRegionIdentity? {
+        guard MapIdentity.normalizeProvider(package.providerId) == "opentopomap" else {
+            return nil
+        }
+
+        let countryCode = package.countryCodes
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() }
+            .first { $0.count == 2 || $0.count == 3 }
+
+        guard let countryCode else {
+            return nil
+        }
+
+        return CanonicalMapRegionIdentity(countryCode: countryCode)
+    }
+}
+
 /// The registry has no implicit/default provider. Callers supply the
 /// adapters they have intentionally enabled, and presentation order is
 /// deterministic and alphabetical by display name.
 struct MapProviderRegistry: Sendable {
     let adapters: [any MapProviderAdapter]
+
+    static let bundled = MapProviderRegistry(adapters: [
+        FreizeitkarteProviderAdapter(),
+        OpenTopoMapProviderAdapter()
+    ])
 
     init(adapters: [any MapProviderAdapter]) {
         self.adapters = adapters
@@ -437,7 +486,7 @@ struct MapPackageAcquisitionPolicyResolver: Sendable {
     private let policy = MapAcquisitionPolicy()
 
     init(
-        adapters: [any MapProviderAdapter] = [FreizeitkarteProviderAdapter()]
+        adapters: [any MapProviderAdapter] = MapProviderRegistry.bundled.adapters
     ) {
         self.providerRegistry = MapProviderRegistry(adapters: adapters)
     }

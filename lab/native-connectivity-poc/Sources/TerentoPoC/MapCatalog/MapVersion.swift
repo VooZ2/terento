@@ -79,13 +79,120 @@ struct FreizeitkarteVersionParser: MapVersionParser, Sendable {
     }
 }
 
+struct OpenTopoMapVersionParser: MapVersionParser, Sendable {
+    func parse(_ value: String) -> MapVersion? {
+        let fullPattern = #"\b(20\d{2})[-/.](0?[1-9]|1[0-2])(?:[-/.](?:0?[1-9]|[12]\d|3[01]))?\b"#
+        if let version = parse(
+            value,
+            pattern: fullPattern,
+            yearOffset: 0,
+            yearCapture: 1,
+            monthCapture: 2
+        ) {
+            return version
+        }
+
+        // Some OpenTopoMap Garmin images with a full 20-byte description
+        // expose the generated date as `026-05-24` instead of
+        // `2026-05-24`. The leading `2` is lost at the fixed-header field
+        // boundary; the remaining `0YY` is still an unambiguous 20YY year.
+        let compactPattern = #"\b0(\d{2})[-/.](0?[1-9]|1[0-2])(?:[-/.](?:0?[1-9]|[12]\d|3[01]))?\b"#
+        return parse(
+            value,
+            pattern: compactPattern,
+            yearOffset: 2000,
+            yearCapture: 1,
+            monthCapture: 2
+        )
+    }
+
+    func generatedDateLabel(from value: String) -> String? {
+        let fullPattern = #"\b(20\d{2})[-/.](0?[1-9]|1[0-2])[-/.](0?[1-9]|[12]\d|3[01])\b"#
+        if let label = dateLabel(
+            in: value,
+            pattern: fullPattern,
+            yearOffset: 0,
+            yearCapture: 1,
+            monthCapture: 2,
+            dayCapture: 3
+        ) {
+            return label
+        }
+
+        let compactPattern = #"\b0(\d{2})[-/.](0?[1-9]|1[0-2])[-/.](0?[1-9]|[12]\d|3[01])\b"#
+        return dateLabel(
+            in: value,
+            pattern: compactPattern,
+            yearOffset: 2000,
+            yearCapture: 1,
+            monthCapture: 2,
+            dayCapture: 3
+        )
+    }
+
+    private func parse(
+        _ value: String,
+        pattern: String,
+        yearOffset: Int,
+        yearCapture: Int,
+        monthCapture: Int
+    ) -> MapVersion? {
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(
+                  in: value,
+                  range: NSRange(value.startIndex..<value.endIndex, in: value)
+              ),
+              let yearRange = Range(match.range(at: yearCapture), in: value),
+              let monthRange = Range(match.range(at: monthCapture), in: value),
+              let parsedYear = Int(value[yearRange]),
+              let month = Int(value[monthRange]) else {
+            return nil
+        }
+
+        return MapVersion(year: parsedYear + yearOffset, month: month)
+    }
+
+    private func dateLabel(
+        in value: String,
+        pattern: String,
+        yearOffset: Int,
+        yearCapture: Int,
+        monthCapture: Int,
+        dayCapture: Int
+    ) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(
+                  in: value,
+                  range: NSRange(value.startIndex..<value.endIndex, in: value)
+              ),
+              let yearRange = Range(match.range(at: yearCapture), in: value),
+              let monthRange = Range(match.range(at: monthCapture), in: value),
+              let dayRange = Range(match.range(at: dayCapture), in: value),
+              let parsedYear = Int(value[yearRange]),
+              let month = Int(value[monthRange]),
+              let day = Int(value[dayRange]),
+              MapVersion(year: parsedYear + yearOffset, month: month) != nil else {
+            return nil
+        }
+
+        return String(format: "Generated %04d-%02d-%02d", parsedYear + yearOffset, month, day)
+    }
+}
+
 struct MapVersionNormalizer: Sendable {
     private let freizeitkarteParser = FreizeitkarteVersionParser()
+    private let openTopoMapParser = OpenTopoMapVersionParser()
 
     func parse(rawValue: String?, provider: String?, fullText: String) -> MapVersion? {
         if let rawValue,
            MapIdentity.normalizeProvider(provider ?? "") == "freizeitkarte",
            let version = freizeitkarteParser.parse(rawValue) {
+            return version
+        }
+
+        if let rawValue,
+           MapIdentity.normalizeProvider(provider ?? "") == "opentopomap",
+           let version = openTopoMapParser.parse(rawValue) {
             return version
         }
 

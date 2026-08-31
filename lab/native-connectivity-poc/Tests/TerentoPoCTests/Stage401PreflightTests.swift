@@ -13,7 +13,7 @@ struct Stage401PreflightTests {
         testRealFenixUsesGenericProductionProfile()
         testReviewedHardwareIdentityRestoresAmoledVariant()
         testReviewedHardwareIdentityClaimsExactAsset()
-        testUnknownDeviceStaysBlocked()
+        testUnknownGarminModelGetsLiveBoundProfile()
         testMapCapableBetaDeviceGetsLiveBoundProfile()
         testOperationProfileBindsRawLiveIdentity()
         testOperationProfileRejectsAnotherDeviceProfile()
@@ -77,7 +77,7 @@ struct Stage401PreflightTests {
         )
     }
 
-    private static func testUnknownDeviceStaysBlocked() {
+    private static func testUnknownGarminModelGetsLiveBoundProfile() {
         let unknownIdentity = DeviceIdentity(
             manufacturer: "Garmin",
             model: "Garmin Mystery 999",
@@ -89,6 +89,10 @@ struct Stage401PreflightTests {
             storageCapacity: 0,
             freeSpace: 0
         )
+        let profile = DeviceInstallProfileRegistry.local.profile(
+            for: unknownIdentity,
+            deviceFiles: [garminRoot(itemID: 10)]
+        )
         let result = makeEngine().evaluate(
             identity: unknownIdentity,
             selectedMap: makePackage(),
@@ -96,19 +100,14 @@ struct Stage401PreflightTests {
             installedMaps: [],
             inspectedFiles: [],
             availableStorage: 15 * gigabyte,
-            profile: DeviceInstallProfileRegistry.local.profile(
-                for: unknownIdentity,
-                deviceFiles: [garminRoot(itemID: 10)]
-            )
+            profile: profile
         )
 
         expect(
-            DeviceInstallProfileRegistry.local.profile(
-                for: unknownIdentity,
-                deviceFiles: [garminRoot(itemID: 10)]
-            ) == nil
-                && result.status == .blockedUnsupportedDevice,
-            "unknown PID/model does not inherit the validated install profile"
+            profile?.id == "garmin-map-capable-beta"
+                && profile?.matches(unknownIdentity) == true
+                && result.status == .readyNewInstall,
+            "unknown Garmin model can use a live-bound beta profile without a model allowlist"
         )
     }
 

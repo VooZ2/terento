@@ -8,6 +8,17 @@ enum GarminMapSupportStatus: Equatable, Sendable {
     case unsupported(reason: String)
     case unknown
 
+    /// A beta install attempt may proceed for an unrecognised Garmin model.
+    /// The live VID/PID, exact Garmin root, map object validation, and
+    /// post-write verification remain mandatory. Known non-map Garmin
+    /// products still stay blocked because they use another map system.
+    var canAttemptTerentoMapInstall: Bool {
+        if case .unsupported = self { return false }
+        return true
+    }
+
+    /// A compatibility label is stricter than the beta runtime admission
+    /// rule. Unknown future watches must not be advertised as verified.
     var canUseTerentoMaps: Bool {
         if case .supported = self { return true }
         return false
@@ -50,9 +61,8 @@ enum GarminMapSupportStatus: Equatable, Sendable {
 struct GarminMapCapabilityRegistry: Sendable {
     static let local = GarminMapCapabilityRegistry()
 
-    /// Garmin's Map Manager model families that can receive additional map
-    /// data. The list intentionally excludes handhelds, Edge computers, and
-    /// golf-only CourseView devices.
+    /// Model families with locally observed Map Manager support. This is
+    /// evidence for presentation only, not an installation allowlist.
     private let supportedPrefixes: Set<String> = [
         "d2 mach 1",
         "d2 mach 2",
@@ -85,8 +95,8 @@ struct GarminMapCapabilityRegistry: Sendable {
     ]
 
     /// Models known to Garmin but not eligible for Terento's additional map
-    /// flow. This is intentionally conservative: an unrecognised Garmin model
-    /// returns `.unknown`, not a false negative.
+    /// flow. Unknown future Garmin models are admitted to the beta runtime
+    /// path and remain unverified in the compatibility UI.
     private let knownNonMapPrefixes: Set<String> = [
         "approach",
         "descent g1",

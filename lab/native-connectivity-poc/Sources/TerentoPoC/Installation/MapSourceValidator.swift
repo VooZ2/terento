@@ -26,7 +26,10 @@ struct MapSourceValidator: Sendable {
     /// provenance and malware safety cannot be proven from an IMG alone.
     func validateCustom(fileURL: URL) throws -> ValidatedMapSource {
         let inspected = try inspect(fileURL: fileURL)
-        guard let metadata = parser.parse(inspected.prefix) else {
+        guard let metadata = parser.parse(
+            inspected.prefix,
+            filename: fileURL.lastPathComponent
+        ) else {
             throw MapSourceValidationError.invalidIMG
         }
         return ValidatedMapSource(
@@ -43,7 +46,10 @@ struct MapSourceValidator: Sendable {
     ) throws -> ValidatedMapSource {
         let inspected = try inspect(fileURL: fileURL)
 
-        guard let metadata = parser.parse(inspected.prefix) else {
+        guard let metadata = parser.parse(
+            inspected.prefix,
+            filename: fileURL.lastPathComponent
+        ) else {
             throw MapSourceValidationError.invalidIMG
         }
 
