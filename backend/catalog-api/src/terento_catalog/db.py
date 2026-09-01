@@ -366,6 +366,128 @@ class Database:
         summary["total"] = sum(summary.values())
         return summary
 
+    def admin_overview_snapshot(
+        self,
+        since: datetime,
+        *,
+        recent_limit: int = 8,
+    ) -> dict[str, Any]:
+        """Return bounded operational aggregates for the authenticated Overview.
+
+        This deliberately uses the existing compatibility evidence table and
+        groups rows by the persisted operation identity before counting. It
+        does not create telemetry, alter the public API, or pretend that the
+        compatibility and map-operation success rates are interchangeable.
+        """
+        operation_cte = """
+            WITH operation_rows AS (
+                SELECT
+                    COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text)
+                        AS operation_key,
+                    min(e.canonical_device_model_id) AS canonical_device_model_id,
+                    min(e.compatibility_identity) AS compatibility_identity,
+                    min(e.model) AS model,
+                    min(e.variant) FILTER (
+                        WHERE e.variant IS NOT NULL AND btrim(e.variant) <> ''
+                    ) AS variant,
+                    min(e.provider) AS provider,
+                    min(e.region) AS region,
+                    min(e.release_label) FILTER (
+                        WHERE e.release_label IS NOT NULL AND btrim(e.release_label) <> ''
+                    ) AS release_label,
+                    min(e.app_build) FILTER (
+                        WHERE e.app_build IS NOT NULL AND btrim(e.app_build) <> ''
+                    ) AS app_build,
+                    min(e.failure_stage) FILTER (
+                        WHERE e.failure_stage IS NOT NULL AND btrim(e.failure_stage) <> ''
+                    ) AS failure_stage,
+                    min(e.failure_code) FILTER (
+                        WHERE e.failure_code IS NOT NULL AND btrim(e.failure_code) <> ''
+                    ) AS failure_code,
+                    min(e.error_category) FILTER (
+                        WHERE e.error_category IS NOT NULL AND btrim(e.error_category) <> ''
+                    ) AS error_category,
+                    max(e.occurred_at) AS last_occurred_at,
+                    bool_or(COALESCE(e.write_started, TRUE)) AS write_started,
+                    bool_and(
+                        e.phase_outcome = 'SUCCEEDED'
+                        AND e.automatic_finishing_result = 'VERIFIED'
+                    )
+                    AND count(*) = max(COALESCE(e.selected_map_count, 1))
+                        AS operation_succeeded,
+                    bool_or(e.phase_outcome = 'FAILED') AS has_failed,
+                    bool_or(e.phase_outcome = 'NOT_STARTED') AS has_not_started,
+                    bool_or(
+                        e.diagnostic_status = 'ACTIVE'
+                        AND (
+                            e.phase_outcome IN ('FAILED', 'NOT_STARTED')
+                            OR e.failure_stage IS NOT NULL
+                            OR e.failure_code IS NOT NULL
+                            OR e.error_category IS NOT NULL
+                        )
+                    ) AS open_error
+                FROM compatibility_evidence_event AS e
+                WHERE e.diagnostic_status = 'ACTIVE'
+                GROUP BY COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text)
+            )
+        """
+        scoped = f"{operation_cte}, scoped_operations AS (\n                SELECT *\n                FROM operation_rows\n                WHERE last_occurred_at >= %s\n            )"
+        with self.connection() as connection:
+            summary = connection.execute(
+                f"""
+                {scoped}
+                SELECT
+                    count(*) AS operation_count,
+                    count(*) FILTER (
+                        WHERE operation_succeeded AND write_started
+                    ) AS successful_install_count,
+                    count(*) FILTER (
+                        WHERE has_failed AND write_started
+                    ) AS failed_install_count,
+                    count(*) FILTER (WHERE open_error) AS open_error_count,
+                    count(*) FILTER (WHERE write_started) AS write_started_count
+                FROM scoped_operations
+                """,
+                (since,),
+            ).fetchone() or {}
+            recent = list(connection.execute(
+                f"""
+                {scoped}
+                SELECT
+                    operation_key, canonical_device_model_id,
+                    compatibility_identity, model, variant, provider, region,
+                    release_label, app_build, failure_stage, failure_code,
+                    error_category, last_occurred_at, operation_succeeded,
+                    has_failed, has_not_started, open_error
+                FROM scoped_operations
+                ORDER BY last_occurred_at DESC, operation_key
+                LIMIT %s
+                """,
+                (since, recent_limit),
+            ).fetchall())
+            failure_reasons = list(connection.execute(
+                f"""
+                {scoped}
+                SELECT error_category AS reason, count(*) AS count
+                FROM scoped_operations
+                WHERE has_failed AND error_category IS NOT NULL
+                GROUP BY error_category
+                ORDER BY count DESC, reason
+                LIMIT 8
+                """,
+                (since,),
+            ).fetchall())
+        return {
+            "operationCount": int(summary.get("operation_count") or 0),
+            "successfulInstallCount": int(summary.get("successful_install_count") or 0),
+            "failedInstallCount": int(summary.get("failed_install_count") or 0),
+            "openErrorCount": int(summary.get("open_error_count") or 0),
+            "writeStartedCount": int(summary.get("write_started_count") or 0),
+            "hasData": int(summary.get("operation_count") or 0) > 0,
+            "recentActivity": [dict(row) for row in recent],
+            "failureReasons": [dict(row) for row in failure_reasons],
+        }
+
     def admin_user_count(self) -> int:
         with self.connection() as connection:
             row = connection.execute("SELECT count(*) AS count FROM admin_user").fetchone()
@@ -1377,7 +1499,8 @@ class Database:
                 h.status AS health, h.checked_at AS last_checked_at,
                 h.error_code AS last_error,
                 COALESCE(pc.active_package_count, 0) AS active_package_count,
-                COALESCE(pc.broken_package_count, 0) AS broken_package_count
+                COALESCE(pc.broken_package_count, 0) AS broken_package_count,
+                COALESCE(pc.broken_url_count, 0) AS broken_url_count
             FROM map_provider AS p
             LEFT JOIN LATERAL (
                 SELECT ph.status, ph.checked_at, ph.error_code
@@ -1702,12 +1825,20 @@ class Database:
             values.append(filters["dateTo"])
         return clauses, values
 
-    def map_statistics(self, filters: dict[str, Any]) -> list[dict[str, Any]]:
+    def map_statistics(
+        self,
+        filters: dict[str, Any],
+        *,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
         clauses, values = self._map_statistics_filter(filters)
         query = f"""
             SELECT
                 e.provider_id,
+                p.name AS provider_name,
                 e.map_package_id,
+                mp.name AS map_package_name,
                 COALESCE(e.region, mp.region) AS region,
                 e.event_type,
                 e.outcome,
@@ -1717,12 +1848,16 @@ class Database:
                 max(e.occurred_at) AS last_occurred_at
             FROM map_download_event AS e
             LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
+            LEFT JOIN map_provider AS p ON p.id = e.provider_id
             WHERE {' AND '.join(clauses)}
-            GROUP BY e.provider_id, e.map_package_id,
+            GROUP BY e.provider_id, p.name, e.map_package_id, mp.name,
                      COALESCE(e.region, mp.region), e.event_type, e.outcome
             ORDER BY last_occurred_at DESC, e.provider_id,
                      e.map_package_id NULLS LAST, e.event_type, e.outcome
         """
+        if limit is not None:
+            query += " LIMIT %s OFFSET %s"
+            values.extend([limit, max(0, offset)])
         with self.connection() as connection:
             return list(connection.execute(query, values).fetchall())
 

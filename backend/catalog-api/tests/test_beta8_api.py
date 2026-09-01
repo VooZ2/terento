@@ -45,6 +45,18 @@ class FakeProviderDatabase:
             "total": 0,
         }
 
+    def admin_overview_snapshot(self, since):
+        return {
+            "operationCount": 0,
+            "successfulInstallCount": 0,
+            "failedInstallCount": 0,
+            "openErrorCount": 0,
+            "writeStartedCount": 0,
+            "hasData": False,
+            "recentActivity": [],
+            "failureReasons": [],
+        }
+
     def admin_session(self, token: str):
         return {"id": 7, "csrf_token_hash": token_hash("csrf")} if token == token_hash("session") else None
 
@@ -86,7 +98,7 @@ class FakeProviderDatabase:
             "health_history": [],
         }
 
-    def map_statistics(self, filters):
+    def map_statistics(self, filters, *, limit=None, offset=0):
         return [{
             "provider_id": filters.get("provider", "freizeitkarte"),
             "map_package_id": filters.get("map"),
@@ -704,6 +716,9 @@ class Beta8APITests(unittest.TestCase):
             self.assertEqual(statistics.status, 200)
             statistics_payload = json.loads(statistics_body)
             self.assertEqual(statistics_payload["rows"][0]["region"], "LT")
+            self.assertEqual(statistics_payload["detailPageSize"], 25)
+            self.assertEqual(statistics_payload["detailTotal"], 1)
+            self.assertEqual(len(statistics_payload["detailRows"]), 1)
             self.assertEqual(statistics_payload["linkage"]["mapInstallationCount"], 1)
             self.assertEqual(statistics_payload["linkage"]["mapOnlyInstallationCount"], 1)
             self.assertEqual(statistics_payload["linkage"]["linkedInstallationCount"], 0)
@@ -782,7 +797,7 @@ class Beta8APITests(unittest.TestCase):
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         try:
-            for path in ("/admin/providers", "/admin/map-statistics", "/admin/providers/freizeitkarte"):
+            for path in ("/admin", "/admin/installations", "/admin/providers", "/admin/map-statistics", "/admin/providers/freizeitkarte"):
                 response, _ = self._request(server, "GET", path)
                 self.assertEqual(response.status, 303)
                 self.assertEqual(response.headers["Location"], "/admin/login")

@@ -76,25 +76,49 @@ by the service health cycle.
 
 ## `GET https://api.terento.app/admin`
 
-Returns an aggregate HTML operator dashboard after database-backed login. The
-dashboard uses the Terento branded English admin shell, exact model/variant
-columns, five installation KPI cards, a separate historical-failure note, and
-client-side search/status/sort controls; these controls do not change backend
-aggregation. The first administrator can
+Returns the authenticated operator Overview. The default period is the last 24
+hours; `?period=7d`, `?period=30d`, and `?period=all` are also supported. The
+page groups existing active compatibility evidence by persisted operation ID,
+shows failed installs separately from unresolved errors, and provides direct
+links to the existing Installations, device, diagnostics, and provider detail
+views. If the selected period has no evidence, event-derived values are shown
+as an em dash rather than zero. The Overview deliberately leaves Install
+success as `Pending metric definition` until compatibility evidence and
+map-operation telemetry are confirmed to represent the same operational
+domain. No new telemetry or public statistics is created by this page.
+
+The first administrator can
 be created only once through `/admin/setup` with the environment-provided
 bootstrap secret. Passwords use salted PBKDF2-SHA256;
 opaque sessions and CSRF values are stored only as SHA-256 hashes. Cookies are
 Secure, HttpOnly, SameSite=Strict, and scoped to `/admin`. Login/setup attempts
 are rate limited. Pages include no-store, noindex and restrictive CSP headers.
+
+## `GET https://api.terento.app/admin/installations`
+
+Returns the authenticated compatibility/installations view. It keeps the
+existing five KPI cards, historical-failure distinction, exact model/variant
+table, search, compatibility-status filter, sort, and model drill-down. The
+quick filters `All`, `Failed`, `Open errors`, and `Successful` are
+presentation-only filters over the existing aggregate rows. Attempts and
+successes are currently composed from the existing model aggregate plus the
+active/resolved operation-detail presentation overlay. The canonical
+compatibility view itself uses active, write-started operations and excludes
+pre-write failures; the rendered page also retains historical failures for
+operator review. These source domains are not yet proven equivalent, so the
+page's displayed counters must not be treated as a final unified success-rate
+definition. Open errors remain a separate unresolved diagnostic state. The
+route is the target of the earlier `/internal/compatibility/` redirect.
+
 The first screen stops at the KPI summary, filters, and one-row-per-exact-
-model/variant table. Attempts and successes use active, write-started
-operations; Errors counts unresolved problematic operations. Resolved and
-legacy diagnostics remain available only in model history and do not enter
-these summary counters. Identity-pending evidence is shown separately.
-Selecting a model or its error count opens the private per-model diagnostics
-view below.
-`/internal/compatibility/` redirects to this route for the earlier local
-implementation.
+model/variant table. Resolved and legacy diagnostics remain available in model
+history and may contribute to its historical-failure presentation, but are not
+part of the canonical compatibility view. Identity-pending evidence is shown
+separately. Selecting a model or its error count opens the private per-model
+diagnostics view below. Device history uses the existing event groups and
+provides 25/50-row presentation pagination. Failed rows use the existing
+normalized error category or failure stage as a concise reason; raw diagnostic
+codes remain behind the per-operation Details action.
 
 ## `GET https://api.terento.app/admin/diagnostics?identity=...`
 
@@ -110,6 +134,12 @@ technical fields. Successful normal evidence remains historical evidence and
 does not appear as an open problem. Identity-pending success is a separate
 state from Failed. This is an additive admin-only route and does not alter any
 native, public, or existing device API contract.
+
+The device detail history keeps the exact model/variant scope, supports All,
+Successful, Failed, Open errors, and Resolved errors filters, and uses a
+25/50-row presentation page. The provider detail primary health disclosure
+shows the newest check; its history disclosure contains only previous checks,
+so the newest row is not repeated.
 
 ## `GET https://api.terento.app/admin/campaign-links`
 
@@ -482,7 +512,9 @@ identifier and does not alter compatibility evidence.
 
 Returns private aggregate map-operation rows with `event_count`, distinct
 `operation_count`, first/last occurrence, provider, map, region, event type,
-and outcome. Supported query filters are `provider`, `map`, `region`,
+and outcome. Where the existing registry has names, admin rows also include
+`provider_name` and `map_package_name` for human-readable popularity tables;
+the technical IDs remain available. Supported query filters are `provider`, `map`, `region`,
 `dateFrom`, `dateTo`, and `eventType`. The response is no-store/noindex and
 does not expose individual event payloads or device identifiers. Each response
 row is an event group, not a complete download/install total: a single map
@@ -507,6 +539,13 @@ The linkage summary contains `mapOperationCount`, `linkedOperationCount`,
 `linkedPrewriteFailureCount` is the subset that failed before a device write;
 it remains visible for traceability but is not folded into the existing
 write-started compatibility success-rate aggregate.
+
+The response's `rows` remain the complete filtered aggregate used for KPI and
+popularity calculations. The additive `detailRows` projection is bounded for
+the Event detail disclosure. `detailPage` and `detailPageSize` (`25` or `50`)
+select its page, and `detailTotal` reports the number of filtered aggregate
+groups. This keeps the event-detail DOM bounded without changing aggregate
+totals. These pagination parameters are private admin presentation controls.
 
 ## `GET /admin/map-statistics`
 

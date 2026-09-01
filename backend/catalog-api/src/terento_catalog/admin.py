@@ -591,7 +591,8 @@ def _admin_brand(*, show_badge: bool = True) -> str:
 
 def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evidence") -> str:
     username = html.escape(str(user.get("username") or ""))
-    evidence_class = " class='active'" if active == "evidence" else ""
+    overview_class = " class='active'" if active == "overview" else ""
+    evidence_class = " class='active'" if active in {"evidence", "installations"} else ""
     campaign_class = " class='active'" if active == "campaigns" else ""
     devices_class = " class='active'" if active == "devices" else ""
     providers_class = " class='active'" if active == "providers" else ""
@@ -606,14 +607,14 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     review_menu = f"""<details class="needs-review-menu">
         <summary aria-label="Needs review: {review_total}">Needs review <span class="needs-review-count">{review_total}</span></summary>
         <div class="needs-review-popover" role="group" aria-label="Review queue">
-          <a href="/admin"><span>Installation issues</span><strong>{installation_issues}</strong></a>
-          <a href="/admin"><span>Identity pending</span><strong>{identity_pending}</strong></a>
+          <a href="/admin/installations?state=open"><span>Installation issues</span><strong>{installation_issues}</strong></a>
+          <a href="/admin/installations?state=identity-pending"><span>Identity pending</span><strong>{identity_pending}</strong></a>
           <a href="/admin/devices"><span>Ready to publish</span><strong>{ready_to_publish}</strong></a>
         </div>
       </details>""" if review_total else ""
     return f"""<header class="admin-topbar"><div class="admin-topbar-inner">
       <div class="admin-header-zone admin-header-left">{_admin_brand(show_badge=False)}<span class="admin-badge">Admin area</span><a class="admin-website-link" href="https://terento.app/" target="_blank" rel="noopener noreferrer" aria-label="Open Terento website in a new tab">Website <span aria-hidden="true">↗</span></a></div>
-      <nav class="admin-section-nav" aria-label="Admin sections"><a{evidence_class} href="/admin">Installations</a><a{devices_class} href="/admin/devices">Devices</a><a{providers_class} href="/admin/providers">Providers</a><a{map_statistics_class} href="/admin/map-statistics">Map statistics</a><a{campaign_class} href="/admin/campaign-links">Campaign links</a>{review_menu}</nav>
+      <nav class="admin-section-nav" aria-label="Admin sections"><a{overview_class} href="/admin">Overview</a><a{evidence_class} href="/admin/installations">Installations</a><a{devices_class} href="/admin/devices">Devices</a><a{providers_class} href="/admin/providers">Providers</a><a{map_statistics_class} href="/admin/map-statistics">Map statistics</a><a{campaign_class} href="/admin/campaign-links">Campaign links</a>{review_menu}</nav>
       <nav class="admin-nav" aria-label="Admin navigation"><label class="timezone-control"><span class="sr-only">Time zone</span><select id="admin-timezone" aria-label="Time zone" title="Time zone"><option value="browser">Automatic (browser)</option><option value="UTC">UTC</option><option value="Europe/Vilnius">Europe/Vilnius</option><option value="Europe/London">Europe/London</option><option value="Europe/Berlin">Europe/Berlin</option><option value="America/New_York">America/New_York</option><option value="America/Los_Angeles">America/Los_Angeles</option><option value="Asia/Tokyo">Asia/Tokyo</option></select></label><span class="admin-user" aria-label="Signed in as {username}">{username}</span>
       <form method="post" action="/admin/logout"><input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}"><button class="link-button" type="submit">Sign out</button></form></nav>
     </div></header>"""
@@ -661,6 +662,187 @@ def login_page(*, error: str | None = None) -> bytes:
     )
 
 
+def _overview_failure_reason_label(value: Any) -> str:
+    labels = {
+        "acquisition": "Map acquisition",
+        "transport": "Device transport",
+        "verification": "Transfer verification",
+        "storage": "Storage",
+        "deviceDisconnected": "Device disconnected",
+        "sourceValidation": "Source validation",
+        "unknown": "Unknown",
+    }
+    return labels.get(str(value or "").strip(), "Installation failure")
+
+
+def _diagnostic_error_reason(results: list[dict[str, Any]]) -> str:
+    """Return a concise primary reason while keeping raw codes in Details."""
+    for result in results:
+        category = str(result.get("error_category") or "").strip()
+        if category:
+            return _overview_failure_reason_label(category)
+    for result in results:
+        stage = str(result.get("failure_stage") or "").strip()
+        if stage:
+            return re.sub(r"[_-]+", " ", stage).strip().title() + " failed"
+    return "Installation error"
+
+
+def _overview_operation_label(operation: dict[str, Any]) -> tuple[str, str]:
+    if operation.get("has_failed"):
+        return "Install failed", "failed"
+    if operation.get("has_not_started"):
+        return "Install not started", "not-started"
+    if operation.get("operation_succeeded"):
+        return "Install succeeded", "succeeded"
+    return "Install operation", "unknown"
+
+
+def _overview_operation_context(operation: dict[str, Any]) -> str:
+    model = str(operation.get("model") or operation.get("compatibility_identity") or "Unknown device").strip()
+    variant = _normalise_variant(operation.get("variant"))
+    provider = str(operation.get("provider") or "").strip()
+    parts = [model]
+    if variant != "—" and variant not in model:
+        parts.append(variant)
+    if provider:
+        parts.append(provider)
+    return " · ".join(parts)
+
+
+def _overview_operation_href(operation: dict[str, Any]) -> str:
+    state = (
+        "failed" if operation.get("has_failed")
+        else "open" if operation.get("open_error") or operation.get("has_not_started")
+        else None
+    )
+    device_id = str(operation.get("canonical_device_model_id") or "").strip()
+    if device_id:
+        return _device_detail_url(device_id, origin="installations", state=state, anchor="installations")
+    identity = str(operation.get("compatibility_identity") or operation.get("model") or "Unknown").strip()
+    parameters = {"identity": identity}
+    if state:
+        parameters["state"] = state
+    return "/admin/diagnostics?" + urlencode(parameters)
+
+
+def _overview_activity_row(operation: dict[str, Any]) -> str:
+    label, state = _overview_operation_label(operation)
+    context = _overview_operation_context(operation)
+    provider = str(operation.get("provider") or "—").strip()
+    href = _overview_operation_href(operation)
+    reason = _overview_failure_reason_label(operation.get("error_category")) if state in {"failed", "not-started"} else ""
+    detail = f"<span>{html.escape(context)}</span>"
+    if reason:
+        detail += f"<small>{html.escape(reason)}</small>"
+    return (
+        f"<li class='overview-activity-item overview-activity-{state}'>"
+        f"<time>{_timestamp_markup(operation.get('last_occurred_at'))}</time>"
+        f"<a href='{html.escape(href, quote=True)}'><span class='overview-activity-label'>{html.escape(label)}</span>{detail}</a>"
+        f"<span class='overview-activity-provider'>{html.escape(provider)}</span></li>"
+    )
+
+
+def _overview_attention_item(operation: dict[str, Any]) -> str:
+    label, state = _overview_operation_label(operation)
+    href = _overview_operation_href(operation)
+    reason = _overview_failure_reason_label(operation.get("error_category"))
+    return (
+        f"<li class='overview-attention-item overview-attention-{state}'>"
+        f"<span class='overview-attention-dot' aria-hidden='true'>●</span>"
+        f"<div><a href='{html.escape(href, quote=True)}'><strong>{html.escape(label)}</strong></a>"
+        f"<span>{html.escape(_overview_operation_context(operation))}</span>"
+        f"<small>{html.escape(reason)} · {_timestamp_markup(operation.get('last_occurred_at'))}</small></div>"
+        f"<a class='overview-detail-link' href='{html.escape(href, quote=True)}'>Details&nbsp;→</a></li>"
+    )
+
+
+def _overview_provider_attention_item(provider: dict[str, Any]) -> str:
+    provider_id = str(provider.get("id") or "").strip()
+    name = str(provider.get("name") or provider_id or "Provider")
+    health = str(provider.get("health") or "UNKNOWN").upper()
+    href = f"/admin/providers/{quote(provider_id, safe='')}"
+    return (
+        f"<li class='overview-attention-item overview-attention-provider'>"
+        f"<span class='overview-attention-dot' aria-hidden='true'>●</span>"
+        f"<div><a href='{html.escape(href, quote=True)}'><strong>{html.escape(name)} health {html.escape(health.title())}</strong></a>"
+        f"<span>Provider health requires review</span>"
+        f"<small>{_timestamp_markup(provider.get('lastHealthCheck'))}</small></div>"
+        f"<a class='overview-detail-link' href='{html.escape(href, quote=True)}'>Details&nbsp;→</a></li>"
+    )
+
+
+def _overview_failure_reasons(reasons: list[dict[str, Any]]) -> str:
+    if not reasons:
+        return "<p class='empty'>No normalized failure categories are available for this period.</p>"
+    maximum = max(int(item.get("count") or 0) for item in reasons) or 1
+    rows: list[str] = []
+    for item in reasons:
+        count = int(item.get("count") or 0)
+        width = max(4, round(count / maximum * 100))
+        label = _overview_failure_reason_label(item.get("reason"))
+        rows.append(
+            f"<li><span>{html.escape(label)}</span><strong>{count}</strong>"
+            f"<span class='overview-bar' role='img' aria-label='{html.escape(label)}: {count}'><i style='width:{width}%'></i></span></li>"
+        )
+    return "<ul class='overview-reason-list'>" + "".join(rows) + "</ul>"
+
+
+def overview_page(
+    overview: dict[str, Any], user: dict[str, Any], csrf_token: str,
+) -> bytes:
+    data = overview.get("data") if isinstance(overview.get("data"), dict) else {}
+    providers = list(overview.get("providers") or [])
+    period = str(overview.get("period") or "24h")
+    period_labels = {"24h": "Last 24 hours", "7d": "Last 7 days", "30d": "Last 30 days", "all": "All time"}
+    period_options = "".join(
+        f"<option value='{value}'{' selected' if value == period else ''}>{label}</option>"
+        for value, label in period_labels.items()
+    )
+    healthy = sum(1 for provider in providers if str(provider.get("health") or "").upper() == "HEALTHY")
+    provider_count = len(providers)
+    failed_installs = int(data.get("failedInstallCount") or 0)
+    open_errors = int(data.get("openErrorCount") or 0)
+    operation_count = int(data.get("operationCount") or 0)
+    recent = list(data.get("recentActivity") or [])
+    has_data = bool(data.get("hasData")) if "hasData" in data else bool(operation_count or recent)
+    event_metric = lambda value: str(value) if has_data else "—"
+    attention_operations = [item for item in recent if item.get("open_error")]
+    attention_providers = [
+        provider for provider in providers
+        if str(provider.get("health") or "UNKNOWN").upper() not in {"HEALTHY", ""}
+    ]
+    attention_items = "".join(_overview_attention_item(item) for item in attention_operations[:4])
+    attention_items += "".join(_overview_provider_attention_item(item) for item in attention_providers[:4])
+    if not attention_items:
+        attention_content = "<p class='overview-empty-state'>No issues need attention</p>"
+    else:
+        attention_content = f"<ul class='overview-attention-list'>{attention_items}</ul>"
+    recent_content = (
+        "<p class='empty'>No installation activity in this period.</p>"
+        if not recent else
+        "<ul class='overview-activity-list'>" + "".join(_overview_activity_row(item) for item in recent) + "</ul>"
+    )
+    content = f"""
+      {_admin_header(user, csrf_token, active='overview')}
+      <main class='dashboard overview-page' id='main-content'>
+        <div class='heading-row overview-heading'><div><p class='eyebrow'>Operations</p><h1>Overview</h1><p class='lede'>A compact view of current Terento health and the work that needs attention.</p></div><form class='overview-period-form' method='get' action='/admin'><label><span class='sr-only'>Time period</span><select name='period' onchange='this.form.submit()'>{period_options}</select></label></form></div>
+        <section class='overview-kpis' aria-label='Operational summary'>
+          <a class='overview-kpi' href='/admin/installations'><span>Install operations</span><strong>{event_metric(operation_count)}</strong><small>{'One row per persisted operation' if has_data else 'No evidence in this period'}</small></a>
+          <article class='overview-kpi overview-kpi-pending'><span>Install success</span><strong>—</strong><small>Pending metric definition</small></article>
+          <a class='overview-kpi overview-kpi-attention' href='/admin/installations?state=failed'><span>Failed installs</span><strong>{event_metric(failed_installs)}</strong><small>{'Write-started terminal failures' if has_data else 'No evidence in this period'}</small></a>
+          <a class='overview-kpi overview-kpi-attention' href='/admin/installations?state=open'><span>Open errors</span><strong>{event_metric(open_errors)}</strong><small>{'Unresolved actionable evidence' if has_data else 'No evidence in this period'}</small></a>
+          <a class='overview-kpi' href='/admin/providers'><span>Providers</span><strong>{healthy} / {provider_count}</strong><small>Healthy providers</small></a>
+        </section>
+        <section class='overview-panel overview-attention-panel' aria-labelledby='overview-attention-title'><div class='section-heading'><div><p class='section-kicker'>Failure-first</p><h2 id='overview-attention-title'>Needs attention</h2></div><a class='section-link' href='/admin/installations?state=open'>View all&nbsp;→</a></div>{attention_content}</section>
+        <div class='overview-columns'><section class='overview-panel' aria-labelledby='overview-activity-title'><div class='section-heading'><div><p class='section-kicker'>Latest</p><h2 id='overview-activity-title'>Recent activity</h2></div><a class='section-link' href='/admin/installations'>View all&nbsp;→</a></div>{recent_content}</section><section class='overview-panel' aria-labelledby='overview-reasons-title'><div class='section-heading'><div><p class='section-kicker'>Normalized evidence</p><h2 id='overview-reasons-title'>Failures by reason</h2></div></div>{_overview_failure_reasons(list(data.get('failureReasons') or []))}<p class='overview-chart-note'>Only persisted normalized error categories are shown. Raw diagnostic codes remain in the installation detail.</p></section></div>
+        <section class='overview-panel overview-provider-panel' aria-labelledby='overview-provider-title'><div class='section-heading'><div><p class='section-kicker'>Availability</p><h2 id='overview-provider-title'>Providers</h2></div><a class='section-link' href='/admin/providers'>Manage&nbsp;→</a></div><div class='overview-provider-summary'><strong>{healthy} / {provider_count} healthy</strong>{''.join(f"<a href='/admin/providers/{quote(str(provider.get('id') or ''), safe='')}'>{html.escape(str(provider.get('name') or provider.get('id') or 'Provider'))} <span>{html.escape(str(provider.get('health') or 'UNKNOWN').title())}</span></a>" for provider in providers)}</div></section>
+        <p class='overview-semantic-note'>Install success is intentionally unavailable until the compatibility-evidence and map-operation success definitions are confirmed as the same operational domain.</p>
+      </main>
+    """
+    return _layout("Overview", content)
+
+
 def dashboard_page(
     rows: list[dict[str, Any]], user: dict[str, Any], csrf_token: str,
     *, operations: list[dict[str, Any]] | None = None,
@@ -695,7 +877,7 @@ def dashboard_page(
     empty = "<p class='empty'>No installation evidence yet.</p>" if not rows else ""
     latest_copy = f"Updated {_timestamp_markup(latest)}" if latest else "No evidence received yet"
     content = f"""
-      {_admin_header(user, csrf_token)}
+      {_admin_header(user, csrf_token, active='installations')}
       <main class="dashboard" id="main-content">
         <div class="heading-row installation-heading"><div><p class="eyebrow">Compatibility</p><h1>Installations</h1><p class="lede">Installation activity and compatibility evidence from Terento users.</p></div><p class="page-meta">{latest_copy}</p></div>
         <section class="admin-kpi-grid installation-kpis" aria-label="Installation summary">
@@ -709,6 +891,7 @@ def dashboard_page(
         {empty}
         <section class="evidence-section" aria-label="Installation evidence table">
           <form class="filter-bar admin-filter-bar" id="evidence-filters" role="search">
+            <div class="quick-filter-group" role="group" aria-label="Quick installation filters"><button type="button" class="quick-filter active" data-installation-filter="all" aria-pressed="true">All</button><button type="button" class="quick-filter" data-installation-filter="failed" aria-pressed="false">Failed</button><button type="button" class="quick-filter" data-installation-filter="open" aria-pressed="false">Open errors</button><button type="button" class="quick-filter" data-installation-filter="successful" aria-pressed="false">Successful</button></div>
             <label class="filter-search"> <span class="sr-only">Search models</span><input id="evidence-search" type="search" placeholder="Search models" autocomplete="off"></label>
             <label><span class="sr-only">Filter by status</span><select id="evidence-status"><option value="all">All statuses</option>{status_options}</select></label>
             <label><span class="sr-only">Sort models</span><select id="evidence-sort"><option value="attempts">Most attempts</option><option value="errors">Most errors</option><option value="latest">Latest activity</option><option value="model">Model name</option></select></label>
@@ -1041,6 +1224,7 @@ def provider_detail_page(
     broken_packages = sum(int(package.get("broken_artifact_count") or 0) for package in packages)
     package_count = int(provider.get("packageCount") or len(packages))
     latest_health = health_history[0] if health_history else {}
+    previous_health = health_history[1:] if latest_health else []
     health_passed, health_not_evaluated = _provider_health_counts(latest_health)
     latest_health_status = str(latest_health.get("status") or health or "UNKNOWN").upper()
     latest_run = runs[0] if runs else {}
@@ -1077,20 +1261,21 @@ def provider_detail_page(
     rows_packages = "".join(_provider_package_row(package) for package in packages)
     rows_sources = "".join(_provider_source_row(source) for source in provider_sources)
     rows_download_sources = "".join(_provider_source_row(source) for source in download_sources)
-    rows_health = "".join(_provider_health_row(item) for item in health_history)
+    rows_health = "".join(_provider_health_row(item) for item in previous_health)
     rows_runs = "".join(_provider_run_row(run) for run in runs)
     rows_audits = "".join(_provider_audit_row(audit) for audit in audits)
     empty_packages = "<p class='empty'>No catalog packages collected yet.</p>" if not packages else ""
     empty_sources = "<p class='empty'>No provider source links recorded.</p>" if not provider_sources else ""
     empty_download_sources = "<p class='empty'>No package download sources recorded.</p>" if not download_sources else ""
     empty_health = "<p class='empty'>No health checks recorded yet.</p>" if not health_history else ""
+    empty_previous_health = "<p class='empty'>No previous health checks recorded.</p>" if not previous_health else ""
     empty_runs = "<p class='empty'>No catalog collection runs recorded yet.</p>" if not runs else ""
     empty_audits = "<p class='empty'>No provider audit entries recorded yet.</p>" if not audits else ""
     source_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Provider-level original sources</caption><thead><tr><th scope='col'>Source</th><th scope='col'>Original link</th><th scope='col'>Status</th><th scope='col'>Last checked</th></tr></thead><tbody>{rows_sources}</tbody></table></div>" if provider_sources else ""
     download_source_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Package download sources</caption><thead><tr><th scope='col'>Source</th><th scope='col'>Original link</th><th scope='col'>Status</th><th scope='col'>Last checked</th></tr></thead><tbody id='provider-download-source-rows'>{rows_download_sources}</tbody></table></div>" if download_sources else ""
     package_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Regions and packages</caption><thead><tr><th scope='col'>Region / package</th><th scope='col'>Release</th><th scope='col'>Artifacts</th><th scope='col'>State</th></tr></thead><tbody id='provider-package-rows'>{rows_packages}</tbody></table></div>" if packages else ""
     latest_health_table = f"<div class='table-wrap provider-table-wrap provider-history-wrap'><table class='admin-table'><caption class='sr-only'>Health check details</caption><thead><tr><th scope='col'>Checked</th><th scope='col'>Result</th><th scope='col'>Checks</th><th scope='col'>HTTP</th><th scope='col'>Artifacts</th><th scope='col'>Duration</th><th scope='col'>Error</th></tr></thead><tbody>{_provider_health_row(latest_health)}</tbody></table></div>" if latest_health else ""
-    health_history_table = f"<div class='table-wrap provider-table-wrap provider-history-wrap'><table class='admin-table'><thead><tr><th scope='col'>Checked</th><th scope='col'>Result</th><th scope='col'>Checks</th><th scope='col'>HTTP</th><th scope='col'>Artifacts</th><th scope='col'>Duration</th><th scope='col'>Error</th></tr></thead><tbody>{rows_health}</tbody></table></div>" if health_history else ""
+    health_history_table = f"<div class='table-wrap provider-table-wrap provider-history-wrap'><table class='admin-table'><thead><tr><th scope='col'>Checked</th><th scope='col'>Result</th><th scope='col'>Checks</th><th scope='col'>HTTP</th><th scope='col'>Artifacts</th><th scope='col'>Duration</th><th scope='col'>Error</th></tr></thead><tbody>{rows_health}</tbody></table></div>" if previous_health else ""
     run_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table'><thead><tr><th scope='col'>Run</th><th scope='col'>Started</th><th scope='col'>Finished</th><th scope='col'>Result</th><th scope='col'>Packages</th><th scope='col'>Artifacts</th><th scope='col'>Error</th></tr></thead><tbody>{rows_runs}</tbody></table></div>" if runs else ""
     audit_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Provider audit history</caption><thead><tr><th scope='col'>Admin user</th><th scope='col'>Action</th><th scope='col'>Old status</th><th scope='col'>New status</th><th scope='col'>Reason</th><th scope='col'>Timestamp</th><th scope='col'>Target/details</th></tr></thead><tbody>{rows_audits}</tbody></table></div>" if audits else ""
     health_summary = (
@@ -1128,7 +1313,7 @@ def provider_detail_page(
         <section class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Sources</p><h2>Original links</h2></div><p class='table-help'>Provider-level sources</p></div>{empty_sources}{source_table}</section>
         <section class='provider-card'><details class='admin-disclosure' id='provider-download-sources'><summary>Package download sources · {len(download_sources)}</summary><div class='disclosure-body'><div class='inline-filter-row'><label><span class='sr-only'>Search sources</span><input id='provider-source-search' type='search' placeholder='Search sources' autocomplete='off'></label><label><span class='sr-only'>Source status</span><select id='provider-source-filter'><option value='all'>All sources</option><option value='broken'>Broken only</option></select></label></div>{empty_download_sources}{download_source_table}<div class='provider-pagination' id='provider-source-pagination' aria-live='polite'></div></div></details></section>
         <section class='provider-card'><details class='admin-disclosure' id='provider-packages'><summary>Regions and packages · {len(packages)} packages · {broken_packages} broken</summary><div class='disclosure-body'><div class='inline-filter-row'><label><span class='sr-only'>Search packages</span><input id='provider-package-search' type='search' placeholder='Search packages' autocomplete='off'></label><label><span class='sr-only'>Package status</span><select id='provider-package-filter'><option value='all'>All packages</option><option value='broken'>Broken only</option></select></label></div>{empty_packages}{package_table}<div class='provider-pagination' id='provider-package-pagination' aria-live='polite'></div></div></details></section>
-        <section class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Health</p><h2>Latest health check</h2></div></div><div class='provider-latest-summary'><div>{health_summary}</div><span>{health_transport}</span></div><details class='admin-disclosure' id='provider-health-details'><summary>View check details</summary><div class='disclosure-body'>{empty_health}{latest_health_table}</div></details><details class='admin-disclosure' id='provider-health-history'><summary>Health check history · {len(health_history)} checks</summary><div class='disclosure-body'>{empty_health}{health_history_table}</div></details></section>
+        <section class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Health</p><h2>Latest health check</h2></div></div><div class='provider-latest-summary'><div>{health_summary}</div><span>{health_transport}</span></div><details class='admin-disclosure' id='provider-health-details'><summary>View check details</summary><div class='disclosure-body'>{empty_health}{latest_health_table}</div></details><details class='admin-disclosure' id='provider-health-history'><summary>Health check history · {len(previous_health)} previous checks</summary><div class='disclosure-body'>{empty_previous_health}{health_history_table}</div></details></section>
         <section class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Collection</p><h2>Last collection</h2></div></div><div class='provider-latest-summary'>{collection_summary}</div><details class='admin-disclosure' id='provider-collection-history'><summary>Collection history · {len(runs)} runs</summary><div class='disclosure-body'>{empty_runs}{run_table}</div></details></section>
         <section class='provider-card'><details class='admin-disclosure' id='provider-history'><summary>Provider history · {len(audits)} events</summary><div class='disclosure-body'><p class='table-help'>Status changes and provider actions are retained.</p>{empty_audits}{audit_table}</div></details></section>
       </main>
@@ -1227,7 +1412,14 @@ def map_statistics_page(
         f"<option value='{html.escape(str(provider.get('id') or ''), quote=True)}'>{html.escape(str(provider.get('name') or provider.get('id') or ''))}</option>"
         for provider in providers
     )
-    event_table = f"""<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Map operation events</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Map</th><th scope='col'>Region</th><th scope='col'>Event</th><th scope='col'>Outcome</th><th scope='col'>Operations</th><th scope='col'>Last activity</th></tr></thead><tbody id='map-statistics-rows'>{_map_statistics_rows(rows)}</tbody></table></div>"""
+    detail_rows = list(statistics.get("detailRows") or rows[:25])
+    detail_total = int(statistics.get("detailTotal") or len(rows))
+    detail_page = int(statistics.get("detailPage") or 1)
+    detail_page_size = int(statistics.get("detailPageSize") or 25)
+    detail_pages = max(1, (detail_total + detail_page_size - 1) // detail_page_size)
+    detail_start = min(detail_total, (detail_page - 1) * detail_page_size + 1) if detail_total else 0
+    detail_end = min(detail_total, detail_page * detail_page_size)
+    event_table = f"""<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Map operation events</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Map</th><th scope='col'>Region</th><th scope='col'>Event</th><th scope='col'>Outcome</th><th scope='col'>Operations</th><th scope='col'>Last activity</th></tr></thead><tbody id='map-statistics-rows'>{_map_statistics_rows(detail_rows)}</tbody></table></div><div class='provider-pagination' id='map-statistics-event-pagination' aria-live='polite'><label>Rows <select id='map-statistics-event-page-size' aria-label='Rows per event page'><option value='25'{' selected' if detail_page_size == 25 else ''}>25</option><option value='50'{' selected' if detail_page_size == 50 else ''}>50</option></select></label><button type='button' data-event-page='previous' disabled>Previous</button><span>Showing {detail_start}–{detail_end} of {detail_total} · page {detail_page} of {detail_pages}</span><button type='button' data-event-page='next' {'disabled' if detail_page >= detail_pages else ''}>Next</button></div>"""
     content = f"""
       {_admin_header(user, csrf_token, active='map-statistics')}
       <main class='dashboard map-statistics-page' id='main-content'>
@@ -1238,7 +1430,7 @@ def map_statistics_page(
         <section class='map-statistics-reliability' aria-label='Reliability summary'><div><span>Failed installs</span><strong data-stat='failedInstalls'>{event_value('failedInstalls')}</strong></div><div><span>Failed downloads</span><strong data-stat='failedDownloads'>{event_value('failedDownloads')}</strong></div><div><span>Provider issues</span><strong data-stat='providerIssues'>{provider_issues}</strong></div></section>
         <section class='map-statistics-provider-health' id='map-statistics-provider-health' aria-label='Provider health'><span>Provider health</span><strong data-stat='providerHealth'>{healthy_providers} / {len(scoped_providers)} healthy</strong><em data-stat='providerHealthIssues'> · {provider_issues} issues</em></section>
         <section class='provider-card map-statistics-linkage' id='map-statistics-linkage' aria-label='Watch event linkage'><div class='section-heading'><div><p class='section-kicker'>Traceability</p><h2>Watch event linkage</h2></div><p class='table-help'>Matched only when the map and watch events share the same operation ID.</p></div><div class='map-statistics-linkage-grid'><div><span>Map install operations</span><strong data-stat='mapInstallationCount'>{linkage_value('mapInstallationCount')}</strong></div><div><span>Linked watch events</span><strong data-stat='linkedInstallationCount'>{linkage_value('linkedInstallationCount')}</strong></div><div><span>Unlinked installs</span><strong data-stat='mapOnlyInstallationCount'>{linkage_value('mapOnlyInstallationCount')}</strong></div><div><span>Linkage coverage</span><strong data-stat='linkageRate'>{linkage_rate}</strong></div><div><span>Watch-confirmed successes</span><strong data-stat='linkedSuccessfulInstallCount'>{linkage_value('linkedSuccessfulInstallCount')}</strong></div><div><span>Watch-confirmed failures</span><strong data-stat='linkedFailedInstallCount'>{linkage_value('linkedFailedInstallCount')}</strong></div></div><p class='table-help map-statistics-scope-note'>A missing watch event is shown as unlinked, not as a failure. Map statistics and compatibility evidence remain separate aggregates.</p></section>
-        <section class='provider-dashboard-grid' id='map-statistics-popularity' {'hidden' if not has_event_data else ''}><article class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Downloads per provider</h2></div></div><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Downloads per provider</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Downloads</th><th scope='col'>Installs</th><th scope='col'>Install success</th><th scope='col'>Health</th></tr></thead><tbody id='provider-statistic-rows'></tbody></table></div></article><article class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Top maps and regions</h2></div></div><div class='popularity-subsection'><h3>Top maps</h3><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Top maps</caption><thead><tr><th scope='col'>Map</th><th scope='col'>Region</th><th scope='col'>Completed downloads</th><th scope='col'>Last activity</th></tr></thead><tbody id='top-map-rows'></tbody></table></div></div><div class='popularity-subsection'><h3>Top regions</h3><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Top regions</caption><thead><tr><th scope='col'>Region</th><th scope='col'>Completed downloads</th><th scope='col'>Last activity</th></tr></thead><tbody id='top-region-rows'></tbody></table></div></div></article></section>
+        <section class='provider-dashboard-grid map-statistics-popularity' id='map-statistics-popularity' {'hidden' if not has_event_data else ''}><article class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Downloads per provider</h2></div></div><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Downloads per provider</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Downloads</th><th scope='col'>Installs</th><th scope='col'>Install success</th><th scope='col'>Health</th></tr></thead><tbody id='provider-statistic-rows'></tbody></table></div></article><article class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Popular maps</h2></div></div><div class='popularity-subsection'><h3>Maps by region</h3><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Popular maps</caption><thead><tr><th scope='col'>Map / region</th><th scope='col'>Provider</th><th scope='col'>Completed downloads</th><th scope='col'>Last activity</th></tr></thead><tbody id='top-map-rows'></tbody></table></div></div><details class='admin-disclosure popularity-regions-disclosure'><summary>Regions</summary><div class='disclosure-body'><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Top regions</caption><thead><tr><th scope='col'>Region</th><th scope='col'>Completed downloads</th><th scope='col'>Last activity</th></tr></thead><tbody id='top-region-rows'></tbody></table></div></div></details></article></section>
         <section class='provider-card map-events-card' {'hidden' if not has_event_data else ''}><details class='admin-disclosure' id='map-statistics-event-detail'><summary id='map-statistics-event-summary'>Event detail · {event_status}</summary><div class='disclosure-body' id='map-statistics-event-body'>{event_table}</div></details></section>
       </main>
       <script>window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};{_map_statistics_script()}</script>
@@ -1357,6 +1549,9 @@ def _map_statistics_script() -> str:
       const providerHealth = document.querySelector('#map-statistics-provider-health');
       const eventDetail = document.querySelector('#map-statistics-event-detail');
       const eventSummary = document.querySelector('#map-statistics-event-summary');
+      const eventPagination = document.querySelector('#map-statistics-event-pagination');
+      const eventPageSize = document.querySelector('#map-statistics-event-page-size');
+      let detailPage = 1;
       const formatRate = (value) => value === null || value === undefined ? '—' : `${Number(value).toFixed(Number(value) % 1 ? 1 : 0)}%`;
       const operations = (row) => Number(row.operation_count || row.event_count || 0);
       const count = (rows, eventType, outcome) => rows.filter((row) => row.event_type === eventType && (!outcome || row.outcome === outcome)).reduce((total, row) => total + operations(row), 0);
@@ -1365,6 +1560,7 @@ def _map_statistics_script() -> str:
       const providerIssueCount = (item) => Math.max(Number(item.brokenUrlCount || 0), Number(item.brokenPackageCount || 0), item.lastHealthError ? 1 : 0);
       const render = (payload) => {
         const rows = payload.rows || [];
+        const detailRows = payload.detailRows || rows;
         const linkage = payload.linkage || {};
         const hasEventData = rows.length > 0;
         const selectedProvider = String((payload.filters && payload.filters.provider) || provider?.value || '').trim().toLowerCase();
@@ -1399,36 +1595,56 @@ def _map_statistics_script() -> str:
         const providerRows = Object.entries(byProvider).sort((a, b) => b[1].downloads - a[1].downloads || a[0].localeCompare(b[0])).map(([id, item]) => `<tr><td>${escapeHtml(providerName[id] || id)}</td><td class="numeric">${item.downloads}</td><td class="numeric">${item.installs}</td><td>${formatRate(item.installs + item.failedInstalls ? item.installs / (item.installs + item.failedInstalls) * 100 : null)}</td><td>${badge(healthByProvider[id])}</td></tr>`).join('');
         document.querySelector('#provider-statistic-rows').innerHTML = providerRows || emptyRow(5);
         const byMap = {};
-        rows.filter((row) => row.event_type === 'DOWNLOAD_SUCCEEDED' && row.outcome === 'SUCCEEDED').forEach((row) => { const key = `${row.map_package_id || 'unknown'}\u0000${row.region || '—'}`; byMap[key] ||= {map: row.map_package_id || '—', region: row.region || '—', count: 0, last: row.last_occurred_at}; byMap[key].count += operations(row); if (String(row.last_occurred_at || '') > String(byMap[key].last || '')) byMap[key].last = row.last_occurred_at; });
-        const topMaps = Object.values(byMap).sort((a, b) => b.count - a.count || a.map.localeCompare(b.map)).slice(0, 10).map((item) => `<tr><td><code>${escapeHtml(item.map)}</code></td><td>${escapeHtml(item.region)}</td><td class="numeric">${item.count}</td><td>${formatTimestamp(item.last)}</td></tr>`).join('');
+        rows.filter((row) => row.event_type === 'DOWNLOAD_SUCCEEDED' && row.outcome === 'SUCCEEDED').forEach((row) => { const key = `${row.provider_id || 'unknown'}\u0000${row.map_package_id || 'unknown'}\u0000${row.region || '—'}`; byMap[key] ||= {map: row.map_package_id || '—', name: row.map_package_name || '', provider: row.provider_id || '', region: row.region || '—', count: 0, last: row.last_occurred_at}; byMap[key].count += operations(row); if (String(row.last_occurred_at || '') > String(byMap[key].last || '')) byMap[key].last = row.last_occurred_at; });
+        const topMaps = Object.values(byMap).sort((a, b) => b.count - a.count || a.map.localeCompare(b.map)).slice(0, 10).map((item) => `<tr><td><strong>${escapeHtml(item.name || item.region)}</strong><small class="table-secondary"><code>${escapeHtml(item.map)}</code> · ${escapeHtml(item.region)}</small></td><td>${escapeHtml(providerName[item.provider] || item.provider || '—')}</td><td class="numeric">${item.count}</td><td>${formatTimestamp(item.last)}</td></tr>`).join('');
         document.querySelector('#top-map-rows').innerHTML = topMaps || emptyRow(4);
         const byRegion = {};
         Object.values(byMap).forEach((item) => { byRegion[item.region] ||= {region: item.region, count: 0, last: item.last}; byRegion[item.region].count += item.count; if (String(item.last || '') > String(byRegion[item.region].last || '')) byRegion[item.region].last = item.last; });
         const topRegions = Object.values(byRegion).sort((a, b) => b.count - a.count || a.region.localeCompare(b.region)).slice(0, 10).map((item) => `<tr><td>${escapeHtml(item.region)}</td><td class="numeric">${item.count}</td><td>${formatTimestamp(item.last)}</td></tr>`).join('');
         document.querySelector('#top-region-rows').innerHTML = topRegions || emptyRow(3);
-        const detailRows = rows.map((row) => `<tr><td>${escapeHtml(row.provider_id || '—')}</td><td><code>${escapeHtml(row.map_package_id || '—')}</code></td><td>${escapeHtml(row.region || '—')}</td><td>${escapeHtml(row.event_type || '—')}</td><td>${escapeHtml(row.outcome || '—')}</td><td class="numeric">${operations(row)}</td><td>${formatTimestamp(row.last_occurred_at)}</td></tr>`).join('');
-        document.querySelector('#map-statistics-rows').innerHTML = detailRows || emptyRow(7);
+        const detailMarkup = detailRows.map((row) => `<tr><td>${escapeHtml(row.provider_id || '—')}</td><td><code>${escapeHtml(row.map_package_id || '—')}</code></td><td>${escapeHtml(row.region || '—')}</td><td>${escapeHtml(row.event_type || '—')}</td><td>${escapeHtml(row.outcome || '—')}</td><td class="numeric">${operations(row)}</td><td>${formatTimestamp(row.last_occurred_at)}</td></tr>`).join('');
+        document.querySelector('#map-statistics-rows').innerHTML = detailMarkup || emptyRow(7);
         const eventStatus = rows.length ? `${rows.length} event group${rows.length === 1 ? '' : 's'} · ${eventRecords} event record${eventRecords === 1 ? '' : 's'}` : 'No event groups';
         if (eventSummary) eventSummary.textContent = `Event detail · ${eventStatus}`;
         if (status) status.textContent = eventStatus;
+        detailPage = Number(payload.detailPage || 1);
+        const total = Number(payload.detailTotal || rows.length || 0);
+        const size = Number(payload.detailPageSize || eventPageSize?.value || 25);
+        if (eventPageSize && ['25', '50'].includes(String(size))) eventPageSize.value = String(size);
+        if (eventPagination) {
+          const pages = Math.max(1, Math.ceil(total / size));
+          const start = total ? Math.min(total, (detailPage - 1) * size + 1) : 0;
+          const end = Math.min(total, detailPage * size);
+          eventPagination.querySelector('span').textContent = `Showing ${start}–${end} of ${total} · page ${detailPage} of ${pages}`;
+          const previous = eventPagination.querySelector('[data-event-page="previous"]');
+          const next = eventPagination.querySelector('[data-event-page="next"]');
+          if (previous) previous.disabled = detailPage <= 1;
+          if (next) next.disabled = detailPage >= pages;
+        }
       };
       const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[character]));
       const formatTimestamp = (value) => { if (!value) return '—'; const date = new Date(value); return Number.isNaN(date.getTime()) ? String(value) : date.toISOString().slice(0, 16).replace('T', ' '); };
       const badge = (value) => `<span class="provider-status provider-status-${String(value || 'UNKNOWN').toLowerCase()}">${escapeHtml(String(value || 'UNKNOWN').replace('_', ' '))}</span>`;
       const emptyRow = (columns) => `<tr><td colspan="${columns}" class="muted-value">No events in this period.</td></tr>`;
-      const sync = async () => {
+      const sync = async ({resetDetailPage = false} = {}) => {
+        if (resetDetailPage) detailPage = 1;
         const parameters = new URLSearchParams();
         if (provider.value) parameters.set('provider', provider.value);
         if (map.value.trim()) parameters.set('map', map.value.trim());
         if (region.value.trim()) parameters.set('region', region.value.trim());
         if (event.value) parameters.set('eventType', event.value);
         if (range.value !== 'all') { const days = Number(range.value); const from = new Date(Date.now() - days * 86400000); parameters.set('dateFrom', from.toISOString()); }
+        parameters.set('detailPage', String(detailPage));
+        parameters.set('detailPageSize', String(eventPageSize?.value || 25));
         if (status) status.textContent = 'Loading…';
         try { const response = await fetch(`/admin/map-statistics.json?${parameters}`, {credentials: 'same-origin', headers: {'Accept': 'application/json'}}); const payload = await response.json(); if (!response.ok) throw new Error(payload.error || 'Statistics unavailable'); render(payload); } catch (error) { if (status) status.textContent = error.message || 'Statistics unavailable'; }
       };
       const initialRange = filters.dateFrom ? 'all' : 'all'; range.value = initialRange; if (filters.provider) provider.value = filters.provider; if (filters.map) map.value = filters.map; if (filters.region) region.value = filters.region; if (filters.eventType) event.value = filters.eventType;
       if (moreFilters && (filters.map || filters.region || filters.eventType)) moreFilters.open = true;
-      [range, provider, event].forEach((control) => control?.addEventListener('change', sync)); [map, region].forEach((control) => { control?.addEventListener('change', sync); control?.addEventListener('input', sync); });
+      [range, provider, event].forEach((control) => control?.addEventListener('change', () => sync({resetDetailPage: true}))); [map, region].forEach((control) => { control?.addEventListener('change', () => sync({resetDetailPage: true})); control?.addEventListener('input', () => sync({resetDetailPage: true})); });
+      eventPageSize?.addEventListener('change', () => sync({resetDetailPage: true}));
+      eventPagination?.querySelector('[data-event-page="previous"]')?.addEventListener('click', () => { detailPage = Math.max(1, detailPage - 1); sync(); });
+      eventPagination?.querySelector('[data-event-page="next"]')?.addEventListener('click', () => { detailPage += 1; sync(); });
       render(initial);
     })();"""
 
@@ -1929,6 +2145,7 @@ def device_detail_page(
         recognized_map_capable_evidence=device.get("mapCapable") is True,
     )
     status_value = status.value if status else ""
+    last_activity = _timestamp_markup(stats.get("lastEvidenceAt")) if stats.get("lastEvidenceAt") else "—"
     publication = device.get("publicCompatibility") or {}
     map_label, map_kind = _admin_map_capability(device.get("mapCapable"))
     authorization_label, authorization_kind, _ = _admin_installation_authorization(
@@ -1945,7 +2162,7 @@ def device_detail_page(
         f"<img class='model-page-image' src='{html.escape(str(image_url), quote=True)}' alt='' loading='eager'>"
         if image_url else ""
     )
-    back_href = "/admin" if origin == "installations" else "/admin/devices"
+    back_href = "/admin/installations" if origin == "installations" else "/admin/devices"
     back_label = "Back to Installations" if origin == "installations" else "Back to Devices"
     detail_url = _device_detail_url(device_id, origin=origin)
     public_link = (
@@ -1972,13 +2189,7 @@ def device_detail_page(
             map_copy += f"<small>{html.escape(map_release)}</small>"
         if result == "FAILED":
             error_state = _diagnostic_state_badge("RESOLVED" if resolved else "OPEN")
-            error_detail = " · ".join(filter(None, (
-                _operation_text(results, "failure_stage", fallback=""),
-                _operation_text(results, "failure_code", fallback=""),
-            )))
-            error_markup = error_state + (
-                f"<small>{html.escape(error_detail)}</small>" if error_detail else ""
-            )
+            error_markup = error_state + f"<small>{html.escape(_diagnostic_error_reason(results))}</small>"
         else:
             error_markup = "<span class='muted-value'>No error</span>"
         release = first.get("release_label") or first.get("terento_version") or ""
@@ -2059,13 +2270,14 @@ def device_detail_page(
       <main class='dashboard model-detail-page' id='main-content'>
         <p class='back-link'><a href='{back_href}'>← {back_label}</a></p>
         <header class='model-page-header'>{image}<div class='model-page-heading'><p class='eyebrow'>Garmin device</p><h1>{html.escape(model)}{f' · <span>{html.escape(variant)}</span>' if variant != '—' else ''}</h1><div class='model-page-badges'>{summary_badges}</div></div>{public_link}</header>
-        <section class='diagnostic-model-metrics model-statistics' aria-label='Model installation statistics'><article><span>Attempts</span><strong>{attempts}</strong></article><article><span>Successful</span><strong>{successful}</strong></article><article><span>Failed</span><strong>{failed}</strong></article><article><span>Open errors</span><strong>{open_errors}</strong></article><article><span>Compatibility status</span><strong>{_status_badge(status_value)}</strong></article></section>
+        <section class='diagnostic-model-metrics model-statistics' aria-label='Model installation statistics'><article><span>Attempts</span><strong>{attempts}</strong></article><article><span>Successful</span><strong>{successful}</strong></article><article><span>Failed</span><strong>{failed}</strong></article><article><span>Open errors</span><strong>{open_errors}</strong></article><article><span>Last activity</span><strong>{last_activity}</strong></article></section>
         {alert}
         <section class='diagnostics-detail-section model-page-section' id='installations' aria-labelledby='installation-history-title'>
           <div class='section-heading'><div><p class='section-kicker'>Operational history</p><h2 id='installation-history-title'>Installation history</h2></div><p class='table-help'>Failed results remain historical after their error is resolved.</p></div>
           <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'><label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all'>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='open'>Open errors</option><option value='resolved-errors'>Resolved errors</option></select></label></form>
           <p class='results-count' id='diagnostic-results-count' aria-live='polite'>{len(history)} records</p>
           <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table model-history-table'><caption class='sr-only'>Installation history for this exact model and variant</caption><thead><tr><th scope='col'>Date</th><th scope='col'>Map</th><th scope='col'>Result</th><th scope='col'>Error</th><th scope='col'>GitHub issue</th><th scope='col'>App version</th><th scope='col'>Action</th></tr></thead><tbody id='diagnostic-rows'>{history_rows}</tbody></table></div>
+          <div class='provider-pagination' id='diagnostic-history-pagination' aria-live='polite'><label>Rows <select id='diagnostic-history-page-size' aria-label='Rows per installation history page'><option value='25' selected>25</option><option value='50'>50</option></select></label><button type='button' data-history-page='previous' disabled>Previous</button><span>Showing {1 if history else 0}–{min(len(history), 25)} of {len(history)} · page 1 of {max(1, (len(history) + 24) // 25)}</span><button type='button' data-history-page='next' {'disabled' if len(history) <= 25 else ''}>Next</button></div>
         </section>
         <section class='model-page-section model-administration' aria-labelledby='administration-title'><div class='section-heading'><div><p class='section-kicker'>Controls</p><h2 id='administration-title'>Administration</h2></div></div><div class='administration-grid'>
           <article><h3>Installation authorization</h3><form method='post' action='/admin/devices/authorization' class='admin-async-action' data-authorization-form data-current-authorization='{html.escape(str(device.get('supportStatus') or 'NOT_EVALUATED'), quote=True)}'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='device_id' value='{html.escape(device_id, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(detail_url, quote=True)}'><label>Status<select name='support_status'><option value='SUPPORTED'{' selected' if device.get('supportStatus') == 'SUPPORTED' else ''}>Approved</option><option value='UNSUPPORTED'{' selected' if device.get('supportStatus') == 'UNSUPPORTED' else ''}>Blocked</option><option value='NOT_EVALUATED'{' selected' if device.get('supportStatus') == 'NOT_EVALUATED' else ''}>Pending</option></select></label><label>Note <span class='optional-label'>Optional</span><textarea name='note' rows='2'></textarea></label><button type='submit'>Save authorization</button></form></article>
@@ -2159,9 +2371,9 @@ def diagnostics_page(
         ))
     rows_body = "".join(rows_markup) or "<tr><td colspan='8' class='empty'>No installation history for this model.</td></tr>"
     content = f"""
-      {_admin_header(user, csrf_token)}
+      {_admin_header(user, csrf_token, active='installations')}
       <main class='dashboard diagnostics-page' id='main-content'>
-        <p class='back-link'><a href='/admin'>← Installations</a></p>
+        <p class='back-link'><a href='/admin/installations'>← Installations</a></p>
         <div class='heading-row'><div><p class='eyebrow'>Diagnostics</p><h1>{html.escape(model)}{f' · {html.escape(variant)}' if variant != '—' else ''}</h1><p class='lede'>Exact model and variant diagnostic history.</p></div></div>
         <section class='diagnostic-model-metrics' aria-label='Model diagnostic summary'><article><span>Attempts</span><strong>{attempts}</strong></article><article><span>Successful</span><strong>{successes}</strong></article><article><span>Errors</span><strong>{errors}</strong></article><article><span>Compatibility status</span><strong>{_status_badge(status.value if status else '')}</strong></article></section>
         <section class='diagnostics-detail-section' aria-labelledby='diagnostic-list-title'>
@@ -2681,7 +2893,7 @@ def _statistics_row(row: dict[str, Any], diagnostic_summary: dict[str, int] | No
         ("numeric", _timestamp_markup(row.get("last_success"))),
     )
     return (
-        f"<tr class='evidence-model-row' data-search='{html.escape(search_text, quote=True)}' data-status='{html.escape(status.lower(), quote=True)}' data-activity='{html.escape(activity, quote=True)}' data-attempts='{attempted}' data-errors='{open_errors}' data-diagnostics-url='{html.escape(diagnostics_url, quote=True)}' tabindex='0' role='link' aria-label='Open {html.escape(model)}{f', {html.escape(variant)}' if variant != '—' else ''}'>"
+        f"<tr class='evidence-model-row' data-search='{html.escape(search_text, quote=True)}' data-status='{html.escape(status.lower(), quote=True)}' data-activity='{html.escape(activity, quote=True)}' data-attempts='{attempted}' data-errors='{open_errors}' data-failed='{str(failed > 0).lower()}' data-successful='{str(successful > 0).lower()}' data-diagnostics-url='{html.escape(diagnostics_url, quote=True)}' tabindex='0' role='link' aria-label='Open {html.escape(model)}{f', {html.escape(variant)}' if variant != '—' else ''}'>"
         + "".join(f"<td class='{css_class}'>{cell}</td>" if css_class else f"<td>{cell}</td>" for css_class, cell in cells)
         + f"</tr>"
     )
@@ -3065,15 +3277,19 @@ def _dashboard_script() -> str:
       const search = document.querySelector('#evidence-search');
       const status = document.querySelector('#evidence-status');
       const sort = document.querySelector('#evidence-sort');
+      const quickFilters = [...document.querySelectorAll('[data-installation-filter]')];
       const body = document.querySelector('#evidence-rows');
       const count = document.querySelector('#results-count');
-      if (!form || !search || !status || !sort || !body || !count) return;
+      if (!form || !search || !status || !sort || !body || !count || !quickFilters.length) return;
       const rows = [...body.querySelectorAll('tr')];
       const storageKey = 'terento.admin.installations.filters';
       const parameters = new URLSearchParams(window.location.search);
       let saved = {};
       try { saved = JSON.parse(sessionStorage.getItem(storageKey) || '{}'); } catch (_) { saved = {}; }
       search.value = parameters.has('search') ? parameters.get('search') : (saved.search || '');
+      const quickFilterValues = quickFilters.map((button) => button.dataset.installationFilter);
+      let selectedQuickFilter = parameters.get('state') || saved.quick || 'all';
+      if (!quickFilterValues.includes(selectedQuickFilter)) selectedQuickFilter = 'all';
       const restoreSelect = (control, key, fallback) => {
         const value = parameters.has(key) ? parameters.get(key) : saved[key];
         control.value = [...control.options].some((option) => option.value === value) ? value : fallback;
@@ -3086,7 +3302,11 @@ def _dashboard_script() -> str:
         const visible = rows.filter((row) => {
           const matchesSearch = !searchQuery || row.dataset.search.toLocaleLowerCase().includes(searchQuery);
           const matchesStatus = selectedStatus === 'all' || row.dataset.status === selectedStatus;
-          row.hidden = !(matchesSearch && matchesStatus);
+          const matchesQuick = selectedQuickFilter === 'all'
+            || (selectedQuickFilter === 'failed' && row.dataset.failed === 'true')
+            || (selectedQuickFilter === 'open' && Number(row.dataset.errors || 0) > 0)
+            || (selectedQuickFilter === 'successful' && row.dataset.successful === 'true');
+          row.hidden = !(matchesSearch && matchesStatus && matchesQuick);
           return !row.hidden;
         });
         visible.sort((a, b) => {
@@ -3097,15 +3317,25 @@ def _dashboard_script() -> str:
         });
         visible.forEach((row) => body.appendChild(row));
         count.textContent = `${visible.length} ${visible.length === 1 ? 'variant' : 'variants'}`;
-        const state = {search: search.value, status: status.value, sort: sort.value};
+        quickFilters.forEach((button) => {
+          const active = button.dataset.installationFilter === selectedQuickFilter;
+          button.classList.toggle('active', active);
+          button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        const state = {search: search.value, status: status.value, sort: sort.value, quick: selectedQuickFilter};
         try { sessionStorage.setItem(storageKey, JSON.stringify(state)); } catch (_) { /* optional */ }
         const stateQuery = new URLSearchParams();
         if (search.value) stateQuery.set('search', search.value);
+        if (selectedQuickFilter !== 'all') stateQuery.set('state', selectedQuickFilter);
         if (status.value !== 'all') stateQuery.set('status', status.value);
         if (sort.value !== 'attempts') stateQuery.set('sort', sort.value);
         history.replaceState(null, '', stateQuery.size ? `${window.location.pathname}?${stateQuery}` : window.location.pathname);
       };
       form.addEventListener('submit', (event) => event.preventDefault());
+      quickFilters.forEach((button) => button.addEventListener('click', () => {
+        selectedQuickFilter = button.dataset.installationFilter || 'all';
+        refresh();
+      }));
       [search, status, sort].forEach((control) => control.addEventListener('input', refresh));
       rows.forEach((row) => {
         const open = () => { if (row.dataset.diagnosticsUrl) window.location.href = row.dataset.diagnosticsUrl; };
@@ -3150,15 +3380,18 @@ def _diagnostics_script() -> str:
       const filter = document.querySelector('#diagnostic-state-filter');
       const body = document.querySelector('#diagnostic-rows');
       const count = document.querySelector('#diagnostic-results-count');
+      const pagination = document.querySelector('#diagnostic-history-pagination');
+      const pageSize = document.querySelector('#diagnostic-history-page-size');
       if (!filter || !body || !count) return;
       const rows = [...body.querySelectorAll('tr[data-diagnostic-state]')];
       const dialogs = [...document.querySelectorAll('.diagnostic-detail-dialog')];
+      let page = 1;
       let lastFocused = null;
       const requestedFilter = new URLSearchParams(window.location.search).get('state');
       if (requestedFilter && [...filter.options].some((option) => option.value === requestedFilter)) filter.value = requestedFilter;
       const refresh = () => {
           const selected = filter.value;
-          const visible = rows.filter((row) => {
+          const matching = rows.filter((row) => {
             const matches = selected === 'all'
             || (selected === 'succeeded' && row.dataset.diagnosticResult === 'succeeded')
             || (selected === 'open' && row.dataset.reviewOpen === 'true')
@@ -3167,11 +3400,28 @@ def _diagnostics_script() -> str:
             || (selected === 'identity-pending' && row.dataset.identityPending === 'true')
             || (selected === 'failed' && row.dataset.diagnosticResult === 'failed')
             || (selected === 'with-issue' && row.dataset.hasIssue === 'true');
-          row.hidden = !matches;
           return matches;
         });
-        const label = visible.length === 1 ? 'record' : 'records';
-        count.textContent = `${visible.length} ${label}`;
+        const label = matching.length === 1 ? 'record' : 'records';
+        count.textContent = `${matching.length} ${label}`;
+        if (!pagination || !pageSize) {
+          rows.forEach((row) => { row.hidden = !matching.includes(row); });
+          return;
+        }
+        const size = Number(pageSize.value) === 50 ? 50 : 25;
+        const pages = Math.max(1, Math.ceil(matching.length / size));
+        page = Math.min(Math.max(page, 1), pages);
+        const startIndex = (page - 1) * size;
+        const visible = new Set(matching.slice(startIndex, startIndex + size));
+        rows.forEach((row) => { row.hidden = !visible.has(row); });
+        const start = matching.length ? startIndex + 1 : 0;
+        const end = matching.length ? Math.min(matching.length, startIndex + size) : 0;
+        const summary = pagination.querySelector('span');
+        if (summary) summary.textContent = `Showing ${start}–${end} of ${matching.length} · page ${page} of ${pages}`;
+        const previous = pagination.querySelector('[data-history-page="previous"]');
+        const next = pagination.querySelector('[data-history-page="next"]');
+        if (previous) previous.disabled = page <= 1;
+        if (next) next.disabled = page >= pages;
       };
       const close = (dialog) => {
         if (!dialog) return;
@@ -3295,7 +3545,10 @@ def _diagnostics_script() -> str:
       document.querySelectorAll('[data-copy-technical-report]').forEach((button) => button.addEventListener('click', () => {
         copyText(button.dataset.report, button.parentElement?.querySelector('[data-copy-status]'));
       }));
-      filter.addEventListener('input', refresh);
+      filter.addEventListener('input', () => { page = 1; refresh(); });
+      pageSize?.addEventListener('change', () => { page = 1; refresh(); });
+      pagination?.querySelector('[data-history-page="previous"]')?.addEventListener('click', () => { page = Math.max(1, page - 1); refresh(); });
+      pagination?.querySelector('[data-history-page="next"]')?.addEventListener('click', () => { page += 1; refresh(); });
       document.querySelectorAll('.diagnostic-review').forEach((button) => button.addEventListener('click', () => open(document.getElementById(button.dataset.dialogId), button)));
       document.querySelectorAll('[data-close-dialog]').forEach((button) => button.addEventListener('click', () => close(button.closest('dialog'))));
       dialogs.forEach((dialog) => {
@@ -3685,6 +3938,13 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 @media(max-width:1100px){.provider-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.map-statistics-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.provider-dashboard-grid{grid-template-columns:1fr}}
 @media(max-width:560px){.provider-card{padding:18px 16px}.provider-metrics,.map-statistics-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.provider-metrics article{padding:12px}.provider-information-list div{grid-template-columns:1fr;gap:3px}.provider-information-list dd{text-align:left}.provider-action-bar{align-items:stretch;flex-direction:column}.provider-action-bar button,.button-link{width:100%}.provider-action-bar .admin-action-status{flex-basis:auto}.map-statistics-filter-bar label,.map-statistics-filter-bar input,.map-statistics-filter-bar select{width:100%;min-width:0}.map-statistics-filter-bar .results-count{width:100%;margin-left:4px}}
 @media(max-height:760px){.device-dialog-inner{max-height:calc(100vh - 32px);overflow:auto}.device-dialog-header{position:sticky;top:-1px;z-index:2;padding-bottom:10px;background:var(--surface)}}
+.overview-page{padding-top:30px}.overview-heading{align-items:flex-end;margin-bottom:20px}.overview-period-form{margin:0}.overview-period-form select{min-width:154px}.overview-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:14px}.overview-kpi{display:flex;min-height:112px;flex-direction:column;justify-content:space-between;padding:15px 16px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:inherit;text-decoration:none;transition:border-color .15s ease,transform .15s ease}.overview-kpi:hover{border-color:color-mix(in srgb,var(--sky) 52%,var(--border));transform:translateY(-1px)}.overview-kpi span{color:var(--secondary);font-size:12px;font-weight:700}.overview-kpi strong{display:block;margin-top:8px;font-family:var(--font-brand);font-size:30px;line-height:1;font-variant-numeric:tabular-nums}.overview-kpi small{margin-top:8px;color:var(--secondary);font-size:11px;line-height:1.35}.overview-kpi-attention strong{color:var(--danger)}.overview-kpi-pending{background:var(--surface-muted)}.overview-kpi-pending strong{color:var(--secondary)}.overview-panel{margin-top:12px;padding:18px 20px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}.overview-panel .section-heading{margin-bottom:10px}.overview-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}.overview-columns .overview-panel{min-width:0}.overview-empty-state{margin:0;padding:12px 0;color:var(--secondary);font-weight:650}.overview-attention-list,.overview-activity-list,.overview-reason-list{list-style:none;margin:0;padding:0}.overview-attention-item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:10px;padding:10px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-attention-item:first-child{border-top:0;padding-top:3px}.overview-attention-dot{font-size:13px;line-height:1.5;color:var(--danger)}.overview-attention-provider .overview-attention-dot{color:var(--warning,var(--stone))}.overview-attention-item div{display:grid;gap:2px;min-width:0}.overview-attention-item a{color:var(--graphite);text-decoration:none}.overview-attention-item a:hover{text-decoration:underline;text-underline-offset:3px}.overview-attention-item strong{font-size:14px}.overview-attention-item span{color:var(--secondary);font-size:12px;overflow:hidden;text-overflow:ellipsis}.overview-attention-item small{color:var(--secondary);font-size:11px}.overview-detail-link,.section-link{color:var(--interactive);font-size:12px;font-weight:700;white-space:nowrap;text-decoration:none}.overview-detail-link:hover,.section-link:hover{text-decoration:underline;text-underline-offset:3px}.overview-activity-item{display:grid;grid-template-columns:126px minmax(0,1fr) max-content;align-items:center;gap:10px;padding:8px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-activity-item:first-child{border-top:0;padding-top:3px}.overview-activity-item time{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-activity-item a{display:grid;min-width:0;color:inherit;text-decoration:none}.overview-activity-item a:hover .overview-activity-label{text-decoration:underline;text-underline-offset:3px}.overview-activity-label{font-size:13px;font-weight:750}.overview-activity-item a span:not(.overview-activity-label){overflow:hidden;text-overflow:ellipsis;color:var(--secondary);font-size:12px;white-space:nowrap}.overview-activity-item a small{color:var(--danger);font-size:11px}.overview-activity-provider{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-activity-failed .overview-activity-label,.overview-activity-not-started .overview-activity-label{color:var(--danger)}.overview-reason-list{display:grid;gap:11px}.overview-reason-list li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center}.overview-reason-list li>span:first-child{font-size:13px}.overview-reason-list strong{font-variant-numeric:tabular-nums}.overview-bar{grid-column:1/-1;height:7px;overflow:hidden;border-radius:999px;background:var(--surface-muted)}.overview-bar i{display:block;height:100%;border-radius:inherit;background:var(--interactive)}.overview-chart-note,.overview-semantic-note{margin:12px 0 0;color:var(--secondary);font-size:11px}.overview-provider-summary{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.overview-provider-summary strong{margin-right:3px;font-variant-numeric:tabular-nums}.overview-provider-summary a{display:inline-flex;gap:5px;align-items:center;padding:5px 8px;border:1px solid var(--border);border-radius:999px;color:var(--graphite);font-size:12px;text-decoration:none}.overview-provider-summary a:hover{border-color:var(--sky);color:var(--interactive)}.overview-provider-summary a span{color:var(--secondary);font-size:11px}.overview-semantic-note{max-width:780px;margin-top:14px}.admin-section-nav{flex-wrap:wrap}
+.quick-filter-group{display:flex;align-items:center;gap:4px;flex:0 0 auto;flex-wrap:wrap}.quick-filter{min-height:var(--admin-control-height);padding:8px 10px;border:1px solid transparent;border-radius:var(--admin-control-radius);background:transparent;color:var(--secondary);font-weight:650}.quick-filter:hover{border-color:var(--border);color:var(--interactive)}.quick-filter.active{border-color:color-mix(in srgb,var(--sky) 45%,var(--border));background:var(--surface);color:var(--interactive);box-shadow:0 1px 1px rgba(34,42,43,.05)}
+.map-statistics-popularity{grid-template-columns:minmax(0,1fr)}.map-statistics-popularity .provider-card{margin-top:0}.table-secondary{display:block;margin-top:3px;color:var(--secondary);font-size:11px;font-weight:500}
+@media(max-width:1100px){.overview-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:760px){.overview-heading{align-items:flex-start;flex-direction:column;gap:12px}.overview-period-form,.overview-period-form select{width:100%}.overview-columns{grid-template-columns:1fr}.overview-kpi strong{font-size:26px}.overview-activity-item{grid-template-columns:1fr max-content;gap:3px 8px}.overview-activity-item time{grid-column:1/-1}.overview-activity-provider{grid-column:2;grid-row:2}.overview-activity-item a{grid-column:1;grid-row:2}}
+@media(max-width:560px){.overview-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.overview-panel{padding:16px}.overview-attention-item{grid-template-columns:auto minmax(0,1fr)}.overview-detail-link{grid-column:2}.overview-kpi{min-height:100px;padding:13px}.overview-kpi strong{font-size:24px}}
+@media(max-width:400px){.overview-kpis{grid-template-columns:1fr}}
 """
 
 

@@ -38,6 +38,7 @@ from terento_catalog.admin import (
     diagnostics_page,
     devices_page,
     map_statistics_page,
+    overview_page,
     provider_detail_page,
     providers_page,
 )
@@ -202,6 +203,65 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Unavailable", body)
         self.assertIn("data-status=''", body)
         self.assertNotIn("data-status='testing'", body)
+
+    def test_overview_does_not_turn_missing_evidence_into_zero(self):
+        body = overview_page(
+            {
+                "period": "24h",
+                "data": {
+                    "operationCount": 0,
+                    "failedInstallCount": 0,
+                    "openErrorCount": 0,
+                    "hasData": False,
+                    "recentActivity": [],
+                    "failureReasons": [],
+                },
+                "providers": [{"id": "freizeitkarte", "name": "Freizeitkarte", "health": "HEALTHY"}],
+            },
+            {"username": "operator"},
+            "csrf",
+        ).decode()
+        self.assertIn("<h1>Overview</h1>", body)
+        self.assertIn("<span>Install operations</span><strong>—</strong>", body)
+        self.assertIn("<span>Failed installs</span><strong>—</strong>", body)
+        self.assertIn("<span>Open errors</span><strong>—</strong>", body)
+        self.assertIn("No installation activity in this period.", body)
+
+    def test_overview_uses_existing_operation_and_provider_drill_downs(self):
+        body = overview_page(
+            {
+                "period": "7d",
+                "data": {
+                    "operationCount": 2,
+                    "failedInstallCount": 1,
+                    "openErrorCount": 1,
+                    "hasData": True,
+                    "recentActivity": [{
+                        "canonical_device_model_id": None,
+                        "compatibility_identity": "fēnix 8 · 47 mm",
+                        "model": "fēnix 8",
+                        "variant": "47 mm",
+                        "provider": "freizeitkarte",
+                        "error_category": "transport",
+                        "has_failed": True,
+                        "has_not_started": False,
+                        "operation_succeeded": False,
+                        "open_error": True,
+                        "last_occurred_at": "2026-09-01T07:00:00+00:00",
+                    }],
+                    "failureReasons": [{"reason": "transport", "count": 1}],
+                },
+                "providers": [{"id": "opentopomap", "name": "OpenTopoMap", "health": "DEGRADED"}],
+            },
+            {"username": "operator"},
+            "csrf",
+        ).decode()
+        self.assertIn("Last 7 days", body)
+        self.assertIn("Install failed", body)
+        self.assertIn("Device transport", body)
+        self.assertIn("/admin/diagnostics?identity=f%C4%93nix+8+%C2%B7+47+mm&amp;state=failed", body)
+        self.assertIn("/admin/providers/opentopomap", body)
+        self.assertIn("OpenTopoMap health Degraded", body)
 
     def test_installation_authorization_is_separate_from_compatibility_evidence(self):
         source = inspect.getsource(Database.update_device_support_status)
@@ -447,6 +507,10 @@ class AdminSemanticsTests(unittest.TestCase):
         dashboard_body = dashboard_page([], {"username": "operator"}, "csrf").decode()
         for label in ("Installation history", "Administration", "Device information", "Technical details"):
             self.assertIn(label, detail_body)
+        self.assertIn("id='diagnostic-history-pagination'", detail_body)
+        self.assertIn("data-history-page='previous'", detail_body)
+        self.assertIn("data-history-page='next'", detail_body)
+        self.assertIn("id='diagnostic-history-page-size'", detail_body)
         self.assertIn("Installation authorization", detail_body)
         self.assertIn('textarea name=\'note\'', detail_body)
         self.assertIn("Save authorization", detail_body)
@@ -1045,10 +1109,35 @@ class AdminSemanticsTests(unittest.TestCase):
             self.assertIn(text, body)
         self.assertIn("id='provider-source-pagination'", body)
         self.assertIn("id='provider-package-pagination'", body)
+        self.assertIn("Health check history · 0 previous checks", body)
         self.assertIn("Status changed", body)
         self.assertIn("provider.status_changed", body)
         self.assertIn("audit-technical-details", body)
         self.assertNotIn("<span>Activity</span>", body)
+
+    def test_provider_health_history_does_not_repeat_latest_check(self):
+        latest = {
+            "status": "HEALTHY", "checked_at": "2026-08-31T12:05:00+00:00",
+            "website_status": "HEALTHY", "catalog_status": "HEALTHY",
+            "redirect_status": "HEALTHY", "download_status": "HEALTHY",
+            "mime_status": "HEALTHY", "magic_status": "HEALTHY",
+            "zip_status": "HEALTHY", "img_status": "HEALTHY",
+            "last_update_status": "HEALTHY", "http_status": 200,
+            "artifact_count": 1, "duration_ms": 120,
+        }
+        previous = dict(latest, checked_at="2026-08-30T12:05:00+00:00", duration_ms=140)
+        body = provider_detail_page(
+            {"provider": {
+                "id": "opentopomap", "name": "OpenTopoMap", "adapterId": "opentopomap",
+                "status": "PAUSED", "healthStatus": "HEALTHY", "healthHistory": [latest, previous],
+                "maps": [], "sources": [],
+                "activationGate": {"canActivate": False, "blockers": []},
+            }}, [], [], {"username": "operator"}, "csrf",
+        ).decode()
+        history = body.split("id='provider-health-history'", 1)[1].split("</details>", 1)[0]
+        self.assertIn("Health check history · 1 previous checks", history)
+        self.assertIn("2026-08-30", history)
+        self.assertNotIn("2026-08-31", history)
 
     def test_shared_model_page_keeps_resolved_failures_historical_and_open_errors_active_only(self):
         device = _admin_device_payload([{
@@ -1082,12 +1171,15 @@ class AdminSemanticsTests(unittest.TestCase):
         statistics = body.split("class='diagnostic-model-metrics model-statistics'", 1)[1].split("</section>", 1)[0]
         for label, value in (("Attempts", "2"), ("Successful", "1"), ("Failed", "1"), ("Open errors", "0")):
             self.assertIn(f"<span>{label}</span><strong>{value}</strong>", statistics)
-        self.assertIn("status-tested", statistics)
+        self.assertIn("<span>Last activity</span><strong>—</strong>", statistics)
+        self.assertNotIn("<span>Compatibility status</span>", statistics)
         self.assertIn("diagnostic-state-resolved", body)
         self.assertIn("data-diagnostic-result='failed'", body)
         self.assertIn("data-review-resolved='true'", body)
         self.assertNotIn("USB identity</dt>", body)
         self.assertNotIn("Firmware</dt>", body)
+        self.assertIn("Write failed", body)
+        self.assertIn("SEND_OBJECT_FAILED", body)
         self.assertIn("maxlength='500'", body)
         self.assertIn("link.closest('.github-issue-controls, .github-review')", body)
         self.assertNotIn("\x08", body)
@@ -1136,7 +1228,8 @@ class AdminSemanticsTests(unittest.TestCase):
         statistics = body.split("class='diagnostic-model-metrics model-statistics'", 1)[1].split("</section>", 1)[0]
         for label, value in (("Attempts", "10"), ("Successful", "7"), ("Failed", "3"), ("Open errors", "1")):
             self.assertIn(f"<span>{label}</span><strong>{value}</strong>", statistics)
-        self.assertIn("status-verified", statistics)
+        self.assertIn("<span>Last activity</span><strong>—</strong>", statistics)
+        self.assertNotIn("<span>Compatibility status</span>", statistics)
 
     def test_github_issue_report_uses_an_allowlist_and_redacts_sensitive_values(self):
         results = [{
