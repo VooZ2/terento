@@ -9,9 +9,9 @@
   "downloadURL": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.8/Terento-1.0.0-beta.8-macOS-arm64.dmg",
   "releaseURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.8",
   "releaseNotesURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.8",
-  "summary": "Adds OpenTopoMap, local Garmin IMG import, and safer third-party map management.",
+  "summary": "• OpenTopoMap support\u2028• Install any compatible Garmin .img file\u2028• Minor bug fixes and improvements",
   "publishedAt": "2026-09-01",
   "channel": "beta",
-  "sha256": "PENDING_NOTARIZED_BETA8_DMG_SHA256",
+  "sha256": "f32615fb195fe4659e11bf7f9fa0e86e59415bf57fd59f56a82b54411fb2d3c2",
   "minimumMacOS": "13.0"
 }

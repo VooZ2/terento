@@ -65,5 +65,10 @@ a claim that every exact watch has been independently verified.
 
 ## Release artifacts
 
-The release pipeline must complete Apple notarization, stapling, Gatekeeper
-assessment and launch verification before artifact hashes are recorded here.
+Apple notarization, stapling, Gatekeeper assessment and launch verification
+completed successfully.
+
+```text
+Terento-1.0.0-beta.8-macOS-arm64.dmg  f32615fb195fe4659e11bf7f9fa0e86e59415bf57fd59f56a82b54411fb2d3c2
+Terento-1.0.0-beta.8-macOS-arm64.zip  0abe723ee2ed9256e97bcdb4cacab441d901792d5f957fe1b84a076e6a81269b
+```
