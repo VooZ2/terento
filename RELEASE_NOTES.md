@@ -18,9 +18,6 @@ a claim that every exact watch has been independently verified.
   validation, storage, transfer and verification lifecycle.
 - Manage Terento-installed maps and remove one recognized external map at a
   time with an explicit safety confirmation.
-- View provider health-aware errors when a map source is temporarily down.
-- Optionally share anonymous map download and installation outcomes through a
-  separate, off-by-default statistics control.
 
 ## Application updates
 
@@ -32,7 +29,6 @@ a claim that every exact watch has been independently verified.
   Garmin firmware that needs time to commit its MTP object database.
 - Install, success, failure, confirmation and Manage maps screens received a
   consistent beta.8 visual and accessibility pass.
-- About reports `1.0.0-beta.8` and distributed build `8`.
 
 ## Safety and privacy
 
@@ -41,8 +37,6 @@ a claim that every exact watch has been independently verified.
   filename, path, size and hash checks plus a post-delete rescan.
 - New installs never overwrite an existing target. Safe Update still follows
   write-new → verify → remove-old and never deletes the working map first.
-- Device manifests and physical-watch ownership keys remain local. There is no
-  account, login, cloud device profile or server-side Garmin identifier storage.
 - Map statistics are independent from compatibility evidence, optional, queued
   locally and non-blocking. They exclude watch identifiers, serial numbers,
   Unit IDs, file paths, manifests, binaries and diagnostic logs.
@@ -71,5 +65,10 @@ a claim that every exact watch has been independently verified.
 
 ## Release artifacts
 
-The release pipeline must complete Apple notarization, stapling, Gatekeeper
-assessment and launch verification before artifact hashes are recorded here.
+Apple notarization, stapling, Gatekeeper assessment and launch verification
+completed successfully.
+
+```text
+Terento-1.0.0-beta.8-macOS-arm64.dmg  f32615fb195fe4659e11bf7f9fa0e86e59415bf57fd59f56a82b54411fb2d3c2
+Terento-1.0.0-beta.8-macOS-arm64.zip  0abe723ee2ed9256e97bcdb4cacab441d901792d5f957fe1b84a076e6a81269b
+```

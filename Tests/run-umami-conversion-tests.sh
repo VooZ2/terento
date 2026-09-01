@@ -110,7 +110,7 @@ for path in home_files:
 for path in download_files:
     html = path.read_text(encoding="utf-8")
     versions = set(re.findall(r"v1\.0\.0-beta\.\d+", html))
-    assert versions == {"v1.0.0-beta.7"}, f"{path}: expected current beta.7 release metadata"
+    assert versions == {"v1.0.0-beta.8"}, f"{path}: expected current beta.8 release metadata"
     items = anchors(path)
     dmg = [item for item in items if urlparse(item["href"]).path.lower().endswith(".dmg")]
     zip_files = [item for item in items if urlparse(item["href"]).path.lower().endswith(".zip")]
@@ -133,10 +133,11 @@ for path in compatibility_files:
     assert 'data-umami-event-location="compatibility-community-testing"' in html, f"{path}: missing compatibility CTA location"
 
 update = json.loads((root / "site/updates/macos-arm64.json").read_text(encoding="utf-8"))
-assert update["build"] == 6
-assert update["releaseLabel"] == "1.0.0-beta.7"
-assert update["downloadURL"].endswith("/Terento-1.0.0-beta.7-macOS-arm64.dmg")
-assert update["sha256"] == "6a74b7613a81c68b9e0e3995dd0e00c6a7778957fc039b40a113731573e95faa"
+assert update["build"] == 8
+assert update["releaseLabel"] == "1.0.0-beta.8"
+assert update["downloadURL"].endswith("/Terento-1.0.0-beta.8-macOS-arm64.dmg")
+assert update["sha256"] != "PENDING_NOTARIZED_BETA8_DMG_SHA256", "beta.8 DMG checksum is still pending"
+assert re.fullmatch(r"[0-9a-f]{64}", update["sha256"]), "beta.8 DMG checksum is invalid"
 
 assert "data-umami-event" not in privacy_script
 assert "data-umami-event-file" not in privacy_script
