@@ -57,6 +57,19 @@ class FakeProviderDatabase:
             "failureReasons": [],
         }
 
+    def admin_overview_map_snapshot(self, since, *, period="24h"):
+        return {
+            "eventCount": 0,
+            "completedInstallCount": 0,
+            "failedInstallCount": 0,
+            "installSuccessRate": None,
+            "hasData": False,
+            "recentActivity": [],
+            "attention": [],
+            "trend": [],
+            "bucket": "hour",
+        }
+
     def admin_session(self, token: str):
         return {"id": 7, "csrf_token_hash": token_hash("csrf")} if token == token_hash("session") else None
 

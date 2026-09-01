@@ -445,7 +445,12 @@ class Database:
                         WHERE has_failed AND write_started
                     ) AS failed_install_count,
                     count(*) FILTER (WHERE open_error) AS open_error_count,
-                    count(*) FILTER (WHERE write_started) AS write_started_count
+                    count(*) FILTER (WHERE write_started) AS write_started_count,
+                    count(DISTINCT COALESCE(
+                        canonical_device_model_id::text,
+                        NULLIF(compatibility_identity, ''),
+                        NULLIF(model, '')
+                    )) FILTER (WHERE write_started) AS variant_count
                 FROM scoped_operations
                 """,
                 (since,),
@@ -483,9 +488,135 @@ class Database:
             "failedInstallCount": int(summary.get("failed_install_count") or 0),
             "openErrorCount": int(summary.get("open_error_count") or 0),
             "writeStartedCount": int(summary.get("write_started_count") or 0),
+            "variantCount": int(summary.get("variant_count") or 0),
+            "evidenceSuccessRate": (
+                int(summary.get("successful_install_count") or 0)
+                / int(summary.get("write_started_count") or 1)
+                * 100
+                if int(summary.get("write_started_count") or 0)
+                else None
+            ),
             "hasData": int(summary.get("operation_count") or 0) > 0,
             "recentActivity": [dict(row) for row in recent],
             "failureReasons": [dict(row) for row in failure_reasons],
+        }
+
+    def admin_overview_map_snapshot(
+        self,
+        since: datetime,
+        *,
+        period: str = "24h",
+        recent_limit: int = 8,
+        attention_limit: int = 6,
+    ) -> dict[str, Any]:
+        """Return map-operation aggregates for the authenticated Overview.
+
+        Map telemetry is intentionally kept separate from compatibility
+        evidence. This query only reads the existing map event tables and
+        exposes no new public/API payload.
+        """
+        bucket = {
+            "24h": "hour",
+            "7d": "day",
+            "30d": "day",
+            "all": "month",
+        }.get(period, "hour")
+        event_scope = """
+            FROM map_download_event AS e
+            LEFT JOIN map_provider AS p ON p.id = e.provider_id
+            LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
+            WHERE e.occurred_at >= %s
+        """
+        with self.connection() as connection:
+            summary = connection.execute(
+                f"""
+                SELECT
+                    count(*) AS event_count,
+                    count(DISTINCT e.operation_id) FILTER (
+                        WHERE e.event_type = 'INSTALL_SUCCEEDED'
+                          AND e.outcome = 'SUCCEEDED'
+                    ) AS completed_install_count,
+                    count(DISTINCT e.operation_id) FILTER (
+                        WHERE e.event_type = 'INSTALL_FAILED'
+                          AND e.outcome = 'FAILED'
+                    ) AS failed_install_count
+                {event_scope}
+                """,
+                (since,),
+            ).fetchone() or {}
+            recent = list(connection.execute(
+                f"""
+                SELECT
+                    e.operation_id::text AS operation_id,
+                    e.provider_id,
+                    p.name AS provider_name,
+                    e.map_package_id,
+                    COALESCE(mp.name, e.map_package_id) AS map_package_name,
+                    COALESCE(mp.country, mp.name, e.region, e.map_package_id) AS display_name,
+                    COALESCE(e.region, mp.region) AS region,
+                    e.event_type,
+                    e.outcome,
+                    e.app_build,
+                    e.occurred_at
+                {event_scope}
+                ORDER BY e.occurred_at DESC, e.event_id DESC
+                LIMIT %s
+                """,
+                (since, recent_limit),
+            ).fetchall())
+            attention = list(connection.execute(
+                f"""
+                SELECT
+                    e.operation_id::text AS operation_id,
+                    e.provider_id,
+                    p.name AS provider_name,
+                    e.map_package_id,
+                    COALESCE(mp.name, e.map_package_id) AS map_package_name,
+                    COALESCE(mp.country, mp.name, e.region, e.map_package_id) AS display_name,
+                    COALESCE(e.region, mp.region) AS region,
+                    e.event_type,
+                    e.outcome,
+                    e.app_build,
+                    e.occurred_at
+                {event_scope}
+                  AND e.event_type IN ('DOWNLOAD_FAILED', 'INSTALL_FAILED')
+                  AND e.outcome = 'FAILED'
+                ORDER BY e.occurred_at DESC, e.event_id DESC
+                LIMIT %s
+                """,
+                (since, attention_limit),
+            ).fetchall())
+            trend = list(connection.execute(
+                f"""
+                SELECT
+                    date_trunc(%s, e.occurred_at) AS bucket,
+                    count(DISTINCT e.operation_id) FILTER (
+                        WHERE e.event_type = 'INSTALL_SUCCEEDED'
+                          AND e.outcome = 'SUCCEEDED'
+                    ) AS success_count,
+                    count(DISTINCT e.operation_id) FILTER (
+                        WHERE e.event_type = 'INSTALL_FAILED'
+                          AND e.outcome = 'FAILED'
+                    ) AS failed_count
+                FROM map_download_event AS e
+                WHERE e.occurred_at >= %s
+                GROUP BY date_trunc(%s, e.occurred_at)
+                ORDER BY bucket
+                """,
+                (bucket, since, bucket),
+            ).fetchall())
+        completed = int(summary.get("completed_install_count") or 0)
+        failed = int(summary.get("failed_install_count") or 0)
+        return {
+            "eventCount": int(summary.get("event_count") or 0),
+            "completedInstallCount": completed,
+            "failedInstallCount": failed,
+            "installSuccessRate": completed / (completed + failed) * 100 if completed + failed else None,
+            "hasData": int(summary.get("event_count") or 0) > 0,
+            "recentActivity": [dict(row) for row in recent],
+            "attention": [dict(row) for row in attention],
+            "trend": [dict(row) for row in trend],
+            "bucket": bucket,
         }
 
     def admin_user_count(self) -> int:

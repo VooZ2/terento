@@ -69,6 +69,19 @@ class FakeEvidenceDatabase:
             "failureReasons": [],
         }
 
+    def admin_overview_map_snapshot(self, since, *, period="24h"):
+        return {
+            "eventCount": 0,
+            "completedInstallCount": 0,
+            "failedInstallCount": 0,
+            "installSuccessRate": None,
+            "hasData": False,
+            "recentActivity": [],
+            "attention": [],
+            "trend": [],
+            "bucket": "hour",
+        }
+
     def provider_rows(self):
         return [{
             "provider_id": "freizeitkarte",
@@ -362,7 +375,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertIn("Installations", body)
         self.assertIn("Installation activity and compatibility evidence from Terento users.", body)
         self.assertIn('class="admin-kpi-grid installation-kpis"', body)
-        self.assertIn("<span>Install attempts</span><strong>1</strong>", body)
+        self.assertIn("<span>Write-started attempts</span><strong>1</strong>", body)
         self.assertIn('class="filter-bar admin-filter-bar"', body)
         self.assertIn(">51 mm<", body)
         self.assertIn("Latest activity", body)
@@ -372,7 +385,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertNotIn("ADMINISTRAVIMAS", body)
         self.assertNotIn("Georgia", body)
         self.assertNotIn("Logged in as", body)
-        self.assertIn(">Attempts<", body)
+        self.assertIn(">Write-started attempts<", body)
         self.assertIn("logo-sky.svg", body)
         self.assertIn("Includes resolved historical failures. Open errors shows only unresolved problems.", body)
         self.assertIn("data-admin-timestamp", body)

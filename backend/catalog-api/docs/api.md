@@ -77,15 +77,15 @@ by the service health cycle.
 ## `GET https://api.terento.app/admin`
 
 Returns the authenticated operator Overview. The default period is the last 24
-hours; `?period=7d`, `?period=30d`, and `?period=all` are also supported. The
-page groups existing active compatibility evidence by persisted operation ID,
-shows failed installs separately from unresolved errors, and provides direct
-links to the existing Installations, device, diagnostics, and provider detail
-views. If the selected period has no evidence, event-derived values are shown
-as an em dash rather than zero. The Overview deliberately leaves Install
-success as `Pending metric definition` until compatibility evidence and
-map-operation telemetry are confirmed to represent the same operational
-domain. No new telemetry or public statistics is created by this page.
+hours; `?period=7d`, `?period=30d`, and `?period=all` are also supported. Its
+primary operational domain is the existing `map_download_event` table: Map
+installs, Map install success, Failed map installs, recent map activity, the
+installs-over-time chart, and failure-first attention links use distinct map
+operation IDs. Compatibility evidence remains a secondary, explicitly
+labelled block with its own variants, write-started attempts, evidence success,
+open errors, and normalized failure reasons. If the selected domain has no
+data, event-derived values use an em dash rather than zero. No new client
+telemetry, public statistics, or map-event payload is created by this page.
 
 The first administrator can
 be created only once through `/admin/setup` with the environment-provided
@@ -100,15 +100,14 @@ Returns the authenticated compatibility/installations view. It keeps the
 existing five KPI cards, historical-failure distinction, exact model/variant
 table, search, compatibility-status filter, sort, and model drill-down. The
 quick filters `All`, `Failed`, `Open errors`, and `Successful` are
-presentation-only filters over the existing aggregate rows. Attempts and
-successes are currently composed from the existing model aggregate plus the
-active/resolved operation-detail presentation overlay. The canonical
-compatibility view itself uses active, write-started operations and excludes
-pre-write failures; the rendered page also retains historical failures for
-operator review. These source domains are not yet proven equivalent, so the
-page's displayed counters must not be treated as a final unified success-rate
-definition. Open errors remain a separate unresolved diagnostic state. The
-route is the target of the earlier `/internal/compatibility/` redirect.
+presentation-only filters over the existing aggregate rows. The page labels
+the compatibility counters `Write-started attempts` and `Successful`, plus the
+explicitly scoped `Evidence success` percentage.
+The canonical compatibility view itself uses active, write-started operations
+and excludes pre-write failures; the rendered page also retains historical
+failures for operator review. Open errors remain a separate unresolved
+diagnostic state. The route is the target of the earlier
+`/internal/compatibility/` redirect.
 
 The first screen stops at the KPI summary, filters, and one-row-per-exact-
 model/variant table. Resolved and legacy diagnostics remain available in model
@@ -429,7 +428,9 @@ detail page shows metadata, license/attribution, provider-level original
 source links, and progressive-disclosure sections for download sources,
 regions/packages, health details/history, collection history, and retained
 provider history. Large source and package lists have client-side search,
-broken-only filters, and pagination. It also provides `Check now`, `Collect
+broken-only filters, 25/50-row pagination, and no zero-item package-source
+disclosure. An empty collection uses a compact `Collection · No runs yet`
+state. It also provides `Check now`, `Collect
 catalog`, `Pause`/`Activate`, and an overflow `Retire` control. A request
 without a valid admin session redirects to `/admin/login`; the page never
 serves map binaries.
@@ -552,21 +553,20 @@ totals. These pagination parameters are private admin presentation controls.
 Authenticated, no-store/noindex HTML dashboard for the same aggregate read
 model. It supports 7-day, 30-day, 90-day, and all-time ranges plus provider,
 map, region, and event-type filters. It displays completed/failed downloads,
-download and install success rates, top maps/regions, per-provider popularity,
-provider health, and broken provider package/link counts. When a provider
-filter is selected, the health, issue, and per-provider popularity summaries
-are scoped to that provider. The results label distinguishes event groups from
-event records. Primary KPI cards
-show completed downloads, download success, completed installs, and install
-success; reliability is shown separately for failed installs, failed downloads,
-and provider issues. Map/region/event filters are under `More filters`, event
-detail is collapsed, and missing events use an explicit empty state and em
-dashes rather than silently presented zeros. Unauthenticated requests redirect
-to `/admin/login`. The dashboard additionally shows watch-event linkage for
-the selected map-operation scope: matched installs, unlinked installs, and
-watch-confirmed successes/failures. Linkage is possible only when the app's
-map-statistics and compatibility-evidence choices are both enabled for the
-same installation operation.
+download and install success rates, Top 5 maps with a View all disclosure,
+collapsed Regions, per-provider popularity in a full-width table, provider
+health, and broken provider package/link counts. When a provider filter is
+selected, the health, issue, and per-provider popularity summaries are scoped
+to that provider. The results label distinguishes event groups from event
+records. Primary KPI cards show completed downloads, download success,
+completed installs, and install success; reliability is shown separately for
+failed installs, failed downloads, and provider issues. Map/region/event
+filters are under `More filters`, event detail and watch-event linkage are
+collapsed, and missing events use an explicit empty state and em dashes rather
+than silently presented zeros. Unauthenticated requests redirect to
+`/admin/login`. Linkage is possible only when the app's map-statistics and
+compatibility-evidence choices are both enabled for the same installation
+operation.
 
 ## `GET /devices/catalog.json`
 

@@ -345,7 +345,10 @@ class CatalogService:
             "schemaVersion": 1,
             "period": period,
             "since": since,
-            "data": self.database.admin_overview_snapshot(since),
+            # Keep map-operation telemetry and compatibility evidence as
+            # distinct admin domains. Neither changes the public API payload.
+            "data": self.database.admin_overview_map_snapshot(since, period=period),
+            "compatibility": self.database.admin_overview_snapshot(since),
             "providers": self.admin_providers().get("providers", []),
         }
 

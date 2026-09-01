@@ -209,29 +209,53 @@ class AdminSemanticsTests(unittest.TestCase):
             {
                 "period": "24h",
                 "data": {
-                    "operationCount": 0,
+                    "eventCount": 0,
+                    "completedInstallCount": 0,
                     "failedInstallCount": 0,
-                    "openErrorCount": 0,
+                    "installSuccessRate": None,
                     "hasData": False,
                     "recentActivity": [],
-                    "failureReasons": [],
+                    "attention": [],
+                    "trend": [],
+                    "bucket": "hour",
                 },
+                "compatibility": {"hasData": False, "openErrorCount": 0, "recentActivity": [], "failureReasons": []},
                 "providers": [{"id": "freizeitkarte", "name": "Freizeitkarte", "health": "HEALTHY"}],
             },
             {"username": "operator"},
             "csrf",
         ).decode()
         self.assertIn("<h1>Overview</h1>", body)
-        self.assertIn("<span>Install operations</span><strong>—</strong>", body)
-        self.assertIn("<span>Failed installs</span><strong>—</strong>", body)
+        self.assertIn("<span>Map installs</span><strong>—</strong>", body)
+        self.assertIn("<span>Failed map installs</span><strong>—</strong>", body)
         self.assertIn("<span>Open errors</span><strong>—</strong>", body)
-        self.assertIn("No installation activity in this period.", body)
+        self.assertIn("No map activity in this period.", body)
 
     def test_overview_uses_existing_operation_and_provider_drill_downs(self):
         body = overview_page(
             {
                 "period": "7d",
                 "data": {
+                    "eventCount": 4,
+                    "completedInstallCount": 3,
+                    "failedInstallCount": 1,
+                    "installSuccessRate": 75,
+                    "hasData": True,
+                    "recentActivity": [{
+                        "event_type": "INSTALL_FAILED",
+                        "outcome": "FAILED",
+                        "display_name": "Germany",
+                        "map_package_id": "freizeitkarte-germany",
+                        "region": "DE",
+                        "provider_id": "freizeitkarte",
+                        "provider_name": "Freizeitkarte",
+                        "occurred_at": "2026-09-01T07:00:00+00:00",
+                    }],
+                    "attention": [],
+                    "trend": [{"bucket": "2026-09-01T07:00:00+00:00", "success_count": 3, "failed_count": 1}],
+                    "bucket": "day",
+                },
+                "compatibility": {
                     "operationCount": 2,
                     "failedInstallCount": 1,
                     "openErrorCount": 1,
@@ -250,6 +274,9 @@ class AdminSemanticsTests(unittest.TestCase):
                         "last_occurred_at": "2026-09-01T07:00:00+00:00",
                     }],
                     "failureReasons": [{"reason": "transport", "count": 1}],
+                    "writeStartedCount": 2,
+                    "variantCount": 1,
+                    "evidenceSuccessRate": 50,
                 },
                 "providers": [{"id": "opentopomap", "name": "OpenTopoMap", "health": "DEGRADED"}],
             },
@@ -262,6 +289,19 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("/admin/diagnostics?identity=f%C4%93nix+8+%C2%B7+47+mm&amp;state=failed", body)
         self.assertIn("/admin/providers/opentopomap", body)
         self.assertIn("OpenTopoMap health Degraded", body)
+        self.assertIn("<span>Map installs</span><strong>4</strong>", body)
+        self.assertIn("<span>Map install success</span><strong>75%</strong>", body)
+        self.assertIn("<span>Failed map installs</span><strong>1</strong>", body)
+        self.assertIn("<span>Open errors</span><strong>1</strong>", body)
+        self.assertIn("<span>Write-started attempts</span><strong>2</strong>", body)
+        self.assertIn("<span>Variants</span><strong>1</strong>", body)
+        self.assertIn("<span>Evidence success</span><strong>50%</strong>", body)
+        self.assertIn("Map installs over time", body)
+        self.assertIn("overview-chart-success", body)
+        self.assertIn("Recent map activity", body)
+        self.assertIn("Compatibility evidence", body)
+        self.assertNotIn("Pending metric definition", body)
+        self.assertNotIn("<span>Success rate</span>", body)
 
     def test_installation_authorization_is_separate_from_compatibility_evidence(self):
         source = inspect.getsource(Database.update_device_support_status)
@@ -615,8 +655,9 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertNotIn("class='metric'", body)
         self.assertIn('class="admin-kpi-grid installation-kpis"', body)
-        self.assertIn("<span>Install attempts</span><strong>3</strong>", body)
+        self.assertIn("<span>Write-started attempts</span><strong>3</strong>", body)
         self.assertIn("<span>Successful</span><strong>1</strong>", body)
+        self.assertIn("<span>Evidence success</span><strong>33.3%</strong>", body)
         self.assertIn("Historical failures: 1", body)
         self.assertNotIn('id="evidence-title"', body)
         self.assertNotIn("<h2 id=\"evidence-title\">Installations</h2>", body)
@@ -849,11 +890,12 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertIn("<p class=\"eyebrow\">Compatibility</p>", body)
         self.assertIn('class="admin-kpi-grid installation-kpis"', body)
-        for label in ("Variants", "Install attempts", "Successful", "Success rate", "Open errors"):
+        for label in ("Variants", "Write-started attempts", "Successful", "Evidence success", "Open errors"):
             self.assertIn(f"<span>{label}</span>", body)
-        self.assertIn("<span>Success rate</span><strong>66.7%</strong>", body)
+        self.assertIn("<span>Successful</span><strong>2</strong>", body)
+        self.assertIn("<span>Evidence success</span><strong>66.7%</strong>", body)
         self.assertIn("Historical failures: 2", body)
-        self.assertIn("<th scope=\"col\">Status</th><th scope=\"col\">Attempts</th>", body)
+        self.assertIn("<th scope=\"col\">Status</th><th scope=\"col\">Write-started attempts</th><th scope=\"col\">Successful</th>", body)
         self.assertNotIn("installation-summary-strip", body)
 
     def test_map_statistics_does_not_render_event_derived_zeros_without_data(self):
@@ -1009,6 +1051,10 @@ class AdminSemanticsTests(unittest.TestCase):
             "csrf",
         ).decode()
         self.assertIn("Watch event linkage", body)
+        self.assertIn("DATA QUALITY · Watch event linkage", body)
+        self.assertIn("id='all-map-rows'", body)
+        self.assertIn("View all maps", body)
+        self.assertIn("<h3>Top maps</h3>", body)
         self.assertIn("Map install operations</span><strong data-stat='mapInstallationCount'>4", body)
         self.assertIn("Linked watch events</span><strong data-stat='linkedInstallationCount'>3", body)
         self.assertIn("Unlinked installs</span><strong data-stat='mapOnlyInstallationCount'>1", body)
@@ -1109,6 +1155,8 @@ class AdminSemanticsTests(unittest.TestCase):
             self.assertIn(text, body)
         self.assertIn("id='provider-source-pagination'", body)
         self.assertIn("id='provider-package-pagination'", body)
+        self.assertIn("id='provider-source-page-size'", body)
+        self.assertIn("id='provider-package-page-size'", body)
         self.assertIn("Health check history · 0 previous checks", body)
         self.assertIn("Status changed", body)
         self.assertIn("provider.status_changed", body)
@@ -1138,6 +1186,8 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Health check history · 1 previous checks", history)
         self.assertIn("2026-08-30", history)
         self.assertNotIn("2026-08-31", history)
+        self.assertNotIn("Package download sources", body)
+        self.assertIn("Collection · No runs yet", body)
 
     def test_shared_model_page_keeps_resolved_failures_historical_and_open_errors_active_only(self):
         device = _admin_device_payload([{
@@ -1180,6 +1230,9 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertNotIn("Firmware</dt>", body)
         self.assertIn("Write failed", body)
         self.assertIn("SEND_OBJECT_FAILED", body)
+        self.assertIn("Failure reason:", body)
+        self.assertIn("data-history-filter='failed'", body)
+        self.assertIn("Device snapshot totals information", body)
         self.assertIn("maxlength='500'", body)
         self.assertIn("link.closest('.github-issue-controls, .github-review')", body)
         self.assertNotIn("\x08", body)
