@@ -16,8 +16,10 @@ private authenticated admin routes. No route serves map binaries.
 
 Accepts at most 16 KiB of allowlisted schema-version-1, schema-version-2, or schema-version-3 JSON after client
 opt-in. Event UUIDs are idempotent. Unknown fields, local paths, malformed
-payloads, non-Freizeitkarte providers, and privacy-prohibited data are
-rejected. A random per-event deletion token is required; older beta payloads
+payloads, providers outside the current compatibility-evidence allowlist, and
+privacy-prohibited data are rejected. The current legacy evidence allowlist is
+separate from the provider-neutral map catalog and must be expanded before a
+new provider's compatibility events are accepted. A random per-event deletion token is required; older beta payloads
 without one are rejected rather than retained without a self-service deletion
 credential. The endpoint is rate limited and stores allowlisted columns in the
 separate compatibility table. The original JSON body is not retained; only
@@ -260,7 +262,7 @@ Responses use `Cache-Control: no-store`.
 
 Returns an additive provider-neutral catalog. `schemaVersion: 2` identifies the
 new provider/package/artifact fields, while `catalogVersion: 1`, the legacy map
-fields, and `sourceURL` remain for the current FZK macOS client. The response
+fields, and `sourceURL` remain for existing macOS clients. The response
 contains all validated packages known to enabled or paused prebuilt adapters;
 catalog membership is distinct from acquisition availability. The collector
 keeps original provider download URLs and never downloads or proxies map
@@ -368,9 +370,10 @@ storage gate while making both meanings explicit. Artifact `sourceUrl` is
 always an original provider URL. `checksumSha256` is optional until a
 provider-published checksum is available. `main` is required and `contours`
 is optional; artifact validation and package availability are independent.
-Providers are registered only through known server-side adapters. OpenTopoMap
-is visible in the local beta.8 candidate but remains `PAUSED` until its source
-and package validation gate is activated by an operator.
+Providers are registered only through known server-side adapters. A provider's
+catalog visibility, lifecycle status, source health, and acquisition
+availability remain separate; publishing metadata never activates a provider
+or grants a device write path.
 
 ## `GET /admin/providers.json`
 
@@ -403,8 +406,10 @@ Provider detail also returns an `activationGate` projection. Its
 `canActivate` value is false until the latest health check is `HEALTHY`, a
 successful catalog collection is recorded, the stored current package set
 matches that collection, all current packages are `AVAILABLE`, and every
-required artifact is present, validated, and free of broken links. OpenTopoMap
-additionally requires the expected `177` packages and main artifacts.
+required artifact is present, validated, and free of broken links. A provider
+may add a stricter completeness requirement in its reviewed adapter policy;
+such a requirement is provider-specific evidence, not a universal package
+count.
 
 ## `GET /admin/providers/{id}/health`
 

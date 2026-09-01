@@ -8,11 +8,12 @@ manifests, local paths, or map binaries.
 
 ## `map_provider`
 
-One row for the external map provider.
+One row for a reviewed external map provider. There is no fixed provider count;
+the registry contains only providers with a known server-side adapter.
 
 | Column | Type | Meaning |
 | --- | --- | --- |
-| `id` | `text` | Stable Terento provider ID, currently `freizeitkarte` and `opentopomap` |
+| `id` | `text` | Stable Terento provider ID, for example `freizeitkarte` or `opentopomap` |
 | `name` | `text` | Display name |
 | `adapter_id` | `text` | Stable ID of a server-side prebuilt adapter; never uploaded through the API |
 | `status` | `text` | `ACTIVE`, `PAUSED`, or `RETIRED` lifecycle state |
@@ -89,10 +90,10 @@ preserves the provider token; `canonical_region_id` and `region` are the
 normalized geographic presentation values. `availability` is independent of
 provider health and artifact validation (`AVAILABLE`, `WITHHELD`,
 `UNAVAILABLE`, or `RETIRED`). Existing `map` rows are linked through
-`legacy_map_id` during migration 026 so the current FZK client remains
-compatible. OpenTopoMap package IDs use the complete official region slug, so
-country and multi-region packages share the same provider-neutral shape and
-are not limited by a hardcoded country allowlist.
+`legacy_map_id` during migration 026 so existing macOS clients remain
+compatible. Provider-specific package IDs and region shapes are preserved by
+the adapter, while the public package contract remains provider-neutral and is
+not limited by a hardcoded country allowlist.
 
 ## `map_artifact`
 

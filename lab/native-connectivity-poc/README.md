@@ -45,9 +45,9 @@ variant. Reconnect, map visibility, physical-device count, firmware variation,
 and operator review do not promote a status. Exact model names and firmware
 values belong in internal compatibility records, not this public PoC overview.
 
-The metadata-only catalog records downloadable Freizeitkarte and OpenTopoMap
-packages. The bundled fallback contains all 63 official Freizeitkarte
-packages plus all 177 official OpenTopoMap Garmin rows. It records provider
+The metadata-only catalog records packages from enabled, reviewed providers.
+The bundled beta.8 fallback contains all 63 official Freizeitkarte packages
+plus all 177 official OpenTopoMap Garmin rows. It records provider
 attribution, source and license URLs, release, and provider-listed package
 sizes; 176 OTM contour artifacts are optional and the one empty contour source
 is omitted from installable artifacts. The loader tries
@@ -97,7 +97,7 @@ normalized release on the second line. Same-provider regional variants use a
 parenthesized qualifier only when needed.
 The owner has confirmed one-map and same-provider multi-map OTM installation,
 watch use, reconnect persistence, Manage maps discovery, one-map Remove, and
-the one-provider selection lock on the tested watch. Broader device evidence
+the same-provider selection lock on the tested watch. Broader device evidence
 remains a separate release claim.
 
 The final beta.8 app presentation keeps only `Update` and `Remove` in normal
@@ -187,8 +187,8 @@ regression boundaries:
 These checks validate the provider-neutral catalog and acquisition seams,
 custom `.img` staging/validation, compact custom-import presentation and
 confirmation, generic provider/custom inventory grouping, optional artifact
-storage planning, model-admission safety, and the Freizeitkarte/OpenTopoMap
-source paths. The common multi-map lifecycle resolves MTP object IDs again by
+storage planning, model-admission safety, and the currently enabled
+Freizeitkarte/OpenTopoMap source paths. The common multi-map lifecycle resolves MTP object IDs again by
 exact managed filename and validated size after a write, because some Garmin
 firmware re-enumerates handles between sessions. The owner has separately
 confirmed one OpenTopoMap installation

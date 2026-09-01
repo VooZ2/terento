@@ -22,10 +22,12 @@ terento-catalog-migrate
 terento-catalog-backfill-sizes
 ```
 
-The backfill uses the original Freizeitkarte package URL and bounded `HEAD` /
-`Range` requests. It does not download the archive body to the server. A
-provider without Range support can still provide `downloadSizeBytes` from
-`Content-Length`, but cannot provide a new `installSizeBytes` measurement.
+The current backfill command uses the reference provider package URL and
+bounded `HEAD` / `Range` requests. It does not download the archive body to the
+server. A provider without Range support can still provide `downloadSizeBytes`
+from `Content-Length`, but cannot provide a new `installSizeBytes` measurement.
+Future provider backfills must resolve their URL through the provider adapter;
+the command must not assume Freizeitkarte-specific URL or archive rules.
 The command preserves existing known-good values on failure and reports the
 failed rows in its JSON summary.
 
@@ -43,8 +45,10 @@ The scheduled sweep is weekly on Monday at 03:00 UTC:
 COLLECTOR_SCHEDULE_UTC=MON 03:00
 ```
 
-The scheduler collects Freizeitkarte maps first and Garmin device metadata
-second. A failed or partial provider run does not clear the previous catalog.
+The scheduler's map phase runs before Garmin device metadata collection. The
+current scheduled implementation runs the reference provider collector; each
+future provider collector must be an independently reviewed adapter. A failed
+or partial provider run does not clear the previous catalog.
 The Garmin collector creates a `MISSING` asset baseline for new devices; it
 does not request product-image binaries and it never changes an asset to
 `AVAILABLE`.

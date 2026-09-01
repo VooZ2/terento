@@ -9,9 +9,10 @@ temporary workspace or network request is created. Other regions, including
 Ukraine, Belarus and unknown non-Russian identities, remain available under
 the normal validation rules.
 
-This remains a pre-MVP beta for hardware validation. Freizeitkarte remains the
-only map provider, and model eligibility is not a claim that every exact watch
-has been independently verified.
+This remains a pre-MVP beta for hardware validation. Beta.7's catalog and
+validation evidence cover Freizeitkarte only; that release-specific coverage
+does not define Terento's provider boundary, and model eligibility is not a
+claim that every exact watch has been independently verified.
 
 ## Highlights
 
@@ -45,7 +46,8 @@ has been independently verified.
 - Device manifests and physical-watch ownership keys remain local. There is no
   account, login, cloud device profile or server-side Garmin identifier storage.
 - Catalog filtering and acquisition policy do not add telemetry or map proxying;
-  available maps still download directly from Freizeitkarte infrastructure.
+  available maps still download directly from the original provider
+  infrastructure.
 
 ## Validation status
 
@@ -65,8 +67,8 @@ has been independently verified.
 - Map-capable means eligible for a guarded beta attempt, not independently
   verified compatibility.
 - Safe Update has not yet passed its real-device newer-map gate.
-- Freizeitkarte is the only supported map provider. Terento does not host,
-  mirror or proxy map binaries.
+- This beta.7 release contains only the Freizeitkarte catalog. Terento does not
+  host, mirror or proxy map binaries.
 - macOS 13 or later on Apple Silicon is required. Intel Macs, App Store, PKG,
   Windows and Linux distributions are not included.
 

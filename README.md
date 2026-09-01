@@ -6,7 +6,7 @@
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
 
 Terento is a free, open-source native macOS app for installing and managing
-Freizeitkarte maps on Garmin smartwatches.
+community maps on Garmin smartwatches.
 
 I started it because I got tired of looking for the right software every time
 I wanted to put maps on my Garmin from a Mac. I wanted something simpler:
@@ -47,15 +47,15 @@ Garmin stores its map files.
 Terento keeps the process intentionally small:
 
 - detects your connected Garmin smartwatch;
-- shows the Freizeitkarte regions available to install;
+- shows map regions available from enabled providers;
 - downloads maps from their original source;
 - checks available storage before making changes;
 - installs and verifies the map;
 - lets you update or remove maps installed by Terento; and
 - leaves Garmin's own maps and other unknown files alone.
 
-The complete Freizeitkarte catalog remains visible. Under Terento's current
-acquisition policy, downloads and updates are not offered for russia or
+The complete catalog for enabled providers remains visible. Under Terento's
+current acquisition policy, downloads and updates are not offered for russia or
 Crimea. Installed Terento-owned maps retain explicit update and removal
 controls, while Garmin and other unknown files remain protected.
 
@@ -127,7 +127,9 @@ works.
 - USB connection
 - Internet connection for downloading maps
 
-Freizeitkarte is the only map source supported in beta.8.
+Beta.8 uses a provider-neutral catalog. Freizeitkarte and OpenTopoMap are the
+currently enabled providers; additional providers require their own reviewed
+source, licensing, validation, and device/lifecycle gates.
 
 ## Download
 
@@ -178,14 +180,16 @@ See the full
 
 ## Maps
 
-Terento beta.8 works with
-[Freizeitkarte](https://www.freizeitkarte-osm.de/), which provides Garmin maps
-based on OpenStreetMap data.
+Terento beta.8 works with the currently enabled
+[Freizeitkarte](https://www.freizeitkarte-osm.de/) and
+[OpenTopoMap](https://garmin.opentopomap.org/) providers, which publish Garmin
+maps based on OpenStreetMap data.
 
 Maps are downloaded from the selected provider's original infrastructure.
 Terento does not host, mirror, or repackage them.
 
 - [Freizeitkarte](https://www.freizeitkarte-osm.de/)
+- [OpenTopoMap](https://garmin.opentopomap.org/)
 - [OpenStreetMap copyright](https://www.openstreetmap.org/copyright)
 
 Terento is an independent open-source project and is not affiliated with,

@@ -3,15 +3,15 @@
 This service is a metadata-only source for the Terento macOS catalog client.
 It stores map-provider metadata and a separate Garmin smartwatch device
 catalog. It does not download, host, proxy, mirror, cache, repackage, or serve
-Freizeitkarte map binaries or Garmin product images.
+provider map binaries or Garmin product images.
 
-The public/MVP map-provider hard gate remains Freizeitkarte only. The local
-beta.8 API also carries the known, server-side OpenTopoMap adapter in a paused
-state; activation is an explicit operator action after its source gate. A
-separate Garmin collector indexes official smartwatch-category metadata; it is
-a device catalog, not a compatibility registry. Compatibility evidence and
-map-operation statistics use separate schemas and endpoints; neither accepts
-Unit IDs, serial numbers, manifests, accounts, private logs, or map binaries.
+The catalog is provider-neutral and has no fixed provider count. Each enabled
+provider must be represented by a reviewed server-side adapter and pass its own
+source, licensing, metadata, validation, and activation gates. A separate
+Garmin collector indexes official smartwatch-category metadata; it is a device
+catalog, not a compatibility registry. Compatibility evidence and map-operation
+statistics use separate schemas and endpoints; neither accepts Unit IDs,
+serial numbers, manifests, accounts, private logs, or map binaries.
 
 ## Local development
 
@@ -48,8 +48,8 @@ PYTHONPATH=backend/catalog-api/src python3 -m unittest discover -s backend/catal
 
 - `GET /health` checks database reachability and returns `{"status":"ok"}`.
 - `GET /maps/catalog.json` returns an additive provider-neutral `schemaVersion: 2`
-  projection while retaining catalog version 1 fields for the current FZK
-  client. The response includes `ETag`, `Last-Modified`, and cache headers and
+  projection while retaining catalog version 1 fields for existing macOS
+  clients. The response includes `ETag`, `Last-Modified`, and cache headers and
   supports conditional GETs.
 - `GET /devices/catalog.json` returns catalog version 2 for discovered Garmin
   smartwatch models, including `MISSING` or `AVAILABLE` asset metadata. It
@@ -157,8 +157,10 @@ The reviewed OpenTopoMap adapter derives stable package identity from the
 official `otm-<region>.zip` filename and reads each country row's generated-at
 timestamp. It accepts all current official Garmin region shapes, excludes
 Basecamp archives, and relates the shared Canada contours archive to both
-Canada main packages. OpenTopoMap remains `PAUSED` until the beta.8 deployment
-gate is accepted; deploying the adapter does not activate it automatically.
+Canada main packages. This provider-specific behavior is an example of the
+reviewed adapter boundary; another provider must supply its own identity,
+source, artifact, and activation rules. Deploying an adapter never activates a
+provider automatically.
 
 Provider health is an availability summary. A provider can be `HEALTHY` when
 its website and catalog are reachable even before package downloads have been
@@ -206,6 +208,8 @@ terento-catalog-asset approve --device-model-id garmin-fenix-8-47-amoled \
 Preparation is private review storage. Only the explicit approval step moves
 the validated WebP into the public API asset tree.
 
-The weekly scheduler runs the Freizeitkarte map collection first and then the
-Garmin device collection. A Garmin collection failure is logged and recorded
-without clearing the previous device catalog or changing the map catalog.
+The weekly scheduler runs the map collection phase first and then the Garmin
+device collection. The current scheduled map collector is the Freizeitkarte
+reference collector; future provider collectors must use their reviewed
+adapters. A Garmin collection failure is logged and recorded without clearing
+the previous device catalog or changing the map catalog.
