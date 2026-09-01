@@ -14,6 +14,8 @@ from terento_catalog.admin import (
     GITHUB_ADMIN_NOTE_MAX_LENGTH,
     GITHUB_ISSUE_URL_MAX_LENGTH,
     _admin_device_payload,
+    _admin_event_outcome_label,
+    _admin_map_display_name,
     _admin_timezone_script,
     _campaign_links_script,
     _client_issue_note_sanitizer_script,
@@ -303,6 +305,46 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Compatibility evidence", body)
         self.assertNotIn("Pending metric definition", body)
         self.assertNotIn("<span>Success rate</span>", body)
+
+    def test_overview_presents_model_activity_and_exact_period_vocabulary(self):
+        body = overview_page(
+            {
+                "period": "24h",
+                "data": {"hasData": False, "recentActivity": [], "attention": [], "trend": [], "bucket": "hour"},
+                "compatibility": {
+                    "hasData": True,
+                    "modelActivity": [{
+                        "model": "fēnix 8", "variant": "47 mm, AMOLED",
+                        "operation_count": 2, "successful_count": 1,
+                        "failed_count": 1, "open_error_count": 1,
+                        "last_occurred_at": "2026-09-01T07:00:00+00:00",
+                    }],
+                    "reviewRequired": [{"model": "Forerunner 965", "review_status": "PENDING"}],
+                    "recentActivity": [], "failureReasons": [],
+                    "writeStartedCount": 2, "variantCount": 1, "evidenceSuccessRate": 50,
+                },
+                "providers": [],
+            },
+            {"username": "operator"}, "csrf",
+        ).decode()
+        self.assertIn("Device/model activity", body)
+        self.assertIn("fēnix 8 · 47 mm, AMOLED", body)
+        self.assertIn("New / review-required devices", body)
+        self.assertIn("Last 24 hours", body)
+        self.assertNotIn("build", body.lower())
+
+    def test_admin_map_labels_are_human_and_unknown_outcomes_are_neutral(self):
+        self.assertEqual(_admin_map_display_name("PRINCIPALITY_OF_ANDORRA"), "Andorra")
+        self.assertEqual(_admin_map_display_name("SWITZERLAND"), "Switzerland")
+        self.assertEqual(_admin_event_outcome_label("UNKNOWN"), "—")
+        self.assertEqual(_admin_event_outcome_label("SUCCEEDED"), "Succeeded")
+
+        body = map_statistics_page(
+            {"rows": []}, [], {"username": "operator"}, "csrf",
+            selected_filters={"period": "24h"},
+        ).decode()
+        self.assertIn("Last 24 hours", body)
+        self.assertNotIn("90 days", body)
 
     def test_map_overview_uses_a_server_compatible_bucket_expression(self):
         database = RecordingDatabase()
@@ -912,7 +954,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("<span>Successful</span><strong>2</strong>", body)
         self.assertIn("<span>Evidence success</span><strong>66.7%</strong>", body)
         self.assertIn("Historical failures: 2", body)
-        self.assertIn("<th scope=\"col\">Status</th><th scope=\"col\">Write-started attempts</th><th scope=\"col\">Successful</th>", body)
+        self.assertIn("<th scope=\"col\">Status</th><th scope=\"col\">Attempts</th><th scope=\"col\">Successful</th>", body)
         self.assertNotIn("installation-summary-strip", body)
 
     def test_map_statistics_does_not_render_event_derived_zeros_without_data(self):

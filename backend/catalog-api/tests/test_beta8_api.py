@@ -723,7 +723,7 @@ class Beta8APITests(unittest.TestCase):
             statistics, statistics_body = self._request(
                 server,
                 "GET",
-                "/admin/map-statistics.json?provider=freizeitkarte&region=lt",
+                "/admin/map-statistics.json?provider=freizeitkarte&region=lt&period=24h",
                 headers={"Cookie": cookie},
             )
             self.assertEqual(statistics.status, 200)
@@ -732,6 +732,8 @@ class Beta8APITests(unittest.TestCase):
             self.assertEqual(statistics_payload["detailPageSize"], 25)
             self.assertEqual(statistics_payload["detailTotal"], 1)
             self.assertEqual(len(statistics_payload["detailRows"]), 1)
+            self.assertEqual(statistics_payload["filters"]["period"], "24h")
+            self.assertEqual(statistics_payload["rows"][0]["display_name"], "Lithuania")
             self.assertEqual(statistics_payload["linkage"]["mapInstallationCount"], 1)
             self.assertEqual(statistics_payload["linkage"]["mapOnlyInstallationCount"], 1)
             self.assertEqual(statistics_payload["linkage"]["linkedInstallationCount"], 0)

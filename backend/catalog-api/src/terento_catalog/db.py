@@ -482,6 +482,57 @@ class Database:
                 """,
                 (since,),
             ).fetchall())
+            model_activity = list(connection.execute(
+                f"""
+                {scoped}
+                SELECT
+                    COALESCE(
+                        canonical_device_model_id::text,
+                        NULLIF(compatibility_identity, ''),
+                        NULLIF(model, ''),
+                        'unknown-device'
+                    ) AS model_key,
+                    min(canonical_device_model_id::text) AS canonical_device_model_id,
+                    min(compatibility_identity) AS compatibility_identity,
+                    min(model) AS model,
+                    min(variant) FILTER (
+                        WHERE variant IS NOT NULL AND btrim(variant) <> ''
+                    ) AS variant,
+                    count(*) AS operation_count,
+                    count(*) FILTER (
+                        WHERE write_started AND operation_succeeded
+                    ) AS successful_count,
+                    count(*) FILTER (
+                        WHERE write_started AND has_failed
+                    ) AS failed_count,
+                    count(*) FILTER (WHERE open_error) AS open_error_count,
+                    max(last_occurred_at) AS last_occurred_at
+                FROM scoped_operations
+                GROUP BY 1
+                ORDER BY open_error_count DESC, failed_count DESC,
+                         operation_count DESC, last_occurred_at DESC, model_key
+                LIMIT 8
+                """,
+                (since,),
+            ).fetchall())
+            review_required = list(connection.execute(
+                """
+                SELECT
+                    canonical_device_model_id::text AS canonical_device_model_id,
+                    compatibility_identity, model, variant,
+                    review_status, public_statistics_enabled, public_display_name,
+                    last_evidence
+                FROM compatibility_model_statistics
+                WHERE last_evidence >= %s
+                  AND (
+                      COALESCE(review_status, 'PENDING') <> 'APPROVED'
+                      OR COALESCE(public_statistics_enabled, false) = false
+                  )
+                ORDER BY last_evidence DESC NULLS LAST, model, variant
+                LIMIT 8
+                """,
+                (since,),
+            ).fetchall())
         return {
             "operationCount": int(summary.get("operation_count") or 0),
             "successfulInstallCount": int(summary.get("successful_install_count") or 0),
@@ -499,6 +550,8 @@ class Database:
             "hasData": int(summary.get("operation_count") or 0) > 0,
             "recentActivity": [dict(row) for row in recent],
             "failureReasons": [dict(row) for row in failure_reasons],
+            "modelActivity": [dict(row) for row in model_activity],
+            "reviewRequired": [dict(row) for row in review_required],
         }
 
     def admin_overview_map_snapshot(

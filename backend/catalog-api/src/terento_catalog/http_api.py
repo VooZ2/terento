@@ -28,6 +28,7 @@ from .admin import (
     provider_detail_page,
     providers_page,
     _admin_device_payload,
+    _admin_map_display_name,
     _normalise_github_issue_reference,
     hash_password,
     login_page,
@@ -292,10 +293,23 @@ class CatalogService:
         return event, inserted
 
     def map_statistics(self, query: dict[str, str]) -> dict[str, Any]:
+        periods = {
+            "24h": timedelta(hours=24),
+            "7d": timedelta(days=7),
+            "30d": timedelta(days=30),
+            "all": None,
+        }
+        period = str(query.get("period") or "all").strip().lower()
+        if period not in periods:
+            raise MapEventValidationError("invalid_period_filter")
         filter_query = {
             key: value for key, value in query.items()
-            if key not in {"detailPage", "detailPageSize"}
+            if key not in {"detailPage", "detailPageSize", "period"}
         }
+        if periods[period] is not None and not filter_query.get("dateFrom"):
+            filter_query["dateFrom"] = (
+                datetime.now(timezone.utc) - periods[period]
+            ).isoformat()
         filters = validate_statistics_filters(filter_query)
         try:
             detail_page = max(1, int(query.get("detailPage", "1") or "1"))
@@ -305,6 +319,17 @@ class CatalogService:
         if detail_page_size not in {25, 50}:
             raise MapEventValidationError("invalid_detail_page_size")
         rows = self.database.map_statistics(filters)
+        rows = [
+            {
+                **row,
+                "display_name": _admin_map_display_name(
+                    row.get("map_package_name"),
+                    row.get("region"),
+                    row.get("map_package_id"),
+                ),
+            }
+            for row in rows
+        ]
         detail_total = len(rows)
         detail_pages = max(1, (detail_total + detail_page_size - 1) // detail_page_size)
         detail_page = min(detail_page, detail_pages)
@@ -313,10 +338,21 @@ class CatalogService:
             limit=detail_page_size,
             offset=(detail_page - 1) * detail_page_size,
         )
+        detail_rows = [
+            {
+                **row,
+                "display_name": _admin_map_display_name(
+                    row.get("map_package_name"),
+                    row.get("region"),
+                    row.get("map_package_id"),
+                ),
+            }
+            for row in detail_rows
+        ]
         linkage = self.database.map_statistics_linkage(filters)
         return {
             "schemaVersion": 1,
-            "filters": query,
+            "filters": {**query, "period": period},
             "generatedAt": datetime.now(timezone.utc),
             "rows": rows,
             "detailRows": detail_rows,
