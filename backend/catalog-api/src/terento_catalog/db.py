@@ -515,6 +515,17 @@ class Database:
         evidence. This query only reads the existing map event tables and
         exposes no new public/API payload.
         """
+        # Keep the date_trunc field as a trusted SQL literal. PostgreSQL can
+        # resolve a bound value here in some driver/server combinations, but
+        # not all combinations infer the parameter as text for date_trunc's
+        # overloaded signature. The period is already allow-listed above, so
+        # embedding the selected expression is both safe and deterministic.
+        bucket_expression = {
+            "24h": "date_trunc('hour', e.occurred_at)",
+            "7d": "date_trunc('day', e.occurred_at)",
+            "30d": "date_trunc('day', e.occurred_at)",
+            "all": "date_trunc('month', e.occurred_at)",
+        }.get(period, "date_trunc('hour', e.occurred_at)")
         bucket = {
             "24h": "hour",
             "7d": "day",
@@ -552,7 +563,7 @@ class Database:
                     p.name AS provider_name,
                     e.map_package_id,
                     COALESCE(mp.name, e.map_package_id) AS map_package_name,
-                    COALESCE(mp.country, mp.name, e.region, e.map_package_id) AS display_name,
+                    COALESCE(mp.name, e.region, e.map_package_id) AS display_name,
                     COALESCE(e.region, mp.region) AS region,
                     e.event_type,
                     e.outcome,
@@ -572,7 +583,7 @@ class Database:
                     p.name AS provider_name,
                     e.map_package_id,
                     COALESCE(mp.name, e.map_package_id) AS map_package_name,
-                    COALESCE(mp.country, mp.name, e.region, e.map_package_id) AS display_name,
+                    COALESCE(mp.name, e.region, e.map_package_id) AS display_name,
                     COALESCE(e.region, mp.region) AS region,
                     e.event_type,
                     e.outcome,
@@ -589,7 +600,7 @@ class Database:
             trend = list(connection.execute(
                 f"""
                 SELECT
-                    date_trunc(%s, e.occurred_at) AS bucket,
+                    {bucket_expression} AS bucket,
                     count(DISTINCT e.operation_id) FILTER (
                         WHERE e.event_type = 'INSTALL_SUCCEEDED'
                           AND e.outcome = 'SUCCEEDED'
@@ -600,10 +611,10 @@ class Database:
                     ) AS failed_count
                 FROM map_download_event AS e
                 WHERE e.occurred_at >= %s
-                GROUP BY date_trunc(%s, e.occurred_at)
+                GROUP BY {bucket_expression}
                 ORDER BY bucket
                 """,
-                (bucket, since, bucket),
+                (since,),
             ).fetchall())
         completed = int(summary.get("completed_install_count") or 0)
         failed = int(summary.get("failed_install_count") or 0)

@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 import inspect
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 import shutil
 import subprocess
@@ -302,6 +303,22 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Compatibility evidence", body)
         self.assertNotIn("Pending metric definition", body)
         self.assertNotIn("<span>Success rate</span>", body)
+
+    def test_map_overview_uses_a_server_compatible_bucket_expression(self):
+        database = RecordingDatabase()
+        since = datetime(2026, 9, 1, tzinfo=timezone.utc)
+
+        snapshot = database.admin_overview_map_snapshot(since, period="7d")
+
+        self.assertEqual(snapshot["bucket"], "day")
+        trend_query, trend_parameters = next(
+            (query, parameters)
+            for query, parameters in database.calls
+            if "GROUP BY" in query and "success_count" in query
+        )
+        self.assertIn("date_trunc('day', e.occurred_at)", trend_query)
+        self.assertNotIn("date_trunc(%s", trend_query)
+        self.assertEqual(trend_parameters, (since,))
 
     def test_installation_authorization_is_separate_from_compatibility_evidence(self):
         source = inspect.getsource(Database.update_device_support_status)
