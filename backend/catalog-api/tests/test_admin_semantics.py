@@ -797,11 +797,15 @@ class AdminSemanticsTests(unittest.TestCase):
             _map_statistics_summary([]),
             {
                 "hasEventData": False,
+                "eventGroupCount": 0,
+                "eventCount": None,
                 "completedDownloads": None,
                 "failedDownloads": None,
+                "downloadAttempts": None,
                 "downloadSuccessRate": None,
                 "completedInstalls": None,
                 "failedInstalls": None,
+                "installAttempts": None,
                 "installSuccessRate": None,
             },
         )
@@ -836,6 +840,131 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("<strong data-stat='failedDownloads'>0</strong>", body)
         self.assertIn("map-statistics-empty' id='map-statistics-empty' hidden", body)
         self.assertNotIn("map-events-card' hidden", body)
+
+    def test_map_statistics_counts_failed_installations_and_scopes_provider_health(self):
+        rows = [
+            {
+                "provider_id": "opentopomap",
+                "event_type": "DOWNLOAD_SUCCEEDED",
+                "outcome": "SUCCEEDED",
+                "event_count": 6,
+                "operation_count": 6,
+            },
+            {
+                "provider_id": "opentopomap",
+                "event_type": "DOWNLOAD_FAILED",
+                "outcome": "FAILED",
+                "event_count": 2,
+                "operation_count": 2,
+            },
+            {
+                "provider_id": "opentopomap",
+                "event_type": "INSTALL_SUCCEEDED",
+                "outcome": "SUCCEEDED",
+                "event_count": 4,
+                "operation_count": 4,
+            },
+            {
+                "provider_id": "opentopomap",
+                "event_type": "INSTALL_FAILED",
+                "outcome": "FAILED",
+                "event_count": 2,
+                "operation_count": 2,
+            },
+            {
+                "provider_id": "opentopomap",
+                "event_type": "DOWNLOAD_STARTED",
+                "outcome": "UNKNOWN",
+                "event_count": 6,
+                "operation_count": 6,
+            },
+        ]
+        self.assertEqual(
+            _map_statistics_summary(rows),
+            {
+                "hasEventData": True,
+                "eventGroupCount": 5,
+                "eventCount": 20,
+                "completedDownloads": 6,
+                "failedDownloads": 2,
+                "downloadAttempts": 8,
+                "downloadSuccessRate": 75.0,
+                "completedInstalls": 4,
+                "failedInstalls": 2,
+                "installAttempts": 6,
+                "installSuccessRate": 4 / 6 * 100,
+            },
+        )
+        body = map_statistics_page(
+            {"rows": rows},
+            [
+                {"id": "freizeitkarte", "name": "Freizeitkarte", "health": "HEALTHY"},
+                {"id": "opentopomap", "name": "OpenTopoMap", "health": "HEALTHY"},
+            ],
+            {"username": "operator"},
+            "csrf",
+            selected_filters={"provider": "opentopomap"},
+        ).decode()
+        self.assertIn("5 event groups · 20 event records", body)
+        self.assertIn("<strong data-stat='completedDownloads'>6</strong>", body)
+        self.assertIn("<strong data-stat='failedInstalls'>2</strong>", body)
+        self.assertIn("<strong data-stat='installSuccessRate'>66.7%</strong>", body)
+        self.assertIn("<strong data-stat='providerHealth'>1 / 1 healthy</strong>", body)
+        self.assertIn("<em data-stat='providerHealthIssues'> · 0 issues</em>", body)
+
+        script = _map_statistics_script()
+        self.assertIn("set('failedInstalls', hasEventData ? failedInstalls : '—')", script)
+        self.assertIn("const scopedProviders = selectedProvider ? providers.filter", script)
+
+    def test_map_statistics_exposes_operation_id_watch_linkage(self):
+        linkage = {
+            "mapOperationCount": 6,
+            "mapInstallationCount": 4,
+            "linkedOperationCount": 4,
+            "linkedInstallationCount": 3,
+            "mapOnlyInstallationCount": 1,
+            "linkedWriteStartedInstallCount": 3,
+            "linkedSuccessfulInstallCount": 2,
+            "linkedFailedInstallCount": 1,
+            "linkedPrewriteFailureCount": 0,
+            "linkageRate": 75.0,
+        }
+        body = map_statistics_page(
+            {
+                "rows": [{
+                    "provider_id": "opentopomap",
+                    "event_type": "INSTALL_SUCCEEDED",
+                    "outcome": "SUCCEEDED",
+                    "event_count": 4,
+                    "operation_count": 4,
+                }],
+                "linkage": linkage,
+            },
+            [{"id": "opentopomap", "name": "OpenTopoMap", "health": "HEALTHY"}],
+            {"username": "operator"},
+            "csrf",
+        ).decode()
+        self.assertIn("Watch event linkage", body)
+        self.assertIn("Map install operations</span><strong data-stat='mapInstallationCount'>4", body)
+        self.assertIn("Linked watch events</span><strong data-stat='linkedInstallationCount'>3", body)
+        self.assertIn("Unlinked installs</span><strong data-stat='mapOnlyInstallationCount'>1", body)
+        self.assertIn("Linkage coverage</span><strong data-stat='linkageRate'>75%", body)
+        self.assertIn("Watch-confirmed failures</span><strong data-stat='linkedFailedInstallCount'>1", body)
+
+        script = _map_statistics_script()
+        self.assertIn("const linkage = payload.linkage || {};", script)
+        self.assertIn("set('linkedSuccessfulInstallCount', linkageValue('linkedSuccessfulInstallCount'))", script)
+
+    def test_map_statistics_linkage_query_joins_only_shared_operation_ids(self):
+        source = inspect.getsource(Database.map_statistics_linkage)
+        self.assertIn("FROM map_download_event AS e", source)
+        self.assertIn("FROM compatibility_evidence_event AS e", source)
+        self.assertIn("ON c.operation_id = m.operation_id", source)
+        self.assertIn("AND c.provider_id = m.provider_id", source)
+        self.assertIn("GROUP BY e.operation_id", source)
+        self.assertIn("map_only_installation_count", source)
+        self.assertIn("linked_failed_install_count", source)
+        self.assertIn("count(*) FILTER (WHERE has_install_event)", source)
 
     def test_provider_list_uses_compact_columns_and_summary(self):
         body = providers_page(

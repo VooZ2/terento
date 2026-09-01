@@ -293,11 +293,13 @@ class CatalogService:
     def map_statistics(self, query: dict[str, str]) -> dict[str, Any]:
         filters = validate_statistics_filters(query)
         rows = self.database.map_statistics(filters)
+        linkage = self.database.map_statistics_linkage(filters)
         return {
             "schemaVersion": 1,
             "filters": query,
             "generatedAt": datetime.now(timezone.utc),
             "rows": rows,
+            "linkage": linkage,
         }
 
     def asset_response(self, request_path: str) -> tuple[bytes, str, str] | None:

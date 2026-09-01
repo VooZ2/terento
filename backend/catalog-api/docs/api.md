@@ -9,17 +9,21 @@ https://api.terento.app
 The map and device catalog routes are public read-only metadata. Compatibility
 evidence and map-operation statistics are separate data boundaries: the former
 is an explicit product-purpose sharing flow, while the latter accepts only
-privacy-minimised map operation events. Provider controls and statistics are
-private authenticated admin routes. No route serves map binaries.
+privacy-minimised map operation events. In beta.8, compatibility evidence is
+accepted for the explicit reviewed provider allowlist (`freizeitkarte` and
+`opentopomap`) so the two streams can be linked by a shared operation ID when
+both opt-ins are enabled. Provider controls and statistics are private
+authenticated admin routes. No route serves map binaries.
 
 ## `POST /compatibility/events`
 
 Accepts at most 16 KiB of allowlisted schema-version-1, schema-version-2, or schema-version-3 JSON after client
 opt-in. Event UUIDs are idempotent. Unknown fields, local paths, malformed
 payloads, providers outside the current compatibility-evidence allowlist, and
-privacy-prohibited data are rejected. The current legacy evidence allowlist is
-separate from the provider-neutral map catalog and must be expanded before a
-new provider's compatibility events are accepted. A random per-event deletion token is required; older beta payloads
+privacy-prohibited data are rejected. The compatibility evidence provider
+allowlist is explicit and remains separate from the provider-neutral map
+catalog; a new provider must be added to that allowlist and pass the normal
+review before its compatibility events are accepted. A random per-event deletion token is required; older beta payloads
 without one are rejected rather than retained without a self-service deletion
 credential. The endpoint is rate limited and stores allowlisted columns in the
 separate compatibility table. The original JSON body is not retained; only
@@ -480,7 +484,29 @@ Returns private aggregate map-operation rows with `event_count`, distinct
 `operation_count`, first/last occurrence, provider, map, region, event type,
 and outcome. Supported query filters are `provider`, `map`, `region`,
 `dateFrom`, `dateTo`, and `eventType`. The response is no-store/noindex and
-does not expose individual event payloads or device identifiers.
+does not expose individual event payloads or device identifiers. Each response
+row is an event group, not a complete download/install total: a single map
+operation can produce started, completed, and failed event groups. Admin KPI
+totals count the distinct operations for the relevant completed/failed event
+type, while compatibility evidence remains a separate data source.
+The response also includes an additive `linkage` summary. It matches one
+operation from each stream only when their UUID `operationId` values are equal;
+the server first aggregates each stream to one row per operation, so a
+multi-map install is never counted once per child map. `linkedInstallationCount`
+and `mapOnlyInstallationCount` describe map operations that emitted an install
+event, while `linkedSuccessfulInstallCount` and `linkedFailedInstallCount`
+use the linked watch evidence outcome. A missing watch event is coverage data,
+not an inferred installation failure. This field is private admin data and
+does not recalculate or merge the existing compatibility and map-operation
+aggregates.
+The linkage summary contains `mapOperationCount`, `linkedOperationCount`,
+`mapInstallationCount`, `linkedInstallationCount`,
+`mapOnlyInstallationCount`, `linkedWriteStartedInstallCount`,
+`linkedSuccessfulInstallCount`, `linkedFailedInstallCount`,
+`linkedPrewriteFailureCount`, and `linkageRate`.
+`linkedPrewriteFailureCount` is the subset that failed before a device write;
+it remains visible for traceability but is not folded into the existing
+write-started compatibility success-rate aggregate.
 
 ## `GET /admin/map-statistics`
 
@@ -488,13 +514,20 @@ Authenticated, no-store/noindex HTML dashboard for the same aggregate read
 model. It supports 7-day, 30-day, 90-day, and all-time ranges plus provider,
 map, region, and event-type filters. It displays completed/failed downloads,
 download and install success rates, top maps/regions, per-provider popularity,
-provider health, and broken provider package/link counts. Primary KPI cards
+provider health, and broken provider package/link counts. When a provider
+filter is selected, the health, issue, and per-provider popularity summaries
+are scoped to that provider. The results label distinguishes event groups from
+event records. Primary KPI cards
 show completed downloads, download success, completed installs, and install
 success; reliability is shown separately for failed installs, failed downloads,
 and provider issues. Map/region/event filters are under `More filters`, event
 detail is collapsed, and missing events use an explicit empty state and em
 dashes rather than silently presented zeros. Unauthenticated requests redirect
-to `/admin/login`.
+to `/admin/login`. The dashboard additionally shows watch-event linkage for
+the selected map-operation scope: matched installs, unlinked installs, and
+watch-confirmed successes/failures. Linkage is possible only when the app's
+map-statistics and compatibility-evidence choices are both enabled for the
+same installation operation.
 
 ## `GET /devices/catalog.json`
 

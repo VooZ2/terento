@@ -468,6 +468,21 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertEqual(database.parameters["canonicalDeviceId"], "garmin-fenix-8-51-amoled")
         self.assertEqual(database.parameters["identityResolutionState"], "RESOLVED")
 
+    def test_beta8_known_otm_provider_is_accepted_for_operation_linkage(self):
+        validated = validate_event(json.dumps(event(
+            schemaVersion=2,
+            provider="OpenTopoMap",
+            operationId="b8098c1a-f86e-11da-bd1a-00112444be1e",
+        )).encode())
+        self.assertEqual(validated["provider"], "opentopomap")
+        self.assertEqual(
+            validated["operationId"],
+            "b8098c1a-f86e-11da-bd1a-00112444be1e",
+        )
+
+        with self.assertRaisesRegex(EvidenceValidationError, "unsupported_provider"):
+            validate_event(json.dumps(event(provider="openmtbmap")).encode())
+
     def test_schema_v3_accepts_structured_diagnostics_and_rejects_raw_or_inconsistent_data(self):
         payload = event(
             schemaVersion=3,

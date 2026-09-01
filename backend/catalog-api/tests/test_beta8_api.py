@@ -99,6 +99,20 @@ class FakeProviderDatabase:
             "last_occurred_at": datetime(2026, 8, 31, tzinfo=UTC),
         }]
 
+    def map_statistics_linkage(self, filters):
+        return {
+            "mapOperationCount": 1,
+            "mapInstallationCount": 1,
+            "linkedOperationCount": 0,
+            "linkedInstallationCount": 0,
+            "mapOnlyInstallationCount": 1,
+            "linkedWriteStartedInstallCount": 0,
+            "linkedSuccessfulInstallCount": 0,
+            "linkedFailedInstallCount": 0,
+            "linkedPrewriteFailureCount": 0,
+            "linkageRate": 0.0,
+        }
+
     def insert_map_event(self, event):
         if event["id"] in self.events:
             return False
@@ -202,6 +216,19 @@ class Beta8APITests(unittest.TestCase):
         self.assertIn("provider.status_repaired", migration)
         self.assertIn("migration-028", migration)
         self.assertIn("explicitActivationRequired", migration)
+
+    def test_beta8_provider_compatibility_linkage_migration_is_allowlisted(self):
+        migration = (
+            Path(__file__).parents[1]
+            / "src"
+            / "terento_catalog"
+            / "migrations"
+            / "029_provider_neutral_compatibility_evidence.sql"
+        ).read_text(encoding="utf-8")
+        self.assertIn("DROP CONSTRAINT compatibility_evidence_event_provider_check", migration)
+        self.assertIn("provider IN ('freizeitkarte', 'opentopomap')", migration)
+        self.assertNotIn("openmtbmap", migration)
+        self.assertNotIn("DROP TABLE", migration)
 
     def test_provider_neutral_catalog_keeps_legacy_fields_and_artifacts(self):
         document = build_catalog([
@@ -675,7 +702,11 @@ class Beta8APITests(unittest.TestCase):
                 headers={"Cookie": cookie},
             )
             self.assertEqual(statistics.status, 200)
-            self.assertEqual(json.loads(statistics_body)["rows"][0]["region"], "LT")
+            statistics_payload = json.loads(statistics_body)
+            self.assertEqual(statistics_payload["rows"][0]["region"], "LT")
+            self.assertEqual(statistics_payload["linkage"]["mapInstallationCount"], 1)
+            self.assertEqual(statistics_payload["linkage"]["mapOnlyInstallationCount"], 1)
+            self.assertEqual(statistics_payload["linkage"]["linkedInstallationCount"], 0)
 
             state, state_body = self._request(
                 server,

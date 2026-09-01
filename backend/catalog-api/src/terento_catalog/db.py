@@ -1678,27 +1678,32 @@ class Database:
             ).fetchone()
         return row is not None
 
-    def map_statistics(self, filters: dict[str, Any]) -> list[dict[str, Any]]:
+    @staticmethod
+    def _map_statistics_filter(filters: dict[str, Any], alias: str = "e") -> tuple[list[str], list[Any]]:
         clauses = ["1 = 1"]
         values: list[Any] = []
         if filters.get("provider"):
-            clauses.append("e.provider_id = %s")
+            clauses.append(f"{alias}.provider_id = %s")
             values.append(filters["provider"])
         if filters.get("map"):
-            clauses.append("e.map_package_id = %s")
+            clauses.append(f"{alias}.map_package_id = %s")
             values.append(filters["map"])
         if filters.get("region"):
-            clauses.append("e.region = %s")
+            clauses.append(f"{alias}.region = %s")
             values.append(filters["region"])
         if filters.get("eventType"):
-            clauses.append("e.event_type = %s")
+            clauses.append(f"{alias}.event_type = %s")
             values.append(filters["eventType"])
         if filters.get("dateFrom"):
-            clauses.append("e.occurred_at >= %s")
+            clauses.append(f"{alias}.occurred_at >= %s")
             values.append(filters["dateFrom"])
         if filters.get("dateTo"):
-            clauses.append("e.occurred_at <= %s")
+            clauses.append(f"{alias}.occurred_at <= %s")
             values.append(filters["dateTo"])
+        return clauses, values
+
+    def map_statistics(self, filters: dict[str, Any]) -> list[dict[str, Any]]:
+        clauses, values = self._map_statistics_filter(filters)
         query = f"""
             SELECT
                 e.provider_id,
@@ -1720,6 +1725,110 @@ class Database:
         """
         with self.connection() as connection:
             return list(connection.execute(query, values).fetchall())
+
+    def map_statistics_linkage(self, filters: dict[str, Any]) -> dict[str, Any]:
+        """Match map operations to watch evidence without changing either aggregate.
+
+        The client intentionally gives a map operation and its compatibility
+        evidence the same random operation UUID when both sharing choices are
+        enabled. Aggregate each stream to one row per operation before joining;
+        otherwise a multi-map install would create a many-to-many count.
+        """
+        clauses, values = self._map_statistics_filter(filters)
+        query = f"""
+            WITH map_operations AS (
+                SELECT
+                    e.operation_id,
+                    min(e.provider_id) AS provider_id,
+                    bool_or(e.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED'))
+                        AS has_install_event
+                FROM map_download_event AS e
+                WHERE {' AND '.join(clauses)}
+                GROUP BY e.operation_id
+            ), compatibility_operations AS (
+                SELECT
+                    e.operation_id,
+                    min(e.provider) AS provider_id,
+                    bool_or(COALESCE(e.write_started, TRUE)) AS write_started,
+                    bool_and(
+                        e.phase_outcome = 'SUCCEEDED'
+                        AND e.automatic_finishing_result = 'VERIFIED'
+                    )
+                    AND count(*) = max(COALESCE(e.selected_map_count, 1))
+                        AS operation_succeeded
+                FROM compatibility_evidence_event AS e
+                WHERE e.operation_id IS NOT NULL
+                GROUP BY e.operation_id
+            ), linked_operations AS (
+                SELECT
+                    m.*,
+                    c.operation_id AS compatibility_operation_id,
+                    c.write_started,
+                    c.operation_succeeded
+                FROM map_operations AS m
+                LEFT JOIN compatibility_operations AS c
+                    ON c.operation_id = m.operation_id
+                   AND c.provider_id = m.provider_id
+            )
+            SELECT
+                count(*) AS map_operation_count,
+                count(*) FILTER (WHERE compatibility_operation_id IS NOT NULL)
+                    AS linked_operation_count,
+                count(*) FILTER (WHERE has_install_event) AS map_installation_count,
+                count(*) FILTER (
+                    WHERE has_install_event AND compatibility_operation_id IS NOT NULL
+                ) AS linked_installation_count,
+                count(*) FILTER (
+                    WHERE has_install_event AND compatibility_operation_id IS NULL
+                ) AS map_only_installation_count,
+                count(*) FILTER (
+                    WHERE has_install_event
+                      AND compatibility_operation_id IS NOT NULL
+                      AND write_started
+                ) AS linked_write_started_install_count,
+                count(*) FILTER (
+                    WHERE has_install_event
+                      AND compatibility_operation_id IS NOT NULL
+                      AND write_started
+                      AND operation_succeeded
+                ) AS linked_successful_install_count,
+                count(*) FILTER (
+                    WHERE has_install_event
+                      AND compatibility_operation_id IS NOT NULL
+                      AND NOT operation_succeeded
+                ) AS linked_failed_install_count,
+                count(*) FILTER (
+                    WHERE has_install_event
+                      AND compatibility_operation_id IS NOT NULL
+                      AND write_started = FALSE
+                ) AS linked_prewrite_failure_count,
+                round(
+                    100.0 * count(*) FILTER (
+                        WHERE has_install_event AND compatibility_operation_id IS NOT NULL
+                    ) / NULLIF(count(*) FILTER (WHERE has_install_event), 0),
+                    1
+                ) AS linkage_rate
+            FROM linked_operations
+        """
+        with self.connection() as connection:
+            row = connection.execute(query, values).fetchone() or {}
+
+        def integer(key: str) -> int:
+            return int(row.get(key) or 0)
+
+        linkage_rate = row.get("linkage_rate")
+        return {
+            "mapOperationCount": integer("map_operation_count"),
+            "mapInstallationCount": integer("map_installation_count"),
+            "linkedOperationCount": integer("linked_operation_count"),
+            "linkedInstallationCount": integer("linked_installation_count"),
+            "mapOnlyInstallationCount": integer("map_only_installation_count"),
+            "linkedWriteStartedInstallCount": integer("linked_write_started_install_count"),
+            "linkedSuccessfulInstallCount": integer("linked_successful_install_count"),
+            "linkedFailedInstallCount": integer("linked_failed_install_count"),
+            "linkedPrewriteFailureCount": integer("linked_prewrite_failure_count"),
+            "linkageRate": float(linkage_rate) if linkage_rate is not None else None,
+        }
 
     def map_size_targets(self) -> list[dict[str, Any]]:
         query = """
