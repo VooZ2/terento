@@ -515,7 +515,8 @@ Returns private aggregate map-operation rows with `event_count`, distinct
 `operation_count`, first/last occurrence, provider, map, region, event type,
 and outcome. Where the existing registry has names, admin rows also include
 `provider_name` and `map_package_name` for human-readable popularity tables;
-the technical IDs remain available. Supported query filters are `provider`, `map`, `region`,
+`region_display_name` is an additive display-only region label. The technical IDs remain available.
+Supported query filters are `provider`, `map`, `region`,
 `dateFrom`, `dateTo`, and `eventType`. The response is no-store/noindex and
 does not expose individual event payloads or device identifiers. Each response
 row is an event group, not a complete download/install total: a single map
@@ -551,19 +552,18 @@ totals. These pagination parameters are private admin presentation controls.
 ## `GET /admin/map-statistics`
 
 Authenticated, no-store/noindex HTML dashboard for the same aggregate read
-model. It supports 7-day, 30-day, 90-day, and all-time ranges plus provider,
-map, region, and event-type filters. It displays completed/failed downloads,
-download and install success rates, Top 5 maps with a View all disclosure,
-collapsed Regions, per-provider popularity in a full-width table, provider
-health, and broken provider package/link counts. When a provider filter is
-selected, the health, issue, and per-provider popularity summaries are scoped
-to that provider. The results label distinguishes event groups from event
-records. Primary KPI cards show completed downloads, download success,
-completed installs, and install success; reliability is shown separately for
-failed installs, failed downloads, and provider issues. Map/region/event
-filters are under `More filters`, event detail and watch-event linkage are
-collapsed, and missing events use an explicit empty state and em dashes rather
-than silently presented zeros. Unauthenticated requests redirect to
+model. It supports Last 24 hours, Last 7 days, Last 30 days, and All time
+ranges plus provider, map, region, and event-type filters. It displays map
+operation totals, map-package download/install totals, success rates, Top 5
+maps with a single-table View all disclosure, collapsed Regions, per-provider
+popularity, provider health, and broken provider package/link counts. When a
+provider filter is selected, the health, issue, and per-provider popularity
+summaries are scoped to that provider. The UI labels the distinction between
+distinct map operations and map-package records because one operation may
+contain multiple packages. Overview and Map statistics therefore do not imply
+identical totals. Compatibility Installations remain an all-time evidence
+view. Missing or unknown values use an explicit neutral state or em dash,
+rather than silently presented zeros. Unauthenticated requests redirect to
 `/admin/login`. Linkage is possible only when the app's map-statistics and
 compatibility-evidence choices are both enabled for the same installation
 operation.

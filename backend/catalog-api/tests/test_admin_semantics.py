@@ -33,6 +33,7 @@ from terento_catalog.admin import (
     _normalise_variant,
     _map_statistics_script,
     _provider_detail_script,
+    format_timestamp,
     _providers_list_script,
     _status_badge,
     campaign_links_page,
@@ -229,8 +230,8 @@ class AdminSemanticsTests(unittest.TestCase):
             "csrf",
         ).decode()
         self.assertIn("<h1>Overview</h1>", body)
-        self.assertIn("<span>Map installs</span><strong>—</strong>", body)
-        self.assertIn("<span>Failed map installs</span><strong>—</strong>", body)
+        self.assertIn("<span>Map install operations</span><strong>—</strong>", body)
+        self.assertIn("<span>Failed map operations</span><strong>—</strong>", body)
         self.assertIn("<span>Open errors</span><strong>—</strong>", body)
         self.assertIn("No map activity in this period.", body)
 
@@ -292,14 +293,14 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("/admin/diagnostics?identity=f%C4%93nix+8+%C2%B7+47+mm&amp;state=failed", body)
         self.assertIn("/admin/providers/opentopomap", body)
         self.assertIn("OpenTopoMap health Degraded", body)
-        self.assertIn("<span>Map installs</span><strong>4</strong>", body)
-        self.assertIn("<span>Map install success</span><strong>75%</strong>", body)
-        self.assertIn("<span>Failed map installs</span><strong>1</strong>", body)
+        self.assertIn("<span>Map install operations</span><strong>4</strong>", body)
+        self.assertIn("<span>Map operation success</span><strong>75%</strong>", body)
+        self.assertIn("<span>Failed map operations</span><strong>1</strong>", body)
         self.assertIn("<span>Open errors</span><strong>1</strong>", body)
         self.assertIn("<span>Write-started attempts</span><strong>2</strong>", body)
         self.assertIn("<span>Variants</span><strong>1</strong>", body)
         self.assertIn("<span>Evidence success</span><strong>50%</strong>", body)
-        self.assertIn("Map installs over time", body)
+        self.assertIn("Map install operations over time", body)
         self.assertIn("overview-chart-success", body)
         self.assertIn("Recent map activity", body)
         self.assertIn("Compatibility evidence", body)
@@ -330,12 +331,30 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Device/model activity", body)
         self.assertIn("fēnix 8 · 47 mm, AMOLED", body)
         self.assertIn("New / review-required devices", body)
+        self.assertIn("Needs attention", body)
+        self.assertIn("Review required", body)
         self.assertIn("Last 24 hours", body)
         self.assertNotIn("build", body.lower())
+
+    def test_overview_hides_unlinked_model_activity_panel(self):
+        body = overview_page(
+            {
+                "period": "7d",
+                "data": {"hasData": True, "completedInstallCount": 1, "recentActivity": [], "attention": [], "trend": [], "bucket": "day"},
+                "compatibility": {"hasData": False, "modelActivity": [], "reviewRequired": [], "recentActivity": [], "failureReasons": []},
+                "providers": [],
+            },
+            {"username": "operator"}, "csrf",
+        ).decode()
+        self.assertNotIn("overview-model-title", body)
+        self.assertIn("overview-primary-grid-single", body)
 
     def test_admin_map_labels_are_human_and_unknown_outcomes_are_neutral(self):
         self.assertEqual(_admin_map_display_name("PRINCIPALITY_OF_ANDORRA"), "Andorra")
         self.assertEqual(_admin_map_display_name("SWITZERLAND"), "Switzerland")
+        self.assertEqual(_admin_map_display_name("Republic of Albania"), "Albania")
+        self.assertEqual(_admin_map_display_name("Kingdom of Belgium"), "Belgium")
+        self.assertEqual(_admin_map_display_name("Region Belgium - Netherlands - Luxembourg"), "Belgium – Netherlands – Luxembourg")
         self.assertEqual(_admin_event_outcome_label("UNKNOWN"), "—")
         self.assertEqual(_admin_event_outcome_label("SUCCEEDED"), "Succeeded")
 
@@ -345,6 +364,9 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertIn("Last 24 hours", body)
         self.assertNotIn("90 days", body)
+
+    def test_admin_timestamps_repair_legacy_missing_separator(self):
+        self.assertEqual(format_timestamp("2026-08-2123:51"), "2026-08-21 23:51")
 
     def test_map_overview_uses_a_server_compatible_bucket_expression(self):
         database = RecordingDatabase()
@@ -1111,7 +1133,7 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertIn("Watch event linkage", body)
         self.assertIn("DATA QUALITY · Watch event linkage", body)
-        self.assertIn("id='all-map-rows'", body)
+        self.assertIn("id='map-rows'", body)
         self.assertIn("View all maps", body)
         self.assertIn("<h3>Top maps</h3>", body)
         self.assertIn("Map install operations</span><strong data-stat='mapInstallationCount'>4", body)
@@ -1210,7 +1232,7 @@ class AdminSemanticsTests(unittest.TestCase):
             {"username": "operator"},
             "csrf",
         ).decode()
-        for text in ("Packages", "Broken", "Last catalog sync", "Last health check", "Check now", "Collect catalog", "More", "Retire provider", "Provider metadata", "Original links", "Package download sources", "Regions and packages", "Latest health check", "View check details", "Collection history", "Provider history"):
+        for text in ("Packages", "Broken", "Last catalog sync", "Last health check", "Check now", "Collect catalog", "More", "Retire provider", "Provider metadata", "Original links", "Download source URLs", "Regions and packages", "Latest health check", "View check details", "Collection history", "Provider history"):
             self.assertIn(text, body)
         self.assertIn("id='provider-source-pagination'", body)
         self.assertIn("id='provider-package-pagination'", body)
@@ -1245,7 +1267,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Health check history · 1 previous checks", history)
         self.assertIn("2026-08-30", history)
         self.assertNotIn("2026-08-31", history)
-        self.assertNotIn("Package download sources", body)
+        self.assertNotIn("Download source URLs", body)
         self.assertIn("Collection · No runs yet", body)
 
     def test_shared_model_page_keeps_resolved_failures_historical_and_open_errors_active_only(self):

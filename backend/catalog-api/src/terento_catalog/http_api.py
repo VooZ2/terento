@@ -306,7 +306,7 @@ class CatalogService:
             key: value for key, value in query.items()
             if key not in {"detailPage", "detailPageSize", "period"}
         }
-        if periods[period] is not None and not filter_query.get("dateFrom"):
+        if periods[period] is not None:
             filter_query["dateFrom"] = (
                 datetime.now(timezone.utc) - periods[period]
             ).isoformat()
@@ -327,6 +327,7 @@ class CatalogService:
                     row.get("region"),
                     row.get("map_package_id"),
                 ),
+                "region_display_name": _admin_map_display_name(row.get("region")),
             }
             for row in rows
         ]
@@ -346,6 +347,7 @@ class CatalogService:
                     row.get("region"),
                     row.get("map_package_id"),
                 ),
+                "region_display_name": _admin_map_display_name(row.get("region")),
             }
             for row in detail_rows
         ]

@@ -373,7 +373,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         }
         body = dashboard_page([row], {"username": "gediminas"}, "csrf", public_stats_enabled=True).decode()
         self.assertIn("Installations", body)
-        self.assertIn("Installation activity and compatibility evidence from Terento users.", body)
+        self.assertIn("All-time compatibility evidence from Terento users.", body)
         self.assertIn('class="admin-kpi-grid installation-kpis"', body)
         self.assertIn("<span>Write-started attempts</span><strong>1</strong>", body)
         self.assertIn('class="filter-bar admin-filter-bar"', body)

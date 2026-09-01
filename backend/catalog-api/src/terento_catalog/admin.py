@@ -114,8 +114,16 @@ def _parse_timestamp(value: Any) -> datetime | None:
     if isinstance(value, datetime):
         parsed = value
     elif isinstance(value, str):
+        normalized_value = value.strip()
+        # Accept legacy admin strings that lost the separator between date
+        # and time without changing the stored timestamp.
+        normalized_value = re.sub(
+            r"^(\d{4}-\d{2}-\d{2})(\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)$",
+            r"\1T\2",
+            normalized_value,
+        )
         try:
-            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            parsed = datetime.fromisoformat(normalized_value.replace("Z", "+00:00"))
         except ValueError:
             return None
     else:
@@ -850,6 +858,31 @@ def _overview_review_required(items: list[dict[str, Any]]) -> str:
     ) + "</ul>"
 
 
+def _overview_review_attention_item(item: dict[str, Any]) -> str:
+    model = str(item.get("model") or item.get("compatibility_identity") or "Unknown device").strip()
+    variant = _normalise_variant(item.get("variant"))
+    context = " · ".join(
+        part for part in (model, variant if variant != "—" and variant not in model else "") if part
+    )
+    review_status = str(item.get("review_status") or "PENDING").upper()
+    public_enabled = bool(item.get("public_statistics_enabled"))
+    label = "Unpublished" if review_status == "APPROVED" and not public_enabled else "Review required"
+    identity = str(item.get("compatibility_identity") or model).strip()
+    device_id = str(item.get("canonical_device_model_id") or "").strip()
+    href = (
+        _device_detail_url(device_id, origin="installations")
+        if device_id else "/admin/diagnostics?" + urlencode({"identity": identity})
+    )
+    return (
+        "<li class='overview-attention-item overview-attention-review'>"
+        "<span class='overview-attention-dot' aria-hidden='true'>●</span>"
+        f"<div><a href='{html.escape(href, quote=True)}'><strong>{html.escape(label)}</strong></a>"
+        f"<span>{html.escape(context)}</span>"
+        f"<small>{html.escape(review_status.title())} · {_timestamp_markup(item.get('last_evidence'))}</small></div>"
+        f"<a class='overview-detail-link' href='{html.escape(href, quote=True)}'>Review&nbsp;→</a></li>"
+    )
+
+
 def _overview_map_event_label(event: dict[str, Any]) -> tuple[str, str]:
     labels = {
         "DOWNLOAD_STARTED": ("Download started", "started"),
@@ -909,9 +942,18 @@ def _admin_map_display_name(*values: Any) -> str:
         key = re.sub(r"[^A-Za-z0-9]+", "", candidate).upper()
         if key in _ADMIN_REGION_DISPLAY_NAMES:
             return _ADMIN_REGION_DISPLAY_NAMES[key]
+        display_candidate = re.sub(r"_+", " ", candidate)
+        display_candidate = " ".join(display_candidate.split())
+        display_candidate = re.sub(
+            r"^(?:Federal\s+)?Republic\s+of\s+|^(?:Kingdom|Principality|State)\s+of\s+|^Grand\s+Duchy\s+of\s+|^Region\s+",
+            "",
+            display_candidate,
+            flags=re.IGNORECASE,
+        ).strip()
+        display_candidate = re.sub(r"\s+-\s+", " – ", display_candidate)
         if candidate.isupper() or re.fullmatch(r"[A-Z][A-Z0-9_-]+", candidate):
-            return re.sub(r"[-_]+", " ", candidate).title()
-        return candidate
+            return display_candidate.title()
+        return display_candidate or "—"
     return "—"
 
 
@@ -987,17 +1029,20 @@ def _overview_chart_bucket_label(value: Any, bucket: str) -> str:
         return parsed.strftime("%H:%M")
     if bucket == "month":
         return parsed.strftime("%b %Y")
+    if bucket == "week":
+        return "Week of " + parsed.strftime("%d %b")
     return parsed.strftime("%d %b")
 
 
 def _overview_trend_chart(trend: list[dict[str, Any]], bucket: str) -> str:
     if not trend:
-        return "<p class='overview-empty-state'>No map installs in this period.</p>"
+        return "<p class='overview-empty-state'>No map install operations in this period.</p>"
     values = [
         (max(0, int(item.get("success_count") or 0)), max(0, int(item.get("failed_count") or 0)))
         for item in trend
     ]
     maximum = max((success + failed for success, failed in values), default=1) or 1
+    scale_maximum = max(maximum, 3) if len(values) <= 2 else maximum
     chart_width, chart_height = 720, 220
     left, top, bottom = 10, 12, 32
     plot_height = chart_height - top - bottom
@@ -1008,8 +1053,8 @@ def _overview_trend_chart(trend: list[dict[str, Any]], bucket: str) -> str:
     for index, ((success, failed), item) in enumerate(zip(values, trend)):
         total = success + failed
         x = index * slot + (slot - bar_width) / 2
-        success_height = plot_height * success / maximum
-        failed_height = plot_height * failed / maximum
+        success_height = plot_height * success / scale_maximum
+        failed_height = plot_height * failed / scale_maximum
         y_success = top + plot_height - success_height
         y_failed = y_success - failed_height
         title = f"{_overview_chart_bucket_label(item.get('bucket'), bucket)}: {success} succeeded, {failed} failed"
@@ -1022,7 +1067,7 @@ def _overview_trend_chart(trend: list[dict[str, Any]], bucket: str) -> str:
             labels.append(f"<text x='{x + bar_width / 2:.1f}' y='{chart_height - 8}' text-anchor='middle'>{html.escape(_overview_chart_bucket_label(item.get('bucket'), bucket))}</text>")
     return (
         "<div class='overview-chart-wrap'>"
-        f"<svg class='overview-trend-chart' viewBox='0 0 {chart_width} {chart_height}' role='img' aria-label='Map installs over time'>"
+        f"<svg class='overview-trend-chart' viewBox='0 0 {chart_width} {chart_height}' role='img' aria-label='Map install operations over time'>"
         f"{''.join(bars)}{''.join(labels)}</svg>"
         "<div class='overview-chart-legend'><span><i class='overview-chart-success'></i>Succeeded</span><span><i class='overview-chart-failed'></i>Failed</span></div></div>"
     )
@@ -1063,6 +1108,9 @@ def overview_page(
     model_activity = list(compatibility.get("modelActivity") or [])
     review_required = list(compatibility.get("reviewRequired") or [])
     attention_items += "".join(_overview_attention_item(item) for item in compatibility_attention[:4])
+    attention_items += "".join(
+        _overview_review_attention_item(item) for item in review_required[:4]
+    )
     attention_items += "".join(_overview_provider_attention_item(item) for item in attention_providers[:4])
     if not attention_items:
         attention_content = "<p class='overview-empty-state'>No issues need attention</p>"
@@ -1083,6 +1131,7 @@ def overview_page(
     attention_href = (
         failure_href if attention_operations else
         "/admin/installations?state=open" if compatibility_attention else
+        "/admin/devices" if review_required else
         "/admin/providers" if attention_providers else map_statistics_href
     )
     failure_reasons = list(compatibility.get("failureReasons") or [])
@@ -1099,19 +1148,24 @@ def overview_page(
         f"<div class='overview-review-block'><h3>New / review-required devices</h3>{_overview_review_required(review_required)}</div>"
         if review_required else ""
     )
+    model_panel = (
+        f"<section class='overview-panel overview-model-panel' aria-labelledby='overview-model-title'><div class='section-heading'><div><p class='section-kicker'>Compatibility evidence</p><h2 id='overview-model-title'>Device/model activity</h2></div></div><p class='overview-chart-note'>Activity is grouped by canonical device model when available.</p>{_overview_model_activity(model_activity)}{review_section}</section>"
+        if model_activity or review_required else ""
+    )
+    primary_grid_class = "overview-primary-grid" if model_panel else "overview-primary-grid overview-primary-grid-single"
     content = f"""
       {_admin_header(user, csrf_token, active='overview')}
       <main class='dashboard overview-page' id='main-content'>
         <div class='heading-row overview-heading'><div><p class='eyebrow'>Operations</p><h1>Overview</h1><p class='lede'>Current Terento health and activity that needs attention.</p></div><form class='overview-period-form' method='get' action='/admin'><label><span class='sr-only'>Time period</span><select name='period' onchange='this.form.submit()'>{period_options}</select></label></form></div>
         <section class='overview-kpis' aria-label='Operational summary'>
-          <a class='overview-kpi' href='{html.escape(map_statistics_href, quote=True)}'><span>Map installs</span><strong>{event_metric(completed_installs + failed_installs)}</strong><small>{'Completed and failed map operations' if has_map_data else 'No map telemetry in this period'}</small></a>
-          <a class='overview-kpi' href='{html.escape(map_statistics_href, quote=True)}'><span>Map install success</span><strong>{success_rate}</strong><small>Completed map installs / terminal map installs</small></a>
-          <a class='overview-kpi overview-kpi-attention' href='{html.escape(failure_href, quote=True)}'><span>Failed map installs</span><strong>{event_metric(failed_installs)}</strong><small>{'Terminal map-operation failures' if has_map_data else 'No map telemetry in this period'}</small></a>
+          <a class='overview-kpi' href='{html.escape(map_statistics_href, quote=True)}'><span>Map install operations</span><strong>{event_metric(completed_installs + failed_installs)}</strong><small>{'Distinct terminal operation IDs; one operation may include multiple map packages' if has_map_data else 'No map telemetry in this period'}</small></a>
+          <a class='overview-kpi' href='{html.escape(map_statistics_href, quote=True)}'><span>Map operation success</span><strong>{success_rate}</strong><small>Successful map operations / terminal map operations</small></a>
+          <a class='overview-kpi overview-kpi-attention' href='{html.escape(failure_href, quote=True)}'><span>Failed map operations</span><strong>{event_metric(failed_installs)}</strong><small>{'Terminal map-operation failures' if has_map_data else 'No map telemetry in this period'}</small></a>
           <a class='overview-kpi overview-kpi-attention' href='/admin/installations?state=open'><span>Open errors</span><strong>{open_error_metric(open_errors)}</strong><small>{'Compatibility evidence only' if compatibility_has_data else 'No evidence in this period'}</small></a>
           <a class='overview-kpi' href='/admin/providers'><span>Providers</span><strong>{healthy} / {provider_count}</strong><small>Healthy providers</small></a>
         </section>
         <section class='overview-panel overview-attention-panel' aria-labelledby='overview-attention-title'><div class='section-heading'><div><p class='section-kicker'>Failure-first</p><h2 id='overview-attention-title'>Needs attention</h2></div><a class='section-link' href='{html.escape(attention_href, quote=True)}'>View all&nbsp;→</a></div>{attention_content}</section>
-        <div class='overview-primary-grid'><section class='overview-panel' aria-labelledby='overview-trend-title'><div class='section-heading'><div><p class='section-kicker'>Map operations</p><h2 id='overview-trend-title'>Map installs over time</h2></div></div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'))}</section><section class='overview-panel overview-model-panel' aria-labelledby='overview-model-title'><div class='section-heading'><div><p class='section-kicker'>Compatibility evidence</p><h2 id='overview-model-title'>Device/model activity</h2></div></div><p class='overview-chart-note'>Activity is grouped by canonical device model when available.</p>{_overview_model_activity(model_activity)}{review_section}</section></div>
+        <div class='{primary_grid_class}'><section class='overview-panel' aria-labelledby='overview-trend-title'><div class='section-heading'><div><p class='section-kicker'>Map operations</p><h2 id='overview-trend-title'>Map install operations over time</h2></div></div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'))}</section>{model_panel}</div>
         <div class='overview-secondary-grid'><section class='overview-panel' aria-labelledby='overview-activity-title'><div class='section-heading'><div><p class='section-kicker'>Latest</p><h2 id='overview-activity-title'>Recent map activity</h2></div><a class='section-link' href='{html.escape(map_statistics_href, quote=True)}'>View all&nbsp;→</a></div>{recent_content}</section>{reasons_section}</div>
         <section class='overview-panel overview-provider-panel' aria-labelledby='overview-provider-title'><div class='section-heading'><div><p class='section-kicker'>Availability</p><h2 id='overview-provider-title'>Providers</h2></div><a class='section-link' href='/admin/providers'>Manage&nbsp;→</a></div><div class='overview-provider-summary'><strong>{healthy} / {provider_count} healthy</strong>{''.join(f"<a href='/admin/providers/{quote(str(provider.get('id') or ''), safe='')}'>{html.escape(str(provider.get('name') or provider.get('id') or 'Provider'))} <span>{html.escape(str(provider.get('health') or 'UNKNOWN').title())}</span></a>" for provider in providers)}</div></section>
         {compatibility_summary}
@@ -1156,7 +1210,7 @@ def dashboard_page(
     content = f"""
       {_admin_header(user, csrf_token, active='installations')}
       <main class="dashboard" id="main-content">
-        <div class="heading-row installation-heading"><div><p class="eyebrow">Compatibility</p><h1>Installations</h1><p class="lede">Installation activity and compatibility evidence from Terento users.</p></div><p class="page-meta">{latest_copy}</p></div>
+        <div class="heading-row installation-heading"><div><p class="eyebrow">Compatibility</p><h1>Installations</h1><p class="lede">All-time compatibility evidence from Terento users.</p></div><p class="page-meta">{latest_copy}</p></div>
         <section class="admin-kpi-grid installation-kpis" aria-label="Installation summary">
           <article><span>Variants</span><strong>{len(rows)}</strong></article>
           <article><span>Write-started attempts</span><strong>{attempts}</strong></article>
@@ -1552,10 +1606,7 @@ def provider_detail_page(
     empty_audits = "<p class='empty'>No provider audit entries recorded yet.</p>" if not audits else ""
     source_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Provider-level original sources</caption><thead><tr><th scope='col'>Source</th><th scope='col'>Original link</th><th scope='col'>Status</th><th scope='col'>Last checked</th></tr></thead><tbody>{rows_sources}</tbody></table></div>" if provider_sources else ""
     download_source_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Download source URLs</caption><thead><tr><th scope='col'>Source</th><th scope='col'>Original link</th><th scope='col'>Status</th><th scope='col'>Last checked</th></tr></thead><tbody id='provider-download-source-rows'>{rows_download_sources}</tbody></table></div>" if download_sources else ""
-    download_source_section = f"<section class='provider-card'><details class='admin-disclosure' id='provider-download-sources'><summary>Package download sources · {len(download_sources)}</summary><div class='disclosure-body'><div class='inline-filter-row'><label><span class='sr-only'>Search sources</span><input id='provider-source-search' type='search' placeholder='Search sources' autocomplete='off'></label><label><span class='sr-only'>Source status</span><select id='provider-source-filter'><option value='all'>All sources</option><option value='broken'>Broken only</option></select></label><label><span class='sr-only'>Source page size</span><select id='provider-source-page-size'><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label></div>{download_source_table}<div class='provider-pagination' id='provider-source-pagination' aria-live='polite'></div></div></details></section>" if download_sources else ""
-    download_source_section = download_source_section.replace("Package download sources", "Download source URLs").replace("Search sources", "Search source URLs").replace(
-        "Download source URLs ·", "Download source URLs <span class='sr-only'>Package download sources</span> ·",
-    )
+    download_source_section = f"<section class='provider-card'><details class='admin-disclosure' id='provider-download-sources'><summary>Download source URLs · {len(download_sources)}</summary><div class='disclosure-body'><div class='inline-filter-row'><label><span class='sr-only'>Search source URLs</span><input id='provider-source-search' type='search' placeholder='Search source URLs' autocomplete='off'></label><label><span class='sr-only'>Source status</span><select id='provider-source-filter'><option value='all'>All sources</option><option value='broken'>Broken only</option></select></label><label><span class='sr-only'>Source page size</span><select id='provider-source-page-size'><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label></div>{download_source_table}<div class='provider-pagination' id='provider-source-pagination' aria-live='polite'></div></div></details></section>" if download_sources else ""
     package_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Regions and packages</caption><thead><tr><th scope='col'>Region / package</th><th scope='col'>Release</th><th scope='col'>Artifacts</th><th scope='col'>State</th></tr></thead><tbody id='provider-package-rows'>{rows_packages}</tbody></table></div>" if packages else ""
     latest_health_table = f"<div class='table-wrap provider-table-wrap provider-history-wrap'><table class='admin-table'><caption class='sr-only'>Health check details</caption><thead><tr><th scope='col'>Checked</th><th scope='col'>Result</th><th scope='col'>Checks</th><th scope='col'>HTTP</th><th scope='col'>Artifacts</th><th scope='col'>Duration</th><th scope='col'>Error</th></tr></thead><tbody>{_provider_health_row(latest_health)}</tbody></table></div>" if latest_health else ""
     health_history_table = f"<div class='table-wrap provider-table-wrap provider-history-wrap'><table class='admin-table'><thead><tr><th scope='col'>Checked</th><th scope='col'>Result</th><th scope='col'>Checks</th><th scope='col'>HTTP</th><th scope='col'>Artifacts</th><th scope='col'>Duration</th><th scope='col'>Error</th></tr></thead><tbody>{rows_health}</tbody></table></div>" if previous_health else ""
@@ -1650,14 +1701,13 @@ def _map_statistics_rows(rows: list[dict[str, Any]]) -> str:
         return "<tr><td colspan='7' class='muted-value'>No map events in this period.</td></tr>"
     markup: list[str] = []
     for row in rows:
-        display_name = _admin_map_display_name(
-            row.get("display_name"), row.get("map_package_name"),
-            row.get("region"), row.get("map_package_id"),
+        region_name = _admin_map_display_name(
+            row.get("region_display_name"), row.get("region"),
         )
         markup.append(
             f"<tr><td>{html.escape(str(row.get('provider_id') or '—'))}</td>"
             f"<td><code>{html.escape(str(row.get('map_package_id') or '—'))}</code></td>"
-            f"<td>{html.escape(display_name)}</td><td>{html.escape(str(row.get('event_type') or '—'))}</td>"
+            f"<td>{html.escape(region_name)}</td><td>{html.escape(str(row.get('event_type') or '—'))}</td>"
             f"<td>{html.escape(_admin_event_outcome_label(row.get('outcome')))}</td><td class='numeric'>{int(row.get('operation_count') or row.get('event_count') or 0)}</td>"
             f"<td>{_timestamp_markup(row.get('last_occurred_at'))}</td></tr>"
         )
@@ -1735,22 +1785,19 @@ def map_statistics_page(
       {_admin_header(user, csrf_token, active='map-statistics')}
       <main class='dashboard map-statistics-page' id='main-content'>
         <div class='heading-row'><div><p class='eyebrow'>Map operations</p><h1>Map statistics</h1><p class='lede'>Popularity is shown together with download, install, and provider reliability signals.</p></div></div>
-        <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search'><label><span class='sr-only'>Time range</span><select id='map-statistics-range'><option value='7'>7 days</option><option value='30'>30 days</option><option value='90'>90 days</option><option value='all'>All time</option></select></label><label><span class='sr-only'>Provider</span><select id='map-statistics-provider'><option value=''>All providers</option>{provider_options}</select></label><details class='admin-disclosure filter-disclosure' id='map-statistics-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Map ID</span><input id='map-statistics-map' type='search' placeholder='Map ID'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event'><option value=''>All events</option><option value='DOWNLOAD_SUCCEEDED'>Download succeeded</option><option value='DOWNLOAD_FAILED'>Download failed</option><option value='INSTALL_SUCCEEDED'>Install succeeded</option><option value='INSTALL_FAILED'>Install failed</option><option value='DOWNLOAD_STARTED'>Download started</option></select></label></div></details><p class='results-count' id='map-statistics-status' aria-live='polite'>{event_status}</p></form>
-        <section class='admin-kpi-grid map-statistics-kpis' id='map-statistics-metrics' aria-label='Map statistics summary'><article><span>Completed downloads</span><strong data-stat='completedDownloads'>{event_value('completedDownloads')}</strong></article><article><span>Download success</span><strong data-stat='downloadSuccessRate'>{_format_rate(summary['downloadSuccessRate'])}</strong></article><article><span>Completed installs</span><strong data-stat='completedInstalls'>{event_value('completedInstalls')}</strong></article><article><span>Install success</span><strong data-stat='installSuccessRate'>{_format_rate(summary['installSuccessRate'])}</strong></article></section>
+        <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search'><label><span class='sr-only'>Time range</span><select id='map-statistics-range'>{statistics_period_options}</select></label><label><span class='sr-only'>Provider</span><select id='map-statistics-provider'><option value=''>All providers</option>{provider_options}</select></label><details class='admin-disclosure filter-disclosure' id='map-statistics-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Map ID</span><input id='map-statistics-map' type='search' placeholder='Map ID'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event'><option value=''>All events</option><option value='DOWNLOAD_SUCCEEDED'>Download succeeded</option><option value='DOWNLOAD_FAILED'>Download failed</option><option value='INSTALL_SUCCEEDED'>Install succeeded</option><option value='INSTALL_FAILED'>Install failed</option><option value='DOWNLOAD_STARTED'>Download started</option></select></label></div></details><p class='results-count' id='map-statistics-status' aria-live='polite'>{event_status}</p></form>
+        <p class='table-help map-statistics-definition-note'>Map statistics count map-package records. Overview counts distinct install operations; one operation can include multiple map packages.</p>
+        <section class='admin-kpi-grid map-statistics-kpis' id='map-statistics-metrics' aria-label='Map statistics summary'><article><span>Completed downloads</span><strong data-stat='completedDownloads'>{event_value('completedDownloads')}</strong></article><article><span>Download success</span><strong data-stat='downloadSuccessRate'>{_format_rate(summary['downloadSuccessRate'])}</strong></article><article><span>Completed map-package installs</span><strong data-stat='completedInstalls'>{event_value('completedInstalls')}</strong></article><article><span>Package install success</span><strong data-stat='installSuccessRate'>{_format_rate(summary['installSuccessRate'])}</strong></article></section>
         <section class='map-statistics-empty' id='map-statistics-empty' {'hidden' if has_event_data else ''} aria-live='polite'><h2>No map operation data yet</h2><p>Statistics will appear after opted-in beta.8 map operations are received.</p></section>
-        <section class='map-statistics-reliability' aria-label='Reliability summary'><div><span>Failed installs</span><strong data-stat='failedInstalls'>{event_value('failedInstalls')}</strong></div><div><span>Failed downloads</span><strong data-stat='failedDownloads'>{event_value('failedDownloads')}</strong></div><div><span>Provider issues</span><strong data-stat='providerIssues'>{provider_issues}</strong></div></section>
-        <section class='map-statistics-provider-health' id='map-statistics-provider-health' aria-label='Provider health'><span>Provider health</span><strong data-stat='providerHealth'>{healthy_providers} / {len(scoped_providers)} healthy</strong><em data-stat='providerHealthIssues'> · {provider_issues} issues</em></section>
+        <section class='map-statistics-reliability' aria-label='Reliability summary'><div><span>Failed map-package installs</span><strong data-stat='failedInstalls'>{event_value('failedInstalls')}</strong></div><div><span>Failed downloads</span><strong data-stat='failedDownloads'>{event_value('failedDownloads')}</strong></div><div><span>Current provider issues</span><strong data-stat='providerIssues'>{provider_issues}</strong></div></section>
+        <section class='map-statistics-provider-health' id='map-statistics-provider-health' aria-label='Current provider health'><span>Current provider health</span><strong data-stat='providerHealth'>{healthy_providers} / {len(scoped_providers)} healthy</strong><em data-stat='providerHealthIssues'> · {provider_issues} issues</em></section>
         <details class='provider-card map-statistics-linkage' id='map-statistics-linkage' aria-label='Watch event linkage'><summary id='map-statistics-linkage-summary'>{html.escape(linkage_summary)}</summary><div class='disclosure-body'><p class='table-help'>Matched only when the map and watch events share the same operation ID.</p><div class='map-statistics-linkage-grid'><div><span>Map install operations</span><strong data-stat='mapInstallationCount'>{linkage_value('mapInstallationCount')}</strong></div><div><span>Linked watch events</span><strong data-stat='linkedInstallationCount'>{linkage_value('linkedInstallationCount')}</strong></div><div><span>Unlinked installs</span><strong data-stat='mapOnlyInstallationCount'>{linkage_value('mapOnlyInstallationCount')}</strong></div><div><span>Linkage coverage</span><strong data-stat='linkageRate'>{linkage_rate}</strong></div><div><span>Watch-confirmed successes</span><strong data-stat='linkedSuccessfulInstallCount'>{linkage_value('linkedSuccessfulInstallCount')}</strong></div><div><span>Watch-confirmed failures</span><strong data-stat='linkedFailedInstallCount'>{linkage_value('linkedFailedInstallCount')}</strong></div></div><p class='table-help map-statistics-scope-note'>A missing watch event is shown as unlinked, not as a failure. Map statistics and compatibility evidence remain separate aggregates.</p></div></details>
-        <section class='provider-card map-statistics-provider-table' id='map-statistics-provider-table' {'hidden' if not has_event_data else ''}><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Downloads per provider</h2></div></div><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Downloads per provider</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Downloads</th><th scope='col'>Installs</th><th scope='col'>Install success</th><th scope='col'>Health</th></tr></thead><tbody id='provider-statistic-rows'></tbody></table></div></section>
-        <section class='provider-card map-statistics-popularity' id='map-statistics-popularity' {'hidden' if not has_event_data else ''}><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Popular maps</h2></div></div><div class='popularity-subsection'><h3>Top maps</h3><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Top maps</caption><thead><tr><th scope='col'>Map / region</th><th scope='col'>Provider</th><th scope='col'>Completed downloads</th><th scope='col'>Last activity</th></tr></thead><tbody id='top-map-rows'></tbody></table></div><details class='admin-disclosure popularity-all-maps-disclosure'><summary>View all maps</summary><div class='disclosure-body'><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>All maps</caption><thead><tr><th scope='col'>Map / region</th><th scope='col'>Provider</th><th scope='col'>Completed downloads</th><th scope='col'>Last activity</th></tr></thead><tbody id='all-map-rows'></tbody></table></div></div></details></div><details class='admin-disclosure popularity-regions-disclosure'><summary>Regions</summary><div class='disclosure-body'><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Top regions</caption><thead><tr><th scope='col'>Region</th><th scope='col'>Completed downloads</th><th scope='col'>Last activity</th></tr></thead><tbody id='top-region-rows'></tbody></table></div></div></details></section>
+        <section class='provider-card map-statistics-provider-table' id='map-statistics-provider-table' {'hidden' if not has_event_data else ''}><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Downloads per provider</h2></div></div><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Downloads per provider</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Downloads</th><th scope='col'>Map-package installs</th><th scope='col'>Package install success</th><th scope='col'>Current health</th></tr></thead><tbody id='provider-statistic-rows'></tbody></table></div></section>
+        <section class='provider-card map-statistics-popularity' id='map-statistics-popularity' {'hidden' if not has_event_data else ''}><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Popular maps</h2></div></div><div class='popularity-subsection'><h3>Top maps</h3><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Popular maps</caption><thead><tr><th scope='col'>Map / region</th><th scope='col'>Provider</th><th scope='col'>Completed map-package installs</th><th scope='col'>Last activity</th></tr></thead><tbody id='map-rows'></tbody></table></div><details class='admin-disclosure popularity-all-maps-disclosure'><summary id='all-maps-summary'>View all maps</summary></details></div><details class='admin-disclosure popularity-regions-disclosure'><summary>Regions</summary><div class='disclosure-body'><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Top regions</caption><thead><tr><th scope='col'>Region</th><th scope='col'>Completed map-package installs</th><th scope='col'>Last activity</th></tr></thead><tbody id='top-region-rows'></tbody></table></div></div></details></section>
         <section class='provider-card map-events-card' {'hidden' if not has_event_data else ''}><details class='admin-disclosure' id='map-statistics-event-detail'><summary id='map-statistics-event-summary'>Event detail · {event_status}</summary><div class='disclosure-body' id='map-statistics-event-body'>{event_table}</div></details></section>
       </main>
       <script>window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};{_map_statistics_script()}</script>
     """
-    content = content.replace(
-        "<option value='7'>7 days</option><option value='30'>30 days</option><option value='90'>90 days</option><option value='all'>All time</option>",
-        statistics_period_options,
-    )
     return _layout("Map statistics", content)
 
 
@@ -1867,10 +1914,8 @@ def _map_statistics_script() -> str:
       const providerTable = document.querySelector('#map-statistics-provider-table');
       const linkageSection = document.querySelector('#map-statistics-linkage');
       const linkageSummary = document.querySelector('#map-statistics-linkage-summary');
-      const allMapRows = document.querySelector('#all-map-rows');
+      const mapRows = document.querySelector('#map-rows');
       const allMapsDisclosure = document.querySelector('.popularity-all-maps-disclosure');
-      const topMapWrap = document.querySelector('#top-map-rows')?.closest('.table-wrap');
-      const allMapWrap = allMapRows?.closest('.table-wrap');
       const allMapsSummary = allMapsDisclosure?.querySelector('summary');
       const providerHealth = document.querySelector('#map-statistics-provider-health');
       const eventDetail = document.querySelector('#map-statistics-event-detail');
@@ -1878,6 +1923,7 @@ def _map_statistics_script() -> str:
       const eventPagination = document.querySelector('#map-statistics-event-pagination');
       const eventPageSize = document.querySelector('#map-statistics-event-page-size');
       let detailPage = 1;
+      let currentPayload = initial;
       const formatRate = (value) => value === null || value === undefined ? '—' : `${Number(value).toFixed(Number(value) % 1 ? 1 : 0)}%`;
       const operations = (row) => Number(row.operation_count || row.event_count || 0);
       const count = (rows, eventType, outcome) => rows.filter((row) => row.event_type === eventType && (!outcome || row.outcome === outcome)).reduce((total, row) => total + operations(row), 0);
@@ -1887,6 +1933,7 @@ def _map_statistics_script() -> str:
       const humanize = (value) => String(value || '—').replace(/[-_]+/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
       const outcomeLabel = (value) => String(value || '').toUpperCase() === 'UNKNOWN' ? '—' : humanize(value);
       const render = (payload) => {
+        currentPayload = payload;
         const rows = payload.rows || [];
         const detailRows = payload.detailRows || rows;
         const linkage = payload.linkage || {};
@@ -1926,21 +1973,17 @@ def _map_statistics_script() -> str:
         const providerRows = Object.entries(byProvider).sort((a, b) => b[1].downloads - a[1].downloads || a[0].localeCompare(b[0])).map(([id, item]) => `<tr><td>${escapeHtml(providerName[id] || id)}</td><td class="numeric">${item.downloads}</td><td class="numeric">${item.installs}</td><td>${formatRate(item.installs + item.failedInstalls ? item.installs / (item.installs + item.failedInstalls) * 100 : null)}</td><td>${badge(healthByProvider[id])}</td></tr>`).join('');
         document.querySelector('#provider-statistic-rows').innerHTML = providerRows || emptyRow(5);
         const byMap = {};
-        rows.filter((row) => row.event_type === 'DOWNLOAD_SUCCEEDED' && row.outcome === 'SUCCEEDED').forEach((row) => { const key = `${row.provider_id || 'unknown'}\u0000${row.map_package_id || 'unknown'}\u0000${row.region || '—'}`; byMap[key] ||= {map: row.map_package_id || '—', name: row.display_name || row.map_package_name || '', provider: row.provider_id || '', region: row.region || '—', count: 0, last: row.last_occurred_at}; byMap[key].count += operations(row); if (String(row.last_occurred_at || '') > String(byMap[key].last || '')) byMap[key].last = row.last_occurred_at; });
+        rows.filter((row) => row.event_type === 'DOWNLOAD_SUCCEEDED' && row.outcome === 'SUCCEEDED').forEach((row) => { const key = `${row.provider_id || 'unknown'}\u0000${row.map_package_id || 'unknown'}\u0000${row.region || '—'}`; byMap[key] ||= {map: row.map_package_id || '—', name: row.display_name || row.map_package_name || '', provider: row.provider_id || '', region: row.region || '—', regionName: row.region_display_name || humanize(row.region), count: 0, last: row.last_occurred_at}; byMap[key].count += operations(row); if (String(row.last_occurred_at || '') > String(byMap[key].last || '')) byMap[key].last = row.last_occurred_at; });
         const mapItems = Object.values(byMap).sort((a, b) => b.count - a.count || a.map.localeCompare(b.map));
-        const mapRow = (item) => `<tr><td><strong>${escapeHtml(item.name || humanize(item.region))}</strong><small class="table-secondary"><code>${escapeHtml(item.map)}</code> · ${escapeHtml(humanize(item.region))}</small></td><td>${escapeHtml(providerName[item.provider] || item.provider || '—')}</td><td class="numeric">${item.count}</td><td>${formatTimestamp(item.last)}</td></tr>`;
-        const topMaps = mapItems.slice(0, 5).map(mapRow).join('');
-        document.querySelector('#top-map-rows').innerHTML = topMaps || emptyRow(4);
-        if (allMapRows) allMapRows.innerHTML = mapItems.map(mapRow).join('') || emptyRow(4);
         const showAllMaps = Boolean(allMapsDisclosure?.open);
-        if (topMapWrap) topMapWrap.hidden = showAllMaps;
-        if (allMapWrap) allMapWrap.hidden = !showAllMaps;
-        if (allMapsSummary) allMapsSummary.textContent = showAllMaps ? 'Back to Top 5' : 'View all maps';
+        const mapRow = (item) => `<tr><td><strong>${escapeHtml(item.name || item.regionName || '—')}</strong><small class="table-secondary"><code>${escapeHtml(item.map)}</code> · ${escapeHtml(item.regionName || '—')}</small></td><td>${escapeHtml(providerName[item.provider] || item.provider || '—')}</td><td class="numeric">${item.count}</td><td>${formatTimestamp(item.last)}</td></tr>`;
+        if (mapRows) mapRows.innerHTML = (showAllMaps ? mapItems : mapItems.slice(0, 5)).map(mapRow).join('') || emptyRow(4);
+        if (allMapsSummary) allMapsSummary.textContent = showAllMaps ? 'Show Top 5' : 'View all maps';
         const byRegion = {};
-        Object.values(byMap).forEach((item) => { byRegion[item.region] ||= {region: item.region, count: 0, last: item.last}; byRegion[item.region].count += item.count; if (String(item.last || '') > String(byRegion[item.region].last || '')) byRegion[item.region].last = item.last; });
-        const topRegions = Object.values(byRegion).sort((a, b) => b.count - a.count || a.region.localeCompare(b.region)).slice(0, 10).map((item) => `<tr><td>${escapeHtml(humanize(item.region))}</td><td class="numeric">${item.count}</td><td>${formatTimestamp(item.last)}</td></tr>`).join('');
+        Object.values(byMap).forEach((item) => { byRegion[item.region] ||= {region: item.region, display: item.regionName, count: 0, last: item.last}; byRegion[item.region].count += item.count; if (String(item.last || '') > String(byRegion[item.region].last || '')) byRegion[item.region].last = item.last; });
+        const topRegions = Object.values(byRegion).sort((a, b) => b.count - a.count || a.region.localeCompare(b.region)).slice(0, 10).map((item) => `<tr><td>${escapeHtml(item.display || humanize(item.region))}</td><td class="numeric">${item.count}</td><td>${formatTimestamp(item.last)}</td></tr>`).join('');
         document.querySelector('#top-region-rows').innerHTML = topRegions || emptyRow(3);
-        const detailMarkup = detailRows.map((row) => `<tr><td>${escapeHtml(row.provider_id || '—')}</td><td><code>${escapeHtml(row.map_package_id || '—')}</code></td><td>${escapeHtml(row.display_name || humanize(row.region))}</td><td>${escapeHtml(row.event_type || '—')}</td><td>${escapeHtml(outcomeLabel(row.outcome))}</td><td class="numeric">${operations(row)}</td><td>${formatTimestamp(row.last_occurred_at)}</td></tr>`).join('');
+        const detailMarkup = detailRows.map((row) => `<tr><td>${escapeHtml(row.provider_id || '—')}</td><td><code>${escapeHtml(row.map_package_id || '—')}</code></td><td>${escapeHtml(row.region_display_name || humanize(row.region))}</td><td>${escapeHtml(row.event_type || '—')}</td><td>${escapeHtml(outcomeLabel(row.outcome))}</td><td class="numeric">${operations(row)}</td><td>${formatTimestamp(row.last_occurred_at)}</td></tr>`).join('');
         document.querySelector('#map-statistics-rows').innerHTML = detailMarkup || emptyRow(7);
         const eventStatus = rows.length ? `${rows.length} event group${rows.length === 1 ? '' : 's'} · ${eventRecords} event record${eventRecords === 1 ? '' : 's'}` : 'No event groups';
         if (eventSummary) eventSummary.textContent = `Event detail · ${eventStatus}`;
@@ -1961,7 +2004,12 @@ def _map_statistics_script() -> str:
         }
       };
       const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[character]));
-      const formatTimestamp = (value) => { if (!value) return '—'; const date = new Date(value); return Number.isNaN(date.getTime()) ? String(value) : date.toISOString().slice(0, 16).replace('T', ' '); };
+      const formatTimestamp = (value) => {
+        if (!value) return '—';
+        if (typeof window.TerentoAdminTime?.format === 'function') return window.TerentoAdminTime.format(value);
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? String(value) : date.toISOString().slice(0, 16).replace('T', ' ');
+      };
       const badge = (value) => `<span class="provider-status provider-status-${String(value || 'UNKNOWN').toLowerCase()}">${escapeHtml(String(value || 'UNKNOWN').replace('_', ' '))}</span>`;
       const emptyRow = (columns) => `<tr><td colspan="${columns}" class="muted-value">No events in this period.</td></tr>`;
       const sync = async ({resetDetailPage = false} = {}) => {
@@ -1978,13 +2026,15 @@ def _map_statistics_script() -> str:
         if (status) status.textContent = 'Loading…';
         try { const response = await fetch(`/admin/map-statistics.json?${parameters}`, {credentials: 'same-origin', headers: {'Accept': 'application/json'}}); const payload = await response.json(); if (!response.ok) throw new Error(payload.error || 'Statistics unavailable'); render(payload); } catch (error) { if (status) status.textContent = error.message || 'Statistics unavailable'; }
       };
-      if (allMapsDisclosure) allMapsDisclosure.addEventListener('toggle', () => { const showAllMaps = Boolean(allMapsDisclosure.open); if (topMapWrap) topMapWrap.hidden = showAllMaps; if (allMapWrap) allMapWrap.hidden = !showAllMaps; if (allMapsSummary) allMapsSummary.textContent = showAllMaps ? 'Back to Top 5' : 'View all maps'; });
+      if (allMapsDisclosure) allMapsDisclosure.addEventListener('toggle', () => render(currentPayload));
       const initialRange = ['24h', '7d', '30d', 'all'].includes(String(filters.period || '')) ? String(filters.period) : 'all'; range.value = initialRange; if (filters.provider) provider.value = filters.provider; if (filters.map) map.value = filters.map; if (filters.region) region.value = filters.region; if (filters.eventType) event.value = filters.eventType;
       if (moreFilters && (filters.map || filters.region || filters.eventType)) moreFilters.open = true;
       [range, provider, event].forEach((control) => control?.addEventListener('change', () => sync({resetDetailPage: true}))); [map, region].forEach((control) => { control?.addEventListener('change', () => sync({resetDetailPage: true})); control?.addEventListener('input', () => sync({resetDetailPage: true})); });
       eventPageSize?.addEventListener('change', () => sync({resetDetailPage: true}));
       eventPagination?.querySelector('[data-event-page="previous"]')?.addEventListener('click', () => { detailPage = Math.max(1, detailPage - 1); sync(); });
       eventPagination?.querySelector('[data-event-page="next"]')?.addEventListener('click', () => { detailPage += 1; sync(); });
+      window.addEventListener('terento-admin-timezone-ready', () => render(currentPayload));
+      window.addEventListener('terento-admin-timezone-change', () => render(currentPayload));
       render(initial);
     })();"""
 
@@ -4012,7 +4062,10 @@ def _admin_timezone_script() -> str:
       const activeTimeZone = () => select.value === 'browser' ? browserTimeZone : select.value;
       const format = (value) => {
         if (!value) return '—';
-        const date = new Date(value);
+        const normalizedValue = typeof value === 'string'
+          ? value.trim().replace(/^(\d{4}-\d{2}-\d{2})(\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)$/, '$1T$2')
+          : value;
+        const date = new Date(normalizedValue);
         if (Number.isNaN(date.getTime())) return String(value);
         try {
           const parts = Object.fromEntries(
@@ -4052,6 +4105,7 @@ def _admin_timezone_script() -> str:
         window.dispatchEvent(new Event('terento-admin-timezone-change'));
       });
       render();
+      window.dispatchEvent(new Event('terento-admin-timezone-ready'));
     })();"""
 
 
@@ -4320,6 +4374,10 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 @media(max-width:900px){.overview-primary-grid,.overview-secondary-grid{grid-template-columns:1fr}}
 @media(max-width:760px){.overview-activity-item{grid-template-columns:1fr max-content}.overview-activity-item time{grid-column:2;grid-row:1 / span 2}.overview-activity-item a{grid-column:1;grid-row:1 / span 2}.overview-activity-item a span:not(.overview-activity-label){white-space:normal}}
 @media(max-width:480px){.inline-filter-row label,.inline-filter-row select{flex-basis:auto}}
+.overview-primary-grid-single{grid-template-columns:minmax(0,1fr)}
+.overview-attention-review .overview-attention-dot{color:var(--warning,var(--stone))}
+.provider-action-bar{padding:0 0 4px;background:transparent;border:0;border-radius:0}
+.map-statistics-definition-note{margin:10px 0 0}
 """
 
 

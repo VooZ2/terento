@@ -508,6 +508,11 @@ class Database:
                     count(*) FILTER (WHERE open_error) AS open_error_count,
                     max(last_occurred_at) AS last_occurred_at
                 FROM scoped_operations
+                WHERE COALESCE(
+                    canonical_device_model_id::text,
+                    NULLIF(compatibility_identity, ''),
+                    NULLIF(model, '')
+                ) IS NOT NULL
                 GROUP BY 1
                 ORDER BY open_error_count DESC, failed_count DESC,
                          operation_count DESC, last_occurred_at DESC, model_key
@@ -585,6 +590,26 @@ class Database:
             "30d": "day",
             "all": "month",
         }.get(period, "hour")
+        if period == "all":
+            # Keep all-time charts compact while preserving useful resolution
+            # for a young installation with only a few days of history.
+            with self.connection() as connection:
+                extent = connection.execute(
+                    "SELECT min(occurred_at) AS first_occurred_at, max(occurred_at) AS last_occurred_at FROM map_download_event"
+                ).fetchone() or {}
+            first = extent.get("first_occurred_at")
+            last = extent.get("last_occurred_at")
+            span_days = (
+                (last - first).total_seconds() / 86400
+                if isinstance(first, datetime) and isinstance(last, datetime)
+                else None
+            )
+            if span_days is not None and span_days <= 31:
+                bucket_expression = "date_trunc('day', e.occurred_at)"
+                bucket = "day"
+            elif span_days is not None and span_days <= 180:
+                bucket_expression = "date_trunc('week', e.occurred_at)"
+                bucket = "week"
         event_scope = """
             FROM map_download_event AS e
             LEFT JOIN map_provider AS p ON p.id = e.provider_id

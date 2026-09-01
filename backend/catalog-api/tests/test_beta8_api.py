@@ -33,6 +33,7 @@ class FakeProviderDatabase:
         self.audits: list[dict] = []
         self.detail_overrides: dict[str, dict] = {}
         self.run_overrides: dict[str, list[dict]] = {}
+        self.map_statistic_filters: list[dict] = []
 
     def admin_user_count(self) -> int:
         return 1
@@ -112,6 +113,7 @@ class FakeProviderDatabase:
         }
 
     def map_statistics(self, filters, *, limit=None, offset=0):
+        self.map_statistic_filters.append(dict(filters))
         return [{
             "provider_id": filters.get("provider", "freizeitkarte"),
             "map_package_id": filters.get("map"),
@@ -734,6 +736,7 @@ class Beta8APITests(unittest.TestCase):
             self.assertEqual(len(statistics_payload["detailRows"]), 1)
             self.assertEqual(statistics_payload["filters"]["period"], "24h")
             self.assertEqual(statistics_payload["rows"][0]["display_name"], "Lithuania")
+            self.assertEqual(statistics_payload["rows"][0]["region_display_name"], "Lithuania")
             self.assertEqual(statistics_payload["linkage"]["mapInstallationCount"], 1)
             self.assertEqual(statistics_payload["linkage"]["mapOnlyInstallationCount"], 1)
             self.assertEqual(statistics_payload["linkage"]["linkedInstallationCount"], 0)
@@ -805,6 +808,28 @@ class Beta8APITests(unittest.TestCase):
         )
         self.assertEqual(result, {"id": "opentopomap", "status": "ACTIVE"})
 
+    def test_map_statistics_period_overrides_stale_date_from(self):
+        database = FakeProviderDatabase()
+        service = CatalogService(database)
+        stale_date = "2000-01-01T00:00:00+00:00"
+
+        for period in ("24h", "7d", "30d"):
+            database.map_statistic_filters.clear()
+            service.map_statistics({"period": period, "dateFrom": stale_date})
+            self.assertEqual(len(database.map_statistic_filters), 2)
+            self.assertNotEqual(database.map_statistic_filters[0]["dateFrom"], stale_date)
+            self.assertEqual(
+                database.map_statistic_filters[0]["dateFrom"],
+                database.map_statistic_filters[1]["dateFrom"],
+            )
+
+        database.map_statistic_filters.clear()
+        service.map_statistics({"period": "all", "dateFrom": stale_date})
+        self.assertEqual(
+            database.map_statistic_filters[0]["dateFrom"].isoformat(),
+            stale_date,
+        )
+
     def test_admin_pages_require_login_and_render_provider_statistics_views(self):
         database = FakeProviderDatabase()
         service = CatalogService(database)
@@ -844,7 +869,7 @@ class Beta8APITests(unittest.TestCase):
             self.assertEqual(statistics.status, 200)
             self.assertIn(b"Map statistics", statistics_body)
             self.assertIn(b"7 days", statistics_body)
-            self.assertIn(b"Install success", statistics_body)
+            self.assertIn(b"Package install success", statistics_body)
         finally:
             server.shutdown()
             server.server_close()
