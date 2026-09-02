@@ -55,9 +55,9 @@ a claim that every exact watch has been independently verified.
 - The arm64 release build is Developer ID signed, notarized by Apple with no
   issues, stapled, Gatekeeper accepted, and launch-smoke verified from both the
   ZIP and DMG paths.
-- Existing beta.8 fēnix 8 lifecycle evidence remains valid, but a beta.9
-  Lithuania install/reconnect/Manage maps smoke on real hardware is still
-  required before public release.
+- Owner hardware verification on the final beta.9 DMG confirms OpenTopoMap
+  Lithuania installation, map visibility on the fēnix 8, persistence after
+  disconnect/reconnect, and discovery in Manage maps.
 
 ## Known limitations
 
