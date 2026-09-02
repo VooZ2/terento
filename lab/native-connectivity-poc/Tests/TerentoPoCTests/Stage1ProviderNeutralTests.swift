@@ -398,6 +398,10 @@ struct Stage1ProviderNeutralTests {
             let parser = GarminIMGMetadataParser()
             let versionParser = OpenTopoMapVersionParser()
 
+            if packages.count != 177 {
+                print("OpenTopoMap catalog count mismatch: expected 177, got \(packages.count)")
+            }
+
             let allRowsPass = packages.count == 177 && packages.allSatisfy { package in
                 let providerRegion = package.providerRegionId
                 let version = package.version
