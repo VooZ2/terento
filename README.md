@@ -231,6 +231,30 @@ Start with:
 The production app is a native Xcode macOS project. Development and regression
 tests live alongside it in the repository.
 
+## Testing
+
+Tests are grouped by the product boundary they protect. Run only the relevant
+suite while developing, or run the complete release-equivalent matrix before a
+release:
+
+```sh
+Tests/run-site-tests.sh
+Tests/run-app-tests.sh
+Tests/run-native-tests.sh
+Tests/run-backend-tests.sh
+Tests/run-release-tests.sh
+Tests/run-shared-tests.sh
+Tests/run-all-tests.sh
+```
+
+Runner names use `site-`, `app-`, `native-`, `backend-`, `release-`, `shared-`,
+or `ci-` scope prefixes. `Tests/test-suites.json` is the canonical inventory;
+its CI checks reject unassigned, missing, duplicated, or incorrectly named
+tests. Pull requests run the minimum safe suites selected from changed paths.
+Tags, manual full runs, weekly runs, and `Packaging/release.sh` execute the
+complete matrix. Every release uses the same release gate; it is not tied to a
+specific beta number.
+
 ## License
 
 Terento source code is licensed under [GPL-3.0-or-later](LICENSE).

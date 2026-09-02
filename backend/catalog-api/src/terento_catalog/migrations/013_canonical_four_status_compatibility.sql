@@ -94,8 +94,12 @@ WHERE e.phase_outcome = 'SUCCEEDED'
 -- A CHECK violation aborts the transaction if the production rows no longer
 -- match the operator-confirmed three-plus-one set.
 CREATE TEMP TABLE compatibility_identity_correction_guard (
-    corrected_47_count INTEGER NOT NULL CHECK (corrected_47_count = 3),
-    corrected_51_count INTEGER NOT NULL CHECK (corrected_51_count = 1)
+    corrected_47_count INTEGER NOT NULL,
+    corrected_51_count INTEGER NOT NULL,
+    CHECK (
+        (corrected_47_count = 0 AND corrected_51_count = 0)
+        OR (corrected_47_count = 3 AND corrected_51_count = 1)
+    )
 ) ON COMMIT DROP;
 
 INSERT INTO compatibility_identity_correction_guard (

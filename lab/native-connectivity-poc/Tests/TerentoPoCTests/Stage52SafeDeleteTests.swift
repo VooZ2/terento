@@ -135,7 +135,7 @@ private func externalTarget() -> (target: SafeDeleteTarget, contents: Data) {
 private func targetWithVerifiedBackup() throws -> (target: SafeDeleteTarget, contents: Data, backupURL: URL) {
     let initial = validTarget()
     let backupURL = FileManager.default.temporaryDirectory
-        .appendingPathComponent("terento-stage52-backup-(UUID().uuidString).img")
+        .appendingPathComponent("terento-stage52-backup-\(UUID().uuidString).img")
     try initial.contents.write(to: backupURL, options: .atomic)
 
     let source = MapLifecycleFileIdentity(file: initial.target.sourceFile)!

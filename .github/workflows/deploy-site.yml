@@ -31,19 +31,15 @@ jobs:
       SITE_SSH_KNOWN_HOSTS: ${{ secrets.TERENTO_SITE_SSH_KNOWN_HOSTS }}
     steps:
       - name: Check out source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
 
       - name: Validate public website
         shell: bash
         run: |
           set -euo pipefail
-          Tests/run-guide-generator-parity-tests.sh
-          Tests/run-structured-data-tests.sh
-          Tests/run-guide-content-tests.sh
-          Tests/run-public-page-layout-contract-tests.sh
+          Tests/run-site-tests.sh
           Tests/run-release-documentation-tests.sh
-          Tests/run-legal-content-tests.sh
-          Tests/run-website-seo-contract-tests.sh
+          Tests/run-release-legal-content-tests.sh
 
       - name: Validate deployment configuration
         shell: bash

@@ -1,7 +1,7 @@
-#!/bin/zsh
-set -euo pipefail
+#!/bin/sh
+set -eu
 
-repo_root="${0:A:h:h:h:h}"
+repo_root="$(CDPATH= cd -- "$(dirname "$0")/../../.." && pwd)"
 python3 - "$repo_root" <<'PY'
 from pathlib import Path
 import sys
@@ -39,4 +39,4 @@ print("Compatibility status web tests passed (statuses, exact variants, disclosu
 PY
 
 . "$repo_root/Tests/node-runtime.sh"
-"$NODE_BIN" "$repo_root/Tests/compatibility-data-tests.cjs"
+"$NODE_BIN" "$repo_root/Tests/shared-compatibility-data-tests.cjs"

@@ -142,7 +142,9 @@ assert_arm64_and_minimum_target() {
         exit 1
     fi
 
-    if otool -L "$dylib_path" | grep -E '/opt/homebrew|/usr/local|/Users/' >/dev/null; then
+    # The first `otool -L` line is the inspected file's own path. Xcode keeps
+    # DerivedData under /Users on CI, so inspect dependency rows only.
+    if otool -L "$dylib_path" | sed '1d' | grep -E '/opt/homebrew|/usr/local|/Users/' >/dev/null; then
         echo "Developer-machine dependency found in $dylib_path" >&2
         otool -L "$dylib_path" >&2
         exit 1
@@ -207,6 +209,17 @@ if [ ! -f "$build_marker" ]; then
 
     cp "$libusb_prefix/lib/libusb-1.0.0.dylib" "$bundle_lib_dir/libusb-1.0.0.dylib"
     cp "$libmtp_prefix/lib/libmtp.9.dylib" "$bundle_lib_dir/libmtp.9.dylib"
+    for libusb_dependency in \
+        "$libusb_prefix/lib/libusb-1.0.0.dylib" \
+        "$libusb_prefix/lib/libusb-1.0.dylib"
+    do
+        if otool -L "$bundle_lib_dir/libmtp.9.dylib" | grep -F "$libusb_dependency" >/dev/null; then
+            install_name_tool \
+                -change "$libusb_dependency" \
+                "@rpath/libusb-1.0.0.dylib" \
+                "$bundle_lib_dir/libmtp.9.dylib"
+        fi
+    done
     cp "$libusb_prefix/include/libusb-1.0/libusb.h" "$bundle_include_dir/libusb.h"
     cp "$libmtp_prefix/include/libmtp.h" "$bundle_include_dir/libmtp.h"
     : > "$build_marker"

@@ -179,17 +179,8 @@ To verify the current provider-neutral foundation and its related
 regression boundaries:
 
 ```sh
-./Tests/run-stage1-provider-neutral-tests.sh
-./Tests/run-stage2-custom-map-import-tests.sh
-./Tests/run-stage2c-custom-map-import-ux-tests.sh
-./Tests/run-stage3-generic-lifecycle-tests.sh
-./Tests/run-stage41-acquisition-tests.sh
-./Tests/run-stage42-installation-tests.sh
-./Tests/run-stage45-map-selection-tests.sh
-./Tests/run-stage53-safe-update-tests.sh
-./Tests/run-map-statistics-event-tests.sh
-./Tests/run-beta8-installation-progress-failure-polish-tests.sh
-./Tests/run-beta8-manage-maps-polish-tests.sh
+../../Tests/run-app-tests.sh
+../../Tests/run-native-tests.sh
 ```
 
 Release preparation additionally validates the exact production catalog with

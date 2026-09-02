@@ -46,6 +46,6 @@ print(f"Catalog total: {sum(len(provider.get('maps', [])) for provider in provid
 PY
 
 TERENTO_CATALOG_CONTRACT_PATH="$catalog_path" \
-    "$repo_root/lab/native-connectivity-poc/Tests/run-stage1-provider-neutral-tests.sh"
+    "$repo_root/lab/native-connectivity-poc/Tests/run-native-provider-neutral-tests.sh"
 
 print "PASS: the release client accepts every entry in $catalog_url"

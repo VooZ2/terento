@@ -10,9 +10,22 @@ MIGRATION = (
     / "015_canonical_compatibility_aggregation.sql"
 )
 CURRENT_MIGRATION = MIGRATION.parent / "025_device_card_failure_epoch.sql"
+IDENTITY_CORRECTION_MIGRATION = MIGRATION.parent / "013_canonical_four_status_compatibility.sql"
 
 
 class CompatibilityAggregationMigrationTests(unittest.TestCase):
+    def test_identity_correction_allows_fresh_database_but_rejects_partial_history(self) -> None:
+        sql = IDENTITY_CORRECTION_MIGRATION.read_text(encoding="utf-8")
+        self.assertIn(
+            "(corrected_47_count = 0 AND corrected_51_count = 0)",
+            sql,
+        )
+        self.assertIn(
+            "OR (corrected_47_count = 3 AND corrected_51_count = 1)",
+            sql,
+        )
+        self.assertNotIn("CHECK (corrected_47_count = 3)", sql)
+
     def test_canonical_device_is_primary_aggregate_key(self) -> None:
         sql = MIGRATION.read_text(encoding="utf-8")
         canonical_key = (
