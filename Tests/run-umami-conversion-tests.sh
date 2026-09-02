@@ -84,11 +84,11 @@ for path in home_files:
     html = path.read_text(encoding="utf-8")
     assert html.count('class="product-showcase product-showcase--muted"') == 2, f"{path}: expected two product showcases"
     assert html.count('class="scope-section"') == 1, f"{path}: expected beta scope section"
-    assert html.count("<details>") == 10, f"{path}: expected ten FAQ answers"
+    assert html.count("<details>") == 5, f"{path}: expected five FAQ answers"
     assert 'class="final-cta"' in html, f"{path}: expected final CTA"
     assert "/assets/app/optimized/your-garmin-640.avif" in html, f"{path}: expected responsive hero artwork"
     items = anchors(path)
-    hero = [item for item in items if "text-link" in item["class"] and urlparse(item["href"]).path.endswith("/download/")]
+    hero = [item for item in items if "hero-download-action" in item["class"] and "download-action" in item["class"] and urlparse(item["href"]).path.endswith("/download/")]
     assert len(hero) == 1, f"{path}: expected one home hero CTA"
     if any("final-cta" in ancestor for item in items for ancestor in item["ancestors"]):
         final = [

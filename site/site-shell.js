@@ -61,20 +61,23 @@
 
   const path = window.location.pathname.replace(/\/+$/, "") || "/";
   const declaredPage = document.documentElement.dataset.page || "";
-  const pageType = ["home", "compatibility", "guide", "download", "legal", "privacy"].includes(declaredPage)
+  const pageType = ["home", "about", "compatibility", "guide", "download", "legal", "privacy"].includes(declaredPage)
     ? declaredPage
     : path === "/compatibility" || /\/compatibility$/.test(path)
       ? "compatibility"
       : path === "/download" || /\/download$/.test(path)
         ? "download"
-        : /\/guides\/install-garmin-maps-mac$/.test(path)
-          ? "guide"
-          : path === "/legal"
-            ? "legal"
-            : path === "/privacy"
-              ? "privacy"
-              : "home";
+        : path === "/about" || /\/about$/.test(path)
+          ? "about"
+          : /\/guides\/install-garmin-maps-mac$/.test(path)
+            ? "guide"
+            : path === "/legal"
+              ? "legal"
+              : path === "/privacy"
+                ? "privacy"
+                : "home";
   const pageRoute = {
+    about: "about/",
     compatibility: "compatibility/",
     download: "download/",
     guide: "guides/install-garmin-maps-mac/",
@@ -84,7 +87,7 @@
 
   const localizedRoot = (language) => language === "en" ? "/" : `/${language}/`;
   const link = (language, key) => ({
-    about: `${localizedRoot(language)}#about`,
+    about: `${localizedRoot(language)}about/`,
     compatibility: `${localizedRoot(language)}compatibility/`,
     guide: `${localizedRoot(language)}guides/install-garmin-maps-mac/`,
     faq: `${localizedRoot(language)}#faq`,
@@ -94,7 +97,8 @@
   const renderShell = (language) => {
     const copy = translations[language] || translations.en;
     const root = localizedRoot(language);
-    const active = (key) => (key === "compatibility" && pageType === "compatibility")
+    const active = (key) => (key === "about" && pageType === "about")
+      || (key === "compatibility" && pageType === "compatibility")
       || (key === "download" && pageType === "download")
       || (key === "guide" && pageType === "guide");
     const homeHash = pageType === "home" && window.location.hash === "#faq" ? "#faq" : "";
@@ -115,7 +119,7 @@
         <span>Terento</span>
       </a>
       <nav class="primary-nav" aria-label="${copy.primary}">
-        ${navLink("about")}${navLink("compatibility")}${navLink("guide")}${navLink("faq")}${navLink("download")}
+        ${navLink("compatibility")}${navLink("guide")}${navLink("about")}${navLink("download")}
         <span class="language-switcher">${languageMenu()}</span>
       </nav>
       <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="${copy.menu}">
@@ -126,7 +130,7 @@
     <div class="mobile-nav" id="mobile-nav" hidden>
       <div class="shell mobile-nav-inner">
         <nav class="mobile-nav-links" aria-label="${copy.primary}">
-          ${navLink("about")}${navLink("compatibility")}${navLink("guide")}${navLink("faq")}${navLink("download")}
+          ${navLink("compatibility")}${navLink("guide")}${navLink("about")}${navLink("download")}
         </nav>
         <div class="mobile-nav-language">${languageMenu(true)}</div>
       </div>
@@ -146,7 +150,7 @@
         </div>
       </div>
       <nav class="footer-nav" aria-label="${copy.footer}">
-        ${navLink("about")}${navLink("compatibility")}${navLink("faq")}${navLink("download")}
+        ${navLink("about")}${navLink("compatibility")}${navLink("guide")}${navLink("faq")}${navLink("download")}
         <a href="/legal/">${copy.legal}</a>
         <a href="/privacy/">${copy.privacy}</a>
       </nav>

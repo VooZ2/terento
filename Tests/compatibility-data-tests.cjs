@@ -147,6 +147,7 @@ assert.match(siteStyles, /\.watch-card-model-row\s*\{[^}]*gap:\s*12px/s);
 assert.match(siteStyles, /\.watch-card-model-row h3\s*\{[^}]*min-width:\s*0/s);
 assert.match(siteStyles, /\.watch-card-image\s*\{[^}]*aspect-ratio:\s*1\.58[^}]*padding:\s*14px/s);
 assert.match(siteStyles, /\.watch-card-image img\s*\{[^}]*min-width:\s*0[^}]*min-height:\s*0[^}]*width:\s*100%[^}]*height:\s*100%[^}]*object-fit:\s*contain/s);
+assert.match(siteStyles, /\.watch-card-image img\s*\{[^}]*mix-blend-mode:\s*multiply/s);
 assert.doesNotMatch(siteStyles, /\.watch-card-image img\s*\{[^}]*transform:\s*scale/s);
 assert.match(siteStyles, /\.compatibility-community-cta\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto[^}]*margin-top:\s*48px[^}]*padding:\s*24px 28px[^}]*border:\s*1px solid var\(--border\)[^}]*background:\s*var\(--surface\)/s);
 assert.match(siteStyles, /\.compatibility-community-link\s*\{[^}]*width:\s*100%/s);
@@ -158,8 +159,9 @@ for (const [locale, page] of localizedCompatibilityPages) {
 }
 
 assert.match(homePage, /<h2 id="scope-title">Compatibility grows with every shared installation\.<\/h2>/);
-assert.match(homePage, /Terento is designed for Garmin smartwatches with map support\. Public compatibility for third-party map installation is confirmed model by model from real results shared by users\./);
-assert.match(homePage, /Terento is designed for Garmin smartwatches with map support\. Public compatibility for third-party map installation is confirmed by exact model and variant using real results shared by users\. See the <a href="\/compatibility\/">Compatibility page<\/a> for the current evidence\./);
+assert.match(homePage, /Terento is built for Garmin smartwatches with map support\. Compatibility is confirmed for each model and variant using real installation results\./);
+assert.match(homePage, /See the <a href="\/compatibility\/">Compatibility page<\/a> for Garmin models and variants confirmed by real installations\./);
+assert.doesNotMatch(homePage, /class="scope-list"|class="scope-item"/);
 assert.doesNotMatch(homePage, /Selected scope, not every Garmin\.|small, evidence-led set/);
 
 const localizedScopeHeadings = {
@@ -172,7 +174,9 @@ const localizedScopeHeadings = {
 for (const [locale, page] of localizedHomePages) {
   assert.match(page, new RegExp(`<h2 id="scope-title">${localizedScopeHeadings[locale].replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/h2>`));
   assert.match(page, /localized-content\.js/);
-  assert.match(page, /public|öffentliche|publique|publiczna|veřejná|pubblica/i);
+  assert.match(page, /Installationsergebnisse|résultats d’installation|rzeczywistych instalacji|výsledků instalace|risultati di installazione/i);
+  assert.match(page, new RegExp(`href="/${locale}/compatibility/"`));
+  assert.doesNotMatch(page, /class="scope-list"|class="scope-item"/);
   assert.doesNotMatch(page, /small, evidence-led|kleine, evidenzbasierte|petit ensemble|niewielkiej, opartej|malou, důkazy|piccolo insieme/);
 }
 

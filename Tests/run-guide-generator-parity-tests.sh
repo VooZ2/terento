@@ -15,6 +15,12 @@ site/fr/index.html
 site/pl/index.html
 site/cs/index.html
 site/it/index.html
+site/about/index.html
+site/de/about/index.html
+site/fr/about/index.html
+site/pl/about/index.html
+site/cs/about/index.html
+site/it/about/index.html
 site/download/index.html
 site/de/download/index.html
 site/fr/download/index.html
@@ -30,9 +36,12 @@ site/it/compatibility/index.html"
 
 regenerate_site() {
   PYTHONDONTWRITEBYTECODE=1 python3 scripts/normalize-release-pages.py --write
+  PYTHONDONTWRITEBYTECODE=1 python3 scripts/build-about-pages.py >/dev/null
+  PYTHONDONTWRITEBYTECODE=1 python3 scripts/normalize-home-ia.py >/dev/null
   PYTHONDONTWRITEBYTECODE=1 python3 scripts/build-guide-pages.py
   PYTHONDONTWRITEBYTECODE=1 python3 scripts/add-guide-links.py >/dev/null
   PYTHONDONTWRITEBYTECODE=1 python3 scripts/normalize-public-shell.py >/dev/null
+  PYTHONDONTWRITEBYTECODE=1 python3 scripts/normalize-site-metadata.py --write >/dev/null
 }
 
 before="$(cksum $generated)"

@@ -5,8 +5,8 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 const styles = read("site/styles.css");
-const styleVersion = "20260830-brand-tokens";
-const localizedContentVersion = "20260902-beta9-release";
+const styleVersion = "20260902-home-content";
+const localizedContentVersion = "20260902-home-content";
 
 const cssBlock = (selector) => {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -101,6 +101,7 @@ const visibleText = (html) => html
 for (const [locale, contract] of Object.entries(locales)) {
   const html = read(contract.file);
   assert.match(html, new RegExp(`/styles\\.css\\?v=${styleVersion}`));
+  assert.equal((html.match(/<link rel="stylesheet" href="\/styles\.css\?v=[^"]+">/g) || []).length, 1, `${locale} must load the shared stylesheet once`);
   assert.equal((html.match(/class="download-sections"/g) || []).length, 1, `${locale} must use one three-column information grid`);
   assert.doesNotMatch(html, /class="download-grid"/);
   assert.doesNotMatch(html, /New to third-party maps\?|Neu bei Drittanbieter-Karten\?|Vous débutez avec les cartes tierces|Dopiero zaczynasz z mapami innych firm|Začínáte s mapami třetích stran|È la prima volta che installi mappe di terze parti/);

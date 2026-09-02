@@ -29,21 +29,16 @@ function visibleFaq(source, file) {
   assert.ok(section, `${file}: Home FAQ section`);
   const entries = [...section[1].matchAll(/<details>\s*<summary>([\s\S]*?)<\/summary>\s*<p>([\s\S]*?)<\/p>\s*(?:<div class="faq-support-actions">[\s\S]*?<\/div>\s*)?<\/details>/gi)]
     .map((match) => ({ question: visibleText(match[1]), answer: visibleText(match[2]), markup: match[0] }));
-  assert.equal(entries.length, 10, `${file}: exactly ten FAQ entries`);
+  assert.equal(entries.length, 5, `${file}: exactly five FAQ entries`);
   return entries;
 }
 
 const questionSignals = [
-  [/Garmin.*Terento/i, /Terento/],
+  [/Garmin.*Terento/i, /Compatibility|Kompatibilitätsseite|Compatibilité|kompatybilności|Kompatibilita|Compatibilità/i],
   [/BaseCamp/i, /Mac/],
-  [/Finder|Finderu|Finder|Finder|Finder|Finder/i, /Terento|MTP/i],
-  [/Express/i, /Terento/],
   [/existing|vorhand|exist|istnie|stávaj|esist/i, /Terento|map/i],
   [/maps|Karten|cartes|mapy|map|mappe|provider|fournisseur|dostawc|poskytovatel/i, /Terento|map/i],
   [/fail|fehlsch|échou|nie powied|selže|riesce/i, /GitHub|hello@terento\.app/i],
-  [/data|Daten|données|dane|údaje|dati/i, /optional|facultatif|opcjonal|volitel|facolt/i],
-  [/Apple Silicon/i, /macOS|Mac/],
-  [/update|aktual|mettre|supprimer|usuwać|odstranit|aggiornare|rimuovere/i, /Terento|map/i],
 ];
 
 for (const locale of locales) {
@@ -54,24 +49,23 @@ for (const locale of locales) {
     assert.match(entry.question, questionSignals[index][0], `${home}: FAQ question ${index + 1} semantic order`);
     assert.match(entry.answer, questionSignals[index][1], `${home}: FAQ answer ${index + 1} content`);
   });
-  assert.match(entries[1].answer, /\.img/i, `${home}: BaseCamp answer mentions local .img import`);
-  assert.match(entries[4].answer, /protected|geschützt|protég|chronione|chráněné|protette/i, `${home}: safety answer protects Garmin/system maps`);
-  assert.match(entries[5].question, /provider|anbieter|fournisseur|dostawc|poskytovatel/i, `${home}: provider FAQ question`);
-  assert.match(entries[5].answer, /Freizeitkarte/i, `${home}: provider FAQ names Freizeitkarte`);
-  assert.match(entries[5].answer, /OpenTopoMap/i, `${home}: provider FAQ names OpenTopoMap`);
-  assert.match(entries[5].answer, /expand|wachsen|élargir|rozszerzać|rozšiřovat|crescere/i, `${home}: provider FAQ describes future expansion`);
-  assert.match(entries[9].answer, /protected|geschützt|protég|chronione|chráněné|protette/i, `${home}: update/remove answer protects Garmin/system maps`);
+  assert.match(entries[1].answer, /map file|Kartendatei|fichier cartographique|plik mapy|mapový soubor|file cartografico/i, `${home}: BaseCamp answer mentions compatible local map import in user language`);
+  assert.match(entries[2].answer, /protected|geschützt|protég|chronione|chráněné|protette/i, `${home}: safety answer protects Garmin/system maps`);
+  assert.match(entries[3].question, /provider|anbieter|fournisseur|dostawc|poskytovatel/i, `${home}: provider FAQ question`);
+  assert.match(entries[3].answer, /Freizeitkarte/i, `${home}: provider FAQ names Freizeitkarte`);
+  assert.match(entries[3].answer, /OpenTopoMap/i, `${home}: provider FAQ names OpenTopoMap`);
+  assert.doesNotMatch(entries[3].answer, /beta|bêta|version|release|wersj|verz|versi/i, `${home}: provider FAQ describes Terento without release wording`);
   assert.doesNotMatch(source, /back up|backup|sauvegarder|zálohovat|wykonać kopię|zálohovat|eseguire il backup/i, `${home}: removed backup promise`);
   assert.match(entries[0].markup, new RegExp(`href="${localePath(locale, "compatibility/")}"`), `${home}: Compatibility link`);
   assert.match(entries[1].markup, new RegExp(`href="${localePath(locale, guideSlug)}"`), `${home}: Guide link`);
-  assert.match(entries[6].markup, /href="https:\/\/github\.com\/VooZ2\/terento\/issues"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/);
-  assert.match(entries[6].markup, /href="mailto:hello@terento\.app\?subject=Terento%20installation%20issue"/);
-  assert.match(entries[6].markup, /data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="github-issue"/);
-  assert.match(entries[6].markup, /data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email"/);
+  assert.match(entries[4].markup, /href="https:\/\/github\.com\/VooZ2\/terento\/issues"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/);
+  assert.match(entries[4].markup, /href="mailto:hello@terento\.app\?subject=Terento%20installation%20issue"/);
+  assert.match(entries[4].markup, /data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="github-issue"/);
+  assert.match(entries[4].markup, /data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email"/);
   if (locale === "en") {
-    assert.match(entries[1].markup, />Read the Mac installation guide\.</);
-    assert.match(entries[6].markup, />Open an issue /);
-    assert.match(entries[6].markup, />Email the log /);
+    assert.match(entries[1].markup, />Read the installation guide\.</);
+    assert.match(entries[4].markup, />Open an issue /);
+    assert.match(entries[4].markup, />Email the log /);
   }
   assert.doesNotMatch(source, /<section[^>]+id="faq"[^>]*>[\s\S]*?<section[^>]+id="faq"/i, `${home}: one FAQ section`);
   assert.doesNotMatch(source, /href="[^"']*\/faq\//i, `${home}: no standalone FAQ route`);
@@ -79,6 +73,7 @@ for (const locale of locales) {
 
 const shellFiles = [
   "index.html",
+  "about/index.html",
   "compatibility/index.html",
   "download/index.html",
   `${guideSlug}index.html`,
@@ -94,7 +89,11 @@ for (const locale of locales) {
       const nav = source.match(new RegExp(`<nav class="${navClass}"[^>]*>([\\s\\S]*?)<\\/nav>`));
       assert.ok(nav, `${file}: ${navClass}`);
       const faqLinks = [...nav[1].matchAll(/<a href="([^"]+)"[^>]*>[^<]*FAQ/gi)].map((match) => match[1]);
-      assert.deepEqual(faqLinks, [localePath(shellLocale) + "#faq"], `${file}: ${navClass} FAQ destination`);
+      if (navClass === "footer-nav") {
+        assert.deepEqual(faqLinks, [localePath(shellLocale) + "#faq"], `${file}: footer FAQ destination`);
+      } else {
+        assert.deepEqual(faqLinks, [], `${file}: ${navClass} must not expose FAQ`);
+      }
     }
   }
 }
