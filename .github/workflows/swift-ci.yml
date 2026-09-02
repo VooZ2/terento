@@ -14,6 +14,12 @@ on:
   schedule:
     - cron: "30 6 * * 1"
   workflow_dispatch:
+    inputs:
+      send_health_report:
+        description: Send and retain a weekly-format health report for SMTP verification
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -293,7 +299,11 @@ jobs:
 
   publish-operational-report:
     name: Publish weekly or release health report
-    if: always() && (github.event_name == 'schedule' || startsWith(github.ref, 'refs/tags/v'))
+    if: >-
+      always() &&
+      (github.event_name == 'schedule' ||
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'workflow_dispatch' && inputs.send_health_report))
     needs:
       - changes
       - site-tests
@@ -313,6 +323,7 @@ jobs:
       SMTP_PORT: "2525"
       REPORT_FROM: report@terento.app
       REPORT_TO: report@terento.app
+      SEND_HEALTH_REPORT: ${{ inputs.send_health_report || 'false' }}
       SELECTION_RESULT: ${{ needs.changes.result }}
       SITE_RESULT: ${{ needs.site-tests.result }}
       BACKEND_RESULT: ${{ needs.backend-tests.result }}
@@ -331,7 +342,7 @@ jobs:
           set -euo pipefail
           kind="RELEASE_GATE"
           component="release"
-          if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ] || [ "$SEND_HEALTH_REPORT" = "true" ]; then
             kind="WEEKLY_TEST"
             component="test-matrix"
           fi
@@ -365,7 +376,7 @@ jobs:
             > "$RUNNER_TEMP/terento-operational-report.json"
       - name: Send weekly report through SMTP2GO
         id: email
-        if: github.event_name == 'schedule'
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.send_health_report)
         run: python3 scripts/send-weekly-health-report.py "$RUNNER_TEMP/terento-operational-report.json"
       - name: Retain consolidated health report
         if: always()
@@ -375,7 +386,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$OPERATIONS_INGEST_SECRET"
-          if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ] || [ "$SEND_HEALTH_REPORT" = "true" ]; then
             email_outcome="${EMAIL_OUTCOME:-unknown}"
             jq --arg email "$email_outcome" '.details.email = $email' \
               "$RUNNER_TEMP/terento-operational-report.json" \
