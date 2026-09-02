@@ -89,5 +89,6 @@ assert.doesNotMatch(
 const nativeDependencyBuild = read("Packaging/NativeDependencies/build.sh");
 assert.match(nativeDependencyBuild, /install_name_tool[\s\S]*-change[\s\S]*@rpath\/libusb-1\.0\.0\.dylib/);
 assert.match(nativeDependencyBuild, /Developer-machine dependency found/);
+assert.match(nativeDependencyBuild, /otool -L "\$dylib_path" \| sed '1d'/);
 
 console.log(`Release documentation matches ${label}.`);
