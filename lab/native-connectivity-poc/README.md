@@ -190,6 +190,18 @@ regression boundaries:
 ./Tests/run-beta8-manage-maps-polish-tests.sh
 ```
 
+Release preparation additionally validates the exact production catalog with
+the current client decoder, provider adapters, source policies, and complete
+Freizeitkarte/OpenTopoMap identity matrix:
+
+```sh
+/bin/zsh ../../Packaging/validate-live-map-catalog.sh
+```
+
+`Packaging/release.sh` runs this live check automatically before signing or
+notarization. If one remote package is incompatible with the current client,
+runtime catalog loading fails closed to the bundled last-known-good snapshot.
+
 These checks validate the provider-neutral catalog and acquisition seams,
 custom `.img` staging/validation, compact custom-import presentation and
 confirmation, generic provider/custom inventory grouping, optional artifact

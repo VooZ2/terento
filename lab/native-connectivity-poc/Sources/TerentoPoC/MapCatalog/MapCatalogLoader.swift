@@ -37,13 +37,19 @@ struct MapCatalogLoader: Sendable {
         do {
             let data = try await loadRemoteData()
             let remoteCatalog = try decode(data)
+            let bundledCatalog = try loadBundled()
+            guard MapCatalogClientCompatibilityValidator().isCompatible(
+                remoteCatalog
+            ) else {
+                throw MapCatalogError.invalidMetadata(
+                    "the remote catalog is incompatible with this app build"
+                )
+            }
             // The API may roll out provider records independently from the
             // app. Keep the remote catalog authoritative for records it knows
             // and add only missing bundled records so a provider rollout does
             // not make the app silently lose an enabled provider.
-            let catalog = (try? loadBundled())
-                .map { remoteCatalog.mergingSupplemental($0) }
-                ?? remoteCatalog
+            let catalog = remoteCatalog.mergingSupplemental(bundledCatalog)
             return MapCatalogLoadResult(
                 catalog: catalog,
                 source: .remote
@@ -118,6 +124,67 @@ struct MapCatalogLoader: Sendable {
 
     private func decode(_ data: Data) throws -> MapCatalog {
         try MapCatalogDocumentDecoder().decode(data)
+    }
+}
+
+/// A release-bound semantic gate for remotely mutable map metadata. JSON can
+/// be structurally valid while still naming an IMG identity that the current
+/// app parser cannot recover. Such a catalog must fall back as a whole to the
+/// bundled last-known-good snapshot instead of breaking only some regions.
+struct MapCatalogClientCompatibilityValidator: Sendable {
+    private let providerRegistry: MapProviderRegistry
+    private let sourcePolicyRegistry: ReviewedProviderURLPolicyRegistry
+
+    init(
+        providerRegistry: MapProviderRegistry = .bundled,
+        sourcePolicyRegistry: ReviewedProviderURLPolicyRegistry = .bundled
+    ) {
+        self.providerRegistry = providerRegistry
+        self.sourcePolicyRegistry = sourcePolicyRegistry
+    }
+
+    func isCompatible(_ catalog: MapCatalog) -> Bool {
+        let installableProviderIDs = catalog.providers
+            .filter(\.allowsNewInstallCatalog)
+            .map { MapIdentity.normalizeProvider($0.id) }
+        let packageProviderIDs = catalog.packages
+            .map { MapIdentity.normalizeProvider($0.providerId) }
+        let packageIDs = catalog.packages.map(\.id)
+
+        guard !installableProviderIDs.isEmpty,
+              !catalog.packages.isEmpty,
+              installableProviderIDs.allSatisfy({ !$0.isEmpty }),
+              Set(installableProviderIDs).count == installableProviderIDs.count,
+              Set(packageProviderIDs) == Set(installableProviderIDs),
+              packageIDs.allSatisfy({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }),
+              Set(packageIDs).count == packageIDs.count else {
+            return false
+        }
+
+        return catalog.packages.allSatisfy { package in
+            let providerID = MapIdentity.normalizeProvider(package.providerId)
+            guard let adapter = providerRegistry.adapter(for: providerID),
+                  let sourcePolicy = sourcePolicyRegistry.policy(for: providerID),
+                  let downloadURL = package.downloadURL,
+                  let expectedIdentity = package.identity,
+                  let parsedIdentity = adapter.expectedIMGIdentity(for: package),
+                  package.hasUsableMainArtifact else {
+                return false
+            }
+
+            do {
+                try sourcePolicy.validate(downloadURL)
+            } catch {
+                return false
+            }
+
+            return MapIdentityMatcher.matches(
+                actual: parsedIdentity,
+                expected: expectedIdentity,
+                providerRegionId: package.providerRegionId,
+                identifier: package.identifier
+            )
+        }
     }
 }
 

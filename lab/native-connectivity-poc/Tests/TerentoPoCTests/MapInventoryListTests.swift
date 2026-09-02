@@ -13,9 +13,10 @@ struct MapInventoryListTests {
         testSelectedCatalogMapIsNotDuplicatedWhenInstalled()
         testCompanionFilesAppearAsOneOtherMap()
         testManifestRecordRestoresManagedOwnership()
+        testOpenTopoMapLegacyAliasRestoresManagedOwnership()
         testRemovedMapIsAbsentAfterFreshScan()
 
-        print("PASS: 5 unified map inventory and ownership tests")
+        print("PASS: 6 unified map inventory and ownership tests")
     }
 
     private static func testFreizeitkarteRegionsAppearInOneList() {
@@ -152,6 +153,45 @@ struct MapInventoryListTests {
         expect(
             state == .managedByTerento,
             "manifest-backed France map is shown as managed by Terento"
+        )
+    }
+
+    private static func testOpenTopoMapLegacyAliasRestoresManagedOwnership() {
+        let file = InstalledMapFile(
+            path: "/GARMIN/terento_opentopomap_lithuania.img",
+            filename: "terento_opentopomap_lithuania.img",
+            sizeBytes: 123_456,
+            itemID: 43
+        )
+        let metadata = GarminIMGMetadata(
+            name: "OpenTopoMap Lithuania",
+            provider: "OpenTopoMap",
+            region: "LTU",
+            family: "OpenTopoMap",
+            rawVersion: "2026-05-24",
+            version: MapVersion(year: 2026, month: 5),
+            identifier: "lithuania",
+            productId: nil,
+            familyId: nil
+        )
+        let record = MapOwnershipRecord(
+            devicePath: file.path,
+            filename: file.filename,
+            providerId: "opentopomap",
+            regionId: "LITHUANIA",
+            version: MapVersion(year: 2026, month: 5)!,
+            sizeBytes: file.sizeBytes
+        )
+
+        let state = MapOwnershipMatcher().managementState(
+            for: file,
+            metadata: metadata,
+            records: [record]
+        )
+
+        expect(
+            state == .managedByTerento,
+            "OpenTopoMap Lithuania legacy alias preserves managed ownership"
         )
     }
 

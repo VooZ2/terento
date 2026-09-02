@@ -212,7 +212,12 @@ struct DefaultSafeUpdateSourceValidator: SafeUpdateSourceValidator, Sendable {
         package: MapPackage
     ) throws {
         guard let expectedIdentity = package.identity,
-              MapIdentity(provider: artifact.provider, region: artifact.region) == expectedIdentity else {
+              MapIdentityMatcher.matches(
+                  actual: MapIdentity(provider: artifact.provider, region: artifact.region),
+                  expected: expectedIdentity,
+                  providerRegionId: package.providerRegionId,
+                  identifier: package.identifier
+              ) else {
             throw SafeUpdateSourceValidationError.mismatch("The source provider or region does not match the selected map.")
         }
 
@@ -450,9 +455,22 @@ struct SafeUpdateTransaction: Sendable {
             return failure(.blockedNotManaged, "The installed map is not proven to be managed by Terento. It was left untouched.")
         }
         guard let selectedIdentity = request.selectedMap.identity,
-              request.currentObject.identity == selectedIdentity,
+              MapIdentityMatcher.matches(
+                  actual: request.currentObject.identity,
+                  expected: selectedIdentity,
+                  providerRegionId: request.selectedMap.providerRegionId,
+                  identifier: request.selectedMap.identifier
+              ),
               request.currentItem.provider == selectedIdentity.provider,
-              request.currentItem.region == selectedIdentity.region else {
+              MapIdentityMatcher.matches(
+                  actual: MapIdentity(
+                      provider: request.currentItem.provider,
+                      region: request.currentItem.region
+                  ),
+                  expected: selectedIdentity,
+                  providerRegionId: request.selectedMap.providerRegionId,
+                  identifier: request.selectedMap.identifier
+              ) else {
             return failure(.blockedAmbiguousMapIdentity, "The installed map does not match the selected catalog map. It was left untouched.")
         }
         guard request.currentItem.isInstalled,
@@ -680,7 +698,12 @@ struct SafeUpdateTransaction: Sendable {
             let cleanupStatus = cleanup(verified, transport: transport)
             return failure(cleanupStatus == .failedCleanup ? .failedCleanup : .failedHashMismatch, "The new map hash did not match the validated source.", storagePlan: storagePlan, backup: backup, newObject: verified)
         }
-        guard verified.identity == request.selectedMap.identity,
+        guard MapIdentityMatcher.matches(
+                  actual: verified.identity,
+                  expected: request.selectedMap.identity,
+                  providerRegionId: request.selectedMap.providerRegionId,
+                  identifier: request.selectedMap.identifier
+              ),
               verified.version == artifact.version,
               verified.ownership == .managedByTerento else {
             let cleanupStatus = cleanup(verified, transport: transport)

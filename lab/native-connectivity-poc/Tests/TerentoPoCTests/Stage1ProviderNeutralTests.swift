@@ -18,6 +18,16 @@ struct Stage1ProviderNeutralTests {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
 
+    private static var identityContractCatalogURL: URL {
+        if let path = ProcessInfo.processInfo.environment["TERENTO_CATALOG_CONTRACT_PATH"],
+           !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return URL(fileURLWithPath: path)
+        }
+        return packageRoot.appendingPathComponent(
+            "Sources/TerentoPoC/Resources/Maps/catalog.json"
+        )
+    }
+
     static func main() async {
         testLegacyPackageGetsRequiredMainArtifact()
         testOptionalContoursDoesNotHideMainArtifact()
@@ -28,9 +38,13 @@ struct Stage1ProviderNeutralTests {
         testSourcePolicyRegistryResolvesByProviderID()
         testBundledOpenTopoMapProviderPolicy()
         testOpenTopoMapIMGMetadataIsIdentified()
+        testOpenTopoMapLegacyIdentityAliasIsScoped()
         testOpenTopoMapCompactDateHeaderIsIdentified()
         testOpenTopoMapSplitDateHeadersAreIdentified()
         testEveryBundledOpenTopoMapRowAcceptsBothDateHeaderForms()
+        testEveryBundledFreizeitkarteRowMatchesProviderIdentity()
+        testConfiguredCatalogContractIsCompatibleWithClient()
+        testIncompatibleRemoteIdentityIsRejected()
         testBundledCatalogIncludesOpenTopoMap()
         testBundledProvidersHaveReviewedInstallPaths()
         testRemoteCatalogReceivesBundledProviderSupplement()
@@ -38,7 +52,7 @@ struct Stage1ProviderNeutralTests {
         testProviderLifecycleMetadataDecodesFailClosed()
         await testDownloadFailureUsesConfirmedProviderDownState()
 
-        print("PASS: 19 Stage 1 provider-neutral core tests")
+        print("PASS: 23 Stage 1 provider-neutral core tests")
     }
 
     private static func testLegacyPackageGetsRequiredMainArtifact() {
@@ -312,6 +326,25 @@ struct Stage1ProviderNeutralTests {
         )
     }
 
+    private static func testOpenTopoMapLegacyIdentityAliasIsScoped() {
+        let legacyOpenTopoMap = MapIdentity(provider: "OpenTopoMap", region: "LTU")
+        let currentOpenTopoMap = MapIdentity(provider: "opentopomap", region: "LITHUANIA")
+        let unrelatedFreizeitkarte = MapIdentity(provider: "freizeitkarte", region: "LTU")
+        let unrelatedTarget = MapIdentity(provider: "freizeitkarte", region: "LVA")
+
+        expect(
+            MapIdentityMatcher.matches(
+                actual: legacyOpenTopoMap,
+                expected: currentOpenTopoMap
+            )
+                && !MapIdentityMatcher.matches(
+                    actual: unrelatedFreizeitkarte,
+                    expected: unrelatedTarget
+                ),
+            "the OTM Lithuania legacy alias is accepted without weakening other provider identity checks"
+        )
+    }
+
     private static func testOpenTopoMapCompactDateHeaderIsIdentified() {
         var bytes = Array(repeating: UInt8(0), count: 8192)
         write("DSKIMG", at: 0x10, to: &bytes)
@@ -359,10 +392,7 @@ struct Stage1ProviderNeutralTests {
 
     private static func testEveryBundledOpenTopoMapRowAcceptsBothDateHeaderForms() {
         do {
-            let root = packageRoot
-            let data = try Data(contentsOf: root.appendingPathComponent(
-                "Sources/TerentoPoC/Resources/Maps/catalog.json"
-            ))
+            let data = try Data(contentsOf: identityContractCatalogURL)
             let catalog = try MapCatalogDocumentDecoder().decode(data)
             let packages = catalog.packages.filter { $0.providerId == "opentopomap" }
             let parser = GarminIMGMetadataParser()
@@ -370,7 +400,6 @@ struct Stage1ProviderNeutralTests {
 
             let allRowsPass = packages.count == 177 && packages.allSatisfy { package in
                 let providerRegion = package.providerRegionId
-                let canonicalRegion = package.canonicalRegionId
                 let version = package.version
                 let day = 24
                 let fullDate = String(format: "%04d-%02d-%02d", version.year, version.month, day)
@@ -400,21 +429,41 @@ struct Stage1ProviderNeutralTests {
                     parser.parse($0, filename: filename)
                 }
 
+                let metadataMatches = [fullMetadata, compactMetadata]
+                    .compactMap { $0 }
+                    .allSatisfy { metadata in
+                        MapIdentityMatcher.matches(
+                            actual: MapIdentity(
+                                provider: metadata.provider,
+                                region: metadata.region
+                            ),
+                            expected: package.identity,
+                            providerRegionId: package.providerRegionId,
+                            identifier: package.identifier
+                        )
+                    }
+                let splitMetadataMatches = splitMetadata.allSatisfy { metadata in
+                    MapIdentityMatcher.matches(
+                        actual: MapIdentity(
+                            provider: metadata.provider,
+                            region: metadata.region
+                        ),
+                        expected: package.identity,
+                        providerRegionId: package.providerRegionId,
+                        identifier: package.identifier
+                    )
+                }
                 let rowPasses = fullVersion == version
                     && compactVersion == version
                     && fullMetadata?.provider == "OpenTopoMap"
                     && compactMetadata?.provider == "OpenTopoMap"
-                    && fullMetadata?.region == canonicalRegion
-                    && compactMetadata?.region == canonicalRegion
+                    && metadataMatches
                     && fullMetadata?.version == version
                     && compactMetadata?.version == version
                     && splitMetadata.count == 2
-                    && splitMetadata.allSatisfy {
-                        $0.provider == "OpenTopoMap"
-                            && $0.region == canonicalRegion
-                            && $0.version == version
-                    }
-                    && package.mainArtifact?.version == version
+                    && splitMetadata.allSatisfy { $0.provider == "OpenTopoMap" }
+                    && splitMetadataMatches
+                    && (package.mainArtifact?.version ?? package.version) == version
                     && package.optionalArtifacts.allSatisfy {
                         $0.kind == .contours && $0.required == false && $0.version != nil
                     }
@@ -425,8 +474,12 @@ struct Stage1ProviderNeutralTests {
             }
 
             let contourRows = packages.flatMap(\.optionalArtifacts).filter { $0.kind == .contours }
+            let requiresBundledContourFixture = ProcessInfo.processInfo.environment[
+                "TERENTO_CATALOG_CONTRACT_PATH"
+            ] == nil
             expect(
-                allRowsPass && contourRows.count == 176,
+                allRowsPass
+                    && (!requiresBundledContourFixture || contourRows.count == 176),
                 "all 177 OpenTopoMap rows accept full, compact, and split generated dates with strict identity/version checks"
             )
         } catch {
@@ -435,6 +488,93 @@ struct Stage1ProviderNeutralTests {
                 "all 177 OpenTopoMap rows accept full, compact, and split generated dates with strict identity/version checks"
             )
         }
+    }
+
+    private static func testEveryBundledFreizeitkarteRowMatchesProviderIdentity() {
+        do {
+            let data = try Data(contentsOf: identityContractCatalogURL)
+            let catalog = try MapCatalogDocumentDecoder().decode(data)
+            let packages = catalog.packages.filter { $0.providerId == "freizeitkarte" }
+            let parser = GarminIMGMetadataParser()
+
+            let allRowsPass = packages.count == 63 && packages.allSatisfy { package in
+                let metadata = parser.parse(
+                    Array(
+                        makeFreizeitkarteIMG(token: package.providerRegionId)
+                            .prefix(GarminIMGMetadataParser.prefixLength)
+                    ),
+                    filename: "\(package.providerRegionId)_en_gmapsupp.img"
+                )
+                guard let metadata else { return false }
+                let rowPasses = metadata.provider == "Freizeitkarte"
+                    && metadata.version == package.version
+                    && MapIdentityMatcher.matches(
+                        actual: MapIdentity(
+                            provider: metadata.provider,
+                            region: metadata.region
+                        ),
+                        expected: package.identity,
+                        providerRegionId: package.providerRegionId,
+                        identifier: package.identifier
+                    )
+                if !rowPasses {
+                    print(
+                        "Freizeitkarte catalog validation failed for \(package.id) "
+                            + "[\(package.providerRegionId)] actual="
+                            + "\(metadata.provider ?? "nil")/\(metadata.region ?? "nil") "
+                            + "version=\(String(describing: metadata.version))"
+                    )
+                }
+                return rowPasses
+            }
+
+            expect(
+                allRowsPass,
+                "all 63 Freizeitkarte rows match their provider-region IMG identity"
+            )
+        } catch {
+            expect(
+                false,
+                "all 63 Freizeitkarte rows match their provider-region IMG identity"
+            )
+        }
+    }
+
+    private static func testConfiguredCatalogContractIsCompatibleWithClient() {
+        do {
+            let data = try Data(contentsOf: identityContractCatalogURL)
+            let catalog = try MapCatalogDocumentDecoder().decode(data)
+            expect(
+                MapCatalogClientCompatibilityValidator().isCompatible(catalog),
+                "the configured catalog is compatible with this client build"
+            )
+        } catch {
+            expect(false, "the configured catalog is compatible with this client build")
+        }
+    }
+
+    private static func testIncompatibleRemoteIdentityIsRejected() {
+        let validator = MapCatalogClientCompatibilityValidator()
+        let valid = makeContractCatalog(
+            package: makeOpenTopoMapContractPackage(canonicalRegion: "LITHUANIA")
+        )
+        let incompatible = makeContractCatalog(
+            package: makeOpenTopoMapContractPackage(canonicalRegion: "LIETUVA")
+        )
+        let empty = MapCatalog(
+            catalogVersion: 1,
+            updatedAt: Date(timeIntervalSince1970: 0),
+            providers: valid.providers,
+            regions: [],
+            packages: []
+        )
+
+        expect(
+            validator.isCompatible(valid)
+                && !validator.isCompatible(incompatible)
+                && !validator.isCompatible(empty),
+            "catalog identity drift is rejected before remote metadata becomes active"
+        )
     }
 
     private static func testBundledCatalogIncludesOpenTopoMap() {
@@ -613,6 +753,29 @@ struct Stage1ProviderNeutralTests {
         return bytes
     }
 
+    private static func makeFreizeitkarteIMG(token: String) -> [UInt8] {
+        var bytes = Array(repeating: UInt8(0), count: 8192)
+        write("DSKIMG", at: 0x10, to: &bytes)
+        write("GARMIN", at: 0x41, to: &bytes)
+        let header = Array("Freizeitkarte_\(token)".utf8)
+        let description = Array(header.prefix(20))
+        bytes.replaceSubrange(
+            0x49..<(0x49 + 20),
+            with: description + Array(repeating: 0, count: 20 - description.count)
+        )
+
+        let continuation = Array(header.dropFirst(20))
+        let detail = continuation.isEmpty
+            ? Array("Release 26.05".utf8)
+            : continuation + Array(" (Release 26.05)".utf8)
+        bytes.replaceSubrange(
+            0x65..<(0x65 + 31),
+            with: Array(detail.prefix(31))
+                + Array(repeating: 0, count: max(0, 31 - detail.count))
+        )
+        return bytes
+    }
+
     private static func testDownloadFailureUsesConfirmedProviderDownState() async {
         do {
             let workspace = try MapAcquisitionWorkspace(
@@ -644,6 +807,47 @@ struct Stage1ProviderNeutralTests {
         } catch {
             expect(false, "confirmed provider outage becomes a provider-down error")
         }
+    }
+
+    private static func makeOpenTopoMapContractPackage(
+        canonicalRegion: String
+    ) -> MapPackage {
+        MapPackage(
+            id: "opentopomap-lithuania",
+            providerId: "opentopomap",
+            regionId: canonicalRegion,
+            name: "OpenTopoMap Lithuania",
+            version: version(2026, 8),
+            sizeBytes: 123_456,
+            sourceURL: URL(
+                string: "https://garmin.opentopomap.org/europe/lithuania/otm-lithuania.zip"
+            ),
+            releaseDate: "2026-08-31",
+            identifier: "lithuania",
+            downloadSizeBytes: 123_456,
+            installSizeBytes: 234_567,
+            providerRegionId: "lithuania",
+            canonicalRegionId: canonicalRegion
+        )
+    }
+
+    private static func makeContractCatalog(package: MapPackage) -> MapCatalog {
+        MapCatalog(
+            catalogVersion: 1,
+            updatedAt: Date(timeIntervalSince1970: 0),
+            providers: [
+                MapProvider(
+                    id: package.providerId,
+                    name: "OpenTopoMap",
+                    website: URL(string: "https://opentopomap.org/"),
+                    attribution: "OpenTopoMap",
+                    licenseURL: URL(string: "https://opentopomap.org/about"),
+                    health: .healthy
+                )
+            ],
+            regions: [],
+            packages: [package]
+        )
     }
 
     private static func makePackage() -> MapPackage {

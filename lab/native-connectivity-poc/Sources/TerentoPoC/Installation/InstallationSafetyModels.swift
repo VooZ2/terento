@@ -120,14 +120,23 @@ struct TerentoFailedInstallRecoveryRecord: Codable, Equatable, Sendable {
         regionId: String?,
         version: MapVersion?
     ) -> Bool {
-        self.deviceKey == deviceKey
+        guard let actualIdentity = MapIdentity(provider: providerId, region: regionId),
+              let expectedIdentity = MapIdentity(
+                  provider: self.providerId,
+                  region: self.regionId
+              ) else {
+            return false
+        }
+
+        return self.deviceKey == deviceKey
             && devicePath == path
             && self.filename == filename
             && self.sizeBytes == sizeBytes
-            && MapIdentity.normalizeProvider(self.providerId)
-                == MapIdentity.normalizeProvider(providerId ?? "")
-            && MapIdentity.normalizeRegion(self.regionId)
-                == MapIdentity.normalizeRegion(regionId ?? "")
+            && MapIdentityMatcher.matches(
+                actual: actualIdentity,
+                expected: expectedIdentity,
+                providerRegionId: self.regionId
+            )
             && self.version == version
     }
 }

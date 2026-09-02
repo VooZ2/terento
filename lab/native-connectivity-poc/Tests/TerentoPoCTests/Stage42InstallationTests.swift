@@ -255,6 +255,7 @@ struct Stage42InstallationTests {
         passed += testTargetPolicyRejectsUnsupportedProviderBeforeTransport()
         passed += testTargetPolicyAcceptsAnotherFreizeitkarteRegion()
         passed += testTargetPolicyAcceptsOpenTopoMapProvider()
+        passed += testTargetPolicyAcceptsCurrentOpenTopoMapCatalogIdentity()
         passed += testArtifactValidatorAcceptsOpenTopoMapProvider()
         passed += testTargetPolicyAcceptsMapCapableBetaProfile()
         passed += testMapCapableNonLabPIDCompletesGenericLifecycle()
@@ -413,6 +414,68 @@ struct Stage42InstallationTests {
             return expect(true, "validated OpenTopoMap provider passes the final write policy")
         } catch {
             return expect(false, "validated OpenTopoMap provider passes the final write policy")
+        }
+    }
+
+    private static func testTargetPolicyAcceptsCurrentOpenTopoMapCatalogIdentity() -> Int {
+        let data = Harness.makeIMG(region: "LTU")
+        let package = MapPackage(
+            id: "opentopomap-lithuania",
+            providerId: "opentopomap",
+            regionId: "LITHUANIA",
+            name: "OpenTopoMap Lithuania",
+            version: MapVersion(year: 2026, month: 5)!,
+            sizeBytes: UInt64(data.count),
+            sourceURL: URL(string: "https://garmin.opentopomap.org/europe/lithuania/otm-lithuania.zip"),
+            releaseDate: "2026-05-25",
+            identifier: "lithuania",
+            downloadSizeBytes: 100,
+            installSizeBytes: UInt64(data.count),
+            providerRegionId: "lithuania",
+            canonicalRegionId: "LITHUANIA"
+        )
+        let baseArtifact = Harness.makeArtifact(
+            package: package,
+            data: data,
+            provider: "OpenTopoMap",
+            packageFormat: .zip
+        )
+        let artifact = ValidatedMapArtifact(
+            provider: baseArtifact.provider,
+            region: "LTU",
+            canonicalRegion: baseArtifact.canonicalRegion,
+            rawRelease: baseArtifact.rawRelease,
+            version: baseArtifact.version,
+            localIMGURL: baseArtifact.localIMGURL,
+            installSizeBytes: baseArtifact.installSizeBytes,
+            sha256: baseArtifact.sha256,
+            sourcePackageURL: baseArtifact.sourcePackageURL,
+            catalogPackageID: baseArtifact.catalogPackageID,
+            targetFilename: baseArtifact.targetFilename,
+            downloadSizeBytes: baseArtifact.downloadSizeBytes,
+            catalogDownloadSizeBytes: baseArtifact.catalogDownloadSizeBytes,
+            downloadSizeMatchesCatalog: baseArtifact.downloadSizeMatchesCatalog,
+            packageFormat: baseArtifact.packageFormat
+        )
+        let harness = makeHarness()
+
+        do {
+            try Stage42TargetPolicy().validate(
+                package: package,
+                artifact: artifact,
+                profile: DeviceInstallProfileRegistry.local.profiles.first,
+                identity: harness.request.identity,
+                deviceFiles: harness.request.beforeDeviceFiles
+            )
+            return expect(
+                true,
+                "current OpenTopoMap catalog identity survives the final write policy"
+            )
+        } catch {
+            return expect(
+                false,
+                "current OpenTopoMap catalog identity survives the final write policy"
+            )
         }
     }
 

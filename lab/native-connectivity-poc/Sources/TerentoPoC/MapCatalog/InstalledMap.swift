@@ -229,6 +229,16 @@ struct GarminIMGMetadataParser: Sendable {
             return nil
         }
 
+        // A complete 20-byte provider header is followed directly by the
+        // release field. It is not a continuation of the region token.
+        let trimmedDetail = detail.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedDetail.range(
+            of: #"(?i)^\(?release\b"#,
+            options: .regularExpression
+        ) == nil else {
+            return nil
+        }
+
         let releaseStart = detail.range(
             of: "(release",
             options: [.caseInsensitive, .diacriticInsensitive]
@@ -264,6 +274,17 @@ struct GarminIMGMetadataParser: Sendable {
               let detail,
               description.utf8.count == 20,
               provider(in: description) == "Freizeitkarte" else {
+            return nil
+        }
+
+        // A complete 20-byte provider header is followed directly by the
+        // release field. Joining those fields would turn a valid region such
+        // as `AZORES` into `AZORESRELEASE` during identity parsing.
+        let trimmedDetail = detail.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedDetail.range(
+            of: #"(?i)^\(?release\b"#,
+            options: .regularExpression
+        ) == nil else {
             return nil
         }
 

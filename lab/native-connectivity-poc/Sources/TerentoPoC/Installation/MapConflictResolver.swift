@@ -24,7 +24,12 @@ struct MapConflictResolver: Sendable {
                 return false
             }
 
-            return installedIdentity == selectedIdentity
+            return MapIdentityMatcher.matches(
+                actual: installedIdentity,
+                expected: selectedIdentity,
+                providerRegionId: selectedPackage.providerRegionId,
+                identifier: selectedPackage.identifier
+            )
         }) {
             return .requiresExplicitReplacement(
                 installedMap: matchingMap,
@@ -88,11 +93,21 @@ struct OwnershipVerifier: Sendable {
         }
 
         let isManaged = manifest.entries.contains { entry in
-            entry.deviceKey == deviceKey
+            guard let entryIdentity = MapIdentity(
+                provider: entry.providerId,
+                region: entry.regionId
+            ) else {
+                return false
+            }
+
+            return entry.deviceKey == deviceKey
                 && entry.devicePath == map.sourceFile.path
                 && entry.filename == map.sourceFile.filename
-                && MapIdentity.normalizeProvider(entry.providerId) == identity.provider
-                && MapIdentity.normalizeRegion(entry.regionId) == identity.region
+                && MapIdentityMatcher.matches(
+                    actual: identity,
+                    expected: entryIdentity,
+                    providerRegionId: entry.regionId
+                )
                 && entry.sizeBytes == map.sizeBytes
                 && entry.sha256.caseInsensitiveCompare(actualSHA256) == .orderedSame
         }

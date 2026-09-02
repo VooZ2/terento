@@ -81,9 +81,22 @@ struct TerentoManagedFilenameGenerator: Sendable {
             }
         }
 
-        return !encodedRegion.isEmpty
-            && MapIdentity.normalizeRegion(encodedRegion)
-                == MapIdentity.normalizeRegion(regionId)
+        guard !encodedRegion.isEmpty,
+              let filenameIdentity = MapIdentity(
+                  provider: providerId,
+                  region: encodedRegion
+              ),
+              let mapIdentity = MapIdentity(
+                  provider: providerId,
+                  region: regionId
+              ) else {
+            return false
+        }
+
+        return MapIdentityMatcher.matches(
+            actual: filenameIdentity,
+            expected: mapIdentity
+        )
     }
 
     func isValid(_ filename: String) -> Bool {

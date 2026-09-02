@@ -60,7 +60,10 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
         guard object.file.path == target.expectedPath,
               object.file.filename == target.expectedFilename,
               object.file.sizeBytes == target.expectedSizeBytes,
-              object.identity == target.mapIdentity,
+              MapIdentityMatcher.matches(
+                  actual: object.identity,
+                  expected: target.mapIdentity
+              ),
               object.ownership == .managedByTerento,
               let hash = object.sha256 else {
             throw SafeDeleteTransportError.operationFailed(
@@ -114,7 +117,10 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
                 throw SafeUpdateTransportError.metadataMismatch
             }
             let hash = try sha256(of: temporaryURL)
-            guard identity == expected.identity,
+            guard MapIdentityMatcher.matches(
+                      actual: identity,
+                      expected: expected.identity
+                  ),
                   metadata.version == expected.version else {
                 throw SafeUpdateTransportError.metadataMismatch
             }
@@ -207,7 +213,10 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
 
         guard inspected.file.sizeBytes == expected.installSizeBytes,
               inspected.sha256?.caseInsensitiveCompare(expected.sha256) == .orderedSame,
-              inspected.identity == expectedIdentity,
+              MapIdentityMatcher.matches(
+                  actual: inspected.identity,
+                  expected: expectedIdentity
+              ),
               inspected.version == expected.version else {
             throw SafeUpdateTransportError.metadataMismatch
         }

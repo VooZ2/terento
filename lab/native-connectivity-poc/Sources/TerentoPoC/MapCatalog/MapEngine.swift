@@ -799,7 +799,7 @@ final class MapEngine: ObservableObject {
             if installedMap.provider == nil,
                installedMap.region == nil,
                let manifestEntry = manifestEntries.first(where: { entry in
-                   entry.devicePath == installedMap.sourceFile.path
+                   return entry.devicePath == installedMap.sourceFile.path
                        && entry.filename == installedMap.sourceFile.filename
                        && entry.sizeBytes == installedMap.sourceFile.sizeBytes
                        && MapIdentity.normalizeProvider(entry.providerId) == "custom"
@@ -813,11 +813,24 @@ final class MapEngine: ObservableObject {
                let provider = installedMap.provider,
                let region = installedMap.region,
                let manifestEntry = manifestEntries.first(where: { entry in
-                   entry.devicePath == installedMap.sourceFile.path
+                   guard let entryIdentity = MapIdentity(
+                       provider: entry.providerId,
+                       region: entry.regionId
+                   ), let installedIdentity = MapIdentity(
+                       provider: provider,
+                       region: region
+                   ) else {
+                       return false
+                   }
+
+                   return entry.devicePath == installedMap.sourceFile.path
                        && entry.filename == installedMap.sourceFile.filename
                        && entry.sizeBytes == installedMap.sourceFile.sizeBytes
-                       && MapIdentity.normalizeProvider(entry.providerId) == MapIdentity.normalizeProvider(provider)
-                       && MapIdentity.normalizeRegion(entry.regionId) == MapIdentity.normalizeRegion(region)
+                       && MapIdentityMatcher.matches(
+                           actual: installedIdentity,
+                           expected: entryIdentity,
+                           providerRegionId: entry.regionId
+                       )
                        && entry.version == version
                }),
                !manifestEntry.sha256.isEmpty {

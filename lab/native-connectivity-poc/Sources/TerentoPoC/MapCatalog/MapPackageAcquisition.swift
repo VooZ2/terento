@@ -1184,7 +1184,7 @@ struct MapPackageAcquirer: Sendable {
             state(.inspectingIMG, onStateChange)
             imgURL = try locateIMG(
                 in: workspace.extractionURL,
-                expectedIdentity: package.identity
+                expectedPackage: package
             )
         }
 
@@ -1196,7 +1196,13 @@ struct MapPackageAcquirer: Sendable {
             )
         }
 
-        guard let actualIdentity = metadataIdentity(metadata), actualIdentity == expectedIdentity else {
+        guard let actualIdentity = metadataIdentity(metadata),
+              MapIdentityMatcher.matches(
+                  actual: actualIdentity,
+                  expected: expectedIdentity,
+                  providerRegionId: package.providerRegionId,
+                  identifier: package.identifier
+              ) else {
             throw MapAcquisitionError.sourceIdentityMismatch(
                 expected: expectedIdentity,
                 actual: metadataIdentity(metadata)
@@ -1264,7 +1270,7 @@ struct MapPackageAcquirer: Sendable {
 
     private func locateIMG(
         in extractionDirectory: URL,
-        expectedIdentity: MapIdentity?
+        expectedPackage: MapPackage
     ) throws -> URL {
         let fileManager = FileManager.default
         guard let enumerator = fileManager.enumerator(
@@ -1291,11 +1297,16 @@ struct MapPackageAcquirer: Sendable {
         }
 
         let matching = candidates.filter { metadata in
-            guard let expectedIdentity,
+            guard let expectedIdentity = expectedPackage.identity,
                   let actualIdentity = metadataIdentity(metadata.metadata) else {
                 return false
             }
-            return expectedIdentity == actualIdentity
+            return MapIdentityMatcher.matches(
+                actual: actualIdentity,
+                expected: expectedIdentity,
+                providerRegionId: expectedPackage.providerRegionId,
+                identifier: expectedPackage.identifier
+            )
         }
 
         if matching.count == 1 {
@@ -1306,7 +1317,7 @@ struct MapPackageAcquirer: Sendable {
         }
 
         let actualIdentity = metadataIdentity(candidates[0].metadata)
-        if let expectedIdentity {
+        if let expectedIdentity = expectedPackage.identity {
             throw MapAcquisitionError.sourceIdentityMismatch(
                 expected: expectedIdentity,
                 actual: actualIdentity

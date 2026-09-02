@@ -10,6 +10,8 @@ tests.
 ## Preconditions
 
 - macOS and Xcode with the `Terento.xcodeproj` toolchain available;
+- Node.js for the JavaScript-backed native/web regression contracts;
+- Python 3 for static release and catalog contract checks;
 - the Developer ID Application identity for Team ID `VXALAZU3B5` in the local
   Keychain;
 - the notarytool Keychain profile `TerentoNotary` configured outside the
@@ -31,11 +33,11 @@ For a beta release, keep the app's marketing version separate from the public
 release label:
 
 ```sh
-RELEASE_TAG=v1.0.0-beta.8 \
+RELEASE_TAG=v1.0.0-beta.9 \
 Packaging/release.sh \
   --version 1.0.0 \
-  --build 8 \
-  --release-version 1.0.0-beta.8 \
+  --build 9 \
+  --release-version 1.0.0-beta.9 \
   --overwrite
 ```
 
@@ -44,8 +46,8 @@ The pipeline fails rather than silently replacing an existing artifact. Use
 The results are written to:
 
 ```text
-dist/Terento-1.0.0-beta.8-macOS-arm64.zip
-dist/Terento-1.0.0-beta.8-macOS-arm64.dmg
+dist/Terento-1.0.0-beta.9-macOS-arm64.zip
+dist/Terento-1.0.0-beta.9-macOS-arm64.dmg
 ```
 
 The command prints the final artifact size and SHA-256 checksum for both
@@ -85,8 +87,8 @@ To exercise the fresh build, tests, signing, Hardened Runtime, and runtime-path
 checks without contacting Apple or creating release artifacts:
 
 ```sh
-Packaging/release.sh --no-notarize --version 1.0.0 --build 8 \
-  --release-version 1.0.0-beta.8
+Packaging/release.sh --no-notarize --version 1.0.0 --build 9 \
+  --release-version 1.0.0-beta.9
 ```
 
 This mode explicitly reports `NOT NOTARIZED` and must not be treated as a

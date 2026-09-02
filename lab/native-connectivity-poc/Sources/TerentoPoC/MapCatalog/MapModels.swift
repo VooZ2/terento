@@ -219,6 +219,10 @@ enum MapSource: Equatable, Sendable {
 protocol MapProviderAdapter: Sendable {
     var id: String { get }
     func canonicalRegionIdentity(for package: MapPackage) -> CanonicalMapRegionIdentity?
+    /// The identity the current client parser is expected to recover from the
+    /// provider's IMG header/managed filename. This lets the catalog loader
+    /// reject metadata that a released client cannot validate safely.
+    func expectedIMGIdentity(for package: MapPackage) -> MapIdentity?
     func artifacts(for package: MapPackage) -> [MapArtifact]
 }
 
@@ -227,6 +231,10 @@ struct FreizeitkarteProviderAdapter: MapProviderAdapter, Sendable {
 
     func canonicalRegionIdentity(for package: MapPackage) -> CanonicalMapRegionIdentity? {
         FreizeitkarteMapRegionIdentityMapper().map(package: package)
+    }
+
+    func expectedIMGIdentity(for package: MapPackage) -> MapIdentity? {
+        MapIdentity(provider: id, region: package.providerRegionId)
     }
 
     func artifacts(for package: MapPackage) -> [MapArtifact] {
@@ -239,6 +247,12 @@ struct OpenTopoMapProviderAdapter: MapProviderAdapter, Sendable {
 
     func canonicalRegionIdentity(for package: MapPackage) -> CanonicalMapRegionIdentity? {
         OpenTopoMapRegionIdentityMapper().map(package: package)
+    }
+
+    func expectedIMGIdentity(for package: MapPackage) -> MapIdentity? {
+        let providerRegion = MapIdentity.normalizeRegion(package.providerRegionId)
+        let parsedRegion = providerRegion == "LITHUANIA" ? "LTU" : providerRegion
+        return MapIdentity(provider: id, region: parsedRegion)
     }
 
     func artifacts(for package: MapPackage) -> [MapArtifact] {

@@ -57,7 +57,12 @@ struct MapSourceValidator: Sendable {
             provider: metadata.provider,
             region: metadata.region
         ), let expectedIdentity = expectedPackage.identity,
-        actualIdentity == expectedIdentity else {
+        MapIdentityMatcher.matches(
+            actual: actualIdentity,
+            expected: expectedIdentity,
+            providerRegionId: expectedPackage.providerRegionId,
+            identifier: expectedPackage.identifier
+        ) else {
             throw MapSourceValidationError.identityMismatch
         }
 
