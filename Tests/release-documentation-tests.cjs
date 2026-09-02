@@ -86,4 +86,8 @@ assert.doesNotMatch(
   "Admin copy must remain release-neutral",
 );
 
+const nativeDependencyBuild = read("Packaging/NativeDependencies/build.sh");
+assert.match(nativeDependencyBuild, /install_name_tool[\s\S]*-change[\s\S]*@rpath\/libusb-1\.0\.0\.dylib/);
+assert.match(nativeDependencyBuild, /Developer-machine dependency found/);
+
 console.log(`Release documentation matches ${label}.`);

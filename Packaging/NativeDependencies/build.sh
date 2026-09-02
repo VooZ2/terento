@@ -207,6 +207,17 @@ if [ ! -f "$build_marker" ]; then
 
     cp "$libusb_prefix/lib/libusb-1.0.0.dylib" "$bundle_lib_dir/libusb-1.0.0.dylib"
     cp "$libmtp_prefix/lib/libmtp.9.dylib" "$bundle_lib_dir/libmtp.9.dylib"
+    for libusb_dependency in \
+        "$libusb_prefix/lib/libusb-1.0.0.dylib" \
+        "$libusb_prefix/lib/libusb-1.0.dylib"
+    do
+        if otool -L "$bundle_lib_dir/libmtp.9.dylib" | grep -F "$libusb_dependency" >/dev/null; then
+            install_name_tool \
+                -change "$libusb_dependency" \
+                "@rpath/libusb-1.0.0.dylib" \
+                "$bundle_lib_dir/libmtp.9.dylib"
+        fi
+    done
     cp "$libusb_prefix/include/libusb-1.0/libusb.h" "$bundle_include_dir/libusb.h"
     cp "$libmtp_prefix/include/libmtp.h" "$bundle_include_dir/libmtp.h"
     : > "$build_marker"
