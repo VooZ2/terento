@@ -149,6 +149,7 @@ assert.match(siteStyles, /\.compatibility-summary-item\s*\{[^}]*white-space:\s*n
 assert.match(siteStyles, /\.watch-card-model-row\s*\{[^}]*gap:\s*12px/s);
 assert.match(siteStyles, /\.watch-card-model-row h3\s*\{[^}]*min-width:\s*0/s);
 assert.match(siteStyles, /\.watch-card-image\s*\{[^}]*aspect-ratio:\s*1\.58[^}]*padding:\s*14px/s);
+assert.match(siteStyles, /\.watch-card-image\s*\{[^}]*background:\s*var\(--product-photo-surface\)/s);
 assert.match(siteStyles, /\.watch-card-image img\s*\{[^}]*min-width:\s*0[^}]*min-height:\s*0[^}]*width:\s*100%[^}]*height:\s*100%[^}]*object-fit:\s*contain/s);
 assert.match(siteStyles, /\.watch-card-image img\s*\{[^}]*mix-blend-mode:\s*multiply/s);
 assert.doesNotMatch(siteStyles, /\.watch-card-image img\s*\{[^}]*transform:\s*scale/s);

@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20260902-ia-navigation"
-STYLE_VERSION = "20260902-website-copy"
+STYLE_VERSION = "20260902-visual-fix"
 IMAGE_VERSION = "20260902-your-garmin"
 LANGUAGE_VERSION = "20260829-compat-language"
 LOCALIZED_CONTENT_VERSION = "20260902-website-copy"

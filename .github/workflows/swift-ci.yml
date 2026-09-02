@@ -60,6 +60,8 @@ jobs:
           Tests/run-guide-content-tests.sh
           Tests/run-public-page-layout-contract-tests.sh
           Tests/run-release-documentation-tests.sh
+          Tests/run-legal-content-tests.sh
+          Tests/run-website-seo-contract-tests.sh
       - name: Validate non-app brand tokens
         working-directory: ${{ github.workspace }}
         run: |

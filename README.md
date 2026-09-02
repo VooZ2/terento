@@ -47,17 +47,22 @@ Garmin stores its map files.
 Terento keeps the process intentionally small:
 
 - detects your connected Garmin smartwatch;
-- shows the Freizeitkarte regions available to install;
+- shows the Freizeitkarte and OpenTopoMap main-map regions available to install;
 - downloads maps from their original source;
 - checks available storage before making changes;
 - installs and verifies the map;
 - lets you update or remove maps installed by Terento; and
 - leaves Garmin's own maps and other unknown files alone.
 
-The complete Freizeitkarte catalog remains visible. Under Terento's current
-acquisition policy, downloads and updates are not offered for russia or
-Crimea. Installed Terento-owned maps retain explicit update and removal
-controls, while Garmin and other unknown files remain protected.
+The complete validated catalog for both providers remains visible. Under
+Terento's current acquisition policy, downloads and updates are not offered
+for russia or Crimea. Installed Terento-owned maps retain explicit update and
+removal controls, while Garmin and other unknown files remain protected.
+
+The Compatibility page is the official public list. The app, API, and release
+documentation use the same criteria for each exact model and variant:
+`TESTING` means 0 successful installations, `TESTED` means 1–2, `SUPPORTED`
+means 3–4, and `VERIFIED` means 5 or more.
 
 <p align="center">
   <img

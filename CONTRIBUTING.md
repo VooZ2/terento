@@ -40,11 +40,12 @@ separately reviewed brand-system decision is required for exceptions.
 
 ## Development environment
 
-The current native proof of concept expects:
+The current native source module and production app expect:
 
 - macOS 13 or newer;
 - Swift 6 or newer and Xcode with SwiftUI support;
 - Homebrew;
+- Node.js for JavaScript-backed web, native, admin, and release checks;
 - libmtp 1.1.23; and
 - libusb 1.0.30, used by libmtp.
 
@@ -53,8 +54,13 @@ From the repository root, the normal build and test commands are:
     cd lab/native-connectivity-poc
     swift build
     cd ../..
+    Tests/run-backend-tests.sh
     for test_script in Tests/run-*.sh; do "$test_script"; done
     for test_script in lab/native-connectivity-poc/Tests/run-*.sh; do "$test_script"; done
+
+If Node.js is not on `PATH`, set `TERENTO_NODE_BIN` to its executable before
+running the checks. The repository's web, native, backend, and release
+runners use the same override and do not depend on a machine-specific path.
 
 Hardware tests require an explicitly authorised personal Garmin device. They are not a substitute for automated tests and should not be run against a device containing irreplaceable data.
 

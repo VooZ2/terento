@@ -5,24 +5,21 @@ the SwiftPM app module, its tests, developer tools, and resources under this
 directory. The root instructions remain authoritative for product scope,
 architecture, safety, documentation, and delivery.
 
-## Stage 2 branch and review boundary
+## Current module and review boundary
 
-- All Stage 2 app work belongs on `release/beta.8` and its single draft PR
-  into `beta`.
-- Keep the draft PR current: commit narrowly, push the branch, and update the
-  existing draft PR. Do not open an overlapping app PR or merge this branch.
-- Stage 2A governance is complete as the documentation baseline. Stage 0 of
-  the beta.8 Map Manager expansion is also documentation-only. Do not change
-  app runtime code, resources,
-  screenshots, Xcode packaging, release metadata, or version numbers here.
-- Later beta.8 Map Manager stages may extend the approved Map Manager scope
-  only after their explicit product, UI/UX, and root hard-scope gates have
-  passed. Each stage is a separate reviewed functional change and must be
-  validated locally before it is added to PR #61. Keep one integration PR; do
-  not hide functional work inside visual refinement commits.
-- Intermediate Stage 2 work is not a release. Do not create tags, GitHub
-  Releases, DMG/ZIP/notarized artifacts, update manifests, public downloads,
-  or website announcements.
+- The production app is the root Xcode target; this directory remains the
+  SwiftPM source module and native regression harness consumed by that target.
+- The current beta release is maintained through the repository release
+  manifest, release notes, and the official compatibility list. Do not use an
+  old beta branch, draft PR, or local artifact as the current status source.
+- Provider scope is Freizeitkarte plus OpenTopoMap through the shared
+  provider-neutral path. Optional OpenTopoMap contour installation remains
+  deferred.
+- Do not change app runtime code, resources, screenshots, Xcode packaging,
+  release metadata, or version numbers as incidental cleanup. Functional
+  changes require their own reviewed scope and test evidence.
+- Release artifacts, public downloads, and website announcements are created
+  only through the documented release workflow after all release gates pass.
 
 ## Current app baseline
 
@@ -39,9 +36,10 @@ The user should see a finished Terento version of this product, not a new
 product concept. Do not move the app to a new architecture or source layout
 as part of visual work.
 
-The beta.8 Map Manager expansion may extend the existing Manage maps surface
-after its relevant UI/UX decision gate. Stage 0 does not authorize a new
-information architecture or runtime behavior.
+Provider selection, custom `.img` import, external single-map Remove,
+ownership presentation, and safety confirmations are current functionality
+and must retain their reviewed boundaries. A new information architecture or
+runtime behavior still requires a separate reviewed decision.
 
 ## Refinement boundary
 
@@ -66,11 +64,10 @@ would:
 Major redesign approval is a separate decision gate. Default to a small
 refinement when the goal can be met without crossing this boundary.
 
-The beta.8 functional Map Manager scope is intentionally outside visual
-refinement. Provider selection, custom `.img` import, external single-map
-Remove, ownership presentation, and safety confirmations require their own
-UI/UX decisions before implementation. Stage 0 records those gates but does
-not implement them.
+The functional Map Manager scope is intentionally outside visual refinement.
+Provider selection, custom `.img` import, external single-map Remove,
+ownership presentation, and safety confirmations are reviewed functionality;
+any change to their boundaries requires its own UI/UX and safety decision.
 
 ## Brand, typography, and accessibility
 
@@ -108,10 +105,11 @@ native control without an explicit reviewed reason.
 ## Resources, versions, and validation
 
 - Do not update app screenshots, AppIcon, logo assets, or other app resources
-  during Stage 2A. Later screenshot changes remain review-only until release
-  freeze.
+  during documentation-only work. Screenshot changes remain part of a
+  reviewed application release.
 - Do not change `CFBundleVersion`, version labels, distribution metadata, or
-  update behavior during intermediate Stage 2 work.
+  update behavior during an intermediate task unless the task is explicitly a
+  release preparation.
 - Classify validation by risk: governance-only checks are sufficient for
   documentation changes; visual/refactor changes require an app build and
   affected tests; user-visible behavior changes require focused behavior

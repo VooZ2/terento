@@ -5,7 +5,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 const styles = read("site/styles.css");
-const styleVersion = "20260902-website-copy";
+const styleVersion = "20260902-visual-fix";
 const localizedContentVersion = "20260902-website-copy";
 
 const cssBlock = (selector) => {
@@ -16,10 +16,11 @@ const cssBlock = (selector) => {
 };
 
 assert.match(styles, /--internal-page-intro-padding-top:\s*clamp\(34px, 5vw, 64px\)/);
+assert.match(styles, /--product-photo-surface:\s*var\(--footer-text\)/);
 for (const selector of [".compatibility-hero", ".guide-intro", ".download-main"]) {
   assert.match(cssBlock(selector), /var\(--internal-page-intro-padding-top\)/, `${selector} must use the shared intro token`);
 }
-assert.match(cssBlock(".hero"), /padding:\s*clamp\(72px, 10vw, 144px\)/, "Home keeps its landing-hero spacing");
+assert.match(cssBlock(".hero"), /padding:\s*clamp\(48px, 5vw, 72px\)/, "Home hero begins within the first viewport");
 assert.doesNotMatch(cssBlock(".hero"), /internal-page-intro/);
 
 assert.match(cssBlock(".shell"), /width:\s*min\(calc\(100% - 48px\), var\(--max-width\)\)/);

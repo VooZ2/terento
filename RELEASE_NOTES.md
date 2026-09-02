@@ -52,12 +52,14 @@ a claim that every exact watch has been independently verified.
   63 Freizeitkarte and 177 OpenTopoMap catalog rows.
 - The exact current 219,494,190-byte OpenTopoMap Lithuania archive passes ZIP,
   artifact-size, production parser, release, and catalog identity validation.
-- The catalog backend suite passes 167 tests and the exact live 240-package
-  catalog passes the beta.9 client contract.
+- The complete catalog backend regression suite passes, and the exact live
+  240-package catalog passes the beta.9 client contract. The test runner
+  reports its current count automatically so release notes do not carry a
+  number that can drift.
 - The arm64 release build is Developer ID signed, notarized by Apple with no
   issues, stapled, Gatekeeper accepted, and launch-smoke verified from both the
   ZIP and DMG paths.
-- Owner hardware verification on the preceding beta.9 release candidate
+- Owner hardware verification on the beta.9 release candidate
   confirms OpenTopoMap Lithuania installation, map visibility on the fēnix 8,
   persistence after disconnect/reconnect, and discovery in Manage maps. The
   final rebuild changes only catalog timestamp decoding and diagnostics; its

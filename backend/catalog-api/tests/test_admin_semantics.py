@@ -4,6 +4,7 @@ from contextlib import contextmanager
 import inspect
 import json
 from datetime import datetime, timezone
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -135,9 +136,18 @@ class ReviewSummaryDatabase(Database):
 class AdminSemanticsTests(unittest.TestCase):
     @staticmethod
     def _node() -> str:
-        node = shutil.which("node") or shutil.which("nodejs")
+        configured = os.environ.get("TERENTO_NODE_BIN", "").strip()
+        if configured:
+            node = configured if Path(configured).is_absolute() else shutil.which(configured)
+        else:
+            node = shutil.which("node") or shutil.which("nodejs")
+        if node and not Path(node).is_file():
+            node = None
         if not node:
-            raise AssertionError("Node.js is required for Admin JavaScript regression tests")
+            raise AssertionError(
+                "Node.js is required for Admin JavaScript regression tests; "
+                "install it or set TERENTO_NODE_BIN"
+            )
         return node
 
     def _run_node(self, source: str, *arguments: str) -> subprocess.CompletedProcess[str]:

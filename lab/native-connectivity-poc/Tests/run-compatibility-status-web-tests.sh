@@ -38,9 +38,5 @@ assert "min-width: 74px" in css
 print("Compatibility status web tests passed (statuses, exact variants, disclosure, shared badge contract).")
 PY
 
-node_bin="${NODE_BIN:-$(command -v node || true)}"
-if [[ -z "$node_bin" ]]; then
-    echo "Node.js is required for compatibility family data tests." >&2
-    exit 1
-fi
-"$node_bin" "$repo_root/Tests/compatibility-data-tests.cjs"
+. "$repo_root/Tests/node-runtime.sh"
+"$NODE_BIN" "$repo_root/Tests/compatibility-data-tests.cjs"

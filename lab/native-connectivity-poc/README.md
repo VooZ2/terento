@@ -1,6 +1,6 @@
 # Terento native connectivity PoC
 
-This document covers the legacy SwiftPM connectivity target and its native
+This document covers the SwiftPM connectivity target and its native
 Garmin MTP proof-of-concept tests. The production app is the root
 `Terento.xcodeproj` macOS target, which consumes this source module and now has
 a guarded map-installation flow. The SwiftPM PoC window remains read-only;
