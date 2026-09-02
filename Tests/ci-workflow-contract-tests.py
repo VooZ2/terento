@@ -56,6 +56,8 @@ def main() -> int:
     assert "OPERATIONS_INGEST_SECRET=%s" in deploy_api
     assert "OPERATIONS_INGEST_SECRET: \\${OPERATIONS_INGEST_SECRET}" in deploy_api
     assert "chmod --reference=\"$env_file\"" in deploy_api
+    assert "traefik.http.routers.terento-operations.rule" in deploy_api
+    assert "traefik.http.routers.terento-operations.service" not in deploy_api
     deploy_site = (WORKFLOWS / "deploy-site.yml").read_text(encoding="utf-8")
     assert "Retain website deployment health" in deploy_site
     codeql = (WORKFLOWS / "codeql.yml").read_text(encoding="utf-8")
