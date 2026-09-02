@@ -2,7 +2,9 @@
 <html lang="cs" data-language="cs" data-page="guide">
   <head>
     <script defer src="/site-shell.js?v=20260902-ia-navigation"></script>
-    <link rel="stylesheet" href="/styles.css?v=20260902-home-content">
+    <link rel="stylesheet" href="/styles.css?v=20260902-website-copy">
+    <script defer src="/reading-state.js?v=20260902-reading-state"></script>
+    <script defer src="/guide-progress.js?v=20260902-guide-progress"></script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -25,7 +27,7 @@
     <meta property="og:image:type" content="image/png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="Terento showing a connected Garmin smartwatch on macOS">
+    <meta property="og:image:alt" content="Terento zobrazuje připojené hodinky Garmin v systému macOS">
     <meta property="og:locale" content="cs_CZ">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Instalace map třetích stran do Garminu z Macu — Terento">
@@ -61,7 +63,7 @@
       "headline": "Jak nainstalovat mapy třetích stran do hodinek Garmin z Macu",
       "description": "Instalujte podporované mapy třetích stran do hodinek Garmin z Macu s Apple Silicon. Připojte hodinky, vyberte mapu a nainstalujte ji s Terento.",
       "datePublished": "2026-08-28T00:00:00Z",
-      "dateModified": "2026-08-31T00:00:00Z",
+      "dateModified": "2026-09-02T00:00:00Z",
       "mainEntityOfPage": {
         "@id": "https://terento.app/cs/guides/install-garmin-maps-mac/"
       },
@@ -142,8 +144,18 @@
               <a class="download-action" href="/cs/download/" data-umami-event="download-cta-click" data-umami-event-location="guide-hero">Stáhnout betu <span aria-hidden="true">→</span></a>
               <a class="text-link" href="/cs/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="guide-preflight">Zobrazit kompatibilitu <span aria-hidden="true">→</span></a>
             </div>
-            <p class="guide-facts"><span>macOS 13+</span><span aria-hidden="true">·</span><span>Apple Silicon</span><span aria-hidden="true">·</span><span>Mapy od poskytovatelů + místní import .img</span></p>
-            <p class="guide-meta"><span><strong>Naposledy ověřeno:</strong> <time datetime="2026-08-31T00:00:00Z">31. srpna 2026</time></span><span aria-hidden="true">·</span><span><strong>Platí pro:</strong> Terento 1.0.0-beta.9</span></p>
+            <p class="guide-facts"><span>macOS 13+</span><span aria-hidden="true">·</span><span>Apple Silicon</span><span aria-hidden="true">·</span><span>Mapy třetích stran + místní import</span></p>
+            <p class="guide-meta"><span><strong>Naposledy ověřeno:</strong> <time datetime="2026-09-02T00:00:00Z">2. září 2026</time></span><span aria-hidden="true">·</span><span><strong>Platí pro:</strong> Terento 1.0.0-beta.9</span></p>
+            <nav class="guide-progress" data-guide-progress aria-label="Části průvodce">
+              <p class="guide-progress-eyebrow">Stručně</p>
+              <ol>
+                <li><a href="#before-you-start"><span class="guide-progress-number" aria-hidden="true">01</span>Než začnete</a></li>
+                <li><a href="#steps"><span class="guide-progress-number" aria-hidden="true">02</span>Pět kroků</a></li>
+                <li><a href="#troubleshooting"><span class="guide-progress-number" aria-hidden="true">03</span>Řešení potíží</a></li>
+                <li><a href="#faq-help"><span class="guide-progress-number" aria-hidden="true">04</span>FAQ na domovské stránce</a></li>
+                <li><a href="#context"><span class="guide-progress-number" aria-hidden="true">05</span>Stručný kontext</a></li>
+              </ol>
+            </nav>
           </div>
         </header>
 
@@ -152,19 +164,19 @@
             <div class="guide-section-heading"><p class="eyebrow">Rychlá kontrola</p><h2 id="before-you-start-title">Než začnete</h2></div>
             <div class="guide-preflight-copy">
               <ul class="guide-checklist"><li>Mac s Apple Silicon</li><li>macOS 13 nebo novější</li><li>Hodinky Garmin s podporou map</li><li>USB kabel s podporou přenosu dat</li><li>Nejnovější beta Terento</li><li>Dostatek volného místa v hodinkách</li></ul>
-              <p>Stránka Kompatibilita zobrazuje přesné modely a varianty s reálnými doklady instalace. Nejde o úplný seznam všech hodinek Garmin, které mohou fungovat. Po připojení Terento zkontroluje rozpoznané zařízení a řekne vám, zda lze bezpečně pokračovat v instalaci.</p>
+              <p>Oficiální stránka Kompatibilita je jediným veřejným seznamem konkrétních modelů a variant s reálnými doklady instalace. Není příslibem kompatibility se všemi hodinkami Garmin. Po připojení Terento hodinky zkontroluje a řekne vám, zda lze bezpečně pokračovat.</p>
               <a class="text-link" href="/cs/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="guide-preflight">Zobrazit aktuální doklady kompatibility <span aria-hidden="true">→</span></a>
             </div>
           </section>
 
-          <section class="guide-steps" aria-labelledby="steps-title">
+          <section class="guide-steps" id="steps" aria-labelledby="steps-title">
             <div class="guide-section-heading"><p class="eyebrow">Postup</p><h2 id="steps-title">Instalace v pěti krocích</h2></div>
             <ol class="guide-timeline"><li class="guide-step">
               <div class="guide-step-marker" aria-hidden="true">01</div>
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Stáhněte Terento</h3>
-                  <p>Stáhněte nejnovější notářsky ověřenou betu, otevřete DMG a přesuňte Terento do složky Aplikace.</p>
+                  <p>Stáhněte nejnovější betu, otevřete ji a přesuňte Terento do složky Aplikace.</p>
                   <p class="guide-step-note">Je vyžadován Apple Silicon a macOS 13 nebo novější.</p>
 
                 </div>
@@ -176,7 +188,7 @@
                 <div class="guide-step-copy">
                   <h3>Připojte Garmin</h3>
                   <p>Připojte hodinky datovým USB kabelem. Mohou se zobrazit až za 1–2 minuty. Nechte je připojené, dokud Terento nedokončí rozpoznání.</p>
-                  <p class="guide-step-note">Ukončete Garmin Express, OpenMTP nebo jinou aplikaci, která může hodinky právě používat.</p>
+                  <p class="guide-step-note">Ukončete Garmin Express nebo jinou aplikaci, která může hodinky právě používat.</p>
 
                 </div>
                 <figure class="guide-screenshot">
@@ -193,7 +205,7 @@
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Vyberte mapu</h3>
-                  <p>Vyberte poskytovatele map a region. Terento zobrazí velikost mapy, aktuální volné místo a odhad úložiště před instalací. Z Macu můžete také přímo importovat podporovanou mapu .img třetí strany.</p>
+                  <p>Vyberte mapu a oblast. Terento před instalací zobrazí velikost mapy a volné místo. Z Macu můžete také přidat podporovaný mapový soubor.</p>
 
 
                 </div>
@@ -211,7 +223,7 @@
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Zkontrolujte a nainstalujte</h3>
-                  <p>Zkontrolujte vybrané mapy a dopad na úložiště a poté spusťte instalaci. Nechte hodinky připojené, dokud Terento nedokončí přenos a ověření mapy.</p>
+                  <p>Zkontrolujte výběr a spusťte instalaci. Nechte hodinky připojené, dokud Terento mapu nepřenese a nezkontroluje.</p>
                   <p class="guide-step-note">Terento kontroluje zdroj mapy, dostupné úložiště, dokončený přenos a konečný výsledek.</p>
 
                 </div>
@@ -229,7 +241,7 @@
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Zkontrolujte výsledek</h3>
-                  <p>Až Terento oznámí dokončení instalace, hodinky bezpečně vysuňte a ověřte, že je mapa v zařízení dostupná.</p>
+                  <p>Až Terento oznámí dokončení, hodinky bezpečně odpojte a ověřte, že je mapa dostupná.</p>
                   <p class="guide-step-note">Viditelnost map a nastavení aktivit se mohou podle modelu Garmin lišit. Pokud je zapnuté sdílení kompatibility, výsledek pomůže potvrdit kompatibilitu přesného modelu a varianty.</p>
 
                 </div>
@@ -239,7 +251,7 @@
           </section>
 
           <section class="guide-after-steps" aria-label="Další krok">
-            <p>Hodinky zůstanou chráněné, zatímco Terento ověří zdroj, úložiště, přenos a výsledek.</p>
+            <p>Terento zkontroluje mapu, volné místo a výsledek, aby hodinky zůstaly chráněné.</p>
             <a class="download-action" href="/cs/download/" data-umami-event="download-cta-click" data-umami-event-location="guide-after-steps">Stáhnout betu <span aria-hidden="true">→</span></a>
           </section>
 
@@ -270,12 +282,12 @@
             </section></div>
           </section>
 
-          <section class="guide-faq-link" aria-label="Další pomoc">
-            <div class="guide-faq-link-copy"><p class="eyebrow">Další pomoc</p><p>Máte ještě otázky?</p></div>
-            <a class="text-link" href="/cs/#faq" data-umami-event="faq-link-click" data-umami-event-location="guide-troubleshooting">Zobrazit celé FAQ <span aria-hidden="true">→</span></a>
+          <section class="guide-faq-link" id="faq-help" aria-label="Další pomoc">
+            <div class="guide-faq-link-copy"><p class="eyebrow">Další pomoc</p><p>Potřebujete rychlou odpověď? FAQ na domovské stránce řeší časté otázky.</p></div>
+            <a class="text-link" href="/cs/#faq" data-reading-context="home-faq" data-umami-event="faq-link-click" data-umami-event-location="guide-troubleshooting">Otevřít FAQ na domovské stránce <span aria-hidden="true">→</span></a>
           </section>
 
-          <section class="guide-context" aria-labelledby="context-title">
+          <section class="guide-context" id="context" aria-labelledby="context-title">
             <div class="guide-section-heading"><p class="eyebrow">Stručný kontext</p><h2 id="context-title">Proč záleží na nativním postupu pro Mac</h2></div>
             <div class="guide-context-copy"><p>Garmin v současnosti uvádí, že <a href="https://support.garmin.com/en-GB/?faq=bcmC4za1sy9hykGnopP8l7&amp;identifier=310&amp;tab=topics" rel="noopener noreferrer">BaseCamp</a> pro Mac je určen pro Macy s procesorem Intel a že Rosetta může umožnit jeho používání na Apple Silicon. Podobné doporučení Garmin uvádí pro <a href="https://support.garmin.com/en-US/?faq=4QVp7mKSIA1LDk5fc1OHX8" rel="noopener noreferrer">Garmin Express</a>. Apple vysvětluje, jak <a href="https://support.apple.com/en-ca/102527" rel="noopener noreferrer">Rosetta</a> spouští aplikace pro Intel na Apple Silicon. Terento je nativní pro Apple Silicon a zaměřuje se konkrétně na instalaci a správu map třetích stran.</p><p>Terento nenahrazuje Garmin Express pro oficiální aktualizace zařízení ani BaseCamp pro širší plánování tras.</p></div>
           </section>

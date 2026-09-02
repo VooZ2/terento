@@ -2,7 +2,9 @@
 <html lang="pl" data-language="pl" data-page="guide">
   <head>
     <script defer src="/site-shell.js?v=20260902-ia-navigation"></script>
-    <link rel="stylesheet" href="/styles.css?v=20260902-home-content">
+    <link rel="stylesheet" href="/styles.css?v=20260902-website-copy">
+    <script defer src="/reading-state.js?v=20260902-reading-state"></script>
+    <script defer src="/guide-progress.js?v=20260902-guide-progress"></script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -25,7 +27,7 @@
     <meta property="og:image:type" content="image/png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="Terento showing a connected Garmin smartwatch on macOS">
+    <meta property="og:image:alt" content="Terento pokazuje podłączony zegarek Garmin w systemie macOS">
     <meta property="og:locale" content="pl_PL">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Instalacja map innych firm na Garminie z Maca — Terento">
@@ -61,7 +63,7 @@
       "headline": "Jak instalować mapy innych firm na zegarku Garmin z Maca",
       "description": "Instaluj obsługiwane mapy innych firm na zegarku Garmin z Maca z Apple Silicon. Podłącz zegarek, wybierz mapę i zainstaluj ją z Terento.",
       "datePublished": "2026-08-28T00:00:00Z",
-      "dateModified": "2026-08-31T00:00:00Z",
+      "dateModified": "2026-09-02T00:00:00Z",
       "mainEntityOfPage": {
         "@id": "https://terento.app/pl/guides/install-garmin-maps-mac/"
       },
@@ -142,8 +144,18 @@
               <a class="download-action" href="/pl/download/" data-umami-event="download-cta-click" data-umami-event-location="guide-hero">Pobierz betę <span aria-hidden="true">→</span></a>
               <a class="text-link" href="/pl/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="guide-preflight">Zobacz kompatybilność <span aria-hidden="true">→</span></a>
             </div>
-            <p class="guide-facts"><span>macOS 13+</span><span aria-hidden="true">·</span><span>Apple Silicon</span><span aria-hidden="true">·</span><span>Mapy dostawców + lokalny import .img</span></p>
-            <p class="guide-meta"><span><strong>Ostatni przegląd:</strong> <time datetime="2026-08-31T00:00:00Z">31 sierpnia 2026</time></span><span aria-hidden="true">·</span><span><strong>Dotyczy:</strong> Terento 1.0.0-beta.9</span></p>
+            <p class="guide-facts"><span>macOS 13+</span><span aria-hidden="true">·</span><span>Apple Silicon</span><span aria-hidden="true">·</span><span>Mapy innych firm + lokalny import</span></p>
+            <p class="guide-meta"><span><strong>Ostatni przegląd:</strong> <time datetime="2026-09-02T00:00:00Z">2 września 2026</time></span><span aria-hidden="true">·</span><span><strong>Dotyczy:</strong> Terento 1.0.0-beta.9</span></p>
+            <nav class="guide-progress" data-guide-progress aria-label="Sekcje instrukcji">
+              <p class="guide-progress-eyebrow">W skrócie</p>
+              <ol>
+                <li><a href="#before-you-start"><span class="guide-progress-number" aria-hidden="true">01</span>Zanim zaczniesz</a></li>
+                <li><a href="#steps"><span class="guide-progress-number" aria-hidden="true">02</span>Pięć kroków</a></li>
+                <li><a href="#troubleshooting"><span class="guide-progress-number" aria-hidden="true">03</span>Rozwiązywanie problemów</a></li>
+                <li><a href="#faq-help"><span class="guide-progress-number" aria-hidden="true">04</span>FAQ na stronie głównej</a></li>
+                <li><a href="#context"><span class="guide-progress-number" aria-hidden="true">05</span>Kilka informacji</a></li>
+              </ol>
+            </nav>
           </div>
         </header>
 
@@ -152,19 +164,19 @@
             <div class="guide-section-heading"><p class="eyebrow">Szybka kontrola</p><h2 id="before-you-start-title">Zanim zaczniesz</h2></div>
             <div class="guide-preflight-copy">
               <ul class="guide-checklist"><li>Mac z Apple Silicon</li><li>macOS 13 lub nowszy</li><li>Zegarek Garmin z obsługą map</li><li>Kabel USB obsługujący przesyłanie danych</li><li>Najnowsza beta Terento</li><li>Wystarczająca ilość wolnego miejsca na zegarku</li></ul>
-              <p>Strona kompatybilności pokazuje konkretne modele i warianty z rzeczywistymi dowodami instalacji. Nie jest pełną listą wszystkich zegarków Garmin, które mogą działać. Po podłączeniu Terento sprawdzi wykryte urządzenie i powie, czy instalację można bezpiecznie kontynuować.</p>
+              <p>Oficjalna strona kompatybilności jest jedyną publiczną listą konkretnych modeli i wariantów z rzeczywistymi dowodami instalacji. Nie jest obietnicą zgodności z każdym zegarkiem Garmin. Po podłączeniu Terento sprawdzi zegarek i powie, czy można bezpiecznie kontynuować.</p>
               <a class="text-link" href="/pl/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="guide-preflight">Zobacz aktualne dowody kompatybilności <span aria-hidden="true">→</span></a>
             </div>
           </section>
 
-          <section class="guide-steps" aria-labelledby="steps-title">
+          <section class="guide-steps" id="steps" aria-labelledby="steps-title">
             <div class="guide-section-heading"><p class="eyebrow">Przebieg instalacji</p><h2 id="steps-title">Zainstaluj w pięciu krokach</h2></div>
             <ol class="guide-timeline"><li class="guide-step">
               <div class="guide-step-marker" aria-hidden="true">01</div>
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Pobierz Terento</h3>
-                  <p>Pobierz najnowszą notaryzowaną betę, otwórz DMG i przenieś Terento do folderu Programy.</p>
+                  <p>Pobierz najnowszą betę, otwórz ją i przenieś Terento do folderu Programy.</p>
                   <p class="guide-step-note">Wymagane są Apple Silicon i macOS 13 lub nowszy.</p>
 
                 </div>
@@ -176,7 +188,7 @@
                 <div class="guide-step-copy">
                   <h3>Podłącz Garmina</h3>
                   <p>Podłącz zegarek kablem USB do transmisji danych. Może pojawić się dopiero po 1–2 minutach. Pozostaw go podłączonego, aż Terento zakończy wykrywanie.</p>
-                  <p class="guide-step-note">Zamknij Garmin Express, OpenMTP i inne aplikacje, które mogą już korzystać z zegarka.</p>
+                  <p class="guide-step-note">Zamknij Garmin Express i inne aplikacje, które mogą już korzystać z zegarka.</p>
 
                 </div>
                 <figure class="guide-screenshot">
@@ -193,7 +205,7 @@
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Wybierz mapę</h3>
-                  <p>Wybierz dostawcę mapy i region. Terento pokazuje rozmiar mapy, aktualną ilość wolnego miejsca i przewidywane zajęte miejsce przed instalacją. Możesz też bezpośrednio z Maca zaimportować obsługiwaną mapę .img innej firmy.</p>
+                  <p>Wybierz mapę i region. Terento pokaże rozmiar mapy i wolne miejsce przed instalacją. Możesz też dodać obsługiwany plik mapy z Maca.</p>
 
 
                 </div>
@@ -211,7 +223,7 @@
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Sprawdź i zainstaluj</h3>
-                  <p>Sprawdź wybrane mapy i wpływ na pamięć, a następnie rozpocznij instalację. Pozostaw zegarek podłączony, aż Terento zakończy przesyłanie i weryfikację mapy.</p>
+                  <p>Sprawdź wybór i rozpocznij instalację. Pozostaw zegarek podłączony, aż Terento prześle i sprawdzi mapę.</p>
                   <p class="guide-step-note">Terento sprawdza źródło mapy, dostępną pamięć, ukończone przesyłanie i końcowy wynik.</p>
 
                 </div>
@@ -229,7 +241,7 @@
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Sprawdź wynik</h3>
-                  <p>Gdy Terento poinformuje o ukończeniu instalacji, bezpiecznie odłącz zegarek i sprawdź, czy mapa jest dostępna na urządzeniu.</p>
+                  <p>Gdy Terento poinformuje o zakończeniu, bezpiecznie odłącz zegarek i sprawdź, czy mapa jest dostępna.</p>
                   <p class="guide-step-note">Widoczność map i ustawienia aktywności mogą różnić się zależnie od modelu Garmin. Jeśli udostępnianie danych o kompatybilności jest włączone, wynik pomaga potwierdzić kompatybilność konkretnego modelu i wariantu.</p>
 
                 </div>
@@ -239,7 +251,7 @@
           </section>
 
           <section class="guide-after-steps" aria-label="Następny krok">
-            <p>Zegarek pozostaje chroniony, gdy Terento sprawdza źródło, pamięć, przesyłanie i wynik.</p>
+            <p>Terento sprawdza mapę, wolne miejsce i wynik, aby chronić Twój zegarek.</p>
             <a class="download-action" href="/pl/download/" data-umami-event="download-cta-click" data-umami-event-location="guide-after-steps">Pobierz betę <span aria-hidden="true">→</span></a>
           </section>
 
@@ -270,12 +282,12 @@
             </section></div>
           </section>
 
-          <section class="guide-faq-link" aria-label="Więcej pomocy">
-            <div class="guide-faq-link-copy"><p class="eyebrow">Więcej pomocy</p><p>Masz jeszcze pytania?</p></div>
-            <a class="text-link" href="/pl/#faq" data-umami-event="faq-link-click" data-umami-event-location="guide-troubleshooting">Zobacz pełne FAQ <span aria-hidden="true">→</span></a>
+          <section class="guide-faq-link" id="faq-help" aria-label="Więcej pomocy">
+            <div class="guide-faq-link-copy"><p class="eyebrow">Więcej pomocy</p><p>Potrzebujesz szybkiej odpowiedzi? FAQ na stronie głównej odpowiada na częste pytania.</p></div>
+            <a class="text-link" href="/pl/#faq" data-reading-context="home-faq" data-umami-event="faq-link-click" data-umami-event-location="guide-troubleshooting">Otwórz FAQ na stronie głównej <span aria-hidden="true">→</span></a>
           </section>
 
-          <section class="guide-context" aria-labelledby="context-title">
+          <section class="guide-context" id="context" aria-labelledby="context-title">
             <div class="guide-section-heading"><p class="eyebrow">Kilka informacji</p><h2 id="context-title">Dlaczego natywna obsługa Maca ma znaczenie</h2></div>
             <div class="guide-context-copy"><p>Garmin informuje obecnie, że <a href="https://support.garmin.com/en-GB/?faq=bcmC4za1sy9hykGnopP8l7&amp;identifier=310&amp;tab=topics" rel="noopener noreferrer">BaseCamp</a> na Maca jest przeznaczony dla komputerów z procesorem Intel, a Rosetta może umożliwić jego użycie na Apple Silicon. Podobną informację Garmin podaje dla <a href="https://support.garmin.com/en-US/?faq=4QVp7mKSIA1LDk5fc1OHX8" rel="noopener noreferrer">Garmin Express</a>. Apple wyjaśnia, jak <a href="https://support.apple.com/en-ca/102527" rel="noopener noreferrer">Rosetta</a> uruchamia aplikacje Intel na Apple Silicon. Terento jest natywne dla Apple Silicon i skupia się konkretnie na instalowaniu i zarządzaniu mapami innych firm.</p><p>Terento nie zastępuje Garmin Express w zakresie oficjalnych aktualizacji urządzenia ani BaseCamp w szerszym planowaniu tras.</p></div>
           </section>

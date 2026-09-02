@@ -3,7 +3,7 @@
 Trumpas pranešimas apie viešą svetainę **terento.app** ir Terento macOS beta
 programą. Tai atskiras puslapis nuo [teisinės informacijos](/legal/).
 
-Tai nėra Freizeitkarte ar OpenStreetMap politika. Žemėlapius atsisiunčiate iš
+Tai nėra Freizeitkarte, OpenTopoMap ar OpenStreetMap politika. Žemėlapius atsisiunčiate iš
 pirminio teikėjo; tie failai nėra Terento asmens duomenų rinkinys.
 
 **Būsena.** Projektą kaip privatus asmuo skelbia Gediminas. Privatumo

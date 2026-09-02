@@ -39,6 +39,7 @@
     summarySuccesses: document.querySelector('[data-summary="successes"]'),
     summaryUpdated: document.querySelector('[data-summary="updated"]'),
     summaryUpdatedLine: document.querySelector('[data-summary-updated]'),
+    evidenceNote: document.querySelector('[data-compatibility-evidence-note]'),
     statusList: document.querySelector("#compatibility-status-list"),
   };
 
@@ -234,6 +235,7 @@
   elements.status.addEventListener("change", (event) => { state.status = event.target.value; render(); });
   elements.family.addEventListener("change", (event) => { state.family = event.target.value; render(); });
   elements.sort.addEventListener("change", (event) => { state.sort = event.target.value; render(); });
+  if (elements.evidenceNote && locale.evidenceNote) elements.evidenceNote.textContent = locale.evidenceNote;
   renderStatusExplanations();
   load();
   // Public evidence is deliberately cached at the API edge, so a quiet

@@ -2,7 +2,7 @@
 
 This notice covers the public website **terento.app** and the Terento macOS beta. It is separate from the [legal notices](/legal/).
 
-It does not cover the privacy practices of Freizeitkarte or OpenStreetMap. Map files are provided by their respective providers and are not personal data collected by Terento.
+It does not cover the privacy practices of Freizeitkarte, OpenTopoMap, or OpenStreetMap. Map files are provided by their respective providers and are not personal data collected by Terento.
 
 **Data controller:** Private individual. **Contact:** [privacy@terento.app](mailto:privacy@terento.app).
 

@@ -42,6 +42,13 @@ def esc(value: str) -> str:
     return html.escape(value, quote=True)
 
 
+def social_image_alt(config: dict, page: dict) -> str:
+    value = config["socialImageAlt"]
+    if isinstance(value, dict):
+        return value.get(page["locale"], value.get("en", ""))
+    return value
+
+
 def page_metadata_block(config: dict, page: dict) -> str:
     base = config["baseUrl"].rstrip("/")
     canonical = f"{base}{page['path']}"
@@ -49,7 +56,7 @@ def page_metadata_block(config: dict, page: dict) -> str:
     locale = config["locales"][page["locale"]]
     lines = [
         f'    <meta name="description" content="{esc(page["description"])}">',
-        '    <meta name="robots" content="index,follow">',
+        f'    <meta name="robots" content="{"index" if page.get("indexable", True) else "noindex"},follow">',
         f'    <link rel="canonical" href="{esc(canonical)}">',
     ]
     if page.get("alternates"):
@@ -74,7 +81,7 @@ def page_metadata_block(config: dict, page: dict) -> str:
             f'    <meta property="og:image:type" content="{esc(config["socialImageType"])}">',
             f'    <meta property="og:image:width" content="{config["socialImageWidth"]}">',
             f'    <meta property="og:image:height" content="{config["socialImageHeight"]}">',
-            f'    <meta property="og:image:alt" content="{esc(config["socialImageAlt"])}">',
+            f'    <meta property="og:image:alt" content="{esc(social_image_alt(config, page))}">',
             f'    <meta property="og:locale" content="{locale}">',
             '    <meta name="twitter:card" content="summary_large_image">',
             f'    <meta name="twitter:title" content="{esc(page["title"])}">',
@@ -152,6 +159,10 @@ def validate_rendered(config: dict) -> list[str]:
             errors.append(f"{page['path']}: title uses a pipe separator")
         if not desc_match or html.unescape(desc_match.group(1)) != page["description"]:
             errors.append(f"{page['path']}: description mismatch")
+        expected_robots = f'{"index" if page.get("indexable", True) else "noindex"},follow'
+        robots_match = re.search(r'<meta\s+name="robots"\s+content="([^"]+)"', source, re.IGNORECASE)
+        if not robots_match or robots_match.group(1) != expected_robots:
+            errors.append(f"{page['path']}: robots directive mismatch")
         if len(re.findall(r"<title\b", source, re.IGNORECASE)) != 1:
             errors.append(f"{page['path']}: expected exactly one title")
         for pattern, label in [
@@ -222,7 +233,8 @@ def main() -> int:
         return 1
     if args.report:
         print_report(config)
-    print(f"Metadata audit passed for {len(config['pages'])} indexable pages.")
+    indexable_count = sum(1 for page in config["pages"] if page.get("indexable", True))
+    print(f"Metadata audit passed for {indexable_count} indexable pages.")
     return 0
 
 

@@ -18,6 +18,7 @@ COPY = {
         "community_heading": "Have another Garmin smartwatch with map support?",
         "community_body": "Try the beta and share the result.",
         "community_download": "Download the beta",
+        "evidence_note": "These counts come from successful installations shared with Terento. They are not Garmin certification.",
     },
     "de": {
         "home": "Lies die vollständige Mac-Installationsanleitung.",
@@ -28,6 +29,7 @@ COPY = {
         "community_heading": "Hast du eine weitere Garmin-Smartwatch mit Kartenunterstützung?",
         "community_body": "Teste die Beta und teile das Ergebnis.",
         "community_download": "Beta herunterladen",
+        "evidence_note": "Diese Zahlen stammen aus erfolgreichen Installationen, die mit Terento geteilt wurden. Sie sind keine Garmin-Zertifizierung.",
     },
     "fr": {
         "home": "Lisez le guide complet d’installation sur Mac.",
@@ -38,6 +40,7 @@ COPY = {
         "community_heading": "Vous avez une autre montre Garmin compatible avec les cartes ?",
         "community_body": "Testez la bêta et partagez le résultat.",
         "community_download": "Télécharger la bêta",
+        "evidence_note": "Ces chiffres proviennent d’installations réussies partagées avec Terento. Ils ne constituent pas une certification Garmin.",
     },
     "pl": {
         "home": "Przeczytaj pełną instrukcję instalacji na Macu.",
@@ -48,6 +51,7 @@ COPY = {
         "community_heading": "Masz inny zegarek Garmin obsługujący mapy?",
         "community_body": "Przetestuj betę i udostępnij wynik.",
         "community_download": "Pobierz wersję beta",
+        "evidence_note": "Te dane pochodzą z udanych instalacji udostępnionych Terento. Nie są certyfikatem firmy Garmin.",
     },
     "cs": {
         "home": "Přečtěte si úplného průvodce instalací na Macu.",
@@ -58,6 +62,7 @@ COPY = {
         "community_heading": "Máte jiné hodinky Garmin s podporou map?",
         "community_body": "Vyzkoušejte betu a sdílejte výsledek.",
         "community_download": "Stáhnout betu",
+        "evidence_note": "Tato čísla pocházejí z úspěšných instalací sdílených s Terento. Nejde o certifikaci Garmin.",
     },
     "it": {
         "home": "Leggi la guida completa all’installazione su Mac.",
@@ -68,6 +73,7 @@ COPY = {
         "community_heading": "Hai un altro smartwatch Garmin con supporto mappe?",
         "community_body": "Prova la beta e condividi il risultato.",
         "community_download": "Scarica la beta",
+        "evidence_note": "Questi dati provengono da installazioni riuscite condivise con Terento. Non sono una certificazione Garmin.",
     },
 }
 
@@ -141,12 +147,12 @@ def add_home_link(locale: str) -> None:
     path = path_for(locale, "index.html")
     source = path.read_text(encoding="utf-8")
     answer = {
-        "en": "Yes. Terento provides a guided native macOS workflow for installing supported third-party maps without BaseCamp or a general-purpose MTP file manager. You can also import a supported third-party .img map from your Mac. Apple Silicon is required.",
-        "de": "Ja. Terento bietet einen geführten nativen macOS-Ablauf zum Installieren unterstützter Drittanbieter-Karten ohne BaseCamp oder einen allgemeinen MTP-Dateimanager. Du kannst auch eine unterstützte Drittanbieter-.img-Karte von deinem Mac importieren. Apple Silicon ist erforderlich.",
-        "fr": "Oui. Terento propose un parcours macOS natif guidé pour installer des cartes tierces prises en charge, sans BaseCamp ni gestionnaire MTP généraliste. Vous pouvez aussi importer une carte .img tierce prise en charge depuis votre Mac. Apple Silicon est requis.",
-        "pl": "Tak. Terento oferuje prowadzony, natywny dla macOS sposób instalowania obsługiwanych map innych firm bez BaseCamp i bez uniwersalnego menedżera plików MTP. Możesz też zaimportować obsługiwaną mapę .img innej firmy z Maca. Wymagany jest Apple Silicon.",
-        "cs": "Ano. Terento nabízí řízený nativní postup pro macOS k instalaci podporovaných map třetích stran bez BaseCampu a bez univerzálního správce souborů MTP. Můžete také přímo z Macu importovat podporovanou mapu .img třetí strany. Je vyžadován Apple Silicon.",
-        "it": "Sì. Terento offre un flusso nativo guidato per macOS per installare mappe di terze parti supportate, senza BaseCamp né un file manager MTP generico. Puoi anche importare dal Mac una mappa .img di terze parti supportata. È richiesto Apple Silicon.",
+        "en": "Yes. Terento takes you from choosing a map to installing it on your watch. You can also add a compatible map file from your Mac. Apple Silicon is required.",
+        "de": "Ja. Terento führt dich von der Kartenauswahl bis zur Installation auf der Uhr. Du kannst auch eine kompatible Kartendatei von deinem Mac hinzufügen. Apple Silicon ist erforderlich.",
+        "fr": "Oui. Terento vous guide du choix de la carte jusqu’à son installation sur la montre. Vous pouvez aussi ajouter un fichier cartographique compatible depuis votre Mac. Apple Silicon est requis.",
+        "pl": "Tak. Terento prowadzi od wyboru mapy do instalacji na zegarku. Możesz też dodać zgodny plik mapy z Maca. Wymagany jest Apple Silicon.",
+        "cs": "Ano. Terento vás provede od výběru mapy až po instalaci do hodinek. Z Macu můžete také přidat kompatibilní mapový soubor. Je vyžadován Apple Silicon.",
+        "it": "Sì. Terento ti guida dalla scelta della mappa all’installazione sullo smartwatch. Puoi anche aggiungere dal Mac un file cartografico compatibile. È richiesto Apple Silicon.",
     }[locale]
     sentence = COPY[locale]["home"]
     visible = f'<p>{answer}</p>'
@@ -176,6 +182,7 @@ def add_download_link(locale: str) -> None:
 def add_compatibility_link(locale: str) -> None:
     path = path_for(locale, "compatibility/index.html")
     source = path.read_text(encoding="utf-8")
+    hero_count = 1
     if 'class="compatibility-hero-copy"' not in source:
         source, hero_count = re.subn(
             r'(<section class="compatibility-hero"[^>]*>\s*<div class="shell compatibility-hero-inner">)([\s\S]*?)(</div>\s*</section>)',
@@ -185,6 +192,16 @@ def add_compatibility_link(locale: str) -> None:
         )
         if not hero_count:
             raise RuntimeError(f"Compatibility hero not found for {locale}")
+    evidence_note = f'<p class="compatibility-evidence-note" data-compatibility-evidence-note>{COPY[locale]["evidence_note"]}</p>'
+    if 'data-compatibility-evidence-note' not in source:
+        source, note_count = re.subn(
+            r'(<div class="compatibility-how-body">\s*<p>[\s\S]*?</p>)',
+            rf'\1{evidence_note}',
+            source,
+            count=1,
+        )
+        if not note_count:
+            raise RuntimeError(f"Compatibility evidence explanation not found for {locale}")
     guide = f'<a class="text-link compatibility-guide-link" href="{localized_guide(locale)}">{COPY[locale]["compatibility"]} <span aria-hidden="true">→</span></a>'
     download = f'<a class="download-action download-action-primary compatibility-community-link" href="{localized_download(locale)}" data-umami-event="download-cta-click" data-umami-event-location="compatibility-community-testing">{COPY[locale]["community_download"]}</a>'
     community = (
