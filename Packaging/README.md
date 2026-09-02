@@ -26,7 +26,7 @@ tests.
 Run from the repository root:
 
 ```sh
-Packaging/release.sh --version 1.0.0 --build 8
+Packaging/release.sh --version 1.0.0 --build 9
 ```
 
 For a beta release, keep the app's marketing version separate from the public
@@ -112,6 +112,9 @@ Before distributing a public build:
 - update `site/updates/macos-arm64.json` with the matching version, build,
   minimum macOS, channel, and canonical DMG `downloadURL`;
 - provide a concise plain-text `summary` and the canonical `releaseNotesURL`;
+- synchronize all six visible Download pages with
+  `python3 scripts/normalize-release-pages.py --write`, then require
+  `python3 scripts/normalize-release-pages.py --check` to pass;
 - regenerate the public JSON-LD from the release manifest and visible FAQ
   content with `python3 scripts/normalize-structured-data.py --write`, then
   run it again with `--check` before publishing;

@@ -26,15 +26,15 @@ if grep -Fq 'shareCompatibilityEvidence' "$connect_screen" \
     exit 1
 fi
 
-if ! grep -Fq 'Text("Help improve Terento")' "$connect_screen" \
-    || ! grep -Fq 'Share anonymous installation data to help us understand device compatibility and improve support for other Garmin users.' "$connect_screen" \
+if ! grep -Fq 'Text("Help improve Garmin compatibility")' "$connect_screen" \
+    || ! grep -Fq 'Share anonymous installation results to help improve Garmin compatibility.' "$connect_screen" \
     || grep -Fq 'Selected by default;' "$connect_screen"; then
     print -u2 "FAIL: Ready compatibility-sharing copy is not concise"
     exit 1
 fi
 
-if ! grep -Fq 'Compatibility report sent.' "$connect_screen" \
-    || ! grep -Fq 'Compatibility report could not be sent. It remains on this Mac.' "$connect_screen" \
+if ! grep -Fq 'Compatibility reports are up to date.' "$connect_screen" \
+    || ! grep -Fq 'Terento will retry automatically.' "$connect_screen" \
     || grep -Fq 'Compatibility report was not sent because sharing was turned off.' "$connect_screen" \
     || grep -Fq 'Reason: \(reason\)' "$connect_screen" \
     || grep -Fq 'Last upload response:' "$connect_screen"; then
@@ -42,7 +42,7 @@ if ! grep -Fq 'Compatibility report sent.' "$connect_screen" \
     exit 1
 fi
 
-if ! grep -Fq 'Open-source macOS app for installing and managing Freizeitkarte maps on Garmin devices.' "$about"; then
+if ! grep -Fq 'Open-source macOS app for installing and managing third-party maps on compatible Garmin smartwatches.' "$about"; then
     print -u2 "FAIL: About description still exposes internal map-origin wording"
     exit 1
 fi

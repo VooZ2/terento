@@ -109,8 +109,10 @@ for path in home_files:
 
 for path in download_files:
     html = path.read_text(encoding="utf-8")
+    update = json.loads((root / "site/updates/macos-arm64.json").read_text(encoding="utf-8"))
+    expected_version = f'v{update["releaseLabel"]}'
     versions = set(re.findall(r"v1\.0\.0-beta\.\d+", html))
-    assert versions == {"v1.0.0-beta.8"}, f"{path}: expected current beta.8 release metadata"
+    assert versions == {expected_version}, f"{path}: expected current release metadata"
     items = anchors(path)
     dmg = [item for item in items if urlparse(item["href"]).path.lower().endswith(".dmg")]
     zip_files = [item for item in items if urlparse(item["href"]).path.lower().endswith(".zip")]
@@ -118,6 +120,8 @@ for path in download_files:
     assert len(zip_files) == 1, f"{path}: expected one ZIP download"
     assert "/releases/download/" in dmg[0]["href"], f"{path}: unexpected DMG URL {dmg[0]['href']}"
     assert "/releases/download/" in zip_files[0]["href"], f"{path}: unexpected ZIP URL {zip_files[0]['href']}"
+    assert dmg[0]["href"] == update["downloadURL"], f"{path}: DMG URL drifted from update manifest"
+    assert zip_files[0]["href"] == update["downloadURL"][:-4] + ".zip", f"{path}: ZIP URL drifted from update manifest"
 
 compatibility_files = [
     root / "site/compatibility/index.html",
@@ -133,11 +137,10 @@ for path in compatibility_files:
     assert 'data-umami-event-location="compatibility-community-testing"' in html, f"{path}: missing compatibility CTA location"
 
 update = json.loads((root / "site/updates/macos-arm64.json").read_text(encoding="utf-8"))
-assert update["build"] == 8
-assert update["releaseLabel"] == "1.0.0-beta.8"
-assert update["downloadURL"].endswith("/Terento-1.0.0-beta.8-macOS-arm64.dmg")
-assert update["sha256"] != "PENDING_NOTARIZED_BETA8_DMG_SHA256", "beta.8 DMG checksum is still pending"
-assert re.fullmatch(r"[0-9a-f]{64}", update["sha256"]), "beta.8 DMG checksum is invalid"
+assert update["build"] > 0
+assert re.fullmatch(r"1\.0\.0-beta\.\d+", update["releaseLabel"])
+assert update["downloadURL"].endswith(f'/Terento-{update["releaseLabel"]}-macOS-arm64.dmg')
+assert re.fullmatch(r"[0-9a-f]{64}", update["sha256"])
 
 assert "data-umami-event" not in privacy_script
 assert "data-umami-event-file" not in privacy_script
