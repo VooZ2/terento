@@ -225,7 +225,28 @@ struct MapCatalogDocumentDecoder: Sendable {
     func decode(_ data: Data) throws -> MapCatalog {
         do {
             let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
+            decoder.dateDecodingStrategy = .custom { decoder in
+                let container = try decoder.singleValueContainer()
+                let value = try container.decode(String.self)
+                let formatOptions: [ISO8601DateFormatter.Options] = [
+                    [.withInternetDateTime, .withFractionalSeconds],
+                    [.withInternetDateTime]
+                ]
+
+                for options in formatOptions {
+                    let formatter = ISO8601DateFormatter()
+                    formatter.formatOptions = options
+                    formatter.timeZone = TimeZone(secondsFromGMT: 0)
+                    if let date = formatter.date(from: value) {
+                        return date
+                    }
+                }
+
+                throw DecodingError.dataCorruptedError(
+                    in: container,
+                    debugDescription: "Expected an ISO 8601 timestamp with optional fractional seconds."
+                )
+            }
             let document = try decoder.decode(MapCatalogDocument.self, from: data)
             return try document.catalog()
         } catch let error as MapCatalogError {
