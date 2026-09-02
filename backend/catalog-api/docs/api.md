@@ -9,15 +9,21 @@ https://api.terento.app
 The map and device catalog routes are public read-only metadata. Compatibility
 evidence and map-operation statistics are separate data boundaries: the former
 is an explicit product-purpose sharing flow, while the latter accepts only
-privacy-minimised map operation events. Provider controls and statistics are
-private authenticated admin routes. No route serves map binaries.
+privacy-minimised map operation events. In beta.8, compatibility evidence is
+accepted for the explicit reviewed provider allowlist (`freizeitkarte` and
+`opentopomap`) so the two streams can be linked by a shared operation ID when
+both opt-ins are enabled. Provider controls and statistics are private
+authenticated admin routes. No route serves map binaries.
 
 ## `POST /compatibility/events`
 
 Accepts at most 16 KiB of allowlisted schema-version-1, schema-version-2, or schema-version-3 JSON after client
 opt-in. Event UUIDs are idempotent. Unknown fields, local paths, malformed
-payloads, non-Freizeitkarte providers, and privacy-prohibited data are
-rejected. A random per-event deletion token is required; older beta payloads
+payloads, providers outside the current compatibility-evidence allowlist, and
+privacy-prohibited data are rejected. The compatibility evidence provider
+allowlist is explicit and remains separate from the provider-neutral map
+catalog; a new provider must be added to that allowlist and pass the normal
+review before its compatibility events are accepted. A random per-event deletion token is required; older beta payloads
 without one are rejected rather than retained without a self-service deletion
 credential. The endpoint is rate limited and stores allowlisted columns in the
 separate compatibility table. The original JSON body is not retained; only
@@ -70,25 +76,48 @@ by the service health cycle.
 
 ## `GET https://api.terento.app/admin`
 
-Returns an aggregate HTML operator dashboard after database-backed login. The
-dashboard uses the Terento branded English admin shell, exact model/variant
-columns, five installation KPI cards, a separate historical-failure note, and
-client-side search/status/sort controls; these controls do not change backend
-aggregation. The first administrator can
+Returns the authenticated operator Overview. The default period is the last 24
+hours; `?period=7d`, `?period=30d`, and `?period=all` are also supported. Its
+primary operational domain is the existing `map_download_event` table: Map
+installs, Map install success, Failed map installs, recent map activity, the
+installs-over-time chart, and failure-first attention links use distinct map
+operation IDs. Compatibility evidence remains a secondary, explicitly
+labelled block with its own variants, write-started attempts, evidence success,
+open errors, and normalized failure reasons. If the selected domain has no
+data, event-derived values use an em dash rather than zero. No new client
+telemetry, public statistics, or map-event payload is created by this page.
+
+The first administrator can
 be created only once through `/admin/setup` with the environment-provided
 bootstrap secret. Passwords use salted PBKDF2-SHA256;
 opaque sessions and CSRF values are stored only as SHA-256 hashes. Cookies are
 Secure, HttpOnly, SameSite=Strict, and scoped to `/admin`. Login/setup attempts
 are rate limited. Pages include no-store, noindex and restrictive CSP headers.
+
+## `GET https://api.terento.app/admin/installations`
+
+Returns the authenticated compatibility/installations view. It keeps the
+existing five KPI cards, historical-failure distinction, exact model/variant
+table, search, compatibility-status filter, sort, and model drill-down. The
+quick filters `All`, `Failed`, `Open errors`, and `Successful` are
+presentation-only filters over the existing aggregate rows. The page labels
+the compatibility counters `Write-started attempts` and `Successful`, plus the
+explicitly scoped `Evidence success` percentage.
+The canonical compatibility view itself uses active, write-started operations
+and excludes pre-write failures; the rendered page also retains historical
+failures for operator review. Open errors remain a separate unresolved
+diagnostic state. The route is the target of the earlier
+`/internal/compatibility/` redirect.
+
 The first screen stops at the KPI summary, filters, and one-row-per-exact-
-model/variant table. Attempts and successes use active, write-started
-operations; Errors counts unresolved problematic operations. Resolved and
-legacy diagnostics remain available only in model history and do not enter
-these summary counters. Identity-pending evidence is shown separately.
-Selecting a model or its error count opens the private per-model diagnostics
-view below.
-`/internal/compatibility/` redirects to this route for the earlier local
-implementation.
+model/variant table. Resolved and legacy diagnostics remain available in model
+history and may contribute to its historical-failure presentation, but are not
+part of the canonical compatibility view. Identity-pending evidence is shown
+separately. Selecting a model or its error count opens the private per-model
+diagnostics view below. Device history uses the existing event groups and
+provides 25/50-row presentation pagination. Failed rows use the existing
+normalized error category or failure stage as a concise reason; raw diagnostic
+codes remain behind the per-operation Details action.
 
 ## `GET https://api.terento.app/admin/diagnostics?identity=...`
 
@@ -104,6 +133,12 @@ technical fields. Successful normal evidence remains historical evidence and
 does not appear as an open problem. Identity-pending success is a separate
 state from Failed. This is an additive admin-only route and does not alter any
 native, public, or existing device API contract.
+
+The device detail history keeps the exact model/variant scope, supports All,
+Successful, Failed, Open errors, and Resolved errors filters, and uses a
+25/50-row presentation page. The provider detail primary health disclosure
+shows the newest check; its history disclosure contains only previous checks,
+so the newest row is not repeated.
 
 ## `GET https://api.terento.app/admin/campaign-links`
 
@@ -260,7 +295,7 @@ Responses use `Cache-Control: no-store`.
 
 Returns an additive provider-neutral catalog. `schemaVersion: 2` identifies the
 new provider/package/artifact fields, while `catalogVersion: 1`, the legacy map
-fields, and `sourceURL` remain for the current FZK macOS client. The response
+fields, and `sourceURL` remain for existing macOS clients. The response
 contains all validated packages known to enabled or paused prebuilt adapters;
 catalog membership is distinct from acquisition availability. The collector
 keeps original provider download URLs and never downloads or proxies map
@@ -368,9 +403,10 @@ storage gate while making both meanings explicit. Artifact `sourceUrl` is
 always an original provider URL. `checksumSha256` is optional until a
 provider-published checksum is available. `main` is required and `contours`
 is optional; artifact validation and package availability are independent.
-Providers are registered only through known server-side adapters. OpenTopoMap
-is visible in the local beta.8 candidate but remains `PAUSED` until its source
-and package validation gate is activated by an operator.
+Providers are registered only through known server-side adapters. A provider's
+catalog visibility, lifecycle status, source health, and acquisition
+availability remain separate; publishing metadata never activates a provider
+or grants a device write path.
 
 ## `GET /admin/providers.json`
 
@@ -392,7 +428,9 @@ detail page shows metadata, license/attribution, provider-level original
 source links, and progressive-disclosure sections for download sources,
 regions/packages, health details/history, collection history, and retained
 provider history. Large source and package lists have client-side search,
-broken-only filters, and pagination. It also provides `Check now`, `Collect
+broken-only filters, 25/50-row pagination, and no zero-item package-source
+disclosure. An empty collection uses a compact `Collection · No runs yet`
+state. It also provides `Check now`, `Collect
 catalog`, `Pause`/`Activate`, and an overflow `Retire` control. A request
 without a valid admin session redirects to `/admin/login`; the page never
 serves map binaries.
@@ -403,8 +441,10 @@ Provider detail also returns an `activationGate` projection. Its
 `canActivate` value is false until the latest health check is `HEALTHY`, a
 successful catalog collection is recorded, the stored current package set
 matches that collection, all current packages are `AVAILABLE`, and every
-required artifact is present, validated, and free of broken links. OpenTopoMap
-additionally requires the expected `177` packages and main artifacts.
+required artifact is present, validated, and free of broken links. A provider
+may add a stricter completeness requirement in its reviewed adapter policy;
+such a requirement is provider-specific evidence, not a universal package
+count.
 
 ## `GET /admin/providers/{id}/health`
 
@@ -473,23 +513,60 @@ identifier and does not alter compatibility evidence.
 
 Returns private aggregate map-operation rows with `event_count`, distinct
 `operation_count`, first/last occurrence, provider, map, region, event type,
-and outcome. Supported query filters are `provider`, `map`, `region`,
+and outcome. Where the existing registry has names, admin rows also include
+`provider_name` and `map_package_name` for human-readable popularity tables;
+`region_display_name` is an additive display-only region label. The technical IDs remain available.
+Supported query filters are `provider`, `map`, `region`,
 `dateFrom`, `dateTo`, and `eventType`. The response is no-store/noindex and
-does not expose individual event payloads or device identifiers.
+does not expose individual event payloads or device identifiers. Each response
+row is an event group, not a complete download/install total: a single map
+operation can produce started, completed, and failed event groups. Admin KPI
+totals count the distinct operations for the relevant completed/failed event
+type, while compatibility evidence remains a separate data source.
+The response also includes an additive `linkage` summary. It matches one
+operation from each stream only when their UUID `operationId` values are equal;
+the server first aggregates each stream to one row per operation, so a
+multi-map install is never counted once per child map. `linkedInstallationCount`
+and `mapOnlyInstallationCount` describe map operations that emitted an install
+event, while `linkedSuccessfulInstallCount` and `linkedFailedInstallCount`
+use the linked watch evidence outcome. A missing watch event is coverage data,
+not an inferred installation failure. This field is private admin data and
+does not recalculate or merge the existing compatibility and map-operation
+aggregates.
+The linkage summary contains `mapOperationCount`, `linkedOperationCount`,
+`mapInstallationCount`, `linkedInstallationCount`,
+`mapOnlyInstallationCount`, `linkedWriteStartedInstallCount`,
+`linkedSuccessfulInstallCount`, `linkedFailedInstallCount`,
+`linkedPrewriteFailureCount`, and `linkageRate`.
+`linkedPrewriteFailureCount` is the subset that failed before a device write;
+it remains visible for traceability but is not folded into the existing
+write-started compatibility success-rate aggregate.
+
+The response's `rows` remain the complete filtered aggregate used for KPI and
+popularity calculations. The additive `detailRows` projection is bounded for
+the Event detail disclosure. `detailPage` and `detailPageSize` (`25` or `50`)
+select its page, and `detailTotal` reports the number of filtered aggregate
+groups. This keeps the event-detail DOM bounded without changing aggregate
+totals. These pagination parameters are private admin presentation controls.
 
 ## `GET /admin/map-statistics`
 
 Authenticated, no-store/noindex HTML dashboard for the same aggregate read
-model. It supports 7-day, 30-day, 90-day, and all-time ranges plus provider,
-map, region, and event-type filters. It displays completed/failed downloads,
-download and install success rates, top maps/regions, per-provider popularity,
-provider health, and broken provider package/link counts. Primary KPI cards
-show completed downloads, download success, completed installs, and install
-success; reliability is shown separately for failed installs, failed downloads,
-and provider issues. Map/region/event filters are under `More filters`, event
-detail is collapsed, and missing events use an explicit empty state and em
-dashes rather than silently presented zeros. Unauthenticated requests redirect
-to `/admin/login`.
+model. It supports Last 24 hours, Last 7 days, Last 30 days, and All time
+ranges plus provider, map, region, and event-type filters. It displays map
+operation totals, map-package download/install totals, success rates, Top 5
+maps with a single-table View all disclosure, collapsed Regions, per-provider
+popularity, provider health, and broken provider package/link counts. When a
+provider filter is selected, the health, issue, and per-provider popularity
+summaries are scoped to that provider. The UI labels the distinction between
+distinct map operations and map-package records because one operation may
+contain multiple packages. Overview and Map statistics therefore do not imply
+identical totals. Compatibility Installations remain an all-time evidence
+view. Missing or unknown values use an explicit neutral state or em dash,
+rather than silently presented zeros. Unauthenticated requests redirect to
+`/admin/login`. Linkage is possible only when the app's map-statistics and
+compatibility-evidence choices are both enabled for the same installation
+operation.
 
 ## `GET /devices/catalog.json`
 

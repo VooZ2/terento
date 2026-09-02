@@ -24,9 +24,11 @@ from .admin import (
     diagnostics_page,
     devices_page,
     map_statistics_page,
+    overview_page,
     provider_detail_page,
     providers_page,
     _admin_device_payload,
+    _admin_map_display_name,
     _normalise_github_issue_reference,
     hash_password,
     login_page,
@@ -291,13 +293,101 @@ class CatalogService:
         return event, inserted
 
     def map_statistics(self, query: dict[str, str]) -> dict[str, Any]:
-        filters = validate_statistics_filters(query)
+        periods = {
+            "24h": timedelta(hours=24),
+            "7d": timedelta(days=7),
+            "30d": timedelta(days=30),
+            "all": None,
+        }
+        period = str(query.get("period") or "all").strip().lower()
+        if period not in periods:
+            raise MapEventValidationError("invalid_period_filter")
+        filter_query = {
+            key: value for key, value in query.items()
+            if key not in {"detailPage", "detailPageSize", "period"}
+        }
+        if periods[period] is not None:
+            filter_query["dateFrom"] = (
+                datetime.now(timezone.utc) - periods[period]
+            ).isoformat()
+        filters = validate_statistics_filters(filter_query)
+        try:
+            detail_page = max(1, int(query.get("detailPage", "1") or "1"))
+            detail_page_size = int(query.get("detailPageSize", "25") or "25")
+        except (TypeError, ValueError) as exc:
+            raise MapEventValidationError("invalid_detail_pagination") from exc
+        if detail_page_size not in {25, 50}:
+            raise MapEventValidationError("invalid_detail_page_size")
         rows = self.database.map_statistics(filters)
+        rows = [
+            {
+                **row,
+                "display_name": _admin_map_display_name(
+                    row.get("map_package_name"),
+                    row.get("region"),
+                    row.get("map_package_id"),
+                ),
+                "region_display_name": _admin_map_display_name(row.get("region")),
+            }
+            for row in rows
+        ]
+        detail_total = len(rows)
+        detail_pages = max(1, (detail_total + detail_page_size - 1) // detail_page_size)
+        detail_page = min(detail_page, detail_pages)
+        detail_rows = self.database.map_statistics(
+            filters,
+            limit=detail_page_size,
+            offset=(detail_page - 1) * detail_page_size,
+        )
+        detail_rows = [
+            {
+                **row,
+                "display_name": _admin_map_display_name(
+                    row.get("map_package_name"),
+                    row.get("region"),
+                    row.get("map_package_id"),
+                ),
+                "region_display_name": _admin_map_display_name(row.get("region")),
+            }
+            for row in detail_rows
+        ]
+        linkage = self.database.map_statistics_linkage(filters)
         return {
             "schemaVersion": 1,
-            "filters": query,
+            "filters": {**query, "period": period},
             "generatedAt": datetime.now(timezone.utc),
             "rows": rows,
+            "detailRows": detail_rows,
+            "detailTotal": detail_total,
+            "detailPage": detail_page,
+            "detailPageSize": detail_page_size,
+            "linkage": linkage,
+        }
+
+    def admin_overview(self, period: str = "24h") -> dict[str, Any]:
+        periods = {
+            "24h": timedelta(hours=24),
+            "7d": timedelta(days=7),
+            "30d": timedelta(days=30),
+            "all": None,
+        }
+        if period not in periods:
+            period = "24h"
+        duration = periods[period]
+        since = (
+            datetime.now(timezone.utc) - duration
+            if duration is not None
+            else datetime(1970, 1, 1, tzinfo=timezone.utc)
+        )
+        return {
+            "schemaVersion": 1,
+            "period": period,
+            "since": since,
+            # Keep map-operation telemetry and compatibility evidence as
+            # distinct admin domains. Neither changes the public API payload.
+            "data": self.database.admin_overview_map_snapshot(since, period=period),
+            "compatibility": self.database.admin_overview_snapshot(since),
+            "providers": self.admin_providers().get("providers", []),
         }
 
     def asset_response(self, request_path: str) -> tuple[bytes, str, str] | None:
@@ -617,7 +707,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 self._handle_public_models(send_body=send_body)
                 return
             if request_path == "/internal/compatibility/":
-                self._redirect("/admin", send_body=send_body)
+                self._redirect("/admin/installations", send_body=send_body)
                 return
             if request_path.startswith("/admin"):
                 self._handle_admin_get(request_path, send_body=send_body)
@@ -951,7 +1041,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 identity = query.get("identity", [""])[0].strip()
                 canonical_device_id = query.get("canonical_device_id", [""])[0].strip()
                 if not identity:
-                    self._redirect("/admin", send_body=send_body)
+                    self._redirect("/admin/installations", send_body=send_body)
                     return
                 try:
                     statistics = service.compatibility_statistics()
@@ -990,7 +1080,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     return
                 self._send_admin_html(body, send_body=send_body)
                 return
-            if request_path in {"/admin", "/admin/"}:
+            if request_path in {"/admin/installations", "/admin/installations/"}:
                 try:
                     body = dashboard_page(
                         service.compatibility_statistics(), session, csrf_token,
@@ -1001,6 +1091,27 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 except Exception:
                     LOGGER.exception("compatibility statistics failed")
                     self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "statistics_unavailable"}, send_body=send_body, cache_control="no-store")
+                    return
+                self._send_admin_html(body, send_body=send_body)
+                return
+            if request_path in {"/admin", "/admin/"}:
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                period = query.get("period", ["24h"])[-1]
+                try:
+                    body = overview_page(
+                        service.admin_overview(period),
+                        session,
+                        csrf_token,
+                    )
+                except Exception:
+                    LOGGER.exception("admin overview failed")
+                    self._send_json(
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                        {"error": "overview_unavailable"},
+                        send_body=send_body,
+                        cache_control="no-store",
+                        noindex=True,
+                    )
                     return
                 self._send_admin_html(body, send_body=send_body)
                 return

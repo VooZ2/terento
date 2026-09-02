@@ -4,8 +4,9 @@
 
 The source is Garmin's official [smartwatch category](https://www.garmin.com/en-US/c/wearables-smartwatches/) and the official
 category JSON endpoint used by that page. The collector runs weekly on Monday
-at 03:00 UTC after the Freizeitkarte collector. It never scrapes or fetches
-external sources during an API request.
+at 03:00 UTC after the map-collection phase (currently the reference provider
+collector; future provider collectors run through their reviewed adapters). It
+never scrapes or fetches external sources during an API request.
 
 The source category is the initial scope for Garmin watch/wearable discovery.
 The collector does not expand into unrelated automotive, marine, cycling,

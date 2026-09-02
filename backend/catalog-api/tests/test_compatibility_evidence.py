@@ -57,6 +57,43 @@ class FakeEvidenceDatabase:
             "total": 3,
         }
 
+    def admin_overview_snapshot(self, since):
+        return {
+            "operationCount": 1,
+            "successfulInstallCount": 1,
+            "failedInstallCount": 0,
+            "openErrorCount": 0,
+            "writeStartedCount": 1,
+            "hasData": True,
+            "recentActivity": [],
+            "failureReasons": [],
+        }
+
+    def admin_overview_map_snapshot(self, since, *, period="24h"):
+        return {
+            "eventCount": 0,
+            "completedInstallCount": 0,
+            "failedInstallCount": 0,
+            "installSuccessRate": None,
+            "hasData": False,
+            "recentActivity": [],
+            "attention": [],
+            "trend": [],
+            "bucket": "hour",
+        }
+
+    def provider_rows(self):
+        return [{
+            "provider_id": "freizeitkarte",
+            "provider_name": "Freizeitkarte",
+            "adapter_id": "freizeitkarte",
+            "status": "ACTIVE",
+            "health": "HEALTHY",
+            "active_package_count": 1,
+            "broken_package_count": 0,
+            "broken_url_count": 0,
+        }]
+
     def insert_compatibility_event(self, value):
         if value["id"] in self.events:
             return False
@@ -336,9 +373,9 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         }
         body = dashboard_page([row], {"username": "gediminas"}, "csrf", public_stats_enabled=True).decode()
         self.assertIn("Installations", body)
-        self.assertIn("Installation activity and compatibility evidence from Terento users.", body)
+        self.assertIn("All-time compatibility evidence from Terento users.", body)
         self.assertIn('class="admin-kpi-grid installation-kpis"', body)
-        self.assertIn("<span>Install attempts</span><strong>1</strong>", body)
+        self.assertIn("<span>Write-started attempts</span><strong>1</strong>", body)
         self.assertIn('class="filter-bar admin-filter-bar"', body)
         self.assertIn(">51 mm<", body)
         self.assertIn("Latest activity", body)
@@ -348,7 +385,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertNotIn("ADMINISTRAVIMAS", body)
         self.assertNotIn("Georgia", body)
         self.assertNotIn("Logged in as", body)
-        self.assertIn(">Attempts<", body)
+        self.assertIn(">Write-started attempts<", body)
         self.assertIn("logo-sky.svg", body)
         self.assertIn("Includes resolved historical failures. Open errors shows only unresolved problems.", body)
         self.assertIn("data-admin-timestamp", body)
@@ -468,6 +505,21 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertEqual(database.parameters["canonicalDeviceId"], "garmin-fenix-8-51-amoled")
         self.assertEqual(database.parameters["identityResolutionState"], "RESOLVED")
 
+    def test_beta8_known_otm_provider_is_accepted_for_operation_linkage(self):
+        validated = validate_event(json.dumps(event(
+            schemaVersion=2,
+            provider="OpenTopoMap",
+            operationId="b8098c1a-f86e-11da-bd1a-00112444be1e",
+        )).encode())
+        self.assertEqual(validated["provider"], "opentopomap")
+        self.assertEqual(
+            validated["operationId"],
+            "b8098c1a-f86e-11da-bd1a-00112444be1e",
+        )
+
+        with self.assertRaisesRegex(EvidenceValidationError, "unsupported_provider"):
+            validate_event(json.dumps(event(provider="openmtbmap")).encode())
+
     def test_schema_v3_accepts_structured_diagnostics_and_rejects_raw_or_inconsistent_data(self):
         payload = event(
             schemaVersion=3,
@@ -556,7 +608,13 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         allowed, body = self.request("GET", "/admin", headers={"Cookie": cookie_header})
         self.assertEqual(allowed.status, 200)
         self.assertEqual(allowed.headers["X-Robots-Tag"], "noindex, nofollow")
-        self.assertIn(b"f\xc4\x93nix 8", body)
+        self.assertIn(b">Overview<", body)
+
+        installations, installations_body = self.request(
+            "GET", "/admin/installations", headers={"Cookie": cookie_header}
+        )
+        self.assertEqual(installations.status, 200)
+        self.assertIn(b"f\xc4\x93nix 8", installations_body)
 
         devices, devices_body = self.request("GET", "/admin/devices", headers={"Cookie": cookie_header})
         self.assertEqual(devices.status, 200)

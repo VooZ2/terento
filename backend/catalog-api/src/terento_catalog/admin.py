@@ -114,8 +114,16 @@ def _parse_timestamp(value: Any) -> datetime | None:
     if isinstance(value, datetime):
         parsed = value
     elif isinstance(value, str):
+        normalized_value = value.strip()
+        # Accept legacy admin strings that lost the separator between date
+        # and time without changing the stored timestamp.
+        normalized_value = re.sub(
+            r"^(\d{4}-\d{2}-\d{2})(\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)$",
+            r"\1T\2",
+            normalized_value,
+        )
         try:
-            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            parsed = datetime.fromisoformat(normalized_value.replace("Z", "+00:00"))
         except ValueError:
             return None
     else:
@@ -591,7 +599,8 @@ def _admin_brand(*, show_badge: bool = True) -> str:
 
 def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evidence") -> str:
     username = html.escape(str(user.get("username") or ""))
-    evidence_class = " class='active'" if active == "evidence" else ""
+    overview_class = " class='active'" if active == "overview" else ""
+    evidence_class = " class='active'" if active in {"evidence", "installations"} else ""
     campaign_class = " class='active'" if active == "campaigns" else ""
     devices_class = " class='active'" if active == "devices" else ""
     providers_class = " class='active'" if active == "providers" else ""
@@ -606,14 +615,14 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     review_menu = f"""<details class="needs-review-menu">
         <summary aria-label="Needs review: {review_total}">Needs review <span class="needs-review-count">{review_total}</span></summary>
         <div class="needs-review-popover" role="group" aria-label="Review queue">
-          <a href="/admin"><span>Installation issues</span><strong>{installation_issues}</strong></a>
-          <a href="/admin"><span>Identity pending</span><strong>{identity_pending}</strong></a>
+          <a href="/admin/installations?state=open"><span>Installation issues</span><strong>{installation_issues}</strong></a>
+          <a href="/admin/installations?state=identity-pending"><span>Identity pending</span><strong>{identity_pending}</strong></a>
           <a href="/admin/devices"><span>Ready to publish</span><strong>{ready_to_publish}</strong></a>
         </div>
       </details>""" if review_total else ""
     return f"""<header class="admin-topbar"><div class="admin-topbar-inner">
       <div class="admin-header-zone admin-header-left">{_admin_brand(show_badge=False)}<span class="admin-badge">Admin area</span><a class="admin-website-link" href="https://terento.app/" target="_blank" rel="noopener noreferrer" aria-label="Open Terento website in a new tab">Website <span aria-hidden="true">↗</span></a></div>
-      <nav class="admin-section-nav" aria-label="Admin sections"><a{evidence_class} href="/admin">Installations</a><a{devices_class} href="/admin/devices">Devices</a><a{providers_class} href="/admin/providers">Providers</a><a{map_statistics_class} href="/admin/map-statistics">Map statistics</a><a{campaign_class} href="/admin/campaign-links">Campaign links</a>{review_menu}</nav>
+      <nav class="admin-section-nav" aria-label="Admin sections"><a{overview_class} href="/admin">Overview</a><a{evidence_class} href="/admin/installations">Installations</a><a{devices_class} href="/admin/devices">Devices</a><a{providers_class} href="/admin/providers">Providers</a><a{map_statistics_class} href="/admin/map-statistics">Map statistics</a><a{campaign_class} href="/admin/campaign-links">Campaign links</a>{review_menu}</nav>
       <nav class="admin-nav" aria-label="Admin navigation"><label class="timezone-control"><span class="sr-only">Time zone</span><select id="admin-timezone" aria-label="Time zone" title="Time zone"><option value="browser">Automatic (browser)</option><option value="UTC">UTC</option><option value="Europe/Vilnius">Europe/Vilnius</option><option value="Europe/London">Europe/London</option><option value="Europe/Berlin">Europe/Berlin</option><option value="America/New_York">America/New_York</option><option value="America/Los_Angeles">America/Los_Angeles</option><option value="Asia/Tokyo">Asia/Tokyo</option></select></label><span class="admin-user" aria-label="Signed in as {username}">{username}</span>
       <form method="post" action="/admin/logout"><input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}"><button class="link-button" type="submit">Sign out</button></form></nav>
     </div></header>"""
@@ -661,6 +670,568 @@ def login_page(*, error: str | None = None) -> bytes:
     )
 
 
+def _overview_failure_reason_label(value: Any) -> str:
+    labels = {
+        "acquisition": "Map acquisition",
+        "transport": "Device transport",
+        "verification": "Transfer verification",
+        "storage": "Storage",
+        "deviceDisconnected": "Device disconnected",
+        "sourceValidation": "Source validation",
+        "unknown": "Unknown",
+    }
+    return labels.get(str(value or "").strip(), "Installation failure")
+
+
+def _diagnostic_error_reason(results: list[dict[str, Any]], *, resolved: bool = False) -> str:
+    """Return a concise primary reason while keeping raw codes in Details."""
+    for result in results:
+        category = str(result.get("error_category") or "").strip()
+        if category and category.casefold() != "unknown":
+            return _overview_failure_reason_label(category)
+    for result in results:
+        stage = str(result.get("failure_stage") or "").strip()
+        if stage and stage.casefold() not in {"unknown", "none"}:
+            return re.sub(r"[_-]+", " ", stage).strip().title() + " failed"
+    if resolved:
+        return "No normalized reason"
+    return "Installation error"
+
+
+def _overview_operation_label(operation: dict[str, Any]) -> tuple[str, str]:
+    if operation.get("has_failed"):
+        return "Install failed", "failed"
+    if operation.get("has_not_started"):
+        return "Install not started", "not-started"
+    if operation.get("operation_succeeded"):
+        return "Install succeeded", "succeeded"
+    return "Install operation", "unknown"
+
+
+def _overview_operation_context(operation: dict[str, Any]) -> str:
+    model = str(operation.get("model") or operation.get("compatibility_identity") or "Unknown device").strip()
+    variant = _normalise_variant(operation.get("variant"))
+    provider = str(operation.get("provider") or "").strip()
+    parts = [model]
+    if variant != "—" and variant not in model:
+        parts.append(variant)
+    if provider:
+        parts.append(provider)
+    return " · ".join(parts)
+
+
+def _overview_operation_href(operation: dict[str, Any]) -> str:
+    state = (
+        "failed" if operation.get("has_failed")
+        else "open" if operation.get("open_error") or operation.get("has_not_started")
+        else None
+    )
+    device_id = str(operation.get("canonical_device_model_id") or "").strip()
+    if device_id:
+        return _device_detail_url(device_id, origin="installations", state=state, anchor="installations")
+    identity = str(operation.get("compatibility_identity") or operation.get("model") or "Unknown").strip()
+    parameters = {"identity": identity}
+    if state:
+        parameters["state"] = state
+    return "/admin/diagnostics?" + urlencode(parameters)
+
+
+def _overview_activity_row(operation: dict[str, Any]) -> str:
+    label, state = _overview_operation_label(operation)
+    context = _overview_operation_context(operation)
+    provider = str(operation.get("provider") or "—").strip()
+    href = _overview_operation_href(operation)
+    reason = _overview_failure_reason_label(operation.get("error_category")) if state in {"failed", "not-started"} else ""
+    detail = f"<span>{html.escape(context)}</span>"
+    if reason:
+        detail += f"<small>{html.escape(reason)}</small>"
+    return (
+        f"<li class='overview-activity-item overview-activity-{state}'>"
+        f"<a href='{html.escape(href, quote=True)}'><span class='overview-activity-label'>{html.escape(label)}</span>{detail}</a>"
+        f"<span class='overview-activity-provider'>{html.escape(provider)}</span>"
+        f"{_timestamp_markup(operation.get('last_occurred_at'))}</li>"
+    )
+
+
+def _overview_attention_item(operation: dict[str, Any]) -> str:
+    label, state = _overview_operation_label(operation)
+    href = _overview_operation_href(operation)
+    reason = _overview_failure_reason_label(operation.get("error_category"))
+    return (
+        f"<li class='overview-attention-item overview-attention-{state}'>"
+        f"<span class='overview-attention-dot' aria-hidden='true'>●</span>"
+        f"<div><a href='{html.escape(href, quote=True)}'><strong>{html.escape(label)}</strong></a>"
+        f"<span>{html.escape(_overview_operation_context(operation))}</span>"
+        f"<small>{html.escape(reason)} · {_timestamp_markup(operation.get('last_occurred_at'))}</small></div>"
+        f"<a class='overview-detail-link' href='{html.escape(href, quote=True)}'>Details&nbsp;→</a></li>"
+    )
+
+
+def _overview_provider_attention_item(provider: dict[str, Any]) -> str:
+    provider_id = str(provider.get("id") or "").strip()
+    name = str(provider.get("name") or provider_id or "Provider")
+    health = str(provider.get("health") or "UNKNOWN").upper()
+    href = f"/admin/providers/{quote(provider_id, safe='')}"
+    return (
+        f"<li class='overview-attention-item overview-attention-provider'>"
+        f"<span class='overview-attention-dot' aria-hidden='true'>●</span>"
+        f"<div><a href='{html.escape(href, quote=True)}'><strong>{html.escape(name)} health {html.escape(health.title())}</strong></a>"
+        f"<span>Provider health requires review</span>"
+        f"<small>{_timestamp_markup(provider.get('lastHealthCheck'))}</small></div>"
+        f"<a class='overview-detail-link' href='{html.escape(href, quote=True)}'>Details&nbsp;→</a></li>"
+    )
+
+
+def _overview_failure_reasons(reasons: list[dict[str, Any]]) -> str:
+    if not reasons:
+        return "<p class='empty'>No normalized failure categories are available for this period.</p>"
+    maximum = max(int(item.get("count") or 0) for item in reasons) or 1
+    rows: list[str] = []
+    for item in reasons:
+        count = int(item.get("count") or 0)
+        width = max(4, round(count / maximum * 100))
+        label = _overview_failure_reason_label(item.get("reason"))
+        rows.append(
+            f"<li><span>{html.escape(label)}</span><strong>{count}</strong>"
+            f"<span class='overview-bar' role='img' aria-label='{html.escape(label)}: {count}'><i style='width:{width}%'></i></span></li>"
+        )
+    return "<ul class='overview-reason-list'>" + "".join(rows) + "</ul>"
+
+
+def _overview_model_activity_item(item: dict[str, Any]) -> str:
+    model = str(item.get("model") or item.get("compatibility_identity") or "Unknown device").strip()
+    variant = _normalise_variant(item.get("variant"))
+    identity = str(item.get("compatibility_identity") or model).strip()
+    context = " · ".join(part for part in (model, variant if variant != "—" and variant not in model else "") if part)
+    operation_count = int(item.get("operation_count") or 0)
+    successful = int(item.get("successful_count") or 0)
+    failed = int(item.get("failed_count") or 0)
+    open_errors = int(item.get("open_error_count") or 0)
+    status = "Needs review" if open_errors else ("Failures" if failed else "Active")
+    status_class = "failed" if failed or open_errors else "succeeded"
+    device_id = str(item.get("canonical_device_model_id") or "").strip()
+    href = (
+        _device_detail_url(device_id, origin="installations", state="open", anchor="installations")
+        if device_id else "/admin/diagnostics?" + urlencode({"identity": identity})
+    )
+    result = f"{successful} successful · {failed} failed" if successful or failed else f"{operation_count} operation{'s' if operation_count != 1 else ''}"
+    return (
+        f"<li class='overview-model-item overview-model-{status_class}'>"
+        f"<a href='{html.escape(href, quote=True)}'><strong>{html.escape(context)}</strong>"
+        f"<span>{html.escape(result)} · {html.escape(status)}</span></a>"
+        f"{_timestamp_markup(item.get('last_occurred_at'))}</li>"
+    )
+
+
+def _overview_model_activity(items: list[dict[str, Any]]) -> str:
+    if not items:
+        return "<p class='overview-empty-state'>No device/model activity in this period.</p>"
+    return "<ul class='overview-model-list'>" + "".join(
+        _overview_model_activity_item(item) for item in items
+    ) + "</ul>"
+
+
+def _overview_review_item(item: dict[str, Any]) -> str:
+    model = str(item.get("model") or item.get("compatibility_identity") or "Unknown device").strip()
+    variant = _normalise_variant(item.get("variant"))
+    context = " · ".join(part for part in (model, variant if variant != "—" and variant not in model else "") if part)
+    review_status = str(item.get("review_status") or "PENDING").upper()
+    public_enabled = bool(item.get("public_statistics_enabled"))
+    label = "Unpublished" if review_status == "APPROVED" and not public_enabled else "Review required"
+    identity = str(item.get("compatibility_identity") or model).strip()
+    device_id = str(item.get("canonical_device_model_id") or "").strip()
+    href = (
+        _device_detail_url(device_id, origin="installations")
+        if device_id else "/admin/diagnostics?" + urlencode({"identity": identity})
+    )
+    return (
+        f"<li class='overview-review-item'><a href='{html.escape(href, quote=True)}'>"
+        f"<strong>{html.escape(context)}</strong><span>{html.escape(label)}</span></a></li>"
+    )
+
+
+def _overview_review_required(items: list[dict[str, Any]]) -> str:
+    if not items:
+        return ""
+    return "<ul class='overview-review-list'>" + "".join(
+        _overview_review_item(item) for item in items
+    ) + "</ul>"
+
+
+def _overview_review_attention_item(item: dict[str, Any]) -> str:
+    model = str(item.get("model") or item.get("compatibility_identity") or "Unknown device").strip()
+    variant = _normalise_variant(item.get("variant"))
+    context = " · ".join(
+        part for part in (model, variant if variant != "—" and variant not in model else "") if part
+    )
+    review_status = str(item.get("review_status") or "PENDING").upper()
+    public_enabled = bool(item.get("public_statistics_enabled"))
+    label = "Unpublished" if review_status == "APPROVED" and not public_enabled else "Review required"
+    identity = str(item.get("compatibility_identity") or model).strip()
+    device_id = str(item.get("canonical_device_model_id") or "").strip()
+    href = (
+        _device_detail_url(device_id, origin="installations")
+        if device_id else "/admin/diagnostics?" + urlencode({"identity": identity})
+    )
+    return (
+        "<li class='overview-attention-item overview-attention-review'>"
+        "<span class='overview-attention-dot' aria-hidden='true'>●</span>"
+        f"<div><a href='{html.escape(href, quote=True)}'><strong>{html.escape(label)}</strong></a>"
+        f"<span>{html.escape(context)}</span>"
+        f"<small>{html.escape(review_status.title())} · {_timestamp_markup(item.get('last_evidence'))}</small></div>"
+        f"<a class='overview-detail-link' href='{html.escape(href, quote=True)}'>Review&nbsp;→</a></li>"
+    )
+
+
+def _overview_map_event_label(event: dict[str, Any]) -> tuple[str, str]:
+    labels = {
+        "DOWNLOAD_STARTED": ("Download started", "started"),
+        "DOWNLOAD_SUCCEEDED": ("Download completed", "succeeded"),
+        "DOWNLOAD_FAILED": ("Download failed", "failed"),
+        "INSTALL_SUCCEEDED": ("Install succeeded", "succeeded"),
+        "INSTALL_FAILED": ("Install failed", "failed"),
+    }
+    return labels.get(str(event.get("event_type") or "").upper(), ("Map activity", "unknown"))
+
+
+def _admin_event_outcome_label(value: Any) -> str:
+    """Keep a non-terminal UNKNOWN outcome neutral in admin presentation."""
+    normalized = str(value or "").strip().upper()
+    if normalized == "UNKNOWN":
+        return "—"
+    return normalized.title() if normalized else "—"
+
+
+_ADMIN_REGION_DISPLAY_NAMES = {
+    "AND": "Andorra",
+    "ANDORRA": "Andorra",
+    "AT": "Austria",
+    "CAPEVERDE": "Cape Verde",
+    "CH": "Switzerland",
+    "CENTRALAFRICANREPUBLIC": "Central African Republic",
+    "DE": "Germany",
+    "EE": "Estonia",
+    "FAROEISLANDS": "Faroe Islands",
+    "FI": "Finland",
+    "FR": "France",
+    "GB": "United Kingdom",
+    "IT": "Italy",
+    "LT": "Lithuania",
+    "LTU": "Lithuania",
+    "LVA": "Latvia",
+    "LV": "Latvia",
+    "NO": "Norway",
+    "PL": "Poland",
+    "REPUBLICOFLATVIA": "Latvia",
+    "REPUBLICOFLITHUANIA": "Lithuania",
+    "PRINCIPALITYOFANDORRA": "Andorra",
+    "ES": "Spain",
+    "SWITZERLAND": "Switzerland",
+    "SE": "Sweden",
+    "UA": "Ukraine",
+}
+
+
+def _admin_map_display_name(*values: Any) -> str:
+    """Return one human-readable admin label without changing stored IDs."""
+    for value in values:
+        raw = str(value or "").strip()
+        if not raw:
+            continue
+        candidate = re.sub(r"^(?:OpenTopoMap|Freizeitkarte)\s+", "", raw, flags=re.IGNORECASE).strip()
+        key = re.sub(r"[^A-Za-z0-9]+", "", candidate).upper()
+        if key in _ADMIN_REGION_DISPLAY_NAMES:
+            return _ADMIN_REGION_DISPLAY_NAMES[key]
+        display_candidate = re.sub(r"_+", " ", candidate)
+        display_candidate = " ".join(display_candidate.split())
+        display_candidate = re.sub(
+            r"^(?:Federal\s+)?Republic\s+of\s+|^(?:Kingdom|Principality|State)\s+of\s+|^Grand\s+Duchy\s+of\s+|^Region\s+",
+            "",
+            display_candidate,
+            flags=re.IGNORECASE,
+        ).strip()
+        display_candidate = re.sub(r"\s+-\s+", " – ", display_candidate)
+        if candidate.isupper() or re.fullmatch(r"[A-Z][A-Z0-9_-]+", candidate):
+            return display_candidate.title()
+        return display_candidate or "—"
+    return "—"
+
+
+def _overview_map_event_context(event: dict[str, Any]) -> str:
+    display_name = _admin_map_display_name(
+        event.get("display_name")
+        or event.get("map_package_name")
+        or event.get("map_package_id")
+        or event.get("region")
+        or "Map",
+    )
+    region = _admin_map_display_name(event.get("region")) if event.get("region") else ""
+    provider = str(event.get("provider_name") or event.get("provider_id") or "").strip()
+    parts = [display_name]
+    if region and region.casefold() != display_name.casefold():
+        parts.append(region)
+    if provider:
+        parts.append(provider)
+    return " · ".join(parts)
+
+
+def _overview_map_event_href(event: dict[str, Any]) -> str:
+    parameters = {
+        "eventType": str(event.get("event_type") or ""),
+        "provider": str(event.get("provider_id") or ""),
+        "map": str(event.get("map_package_id") or ""),
+        "region": str(event.get("region") or ""),
+    }
+    return "/admin/map-statistics?" + urlencode({key: value for key, value in parameters.items() if value})
+
+
+def _overview_map_activity_row(event: dict[str, Any]) -> str:
+    label, state = _overview_map_event_label(event)
+    href = _overview_map_event_href(event)
+    return (
+        f"<li class='overview-activity-item overview-activity-{state}'>"
+        f"<a href='{html.escape(href, quote=True)}'><span class='overview-activity-label'>{html.escape(label)}</span>"
+        f"<span>{html.escape(_overview_map_event_context(event))}</span></a>"
+        f"{_timestamp_markup(event.get('occurred_at'))}</li>"
+    )
+
+
+def _overview_map_attention_item(event: dict[str, Any]) -> str:
+    label, state = _overview_map_event_label(event)
+    href = _overview_map_event_href(event)
+    reason = "Download failed" if event.get("event_type") == "DOWNLOAD_FAILED" else "Install failed"
+    return (
+        f"<li class='overview-attention-item overview-attention-{state}'>"
+        f"<span class='overview-attention-dot' aria-hidden='true'>●</span>"
+        f"<div><a href='{html.escape(href, quote=True)}'><strong>{html.escape(label)}</strong></a>"
+        f"<span>{html.escape(_overview_map_event_context(event))}</span>"
+        f"<small>{html.escape(reason)} · {_timestamp_markup(event.get('occurred_at'))}</small></div>"
+        f"<a class='overview-detail-link' href='{html.escape(href, quote=True)}'>Details&nbsp;→</a></li>"
+    )
+
+
+def _admin_app_version_label(value: Any, build: Any = None) -> str:
+    release = str(value or "—").strip() or "—"
+    if release != "—":
+        match = re.search(r"\b(beta\.\d+)(?:\s*[-·( ]\s*(RC))?\b", release, re.IGNORECASE)
+        if match:
+            release = match.group(1).lower() + (" RC" if match.group(2) else "")
+    if build is not None and str(build).strip():
+        release += f" · build {str(build).strip()}"
+    return release
+
+
+def _overview_chart_bucket_label(value: Any, bucket: str) -> str:
+    parsed = _parse_timestamp(value)
+    if parsed is None:
+        return str(value or "—")
+    if bucket == "hour":
+        return parsed.strftime("%H:%M")
+    if bucket == "month":
+        return parsed.strftime("%b %Y")
+    if bucket == "week":
+        return "Week of " + parsed.strftime("%d %b")
+    return parsed.strftime("%d %b")
+
+
+def _overview_trend_chart(trend: list[dict[str, Any]], bucket: str) -> str:
+    if not trend:
+        return "<p class='overview-empty-state'>No map install operations in this period.</p>"
+    values = [
+        (max(0, int(item.get("success_count") or 0)), max(0, int(item.get("failed_count") or 0)))
+        for item in trend
+    ]
+    maximum = max((success + failed for success, failed in values), default=1) or 1
+    scale_maximum = max(maximum, 3)
+    chart_width, chart_height = 720, 190
+    left, top, bottom = 10, 10, 30
+    plot_height = chart_height - top - bottom
+    slot = chart_width / max(len(values), 1)
+    bar_width = max(8, min(44, slot * 0.58))
+    bars: list[str] = []
+    labels: list[str] = []
+    for index, ((success, failed), item) in enumerate(zip(values, trend)):
+        total = success + failed
+        x = index * slot + (slot - bar_width) / 2
+        success_height = plot_height * success / scale_maximum
+        failed_height = plot_height * failed / scale_maximum
+        y_success = top + plot_height - success_height
+        y_failed = y_success - failed_height
+        title = f"{_overview_chart_bucket_label(item.get('bucket'), bucket)}: {success} succeeded, {failed} failed"
+        bars.append(
+            f"<g><title>{html.escape(title)}</title>"
+            f"<rect class='overview-chart-failed' x='{x:.1f}' y='{y_failed:.1f}' width='{bar_width:.1f}' height='{failed_height:.1f}' rx='3'></rect>"
+            f"<rect class='overview-chart-success' x='{x:.1f}' y='{y_success:.1f}' width='{bar_width:.1f}' height='{success_height:.1f}' rx='3'></rect></g>"
+        )
+        label_step = max(1, round((len(values) - 1) / 5))
+        if len(values) <= 12 or index % label_step == 0 or index == len(values) - 1:
+            labels.append(f"<text x='{x + bar_width / 2:.1f}' y='{chart_height - 8}' text-anchor='middle'>{html.escape(_overview_chart_bucket_label(item.get('bucket'), bucket))}</text>")
+    return (
+        "<div class='overview-chart-wrap'>"
+        f"<svg class='overview-trend-chart' viewBox='0 0 {chart_width} {chart_height}' role='img' aria-label='Map install operations over time'>"
+        f"{''.join(bars)}{''.join(labels)}</svg>"
+        "<div class='overview-chart-legend'><span><i class='overview-chart-success'></i>Succeeded</span><span><i class='overview-chart-failed'></i>Failed</span></div></div>"
+    )
+
+
+def _overview_period_script() -> str:
+    return r"""(() => {
+      const bind = () => {
+        const form = document.querySelector('#overview-period-form');
+        const select = document.querySelector('#overview-period');
+        if (!form || !select || select.dataset.bound === 'true') return;
+        select.dataset.bound = 'true';
+        form.addEventListener('submit', (event) => {
+          event.preventDefault();
+          load(select.value, true);
+        });
+        select.addEventListener('change', () => form.requestSubmit());
+      };
+      const load = async (period, push) => {
+        const current = document.querySelector('#main-content');
+        const select = document.querySelector('#overview-period');
+        const url = new URL('/admin', window.location.origin);
+        url.searchParams.set('period', period);
+        if (current) current.setAttribute('aria-busy', 'true');
+        if (select) select.disabled = true;
+        try {
+          const response = await fetch(url, {credentials: 'same-origin', headers: {'Accept': 'text/html'}});
+          if (!response.ok) throw new Error(`Overview refresh failed (${response.status})`);
+          const documentNext = new DOMParser().parseFromString(await response.text(), 'text/html');
+          const mainNext = documentNext.querySelector('#main-content');
+          if (!mainNext) throw new Error('Overview content is unavailable.');
+          current?.replaceWith(mainNext);
+          if (push) window.history.pushState({period}, '', url);
+          window.TerentoAdminTime?.render();
+          bind();
+        } catch (_) {
+          window.location.assign(url);
+        }
+      };
+      window.addEventListener('popstate', () => {
+        const period = new URL(window.location.href).searchParams.get('period') || '24h';
+        load(period, false);
+      });
+      bind();
+    })();"""
+
+
+def overview_page(
+    overview: dict[str, Any], user: dict[str, Any], csrf_token: str,
+) -> bytes:
+    data = overview.get("data") if isinstance(overview.get("data"), dict) else {}
+    compatibility = overview.get("compatibility") if isinstance(overview.get("compatibility"), dict) else {}
+    providers = list(overview.get("providers") or [])
+    period = str(overview.get("period") or "24h")
+    period_labels = {"24h": "Last 24 hours", "7d": "Last 7 days", "30d": "Last 30 days", "all": "All time"}
+    period_options = "".join(
+        f"<option value='{value}'{' selected' if value == period else ''}>{label}</option>"
+        for value, label in period_labels.items()
+    )
+    healthy = sum(1 for provider in providers if str(provider.get("health") or "").upper() == "HEALTHY")
+    provider_count = len(providers)
+    failed_installs = int(data.get("failedInstallCount") or 0)
+    completed_installs = int(data.get("completedInstallCount") or 0)
+    event_count = int(data.get("eventCount") or 0)
+    open_errors = int(compatibility.get("openErrorCount") or 0)
+    recent = list(data.get("recentActivity") or [])
+    has_map_data = bool(data.get("hasData")) if "hasData" in data else bool(event_count or recent)
+    event_metric = lambda value: str(value) if has_map_data else "—"
+    compatibility_has_data = bool(compatibility.get("hasData"))
+    open_error_metric = lambda value: str(value) if compatibility_has_data else "—"
+    attention_operations = list(data.get("attention") or [])
+    attention_providers = [
+        provider for provider in providers
+        if str(provider.get("health") or "UNKNOWN").upper() not in {"HEALTHY", ""}
+    ]
+    attention_items = "".join(_overview_map_attention_item(item) for item in attention_operations[:4])
+    compatibility_attention = [
+        item for item in compatibility.get("recentActivity", []) if item.get("open_error")
+    ]
+    model_activity = list(compatibility.get("modelActivity") or [])
+    review_required = list(compatibility.get("reviewRequired") or [])
+    attention_items += "".join(_overview_attention_item(item) for item in compatibility_attention[:4])
+    attention_items += "".join(
+        _overview_review_attention_item(item) for item in review_required[:4]
+    )
+    attention_items += "".join(_overview_provider_attention_item(item) for item in attention_providers[:4])
+    if not attention_items:
+        attention_content = "<p class='overview-empty-state'>No issues need attention</p>"
+    else:
+        attention_content = f"<ul class='overview-attention-list'>{attention_items}</ul>"
+    recent_content = (
+        "<p class='empty'>No map activity in this period.</p>"
+        if not recent else
+        "<ul class='overview-activity-list'>" + "".join(_overview_map_activity_row(item) for item in recent) + "</ul>"
+    )
+    success_rate = _format_rate(data.get("installSuccessRate")) if has_map_data else "—"
+    compatibility_attempts = str(compatibility.get("writeStartedCount")) if compatibility_has_data else "—"
+    compatibility_variants = str(compatibility.get("variantCount")) if compatibility_has_data else "—"
+    compatibility_rate = _format_rate(compatibility.get("evidenceSuccessRate")) if compatibility_has_data else "—"
+    map_statistics_href = "/admin/map-statistics"
+    map_statistics_href += "?" + urlencode({"period": period})
+    failure_href = map_statistics_href + ("&" if "?" in map_statistics_href else "?") + urlencode({"eventType": "INSTALL_FAILED"})
+    attention_href = (
+        failure_href if attention_operations else
+        "/admin/installations?state=open" if compatibility_attention else
+        "/admin/devices" if review_required else
+        "/admin/providers" if attention_providers else map_statistics_href
+    )
+    failure_reasons = list(compatibility.get("failureReasons") or [])
+    reasons_section = (
+        f"<section class='overview-panel' aria-labelledby='overview-reasons-title'><div class='section-heading'><div><p class='section-kicker'>Compatibility evidence</p><h2 id='overview-reasons-title'>Failures by reason</h2></div><span class='overview-info' title='Compatibility evidence only.' aria-label='Compatibility evidence only.'>i</span></div>{_overview_failure_reasons(failure_reasons)}<p class='overview-chart-note'>Compatibility evidence only. Map-operation failure counts are shown above.</p></section>"
+        if failure_reasons else ""
+    )
+    compatibility_summary = (
+        f"<section class='overview-panel overview-compatibility-summary' aria-labelledby='overview-compatibility-title'><div class='section-heading'><div><p class='section-kicker'>Secondary domain</p><h2 id='overview-compatibility-title'>Compatibility evidence</h2></div></div><div class='overview-compatibility-grid'><div><span>Write-started attempts</span><strong>{compatibility_attempts}</strong></div><div><span>Variants</span><strong>{compatibility_variants}</strong></div><div><span>Evidence success</span><strong>{compatibility_rate}</strong></div></div><p class='overview-chart-note'>Device compatibility evidence is not merged with map-operation telemetry.</p></section>"
+        if compatibility_has_data else
+        "<section class='overview-panel overview-compatibility-summary overview-compact-empty' aria-labelledby='overview-compatibility-title'><div class='section-heading'><div><p class='section-kicker'>Secondary domain</p><h2 id='overview-compatibility-title'>Compatibility evidence</h2></div></div><p class='overview-empty-state'>No compatibility evidence in this period.</p></section>"
+    )
+    review_section = (
+        f"<div class='overview-review-block'><h3>New / review-required devices</h3>{_overview_review_required(review_required)}</div>"
+        if review_required else ""
+    )
+    model_panel = (
+        f"<section class='overview-panel overview-model-panel' aria-labelledby='overview-model-title'><div class='section-heading'><div><p class='section-kicker'>Compatibility evidence</p><h2 id='overview-model-title'>Device/model activity</h2></div></div><p class='overview-chart-note'>Activity is grouped by canonical device model when available.</p>{_overview_model_activity(model_activity)}{review_section}</section>"
+        if model_activity or review_required else ""
+    )
+    primary_grid_class = "overview-primary-grid" if model_panel else "overview-primary-grid overview-primary-grid-single"
+    secondary_grid_class = (
+        "overview-secondary-grid"
+        if reasons_section else
+        "overview-secondary-grid overview-secondary-grid-single"
+    )
+    attention_section = (
+        f"<section class='overview-panel overview-attention-panel' aria-labelledby='overview-attention-title'><div class='section-heading'><div><p class='section-kicker'>Failure-first</p><h2 id='overview-attention-title'>Needs attention</h2></div><a class='section-link' href='{html.escape(attention_href, quote=True)}'>View all&nbsp;→</a></div>{attention_content}</section>"
+        if attention_items else
+        f"<section class='overview-panel overview-attention-panel overview-attention-empty' aria-labelledby='overview-attention-title'><div><p class='section-kicker'>Failure-first</p><h2 id='overview-attention-title'>Needs attention</h2></div>{attention_content}<a class='section-link' href='{html.escape(attention_href, quote=True)}'>View all&nbsp;→</a></section>"
+    )
+    provider_links = "".join(
+        f"<a href='/admin/providers/{quote(str(provider.get('id') or ''), safe='')}'>{html.escape(str(provider.get('name') or provider.get('id') or 'Provider'))} <span>{html.escape(str(provider.get('health') or 'UNKNOWN').title())}</span></a>"
+        for provider in providers
+    )
+    content = f"""
+      {_admin_header(user, csrf_token, active='overview')}
+      <main class='dashboard overview-page' id='main-content'>
+        <div class='heading-row overview-heading'><div><p class='eyebrow'>Operations</p><h1>Overview</h1><p class='lede'>Current Terento health and activity that needs attention.</p></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin'><label><span class='sr-only'>Time period</span><select id='overview-period' name='period'>{period_options}</select></label></form></div>
+        <section class='overview-kpis' aria-label='Operational summary'>
+          <a class='overview-kpi' href='{html.escape(map_statistics_href, quote=True)}'><span>Map install operations</span><strong>{event_metric(completed_installs + failed_installs)}</strong><small>{'Distinct terminal operation IDs; one operation may include multiple map packages' if has_map_data else 'No map telemetry in this period'}</small></a>
+          <a class='overview-kpi' href='{html.escape(map_statistics_href, quote=True)}'><span>Map operation success</span><strong>{success_rate}</strong><small>Successful map operations / terminal map operations</small></a>
+          <a class='overview-kpi overview-kpi-attention' href='{html.escape(failure_href, quote=True)}'><span>Failed map operations</span><strong>{event_metric(failed_installs)}</strong><small>{'Terminal map-operation failures' if has_map_data else 'No map telemetry in this period'}</small></a>
+          <a class='overview-kpi overview-kpi-attention' href='/admin/installations?state=open'><span>Open errors</span><strong>{open_error_metric(open_errors)}</strong><small>{'Compatibility evidence only' if compatibility_has_data else 'No evidence in this period'}</small></a>
+          <a class='overview-kpi' href='/admin/providers'><span>Providers</span><strong>{healthy} / {provider_count}</strong><small>Healthy providers</small></a>
+        </section>
+        {attention_section}
+        <div class='{primary_grid_class}'><section class='overview-panel overview-chart-panel' aria-labelledby='overview-trend-title'><div class='section-heading'><div><p class='section-kicker'>Map operations</p><h2 id='overview-trend-title'>Map install operations over time</h2></div></div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'))}</section>{model_panel}</div>
+        <div class='{secondary_grid_class}'><section class='overview-panel' aria-labelledby='overview-activity-title'><div class='section-heading'><div><p class='section-kicker'>Latest</p><h2 id='overview-activity-title'>Recent map activity</h2></div><a class='section-link' href='{html.escape(map_statistics_href, quote=True)}'>View all&nbsp;→</a></div>{recent_content}</section>{reasons_section}</div>
+        <section class='overview-panel overview-provider-panel' aria-labelledby='overview-provider-title'><div><p class='section-kicker'>Availability</p><h2 id='overview-provider-title'>Providers</h2></div><div class='overview-provider-summary'><strong>{healthy} / {provider_count} healthy</strong>{provider_links}</div><a class='section-link' href='/admin/providers'>Manage&nbsp;→</a></section>
+        {compatibility_summary}
+      </main>
+      <script>{_overview_period_script()}</script>
+    """
+    return _layout("Overview", content)
+
+
 def dashboard_page(
     rows: list[dict[str, Any]], user: dict[str, Any], csrf_token: str,
     *, operations: list[dict[str, Any]] | None = None,
@@ -695,20 +1266,21 @@ def dashboard_page(
     empty = "<p class='empty'>No installation evidence yet.</p>" if not rows else ""
     latest_copy = f"Updated {_timestamp_markup(latest)}" if latest else "No evidence received yet"
     content = f"""
-      {_admin_header(user, csrf_token)}
+      {_admin_header(user, csrf_token, active='installations')}
       <main class="dashboard" id="main-content">
-        <div class="heading-row installation-heading"><div><p class="eyebrow">Compatibility</p><h1>Installations</h1><p class="lede">Installation activity and compatibility evidence from Terento users.</p></div><p class="page-meta">{latest_copy}</p></div>
+        <div class="heading-row installation-heading"><div><p class="eyebrow">Compatibility</p><h1>Installations</h1><p class="lede">All-time compatibility evidence from Terento users.</p></div><p class="page-meta">{latest_copy}</p></div>
         <section class="admin-kpi-grid installation-kpis" aria-label="Installation summary">
           <article><span>Variants</span><strong>{len(rows)}</strong></article>
-          <article><span>Install attempts</span><strong>{attempts}</strong></article>
+          <article><span>Write-started attempts</span><strong>{attempts}</strong></article>
           <article><span>Successful</span><strong>{successes}</strong></article>
-          <article><span>Success rate</span><strong>{_format_rate(success_rate)}</strong></article>
+          <article><span>Evidence success</span><strong>{_format_rate(success_rate)}</strong></article>
           <article><span>Open errors</span><strong>{open_errors}</strong></article>
         </section>
         <p class="historical-failure-note">Historical failures: {historical_failures} <span class="info-control info-control-inline" role="img" aria-label="Includes resolved historical failures. Open errors shows only unresolved problems." title="Includes resolved historical failures. Open errors shows only unresolved problems.">i</span></p>
         {empty}
         <section class="evidence-section" aria-label="Installation evidence table">
           <form class="filter-bar admin-filter-bar" id="evidence-filters" role="search">
+            <div class="quick-filter-group" role="group" aria-label="Quick installation filters"><button type="button" class="quick-filter active" data-installation-filter="all" aria-pressed="true">All</button><button type="button" class="quick-filter" data-installation-filter="failed" aria-pressed="false">Failed</button><button type="button" class="quick-filter" data-installation-filter="open" aria-pressed="false">Open errors</button><button type="button" class="quick-filter" data-installation-filter="successful" aria-pressed="false">Successful</button></div>
             <label class="filter-search"> <span class="sr-only">Search models</span><input id="evidence-search" type="search" placeholder="Search models" autocomplete="off"></label>
             <label><span class="sr-only">Filter by status</span><select id="evidence-status"><option value="all">All statuses</option>{status_options}</select></label>
             <label><span class="sr-only">Sort models</span><select id="evidence-sort"><option value="attempts">Most attempts</option><option value="errors">Most errors</option><option value="latest">Latest activity</option><option value="model">Model name</option></select></label>
@@ -943,7 +1515,9 @@ def _provider_package_row(package: dict[str, Any]) -> str:
     row_class = " provider-package-broken" if broken_count else ""
     broken_markup = _provider_status_badge("FAILED" if broken_count else availability)
     package_id = str(package.get("id") or "—")
-    package_name = str(package.get("name") or package.get("region") or "—")
+    package_name = _admin_map_display_name(
+        package.get("country"), package.get("name"), package.get("region"), package_id,
+    )
     region = str(package.get("region") or "").strip()
     search = " ".join((package_id, package_name, region, str(package.get("release") or ""))).casefold()
     return (
@@ -1005,12 +1579,21 @@ def _provider_run_row(run: dict[str, Any]) -> str:
 
 def _provider_audit_row(audit: dict[str, Any]) -> str:
     details = audit.get("details")
-    details_text = json.dumps(details, ensure_ascii=False, separators=(",", ":")) if details else "—"
+    technical_values = {
+        "adminUserId": audit.get("admin_user_id"),
+        "target": audit.get("target"),
+        "details": details,
+    }
+    technical_text = json.dumps(
+        {key: value for key, value in technical_values.items() if value not in (None, "", {})},
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
     return (
-        f"<tr><td>{html.escape(str(audit.get('admin_user_id') or '—'))}</td><td title='{html.escape(str(audit.get('action') or ''), quote=True)}'>{html.escape(_provider_action_label(audit.get('action')))}</td>"
+        f"<tr><td title='{html.escape(str(audit.get('action') or ''), quote=True)}'>{html.escape(_provider_action_label(audit.get('action')))}</td>"
         f"<td>{html.escape(str(audit.get('old_status') or '—'))}</td><td>{html.escape(str(audit.get('new_status') or '—'))}</td>"
         f"<td>{html.escape(str(audit.get('reason') or '—'))}</td><td>{_timestamp_markup(audit.get('occurred_at'))}</td>"
-        f"<td>{html.escape(str(audit.get('target') or '—'))}<details class='audit-technical-details'><summary>Technical details</summary><code>{html.escape(details_text)}</code></details></td></tr>"
+        f"<td><details class='audit-technical-details'><summary>Technical details</summary><code>{html.escape(technical_text if technical_text != '{}' else '—')}</code></details></td></tr>"
     )
 
 
@@ -1041,6 +1624,7 @@ def provider_detail_page(
     broken_packages = sum(int(package.get("broken_artifact_count") or 0) for package in packages)
     package_count = int(provider.get("packageCount") or len(packages))
     latest_health = health_history[0] if health_history else {}
+    previous_health = health_history[1:] if latest_health else []
     health_passed, health_not_evaluated = _provider_health_counts(latest_health)
     latest_health_status = str(latest_health.get("status") or health or "UNKNOWN").upper()
     latest_run = runs[0] if runs else {}
@@ -1077,22 +1661,24 @@ def provider_detail_page(
     rows_packages = "".join(_provider_package_row(package) for package in packages)
     rows_sources = "".join(_provider_source_row(source) for source in provider_sources)
     rows_download_sources = "".join(_provider_source_row(source) for source in download_sources)
-    rows_health = "".join(_provider_health_row(item) for item in health_history)
+    rows_health = "".join(_provider_health_row(item) for item in previous_health)
     rows_runs = "".join(_provider_run_row(run) for run in runs)
     rows_audits = "".join(_provider_audit_row(audit) for audit in audits)
     empty_packages = "<p class='empty'>No catalog packages collected yet.</p>" if not packages else ""
     empty_sources = "<p class='empty'>No provider source links recorded.</p>" if not provider_sources else ""
-    empty_download_sources = "<p class='empty'>No package download sources recorded.</p>" if not download_sources else ""
+    empty_download_sources = "<p class='empty'>No download source URLs recorded.</p>" if not download_sources else ""
     empty_health = "<p class='empty'>No health checks recorded yet.</p>" if not health_history else ""
+    empty_previous_health = "<p class='empty'>No previous health checks recorded.</p>" if not previous_health else ""
     empty_runs = "<p class='empty'>No catalog collection runs recorded yet.</p>" if not runs else ""
     empty_audits = "<p class='empty'>No provider audit entries recorded yet.</p>" if not audits else ""
     source_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Provider-level original sources</caption><thead><tr><th scope='col'>Source</th><th scope='col'>Original link</th><th scope='col'>Status</th><th scope='col'>Last checked</th></tr></thead><tbody>{rows_sources}</tbody></table></div>" if provider_sources else ""
-    download_source_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Package download sources</caption><thead><tr><th scope='col'>Source</th><th scope='col'>Original link</th><th scope='col'>Status</th><th scope='col'>Last checked</th></tr></thead><tbody id='provider-download-source-rows'>{rows_download_sources}</tbody></table></div>" if download_sources else ""
+    download_source_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Download source URLs</caption><thead><tr><th scope='col'>Source</th><th scope='col'>Original link</th><th scope='col'>Status</th><th scope='col'>Last checked</th></tr></thead><tbody id='provider-download-source-rows'>{rows_download_sources}</tbody></table></div>" if download_sources else ""
+    download_source_section = f"<section class='provider-card'><details class='admin-disclosure' id='provider-download-sources'><summary>Download source URLs · {len(download_sources)}</summary><div class='disclosure-body'><div class='inline-filter-row'><label><span class='sr-only'>Search source URLs</span><input id='provider-source-search' type='search' placeholder='Search source URLs' autocomplete='off'></label><label><span class='sr-only'>Source status</span><select id='provider-source-filter'><option value='all'>All sources</option><option value='broken'>Broken only</option></select></label><label><span class='sr-only'>Source page size</span><select id='provider-source-page-size'><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label></div>{download_source_table}<div class='provider-pagination' id='provider-source-pagination' aria-live='polite'></div></div></details></section>" if download_sources else ""
     package_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Regions and packages</caption><thead><tr><th scope='col'>Region / package</th><th scope='col'>Release</th><th scope='col'>Artifacts</th><th scope='col'>State</th></tr></thead><tbody id='provider-package-rows'>{rows_packages}</tbody></table></div>" if packages else ""
     latest_health_table = f"<div class='table-wrap provider-table-wrap provider-history-wrap'><table class='admin-table'><caption class='sr-only'>Health check details</caption><thead><tr><th scope='col'>Checked</th><th scope='col'>Result</th><th scope='col'>Checks</th><th scope='col'>HTTP</th><th scope='col'>Artifacts</th><th scope='col'>Duration</th><th scope='col'>Error</th></tr></thead><tbody>{_provider_health_row(latest_health)}</tbody></table></div>" if latest_health else ""
-    health_history_table = f"<div class='table-wrap provider-table-wrap provider-history-wrap'><table class='admin-table'><thead><tr><th scope='col'>Checked</th><th scope='col'>Result</th><th scope='col'>Checks</th><th scope='col'>HTTP</th><th scope='col'>Artifacts</th><th scope='col'>Duration</th><th scope='col'>Error</th></tr></thead><tbody>{rows_health}</tbody></table></div>" if health_history else ""
+    health_history_table = f"<div class='table-wrap provider-table-wrap provider-history-wrap'><table class='admin-table'><thead><tr><th scope='col'>Checked</th><th scope='col'>Result</th><th scope='col'>Checks</th><th scope='col'>HTTP</th><th scope='col'>Artifacts</th><th scope='col'>Duration</th><th scope='col'>Error</th></tr></thead><tbody>{rows_health}</tbody></table></div>" if previous_health else ""
     run_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table'><thead><tr><th scope='col'>Run</th><th scope='col'>Started</th><th scope='col'>Finished</th><th scope='col'>Result</th><th scope='col'>Packages</th><th scope='col'>Artifacts</th><th scope='col'>Error</th></tr></thead><tbody>{rows_runs}</tbody></table></div>" if runs else ""
-    audit_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Provider audit history</caption><thead><tr><th scope='col'>Admin user</th><th scope='col'>Action</th><th scope='col'>Old status</th><th scope='col'>New status</th><th scope='col'>Reason</th><th scope='col'>Timestamp</th><th scope='col'>Target/details</th></tr></thead><tbody>{rows_audits}</tbody></table></div>" if audits else ""
+    audit_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Provider audit history</caption><thead><tr><th scope='col'>Action</th><th scope='col'>Old status</th><th scope='col'>New status</th><th scope='col'>Reason</th><th scope='col'>Timestamp</th><th scope='col'>Details</th></tr></thead><tbody>{rows_audits}</tbody></table></div>" if audits else ""
     health_summary = (
         f"{_provider_status_badge(latest_health_status, kind='health')} "
         f"<span>{health_passed} checks passed · {health_not_evaluated} not evaluated</span>"
@@ -1110,6 +1696,11 @@ def provider_detail_page(
         f"{_timestamp_markup(latest_run.get('finished_at') or latest_run.get('started_at'))}</span>"
         if latest_run else "<span class='muted-value'>No collection run recorded yet.</span>"
     )
+    collection_section = (
+        f"<section class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Collection</p><h2>Last collection</h2></div></div><div class='provider-latest-summary'>{collection_summary}</div><details class='admin-disclosure' id='provider-collection-history'><summary>Collection history · {len(runs)} runs</summary><div class='disclosure-body'>{empty_runs}{run_table}</div></details></section>"
+        if latest_run or runs else
+        "<section class='provider-card provider-empty-disclosure'><details class='admin-disclosure' id='provider-collection-history'><summary>Collection · No runs yet</summary><div class='disclosure-body'><p class='empty'>No catalog collection runs recorded yet.</p></div></details></section>"
+    )
     content = f"""
       {_admin_header(user, csrf_token, active='providers')}
       <main class='dashboard provider-detail' id='main-content'>
@@ -1126,10 +1717,10 @@ def provider_detail_page(
         <section class='provider-metrics' aria-label='Provider summary'><article><span>Packages</span><strong>{package_count}</strong></article><article><span>Broken</span><strong>{broken_packages}</strong></article><article><span>Last catalog sync</span><strong>{_timestamp_markup(provider.get('lastCatalogSync'))}</strong></article><article><span>Last health check</span><strong>{_timestamp_markup(provider.get('lastHealthCheck'))}</strong></article></section>
         <section class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Metadata</p><h2>Provider metadata</h2></div></div><dl class='provider-information-list'><div><dt>Website</dt><dd>{_provider_url(provider.get('website'))}</dd></div><div><dt>License</dt><dd>{html.escape(str(provider.get('license') or '—'))}</dd></div><div><dt>Attribution</dt><dd>{html.escape(str(provider.get('attribution') or '—'))}</dd></div><div><dt>License URL</dt><dd>{_provider_url(provider.get('licenseUrl'))}</dd></div></dl></section>
         <section class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Sources</p><h2>Original links</h2></div><p class='table-help'>Provider-level sources</p></div>{empty_sources}{source_table}</section>
-        <section class='provider-card'><details class='admin-disclosure' id='provider-download-sources'><summary>Package download sources · {len(download_sources)}</summary><div class='disclosure-body'><div class='inline-filter-row'><label><span class='sr-only'>Search sources</span><input id='provider-source-search' type='search' placeholder='Search sources' autocomplete='off'></label><label><span class='sr-only'>Source status</span><select id='provider-source-filter'><option value='all'>All sources</option><option value='broken'>Broken only</option></select></label></div>{empty_download_sources}{download_source_table}<div class='provider-pagination' id='provider-source-pagination' aria-live='polite'></div></div></details></section>
-        <section class='provider-card'><details class='admin-disclosure' id='provider-packages'><summary>Regions and packages · {len(packages)} packages · {broken_packages} broken</summary><div class='disclosure-body'><div class='inline-filter-row'><label><span class='sr-only'>Search packages</span><input id='provider-package-search' type='search' placeholder='Search packages' autocomplete='off'></label><label><span class='sr-only'>Package status</span><select id='provider-package-filter'><option value='all'>All packages</option><option value='broken'>Broken only</option></select></label></div>{empty_packages}{package_table}<div class='provider-pagination' id='provider-package-pagination' aria-live='polite'></div></div></details></section>
-        <section class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Health</p><h2>Latest health check</h2></div></div><div class='provider-latest-summary'><div>{health_summary}</div><span>{health_transport}</span></div><details class='admin-disclosure' id='provider-health-details'><summary>View check details</summary><div class='disclosure-body'>{empty_health}{latest_health_table}</div></details><details class='admin-disclosure' id='provider-health-history'><summary>Health check history · {len(health_history)} checks</summary><div class='disclosure-body'>{empty_health}{health_history_table}</div></details></section>
-        <section class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Collection</p><h2>Last collection</h2></div></div><div class='provider-latest-summary'>{collection_summary}</div><details class='admin-disclosure' id='provider-collection-history'><summary>Collection history · {len(runs)} runs</summary><div class='disclosure-body'>{empty_runs}{run_table}</div></details></section>
+        {download_source_section}
+        <section class='provider-card'><details class='admin-disclosure' id='provider-packages'><summary>Regions and packages · {len(packages)} packages · {broken_packages} broken</summary><div class='disclosure-body'><div class='inline-filter-row'><label><span class='sr-only'>Search packages</span><input id='provider-package-search' type='search' placeholder='Search packages' autocomplete='off'></label><label><span class='sr-only'>Package status</span><select id='provider-package-filter'><option value='all'>All packages</option><option value='broken'>Broken only</option></select></label><label><span class='sr-only'>Package page size</span><select id='provider-package-page-size'><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label></div>{empty_packages}{package_table}<div class='provider-pagination' id='provider-package-pagination' aria-live='polite'></div></div></details></section>
+        <section class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Health</p><h2>Latest health check</h2></div></div><div class='provider-latest-summary'><div>{health_summary}</div><span>{health_transport}</span></div><details class='admin-disclosure' id='provider-health-details'><summary>View check details</summary><div class='disclosure-body'>{empty_health}{latest_health_table}</div></details><details class='admin-disclosure' id='provider-health-history'><summary>Health check history · {len(previous_health)} previous checks</summary><div class='disclosure-body'>{empty_previous_health}{health_history_table}</div></details></section>
+        {collection_section}
         <section class='provider-card'><details class='admin-disclosure' id='provider-history'><summary>Provider history · {len(audits)} events</summary><div class='disclosure-body'><p class='table-help'>Status changes and provider actions are retained.</p>{empty_audits}{audit_table}</div></details></section>
       </main>
       <script>window.terentoAdminCsrf = {_admin_json(csrf_token)};{_provider_detail_script()}</script>
@@ -1153,13 +1744,21 @@ def _map_statistics_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
     installs = count("INSTALL_SUCCEEDED", "SUCCEEDED")
     failed_installs = count("INSTALL_FAILED", "FAILED")
     install_attempts = installs + failed_installs
+    event_count = sum(
+        int(row.get("event_count") or row.get("operation_count") or 0)
+        for row in rows
+    )
     return {
         "hasEventData": has_event_data,
+        "eventGroupCount": len(rows),
+        "eventCount": event_count if has_event_data else None,
         "completedDownloads": downloads if has_event_data else None,
         "failedDownloads": failed_downloads if has_event_data else None,
+        "downloadAttempts": download_attempts if has_event_data else None,
         "downloadSuccessRate": (downloads / download_attempts * 100) if has_event_data and download_attempts else None,
         "completedInstalls": installs if has_event_data else None,
         "failedInstalls": failed_installs if has_event_data else None,
+        "installAttempts": install_attempts if has_event_data else None,
         "installSuccessRate": (installs / install_attempts * 100) if has_event_data and install_attempts else None,
     }
 
@@ -1169,11 +1768,14 @@ def _map_statistics_rows(rows: list[dict[str, Any]]) -> str:
         return "<tr><td colspan='7' class='muted-value'>No map events in this period.</td></tr>"
     markup: list[str] = []
     for row in rows:
+        region_name = _admin_map_display_name(
+            row.get("region_display_name"), row.get("region"),
+        )
         markup.append(
             f"<tr><td>{html.escape(str(row.get('provider_id') or '—'))}</td>"
             f"<td><code>{html.escape(str(row.get('map_package_id') or '—'))}</code></td>"
-            f"<td>{html.escape(str(row.get('region') or '—'))}</td><td>{html.escape(str(row.get('event_type') or '—'))}</td>"
-            f"<td>{html.escape(str(row.get('outcome') or '—'))}</td><td class='numeric'>{int(row.get('operation_count') or row.get('event_count') or 0)}</td>"
+            f"<td>{html.escape(region_name)}</td><td>{html.escape(str(row.get('event_type') or '—'))}</td>"
+            f"<td>{html.escape(_admin_event_outcome_label(row.get('outcome')))}</td><td class='numeric'>{int(row.get('operation_count') or row.get('event_count') or 0)}</td>"
             f"<td>{_timestamp_markup(row.get('last_occurred_at'))}</td></tr>"
         )
     return "".join(markup)
@@ -1187,32 +1789,79 @@ def map_statistics_page(
     summary = _map_statistics_summary(rows)
     selected = selected_filters or {}
     has_event_data = bool(rows)
+    selected_provider = str(selected.get("provider") or "").strip().lower()
+    scoped_providers = [
+        provider for provider in providers
+        if not selected_provider
+        or str(provider.get("id") or "").strip().lower() == selected_provider
+    ]
     provider_issues = sum(
         max(
             int(provider.get("brokenUrlCount") or 0),
             int(provider.get("brokenPackageCount") or 0),
             1 if str(provider.get("lastHealthError") or "").strip() else 0,
         )
-        for provider in providers
+        for provider in scoped_providers
     )
-    healthy_providers = sum(1 for provider in providers if str(provider.get("health") or "").upper() == "HEALTHY")
+    healthy_providers = sum(
+        1 for provider in scoped_providers if str(provider.get("health") or "").upper() == "HEALTHY"
+    )
     event_value = lambda key: "—" if summary.get(key) is None else str(summary[key])
+    linkage = statistics.get("linkage") if isinstance(statistics.get("linkage"), dict) else {}
+    linkage_value = lambda key: (
+        "—" if not has_event_data or linkage.get(key) is None else str(linkage[key])
+    )
+    linkage_rate = _format_rate(linkage.get("linkageRate")) if has_event_data else "—"
+    linkage_summary = "DATA QUALITY · Watch event linkage"
+    if has_event_data:
+        linkage_summary += f" · {linkage_rate} linkage · {linkage_value('mapOnlyInstallationCount')} unlinked installs"
+    event_status = (
+        f"{summary['eventGroupCount']} event group{'s' if summary['eventGroupCount'] != 1 else ''} · "
+        f"{summary['eventCount']} event record{'s' if summary['eventCount'] != 1 else ''}"
+        if has_event_data else "No event groups"
+    )
     provider_options = "".join(
         f"<option value='{html.escape(str(provider.get('id') or ''), quote=True)}'>{html.escape(str(provider.get('name') or provider.get('id') or ''))}</option>"
         for provider in providers
     )
-    event_table = f"""<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Map operation events</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Map</th><th scope='col'>Region</th><th scope='col'>Event</th><th scope='col'>Outcome</th><th scope='col'>Operations</th><th scope='col'>Last activity</th></tr></thead><tbody id='map-statistics-rows'>{_map_statistics_rows(rows)}</tbody></table></div>"""
+    detail_rows = list(statistics.get("detailRows") or rows[:25])
+    detail_total = int(statistics.get("detailTotal") or len(rows))
+    detail_page = int(statistics.get("detailPage") or 1)
+    detail_page_size = int(statistics.get("detailPageSize") or 25)
+    detail_pages = max(1, (detail_total + detail_page_size - 1) // detail_page_size)
+    detail_start = min(detail_total, (detail_page - 1) * detail_page_size + 1) if detail_total else 0
+    detail_end = min(detail_total, detail_page * detail_page_size)
+    selected_period = str(
+        selected.get("period")
+        or (statistics.get("filters") or {}).get("period")
+        or "all"
+    ).strip().lower()
+    if selected_period not in {"24h", "7d", "30d", "all"}:
+        selected_period = "all"
+    statistics_period_options = "".join(
+        f"<option value='{value}'{' selected' if value == selected_period else ''}>{label}</option>"
+        for value, label in (
+            ("24h", "Last 24 hours"),
+            ("7d", "Last 7 days"),
+            ("30d", "Last 30 days"),
+            ("all", "All time"),
+        )
+    )
+    event_table = f"""<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Map operation events</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Map</th><th scope='col'>Region</th><th scope='col'>Event</th><th scope='col'>Outcome</th><th scope='col'>Operations</th><th scope='col'>Last activity</th></tr></thead><tbody id='map-statistics-rows'>{_map_statistics_rows(detail_rows)}</tbody></table></div><div class='provider-pagination' id='map-statistics-event-pagination' aria-live='polite'><label>Rows <select id='map-statistics-event-page-size' aria-label='Rows per event page'><option value='25'{' selected' if detail_page_size == 25 else ''}>25</option><option value='50'{' selected' if detail_page_size == 50 else ''}>50</option></select></label><button type='button' data-event-page='previous' disabled>Previous</button><span>Showing {detail_start}–{detail_end} of {detail_total} · page {detail_page} of {detail_pages}</span><button type='button' data-event-page='next' {'disabled' if detail_page >= detail_pages else ''}>Next</button></div>"""
     content = f"""
       {_admin_header(user, csrf_token, active='map-statistics')}
       <main class='dashboard map-statistics-page' id='main-content'>
         <div class='heading-row'><div><p class='eyebrow'>Map operations</p><h1>Map statistics</h1><p class='lede'>Popularity is shown together with download, install, and provider reliability signals.</p></div></div>
-        <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search'><label><span class='sr-only'>Time range</span><select id='map-statistics-range'><option value='7'>7 days</option><option value='30'>30 days</option><option value='90'>90 days</option><option value='all'>All time</option></select></label><label><span class='sr-only'>Provider</span><select id='map-statistics-provider'><option value=''>All providers</option>{provider_options}</select></label><details class='admin-disclosure filter-disclosure' id='map-statistics-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Map ID</span><input id='map-statistics-map' type='search' placeholder='Map ID'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event'><option value=''>All events</option><option value='DOWNLOAD_SUCCEEDED'>Download succeeded</option><option value='DOWNLOAD_FAILED'>Download failed</option><option value='INSTALL_SUCCEEDED'>Install succeeded</option><option value='INSTALL_FAILED'>Install failed</option><option value='DOWNLOAD_STARTED'>Download started</option></select></label></div></details><p class='results-count' id='map-statistics-status' aria-live='polite'>{len(rows)} grouped event{'s' if len(rows) != 1 else ''}</p></form>
-        <section class='admin-kpi-grid map-statistics-kpis' id='map-statistics-metrics' aria-label='Map statistics summary'><article><span>Completed downloads</span><strong data-stat='completedDownloads'>{event_value('completedDownloads')}</strong></article><article><span>Download success</span><strong data-stat='downloadSuccessRate'>{_format_rate(summary['downloadSuccessRate'])}</strong></article><article><span>Completed installs</span><strong data-stat='completedInstalls'>{event_value('completedInstalls')}</strong></article><article><span>Install success</span><strong data-stat='installSuccessRate'>{_format_rate(summary['installSuccessRate'])}</strong></article></section>
+        <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search'><label><span class='sr-only'>Time range</span><select id='map-statistics-range'>{statistics_period_options}</select></label><label><span class='sr-only'>Provider</span><select id='map-statistics-provider'><option value=''>All providers</option>{provider_options}</select></label><details class='admin-disclosure filter-disclosure' id='map-statistics-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Map ID</span><input id='map-statistics-map' type='search' placeholder='Map ID'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event'><option value=''>All events</option><option value='DOWNLOAD_SUCCEEDED'>Download succeeded</option><option value='DOWNLOAD_FAILED'>Download failed</option><option value='INSTALL_SUCCEEDED'>Install succeeded</option><option value='INSTALL_FAILED'>Install failed</option><option value='DOWNLOAD_STARTED'>Download started</option></select></label></div></details><p class='results-count' id='map-statistics-status' aria-live='polite'>{event_status}</p></form>
+        <p class='table-help map-statistics-definition-note'>Map statistics count map-package records. Overview counts distinct install operations; one operation can include multiple map packages.</p>
+        <section class='admin-kpi-grid map-statistics-kpis' id='map-statistics-metrics' aria-label='Map statistics summary'><article><span>Completed downloads</span><strong data-stat='completedDownloads'>{event_value('completedDownloads')}</strong></article><article><span>Download success</span><strong data-stat='downloadSuccessRate'>{_format_rate(summary['downloadSuccessRate'])}</strong></article><article><span>Completed map-package installs</span><strong data-stat='completedInstalls'>{event_value('completedInstalls')}</strong></article><article><span>Package install success</span><strong data-stat='installSuccessRate'>{_format_rate(summary['installSuccessRate'])}</strong></article></section>
         <section class='map-statistics-empty' id='map-statistics-empty' {'hidden' if has_event_data else ''} aria-live='polite'><h2>No map operation data yet</h2><p>Statistics will appear after opted-in beta.8 map operations are received.</p></section>
-        <section class='map-statistics-reliability' aria-label='Reliability summary'><div><span>Failed installs</span><strong data-stat='failedInstalls'>{event_value('failedInstalls')}</strong></div><div><span>Failed downloads</span><strong data-stat='failedDownloads'>{event_value('failedDownloads')}</strong></div><div><span>Provider issues</span><strong data-stat='providerIssues'>{provider_issues}</strong></div></section>
-        <section class='map-statistics-provider-health' id='map-statistics-provider-health' aria-label='Provider health'><span>Provider health</span><strong>{healthy_providers} / {len(providers)} healthy</strong><em> · {provider_issues} issues</em></section>
-        <section class='provider-dashboard-grid' id='map-statistics-popularity' {'hidden' if not has_event_data else ''}><article class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Downloads per provider</h2></div></div><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Downloads per provider</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Downloads</th><th scope='col'>Installs</th><th scope='col'>Install success</th><th scope='col'>Health</th></tr></thead><tbody id='provider-statistic-rows'></tbody></table></div></article><article class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Top maps and regions</h2></div></div><div class='popularity-subsection'><h3>Top maps</h3><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Top maps</caption><thead><tr><th scope='col'>Map</th><th scope='col'>Region</th><th scope='col'>Completed downloads</th><th scope='col'>Last activity</th></tr></thead><tbody id='top-map-rows'></tbody></table></div></div><div class='popularity-subsection'><h3>Top regions</h3><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Top regions</caption><thead><tr><th scope='col'>Region</th><th scope='col'>Completed downloads</th><th scope='col'>Last activity</th></tr></thead><tbody id='top-region-rows'></tbody></table></div></div></article></section>
-        <section class='provider-card map-events-card' {'hidden' if not has_event_data else ''}><details class='admin-disclosure' id='map-statistics-event-detail'><summary id='map-statistics-event-summary'>Event detail · {len(rows)} grouped event{'s' if len(rows) != 1 else ''}</summary><div class='disclosure-body' id='map-statistics-event-body'>{event_table}</div></details></section>
+        <section class='map-statistics-reliability' aria-label='Reliability summary'><div><span>Failed map-package installs</span><strong data-stat='failedInstalls'>{event_value('failedInstalls')}</strong></div><div><span>Failed downloads</span><strong data-stat='failedDownloads'>{event_value('failedDownloads')}</strong></div><div><span>Current provider issues</span><strong data-stat='providerIssues'>{provider_issues}</strong></div></section>
+        <section class='map-statistics-provider-health' id='map-statistics-provider-health' aria-label='Current provider health'><span>Current provider health</span><strong data-stat='providerHealth'>{healthy_providers} / {len(scoped_providers)} healthy</strong><em data-stat='providerHealthIssues'> · {provider_issues} issues</em></section>
+        <details class='provider-card map-statistics-linkage' id='map-statistics-linkage' aria-label='Watch event linkage'><summary id='map-statistics-linkage-summary'>{html.escape(linkage_summary)}</summary><div class='disclosure-body'><p class='table-help'>Matched only when the map and watch events share the same operation ID.</p><div class='map-statistics-linkage-grid'><div><span>Map install operations</span><strong data-stat='mapInstallationCount'>{linkage_value('mapInstallationCount')}</strong></div><div><span>Linked watch events</span><strong data-stat='linkedInstallationCount'>{linkage_value('linkedInstallationCount')}</strong></div><div><span>Unlinked installs</span><strong data-stat='mapOnlyInstallationCount'>{linkage_value('mapOnlyInstallationCount')}</strong></div><div><span>Linkage coverage</span><strong data-stat='linkageRate'>{linkage_rate}</strong></div><div><span>Watch-confirmed successes</span><strong data-stat='linkedSuccessfulInstallCount'>{linkage_value('linkedSuccessfulInstallCount')}</strong></div><div><span>Watch-confirmed failures</span><strong data-stat='linkedFailedInstallCount'>{linkage_value('linkedFailedInstallCount')}</strong></div></div><p class='table-help map-statistics-scope-note'>A missing watch event is shown as unlinked, not as a failure. Map statistics and compatibility evidence remain separate aggregates.</p></div></details>
+        <section class='provider-card map-statistics-provider-table' id='map-statistics-provider-table' {'hidden' if not has_event_data else ''}><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Activity by provider</h2></div></div><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Activity by provider</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Downloads</th><th scope='col'>Map-package installs</th><th scope='col'>Package install success</th><th scope='col'>Current health</th></tr></thead><tbody id='provider-statistic-rows'></tbody></table></div></section>
+        <section class='provider-card map-statistics-popularity' id='map-statistics-popularity' {'hidden' if not has_event_data else ''}><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Popular maps</h2></div></div><div class='popularity-subsection'><h3>Top maps</h3><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Popular maps</caption><thead><tr><th scope='col'>Map / region</th><th scope='col'>Provider</th><th scope='col'>Package installs</th><th scope='col'>Last activity</th></tr></thead><tbody id='map-rows'></tbody></table></div><details class='admin-disclosure popularity-all-maps-disclosure'><summary id='all-maps-summary'>View all maps</summary></details></div><details class='admin-disclosure popularity-regions-disclosure'><summary>Regions</summary><div class='disclosure-body'><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Top regions</caption><thead><tr><th scope='col'>Region</th><th scope='col'>Completed map-package installs</th><th scope='col'>Last activity</th></tr></thead><tbody id='top-region-rows'></tbody></table></div></div></details></section>
+        <section class='provider-card map-events-card' {'hidden' if not has_event_data else ''}><details class='admin-disclosure' id='map-statistics-event-detail'><summary id='map-statistics-event-summary'>Event detail · {event_status}</summary><div class='disclosure-body' id='map-statistics-event-body'>{event_table}</div></details></section>
       </main>
       <script>window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};{_map_statistics_script()}</script>
     """
@@ -1271,17 +1920,18 @@ def _provider_detail_script() -> str:
           } catch (error) { button.disabled = false; if (status) status.textContent = error.message || 'Provider action failed.'; }
         });
       });
-      const setupPagination = ({rowsSelector, searchSelector, filterSelector, paginationSelector, noun}) => {
+      const setupPagination = ({rowsSelector, searchSelector, filterSelector, pageSizeSelector, paginationSelector, noun}) => {
         const rows = [...document.querySelectorAll(rowsSelector)];
         const search = document.querySelector(searchSelector);
         const filter = document.querySelector(filterSelector);
+        const pageSizeControl = document.querySelector(pageSizeSelector);
         const pagination = document.querySelector(paginationSelector);
         if (!pagination) return;
         if (!rows.length) { pagination.hidden = true; return; }
         pagination.hidden = false;
-        const pageSize = 50;
         let page = 0;
         const refresh = () => {
+          const pageSize = Number(pageSizeControl?.value || 25) === 50 ? 50 : 25;
           const query = (search?.value || '').trim().toLocaleLowerCase();
           const brokenOnly = filter?.value === 'broken';
           const visible = rows.filter((row) => {
@@ -1305,10 +1955,11 @@ def _provider_detail_script() -> str:
         };
         search?.addEventListener('input', () => { page = 0; refresh(); });
         filter?.addEventListener('change', () => { page = 0; refresh(); });
+        pageSizeControl?.addEventListener('change', () => { page = 0; refresh(); });
         refresh();
       };
-      setupPagination({rowsSelector: '#provider-download-source-rows tr[data-source-search]', searchSelector: '#provider-source-search', filterSelector: '#provider-source-filter', paginationSelector: '#provider-source-pagination', noun: 'source'});
-      setupPagination({rowsSelector: '#provider-package-rows tr[data-package-search]', searchSelector: '#provider-package-search', filterSelector: '#provider-package-filter', paginationSelector: '#provider-package-pagination', noun: 'package'});
+      setupPagination({rowsSelector: '#provider-download-source-rows tr[data-source-search]', searchSelector: '#provider-source-search', filterSelector: '#provider-source-filter', pageSizeSelector: '#provider-source-page-size', paginationSelector: '#provider-source-pagination', noun: 'source'});
+      setupPagination({rowsSelector: '#provider-package-rows tr[data-package-search]', searchSelector: '#provider-package-search', filterSelector: '#provider-package-filter', pageSizeSelector: '#provider-package-page-size', paginationSelector: '#provider-package-pagination', noun: 'package'});
     })();"""
 
 
@@ -1327,63 +1978,133 @@ def _map_statistics_script() -> str:
       const moreFilters = document.querySelector('#map-statistics-more-filters');
       const emptyState = document.querySelector('#map-statistics-empty');
       const popularity = document.querySelector('#map-statistics-popularity');
+      const providerTable = document.querySelector('#map-statistics-provider-table');
+      const linkageSection = document.querySelector('#map-statistics-linkage');
+      const linkageSummary = document.querySelector('#map-statistics-linkage-summary');
+      const mapRows = document.querySelector('#map-rows');
+      const allMapsDisclosure = document.querySelector('.popularity-all-maps-disclosure');
+      const allMapsSummary = allMapsDisclosure?.querySelector('summary');
       const providerHealth = document.querySelector('#map-statistics-provider-health');
       const eventDetail = document.querySelector('#map-statistics-event-detail');
       const eventSummary = document.querySelector('#map-statistics-event-summary');
+      const eventPagination = document.querySelector('#map-statistics-event-pagination');
+      const eventPageSize = document.querySelector('#map-statistics-event-page-size');
+      let detailPage = 1;
+      let currentPayload = initial;
       const formatRate = (value) => value === null || value === undefined ? '—' : `${Number(value).toFixed(Number(value) % 1 ? 1 : 0)}%`;
       const operations = (row) => Number(row.operation_count || row.event_count || 0);
       const count = (rows, eventType, outcome) => rows.filter((row) => row.event_type === eventType && (!outcome || row.outcome === outcome)).reduce((total, row) => total + operations(row), 0);
       const healthByProvider = Object.fromEntries(providers.map((item) => [item.id, item.health || 'UNKNOWN']));
       const providerName = Object.fromEntries(providers.map((item) => [item.id, item.name || item.id]));
+      const providerIssueCount = (item) => Math.max(Number(item.brokenUrlCount || 0), Number(item.brokenPackageCount || 0), item.lastHealthError ? 1 : 0);
+      const humanize = (value) => String(value || '—').replace(/[-_]+/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+      const outcomeLabel = (value) => String(value || '').toUpperCase() === 'UNKNOWN' ? '—' : humanize(value);
       const render = (payload) => {
+        currentPayload = payload;
         const rows = payload.rows || [];
+        const detailRows = payload.detailRows || rows;
+        const linkage = payload.linkage || {};
         const hasEventData = rows.length > 0;
+        const selectedProvider = String((payload.filters && payload.filters.provider) || provider?.value || '').trim().toLowerCase();
+        const scopedProviders = selectedProvider ? providers.filter((item) => String(item.id || '').trim().toLowerCase() === selectedProvider) : providers;
+        const eventRecords = rows.reduce((total, row) => total + Number(row.event_count || row.operation_count || 0), 0);
         const downloads = count(rows, 'DOWNLOAD_SUCCEEDED', 'SUCCEEDED');
         const failedDownloads = count(rows, 'DOWNLOAD_FAILED', 'FAILED');
         const installs = count(rows, 'INSTALL_SUCCEEDED', 'SUCCEEDED');
         const failedInstalls = count(rows, 'INSTALL_FAILED', 'FAILED');
         const set = (key, value) => { const node = document.querySelector(`[data-stat="${key}"]`); if (node) node.textContent = value; };
-        set('completedDownloads', hasEventData ? downloads : '—'); set('failedDownloads', hasEventData ? failedDownloads : '—'); set('completedInstalls', hasEventData ? installs : '—');
+        const linkageValue = (key) => hasEventData && linkage[key] !== null && linkage[key] !== undefined ? linkage[key] : '—';
+        set('completedDownloads', hasEventData ? downloads : '—'); set('failedDownloads', hasEventData ? failedDownloads : '—'); set('completedInstalls', hasEventData ? installs : '—'); set('failedInstalls', hasEventData ? failedInstalls : '—');
         set('downloadSuccessRate', hasEventData ? formatRate(downloads + failedDownloads ? downloads / (downloads + failedDownloads) * 100 : null) : '—');
         set('installSuccessRate', hasEventData ? formatRate(installs + failedInstalls ? installs / (installs + failedInstalls) * 100 : null) : '—');
+        set('mapInstallationCount', linkageValue('mapInstallationCount'));
+        set('linkedInstallationCount', linkageValue('linkedInstallationCount'));
+        set('mapOnlyInstallationCount', linkageValue('mapOnlyInstallationCount'));
+        set('linkageRate', hasEventData ? formatRate(linkage.linkageRate) : '—');
+        set('linkedSuccessfulInstallCount', linkageValue('linkedSuccessfulInstallCount'));
+        set('linkedFailedInstallCount', linkageValue('linkedFailedInstallCount'));
         if (emptyState) emptyState.hidden = hasEventData;
         if (popularity) popularity.hidden = !hasEventData;
+        if (providerTable) providerTable.hidden = !hasEventData;
+        if (linkageSection) linkageSection.hidden = !hasEventData;
+        if (linkageSummary) linkageSummary.textContent = hasEventData ? `DATA QUALITY · Watch event linkage · ${formatRate(linkage.linkageRate)} linkage · ${linkageValue('mapOnlyInstallationCount')} unlinked installs` : 'DATA QUALITY · Watch event linkage';
         if (eventDetail) eventDetail.closest('.map-events-card').hidden = !hasEventData;
         if (providerHealth) providerHealth.hidden = false;
-        const byProvider = Object.fromEntries(providers.map((item) => [item.id, {downloads: 0, installs: 0, failedInstalls: 0}]));
+        const healthyCount = scopedProviders.filter((item) => String(item.health || '').toUpperCase() === 'HEALTHY').length;
+        const issueCount = scopedProviders.reduce((total, item) => total + providerIssueCount(item), 0);
+        set('providerHealth', `${healthyCount} / ${scopedProviders.length} healthy`);
+        set('providerHealthIssues', ` · ${issueCount} issues`);
+        set('providerIssues', issueCount);
+        const byProvider = Object.fromEntries(scopedProviders.map((item) => [item.id, {downloads: 0, installs: 0, failedInstalls: 0}]));
         rows.forEach((row) => { const id = row.provider_id || 'unknown'; byProvider[id] ||= {downloads: 0, installs: 0, failedInstalls: 0}; if (row.event_type === 'DOWNLOAD_SUCCEEDED' && row.outcome === 'SUCCEEDED') byProvider[id].downloads += operations(row); if (row.event_type === 'INSTALL_SUCCEEDED' && row.outcome === 'SUCCEEDED') byProvider[id].installs += operations(row); if (row.event_type === 'INSTALL_FAILED' && row.outcome === 'FAILED') byProvider[id].failedInstalls += operations(row); });
         const providerRows = Object.entries(byProvider).sort((a, b) => b[1].downloads - a[1].downloads || a[0].localeCompare(b[0])).map(([id, item]) => `<tr><td>${escapeHtml(providerName[id] || id)}</td><td class="numeric">${item.downloads}</td><td class="numeric">${item.installs}</td><td>${formatRate(item.installs + item.failedInstalls ? item.installs / (item.installs + item.failedInstalls) * 100 : null)}</td><td>${badge(healthByProvider[id])}</td></tr>`).join('');
         document.querySelector('#provider-statistic-rows').innerHTML = providerRows || emptyRow(5);
         const byMap = {};
-        rows.filter((row) => row.event_type === 'DOWNLOAD_SUCCEEDED' && row.outcome === 'SUCCEEDED').forEach((row) => { const key = `${row.map_package_id || 'unknown'}\u0000${row.region || '—'}`; byMap[key] ||= {map: row.map_package_id || '—', region: row.region || '—', count: 0, last: row.last_occurred_at}; byMap[key].count += operations(row); if (String(row.last_occurred_at || '') > String(byMap[key].last || '')) byMap[key].last = row.last_occurred_at; });
-        const topMaps = Object.values(byMap).sort((a, b) => b.count - a.count || a.map.localeCompare(b.map)).slice(0, 10).map((item) => `<tr><td><code>${escapeHtml(item.map)}</code></td><td>${escapeHtml(item.region)}</td><td class="numeric">${item.count}</td><td>${formatTimestamp(item.last)}</td></tr>`).join('');
-        document.querySelector('#top-map-rows').innerHTML = topMaps || emptyRow(4);
+        rows.filter((row) => row.event_type === 'DOWNLOAD_SUCCEEDED' && row.outcome === 'SUCCEEDED').forEach((row) => { const key = `${row.provider_id || 'unknown'}\u0000${row.map_package_id || 'unknown'}\u0000${row.region || '—'}`; byMap[key] ||= {map: row.map_package_id || '—', name: row.display_name || row.map_package_name || '', provider: row.provider_id || '', region: row.region || '—', regionName: row.region_display_name || humanize(row.region), count: 0, last: row.last_occurred_at}; byMap[key].count += operations(row); if (String(row.last_occurred_at || '') > String(byMap[key].last || '')) byMap[key].last = row.last_occurred_at; });
+        const mapItems = Object.values(byMap).sort((a, b) => b.count - a.count || a.map.localeCompare(b.map));
+        const showAllMaps = Boolean(allMapsDisclosure?.open);
+        const mapRow = (item) => `<tr><td><strong>${escapeHtml(item.name || item.regionName || '—')}</strong><small class="table-secondary"><code>${escapeHtml(item.map)}</code> · ${escapeHtml(item.regionName || '—')}</small></td><td>${escapeHtml(providerName[item.provider] || item.provider || '—')}</td><td class="numeric">${item.count}</td><td>${formatTimestamp(item.last)}</td></tr>`;
+        if (mapRows) mapRows.innerHTML = (showAllMaps ? mapItems : mapItems.slice(0, 5)).map(mapRow).join('') || emptyRow(4);
+        if (allMapsSummary) allMapsSummary.textContent = showAllMaps ? 'Show Top 5' : 'View all maps';
         const byRegion = {};
-        Object.values(byMap).forEach((item) => { byRegion[item.region] ||= {region: item.region, count: 0, last: item.last}; byRegion[item.region].count += item.count; if (String(item.last || '') > String(byRegion[item.region].last || '')) byRegion[item.region].last = item.last; });
-        const topRegions = Object.values(byRegion).sort((a, b) => b.count - a.count || a.region.localeCompare(b.region)).slice(0, 10).map((item) => `<tr><td>${escapeHtml(item.region)}</td><td class="numeric">${item.count}</td><td>${formatTimestamp(item.last)}</td></tr>`).join('');
+        Object.values(byMap).forEach((item) => { byRegion[item.region] ||= {region: item.region, display: item.regionName, count: 0, last: item.last}; byRegion[item.region].count += item.count; if (String(item.last || '') > String(byRegion[item.region].last || '')) byRegion[item.region].last = item.last; });
+        const topRegions = Object.values(byRegion).sort((a, b) => b.count - a.count || a.region.localeCompare(b.region)).slice(0, 10).map((item) => `<tr><td>${escapeHtml(item.display || humanize(item.region))}</td><td class="numeric">${item.count}</td><td>${formatTimestamp(item.last)}</td></tr>`).join('');
         document.querySelector('#top-region-rows').innerHTML = topRegions || emptyRow(3);
-        const detailRows = rows.map((row) => `<tr><td>${escapeHtml(row.provider_id || '—')}</td><td><code>${escapeHtml(row.map_package_id || '—')}</code></td><td>${escapeHtml(row.region || '—')}</td><td>${escapeHtml(row.event_type || '—')}</td><td>${escapeHtml(row.outcome || '—')}</td><td class="numeric">${operations(row)}</td><td>${formatTimestamp(row.last_occurred_at)}</td></tr>`).join('');
-        document.querySelector('#map-statistics-rows').innerHTML = detailRows || emptyRow(7);
-        if (eventSummary) eventSummary.textContent = `Event detail · ${rows.length} grouped event${rows.length === 1 ? '' : 's'}`;
-        if (status) status.textContent = rows.length ? `${rows.length} grouped event${rows.length === 1 ? '' : 's'}` : 'No grouped events';
+        const detailMarkup = detailRows.map((row) => `<tr><td>${escapeHtml(row.provider_id || '—')}</td><td><code>${escapeHtml(row.map_package_id || '—')}</code></td><td>${escapeHtml(row.region_display_name || humanize(row.region))}</td><td>${escapeHtml(row.event_type || '—')}</td><td>${escapeHtml(outcomeLabel(row.outcome))}</td><td class="numeric">${operations(row)}</td><td>${formatTimestamp(row.last_occurred_at)}</td></tr>`).join('');
+        document.querySelector('#map-statistics-rows').innerHTML = detailMarkup || emptyRow(7);
+        const eventStatus = rows.length ? `${rows.length} event group${rows.length === 1 ? '' : 's'} · ${eventRecords} event record${eventRecords === 1 ? '' : 's'}` : 'No event groups';
+        if (eventSummary) eventSummary.textContent = `Event detail · ${eventStatus}`;
+        if (status) status.textContent = eventStatus;
+        detailPage = Number(payload.detailPage || 1);
+        const total = Number(payload.detailTotal || rows.length || 0);
+        const size = Number(payload.detailPageSize || eventPageSize?.value || 25);
+        if (eventPageSize && ['25', '50'].includes(String(size))) eventPageSize.value = String(size);
+        if (eventPagination) {
+          const pages = Math.max(1, Math.ceil(total / size));
+          const start = total ? Math.min(total, (detailPage - 1) * size + 1) : 0;
+          const end = Math.min(total, detailPage * size);
+          eventPagination.querySelector('span').textContent = `Showing ${start}–${end} of ${total} · page ${detailPage} of ${pages}`;
+          const previous = eventPagination.querySelector('[data-event-page="previous"]');
+          const next = eventPagination.querySelector('[data-event-page="next"]');
+          if (previous) previous.disabled = detailPage <= 1;
+          if (next) next.disabled = detailPage >= pages;
+        }
       };
       const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[character]));
-      const formatTimestamp = (value) => { if (!value) return '—'; const date = new Date(value); return Number.isNaN(date.getTime()) ? String(value) : date.toISOString().slice(0, 16).replace('T', ' '); };
+      const formatTimestamp = (value) => {
+        if (!value) return '—';
+        if (typeof window.TerentoAdminTime?.format === 'function') return window.TerentoAdminTime.format(value);
+        const normalizedValue = typeof value === 'string'
+          ? value.trim().replace(/^(\d{4}-\d{2}-\d{2})(\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)$/, '$1T$2')
+          : value;
+        const date = new Date(normalizedValue);
+        return Number.isNaN(date.getTime()) ? String(value) : date.toISOString().slice(0, 16).replace('T', ' ');
+      };
       const badge = (value) => `<span class="provider-status provider-status-${String(value || 'UNKNOWN').toLowerCase()}">${escapeHtml(String(value || 'UNKNOWN').replace('_', ' '))}</span>`;
       const emptyRow = (columns) => `<tr><td colspan="${columns}" class="muted-value">No events in this period.</td></tr>`;
-      const sync = async () => {
+      const sync = async ({resetDetailPage = false} = {}) => {
+        if (resetDetailPage) detailPage = 1;
         const parameters = new URLSearchParams();
         if (provider.value) parameters.set('provider', provider.value);
         if (map.value.trim()) parameters.set('map', map.value.trim());
         if (region.value.trim()) parameters.set('region', region.value.trim());
         if (event.value) parameters.set('eventType', event.value);
-        if (range.value !== 'all') { const days = Number(range.value); const from = new Date(Date.now() - days * 86400000); parameters.set('dateFrom', from.toISOString()); }
+        parameters.set('period', range.value || 'all');
+        if (filters.dateFrom && !filters.period && range.value === 'all') parameters.set('dateFrom', filters.dateFrom);
+        parameters.set('detailPage', String(detailPage));
+        parameters.set('detailPageSize', String(eventPageSize?.value || 25));
         if (status) status.textContent = 'Loading…';
         try { const response = await fetch(`/admin/map-statistics.json?${parameters}`, {credentials: 'same-origin', headers: {'Accept': 'application/json'}}); const payload = await response.json(); if (!response.ok) throw new Error(payload.error || 'Statistics unavailable'); render(payload); } catch (error) { if (status) status.textContent = error.message || 'Statistics unavailable'; }
       };
-      const initialRange = filters.dateFrom ? 'all' : 'all'; range.value = initialRange; if (filters.provider) provider.value = filters.provider; if (filters.map) map.value = filters.map; if (filters.region) region.value = filters.region; if (filters.eventType) event.value = filters.eventType;
+      if (allMapsDisclosure) allMapsDisclosure.addEventListener('toggle', () => render(currentPayload));
+      const initialRange = ['24h', '7d', '30d', 'all'].includes(String(filters.period || '')) ? String(filters.period) : 'all'; range.value = initialRange; if (filters.provider) provider.value = filters.provider; if (filters.map) map.value = filters.map; if (filters.region) region.value = filters.region; if (filters.eventType) event.value = filters.eventType;
       if (moreFilters && (filters.map || filters.region || filters.eventType)) moreFilters.open = true;
-      [range, provider, event].forEach((control) => control?.addEventListener('change', sync)); [map, region].forEach((control) => { control?.addEventListener('change', sync); control?.addEventListener('input', sync); });
+      [range, provider, event].forEach((control) => control?.addEventListener('change', () => sync({resetDetailPage: true}))); [map, region].forEach((control) => { control?.addEventListener('change', () => sync({resetDetailPage: true})); control?.addEventListener('input', () => sync({resetDetailPage: true})); });
+      eventPageSize?.addEventListener('change', () => sync({resetDetailPage: true}));
+      eventPagination?.querySelector('[data-event-page="previous"]')?.addEventListener('click', () => { detailPage = Math.max(1, detailPage - 1); sync(); });
+      eventPagination?.querySelector('[data-event-page="next"]')?.addEventListener('click', () => { detailPage += 1; sync(); });
+      window.addEventListener('terento-admin-timezone-ready', () => render(currentPayload));
+      window.addEventListener('terento-admin-timezone-change', () => render(currentPayload));
       render(initial);
     })();"""
 
@@ -1799,6 +2520,10 @@ def _diagnostic_detail_dialog(
         review_state = f"<div><dt>Review state</dt><dd>{_diagnostic_state_badge('OPEN')}{identity_badge}</dd></div>"
     elif identity_pending:
         review_state = f"<div><dt>Review state</dt><dd>{_diagnostic_state_badge('IDENTITY_PENDING')}</dd></div>"
+    failure_summary = (
+        f"<p class='diagnostic-failure-summary'><strong>Failure reason:</strong> {html.escape(_diagnostic_error_reason(results, resolved=resolved))}</p>"
+        if result_label == "FAILED" else ""
+    )
     technical_details = f"<details class='diagnostic-technical-details diagnostic-technical-all'><summary>Technical details</summary><p class='diagnostic-id'>Diagnostic ID: <code>{html.escape(operation_key)}</code></p><div class='technical-copy-actions'><button type='button' class='secondary-button' data-copy-diagnostic-id='{html.escape(operation_key, quote=True)}'>Copy diagnostic ID</button><button type='button' class='secondary-button' data-copy-technical-report data-report='{html.escape(issue_body, quote=True)}'>Copy technical report</button><span class='copy-status' data-copy-status role='status' aria-live='polite'></span></div>{technical}</details>"
     return f"""
       <dialog class='diagnostic-detail-dialog' id='{dialog_id}' aria-labelledby='{dialog_id}-title'>
@@ -1808,11 +2533,12 @@ def _diagnostic_detail_dialog(
             <div><dt>Device</dt><dd>{html.escape(model)}</dd></div>
             <div><dt>Variant</dt><dd>{html.escape(variant)}</dd></div>
             <div><dt>Date</dt><dd>{_timestamp_markup(first.get('occurred_at'))}</dd></div>
-            <div><dt>Region</dt><dd>{html.escape(_operation_text(results, 'region'))}</dd></div>
+            <div><dt>Map / region</dt><dd>{html.escape(_operation_text(results, 'region'))}</dd></div>
             <div><dt>Result</dt><dd>{_diagnostic_result(result_label)}</dd></div>
-            <div><dt>App version</dt><dd>{html.escape(str(first.get('release_label') or first.get('terento_version') or '—'))}{f" (build {html.escape(str(first.get('app_build')))})" if first.get('app_build') else ''}</dd></div>
+            <div><dt>App version</dt><dd>{html.escape(_admin_app_version_label(first.get('release_label') or first.get('terento_version'), first.get('app_build')))}</dd></div>
             {review_state}
           </dl>
+          {failure_summary}
           <div class='diagnostic-actions-grid'>{lifecycle_action}{identity_form}{issue_form}</div>
           {technical_details}
         </div>
@@ -1884,6 +2610,7 @@ def device_detail_page(
         recognized_map_capable_evidence=device.get("mapCapable") is True,
     )
     status_value = status.value if status else ""
+    last_activity = _timestamp_markup(stats.get("lastEvidenceAt")) if stats.get("lastEvidenceAt") else "—"
     publication = device.get("publicCompatibility") or {}
     map_label, map_kind = _admin_map_capability(device.get("mapCapable"))
     authorization_label, authorization_kind, _ = _admin_installation_authorization(
@@ -1900,7 +2627,7 @@ def device_detail_page(
         f"<img class='model-page-image' src='{html.escape(str(image_url), quote=True)}' alt='' loading='eager'>"
         if image_url else ""
     )
-    back_href = "/admin" if origin == "installations" else "/admin/devices"
+    back_href = "/admin/installations" if origin == "installations" else "/admin/devices"
     back_label = "Back to Installations" if origin == "installations" else "Back to Devices"
     detail_url = _device_detail_url(device_id, origin=origin)
     public_link = (
@@ -1927,19 +2654,14 @@ def device_detail_page(
             map_copy += f"<small>{html.escape(map_release)}</small>"
         if result == "FAILED":
             error_state = _diagnostic_state_badge("RESOLVED" if resolved else "OPEN")
-            error_detail = " · ".join(filter(None, (
-                _operation_text(results, "failure_stage", fallback=""),
-                _operation_text(results, "failure_code", fallback=""),
-            )))
-            error_markup = error_state + (
-                f"<small>{html.escape(error_detail)}</small>" if error_detail else ""
-            )
+            error_markup = error_state + f"<small>{html.escape(_diagnostic_error_reason(results, resolved=resolved))}</small>"
         else:
             error_markup = "<span class='muted-value'>No error</span>"
-        release = first.get("release_label") or first.get("terento_version") or ""
-        if first.get("app_build"):
-            release = f"{release} (build {first['app_build']})".strip()
-        release_markup = html.escape(str(release)) if release else "<span class='muted-value'>—</span>"
+        release = _admin_app_version_label(
+            first.get("release_label") or first.get("terento_version"),
+            first.get("app_build"),
+        )
+        release_markup = html.escape(release) if release != "—" else "<span class='muted-value'>—</span>"
         dialog_id = "diagnostic-detail-" + hashlib.sha256(operation_key.encode("utf-8")).hexdigest()[:16]
         rows_markup.append(
             f"<tr data-diagnostic-state='{'resolved-error' if is_resolved_error else 'open' if is_open_error else 'history'}' data-review-open='{'true' if is_open_error else 'false'}' data-review-resolved='{'true' if is_resolved_error else 'false'}' data-diagnostic-result='{html.escape(result.lower(), quote=True)}' data-has-issue='{'true' if issue else 'false'}'>"
@@ -2014,13 +2736,14 @@ def device_detail_page(
       <main class='dashboard model-detail-page' id='main-content'>
         <p class='back-link'><a href='{back_href}'>← {back_label}</a></p>
         <header class='model-page-header'>{image}<div class='model-page-heading'><p class='eyebrow'>Garmin device</p><h1>{html.escape(model)}{f' · <span>{html.escape(variant)}</span>' if variant != '—' else ''}</h1><div class='model-page-badges'>{summary_badges}</div></div>{public_link}</header>
-        <section class='diagnostic-model-metrics model-statistics' aria-label='Model installation statistics'><article><span>Attempts</span><strong>{attempts}</strong></article><article><span>Successful</span><strong>{successful}</strong></article><article><span>Failed</span><strong>{failed}</strong></article><article><span>Open errors</span><strong>{open_errors}</strong></article><article><span>Compatibility status</span><strong>{_status_badge(status_value)}</strong></article></section>
+        <section class='diagnostic-model-metrics model-statistics' aria-label='Model installation statistics'><article class='attempts-metric' aria-label='Attempts. Device snapshot totals; history separates active failures from resolved historical failures.' title='Device snapshot totals information: current persisted totals. History below separates active failures from resolved historical failures.'><span>Attempts</span><strong>{attempts}</strong></article><article><span>Successful</span><strong>{successful}</strong></article><article><span>Failed</span><strong>{failed}</strong></article><article><span>Open errors</span><strong>{open_errors}</strong></article><article><span>Last activity</span><strong>{last_activity}</strong></article></section>
         {alert}
         <section class='diagnostics-detail-section model-page-section' id='installations' aria-labelledby='installation-history-title'>
           <div class='section-heading'><div><p class='section-kicker'>Operational history</p><h2 id='installation-history-title'>Installation history</h2></div><p class='table-help'>Failed results remain historical after their error is resolved.</p></div>
-          <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'><label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all'>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='open'>Open errors</option><option value='resolved-errors'>Resolved errors</option></select></label></form>
+          <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'><div class='quick-filter-group' role='group' aria-label='Quick history filters'><button type='button' class='quick-filter active' data-history-filter='all' aria-pressed='true'>All</button><button type='button' class='quick-filter' data-history-filter='failed' aria-pressed='false'>Failed</button><button type='button' class='quick-filter' data-history-filter='open' aria-pressed='false'>Open errors</button><button type='button' class='quick-filter' data-history-filter='succeeded' aria-pressed='false'>Succeeded</button></div><details class='admin-disclosure filter-disclosure history-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all'>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='open'>Open errors</option><option value='resolved-errors'>Resolved errors</option></select></label></div></details></form>
           <p class='results-count' id='diagnostic-results-count' aria-live='polite'>{len(history)} records</p>
           <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table model-history-table'><caption class='sr-only'>Installation history for this exact model and variant</caption><thead><tr><th scope='col'>Date</th><th scope='col'>Map</th><th scope='col'>Result</th><th scope='col'>Error</th><th scope='col'>GitHub issue</th><th scope='col'>App version</th><th scope='col'>Action</th></tr></thead><tbody id='diagnostic-rows'>{history_rows}</tbody></table></div>
+          <div class='provider-pagination' id='diagnostic-history-pagination' aria-live='polite'><label>Rows <select id='diagnostic-history-page-size' aria-label='Rows per installation history page'><option value='25' selected>25</option><option value='50'>50</option></select></label><button type='button' data-history-page='previous' disabled>Previous</button><span>Showing {1 if history else 0}–{min(len(history), 25)} of {len(history)} · page 1 of {max(1, (len(history) + 24) // 25)}</span><button type='button' data-history-page='next' {'disabled' if len(history) <= 25 else ''}>Next</button></div>
         </section>
         <section class='model-page-section model-administration' aria-labelledby='administration-title'><div class='section-heading'><div><p class='section-kicker'>Controls</p><h2 id='administration-title'>Administration</h2></div></div><div class='administration-grid'>
           <article><h3>Installation authorization</h3><form method='post' action='/admin/devices/authorization' class='admin-async-action' data-authorization-form data-current-authorization='{html.escape(str(device.get('supportStatus') or 'NOT_EVALUATED'), quote=True)}'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='device_id' value='{html.escape(device_id, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(detail_url, quote=True)}'><label>Status<select name='support_status'><option value='SUPPORTED'{' selected' if device.get('supportStatus') == 'SUPPORTED' else ''}>Approved</option><option value='UNSUPPORTED'{' selected' if device.get('supportStatus') == 'UNSUPPORTED' else ''}>Blocked</option><option value='NOT_EVALUATED'{' selected' if device.get('supportStatus') == 'NOT_EVALUATED' else ''}>Pending</option></select></label><label>Note <span class='optional-label'>Optional</span><textarea name='note' rows='2'></textarea></label><button type='submit'>Save authorization</button></form></article>
@@ -2114,9 +2837,9 @@ def diagnostics_page(
         ))
     rows_body = "".join(rows_markup) or "<tr><td colspan='8' class='empty'>No installation history for this model.</td></tr>"
     content = f"""
-      {_admin_header(user, csrf_token)}
+      {_admin_header(user, csrf_token, active='installations')}
       <main class='dashboard diagnostics-page' id='main-content'>
-        <p class='back-link'><a href='/admin'>← Installations</a></p>
+        <p class='back-link'><a href='/admin/installations'>← Installations</a></p>
         <div class='heading-row'><div><p class='eyebrow'>Diagnostics</p><h1>{html.escape(model)}{f' · {html.escape(variant)}' if variant != '—' else ''}</h1><p class='lede'>Exact model and variant diagnostic history.</p></div></div>
         <section class='diagnostic-model-metrics' aria-label='Model diagnostic summary'><article><span>Attempts</span><strong>{attempts}</strong></article><article><span>Successful</span><strong>{successes}</strong></article><article><span>Errors</span><strong>{errors}</strong></article><article><span>Compatibility status</span><strong>{_status_badge(status.value if status else '')}</strong></article></section>
         <section class='diagnostics-detail-section' aria-labelledby='diagnostic-list-title'>
@@ -2193,8 +2916,10 @@ def _render_diagnostic_details(
                     start=1,
                 )
             )
-            release = first.get("release_label") or first.get("terento_version") or "legacy"
-            build = first.get("app_build") or "legacy"
+            app_version = _admin_app_version_label(
+                first.get("release_label") or first.get("terento_version") or "legacy",
+                first.get("app_build"),
+            )
             resolution = ""
             if str(first.get("diagnostic_status") or "").upper() == "RESOLVED":
                 resolution = " · " + html.escape(
@@ -2216,7 +2941,7 @@ def _render_diagnostic_details(
             identity_action = f"""<button type='button' class='secondary-button' data-identity-operation='{html.escape(str(operation_key), quote=True)}'>Resolve identity</button>"""
             operation_cards.append(f"""
               <article class='diagnostic-operation'>
-                <div class='diagnostic-operation-heading'><div><h4>Diagnostic record</h4><p>{_timestamp_markup(first.get('occurred_at'))} · {html.escape(str(release))} (build {html.escape(str(build))}) · Write: {_diagnostic_boolean(first.get('write_started'))} · {len(results)} map result{'s' if len(results) != 1 else ''}</p><p class='diagnostic-id'>Diagnostic ID: <code>{html.escape(str(operation_key))}</code></p></div><div class='diagnostic-actions'>{lifecycle}{action}{identity_action}</div></div>
+                <div class='diagnostic-operation-heading'><div><h4>Diagnostic record</h4><p>{_timestamp_markup(first.get('occurred_at'))} · {html.escape(app_version)} · Write: {_diagnostic_boolean(first.get('write_started'))} · {len(results)} map result{'s' if len(results) != 1 else ''}</p><p class='diagnostic-id'>Diagnostic ID: <code>{html.escape(str(operation_key))}</code></p></div><div class='diagnostic-actions'>{lifecycle}{action}{identity_action}</div></div>
                 <p class='diagnostic-meta'>Identity: {html.escape(identity_state.title().replace('_', ' '))}{resolution}</p>
                 <div class='table-wrap diagnostic-summary-wrap'><table class='diagnostic-summary-table'><caption class='sr-only'>Diagnostic summary</caption><thead><tr><th scope='col'>Region</th><th scope='col'>Result</th><th scope='col'>Stage</th><th scope='col'>Code</th><th scope='col'>Write</th><th scope='col'>Cleanup</th></tr></thead><tbody>{summary_rows}</tbody></table></div>
                 {technical_details}
@@ -2636,7 +3361,7 @@ def _statistics_row(row: dict[str, Any], diagnostic_summary: dict[str, int] | No
         ("numeric", _timestamp_markup(row.get("last_success"))),
     )
     return (
-        f"<tr class='evidence-model-row' data-search='{html.escape(search_text, quote=True)}' data-status='{html.escape(status.lower(), quote=True)}' data-activity='{html.escape(activity, quote=True)}' data-attempts='{attempted}' data-errors='{open_errors}' data-diagnostics-url='{html.escape(diagnostics_url, quote=True)}' tabindex='0' role='link' aria-label='Open {html.escape(model)}{f', {html.escape(variant)}' if variant != '—' else ''}'>"
+        f"<tr class='evidence-model-row' data-search='{html.escape(search_text, quote=True)}' data-status='{html.escape(status.lower(), quote=True)}' data-activity='{html.escape(activity, quote=True)}' data-attempts='{attempted}' data-errors='{open_errors}' data-failed='{str(failed > 0).lower()}' data-successful='{str(successful > 0).lower()}' data-diagnostics-url='{html.escape(diagnostics_url, quote=True)}' tabindex='0' role='link' aria-label='Open {html.escape(model)}{f', {html.escape(variant)}' if variant != '—' else ''}'>"
         + "".join(f"<td class='{css_class}'>{cell}</td>" if css_class else f"<td>{cell}</td>" for css_class, cell in cells)
         + f"</tr>"
     )
@@ -3020,15 +3745,19 @@ def _dashboard_script() -> str:
       const search = document.querySelector('#evidence-search');
       const status = document.querySelector('#evidence-status');
       const sort = document.querySelector('#evidence-sort');
+      const quickFilters = [...document.querySelectorAll('[data-installation-filter]')];
       const body = document.querySelector('#evidence-rows');
       const count = document.querySelector('#results-count');
-      if (!form || !search || !status || !sort || !body || !count) return;
+      if (!form || !search || !status || !sort || !body || !count || !quickFilters.length) return;
       const rows = [...body.querySelectorAll('tr')];
       const storageKey = 'terento.admin.installations.filters';
       const parameters = new URLSearchParams(window.location.search);
       let saved = {};
       try { saved = JSON.parse(sessionStorage.getItem(storageKey) || '{}'); } catch (_) { saved = {}; }
       search.value = parameters.has('search') ? parameters.get('search') : (saved.search || '');
+      const quickFilterValues = quickFilters.map((button) => button.dataset.installationFilter);
+      let selectedQuickFilter = parameters.get('state') || saved.quick || 'all';
+      if (!quickFilterValues.includes(selectedQuickFilter)) selectedQuickFilter = 'all';
       const restoreSelect = (control, key, fallback) => {
         const value = parameters.has(key) ? parameters.get(key) : saved[key];
         control.value = [...control.options].some((option) => option.value === value) ? value : fallback;
@@ -3041,7 +3770,11 @@ def _dashboard_script() -> str:
         const visible = rows.filter((row) => {
           const matchesSearch = !searchQuery || row.dataset.search.toLocaleLowerCase().includes(searchQuery);
           const matchesStatus = selectedStatus === 'all' || row.dataset.status === selectedStatus;
-          row.hidden = !(matchesSearch && matchesStatus);
+          const matchesQuick = selectedQuickFilter === 'all'
+            || (selectedQuickFilter === 'failed' && row.dataset.failed === 'true')
+            || (selectedQuickFilter === 'open' && Number(row.dataset.errors || 0) > 0)
+            || (selectedQuickFilter === 'successful' && row.dataset.successful === 'true');
+          row.hidden = !(matchesSearch && matchesStatus && matchesQuick);
           return !row.hidden;
         });
         visible.sort((a, b) => {
@@ -3052,15 +3785,25 @@ def _dashboard_script() -> str:
         });
         visible.forEach((row) => body.appendChild(row));
         count.textContent = `${visible.length} ${visible.length === 1 ? 'variant' : 'variants'}`;
-        const state = {search: search.value, status: status.value, sort: sort.value};
+        quickFilters.forEach((button) => {
+          const active = button.dataset.installationFilter === selectedQuickFilter;
+          button.classList.toggle('active', active);
+          button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        const state = {search: search.value, status: status.value, sort: sort.value, quick: selectedQuickFilter};
         try { sessionStorage.setItem(storageKey, JSON.stringify(state)); } catch (_) { /* optional */ }
         const stateQuery = new URLSearchParams();
         if (search.value) stateQuery.set('search', search.value);
+        if (selectedQuickFilter !== 'all') stateQuery.set('state', selectedQuickFilter);
         if (status.value !== 'all') stateQuery.set('status', status.value);
         if (sort.value !== 'attempts') stateQuery.set('sort', sort.value);
         history.replaceState(null, '', stateQuery.size ? `${window.location.pathname}?${stateQuery}` : window.location.pathname);
       };
       form.addEventListener('submit', (event) => event.preventDefault());
+      quickFilters.forEach((button) => button.addEventListener('click', () => {
+        selectedQuickFilter = button.dataset.installationFilter || 'all';
+        refresh();
+      }));
       [search, status, sort].forEach((control) => control.addEventListener('input', refresh));
       rows.forEach((row) => {
         const open = () => { if (row.dataset.diagnosticsUrl) window.location.href = row.dataset.diagnosticsUrl; };
@@ -3103,17 +3846,33 @@ def _client_issue_note_sanitizer_script() -> str:
 def _diagnostics_script() -> str:
     script = r"""(() => {
       const filter = document.querySelector('#diagnostic-state-filter');
+      const quickFilters = [...document.querySelectorAll('[data-history-filter]')];
       const body = document.querySelector('#diagnostic-rows');
       const count = document.querySelector('#diagnostic-results-count');
-      if (!filter || !body || !count) return;
+      const pagination = document.querySelector('#diagnostic-history-pagination');
+      const pageSize = document.querySelector('#diagnostic-history-page-size');
+      if ((!filter && !quickFilters.length) || !body || !count) return;
       const rows = [...body.querySelectorAll('tr[data-diagnostic-state]')];
       const dialogs = [...document.querySelectorAll('.diagnostic-detail-dialog')];
+      let page = 1;
       let lastFocused = null;
-      const requestedFilter = new URLSearchParams(window.location.search).get('state');
-      if (requestedFilter && [...filter.options].some((option) => option.value === requestedFilter)) filter.value = requestedFilter;
+      const filterValues = filter ? [...filter.options].map((option) => option.value) : [];
+      const quickValues = quickFilters.map((button) => button.dataset.historyFilter);
+      const validFilters = new Set([...filterValues, ...quickValues]);
+      let selectedFilter = new URLSearchParams(window.location.search).get('state') || filter?.value || quickValues[0] || 'all';
+      if (!validFilters.has(selectedFilter)) selectedFilter = 'all';
+      if (filter && filterValues.includes(selectedFilter)) filter.value = selectedFilter;
+      const syncFilterControls = () => {
+        if (filter && filterValues.includes(selectedFilter)) filter.value = selectedFilter;
+        quickFilters.forEach((button) => {
+          const active = button.dataset.historyFilter === selectedFilter;
+          button.classList.toggle('active', active);
+          button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+      };
       const refresh = () => {
-          const selected = filter.value;
-          const visible = rows.filter((row) => {
+          const selected = selectedFilter;
+          const matching = rows.filter((row) => {
             const matches = selected === 'all'
             || (selected === 'succeeded' && row.dataset.diagnosticResult === 'succeeded')
             || (selected === 'open' && row.dataset.reviewOpen === 'true')
@@ -3122,11 +3881,29 @@ def _diagnostics_script() -> str:
             || (selected === 'identity-pending' && row.dataset.identityPending === 'true')
             || (selected === 'failed' && row.dataset.diagnosticResult === 'failed')
             || (selected === 'with-issue' && row.dataset.hasIssue === 'true');
-          row.hidden = !matches;
           return matches;
         });
-        const label = visible.length === 1 ? 'record' : 'records';
-        count.textContent = `${visible.length} ${label}`;
+        const label = matching.length === 1 ? 'record' : 'records';
+        count.textContent = `${matching.length} ${label}`;
+        syncFilterControls();
+        if (!pagination || !pageSize) {
+          rows.forEach((row) => { row.hidden = !matching.includes(row); });
+          return;
+        }
+        const size = Number(pageSize.value) === 50 ? 50 : 25;
+        const pages = Math.max(1, Math.ceil(matching.length / size));
+        page = Math.min(Math.max(page, 1), pages);
+        const startIndex = (page - 1) * size;
+        const visible = new Set(matching.slice(startIndex, startIndex + size));
+        rows.forEach((row) => { row.hidden = !visible.has(row); });
+        const start = matching.length ? startIndex + 1 : 0;
+        const end = matching.length ? Math.min(matching.length, startIndex + size) : 0;
+        const summary = pagination.querySelector('span');
+        if (summary) summary.textContent = `Showing ${start}–${end} of ${matching.length} · page ${page} of ${pages}`;
+        const previous = pagination.querySelector('[data-history-page="previous"]');
+        const next = pagination.querySelector('[data-history-page="next"]');
+        if (previous) previous.disabled = page <= 1;
+        if (next) next.disabled = page >= pages;
       };
       const close = (dialog) => {
         if (!dialog) return;
@@ -3140,9 +3917,14 @@ def _diagnostics_script() -> str:
         dialog.querySelector('button, input, select, textarea')?.focus();
       };
       document.querySelector('[data-filter-open-errors]')?.addEventListener('click', () => {
-        filter.value = 'open';
+        selectedFilter = 'open';
         refresh();
       });
+      quickFilters.forEach((button) => button.addEventListener('click', () => {
+        selectedFilter = button.dataset.historyFilter || 'all';
+        page = 1;
+        refresh();
+      }));
       document.querySelectorAll('form[data-confirm]').forEach((form) => form.addEventListener('submit', (event) => {
         if (!window.confirm(form.dataset.confirm || 'Continue?')) event.preventDefault();
       }));
@@ -3250,7 +4032,10 @@ def _diagnostics_script() -> str:
       document.querySelectorAll('[data-copy-technical-report]').forEach((button) => button.addEventListener('click', () => {
         copyText(button.dataset.report, button.parentElement?.querySelector('[data-copy-status]'));
       }));
-      filter.addEventListener('input', refresh);
+      filter?.addEventListener('input', () => { selectedFilter = filter.value; page = 1; refresh(); });
+      pageSize?.addEventListener('change', () => { page = 1; refresh(); });
+      pagination?.querySelector('[data-history-page="previous"]')?.addEventListener('click', () => { page = Math.max(1, page - 1); refresh(); });
+      pagination?.querySelector('[data-history-page="next"]')?.addEventListener('click', () => { page += 1; refresh(); });
       document.querySelectorAll('.diagnostic-review').forEach((button) => button.addEventListener('click', () => open(document.getElementById(button.dataset.dialogId), button)));
       document.querySelectorAll('[data-close-dialog]').forEach((button) => button.addEventListener('click', () => close(button.closest('dialog'))));
       dialogs.forEach((dialog) => {
@@ -3347,7 +4132,10 @@ def _admin_timezone_script() -> str:
       const activeTimeZone = () => select.value === 'browser' ? browserTimeZone : select.value;
       const format = (value) => {
         if (!value) return '—';
-        const date = new Date(value);
+        const normalizedValue = typeof value === 'string'
+          ? value.trim().replace(/^(\d{4}-\d{2}-\d{2})(\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)$/, '$1T$2')
+          : value;
+        const date = new Date(normalizedValue);
         if (Number.isNaN(date.getTime())) return String(value);
         try {
           const parts = Object.fromEntries(
@@ -3387,6 +4175,7 @@ def _admin_timezone_script() -> str:
         window.dispatchEvent(new Event('terento-admin-timezone-change'));
       });
       render();
+      window.dispatchEvent(new Event('terento-admin-timezone-ready'));
     })();"""
 
 
@@ -3624,11 +4413,11 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .page-meta{margin:0;color:var(--secondary);font-size:12px;white-space:nowrap}.installation-heading{align-items:flex-end}
 .admin-kpi-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:0 0 12px}.admin-kpi-grid article{min-width:0;min-height:84px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px}.admin-kpi-grid article>span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.admin-kpi-grid article>strong{display:block;margin-top:6px;color:var(--graphite);font-family:var(--font-brand);font-size:25px;line-height:1.15;font-variant-numeric:tabular-nums}.historical-failure-note{margin:0 0 24px;color:var(--secondary);font-size:12px}.historical-failure-note .info-control{margin-left:3px}
-.map-statistics-kpis{grid-template-columns:repeat(4,minmax(0,1fr));margin-top:18px}.map-statistics-kpis article>strong{font-size:25px}.map-statistics-empty{margin:0 0 18px;padding:28px 24px;border:1px dashed var(--border);border-radius:14px;background:var(--surface);text-align:center}.map-statistics-empty h2{font-size:20px}.map-statistics-empty p{margin:8px 0 0;color:var(--secondary);font-size:13px}.map-statistics-reliability{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 24px}.map-statistics-reliability div{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-muted)}.map-statistics-reliability span{color:var(--secondary);font-size:12px;font-weight:650}.map-statistics-reliability strong{font-family:var(--font-brand);font-size:19px;font-variant-numeric:tabular-nums}.map-statistics-provider-health{display:flex;align-items:center;gap:8px;margin:0 0 24px;color:var(--secondary);font-size:12px}.map-statistics-provider-health strong{color:var(--graphite);font-weight:750}.map-statistics-provider-health em{font-style:normal}.popularity-subsection+.popularity-subsection{margin-top:18px}.popularity-subsection h3{margin:0 0 9px;font:700 14px var(--font-brand);letter-spacing:-.01em}.map-events-card{margin-top:24px}
+.map-statistics-kpis{grid-template-columns:repeat(4,minmax(0,1fr));margin-top:18px}.map-statistics-kpis article>strong{font-size:25px}.map-statistics-empty{margin:0 0 18px;padding:28px 24px;border:1px dashed var(--border);border-radius:14px;background:var(--surface);text-align:center}.map-statistics-empty h2{font-size:20px}.map-statistics-empty p{margin:8px 0 0;color:var(--secondary);font-size:13px}.map-statistics-reliability{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 24px}.map-statistics-reliability div{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-muted)}.map-statistics-reliability span{color:var(--secondary);font-size:12px;font-weight:650}.map-statistics-reliability strong{font-family:var(--font-brand);font-size:19px;font-variant-numeric:tabular-nums}.map-statistics-provider-health{display:flex;align-items:center;gap:8px;margin:0 0 24px;color:var(--secondary);font-size:12px}.map-statistics-provider-health strong{color:var(--graphite);font-weight:750}.map-statistics-provider-health em{font-style:normal}.map-statistics-linkage{margin-top:0}.map-statistics-linkage .section-heading{align-items:flex-start}.map-statistics-linkage-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.map-statistics-linkage-grid div{min-width:0;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-muted)}.map-statistics-linkage-grid span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.map-statistics-linkage-grid strong{display:block;margin-top:5px;color:var(--graphite);font-family:var(--font-brand);font-size:19px;font-variant-numeric:tabular-nums}.map-statistics-linkage .map-statistics-scope-note{margin-bottom:0}.popularity-subsection+.popularity-subsection{margin-top:18px}.popularity-subsection h3{margin:0 0 9px;font:700 14px var(--font-brand);letter-spacing:-.01em}.map-events-card{margin-top:24px}
 .admin-disclosure{margin:0}.admin-disclosure>summary{cursor:pointer;color:var(--interactive);font-size:13px;font-weight:750;list-style-position:inside;text-underline-offset:3px}.admin-disclosure>summary:hover{text-decoration:underline}.admin-disclosure>summary:focus-visible{outline:3px solid var(--admin-focus-ring);outline-offset:3px}.disclosure-body{margin-top:14px}.filter-disclosure{align-self:stretch;min-width:130px;position:relative}.filter-disclosure>summary{display:flex;align-items:center;justify-content:center;height:var(--admin-control-height);padding:8px 10px;border:1px solid var(--border);border-radius:var(--admin-control-radius);background:var(--surface);color:var(--graphite);font-size:var(--admin-control-font-size);font-weight:650;list-style:none;text-decoration:none}.filter-disclosure>summary::-webkit-details-marker{display:none}.filter-disclosure .disclosure-body{display:flex;gap:8px;flex-wrap:wrap;position:absolute;z-index:5;margin-top:7px;padding:8px;border:1px solid var(--border);border-radius:10px;background:var(--surface);box-shadow:0 14px 34px rgba(34,42,43,.14)}.filter-disclosure .disclosure-body label{display:flex}.filter-disclosure .disclosure-body input,.filter-disclosure .disclosure-body select{min-width:140px}.inline-filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px}.inline-filter-row label{display:flex;flex:1 1 220px}.inline-filter-row select{flex:0 1 170px}.provider-pagination{display:flex;align-items:center;justify-content:center;gap:14px;min-height:34px;margin-top:12px;color:var(--secondary);font-size:12px;text-align:center}.provider-pagination button{min-height:34px;padding:7px 11px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--interactive);font:700 12px var(--font-ui)}.provider-pagination button:hover:not(:disabled){border-color:var(--interactive);background:var(--success-bg)}.provider-pagination button:disabled{cursor:not-allowed;opacity:.45}.provider-latest-summary{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 14px;border-radius:10px;background:var(--surface-muted);color:var(--secondary);font-size:12px}.provider-latest-summary>div{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.provider-action-overflow{position:relative}.provider-action-overflow>summary{display:inline-flex;align-items:center;justify-content:center;min-height:var(--admin-control-height);padding:8px 12px;border:1px solid var(--border);border-radius:var(--admin-control-radius);background:var(--surface);color:var(--graphite);cursor:pointer;font-size:13px;font-weight:700;list-style:none}.provider-action-overflow>summary::-webkit-details-marker{display:none}.provider-action-overflow>summary:hover{border-color:var(--interactive);color:var(--interactive)}.provider-action-overflow>div{position:absolute;z-index:4;right:0;top:calc(100% + 7px);min-width:180px;padding:7px;border:1px solid var(--border);border-radius:10px;background:var(--surface);box-shadow:0 14px 34px rgba(34,42,43,.14)}.provider-action-overflow button{width:100%}.provider-package-name{display:block;font-weight:700}.provider-package-id{display:block;margin-top:2px;color:var(--secondary)!important;font-size:10px!important}.provider-package-broken td:last-child{color:var(--danger)}.provider-issue-count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;padding:2px 7px;border:1px solid color-mix(in srgb,var(--danger) 35%,var(--border));border-radius:999px;color:var(--danger);font-weight:750}.audit-technical-details{margin-top:5px}.audit-technical-details summary{cursor:pointer;color:var(--interactive);font-size:11px;font-weight:700}.audit-technical-details code{display:block;margin-top:5px;max-width:300px;overflow:auto;white-space:pre-wrap;font:500 10px var(--font-mono);color:var(--secondary)}.provider-information-list dd{text-align:left}.provider-section .provider-table-wrap table{min-width:820px}.provider-detail .provider-table-wrap table{min-width:760px}.provider-detail .provider-history-wrap table{min-width:1240px}
-@media(max-width:1100px){.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}.admin-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.map-statistics-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.provider-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.map-statistics-reliability{grid-template-columns:repeat(3,minmax(0,1fr))}.provider-detail .provider-history-wrap{overflow-x:auto}}
-@media(max-width:700px){.admin-kpi-grid,.map-statistics-kpis,.map-statistics-reliability{grid-template-columns:repeat(2,minmax(0,1fr))}.installation-heading{align-items:flex-start}.page-meta{white-space:normal}.provider-latest-summary{align-items:flex-start;flex-direction:column;gap:6px}.filter-disclosure .disclosure-body{position:static;margin-top:8px;box-shadow:none}.map-statistics-filter-bar .filter-disclosure{width:100%}.map-statistics-filter-bar .filter-disclosure>summary{justify-content:flex-start}}
-@media(max-width:480px){.admin-kpi-grid,.map-statistics-kpis,.map-statistics-reliability{grid-template-columns:1fr}.admin-kpi-grid article{min-height:70px;padding:12px}.inline-filter-row{align-items:stretch;flex-direction:column}.inline-filter-row label,.inline-filter-row select{width:100%;flex-basis:auto}.provider-pagination{gap:8px;font-size:11px}.provider-pagination span{max-width:130px}.provider-action-overflow>div{position:static;margin-top:7px}.provider-action-overflow>summary{width:100%}}
+@media(max-width:1100px){.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}.admin-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.map-statistics-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.provider-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.map-statistics-reliability{grid-template-columns:repeat(3,minmax(0,1fr))}.map-statistics-linkage-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.provider-detail .provider-history-wrap{overflow-x:auto}}
+@media(max-width:700px){.admin-kpi-grid,.map-statistics-kpis,.map-statistics-reliability{grid-template-columns:repeat(2,minmax(0,1fr))}.map-statistics-linkage-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.installation-heading{align-items:flex-start}.page-meta{white-space:normal}.provider-latest-summary{align-items:flex-start;flex-direction:column;gap:6px}.filter-disclosure .disclosure-body{position:static;margin-top:8px;box-shadow:none}.map-statistics-filter-bar .filter-disclosure{width:100%}.map-statistics-filter-bar .filter-disclosure>summary{justify-content:flex-start}}
+@media(max-width:480px){.admin-kpi-grid,.map-statistics-kpis,.map-statistics-reliability,.map-statistics-linkage-grid{grid-template-columns:1fr}.admin-kpi-grid article{min-height:70px;padding:12px}.inline-filter-row{align-items:stretch;flex-direction:column}.inline-filter-row label,.inline-filter-row select{width:100%;flex-basis:auto}.provider-pagination{gap:8px;font-size:11px}.provider-pagination span{max-width:130px}.provider-action-overflow>div{position:static;margin-top:7px}.provider-action-overflow>summary{width:100%}}
 @media(max-width:800px){.admin-topbar-inner,.dashboard{width:min(calc(100% - 32px),var(--max-width))}.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}.heading-row{align-items:flex-start;flex-direction:column;gap:12px}.diagnostic-model-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-bar{align-items:stretch}.filter-bar label,.filter-bar select,.filter-bar input{flex:1 1 170px}.filter-bar .results-count{width:100%;margin:2px 4px 0}.public-status{align-items:flex-start;flex-direction:column}.public-status-value{width:100%;justify-content:space-between;flex-wrap:wrap}.status-guide-grid{grid-template-columns:1fr}.campaign-fields{grid-template-columns:1fr}.campaign-field-wide{grid-column:auto}.attribution-preview{grid-template-columns:1fr}.sync-summary{white-space:normal!important}.device-detail-grid{grid-template-columns:1fr}.device-support-review form{grid-template-columns:1fr}.diagnostic-operation-heading{flex-direction:column}.diagnostic-actions{justify-content:flex-start}.diagnostic-detail-summary{grid-template-columns:1fr}.diagnostic-actions-grid{grid-template-columns:1fr}.github-review{grid-column:auto}}
 @media(max-width:980px){.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}}
 @media(max-width:560px){.admin-topbar-inner{align-items:flex-start;flex-direction:column;padding:14px 0}.admin-header-left,.admin-section-nav,.admin-nav{width:100%}.admin-section-nav{order:0;overflow:auto;justify-content:flex-start}.admin-section-nav a{white-space:nowrap}.admin-nav{justify-content:space-between;gap:10px;flex-wrap:wrap}.timezone-control{width:100%;justify-content:space-between}.timezone-control select{width:auto;flex:1}.dashboard{padding-top:28px}.diagnostic-model-metrics{gap:8px}.diagnostic-model-metrics article{padding:12px}.auth-card{width:calc(100% - 32px);padding:24px}.section-heading{align-items:flex-start;flex-direction:column;gap:4px}.campaign-card{padding:16px}.campaign-preset-row{align-items:stretch;flex-direction:column;gap:8px}.campaign-preset-row .campaign-label,.campaign-preset-row select{flex:none}.campaign-preset-row select{width:100%;height:var(--admin-control-height);margin-left:0}.generated-url-row{grid-template-columns:1fr}.copy-button{width:100%}.copy-status{min-height:18px}.device-dialog-inner,.diagnostic-detail-inner{padding:18px}.device-detail-grid dl div,.device-detail-secondary dl div{grid-template-columns:1fr;gap:2px}.device-detail-grid dd,.device-detail-secondary dd{text-align:left}.diagnostic-technical-details dl{grid-template-columns:1fr}.diagnostic-summary-action{float:none;display:block;margin-top:6px}.github-link-form{grid-template-columns:1fr}.github-link-form button{width:100%}}
@@ -3640,6 +4429,125 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 @media(max-width:1100px){.provider-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.map-statistics-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.provider-dashboard-grid{grid-template-columns:1fr}}
 @media(max-width:560px){.provider-card{padding:18px 16px}.provider-metrics,.map-statistics-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.provider-metrics article{padding:12px}.provider-information-list div{grid-template-columns:1fr;gap:3px}.provider-information-list dd{text-align:left}.provider-action-bar{align-items:stretch;flex-direction:column}.provider-action-bar button,.button-link{width:100%}.provider-action-bar .admin-action-status{flex-basis:auto}.map-statistics-filter-bar label,.map-statistics-filter-bar input,.map-statistics-filter-bar select{width:100%;min-width:0}.map-statistics-filter-bar .results-count{width:100%;margin-left:4px}}
 @media(max-height:760px){.device-dialog-inner{max-height:calc(100vh - 32px);overflow:auto}.device-dialog-header{position:sticky;top:-1px;z-index:2;padding-bottom:10px;background:var(--surface)}}
+.overview-page{padding-top:30px}.overview-heading{align-items:flex-end;margin-bottom:20px}.overview-period-form{margin:0}.overview-period-form select{min-width:154px}.overview-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:14px}.overview-kpi{display:flex;min-height:112px;flex-direction:column;justify-content:space-between;padding:15px 16px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:inherit;text-decoration:none;transition:border-color .15s ease,transform .15s ease}.overview-kpi:hover{border-color:color-mix(in srgb,var(--sky) 52%,var(--border));transform:translateY(-1px)}.overview-kpi span{color:var(--secondary);font-size:12px;font-weight:700}.overview-kpi strong{display:block;margin-top:8px;font-family:var(--font-brand);font-size:30px;line-height:1;font-variant-numeric:tabular-nums}.overview-kpi small{margin-top:8px;color:var(--secondary);font-size:11px;line-height:1.35}.overview-kpi-attention strong{color:var(--danger)}.overview-kpi-pending{background:var(--surface-muted)}.overview-kpi-pending strong{color:var(--secondary)}.overview-panel{margin-top:12px;padding:18px 20px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}.overview-panel .section-heading{margin-bottom:10px}.overview-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}.overview-columns .overview-panel{min-width:0}.overview-empty-state{margin:0;padding:12px 0;color:var(--secondary);font-weight:650}.overview-attention-list,.overview-activity-list,.overview-reason-list{list-style:none;margin:0;padding:0}.overview-attention-item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:10px;padding:10px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-attention-item:first-child{border-top:0;padding-top:3px}.overview-attention-dot{font-size:13px;line-height:1.5;color:var(--danger)}.overview-attention-provider .overview-attention-dot{color:var(--warning,var(--stone))}.overview-attention-item div{display:grid;gap:2px;min-width:0}.overview-attention-item a{color:var(--graphite);text-decoration:none}.overview-attention-item a:hover{text-decoration:underline;text-underline-offset:3px}.overview-attention-item strong{font-size:14px}.overview-attention-item span{color:var(--secondary);font-size:12px;overflow:hidden;text-overflow:ellipsis}.overview-attention-item small{color:var(--secondary);font-size:11px}.overview-detail-link,.section-link{color:var(--interactive);font-size:12px;font-weight:700;white-space:nowrap;text-decoration:none}.overview-detail-link:hover,.section-link:hover{text-decoration:underline;text-underline-offset:3px}.overview-activity-item{display:grid;grid-template-columns:126px minmax(0,1fr) max-content;align-items:center;gap:10px;padding:8px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-activity-item:first-child{border-top:0;padding-top:3px}.overview-activity-item time{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-activity-item a{display:grid;min-width:0;color:inherit;text-decoration:none}.overview-activity-item a:hover .overview-activity-label{text-decoration:underline;text-underline-offset:3px}.overview-activity-label{font-size:13px;font-weight:750}.overview-activity-item a span:not(.overview-activity-label){overflow:hidden;text-overflow:ellipsis;color:var(--secondary);font-size:12px;white-space:nowrap}.overview-activity-item a small{color:var(--danger);font-size:11px}.overview-activity-provider{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-activity-failed .overview-activity-label,.overview-activity-not-started .overview-activity-label{color:var(--danger)}.overview-reason-list{display:grid;gap:11px}.overview-reason-list li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center}.overview-reason-list li>span:first-child{font-size:13px}.overview-reason-list strong{font-variant-numeric:tabular-nums}.overview-bar{grid-column:1/-1;height:7px;overflow:hidden;border-radius:999px;background:var(--surface-muted)}.overview-bar i{display:block;height:100%;border-radius:inherit;background:var(--interactive)}.overview-chart-note,.overview-semantic-note{margin:12px 0 0;color:var(--secondary);font-size:11px}.overview-provider-summary{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.overview-provider-summary strong{margin-right:3px;font-variant-numeric:tabular-nums}.overview-provider-summary a{display:inline-flex;gap:5px;align-items:center;padding:5px 8px;border:1px solid var(--border);border-radius:999px;color:var(--graphite);font-size:12px;text-decoration:none}.overview-provider-summary a:hover{border-color:var(--sky);color:var(--interactive)}.overview-provider-summary a span{color:var(--secondary);font-size:11px}.overview-semantic-note{max-width:780px;margin-top:14px}.admin-section-nav{flex-wrap:wrap}
+.quick-filter-group{display:flex;align-items:center;gap:4px;flex:0 0 auto;flex-wrap:wrap}.quick-filter{min-height:var(--admin-control-height);padding:8px 10px;border:1px solid transparent;border-radius:var(--admin-control-radius);background:transparent;color:var(--secondary);font-weight:650}.quick-filter:hover{border-color:var(--border);color:var(--interactive)}.quick-filter.active{border-color:color-mix(in srgb,var(--sky) 45%,var(--border));background:var(--surface);color:var(--interactive);box-shadow:0 1px 1px rgba(34,42,43,.05)}
+.map-statistics-popularity{grid-template-columns:minmax(0,1fr)}.map-statistics-popularity .provider-card{margin-top:0}.table-secondary{display:block;margin-top:3px;color:var(--secondary);font-size:11px;font-weight:500}
+.overview-columns{grid-template-columns:minmax(0,2fr) minmax(280px,1fr)}.overview-chart-wrap{overflow-x:auto}.overview-trend-chart{display:block;width:100%;min-width:520px;height:auto;min-height:180px}.overview-trend-chart text{fill:var(--secondary);font:500 11px var(--font-ui)}.overview-chart-success{fill:var(--interactive)}.overview-chart-failed{fill:var(--danger)}.overview-chart-legend{display:flex;gap:14px;margin-top:7px;color:var(--secondary);font-size:11px}.overview-chart-legend span{display:inline-flex;align-items:center;gap:5px}.overview-chart-legend i{display:inline-block;width:9px;height:9px;border-radius:2px}.overview-info{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border:1px solid var(--border);border-radius:50%;color:var(--secondary);font-size:11px;font-weight:750;cursor:help}.overview-compatibility-summary{margin-top:12px}.overview-compatibility-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.overview-compatibility-grid div{padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-muted)}.overview-compatibility-grid span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.overview-compatibility-grid strong{display:block;margin-top:5px;font:700 20px var(--font-brand);font-variant-numeric:tabular-nums}.provider-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}.map-statistics-provider-table{display:block}.map-statistics-linkage>summary{padding:0;color:var(--interactive);font-size:13px;font-weight:750;list-style:none}.map-statistics-linkage>summary::-webkit-details-marker{display:none}.map-statistics-linkage>summary:before{content:'›';display:inline-block;width:16px;transition:transform .15s ease}.map-statistics-linkage[open]>summary:before{transform:rotate(90deg)}.provider-empty-disclosure{padding:16px 20px}.provider-empty-disclosure>details>summary{list-style:none}.provider-empty-disclosure>details>summary::-webkit-details-marker{display:none}.diagnostic-failure-summary{margin:14px 0 0;padding:11px 13px;border-left:3px solid var(--danger);border-radius:6px;background:var(--error-surface);color:var(--danger);font-size:13px}.diagnostic-failure-summary strong{font-weight:750}.model-statistics article>.info-control{display:inline-flex;margin-top:6px;vertical-align:middle}.history-more-filters{min-width:130px}.history-more-filters .disclosure-body{min-width:170px}.map-statistics-popularity .popularity-all-maps-disclosure{margin-top:12px}.map-statistics-popularity .popularity-regions-disclosure{margin-top:12px}
+@media(max-width:1100px){.overview-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:760px){.overview-heading{align-items:flex-start;flex-direction:column;gap:12px}.overview-period-form,.overview-period-form select{width:100%}.overview-columns{grid-template-columns:1fr}.overview-kpi strong{font-size:26px}.overview-activity-item{grid-template-columns:1fr max-content;gap:3px 8px}.overview-activity-item time{grid-column:1/-1}.overview-activity-provider{grid-column:2;grid-row:2}.overview-activity-item a{grid-column:1;grid-row:2}}
+@media(max-width:560px){.overview-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.overview-panel{padding:16px}.overview-attention-item{grid-template-columns:auto minmax(0,1fr)}.overview-detail-link{grid-column:2}.overview-kpi{min-height:100px;padding:13px}.overview-kpi strong{font-size:24px}}
+@media(max-width:400px){.overview-kpis{grid-template-columns:1fr}}
+@media(max-width:700px){.overview-compatibility-grid{grid-template-columns:1fr}.provider-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.overview-compatibility-grid{grid-template-columns:1fr}}
+.overview-primary-grid,.overview-secondary-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,1fr);gap:12px}.overview-primary-grid .overview-panel,.overview-secondary-grid .overview-panel{min-width:0}.overview-model-list,.overview-review-list{list-style:none;margin:0;padding:0}.overview-model-item,.overview-review-item{display:grid;grid-template-columns:minmax(0,1fr) max-content;gap:8px;align-items:start;padding:9px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-model-item:first-child,.overview-review-item:first-child{border-top:0;padding-top:3px}.overview-model-item a,.overview-review-item a{display:grid;min-width:0;color:inherit;text-decoration:none}.overview-model-item a:hover strong,.overview-review-item a:hover strong{text-decoration:underline;text-underline-offset:3px}.overview-model-item strong,.overview-review-item strong{font-size:13px;overflow:hidden;text-overflow:ellipsis}.overview-model-item a span,.overview-review-item a span{color:var(--secondary);font-size:11px}.overview-model-item time{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-model-failed strong{color:var(--danger)}.overview-review-block{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}.overview-review-block h3{margin:0 0 5px;color:var(--secondary);font-size:12px}.overview-activity-item{grid-template-columns:minmax(0,1fr) max-content}.overview-activity-item time{grid-column:2;grid-row:1 / span 2}.overview-activity-item .overview-activity-label{grid-column:1}.overview-activity-item a span:not(.overview-activity-label){grid-column:1}.overview-compact-empty{padding-bottom:14px}.inline-filter-row{justify-content:flex-start}.inline-filter-row label{flex:0 1 260px}.inline-filter-row select{flex:0 0 170px}
+.model-statistics .attempts-metric>span{display:inline-flex;align-items:center;gap:6px}.model-statistics .attempts-metric>span:after{content:'i';display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border:1px solid var(--border);border-radius:50%;color:var(--interactive);font-size:11px;font-weight:750;line-height:1}
+@media(max-width:900px){.overview-primary-grid,.overview-secondary-grid{grid-template-columns:1fr}}
+@media(max-width:760px){.overview-activity-item{grid-template-columns:1fr max-content}.overview-activity-item time{grid-column:2;grid-row:1 / span 2}.overview-activity-item a{grid-column:1;grid-row:1 / span 2}.overview-activity-item a span:not(.overview-activity-label){white-space:normal}}
+@media(max-width:480px){.inline-filter-row label,.inline-filter-row select{flex-basis:auto}}
+.overview-primary-grid-single{grid-template-columns:minmax(0,1fr)}
+.overview-attention-review .overview-attention-dot{color:var(--warning,var(--stone))}
+.provider-action-bar{padding:0 0 4px;background:transparent;border:0;border-radius:0}
+.map-statistics-definition-note{margin:10px 0 0}
+
+/* Shared Admin typography and density contract. Keep page-specific layout
+   rules above this block; this is the final type hierarchy consumed by every
+   authenticated Admin view. */
+:root{
+  --admin-type-eyebrow-size:12px;--admin-type-eyebrow-line:16px;
+  --admin-type-page-title-size:clamp(32px,3.5vw,44px);--admin-type-page-title-line:1.06;
+  --admin-type-section-title-size:22px;--admin-type-section-title-line:26px;
+  --admin-type-subsection-size:15px;--admin-type-subsection-line:20px;
+  --admin-type-description-size:15px;--admin-type-description-line:22px;
+  --admin-type-body-size:15px;--admin-type-body-line:22px;
+  --admin-type-label-size:12px;--admin-type-label-line:16px;
+  --admin-type-kpi-value-size:30px;--admin-type-kpi-value-line:30px;
+  --admin-type-support-size:12px;--admin-type-support-line:17px;
+  --admin-type-table-header-size:11px;--admin-type-table-header-line:16px;
+  --admin-type-table-primary-size:13px;--admin-type-table-primary-line:18px;
+  --admin-type-table-meta-size:12px;--admin-type-table-meta-line:17px;
+  --admin-type-control-size:13px;--admin-type-control-line:18px;
+  --admin-type-button-size:13px;--admin-type-button-line:18px;
+  --admin-type-badge-size:11px;--admin-type-badge-line:15px;
+  --admin-type-helper-size:12px;--admin-type-helper-line:18px;
+  --admin-type-technical-size:11px;--admin-type-technical-line:16px;
+  --admin-control-font-size:var(--admin-type-control-size)
+}
+body{font-size:var(--admin-type-body-size);line-height:var(--admin-type-body-line)}
+.eyebrow,.section-kicker,.detail-kicker{font-size:var(--admin-type-eyebrow-size);line-height:var(--admin-type-eyebrow-line)}
+h1{font-size:var(--admin-type-page-title-size);line-height:var(--admin-type-page-title-line)}
+h2,.provider-card .section-heading h2,.attribution-preview h2,.map-statistics-empty h2,.device-dialog-header h2{font-size:var(--admin-type-section-title-size);line-height:var(--admin-type-section-title-line)}
+.lede{font-size:var(--admin-type-description-size);line-height:var(--admin-type-description-line)}
+.table-help,.results-count,.page-meta,.overview-chart-note,.overview-semantic-note,.historical-failure-note,.review-help{font-size:var(--admin-type-helper-size);line-height:var(--admin-type-helper-line)}
+button,input,select,textarea{font-size:var(--admin-type-control-size);line-height:var(--admin-type-control-line)}
+.filter-bar input,.filter-bar select,.filter-disclosure>summary,.quick-filter,.provider-action-overflow>summary,.secondary-button,.button-link,.copy-button,.provider-pagination button,.device-pagination button,.admin-action-dialog button:not(.link-button),.auth-card button:not(.link-button),.device-support-review button[type="submit"],.model-administration button[type="submit"]{font-size:var(--admin-type-button-size);line-height:var(--admin-type-button-line)}
+.admin-section-nav,.admin-nav,.admin-section-nav a,.admin-nav a,.link-button{font-size:var(--admin-type-control-size);line-height:var(--admin-type-control-line)}
+
+.overview-kpi span,.admin-kpi-grid article>span,.provider-metrics article>span,.map-statistics-metrics article>span,.diagnostic-model-metrics article>span,.overview-compatibility-grid span{font-size:var(--admin-type-label-size);line-height:var(--admin-type-label-line)}
+.overview-kpi strong,.admin-kpi-grid article>strong,.provider-metrics article>strong,.map-statistics-metrics article>strong,.diagnostic-model-metrics article>strong,.model-statistics article>strong{font-size:var(--admin-type-kpi-value-size);line-height:var(--admin-type-kpi-value-line)}
+.overview-kpi small{font-size:var(--admin-type-support-size);line-height:var(--admin-type-support-line)}
+.overview-compatibility-grid strong{font-size:20px;line-height:22px}
+.overview-period-form{margin:0;padding:6px}
+.overview-period-form label{display:flex}
+.overview-period-form select{height:var(--admin-control-height);min-height:var(--admin-control-height);min-width:154px;padding:8px var(--admin-control-padding-x);border-radius:var(--admin-control-radius);font:600 var(--admin-control-font-size)/1.2 var(--font-ui)}
+.overview-chart-panel{padding-top:16px;padding-bottom:16px}
+.overview-chart-panel .section-heading{margin-bottom:6px}
+.overview-chart-wrap{max-width:780px;margin:0 auto}
+.overview-trend-chart{width:100%;max-width:760px;min-height:0;margin:0 auto}
+.overview-attention-empty{display:grid;grid-template-columns:minmax(0,auto) minmax(180px,1fr) auto;align-items:center;gap:18px;min-height:76px;padding:12px 16px}
+.overview-attention-empty h2,.overview-provider-panel h2{font-family:var(--font-ui);font-size:var(--admin-type-subsection-size);line-height:var(--admin-type-subsection-line);letter-spacing:0}
+.overview-attention-empty .section-kicker,.overview-provider-panel .section-kicker{margin-bottom:1px}
+.overview-attention-empty .overview-empty-state{padding:0;font-size:var(--admin-type-helper-size);line-height:var(--admin-type-helper-line);font-weight:500}
+.overview-provider-panel{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:18px;min-height:76px;padding:12px 16px}
+.overview-provider-panel .overview-provider-summary{justify-content:flex-start}
+.overview-secondary-grid-single{grid-template-columns:minmax(0,1fr)}
+.overview-compact-empty{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 16px}
+.overview-compact-empty .section-heading{margin:0}
+.overview-compact-empty .section-kicker{display:none}
+.overview-compact-empty h2{font-family:var(--font-ui);font-size:var(--admin-type-subsection-size);line-height:var(--admin-type-subsection-line);letter-spacing:0}
+.overview-compact-empty .overview-empty-state{padding:0;font-size:var(--admin-type-helper-size);line-height:var(--admin-type-helper-line);font-weight:500}
+
+table{font-size:var(--admin-type-table-primary-size);line-height:var(--admin-type-table-primary-line)}
+table th,table td{padding:8px 12px;font-size:var(--admin-type-table-primary-size);line-height:var(--admin-type-table-primary-line)}
+table thead th{font-size:var(--admin-type-table-header-size);line-height:var(--admin-type-table-header-line)}
+table td small,.table-secondary,.provider-name-link small,.provider-package-id,.history-map small,.history-error small{font-size:var(--admin-type-table-meta-size);line-height:var(--admin-type-table-meta-line)}
+table code,.technical-value,.provider-table-wrap code,.audit-technical-details code{font-size:var(--admin-type-technical-size);line-height:var(--admin-type-technical-line)}
+.device-table-wrap tbody td{padding:7px 12px;font-size:var(--admin-type-table-primary-size);line-height:var(--admin-type-table-primary-line)}
+.device-table-wrap th{font-size:var(--admin-type-table-header-size);line-height:var(--admin-type-table-header-line)}
+.device-model-button strong,.provider-name-link strong,.provider-package-name,.diagnostic-group-title{font-size:var(--admin-type-table-primary-size);line-height:var(--admin-type-table-primary-line)}
+.provider-error,.provider-activation-note,.incomplete-state,.diagnostic-failure-summary{font-size:var(--admin-type-helper-size);line-height:var(--admin-type-helper-line)}
+.provider-information-list dt,.model-information-list dt,.device-detail-grid dt,.device-catalog-details dt,.device-support-review label,.device-public-review label,.administration-grid label{font-size:var(--admin-type-label-size);line-height:var(--admin-type-helper-line)}
+.provider-information-list dd,.model-information-list dd,.device-detail-grid dd,.device-catalog-details dd{font-size:var(--admin-type-table-primary-size);line-height:20px}
+.provider-information-list a,.provider-url-cell a{font-size:var(--admin-type-table-meta-size);line-height:var(--admin-type-table-meta-line)}
+
+.status-badge,.provider-status,.admin-state,.diagnostic-state,.diagnostic-result,.diagnostic-chip,.new-badge,.identity-pending-indicator,.provider-component .provider-status{min-height:24px;padding:4px 7px;font-size:var(--admin-type-badge-size);line-height:var(--admin-type-badge-line)}
+.needs-review-count{font-size:var(--admin-type-badge-size);line-height:var(--admin-type-badge-line)}
+.admin-disclosure>summary,.provider-action-overflow>summary{font-size:var(--admin-type-control-size);line-height:var(--admin-type-control-line)}
+.admin-action-dialog h4,.administration-grid h3,.popularity-subsection h3{font-size:var(--admin-type-subsection-size);line-height:var(--admin-type-subsection-line)}
+
+.filter-bar{padding:6px;gap:7px}
+.provider-card{margin-top:20px;padding:18px 20px}
+.provider-card .section-heading{margin-bottom:12px}
+.provider-information-list div,.model-information-list div{padding:8px 0}
+.provider-dashboard-grid{gap:16px}
+.campaign-card{padding:20px}
+.diagnostic-model-metrics{margin-bottom:24px}
+.model-page-header{margin-bottom:20px}
+.model-page-section{margin-top:28px}
+.device-detail-grid{gap:16px}
+.device-catalog-details,.model-technical-details{margin-top:16px}
+.secondary-button,.provider-pagination button,.device-pagination button{min-height:var(--admin-control-height);padding:8px 10px}
+.provider-action-overflow>summary{min-height:var(--admin-control-height);padding:8px 12px}
+.provider-action-bar{gap:7px}
+.disclosure-body{margin-top:12px}
+
+@media(max-width:760px){
+  .provider-card{padding:16px}
+  .campaign-card{padding:18px}
+  .table-help,.results-count,.page-meta{line-height:16px}
+  .overview-compact-empty{align-items:flex-start;flex-direction:column;gap:4px}
+  .overview-attention-empty,.overview-provider-panel{grid-template-columns:1fr;align-items:flex-start;gap:7px}
+  .overview-provider-panel .overview-provider-summary{gap:7px}
+}
 """
 
 

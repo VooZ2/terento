@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 MAX_EVENT_BYTES = 16_384
+SUPPORTED_COMPATIBILITY_PROVIDERS = frozenset({"freizeitkarte", "opentopomap"})
 ALLOWED_KEYS = {
     "schemaVersion", "id", "timestamp", "model", "compatibilityIdentity", "variant", "caseSizeMm", "displayType", "canonicalDeviceId", "family", "firmwareVersion",
     "usbVendorID", "usbProductID", "transport", "provider", "region",
@@ -120,8 +121,10 @@ def validate_event(raw: bytes) -> dict[str, Any]:
         raise EvidenceValidationError("inconsistent_reconnect_evidence")
     if event.get("mapVisibleAfterReconnect") and not event.get("reconnectVerified"):
         raise EvidenceValidationError("inconsistent_reconnect_evidence")
-    if event["provider"].lower() != "freizeitkarte":
+    provider = event["provider"].lower()
+    if provider not in SUPPORTED_COMPATIBILITY_PROVIDERS:
         raise EvidenceValidationError("unsupported_provider")
+    event["provider"] = provider
     if "userConfirmed" in event and not isinstance(event["userConfirmed"], bool):
         raise EvidenceValidationError("invalid_confirmation")
     if not re.fullmatch(r"[0-9a-fA-F]{64}", str(event["deletionToken"])):

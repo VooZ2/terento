@@ -4,7 +4,7 @@ from contextlib import contextmanager
 import hashlib
 import json
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -14,6 +14,67 @@ from .historical_devices import historical_device_for_event
 from .map_capability import classify_map_capable
 from .provider_catalog import ProviderDefinition, ProviderSnapshot
 from .provider_health import ProviderHealthResult
+
+
+def _overview_bucket_floor(value: datetime, bucket: str) -> datetime:
+    value = (
+        value.replace(tzinfo=timezone.utc)
+        if value.tzinfo is None else value.astimezone(timezone.utc)
+    )
+    if bucket == "hour":
+        return value.replace(minute=0, second=0, microsecond=0)
+    if bucket == "week":
+        return (value - timedelta(days=value.weekday())).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+    if bucket == "month":
+        return value.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    return value.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def _next_overview_bucket(value: datetime, bucket: str) -> datetime:
+    if bucket == "hour":
+        return value + timedelta(hours=1)
+    if bucket == "week":
+        return value + timedelta(days=7)
+    if bucket == "month":
+        return value.replace(
+            year=value.year + (1 if value.month == 12 else 0),
+            month=1 if value.month == 12 else value.month + 1,
+        )
+    return value + timedelta(days=1)
+
+
+def _fill_overview_trend_buckets(
+    rows: list[dict[str, Any]],
+    *,
+    bucket: str,
+    since: datetime,
+    until: datetime,
+    all_time: bool = False,
+) -> list[dict[str, Any]]:
+    """Fill display-only zero buckets without creating telemetry records."""
+    indexed: dict[datetime, dict[str, Any]] = {}
+    for row in rows:
+        value = row.get("bucket")
+        if not isinstance(value, datetime):
+            continue
+        indexed[_overview_bucket_floor(value, bucket)] = row
+    if not indexed:
+        return rows
+    start = min(indexed) if all_time else _overview_bucket_floor(since, bucket)
+    end = _overview_bucket_floor(until, bucket)
+    result: list[dict[str, Any]] = []
+    current = start
+    while current <= end:
+        existing = indexed.get(current)
+        result.append(existing if existing is not None else {
+            "bucket": current,
+            "success_count": 0,
+            "failed_count": 0,
+        })
+        current = _next_overview_bucket(current, bucket)
+    return result
 
 
 class Database:
@@ -365,6 +426,357 @@ class Database:
         }
         summary["total"] = sum(summary.values())
         return summary
+
+    def admin_overview_snapshot(
+        self,
+        since: datetime,
+        *,
+        recent_limit: int = 8,
+    ) -> dict[str, Any]:
+        """Return bounded operational aggregates for the authenticated Overview.
+
+        This deliberately uses the existing compatibility evidence table and
+        groups rows by the persisted operation identity before counting. It
+        does not create telemetry, alter the public API, or pretend that the
+        compatibility and map-operation success rates are interchangeable.
+        """
+        operation_cte = """
+            WITH operation_rows AS (
+                SELECT
+                    COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text)
+                        AS operation_key,
+                    min(e.canonical_device_model_id) AS canonical_device_model_id,
+                    min(e.compatibility_identity) AS compatibility_identity,
+                    min(e.model) AS model,
+                    min(e.variant) FILTER (
+                        WHERE e.variant IS NOT NULL AND btrim(e.variant) <> ''
+                    ) AS variant,
+                    min(e.provider) AS provider,
+                    min(e.region) AS region,
+                    min(e.release_label) FILTER (
+                        WHERE e.release_label IS NOT NULL AND btrim(e.release_label) <> ''
+                    ) AS release_label,
+                    min(e.app_build) FILTER (
+                        WHERE e.app_build IS NOT NULL AND btrim(e.app_build) <> ''
+                    ) AS app_build,
+                    min(e.failure_stage) FILTER (
+                        WHERE e.failure_stage IS NOT NULL AND btrim(e.failure_stage) <> ''
+                    ) AS failure_stage,
+                    min(e.failure_code) FILTER (
+                        WHERE e.failure_code IS NOT NULL AND btrim(e.failure_code) <> ''
+                    ) AS failure_code,
+                    min(e.error_category) FILTER (
+                        WHERE e.error_category IS NOT NULL AND btrim(e.error_category) <> ''
+                    ) AS error_category,
+                    max(e.occurred_at) AS last_occurred_at,
+                    bool_or(COALESCE(e.write_started, TRUE)) AS write_started,
+                    bool_and(
+                        e.phase_outcome = 'SUCCEEDED'
+                        AND e.automatic_finishing_result = 'VERIFIED'
+                    )
+                    AND count(*) = max(COALESCE(e.selected_map_count, 1))
+                        AS operation_succeeded,
+                    bool_or(e.phase_outcome = 'FAILED') AS has_failed,
+                    bool_or(e.phase_outcome = 'NOT_STARTED') AS has_not_started,
+                    bool_or(
+                        e.diagnostic_status = 'ACTIVE'
+                        AND (
+                            e.phase_outcome IN ('FAILED', 'NOT_STARTED')
+                            OR e.failure_stage IS NOT NULL
+                            OR e.failure_code IS NOT NULL
+                            OR e.error_category IS NOT NULL
+                        )
+                    ) AS open_error
+                FROM compatibility_evidence_event AS e
+                WHERE e.diagnostic_status = 'ACTIVE'
+                GROUP BY COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text)
+            )
+        """
+        scoped = f"{operation_cte}, scoped_operations AS (\n                SELECT *\n                FROM operation_rows\n                WHERE last_occurred_at >= %s\n            )"
+        with self.connection() as connection:
+            summary = connection.execute(
+                f"""
+                {scoped}
+                SELECT
+                    count(*) AS operation_count,
+                    count(*) FILTER (
+                        WHERE operation_succeeded AND write_started
+                    ) AS successful_install_count,
+                    count(*) FILTER (
+                        WHERE has_failed AND write_started
+                    ) AS failed_install_count,
+                    count(*) FILTER (WHERE open_error) AS open_error_count,
+                    count(*) FILTER (WHERE write_started) AS write_started_count,
+                    count(DISTINCT COALESCE(
+                        canonical_device_model_id::text,
+                        NULLIF(compatibility_identity, ''),
+                        NULLIF(model, '')
+                    )) FILTER (WHERE write_started) AS variant_count
+                FROM scoped_operations
+                """,
+                (since,),
+            ).fetchone() or {}
+            recent = list(connection.execute(
+                f"""
+                {scoped}
+                SELECT
+                    operation_key, canonical_device_model_id,
+                    compatibility_identity, model, variant, provider, region,
+                    release_label, app_build, failure_stage, failure_code,
+                    error_category, last_occurred_at, operation_succeeded,
+                    has_failed, has_not_started, open_error
+                FROM scoped_operations
+                ORDER BY last_occurred_at DESC, operation_key
+                LIMIT %s
+                """,
+                (since, recent_limit),
+            ).fetchall())
+            failure_reasons = list(connection.execute(
+                f"""
+                {scoped}
+                SELECT error_category AS reason, count(*) AS count
+                FROM scoped_operations
+                WHERE has_failed AND error_category IS NOT NULL
+                GROUP BY error_category
+                ORDER BY count DESC, reason
+                LIMIT 8
+                """,
+                (since,),
+            ).fetchall())
+            model_activity = list(connection.execute(
+                f"""
+                {scoped}
+                SELECT
+                    COALESCE(
+                        canonical_device_model_id::text,
+                        NULLIF(compatibility_identity, ''),
+                        NULLIF(model, ''),
+                        'unknown-device'
+                    ) AS model_key,
+                    min(canonical_device_model_id::text) AS canonical_device_model_id,
+                    min(compatibility_identity) AS compatibility_identity,
+                    min(model) AS model,
+                    min(variant) FILTER (
+                        WHERE variant IS NOT NULL AND btrim(variant) <> ''
+                    ) AS variant,
+                    count(*) AS operation_count,
+                    count(*) FILTER (
+                        WHERE write_started AND operation_succeeded
+                    ) AS successful_count,
+                    count(*) FILTER (
+                        WHERE write_started AND has_failed
+                    ) AS failed_count,
+                    count(*) FILTER (WHERE open_error) AS open_error_count,
+                    max(last_occurred_at) AS last_occurred_at
+                FROM scoped_operations
+                WHERE COALESCE(
+                    canonical_device_model_id::text,
+                    NULLIF(compatibility_identity, ''),
+                    NULLIF(model, '')
+                ) IS NOT NULL
+                GROUP BY 1
+                ORDER BY open_error_count DESC, failed_count DESC,
+                         operation_count DESC, last_occurred_at DESC, model_key
+                LIMIT 8
+                """,
+                (since,),
+            ).fetchall())
+            review_required = list(connection.execute(
+                """
+                SELECT
+                    canonical_device_model_id::text AS canonical_device_model_id,
+                    compatibility_identity, model, variant,
+                    review_status, public_statistics_enabled, public_display_name,
+                    last_evidence
+                FROM compatibility_model_statistics
+                WHERE last_evidence >= %s
+                  AND (
+                      COALESCE(review_status, 'PENDING') <> 'APPROVED'
+                      OR COALESCE(public_statistics_enabled, false) = false
+                  )
+                ORDER BY last_evidence DESC NULLS LAST, model, variant
+                LIMIT 8
+                """,
+                (since,),
+            ).fetchall())
+        return {
+            "operationCount": int(summary.get("operation_count") or 0),
+            "successfulInstallCount": int(summary.get("successful_install_count") or 0),
+            "failedInstallCount": int(summary.get("failed_install_count") or 0),
+            "openErrorCount": int(summary.get("open_error_count") or 0),
+            "writeStartedCount": int(summary.get("write_started_count") or 0),
+            "variantCount": int(summary.get("variant_count") or 0),
+            "evidenceSuccessRate": (
+                int(summary.get("successful_install_count") or 0)
+                / int(summary.get("write_started_count") or 1)
+                * 100
+                if int(summary.get("write_started_count") or 0)
+                else None
+            ),
+            "hasData": int(summary.get("operation_count") or 0) > 0,
+            "recentActivity": [dict(row) for row in recent],
+            "failureReasons": [dict(row) for row in failure_reasons],
+            "modelActivity": [dict(row) for row in model_activity],
+            "reviewRequired": [dict(row) for row in review_required],
+        }
+
+    def admin_overview_map_snapshot(
+        self,
+        since: datetime,
+        *,
+        period: str = "24h",
+        recent_limit: int = 8,
+        attention_limit: int = 6,
+    ) -> dict[str, Any]:
+        """Return map-operation aggregates for the authenticated Overview.
+
+        Map telemetry is intentionally kept separate from compatibility
+        evidence. This query only reads the existing map event tables and
+        exposes no new public/API payload.
+        """
+        # Keep the date_trunc field as a trusted SQL literal. PostgreSQL can
+        # resolve a bound value here in some driver/server combinations, but
+        # not all combinations infer the parameter as text for date_trunc's
+        # overloaded signature. The period is already allow-listed above, so
+        # embedding the selected expression is both safe and deterministic.
+        bucket_expression = {
+            "24h": "date_trunc('hour', e.occurred_at)",
+            "7d": "date_trunc('day', e.occurred_at)",
+            "30d": "date_trunc('day', e.occurred_at)",
+            "all": "date_trunc('month', e.occurred_at)",
+        }.get(period, "date_trunc('hour', e.occurred_at)")
+        bucket = {
+            "24h": "hour",
+            "7d": "day",
+            "30d": "day",
+            "all": "month",
+        }.get(period, "hour")
+        if period == "all":
+            # Keep all-time charts compact while preserving useful resolution
+            # for a young installation with only a few days of history.
+            with self.connection() as connection:
+                extent = connection.execute(
+                    "SELECT min(occurred_at) AS first_occurred_at, max(occurred_at) AS last_occurred_at FROM map_download_event"
+                ).fetchone() or {}
+            first = extent.get("first_occurred_at")
+            last = extent.get("last_occurred_at")
+            span_days = (
+                (last - first).total_seconds() / 86400
+                if isinstance(first, datetime) and isinstance(last, datetime)
+                else None
+            )
+            if span_days is not None and span_days <= 31:
+                bucket_expression = "date_trunc('day', e.occurred_at)"
+                bucket = "day"
+            elif span_days is not None and span_days <= 180:
+                bucket_expression = "date_trunc('week', e.occurred_at)"
+                bucket = "week"
+        event_scope = """
+            FROM map_download_event AS e
+            LEFT JOIN map_provider AS p ON p.id = e.provider_id
+            LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
+            WHERE e.occurred_at >= %s
+        """
+        with self.connection() as connection:
+            summary = connection.execute(
+                f"""
+                SELECT
+                    count(*) AS event_count,
+                    count(DISTINCT e.operation_id) FILTER (
+                        WHERE e.event_type = 'INSTALL_SUCCEEDED'
+                          AND e.outcome = 'SUCCEEDED'
+                    ) AS completed_install_count,
+                    count(DISTINCT e.operation_id) FILTER (
+                        WHERE e.event_type = 'INSTALL_FAILED'
+                          AND e.outcome = 'FAILED'
+                    ) AS failed_install_count
+                {event_scope}
+                """,
+                (since,),
+            ).fetchone() or {}
+            recent = list(connection.execute(
+                f"""
+                SELECT
+                    e.operation_id::text AS operation_id,
+                    e.provider_id,
+                    p.name AS provider_name,
+                    e.map_package_id,
+                    COALESCE(mp.name, e.map_package_id) AS map_package_name,
+                    COALESCE(mp.name, e.region, e.map_package_id) AS display_name,
+                    COALESCE(e.region, mp.region) AS region,
+                    e.event_type,
+                    e.outcome,
+                    e.app_build,
+                    e.occurred_at
+                {event_scope}
+                ORDER BY e.occurred_at DESC, e.event_id DESC
+                LIMIT %s
+                """,
+                (since, recent_limit),
+            ).fetchall())
+            attention = list(connection.execute(
+                f"""
+                SELECT
+                    e.operation_id::text AS operation_id,
+                    e.provider_id,
+                    p.name AS provider_name,
+                    e.map_package_id,
+                    COALESCE(mp.name, e.map_package_id) AS map_package_name,
+                    COALESCE(mp.name, e.region, e.map_package_id) AS display_name,
+                    COALESCE(e.region, mp.region) AS region,
+                    e.event_type,
+                    e.outcome,
+                    e.app_build,
+                    e.occurred_at
+                {event_scope}
+                  AND e.event_type IN ('DOWNLOAD_FAILED', 'INSTALL_FAILED')
+                  AND e.outcome = 'FAILED'
+                ORDER BY e.occurred_at DESC, e.event_id DESC
+                LIMIT %s
+                """,
+                (since, attention_limit),
+            ).fetchall())
+            trend = list(connection.execute(
+                f"""
+                SELECT
+                    {bucket_expression} AS bucket,
+                    count(DISTINCT e.operation_id) FILTER (
+                        WHERE e.event_type = 'INSTALL_SUCCEEDED'
+                          AND e.outcome = 'SUCCEEDED'
+                    ) AS success_count,
+                    count(DISTINCT e.operation_id) FILTER (
+                        WHERE e.event_type = 'INSTALL_FAILED'
+                          AND e.outcome = 'FAILED'
+                    ) AS failed_count
+                FROM map_download_event AS e
+                WHERE e.occurred_at >= %s
+                GROUP BY {bucket_expression}
+                ORDER BY bucket
+                """,
+                (since,),
+            ).fetchall())
+        trend_rows = [dict(row) for row in trend]
+        if trend_rows:
+            trend_rows = _fill_overview_trend_buckets(
+                trend_rows,
+                bucket=bucket,
+                since=since,
+                until=datetime.now(timezone.utc),
+                all_time=period == "all",
+            )
+        completed = int(summary.get("completed_install_count") or 0)
+        failed = int(summary.get("failed_install_count") or 0)
+        return {
+            "eventCount": int(summary.get("event_count") or 0),
+            "completedInstallCount": completed,
+            "failedInstallCount": failed,
+            "installSuccessRate": completed / (completed + failed) * 100 if completed + failed else None,
+            "hasData": int(summary.get("event_count") or 0) > 0,
+            "recentActivity": [dict(row) for row in recent],
+            "attention": [dict(row) for row in attention],
+            "trend": trend_rows,
+            "bucket": bucket,
+        }
 
     def admin_user_count(self) -> int:
         with self.connection() as connection:
@@ -1377,7 +1789,8 @@ class Database:
                 h.status AS health, h.checked_at AS last_checked_at,
                 h.error_code AS last_error,
                 COALESCE(pc.active_package_count, 0) AS active_package_count,
-                COALESCE(pc.broken_package_count, 0) AS broken_package_count
+                COALESCE(pc.broken_package_count, 0) AS broken_package_count,
+                COALESCE(pc.broken_url_count, 0) AS broken_url_count
             FROM map_provider AS p
             LEFT JOIN LATERAL (
                 SELECT ph.status, ph.checked_at, ph.error_code
@@ -1678,31 +2091,44 @@ class Database:
             ).fetchone()
         return row is not None
 
-    def map_statistics(self, filters: dict[str, Any]) -> list[dict[str, Any]]:
+    @staticmethod
+    def _map_statistics_filter(filters: dict[str, Any], alias: str = "e") -> tuple[list[str], list[Any]]:
         clauses = ["1 = 1"]
         values: list[Any] = []
         if filters.get("provider"):
-            clauses.append("e.provider_id = %s")
+            clauses.append(f"{alias}.provider_id = %s")
             values.append(filters["provider"])
         if filters.get("map"):
-            clauses.append("e.map_package_id = %s")
+            clauses.append(f"{alias}.map_package_id = %s")
             values.append(filters["map"])
         if filters.get("region"):
-            clauses.append("e.region = %s")
+            clauses.append(f"{alias}.region = %s")
             values.append(filters["region"])
         if filters.get("eventType"):
-            clauses.append("e.event_type = %s")
+            clauses.append(f"{alias}.event_type = %s")
             values.append(filters["eventType"])
         if filters.get("dateFrom"):
-            clauses.append("e.occurred_at >= %s")
+            clauses.append(f"{alias}.occurred_at >= %s")
             values.append(filters["dateFrom"])
         if filters.get("dateTo"):
-            clauses.append("e.occurred_at <= %s")
+            clauses.append(f"{alias}.occurred_at <= %s")
             values.append(filters["dateTo"])
+        return clauses, values
+
+    def map_statistics(
+        self,
+        filters: dict[str, Any],
+        *,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        clauses, values = self._map_statistics_filter(filters)
         query = f"""
             SELECT
                 e.provider_id,
+                p.name AS provider_name,
                 e.map_package_id,
+                mp.name AS map_package_name,
                 COALESCE(e.region, mp.region) AS region,
                 e.event_type,
                 e.outcome,
@@ -1712,14 +2138,122 @@ class Database:
                 max(e.occurred_at) AS last_occurred_at
             FROM map_download_event AS e
             LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
+            LEFT JOIN map_provider AS p ON p.id = e.provider_id
             WHERE {' AND '.join(clauses)}
-            GROUP BY e.provider_id, e.map_package_id,
+            GROUP BY e.provider_id, p.name, e.map_package_id, mp.name,
                      COALESCE(e.region, mp.region), e.event_type, e.outcome
             ORDER BY last_occurred_at DESC, e.provider_id,
                      e.map_package_id NULLS LAST, e.event_type, e.outcome
         """
+        if limit is not None:
+            query += " LIMIT %s OFFSET %s"
+            values.extend([limit, max(0, offset)])
         with self.connection() as connection:
             return list(connection.execute(query, values).fetchall())
+
+    def map_statistics_linkage(self, filters: dict[str, Any]) -> dict[str, Any]:
+        """Match map operations to watch evidence without changing either aggregate.
+
+        The client intentionally gives a map operation and its compatibility
+        evidence the same random operation UUID when both sharing choices are
+        enabled. Aggregate each stream to one row per operation before joining;
+        otherwise a multi-map install would create a many-to-many count.
+        """
+        clauses, values = self._map_statistics_filter(filters)
+        query = f"""
+            WITH map_operations AS (
+                SELECT
+                    e.operation_id,
+                    min(e.provider_id) AS provider_id,
+                    bool_or(e.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED'))
+                        AS has_install_event
+                FROM map_download_event AS e
+                WHERE {' AND '.join(clauses)}
+                GROUP BY e.operation_id
+            ), compatibility_operations AS (
+                SELECT
+                    e.operation_id,
+                    min(e.provider) AS provider_id,
+                    bool_or(COALESCE(e.write_started, TRUE)) AS write_started,
+                    bool_and(
+                        e.phase_outcome = 'SUCCEEDED'
+                        AND e.automatic_finishing_result = 'VERIFIED'
+                    )
+                    AND count(*) = max(COALESCE(e.selected_map_count, 1))
+                        AS operation_succeeded
+                FROM compatibility_evidence_event AS e
+                WHERE e.operation_id IS NOT NULL
+                GROUP BY e.operation_id
+            ), linked_operations AS (
+                SELECT
+                    m.*,
+                    c.operation_id AS compatibility_operation_id,
+                    c.write_started,
+                    c.operation_succeeded
+                FROM map_operations AS m
+                LEFT JOIN compatibility_operations AS c
+                    ON c.operation_id = m.operation_id
+                   AND c.provider_id = m.provider_id
+            )
+            SELECT
+                count(*) AS map_operation_count,
+                count(*) FILTER (WHERE compatibility_operation_id IS NOT NULL)
+                    AS linked_operation_count,
+                count(*) FILTER (WHERE has_install_event) AS map_installation_count,
+                count(*) FILTER (
+                    WHERE has_install_event AND compatibility_operation_id IS NOT NULL
+                ) AS linked_installation_count,
+                count(*) FILTER (
+                    WHERE has_install_event AND compatibility_operation_id IS NULL
+                ) AS map_only_installation_count,
+                count(*) FILTER (
+                    WHERE has_install_event
+                      AND compatibility_operation_id IS NOT NULL
+                      AND write_started
+                ) AS linked_write_started_install_count,
+                count(*) FILTER (
+                    WHERE has_install_event
+                      AND compatibility_operation_id IS NOT NULL
+                      AND write_started
+                      AND operation_succeeded
+                ) AS linked_successful_install_count,
+                count(*) FILTER (
+                    WHERE has_install_event
+                      AND compatibility_operation_id IS NOT NULL
+                      AND NOT operation_succeeded
+                ) AS linked_failed_install_count,
+                count(*) FILTER (
+                    WHERE has_install_event
+                      AND compatibility_operation_id IS NOT NULL
+                      AND write_started = FALSE
+                ) AS linked_prewrite_failure_count,
+                round(
+                    100.0 * count(*) FILTER (
+                        WHERE has_install_event AND compatibility_operation_id IS NOT NULL
+                    ) / NULLIF(count(*) FILTER (WHERE has_install_event), 0),
+                    1
+                ) AS linkage_rate
+            FROM linked_operations
+        """
+        with self.connection() as connection:
+            row = connection.execute(query, values).fetchone() or {}
+
+        def integer(key: str) -> int:
+            return int(row.get(key) or 0)
+
+        linkage_rate = row.get("linkage_rate")
+        return {
+            "mapOperationCount": integer("map_operation_count"),
+            "mapInstallationCount": integer("map_installation_count"),
+            "linkedOperationCount": integer("linked_operation_count"),
+            "linkedInstallationCount": integer("linked_installation_count"),
+            "mapOnlyInstallationCount": integer("map_only_installation_count"),
+            "linkedWriteStartedInstallCount": integer("linked_write_started_install_count"),
+            "linkedSuccessfulInstallCount": integer("linked_successful_install_count"),
+            "linkedFailedInstallCount": integer("linked_failed_install_count"),
+            "linkedPrewriteFailureCount": integer("linked_prewrite_failure_count"),
+            "linkageRate": float(linkage_rate) if linkage_rate is not None else None,
+        }
 
     def map_size_targets(self) -> list[dict[str, Any]]:
         query = """

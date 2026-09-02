@@ -33,6 +33,8 @@ class FakeProviderDatabase:
         self.audits: list[dict] = []
         self.detail_overrides: dict[str, dict] = {}
         self.run_overrides: dict[str, list[dict]] = {}
+        self.map_statistic_filters: list[dict] = []
+        self.overview_map_requests: list[tuple[datetime, str]] = []
 
     def admin_user_count(self) -> int:
         return 1
@@ -43,6 +45,32 @@ class FakeProviderDatabase:
             "identityPending": 0,
             "readyToPublish": 0,
             "total": 0,
+        }
+
+    def admin_overview_snapshot(self, since):
+        return {
+            "operationCount": 0,
+            "successfulInstallCount": 0,
+            "failedInstallCount": 0,
+            "openErrorCount": 0,
+            "writeStartedCount": 0,
+            "hasData": False,
+            "recentActivity": [],
+            "failureReasons": [],
+        }
+
+    def admin_overview_map_snapshot(self, since, *, period="24h"):
+        self.overview_map_requests.append((since, period))
+        return {
+            "eventCount": 0,
+            "completedInstallCount": 0,
+            "failedInstallCount": 0,
+            "installSuccessRate": None,
+            "hasData": False,
+            "recentActivity": [],
+            "attention": [],
+            "trend": [],
+            "bucket": "hour",
         }
 
     def admin_session(self, token: str):
@@ -86,7 +114,8 @@ class FakeProviderDatabase:
             "health_history": [],
         }
 
-    def map_statistics(self, filters):
+    def map_statistics(self, filters, *, limit=None, offset=0):
+        self.map_statistic_filters.append(dict(filters))
         return [{
             "provider_id": filters.get("provider", "freizeitkarte"),
             "map_package_id": filters.get("map"),
@@ -98,6 +127,20 @@ class FakeProviderDatabase:
             "first_occurred_at": datetime(2026, 8, 31, tzinfo=UTC),
             "last_occurred_at": datetime(2026, 8, 31, tzinfo=UTC),
         }]
+
+    def map_statistics_linkage(self, filters):
+        return {
+            "mapOperationCount": 1,
+            "mapInstallationCount": 1,
+            "linkedOperationCount": 0,
+            "linkedInstallationCount": 0,
+            "mapOnlyInstallationCount": 1,
+            "linkedWriteStartedInstallCount": 0,
+            "linkedSuccessfulInstallCount": 0,
+            "linkedFailedInstallCount": 0,
+            "linkedPrewriteFailureCount": 0,
+            "linkageRate": 0.0,
+        }
 
     def insert_map_event(self, event):
         if event["id"] in self.events:
@@ -202,6 +245,19 @@ class Beta8APITests(unittest.TestCase):
         self.assertIn("provider.status_repaired", migration)
         self.assertIn("migration-028", migration)
         self.assertIn("explicitActivationRequired", migration)
+
+    def test_beta8_provider_compatibility_linkage_migration_is_allowlisted(self):
+        migration = (
+            Path(__file__).parents[1]
+            / "src"
+            / "terento_catalog"
+            / "migrations"
+            / "029_provider_neutral_compatibility_evidence.sql"
+        ).read_text(encoding="utf-8")
+        self.assertIn("DROP CONSTRAINT compatibility_evidence_event_provider_check", migration)
+        self.assertIn("provider IN ('freizeitkarte', 'opentopomap')", migration)
+        self.assertNotIn("openmtbmap", migration)
+        self.assertNotIn("DROP TABLE", migration)
 
     def test_provider_neutral_catalog_keeps_legacy_fields_and_artifacts(self):
         document = build_catalog([
@@ -671,11 +727,21 @@ class Beta8APITests(unittest.TestCase):
             statistics, statistics_body = self._request(
                 server,
                 "GET",
-                "/admin/map-statistics.json?provider=freizeitkarte&region=lt",
+                "/admin/map-statistics.json?provider=freizeitkarte&region=lt&period=24h",
                 headers={"Cookie": cookie},
             )
             self.assertEqual(statistics.status, 200)
-            self.assertEqual(json.loads(statistics_body)["rows"][0]["region"], "LT")
+            statistics_payload = json.loads(statistics_body)
+            self.assertEqual(statistics_payload["rows"][0]["region"], "LT")
+            self.assertEqual(statistics_payload["detailPageSize"], 25)
+            self.assertEqual(statistics_payload["detailTotal"], 1)
+            self.assertEqual(len(statistics_payload["detailRows"]), 1)
+            self.assertEqual(statistics_payload["filters"]["period"], "24h")
+            self.assertEqual(statistics_payload["rows"][0]["display_name"], "Lithuania")
+            self.assertEqual(statistics_payload["rows"][0]["region_display_name"], "Lithuania")
+            self.assertEqual(statistics_payload["linkage"]["mapInstallationCount"], 1)
+            self.assertEqual(statistics_payload["linkage"]["mapOnlyInstallationCount"], 1)
+            self.assertEqual(statistics_payload["linkage"]["linkedInstallationCount"], 0)
 
             state, state_body = self._request(
                 server,
@@ -700,6 +766,36 @@ class Beta8APITests(unittest.TestCase):
                 "provider_activation_blocked",
             )
             self.assertEqual(database.status, "PAUSED")
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
+
+    def test_overview_period_reaches_the_private_query_and_rendered_state(self):
+        database = FakeProviderDatabase()
+        service = CatalogService(database)
+        server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(service))
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            cookie = "terento_admin_session=session; terento_admin_csrf=csrf"
+            response, body = self._request(
+                server, "GET", "/admin?period=30d", headers={"Cookie": cookie},
+            )
+            self.assertEqual(response.status, 200)
+            self.assertEqual(database.overview_map_requests[-1][1], "30d")
+            self.assertIn("value='30d' selected", body.decode())
+
+            response, body = self._request(
+                server, "GET", "/admin?period=all", headers={"Cookie": cookie},
+            )
+            self.assertEqual(response.status, 200)
+            self.assertEqual(database.overview_map_requests[-1][1], "all")
+            self.assertIn("value='all' selected", body.decode())
+            self.assertLess(
+                database.overview_map_requests[-1][0],
+                database.overview_map_requests[-2][0],
+            )
         finally:
             server.shutdown()
             server.server_close()
@@ -744,6 +840,28 @@ class Beta8APITests(unittest.TestCase):
         )
         self.assertEqual(result, {"id": "opentopomap", "status": "ACTIVE"})
 
+    def test_map_statistics_period_overrides_stale_date_from(self):
+        database = FakeProviderDatabase()
+        service = CatalogService(database)
+        stale_date = "2000-01-01T00:00:00+00:00"
+
+        for period in ("24h", "7d", "30d"):
+            database.map_statistic_filters.clear()
+            service.map_statistics({"period": period, "dateFrom": stale_date})
+            self.assertEqual(len(database.map_statistic_filters), 2)
+            self.assertNotEqual(database.map_statistic_filters[0]["dateFrom"], stale_date)
+            self.assertEqual(
+                database.map_statistic_filters[0]["dateFrom"],
+                database.map_statistic_filters[1]["dateFrom"],
+            )
+
+        database.map_statistic_filters.clear()
+        service.map_statistics({"period": "all", "dateFrom": stale_date})
+        self.assertEqual(
+            database.map_statistic_filters[0]["dateFrom"].isoformat(),
+            stale_date,
+        )
+
     def test_admin_pages_require_login_and_render_provider_statistics_views(self):
         database = FakeProviderDatabase()
         service = CatalogService(database)
@@ -751,7 +869,7 @@ class Beta8APITests(unittest.TestCase):
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         try:
-            for path in ("/admin/providers", "/admin/map-statistics", "/admin/providers/freizeitkarte"):
+            for path in ("/admin", "/admin/installations", "/admin/providers", "/admin/map-statistics", "/admin/providers/freizeitkarte"):
                 response, _ = self._request(server, "GET", path)
                 self.assertEqual(response.status, 303)
                 self.assertEqual(response.headers["Location"], "/admin/login")
@@ -783,7 +901,7 @@ class Beta8APITests(unittest.TestCase):
             self.assertEqual(statistics.status, 200)
             self.assertIn(b"Map statistics", statistics_body)
             self.assertIn(b"7 days", statistics_body)
-            self.assertIn(b"Install success", statistics_body)
+            self.assertIn(b"Package install success", statistics_body)
         finally:
             server.shutdown()
             server.server_close()
