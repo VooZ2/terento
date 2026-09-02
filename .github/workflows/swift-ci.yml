@@ -290,3 +290,101 @@ jobs:
             esac
           done
           echo "All selected quality gates passed."
+
+  publish-operational-report:
+    name: Publish weekly or release health report
+    if: always() && (github.event_name == 'schedule' || startsWith(github.ref, 'refs/tags/v'))
+    needs:
+      - changes
+      - site-tests
+      - backend-tests
+      - app-tests
+      - native-tests
+      - release-tests
+      - shared-ci-tests
+      - live-catalog-contract
+      - build-and-test
+    runs-on: ubuntu-latest
+    env:
+      OPERATIONS_INGEST_SECRET: ${{ secrets.TERENTO_OPERATIONS_INGEST_SECRET }}
+      SMTP_USERNAME: ${{ secrets.SMTP2GO_USERNAME }}
+      SMTP_PASSWORD: ${{ secrets.SMTP2GO_PASSWORD }}
+      SMTP_HOST: mail-eu.smtp2go.com
+      SMTP_PORT: "2525"
+      REPORT_FROM: report@terento.app
+      REPORT_TO: report@terento.app
+      SELECTION_RESULT: ${{ needs.changes.result }}
+      SITE_RESULT: ${{ needs.site-tests.result }}
+      BACKEND_RESULT: ${{ needs.backend-tests.result }}
+      APP_RESULT: ${{ needs.app-tests.result }}
+      NATIVE_RESULT: ${{ needs.native-tests.result }}
+      RELEASE_RESULT: ${{ needs.release-tests.result }}
+      SHARED_RESULT: ${{ needs.shared-ci-tests.result }}
+      LIVE_RESULT: ${{ needs.live-catalog-contract.result }}
+      GATE_RESULT: ${{ needs.build-and-test.result }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Build consolidated health report
+        shell: bash
+        run: |
+          set -euo pipefail
+          kind="RELEASE_GATE"
+          component="release"
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
+            kind="WEEKLY_TEST"
+            component="test-matrix"
+          fi
+          status="FAILED"
+          summary="One or more required Terento quality gates failed."
+          if [ "$GATE_RESULT" = "success" ]; then
+            status="HEALTHY"
+            summary="All required Terento quality gates passed."
+          fi
+          release_version="$(jq -r '.version' site/updates/macos-arm64.json)"
+          build_number="$(jq -r '.build' site/updates/macos-arm64.json)"
+          observed_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          run_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          jq -n \
+            --arg observationId "${kind,,}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            --arg kind "$kind" --arg component "$component" --arg status "$status" \
+            --arg observedAt "$observed_at" --arg sourceRunId "$GITHUB_RUN_ID" \
+            --arg sourceRunUrl "$run_url" --arg commitSha "$GITHUB_SHA" \
+            --arg releaseVersion "$release_version" --arg buildNumber "$build_number" \
+            --arg summary "$summary" --arg selection "$SELECTION_RESULT" \
+            --arg site "$SITE_RESULT" --arg backend "$BACKEND_RESULT" \
+            --arg app "$APP_RESULT" --arg native "$NATIVE_RESULT" \
+            --arg release "$RELEASE_RESULT" --arg sharedCi "$SHARED_RESULT" \
+            --arg liveCatalog "$LIVE_RESULT" \
+            '{schemaVersion:1, observationId:$observationId, kind:$kind, component:$component,
+              status:$status, observedAt:$observedAt, sourceRunId:$sourceRunId,
+              sourceRunUrl:$sourceRunUrl, commitSha:$commitSha,
+              releaseVersion:$releaseVersion, buildNumber:$buildNumber, summary:$summary,
+              details:{selection:$selection, site:$site, backend:$backend, app:$app,
+                native:$native, release:$release, shared_ci:$sharedCi, live_catalog:$liveCatalog}}' \
+            > "$RUNNER_TEMP/terento-operational-report.json"
+      - name: Send weekly report through SMTP2GO
+        id: email
+        if: github.event_name == 'schedule'
+        run: python3 scripts/send-weekly-health-report.py "$RUNNER_TEMP/terento-operational-report.json"
+      - name: Retain consolidated health report
+        if: always()
+        env:
+          EMAIL_OUTCOME: ${{ steps.email.outcome }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$OPERATIONS_INGEST_SECRET"
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
+            email_outcome="${EMAIL_OUTCOME:-unknown}"
+            jq --arg email "$email_outcome" '.details.email = $email' \
+              "$RUNNER_TEMP/terento-operational-report.json" \
+              > "$RUNNER_TEMP/terento-operational-report-with-email.json"
+            mv "$RUNNER_TEMP/terento-operational-report-with-email.json" \
+              "$RUNNER_TEMP/terento-operational-report.json"
+          fi
+          curl --fail --silent --show-error --connect-timeout 5 --max-time 15 \
+            -H "Authorization: Bearer $OPERATIONS_INGEST_SECRET" \
+            -H "Content-Type: application/json" \
+            --data-binary "@$RUNNER_TEMP/terento-operational-report.json" \
+            https://api.terento.app/internal/operations/observations

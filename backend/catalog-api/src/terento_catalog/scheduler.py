@@ -36,12 +36,21 @@ def run_schedule(database: Database, schedule_utc: str) -> None:
             target += timedelta(days=days_until_target)
         wait_seconds = max(1, (target - now).total_seconds())
         LOGGER.info("next metadata collection at %s", target.isoformat())
+        _record_heartbeat(database, status="WAITING", next_run_at=target)
         time.sleep(wait_seconds)
+        started_at = datetime.now(timezone.utc)
+        _record_heartbeat(database, status="RUNNING", started_at=started_at)
         try:
             collect_once(database)
         except Exception:
             # A failed provider fetch must not stop the next scheduled attempt.
             LOGGER.exception("scheduled Freizeitkarte collection failed")
+            _record_heartbeat(
+                database,
+                status="FAILED",
+                completed_at=datetime.now(timezone.utc),
+                error_summary="Map catalog collection failed; see scheduler logs.",
+            )
             continue
         try:
             collect_devices_once(database)
@@ -49,12 +58,32 @@ def run_schedule(database: Database, schedule_utc: str) -> None:
             # Garmin discovery is independent from the map catalog. A failed
             # device fetch must not invalidate the successful map collection.
             LOGGER.exception("scheduled Garmin device collection failed")
+            _record_heartbeat(
+                database,
+                status="WARNING",
+                completed_at=datetime.now(timezone.utc),
+                error_summary="Map catalog succeeded; Garmin device collection failed.",
+            )
+            continue
+        _record_heartbeat(
+            database,
+            status="HEALTHY",
+            completed_at=datetime.now(timezone.utc),
+        )
 
 
 def run_daily(database: Database, schedule_utc: str) -> None:
     """Backward-compatible alias for callers using the old scheduler name."""
 
     run_schedule(database, schedule_utc)
+
+
+def _record_heartbeat(database: Database, **values: object) -> None:
+    try:
+        database.record_scheduler_heartbeat(**values)
+    except Exception:
+        # Heartbeat observability must not suppress a future scheduled run.
+        LOGGER.exception("scheduler heartbeat update failed")
 
 
 def _parse_schedule(value: str) -> tuple[int | None, int, int]:

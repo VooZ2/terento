@@ -50,6 +50,7 @@ from terento_catalog.admin import (
     overview_page,
     provider_detail_page,
     providers_page,
+    system_health_page,
 )
 from terento_catalog.compatibility_status import (
     CANONICAL_STATUS_ORDER,
@@ -1818,6 +1819,58 @@ class AdminSemanticsTests(unittest.TestCase):
             "diagnostic_status =", "successful_install_count =",
         ):
             self.assertNotIn(protected_field, migration)
+
+
+class SystemHealthPageTests(unittest.TestCase):
+    def test_page_reuses_provider_state_and_shows_unknown_missing_evidence(self):
+        body = system_health_page(
+            {
+                "api": "HEALTHY",
+                "database": "HEALTHY",
+                "providers": [{
+                    "id": "freizeitkarte", "name": "Freizeitkarte",
+                    "health": "HEALTHY", "packageCount": 63,
+                    "lastCatalogSync": datetime.now(timezone.utc).isoformat(),
+                }],
+                "observations": [],
+                "weekly": None,
+                "scheduler": None,
+            },
+            {"username": "operator"},
+            "csrf",
+        ).decode()
+        self.assertIn("<h1>System health</h1>", body)
+        self.assertIn("Tests run in GitHub Actions, not in this admin panel", body)
+        self.assertIn("63 packages across 1 providers", body)
+        self.assertIn("No weekly test report received yet", body)
+        self.assertIn("system-health-unknown", body)
+        self.assertIn("href=\"/admin/system-health\"", body)
+
+    def test_page_reports_release_manifest_drift_and_weekly_suite_results(self):
+        now = datetime.now(timezone.utc)
+        run_url = "https://github.com/VooZ2/terento/actions/runs/123"
+        body = system_health_page(
+            {
+                "api": "HEALTHY", "database": "HEALTHY", "providers": [],
+                "scheduler": {"status": "WAITING", "next_run_at": now},
+                "weekly": {
+                    "status": "FAILED", "observed_at": now, "summary": "One suite failed.",
+                    "source_run_url": run_url, "details": {"site": "success", "app": "failure"},
+                },
+                "observations": [
+                    {"component": "release", "release_version": "1.0.0-beta.10", "build_number": "10", "status": "HEALTHY", "source_run_url": run_url},
+                    {"component": "site", "release_version": "1.0.0-beta.9", "build_number": "9", "status": "HEALTHY", "source_run_url": run_url, "commit_sha": "a" * 40, "observed_at": now},
+                ],
+            },
+            {"username": "operator"},
+            "csrf",
+        ).decode()
+        self.assertIn("Release expects 1.0.0-beta.10", body)
+        self.assertIn("website reports 1.0.0-beta.9", body)
+        self.assertIn("One suite failed", body)
+        self.assertIn(">App<", body)
+        self.assertIn("system-health-failed", body)
+        self.assertIn("GitHub Actions", body)
 
 
 if __name__ == "__main__":

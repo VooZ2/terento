@@ -36,6 +36,7 @@ from .admin import (
     login_page,
     new_token,
     setup_page,
+    system_health_page,
     token_hash,
     validate_password,
     validate_username,
@@ -64,6 +65,7 @@ from .map_events import (
     validate_map_event,
     validate_statistics_filters,
 )
+from .operational_health import OperationalObservationError, validate_observation
 from .provider_catalog import (
     KNOWN_PROVIDER_DEFINITIONS,
     FreizeitkarteProviderAdapter,
@@ -99,16 +101,31 @@ class CatalogService:
         admin_bootstrap_secret: str | None = None,
         admin_session_ttl_seconds: int = 28_800,
         public_compatibility_stats_enabled: bool = False,
+        operations_ingest_secret: str | None = None,
     ) -> None:
         self.database = database
         self.asset_storage = asset_storage
         self.admin_bootstrap_secret = admin_bootstrap_secret
         self.admin_session_ttl_seconds = admin_session_ttl_seconds
         self.public_compatibility_stats_enabled = public_compatibility_stats_enabled
+        self.operations_ingest_secret = operations_ingest_secret
 
     def health(self) -> bool:
         self.database.prune_compatibility_events()
         return self.database.health()
+
+    def receive_operational_observation(self, document: dict[str, Any]) -> bool:
+        return self.database.record_operational_observation(validate_observation(document))
+
+    def operational_health(self) -> dict[str, Any]:
+        snapshot = self.database.operational_health_snapshot()
+        return {
+            "schemaVersion": 1,
+            "api": "HEALTHY",
+            "database": "HEALTHY",
+            **snapshot,
+            "providers": self.admin_providers().get("providers", []),
+        }
 
     def catalog_response(self) -> tuple[bytes, str, datetime]:
         rows, updated_at = self.database.catalog_snapshot()
@@ -624,6 +641,9 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
 
         def do_POST(self) -> None:  # noqa: N802 - stdlib handler API
             request_path = urlsplit(self.path).path
+            if request_path == "/internal/operations/observations":
+                self._handle_operational_observation()
+                return
             if request_path == "/map-events":
                 self._handle_map_event()
                 return
@@ -637,6 +657,38 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 self._handle_admin_post(request_path)
                 return
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=True, cache_control="no-store")
+
+        def _handle_operational_observation(self) -> None:
+            client = f"operational-observation:{self.client_address[0]}"
+            if self._rate_limited(client, limit=30, window=60):
+                self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store", noindex=True)
+                return
+            configured_secret = service.operations_ingest_secret
+            authorization = self.headers.get("Authorization", "")
+            supplied_secret = authorization.removeprefix("Bearer ") if authorization.startswith("Bearer ") else ""
+            if not configured_secret or not supplied_secret or not hmac.compare_digest(supplied_secret, configured_secret):
+                self._send_json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"}, send_body=True, cache_control="no-store", noindex=True)
+                return
+            document = self._read_json()
+            if document is None:
+                return
+            request_times[client].append(time.monotonic())
+            try:
+                inserted = service.receive_operational_observation(document)
+            except OperationalObservationError as exc:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)}, send_body=True, cache_control="no-store", noindex=True)
+                return
+            except Exception:
+                LOGGER.exception("operational observation storage failed")
+                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "operations_unavailable"}, send_body=True, cache_control="no-store", noindex=True)
+                return
+            self._send_json(
+                HTTPStatus.CREATED if inserted else HTTPStatus.OK,
+                {"status": "stored" if inserted else "duplicate"},
+                send_body=True,
+                cache_control="no-store",
+                noindex=True,
+            )
 
         def _handle_map_event(self) -> None:
             client = f"map-event:{self.client_address[0]}"
@@ -1120,6 +1172,23 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 except Exception:
                     LOGGER.exception("compatibility statistics failed")
                     self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "statistics_unavailable"}, send_body=send_body, cache_control="no-store")
+                    return
+                self._send_admin_html(body, send_body=send_body)
+                return
+            if request_path in {"/admin/system-health", "/admin/system-health/"}:
+                try:
+                    body = system_health_page(
+                        service.operational_health(), session, csrf_token,
+                    )
+                except Exception:
+                    LOGGER.exception("system health page failed")
+                    self._send_json(
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                        {"error": "system_health_unavailable"},
+                        send_body=send_body,
+                        cache_control="no-store",
+                        noindex=True,
+                    )
                     return
                 self._send_admin_html(body, send_body=send_body)
                 return

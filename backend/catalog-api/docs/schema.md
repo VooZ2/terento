@@ -369,3 +369,17 @@ card, while every failure received before the epoch remains excluded.
 no recoverable password is stored. `admin_session` stores only hashes of the
 opaque session and CSRF tokens with an expiry and user foreign key. PostgreSQL
 is not published outside the private Docker network.
+
+## Operational health
+
+Migration 030 adds `operational_observation` and `scheduler_heartbeat`.
+Operational observations retain an idempotent GitHub run identity, a bounded
+kind/component/status, timestamp, Terento Actions URL, commit SHA, optional
+release/build labels, short summary, and scalar JSON details. Raw workflow
+logs, arbitrary URLs, user/device identifiers, and credentials are outside the
+contract. Observations are pruned after 180 days during later ingestion.
+
+`scheduler_heartbeat` is a singleton per known job and records its next run,
+latest start/completion, status, and a fixed bounded error summary. These
+tables are private `/admin` observability inputs and grant no command or test
+execution capability.

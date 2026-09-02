@@ -21,6 +21,7 @@ def main() -> None:
             admin_bootstrap_secret=settings.admin_bootstrap_secret,
             admin_session_ttl_seconds=settings.admin_session_ttl_seconds,
             public_compatibility_stats_enabled=settings.public_compatibility_stats_enabled,
+            operations_ingest_secret=settings.operations_ingest_secret,
         ),
         settings.host,
         settings.port,

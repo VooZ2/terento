@@ -16,6 +16,7 @@ class Settings:
     admin_bootstrap_secret: str | None = None
     admin_session_ttl_seconds: int = 28_800
     public_compatibility_stats_enabled: bool = False
+    operations_ingest_secret: str | None = None
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -39,6 +40,7 @@ class Settings:
             admin_bootstrap_secret=os.environ.get("ADMIN_BOOTSTRAP_SECRET") or None,
             admin_session_ttl_seconds=_positive_int("ADMIN_SESSION_TTL_SECONDS", 28_800),
             public_compatibility_stats_enabled=_boolean("PUBLIC_COMPATIBILITY_STATS_ENABLED", False),
+            operations_ingest_secret=_optional_secret("OPERATIONS_INGEST_SECRET"),
         )
 
 
@@ -65,3 +67,12 @@ def _boolean(name: str, default: bool) -> bool:
     if normalized in {"0", "false", "no", "off"}:
         return False
     raise RuntimeError(f"{name} must be a boolean")
+
+
+def _optional_secret(name: str) -> str | None:
+    value = os.environ.get(name, "").strip()
+    if not value:
+        return None
+    if len(value) < 32 or len(value) > 512:
+        raise RuntimeError(f"{name} must contain 32–512 characters")
+    return value

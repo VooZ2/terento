@@ -122,6 +122,96 @@ class Database:
             connection.execute("SELECT 1")
         return True
 
+    def record_operational_observation(self, observation: dict[str, Any]) -> bool:
+        with self.connection() as connection:
+            connection.execute(
+                "DELETE FROM operational_observation WHERE received_at < now() - interval '180 days'"
+            )
+            row = connection.execute(
+                """
+                INSERT INTO operational_observation (
+                    observation_id, kind, component, status, observed_at,
+                    source_run_id, source_run_url, commit_sha, release_version,
+                    build_number, summary, details
+                ) VALUES (
+                    %(observation_id)s, %(kind)s, %(component)s, %(status)s,
+                    %(observed_at)s, %(source_run_id)s, %(source_run_url)s,
+                    %(commit_sha)s, %(release_version)s, %(build_number)s,
+                    %(summary)s, %(details)s::jsonb
+                )
+                ON CONFLICT (observation_id) DO NOTHING
+                RETURNING id
+                """,
+                {**observation, "details": json.dumps(observation.get("details") or {})},
+            ).fetchone()
+        return row is not None
+
+    def operational_health_snapshot(self) -> dict[str, Any]:
+        with self.connection() as connection:
+            observations = list(connection.execute(
+                """
+                SELECT DISTINCT ON (component)
+                    observation_id, kind, component, status, observed_at,
+                    source_run_id, source_run_url, commit_sha, release_version,
+                    build_number, summary, details, received_at
+                FROM operational_observation
+                ORDER BY component, observed_at DESC, id DESC
+                """
+            ).fetchall())
+            weekly = connection.execute(
+                """
+                SELECT observation_id, kind, component, status, observed_at,
+                       source_run_id, source_run_url, commit_sha, release_version,
+                       build_number, summary, details, received_at
+                FROM operational_observation
+                WHERE kind = 'WEEKLY_TEST'
+                ORDER BY observed_at DESC, id DESC
+                LIMIT 1
+                """
+            ).fetchone()
+            scheduler = connection.execute(
+                """
+                SELECT job_name, status, next_run_at, started_at, completed_at,
+                       error_summary, updated_at
+                FROM scheduler_heartbeat
+                WHERE job_name = 'catalog-collector'
+                """
+            ).fetchone()
+        return {
+            "observations": [dict(row) for row in observations],
+            "weekly": dict(weekly) if weekly else None,
+            "scheduler": dict(scheduler) if scheduler else None,
+        }
+
+    def record_scheduler_heartbeat(
+        self,
+        *,
+        status: str,
+        next_run_at: datetime | None = None,
+        started_at: datetime | None = None,
+        completed_at: datetime | None = None,
+        error_summary: str | None = None,
+    ) -> None:
+        with self.connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO scheduler_heartbeat (
+                    job_name, status, next_run_at, started_at, completed_at,
+                    error_summary
+                ) VALUES (
+                    'catalog-collector', %s, %s, %s, %s, %s
+                )
+                ON CONFLICT (job_name) DO UPDATE SET
+                    status = EXCLUDED.status,
+                    next_run_at = COALESCE(EXCLUDED.next_run_at, scheduler_heartbeat.next_run_at),
+                    started_at = COALESCE(EXCLUDED.started_at, scheduler_heartbeat.started_at),
+                    completed_at = COALESCE(EXCLUDED.completed_at, scheduler_heartbeat.completed_at),
+                    error_summary = EXCLUDED.error_summary,
+                    updated_at = now()
+                """,
+                (status, next_run_at, started_at, completed_at, error_summary),
+            )
+
     def insert_compatibility_event(self, event: dict[str, Any]) -> bool:
         query = """
             INSERT INTO compatibility_evidence_event (

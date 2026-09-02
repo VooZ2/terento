@@ -690,3 +690,14 @@ Serves only validated WebP runtime assets from the same `api.terento.app`
 origin. Assets use a long-lived immutable cache policy and an SHA-256 ETag.
 Review storage, source images, arbitrary files, and traversal paths are not
 served.
+
+## `POST /internal/operations/observations`
+
+Accepts a schema-version 1 operational observation from reviewed Terento
+GitHub workflows. Requests require `Authorization: Bearer` with the separately
+configured `OPERATIONS_INGEST_SECRET`, use JSON, and are limited to 16 KiB.
+Kinds, components, statuses, GitHub run URLs, commit hashes, timestamps,
+release/build labels, summaries, and scalar detail values are allowlisted and
+validated. `observationId` makes retries idempotent. The route does not execute
+tests, accept raw logs, or expose a public read API; retained results are shown
+only on authenticated `/admin/system-health`.

@@ -51,6 +51,9 @@ therefore requires Node.js. Set `TERENTO_NODE_BIN` when Node.js is not on
 ## Endpoints
 
 - `GET /health` checks database reachability and returns `{"status":"ok"}`.
+- `POST /internal/operations/observations` accepts only bounded CI or
+  deployment metadata authenticated with the independent
+  `OPERATIONS_INGEST_SECRET`. It does not accept raw logs or execute tests.
 - `GET /maps/catalog.json` returns an additive provider-neutral `schemaVersion: 2`
   projection while retaining catalog version 1 fields for existing macOS
   clients. The response includes `ETag`, `Last-Modified`, and cache headers and
@@ -90,6 +93,9 @@ therefore requires Node.js. Set `TERENTO_NODE_BIN` when Node.js is not on
   aggregate operator dashboard from the same API container as the catalog
   and account settings. The first account requires `ADMIN_BOOTSTRAP_SECRET`;
   later credentials are PBKDF2-hashed in PostgreSQL.
+- `GET https://api.terento.app/admin/system-health` combines the existing
+  provider/catalog state with scheduler, GitHub quality-gate, deployment,
+  commit, release, and build observations. Missing evidence is `Unknown`.
 - `GET https://api.terento.app/admin/campaign-links` serves the authenticated,
   client-side campaign link builder. It shares the `/admin` session gate and
   stores no campaign links or history.
