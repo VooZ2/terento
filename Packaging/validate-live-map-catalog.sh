@@ -30,6 +30,21 @@ trap cleanup EXIT
     exit 1
 }
 
+catalog_sha256="$(/usr/bin/shasum -a 256 "$catalog_path" | /usr/bin/awk '{print $1}')"
+print "Catalog SHA-256: $catalog_sha256"
+/usr/bin/python3 - "$catalog_path" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    catalog = json.load(handle)
+
+providers = catalog.get("providers", [])
+for provider in providers:
+    print(f"Catalog provider {provider.get('id', '<missing>')}: {len(provider.get('maps', []))} maps")
+print(f"Catalog total: {sum(len(provider.get('maps', [])) for provider in providers)} maps")
+PY
+
 TERENTO_CATALOG_CONTRACT_PATH="$catalog_path" \
     "$repo_root/lab/native-connectivity-poc/Tests/run-stage1-provider-neutral-tests.sh"
 
