@@ -12,6 +12,6 @@
   "summary": "Fixes OpenTopoMap Lithuania installation and adds fail-closed catalog compatibility checks.",
   "publishedAt": "2026-09-02",
   "channel": "beta",
-  "sha256": "e348885f8ef73f8358f29761f8dde5b4fb541b8d6a2d06bc95be78eb2c514bed",
+  "sha256": "5038def5097089ee2cd6c6d6e541a93c377fb59817ead69ac429728b5ff5e169",
   "minimumMacOS": "13.0"
 }

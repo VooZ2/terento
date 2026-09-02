@@ -70,10 +70,10 @@ a claim that every exact watch has been independently verified.
 
 ## Release artifacts
 
-Apple notarization submission `cb3749cf-61f4-4131-a6b9-83e240a616d3` was
+Apple notarization submission `a61389b2-94c9-4227-a5c9-a46906eb1cf9` was
 accepted with no issues.
 
 ```text
-Terento-1.0.0-beta.9-macOS-arm64.dmg  e348885f8ef73f8358f29761f8dde5b4fb541b8d6a2d06bc95be78eb2c514bed
-Terento-1.0.0-beta.9-macOS-arm64.zip  0615d8e7708d92a2bb434539c12c5f27cd4e78dfdf5076b612f320ef5354a660
+Terento-1.0.0-beta.9-macOS-arm64.dmg  5038def5097089ee2cd6c6d6e541a93c377fb59817ead69ac429728b5ff5e169
+Terento-1.0.0-beta.9-macOS-arm64.zip  f3ce4d7e7a565b0771a4f28077834e8197a56fc9f22015b92893fa90d3168f21
 ```
