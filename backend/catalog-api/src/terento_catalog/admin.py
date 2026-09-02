@@ -4378,6 +4378,81 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .overview-attention-review .overview-attention-dot{color:var(--warning,var(--stone))}
 .provider-action-bar{padding:0 0 4px;background:transparent;border:0;border-radius:0}
 .map-statistics-definition-note{margin:10px 0 0}
+
+/* Shared Admin typography and density contract. Keep page-specific layout
+   rules above this block; this is the final type hierarchy consumed by every
+   authenticated Admin view. */
+:root{
+  --admin-type-eyebrow-size:12px;--admin-type-eyebrow-line:16px;
+  --admin-type-page-title-size:clamp(32px,3.5vw,44px);--admin-type-page-title-line:1.06;
+  --admin-type-section-title-size:22px;--admin-type-section-title-line:26px;
+  --admin-type-subsection-size:15px;--admin-type-subsection-line:20px;
+  --admin-type-description-size:15px;--admin-type-description-line:22px;
+  --admin-type-body-size:15px;--admin-type-body-line:22px;
+  --admin-type-label-size:12px;--admin-type-label-line:16px;
+  --admin-type-kpi-value-size:30px;--admin-type-kpi-value-line:30px;
+  --admin-type-support-size:11px;--admin-type-support-line:15px;
+  --admin-type-table-header-size:10px;--admin-type-table-header-line:14px;
+  --admin-type-table-primary-size:13px;--admin-type-table-primary-line:18px;
+  --admin-type-table-meta-size:11px;--admin-type-table-meta-line:15px;
+  --admin-type-control-size:13px;--admin-type-control-line:18px;
+  --admin-type-button-size:13px;--admin-type-button-line:18px;
+  --admin-type-badge-size:10px;--admin-type-badge-line:14px;
+  --admin-type-helper-size:12px;--admin-type-helper-line:18px;
+  --admin-type-technical-size:11px;--admin-type-technical-line:16px;
+  --admin-control-font-size:var(--admin-type-control-size)
+}
+body{font-size:var(--admin-type-body-size);line-height:var(--admin-type-body-line)}
+.eyebrow,.section-kicker,.detail-kicker{font-size:var(--admin-type-eyebrow-size);line-height:var(--admin-type-eyebrow-line)}
+h1{font-size:var(--admin-type-page-title-size);line-height:var(--admin-type-page-title-line)}
+h2,.provider-card .section-heading h2,.attribution-preview h2,.map-statistics-empty h2,.device-dialog-header h2{font-size:var(--admin-type-section-title-size);line-height:var(--admin-type-section-title-line)}
+.lede{font-size:var(--admin-type-description-size);line-height:var(--admin-type-description-line)}
+.table-help,.results-count,.page-meta,.overview-chart-note,.overview-semantic-note,.historical-failure-note,.review-help{font-size:var(--admin-type-helper-size);line-height:var(--admin-type-helper-line)}
+button,input,select,textarea{font-size:var(--admin-type-control-size);line-height:var(--admin-type-control-line)}
+.filter-bar input,.filter-bar select,.filter-disclosure>summary,.quick-filter,.provider-action-overflow>summary,.secondary-button,.button-link,.copy-button,.provider-pagination button,.device-pagination button,.admin-action-dialog button:not(.link-button),.auth-card button:not(.link-button),.device-support-review button[type="submit"],.model-administration button[type="submit"]{font-size:var(--admin-type-button-size);line-height:var(--admin-type-button-line)}
+.admin-section-nav,.admin-nav,.admin-section-nav a,.admin-nav a,.link-button{font-size:var(--admin-type-control-size);line-height:var(--admin-type-control-line)}
+
+.overview-kpi span,.admin-kpi-grid article>span,.provider-metrics article>span,.map-statistics-metrics article>span,.diagnostic-model-metrics article>span,.overview-compatibility-grid span{font-size:var(--admin-type-label-size);line-height:var(--admin-type-label-line)}
+.overview-kpi strong,.admin-kpi-grid article>strong,.provider-metrics article>strong,.map-statistics-metrics article>strong,.diagnostic-model-metrics article>strong,.model-statistics article>strong{font-size:var(--admin-type-kpi-value-size);line-height:var(--admin-type-kpi-value-line)}
+.overview-kpi small{font-size:var(--admin-type-support-size);line-height:var(--admin-type-support-line)}
+.overview-compatibility-grid strong{font-size:20px;line-height:22px}
+
+table{font-size:var(--admin-type-table-primary-size);line-height:var(--admin-type-table-primary-line)}
+table th,table td{padding:8px 12px;font-size:var(--admin-type-table-primary-size);line-height:var(--admin-type-table-primary-line)}
+table thead th{font-size:var(--admin-type-table-header-size);line-height:var(--admin-type-table-header-line)}
+table td small,.table-secondary,.provider-name-link small,.provider-package-id,.history-map small,.history-error small{font-size:var(--admin-type-table-meta-size);line-height:var(--admin-type-table-meta-line)}
+table code,.technical-value,.provider-table-wrap code,.audit-technical-details code{font-size:var(--admin-type-technical-size);line-height:var(--admin-type-technical-line)}
+.device-table-wrap tbody td{padding:7px 12px;font-size:var(--admin-type-table-primary-size);line-height:var(--admin-type-table-primary-line)}
+.device-table-wrap th{font-size:var(--admin-type-table-header-size);line-height:var(--admin-type-table-header-line)}
+.device-model-button strong,.provider-name-link strong,.provider-package-name,.diagnostic-group-title{font-size:var(--admin-type-table-primary-size);line-height:var(--admin-type-table-primary-line)}
+.provider-error,.provider-activation-note,.incomplete-state,.diagnostic-failure-summary{font-size:var(--admin-type-helper-size);line-height:var(--admin-type-helper-line)}
+
+.status-badge,.provider-status,.admin-state,.diagnostic-state,.diagnostic-result,.diagnostic-chip,.new-badge,.identity-pending-indicator,.provider-component .provider-status{min-height:24px;padding:4px 7px;font-size:var(--admin-type-badge-size);line-height:var(--admin-type-badge-line)}
+.needs-review-count{font-size:var(--admin-type-badge-size);line-height:var(--admin-type-badge-line)}
+.admin-disclosure>summary,.provider-action-overflow>summary{font-size:var(--admin-type-control-size);line-height:var(--admin-type-control-line)}
+.admin-action-dialog h4,.administration-grid h3,.popularity-subsection h3{font-size:var(--admin-type-subsection-size);line-height:var(--admin-type-subsection-line)}
+
+.filter-bar{padding:6px;gap:7px}
+.provider-card{margin-top:20px;padding:18px 20px}
+.provider-card .section-heading{margin-bottom:12px}
+.provider-information-list div,.model-information-list div{padding:8px 0}
+.provider-dashboard-grid{gap:16px}
+.campaign-card{padding:20px}
+.diagnostic-model-metrics{margin-bottom:24px}
+.model-page-header{margin-bottom:20px}
+.model-page-section{margin-top:28px}
+.device-detail-grid{gap:16px}
+.device-catalog-details,.model-technical-details{margin-top:16px}
+.secondary-button,.provider-pagination button,.device-pagination button{min-height:var(--admin-control-height);padding:8px 10px}
+.provider-action-overflow>summary{min-height:var(--admin-control-height);padding:8px 12px}
+.provider-action-bar{gap:7px}
+.disclosure-body{margin-top:12px}
+
+@media(max-width:760px){
+  .provider-card{padding:16px}
+  .campaign-card{padding:18px}
+  .table-help,.results-count,.page-meta{line-height:16px}
+}
 """
 
 
