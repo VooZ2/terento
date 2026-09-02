@@ -53,6 +53,27 @@ The Garmin collector creates a `MISSING` asset baseline for new devices; it
 does not request product-image binaries and it never changes an asset to
 `AVAILABLE`.
 
+The scheduler records `WAITING`, `RUNNING`, `HEALTHY`, `WARNING`, or `FAILED`
+state in `scheduler_heartbeat`. `/admin/system-health` treats overdue or stale
+heartbeats as a warning. Failure to write observability does not stop the next
+scheduled collection attempt.
+
+## CI, deployment, and weekly email health
+
+GitHub Actions remains the test executor. The API stores only bounded results
+posted to `/internal/operations/observations`; `/admin` cannot start a test.
+Configure the same long random value as `OPERATIONS_INGEST_SECRET` in the API
+environment and `TERENTO_OPERATIONS_INGEST_SECRET` in GitHub Actions secrets.
+
+The Monday full-matrix workflow retains its report and sends it to
+`report@terento.app` with SMTP2GO STARTTLS through `mail.smtp2go.com:2525`.
+Configure `SMTP2GO_USERNAME` and `SMTP2GO_PASSWORD` as GitHub Actions secrets.
+The sending domain `terento.app` must be verified in SMTP2GO before enabling
+the workflow. Never commit SMTP credentials or the provider-supplied DNS
+values. Email delivery is reported separately from test health, so a mail
+failure cannot turn a failed test into a passing result or erase the retained
+report.
+
 ## Evidence lifecycle cleanup
 
 Migration `019_resolved_legacy_diagnostics.sql` is applied automatically by

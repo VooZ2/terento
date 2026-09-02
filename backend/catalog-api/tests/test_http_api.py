@@ -18,13 +18,19 @@ from pathlib import Path
 
 class FakeDatabase(Database):
     def __init__(self) -> None:
-        pass
+        self.operational_observations = []
 
     def health(self) -> bool:
         return True
 
     def prune_compatibility_events(self) -> int:
         return 0
+
+    def record_operational_observation(self, observation):
+        if any(item["observation_id"] == observation["observation_id"] for item in self.operational_observations):
+            return False
+        self.operational_observations.append(observation)
+        return True
 
     def catalog_snapshot(self):
         return [
@@ -89,7 +95,7 @@ class HTTPAPITests(unittest.TestCase):
     def setUp(self) -> None:
         self.server = ThreadingHTTPServer(
             ("127.0.0.1", 0),
-            make_handler(CatalogService(FakeDatabase())),
+            make_handler(CatalogService(FakeDatabase(), operations_ingest_secret="test-operations-secret")),
         )
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
@@ -106,6 +112,16 @@ class HTTPAPITests(unittest.TestCase):
         body = response.read()
         connection.close()
         return response, body
+
+    def post_json(self, path: str, document: dict, headers: dict[str, str] | None = None):
+        connection = HTTPConnection(*self.server.server_address)
+        body = json.dumps(document).encode()
+        request_headers = {"Content-Type": "application/json", **(headers or {})}
+        connection.request("POST", path, body=body, headers=request_headers)
+        response = connection.getresponse()
+        response_body = response.read()
+        connection.close()
+        return response, response_body
 
     def test_catalog_contract_and_cache_headers(self) -> None:
         response, body = self.request("/maps/catalog.json")
@@ -135,6 +151,32 @@ class HTTPAPITests(unittest.TestCase):
         self.assertEqual(response.status, 200)
         self.assertEqual(json.loads(body), {"status": "ok"})
         self.assertEqual(response.headers["Cache-Control"], "no-store")
+
+    def test_operational_observation_requires_bearer_secret_and_is_idempotent(self) -> None:
+        document = {
+            "schemaVersion": 1,
+            "observationId": "weekly-123",
+            "kind": "WEEKLY_TEST",
+            "component": "test-matrix",
+            "status": "HEALTHY",
+            "observedAt": datetime.now(timezone.utc).isoformat(),
+            "sourceRunId": "123",
+            "sourceRunUrl": "https://github.com/VooZ2/terento/actions/runs/123",
+            "commitSha": "a" * 40,
+            "releaseVersion": "1.0.0-beta.9",
+            "buildNumber": "9",
+            "summary": "All canonical suites passed.",
+            "details": {"site": "success", "backend": "success"},
+        }
+        unauthorized, _ = self.post_json("/internal/operations/observations", document)
+        self.assertEqual(unauthorized.status, 401)
+        headers = {"Authorization": "Bearer test-operations-secret"}
+        created, body = self.post_json("/internal/operations/observations", document, headers)
+        self.assertEqual(created.status, 201)
+        self.assertEqual(json.loads(body), {"status": "stored"})
+        duplicate, body = self.post_json("/internal/operations/observations", document, headers)
+        self.assertEqual(duplicate.status, 200)
+        self.assertEqual(json.loads(body), {"status": "duplicate"})
 
     def test_device_catalog_contract_and_conditional_get(self) -> None:
         response, body = self.request("/devices/catalog.json")

@@ -40,11 +40,20 @@ def main() -> int:
         "postgres:16-alpine",
         "docker build --pull=false -f site-deploy/Dockerfile",
         "docker build --pull=false -t terento-catalog-api:ci",
+        "Publish weekly or release health report",
+        "scripts/send-weekly-health-report.py",
+        "TERENTO_OPERATIONS_INGEST_SECRET",
+        "SMTP2GO_USERNAME",
+        "SMTP2GO_PASSWORD",
+        "https://api.terento.app/internal/operations/observations",
     ):
         assert contract in swift, f"swift-ci.yml is missing {contract!r}"
 
     deploy_api = (WORKFLOWS / "deploy-catalog-api.yml").read_text(encoding="utf-8")
     assert "needs: tests" in deploy_api, "catalog deploy must wait for backend tests"
+    assert "Retain API deployment health" in deploy_api
+    deploy_site = (WORKFLOWS / "deploy-site.yml").read_text(encoding="utf-8")
+    assert "Retain website deployment health" in deploy_site
     print(f"PASS: {len(workflow_files)} workflows use pinned actions and required quality gates")
     return 0
 

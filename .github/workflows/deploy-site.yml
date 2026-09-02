@@ -29,6 +29,7 @@ jobs:
       SITE_SSH_USER: ${{ secrets.TERENTO_SITE_SSH_USER }}
       SITE_SSH_KEY: ${{ secrets.TERENTO_SITE_SSH_KEY }}
       SITE_SSH_KNOWN_HOSTS: ${{ secrets.TERENTO_SITE_SSH_KNOWN_HOSTS }}
+      OPERATIONS_INGEST_SECRET: ${{ secrets.TERENTO_OPERATIONS_INGEST_SECRET }}
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
@@ -49,6 +50,7 @@ jobs:
           test -n "$SITE_SSH_USER"
           test -n "$SITE_SSH_KEY"
           test -n "$SITE_SSH_KNOWN_HOSTS"
+          test -n "$OPERATIONS_INGEST_SECRET"
 
       - name: Configure pinned SSH access
         shell: bash
@@ -166,3 +168,29 @@ jobs:
           fi
           rm -rf -- "$stage"
           REMOTE
+
+      - name: Retain website deployment health
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_version="$(jq -r '.version' site/updates/macos-arm64.json)"
+          build_number="$(jq -r '.build' site/updates/macos-arm64.json)"
+          observed_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          run_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          jq -n \
+            --arg observationId "deployment-site-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            --arg observedAt "$observed_at" --arg sourceRunId "$GITHUB_RUN_ID" \
+            --arg sourceRunUrl "$run_url" --arg commitSha "$GITHUB_SHA" \
+            --arg releaseVersion "$release_version" --arg buildNumber "$build_number" \
+            '{schemaVersion:1, observationId:$observationId, kind:"DEPLOYMENT",
+              component:"site", status:"HEALTHY", observedAt:$observedAt,
+              sourceRunId:$sourceRunId, sourceRunUrl:$sourceRunUrl, commitSha:$commitSha,
+              releaseVersion:$releaseVersion, buildNumber:$buildNumber,
+              summary:"Website deployment and live update-manifest verification passed.",
+              details:{site_container:"success", live_manifest:"success"}}' \
+            > "$RUNNER_TEMP/terento-site-deployment.json"
+          curl --fail --silent --show-error --connect-timeout 5 --max-time 15 \
+            -H "Authorization: Bearer $OPERATIONS_INGEST_SECRET" \
+            -H "Content-Type: application/json" \
+            --data-binary "@$RUNNER_TEMP/terento-site-deployment.json" \
+            https://api.terento.app/internal/operations/observations

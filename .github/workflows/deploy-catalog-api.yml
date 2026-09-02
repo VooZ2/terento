@@ -48,6 +48,7 @@ jobs:
       CATALOG_SSH_USER: ${{ secrets.TERENTO_SITE_SSH_USER }}
       CATALOG_SSH_KEY: ${{ secrets.TERENTO_SITE_SSH_KEY }}
       CATALOG_SSH_KNOWN_HOSTS: ${{ secrets.TERENTO_SITE_SSH_KNOWN_HOSTS }}
+      OPERATIONS_INGEST_SECRET: ${{ secrets.TERENTO_OPERATIONS_INGEST_SECRET }}
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
@@ -60,6 +61,7 @@ jobs:
           test -n "$CATALOG_SSH_USER"
           test -n "$CATALOG_SSH_KEY"
           test -n "$CATALOG_SSH_KNOWN_HOSTS"
+          test -n "$OPERATIONS_INGEST_SECRET"
 
       - name: Configure pinned SSH access
         shell: bash
@@ -139,6 +141,12 @@ jobs:
               image: $image
               labels:
                 traefik.http.routers.terento-admin.rule: 'Host(\`api.terento.app\`) && PathPrefix(\`/admin\`)'
+                traefik.http.routers.terento-operations.rule: 'Host(\`api.terento.app\`) && Path(\`/internal/operations/observations\`)'
+                traefik.http.routers.terento-operations.entrypoints: websecure
+                traefik.http.routers.terento-operations.tls: 'true'
+                traefik.http.routers.terento-operations.tls.certresolver: letsencrypt
+                traefik.http.routers.terento-operations.service: terento-operations
+                traefik.http.services.terento-operations.loadbalancer.server.port: '8000'
             catalog-scheduler:
               image: $image
             catalog-migrate:
@@ -252,6 +260,30 @@ jobs:
 
           compatibility_script="$(curl --fail --silent --show-error --connect-timeout 5 --max-time 10 https://terento.app/compatibility/compatibility.js)"
           grep -Fq 'https://api.terento.app' <<<"$compatibility_script"
+          operations_status="$(curl --silent --show-error --connect-timeout 5 --max-time 10 -o /dev/null -w '%{http_code}' -X POST https://api.terento.app/internal/operations/observations)"
+          test "$operations_status" = "401"
+
+      - name: Retain API deployment health
+        shell: bash
+        run: |
+          set -euo pipefail
+          observed_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          run_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          jq -n \
+            --arg observationId "deployment-catalog-api-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            --arg observedAt "$observed_at" --arg sourceRunId "$GITHUB_RUN_ID" \
+            --arg sourceRunUrl "$run_url" --arg commitSha "$GITHUB_SHA" \
+            '{schemaVersion:1, observationId:$observationId, kind:"DEPLOYMENT",
+              component:"catalog-api", status:"HEALTHY", observedAt:$observedAt,
+              sourceRunId:$sourceRunId, sourceRunUrl:$sourceRunUrl, commitSha:$commitSha,
+              summary:"Catalog API deployment and public health verification passed.",
+              details:{migration:"success", database:"success", api_health:"success", catalog_contract:"success"}}' \
+            > "$RUNNER_TEMP/terento-api-deployment.json"
+          curl --fail --silent --show-error --connect-timeout 5 --max-time 15 \
+            -H "Authorization: Bearer $OPERATIONS_INGEST_SECRET" \
+            -H "Content-Type: application/json" \
+            --data-binary "@$RUNNER_TEMP/terento-api-deployment.json" \
+            https://api.terento.app/internal/operations/observations
 
   verify-release-client-contract:
     name: Verify deployed catalog with release client
