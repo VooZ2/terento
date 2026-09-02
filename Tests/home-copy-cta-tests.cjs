@@ -57,7 +57,7 @@ const anchorFor = (page, className) => {
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20260902-website-copy">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20260902-visual-fix">/, `${locale}: Home stylesheet cache bust`);
   assert.match(page, /your-garmin-1600\.png\?v=20260902-your-garmin/, `${locale}: updated Garmin screenshot cache bust`);
   const status = page.match(/<p class="hero-status">([^<]+)<\/p>/);
   assert.ok(status, `${locale}: missing hero status`);
