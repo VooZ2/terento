@@ -1153,6 +1153,11 @@ def overview_page(
         if model_activity or review_required else ""
     )
     primary_grid_class = "overview-primary-grid" if model_panel else "overview-primary-grid overview-primary-grid-single"
+    secondary_grid_class = (
+        "overview-secondary-grid"
+        if reasons_section else
+        "overview-secondary-grid overview-secondary-grid-single"
+    )
     content = f"""
       {_admin_header(user, csrf_token, active='overview')}
       <main class='dashboard overview-page' id='main-content'>
@@ -1166,7 +1171,7 @@ def overview_page(
         </section>
         <section class='overview-panel overview-attention-panel' aria-labelledby='overview-attention-title'><div class='section-heading'><div><p class='section-kicker'>Failure-first</p><h2 id='overview-attention-title'>Needs attention</h2></div><a class='section-link' href='{html.escape(attention_href, quote=True)}'>View all&nbsp;→</a></div>{attention_content}</section>
         <div class='{primary_grid_class}'><section class='overview-panel' aria-labelledby='overview-trend-title'><div class='section-heading'><div><p class='section-kicker'>Map operations</p><h2 id='overview-trend-title'>Map install operations over time</h2></div></div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'))}</section>{model_panel}</div>
-        <div class='overview-secondary-grid'><section class='overview-panel' aria-labelledby='overview-activity-title'><div class='section-heading'><div><p class='section-kicker'>Latest</p><h2 id='overview-activity-title'>Recent map activity</h2></div><a class='section-link' href='{html.escape(map_statistics_href, quote=True)}'>View all&nbsp;→</a></div>{recent_content}</section>{reasons_section}</div>
+        <div class='{secondary_grid_class}'><section class='overview-panel' aria-labelledby='overview-activity-title'><div class='section-heading'><div><p class='section-kicker'>Latest</p><h2 id='overview-activity-title'>Recent map activity</h2></div><a class='section-link' href='{html.escape(map_statistics_href, quote=True)}'>View all&nbsp;→</a></div>{recent_content}</section>{reasons_section}</div>
         <section class='overview-panel overview-provider-panel' aria-labelledby='overview-provider-title'><div class='section-heading'><div><p class='section-kicker'>Availability</p><h2 id='overview-provider-title'>Providers</h2></div><a class='section-link' href='/admin/providers'>Manage&nbsp;→</a></div><div class='overview-provider-summary'><strong>{healthy} / {provider_count} healthy</strong>{''.join(f"<a href='/admin/providers/{quote(str(provider.get('id') or ''), safe='')}'>{html.escape(str(provider.get('name') or provider.get('id') or 'Provider'))} <span>{html.escape(str(provider.get('health') or 'UNKNOWN').title())}</span></a>" for provider in providers)}</div></section>
         {compatibility_summary}
       </main>
@@ -4391,13 +4396,13 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
   --admin-type-body-size:15px;--admin-type-body-line:22px;
   --admin-type-label-size:12px;--admin-type-label-line:16px;
   --admin-type-kpi-value-size:30px;--admin-type-kpi-value-line:30px;
-  --admin-type-support-size:11px;--admin-type-support-line:15px;
-  --admin-type-table-header-size:10px;--admin-type-table-header-line:14px;
+  --admin-type-support-size:12px;--admin-type-support-line:17px;
+  --admin-type-table-header-size:11px;--admin-type-table-header-line:16px;
   --admin-type-table-primary-size:13px;--admin-type-table-primary-line:18px;
-  --admin-type-table-meta-size:11px;--admin-type-table-meta-line:15px;
+  --admin-type-table-meta-size:12px;--admin-type-table-meta-line:17px;
   --admin-type-control-size:13px;--admin-type-control-line:18px;
   --admin-type-button-size:13px;--admin-type-button-line:18px;
-  --admin-type-badge-size:10px;--admin-type-badge-line:14px;
+  --admin-type-badge-size:11px;--admin-type-badge-line:15px;
   --admin-type-helper-size:12px;--admin-type-helper-line:18px;
   --admin-type-technical-size:11px;--admin-type-technical-line:16px;
   --admin-control-font-size:var(--admin-type-control-size)
@@ -4416,6 +4421,13 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
 .overview-kpi strong,.admin-kpi-grid article>strong,.provider-metrics article>strong,.map-statistics-metrics article>strong,.diagnostic-model-metrics article>strong,.model-statistics article>strong{font-size:var(--admin-type-kpi-value-size);line-height:var(--admin-type-kpi-value-line)}
 .overview-kpi small{font-size:var(--admin-type-support-size);line-height:var(--admin-type-support-line)}
 .overview-compatibility-grid strong{font-size:20px;line-height:22px}
+.overview-trend-chart{width:100%;max-width:820px;min-height:0;margin:0 auto}
+.overview-secondary-grid-single{grid-template-columns:minmax(0,1fr)}
+.overview-compact-empty{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 16px}
+.overview-compact-empty .section-heading{margin:0}
+.overview-compact-empty .section-kicker{display:none}
+.overview-compact-empty h2{font-family:var(--font-ui);font-size:var(--admin-type-subsection-size);line-height:var(--admin-type-subsection-line);letter-spacing:0}
+.overview-compact-empty .overview-empty-state{padding:0;font-size:var(--admin-type-helper-size);line-height:var(--admin-type-helper-line);font-weight:500}
 
 table{font-size:var(--admin-type-table-primary-size);line-height:var(--admin-type-table-primary-line)}
 table th,table td{padding:8px 12px;font-size:var(--admin-type-table-primary-size);line-height:var(--admin-type-table-primary-line)}
@@ -4426,6 +4438,9 @@ table code,.technical-value,.provider-table-wrap code,.audit-technical-details c
 .device-table-wrap th{font-size:var(--admin-type-table-header-size);line-height:var(--admin-type-table-header-line)}
 .device-model-button strong,.provider-name-link strong,.provider-package-name,.diagnostic-group-title{font-size:var(--admin-type-table-primary-size);line-height:var(--admin-type-table-primary-line)}
 .provider-error,.provider-activation-note,.incomplete-state,.diagnostic-failure-summary{font-size:var(--admin-type-helper-size);line-height:var(--admin-type-helper-line)}
+.provider-information-list dt,.model-information-list dt,.device-detail-grid dt,.device-catalog-details dt,.device-support-review label,.device-public-review label,.administration-grid label{font-size:var(--admin-type-label-size);line-height:var(--admin-type-helper-line)}
+.provider-information-list dd,.model-information-list dd,.device-detail-grid dd,.device-catalog-details dd{font-size:var(--admin-type-table-primary-size);line-height:20px}
+.provider-information-list a,.provider-url-cell a{font-size:var(--admin-type-table-meta-size);line-height:var(--admin-type-table-meta-line)}
 
 .status-badge,.provider-status,.admin-state,.diagnostic-state,.diagnostic-result,.diagnostic-chip,.new-badge,.identity-pending-indicator,.provider-component .provider-status{min-height:24px;padding:4px 7px;font-size:var(--admin-type-badge-size);line-height:var(--admin-type-badge-line)}
 .needs-review-count{font-size:var(--admin-type-badge-size);line-height:var(--admin-type-badge-line)}
@@ -4452,6 +4467,7 @@ table code,.technical-value,.provider-table-wrap code,.audit-technical-details c
   .provider-card{padding:16px}
   .campaign-card{padding:18px}
   .table-help,.results-count,.page-meta{line-height:16px}
+  .overview-compact-empty{align-items:flex-start;flex-direction:column;gap:4px}
 }
 """
 

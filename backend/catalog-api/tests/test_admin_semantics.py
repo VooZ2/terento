@@ -348,6 +348,7 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertNotIn("overview-model-title", body)
         self.assertIn("overview-primary-grid-single", body)
+        self.assertIn("overview-secondary-grid-single", body)
 
     def test_admin_map_labels_are_human_and_unknown_outcomes_are_neutral(self):
         self.assertEqual(_admin_map_display_name("PRINCIPALITY_OF_ANDORRA"), "Andorra")
