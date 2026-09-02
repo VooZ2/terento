@@ -27,6 +27,8 @@ def main() -> int:
     swift = (WORKFLOWS / "swift-ci.yml").read_text(encoding="utf-8")
     for contract in (
         'cron: "30 6 * * 1"',
+        "send_health_report:",
+        "github.event_name == 'workflow_dispatch' && inputs.send_health_report",
         "Select required test suites",
         "Site tests",
         "Backend API tests",
