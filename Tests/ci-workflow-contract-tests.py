@@ -55,10 +55,10 @@ def main() -> int:
     deploy_site = (WORKFLOWS / "deploy-site.yml").read_text(encoding="utf-8")
     assert "Retain website deployment health" in deploy_site
     codeql = (WORKFLOWS / "codeql.yml").read_text(encoding="utf-8")
-    assert codeql.index("Prebuild verified Swift native dependencies") < codeql.index("Initialize CodeQL")
-    assert "timeout-minutes: 20" in codeql
-    assert "Packaging/NativeDependencies/build.sh --output" in codeql
-    assert "xcodebuild" in codeql
+    assert "name: CodeQL (python)" in codeql
+    assert "languages: python" in codeql
+    assert "build-mode: none" in codeql
+    assert "language: swift" not in codeql
     print(f"PASS: {len(workflow_files)} workflows use pinned actions and required quality gates")
     return 0
 
