@@ -52,15 +52,24 @@ struct MapOwnershipMatcher: Sendable {
             return .detectedNotManaged
         }
 
-        let normalizedProvider = MapIdentity.normalizeProvider(provider)
-        let normalizedRegion = MapIdentity.normalizeRegion(region)
+        let actualIdentity = MapIdentity(provider: provider, region: region)
 
         let isRecorded = records.contains { entry in
-            entry.devicePath == file.path
+            guard let expectedIdentity = MapIdentity(
+                provider: entry.providerId,
+                region: entry.regionId
+            ) else {
+                return false
+            }
+
+            return entry.devicePath == file.path
                 && entry.filename == file.filename
                 && entry.sizeBytes == file.sizeBytes
-                && MapIdentity.normalizeProvider(entry.providerId) == normalizedProvider
-                && MapIdentity.normalizeRegion(entry.regionId) == normalizedRegion
+                && MapIdentityMatcher.matches(
+                    actual: actualIdentity,
+                    expected: expectedIdentity,
+                    providerRegionId: entry.regionId
+                )
                 && entry.version == version
         }
 

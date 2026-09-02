@@ -119,7 +119,12 @@ struct MapComparisonEngine: Sendable {
         // another regional match.
         if let installedIdentity = installedMap.identity,
            let catalogIdentity = catalogMap.identity {
-            guard installedIdentity == catalogIdentity else {
+            guard MapIdentityMatcher.matches(
+                actual: installedIdentity,
+                expected: catalogIdentity,
+                providerRegionId: catalogMap.providerRegionId,
+                identifier: catalogMap.identifier
+            ) else {
                 return false
             }
 

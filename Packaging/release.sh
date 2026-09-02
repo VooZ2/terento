@@ -164,6 +164,9 @@ require_command spctl
 require_command open
 require_command hdiutil
 require_command rg
+require_command curl
+require_command node
+require_command python3
 
 [[ -d "$repo_root/$RELEASE_PROJECT" ]] || die "Project not found: $RELEASE_PROJECT"
 [[ -f "$repo_root/$RELEASE_ENTITLEMENTS" ]] || die "Entitlements not found: $RELEASE_ENTITLEMENTS"
@@ -300,6 +303,14 @@ for test_script in "$repo_root"/lab/native-connectivity-poc/Tests/run-*.sh; do
     test_name="$(basename "$test_script" | /usr/bin/sed 's/\.sh$//')"
     run_logged "test-$test_name" "$test_script"
 done
+
+# The app consumes the production catalog at runtime, which can differ from
+# the bundled snapshot exercised by deterministic unit tests. Validate the
+# exact live catalog with this release's Swift decoder, provider adapters, IMG
+# parser identity contract, source policies, and complete 63 + 177 row matrix
+# before any signed/notarized artifact can be created.
+run_logged "live-map-catalog-contract" \
+    /bin/zsh "$repo_root/Packaging/validate-live-map-catalog.sh"
 
 if ! xcodebuild \
     -project "$repo_root/$RELEASE_PROJECT" \

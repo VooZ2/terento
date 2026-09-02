@@ -64,8 +64,12 @@ struct Stage42TargetPolicy: Sendable {
               artifact.catalogPackageID == package.id,
               artifactProvider == packageProvider,
               let expectedIdentity = package.identity,
-              MapIdentity.normalizeRegion(artifact.region)
-                == expectedIdentity.region else {
+              MapIdentityMatcher.matches(
+                  actual: MapIdentity(provider: artifact.provider, region: artifact.region),
+                  expected: expectedIdentity,
+                  providerRegionId: package.providerRegionId,
+                  identifier: package.identifier
+              ) else {
             throw Stage42TargetPolicyError.unsupportedPackage
         }
 

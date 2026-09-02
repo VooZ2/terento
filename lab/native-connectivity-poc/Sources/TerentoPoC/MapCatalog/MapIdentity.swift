@@ -39,6 +39,41 @@ struct MapIdentity: Codable, Equatable, Hashable, Sendable {
     }
 }
 
+/// Compares a parsed provider identity with a catalog identity while keeping
+/// provider-specific compatibility aliases at the identity boundary. The
+/// first beta OTM catalog used `LTU` for Lithuania; the live provider catalog
+/// now uses its official `lithuania` slug (`LITHUANIA`). Both values describe
+/// the same OTM package and must remain interchangeable for validation and
+/// lifecycle matching.
+struct MapIdentityMatcher: Sendable {
+    static func matches(
+        actual: MapIdentity?,
+        expected: MapIdentity?,
+        providerRegionId: String? = nil,
+        identifier: String? = nil
+    ) -> Bool {
+        guard let actual, let expected,
+              actual.provider == expected.provider else {
+            return false
+        }
+
+        let actualRegion = MapIdentity.normalizeRegion(actual.region)
+        let acceptedRegions = [expected.region, providerRegionId, identifier]
+            .compactMap { $0 }
+            .map(MapIdentity.normalizeRegion)
+
+        if acceptedRegions.contains(actualRegion) {
+            return true
+        }
+
+        guard actual.provider == "opentopomap" else {
+            return false
+        }
+
+        return Set([actualRegion, expected.region]) == Set(["LTU", "LITHUANIA"])
+    }
+}
+
 struct MapIdentityNormalizer: Sendable {
     func identity(provider: String?, region: String?) -> MapIdentity? {
         MapIdentity(provider: provider, region: region)

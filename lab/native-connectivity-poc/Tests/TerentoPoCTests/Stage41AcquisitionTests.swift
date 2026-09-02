@@ -28,6 +28,7 @@ struct Stage41AcquisitionTests {
         await testCompositeRegionIdentityPasses()
         await testSplitReleaseHeaderPasses()
         await testOpenTopoMapAcquisitionUsesOfficialURLAndIdentity()
+        await testOpenTopoMapCurrentRemoteSlugIdentityPasses()
         testRegionalProviderTokensRemainConcrete()
         testSharedCatalogRegionsUseDistinctManagedTargets()
         await testSharedCatalogRegionUsesConcreteSourceIdentity()
@@ -42,7 +43,7 @@ struct Stage41AcquisitionTests {
         await testWithheldAcquisitionFailsBeforeWorkspaceAndHTTP()
         testNoDeviceWriteDependency()
 
-        print("PASS: 26 Stage 4.1 acquisition tests")
+        print("PASS: 27 Stage 4.1 acquisition tests")
     }
 
     private static func testCatalogResolvesFrance() {
@@ -440,6 +441,58 @@ struct Stage41AcquisitionTests {
             expect(
                 false,
                 "OpenTopoMap uses the official URL and the shared acquisition identity/target path"
+            )
+        }
+    }
+
+    private static func testOpenTopoMapCurrentRemoteSlugIdentityPasses() async {
+        // The deployed schema-v2 catalog identifies this package with the
+        // provider slug, while the first beta catalog used the legacy LTU
+        // alias. The official IMG parser still returns LTU for that legacy
+        // header, so both identities must pass the provider boundary.
+        let image = makeOpenTopoMapIMG()
+        let package = MapPackage(
+            id: "opentopomap-lithuania",
+            providerId: "opentopomap",
+            regionId: "LITHUANIA",
+            name: "OpenTopoMap Lithuania",
+            version: version(2026, 5),
+            sizeBytes: UInt64(image.count),
+            sourceURL: URL(string: "https://garmin.opentopomap.org/europe/lithuania/otm-lithuania.zip"),
+            releaseDate: "2026-05-25T04:55:15+00:00",
+            identifier: "lithuania",
+            providerRegionId: "lithuania",
+            canonicalRegionId: "LITHUANIA"
+        )
+
+        do {
+            let source = try temporaryFile(data: image)
+            defer { try? FileManager.default.removeItem(at: source) }
+            let workspace = try makeWorkspace()
+            defer { try? workspace.cleanup() }
+            let artifact = try await MapPackageAcquirer(
+                downloadClient: RecordingDownloadClient(
+                    recorder: URLRecorder(),
+                    response: MapPackageDownloadResponse(
+                        statusCode: 200,
+                        temporaryFileURL: source
+                    )
+                )
+            ).acquire(
+                package: package,
+                canonicalRegion: "Lithuania",
+                workspace: workspace
+            )
+            expect(
+                artifact.provider == "opentopomap"
+                    && artifact.region == "LITHUANIA"
+                    && artifact.targetFilename == "terento_opentopomap_lithuania.img",
+                "current remote OpenTopoMap slug identity accepts the legacy LTU IMG header"
+            )
+        } catch {
+            expect(
+                false,
+                "current remote OpenTopoMap slug identity accepts the legacy LTU IMG header"
             )
         }
     }

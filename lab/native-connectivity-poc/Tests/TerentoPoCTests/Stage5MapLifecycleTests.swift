@@ -398,6 +398,34 @@ private func testReplacementOrderAndRecovery() throws {
     try require(failedTransport.events == ["backup", "write"], "failed update must preserve the old map and skip delete")
 }
 
+private func testFailedInstallRecoveryAcceptsProviderAlias() throws {
+    let record = TerentoFailedInstallRecoveryRecord(
+        deviceKey: "fenix8-local",
+        packageID: "opentopomap-lithuania",
+        providerId: "opentopomap",
+        regionId: "LITHUANIA",
+        version: version(2026, 5),
+        devicePath: "/GARMIN/terento_opentopomap_lithuania.img",
+        filename: "terento_opentopomap_lithuania.img",
+        sizeBytes: 123_456,
+        sha256: "recovery-hash",
+        createdAt: Date(timeIntervalSince1970: 0)
+    )
+
+    try require(
+        record.matches(
+            deviceKey: "fenix8-local",
+            path: record.devicePath,
+            filename: record.filename,
+            sizeBytes: record.sizeBytes,
+            providerId: "OpenTopoMap",
+            regionId: "LTU",
+            version: record.version
+        ),
+        "failed-install recovery accepts the reviewed OpenTopoMap alias"
+    )
+}
+
 @main
 struct Stage5MapLifecycleTests {
     static func main() {
@@ -406,7 +434,8 @@ struct Stage5MapLifecycleTests {
             ("inventory uses canonical package identity", testInventoryBuilderUsesCanonicalPackageIdentity),
             ("backup output is size-verified", testBackupIsVerified),
             ("update direction and storage reserve are safe", testUpdatePlanProtectsStorageAndVersionDirection),
-            ("replacement verifies before delete and preserves on failure", testReplacementOrderAndRecovery)
+            ("replacement verifies before delete and preserves on failure", testReplacementOrderAndRecovery),
+            ("failed-install recovery accepts provider aliases", testFailedInstallRecoveryAcceptsProviderAlias)
         ]
 
         do {

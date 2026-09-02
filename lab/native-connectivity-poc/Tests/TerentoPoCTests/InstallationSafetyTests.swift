@@ -231,6 +231,48 @@ struct InstallationSafetyTests {
             "manifest path, identity, size and hash prove Terento ownership"
         )
 
+        let legacyOpenTopoMap = InstalledMap(
+            name: "OpenTopoMap Lithuania",
+            provider: "OpenTopoMap",
+            region: "LTU",
+            family: "OpenTopoMap",
+            rawVersion: "2026-05-24",
+            version: package.version,
+            identifier: "lithuania",
+            productId: nil,
+            familyId: nil,
+            sizeBytes: 344_000_000,
+            sourceFile: InstalledMapFile(
+                path: "/GARMIN/terento_opentopomap_lithuania.img",
+                filename: "terento_opentopomap_lithuania.img",
+                sizeBytes: 344_000_000
+            ),
+            metadataStatus: .parsed,
+            managementState: .detectedNotManaged
+        )
+        let aliasManifest = TerentoManifest(entries: [
+            TerentoManifestEntry(
+                deviceKey: "fenix8-local",
+                devicePath: legacyOpenTopoMap.sourceFile.path,
+                filename: legacyOpenTopoMap.sourceFile.filename,
+                providerId: "opentopomap",
+                regionId: "LITHUANIA",
+                version: package.version,
+                sizeBytes: legacyOpenTopoMap.sizeBytes,
+                sha256: "abc123",
+                installedAt: Date(timeIntervalSince1970: 0)
+            )
+        ])
+        passed += expect(
+            ownershipVerifier.classify(
+                map: legacyOpenTopoMap,
+                deviceKey: "fenix8-local",
+                actualSHA256: "ABC123",
+                manifest: aliasManifest
+            ) == .terentoManaged,
+            "OpenTopoMap legacy alias preserves verified ownership"
+        )
+
         let sourceURL = try makeValidIMGFile()
         defer { try? FileManager.default.removeItem(at: sourceURL) }
         let validator = MapSourceValidator()

@@ -156,8 +156,12 @@ struct Stage42ArtifactValidator: MapInstallationArtifactValidator, Sendable {
               artifact.sourceKind == .provider,
               artifactProvider == packageProvider,
               let expectedIdentity = package.identity,
-              MapIdentity.normalizeRegion(artifact.region)
-                == expectedIdentity.region,
+              MapIdentityMatcher.matches(
+                  actual: MapIdentity(provider: artifact.provider, region: artifact.region),
+                  expected: expectedIdentity,
+                  providerRegionId: package.providerRegionId,
+                  identifier: package.identifier
+              ),
               artifact.version == package.version,
               artifact.targetFilename == expectedFilename,
               TerentoManagedFilenameGenerator().isValid(artifact.targetFilename),
@@ -1124,7 +1128,12 @@ struct MapInstallationCoordinator: Sendable {
             }
 
             let actualIdentity = MapIdentity(provider: metadata.provider, region: metadata.region)
-            guard actualIdentity == expectedPackage.identity else {
+            guard MapIdentityMatcher.matches(
+                actual: actualIdentity,
+                expected: expectedPackage.identity,
+                providerRegionId: expectedPackage.providerRegionId,
+                identifier: expectedPackage.identifier
+            ) else {
                 return MetadataResult(
                     provider: metadata.provider,
                     region: metadata.region,

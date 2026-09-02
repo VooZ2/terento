@@ -301,6 +301,38 @@ private func testCompositeRegionManagedFilenameCanBeRemoved() throws {
     try require(transport.events == ["inspect", "delete"], "composite region removal must still inspect before delete")
 }
 
+private func testOpenTopoMapLegacyAliasFilenameCanBeRemoved() throws {
+    let contents = Data(repeating: 0x44, count: 12)
+    let identity = MapIdentity(provider: "OpenTopoMap", region: "LTU")!
+    let file = InstalledMapFile(
+        path: "/GARMIN/terento_opentopomap_lithuania.img",
+        filename: "terento_opentopomap_lithuania.img",
+        sizeBytes: UInt64(contents.count),
+        itemID: 203
+    )
+    let target = SafeDeleteTarget(
+        deviceKey: "fenix-8-091e-51b8",
+        mapIdentity: identity,
+        ownership: .managedByTerento,
+        objectID: 203,
+        expectedPath: file.path,
+        expectedFilename: file.filename,
+        expectedSizeBytes: file.sizeBytes,
+        expectedSHA256: sha256(contents),
+        backup: nil,
+        expectedVersion: MapVersion(year: 2026, month: 5)
+    )
+    let (result, transport) = run(
+        target: target,
+        current: deviceObject(for: target, sha256: nil),
+        requiresVerifiedBackup: false,
+        scans: [[]]
+    )
+
+    try require(result.status == .success, "an OpenTopoMap legacy alias filename must remain removable")
+    try require(transport.events == ["inspect", "delete"], "alias removal must still inspect before delete")
+}
+
 private func testManagedFilenameMustMatchNormalizedIdentity() throws {
     let prepared = validTarget()
     let wrongIdentity = MapIdentity(provider: "Freizeitkarte", region: "AUT")!
@@ -569,6 +601,7 @@ struct Stage52SafeDeleteTests {
             ("reconnect uses fresh live object ID", testReconnectUsesFreshLiveObjectID),
             ("base managed filename allows recorded map version", testBaseManagedFilenameAllowsRecordedMapVersion),
             ("composite region managed filename can be removed", testCompositeRegionManagedFilenameCanBeRemoved),
+            ("OpenTopoMap legacy alias filename can be removed", testOpenTopoMapLegacyAliasFilenameCanBeRemoved),
             ("managed filename must match normalized identity", testManagedFilenameMustMatchNormalizedIdentity),
             ("external and unknown maps are blocked", testExternalAndUnknownMapsAreBlocked),
             ("confirmed external map deletes without manifest cleanup", testConfirmedExternalMapDeletesWithoutManifestCleanup),

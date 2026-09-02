@@ -232,3 +232,14 @@ jobs:
 
           compatibility_script="$(curl --fail --silent --show-error --connect-timeout 5 --max-time 10 https://terento.app/compatibility/compatibility.js)"
           grep -Fq 'https://api.terento.app' <<<"$compatibility_script"
+
+  verify-release-client-contract:
+    name: Verify deployed catalog with release client
+    needs: deploy
+    runs-on: macos-15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Validate deployed catalog against the native client
+        run: /bin/zsh Packaging/validate-live-map-catalog.sh
