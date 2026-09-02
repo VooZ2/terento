@@ -45,9 +45,9 @@ variant. Reconnect, map visibility, physical-device count, firmware variation,
 and operator review do not promote a status. Exact model names and firmware
 values belong in internal compatibility records, not this public PoC overview.
 
-The metadata-only catalog records packages from enabled, reviewed providers.
-The bundled beta.8 fallback contains all 63 official Freizeitkarte packages
-plus all 177 official OpenTopoMap Garmin rows. It records provider
+The metadata-only catalog records downloadable Freizeitkarte and OpenTopoMap
+packages. The bundled fallback contains all 63 official Freizeitkarte
+packages plus all 177 official OpenTopoMap Garmin rows. It records provider
 attribution, source and license URLs, release, and provider-listed package
 sizes; 176 OTM contour artifacts are optional and the one empty contour source
 is omitted from installable artifacts. The loader tries
@@ -95,10 +95,16 @@ Map rows use the country/region as the title, normalize legacy provider-
 decorated names such as `Lithuania · Otm Lithuania`, and show provider plus
 normalized release on the second line. Same-provider regional variants use a
 parenthesized qualifier only when needed.
-The owner has confirmed one-map and same-provider multi-map OTM installation,
+The owner has confirmed one-map and same-provider two-map OTM installation,
 watch use, reconnect persistence, Manage maps discovery, one-map Remove, and
-the same-provider selection lock on the tested watch. Broader device evidence
-remains a separate release claim.
+the one-provider selection lock on the tested fēnix 8. An earlier two-map OTM
+release-candidate run verified and recorded the first map but exposed an
+affected-firmware MTP stall when the next device session was opened
+immediately. The batch transition now uses a provider-neutral five-second
+device-settle boundary before reopening MTP. The exact two-map OTM scenario
+passed on real hardware in build 8; the equivalent two-map Freizeitkarte
+scenario also passed. Broader device evidence remains a separate release
+claim.
 
 The final beta.8 app presentation keeps only `Update` and `Remove` in normal
 Manage maps rows. `Update` appears only from the canonical provider-neutral
@@ -187,14 +193,17 @@ regression boundaries:
 These checks validate the provider-neutral catalog and acquisition seams,
 custom `.img` staging/validation, compact custom-import presentation and
 confirmation, generic provider/custom inventory grouping, optional artifact
-storage planning, model-admission safety, and the currently enabled
-Freizeitkarte/OpenTopoMap source paths. The common multi-map lifecycle resolves MTP object IDs again by
+storage planning, model-admission safety, and the Freizeitkarte/OpenTopoMap
+source paths. The common multi-map lifecycle resolves MTP object IDs again by
 exact managed filename and validated size after a write, because some Garmin
-firmware re-enumerates handles between sessions. The owner has separately
-confirmed one OpenTopoMap installation
-and Manage maps visibility on real hardware; these native tests do not turn
-that result into a broader device-support claim or exercise the separate
-web/admin UI. The focused beta.8 checks also cover the independent statistics
+firmware re-enumerates handles between sessions. It also applies one bounded,
+provider-neutral settle window between successful batch items so firmware can
+commit/index the completed IMG before Terento opens the next MTP inventory.
+The owner has separately confirmed same-provider multi-map OpenTopoMap and
+Freizeitkarte installation, Manage maps and watch visibility, reconnect
+persistence, and isolated one-map removal on real fēnix 8 hardware. These
+native tests do not turn that result into a broader device-support claim or
+exercise the separate web/admin UI. The focused beta.8 checks also cover the independent statistics
 consent/queue contract, measured installation viewport, and production
 `Update`/`Remove` action matrix. The metadata API contract is covered by backend tests; these
 native tests do not exercise it. The external-map safety tests cover only the

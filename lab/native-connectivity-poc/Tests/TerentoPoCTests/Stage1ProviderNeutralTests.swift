@@ -13,6 +13,11 @@ protocol DeviceFileReader: Sendable {
 
 @main
 struct Stage1ProviderNeutralTests {
+    private static let packageRoot = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+
     static func main() async {
         testLegacyPackageGetsRequiredMainArtifact()
         testOptionalContoursDoesNotHideMainArtifact()
@@ -354,7 +359,7 @@ struct Stage1ProviderNeutralTests {
 
     private static func testEveryBundledOpenTopoMapRowAcceptsBothDateHeaderForms() {
         do {
-            let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            let root = packageRoot
             let data = try Data(contentsOf: root.appendingPathComponent(
                 "Sources/TerentoPoC/Resources/Maps/catalog.json"
             ))
@@ -395,7 +400,7 @@ struct Stage1ProviderNeutralTests {
                     parser.parse($0, filename: filename)
                 }
 
-                return fullVersion == version
+                let rowPasses = fullVersion == version
                     && compactVersion == version
                     && fullMetadata?.provider == "OpenTopoMap"
                     && compactMetadata?.provider == "OpenTopoMap"
@@ -413,6 +418,10 @@ struct Stage1ProviderNeutralTests {
                     && package.optionalArtifacts.allSatisfy {
                         $0.kind == .contours && $0.required == false && $0.version != nil
                     }
+                if !rowPasses {
+                    print("OpenTopoMap catalog validation failed for \(package.id) [\(providerRegion)] release \(version)")
+                }
+                return rowPasses
             }
 
             let contourRows = packages.flatMap(\.optionalArtifacts).filter { $0.kind == .contours }
@@ -430,7 +439,7 @@ struct Stage1ProviderNeutralTests {
 
     private static func testBundledCatalogIncludesOpenTopoMap() {
         do {
-            let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            let root = packageRoot
             let data = try Data(contentsOf: root.appendingPathComponent(
                 "Sources/TerentoPoC/Resources/Maps/catalog.json"
             ))
@@ -454,7 +463,7 @@ struct Stage1ProviderNeutralTests {
 
     private static func testBundledProvidersHaveReviewedInstallPaths() {
         do {
-            let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            let root = packageRoot
             let data = try Data(contentsOf: root.appendingPathComponent(
                 "Sources/TerentoPoC/Resources/Maps/catalog.json"
             ))
@@ -488,7 +497,7 @@ struct Stage1ProviderNeutralTests {
 
     private static func testRemoteCatalogReceivesBundledProviderSupplement() {
         do {
-            let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            let root = packageRoot
             let data = try Data(contentsOf: root.appendingPathComponent(
                 "Sources/TerentoPoC/Resources/Maps/catalog.json"
             ))
@@ -513,7 +522,7 @@ struct Stage1ProviderNeutralTests {
 
     private static func testRemotePausedProviderDoesNotReceiveBundledPackages() {
         do {
-            let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            let root = packageRoot
             let data = try Data(contentsOf: root.appendingPathComponent(
                 "Sources/TerentoPoC/Resources/Maps/catalog.json"
             ))

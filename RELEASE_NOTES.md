@@ -1,83 +1,74 @@
-# Terento v1.0.0-beta.7
+# Terento v1.0.0-beta.8
 
-Release date: 2026-08-26
+Release date: 2026-09-01
 
-Beta.7 keeps the complete validated Freizeitkarte catalog visible while
-separating catalog membership from Terento's map-acquisition policy. Downloads
-for Crimea and canonical Russian Federation regions are withheld before any
-temporary workspace or network request is created. Other regions, including
-Ukraine, Belarus and unknown non-Russian identities, remain available under
-the normal validation rules.
+Beta.8 expands Terento into a provider-neutral Garmin map manager. It adds
+OpenTopoMap main maps alongside Freizeitkarte, imports compatible local Garmin
+`.img` maps from the Mac, and lets users remove one recognized third-party map
+at a time after explicit confirmation.
 
-This remains a pre-MVP beta for hardware validation. Beta.7's catalog and
-validation evidence cover Freizeitkarte only; that release-specific coverage
-does not define Terento's provider boundary, and model eligibility is not a
-claim that every exact watch has been independently verified.
+This remains a pre-MVP beta for hardware validation. Model eligibility is not
+a claim that every exact watch has been independently verified.
 
 ## Highlights
 
-- Crimea remains listed under its canonical provider identity and is presented
-  as part of Ukraine and temporarily occupied by russia.
-- Canonical Russian Federation packages remain searchable and visible, but
-  Terento does not offer their downloads while russia's war of aggression
-  against Ukraine continues.
-- Withheld rows show a neutral `Unavailable` state, policy explanation and no
-  checkbox-like control, size, update action or storage impact.
-- Ukraine and all other non-withheld packages retain the normal selectable map
-  control and acquisition flow.
-- Install and Safe Update use one acquisition-policy gate. A withheld package
-  fails before creating temporary files or making an HTTP request.
-- Existing Terento-owned maps are not reclassified. Backup and Remove remain
-  available, while Update is hidden for a currently withheld region.
+- Choose Freizeitkarte or OpenTopoMap from one provider-neutral catalog.
+- Install one or several maps from the same provider in one operation.
+- Import a compatible raw Garmin `.img` map from the Mac through the same
+  validation, storage, transfer and verification lifecycle.
+- Manage Terento-installed maps and remove one recognized external map at a
+  time with an explicit safety confirmation.
 
 ## Application updates
 
-- Terento performs one non-blocking HTTPS metadata check per launch after the
-  first window becomes usable. Startup failures remain silent.
-- About retains the manual update check and persistent result state.
-- A user-confirmed Download action opens only a strictly validated official
-  Terento distribution URL. The app does not download, mount or replace itself.
+- Provider, package and local-import maps now use one common lifecycle:
+  prepare, validate, storage check, transfer, verify, manifest and rescan.
+- OpenTopoMap package identity and release headers are normalized without
+  weakening provider, region or release validation.
+- Sequential multi-map transfers include a bounded device-settle boundary for
+  Garmin firmware that needs time to commit its MTP object database.
+- Install, success, failure, confirmation and Manage maps screens received a
+  consistent beta.8 visual and accessibility pass.
 
 ## Safety and privacy
 
-- Garmin-owned, unknown and manually managed files remain read-only.
+- Garmin-owned and unknown files remain read-only.
+- External-map removal targets one exact recognized `.img` object and requires
+  filename, path, size and hash checks plus a post-delete rescan.
 - New installs never overwrite an existing target. Safe Update still follows
   write-new → verify → remove-old and never deletes the working map first.
-- Device manifests and physical-watch ownership keys remain local. There is no
-  account, login, cloud device profile or server-side Garmin identifier storage.
-- Catalog filtering and acquisition policy do not add telemetry or map proxying;
-  available maps still download directly from the original provider
-  infrastructure.
+- Map statistics are independent from compatibility evidence, optional, queued
+  locally and non-blocking. They exclude watch identifiers, serial numbers,
+  Unit IDs, file paths, manifests, binaries and diagnostic logs.
+- Maps download directly from the selected provider. Terento does not host,
+  mirror, proxy or repackage provider binaries.
 
 ## Validation status
 
-- Automated policy tests cover canonical Crimea and Russian identities,
-  Freizeitkarte `RUS*` alias mapping, non-Russian controls, stale selections,
-  accessibility labels, Manage actions and fail-before-workspace/network order.
-- The full native shell regression matrix and signed arm64 Release dry-run pass
-  on the beta.7 candidate tree, including bundled-library and runtime-path
-  verification.
-- Owner hardware evidence on the connected fēnix 8 confirms the 63-package
-  catalog view, withheld Russia/Crimea presentation and normal Ukraine row.
-- No install, update or remove operation was performed as part of that visual
-  hardware check. Safe Update's real-device newer-map gate remains pending.
+- The full native shell regression matrix and Swift CI pass on the final beta.8
+  source, including provider-neutral acquisition, destructive-operation safety,
+  privacy boundaries, bundled libraries and runtime paths.
+- Owner hardware evidence on a Garmin fēnix 8 (47 mm AMOLED) confirms two-map
+  Freizeitkarte and two-map OpenTopoMap operations, watch visibility, Manage
+  maps discovery, persistence after reconnect and isolated one-map removal.
+- Custom `.img` installation and subsequent managed removal were also confirmed
+  on the same test watch.
 
 ## Known limitations
 
 - Map-capable means eligible for a guarded beta attempt, not independently
   verified compatibility.
-- Safe Update has not yet passed its real-device newer-map gate.
-- This beta.7 release contains only the Freizeitkarte catalog. Terento does not
-  host, mirror or proxy map binaries.
+- A single installation batch can contain maps from only one provider.
+- OpenTopoMap contour-package selection is deferred to a later beta.
 - macOS 13 or later on Apple Silicon is required. Intel Macs, App Store, PKG,
   Windows and Linux distributions are not included.
 
 ## Release artifacts
 
-The release pipeline completed successfully and Apple notarization was
-accepted with no issues.
+Apple notarization, stapling, Gatekeeper assessment and launch verification
+completed successfully.
 
 ```text
-Terento-1.0.0-beta.7-macOS-arm64.dmg  6a74b7613a81c68b9e0e3995dd0e00c6a7778957fc039b40a113731573e95faa
-Terento-1.0.0-beta.7-macOS-arm64.zip  f9940254242935843e7fdd340d5962961e4cdaf8f6752dcf2cef9d3fef248203
+Terento-1.0.0-beta.8-macOS-arm64.dmg  f32615fb195fe4659e11bf7f9fa0e86e59415bf57fd59f56a82b54411fb2d3c2
+Terento-1.0.0-beta.8-macOS-arm64.zip  0abe723ee2ed9256e97bcdb4cacab441d901792d5f957fe1b84a076e6a81269b
 ```
