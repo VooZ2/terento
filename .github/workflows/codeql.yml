@@ -31,6 +31,7 @@ jobs:
             os: macos-15
             build_mode: manual
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
@@ -50,6 +51,9 @@ jobs:
           set -euo pipefail
           export LIBMTP_PREFIX="$(brew --prefix libmtp)"
           export CLANG_MODULE_CACHE_PATH="$RUNNER_TEMP/terento-codeql-clang-module-cache"
-          swift build --package-path lab/native-connectivity-poc
+          swift build \
+            --package-path lab/native-connectivity-poc \
+            --target TerentoPoC \
+            --arch arm64
       - name: Analyze
         uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938

@@ -56,7 +56,9 @@ def main() -> int:
     assert "Retain website deployment health" in deploy_site
     codeql = (WORKFLOWS / "codeql.yml").read_text(encoding="utf-8")
     assert codeql.index("Install Swift native dependency") < codeql.index("Initialize CodeQL")
-    assert "swift build --package-path lab/native-connectivity-poc" in codeql
+    assert "timeout-minutes: 20" in codeql
+    assert "--target TerentoPoC" in codeql
+    assert "--arch arm64" in codeql
     assert "xcodebuild" not in codeql
     print(f"PASS: {len(workflow_files)} workflows use pinned actions and required quality gates")
     return 0
