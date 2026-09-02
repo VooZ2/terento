@@ -189,8 +189,6 @@ jobs:
                 traefik.http.routers.terento-operations.entrypoints: websecure
                 traefik.http.routers.terento-operations.tls: 'true'
                 traefik.http.routers.terento-operations.tls.certresolver: letsencrypt
-                traefik.http.routers.terento-operations.service: terento-operations
-                traefik.http.services.terento-operations.loadbalancer.server.port: '8000'
             catalog-scheduler:
               image: $image
             catalog-migrate:
