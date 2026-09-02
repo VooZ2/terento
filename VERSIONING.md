@@ -15,6 +15,11 @@ Git tags use the same version with a leading `v`, for example
 - **PATCH** marks a backward-compatible fix or correction within that line.
 - **beta.N** increments for each published beta of the same base version.
 
+The first build of a new beta label receives the next monotonically increasing
+build number. A small backward-compatible correction that does not change the
+beta label may use the next sequential build number without creating a new beta
+label. The build counter is never reset or reused.
+
 Beta releases are pre-releases, not stable production releases. A beta may
 contain implemented code whose final real-device validation gate is still
 pending; release notes must state that limitation explicitly. Deferred gates

@@ -9,7 +9,12 @@ deploy_workflow="$repo_root/.github/workflows/deploy-catalog-api.yml"
 monitor_workflow="$repo_root/.github/workflows/map-catalog-contract.yml"
 
 [[ -x "$live_gate" ]]
-grep -Fq 'require_command node' "$release_script"
+if ! grep -Fq 'node_bin="${TERENTO_NODE_BIN:-}"' "$release_script" \
+    || ! grep -Fq 'command -v node || command -v nodejs' "$release_script" \
+    || ! grep -Fq 'export TERENTO_NODE_BIN="$node_bin"' "$release_script"; then
+    print -u2 "FAIL: release script does not resolve and export the shared Node.js runtime"
+    exit 1
+fi
 grep -Fq 'require_command python3' "$release_script"
 grep -Fq 'Packaging/validate-live-map-catalog.sh' "$swift_ci"
 grep -Fq 'startsWith(github.ref, '\''refs/tags/v'\'')' "$swift_ci"

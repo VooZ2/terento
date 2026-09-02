@@ -1,4 +1,5 @@
 #!/bin/sh
 set -eu
 cd "$(dirname "$0")/.."
-node Tests/release-documentation-tests.cjs
+. Tests/node-runtime.sh
+"$NODE_BIN" Tests/release-documentation-tests.cjs

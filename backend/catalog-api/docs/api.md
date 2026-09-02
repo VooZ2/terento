@@ -425,7 +425,7 @@ provider binaries or executable adapter configuration.
 ## `GET /admin/providers` and `GET /admin/providers/{id}`
 
 These authenticated, no-store/noindex HTML pages provide the operator views
-for the provider registry and one provider. The list shows provider name and
+for the provider registry and each registered provider. The list shows provider name and
 secondary ID, lifecycle/health state, package count, catalog sync, last check,
 and issues, with a compact total/active/healthy/package/issue summary. The
 detail page shows metadata, license/attribution, provider-level original

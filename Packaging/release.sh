@@ -165,8 +165,20 @@ require_command open
 require_command hdiutil
 require_command rg
 require_command curl
-require_command node
 require_command python3
+
+node_bin="${TERENTO_NODE_BIN:-}"
+if [[ -z "$node_bin" ]]; then
+    node_bin="$(command -v node || command -v nodejs || true)"
+fi
+if [[ -z "$node_bin" ]]; then
+    die "Required command not found: Node.js (install it or set TERENTO_NODE_BIN)"
+fi
+if [[ "$node_bin" == */* && ! -x "$node_bin" ]]; then
+    die "Configured TERENTO_NODE_BIN is not executable: $node_bin"
+fi
+export TERENTO_NODE_BIN="$node_bin"
+export PATH="$(/usr/bin/dirname "$node_bin"):$PATH"
 
 [[ -d "$repo_root/$RELEASE_PROJECT" ]] || die "Project not found: $RELEASE_PROJECT"
 [[ -f "$repo_root/$RELEASE_ENTITLEMENTS" ]] || die "Entitlements not found: $RELEASE_ENTITLEMENTS"
@@ -306,6 +318,9 @@ done
 
 run_logged "release-documentation-contract" \
     "$repo_root/Tests/run-release-documentation-tests.sh"
+
+run_logged "catalog-backend-tests" \
+    "$repo_root/Tests/run-backend-tests.sh"
 
 # The app consumes the production catalog at runtime, which can differ from
 # the bundled snapshot exercised by deterministic unit tests. Validate the

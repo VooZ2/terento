@@ -26,16 +26,39 @@ function assertOnlyCurrentBeta(relativePath) {
 
 assertOnlyCurrentBeta("README.md");
 assertOnlyCurrentBeta("RELEASE_NOTES.md");
-assert.match(read("README.md"), new RegExp(`The latest public release is beta\\.${betaNumber}:`));
-assert.match(read("README.md"), new RegExp(`Download Terento beta\\.${betaNumber}`));
+const readme = read("README.md");
+assert.match(readme, new RegExp(`The latest public release is beta\\.${betaNumber}:`));
+assert.match(readme, new RegExp(`Download Terento beta\\.${betaNumber}`));
+assert.match(readme, /The Compatibility page is the official public list/);
+assert.match(readme, /`TESTING` means 0 successful installations[\s\S]*`TESTED` means 1–2[\s\S]*`SUPPORTED`[\s\S]*3–4[\s\S]*`VERIFIED`[\s\S]*5 or more/);
 
 const notes = read("RELEASE_NOTES.md");
 assert.match(notes, new RegExp(`^# Terento v${label}$`, "m"));
 assert.ok(notes.includes(release.sha256), "release notes must contain the manifest DMG SHA-256");
+assert.match(read("README.md"), /Freizeitkarte[\s\S]*OpenTopoMap/);
+assert.match(notes, /Freizeitkarte[\s\S]*OpenTopoMap/);
+assert.doesNotMatch(
+  notes,
+  /(?:passes|pass)\s+\d+(?:\/\d+)?\s+tests?/i,
+  "release notes must not contain a hand-maintained test count",
+);
+
+const project = read("Terento.xcodeproj/project.pbxproj");
+assert.ok(
+  project.includes(`TERENTO_RELEASE_LABEL = "${label}";`),
+  "Xcode release label must match the update manifest",
+);
 
 for (const locale of ["en", "de", "fr", "pl", "cs", "it"]) {
   const prefix = locale === "en" ? "" : `${locale}/`;
   assertOnlyCurrentBeta(`site/${prefix}index.html`);
+  assertOnlyCurrentBeta(`site/${prefix}download/index.html`);
+  const guide = read(`site/${prefix}guides/install-garmin-maps-mac/index.html`);
+  assert.match(
+    guide,
+    new RegExp(`\"dateModified\": \"${release.publishedAt}T00:00:00Z\"`),
+    `site/${prefix}guides/install-garmin-maps-mac/index.html: guide review date must match the release date`,
+  );
 }
 assert.doesNotMatch(
   read("site/localized-content.js"),

@@ -41,8 +41,12 @@ private Docker network and lets Traefik provide HTTPS.
 Run the dependency-free tests from the repository root:
 
 ```sh
-PYTHONPATH=backend/catalog-api/src python3 -m unittest discover -s backend/catalog-api/tests -p 'test_*.py'
+Tests/run-backend-tests.sh
 ```
+
+The backend regression suite includes generated-admin JavaScript checks and
+therefore requires Node.js. Set `TERENTO_NODE_BIN` when Node.js is not on
+`PATH`.
 
 ## Endpoints
 
@@ -94,6 +98,12 @@ PYTHONPATH=backend/catalog-api/src python3 -m unittest discover -s backend/catal
   after `PUBLIC_COMPATIBILITY_STATS_ENABLED=true`, with the canonical
   `TESTING`, `TESTED`, `SUPPORTED`, or `VERIFIED` status, successful count, and
   last evidence date; it never returns raw events.
+
+The public Compatibility page is the single public list for these statuses.
+The shared thresholds are 0 successful installations for `TESTING`, 1–2 for
+`TESTED`, 3–4 for `SUPPORTED`, and 5 or more for `VERIFIED`, always for the
+exact model and variant. The API must not introduce a second threshold or
+promote a family-level status.
 
 Production API and admin updates are rolled out only when the catalog backend
 or its deployment workflow changes; application releases and unrelated site

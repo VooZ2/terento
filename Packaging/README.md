@@ -21,6 +21,9 @@ tests.
   dependency: the app build bundles source-built libmtp/libusb under
   `Terento.app/Contents/Frameworks`.
 
+If Node.js is not on `PATH`, set `TERENTO_NODE_BIN` to its executable. The
+same override is used by the web, native, backend, and release checks.
+
 ## Full release validation
 
 Run from the repository root:
@@ -112,6 +115,7 @@ Before distributing a public build:
 - update `site/updates/macos-arm64.json` with the matching version, build,
   minimum macOS, channel, and canonical DMG `downloadURL`;
 - provide a concise plain-text `summary` and the canonical `releaseNotesURL`;
+- run `Tests/run-backend-tests.sh` and keep its reported count in CI output;
 - synchronize all six visible Download pages with
   `python3 scripts/normalize-release-pages.py --write`, then require
   `python3 scripts/normalize-release-pages.py --check` to pass;
