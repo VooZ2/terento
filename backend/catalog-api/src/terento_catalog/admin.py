@@ -1042,9 +1042,9 @@ def _overview_trend_chart(trend: list[dict[str, Any]], bucket: str) -> str:
         for item in trend
     ]
     maximum = max((success + failed for success, failed in values), default=1) or 1
-    scale_maximum = max(maximum, 3) if len(values) <= 2 else maximum
-    chart_width, chart_height = 720, 220
-    left, top, bottom = 10, 12, 32
+    scale_maximum = max(maximum, 3)
+    chart_width, chart_height = 720, 190
+    left, top, bottom = 10, 10, 30
     plot_height = chart_height - top - bottom
     slot = chart_width / max(len(values), 1)
     bar_width = max(8, min(44, slot * 0.58))
@@ -1063,7 +1063,8 @@ def _overview_trend_chart(trend: list[dict[str, Any]], bucket: str) -> str:
             f"<rect class='overview-chart-failed' x='{x:.1f}' y='{y_failed:.1f}' width='{bar_width:.1f}' height='{failed_height:.1f}' rx='3'></rect>"
             f"<rect class='overview-chart-success' x='{x:.1f}' y='{y_success:.1f}' width='{bar_width:.1f}' height='{success_height:.1f}' rx='3'></rect></g>"
         )
-        if len(values) <= 12 or index in {0, len(values) - 1}:
+        label_step = max(1, round((len(values) - 1) / 5))
+        if len(values) <= 12 or index % label_step == 0 or index == len(values) - 1:
             labels.append(f"<text x='{x + bar_width / 2:.1f}' y='{chart_height - 8}' text-anchor='middle'>{html.escape(_overview_chart_bucket_label(item.get('bucket'), bucket))}</text>")
     return (
         "<div class='overview-chart-wrap'>"
@@ -1071,6 +1072,48 @@ def _overview_trend_chart(trend: list[dict[str, Any]], bucket: str) -> str:
         f"{''.join(bars)}{''.join(labels)}</svg>"
         "<div class='overview-chart-legend'><span><i class='overview-chart-success'></i>Succeeded</span><span><i class='overview-chart-failed'></i>Failed</span></div></div>"
     )
+
+
+def _overview_period_script() -> str:
+    return r"""(() => {
+      const bind = () => {
+        const form = document.querySelector('#overview-period-form');
+        const select = document.querySelector('#overview-period');
+        if (!form || !select || select.dataset.bound === 'true') return;
+        select.dataset.bound = 'true';
+        form.addEventListener('submit', (event) => {
+          event.preventDefault();
+          load(select.value, true);
+        });
+        select.addEventListener('change', () => form.requestSubmit());
+      };
+      const load = async (period, push) => {
+        const current = document.querySelector('#main-content');
+        const select = document.querySelector('#overview-period');
+        const url = new URL('/admin', window.location.origin);
+        url.searchParams.set('period', period);
+        if (current) current.setAttribute('aria-busy', 'true');
+        if (select) select.disabled = true;
+        try {
+          const response = await fetch(url, {credentials: 'same-origin', headers: {'Accept': 'text/html'}});
+          if (!response.ok) throw new Error(`Overview refresh failed (${response.status})`);
+          const documentNext = new DOMParser().parseFromString(await response.text(), 'text/html');
+          const mainNext = documentNext.querySelector('#main-content');
+          if (!mainNext) throw new Error('Overview content is unavailable.');
+          current?.replaceWith(mainNext);
+          if (push) window.history.pushState({period}, '', url);
+          window.TerentoAdminTime?.render();
+          bind();
+        } catch (_) {
+          window.location.assign(url);
+        }
+      };
+      window.addEventListener('popstate', () => {
+        const period = new URL(window.location.href).searchParams.get('period') || '24h';
+        load(period, false);
+      });
+      bind();
+    })();"""
 
 
 def overview_page(
@@ -1158,10 +1201,19 @@ def overview_page(
         if reasons_section else
         "overview-secondary-grid overview-secondary-grid-single"
     )
+    attention_section = (
+        f"<section class='overview-panel overview-attention-panel' aria-labelledby='overview-attention-title'><div class='section-heading'><div><p class='section-kicker'>Failure-first</p><h2 id='overview-attention-title'>Needs attention</h2></div><a class='section-link' href='{html.escape(attention_href, quote=True)}'>View all&nbsp;→</a></div>{attention_content}</section>"
+        if attention_items else
+        f"<section class='overview-panel overview-attention-panel overview-attention-empty' aria-labelledby='overview-attention-title'><div><p class='section-kicker'>Failure-first</p><h2 id='overview-attention-title'>Needs attention</h2></div>{attention_content}<a class='section-link' href='{html.escape(attention_href, quote=True)}'>View all&nbsp;→</a></section>"
+    )
+    provider_links = "".join(
+        f"<a href='/admin/providers/{quote(str(provider.get('id') or ''), safe='')}'>{html.escape(str(provider.get('name') or provider.get('id') or 'Provider'))} <span>{html.escape(str(provider.get('health') or 'UNKNOWN').title())}</span></a>"
+        for provider in providers
+    )
     content = f"""
       {_admin_header(user, csrf_token, active='overview')}
       <main class='dashboard overview-page' id='main-content'>
-        <div class='heading-row overview-heading'><div><p class='eyebrow'>Operations</p><h1>Overview</h1><p class='lede'>Current Terento health and activity that needs attention.</p></div><form class='overview-period-form' method='get' action='/admin'><label><span class='sr-only'>Time period</span><select name='period' onchange='this.form.submit()'>{period_options}</select></label></form></div>
+        <div class='heading-row overview-heading'><div><p class='eyebrow'>Operations</p><h1>Overview</h1><p class='lede'>Current Terento health and activity that needs attention.</p></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin'><label><span class='sr-only'>Time period</span><select id='overview-period' name='period'>{period_options}</select></label></form></div>
         <section class='overview-kpis' aria-label='Operational summary'>
           <a class='overview-kpi' href='{html.escape(map_statistics_href, quote=True)}'><span>Map install operations</span><strong>{event_metric(completed_installs + failed_installs)}</strong><small>{'Distinct terminal operation IDs; one operation may include multiple map packages' if has_map_data else 'No map telemetry in this period'}</small></a>
           <a class='overview-kpi' href='{html.escape(map_statistics_href, quote=True)}'><span>Map operation success</span><strong>{success_rate}</strong><small>Successful map operations / terminal map operations</small></a>
@@ -1169,12 +1221,13 @@ def overview_page(
           <a class='overview-kpi overview-kpi-attention' href='/admin/installations?state=open'><span>Open errors</span><strong>{open_error_metric(open_errors)}</strong><small>{'Compatibility evidence only' if compatibility_has_data else 'No evidence in this period'}</small></a>
           <a class='overview-kpi' href='/admin/providers'><span>Providers</span><strong>{healthy} / {provider_count}</strong><small>Healthy providers</small></a>
         </section>
-        <section class='overview-panel overview-attention-panel' aria-labelledby='overview-attention-title'><div class='section-heading'><div><p class='section-kicker'>Failure-first</p><h2 id='overview-attention-title'>Needs attention</h2></div><a class='section-link' href='{html.escape(attention_href, quote=True)}'>View all&nbsp;→</a></div>{attention_content}</section>
-        <div class='{primary_grid_class}'><section class='overview-panel' aria-labelledby='overview-trend-title'><div class='section-heading'><div><p class='section-kicker'>Map operations</p><h2 id='overview-trend-title'>Map install operations over time</h2></div></div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'))}</section>{model_panel}</div>
+        {attention_section}
+        <div class='{primary_grid_class}'><section class='overview-panel overview-chart-panel' aria-labelledby='overview-trend-title'><div class='section-heading'><div><p class='section-kicker'>Map operations</p><h2 id='overview-trend-title'>Map install operations over time</h2></div></div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'))}</section>{model_panel}</div>
         <div class='{secondary_grid_class}'><section class='overview-panel' aria-labelledby='overview-activity-title'><div class='section-heading'><div><p class='section-kicker'>Latest</p><h2 id='overview-activity-title'>Recent map activity</h2></div><a class='section-link' href='{html.escape(map_statistics_href, quote=True)}'>View all&nbsp;→</a></div>{recent_content}</section>{reasons_section}</div>
-        <section class='overview-panel overview-provider-panel' aria-labelledby='overview-provider-title'><div class='section-heading'><div><p class='section-kicker'>Availability</p><h2 id='overview-provider-title'>Providers</h2></div><a class='section-link' href='/admin/providers'>Manage&nbsp;→</a></div><div class='overview-provider-summary'><strong>{healthy} / {provider_count} healthy</strong>{''.join(f"<a href='/admin/providers/{quote(str(provider.get('id') or ''), safe='')}'>{html.escape(str(provider.get('name') or provider.get('id') or 'Provider'))} <span>{html.escape(str(provider.get('health') or 'UNKNOWN').title())}</span></a>" for provider in providers)}</div></section>
+        <section class='overview-panel overview-provider-panel' aria-labelledby='overview-provider-title'><div><p class='section-kicker'>Availability</p><h2 id='overview-provider-title'>Providers</h2></div><div class='overview-provider-summary'><strong>{healthy} / {provider_count} healthy</strong>{provider_links}</div><a class='section-link' href='/admin/providers'>Manage&nbsp;→</a></section>
         {compatibility_summary}
       </main>
+      <script>{_overview_period_script()}</script>
     """
     return _layout("Overview", content)
 
@@ -1526,12 +1579,21 @@ def _provider_run_row(run: dict[str, Any]) -> str:
 
 def _provider_audit_row(audit: dict[str, Any]) -> str:
     details = audit.get("details")
-    details_text = json.dumps(details, ensure_ascii=False, separators=(",", ":")) if details else "—"
+    technical_values = {
+        "adminUserId": audit.get("admin_user_id"),
+        "target": audit.get("target"),
+        "details": details,
+    }
+    technical_text = json.dumps(
+        {key: value for key, value in technical_values.items() if value not in (None, "", {})},
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
     return (
-        f"<tr><td>{html.escape(str(audit.get('admin_user_id') or '—'))}</td><td title='{html.escape(str(audit.get('action') or ''), quote=True)}'>{html.escape(_provider_action_label(audit.get('action')))}</td>"
+        f"<tr><td title='{html.escape(str(audit.get('action') or ''), quote=True)}'>{html.escape(_provider_action_label(audit.get('action')))}</td>"
         f"<td>{html.escape(str(audit.get('old_status') or '—'))}</td><td>{html.escape(str(audit.get('new_status') or '—'))}</td>"
         f"<td>{html.escape(str(audit.get('reason') or '—'))}</td><td>{_timestamp_markup(audit.get('occurred_at'))}</td>"
-        f"<td>{html.escape(str(audit.get('target') or '—'))}<details class='audit-technical-details'><summary>Technical details</summary><code>{html.escape(details_text)}</code></details></td></tr>"
+        f"<td><details class='audit-technical-details'><summary>Technical details</summary><code>{html.escape(technical_text if technical_text != '{}' else '—')}</code></details></td></tr>"
     )
 
 
@@ -1616,7 +1678,7 @@ def provider_detail_page(
     latest_health_table = f"<div class='table-wrap provider-table-wrap provider-history-wrap'><table class='admin-table'><caption class='sr-only'>Health check details</caption><thead><tr><th scope='col'>Checked</th><th scope='col'>Result</th><th scope='col'>Checks</th><th scope='col'>HTTP</th><th scope='col'>Artifacts</th><th scope='col'>Duration</th><th scope='col'>Error</th></tr></thead><tbody>{_provider_health_row(latest_health)}</tbody></table></div>" if latest_health else ""
     health_history_table = f"<div class='table-wrap provider-table-wrap provider-history-wrap'><table class='admin-table'><thead><tr><th scope='col'>Checked</th><th scope='col'>Result</th><th scope='col'>Checks</th><th scope='col'>HTTP</th><th scope='col'>Artifacts</th><th scope='col'>Duration</th><th scope='col'>Error</th></tr></thead><tbody>{rows_health}</tbody></table></div>" if previous_health else ""
     run_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table'><thead><tr><th scope='col'>Run</th><th scope='col'>Started</th><th scope='col'>Finished</th><th scope='col'>Result</th><th scope='col'>Packages</th><th scope='col'>Artifacts</th><th scope='col'>Error</th></tr></thead><tbody>{rows_runs}</tbody></table></div>" if runs else ""
-    audit_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Provider audit history</caption><thead><tr><th scope='col'>Admin user</th><th scope='col'>Action</th><th scope='col'>Old status</th><th scope='col'>New status</th><th scope='col'>Reason</th><th scope='col'>Timestamp</th><th scope='col'>Target/details</th></tr></thead><tbody>{rows_audits}</tbody></table></div>" if audits else ""
+    audit_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Provider audit history</caption><thead><tr><th scope='col'>Action</th><th scope='col'>Old status</th><th scope='col'>New status</th><th scope='col'>Reason</th><th scope='col'>Timestamp</th><th scope='col'>Details</th></tr></thead><tbody>{rows_audits}</tbody></table></div>" if audits else ""
     health_summary = (
         f"{_provider_status_badge(latest_health_status, kind='health')} "
         f"<span>{health_passed} checks passed · {health_not_evaluated} not evaluated</span>"
@@ -1797,8 +1859,8 @@ def map_statistics_page(
         <section class='map-statistics-reliability' aria-label='Reliability summary'><div><span>Failed map-package installs</span><strong data-stat='failedInstalls'>{event_value('failedInstalls')}</strong></div><div><span>Failed downloads</span><strong data-stat='failedDownloads'>{event_value('failedDownloads')}</strong></div><div><span>Current provider issues</span><strong data-stat='providerIssues'>{provider_issues}</strong></div></section>
         <section class='map-statistics-provider-health' id='map-statistics-provider-health' aria-label='Current provider health'><span>Current provider health</span><strong data-stat='providerHealth'>{healthy_providers} / {len(scoped_providers)} healthy</strong><em data-stat='providerHealthIssues'> · {provider_issues} issues</em></section>
         <details class='provider-card map-statistics-linkage' id='map-statistics-linkage' aria-label='Watch event linkage'><summary id='map-statistics-linkage-summary'>{html.escape(linkage_summary)}</summary><div class='disclosure-body'><p class='table-help'>Matched only when the map and watch events share the same operation ID.</p><div class='map-statistics-linkage-grid'><div><span>Map install operations</span><strong data-stat='mapInstallationCount'>{linkage_value('mapInstallationCount')}</strong></div><div><span>Linked watch events</span><strong data-stat='linkedInstallationCount'>{linkage_value('linkedInstallationCount')}</strong></div><div><span>Unlinked installs</span><strong data-stat='mapOnlyInstallationCount'>{linkage_value('mapOnlyInstallationCount')}</strong></div><div><span>Linkage coverage</span><strong data-stat='linkageRate'>{linkage_rate}</strong></div><div><span>Watch-confirmed successes</span><strong data-stat='linkedSuccessfulInstallCount'>{linkage_value('linkedSuccessfulInstallCount')}</strong></div><div><span>Watch-confirmed failures</span><strong data-stat='linkedFailedInstallCount'>{linkage_value('linkedFailedInstallCount')}</strong></div></div><p class='table-help map-statistics-scope-note'>A missing watch event is shown as unlinked, not as a failure. Map statistics and compatibility evidence remain separate aggregates.</p></div></details>
-        <section class='provider-card map-statistics-provider-table' id='map-statistics-provider-table' {'hidden' if not has_event_data else ''}><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Downloads per provider</h2></div></div><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Downloads per provider</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Downloads</th><th scope='col'>Map-package installs</th><th scope='col'>Package install success</th><th scope='col'>Current health</th></tr></thead><tbody id='provider-statistic-rows'></tbody></table></div></section>
-        <section class='provider-card map-statistics-popularity' id='map-statistics-popularity' {'hidden' if not has_event_data else ''}><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Popular maps</h2></div></div><div class='popularity-subsection'><h3>Top maps</h3><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Popular maps</caption><thead><tr><th scope='col'>Map / region</th><th scope='col'>Provider</th><th scope='col'>Completed map-package installs</th><th scope='col'>Last activity</th></tr></thead><tbody id='map-rows'></tbody></table></div><details class='admin-disclosure popularity-all-maps-disclosure'><summary id='all-maps-summary'>View all maps</summary></details></div><details class='admin-disclosure popularity-regions-disclosure'><summary>Regions</summary><div class='disclosure-body'><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Top regions</caption><thead><tr><th scope='col'>Region</th><th scope='col'>Completed map-package installs</th><th scope='col'>Last activity</th></tr></thead><tbody id='top-region-rows'></tbody></table></div></div></details></section>
+        <section class='provider-card map-statistics-provider-table' id='map-statistics-provider-table' {'hidden' if not has_event_data else ''}><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Activity by provider</h2></div></div><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Activity by provider</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Downloads</th><th scope='col'>Map-package installs</th><th scope='col'>Package install success</th><th scope='col'>Current health</th></tr></thead><tbody id='provider-statistic-rows'></tbody></table></div></section>
+        <section class='provider-card map-statistics-popularity' id='map-statistics-popularity' {'hidden' if not has_event_data else ''}><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Popular maps</h2></div></div><div class='popularity-subsection'><h3>Top maps</h3><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Popular maps</caption><thead><tr><th scope='col'>Map / region</th><th scope='col'>Provider</th><th scope='col'>Package installs</th><th scope='col'>Last activity</th></tr></thead><tbody id='map-rows'></tbody></table></div><details class='admin-disclosure popularity-all-maps-disclosure'><summary id='all-maps-summary'>View all maps</summary></details></div><details class='admin-disclosure popularity-regions-disclosure'><summary>Regions</summary><div class='disclosure-body'><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Top regions</caption><thead><tr><th scope='col'>Region</th><th scope='col'>Completed map-package installs</th><th scope='col'>Last activity</th></tr></thead><tbody id='top-region-rows'></tbody></table></div></div></details></section>
         <section class='provider-card map-events-card' {'hidden' if not has_event_data else ''}><details class='admin-disclosure' id='map-statistics-event-detail'><summary id='map-statistics-event-summary'>Event detail · {event_status}</summary><div class='disclosure-body' id='map-statistics-event-body'>{event_table}</div></details></section>
       </main>
       <script>window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};{_map_statistics_script()}</script>
@@ -2012,7 +2074,10 @@ def _map_statistics_script() -> str:
       const formatTimestamp = (value) => {
         if (!value) return '—';
         if (typeof window.TerentoAdminTime?.format === 'function') return window.TerentoAdminTime.format(value);
-        const date = new Date(value);
+        const normalizedValue = typeof value === 'string'
+          ? value.trim().replace(/^(\d{4}-\d{2}-\d{2})(\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)$/, '$1T$2')
+          : value;
+        const date = new Date(normalizedValue);
         return Number.isNaN(date.getTime()) ? String(value) : date.toISOString().slice(0, 16).replace('T', ' ');
       };
       const badge = (value) => `<span class="provider-status provider-status-${String(value || 'UNKNOWN').toLowerCase()}">${escapeHtml(String(value || 'UNKNOWN').replace('_', ' '))}</span>`;
@@ -4421,7 +4486,19 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
 .overview-kpi strong,.admin-kpi-grid article>strong,.provider-metrics article>strong,.map-statistics-metrics article>strong,.diagnostic-model-metrics article>strong,.model-statistics article>strong{font-size:var(--admin-type-kpi-value-size);line-height:var(--admin-type-kpi-value-line)}
 .overview-kpi small{font-size:var(--admin-type-support-size);line-height:var(--admin-type-support-line)}
 .overview-compatibility-grid strong{font-size:20px;line-height:22px}
-.overview-trend-chart{width:100%;max-width:820px;min-height:0;margin:0 auto}
+.overview-period-form{margin:0;padding:6px}
+.overview-period-form label{display:flex}
+.overview-period-form select{height:var(--admin-control-height);min-height:var(--admin-control-height);min-width:154px;padding:8px var(--admin-control-padding-x);border-radius:var(--admin-control-radius);font:600 var(--admin-control-font-size)/1.2 var(--font-ui)}
+.overview-chart-panel{padding-top:16px;padding-bottom:16px}
+.overview-chart-panel .section-heading{margin-bottom:6px}
+.overview-chart-wrap{max-width:780px;margin:0 auto}
+.overview-trend-chart{width:100%;max-width:760px;min-height:0;margin:0 auto}
+.overview-attention-empty{display:grid;grid-template-columns:minmax(0,auto) minmax(180px,1fr) auto;align-items:center;gap:18px;min-height:76px;padding:12px 16px}
+.overview-attention-empty h2,.overview-provider-panel h2{font-family:var(--font-ui);font-size:var(--admin-type-subsection-size);line-height:var(--admin-type-subsection-line);letter-spacing:0}
+.overview-attention-empty .section-kicker,.overview-provider-panel .section-kicker{margin-bottom:1px}
+.overview-attention-empty .overview-empty-state{padding:0;font-size:var(--admin-type-helper-size);line-height:var(--admin-type-helper-line);font-weight:500}
+.overview-provider-panel{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:18px;min-height:76px;padding:12px 16px}
+.overview-provider-panel .overview-provider-summary{justify-content:flex-start}
 .overview-secondary-grid-single{grid-template-columns:minmax(0,1fr)}
 .overview-compact-empty{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 16px}
 .overview-compact-empty .section-heading{margin:0}
@@ -4468,6 +4545,8 @@ table code,.technical-value,.provider-table-wrap code,.audit-technical-details c
   .campaign-card{padding:18px}
   .table-help,.results-count,.page-meta{line-height:16px}
   .overview-compact-empty{align-items:flex-start;flex-direction:column;gap:4px}
+  .overview-attention-empty,.overview-provider-panel{grid-template-columns:1fr;align-items:flex-start;gap:7px}
+  .overview-provider-panel .overview-provider-summary{gap:7px}
 }
 """
 

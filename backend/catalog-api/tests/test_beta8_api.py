@@ -34,6 +34,7 @@ class FakeProviderDatabase:
         self.detail_overrides: dict[str, dict] = {}
         self.run_overrides: dict[str, list[dict]] = {}
         self.map_statistic_filters: list[dict] = []
+        self.overview_map_requests: list[tuple[datetime, str]] = []
 
     def admin_user_count(self) -> int:
         return 1
@@ -59,6 +60,7 @@ class FakeProviderDatabase:
         }
 
     def admin_overview_map_snapshot(self, since, *, period="24h"):
+        self.overview_map_requests.append((since, period))
         return {
             "eventCount": 0,
             "completedInstallCount": 0,
@@ -764,6 +766,36 @@ class Beta8APITests(unittest.TestCase):
                 "provider_activation_blocked",
             )
             self.assertEqual(database.status, "PAUSED")
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
+
+    def test_overview_period_reaches_the_private_query_and_rendered_state(self):
+        database = FakeProviderDatabase()
+        service = CatalogService(database)
+        server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(service))
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            cookie = "terento_admin_session=session; terento_admin_csrf=csrf"
+            response, body = self._request(
+                server, "GET", "/admin?period=30d", headers={"Cookie": cookie},
+            )
+            self.assertEqual(response.status, 200)
+            self.assertEqual(database.overview_map_requests[-1][1], "30d")
+            self.assertIn("value='30d' selected", body.decode())
+
+            response, body = self._request(
+                server, "GET", "/admin?period=all", headers={"Cookie": cookie},
+            )
+            self.assertEqual(response.status, 200)
+            self.assertEqual(database.overview_map_requests[-1][1], "all")
+            self.assertIn("value='all' selected", body.decode())
+            self.assertLess(
+                database.overview_map_requests[-1][0],
+                database.overview_map_requests[-2][0],
+            )
         finally:
             server.shutdown()
             server.server_close()

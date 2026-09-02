@@ -31,6 +31,7 @@ from terento_catalog.admin import (
     _identity_comparison_key,
     _map_statistics_summary,
     _normalise_variant,
+    _overview_period_script,
     _map_statistics_script,
     _provider_detail_script,
     format_timestamp,
@@ -51,7 +52,7 @@ from terento_catalog.compatibility_status import (
     CompatibilityStatus,
     calculate_compatibility_status,
 )
-from terento_catalog.db import Database
+from terento_catalog.db import Database, _fill_overview_trend_buckets
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -149,6 +150,7 @@ class AdminSemanticsTests(unittest.TestCase):
             "providers": _providers_list_script(),
             "provider-detail": _provider_detail_script(),
             "map-statistics": _map_statistics_script(),
+            "overview-period": _overview_period_script(),
         }
         for name, script in scripts.items():
             with self.subTest(script=name):
@@ -302,6 +304,8 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("<span>Evidence success</span><strong>50%</strong>", body)
         self.assertIn("Map install operations over time", body)
         self.assertIn("overview-chart-success", body)
+        self.assertIn("viewBox='0 0 720 190'", body)
+        self.assertIn("overview-chart-panel", body)
         self.assertIn("Recent map activity", body)
         self.assertIn("Compatibility evidence", body)
         self.assertNotIn("Pending metric definition", body)
@@ -350,6 +354,51 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("overview-primary-grid-single", body)
         self.assertIn("overview-secondary-grid-single", body)
 
+    def test_overview_period_control_updates_without_hard_reload(self):
+        body = overview_page(
+            {
+                "period": "30d",
+                "data": {"hasData": False, "recentActivity": [], "attention": [], "trend": [], "bucket": "day"},
+                "compatibility": {"hasData": False, "modelActivity": [], "reviewRequired": [], "recentActivity": [], "failureReasons": []},
+                "providers": [],
+            },
+            {"username": "operator"}, "csrf",
+        ).decode()
+        self.assertIn("class='filter-bar overview-period-form'", body)
+        self.assertIn("id='overview-period'", body)
+        self.assertIn("window.history.pushState", body)
+        self.assertIn("fetch(url", body)
+        self.assertNotIn("onchange='this.form.submit()'", body)
+        self.assertIn("value='30d' selected", body)
+        self.assertIn("overview-attention-empty", body)
+        self.assertIn("overview-provider-panel", body)
+
+    def test_overview_trend_fills_selected_range_without_fabricating_events(self):
+        event_bucket = datetime(2026, 9, 1, 8, tzinfo=timezone.utc)
+        row = {"bucket": event_bucket, "success_count": 1, "failed_count": 0}
+        hourly = _fill_overview_trend_buckets(
+            [row], bucket="hour",
+            since=datetime(2026, 9, 1, 6, 30, tzinfo=timezone.utc),
+            until=datetime(2026, 9, 1, 10, 10, tzinfo=timezone.utc),
+        )
+        daily = _fill_overview_trend_buckets(
+            [row], bucket="day",
+            since=datetime(2026, 8, 26, 12, tzinfo=timezone.utc),
+            until=datetime(2026, 9, 1, 10, tzinfo=timezone.utc),
+        )
+        all_time = _fill_overview_trend_buckets(
+            [row], bucket="day",
+            since=datetime(1970, 1, 1, tzinfo=timezone.utc),
+            until=datetime(2026, 9, 3, tzinfo=timezone.utc),
+            all_time=True,
+        )
+        self.assertEqual(len(hourly), 5)
+        self.assertEqual(sum(item["success_count"] for item in hourly), 1)
+        self.assertEqual(len(daily), 7)
+        self.assertEqual(sum(item["success_count"] for item in daily), 1)
+        self.assertEqual(len(all_time), 3)
+        self.assertEqual(sum(item["success_count"] for item in all_time), 1)
+
     def test_admin_map_labels_are_human_and_unknown_outcomes_are_neutral(self):
         self.assertEqual(_admin_map_display_name("PRINCIPALITY_OF_ANDORRA"), "Andorra")
         self.assertEqual(_admin_map_display_name("SWITZERLAND"), "Switzerland")
@@ -364,10 +413,35 @@ class AdminSemanticsTests(unittest.TestCase):
             selected_filters={"period": "24h"},
         ).decode()
         self.assertIn("Last 24 hours", body)
+        self.assertIn("Activity by provider", body)
+        popular_maps = body.split("id='map-statistics-popularity'", 1)[1].split("popularity-regions-disclosure", 1)[0]
+        self.assertIn("<th scope='col'>Package installs</th>", popular_maps)
+        self.assertNotIn("<h2>Downloads per provider</h2>", body)
+        self.assertNotIn("<th scope='col'>Completed map-package installs</th>", popular_maps)
         self.assertNotIn("90 days", body)
 
     def test_admin_timestamps_repair_legacy_missing_separator(self):
         self.assertEqual(format_timestamp("2026-08-2123:51"), "2026-08-21 23:51")
+        self.assertIn(
+            "value.trim().replace(/^(\\d{4}-\\d{2}-\\d{2})(\\d{2}:\\d{2}",
+            _map_statistics_script(),
+        )
+        body = provider_detail_page(
+            {"provider": {
+                "id": "freizeitkarte", "name": "Freizeitkarte",
+                "status": "ACTIVE", "healthStatus": "HEALTHY",
+                "lastCatalogSync": "2026-08-2123:51",
+                "lastHealthCheck": "2026-08-3119:49",
+                "maps": [], "sources": [], "healthHistory": [],
+                "activationGate": {"canActivate": True, "blockers": []},
+            }}, [], [{
+                "admin_user_id": 1, "action": "provider.status_changed",
+                "occurred_at": "2026-08-3119:49", "target": 3,
+            }], {"username": "operator"}, "csrf",
+        ).decode()
+        self.assertNotRegex(body, r"\d{4}-\d{2}-\d{2}\d{2}:\d{2}")
+        self.assertIn("2026-08-21 23:51", body)
+        self.assertIn("2026-08-31 19:49", body)
 
     def test_map_overview_uses_a_server_compatible_bucket_expression(self):
         database = RecordingDatabase()
@@ -1243,6 +1317,12 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Status changed", body)
         self.assertIn("provider.status_changed", body)
         self.assertIn("audit-technical-details", body)
+        history = body.split("id='provider-history'", 1)[1]
+        self.assertNotIn("<th scope='col'>Admin user</th>", history)
+        self.assertNotIn("<th scope='col'>Target/details</th>", history)
+        self.assertIn("<th scope='col'>Details</th>", history)
+        self.assertIn('&quot;adminUserId&quot;:&quot;operator&quot;', history)
+        self.assertIn('&quot;target&quot;:&quot;opentopomap&quot;', history)
         self.assertNotIn("<span>Activity</span>", body)
 
     def test_provider_health_history_does_not_repeat_latest_check(self):

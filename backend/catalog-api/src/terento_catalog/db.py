@@ -4,7 +4,7 @@ from contextlib import contextmanager
 import hashlib
 import json
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -14,6 +14,67 @@ from .historical_devices import historical_device_for_event
 from .map_capability import classify_map_capable
 from .provider_catalog import ProviderDefinition, ProviderSnapshot
 from .provider_health import ProviderHealthResult
+
+
+def _overview_bucket_floor(value: datetime, bucket: str) -> datetime:
+    value = (
+        value.replace(tzinfo=timezone.utc)
+        if value.tzinfo is None else value.astimezone(timezone.utc)
+    )
+    if bucket == "hour":
+        return value.replace(minute=0, second=0, microsecond=0)
+    if bucket == "week":
+        return (value - timedelta(days=value.weekday())).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+    if bucket == "month":
+        return value.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    return value.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def _next_overview_bucket(value: datetime, bucket: str) -> datetime:
+    if bucket == "hour":
+        return value + timedelta(hours=1)
+    if bucket == "week":
+        return value + timedelta(days=7)
+    if bucket == "month":
+        return value.replace(
+            year=value.year + (1 if value.month == 12 else 0),
+            month=1 if value.month == 12 else value.month + 1,
+        )
+    return value + timedelta(days=1)
+
+
+def _fill_overview_trend_buckets(
+    rows: list[dict[str, Any]],
+    *,
+    bucket: str,
+    since: datetime,
+    until: datetime,
+    all_time: bool = False,
+) -> list[dict[str, Any]]:
+    """Fill display-only zero buckets without creating telemetry records."""
+    indexed: dict[datetime, dict[str, Any]] = {}
+    for row in rows:
+        value = row.get("bucket")
+        if not isinstance(value, datetime):
+            continue
+        indexed[_overview_bucket_floor(value, bucket)] = row
+    if not indexed:
+        return rows
+    start = min(indexed) if all_time else _overview_bucket_floor(since, bucket)
+    end = _overview_bucket_floor(until, bucket)
+    result: list[dict[str, Any]] = []
+    current = start
+    while current <= end:
+        existing = indexed.get(current)
+        result.append(existing if existing is not None else {
+            "bucket": current,
+            "success_count": 0,
+            "failed_count": 0,
+        })
+        current = _next_overview_bucket(current, bucket)
+    return result
 
 
 class Database:
@@ -694,6 +755,15 @@ class Database:
                 """,
                 (since,),
             ).fetchall())
+        trend_rows = [dict(row) for row in trend]
+        if trend_rows:
+            trend_rows = _fill_overview_trend_buckets(
+                trend_rows,
+                bucket=bucket,
+                since=since,
+                until=datetime.now(timezone.utc),
+                all_time=period == "all",
+            )
         completed = int(summary.get("completed_install_count") or 0)
         failed = int(summary.get("failed_install_count") or 0)
         return {
@@ -704,7 +774,7 @@ class Database:
             "hasData": int(summary.get("event_count") or 0) > 0,
             "recentActivity": [dict(row) for row in recent],
             "attention": [dict(row) for row in attention],
-            "trend": [dict(row) for row in trend],
+            "trend": trend_rows,
             "bucket": bucket,
         }
 
