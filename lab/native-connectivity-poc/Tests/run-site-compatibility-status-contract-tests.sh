@@ -39,4 +39,4 @@ print("Compatibility status web tests passed (statuses, exact variants, disclosu
 PY
 
 . "$repo_root/Tests/node-runtime.sh"
-"$NODE_BIN" "$repo_root/Tests/compatibility-data-tests.cjs"
+"$NODE_BIN" "$repo_root/Tests/shared-compatibility-data-tests.cjs"

@@ -79,10 +79,9 @@ The Xcode asset catalog contains the 1x/2x macOS renditions from 16 pt through
 SwiftUI app shell. Documentation currently points to the public repository
 README because the website does not yet have a dedicated documentation route.
 
-The all-tests loop invokes every `Tests/run-*.sh` file directly. Preserve the
-executable bit on newly added test runners before using the full release
-entry point; a shell-invoked test can pass while the release loop still stops
-on a file-mode error.
+The release entry point invokes `Tests/run-all-tests.sh`. Its checked-in suite
+manifest assigns every leaf runner to one functional area, and the inventory
+gate rejects unassigned, duplicated, missing, or non-executable runners.
 
 ## Dry-run
 
@@ -115,7 +114,7 @@ Before distributing a public build:
 - update `site/updates/macos-arm64.json` with the matching version, build,
   minimum macOS, channel, and canonical DMG `downloadURL`;
 - provide a concise plain-text `summary` and the canonical `releaseNotesURL`;
-- run `Tests/run-backend-tests.sh` and keep its reported count in CI output;
+- run `Tests/run-all-tests.sh` and retain its per-suite summary in CI output;
 - synchronize all six visible Download pages with
   `python3 scripts/normalize-release-pages.py --write`, then require
   `python3 scripts/normalize-release-pages.py --check` to pass;

@@ -11,22 +11,122 @@ on:
     branches:
       - beta
       - main
+  schedule:
+    - cron: "30 6 * * 1"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  build-and-test:
-    runs-on: macos-14
-    defaults:
-      run:
-        working-directory: lab/native-connectivity-poc
+  changes:
+    name: Select required test suites
+    runs-on: ubuntu-latest
+    outputs:
+      suites: ${{ steps.selection.outputs.suites }}
     steps:
       - name: Check out source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+      - name: Select suites from changed paths
+        id: selection
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] \
+            || [[ "$GITHUB_REF" == refs/tags/* ]] \
+            || [ -z "$BASE_SHA" ] \
+            || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            suites="$(python3 Tests/select-test-suites.py --json)"
+          else
+            changed_paths="$(git diff --name-only "$BASE_SHA" "$GITHUB_SHA")"
+            printf '%s\n' "$changed_paths"
+            suites="$(printf '%s\n' "$changed_paths" | python3 Tests/select-test-suites.py --json --stdin)"
+          fi
+          echo "Selected suites: $suites"
+          echo "suites=$suites" >> "$GITHUB_OUTPUT"
+
+  site-tests:
+    name: Site tests
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.suites), 'site')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+      - name: Set up Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: "22"
+      - name: Run site suite
+        run: Tests/run-site-tests.sh
+      - name: Build public-site container
+        run: docker build --pull=false -f site-deploy/Dockerfile -t terento-site:ci .
+
+  backend-tests:
+    name: Backend API tests
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.suites), 'backend')
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: terento_ci
+          POSTGRES_USER: terento_ci
+          POSTGRES_PASSWORD: terento_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U terento_ci -d terento_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+      - name: Set up Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: "22"
+      - name: Install catalog API dependencies
+        run: python -m pip install --disable-pip-version-check -e backend/catalog-api
+      - name: Run backend suite
+        run: Tests/run-backend-tests.sh
+      - name: Validate PostgreSQL migrations
+        env:
+          DATABASE_URL: postgresql://terento_ci:terento_ci@127.0.0.1:5432/terento_ci
+        run: |
+          set -euo pipefail
+          terento-catalog-migrate
+          terento-catalog-migrate
+          python -c 'from terento_catalog.config import Settings; from terento_catalog.db import Database; settings = Settings.from_env(); assert Database(settings.database_url).health()'
+      - name: Build catalog API container
+        run: docker build --pull=false -t terento-catalog-api:ci backend/catalog-api
+
+  app-tests:
+    name: macOS app tests
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.suites), 'app')
+    runs-on: macos-15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
       - name: Select Swift 6 toolchain
         run: |
+          set -euo pipefail
           xcode_16_path=$(find /Applications -maxdepth 1 -type d -name "Xcode_16*.app" | sort | tail -n 1)
           if [ -z "$xcode_16_path" ]; then echo "Xcode 16 was not found on the runner"; exit 1; fi
           sudo xcode-select -s "$xcode_16_path/Contents/Developer"
@@ -35,36 +135,158 @@ jobs:
         run: |
           brew untap aws/tap || true
           brew install libmtp
-      - name: Build and test
+      - name: Build Swift package and run app suite
         run: |
           set -euo pipefail
           export LIBMTP_PREFIX="$(brew --prefix libmtp)"
-          export CLANG_MODULE_CACHE_PATH="$RUNNER_TEMP/terento-clang-module-cache"
-          swift build
-          for test_script in Tests/run-*.sh; do
-            echo "=== ${test_script} ==="
-            "${test_script}"
+          export CLANG_MODULE_CACHE_PATH="$RUNNER_TEMP/terento-app-clang-module-cache"
+          swift build --package-path lab/native-connectivity-poc
+          Tests/run-app-tests.sh
+      - name: Build and inspect the Xcode app product
+        run: |
+          set -euo pipefail
+          export LIBMTP_PREFIX="$(brew --prefix libmtp)"
+          derived_data="$RUNNER_TEMP/terento-xcode-debug"
+          xcodebuild \
+            -project Terento.xcodeproj \
+            -scheme Terento \
+            -configuration Debug \
+            -sdk macosx \
+            -derivedDataPath "$derived_data" \
+            ARCHS=arm64 \
+            NATIVE_ARCH_ACTUAL=arm64 \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=- \
+            build
+          app="$derived_data/Build/Products/Debug/Terento.app"
+          test -x "$app/Contents/MacOS/Terento"
+          test -f "$app/Contents/Frameworks/libusb-1.0.0.dylib"
+          test -f "$app/Contents/Frameworks/libmtp.9.dylib"
+          test -f "$app/Contents/Resources/catalog.json"
+          /usr/bin/cmp LICENSE "$app/Contents/Resources/LICENSE"
+          /usr/bin/cmp THIRD_PARTY_NOTICES.md "$app/Contents/Resources/THIRD_PARTY_NOTICES.md"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Contents/Info.plist")" = "app.terento.mac"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$app/Contents/Info.plist")" = "13.0"
+
+  native-tests:
+    name: Native safety tests
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.suites), 'native')
+    runs-on: macos-15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Select Swift 6 toolchain
+        run: |
+          set -euo pipefail
+          xcode_16_path=$(find /Applications -maxdepth 1 -type d -name "Xcode_16*.app" | sort | tail -n 1)
+          if [ -z "$xcode_16_path" ]; then echo "Xcode 16 was not found on the runner"; exit 1; fi
+          sudo xcode-select -s "$xcode_16_path/Contents/Developer"
+          swift --version
+      - name: Install libmtp
+        run: |
+          brew untap aws/tap || true
+          brew install libmtp
+      - name: Run native safety suite
+        run: |
+          set -euo pipefail
+          export LIBMTP_PREFIX="$(brew --prefix libmtp)"
+          export CLANG_MODULE_CACHE_PATH="$RUNNER_TEMP/terento-native-clang-module-cache"
+          Tests/run-native-tests.sh
+
+  release-tests:
+    name: Release contract tests
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.suites), 'release')
+    runs-on: macos-15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Set up Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: "22"
+      - name: Run release contract suite
+        run: Tests/run-release-tests.sh
+
+  shared-ci-tests:
+    name: Shared and CI contract tests
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.suites), 'shared') || contains(fromJSON(needs.changes.outputs.suites), 'ci')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+      - name: Run shared and CI contracts
+        run: |
+          set -euo pipefail
+          Tests/run-shared-tests.sh
+          Tests/run-test-suite.py ci
+
+  live-catalog-contract:
+    name: Live catalog release contract
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: macos-15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Validate live catalog against the native client
+        run: /bin/zsh Packaging/validate-live-map-catalog.sh
+
+  build-and-test:
+    name: build-and-test
+    if: always()
+    needs:
+      - changes
+      - site-tests
+      - backend-tests
+      - app-tests
+      - native-tests
+      - release-tests
+      - shared-ci-tests
+      - live-catalog-contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce selected quality gates
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          SITE_RESULT: ${{ needs.site-tests.result }}
+          BACKEND_RESULT: ${{ needs.backend-tests.result }}
+          APP_RESULT: ${{ needs.app-tests.result }}
+          NATIVE_RESULT: ${{ needs.native-tests.result }}
+          RELEASE_RESULT: ${{ needs.release-tests.result }}
+          SHARED_RESULT: ${{ needs.shared-ci-tests.result }}
+          LIVE_RESULT: ${{ needs.live-catalog-contract.result }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## Terento quality report"
+            echo
+            echo "| Suite | Result |"
+            echo "| --- | --- |"
+            echo "| Selection | $CHANGES_RESULT |"
+            echo "| Site | $SITE_RESULT |"
+            echo "| Backend/API | $BACKEND_RESULT |"
+            echo "| macOS app | $APP_RESULT |"
+            echo "| Native safety | $NATIVE_RESULT |"
+            echo "| Release contracts | $RELEASE_RESULT |"
+            echo "| Shared/CI | $SHARED_RESULT |"
+            echo "| Live catalog | $LIVE_RESULT |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$CHANGES_RESULT" != "success" ]; then
+            echo "Test-suite selection failed: $CHANGES_RESULT" >&2
+            exit 1
+          fi
+          for result in "$SITE_RESULT" "$BACKEND_RESULT" "$APP_RESULT" "$NATIVE_RESULT" "$RELEASE_RESULT" "$SHARED_RESULT" "$LIVE_RESULT"; do
+            case "$result" in
+              success|skipped) ;;
+              *) echo "A required quality gate ended as $result" >&2; exit 1 ;;
+            esac
           done
-      - name: Validate live catalog against release client
-        if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
-        working-directory: ${{ github.workspace }}
-        run: |
-          set -euo pipefail
-          /bin/zsh Packaging/validate-live-map-catalog.sh
-      - name: Validate public website
-        working-directory: ${{ github.workspace }}
-        run: |
-          set -euo pipefail
-          Tests/run-guide-generator-parity-tests.sh
-          Tests/run-structured-data-tests.sh
-          Tests/run-guide-content-tests.sh
-          Tests/run-public-page-layout-contract-tests.sh
-          Tests/run-release-documentation-tests.sh
-          Tests/run-legal-content-tests.sh
-          Tests/run-website-seo-contract-tests.sh
-      - name: Validate non-app brand tokens
-        working-directory: ${{ github.workspace }}
-        run: |
-          set -euo pipefail
-          python3 scripts/generate-brand-tokens.py --check
-          Tests/run-brand-contract-tests.sh
+          echo "All selected quality gates passed."

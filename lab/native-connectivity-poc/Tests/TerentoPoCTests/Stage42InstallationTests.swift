@@ -980,7 +980,7 @@ struct Stage42InstallationTests {
             packageFormat: MapPackageFormat = .rawIMG
         ) -> ValidatedMapArtifact {
             let sourceURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent("terento-stage42-mock-source-(UUID().uuidString).img")
+                .appendingPathComponent("terento-stage42-mock-source-\(UUID().uuidString).img")
             try! data.write(to: sourceURL, options: .atomic)
             let digest = SHA256.hash(data: data)
                 .map { String(format: "%02x", $0) }

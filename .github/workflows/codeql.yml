@@ -1,0 +1,65 @@
+name: CodeQL
+
+on:
+  push:
+    branches:
+      - beta
+      - main
+  pull_request:
+    branches:
+      - beta
+      - main
+  schedule:
+    - cron: "15 5 * * 3"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: CodeQL (${{ matrix.language }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: python
+            os: ubuntu-latest
+            build_mode: none
+          - language: swift
+            os: macos-15
+            build_mode: manual
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build_mode }}
+      - name: Install Swift native dependency
+        if: matrix.language == 'swift'
+        run: |
+          brew untap aws/tap || true
+          brew install libmtp
+      - name: Build Swift app for analysis
+        if: matrix.language == 'swift'
+        run: |
+          set -euo pipefail
+          export LIBMTP_PREFIX="$(brew --prefix libmtp)"
+          xcodebuild \
+            -project Terento.xcodeproj \
+            -scheme Terento \
+            -configuration Debug \
+            -sdk macosx \
+            -derivedDataPath "$RUNNER_TEMP/terento-codeql" \
+            ARCHS=arm64 \
+            NATIVE_ARCH_ACTUAL=arm64 \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=- \
+            build
+      - name: Analyze
+        uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938

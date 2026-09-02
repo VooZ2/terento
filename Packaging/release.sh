@@ -311,16 +311,8 @@ run_logged "swift-build" \
     --product TerentoPoC \
     --build-path "$run_dir/swift-build"
 
-for test_script in "$repo_root"/lab/native-connectivity-poc/Tests/run-*.sh; do
-    test_name="$(basename "$test_script" | /usr/bin/sed 's/\.sh$//')"
-    run_logged "test-$test_name" "$test_script"
-done
-
-run_logged "release-documentation-contract" \
-    "$repo_root/Tests/run-release-documentation-tests.sh"
-
-run_logged "catalog-backend-tests" \
-    "$repo_root/Tests/run-backend-tests.sh"
+run_logged "full-regression" \
+    "$repo_root/Tests/run-all-tests.sh"
 
 # The app consumes the production catalog at runtime, which can differ from
 # the bundled snapshot exercised by deterministic unit tests. Validate the
