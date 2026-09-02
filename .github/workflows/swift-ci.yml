@@ -309,7 +309,7 @@ jobs:
       OPERATIONS_INGEST_SECRET: ${{ secrets.TERENTO_OPERATIONS_INGEST_SECRET }}
       SMTP_USERNAME: ${{ secrets.SMTP2GO_USERNAME }}
       SMTP_PASSWORD: ${{ secrets.SMTP2GO_PASSWORD }}
-      SMTP_HOST: mail.smtp2go.com
+      SMTP_HOST: mail-eu.smtp2go.com
       SMTP_PORT: "2525"
       REPORT_FROM: report@terento.app
       REPORT_TO: report@terento.app

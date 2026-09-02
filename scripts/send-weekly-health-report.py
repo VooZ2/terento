@@ -38,7 +38,7 @@ def build_message(report: dict[str, Any], sender: str, recipient: str) -> EmailM
 
 def send(report_path: Path) -> None:
     report = json.loads(report_path.read_text(encoding="utf-8"))
-    host = os.environ.get("SMTP_HOST", "mail.smtp2go.com").strip()
+    host = os.environ.get("SMTP_HOST", "mail-eu.smtp2go.com").strip()
     port = int(os.environ.get("SMTP_PORT", "2525"))
     username = os.environ.get("SMTP_USERNAME", "").strip()
     password = os.environ.get("SMTP_PASSWORD", "")
@@ -64,4 +64,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

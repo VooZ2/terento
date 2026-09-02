@@ -52,6 +52,10 @@ def main() -> int:
     deploy_api = (WORKFLOWS / "deploy-catalog-api.yml").read_text(encoding="utf-8")
     assert "needs: tests" in deploy_api, "catalog deploy must wait for backend tests"
     assert "Retain API deployment health" in deploy_api
+    assert "Synchronize operations ingest secret" in deploy_api
+    assert "OPERATIONS_INGEST_SECRET=%s" in deploy_api
+    assert "OPERATIONS_INGEST_SECRET: \\${OPERATIONS_INGEST_SECRET}" in deploy_api
+    assert "chmod --reference=\"$env_file\"" in deploy_api
     deploy_site = (WORKFLOWS / "deploy-site.yml").read_text(encoding="utf-8")
     assert "Retain website deployment health" in deploy_site
     codeql = (WORKFLOWS / "codeql.yml").read_text(encoding="utf-8")

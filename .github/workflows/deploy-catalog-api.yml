@@ -72,6 +72,48 @@ jobs:
           printf '%s\n' "$CATALOG_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/terento_catalog" "$HOME/.ssh/known_hosts"
 
+      - name: Synchronize operations ingest secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          port="${CATALOG_SSH_PORT:-22}"
+          local_secret="$RUNNER_TEMP/terento-operations-ingest-secret"
+          remote_secret="/tmp/terento-operations-ingest-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          cleanup() {
+            rm -f -- "$local_secret"
+            ssh -i "$HOME/.ssh/terento_catalog" -p "$port" -o BatchMode=yes \
+              "$CATALOG_SSH_USER@$CATALOG_SSH_HOST" "rm -f -- '$remote_secret'" || true
+          }
+          trap cleanup EXIT
+          umask 077
+          printf '%s\n' "$OPERATIONS_INGEST_SECRET" > "$local_secret"
+          scp -i "$HOME/.ssh/terento_catalog" -P "$port" -o BatchMode=yes \
+            "$local_secret" "$CATALOG_SSH_USER@$CATALOG_SSH_HOST:$remote_secret"
+          ssh -i "$HOME/.ssh/terento_catalog" -p "$port" -o BatchMode=yes \
+            "$CATALOG_SSH_USER@$CATALOG_SSH_HOST" "bash -s -- '$remote_secret'" <<'REMOTE'
+          set -euo pipefail
+          secret_file="$1"
+          env_file="/docker/terento-catalog/deploy/hostinger/catalog/.env"
+          replacement="${env_file}.operations.$$"
+          cleanup() {
+            rm -f -- "$secret_file" "$replacement"
+          }
+          trap cleanup EXIT
+          test -f "$env_file"
+          test -s "$secret_file"
+          secret="$(tr -d '\r\n' < "$secret_file")"
+          test "${#secret}" -ge 32
+          test "${#secret}" -le 512
+          umask 077
+          awk '!/^OPERATIONS_INGEST_SECRET=/' "$env_file" > "$replacement"
+          printf 'OPERATIONS_INGEST_SECRET=%s\n' "$secret" >> "$replacement"
+          chmod --reference="$env_file" "$replacement"
+          chown --reference="$env_file" "$replacement"
+          mv -f -- "$replacement" "$env_file"
+          rm -f -- "$secret_file"
+          trap - EXIT
+          REMOTE
+
       - name: Package catalog API source
         shell: bash
         run: |
@@ -139,6 +181,8 @@ jobs:
           services:
             catalog-api:
               image: $image
+              environment:
+                OPERATIONS_INGEST_SECRET: \${OPERATIONS_INGEST_SECRET}
               labels:
                 traefik.http.routers.terento-admin.rule: 'Host(\`api.terento.app\`) && PathPrefix(\`/admin\`)'
                 traefik.http.routers.terento-operations.rule: 'Host(\`api.terento.app\`) && Path(\`/internal/operations/observations\`)'

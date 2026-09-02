@@ -66,7 +66,7 @@ Configure the same long random value as `OPERATIONS_INGEST_SECRET` in the API
 environment and `TERENTO_OPERATIONS_INGEST_SECRET` in GitHub Actions secrets.
 
 The Monday full-matrix workflow retains its report and sends it to
-`report@terento.app` with SMTP2GO STARTTLS through `mail.smtp2go.com:2525`.
+`report@terento.app` with SMTP2GO STARTTLS through `mail-eu.smtp2go.com:2525`.
 Configure `SMTP2GO_USERNAME` and `SMTP2GO_PASSWORD` as GitHub Actions secrets.
 The sending domain `terento.app` must be verified in SMTP2GO before enabling
 the workflow. Never commit SMTP credentials or the provider-supplied DNS
