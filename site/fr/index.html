@@ -2,7 +2,7 @@
 <html lang="fr" data-language="fr">
   <head>
     <script defer src="/site-shell.js?v=20260902-ia-navigation"></script>
-    <link rel="stylesheet" href="/styles.css?v=20260902-home-content">
+    <link rel="stylesheet" href="/styles.css?v=20260902-website-copy">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -25,7 +25,7 @@
     <meta property="og:image:type" content="image/png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="Terento showing a connected Garmin smartwatch on macOS">
+    <meta property="og:image:alt" content="Terento affiche une montre Garmin connectée sur macOS">
     <meta property="og:locale" content="fr_FR">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Terento — Cartes tierces pour Garmin sur Mac">
@@ -41,7 +41,8 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <script defer src="/language.js?v=20260829-compat-language"></script>
     <script defer src="/privacy-consent.js?v=20260826-2"></script>
-    <script defer src="/localized-content.js?v=20260902-home-content"></script>
+    <script defer src="/provider-list.js?v=20260902-provider-catalog"></script>
+    <script defer src="/localized-content.js?v=20260902-website-copy"></script>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -108,7 +109,7 @@
                 "name": "Puis-je installer des cartes tierces sur une montre Garmin depuis un Mac sans BaseCamp ?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Oui. Terento vous guide du choix de la carte jusqu’à son installation sur la montre. Vous pouvez aussi importer un fichier cartographique compatible depuis votre Mac. Apple Silicon est requis. Lisez le guide d’installation."
+                  "text": "Oui. Terento vous guide du choix de la carte jusqu’à son installation sur la montre. Vous pouvez aussi ajouter un fichier cartographique compatible depuis votre Mac. Apple Silicon est requis. Lisez le guide d’installation."
                 }
               },
               {
@@ -124,7 +125,7 @@
                 "name": "Quels fournisseurs de cartes tierces Terento prend-il en charge ?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Terento prend en charge les cartes de Freizeitkarte et d’OpenTopoMap. Elles sont téléchargées directement depuis chaque fournisseur."
+                  "text": "Terento utilise les fournisseurs de cartes pris en charge présentés ci-dessus. Les cartes sont téléchargées directement depuis leur source d’origine."
                 }
               },
               {
@@ -185,12 +186,17 @@
       <section class="product-showcase product-showcase--muted" aria-labelledby="manage-maps-title"><div class="shell product-showcase-grid"><div class="product-showcase-copy"><p class="eyebrow">Cartes installées</p><h2 id="manage-maps-title">Gérer les cartes</h2><p>Consultez les cartes installées, mettez-les à jour lorsqu’une version plus récente est disponible et supprimez en toute sécurité les cartes tierces prises en charge. Les cartes Garmin et système restent protégées.</p></div><div class="product-showcase-media"><figure class="app-shot app-shot--feature"><picture><source type="image/avif" srcset="/assets/app/optimized/manage-maps-640.avif 640w, /assets/app/optimized/manage-maps-960.avif 960w, /assets/app/optimized/manage-maps-1280.avif 1280w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw"><source type="image/webp" srcset="/assets/app/optimized/manage-maps-640.webp 640w, /assets/app/optimized/manage-maps-960.webp 960w, /assets/app/optimized/manage-maps-1280.webp 1280w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw"><img src="/assets/app/optimized/manage-maps-1280.png" width="1561" height="1008" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw" alt="Terento affiche les cartes tierces installées, regroupées par fournisseur" loading="lazy" decoding="async"></picture></figure></div></div></section>
 
       <section class="scope-section" id="scope" aria-labelledby="scope-title"><div class="shell scope-grid"><div><div class="section-heading"><p class="eyebrow">Périmètre de la bêta</p><h2 id="scope-title">La compatibilité progresse à chaque installation partagée.</h2></div><p class="scope-copy">Terento est conçu pour les montres Garmin compatibles avec les cartes. La compatibilité est confirmée pour chaque modèle et chaque variante à partir de résultats d’installation réels.</p><a class="text-link scope-link" href="/fr/compatibility/">Voir la compatibilité <span aria-hidden="true">→</span></a></div></div></section>
-
+      <section class="provider-section section" id="providers" aria-labelledby="providers-title">
+        <div class="shell provider-grid">
+          <div class="section-heading"><p class="eyebrow">Disponible aujourd’hui</p><h2 id="providers-title">Choisissez une carte et partez.</h2></div>
+          <div class="provider-copy"><p>Terento vous connecte directement aux fournisseurs de cartes pris en charge. La liste reste à jour à mesure que la prise en charge progresse.</p><ul class="provider-list" data-provider-list aria-label="Fournisseurs de cartes pris en charge"><li>Freizeitkarte</li><li>OpenTopoMap</li></ul></div>
+        </div>
+      </section>
       <section class="faq section" id="faq" aria-labelledby="faq-title"><div class="shell faq-grid"><div class="section-heading"><p class="eyebrow">Questions fréquentes</p><h2 id="faq-title">FAQ</h2></div><div class="faq-list">
             <details><summary>Quelles montres Garmin fonctionnent avec Terento&nbsp;?</summary><p>Consultez la <a href="/fr/compatibility/">page Compatibilité</a> pour voir les modèles et variantes Garmin confirmés par des installations réelles.</p></details>
-            <details><summary>Puis-je installer des cartes tierces sur une montre Garmin depuis un Mac sans BaseCamp&nbsp;?</summary><p>Oui. Terento vous guide du choix de la carte jusqu’à son installation sur la montre. Vous pouvez aussi importer un fichier cartographique compatible depuis votre Mac. Apple Silicon est requis. <a href="/fr/guides/install-garmin-maps-mac/">Lisez le guide d’installation.</a></p></details>
+            <details><summary>Puis-je installer des cartes tierces sur une montre Garmin depuis un Mac sans BaseCamp&nbsp;?</summary><p>Oui. Terento vous guide du choix de la carte jusqu’à son installation sur la montre. Vous pouvez aussi ajouter un fichier cartographique compatible depuis votre Mac. Apple Silicon est requis. <a href="/fr/guides/install-garmin-maps-mac/">Lisez le guide d’installation.</a></p></details>
             <details><summary>Terento est-il sûr pour mes cartes Garmin existantes&nbsp;?</summary><p>Oui. Les cartes Garmin et système restent protégées. Terento ne modifie que les cartes tierces prises en charge après votre confirmation.</p></details>
-            <details><summary>Quels fournisseurs de cartes tierces Terento prend-il en charge&nbsp;?</summary><p>Terento prend en charge les cartes de Freizeitkarte et d’OpenTopoMap. Elles sont téléchargées directement depuis chaque fournisseur.</p></details>
+            <details><summary>Quels fournisseurs de cartes tierces Terento prend-il en charge&nbsp;?</summary><p>Terento utilise les fournisseurs de cartes pris en charge présentés ci-dessus. Les cartes sont téléchargées directement depuis leur source d’origine.</p></details>
             <details><summary>Que dois-je faire si l’installation échoue&nbsp;?</summary><p>Ouvrez une issue GitHub ou envoyez le journal de diagnostic par e-mail. Il contient les informations nécessaires à l’analyse.</p><div class="faq-support-actions"><a class="text-link" href="https://github.com/VooZ2/terento/issues" target="_blank" rel="noopener noreferrer" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="github-issue">Ouvrir une issue <span aria-hidden="true">→</span></a><a class="text-link" href="mailto:hello@terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email">Envoyer le journal <span aria-hidden="true">→</span></a></div></details>
             </div></div></section>
 

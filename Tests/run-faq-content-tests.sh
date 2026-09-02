@@ -2,4 +2,5 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-node Tests/faq-content-tests.cjs
+. Tests/node-runtime.sh
+"$NODE_BIN" Tests/faq-content-tests.cjs

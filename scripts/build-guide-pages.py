@@ -17,19 +17,22 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE_URL = "https://terento.app"
 GUIDE_SLUG = "guides/install-garmin-maps-mac/"
 PUBLISHED = "2026-08-28T00:00:00Z"
-REVIEWED = "2026-08-31T00:00:00Z"
+REVIEWED = "2026-09-02T00:00:00Z"
 IMAGE_VERSION = "20260902-your-garmin"
+READING_STATE_VERSION = "20260902-reading-state"
+GUIDE_PROGRESS_VERSION = "20260902-guide-progress"
+STYLE_VERSION = "20260902-website-copy"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 ISSUES_URL = "https://github.com/VooZ2/terento/issues"
 EMAIL_URL = "mailto:hello@terento.app?subject=Terento%20installation%20issue"
 EMAIL_ADDRESS = "hello@terento.app"
 REVIEWED_DISPLAY_DATES = {
-    "en": "August 31, 2026",
-    "de": "31. August 2026",
-    "fr": "31 août 2026",
-    "pl": "31 sierpnia 2026",
-    "cs": "31. srpna 2026",
-    "it": "31 agosto 2026",
+    "en": "September 2, 2026",
+    "de": "2. September 2026",
+    "fr": "2 septembre 2026",
+    "pl": "2 września 2026",
+    "cs": "2. září 2026",
+    "it": "2 settembre 2026",
 }
 GARMIN_BASECAMP_URL = "https://support.garmin.com/en-GB/?faq=bcmC4za1sy9hykGnopP8l7&identifier=310&tab=topics"
 GARMIN_EXPRESS_URL = "https://support.garmin.com/en-US/?faq=4QVp7mKSIA1LDk5fc1OHX8"
@@ -163,6 +166,8 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
 <html lang="{locale}" data-language="{locale}" data-page="guide">
   <head>
     <script defer src="/site-shell.js?v=20260828-guide"></script>
+    <script defer src="/reading-state.js?v={READING_STATE_VERSION}"></script>
+    <script defer src="/guide-progress.js?v={GUIDE_PROGRESS_VERSION}"></script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -192,7 +197,7 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260820-4">
     <link rel="mask-icon" href="/safari-pinned-tab.svg?v=20260820-4" color="#7898A8">
     <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="stylesheet" href="/styles.css?v=20260902-home-content">
+    <link rel="stylesheet" href="/styles.css?v={STYLE_VERSION}">
     <script defer src="/language.js?v=20260824-2"></script>
     <script defer src="/privacy-consent.js?v=20260826-2"></script>
     <script type="application/ld+json">
@@ -215,6 +220,16 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
             </div>
             <p class="guide-facts"><span>macOS 13+</span><span aria-hidden="true">·</span><span>Apple Silicon</span><span aria-hidden="true">·</span><span>{esc(copy["current_beta"])}</span></p>
             <p class="guide-meta"><span><strong>{esc(copy["last_reviewed"])}:</strong> <time datetime="{REVIEWED}">{esc(reviewed_date)}</time></span><span aria-hidden="true">·</span><span><strong>{esc(copy["applies_to"])}:</strong> Terento {esc(release_label)}</span></p>
+            <nav class="guide-progress" data-guide-progress aria-label="{esc(copy["progress_label"])}">
+              <p class="guide-progress-eyebrow">{esc(copy["progress_eyebrow"])}</p>
+              <ol>
+                <li><a href="#before-you-start"><span class="guide-progress-number" aria-hidden="true">01</span>{esc(copy["progress_before"])}</a></li>
+                <li><a href="#steps"><span class="guide-progress-number" aria-hidden="true">02</span>{esc(copy["progress_steps"])}</a></li>
+                <li><a href="#troubleshooting"><span class="guide-progress-number" aria-hidden="true">03</span>{esc(copy["progress_troubleshooting"])}</a></li>
+                <li><a href="#faq-help"><span class="guide-progress-number" aria-hidden="true">04</span>{esc(copy["progress_faq"])}</a></li>
+                <li><a href="#context"><span class="guide-progress-number" aria-hidden="true">05</span>{esc(copy["progress_context"])}</a></li>
+              </ol>
+            </nav>
           </div>
         </header>
 
@@ -228,7 +243,7 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
             </div>
           </section>
 
-          <section class="guide-steps" aria-labelledby="steps-title">
+          <section class="guide-steps" id="steps" aria-labelledby="steps-title">
             <div class="guide-section-heading"><p class="eyebrow">{esc(copy["steps_eyebrow"])}</p><h2 id="steps-title">{esc(copy["steps_title"])}</h2></div>
             <ol class="guide-timeline">{''.join(timeline)}</ol>
           </section>
@@ -243,12 +258,12 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
             <div class="troubleshooting-list">{''.join(troubleshooting)}</div>
           </section>
 
-          <section class="guide-faq-link" aria-label="{esc(copy["faq_link_eyebrow"])}">
+          <section class="guide-faq-link" id="faq-help" aria-label="{esc(copy["faq_link_eyebrow"])}">
             <div class="guide-faq-link-copy"><p class="eyebrow">{esc(copy["faq_link_eyebrow"])}</p><p>{esc(copy["faq_link_text"])}</p></div>
-            <a class="text-link" href="{home}#faq" data-umami-event="faq-link-click" data-umami-event-location="guide-troubleshooting">{esc(copy["faq_link_label"])} <span aria-hidden="true">→</span></a>
+            <a class="text-link" href="{home}#faq" data-reading-context="home-faq" data-umami-event="faq-link-click" data-umami-event-location="guide-troubleshooting">{esc(copy["faq_link_label"])} <span aria-hidden="true">→</span></a>
           </section>
 
-          <section class="guide-context" aria-labelledby="context-title">
+          <section class="guide-context" id="context" aria-labelledby="context-title">
             <div class="guide-section-heading"><p class="eyebrow">{esc(copy["sources"]["eyebrow"])}</p><h2 id="context-title">{esc(copy["sources"]["title"])}</h2></div>
             <div class="guide-context-copy"><p>{source_html}</p><p>{esc(copy["sources"]["limitation"])}</p></div>
           </section>
@@ -377,55 +392,157 @@ COPY_REFINEMENTS = {
         "title": "Install Third-Party Garmin Maps on Mac — Terento",
         "meta_description": "Install supported third-party maps on a Garmin smartwatch from an Apple Silicon Mac. Connect the watch, choose a map and install with Terento.",
         "intro": "Terento gives you a clear Apple Silicon workflow for installing third-party maps: connect the watch, choose a map, review storage and install.",
+        "current_beta": "Third-party maps + local import",
+        "compatibility_note": "The official Compatibility page is the single public list of exact models and variants with real installation evidence. It is not a promise for every Garmin watch. After you connect your watch, Terento checks it and tells you whether you can continue safely.",
+        "after_steps_copy": "Terento checks the map, available space and result to help keep your watch safe.",
+        "faq_link_eyebrow": "More help",
+        "faq_link_text": "Need a quick answer? The Home FAQ covers common questions.",
+        "faq_link_label": "Open the Home FAQ",
+        "progress_label": "Guide sections",
+        "progress_eyebrow": "At a glance",
+        "progress_before": "Before you start",
+        "progress_steps": "Five steps",
+        "progress_troubleshooting": "Troubleshooting",
+        "progress_faq": "Home FAQ",
+        "progress_context": "A little context",
         "connect_body": "Connect the watch with a USB data cable. It may take 1–2 minutes to appear, so keep it connected while Terento finishes detection.",
-        "connect_note": "Close Garmin Express, OpenMTP or another app that may already be using the watch.",
+        "connect_note": "Close Garmin Express or another app that may already be using the watch.",
         "connect_caption": "The watch may take 1–2 minutes to appear after connection.",
         "detect_body": "Wait up to 1–2 minutes after connecting. If the watch still does not appear, reconnect it, check that the cable supports data and close other apps that may be using it.",
+        "step0_body": "Download the latest beta, open it and move Terento to Applications.",
+        "step2_body": "Choose a map and region. Terento shows the map size and available space before you install. You can also add a supported map file from your Mac.",
+        "step3_body": "Check your choices, then start. Keep the watch connected while Terento transfers and checks the map.",
+        "step4_body": "When Terento says it is done, safely disconnect the watch and check that the map is there.",
     },
     "de": {
         "title": "Drittanbieter-Karten auf Garmin vom Mac installieren — Terento",
         "meta_description": "Installiere unterstützte Drittanbieter-Karten auf einer Garmin-Smartwatch vom Apple-Silicon-Mac. Uhr verbinden, Karte wählen und mit Terento installieren.",
         "intro": "Terento bietet einen klaren Ablauf für Apple Silicon: Uhr verbinden, Karte wählen, Speicher prüfen und installieren.",
+        "current_beta": "Drittanbieter-Karten + lokaler Import",
+        "compatibility_note": "Die offizielle Kompatibilitätsseite ist die einzige öffentliche Liste genauer Modelle und Varianten mit echten Installationsnachweisen. Sie ist kein Versprechen für jede Garmin-Uhr. Nach dem Verbinden prüft Terento deine Uhr und sagt dir, ob du sicher fortfahren kannst.",
+        "after_steps_copy": "Terento prüft Karte, freien Speicher und Ergebnis, damit deine Uhr geschützt bleibt.",
+        "faq_link_eyebrow": "Mehr Hilfe",
+        "faq_link_text": "Schnelle Antwort gesucht? Die FAQ auf der Startseite beantwortet häufige Fragen.",
+        "faq_link_label": "Home-FAQ öffnen",
+        "progress_label": "Guide-Abschnitte",
+        "progress_eyebrow": "Auf einen Blick",
+        "progress_before": "Bevor du startest",
+        "progress_steps": "Fünf Schritte",
+        "progress_troubleshooting": "Fehlerbehebung",
+        "progress_faq": "Home-FAQ",
+        "progress_context": "Kurz erklärt",
         "connect_body": "Verbinde die Uhr mit einem USB-Datenkabel. Es kann 1–2 Minuten dauern, bis sie erscheint. Lass sie verbunden, während Terento die Erkennung abschließt.",
-        "connect_note": "Schließe Garmin Express, OpenMTP oder andere Programme, die die Uhr bereits verwenden könnten.",
+        "connect_note": "Schließe Garmin Express oder andere Programme, die die Uhr bereits verwenden könnten.",
         "connect_caption": "Nach dem Verbinden kann es 1–2 Minuten dauern, bis die Uhr erscheint.",
         "detect_body": "Warte nach dem Verbinden bis zu 1–2 Minuten. Wenn die Uhr weiterhin nicht erscheint, verbinde sie erneut, prüfe das Datenkabel und schließe andere Programme, die sie verwenden könnten.",
+        "step0_body": "Lade die aktuelle Beta herunter, öffne sie und verschiebe Terento in den Ordner Programme.",
+        "step2_body": "Wähle eine Karte und eine Region. Terento zeigt Kartengröße und freien Speicher, bevor du installierst. Du kannst auch eine unterstützte Kartendatei von deinem Mac hinzufügen.",
+        "step3_body": "Prüfe deine Auswahl und starte dann. Lass die Uhr verbunden, während Terento die Karte überträgt und prüft.",
+        "step4_body": "Wenn Terento fertig meldet, trenne die Uhr sicher und prüfe, ob die Karte verfügbar ist.",
     },
     "fr": {
         "title": "Installer des cartes tierces Garmin sur Mac — Terento",
         "meta_description": "Installez des cartes tierces prises en charge sur une montre Garmin depuis un Mac Apple Silicon. Connectez la montre, choisissez une carte et utilisez Terento.",
         "intro": "Terento propose un parcours clair pour Apple Silicon : connectez la montre, choisissez une carte, vérifiez l’espace et installez.",
+        "current_beta": "Cartes tierces + import local",
+        "compatibility_note": "La page Compatibilité officielle est la liste publique unique des modèles et variantes précis avec des preuves d’installation réelles. Elle ne promet pas la compatibilité avec toutes les montres Garmin. Après la connexion, Terento vérifie votre montre et vous indique si vous pouvez continuer en toute sécurité.",
+        "after_steps_copy": "Terento vérifie la carte, l’espace disponible et le résultat pour protéger votre montre.",
+        "faq_link_eyebrow": "Plus d’aide",
+        "faq_link_text": "Besoin d’une réponse rapide ? La FAQ de l’accueil répond aux questions courantes.",
+        "faq_link_label": "Ouvrir la FAQ de l’accueil",
+        "progress_label": "Sections du guide",
+        "progress_eyebrow": "En bref",
+        "progress_before": "Avant de commencer",
+        "progress_steps": "Cinq étapes",
+        "progress_troubleshooting": "Dépannage",
+        "progress_faq": "FAQ de l’accueil",
+        "progress_context": "Quelques repères",
         "connect_body": "Connectez la montre avec un câble USB de données. Elle peut mettre 1 à 2 minutes à apparaître. Gardez-la connectée pendant que Terento termine la détection.",
-        "connect_note": "Fermez Garmin Express, OpenMTP ou toute autre app susceptible d’utiliser déjà la montre.",
+        "connect_note": "Fermez Garmin Express ou toute autre app susceptible d’utiliser déjà la montre.",
         "connect_caption": "La montre peut mettre 1 à 2 minutes à apparaître après la connexion.",
         "detect_body": "Attendez 1 à 2 minutes après la connexion. Si la montre n’apparaît toujours pas, reconnectez-la, vérifiez que le câble permet les données et fermez les autres apps susceptibles de l’utiliser.",
+        "step0_body": "Téléchargez la dernière bêta, ouvrez-la et déplacez Terento dans Applications.",
+        "step2_body": "Choisissez une carte et une région. Terento affiche la taille de la carte et l’espace disponible avant l’installation. Vous pouvez aussi ajouter un fichier cartographique pris en charge depuis votre Mac.",
+        "step3_body": "Vérifiez votre choix, puis lancez l’installation. Gardez la montre connectée pendant que Terento transfère et vérifie la carte.",
+        "step4_body": "Lorsque Terento indique que tout est terminé, déconnectez la montre en toute sécurité et vérifiez que la carte est disponible.",
     },
     "pl": {
         "title": "Instalacja map innych firm na Garminie z Maca — Terento",
         "meta_description": "Instaluj obsługiwane mapy innych firm na zegarku Garmin z Maca z Apple Silicon. Podłącz zegarek, wybierz mapę i zainstaluj ją z Terento.",
         "intro": "Terento zapewnia prosty proces na Macach z Apple Silicon: podłącz zegarek, wybierz mapę, sprawdź pamięć i zainstaluj.",
+        "current_beta": "Mapy innych firm + lokalny import",
+        "compatibility_note": "Oficjalna strona kompatybilności jest jedyną publiczną listą konkretnych modeli i wariantów z rzeczywistymi dowodami instalacji. Nie jest obietnicą zgodności z każdym zegarkiem Garmin. Po podłączeniu Terento sprawdzi zegarek i powie, czy można bezpiecznie kontynuować.",
+        "after_steps_copy": "Terento sprawdza mapę, wolne miejsce i wynik, aby chronić Twój zegarek.",
+        "faq_link_eyebrow": "Więcej pomocy",
+        "faq_link_text": "Potrzebujesz szybkiej odpowiedzi? FAQ na stronie głównej odpowiada na częste pytania.",
+        "faq_link_label": "Otwórz FAQ na stronie głównej",
+        "progress_label": "Sekcje instrukcji",
+        "progress_eyebrow": "W skrócie",
+        "progress_before": "Zanim zaczniesz",
+        "progress_steps": "Pięć kroków",
+        "progress_troubleshooting": "Rozwiązywanie problemów",
+        "progress_faq": "FAQ na stronie głównej",
+        "progress_context": "Kilka informacji",
         "connect_body": "Podłącz zegarek kablem USB do transmisji danych. Może pojawić się dopiero po 1–2 minutach. Pozostaw go podłączonego, aż Terento zakończy wykrywanie.",
-        "connect_note": "Zamknij Garmin Express, OpenMTP i inne aplikacje, które mogą już korzystać z zegarka.",
+        "connect_note": "Zamknij Garmin Express i inne aplikacje, które mogą już korzystać z zegarka.",
         "connect_caption": "Zegarek może pojawić się 1–2 minuty po podłączeniu.",
         "detect_body": "Odczekaj 1–2 minuty po podłączeniu. Jeśli zegarek nadal się nie pojawia, podłącz go ponownie, sprawdź kabel do transmisji danych i zamknij inne aplikacje, które mogą z niego korzystać.",
+        "step0_body": "Pobierz najnowszą betę, otwórz ją i przenieś Terento do folderu Programy.",
+        "step2_body": "Wybierz mapę i region. Terento pokaże rozmiar mapy i wolne miejsce przed instalacją. Możesz też dodać obsługiwany plik mapy z Maca.",
+        "step3_body": "Sprawdź wybór i rozpocznij instalację. Pozostaw zegarek podłączony, aż Terento prześle i sprawdzi mapę.",
+        "step4_body": "Gdy Terento poinformuje o zakończeniu, bezpiecznie odłącz zegarek i sprawdź, czy mapa jest dostępna.",
     },
     "cs": {
         "title": "Instalace map třetích stran do Garminu z Macu — Terento",
         "meta_description": "Instalujte podporované mapy třetích stran do hodinek Garmin z Macu s Apple Silicon. Připojte hodinky, vyberte mapu a nainstalujte ji s Terento.",
         "intro": "Terento nabízí jasný postup pro Macy s Apple Silicon: připojte hodinky, vyberte mapu, zkontrolujte místo a instalujte.",
+        "current_beta": "Mapy třetích stran + místní import",
+        "compatibility_note": "Oficiální stránka Kompatibilita je jediným veřejným seznamem konkrétních modelů a variant s reálnými doklady instalace. Není příslibem kompatibility se všemi hodinkami Garmin. Po připojení Terento hodinky zkontroluje a řekne vám, zda lze bezpečně pokračovat.",
+        "after_steps_copy": "Terento zkontroluje mapu, volné místo a výsledek, aby hodinky zůstaly chráněné.",
+        "faq_link_eyebrow": "Další pomoc",
+        "faq_link_text": "Potřebujete rychlou odpověď? FAQ na domovské stránce řeší časté otázky.",
+        "faq_link_label": "Otevřít FAQ na domovské stránce",
+        "progress_label": "Části průvodce",
+        "progress_eyebrow": "Stručně",
+        "progress_before": "Než začnete",
+        "progress_steps": "Pět kroků",
+        "progress_troubleshooting": "Řešení potíží",
+        "progress_faq": "FAQ na domovské stránce",
+        "progress_context": "Stručný kontext",
         "connect_body": "Připojte hodinky datovým USB kabelem. Mohou se zobrazit až za 1–2 minuty. Nechte je připojené, dokud Terento nedokončí rozpoznání.",
-        "connect_note": "Ukončete Garmin Express, OpenMTP nebo jinou aplikaci, která může hodinky právě používat.",
+        "connect_note": "Ukončete Garmin Express nebo jinou aplikaci, která může hodinky právě používat.",
         "connect_caption": "Hodinky se po připojení mohou zobrazit až za 1–2 minuty.",
         "detect_body": "Po připojení počkejte 1–2 minuty. Pokud se hodinky stále nezobrazí, připojte je znovu, ověřte datový kabel a ukončete ostatní aplikace, které je mohou používat.",
+        "step0_body": "Stáhněte nejnovější betu, otevřete ji a přesuňte Terento do složky Aplikace.",
+        "step2_body": "Vyberte mapu a oblast. Terento před instalací zobrazí velikost mapy a volné místo. Z Macu můžete také přidat podporovaný mapový soubor.",
+        "step3_body": "Zkontrolujte výběr a spusťte instalaci. Nechte hodinky připojené, dokud Terento mapu nepřenese a nezkontroluje.",
+        "step4_body": "Až Terento oznámí dokončení, hodinky bezpečně odpojte a ověřte, že je mapa dostupná.",
     },
     "it": {
         "title": "Installare mappe di terze parti Garmin da Mac — Terento",
         "meta_description": "Installa mappe di terze parti supportate su uno smartwatch Garmin da un Mac Apple Silicon. Collega l’orologio, scegli una mappa e usa Terento.",
         "intro": "Terento offre un flusso chiaro per Apple Silicon: collega l’orologio, scegli una mappa, controlla lo spazio e installa.",
+        "current_beta": "Mappe di terze parti + importazione locale",
+        "compatibility_note": "La pagina Compatibilità ufficiale è l’unico elenco pubblico di modelli e varianti esatti con prove reali di installazione. Non promette la compatibilità con ogni smartwatch Garmin. Dopo il collegamento, Terento controlla l’orologio e ti dice se puoi continuare in sicurezza.",
+        "after_steps_copy": "Terento controlla la mappa, lo spazio disponibile e il risultato per proteggere il tuo orologio.",
+        "faq_link_eyebrow": "Altra assistenza",
+        "faq_link_text": "Cerchi una risposta rapida? La FAQ della Home risponde alle domande più comuni.",
+        "faq_link_label": "Apri la FAQ della Home",
+        "progress_label": "Sezioni della guida",
+        "progress_eyebrow": "In breve",
+        "progress_before": "Prima di iniziare",
+        "progress_steps": "Cinque passaggi",
+        "progress_troubleshooting": "Risoluzione dei problemi",
+        "progress_faq": "FAQ della Home",
+        "progress_context": "Un po’ di contesto",
         "connect_body": "Collega lo smartwatch con un cavo USB dati. Potrebbero servire 1–2 minuti perché appaia. Lascialo collegato mentre Terento completa il rilevamento.",
-        "connect_note": "Chiudi Garmin Express, OpenMTP o altre app che potrebbero già usare l’orologio.",
+        "connect_note": "Chiudi Garmin Express o altre app che potrebbero già usare l’orologio.",
         "connect_caption": "Dopo il collegamento possono servire 1–2 minuti perché lo smartwatch appaia.",
         "detect_body": "Attendi 1–2 minuti dopo il collegamento. Se lo smartwatch non appare, ricollegalo, controlla il cavo dati e chiudi le altre app che potrebbero usarlo.",
+        "step0_body": "Scarica l’ultima beta, aprila e sposta Terento nella cartella Applicazioni.",
+        "step2_body": "Scegli una mappa e una regione. Terento mostra le dimensioni della mappa e lo spazio disponibile prima dell’installazione. Puoi anche aggiungere un file cartografico supportato dal Mac.",
+        "step3_body": "Controlla la scelta e avvia l’installazione. Lascia l’orologio collegato mentre Terento trasferisce e verifica la mappa.",
+        "step4_body": "Quando Terento segnala che ha finito, scollega l’orologio in sicurezza e verifica che la mappa sia disponibile.",
     },
 }
 
@@ -442,12 +559,24 @@ def merged_copy(locale: str) -> dict[str, object]:
             "it": "Vedi le prove attuali di compatibilità",
         }[locale]
     refinement = COPY_REFINEMENTS[locale]
-    base.update({key: refinement[key] for key in ("title", "meta_description", "intro")})
+    base.update({
+        key: refinement[key]
+        for key in (
+            "title", "meta_description", "intro", "current_beta", "compatibility_note",
+            "after_steps_copy", "faq_link_eyebrow", "faq_link_text", "faq_link_label",
+            "progress_label", "progress_eyebrow", "progress_before", "progress_steps",
+            "progress_troubleshooting", "progress_faq", "progress_context",
+        )
+    })
     base["steps"] = [item.copy() for item in base["steps"]]
+    base["steps"][0]["body"] = refinement["step0_body"]
     base["steps"][1]["body"] = refinement["connect_body"]
     base["steps"][1]["note"] = refinement["connect_note"]
     base["steps"][1]["image"] = base["steps"][1]["image"].copy()
     base["steps"][1]["image"]["caption"] = refinement["connect_caption"]
+    base["steps"][2]["body"] = refinement["step2_body"]
+    base["steps"][3]["body"] = refinement["step3_body"]
+    base["steps"][4]["body"] = refinement["step4_body"]
     base["troubleshooting"] = [item.copy() for item in base["troubleshooting"]]
     base["troubleshooting"][0]["body"] = refinement["detect_body"]
     return base

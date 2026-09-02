@@ -10,10 +10,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20260902-ia-navigation"
-STYLE_VERSION = "20260902-home-content"
+STYLE_VERSION = "20260902-website-copy"
 IMAGE_VERSION = "20260902-your-garmin"
 LANGUAGE_VERSION = "20260829-compat-language"
-LOCALIZED_CONTENT_VERSION = "20260902-home-content"
+LOCALIZED_CONTENT_VERSION = "20260902-website-copy"
+COMPATIBILITY_LOCALES_VERSION = "20260902-evidence-copy"
+COMPATIBILITY_VERSION = "20260902-evidence-copy"
 LOCALES = {
     "en": {"flag": "🇬🇧", "name": "English", "home": "Terento home", "primary": "Primary navigation", "menu": "Menu", "close": "Close menu", "about": "About", "compatibility": "Compatibility", "guide": "Guide", "faq": "FAQ", "download": "Download", "language": "Choose language", "footer": "Footer navigation", "status": "Open-source project", "legal": "Legal", "privacy": "Privacy", "support": "Support Terento", "stats": "Visit statistics (Umami) do not use cookies."},
     "de": {"flag": "🇩🇪", "name": "Deutsch", "home": "Terento Startseite", "primary": "Hauptnavigation", "menu": "Menü", "close": "Menü schließen", "about": "Über uns", "compatibility": "Kompatibilität", "guide": "Anleitung", "faq": "FAQ", "download": "Download", "language": "Sprache wählen", "footer": "Footer-Navigation", "status": "Open-Source-Projekt", "legal": "Rechtliches", "privacy": "Datenschutz", "support": "Support Terento", "stats": "Besuchsstatistik (Umami) verwendet keine Cookies."},
@@ -155,6 +157,9 @@ def main() -> None:
             source,
         )
         source = re.sub(r'(/language\.js\?v=)[^"\s]+', rf'\g<1>{LANGUAGE_VERSION}', source)
+        if page == "compatibility":
+            source = re.sub(r'(/compatibility/compatibility-locales\.js\?v=)[^"\s]+', rf'\g<1>{COMPATIBILITY_LOCALES_VERSION}', source)
+            source = re.sub(r'(/compatibility/compatibility\.js\?v=)[^"\s]+', rf'\g<1>{COMPATIBILITY_VERSION}', source)
         path.write_text(source, encoding="utf-8")
     print("Synchronized static public headers and footers.")
 

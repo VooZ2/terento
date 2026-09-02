@@ -2,7 +2,9 @@
 <html lang="de" data-language="de" data-page="guide">
   <head>
     <script defer src="/site-shell.js?v=20260902-ia-navigation"></script>
-    <link rel="stylesheet" href="/styles.css?v=20260902-home-content">
+    <link rel="stylesheet" href="/styles.css?v=20260902-website-copy">
+    <script defer src="/reading-state.js?v=20260902-reading-state"></script>
+    <script defer src="/guide-progress.js?v=20260902-guide-progress"></script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -25,7 +27,7 @@
     <meta property="og:image:type" content="image/png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="Terento showing a connected Garmin smartwatch on macOS">
+    <meta property="og:image:alt" content="Terento zeigt eine verbundene Garmin-Smartwatch unter macOS">
     <meta property="og:locale" content="de_DE">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Drittanbieter-Karten auf Garmin vom Mac installieren — Terento">
@@ -61,7 +63,7 @@
       "headline": "Drittanbieter-Karten auf einer Garmin-Uhr vom Mac aus installieren",
       "description": "Installiere unterstützte Drittanbieter-Karten auf einer Garmin-Smartwatch vom Apple-Silicon-Mac. Uhr verbinden, Karte wählen und mit Terento installieren.",
       "datePublished": "2026-08-28T00:00:00Z",
-      "dateModified": "2026-08-31T00:00:00Z",
+      "dateModified": "2026-09-02T00:00:00Z",
       "mainEntityOfPage": {
         "@id": "https://terento.app/de/guides/install-garmin-maps-mac/"
       },
@@ -142,8 +144,18 @@
               <a class="download-action" href="/de/download/" data-umami-event="download-cta-click" data-umami-event-location="guide-hero">Beta herunterladen <span aria-hidden="true">→</span></a>
               <a class="text-link" href="/de/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="guide-preflight">Kompatibilität ansehen <span aria-hidden="true">→</span></a>
             </div>
-            <p class="guide-facts"><span>macOS 13+</span><span aria-hidden="true">·</span><span>Apple Silicon</span><span aria-hidden="true">·</span><span>Anbieter-Karten + lokaler .img-Import</span></p>
-            <p class="guide-meta"><span><strong>Zuletzt geprüft:</strong> <time datetime="2026-08-31T00:00:00Z">31. August 2026</time></span><span aria-hidden="true">·</span><span><strong>Gilt für:</strong> Terento 1.0.0-beta.9</span></p>
+            <p class="guide-facts"><span>macOS 13+</span><span aria-hidden="true">·</span><span>Apple Silicon</span><span aria-hidden="true">·</span><span>Drittanbieter-Karten + lokaler Import</span></p>
+            <p class="guide-meta"><span><strong>Zuletzt geprüft:</strong> <time datetime="2026-09-02T00:00:00Z">2. September 2026</time></span><span aria-hidden="true">·</span><span><strong>Gilt für:</strong> Terento 1.0.0-beta.9</span></p>
+            <nav class="guide-progress" data-guide-progress aria-label="Guide-Abschnitte">
+              <p class="guide-progress-eyebrow">Auf einen Blick</p>
+              <ol>
+                <li><a href="#before-you-start"><span class="guide-progress-number" aria-hidden="true">01</span>Bevor du startest</a></li>
+                <li><a href="#steps"><span class="guide-progress-number" aria-hidden="true">02</span>Fünf Schritte</a></li>
+                <li><a href="#troubleshooting"><span class="guide-progress-number" aria-hidden="true">03</span>Fehlerbehebung</a></li>
+                <li><a href="#faq-help"><span class="guide-progress-number" aria-hidden="true">04</span>Home-FAQ</a></li>
+                <li><a href="#context"><span class="guide-progress-number" aria-hidden="true">05</span>Kurz erklärt</a></li>
+              </ol>
+            </nav>
           </div>
         </header>
 
@@ -152,19 +164,19 @@
             <div class="guide-section-heading"><p class="eyebrow">Kurz prüfen</p><h2 id="before-you-start-title">Bevor du startest</h2></div>
             <div class="guide-preflight-copy">
               <ul class="guide-checklist"><li>Apple-Silicon-Mac</li><li>macOS 13 oder neuer</li><li>Garmin-Smartwatch mit Kartenunterstützung</li><li>USB-Kabel mit Datenübertragung</li><li>Aktuelle Terento-Beta</li><li>Genügend freier Speicher auf der Uhr</li></ul>
-              <p>Die Kompatibilitätsseite zeigt genaue Modelle und Varianten mit echten Installationsnachweisen. Sie ist keine vollständige Liste aller Garmin-Uhren, die funktionieren könnten. Nach dem Verbinden prüft Terento das erkannte Gerät und sagt dir, ob die Installation sicher fortgesetzt werden kann.</p>
+              <p>Die offizielle Kompatibilitätsseite ist die einzige öffentliche Liste genauer Modelle und Varianten mit echten Installationsnachweisen. Sie ist kein Versprechen für jede Garmin-Uhr. Nach dem Verbinden prüft Terento deine Uhr und sagt dir, ob du sicher fortfahren kannst.</p>
               <a class="text-link" href="/de/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="guide-preflight">Aktuelle Kompatibilitätsnachweise ansehen <span aria-hidden="true">→</span></a>
             </div>
           </section>
 
-          <section class="guide-steps" aria-labelledby="steps-title">
+          <section class="guide-steps" id="steps" aria-labelledby="steps-title">
             <div class="guide-section-heading"><p class="eyebrow">Der Ablauf</p><h2 id="steps-title">In fünf Schritten installieren</h2></div>
             <ol class="guide-timeline"><li class="guide-step">
               <div class="guide-step-marker" aria-hidden="true">01</div>
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Terento herunterladen</h3>
-                  <p>Lade die aktuelle notarielle Beta herunter, öffne die DMG und verschiebe Terento in den Ordner Programme.</p>
+                  <p>Lade die aktuelle Beta herunter, öffne sie und verschiebe Terento in den Ordner Programme.</p>
                   <p class="guide-step-note">Apple Silicon und macOS 13 oder neuer sind erforderlich.</p>
 
                 </div>
@@ -176,7 +188,7 @@
                 <div class="guide-step-copy">
                   <h3>Garmin verbinden</h3>
                   <p>Verbinde die Uhr mit einem USB-Datenkabel. Es kann 1–2 Minuten dauern, bis sie erscheint. Lass sie verbunden, während Terento die Erkennung abschließt.</p>
-                  <p class="guide-step-note">Schließe Garmin Express, OpenMTP oder andere Programme, die die Uhr bereits verwenden könnten.</p>
+                  <p class="guide-step-note">Schließe Garmin Express oder andere Programme, die die Uhr bereits verwenden könnten.</p>
 
                 </div>
                 <figure class="guide-screenshot">
@@ -193,7 +205,7 @@
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Karte auswählen</h3>
-                  <p>Wähle einen Kartenanbieter und eine Region. Terento zeigt Kartengröße, aktuell freien Speicher und den voraussichtlichen Speicherbedarf nach der Installation. Du kannst auch eine unterstützte Drittanbieter-.img-Datei direkt von deinem Mac importieren.</p>
+                  <p>Wähle eine Karte und eine Region. Terento zeigt Kartengröße und freien Speicher, bevor du installierst. Du kannst auch eine unterstützte Kartendatei von deinem Mac hinzufügen.</p>
 
 
                 </div>
@@ -211,7 +223,7 @@
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Prüfen und installieren</h3>
-                  <p>Prüfe die ausgewählten Karten und die Speicherwirkung und starte dann die Installation. Lass die Uhr verbunden, bis Terento die Karte übertragen und geprüft hat.</p>
+                  <p>Prüfe deine Auswahl und starte dann. Lass die Uhr verbunden, während Terento die Karte überträgt und prüft.</p>
                   <p class="guide-step-note">Terento prüft Kartenquelle, verfügbaren Speicher, abgeschlossene Übertragung und Ergebnis.</p>
 
                 </div>
@@ -229,7 +241,7 @@
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Ergebnis prüfen</h3>
-                  <p>Wenn Terento die Installation als abgeschlossen meldet, wirf die Uhr sicher aus und prüfe, ob die Karte auf dem Gerät verfügbar ist.</p>
+                  <p>Wenn Terento fertig meldet, trenne die Uhr sicher und prüfe, ob die Karte verfügbar ist.</p>
                   <p class="guide-step-note">Kartenanzeige und Aktivitätseinstellungen können je nach Garmin-Modell abweichen. Wenn du Kompatibilitätsdaten teilst, hilft das Ergebnis, die Kompatibilität für genau dieses Modell und diese Variante zu bestätigen.</p>
 
                 </div>
@@ -239,7 +251,7 @@
           </section>
 
           <section class="guide-after-steps" aria-label="Nächster Schritt">
-            <p>Die Uhr bleibt geschützt, während Terento Quelle, Speicher, Übertragung und Ergebnis prüft.</p>
+            <p>Terento prüft Karte, freien Speicher und Ergebnis, damit deine Uhr geschützt bleibt.</p>
             <a class="download-action" href="/de/download/" data-umami-event="download-cta-click" data-umami-event-location="guide-after-steps">Beta herunterladen <span aria-hidden="true">→</span></a>
           </section>
 
@@ -270,12 +282,12 @@
             </section></div>
           </section>
 
-          <section class="guide-faq-link" aria-label="Mehr Hilfe">
-            <div class="guide-faq-link-copy"><p class="eyebrow">Mehr Hilfe</p><p>Noch Fragen?</p></div>
-            <a class="text-link" href="/de/#faq" data-umami-event="faq-link-click" data-umami-event-location="guide-troubleshooting">Die vollständige FAQ ansehen <span aria-hidden="true">→</span></a>
+          <section class="guide-faq-link" id="faq-help" aria-label="Mehr Hilfe">
+            <div class="guide-faq-link-copy"><p class="eyebrow">Mehr Hilfe</p><p>Schnelle Antwort gesucht? Die FAQ auf der Startseite beantwortet häufige Fragen.</p></div>
+            <a class="text-link" href="/de/#faq" data-reading-context="home-faq" data-umami-event="faq-link-click" data-umami-event-location="guide-troubleshooting">Home-FAQ öffnen <span aria-hidden="true">→</span></a>
           </section>
 
-          <section class="guide-context" aria-labelledby="context-title">
+          <section class="guide-context" id="context" aria-labelledby="context-title">
             <div class="guide-section-heading"><p class="eyebrow">Kurz erklärt</p><h2 id="context-title">Warum ein nativer Mac-Ablauf sinnvoll ist</h2></div>
             <div class="guide-context-copy"><p>Garmin beschreibt <a href="https://support.garmin.com/en-GB/?faq=bcmC4za1sy9hykGnopP8l7&amp;identifier=310&amp;tab=topics" rel="noopener noreferrer">BaseCamp</a> für den Mac derzeit als für Intel-Macs vorgesehen und weist darauf hin, dass Rosetta die Nutzung auf Apple Silicon ermöglichen kann. Für <a href="https://support.garmin.com/en-US/?faq=4QVp7mKSIA1LDk5fc1OHX8" rel="noopener noreferrer">Garmin Express</a> gibt Garmin einen ähnlichen Hinweis. Apple erklärt, wie <a href="https://support.apple.com/en-ca/102527" rel="noopener noreferrer">Rosetta</a> Intel-Apps auf Apple Silicon ausführt. Terento ist nativ für Apple Silicon und konzentriert sich auf die Installation und Verwaltung von Drittanbieter-Karten.</p><p>Terento ersetzt Garmin Express nicht für offizielle Geräteupdates und BaseCamp nicht für weitergehende Routenplanung.</p></div>
           </section>

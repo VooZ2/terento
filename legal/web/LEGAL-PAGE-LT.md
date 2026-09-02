@@ -23,9 +23,9 @@ Apple, Mac, macOS ir Apple Silicon priklauso Apple Inc. Terento nėra susijęs s
 
 Terento žemėlapių nekuria, neperlicencijuoja ir nevadina „Terento žemėlapiais“.
 
-Freizeitkarte, OpenStreetMap ir kiti duomenų teikėjai lieka savo licencijų savininkais. Terento tik sujungia kelią: atsisiuntimas iš pirminio teikėjo → jūsų „Mac“ → laikrodis. Savo serveriais žemėlapių failų nehostiname ir neplatiname.
+Freizeitkarte, OpenTopoMap, OpenStreetMap ir kiti duomenų teikėjai lieka savo licencijų savininkais. Terento tik sujungia kelią: atsisiuntimas iš pirminio teikėjo → jūsų „Mac“ → laikrodis. Savo serveriais žemėlapių failų nehostiname ir neplatiname.
 
-Daugiau: [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenStreetMap autorių teisės](https://www.openstreetmap.org/copyright).
+Daugiau: [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/), [OpenStreetMap autorių teisės](https://www.openstreetmap.org/copyright).
 
 ## Programos licencija
 

@@ -5,8 +5,8 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 const styles = read("site/styles.css");
-const styleVersion = "20260902-home-content";
-const localizedContentVersion = "20260902-home-content";
+const styleVersion = "20260902-website-copy";
+const localizedContentVersion = "20260902-website-copy";
 
 const cssBlock = (selector) => {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -125,6 +125,13 @@ for (const locale of Object.keys(locales)) {
   const html = read(`site/${prefix}compatibility/index.html`);
   assert.equal((html.match(/class="compatibility-hero-copy"/g) || []).length, 1, `${locale} must use one constrained hero copy wrapper`);
   assert.match(html, /<div class="shell compatibility-hero-inner"><div class="compatibility-hero-copy">/);
+}
+
+for (const locale of Object.keys(locales)) {
+  const prefix = locale === "en" ? "" : `${locale}/`;
+  const html = read(`site/${prefix}compatibility/index.html`);
+  assert.match(html, /data-compatibility-evidence-note/);
+  assert.match(html, /not Garmin certification|keine Garmin-Zertifizierung|certification Garmin|certyfikatem firmy Garmin|certifikaci Garmin|certificazione Garmin/i);
 }
 
 assert.doesNotMatch(read("site/localized-content.js"), /download-compatibility-link/);

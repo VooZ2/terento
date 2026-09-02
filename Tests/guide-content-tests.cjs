@@ -22,12 +22,12 @@ const guideFile = (locale) => path.join(root, "site", locale === "en" ? slug : p
 const metadata = JSON.parse(read(path.join(root, "site", "metadata.json")));
 const metadataByPath = new Map(metadata.pages.map((page) => [page.path, page]));
 const currentBetaSignals = {
-  en: /Provider maps \+ local \.img import/,
-  de: /Anbieter-Karten \+ lokaler \.img-Import/,
-  fr: /Cartes de fournisseurs \+ import \.img local/,
-  pl: /Mapy dostawców \+ lokalny import \.img/,
-  cs: /Mapy od poskytovatelů \+ místní import \.img/,
-  it: /Mappe dei provider \+ importazione \.img locale/,
+  en: /Third-party maps \+ local import/,
+  de: /Drittanbieter-Karten \+ lokaler Import/,
+  fr: /Cartes tierces \+ import local/,
+  pl: /Mapy innych firm \+ lokalny import/,
+  cs: /Mapy třetích stran \+ místní import/,
+  it: /Mappe di terze parti \+ importazione locale/,
 };
 
 function visibleText(fragment) {
@@ -68,13 +68,20 @@ for (const locale of locales) {
   assert.match(source, /1–2 minutes?|1–2 Minuten|1 à 2 minutes|1–2 minuty|1–2 minuti/);
   assert.match(source, currentBetaSignals[locale], locale + ": provider-neutral current beta label");
   assert.match(source, /Choose a map|Karte auswählen|Choisir une carte|Wybierz mapę|Vyberte mapu|Scegli una mappa/);
-  assert.match(source, /third-party \.img|Drittanbieter-\.img|carte \.img|mapę \.img|mapu \.img|mappa \.img/i, locale + ": local .img import guidance");
+  assert.match(source, /third-party \.img|supported map file|unterstützte Kartendatei|fichier cartographique pris en charge|obsługiwany plik mapy|podporovaný mapový soubor|file cartografico supportato/i, locale + ": local map import guidance");
   assert.doesNotMatch(source, /Current beta uses Freizeitkarte|aktuelle Beta verwendet Freizeitkarte|bêta actuelle utilise Freizeitkarte|obecna beta korzysta z Freizeitkarte|aktuální beta používá Freizeitkarte|beta attuale usa Freizeitkarte/i, locale + ": no provider-specific current-beta claim");
   assert.match(source, /install-maps-1280\.avif[^\n]*width="1555" height="1012"/);
   assert.match(source, /installing-maps-1280\.avif[^\n]*width="1568" height="1003"/);
   assert.match(source, /your-garmin-1600\.avif\?v=20260902-your-garmin[^\n]*width="2200" height="1346"/);
   assert.equal([...source.matchAll(/<li class="guide-step">[\s\S]*?<\/li>/g)].length, 5, locale + ": five ordered steps");
   assert.match(source, /<ol class="guide-timeline">/);
+  assert.match(source, /<nav class="guide-progress" data-guide-progress[^>]*aria-label="[^"]+">/);
+  assert.equal([...source.matchAll(/<li><a href="#[^"]+"><span class="guide-progress-number"/g)].length, 5, locale + ": five progress links");
+  for (const section of ["before-you-start", "steps", "troubleshooting", "faq-help", "context"]) {
+    assert.match(source, new RegExp(`id="${section}"`), `${locale}: progress target ${section}`);
+  }
+  assert.match(source, /\/guide-progress\.js\?v=20260902-guide-progress/);
+  assert.match(source, /\/reading-state\.js\?v=20260902-reading-state/);
   assert.equal((source.match(/class="guide-screenshot"/g) || []).length, 3, locale + ": three screenshots");
   assert.match(source, /your-garmin|install-maps|installing-maps/);
   assert.doesNotMatch(source, /manage-maps|ready-to-install|object IDs?|MTP object trees?|transaction internals?|\/GARMIN|gmappmap\.img|gmaptz\.img|D\*\.img|hashes/i);
@@ -98,7 +105,7 @@ for (const locale of locales) {
   assert.equal(data["@context"], "https://schema.org");
   const article = oneEntity(data, "Article", file);
   assert.equal(article.datePublished, "2026-08-28T00:00:00Z", `${file}: ISO publication datetime`);
-  assert.equal(article.dateModified, "2026-08-31T00:00:00Z", `${file}: ISO modified datetime`);
+  assert.equal(article.dateModified, "2026-09-02T00:00:00Z", `${file}: ISO modified datetime`);
   assert.deepEqual(oneEntity(data, "Organization", file), {
     "@type": "Organization",
     "@id": baseUrl + "/#organization",
@@ -175,6 +182,8 @@ assert.match(styles, /\.guide-step-copy\s*\{[^}]*grid-column:\s*3/s);
 assert.match(styles, /\.guide-screenshot\s*\{[^}]*grid-column:\s*1/s);
 assert.match(styles, /\.guide-step-content\s*\{[^}]*display:\s*contents/s);
 assert.doesNotMatch(styles, /zigzag|zig-zag/i);
+assert.match(styles, /\.guide-progress\s*\{/);
+assert.match(styles, /\.guide-progress a\[aria-current="location"\]/);
 const shell = read(path.join(root, "site", "site-shell.js"));
 for (const label of ["Guide", "Anleitung", "Guide", "Poradnik", "Průvodce", "Guida"]) assert.ok(shell.includes(`guide: "${label}"`), `shell Guide label: ${label}`);
 assert.match(shell, /navLink\("compatibility"\).*navLink\("guide"\).*navLink\("about"\).*navLink\("download"\)/s);

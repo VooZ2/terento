@@ -67,6 +67,7 @@ assert.deepEqual(compatibilityLocaleApi.statusCodes, ["VERIFIED", "SUPPORTED", "
 for (const locale of ["en", "de", "fr", "pl", "cs", "it"]) {
   const copy = compatibilityLocaleApi.getLocale(locale);
   assert.ok(copy.metaTitle && copy.metaDescription && copy.hero, `${locale}: compatibility metadata and hero copy`);
+  assert.match(copy.evidenceNote, /Garmin|Garminu|Garminen|Garminov|Garminu/i, `${locale}: evidence disclaimer`);
   assert.equal(Object.keys(copy.statuses).length, 4, `${locale}: all status translations`);
   assert.equal(copy.successfulInstallLabel(1).includes("1"), true, `${locale}: localized install count`);
 }
@@ -117,6 +118,7 @@ assert.match(compatibilityLocalesSource, /Terento can install third-party maps o
 assert.match(compatibilityLocalesSource, /3–4 successful installations have confirmed compatibility/);
 assert.match(compatibilityLocalesSource, /5 or more successful installations have confirmed compatibility/);
 assert.match(compatibilitySource, /statusCodes = \["VERIFIED", "SUPPORTED", "TESTED", "TESTING"\]/);
+assert.match(compatibilitySource, /locale\.evidenceNote/);
 assert.match(compatibilitySource, /watch-card-model-row/);
 assert.match(compatibilitySource, /watch-variant/);
 assert.match(compatibilitySource, /successfulInstallLabel\(row\.successful\)/);
@@ -132,6 +134,7 @@ assert.doesNotMatch(compatibilityPage, /aria-labelledby="directory-title"/);
 assert.match(compatibilityPage, /data-summary-model-label>models with evidence/);
 assert.match(compatibilityPage, /More models ready for testing/);
 assert.match(compatibilityPage, /Public compatibility is based on real installation evidence from exact Garmin models and variants\. Each successful installation shared by users helps us confirm compatibility with greater confidence\./);
+assert.match(compatibilityPage, /These counts come from successful installations shared with Terento\. They are not Garmin certification\./);
 assert.match(compatibilityPage, /Garmin Watch Compatibility — Terento/);
 assert.match(compatibilityPage, /data-umami-event="download-cta-click"/);
 assert.match(compatibilityPage, /data-umami-event-location="compatibility-community-testing"/);

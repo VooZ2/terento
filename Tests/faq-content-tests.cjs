@@ -52,8 +52,8 @@ for (const locale of locales) {
   assert.match(entries[1].answer, /map file|Kartendatei|fichier cartographique|plik mapy|mapový soubor|file cartografico/i, `${home}: BaseCamp answer mentions compatible local map import in user language`);
   assert.match(entries[2].answer, /protected|geschützt|protég|chronione|chráněné|protette/i, `${home}: safety answer protects Garmin/system maps`);
   assert.match(entries[3].question, /provider|anbieter|fournisseur|dostawc|poskytovatel/i, `${home}: provider FAQ question`);
-  assert.match(entries[3].answer, /Freizeitkarte/i, `${home}: provider FAQ names Freizeitkarte`);
-  assert.match(entries[3].answer, /OpenTopoMap/i, `${home}: provider FAQ names OpenTopoMap`);
+  assert.match(source, /class="provider-section section"[^>]*id="providers"[\s\S]*Freizeitkarte[\s\S]*OpenTopoMap/i, `${home}: provider directory names current providers`);
+  assert.match(source, /data-provider-list/, `${home}: provider directory is data-driven`);
   assert.doesNotMatch(entries[3].answer, /beta|bêta|version|release|wersj|verz|versi/i, `${home}: provider FAQ describes Terento without release wording`);
   assert.doesNotMatch(source, /back up|backup|sauvegarder|zálohovat|wykonać kopię|zálohovat|eseguire il backup/i, `${home}: removed backup promise`);
   assert.match(entries[0].markup, new RegExp(`href="${localePath(locale, "compatibility/")}"`), `${home}: Compatibility link`);

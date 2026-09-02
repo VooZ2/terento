@@ -12,10 +12,18 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE_URL = "https://terento.app"
 ABOUT_SLUG = "about/"
 SHELL_VERSION = "20260902-ia-navigation"
-STYLE_VERSION = "20260902-home-content"
+STYLE_VERSION = "20260902-website-copy"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
 META_LOCALES = {"en": "en_US", "de": "de_DE", "fr": "fr_FR", "pl": "pl_PL", "cs": "cs_CZ", "it": "it_IT"}
+SOCIAL_IMAGE_ALTS = {
+    "en": "Terento showing a connected Garmin smartwatch on macOS",
+    "de": "Terento zeigt eine verbundene Garmin-Smartwatch unter macOS",
+    "fr": "Terento affiche une montre Garmin connectée sur macOS",
+    "pl": "Terento pokazuje podłączony zegarek Garmin w systemie macOS",
+    "cs": "Terento zobrazuje připojené hodinky Garmin v systému macOS",
+    "it": "Terento mostra uno smartwatch Garmin collegato su macOS",
+}
 
 
 def esc(value: str) -> str:
@@ -159,7 +167,7 @@ def render(locale: str, copy: dict[str, object]) -> str:
     <meta property="og:image:type" content="image/png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="Terento showing a connected Garmin smartwatch on macOS">
+    <meta property="og:image:alt" content="{esc(SOCIAL_IMAGE_ALTS[locale])}">
     <meta property="og:locale" content="{meta_locale}">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{esc(copy["title"])}">

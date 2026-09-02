@@ -2,7 +2,7 @@
 <html lang="en" data-language="en">
   <head>
     <script defer src="/site-shell.js?v=20260902-ia-navigation"></script>
-    <link rel="stylesheet" href="/styles.css?v=20260902-home-content">
+    <link rel="stylesheet" href="/styles.css?v=20260902-website-copy">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -41,6 +41,7 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <script defer src="/language.js?v=20260829-compat-language"></script>
     <script defer src="/privacy-consent.js?v=20260826-2"></script>
+    <script defer src="/provider-list.js?v=20260902-provider-catalog"></script>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -107,7 +108,7 @@
                 "name": "Can I install third-party maps on a Garmin watch from a Mac without BaseCamp?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Yes. Terento guides you from choosing a map to installing it on your watch. You can also import a compatible map file from your Mac. Apple Silicon is required. Read the installation guide."
+                  "text": "Yes. Terento takes you from choosing a map to installing it on your watch. You can also add a compatible map file from your Mac. Apple Silicon is required. Read the installation guide."
                 }
               },
               {
@@ -123,7 +124,7 @@
                 "name": "Which third-party map providers does Terento support?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Terento supports maps from Freizeitkarte and OpenTopoMap. Maps are downloaded directly from each provider."
+                  "text": "Terento uses the supported providers shown above. Maps are downloaded directly from the original provider."
                 }
               },
               {
@@ -278,7 +279,12 @@
           </div>
         </div>
       </section>
-
+      <section class="provider-section section" id="providers" aria-labelledby="providers-title">
+        <div class="shell provider-grid">
+          <div class="section-heading"><p class="eyebrow">Available today</p><h2 id="providers-title">Choose a map and get moving.</h2></div>
+          <div class="provider-copy"><p>Terento connects you directly to supported map providers. This list stays current as support grows.</p><ul class="provider-list" data-provider-list aria-label="Supported map providers"><li>Freizeitkarte</li><li>OpenTopoMap</li></ul></div>
+        </div>
+      </section>
       <section class="faq section" id="faq" aria-labelledby="faq-title">
         <div class="shell faq-grid">
           <div class="section-heading">
@@ -292,7 +298,7 @@
             </details>
             <details>
               <summary>Can I install third-party maps on a Garmin watch from a Mac without BaseCamp?</summary>
-              <p>Yes. Terento guides you from choosing a map to installing it on your watch. You can also import a compatible map file from your Mac. Apple Silicon is required. <a href="/guides/install-garmin-maps-mac/">Read the installation guide.</a></p>
+              <p>Yes. Terento takes you from choosing a map to installing it on your watch. You can also add a compatible map file from your Mac. Apple Silicon is required. <a href="/guides/install-garmin-maps-mac/">Read the installation guide.</a></p>
             </details>
             <details>
               <summary>Is Terento safe for existing Garmin maps?</summary>
@@ -300,7 +306,7 @@
             </details>
             <details>
               <summary>Which third-party map providers does Terento support?</summary>
-              <p>Terento supports maps from Freizeitkarte and OpenTopoMap. Maps are downloaded directly from each provider.</p>
+              <p>Terento uses the supported providers shown above. Maps are downloaded directly from the original provider.</p>
             </details>
             <details>
               <summary>What should I do if installation fails?</summary>
