@@ -481,6 +481,11 @@ struct Stage1ProviderNeutralTests {
             let requiresBundledContourFixture = ProcessInfo.processInfo.environment[
                 "TERENTO_CATALOG_CONTRACT_PATH"
             ] == nil
+            print(
+                "OpenTopoMap matrix diagnostics: rows=\(packages.count), "
+                    + "rowChecks=\(allRowsPass), contours=\(contourRows.count), "
+                    + "externalCatalog=\(!requiresBundledContourFixture)"
+            )
             expect(
                 allRowsPass
                     && (!requiresBundledContourFixture || contourRows.count == 176),
