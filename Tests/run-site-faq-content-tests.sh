@@ -1,5 +1,5 @@
-#!/bin/zsh
-set -euo pipefail
+#!/bin/sh
+set -eu
 
 cd "$(dirname "$0")/.."
 . Tests/node-runtime.sh

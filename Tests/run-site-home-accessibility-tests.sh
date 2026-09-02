@@ -1,6 +1,6 @@
-#!/bin/zsh
-set -euo pipefail
+#!/bin/sh
+set -eu
 
-repo_root="${0:A:h:h}"
+repo_root="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
 . "$repo_root/Tests/node-runtime.sh"
 "$NODE_BIN" "$repo_root/Tests/site-home-accessibility-tests.cjs"

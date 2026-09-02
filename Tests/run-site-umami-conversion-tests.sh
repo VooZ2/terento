@@ -1,7 +1,7 @@
-#!/bin/zsh
-set -euo pipefail
+#!/bin/sh
+set -eu
 
-repo_root="${0:A:h:h}"
+repo_root="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
 python3 - "$repo_root" <<'PY'
 from html.parser import HTMLParser
 from pathlib import Path
