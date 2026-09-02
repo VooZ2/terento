@@ -496,7 +496,8 @@ struct Stage1ProviderNeutralTests {
         } catch {
             expect(
                 false,
-                "all 177 OpenTopoMap rows accept full, compact, and split generated dates with strict identity/version checks"
+                "all 177 OpenTopoMap rows accept full, compact, and split generated dates with strict identity/version checks "
+                    + "[error=\(error)]"
             )
         }
     }
