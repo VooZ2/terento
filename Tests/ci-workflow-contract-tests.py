@@ -54,6 +54,9 @@ def main() -> int:
     assert "Retain API deployment health" in deploy_api
     deploy_site = (WORKFLOWS / "deploy-site.yml").read_text(encoding="utf-8")
     assert "Retain website deployment health" in deploy_site
+    codeql = (WORKFLOWS / "codeql.yml").read_text(encoding="utf-8")
+    assert codeql.index("Prebuild verified Swift native dependencies") < codeql.index("Initialize CodeQL")
+    assert "Packaging/NativeDependencies/build.sh --output" in codeql
     print(f"PASS: {len(workflow_files)} workflows use pinned actions and required quality gates")
     return 0
 
