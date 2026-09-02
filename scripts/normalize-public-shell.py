@@ -9,10 +9,11 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SHELL_VERSION = "20260829-faq-routing"
-STYLE_VERSION = "20260830-brand-tokens"
+SHELL_VERSION = "20260902-ia-navigation"
+STYLE_VERSION = "20260902-home-content"
+IMAGE_VERSION = "20260902-your-garmin"
 LANGUAGE_VERSION = "20260829-compat-language"
-LOCALIZED_CONTENT_VERSION = "20260902-beta9-release"
+LOCALIZED_CONTENT_VERSION = "20260902-home-content"
 LOCALES = {
     "en": {"flag": "🇬🇧", "name": "English", "home": "Terento home", "primary": "Primary navigation", "menu": "Menu", "close": "Close menu", "about": "About", "compatibility": "Compatibility", "guide": "Guide", "faq": "FAQ", "download": "Download", "language": "Choose language", "footer": "Footer navigation", "status": "Open-source project", "legal": "Legal", "privacy": "Privacy", "support": "Support Terento", "stats": "Visit statistics (Umami) do not use cookies."},
     "de": {"flag": "🇩🇪", "name": "Deutsch", "home": "Terento Startseite", "primary": "Hauptnavigation", "menu": "Menü", "close": "Menü schließen", "about": "Über uns", "compatibility": "Kompatibilität", "guide": "Anleitung", "faq": "FAQ", "download": "Download", "language": "Sprache wählen", "footer": "Footer-Navigation", "status": "Open-Source-Projekt", "legal": "Rechtliches", "privacy": "Datenschutz", "support": "Support Terento", "stats": "Besuchsstatistik (Umami) verwendet keine Cookies."},
@@ -46,9 +47,9 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
     compatibility = route_for(locale, "compatibility/")
     download = route_for(locale, "download/")
     guide = route_for(locale, "guides/install-garmin-maps-mac/")
-    route_for_language = route if page in {"compatibility", "download", "guide"} else ""
-    nav = {"about": f"{root}#about", "compatibility": compatibility, "guide": guide, "faq": f"{root}#faq", "download": download}
-    active = {"compatibility": page == "compatibility", "guide": page == "guide", "download": page == "download"}
+    route_for_language = route if page in {"about", "compatibility", "download", "guide"} else ""
+    nav = {"about": route_for(locale, "about/"), "compatibility": compatibility, "guide": guide, "faq": f"{root}#faq", "download": download}
+    active = {"about": page == "about", "compatibility": page == "compatibility", "guide": page == "guide", "download": page == "download"}
     def nav_link(key: str) -> str:
         current = ' aria-current="page"' if active.get(key) else ""
         return f'<a href="{nav[key]}"{current}>{copy[key]}</a>'
@@ -63,7 +64,7 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
           <span>Terento</span>
         </a>
         <nav class="primary-nav" aria-label="{copy["primary"]}">
-          {nav_link("about")}{nav_link("compatibility")}{nav_link("guide")}{nav_link("faq")}{nav_link("download")}
+          {nav_link("compatibility")}{nav_link("guide")}{nav_link("about")}{nav_link("download")}
           <span class="language-switcher">{language_menu}</span>
         </nav>
         <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="{copy["menu"]}">
@@ -74,7 +75,7 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
       <div class="mobile-nav" id="mobile-nav" hidden>
         <div class="shell mobile-nav-inner">
           <nav class="mobile-nav-links" aria-label="{copy["primary"]}">
-            {nav_link("about")}{nav_link("compatibility")}{nav_link("guide")}{nav_link("faq")}{nav_link("download")}
+            {nav_link("compatibility")}{nav_link("guide")}{nav_link("about")}{nav_link("download")}
           </nav>
           <div class="mobile-nav-language"><details class="language-menu mobile-language-menu">
             <summary class="language-trigger" aria-label="{copy["language"]}"><span class="mobile-language-label">{copy["language"]}</span><span class="language-current" aria-hidden="true">{copy["flag"]}</span></summary>
@@ -93,7 +94,7 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
           <div class="footer-meta"><p class="footer-status">{copy["status"]}</p><a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">{copy["support"]}</a></div>
         </div>
         <nav class="footer-nav" aria-label="{copy["footer"]}">
-          {nav_link("about")}{nav_link("compatibility")}{nav_link("faq")}{nav_link("download")}
+          {nav_link("about")}{nav_link("compatibility")}{nav_link("guide")}{nav_link("faq")}{nav_link("download")}
           <a href="/legal/">{copy["legal"]}</a>
           <a href="/privacy/">{copy["privacy"]}</a>
         </nav>
@@ -110,6 +111,7 @@ def files() -> list[tuple[str, str, str]]:
         prefix = "" if locale == "en" else f"{locale}/"
         result.extend([
             (f"site/{prefix}index.html", locale, "home"),
+            (f"site/{prefix}about/index.html", locale, "about"),
             (f"site/{prefix}download/index.html", locale, "download"),
             (f"site/{prefix}compatibility/index.html", locale, "compatibility"),
             (f"site/{prefix}guides/install-garmin-maps-mac/index.html", locale, "guide"),
@@ -124,7 +126,7 @@ def main() -> None:
         if not path.exists():
             continue
         source = path.read_text(encoding="utf-8")
-        header, footer = shell(locale, "compatibility/" if page == "compatibility" else "download/" if page == "download" else "guides/install-garmin-maps-mac/" if page == "guide" else "", page)
+        header, footer = shell(locale, "about/" if page == "about" else "compatibility/" if page == "compatibility" else "download/" if page == "download" else "guides/install-garmin-maps-mac/" if page == "guide" else "", page)
         source, header_count = re.subn(r'<header class="site-header">[\s\S]*?</header>', header, source, count=1)
         if not header_count:
             raise SystemExit(f"missing header in {relative}")
@@ -132,7 +134,21 @@ def main() -> None:
         if not footer_count:
             raise SystemExit(f"missing footer in {relative}")
         source = re.sub(r'(/site-shell\.js\?v=)[^"\s]+', rf'\g<1>{SHELL_VERSION}', source)
-        source = re.sub(r'(/styles\.css\?v=)[^"\s]+', rf'\g<1>{STYLE_VERSION}', source)
+        source = re.sub(r'\s*<link rel="stylesheet" href="/styles\.css\?v=[^"\s]+">', "", source)
+        source, style_anchor_count = re.subn(
+            r'(<script defer src="/site-shell\.js\?v=[^"\s]+"></script>)',
+            rf'\1\n    <link rel="stylesheet" href="/styles.css?v={STYLE_VERSION}">',
+            source,
+            count=1,
+        )
+        if style_anchor_count != 1:
+            raise SystemExit(f"missing site-shell script before stylesheet in {relative}")
+        source = re.sub(
+            r'(/assets/app/optimized/your-garmin-\d+\.(?:avif|webp|png))(?!\?v=)[^"\s]*',
+            rf'\1?v={IMAGE_VERSION}',
+            source,
+        )
+        source = source.replace('width="2205" height="1348"', 'width="2200" height="1346"')
         source = re.sub(
             r'(/localized-content\.js\?v=)[^"\s]+',
             rf'\g<1>{LOCALIZED_CONTENT_VERSION}',

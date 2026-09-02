@@ -1,11 +1,12 @@
 <!doctype html>
 <html lang="fr" data-language="fr" data-page="guide">
   <head>
-    <script defer src="/site-shell.js?v=20260829-faq-routing"></script>
+    <script defer src="/site-shell.js?v=20260902-ia-navigation"></script>
+    <link rel="stylesheet" href="/styles.css?v=20260902-home-content">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
-    <meta name="description" content="Installez des cartes tierces sur une montre Garmin compatible depuis un Mac Apple Silicon avec Terento. Connectez la montre, choisissez une carte tierce, vérifiez le stockage et installez en toute sécurité.">
+    <meta name="description" content="Installez des cartes tierces prises en charge sur une montre Garmin depuis un Mac Apple Silicon. Connectez la montre, choisissez une carte et utilisez Terento.">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://terento.app/fr/guides/install-garmin-maps-mac/">
     <link rel="alternate" hreflang="en" href="https://terento.app/guides/install-garmin-maps-mac/">
@@ -17,8 +18,8 @@
     <link rel="alternate" hreflang="x-default" href="https://terento.app/guides/install-garmin-maps-mac/">
     <meta property="og:type" content="article">
     <meta property="og:site_name" content="Terento">
-    <meta property="og:title" content="Installer des cartes tierces sur une montre Garmin depuis un Mac — Terento">
-    <meta property="og:description" content="Installez des cartes tierces sur une montre Garmin compatible depuis un Mac Apple Silicon avec Terento. Connectez la montre, choisissez une carte tierce, vérifiez le stockage et installez en toute sécurité.">
+    <meta property="og:title" content="Installer des cartes tierces Garmin sur Mac — Terento">
+    <meta property="og:description" content="Installez des cartes tierces prises en charge sur une montre Garmin depuis un Mac Apple Silicon. Connectez la montre, choisissez une carte et utilisez Terento.">
     <meta property="og:url" content="https://terento.app/fr/guides/install-garmin-maps-mac/">
     <meta property="og:image" content="https://terento.app/assets/social/terento-og.png">
     <meta property="og:image:type" content="image/png">
@@ -27,16 +28,17 @@
     <meta property="og:image:alt" content="Terento showing a connected Garmin smartwatch on macOS">
     <meta property="og:locale" content="fr_FR">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Installer des cartes tierces sur une montre Garmin depuis un Mac — Terento">
-    <meta name="twitter:description" content="Installez des cartes tierces sur une montre Garmin compatible depuis un Mac Apple Silicon avec Terento. Connectez la montre, choisissez une carte tierce, vérifiez le stockage et installez en toute sécurité.">
+    <meta name="twitter:title" content="Installer des cartes tierces Garmin sur Mac — Terento">
+    <meta name="twitter:description" content="Installez des cartes tierces prises en charge sur une montre Garmin depuis un Mac Apple Silicon. Connectez la montre, choisissez une carte et utilisez Terento.">
     <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
-    <title>Installer des cartes tierces sur une montre Garmin depuis un Mac — Terento</title>
+    <title>Installer des cartes tierces Garmin sur Mac — Terento</title>
+
+
     <link rel="icon" href="/favicon.ico?v=20260820-4" sizes="any">
     <link rel="icon" href="/favicon.svg?v=20260820-4" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260820-4">
     <link rel="mask-icon" href="/safari-pinned-tab.svg?v=20260820-4" color="#7898A8">
     <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="stylesheet" href="/styles.css?v=20260830-brand-tokens">
     <script defer src="/language.js?v=20260829-compat-language"></script>
     <script defer src="/privacy-consent.js?v=20260826-2"></script>
     <script type="application/ld+json">
@@ -57,7 +59,7 @@
       "@type": "Article",
       "@id": "https://terento.app/fr/guides/install-garmin-maps-mac/#article",
       "headline": "Installer des cartes tierces sur une montre Garmin depuis un Mac",
-      "description": "Installez des cartes tierces sur une montre Garmin compatible depuis un Mac Apple Silicon avec Terento. Connectez la montre, choisissez une carte tierce, vérifiez le stockage et installez en toute sécurité.",
+      "description": "Installez des cartes tierces prises en charge sur une montre Garmin depuis un Mac Apple Silicon. Connectez la montre, choisissez une carte et utilisez Terento.",
       "datePublished": "2026-08-28T00:00:00Z",
       "dateModified": "2026-08-31T00:00:00Z",
       "mainEntityOfPage": {
@@ -96,7 +98,7 @@
   ]
 }
     </script>
-  </head>
+</head>
   <body>
     <a class="skip-link" href="#main-content">Aller au contenu</a>
     <header class="site-header">
@@ -106,7 +108,7 @@
           <span>Terento</span>
         </a>
         <nav class="primary-nav" aria-label="Navigation principale">
-          <a href="/fr/#about">À propos</a><a href="/fr/compatibility/">Compatibilité</a><a href="/fr/guides/install-garmin-maps-mac/" aria-current="page">Guide</a><a href="/fr/#faq">FAQ</a><a href="/fr/download/">Télécharger</a>
+          <a href="/fr/compatibility/">Compatibilité</a><a href="/fr/guides/install-garmin-maps-mac/" aria-current="page">Guide</a><a href="/fr/about/">À propos</a><a href="/fr/download/">Télécharger</a>
           <span class="language-switcher"><details class="language-menu">
           <summary class="language-trigger" aria-label="Choisir la langue"><span class="language-current" aria-hidden="true">🇫🇷</span></summary>
           <div class="language-options"><a class="language-option" href="/guides/install-garmin-maps-mac/" data-language-switch="en" lang="en" aria-label="English"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/guides/install-garmin-maps-mac/" data-language-switch="de" lang="de" aria-label="Deutsch"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/guides/install-garmin-maps-mac/" data-language-switch="fr" lang="fr" aria-label="Français" aria-current="page"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/guides/install-garmin-maps-mac/" data-language-switch="pl" lang="pl" aria-label="Polski"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/guides/install-garmin-maps-mac/" data-language-switch="cs" lang="cs" aria-label="Čeština"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/guides/install-garmin-maps-mac/" data-language-switch="it" lang="it" aria-label="Italiano"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
@@ -120,7 +122,7 @@
       <div class="mobile-nav" id="mobile-nav" hidden>
         <div class="shell mobile-nav-inner">
           <nav class="mobile-nav-links" aria-label="Navigation principale">
-            <a href="/fr/#about">À propos</a><a href="/fr/compatibility/">Compatibilité</a><a href="/fr/guides/install-garmin-maps-mac/" aria-current="page">Guide</a><a href="/fr/#faq">FAQ</a><a href="/fr/download/">Télécharger</a>
+            <a href="/fr/compatibility/">Compatibilité</a><a href="/fr/guides/install-garmin-maps-mac/" aria-current="page">Guide</a><a href="/fr/about/">À propos</a><a href="/fr/download/">Télécharger</a>
           </nav>
           <div class="mobile-nav-language"><details class="language-menu mobile-language-menu">
             <summary class="language-trigger" aria-label="Choisir la langue"><span class="mobile-language-label">Choisir la langue</span><span class="language-current" aria-hidden="true">🇫🇷</span></summary>
@@ -135,7 +137,7 @@
           <div class="shell">
             <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Guide d’installation sur Mac</p>
             <h1>Installer des cartes tierces sur une montre Garmin depuis un Mac</h1>
-            <p class="guide-lede">Installer des cartes tierces sur une montre Garmin depuis un Mac peut impliquer le MTP, des transferts de fichiers manuels ou d’anciens outils de bureau. Terento propose un parcours natif Apple Silicon : connectez la montre, choisissez une carte tierce, vérifiez le stockage et installez.</p>
+            <p class="guide-lede">Terento propose un parcours clair pour Apple Silicon : connectez la montre, choisissez une carte, vérifiez l’espace et installez.</p>
             <div class="guide-actions">
               <a class="download-action" href="/fr/download/" data-umami-event="download-cta-click" data-umami-event-location="guide-hero">Télécharger la bêta <span aria-hidden="true">→</span></a>
               <a class="text-link" href="/fr/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="guide-preflight">Voir la compatibilité <span aria-hidden="true">→</span></a>
@@ -173,17 +175,17 @@
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Connecter votre Garmin</h3>
-                  <p>Connectez la montre avec un câble USB de données. Les montres Garmin qui utilisent le MTP peuvent mettre 1 à 2 minutes à apparaître. Gardez l’appareil connecté et laissez à Terento le temps de terminer la détection.</p>
+                  <p>Connectez la montre avec un câble USB de données. Elle peut mettre 1 à 2 minutes à apparaître. Gardez-la connectée pendant que Terento termine la détection.</p>
                   <p class="guide-step-note">Fermez Garmin Express, OpenMTP ou toute autre app susceptible d’utiliser déjà la montre.</p>
 
                 </div>
                 <figure class="guide-screenshot">
           <picture>
-            <source type="image/avif" srcset="/assets/app/optimized/your-garmin-640.avif 640w, /assets/app/optimized/your-garmin-960.avif 960w, /assets/app/optimized/your-garmin-1280.avif 1280w, /assets/app/optimized/your-garmin-1600.avif 1600w" sizes="(max-width: 760px) 100vw, 42vw">
-            <source type="image/webp" srcset="/assets/app/optimized/your-garmin-640.webp 640w, /assets/app/optimized/your-garmin-960.webp 960w, /assets/app/optimized/your-garmin-1280.webp 1280w, /assets/app/optimized/your-garmin-1600.webp 1600w" sizes="(max-width: 760px) 100vw, 42vw">
-            <img src="/assets/app/optimized/your-garmin-1600.avif" srcset="/assets/app/optimized/your-garmin-640.avif 640w, /assets/app/optimized/your-garmin-960.avif 960w, /assets/app/optimized/your-garmin-1280.avif 1280w, /assets/app/optimized/your-garmin-1600.avif 1600w" sizes="(max-width: 760px) 100vw, 42vw" width="2205" height="1348" loading="lazy" decoding="async" alt="Terento affiche une montre Garmin connectée et son état de détection">
+            <source type="image/avif" srcset="/assets/app/optimized/your-garmin-640.avif?v=20260902-your-garmin 640w, /assets/app/optimized/your-garmin-960.avif?v=20260902-your-garmin 960w, /assets/app/optimized/your-garmin-1280.avif?v=20260902-your-garmin 1280w, /assets/app/optimized/your-garmin-1600.avif?v=20260902-your-garmin 1600w" sizes="(max-width: 760px) 100vw, 42vw">
+            <source type="image/webp" srcset="/assets/app/optimized/your-garmin-640.webp?v=20260902-your-garmin 640w, /assets/app/optimized/your-garmin-960.webp?v=20260902-your-garmin 960w, /assets/app/optimized/your-garmin-1280.webp?v=20260902-your-garmin 1280w, /assets/app/optimized/your-garmin-1600.webp?v=20260902-your-garmin 1600w" sizes="(max-width: 760px) 100vw, 42vw">
+            <img src="/assets/app/optimized/your-garmin-1600.avif?v=20260902-your-garmin" srcset="/assets/app/optimized/your-garmin-640.avif?v=20260902-your-garmin 640w, /assets/app/optimized/your-garmin-960.avif?v=20260902-your-garmin 960w, /assets/app/optimized/your-garmin-1280.avif?v=20260902-your-garmin 1280w, /assets/app/optimized/your-garmin-1600.avif?v=20260902-your-garmin 1600w" sizes="(max-width: 760px) 100vw, 42vw" width="2200" height="1346" loading="lazy" decoding="async" alt="Terento affiche une montre Garmin connectée et son état de détection">
           </picture>
-          <figcaption>Les montres Garmin utilisant le MTP peuvent mettre 1 à 2 minutes à apparaître après la connexion.</figcaption>
+          <figcaption>La montre peut mettre 1 à 2 minutes à apparaître après la connexion.</figcaption>
         </figure>
               </div>
             </li><li class="guide-step">
@@ -245,7 +247,7 @@
             <div class="guide-section-heading"><p class="eyebrow">Besoin d’aide ?</p><h2 id="troubleshooting-title">Si quelque chose ne fonctionne pas</h2></div>
             <div class="troubleshooting-list"><section class="troubleshooting-item">
               <h3>Terento ne détecte pas la montre</h3>
-              <p>Attendez 1 à 2 minutes après la connexion. Si la montre n’apparaît toujours pas, reconnectez-la, vérifiez que le câble permet les données et fermez les autres apps Garmin ou MTP.</p>
+              <p>Attendez 1 à 2 minutes après la connexion. Si la montre n’apparaît toujours pas, reconnectez-la, vérifiez que le câble permet les données et fermez les autres apps susceptibles de l’utiliser.</p>
 
             </section><section class="troubleshooting-item">
               <h3>Échec de l’installation</h3>
@@ -295,7 +297,7 @@
           <div class="footer-meta"><p class="footer-status">Projet open source</p><a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
         </div>
         <nav class="footer-nav" aria-label="Navigation du pied de page">
-          <a href="/fr/#about">À propos</a><a href="/fr/compatibility/">Compatibilité</a><a href="/fr/#faq">FAQ</a><a href="/fr/download/">Télécharger</a>
+          <a href="/fr/about/">À propos</a><a href="/fr/compatibility/">Compatibilité</a><a href="/fr/guides/install-garmin-maps-mac/" aria-current="page">Guide</a><a href="/fr/#faq">FAQ</a><a href="/fr/download/">Télécharger</a>
           <a href="/legal/">Mentions légales</a>
           <a href="/privacy/">Confidentialité</a>
         </nav>

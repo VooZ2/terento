@@ -26,7 +26,7 @@ LOGO_PATH = ROOT / "brand" / "logo" / "logo.svg"
 HEX_RE = re.compile(r"#[0-9A-Fa-f]{3,8}\b")
 SITE_BEGIN = "/* BEGIN GENERATED TERENTO BRAND TOKENS */"
 SITE_END = "/* END GENERATED TERENTO BRAND TOKENS */"
-STYLE_VERSION = "20260830-brand-tokens"
+STYLE_VERSION = "20260902-home-content"
 LOGO_SHA256 = "6fd490112b8cb34e9a0f699a38f16ddf6d3a0848981ec15c694710946421dc13"
 
 
@@ -122,7 +122,7 @@ def main() -> int:
         if "/styles.css?v=" not in html:
             continue
         assert f"/styles.css?v={STYLE_VERSION}" in html, f"{html_path}: stale stylesheet cache version"
-        assert not re.search(r"/styles\.css\?v=(?!20260830-brand-tokens)[^\"\s]+", html), f"{html_path}: inconsistent stylesheet cache version"
+        assert not re.search(rf"/styles\.css\?v=(?!{re.escape(STYLE_VERSION)})[^\"\s]+", html), f"{html_path}: inconsistent stylesheet cache version"
 
     admin_source = ADMIN_SOURCE_PATH.read_text(encoding="utf-8")
     admin_generated = load_generated_admin_css()

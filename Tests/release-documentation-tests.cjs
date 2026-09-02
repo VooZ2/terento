@@ -37,7 +37,11 @@ for (const locale of ["en", "de", "fr", "pl", "cs", "it"]) {
   const prefix = locale === "en" ? "" : `${locale}/`;
   assertOnlyCurrentBeta(`site/${prefix}index.html`);
 }
-assertOnlyCurrentBeta("site/localized-content.js");
+assert.doesNotMatch(
+  read("site/localized-content.js"),
+  numberedBeta,
+  "Runtime-localized Home and FAQ copy must remain release-neutral",
+);
 
 assert.doesNotMatch(
   read("backend/catalog-api/src/terento_catalog/admin.py"),

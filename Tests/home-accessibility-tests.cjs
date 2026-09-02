@@ -20,7 +20,7 @@ const styles = read(path.join(root, "site", "styles.css"));
 for (const file of homeFiles) {
   const page = read(file);
   const experience = page.match(
-    /<section class="experience section" id="about"[\s\S]*?<\/section>/
+    /<section class="experience section" id="how-it-works"[\s\S]*?<\/section>/
   )?.[0];
   assert.ok(experience, `${file}: missing Home experience section`);
 

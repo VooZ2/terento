@@ -1,11 +1,12 @@
 <!doctype html>
 <html lang="it" data-language="it">
   <head>
-    <script defer src="/site-shell.js?v=20260829-faq-routing"></script>
+    <script defer src="/site-shell.js?v=20260902-ia-navigation"></script>
+    <link rel="stylesheet" href="/styles.css?v=20260902-home-content">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
-    <meta name="description" content="Applicazione macOS gratuita e open source per installare e gestire mappe di terze parti sugli smartwatch Garmin. Apple Silicon richiesto; la compatibilità è confermata modello per modello.">
+    <meta name="description" content="Installa e gestisci mappe di terze parti sugli smartwatch Garmin compatibili con Terento, l’app macOS gratuita per Apple Silicon.">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://terento.app/it/">
     <link rel="alternate" hreflang="en" href="https://terento.app/">
@@ -18,7 +19,7 @@
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Terento">
     <meta property="og:title" content="Terento — Mappe di terze parti per Garmin su Mac">
-    <meta property="og:description" content="Applicazione macOS gratuita e open source per installare e gestire mappe di terze parti sugli smartwatch Garmin. Apple Silicon richiesto; la compatibilità è confermata modello per modello.">
+    <meta property="og:description" content="Installa e gestisci mappe di terze parti sugli smartwatch Garmin compatibili con Terento, l’app macOS gratuita per Apple Silicon.">
     <meta property="og:url" content="https://terento.app/it/">
     <meta property="og:image" content="https://terento.app/assets/social/terento-og.png">
     <meta property="og:image:type" content="image/png">
@@ -28,7 +29,7 @@
     <meta property="og:locale" content="it_IT">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Terento — Mappe di terze parti per Garmin su Mac">
-    <meta name="twitter:description" content="Applicazione macOS gratuita e open source per installare e gestire mappe di terze parti sugli smartwatch Garmin. Apple Silicon richiesto; la compatibilità è confermata modello per modello.">
+    <meta name="twitter:description" content="Installa e gestisci mappe di terze parti sugli smartwatch Garmin compatibili con Terento, l’app macOS gratuita per Apple Silicon.">
     <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
     <title>Terento — Mappe di terze parti per Garmin su Mac</title>
 
@@ -38,11 +39,9 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260820-4">
     <link rel="mask-icon" href="/safari-pinned-tab.svg?v=20260820-4" color="#7898A8">
     <link rel="manifest" href="/manifest.webmanifest">
-
-    <link rel="stylesheet" href="/styles.css?v=20260830-brand-tokens">
     <script defer src="/language.js?v=20260829-compat-language"></script>
     <script defer src="/privacy-consent.js?v=20260826-2"></script>
-    <script defer src="/localized-content.js?v=20260902-beta9-release"></script>
+    <script defer src="/localized-content.js?v=20260902-home-content"></script>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -64,7 +63,7 @@
             "url": "https://terento.app/it/",
             "applicationCategory": "UtilitiesApplication",
             "operatingSystem": "macOS 13 o successivo su Apple Silicon",
-            "description": "Applicazione macOS gratuita e open source per installare e gestire mappe di terze parti sugli smartwatch Garmin. Apple Silicon richiesto; la compatibilità è confermata modello per modello.",
+            "description": "Installa e gestisci mappe di terze parti sugli smartwatch Garmin compatibili con Terento, l’app macOS gratuita per Apple Silicon.",
             "softwareVersion": "1.0.0-beta.9",
             "softwareRequirements": "Mac Apple Silicon. I Mac Intel non sono supportati.",
             "downloadUrl": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.9/Terento-1.0.0-beta.9-macOS-arm64.dmg",
@@ -85,7 +84,7 @@
             "name": "Terento",
             "url": "https://terento.app/it/",
             "inLanguage": "it",
-            "description": "Applicazione macOS gratuita e open source per installare e gestire mappe di terze parti sugli smartwatch Garmin. Apple Silicon richiesto; la compatibilità è confermata modello per modello.",
+            "description": "Installa e gestisci mappe di terze parti sugli smartwatch Garmin compatibili con Terento, l’app macOS gratuita per Apple Silicon.",
             "publisher": {
               "@id": "https://terento.app/#organization"
             }
@@ -101,7 +100,7 @@
                 "name": "Quali smartwatch Garmin funzionano con Terento?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Terento è progettato per gli smartwatch Garmin con supporto alle mappe. La compatibilità pubblica per l’installazione di mappe di terze parti viene confermata per ogni modello e variante sulla base di risultati reali condivisi dagli utenti. Consulta la pagina Compatibilità per le prove aggiornate."
+                  "text": "Consulta la pagina Compatibilità per i modelli e le varianti Garmin confermati da installazioni reali."
                 }
               },
               {
@@ -109,23 +108,7 @@
                 "name": "Posso installare mappe di terze parti su uno smartwatch Garmin da un Mac senza BaseCamp?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Sì. Terento offre un flusso nativo guidato per macOS per installare mappe di terze parti supportate, senza BaseCamp né un file manager MTP generico. Puoi anche importare dal Mac una mappa .img di terze parti supportata. È richiesto Apple Silicon. Leggi la guida all’installazione su Mac."
-                }
-              },
-              {
-                "@type": "Question",
-                "name": "Perché il mio smartwatch Garmin non appare subito nel Finder o in Terento?",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "Molti smartwatch Garmin recenti usano MTP e potrebbero non apparire come una normale unità del Finder. Il rilevamento di Terento può richiedere 1–2 minuti dopo il collegamento. Lascia l’orologio collegato e chiudi Garmin Express, OpenMTP o un’altra app che potrebbe già utilizzarlo."
-                }
-              },
-              {
-                "@type": "Question",
-                "name": "Terento sostituisce Garmin Express?",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "No. Terento si concentra sull’installazione e la gestione di mappe di terze parti supportate. Garmin Express resta utile per gli aggiornamenti ufficiali dei dispositivi Garmin e per i relativi servizi."
+                  "text": "Sì. Terento ti guida dalla scelta della mappa all’installazione sullo smartwatch. Puoi anche importare dal Mac un file cartografico compatibile. È richiesto Apple Silicon. Leggi la guida all’installazione."
                 }
               },
               {
@@ -133,7 +116,7 @@
                 "name": "Terento è sicuro per le mappe Garmin esistenti?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Sì. Le mappe Garmin e di sistema restano protette. Terento aggiorna o rimuove le mappe di terze parti supportate solo tramite azioni esplicite e convalidate."
+                  "text": "Sì. Le mappe Garmin e di sistema restano protette. Terento modifica solo le mappe di terze parti supportate dopo la tua conferma."
                 }
               },
               {
@@ -141,7 +124,7 @@
                 "name": "Quali provider di mappe di terze parti supporta Terento?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Terento beta 9 supporta mappe di terze parti da Freizeitkarte e OpenTopoMap. L’elenco dei provider è pensato per crescere con le future versioni beta. Le mappe vengono scaricate direttamente dal provider originale sul Mac e poi trasferite sullo smartwatch; Terento non ospita né riconfeziona i file delle mappe."
+                  "text": "Terento supporta le mappe di Freizeitkarte e OpenTopoMap. Le mappe vengono scaricate direttamente da ciascun provider."
                 }
               },
               {
@@ -149,31 +132,7 @@
                 "name": "Cosa devo fare se l’installazione non riesce?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Apri una issue oppure invia il log diagnostico via e-mail a hello@terento.app. Il report aiuta a esaminare il problema senza dover controllare manualmente le cartelle del dispositivo."
-                }
-              },
-              {
-                "@type": "Question",
-                "name": "Terento carica dati sul dispositivo?",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "La condivisione della compatibilità è facoltativa. Se attivata, vengono condivise solo prove di installazione minimizzate; non vengono inviati ID Garmin, numeri di serie o percorsi locali."
-                }
-              },
-              {
-                "@type": "Question",
-                "name": "Perché è richiesto Apple Silicon?",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "L’attuale beta macOS nativa è realizzata per Mac Apple Silicon con macOS 13 o versioni successive."
-                }
-              },
-              {
-                "@type": "Question",
-                "name": "Posso aggiornare o rimuovere le mappe installate?",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "Puoi aggiornare le mappe gestite da Terento quando è disponibile una versione più recente del provider e rimuovere in sicurezza dall’app le mappe di terze parti supportate. Le mappe Garmin e di sistema restano protette."
+                  "text": "Apri una issue su GitHub oppure invia il log diagnostico via e-mail. Contiene le informazioni necessarie per analizzare il problema."
                 }
               }
             ]
@@ -191,7 +150,7 @@
           <span>Terento</span>
         </a>
         <nav class="primary-nav" aria-label="Navigazione principale">
-          <a href="/it/#about">Informazioni</a><a href="/it/compatibility/">Compatibilità</a><a href="/it/guides/install-garmin-maps-mac/">Guida</a><a href="/it/#faq">FAQ</a><a href="/it/download/">Scarica</a>
+          <a href="/it/compatibility/">Compatibilità</a><a href="/it/guides/install-garmin-maps-mac/">Guida</a><a href="/it/about/">Informazioni</a><a href="/it/download/">Scarica</a>
           <span class="language-switcher"><details class="language-menu">
           <summary class="language-trigger" aria-label="Scegli la lingua"><span class="language-current" aria-hidden="true">🇮🇹</span></summary>
           <div class="language-options"><a class="language-option" href="/" data-language-switch="en" lang="en" aria-label="English"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/" data-language-switch="de" lang="de" aria-label="Deutsch"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/" data-language-switch="fr" lang="fr" aria-label="Français"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/" data-language-switch="pl" lang="pl" aria-label="Polski"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/" data-language-switch="cs" lang="cs" aria-label="Čeština"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/" data-language-switch="it" lang="it" aria-label="Italiano" aria-current="page"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
@@ -205,7 +164,7 @@
       <div class="mobile-nav" id="mobile-nav" hidden>
         <div class="shell mobile-nav-inner">
           <nav class="mobile-nav-links" aria-label="Navigazione principale">
-            <a href="/it/#about">Informazioni</a><a href="/it/compatibility/">Compatibilità</a><a href="/it/guides/install-garmin-maps-mac/">Guida</a><a href="/it/#faq">FAQ</a><a href="/it/download/">Scarica</a>
+            <a href="/it/compatibility/">Compatibilità</a><a href="/it/guides/install-garmin-maps-mac/">Guida</a><a href="/it/about/">Informazioni</a><a href="/it/download/">Scarica</a>
           </nav>
           <div class="mobile-nav-language"><details class="language-menu mobile-language-menu">
             <summary class="language-trigger" aria-label="Scegli la lingua"><span class="mobile-language-label">Scegli la lingua</span><span class="language-current" aria-hidden="true">🇮🇹</span></summary>
@@ -216,16 +175,22 @@
     </header>
 
     <main id="main-content">
-      <section class="hero" aria-labelledby="hero-title"><div class="shell hero-grid"><div class="hero-copy"><p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Progetto open source · Beta</p><h1 id="hero-title">Il tuo dispositivo, pronto per la prossima meta.</h1><p class="hero-lede">Un’app macOS nativa per installare e gestire mappe di terze parti sugli smartwatch Garmin.</p><p class="hero-requirement">È richiesto un Mac Apple Silicon.</p><p class="hero-status">Beta disponibile · La compatibilità viene confermata modello per modello.</p><a class="text-link" href="/it/download/">Scarica la beta <span aria-hidden="true">↘</span></a></div><div class="hero-visual"><figure class="app-shot app-shot--hero"><picture><source type="image/avif" srcset="/assets/app/optimized/your-garmin-640.avif 640w, /assets/app/optimized/your-garmin-960.avif 960w, /assets/app/optimized/your-garmin-1280.avif 1280w, /assets/app/optimized/your-garmin-1600.avif 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw"><source type="image/webp" srcset="/assets/app/optimized/your-garmin-640.webp 640w, /assets/app/optimized/your-garmin-960.webp 960w, /assets/app/optimized/your-garmin-1280.webp 1280w, /assets/app/optimized/your-garmin-1600.webp 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw"><img src="/assets/app/optimized/your-garmin-1600.png" width="2205" height="1348" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw" alt="Terento mostra uno smartwatch Garmin collegato su macOS" fetchpriority="high" decoding="async"></picture></figure></div></div></section>
+      <section class="hero" aria-labelledby="hero-title"><div class="shell hero-grid"><div class="hero-copy"><p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Progetto open source · Beta</p><h1 id="hero-title">Il tuo dispositivo, pronto per la prossima meta.</h1><p class="hero-lede">Un’app macOS nativa per installare e gestire mappe di terze parti sugli smartwatch Garmin.</p><p class="hero-requirement">È richiesto un Mac Apple Silicon.</p><p class="hero-status">Beta disponibile · La compatibilità viene confermata modello per modello.</p><a class="download-action hero-download-action" href="/it/download/">Scarica la beta <span aria-hidden="true">↘</span></a></div><div class="hero-visual"><figure class="app-shot app-shot--hero"><picture><source type="image/avif" srcset="/assets/app/optimized/your-garmin-640.avif?v=20260902-your-garmin 640w, /assets/app/optimized/your-garmin-960.avif?v=20260902-your-garmin 960w, /assets/app/optimized/your-garmin-1280.avif?v=20260902-your-garmin 1280w, /assets/app/optimized/your-garmin-1600.avif?v=20260902-your-garmin 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw"><source type="image/webp" srcset="/assets/app/optimized/your-garmin-640.webp?v=20260902-your-garmin 640w, /assets/app/optimized/your-garmin-960.webp?v=20260902-your-garmin 960w, /assets/app/optimized/your-garmin-1280.webp?v=20260902-your-garmin 1280w, /assets/app/optimized/your-garmin-1600.webp?v=20260902-your-garmin 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw"><img src="/assets/app/optimized/your-garmin-1600.png?v=20260902-your-garmin" width="2200" height="1346" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw" alt="Terento mostra uno smartwatch Garmin collegato su macOS" fetchpriority="high" decoding="async"></picture></figure></div></div></section>
 
-      <section class="experience section" id="about" aria-labelledby="experience-title"><div class="shell"><div class="section-heading"><p class="eyebrow">Come funziona</p><h2 id="experience-title">Collega <span aria-hidden="true">→</span> Installa <span aria-hidden="true">→</span> Parti</h2></div><div class="problem-statement"><p>Installare mappe non dovrebbe richiedere file manager, cartelle del dispositivo o strumenti di trasferimento obsoleti.</p><p>La beta di Terento porta questo flusso in un’app macOS nativa.</p></div><ol class="steps"><li class="step"><p class="step-number" aria-hidden="true">01</p><h3>Collega</h3><p>Terento riconosce il tuo Garmin e mostra quando è pronto.</p></li><li class="step"><p class="step-number" aria-hidden="true">02</p><h3>Installa</h3><p>Scegli una mappa e visualizza lo spazio necessario prima dell’installazione.</p></li><li class="step"><p class="step-number" aria-hidden="true">03</p><h3>Parti</h3><p>Il tuo orologio è pronto per la prossima meta.</p></li></ol></div></section>
+      <section class="experience section" id="how-it-works" aria-labelledby="experience-title"><div class="shell"><div class="section-heading"><p class="eyebrow">Come funziona</p><h2 id="experience-title">Collega <span aria-hidden="true">→</span> Installa <span aria-hidden="true">→</span> Parti</h2></div><div class="problem-statement"><p>Installare mappe di terze parti non dovrebbe richiedere vecchi programmi o trasferimenti manuali.</p><p>La beta di Terento porta questo flusso in un’app macOS nativa.</p></div><ol class="steps"><li class="step"><p class="step-number" aria-hidden="true">01</p><h3>Collega</h3><p>Terento riconosce il tuo Garmin e mostra quando è pronto.</p></li><li class="step"><p class="step-number" aria-hidden="true">02</p><h3>Installa</h3><p>Scegli la mappa che ti serve.</p></li><li class="step"><p class="step-number" aria-hidden="true">03</p><h3>Parti</h3><p>Il tuo orologio è pronto per la prossima meta.</p></li></ol></div></section>
 
-      <section class="product-showcase product-showcase--muted" aria-labelledby="install-maps-title"><div class="shell product-showcase-grid"><div class="product-showcase-copy"><p class="eyebrow">Scegli le mappe</p><h2 id="install-maps-title">Installa le mappe</h2><p>Scegli una mappa e visualizza lo spazio necessario prima dell’installazione.</p></div><div class="product-showcase-media"><figure class="app-shot app-shot--feature"><picture><source type="image/avif" srcset="/assets/app/optimized/install-maps-640.avif 640w, /assets/app/optimized/install-maps-960.avif 960w, /assets/app/optimized/install-maps-1280.avif 1280w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw"><source type="image/webp" srcset="/assets/app/optimized/install-maps-640.webp 640w, /assets/app/optimized/install-maps-960.webp 960w, /assets/app/optimized/install-maps-1280.webp 1280w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw"><img src="/assets/app/optimized/install-maps-1280.png" width="1555" height="1012" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw" alt="Terento mostra provider e regioni di mappe di terze parti su macOS" loading="lazy" decoding="async"></picture></figure></div></div></section>
+      <section class="product-showcase product-showcase--muted" aria-labelledby="install-maps-title"><div class="shell product-showcase-grid"><div class="product-showcase-copy"><p class="eyebrow">Scegli le mappe</p><h2 id="install-maps-title">Installa le mappe</h2><p>Sfoglia le mappe supportate per regione e controlla lo spazio necessario prima dell’installazione.</p></div><div class="product-showcase-media"><figure class="app-shot app-shot--feature"><picture><source type="image/avif" srcset="/assets/app/optimized/install-maps-640.avif 640w, /assets/app/optimized/install-maps-960.avif 960w, /assets/app/optimized/install-maps-1280.avif 1280w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw"><source type="image/webp" srcset="/assets/app/optimized/install-maps-640.webp 640w, /assets/app/optimized/install-maps-960.webp 960w, /assets/app/optimized/install-maps-1280.webp 1280w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw"><img src="/assets/app/optimized/install-maps-1280.png" width="1555" height="1012" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw" alt="Terento mostra provider e regioni di mappe di terze parti su macOS" loading="lazy" decoding="async"></picture></figure></div></div></section>
       <section class="product-showcase product-showcase--muted" aria-labelledby="manage-maps-title"><div class="shell product-showcase-grid"><div class="product-showcase-copy"><p class="eyebrow">Gestione delle mappe</p><h2 id="manage-maps-title">Gestisci le mappe</h2><p>Visualizza le mappe installate, aggiornatele quando è disponibile una versione più recente e rimuovi in sicurezza le mappe di terze parti supportate. Le mappe Garmin e di sistema restano protette.</p></div><div class="product-showcase-media"><figure class="app-shot app-shot--feature"><picture><source type="image/avif" srcset="/assets/app/optimized/manage-maps-640.avif 640w, /assets/app/optimized/manage-maps-960.avif 960w, /assets/app/optimized/manage-maps-1280.avif 1280w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw"><source type="image/webp" srcset="/assets/app/optimized/manage-maps-640.webp 640w, /assets/app/optimized/manage-maps-960.webp 960w, /assets/app/optimized/manage-maps-1280.webp 1280w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw"><img src="/assets/app/optimized/manage-maps-1280.png" width="1561" height="1008" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw" alt="Terento mostra le mappe di terze parti installate raggruppate per provider" loading="lazy" decoding="async"></picture></figure></div></div></section>
 
-      <section class="scope-section" id="scope" aria-labelledby="scope-title"><div class="shell scope-grid"><div><div class="section-heading"><p class="eyebrow">Ambito della beta</p><h2 id="scope-title">La compatibilità cresce con ogni installazione condivisa.</h2></div><p class="scope-copy">Terento è progettato per gli smartwatch Garmin con supporto alle mappe. La compatibilità pubblica per l’installazione di mappe di terze parti viene confermata per ogni modello e variante sulla base di risultati reali condivisi dagli utenti.</p><a class="text-link scope-link" href="/compatibility/">Vedi la compatibilità <span aria-hidden="true">→</span></a></div><div class="scope-list" aria-label="Ambito attuale della beta"><div class="scope-item"><strong>macOS 13+</strong><span>Apple Silicon</span></div><div class="scope-item"><strong>Garmin</strong><span>Modelli con supporto mappe</span></div><div class="scope-item"><strong>Provider di mappe</strong><span>Il supporto cresce con ogni beta.</span></div><div class="scope-item"><strong>Open source</strong><span>Gratuito e open source</span></div></div></div></section>
+      <section class="scope-section" id="scope" aria-labelledby="scope-title"><div class="shell scope-grid"><div><div class="section-heading"><p class="eyebrow">Ambito della beta</p><h2 id="scope-title">La compatibilità cresce con ogni installazione condivisa.</h2></div><p class="scope-copy">Terento è progettato per gli smartwatch Garmin con supporto alle mappe. La compatibilità di ogni modello e variante viene confermata con risultati di installazione reali.</p><a class="text-link scope-link" href="/it/compatibility/">Vedi la compatibilità <span aria-hidden="true">→</span></a></div></div></section>
 
-      <section class="faq section" id="faq" aria-labelledby="faq-title"><div class="shell faq-grid"><div class="section-heading"><p class="eyebrow">Domande utili</p><h2 id="faq-title">FAQ</h2></div><div class="faq-list"><details><summary>Quali smartwatch Garmin funzionano con Terento?</summary><p>Terento è progettato per gli smartwatch Garmin con supporto alle mappe. La compatibilità pubblica per l’installazione di mappe di terze parti viene confermata per ogni modello e variante sulla base di risultati reali condivisi dagli utenti. Consulta la pagina <a href="/it/compatibility/">Compatibilità</a> per le prove aggiornate.</p></details><details><summary>Posso installare mappe di terze parti su uno smartwatch Garmin da un Mac senza BaseCamp?</summary><p>Sì. Terento offre un flusso nativo guidato per macOS per installare mappe di terze parti supportate, senza BaseCamp né un file manager MTP generico. Puoi anche importare dal Mac una mappa .img di terze parti supportata. È richiesto Apple Silicon. <a href="/it/guides/install-garmin-maps-mac/">Leggi la guida all’installazione su Mac.</a></p></details><details><summary>Perché il mio smartwatch Garmin non appare subito nel Finder o in Terento?</summary><p>Molti smartwatch Garmin recenti usano MTP e potrebbero non apparire come una normale unità del Finder. Il rilevamento di Terento può richiedere 1–2 minuti dopo il collegamento. Lascia l’orologio collegato e chiudi Garmin Express, OpenMTP o un’altra app che potrebbe già utilizzarlo.</p></details><details><summary>Terento sostituisce Garmin Express?</summary><p>No. Terento si concentra sull’installazione e la gestione di mappe di terze parti supportate. Garmin Express resta utile per gli aggiornamenti ufficiali dei dispositivi Garmin e per i relativi servizi.</p></details><details><summary>Terento è sicuro per le mappe Garmin esistenti?</summary><p>Sì. Le mappe Garmin e di sistema restano protette. Terento aggiorna o rimuove le mappe di terze parti supportate solo tramite azioni esplicite e convalidate.</p></details><details><summary>Quali provider di mappe di terze parti supporta Terento?</summary><p>Terento beta 9 supporta mappe di terze parti da Freizeitkarte e OpenTopoMap. L’elenco dei provider è pensato per crescere con le future versioni beta. Le mappe vengono scaricate direttamente dal provider originale sul Mac e poi trasferite sullo smartwatch; Terento non ospita né riconfeziona i file delle mappe.</p></details><details><summary>Cosa devo fare se l’installazione non riesce?</summary><p>Apri una issue oppure invia il log diagnostico via e-mail a <a href="mailto:hello@terento.app?subject=Terento%20installation%20issue">hello@terento.app</a>. Il report aiuta a esaminare il problema senza dover controllare manualmente le cartelle del dispositivo.</p><div class="faq-support-actions"><a class="text-link" href="https://github.com/VooZ2/terento/issues" target="_blank" rel="noopener noreferrer" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="github-issue">Apri una issue <span aria-hidden="true">→</span></a><a class="text-link" href="mailto:hello@terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email">Invia il log <span aria-hidden="true">→</span></a></div></details><details><summary>Terento carica dati sul dispositivo?</summary><p>La condivisione della compatibilità è facoltativa. Se attivata, vengono condivise solo prove di installazione minimizzate; non vengono inviati ID Garmin, numeri di serie o percorsi locali.</p></details><details><summary>Perché è richiesto Apple Silicon?</summary><p>L’attuale beta macOS nativa è realizzata per Mac Apple Silicon con macOS 13 o versioni successive.</p></details><details><summary>Posso aggiornare o rimuovere le mappe installate?</summary><p>Puoi aggiornare le mappe gestite da Terento quando è disponibile una versione più recente del provider e rimuovere in sicurezza dall’app le mappe di terze parti supportate. Le mappe Garmin e di sistema restano protette.</p></details></div></div></section>
+      <section class="faq section" id="faq" aria-labelledby="faq-title"><div class="shell faq-grid"><div class="section-heading"><p class="eyebrow">Domande utili</p><h2 id="faq-title">FAQ</h2></div><div class="faq-list">
+            <details><summary>Quali smartwatch Garmin funzionano con Terento?</summary><p>Consulta la pagina <a href="/it/compatibility/">Compatibilità</a> per i modelli e le varianti Garmin confermati da installazioni reali.</p></details>
+            <details><summary>Posso installare mappe di terze parti su uno smartwatch Garmin da un Mac senza BaseCamp?</summary><p>Sì. Terento ti guida dalla scelta della mappa all’installazione sullo smartwatch. Puoi anche importare dal Mac un file cartografico compatibile. È richiesto Apple Silicon. <a href="/it/guides/install-garmin-maps-mac/">Leggi la guida all’installazione.</a></p></details>
+            <details><summary>Terento è sicuro per le mappe Garmin esistenti?</summary><p>Sì. Le mappe Garmin e di sistema restano protette. Terento modifica solo le mappe di terze parti supportate dopo la tua conferma.</p></details>
+            <details><summary>Quali provider di mappe di terze parti supporta Terento?</summary><p>Terento supporta le mappe di Freizeitkarte e OpenTopoMap. Le mappe vengono scaricate direttamente da ciascun provider.</p></details>
+            <details><summary>Cosa devo fare se l’installazione non riesce?</summary><p>Apri una issue su GitHub oppure invia il log diagnostico via e-mail. Contiene le informazioni necessarie per analizzare il problema.</p><div class="faq-support-actions"><a class="text-link" href="https://github.com/VooZ2/terento/issues" target="_blank" rel="noopener noreferrer" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="github-issue">Apri una issue <span aria-hidden="true">→</span></a><a class="text-link" href="mailto:hello@terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email">Invia il log <span aria-hidden="true">→</span></a></div></details>
+            </div></div></section>
 
       <section class="final-cta" aria-labelledby="final-cta-title"><div class="shell final-cta-inner"><div class="final-cta-copy"><p class="eyebrow">Pronto quando vuoi</p><h2 id="final-cta-title">Prepara il tuo Garmin per la prossima meta.</h2><p>Scarica la beta Terento notarizzata per Mac Apple Silicon.</p></div><a class="download-action" href="/it/download/">Scarica la beta</a></div></section>
     </main>
@@ -240,7 +205,7 @@
           <div class="footer-meta"><p class="footer-status">Progetto open source</p><a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
         </div>
         <nav class="footer-nav" aria-label="Navigazione del piè di pagina">
-          <a href="/it/#about">Informazioni</a><a href="/it/compatibility/">Compatibilità</a><a href="/it/#faq">FAQ</a><a href="/it/download/">Scarica</a>
+          <a href="/it/about/">Informazioni</a><a href="/it/compatibility/">Compatibilità</a><a href="/it/guides/install-garmin-maps-mac/">Guida</a><a href="/it/#faq">FAQ</a><a href="/it/download/">Scarica</a>
           <a href="/legal/">Note legali</a>
           <a href="/privacy/">Privacy</a>
         </nav>

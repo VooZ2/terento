@@ -50,7 +50,7 @@ function visibleFaq(source, file) {
   assert(section, `${file}: visible FAQ section is required`);
   const entries = [...section[1].matchAll(/<details>\s*<summary>([\s\S]*?)<\/summary>\s*<p>([\s\S]*?)<\/p>\s*(?:<div class="faq-support-actions">[\s\S]*?<\/div>\s*)?<\/details>/gi)]
     .map((match) => ({ question: visibleText(match[1]), answer: visibleText(match[2]) }));
-  assert.equal(entries.length, 10, `${file}: expected ten visible FAQ entries`);
+  assert.equal(entries.length, 5, `${file}: expected five visible FAQ entries`);
   return entries;
 }
 
@@ -113,19 +113,18 @@ for (const locale of locales) {
   assert.equal(faq["@id"], `${homeUrl}#faq`, `${home}: FAQ ID`);
   assert.equal(faq.url, `${homeUrl}#faq`, `${home}: FAQ URL`);
   assert.equal(faq.inLanguage, locale, `${home}: FAQ language`);
-  assert.equal(faq.mainEntity.length, 10, `${home}: FAQ count`);
+  assert.equal(faq.mainEntity.length, 5, `${home}: FAQ count`);
   assert.deepEqual(
     faq.mainEntity.map((question) => ({ question: question.name, answer: question.acceptedAnswer.text })),
     visibleFaq(homeData.source, home),
     `${home}: FAQ JSON-LD must match visible FAQ exactly`
   );
-  assert.match(faq.mainEntity[1].acceptedAnswer.text, /\.img/i, `${home}: BaseCamp answer mentions local .img import`);
-  assert.match(faq.mainEntity[4].acceptedAnswer.text, /protected|geschützt|protég|chronione|chráněné|protette/i, `${home}: safety answer protects Garmin/system maps`);
-  assert.match(faq.mainEntity[5].name, /provider|anbieter|fournisseur|dostawc|poskytovatel/i, `${home}: provider FAQ question`);
-  assert.match(faq.mainEntity[5].acceptedAnswer.text, /Freizeitkarte/i, `${home}: provider FAQ names Freizeitkarte`);
-  assert.match(faq.mainEntity[5].acceptedAnswer.text, /OpenTopoMap/i, `${home}: provider FAQ names OpenTopoMap`);
-  assert.match(faq.mainEntity[5].acceptedAnswer.text, /expand|wachsen|élargir|rozszerzać|rozšiřovat|crescere/i, `${home}: provider FAQ describes future expansion`);
-  assert.match(faq.mainEntity[9].name, /update|aktual|mettre|supprimer|usuwać|odstranit|aggiornare|rimuovere/i, `${home}: update/remove FAQ question`);
+  assert.match(faq.mainEntity[1].acceptedAnswer.text, /map file|Kartendatei|fichier cartographique|plik mapy|mapový soubor|file cartografico/i, `${home}: BaseCamp schema answer uses user-facing map-file language`);
+  assert.doesNotMatch(faq.mainEntity[3].acceptedAnswer.text, /beta|bêta|version|release|wersj|verz|versi/i, `${home}: provider schema answer describes Terento without release wording`);
+  assert.match(faq.mainEntity[2].acceptedAnswer.text, /protected|geschützt|protég|chronione|chráněné|protette/i, `${home}: safety answer protects Garmin/system maps`);
+  assert.match(faq.mainEntity[3].name, /provider|anbieter|fournisseur|dostawc|poskytovatel/i, `${home}: provider FAQ question`);
+  assert.match(faq.mainEntity[3].acceptedAnswer.text, /Freizeitkarte/i, `${home}: provider FAQ names Freizeitkarte`);
+  assert.match(faq.mainEntity[3].acceptedAnswer.text, /OpenTopoMap/i, `${home}: provider FAQ names OpenTopoMap`);
   assert.doesNotMatch(homeData.source, /back up|backup|sauvegarder|zálohovat|wykonać kopię|eseguire il backup/i, `${home}: no backup promise in source`);
 
   const download = downloadFile(locale);
