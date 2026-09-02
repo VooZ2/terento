@@ -79,11 +79,15 @@ by the service health cycle.
 Returns the authenticated operator Overview. The default period is the last 24
 hours; `?period=7d`, `?period=30d`, and `?period=all` are also supported. Its
 primary operational domain is the existing `map_download_event` table: Map
-installs, Map install success, Failed map installs, recent map activity, the
-installs-over-time chart, and failure-first attention links use distinct map
-operation IDs. Compatibility evidence remains a secondary, explicitly
+installs, Map install success, Failed map installs, recent map activity, and
+the installs-over-time chart use distinct map operation IDs. Historical
+`DOWNLOAD_FAILED` and `INSTALL_FAILED` map events remain in activity and
+statistics, but are not placed in `Needs attention` because map events do not
+carry an unresolved/actionable lifecycle state. Compatibility evidence remains a secondary, explicitly
 labelled block with its own variants, write-started attempts, evidence success,
-open errors, and normalized failure reasons. If the selected domain has no
+open errors, and normalized failure reasons. Common reason spelling variants
+are collapsed into stable canonical groups such as `source_validation`; only
+events without a classifiable category, stage, or code remain `unknown`. If the selected domain has no
 data, event-derived values use an em dash rather than zero. No new client
 telemetry, public statistics, or map-event payload is created by this page.
 
@@ -515,7 +519,9 @@ Returns private aggregate map-operation rows with `event_count`, distinct
 `operation_count`, first/last occurrence, provider, map, region, event type,
 and outcome. Where the existing registry has names, admin rows also include
 `provider_name` and `map_package_name` for human-readable popularity tables;
-`region_display_name` is an additive display-only region label. The technical IDs remain available.
+`region_display_name` is an additive display-only region label and
+`region_identity` is an additive cross-provider grouping key derived from
+existing canonical region/country metadata. The technical IDs remain available.
 Supported query filters are `provider`, `map`, `region`,
 `dateFrom`, `dateTo`, and `eventType`. The response is no-store/noindex and
 does not expose individual event payloads or device identifiers. Each response
@@ -561,7 +567,10 @@ provider filter is selected, the health, issue, and per-provider popularity
 summaries are scoped to that provider. The UI labels the distinction between
 distinct map operations and map-package records because one operation may
 contain multiple packages. Overview and Map statistics therefore do not imply
-identical totals. Compatibility Installations remain an all-time evidence
+identical totals. The Regions disclosure groups equivalent provider labels by
+`region_identity`, sums their package-operation counts, and keeps the newest
+activity timestamp; Popular maps remains grouped by provider package.
+Compatibility Installations remain an all-time evidence
 view. Missing or unknown values use an explicit neutral state or em dash,
 rather than silently presented zeros. Unauthenticated requests redirect to
 `/admin/login`. Linkage is possible only when the app's map-statistics and

@@ -34,7 +34,7 @@ class FakeProviderDatabase:
         self.detail_overrides: dict[str, dict] = {}
         self.run_overrides: dict[str, list[dict]] = {}
         self.map_statistic_filters: list[dict] = []
-        self.overview_map_requests: list[tuple[datetime, str]] = []
+        self.overview_map_requests: list[tuple[datetime, str, str]] = []
 
     def admin_user_count(self) -> int:
         return 1
@@ -59,8 +59,8 @@ class FakeProviderDatabase:
             "failureReasons": [],
         }
 
-    def admin_overview_map_snapshot(self, since, *, period="24h"):
-        self.overview_map_requests.append((since, period))
+    def admin_overview_map_snapshot(self, since, *, period="24h", time_zone="UTC"):
+        self.overview_map_requests.append((since, period, time_zone))
         return {
             "eventCount": 0,
             "completedInstallCount": 0,
@@ -780,10 +780,12 @@ class Beta8APITests(unittest.TestCase):
         try:
             cookie = "terento_admin_session=session; terento_admin_csrf=csrf"
             response, body = self._request(
-                server, "GET", "/admin?period=30d", headers={"Cookie": cookie},
+                server, "GET", "/admin?period=30d&timeZone=Europe%2FVilnius",
+                headers={"Cookie": cookie},
             )
             self.assertEqual(response.status, 200)
             self.assertEqual(database.overview_map_requests[-1][1], "30d")
+            self.assertEqual(database.overview_map_requests[-1][2], "Europe/Vilnius")
             self.assertIn("value='30d' selected", body.decode())
 
             response, body = self._request(

@@ -14,6 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlsplit
 from uuid import uuid4
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .admin import (
     AdminValidationError,
@@ -29,6 +30,7 @@ from .admin import (
     providers_page,
     _admin_device_payload,
     _admin_map_display_name,
+    _admin_region_identity,
     _normalise_github_issue_reference,
     hash_password,
     login_page,
@@ -70,6 +72,17 @@ from .provider_catalog import (
 from .provider_health import check_provider as run_provider_health_check
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _admin_time_zone(value: Any) -> str:
+    candidate = str(value or "UTC").strip()
+    if not candidate or len(candidate) > 80:
+        return "UTC"
+    try:
+        ZoneInfo(candidate)
+    except (ZoneInfoNotFoundError, ValueError):
+        return "UTC"
+    return candidate
 
 
 class ProviderActivationBlocked(ValueError):
@@ -328,6 +341,11 @@ class CatalogService:
                     row.get("map_package_id"),
                 ),
                 "region_display_name": _admin_map_display_name(row.get("region")),
+                "region_identity": _admin_region_identity(
+                    row.get("canonical_region_id"),
+                    row.get("region_country"),
+                    row.get("region"),
+                ),
             }
             for row in rows
         ]
@@ -348,6 +366,11 @@ class CatalogService:
                     row.get("map_package_id"),
                 ),
                 "region_display_name": _admin_map_display_name(row.get("region")),
+                "region_identity": _admin_region_identity(
+                    row.get("canonical_region_id"),
+                    row.get("region_country"),
+                    row.get("region"),
+                ),
             }
             for row in detail_rows
         ]
@@ -364,7 +387,9 @@ class CatalogService:
             "linkage": linkage,
         }
 
-    def admin_overview(self, period: str = "24h") -> dict[str, Any]:
+    def admin_overview(
+        self, period: str = "24h", time_zone: str = "UTC",
+    ) -> dict[str, Any]:
         periods = {
             "24h": timedelta(hours=24),
             "7d": timedelta(days=7),
@@ -373,6 +398,7 @@ class CatalogService:
         }
         if period not in periods:
             period = "24h"
+        time_zone = _admin_time_zone(time_zone)
         duration = periods[period]
         since = (
             datetime.now(timezone.utc) - duration
@@ -382,10 +408,13 @@ class CatalogService:
         return {
             "schemaVersion": 1,
             "period": period,
+            "timeZone": time_zone,
             "since": since,
             # Keep map-operation telemetry and compatibility evidence as
             # distinct admin domains. Neither changes the public API payload.
-            "data": self.database.admin_overview_map_snapshot(since, period=period),
+            "data": self.database.admin_overview_map_snapshot(
+                since, period=period, time_zone=time_zone,
+            ),
             "compatibility": self.database.admin_overview_snapshot(since),
             "providers": self.admin_providers().get("providers", []),
         }
@@ -1097,9 +1126,10 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if request_path in {"/admin", "/admin/"}:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
                 period = query.get("period", ["24h"])[-1]
+                time_zone = query.get("timeZone", ["UTC"])[-1]
                 try:
                     body = overview_page(
-                        service.admin_overview(period),
+                        service.admin_overview(period, time_zone),
                         session,
                         csrf_token,
                     )

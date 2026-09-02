@@ -11,6 +11,7 @@ import unicodedata
 from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import quote, urlencode, urlsplit
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .campaign_links import CAMPAIGN_SUGGESTIONS, MEDIUM_OPTIONS, SOURCE_OPTIONS
 from .asset_attribution import generic_fallback_image
@@ -22,6 +23,7 @@ from .compatibility_status import (
     calculate_compatibility_status,
 )
 from .device_catalog import _official_source_image_url
+from .failure_reasons import failure_reason_label, normalize_failure_reason
 from .map_capability import classify_map_capable
 
 
@@ -671,24 +673,15 @@ def login_page(*, error: str | None = None) -> bytes:
 
 
 def _overview_failure_reason_label(value: Any) -> str:
-    labels = {
-        "acquisition": "Map acquisition",
-        "transport": "Device transport",
-        "verification": "Transfer verification",
-        "storage": "Storage",
-        "deviceDisconnected": "Device disconnected",
-        "sourceValidation": "Source validation",
-        "unknown": "Unknown",
-    }
-    return labels.get(str(value or "").strip(), "Installation failure")
+    return failure_reason_label(value)
 
 
 def _diagnostic_error_reason(results: list[dict[str, Any]], *, resolved: bool = False) -> str:
     """Return a concise primary reason while keeping raw codes in Details."""
     for result in results:
-        category = str(result.get("error_category") or "").strip()
-        if category and category.casefold() != "unknown":
-            return _overview_failure_reason_label(category)
+        reason = normalize_failure_reason(result.get("error_category"))
+        if reason != "unknown":
+            return failure_reason_label(reason)
     for result in results:
         stage = str(result.get("failure_stage") or "").strip()
         if stage and stage.casefold() not in {"unknown", "none"}:
@@ -931,6 +924,42 @@ _ADMIN_REGION_DISPLAY_NAMES = {
     "UA": "Ukraine",
 }
 
+_ADMIN_REGION_IDENTITY_ALIASES = {
+    "AND": "ANDORRA",
+    "ANDORRA": "ANDORRA",
+    "PRINCIPALITYOFANDORRA": "ANDORRA",
+    "LT": "LITHUANIA",
+    "LTU": "LITHUANIA",
+    "LITHUANIA": "LITHUANIA",
+    "REPUBLICOFLITHUANIA": "LITHUANIA",
+}
+
+
+def _admin_region_identity(
+    canonical_region_id: Any, country: Any = None, region: Any = None,
+) -> str:
+    """Return one cross-provider admin geography key from existing metadata."""
+    canonical_token = re.sub(
+        r"[^A-Za-z0-9]+", "", str(canonical_region_id or "")
+    ).upper()
+    if canonical_token:
+        return _ADMIN_REGION_IDENTITY_ALIASES.get(
+            canonical_token, canonical_token,
+        )
+    country_identity = re.sub(
+        r"[^A-Za-z0-9]+", "", _admin_map_display_name(country)
+    ).upper() if country else ""
+    if country_identity and country_identity != "UNKNOWN":
+        return _ADMIN_REGION_IDENTITY_ALIASES.get(
+            country_identity, country_identity,
+        )
+    region_identity = re.sub(
+        r"[^A-Za-z0-9]+", "", str(region or "")
+    ).upper()
+    return _ADMIN_REGION_IDENTITY_ALIASES.get(
+        region_identity, region_identity or "UNKNOWN",
+    )
+
 
 def _admin_map_display_name(*values: Any) -> str:
     """Return one human-readable admin label without changing stored IDs."""
@@ -1021,10 +1050,16 @@ def _admin_app_version_label(value: Any, build: Any = None) -> str:
     return release
 
 
-def _overview_chart_bucket_label(value: Any, bucket: str) -> str:
+def _overview_chart_bucket_label(
+    value: Any, bucket: str, time_zone: str = "UTC",
+) -> str:
     parsed = _parse_timestamp(value)
     if parsed is None:
         return str(value or "—")
+    try:
+        parsed = parsed.astimezone(ZoneInfo(time_zone))
+    except (ZoneInfoNotFoundError, ValueError):
+        parsed = parsed.astimezone(timezone.utc)
     if bucket == "hour":
         return parsed.strftime("%H:%M")
     if bucket == "month":
@@ -1034,7 +1069,9 @@ def _overview_chart_bucket_label(value: Any, bucket: str) -> str:
     return parsed.strftime("%d %b")
 
 
-def _overview_trend_chart(trend: list[dict[str, Any]], bucket: str) -> str:
+def _overview_trend_chart(
+    trend: list[dict[str, Any]], bucket: str, time_zone: str = "UTC",
+) -> str:
     if not trend:
         return "<p class='overview-empty-state'>No map install operations in this period.</p>"
     values = [
@@ -1043,7 +1080,7 @@ def _overview_trend_chart(trend: list[dict[str, Any]], bucket: str) -> str:
     ]
     maximum = max((success + failed for success, failed in values), default=1) or 1
     scale_maximum = max(maximum, 3)
-    chart_width, chart_height = 720, 190
+    chart_width, chart_height = 720, 260
     left, top, bottom = 10, 10, 30
     plot_height = chart_height - top - bottom
     slot = chart_width / max(len(values), 1)
@@ -1057,7 +1094,7 @@ def _overview_trend_chart(trend: list[dict[str, Any]], bucket: str) -> str:
         failed_height = plot_height * failed / scale_maximum
         y_success = top + plot_height - success_height
         y_failed = y_success - failed_height
-        title = f"{_overview_chart_bucket_label(item.get('bucket'), bucket)}: {success} succeeded, {failed} failed"
+        title = f"{_overview_chart_bucket_label(item.get('bucket'), bucket, time_zone)}: {success} succeeded, {failed} failed"
         bars.append(
             f"<g><title>{html.escape(title)}</title>"
             f"<rect class='overview-chart-failed' x='{x:.1f}' y='{y_failed:.1f}' width='{bar_width:.1f}' height='{failed_height:.1f}' rx='3'></rect>"
@@ -1065,7 +1102,7 @@ def _overview_trend_chart(trend: list[dict[str, Any]], bucket: str) -> str:
         )
         label_step = max(1, round((len(values) - 1) / 5))
         if len(values) <= 12 or index % label_step == 0 or index == len(values) - 1:
-            labels.append(f"<text x='{x + bar_width / 2:.1f}' y='{chart_height - 8}' text-anchor='middle'>{html.escape(_overview_chart_bucket_label(item.get('bucket'), bucket))}</text>")
+            labels.append(f"<text x='{x + bar_width / 2:.1f}' y='{chart_height - 8}' text-anchor='middle'>{html.escape(_overview_chart_bucket_label(item.get('bucket'), bucket, time_zone))}</text>")
     return (
         "<div class='overview-chart-wrap'>"
         f"<svg class='overview-trend-chart' viewBox='0 0 {chart_width} {chart_height}' role='img' aria-label='Map install operations over time'>"
@@ -1076,6 +1113,9 @@ def _overview_trend_chart(trend: list[dict[str, Any]], bucket: str) -> str:
 
 def _overview_period_script() -> str:
     return r"""(() => {
+      let loadingKey = '';
+      const activeTimeZone = () => window.TerentoAdminTime?.timeZone?.()
+        || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
       const bind = () => {
         const form = document.querySelector('#overview-period-form');
         const select = document.querySelector('#overview-period');
@@ -1083,15 +1123,19 @@ def _overview_period_script() -> str:
         select.dataset.bound = 'true';
         form.addEventListener('submit', (event) => {
           event.preventDefault();
-          load(select.value, true);
+          load(select.value, true, activeTimeZone());
         });
         select.addEventListener('change', () => form.requestSubmit());
       };
-      const load = async (period, push) => {
+      const load = async (period, push, timeZone = activeTimeZone()) => {
         const current = document.querySelector('#main-content');
         const select = document.querySelector('#overview-period');
         const url = new URL('/admin', window.location.origin);
         url.searchParams.set('period', period);
+        url.searchParams.set('timeZone', timeZone);
+        const requestKey = `${period}\u0000${timeZone}`;
+        if (loadingKey === requestKey) return;
+        loadingKey = requestKey;
         if (current) current.setAttribute('aria-busy', 'true');
         if (select) select.disabled = true;
         try {
@@ -1101,17 +1145,28 @@ def _overview_period_script() -> str:
           const mainNext = documentNext.querySelector('#main-content');
           if (!mainNext) throw new Error('Overview content is unavailable.');
           current?.replaceWith(mainNext);
-          if (push) window.history.pushState({period}, '', url);
+          if (push) window.history.pushState({period, timeZone}, '', url);
+          else window.history.replaceState({period, timeZone}, '', url);
           window.TerentoAdminTime?.render();
           bind();
         } catch (_) {
           window.location.assign(url);
+        } finally {
+          loadingKey = '';
         }
       };
       window.addEventListener('popstate', () => {
         const period = new URL(window.location.href).searchParams.get('period') || '24h';
-        load(period, false);
+        load(period, false, activeTimeZone());
       });
+      const synchronizeTimeZone = () => {
+        const url = new URL(window.location.href);
+        const period = url.searchParams.get('period') || document.querySelector('#overview-period')?.value || '24h';
+        const timeZone = activeTimeZone();
+        if (url.searchParams.get('timeZone') !== timeZone) load(period, false, timeZone);
+      };
+      window.addEventListener('terento-admin-timezone-ready', synchronizeTimeZone);
+      window.addEventListener('terento-admin-timezone-change', synchronizeTimeZone);
       bind();
     })();"""
 
@@ -1123,6 +1178,7 @@ def overview_page(
     compatibility = overview.get("compatibility") if isinstance(overview.get("compatibility"), dict) else {}
     providers = list(overview.get("providers") or [])
     period = str(overview.get("period") or "24h")
+    time_zone = str(overview.get("timeZone") or "UTC")
     period_labels = {"24h": "Last 24 hours", "7d": "Last 7 days", "30d": "Last 30 days", "all": "All time"}
     period_options = "".join(
         f"<option value='{value}'{' selected' if value == period else ''}>{label}</option>"
@@ -1139,12 +1195,11 @@ def overview_page(
     event_metric = lambda value: str(value) if has_map_data else "—"
     compatibility_has_data = bool(compatibility.get("hasData"))
     open_error_metric = lambda value: str(value) if compatibility_has_data else "—"
-    attention_operations = list(data.get("attention") or [])
     attention_providers = [
         provider for provider in providers
         if str(provider.get("health") or "UNKNOWN").upper() not in {"HEALTHY", ""}
     ]
-    attention_items = "".join(_overview_map_attention_item(item) for item in attention_operations[:4])
+    attention_items = ""
     compatibility_attention = [
         item for item in compatibility.get("recentActivity", []) if item.get("open_error")
     ]
@@ -1172,7 +1227,6 @@ def overview_page(
     map_statistics_href += "?" + urlencode({"period": period})
     failure_href = map_statistics_href + ("&" if "?" in map_statistics_href else "?") + urlencode({"eventType": "INSTALL_FAILED"})
     attention_href = (
-        failure_href if attention_operations else
         "/admin/installations?state=open" if compatibility_attention else
         "/admin/devices" if review_required else
         "/admin/providers" if attention_providers else map_statistics_href
@@ -1222,7 +1276,7 @@ def overview_page(
           <a class='overview-kpi' href='/admin/providers'><span>Providers</span><strong>{healthy} / {provider_count}</strong><small>Healthy providers</small></a>
         </section>
         {attention_section}
-        <div class='{primary_grid_class}'><section class='overview-panel overview-chart-panel' aria-labelledby='overview-trend-title'><div class='section-heading'><div><p class='section-kicker'>Map operations</p><h2 id='overview-trend-title'>Map install operations over time</h2></div></div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'))}</section>{model_panel}</div>
+        <div class='{primary_grid_class}'><section class='overview-panel overview-chart-panel' aria-labelledby='overview-trend-title'><div class='section-heading'><div><p class='section-kicker'>Map operations</p><h2 id='overview-trend-title'>Map install operations over time</h2></div></div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'), time_zone)}</section>{model_panel}</div>
         <div class='{secondary_grid_class}'><section class='overview-panel' aria-labelledby='overview-activity-title'><div class='section-heading'><div><p class='section-kicker'>Latest</p><h2 id='overview-activity-title'>Recent map activity</h2></div><a class='section-link' href='{html.escape(map_statistics_href, quote=True)}'>View all&nbsp;→</a></div>{recent_content}</section>{reasons_section}</div>
         <section class='overview-panel overview-provider-panel' aria-labelledby='overview-provider-title'><div><p class='section-kicker'>Availability</p><h2 id='overview-provider-title'>Providers</h2></div><div class='overview-provider-summary'><strong>{healthy} / {provider_count} healthy</strong>{provider_links}</div><a class='section-link' href='/admin/providers'>Manage&nbsp;→</a></section>
         {compatibility_summary}
@@ -2040,14 +2094,14 @@ def _map_statistics_script() -> str:
         const providerRows = Object.entries(byProvider).sort((a, b) => b[1].downloads - a[1].downloads || a[0].localeCompare(b[0])).map(([id, item]) => `<tr><td>${escapeHtml(providerName[id] || id)}</td><td class="numeric">${item.downloads}</td><td class="numeric">${item.installs}</td><td>${formatRate(item.installs + item.failedInstalls ? item.installs / (item.installs + item.failedInstalls) * 100 : null)}</td><td>${badge(healthByProvider[id])}</td></tr>`).join('');
         document.querySelector('#provider-statistic-rows').innerHTML = providerRows || emptyRow(5);
         const byMap = {};
-        rows.filter((row) => row.event_type === 'DOWNLOAD_SUCCEEDED' && row.outcome === 'SUCCEEDED').forEach((row) => { const key = `${row.provider_id || 'unknown'}\u0000${row.map_package_id || 'unknown'}\u0000${row.region || '—'}`; byMap[key] ||= {map: row.map_package_id || '—', name: row.display_name || row.map_package_name || '', provider: row.provider_id || '', region: row.region || '—', regionName: row.region_display_name || humanize(row.region), count: 0, last: row.last_occurred_at}; byMap[key].count += operations(row); if (String(row.last_occurred_at || '') > String(byMap[key].last || '')) byMap[key].last = row.last_occurred_at; });
+        rows.filter((row) => row.event_type === 'DOWNLOAD_SUCCEEDED' && row.outcome === 'SUCCEEDED').forEach((row) => { const key = `${row.provider_id || 'unknown'}\u0000${row.map_package_id || 'unknown'}\u0000${row.region || '—'}`; byMap[key] ||= {map: row.map_package_id || '—', name: row.display_name || row.map_package_name || '', provider: row.provider_id || '', region: row.region || '—', regionIdentity: row.region_identity || row.canonical_region_id || row.region || 'UNKNOWN', regionName: row.region_display_name || humanize(row.region), count: 0, last: row.last_occurred_at}; byMap[key].count += operations(row); if (String(row.last_occurred_at || '') > String(byMap[key].last || '')) byMap[key].last = row.last_occurred_at; });
         const mapItems = Object.values(byMap).sort((a, b) => b.count - a.count || a.map.localeCompare(b.map));
         const showAllMaps = Boolean(allMapsDisclosure?.open);
         const mapRow = (item) => `<tr><td><strong>${escapeHtml(item.name || item.regionName || '—')}</strong><small class="table-secondary"><code>${escapeHtml(item.map)}</code> · ${escapeHtml(item.regionName || '—')}</small></td><td>${escapeHtml(providerName[item.provider] || item.provider || '—')}</td><td class="numeric">${item.count}</td><td>${formatTimestamp(item.last)}</td></tr>`;
         if (mapRows) mapRows.innerHTML = (showAllMaps ? mapItems : mapItems.slice(0, 5)).map(mapRow).join('') || emptyRow(4);
         if (allMapsSummary) allMapsSummary.textContent = showAllMaps ? 'Show Top 5' : 'View all maps';
         const byRegion = {};
-        Object.values(byMap).forEach((item) => { byRegion[item.region] ||= {region: item.region, display: item.regionName, count: 0, last: item.last}; byRegion[item.region].count += item.count; if (String(item.last || '') > String(byRegion[item.region].last || '')) byRegion[item.region].last = item.last; });
+        Object.values(byMap).forEach((item) => { const key = item.regionIdentity || item.region; byRegion[key] ||= {region: key, display: item.regionName, count: 0, last: item.last}; byRegion[key].count += item.count; if (String(item.last || '') > String(byRegion[key].last || '')) byRegion[key].last = item.last; });
         const topRegions = Object.values(byRegion).sort((a, b) => b.count - a.count || a.region.localeCompare(b.region)).slice(0, 10).map((item) => `<tr><td>${escapeHtml(item.display || humanize(item.region))}</td><td class="numeric">${item.count}</td><td>${formatTimestamp(item.last)}</td></tr>`).join('');
         document.querySelector('#top-region-rows').innerHTML = topRegions || emptyRow(3);
         const detailMarkup = detailRows.map((row) => `<tr><td>${escapeHtml(row.provider_id || '—')}</td><td><code>${escapeHtml(row.map_package_id || '—')}</code></td><td>${escapeHtml(row.region_display_name || humanize(row.region))}</td><td>${escapeHtml(row.event_type || '—')}</td><td>${escapeHtml(outcomeLabel(row.outcome))}</td><td class="numeric">${operations(row)}</td><td>${formatTimestamp(row.last_occurred_at)}</td></tr>`).join('');
@@ -2497,21 +2551,12 @@ def _diagnostic_detail_dialog(
           <button type='submit' class='secondary-button'>{'Change linked issue' if issue else 'Link issue'}</button>
         </form>
         {f"<form method='post' action='/admin/diagnostics/issue' class='github-remove-form admin-async-action' data-confirm='Unlink this GitHub issue from the installation?'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='operation_key' value='{html.escape(operation_key, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'><input type='hidden' name='linked_github_issue' value=''><button type='submit' class='secondary-button'>Unlink issue</button></form>" if issue else ''}"""
-    collapse_issue_form = result_label == "SUCCEEDED" and state == "history" and not issue
-    if collapse_issue_form:
-        issue_form = f"""
-          <section class='diagnostic-action-form github-review github-review-collapsed' aria-labelledby='github-review-{dialog_id}'>
-            <h4 id='github-review-{dialog_id}'>GitHub issue</h4>
-            <p class='github-current'><span class="muted-value">No linked issue</span></p>
-            <details class='github-issue-disclosure'><summary>Report an anomaly or link issue</summary><div class='github-issue-controls'>{issue_controls}</div></details>
-          </section>"""
-    else:
-        issue_form = f"""
-          <section class='diagnostic-action-form github-review' aria-labelledby='github-review-{dialog_id}'>
-            <h4 id='github-review-{dialog_id}'>GitHub issue</h4>
-            <p class='github-current'>{_github_issue_link(issue) if issue else '<span class="muted-value">No linked issue</span>'}</p>
-            {issue_controls}
-          </section>"""
+    issue_form = f"""
+      <section class='diagnostic-action-form github-review github-review-collapsed' aria-labelledby='github-review-{dialog_id}'>
+        <h4 id='github-review-{dialog_id}'>GitHub issue</h4>
+        <p class='github-current'>{_github_issue_link(issue) if issue else '<span class="muted-value">No linked issue</span>'}</p>
+        <details class='github-issue-disclosure'><summary>{'Manage linked issue' if issue else 'Report an anomaly or link issue'}</summary><div class='github-issue-controls'>{issue_controls}</div></details>
+      </section>"""
     review_state = ""
     if resolved:
         review_state = f"<div><dt>Review state</dt><dd>{_diagnostic_state_badge('RESOLVED')}{resolution}</dd></div>"
@@ -2749,7 +2794,7 @@ def device_detail_page(
           <article><h3>Installation authorization</h3><form method='post' action='/admin/devices/authorization' class='admin-async-action' data-authorization-form data-current-authorization='{html.escape(str(device.get('supportStatus') or 'NOT_EVALUATED'), quote=True)}'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='device_id' value='{html.escape(device_id, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(detail_url, quote=True)}'><label>Status<select name='support_status'><option value='SUPPORTED'{' selected' if device.get('supportStatus') == 'SUPPORTED' else ''}>Approved</option><option value='UNSUPPORTED'{' selected' if device.get('supportStatus') == 'UNSUPPORTED' else ''}>Blocked</option><option value='NOT_EVALUATED'{' selected' if device.get('supportStatus') == 'NOT_EVALUATED' else ''}>Pending</option></select></label><label>Note <span class='optional-label'>Optional</span><textarea name='note' rows='2'></textarea></label><button type='submit'>Save authorization</button></form></article>
           <article><h3>Public compatibility</h3><p>{public_copy}</p>{public_form}</article>
         </div></section>
-        <section class='model-page-section' aria-labelledby='device-information-title'><div class='section-heading'><div><p class='section-kicker'>Catalog record</p><h2 id='device-information-title'>Device information</h2></div></div><dl class='model-information-list'>{device_info}</dl></section>
+        <section class='model-page-section device-information-section' aria-labelledby='device-information-title'><div class='section-heading'><div><p class='section-kicker'>Catalog record</p><h2 id='device-information-title'>Device information</h2></div></div><dl class='model-information-list'>{device_info}</dl></section>
         <details class='model-technical-details'><summary>Technical details</summary><dl class='model-information-list'>{technical_rows}</dl></details>
         {''.join(dialogs)}
       </main>
@@ -4492,13 +4537,20 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
 .overview-chart-panel{padding-top:16px;padding-bottom:16px}
 .overview-chart-panel .section-heading{margin-bottom:6px}
 .overview-chart-wrap{max-width:780px;margin:0 auto}
-.overview-trend-chart{width:100%;max-width:760px;min-height:0;margin:0 auto}
+.overview-trend-chart{display:block;width:100%;height:260px;max-width:760px;min-height:0;margin:0 auto}
 .overview-attention-empty{display:grid;grid-template-columns:minmax(0,auto) minmax(180px,1fr) auto;align-items:center;gap:18px;min-height:76px;padding:12px 16px}
 .overview-attention-empty h2,.overview-provider-panel h2{font-family:var(--font-ui);font-size:var(--admin-type-subsection-size);line-height:var(--admin-type-subsection-line);letter-spacing:0}
 .overview-attention-empty .section-kicker,.overview-provider-panel .section-kicker{margin-bottom:1px}
 .overview-attention-empty .overview-empty-state{padding:0;font-size:var(--admin-type-helper-size);line-height:var(--admin-type-helper-line);font-weight:500}
 .overview-provider-panel{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:18px;min-height:76px;padding:12px 16px}
 .overview-provider-panel .overview-provider-summary{justify-content:flex-start}
+.device-information-section .model-information-list{max-width:780px}
+.device-information-section .model-information-list div{grid-template-columns:150px minmax(0,1fr);gap:16px}
+.device-information-section .model-information-list dd{text-align:left}
+.diagnostic-detail-dialog{width:min(880px,calc(100% - 32px));max-height:min(82vh,760px)}
+.diagnostic-detail-inner{max-height:min(82vh,760px)}
+.github-review-collapsed{padding:12px 14px}
+.github-review-collapsed .github-current{margin-bottom:4px}
 .overview-secondary-grid-single{grid-template-columns:minmax(0,1fr)}
 .overview-compact-empty{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 16px}
 .overview-compact-empty .section-heading{margin:0}
@@ -4547,6 +4599,7 @@ table code,.technical-value,.provider-table-wrap code,.audit-technical-details c
   .overview-compact-empty{align-items:flex-start;flex-direction:column;gap:4px}
   .overview-attention-empty,.overview-provider-panel{grid-template-columns:1fr;align-items:flex-start;gap:7px}
   .overview-provider-panel .overview-provider-summary{gap:7px}
+  .device-information-section .model-information-list div{grid-template-columns:1fr;gap:2px}
 }
 """
 
