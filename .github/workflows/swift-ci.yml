@@ -131,10 +131,10 @@ jobs:
           if [ -z "$xcode_16_path" ]; then echo "Xcode 16 was not found on the runner"; exit 1; fi
           sudo xcode-select -s "$xcode_16_path/Contents/Developer"
           swift --version
-      - name: Install libmtp
+      - name: Install native and test dependencies
         run: |
           brew untap aws/tap || true
-          brew install libmtp
+          brew install libmtp ripgrep
       - name: Build Swift package and run app suite
         run: |
           set -euo pipefail
