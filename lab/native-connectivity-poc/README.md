@@ -56,7 +56,9 @@ is omitted from installable artifacts. The loader tries
 bundled provider, the loader supplements it with the missing local metadata;
 if the live catalog contains a paused, retired, or down provider, that remote
 state remains authoritative and bundled packages cannot re-enable it. Neither
-path downloads a map binary.
+path downloads a map binary. Catalog timestamps accept ISO 8601 values with or
+without fractional seconds so decoding remains consistent across supported
+macOS releases.
 
 Map scanning is deliberately content-first. Known Garmin-owned images are
 excluded before their prefix is read. Remaining `.img` candidates are read

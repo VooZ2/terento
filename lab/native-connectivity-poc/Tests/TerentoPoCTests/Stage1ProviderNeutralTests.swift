@@ -32,6 +32,7 @@ struct Stage1ProviderNeutralTests {
         testLegacyPackageGetsRequiredMainArtifact()
         testOptionalContoursDoesNotHideMainArtifact()
         testProviderNativeMetadataDecodesWithoutFZKSemantics()
+        testCatalogAcceptsFractionalProviderTimestamps()
         testProviderRegistryHasNoImplicitDefaultAndSortsAlphabetically()
         testCatalogRegionsAreProviderScoped()
         testSourceKindsKeepProviderAndCustomInputsExplicit()
@@ -52,7 +53,7 @@ struct Stage1ProviderNeutralTests {
         testProviderLifecycleMetadataDecodesFailClosed()
         await testDownloadFailureUsesConfirmedProviderDownState()
 
-        print("PASS: 23 Stage 1 provider-neutral core tests")
+        print("PASS: 24 Stage 1 provider-neutral core tests")
     }
 
     private static func testLegacyPackageGetsRequiredMainArtifact() {
@@ -184,6 +185,41 @@ struct Stage1ProviderNeutralTests {
             )
         } catch {
             expect(false, "provider-native release, region, tags, and artifact metadata decode neutrally")
+        }
+    }
+
+    private static func testCatalogAcceptsFractionalProviderTimestamps() {
+        let json = """
+        {
+          "catalogVersion": 2,
+          "updatedAt": "2026-08-31T17:53:40Z",
+          "providers": [
+            {
+              "id": "opentopomap",
+              "name": "OpenTopoMap",
+              "status": "ACTIVE",
+              "health": "HEALTHY",
+              "lastCheckedAt": "2026-08-31T17:53:03.865470+00:00",
+              "lastSuccessfulCatalogSync": "2026-08-31T17:53:29.293507+00:00",
+              "maps": []
+            }
+          ]
+        }
+        """
+
+        do {
+            let catalog = try MapCatalogDocumentDecoder().decode(Data(json.utf8))
+            let provider = catalog.providers.first
+            expect(
+                provider?.lastCheckedAt != nil
+                    && provider?.lastSuccessfulCatalogSync != nil,
+                "catalog timestamps accept RFC 3339 fractional seconds on every supported macOS"
+            )
+        } catch {
+            expect(
+                false,
+                "catalog timestamps accept RFC 3339 fractional seconds on every supported macOS"
+            )
         }
     }
 
@@ -398,10 +434,6 @@ struct Stage1ProviderNeutralTests {
             let parser = GarminIMGMetadataParser()
             let versionParser = OpenTopoMapVersionParser()
 
-            if packages.count != 177 {
-                print("OpenTopoMap catalog count mismatch: expected 177, got \(packages.count)")
-            }
-
             let allRowsPass = packages.count == 177 && packages.allSatisfy { package in
                 let providerRegion = package.providerRegionId
                 let version = package.version
@@ -481,11 +513,6 @@ struct Stage1ProviderNeutralTests {
             let requiresBundledContourFixture = ProcessInfo.processInfo.environment[
                 "TERENTO_CATALOG_CONTRACT_PATH"
             ] == nil
-            print(
-                "OpenTopoMap matrix diagnostics: rows=\(packages.count), "
-                    + "rowChecks=\(allRowsPass), contours=\(contourRows.count), "
-                    + "externalCatalog=\(!requiresBundledContourFixture)"
-            )
             expect(
                 allRowsPass
                     && (!requiresBundledContourFixture || contourRows.count == 176),

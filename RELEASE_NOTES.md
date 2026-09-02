@@ -17,6 +17,8 @@ a claim that every exact watch has been independently verified.
   weaken source validation, device ownership, or destructive-operation rules.
 - Correct fixed-width Freizeitkarte IMG header parsing so a full region field
   cannot be joined with the following release field.
+- Accept catalog health timestamps with or without fractional seconds across
+  every supported macOS version instead of rejecting the complete live catalog.
 - Reject an incompatible live catalog as a whole and use the bundled
   last-known-good snapshot instead of exposing only some broken maps.
 - Validate the exact production catalog during release packaging, after API
