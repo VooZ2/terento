@@ -9,7 +9,7 @@ https://api.terento.app
 The map and device catalog routes are public read-only metadata. Compatibility
 evidence and map-operation statistics are separate data boundaries: the former
 is an explicit product-purpose sharing flow, while the latter accepts only
-privacy-minimised map operation events. In beta.8, compatibility evidence is
+privacy-minimised map operation events. Compatibility evidence is
 accepted for the explicit reviewed provider allowlist (`freizeitkarte` and
 `opentopomap`) so the two streams can be linked by a shared operation ID when
 both opt-ins are enabled. Provider controls and statistics are private

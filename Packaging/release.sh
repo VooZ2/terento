@@ -304,6 +304,9 @@ for test_script in "$repo_root"/lab/native-connectivity-poc/Tests/run-*.sh; do
     run_logged "test-$test_name" "$test_script"
 done
 
+run_logged "release-documentation-contract" \
+    "$repo_root/Tests/run-release-documentation-tests.sh"
+
 # The app consumes the production catalog at runtime, which can differ from
 # the bundled snapshot exercised by deterministic unit tests. Validate the
 # exact live catalog with this release's Swift decoder, provider adapters, IMG

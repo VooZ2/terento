@@ -54,4 +54,4 @@ require_text 'return TerentoColors.interactive' "$connect_screen" "Update does n
 
 require_text '.accessibilityLabel("\(title) \(mapTitle)")' "$connect_screen" "visible actions lack map-specific accessibility labels"
 
-print "PASS: Manage maps simplified beta.8 action contract"
+print "PASS: Manage maps simplified action contract"

@@ -117,10 +117,10 @@ def build_catalog(rows: list[dict[str, Any]], updated_at: datetime) -> dict[str,
 def _build_provider_neutral_catalog(
     rows: list[dict[str, Any]], updated_at: datetime
 ) -> dict[str, Any]:
-    """Serialize the beta.8 package/artifact read model.
+    """Serialize the current package/artifact read model.
 
     The legacy map fields are intentionally retained because the current
-    native beta.8 decoder requires them. New consumers should use `release`
+    legacy native decoders require them. New consumers should use `release`
     and `artifacts`; `artifact.sizeBytes` is the final install size when it is
     known, while `downloadSizeBytes` is the provider source/archive size.
     """

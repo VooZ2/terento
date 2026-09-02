@@ -614,7 +614,7 @@ class Beta8APITests(unittest.TestCase):
         self.assertIn("if definition.id == \"opentopomap\":", source)
         self.assertIn("DELETE FROM map_artifact", source)
         self.assertIn("availability = 'RETIRED'", source)
-        self.assertIn("Beta.8 publishes main maps only", source)
+        self.assertIn("The current product publishes main maps only", source)
 
     def test_collection_failure_audit_keeps_provider_error_detail(self):
         source = (

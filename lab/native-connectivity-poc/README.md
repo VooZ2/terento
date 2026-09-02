@@ -86,13 +86,13 @@ parser; OpenTopoMap generated dates use its own parser, including compact
 `0YY-MM-DD` and full dates split across the two fixed header fields. A missing
 or conflicting release remains a fail-closed acquisition error.
 
-The local beta.8 Install maps flow presents an alphabetical provider dropdown
+The beta.9 Install maps flow presents an alphabetical provider dropdown
 without selecting a default provider. A batch may contain one or more maps
 from the selected provider only; rows from other providers become inactive and
 the planner rejects a defensive mixed-provider selection. Mixed-provider
-batch installation is deferred to beta.9/beta.10. OpenTopoMap's optional
+batch installation remains deferred. OpenTopoMap's optional
 contours artifacts are catalogued, but their user-selectable installation flow
-is deferred beyond beta.8; beta.8 installs the main map artifact.
+is deferred beyond beta.9; beta.9 installs the main map artifact.
 Map rows use the country/region as the title, normalize legacy provider-
 decorated names such as `Lithuania · Otm Lithuania`, and show provider plus
 normalized release on the second line. Same-provider regional variants use a
@@ -108,7 +108,7 @@ passed on real hardware in build 8; the equivalent two-map Freizeitkarte
 scenario also passed. Broader device evidence remains a separate release
 claim.
 
-The final beta.8 app presentation keeps only `Update` and `Remove` in normal
+The beta.9 app presentation keeps only `Update` and `Remove` in normal
 Manage maps rows. `Update` appears only from the canonical provider-neutral
 lifecycle comparison and reuses the existing safe-update transaction; Backup
 and ownership-recovery tooling remain implemented for internal validation but
@@ -141,7 +141,7 @@ the operator to disconnect the watch, and then verifies cleanup after reconnect.
 It never accepts an IMG/map source and refuses to remove an object unless the
 exact object identity returned by the same transfer matches.
 
-The beta.8 production lifecycle path forwards native MTP read progress through
+The beta.9 production lifecycle path forwards native MTP read progress through
 the local read-back adapter. Backup and one-file external Remove can therefore
 show measured byte progress; Remove additionally reports determinate progress
 through exact verification, deletion, and bounded post-delete rescans. This
@@ -175,7 +175,7 @@ To run the native window:
 swift run TerentoPoC
 ```
 
-To verify the beta.8 provider-neutral Stage 1 foundation and its related
+To verify the current provider-neutral foundation and its related
 regression boundaries:
 
 ```sh
@@ -217,11 +217,12 @@ The owner has separately confirmed same-provider multi-map OpenTopoMap and
 Freizeitkarte installation, Manage maps and watch visibility, reconnect
 persistence, and isolated one-map removal on real fēnix 8 hardware. These
 native tests do not turn that result into a broader device-support claim or
-exercise the separate web/admin UI. The focused beta.8 checks also cover the independent statistics
-consent/queue contract, measured installation viewport, and production
-`Update`/`Remove` action matrix. The metadata API contract is covered by backend tests; these
-native tests do not exercise it. The external-map safety tests cover only the
-local one-file Remove boundary; they are not hardware evidence.
+exercise the separate web/admin UI. The focused legacy-named checks also cover
+the independent statistics consent/queue contract, measured installation
+viewport, and production `Update`/`Remove` action matrix. The metadata API
+contract is covered by backend tests; these native tests do not exercise it.
+The external-map safety tests cover only the local one-file Remove boundary;
+they are not hardware evidence.
 
 To run the explicit developer-only Write Test after connecting the validated
 Garmin fēnix 8 and closing other Garmin/MTP applications:
