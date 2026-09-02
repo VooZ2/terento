@@ -489,7 +489,9 @@ struct Stage1ProviderNeutralTests {
             expect(
                 allRowsPass
                     && (!requiresBundledContourFixture || contourRows.count == 176),
-                "all 177 OpenTopoMap rows accept full, compact, and split generated dates with strict identity/version checks"
+                "all 177 OpenTopoMap rows accept full, compact, and split generated dates with strict identity/version checks "
+                    + "[rows=\(packages.count), rowChecks=\(allRowsPass), "
+                    + "contours=\(contourRows.count), externalCatalog=\(!requiresBundledContourFixture)]"
             )
         } catch {
             expect(
