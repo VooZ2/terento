@@ -7,7 +7,9 @@ import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterator
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from .failure_reasons import normalize_failure_reason
 from .models import CollectedDevice, CollectedMap
 from .asset_attribution import normalize_asset_source
 from .historical_devices import historical_device_for_event
@@ -16,11 +18,21 @@ from .provider_catalog import ProviderDefinition, ProviderSnapshot
 from .provider_health import ProviderHealthResult
 
 
-def _overview_bucket_floor(value: datetime, bucket: str) -> datetime:
+def _overview_time_zone(value: str) -> ZoneInfo:
+    try:
+        return ZoneInfo(value)
+    except (ZoneInfoNotFoundError, ValueError):
+        return ZoneInfo("UTC")
+
+
+def _overview_bucket_floor(
+    value: datetime, bucket: str, *, time_zone: str = "UTC",
+) -> datetime:
     value = (
         value.replace(tzinfo=timezone.utc)
         if value.tzinfo is None else value.astimezone(timezone.utc)
     )
+    value = value.astimezone(_overview_time_zone(time_zone))
     if bucket == "hour":
         return value.replace(minute=0, second=0, microsecond=0)
     if bucket == "week":
@@ -32,7 +44,10 @@ def _overview_bucket_floor(value: datetime, bucket: str) -> datetime:
     return value.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
-def _next_overview_bucket(value: datetime, bucket: str) -> datetime:
+def _next_overview_bucket(
+    value: datetime, bucket: str, *, time_zone: str = "UTC",
+) -> datetime:
+    value = value.astimezone(_overview_time_zone(time_zone))
     if bucket == "hour":
         return value + timedelta(hours=1)
     if bucket == "week":
@@ -52,6 +67,7 @@ def _fill_overview_trend_buckets(
     since: datetime,
     until: datetime,
     all_time: bool = False,
+    time_zone: str = "UTC",
 ) -> list[dict[str, Any]]:
     """Fill display-only zero buckets without creating telemetry records."""
     indexed: dict[datetime, dict[str, Any]] = {}
@@ -59,11 +75,13 @@ def _fill_overview_trend_buckets(
         value = row.get("bucket")
         if not isinstance(value, datetime):
             continue
-        indexed[_overview_bucket_floor(value, bucket)] = row
+        indexed[_overview_bucket_floor(value, bucket, time_zone=time_zone)] = row
     if not indexed:
         return rows
-    start = min(indexed) if all_time else _overview_bucket_floor(since, bucket)
-    end = _overview_bucket_floor(until, bucket)
+    start = min(indexed) if all_time else _overview_bucket_floor(
+        since, bucket, time_zone=time_zone,
+    )
+    end = _overview_bucket_floor(until, bucket, time_zone=time_zone)
     result: list[dict[str, Any]] = []
     current = start
     while current <= end:
@@ -73,7 +91,7 @@ def _fill_overview_trend_buckets(
             "success_count": 0,
             "failed_count": 0,
         })
-        current = _next_overview_bucket(current, bucket)
+        current = _next_overview_bucket(current, bucket, time_zone=time_zone)
     return result
 
 
@@ -531,15 +549,14 @@ class Database:
                 """,
                 (since, recent_limit),
             ).fetchall())
-            failure_reasons = list(connection.execute(
+            failure_reason_rows = list(connection.execute(
                 f"""
                 {scoped}
-                SELECT error_category AS reason, count(*) AS count
+                SELECT error_category, failure_stage, failure_code,
+                       count(*) AS count
                 FROM scoped_operations
-                WHERE has_failed AND error_category IS NOT NULL
-                GROUP BY error_category
-                ORDER BY count DESC, reason
-                LIMIT 8
+                WHERE has_failed
+                GROUP BY error_category, failure_stage, failure_code
                 """,
                 (since,),
             ).fetchall())
@@ -599,6 +616,22 @@ class Database:
                 """,
                 (since,),
             ).fetchall())
+        failure_reason_counts: dict[str, int] = {}
+        for row in failure_reason_rows:
+            reason = normalize_failure_reason(
+                row.get("error_category"),
+                failure_stage=row.get("failure_stage"),
+                failure_code=row.get("failure_code"),
+            )
+            failure_reason_counts[reason] = (
+                failure_reason_counts.get(reason, 0) + int(row.get("count") or 0)
+            )
+        failure_reasons = [
+            {"reason": reason, "count": count}
+            for reason, count in sorted(
+                failure_reason_counts.items(), key=lambda item: (-item[1], item[0])
+            )[:8]
+        ]
         return {
             "operationCount": int(summary.get("operation_count") or 0),
             "successfulInstallCount": int(summary.get("successful_install_count") or 0),
@@ -615,7 +648,7 @@ class Database:
             ),
             "hasData": int(summary.get("operation_count") or 0) > 0,
             "recentActivity": [dict(row) for row in recent],
-            "failureReasons": [dict(row) for row in failure_reasons],
+            "failureReasons": failure_reasons,
             "modelActivity": [dict(row) for row in model_activity],
             "reviewRequired": [dict(row) for row in review_required],
         }
@@ -625,6 +658,7 @@ class Database:
         since: datetime,
         *,
         period: str = "24h",
+        time_zone: str = "UTC",
         recent_limit: int = 8,
         attention_limit: int = 6,
     ) -> dict[str, Any]:
@@ -640,11 +674,11 @@ class Database:
         # overloaded signature. The period is already allow-listed above, so
         # embedding the selected expression is both safe and deterministic.
         bucket_expression = {
-            "24h": "date_trunc('hour', e.occurred_at)",
-            "7d": "date_trunc('day', e.occurred_at)",
-            "30d": "date_trunc('day', e.occurred_at)",
-            "all": "date_trunc('month', e.occurred_at)",
-        }.get(period, "date_trunc('hour', e.occurred_at)")
+            "24h": "date_trunc('hour', local_occurred_at)",
+            "7d": "date_trunc('day', local_occurred_at)",
+            "30d": "date_trunc('day', local_occurred_at)",
+            "all": "date_trunc('month', local_occurred_at)",
+        }.get(period, "date_trunc('hour', local_occurred_at)")
         bucket = {
             "24h": "hour",
             "7d": "day",
@@ -666,10 +700,10 @@ class Database:
                 else None
             )
             if span_days is not None and span_days <= 31:
-                bucket_expression = "date_trunc('day', e.occurred_at)"
+                bucket_expression = "date_trunc('day', local_occurred_at)"
                 bucket = "day"
             elif span_days is not None and span_days <= 180:
-                bucket_expression = "date_trunc('week', e.occurred_at)"
+                bucket_expression = "date_trunc('week', local_occurred_at)"
                 bucket = "week"
         event_scope = """
             FROM map_download_event AS e
@@ -714,46 +748,34 @@ class Database:
                 """,
                 (since, recent_limit),
             ).fetchall())
-            attention = list(connection.execute(
-                f"""
-                SELECT
-                    e.operation_id::text AS operation_id,
-                    e.provider_id,
-                    p.name AS provider_name,
-                    e.map_package_id,
-                    COALESCE(mp.name, e.map_package_id) AS map_package_name,
-                    COALESCE(mp.name, e.region, e.map_package_id) AS display_name,
-                    COALESCE(e.region, mp.region) AS region,
-                    e.event_type,
-                    e.outcome,
-                    e.app_build,
-                    e.occurred_at
-                {event_scope}
-                  AND e.event_type IN ('DOWNLOAD_FAILED', 'INSTALL_FAILED')
-                  AND e.outcome = 'FAILED'
-                ORDER BY e.occurred_at DESC, e.event_id DESC
-                LIMIT %s
-                """,
-                (since, attention_limit),
-            ).fetchall())
+            # Map events have no unresolved/actionable lifecycle state. Their
+            # failures remain in Recent activity and statistics; actionable
+            # diagnostics and provider problems are surfaced separately.
+            attention: list[dict[str, Any]] = []
             trend = list(connection.execute(
                 f"""
+                WITH localized_events AS (
+                    SELECT
+                        e.operation_id, e.event_type, e.outcome,
+                        timezone(%s, e.occurred_at) AS local_occurred_at
+                    FROM map_download_event AS e
+                    WHERE e.occurred_at >= %s
+                )
                 SELECT
-                    {bucket_expression} AS bucket,
-                    count(DISTINCT e.operation_id) FILTER (
-                        WHERE e.event_type = 'INSTALL_SUCCEEDED'
-                          AND e.outcome = 'SUCCEEDED'
+                    ({bucket_expression} AT TIME ZONE %s) AS bucket,
+                    count(DISTINCT operation_id) FILTER (
+                        WHERE event_type = 'INSTALL_SUCCEEDED'
+                          AND outcome = 'SUCCEEDED'
                     ) AS success_count,
-                    count(DISTINCT e.operation_id) FILTER (
-                        WHERE e.event_type = 'INSTALL_FAILED'
-                          AND e.outcome = 'FAILED'
+                    count(DISTINCT operation_id) FILTER (
+                        WHERE event_type = 'INSTALL_FAILED'
+                          AND outcome = 'FAILED'
                     ) AS failed_count
-                FROM map_download_event AS e
-                WHERE e.occurred_at >= %s
+                FROM localized_events
                 GROUP BY {bucket_expression}
                 ORDER BY bucket
                 """,
-                (since,),
+                (time_zone, since, time_zone),
             ).fetchall())
         trend_rows = [dict(row) for row in trend]
         if trend_rows:
@@ -763,6 +785,7 @@ class Database:
                 since=since,
                 until=datetime.now(timezone.utc),
                 all_time=period == "all",
+                time_zone=time_zone,
             )
         completed = int(summary.get("completed_install_count") or 0)
         failed = int(summary.get("failed_install_count") or 0)
@@ -2130,6 +2153,8 @@ class Database:
                 e.map_package_id,
                 mp.name AS map_package_name,
                 COALESCE(e.region, mp.region) AS region,
+                mp.canonical_region_id,
+                mp.country AS region_country,
                 e.event_type,
                 e.outcome,
                 count(*) AS event_count,
@@ -2141,7 +2166,8 @@ class Database:
             LEFT JOIN map_provider AS p ON p.id = e.provider_id
             WHERE {' AND '.join(clauses)}
             GROUP BY e.provider_id, p.name, e.map_package_id, mp.name,
-                     COALESCE(e.region, mp.region), e.event_type, e.outcome
+                     COALESCE(e.region, mp.region), mp.canonical_region_id,
+                     mp.country, e.event_type, e.outcome
             ORDER BY last_occurred_at DESC, e.provider_id,
                      e.map_package_id NULLS LAST, e.event_type, e.outcome
         """

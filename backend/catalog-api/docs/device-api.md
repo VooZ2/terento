@@ -64,8 +64,9 @@ includes a time-zone selector for manual IANA-zone changes; the choice is
 stored only in that browser's local storage. This changes presentation only
 and does not alter API fields, database values, or collector schedules. One
 shared formatter renders admin timestamps as `YYYY-MM-DD HH:mm` in the selected
-zone; the zone remains available from the selector and timestamp tooltip rather
-than being repeated beside every value.
+zone; the Overview trend query and bucket labels use that same selected zone,
+including local midnight boundaries. The zone remains available from the
+selector and timestamp tooltip rather than being repeated beside every value.
 
 ## Canonicalization
 
