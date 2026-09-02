@@ -69,7 +69,7 @@ class FakeEvidenceDatabase:
             "failureReasons": [],
         }
 
-    def admin_overview_map_snapshot(self, since, *, period="24h"):
+    def admin_overview_map_snapshot(self, since, *, period="24h", time_zone="UTC"):
         return {
             "eventCount": 0,
             "completedInstallCount": 0,

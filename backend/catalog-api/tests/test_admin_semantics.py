@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import unittest
 from urllib.parse import parse_qs, urlsplit
+from zoneinfo import ZoneInfo
 
 from terento_catalog.admin import (
     GITHUB_ADMIN_NOTE_MAX_LENGTH,
@@ -16,6 +17,7 @@ from terento_catalog.admin import (
     _admin_device_payload,
     _admin_event_outcome_label,
     _admin_map_display_name,
+    _admin_region_identity,
     _admin_timezone_script,
     _campaign_links_script,
     _client_issue_note_sanitizer_script,
@@ -32,6 +34,7 @@ from terento_catalog.admin import (
     _map_statistics_summary,
     _normalise_variant,
     _overview_period_script,
+    _overview_chart_bucket_label,
     _map_statistics_script,
     _provider_detail_script,
     format_timestamp,
@@ -52,7 +55,12 @@ from terento_catalog.compatibility_status import (
     CompatibilityStatus,
     calculate_compatibility_status,
 )
-from terento_catalog.db import Database, _fill_overview_trend_buckets
+from terento_catalog.db import (
+    Database,
+    _fill_overview_trend_buckets,
+    _overview_bucket_floor,
+)
+from terento_catalog.failure_reasons import normalize_failure_reason
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -304,7 +312,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("<span>Evidence success</span><strong>50%</strong>", body)
         self.assertIn("Map install operations over time", body)
         self.assertIn("overview-chart-success", body)
-        self.assertIn("viewBox='0 0 720 190'", body)
+        self.assertIn("viewBox='0 0 720 260'", body)
         self.assertIn("overview-chart-panel", body)
         self.assertIn("Recent map activity", body)
         self.assertIn("Compatibility evidence", body)
@@ -399,6 +407,80 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertEqual(len(all_time), 3)
         self.assertEqual(sum(item["success_count"] for item in all_time), 1)
 
+    def test_overview_needs_attention_ignores_historical_map_failures(self):
+        body = overview_page(
+            {
+                "period": "24h",
+                "data": {
+                    "hasData": True,
+                    "eventCount": 1,
+                    "failedInstallCount": 0,
+                    "recentActivity": [],
+                    "attention": [{
+                        "event_type": "DOWNLOAD_FAILED",
+                        "outcome": "FAILED",
+                        "provider_id": "opentopomap",
+                        "map_package_id": "opentopomap-lithuania",
+                    }],
+                    "trend": [],
+                    "bucket": "hour",
+                },
+                "compatibility": {
+                    "hasData": True,
+                    "openErrorCount": 0,
+                    "recentActivity": [],
+                    "reviewRequired": [],
+                    "failureReasons": [],
+                },
+                "providers": [{
+                    "id": "opentopomap", "name": "OpenTopoMap", "health": "HEALTHY",
+                }],
+            },
+            {"username": "operator"}, "csrf",
+        ).decode()
+        attention = body.split("overview-attention-panel", 1)[1].split("</section>", 1)[0]
+        self.assertIn("No issues need attention", attention)
+        self.assertNotIn("Download failed", attention)
+
+    def test_failure_reason_normalizes_source_validation_variants(self):
+        for category, stage, code in (
+            ("sourceValidation", None, None),
+            ("Source Validation", None, None),
+            ("Source Validation failed", None, None),
+            ("source_validation", None, None),
+            ("unknown", "source-validation", None),
+            ("unknown", None, "INSTALL_BLOCKED_SOURCE_VALIDATION_FAILED"),
+        ):
+            with self.subTest(category=category, stage=stage, code=code):
+                self.assertEqual(
+                    normalize_failure_reason(
+                        category, failure_stage=stage, failure_code=code,
+                    ),
+                    "source_validation",
+                )
+        self.assertEqual(normalize_failure_reason(None), "unknown")
+
+    def test_overview_chart_uses_selected_timezone_for_hour_and_day(self):
+        operation = datetime(2026, 9, 2, 11, 1, tzinfo=timezone.utc)
+        near_midnight = datetime(2026, 9, 2, 21, 30, tzinfo=timezone.utc)
+        hour_bucket = _overview_bucket_floor(
+            operation, "hour", time_zone="Europe/Vilnius",
+        )
+        self.assertEqual(
+            _overview_chart_bucket_label(hour_bucket, "hour", "Europe/Vilnius"),
+            "14:00",
+        )
+        self.assertEqual(
+            _overview_chart_bucket_label(near_midnight, "day", "Europe/Vilnius"),
+            "03 Sep",
+        )
+        self.assertEqual(
+            _overview_bucket_floor(
+                near_midnight, "day", time_zone="Europe/Vilnius",
+            ).astimezone(ZoneInfo("Europe/Vilnius")).strftime("%Y-%m-%d %H:%M"),
+            "2026-09-03 00:00",
+        )
+
     def test_admin_map_labels_are_human_and_unknown_outcomes_are_neutral(self):
         self.assertEqual(_admin_map_display_name("PRINCIPALITY_OF_ANDORRA"), "Andorra")
         self.assertEqual(_admin_map_display_name("SWITZERLAND"), "Switzerland")
@@ -407,6 +489,24 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertEqual(_admin_map_display_name("Region Belgium - Netherlands - Luxembourg"), "Belgium – Netherlands – Luxembourg")
         self.assertEqual(_admin_event_outcome_label("UNKNOWN"), "—")
         self.assertEqual(_admin_event_outcome_label("SUCCEEDED"), "Succeeded")
+        self.assertEqual(
+            _admin_region_identity("AND", "Principality of Andorra", "AND"),
+            _admin_region_identity("ANDORRA", "Andorra", "ANDORRA"),
+        )
+        self.assertEqual(
+            _admin_region_identity("LTU", "Republic of Lithuania", "LTU"),
+            _admin_region_identity("LITHUANIA", "Lithuania", "LITHUANIA"),
+        )
+        self.assertNotEqual(
+            _admin_region_identity("BAVARIA", "Germany", "BAVARIA"),
+            _admin_region_identity("GERMANY", "Germany", "GERMANY"),
+        )
+        statistics_script = _map_statistics_script()
+        self.assertIn("row.region_identity || row.canonical_region_id", statistics_script)
+        self.assertIn("const key = item.regionIdentity || item.region", statistics_script)
+        statistics_query = inspect.getsource(Database.map_statistics)
+        self.assertIn("mp.canonical_region_id", statistics_query)
+        self.assertIn("mp.country AS region_country", statistics_query)
 
         body = map_statistics_page(
             {"rows": []}, [], {"username": "operator"}, "csrf",
@@ -455,9 +555,11 @@ class AdminSemanticsTests(unittest.TestCase):
             for query, parameters in database.calls
             if "GROUP BY" in query and "success_count" in query
         )
-        self.assertIn("date_trunc('day', e.occurred_at)", trend_query)
+        self.assertIn("timezone(%s, e.occurred_at)", trend_query)
+        self.assertIn("date_trunc('day', local_occurred_at)", trend_query)
+        self.assertIn("AT TIME ZONE %s", trend_query)
         self.assertNotIn("date_trunc(%s", trend_query)
-        self.assertEqual(trend_parameters, (since,))
+        self.assertEqual(trend_parameters, ("UTC", since, "UTC"))
 
     def test_installation_authorization_is_separate_from_compatibility_evidence(self):
         source = inspect.getsource(Database.update_device_support_status)
@@ -711,6 +813,9 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn('textarea name=\'note\'', detail_body)
         self.assertIn("Save authorization", detail_body)
         self.assertIn("Garmin device", detail_body)
+        self.assertIn("device-information-section", detail_body)
+        self.assertIn(".device-information-section .model-information-list{max-width:780px}", detail_body)
+        self.assertIn("grid-template-columns:150px minmax(0,1fr)", detail_body)
         self.assertNotIn("Change history", detail_body)
         self.assertIn("placeholder=\"garmin maps\"", campaign_body)
         self.assertIn("Usually used for paid-search keywords or targeting", campaign_body)
@@ -1006,7 +1111,13 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Prepare GitHub issue", body)
         self.assertIn("Copy issue report", body)
         self.assertIn("Link issue", body)
-        self.assertEqual(body.count("github-review-collapsed"), 1)
+        self.assertEqual(
+            body.count("<section class='diagnostic-action-form github-review github-review-collapsed'"),
+            body.count("<dialog class='diagnostic-detail-dialog'"),
+        )
+        self.assertIn(".diagnostic-detail-dialog{width:min(880px,calc(100% - 32px))", body)
+        self.assertIn("<details class='github-issue-disclosure'>", body)
+        self.assertIn("Manage linked issue", body)
         self.assertIn("Change linked issue", body)
         self.assertIn("Unlink issue", body)
         self.assertIn("#32 <span aria-hidden='true'>↗</span>", body)
