@@ -4,7 +4,7 @@ Release date: 2026-09-02
 
 Beta.9 fixes OpenTopoMap Lithuania installation and hardens the boundary
 between Terento releases and the independently changing live map catalog.
-It keeps the beta.8 provider and device scope unchanged.
+It keeps the preceding release's provider and device scope unchanged.
 
 This remains a pre-MVP beta for hardware validation. Model eligibility is not
 a claim that every exact watch has been independently verified.

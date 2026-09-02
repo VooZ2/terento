@@ -120,12 +120,12 @@ KNOWN_PROVIDER_DEFINITIONS: dict[str, ProviderDefinition] = {
     item.id: item for item in (FREIZEITKARTE, OPENTOPO_MAP)
 }
 
-# Beta.8 exposes only OpenTopoMap's ready-to-install Garmin main archives.
+# The current product exposes only OpenTopoMap's ready-to-install Garmin main archives.
 # Optional contours remain outside the collection gate until their own
 # validation contract is accepted.
 OPENTOPO_MAP_BETA8_MAIN_PACKAGE_COUNT = 177
 
-# The beta.8 product policy needs a canonical identity for explicit OTM
+# The product policy needs a canonical identity for explicit OTM
 # russia packages. Other OTM regions may continue without country codes until
 # a reviewed complete geographic mapping is available.
 OPENTOPO_MAP_POLICY_COUNTRY_CODES: dict[str, tuple[str, ...]] = {

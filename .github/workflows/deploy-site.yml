@@ -41,6 +41,7 @@ jobs:
           Tests/run-structured-data-tests.sh
           Tests/run-guide-content-tests.sh
           Tests/run-public-page-layout-contract-tests.sh
+          Tests/run-release-documentation-tests.sh
 
       - name: Validate deployment configuration
         shell: bash

@@ -423,7 +423,7 @@ struct Stage45MapSelectionTests {
                 )
                 && mixedPlan.status == .blocked
                 && mixedPlan.reason == "Select maps from one provider at a time.",
-            "beta.8 locks the other provider and blocks mixed-provider install plans"
+            "the current product locks the other provider and blocks mixed-provider install plans"
         )
     }
 

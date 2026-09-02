@@ -48,7 +48,7 @@ enum ManageMapRowActionPresentation: Sendable {
 
     /// Production Manage Maps deliberately exposes only product actions.
     /// Backup and ownership export/recovery remain internal lifecycle
-    /// capabilities and cannot leak into the normal beta.8 action surface.
+    /// capabilities and cannot leak into the normal release action surface.
     static func productionActions(
         for availability: MapLifecycleActionAvailability
     ) -> [MapLifecycleAction] {

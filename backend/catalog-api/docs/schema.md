@@ -18,7 +18,7 @@ the registry contains only providers with a known server-side adapter.
 | `adapter_id` | `text` | Stable ID of a server-side prebuilt adapter; never uploaded through the API |
 | `status` | `text` | `ACTIVE`, `PAUSED`, or `RETIRED` lifecycle state |
 | `website` | `text` | Official provider map page |
-| `license` | `text` | Provider/data licensing summary (canonical beta.8 field) |
+| `license` | `text` | Provider/data licensing summary (canonical field) |
 | `license_information` | `text` | Provider/data licensing summary |
 | `attribution` | `text` | Attribution shown to clients |
 | `license_url` | `text` | Official license/source page |

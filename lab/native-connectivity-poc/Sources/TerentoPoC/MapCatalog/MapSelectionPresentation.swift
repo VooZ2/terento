@@ -2,7 +2,7 @@ import Foundation
 
 /// Pure list rules keep UI partitioning and search deterministic and testable.
 enum MapSelectionPresentationModel: Sendable {
-    /// Beta.8 permits one provider per installation batch. The first selected
+    /// The current product permits one provider per installation batch. The first selected
     /// provider therefore locks rows from other providers until the current
     /// selection is cleared. Custom files are provider-neutral and remain
     /// selectable alongside one provider.

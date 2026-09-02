@@ -1775,7 +1775,7 @@ class Database:
                     )
 
             if definition.id == "opentopomap":
-                # Beta.8 publishes main maps only. A complete replacement
+                # The current product publishes main maps only. A complete replacement
                 # snapshot must hide any contours or packages left by an
                 # earlier collector run without touching map binaries.
                 package_ids = [package.id for package in snapshot.packages]
