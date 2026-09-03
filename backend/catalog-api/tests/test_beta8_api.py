@@ -6,6 +6,7 @@ from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 from unittest.mock import patch
+from urllib.parse import urlsplit
 
 from terento_catalog.catalog import build_catalog
 from terento_catalog.admin import token_hash
@@ -484,7 +485,11 @@ class Beta8APITests(unittest.TestCase):
         )
         self.assertEqual(links[0].country_name, "Afghanistan")
         self.assertEqual(links[0].source_updated_at.isoformat(), "2026-05-26T08:33:53+00:00")
-        self.assertTrue(all("opentopomap.org" in item.source_url for item in links))
+        self.assertTrue(all(
+            (urlsplit(item.source_url).hostname or "").casefold() == "opentopomap.org"
+            or (urlsplit(item.source_url).hostname or "").casefold().endswith(".opentopomap.org")
+            for item in links
+        ))
 
     def test_opentopomap_parser_supports_all_provider_region_shapes(self):
         html = """

@@ -4,6 +4,7 @@ import json
 import logging
 import hmac
 import re
+import secrets
 import time
 from collections import defaultdict, deque
 from datetime import datetime, timedelta, timezone
@@ -1862,21 +1863,24 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
         def _send_admin_html(
             self, body: bytes, *, send_body: bool, status: HTTPStatus = HTTPStatus.OK
         ) -> None:
+            nonce = secrets.token_urlsafe(18)
+            body = body.replace(
+                b"__TERENTO_ADMIN_NONCE__", nonce.encode("ascii")
+            )
             self.send_response(status)
-            self._admin_headers(content_length=len(body), body=body)
+            self._admin_headers(content_length=len(body), nonce=nonce)
             self.end_headers()
             if send_body:
                 self.wfile.write(body)
 
-        def _admin_headers(self, *, content_length: int, body: bytes = b"") -> None:
+        def _admin_headers(self, *, content_length: int, nonce: str | None = None) -> None:
             self._common_headers(
                 cache_control="no-store",
                 content_type="text/html; charset=utf-8",
                 content_length=content_length,
             )
             self.send_header("X-Robots-Tag", "noindex, nofollow")
-            nonce_match = re.search(rb'<script nonce="([A-Za-z0-9_-]+)">', body)
-            script_policy = f"script-src 'nonce-{nonce_match.group(1).decode('ascii')}'" if nonce_match else "script-src 'none'"
+            script_policy = f"script-src 'nonce-{nonce}'" if nonce else "script-src 'none'"
             self.send_header(
                 "Content-Security-Policy",
                 f"default-src 'none'; {script_policy}; connect-src 'self'; style-src 'unsafe-inline' https://terento.app; font-src https://terento.app; img-src https://terento.app https://api.terento.app https://res.garmin.com data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
@@ -1886,8 +1890,11 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
         def _redirect(
             self, location: str, *, send_body: bool, clear_cookie: bool = False
         ) -> None:
+            safe_location = location.replace("\r", "").replace("\n", "")
+            if not safe_location.startswith("/") or safe_location.startswith("//"):
+                safe_location = "/admin"
             self.send_response(HTTPStatus.SEE_OTHER)
-            self.send_header("Location", location)
+            self.send_header("Location", safe_location)
             if clear_cookie:
                 expired = "Max-Age=0; Path=/admin; Secure; HttpOnly; SameSite=Strict"
                 self.send_header("Set-Cookie", f"terento_admin_session=; {expired}")
