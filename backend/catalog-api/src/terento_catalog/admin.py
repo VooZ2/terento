@@ -34,6 +34,8 @@ PBKDF2_ITERATIONS = 600_000
 GITHUB_ADMIN_NOTE_MAX_LENGTH = 500
 GITHUB_ISSUE_URL_MAX_LENGTH = 7_000
 GITHUB_NEW_ISSUE_URL = "https://github.com/VooZ2/terento/issues/new"
+_ADMIN_NONCE_PLACEHOLDER = "__TERENTO_ADMIN_NONCE__"
+_ADMIN_TEXT_INPUT_LIMIT = 8_192
 
 
 class AdminValidationError(ValueError):
@@ -174,7 +176,7 @@ def _format_rate(value: Any) -> str:
 
 
 def _normalise_variant(value: Any) -> str:
-    raw = str(value or "").strip()
+    raw = str(value or "").strip()[:256]
     if not raw:
         return "—"
     normalized = re.sub(
@@ -190,7 +192,7 @@ def _normalise_variant(value: Any) -> str:
         normalized,
         flags=re.IGNORECASE,
     )
-    normalized = re.sub(r"\s*,\s*", ", ", normalized)
+    normalized = ", ".join(part.strip() for part in normalized.split(","))
     return " ".join(normalized.split())
 
 
@@ -2496,9 +2498,11 @@ def _github_issue_link(value: Any) -> str:
 
 def _sanitised_issue_value(value: Any, *, max_length: int | None = None) -> str:
     """Sanitise one allowlisted report value before Markdown or URL encoding."""
-    text = re.sub(r"[\x00-\x1f\x7f]+", " ", str(value or "")).strip()
-    text = re.sub(r"(?is)<script\b[^>]*>.*?</script>", "[redacted markup]", text)
-    text = re.sub(r"(?s)<[^>]+>", "[redacted markup]", text)
+    text = str(value or "")[:_ADMIN_TEXT_INPUT_LIMIT]
+    text = re.sub(r"[\x00-\x1f\x7f]+", " ", text).strip()
+    # This is report text, not HTML. Remove angle brackets directly instead of
+    # attempting to parse HTML with a backtracking regular expression.
+    text = text.replace("<", "[redacted markup]").replace(">", "[redacted markup]")
     text = re.sub(r"(?i)\b(?:ghp|github_pat)_[A-Za-z0-9_\-]+", "[redacted token]", text)
     text = re.sub(r"(?i)\bBearer\s+[^\s,;]+", "Bearer [redacted]", text)
     text = re.sub(
@@ -4095,8 +4099,7 @@ def _client_issue_note_sanitizer_script() -> str:
     return r"""(value) => value
           .slice(0, 500)
           .replace(/[\u0000-\u001f\u007f]+/g, ' ')
-          .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '[redacted markup]')
-          .replace(/<[^>]+>/g, '[redacted markup]')
+          .replace(/[<>]/g, '[redacted markup]')
           .replace(/\b(?:ghp|github_pat)_[A-Za-z0-9_-]+/gi, '[redacted token]')
           .replace(/\bBearer\s+[^\s,;]+/gi, 'Bearer [redacted]')
           .replace(/\b(?:Authorization|Proxy-Authorization|Cookie|Set-Cookie)\s*:\s*[^\s,;]+(?:\s+[^\s,;]+)?/gi, '[redacted header]')
@@ -4838,11 +4841,14 @@ def _error(message: str | None) -> str:
 
 
 def _layout(title: str, content: str) -> bytes:
-    nonce = secrets.token_urlsafe(18)
-    content = content.replace("<script>", f"<script nonce=\"{nonce}\">")
+    content = content.replace(
+        "<script>", f"<script nonce=\"{_ADMIN_NONCE_PLACEHOLDER}\">"
+    )
     timezone_script = _admin_timezone_script()
     content = f"{content}<script>{timezone_script}</script>"
-    content = content.replace("<script>", f"<script nonce=\"{nonce}\">")
+    content = content.replace(
+        "<script>", f"<script nonce=\"{_ADMIN_NONCE_PLACEHOLDER}\">"
+    )
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>{html.escape(title)} · Terento</title><style>{ADMIN_STYLES}</style></head><body>{content}</body></html>""".encode("utf-8")
 
 
