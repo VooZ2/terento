@@ -706,3 +706,12 @@ release/build labels, summaries, and scalar detail values are allowlisted and
 validated. `observationId` makes retries idempotent. The route does not execute
 tests, accept raw logs, or expose a public read API; retained results are shown
 only on authenticated `/admin/system-health`.
+
+## `GET /internal/operations/report-context`
+
+Returns bounded provider catalog status for the weekly health workflow.
+Requests require the same independent `OPERATIONS_INGEST_SECRET` bearer token.
+The response contains only provider ID/name, normalized health, latest release,
+last successful collection, last detected release change, and an actionable
+reason. It contains no credentials, user/device identifiers, raw logs, or map
+binaries and is returned with `Cache-Control: no-store`.

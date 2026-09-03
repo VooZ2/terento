@@ -20,7 +20,17 @@ class WeeklyReportEmailTests(unittest.TestCase):
                 "releaseVersion": "1.0.0-beta.10", "buildNumber": "11",
                 "commitSha": "a" * 40, "observedAt": "2026-09-02T20:00:00Z",
                 "sourceRunUrl": "https://github.com/VooZ2/terento/actions/runs/123",
-                "details": {"site": "success", "native": "failure"},
+                "details": {
+                    "site": "success", "native": "failure",
+                    "catalog_freizeitkarte_status": "HEALTHY",
+                    "catalog_freizeitkarte_latest_release": "2026-09",
+                    "catalog_freizeitkarte_last_success": "2026-09-02T03:00:00Z",
+                    "catalog_freizeitkarte_release_detected_at": "2026-09-02T03:00:00Z",
+                    "catalog_freizeitkarte_new_release": True,
+                    "catalog_freizeitkarte_reason": "Current.",
+                    "catalog_opentopomap_status": "WARNING",
+                    "catalog_opentopomap_reason": "Collection is stale.",
+                },
             },
             "report@terento.app",
             "report@terento.app",
@@ -28,7 +38,12 @@ class WeeklyReportEmailTests(unittest.TestCase):
         self.assertEqual(message["To"], "report@terento.app")
         self.assertIn("Weekly project health: Failed", message["Subject"])
         body = message.get_content()
-        self.assertIn("Native: failure", body)
+        self.assertIn("Native device safety: failure", body)
+        self.assertIn("Provider catalogs:", body)
+        self.assertIn("Freizeitkarte: HEALTHY", body)
+        self.assertIn("OpenTopoMap: WARNING", body)
+        self.assertIn("Collection is stale.", body)
+        self.assertIn("New release detected in the last 7 days: yes", body)
         self.assertIn("actions/runs/123", body)
         self.assertNotIn("SMTP_PASSWORD", body)
 

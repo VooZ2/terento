@@ -1765,16 +1765,49 @@ class Database:
         artifact_count: int = 0,
         error_code: str | None = None,
         error_detail: str | None = None,
+        latest_release: str | None = None,
+        catalog_fingerprint: str | None = None,
     ) -> None:
         with self.connection() as connection:
+            previous = None
+            if status == "SUCCEEDED" and catalog_fingerprint:
+                previous = connection.execute(
+                    """
+                    SELECT previous.catalog_fingerprint
+                    FROM catalog_collection_run current_run
+                    LEFT JOIN LATERAL (
+                        SELECT catalog_fingerprint
+                        FROM catalog_collection_run
+                        WHERE provider_id = current_run.provider_id
+                          AND id <> current_run.id
+                          AND status = 'SUCCEEDED'
+                          AND catalog_fingerprint IS NOT NULL
+                        ORDER BY finished_at DESC, id DESC
+                        LIMIT 1
+                    ) previous ON TRUE
+                    WHERE current_run.id = %s
+                    """,
+                    (run_id,),
+                ).fetchone()
+            previous_fingerprint = previous.get("catalog_fingerprint") if previous else None
+            release_change_detected = bool(
+                previous_fingerprint
+                and catalog_fingerprint
+                and previous_fingerprint != catalog_fingerprint
+            )
             connection.execute(
                 """
                 UPDATE catalog_collection_run
                 SET finished_at = now(), status = %s, package_count = %s,
-                    artifact_count = %s, error_code = %s, error_detail = %s
+                    artifact_count = %s, error_code = %s, error_detail = %s,
+                    latest_release = %s, catalog_fingerprint = %s,
+                    release_change_detected = %s
                 WHERE id = %s
                 """,
-                (status, package_count, artifact_count, error_code, error_detail, run_id),
+                (
+                    status, package_count, artifact_count, error_code, error_detail,
+                    latest_release, catalog_fingerprint, release_change_detected, run_id,
+                ),
             )
 
     def upsert_provider_snapshot(self, snapshot: ProviderSnapshot) -> None:
@@ -1901,6 +1934,14 @@ class Database:
                 p.attribution, p.license_url, p.last_catalog_sync,
                 h.status AS health, h.checked_at AS last_checked_at,
                 h.error_code AS last_error,
+                latest_run.started_at AS last_collection_attempt_at,
+                latest_run.finished_at AS last_collection_finished_at,
+                latest_run.status AS last_collection_status,
+                latest_run.error_code AS last_collection_error_code,
+                latest_run.error_detail AS last_collection_error_detail,
+                latest_success.finished_at AS last_collection_success_at,
+                latest_success.latest_release,
+                latest_change.finished_at AS latest_release_detected_at,
                 COALESCE(pc.active_package_count, 0) AS active_package_count,
                 COALESCE(pc.broken_package_count, 0) AS broken_package_count,
                 COALESCE(pc.broken_url_count, 0) AS broken_url_count
@@ -1912,6 +1953,29 @@ class Database:
                 ORDER BY ph.checked_at DESC, ph.id DESC
                 LIMIT 1
             ) AS h ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT started_at, finished_at, status, error_code, error_detail
+                FROM catalog_collection_run
+                WHERE provider_id = p.id
+                ORDER BY started_at DESC, id DESC
+                LIMIT 1
+            ) AS latest_run ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT finished_at, latest_release
+                FROM catalog_collection_run
+                WHERE provider_id = p.id AND status = 'SUCCEEDED'
+                ORDER BY finished_at DESC, id DESC
+                LIMIT 1
+            ) AS latest_success ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT finished_at
+                FROM catalog_collection_run
+                WHERE provider_id = p.id
+                  AND status = 'SUCCEEDED'
+                  AND release_change_detected = TRUE
+                ORDER BY finished_at DESC, id DESC
+                LIMIT 1
+            ) AS latest_change ON TRUE
             LEFT JOIN LATERAL (
                 SELECT
                     count(DISTINCT mp.id) FILTER (WHERE mp.availability = 'AVAILABLE')
@@ -2015,7 +2079,8 @@ class Database:
             return list(connection.execute(
                 """
                 SELECT id, provider_id, started_at, finished_at, status,
-                       package_count, artifact_count, error_code, error_detail
+                       package_count, artifact_count, error_code, error_detail,
+                       latest_release, release_change_detected
                 FROM catalog_collection_run
                 WHERE provider_id = %s
                 ORDER BY started_at DESC, id DESC

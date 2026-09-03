@@ -374,6 +374,35 @@ jobs:
               details:{selection:$selection, site:$site, backend:$backend, app:$app,
                 native:$native, release:$release, shared_ci:$sharedCi, live_catalog:$liveCatalog}}' \
             > "$RUNNER_TEMP/terento-operational-report.json"
+          context_file="$RUNNER_TEMP/terento-catalog-report-context.json"
+          if ! curl --fail --silent --show-error --connect-timeout 5 --max-time 15 \
+            -H "Authorization: Bearer $OPERATIONS_INGEST_SECRET" \
+            https://api.terento.app/internal/operations/report-context \
+            > "$context_file"; then
+            printf '%s\n' '{"schemaVersion":1,"providers":[]}' > "$context_file"
+          fi
+          jq --slurpfile context "$context_file" '
+            def provider($id): (($context[0].providers // []) | map(select(.id == $id)) | first) // {};
+            (provider("freizeitkarte")) as $fzk |
+            (provider("opentopomap")) as $otm |
+            .details += {
+              catalog_freizeitkarte_status: ($fzk.status // "UNKNOWN"),
+              catalog_freizeitkarte_latest_release: ($fzk.latestRelease // "—"),
+              catalog_freizeitkarte_last_success: ($fzk.lastCollectionSuccess // "—"),
+              catalog_freizeitkarte_release_detected_at: ($fzk.latestReleaseDetectedAt // "—"),
+              catalog_freizeitkarte_new_release: ($fzk.newReleaseDetectedInLast7Days // false),
+              catalog_freizeitkarte_reason: ($fzk.reason // "Catalog report context was unavailable."),
+              catalog_opentopomap_status: ($otm.status // "UNKNOWN"),
+              catalog_opentopomap_latest_release: ($otm.latestRelease // "—"),
+              catalog_opentopomap_last_success: ($otm.lastCollectionSuccess // "—"),
+              catalog_opentopomap_release_detected_at: ($otm.latestReleaseDetectedAt // "—"),
+              catalog_opentopomap_new_release: ($otm.newReleaseDetectedInLast7Days // false),
+              catalog_opentopomap_reason: ($otm.reason // "Catalog report context was unavailable.")
+            }
+          ' "$RUNNER_TEMP/terento-operational-report.json" \
+            > "$RUNNER_TEMP/terento-operational-report-with-catalog.json"
+          mv "$RUNNER_TEMP/terento-operational-report-with-catalog.json" \
+            "$RUNNER_TEMP/terento-operational-report.json"
       - name: Send weekly report through SMTP2GO
         id: email
         if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.send_health_report)

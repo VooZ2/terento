@@ -54,6 +54,9 @@ therefore requires Node.js. Set `TERENTO_NODE_BIN` when Node.js is not on
 - `POST /internal/operations/observations` accepts only bounded CI or
   deployment metadata authenticated with the independent
   `OPERATIONS_INGEST_SECRET`. It does not accept raw logs or execute tests.
+- `GET /internal/operations/report-context` exposes bounded provider catalog
+  freshness and release-change metadata to the weekly workflow under the same
+  independent bearer secret. It is not a public catalog endpoint.
 - `GET /maps/catalog.json` returns an additive provider-neutral `schemaVersion: 2`
   projection while retaining catalog version 1 fields for existing macOS
   clients. The response includes `ETag`, `Last-Modified`, and cache headers and
@@ -158,11 +161,12 @@ Use `terento-catalog-backfill-sizes --dry-run` to inspect the provider without
 writing PostgreSQL. The command is idempotent and never downloads a complete
 map archive.
 
-Freizeitkarte documents a release cadence of roughly every two to three months,
-not daily. The production scheduler therefore runs the complete metadata sweep
-weekly on Monday at 03:00 UTC (`COLLECTOR_SCHEDULE_UTC=MON 03:00`). A manual
-collection can still be run immediately after a provider release or source
-change.
+The production scheduler checks both release-supported provider adapters every
+day at 03:00 UTC (`COLLECTOR_SCHEDULE_UTC=03:00`). Freizeitkarte and
+OpenTopoMap run independently, so one provider failure is retained without
+preventing the other snapshot from updating. The check reads provider metadata
+and bounded archive metadata only; it does not download or store map payloads.
+The Garmin retail device catalog keeps its weekly Monday collection cadence.
 
 Scheduled catalog collection remains a separate process. The authenticated
 admin `/collect` action may run one known adapter on demand and records a
@@ -224,8 +228,7 @@ terento-catalog-asset approve --device-model-id garmin-fenix-8-47-amoled \
 Preparation is private review storage. Only the explicit approval step moves
 the validated WebP into the public API asset tree.
 
-The weekly scheduler runs the map collection phase first and then the Garmin
-device collection. The current scheduled map collector is the Freizeitkarte
-reference collector; future provider collectors must use their reviewed
-adapters. A Garmin collection failure is logged and recorded without clearing
-the previous device catalog or changing the map catalog.
+The daily scheduler runs the reviewed Freizeitkarte and OpenTopoMap adapters
+as isolated map phases. On Monday it then runs the separate Garmin device
+collection. A provider or Garmin collection failure is logged and retained
+without clearing any previous known-good catalog.

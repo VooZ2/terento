@@ -1909,9 +1909,12 @@ class SystemHealthPageTests(unittest.TestCase):
         ).decode()
         self.assertIn("<h1>System health</h1>", body)
         self.assertIn("Tests run in GitHub Actions, not in this admin panel", body)
-        self.assertIn("63 packages across 1 providers", body)
+        self.assertIn("Freizeitkarte catalog", body)
+        self.assertIn("63 packages", body)
         self.assertIn("No weekly test report received yet", body)
         self.assertIn("system-health-unknown", body)
+        self.assertIn("<dt>Reason</dt>", body)
+        self.assertIn("<dt>Action</dt>", body)
         self.assertIn("href=\"/admin/system-health\"", body)
 
     def test_page_reports_release_manifest_drift_and_weekly_suite_results(self):
@@ -1936,9 +1939,30 @@ class SystemHealthPageTests(unittest.TestCase):
         self.assertIn("Release expects 1.0.0-beta.10", body)
         self.assertIn("website reports 1.0.0-beta.9", body)
         self.assertIn("One suite failed", body)
-        self.assertIn(">App<", body)
+        self.assertIn(">macOS application<", body)
         self.assertIn("system-health-failed", body)
         self.assertIn("GitHub Actions", body)
+
+    def test_page_accepts_verified_deployed_manifest_without_release_observation(self):
+        now = datetime.now(timezone.utc)
+        body = system_health_page(
+            {
+                "api": "HEALTHY", "database": "HEALTHY", "providers": [],
+                "scheduler": None, "weekly": None,
+                "observations": [{
+                    "component": "site", "release_version": "1.0.0-beta.10",
+                    "build_number": "11", "status": "HEALTHY",
+                    "source_run_url": "https://github.com/VooZ2/terento/actions/runs/124",
+                    "commit_sha": "b" * 40, "observed_at": now,
+                }],
+            },
+            {"username": "operator"},
+            "csrf",
+        ).decode()
+        self.assertIn("deployed website manifest was verified as 1.0.0-beta.10 · build 11", body)
+        self.assertIn("data-admin-timestamp", body)
+        release_card = body.split("<h2>Release / manifest</h2>", 1)[1].split("</article>", 1)[0]
+        self.assertIn("system-health-healthy", release_card)
 
 
 if __name__ == "__main__":

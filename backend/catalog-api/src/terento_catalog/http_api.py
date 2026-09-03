@@ -65,7 +65,11 @@ from .map_events import (
     validate_map_event,
     validate_statistics_filters,
 )
-from .operational_health import OperationalObservationError, validate_observation
+from .operational_health import (
+    OperationalObservationError,
+    provider_catalog_health,
+    validate_observation,
+)
 from .provider_catalog import (
     KNOWN_PROVIDER_DEFINITIONS,
     FreizeitkarteProviderAdapter,
@@ -126,6 +130,33 @@ class CatalogService:
             **snapshot,
             "providers": self.admin_providers().get("providers", []),
         }
+
+    def operational_report_context(self) -> dict[str, Any]:
+        providers = []
+        for provider in self.admin_providers().get("providers", []):
+            if provider.get("id") not in {"freizeitkarte", "opentopomap"}:
+                continue
+            detected_at = provider.get("latestReleaseDetectedAt")
+            new_release_detected = False
+            if detected_at:
+                try:
+                    parsed = datetime.fromisoformat(str(detected_at).replace("Z", "+00:00"))
+                    if parsed.tzinfo is None:
+                        parsed = parsed.replace(tzinfo=timezone.utc)
+                    release_age = datetime.now(timezone.utc) - parsed.astimezone(timezone.utc)
+                    new_release_detected = timedelta(0) <= release_age <= timedelta(days=7)
+                except ValueError:
+                    pass
+            providers.append({
+                "id": provider.get("id"),
+                "name": provider.get("name"),
+                **provider_catalog_health(provider),
+                "latestRelease": provider.get("latestRelease"),
+                "lastCollectionSuccess": provider.get("lastCollectionSuccess"),
+                "latestReleaseDetectedAt": provider.get("latestReleaseDetectedAt"),
+                "newReleaseDetectedInLast7Days": new_release_detected,
+            })
+        return {"schemaVersion": 1, "providers": providers}
 
     def catalog_response(self) -> tuple[bytes, str, datetime]:
         rows, updated_at = self.database.catalog_snapshot()
@@ -663,10 +694,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if self._rate_limited(client, limit=30, window=60):
                 self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store", noindex=True)
                 return
-            configured_secret = service.operations_ingest_secret
-            authorization = self.headers.get("Authorization", "")
-            supplied_secret = authorization.removeprefix("Bearer ") if authorization.startswith("Bearer ") else ""
-            if not configured_secret or not supplied_secret or not hmac.compare_digest(supplied_secret, configured_secret):
+            if not self._operations_authorized():
                 self._send_json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"}, send_body=True, cache_control="no-store", noindex=True)
                 return
             document = self._read_json()
@@ -688,6 +716,16 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 send_body=True,
                 cache_control="no-store",
                 noindex=True,
+            )
+
+        def _operations_authorized(self) -> bool:
+            configured_secret = service.operations_ingest_secret
+            authorization = self.headers.get("Authorization", "")
+            supplied_secret = authorization.removeprefix("Bearer ") if authorization.startswith("Bearer ") else ""
+            return bool(
+                configured_secret
+                and supplied_secret
+                and hmac.compare_digest(supplied_secret, configured_secret)
             )
 
         def _handle_map_event(self) -> None:
@@ -761,6 +799,18 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
 
         def _handle_request(self, *, send_body: bool) -> None:
             request_path = urlsplit(self.path).path
+            if request_path == "/internal/operations/report-context":
+                if not self._operations_authorized():
+                    self._send_json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"}, send_body=send_body, cache_control="no-store", noindex=True)
+                    return
+                try:
+                    payload = service.operational_report_context()
+                except Exception:
+                    LOGGER.exception("operational report context failed")
+                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "operations_unavailable"}, send_body=send_body, cache_control="no-store", noindex=True)
+                    return
+                self._send_json(HTTPStatus.OK, payload, send_body=send_body, cache_control="no-store", noindex=True)
+                return
             if request_path == "/health":
                 self._handle_health(send_body=send_body)
                 return
@@ -2134,6 +2184,14 @@ def _provider_summary_payload(
         "lastHealthCheck": _format_json_value(row.get("last_checked_at")),
         "lastDownloadTest": _format_json_value(row.get("last_checked_at")),
         "lastHealthError": row.get("last_error"),
+        "lastCollectionAttempt": _format_json_value(row.get("last_collection_attempt_at")),
+        "lastCollectionFinished": _format_json_value(row.get("last_collection_finished_at")),
+        "lastCollectionStatus": row.get("last_collection_status") or "UNKNOWN",
+        "lastCollectionErrorCode": row.get("last_collection_error_code"),
+        "lastCollectionErrorDetail": row.get("last_collection_error_detail"),
+        "lastCollectionSuccess": _format_json_value(row.get("last_collection_success_at")),
+        "latestRelease": row.get("latest_release"),
+        "latestReleaseDetectedAt": _format_json_value(row.get("latest_release_detected_at")),
         "packageCount": int(package_count or 0),
         "brokenPackageCount": int(row.get("broken_package_count") or 0),
         "brokenUrlCount": int(row.get("broken_url_count") or 0),

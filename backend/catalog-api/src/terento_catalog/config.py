@@ -12,7 +12,7 @@ class Settings:
     host: str = "0.0.0.0"
     port: int = 8000
     database_connect_timeout_seconds: int = 5
-    collector_schedule_utc: str = "MON 03:00"
+    collector_schedule_utc: str = "03:00"
     admin_bootstrap_secret: str | None = None
     admin_session_ttl_seconds: int = 28_800
     public_compatibility_stats_enabled: bool = False
@@ -35,7 +35,7 @@ class Settings:
                 "CATALOG_DB_CONNECT_TIMEOUT_SECONDS", 5
             ),
             collector_schedule_utc=os.environ.get(
-                "COLLECTOR_SCHEDULE_UTC", "MON 03:00"
+                "COLLECTOR_SCHEDULE_UTC", "03:00"
             ),
             admin_bootstrap_secret=os.environ.get("ADMIN_BOOTSTRAP_SECRET") or None,
             admin_session_ttl_seconds=_positive_int("ADMIN_SESSION_TTL_SECONDS", 28_800),

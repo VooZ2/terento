@@ -26,6 +26,17 @@ class FakeDatabase(Database):
     def prune_compatibility_events(self) -> int:
         return 0
 
+    def provider_rows(self):
+        now = datetime.now(timezone.utc)
+        return [{
+            "provider_id": "freizeitkarte", "provider_name": "Freizeitkarte",
+            "adapter_id": "freizeitkarte", "status": "ACTIVE",
+            "health": "HEALTHY", "last_catalog_sync": now,
+            "last_collection_status": "SUCCEEDED",
+            "last_collection_success_at": now,
+            "latest_release": "2026-09", "active_package_count": 63,
+        }]
+
     def record_operational_observation(self, observation):
         if any(item["observation_id"] == observation["observation_id"] for item in self.operational_observations):
             return False
@@ -177,6 +188,20 @@ class HTTPAPITests(unittest.TestCase):
         duplicate, body = self.post_json("/internal/operations/observations", document, headers)
         self.assertEqual(duplicate.status, 200)
         self.assertEqual(json.loads(body), {"status": "duplicate"})
+
+    def test_operational_report_context_is_private_and_contains_provider_release(self) -> None:
+        unauthorized, _ = self.request("/internal/operations/report-context")
+        self.assertEqual(unauthorized.status, 401)
+        response, body = self.request(
+            "/internal/operations/report-context",
+            {"Authorization": "Bearer test-operations-secret"},
+        )
+        document = json.loads(body)
+        self.assertEqual(response.status, 200)
+        provider = next(item for item in document["providers"] if item["id"] == "freizeitkarte")
+        self.assertEqual(provider["status"], "HEALTHY")
+        self.assertEqual(provider["latestRelease"], "2026-09")
+        self.assertFalse(provider["newReleaseDetectedInLast7Days"])
 
     def test_device_catalog_contract_and_conditional_get(self) -> None:
         response, body = self.request("/devices/catalog.json")

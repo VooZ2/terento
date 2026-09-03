@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
+from typing import Iterable
 
 from .collectors import FreizeitkarteCollector
 from .config import Settings
@@ -10,10 +12,57 @@ from .db import Database
 from .provider_catalog import (
     ProviderAdapter,
     ProviderCollectionError,
+    ProviderSnapshot,
+    FreizeitkarteProviderAdapter,
+    OpenTopoMapProviderAdapter,
     snapshot_from_freizeitkarte_records,
 )
 
 LOGGER = logging.getLogger(__name__)
+
+
+def official_provider_adapters() -> tuple[ProviderAdapter, ...]:
+    """Return every reviewed provider that the current release supports."""
+
+    return (FreizeitkarteProviderAdapter(), OpenTopoMapProviderAdapter())
+
+
+def snapshot_release_evidence(snapshot: ProviderSnapshot) -> tuple[str, str]:
+    """Return a display release and deterministic metadata-only fingerprint."""
+
+    packages = sorted(snapshot.packages, key=lambda item: item.id)
+    dated = [
+        (item.source_updated_at or item.generated_at, item.release)
+        for item in packages
+        if item.source_updated_at is not None or item.generated_at is not None
+    ]
+    latest_release = max(dated, key=lambda item: item[0])[1] if dated else max(
+        (item.release for item in packages), default="unknown"
+    )
+    evidence = [
+        {
+            "id": package.id,
+            "release": package.release,
+            "releaseId": package.release_id,
+            "version": package.version_label,
+            "sourceUpdatedAt": (
+                package.source_updated_at or package.generated_at
+            ).isoformat() if package.source_updated_at or package.generated_at else None,
+            "artifacts": [
+                {
+                    "id": artifact.id,
+                    "sourceUpdatedAt": artifact.source_updated_at.isoformat()
+                    if artifact.source_updated_at else None,
+                }
+                for artifact in sorted(package.artifacts, key=lambda item: item.id)
+            ],
+        }
+        for package in packages
+    ]
+    fingerprint = hashlib.sha256(
+        json.dumps(evidence, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    return latest_release, fingerprint
 
 
 def collect_once(database: Database, *, dry_run: bool = False) -> int:
@@ -28,11 +77,14 @@ def collect_once(database: Database, *, dry_run: bool = False) -> int:
             # while the public API reads the provider-neutral snapshot.
             snapshot = snapshot_from_freizeitkarte_records(records)
             database.upsert_provider_snapshot(snapshot)
+            latest_release, fingerprint = snapshot_release_evidence(snapshot)
             database.finish_catalog_collection(
                 int(run_id),
                 status="SUCCEEDED",
                 package_count=len(snapshot.packages),
                 artifact_count=sum(len(item.artifacts) for item in snapshot.packages),
+                latest_release=latest_release,
+                catalog_fingerprint=fingerprint,
             )
     except Exception as exc:
         if run_id is not None:
@@ -76,11 +128,14 @@ def collect_provider_once(
             raise ProviderCollectionError("provider returned no packages")
         if not dry_run:
             database.upsert_provider_snapshot(snapshot)
+            latest_release, fingerprint = snapshot_release_evidence(snapshot)
             database.finish_catalog_collection(
                 int(run_id),
                 status="SUCCEEDED",
                 package_count=len(snapshot.packages),
                 artifact_count=sum(len(item.artifacts) for item in snapshot.packages),
+                latest_release=latest_release,
+                catalog_fingerprint=fingerprint,
             )
         return {
             "provider": provider_id,
@@ -97,6 +152,32 @@ def collect_provider_once(
                 error_detail=str(exc)[:500],
             )
         raise
+
+
+def collect_all_providers(
+    database: Database,
+    adapters: Iterable[ProviderAdapter] | None = None,
+) -> dict[str, dict[str, int | str]]:
+    """Collect each official provider independently and retain every outcome."""
+
+    outcomes: dict[str, dict[str, int | str]] = {}
+    for adapter in adapters or official_provider_adapters():
+        provider_id = adapter.definition.id
+        try:
+            database.ensure_provider_definition(adapter.definition)
+            outcomes[provider_id] = {
+                "status": "SUCCEEDED",
+                **collect_provider_once(database, adapter),
+            }
+        except Exception as exc:
+            LOGGER.exception("scheduled %s catalog collection failed", provider_id)
+            outcomes[provider_id] = {
+                "status": "FAILED",
+                "provider": provider_id,
+                "error": type(exc).__name__,
+                "detail": str(exc)[:500],
+            }
+    return outcomes
 
 
 def main() -> None:
