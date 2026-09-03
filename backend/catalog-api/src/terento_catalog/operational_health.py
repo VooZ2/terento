@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -17,6 +17,75 @@ SEMVER = re.compile(r"\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?")
 
 class OperationalObservationError(ValueError):
     pass
+
+
+def provider_catalog_health(
+    provider: dict[str, Any], *, now: datetime | None = None,
+) -> dict[str, str]:
+    """Reduce provider collection and source evidence to one actionable state."""
+
+    current = now or datetime.now(timezone.utc)
+    name = str(provider.get("name") or provider.get("id") or "Provider")
+    collection_status = str(provider.get("lastCollectionStatus") or "UNKNOWN").upper()
+    provider_health = str(provider.get("health") or "UNKNOWN").upper()
+    success_at = _optional_timestamp(
+        provider.get("lastCollectionSuccess") or provider.get("lastCatalogSync")
+    )
+    error = str(
+        provider.get("lastCollectionErrorDetail")
+        or provider.get("lastCollectionErrorCode")
+        or provider.get("lastHealthError")
+        or ""
+    ).strip()
+
+    if collection_status == "FAILED":
+        return {
+            "status": "FAILED",
+            "reason": error or f"The latest {name} catalog collection failed.",
+            "action": "Open the provider collection run, correct the source error, and retry collection.",
+        }
+    if success_at is None:
+        return {
+            "status": "UNKNOWN",
+            "reason": f"No successful {name} catalog collection has been recorded.",
+            "action": "Run the provider collector and verify that a successful snapshot is retained.",
+        }
+    if current - success_at > timedelta(days=2):
+        return {
+            "status": "WARNING",
+            "reason": f"The latest successful {name} catalog collection is more than 2 days old.",
+            "action": "Check the daily scheduler and run this provider collection again.",
+        }
+    lifecycle_status = str(provider.get("status") or "ACTIVE").upper()
+    if lifecycle_status != "ACTIVE":
+        return {
+            "status": "WARNING",
+            "reason": f"The {name} provider lifecycle state is {lifecycle_status.title()}, not Active.",
+            "action": "Review the provider activation gate before enabling downloads or updates.",
+        }
+    if provider_health == "DOWN":
+        return {
+            "status": "FAILED",
+            "reason": error or f"The latest {name} source health check reports DOWN.",
+            "action": "Inspect the provider health check before offering new downloads or updates.",
+        }
+    if provider_health in {"DEGRADED", "UNKNOWN"}:
+        return {
+            "status": "WARNING",
+            "reason": error or f"The latest {name} source health is {provider_health.title()}.",
+            "action": "Run the provider health check and review its source diagnostics.",
+        }
+    if not str(provider.get("latestRelease") or "").strip():
+        return {
+            "status": "WARNING",
+            "reason": f"The {name} snapshot has no retained latest-release label.",
+            "action": "Run the updated collector once to establish release evidence.",
+        }
+    return {
+        "status": "HEALTHY",
+        "reason": f"The latest {name} catalog collection and source health are current.",
+        "action": "No action required.",
+    }
 
 
 def validate_observation(document: dict[str, Any]) -> dict[str, Any]:
@@ -111,6 +180,18 @@ def _timestamp(value: Any) -> datetime:
     return normalized
 
 
+def _optional_timestamp(value: Any) -> datetime | None:
+    if value is None:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).strip().replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
 def _optional_text(value: Any, maximum: int) -> str | None:
     if value is None:
         return None
@@ -122,4 +203,3 @@ def _optional_text(value: Any, maximum: int) -> str | None:
     if len(candidate) > maximum or any(ord(character) < 32 and character not in "\n\t" for character in candidate):
         raise OperationalObservationError("invalid_text_value")
     return candidate
-

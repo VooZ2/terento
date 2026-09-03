@@ -185,12 +185,14 @@ jobs:
                 OPERATIONS_INGEST_SECRET: \${OPERATIONS_INGEST_SECRET}
               labels:
                 traefik.http.routers.terento-admin.rule: 'Host(\`api.terento.app\`) && PathPrefix(\`/admin\`)'
-                traefik.http.routers.terento-operations.rule: 'Host(\`api.terento.app\`) && Path(\`/internal/operations/observations\`)'
+                traefik.http.routers.terento-operations.rule: 'Host(\`api.terento.app\`) && PathPrefix(\`/internal/operations/\`)'
                 traefik.http.routers.terento-operations.entrypoints: websecure
                 traefik.http.routers.terento-operations.tls: 'true'
                 traefik.http.routers.terento-operations.tls.certresolver: letsencrypt
             catalog-scheduler:
               image: $image
+              environment:
+                COLLECTOR_SCHEDULE_UTC: '03:00'
             catalog-migrate:
               image: $image
           EOF
@@ -304,6 +306,10 @@ jobs:
           grep -Fq 'https://api.terento.app' <<<"$compatibility_script"
           operations_status="$(curl --silent --show-error --connect-timeout 5 --max-time 10 -o /dev/null -w '%{http_code}' -X POST https://api.terento.app/internal/operations/observations)"
           test "$operations_status" = "401"
+          curl --fail --silent --show-error --connect-timeout 5 --max-time 10 \
+            -H "Authorization: Bearer $OPERATIONS_INGEST_SECRET" \
+            https://api.terento.app/internal/operations/report-context \
+            | jq -e '.schemaVersion == 1 and (.providers | type == "array")' >/dev/null
 
       - name: Retain API deployment health
         shell: bash

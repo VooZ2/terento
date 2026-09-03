@@ -3,9 +3,11 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from terento_catalog.operational_health import (
     OperationalObservationError,
+    provider_catalog_health,
     validate_observation,
 )
 from terento_catalog.config import Settings
@@ -30,6 +32,42 @@ def valid_observation() -> dict:
 
 
 class OperationalHealthTests(unittest.TestCase):
+    def test_provider_catalog_observability_migration_is_additive(self) -> None:
+        migration = (
+            Path(__file__).resolve().parents[1]
+            / "src/terento_catalog/migrations/031_provider_catalog_observability.sql"
+        ).read_text(encoding="utf-8")
+        self.assertIn("ADD COLUMN IF NOT EXISTS latest_release", migration)
+        self.assertIn("ADD COLUMN IF NOT EXISTS catalog_fingerprint", migration)
+        self.assertIn("release_change_detected", migration)
+        self.assertNotIn("DROP TABLE", migration)
+        self.assertNotIn("BYTEA", migration)
+
+    def test_provider_catalog_health_distinguishes_failure_staleness_and_success(self) -> None:
+        now = datetime.now(timezone.utc)
+        base = {
+            "id": "freizeitkarte", "name": "Freizeitkarte",
+            "health": "HEALTHY", "lastCollectionStatus": "SUCCEEDED",
+            "lastCollectionSuccess": now.isoformat(), "latestRelease": "2026-09",
+        }
+        self.assertEqual(provider_catalog_health(base, now=now)["status"], "HEALTHY")
+        stale = {**base, "lastCollectionSuccess": (now - timedelta(days=3)).isoformat()}
+        self.assertEqual(provider_catalog_health(stale, now=now)["status"], "WARNING")
+        paused = {**base, "status": "PAUSED"}
+        self.assertEqual(provider_catalog_health(paused, now=now)["status"], "WARNING")
+        failed = {
+            **base, "lastCollectionStatus": "FAILED",
+            "lastCollectionErrorDetail": "provider timeout",
+        }
+        result = provider_catalog_health(failed, now=now)
+        self.assertEqual(result["status"], "FAILED")
+        self.assertIn("provider timeout", result["reason"])
+
+    def test_provider_without_success_has_actionable_unknown_state(self) -> None:
+        result = provider_catalog_health({"id": "opentopomap", "name": "OpenTopoMap"})
+        self.assertEqual(result["status"], "UNKNOWN")
+        self.assertIn("Run the provider collector", result["action"])
+
     def test_valid_observation_is_normalized(self) -> None:
         result = validate_observation(valid_observation())
         self.assertEqual(result["component"], "site")

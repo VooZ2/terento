@@ -48,6 +48,9 @@ def main() -> int:
         "SMTP2GO_USERNAME",
         "SMTP2GO_PASSWORD",
         "https://api.terento.app/internal/operations/observations",
+        "https://api.terento.app/internal/operations/report-context",
+        "catalog_freizeitkarte_new_release",
+        "catalog_opentopomap_new_release",
     ):
         assert contract in swift, f"swift-ci.yml is missing {contract!r}"
 
@@ -59,6 +62,9 @@ def main() -> int:
     assert "OPERATIONS_INGEST_SECRET: \\${OPERATIONS_INGEST_SECRET}" in deploy_api
     assert "chmod --reference=\"$env_file\"" in deploy_api
     assert "traefik.http.routers.terento-operations.rule" in deploy_api
+    assert "PathPrefix(\\`/internal/operations/\\`)" in deploy_api
+    assert "COLLECTOR_SCHEDULE_UTC: '03:00'" in deploy_api
+    assert "https://api.terento.app/internal/operations/report-context" in deploy_api
     assert "traefik.http.routers.terento-operations.service" not in deploy_api
     deploy_site = (WORKFLOWS / "deploy-site.yml").read_text(encoding="utf-8")
     assert "Retain website deployment health" in deploy_site

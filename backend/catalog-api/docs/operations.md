@@ -37,18 +37,21 @@ For a read-only provider check:
 terento-catalog-backfill-sizes --dry-run
 ```
 
-## Weekly collection
+## Scheduled collection
 
-The scheduled sweep is weekly on Monday at 03:00 UTC:
+The provider catalog sweep runs daily at 03:00 UTC:
 
 ```text
-COLLECTOR_SCHEDULE_UTC=MON 03:00
+COLLECTOR_SCHEDULE_UTC=03:00
 ```
 
-The scheduler's map phase runs before Garmin device metadata collection. The
-current scheduled implementation runs the reference provider collector; each
-future provider collector must be an independently reviewed adapter. A failed
-or partial provider run does not clear the previous catalog.
+The scheduler runs the reviewed Freizeitkarte and OpenTopoMap adapters
+independently. A failed or partial provider run does not stop the other
+provider and does not clear the previous catalog. Each successful run retains
+the provider's latest release label, deterministic metadata fingerprint, and
+whether a change from the previous successful snapshot was detected. On
+Monday, the provider phases are followed by the weekly Garmin device metadata
+collection.
 The Garmin collector creates a `MISSING` asset baseline for new devices; it
 does not request product-image binaries and it never changes an asset to
 `AVAILABLE`.
@@ -72,7 +75,10 @@ The sending domain `terento.app` must be verified in SMTP2GO before enabling
 the workflow. Never commit SMTP credentials or the provider-supplied DNS
 values. Email delivery is reported separately from test health, so a mail
 failure cannot turn a failed test into a passing result or erase the retained
-report.
+report. The report also includes each supported provider's catalog status,
+latest release, last successful collection, last detected release change, and
+the reason for any stale or failed state. This context is read through the
+same bearer-protected operations boundary and contains metadata only.
 
 ## Evidence lifecycle cleanup
 

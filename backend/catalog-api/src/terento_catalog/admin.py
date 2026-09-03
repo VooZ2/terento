@@ -25,6 +25,7 @@ from .compatibility_status import (
 from .device_catalog import _official_source_image_url
 from .failure_reasons import failure_reason_label, normalize_failure_reason
 from .map_capability import classify_map_capable
+from .operational_health import provider_catalog_health
 
 
 PASSWORD_MIN_LENGTH = 14
@@ -1304,11 +1305,44 @@ def _health_run_link(observation: dict[str, Any] | None) -> str:
     return f"<a class='section-link' href='{html.escape(url, quote=True)}' target='_blank' rel='noopener noreferrer'>GitHub Actions&nbsp;↗</a>"
 
 
+def _health_attention(status: Any, reason: str, action: str) -> str:
+    normalized = str(status or "UNKNOWN").upper()
+    if normalized not in {"WARNING", "FAILED", "UNKNOWN"}:
+        return ""
+    return (
+        f"<dl class='system-health-explanation'>"
+        f"<div><dt>Reason</dt><dd>{html.escape(reason)}</dd></div>"
+        f"<div><dt>Action</dt><dd>{html.escape(action)}</dd></div>"
+        f"</dl>"
+    )
+
+
+def _system_health_card(
+    title: str,
+    status: Any,
+    description: str,
+    observation: dict[str, Any] | None = None,
+    *,
+    reason: str = "",
+    action: str = "",
+) -> str:
+    return (
+        "<article class='system-health-card'>"
+        f"<div class='section-heading'><h2>{html.escape(title)}</h2>{_health_status_badge(status)}</div>"
+        f"<div class='system-health-description'>{description}</div>"
+        f"{_health_attention(status, reason, action)}"
+        f"{_health_run_link(observation)}</article>"
+    )
+
+
 def system_health_page(
     health: dict[str, Any], user: dict[str, Any], csrf_token: str,
 ) -> bytes:
     now = datetime.now(timezone.utc)
-    providers = list(health.get("providers") or [])
+    providers = [
+        provider for provider in health.get("providers") or []
+        if str(provider.get("id") or "") in {"freizeitkarte", "opentopomap"}
+    ]
     observations = {
         str(item.get("component") or ""): item
         for item in health.get("observations") or [] if isinstance(item, dict)
@@ -1316,20 +1350,8 @@ def system_health_page(
     weekly = health.get("weekly") if isinstance(health.get("weekly"), dict) else None
     scheduler = health.get("scheduler") if isinstance(health.get("scheduler"), dict) else None
 
-    provider_statuses = [str(item.get("health") or "UNKNOWN").upper() for item in providers]
-    sync_dates = [
-        parsed for parsed in (_parse_timestamp(item.get("lastCatalogSync")) for item in providers)
-        if parsed is not None
-    ]
-    catalog_status = "UNKNOWN"
-    if providers and sync_dates:
-        catalog_status = "HEALTHY"
-        if any(status == "DOWN" for status in provider_statuses):
-            catalog_status = "FAILED"
-        elif any(status != "HEALTHY" for status in provider_statuses) or now - min(sync_dates) > timedelta(days=10):
-            catalog_status = "WARNING"
-
     scheduler_status = "UNKNOWN"
+    scheduler_reason = "No scheduler heartbeat has been retained yet."
     if scheduler:
         scheduler_status = {
             "HEALTHY": "HEALTHY", "WAITING": "HEALTHY", "RUNNING": "HEALTHY",
@@ -1342,11 +1364,17 @@ def system_health_page(
             or (completed is not None and now - completed > timedelta(days=10))
         ):
             scheduler_status = "WARNING"
+            scheduler_reason = "The retained scheduler heartbeat is overdue or stale."
+        elif scheduler_status in {"WARNING", "FAILED"}:
+            scheduler_reason = str(scheduler.get("error_summary") or "The latest scheduler run did not complete cleanly.")
 
     weekly_status = str((weekly or {}).get("status") or "UNKNOWN").upper()
     weekly_at = _parse_timestamp((weekly or {}).get("observed_at"))
     if weekly_status == "HEALTHY" and weekly_at and now - weekly_at > timedelta(days=8):
         weekly_status = "WARNING"
+    weekly_reason = str((weekly or {}).get("summary") or "No weekly quality-gate report has been received.")
+    if weekly_status == "WARNING" and weekly_at and now - weekly_at > timedelta(days=8):
+        weekly_reason = "The latest weekly quality-gate report is more than 8 days old."
 
     release = observations.get("release")
     site = observations.get("site")
@@ -1362,37 +1390,117 @@ def system_health_page(
             if drift_status == "HEALTHY" else
             f"Release expects {expected[0] or '—'} · build {expected[1] or '—'}; website reports {deployed[0] or '—'} · build {deployed[1] or '—'}."
         )
+    elif site:
+        deployed = (str(site.get("release_version") or ""), str(site.get("build_number") or ""))
+        drift_status = str(site.get("status") or "UNKNOWN").upper() if all(deployed) else "WARNING"
+        drift_text = (
+            f"The deployed website manifest was verified as {deployed[0]} · build {deployed[1]}. "
+            "No separate release-gate observation is required for this deployed-manifest check."
+        )
 
-    cards = [
-        ("API", health.get("api"), "The authenticated page was served by the API.", None),
-        ("Database", health.get("database"), "A live PostgreSQL snapshot was read for this page.", None),
-        ("Catalog", catalog_status, f"{sum(int(item.get('packageCount') or 0) for item in providers)} packages across {len(providers)} providers; oldest sync {format_timestamp(min(sync_dates)) if sync_dates else '—'}.", None),
-        ("Catalog scheduler", scheduler_status, str((scheduler or {}).get("error_summary") or "Latest scheduler state and next run are retained by the scheduler itself."), None),
-        ("Weekly full test", weekly_status, str((weekly or {}).get("summary") or "No weekly test report received yet."), weekly),
-        ("Website deployment", (site or {}).get("status"), f"Commit {str((site or {}).get('commit_sha') or '—')[:12]}; deployed {format_timestamp((site or {}).get('observed_at'))}.", site),
-        ("API deployment", (api or {}).get("status"), f"Commit {str((api or {}).get('commit_sha') or '—')[:12]}; deployed {format_timestamp((api or {}).get('observed_at'))}.", api),
-        ("Release / manifest", drift_status, drift_text, release or site),
-    ]
-    card_markup = "".join(
-        f"<article class='system-health-card'><div class='section-heading'><h2>{html.escape(str(title))}</h2>{_health_status_badge(status)}</div><p>{html.escape(str(description))}</p>{_health_run_link(observation)}</article>"
-        for title, status, description, observation in cards
-    )
     weekly_details = (weekly or {}).get("details") or {}
     if isinstance(weekly_details, str):
         try:
             weekly_details = json.loads(weekly_details)
         except json.JSONDecodeError:
             weekly_details = {}
+    email_result = str(weekly_details.get("email") or "unknown").lower()
+    email_status = (
+        "HEALTHY" if email_result in {"success", "passed", "healthy"}
+        else "FAILED" if email_result in {"failure", "failed", "cancelled", "timed_out"}
+        else "UNKNOWN"
+    )
+    cards = [
+        _system_health_card(
+            "API", health.get("api"), "<p>The authenticated page was served by the API.</p>",
+            reason="The API health state could not be confirmed.",
+            action="Reload the page, then inspect the catalog API deployment and service logs.",
+        ),
+        _system_health_card(
+            "Database", health.get("database"), "<p>A live PostgreSQL snapshot was read for this page.</p>",
+            reason="A live PostgreSQL health state could not be confirmed.",
+            action="Inspect the database connection and migration state.",
+        ),
+    ]
+    for provider in providers:
+        state = provider_catalog_health(provider, now=now)
+        description = (
+            f"<p>Latest release <strong>{html.escape(str(provider.get('latestRelease') or '—'))}</strong>; "
+            f"{int(provider.get('packageCount') or 0)} packages.</p>"
+            f"<p>Last successful collection: {_timestamp_markup(provider.get('lastCollectionSuccess') or provider.get('lastCatalogSync'))}. "
+            f"Last detected release change: {_timestamp_markup(provider.get('latestReleaseDetectedAt'))}.</p>"
+        )
+        cards.append(_system_health_card(
+            f"{str(provider.get('name') or provider.get('id') or 'Provider')} catalog",
+            state["status"], description, reason=state["reason"], action=state["action"],
+        ))
+    scheduler_action = "Inspect the catalog scheduler container and its next scheduled run."
+    cards.extend([
+        _system_health_card(
+            "Catalog scheduler", scheduler_status,
+            f"<p>Last completed: {_timestamp_markup((scheduler or {}).get('completed_at'))}. Next run: {_timestamp_markup((scheduler or {}).get('next_run_at'))}.</p>",
+            reason=scheduler_reason, action=scheduler_action,
+        ),
+        _system_health_card(
+            "Weekly quality gates", weekly_status,
+            f"<p>{html.escape(str((weekly or {}).get('summary') or 'No weekly test report received yet.'))}</p><p>Observed: {_timestamp_markup((weekly or {}).get('observed_at'))}.</p>",
+            weekly,
+            reason=weekly_reason,
+            action="Open the linked workflow and rerun the complete weekly matrix.",
+        ),
+        _system_health_card(
+            "Weekly email delivery", email_status,
+            f"<p>Latest SMTP2GO delivery step: <strong>{html.escape(email_result)}</strong>.</p>",
+            weekly,
+            reason=(
+                "No weekly email-delivery result is retained."
+                if email_result == "unknown"
+                else f"The latest SMTP2GO delivery step ended as {email_result}."
+            ),
+            action="Check the SMTP2GO step and credentials, then resend the weekly report.",
+        ),
+        _system_health_card(
+            "Website deployment", (site or {}).get("status"),
+            f"<p>Commit {html.escape(str((site or {}).get('commit_sha') or '—')[:12])}; deployed {_timestamp_markup((site or {}).get('observed_at'))}.</p>",
+            site,
+            reason=str((site or {}).get("summary") or "No website deployment observation has been received."),
+            action="Run the public-site deployment workflow and verify the live manifest.",
+        ),
+        _system_health_card(
+            "API deployment", (api or {}).get("status"),
+            f"<p>Commit {html.escape(str((api or {}).get('commit_sha') or '—')[:12])}; deployed {_timestamp_markup((api or {}).get('observed_at'))}.</p>",
+            api,
+            reason=str((api or {}).get("summary") or "No catalog API deployment observation has been received."),
+            action="Run the catalog API deployment workflow and confirm its retained observation.",
+        ),
+        _system_health_card(
+            "Release / manifest", drift_status, f"<p>{html.escape(drift_text)}</p>", release or site,
+            reason=drift_text,
+            action="Deploy the website manifest again or run the release gate so both observations can be compared.",
+        ),
+    ])
+    card_markup = "".join(cards)
+    suite_labels = {
+        "selection": "Test-suite selection",
+        "site": "Public website",
+        "backend": "Backend / API",
+        "app": "macOS application",
+        "native": "Native device safety",
+        "release": "Release contracts",
+        "shared_ci": "Shared / CI contracts",
+        "live_catalog": "Live catalog contract",
+    }
     detail_rows = "".join(
-        f"<tr><th scope='row'>{html.escape(str(name).replace('_', ' ').title())}</th><td>{_health_status_badge('HEALTHY' if str(value).lower() in {'success', 'passed', 'healthy'} else 'FAILED' if str(value).lower() in {'failure', 'failed', 'cancelled', 'timed_out'} else 'UNKNOWN')}</td><td>{html.escape(str(value))}</td></tr>"
+        f"<tr><th scope='row'>{html.escape(suite_labels.get(str(name), str(name).replace('_', ' ').title()))}</th><td>{_health_status_badge('HEALTHY' if str(value).lower() in {'success', 'passed', 'healthy'} else 'FAILED' if str(value).lower() in {'failure', 'failed', 'cancelled', 'timed_out'} else 'UNKNOWN')}</td><td>{html.escape(str(value))}</td></tr>"
         for name, value in sorted(weekly_details.items())
+        if name != "email" and not str(name).startswith("catalog_")
     ) or "<tr><td colspan='3'>No weekly suite details received yet.</td></tr>"
     content = f"""
       {_admin_header(user, csrf_token, active='system-health')}
       <main class='dashboard system-health-page' id='main-content'>
         <div class='heading-row'><div><p class='eyebrow'>Operations</p><h1>System health</h1><p class='lede'>Production state and retained GitHub evidence. Tests run in GitHub Actions, not in this admin panel.</p></div></div>
         <section class='system-health-grid' aria-label='System health summary'>{card_markup}</section>
-        <section class='overview-panel'><div class='section-heading'><div><p class='section-kicker'>Weekly report</p><h2>Canonical suite results</h2></div>{_health_run_link(weekly)}</div><div class='table-wrap'><table class='admin-table'><thead><tr><th scope='col'>Suite</th><th scope='col'>Health</th><th scope='col'>Result</th></tr></thead><tbody>{detail_rows}</tbody></table></div></section>
+        <section class='overview-panel'><div class='section-heading'><div><p class='section-kicker'>Weekly report</p><h2>Quality-gate results</h2></div>{_health_run_link(weekly)}</div><div class='table-wrap'><table class='admin-table'><thead><tr><th scope='col'>Check</th><th scope='col'>Health</th><th scope='col'>Result</th></tr></thead><tbody>{detail_rows}</tbody></table></div></section>
       </main>
     """
     return _layout("System health", content)
@@ -4603,7 +4711,7 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 @media(max-width:700px){.overview-compatibility-grid{grid-template-columns:1fr}.provider-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:480px){.overview-compatibility-grid{grid-template-columns:1fr}}
 .overview-primary-grid,.overview-secondary-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,1fr);gap:12px}.overview-primary-grid .overview-panel,.overview-secondary-grid .overview-panel{min-width:0}.overview-model-list,.overview-review-list{list-style:none;margin:0;padding:0}.overview-model-item,.overview-review-item{display:grid;grid-template-columns:minmax(0,1fr) max-content;gap:8px;align-items:start;padding:9px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-model-item:first-child,.overview-review-item:first-child{border-top:0;padding-top:3px}.overview-model-item a,.overview-review-item a{display:grid;min-width:0;color:inherit;text-decoration:none}.overview-model-item a:hover strong,.overview-review-item a:hover strong{text-decoration:underline;text-underline-offset:3px}.overview-model-item strong,.overview-review-item strong{font-size:13px;overflow:hidden;text-overflow:ellipsis}.overview-model-item a span,.overview-review-item a span{color:var(--secondary);font-size:11px}.overview-model-item time{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-model-failed strong{color:var(--danger)}.overview-review-block{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}.overview-review-block h3{margin:0 0 5px;color:var(--secondary);font-size:12px}.overview-activity-item{grid-template-columns:minmax(0,1fr) max-content}.overview-activity-item time{grid-column:2;grid-row:1 / span 2}.overview-activity-item .overview-activity-label{grid-column:1}.overview-activity-item a span:not(.overview-activity-label){grid-column:1}.overview-compact-empty{padding-bottom:14px}.inline-filter-row{justify-content:flex-start}.inline-filter-row label{flex:0 1 260px}.inline-filter-row select{flex:0 0 170px}
-.system-health-page{padding-top:30px}.system-health-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.system-health-card{min-height:150px;padding:18px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}.system-health-card .section-heading{align-items:center;margin-bottom:14px}.system-health-card h2{font-size:16px}.system-health-card p{margin:0 0 14px;color:var(--secondary);font-size:12px;line-height:1.55}.system-health-badge{display:inline-flex;padding:4px 8px;border:1px solid;border-radius:999px;font-size:11px;font-weight:750}.system-health-healthy{border-color:var(--status-success-border);background:var(--status-success-surface);color:var(--status-success-text)}.system-health-warning{border-color:var(--status-tested-border);background:var(--status-tested-surface);color:var(--status-tested-text)}.system-health-failed{border-color:var(--status-error-border);background:var(--status-error-surface);color:var(--status-error-text)}.system-health-unknown{border-color:var(--status-neutral-border);background:var(--status-neutral-surface);color:var(--status-neutral-text)}
+.system-health-page{padding-top:30px}.system-health-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.system-health-card{min-height:150px;padding:18px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}.system-health-card .section-heading{align-items:center;margin-bottom:14px}.system-health-card h2{font-size:16px}.system-health-description p{margin:0 0 10px;color:var(--secondary);font-size:12px;line-height:1.55}.system-health-explanation{margin:12px 0;font-size:11px}.system-health-explanation div{display:grid;grid-template-columns:48px 1fr;gap:7px;padding:5px 0;border-top:1px solid var(--border)}.system-health-explanation dt{font-weight:750;color:var(--graphite)}.system-health-explanation dd{margin:0;color:var(--secondary)}.system-health-badge{display:inline-flex;padding:4px 8px;border:1px solid;border-radius:999px;font-size:11px;font-weight:750}.system-health-healthy{border-color:var(--status-success-border);background:var(--status-success-surface);color:var(--status-success-text)}.system-health-warning{border-color:var(--status-tested-border);background:var(--status-tested-surface);color:var(--status-tested-text)}.system-health-failed{border-color:var(--status-error-border);background:var(--status-error-surface);color:var(--status-error-text)}.system-health-unknown{border-color:var(--status-neutral-border);background:var(--status-neutral-surface);color:var(--status-neutral-text)}
 @media(max-width:1100px){.system-health-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.system-health-grid{grid-template-columns:1fr}.system-health-card{min-height:0}}
 .model-statistics .attempts-metric>span{display:inline-flex;align-items:center;gap:6px}.model-statistics .attempts-metric>span:after{content:'i';display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border:1px solid var(--border);border-radius:50%;color:var(--interactive);font-size:11px;font-weight:750;line-height:1}

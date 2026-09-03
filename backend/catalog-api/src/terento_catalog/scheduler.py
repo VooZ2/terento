@@ -4,7 +4,7 @@ import logging
 import time
 from datetime import datetime, timedelta, timezone
 
-from .collect import collect_once
+from .collect import collect_all_providers, official_provider_adapters
 from .collect_devices import collect_devices_once
 from .config import Settings
 from .db import Database
@@ -40,36 +40,53 @@ def run_schedule(database: Database, schedule_utc: str) -> None:
         time.sleep(wait_seconds)
         started_at = datetime.now(timezone.utc)
         _record_heartbeat(database, status="RUNNING", started_at=started_at)
-        try:
-            collect_once(database)
-        except Exception:
-            # A failed provider fetch must not stop the next scheduled attempt.
-            LOGGER.exception("scheduled Freizeitkarte collection failed")
-            _record_heartbeat(
-                database,
-                status="FAILED",
-                completed_at=datetime.now(timezone.utc),
-                error_summary="Map catalog collection failed; see scheduler logs.",
-            )
-            continue
+        run_collection_cycle(database, collect_device_catalog=target.weekday() == 0)
+
+
+def run_collection_cycle(
+    database: Database, *, collect_device_catalog: bool = True,
+) -> dict[str, object]:
+    """Run one isolated provider sweep plus the independent device collector."""
+
+    outcomes = collect_all_providers(database, official_provider_adapters())
+    failed_providers = sorted(
+        provider_id
+        for provider_id, result in outcomes.items()
+        if result.get("status") != "SUCCEEDED"
+    )
+    device_error: str | None = None
+    if collect_device_catalog:
         try:
             collect_devices_once(database)
-        except Exception:
-            # Garmin discovery is independent from the map catalog. A failed
-            # device fetch must not invalidate the successful map collection.
+        except Exception as exc:
             LOGGER.exception("scheduled Garmin device collection failed")
-            _record_heartbeat(
-                database,
-                status="WARNING",
-                completed_at=datetime.now(timezone.utc),
-                error_summary="Map catalog succeeded; Garmin device collection failed.",
-            )
-            continue
-        _record_heartbeat(
-            database,
-            status="HEALTHY",
-            completed_at=datetime.now(timezone.utc),
-        )
+            device_error = f"{type(exc).__name__}: {str(exc)[:300]}"
+
+    expected_provider_count = len(outcomes)
+    if expected_provider_count and len(failed_providers) == expected_provider_count:
+        status = "FAILED"
+    elif failed_providers or device_error:
+        status = "WARNING"
+    else:
+        status = "HEALTHY"
+
+    problems: list[str] = []
+    if failed_providers:
+        problems.append("Catalog failed: " + ", ".join(failed_providers) + ".")
+    if device_error:
+        problems.append("Garmin device catalog failed: " + device_error)
+    error_summary = " ".join(problems) or None
+    _record_heartbeat(
+        database,
+        status=status,
+        completed_at=datetime.now(timezone.utc),
+        error_summary=error_summary,
+    )
+    return {
+        "status": status,
+        "providers": outcomes,
+        "deviceError": device_error,
+    }
 
 
 def run_daily(database: Database, schedule_utc: str) -> None:
