@@ -48,6 +48,15 @@ class FakeEvidenceDatabase:
         self.device_support_status = "SUPPORTED"
         self.authorization_audit = []
         self.public_review_actions = []
+        self.identity_reviews = []
+        self.compatibility_rows = [{
+            "model": "fēnix 8", "firmware_versions": "20.19", "attempted_install_count": 1,
+            "successful_install_count": 1, "failed_install_count": 0, "success_rate": 100,
+            "last_success": "2026-08-24", "last_failure": None, "error_categories": {},
+            "calculated_status": "TESTED", "physical_device_evidence_count": 1,
+            "review_notes": "Owner evidence",
+        }]
+        self.compatibility_operations = []
 
     def admin_review_summary(self):
         return {
@@ -111,16 +120,27 @@ class FakeEvidenceDatabase:
         return 0
 
     def compatibility_statistics(self):
-        return [{
-            "model": "fēnix 8", "firmware_versions": "20.19", "attempted_install_count": 1,
-            "successful_install_count": 1, "failed_install_count": 0, "success_rate": 100,
-            "last_success": "2026-08-24", "last_failure": None, "error_categories": {},
-            "calculated_status": "TESTED", "physical_device_evidence_count": 1,
-            "review_notes": "Owner evidence",
-        }]
+        return self.compatibility_rows
 
     def compatibility_operation_details(self):
+        return self.compatibility_operations
+
+    def compatibility_resolved_operation_details(self):
         return []
+
+    def resolve_compatibility_identity(
+        self, operation_key, *, action, canonical_device_model_id,
+        admin_user_id=None, reason=None, note=None,
+    ):
+        self.identity_reviews.append({
+            "operation_key": operation_key,
+            "action": action,
+            "canonical_device_model_id": canonical_device_model_id,
+            "admin_user_id": admin_user_id,
+            "reason": reason,
+            "note": note,
+        })
+        return 1
 
     def public_compatibility_statistics(self, limit):
         return [{
@@ -297,6 +317,29 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         connection.request(method, path, body=body, headers=headers or {})
         response = connection.getresponse(); data = response.read(); connection.close()
         return response, data
+
+    def authenticated_admin_headers(self):
+        setup_body = urlencode({
+            "username": "operator", "password": "long-test-password",
+            "password_confirmation": "long-test-password",
+            "bootstrap_secret": "one-time-bootstrap-secret",
+        })
+        self.request(
+            "POST", "/admin/setup", setup_body,
+            {"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        login_body = urlencode({"username": "operator", "password": "long-test-password"})
+        login, _ = self.request(
+            "POST", "/admin/login", login_body,
+            {"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        cookies = login.headers.get_all("Set-Cookie")
+        session_cookie = next(value.split(";", 1)[0] for value in cookies if value.startswith("terento_admin_session="))
+        csrf_cookie = next(value.split(";", 1)[0] for value in cookies if value.startswith("terento_admin_csrf="))
+        return {
+            "Cookie": f"{session_cookie}; {csrf_cookie}",
+            "csrf_token": csrf_cookie.split("=", 1)[1],
+        }
 
     def test_event_is_idempotent(self):
         body = json.dumps(event()).encode()
@@ -697,6 +740,84 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         })
         self.assertEqual(updated.status, 200)
         self.assertEqual(self.database.users[0]["username"], "owner")
+
+    def test_pending_identity_route_does_not_redirect_to_same_text_canonical_device(self):
+        headers = self.authenticated_admin_headers()
+        identity = "fēnix 8 · 47 mm, AMOLED"
+        canonical_id = "garmin-fenix-8-47-amoled"
+        self.database.compatibility_rows = [{
+            "model": "fēnix 8",
+            "variant": "47 mm, AMOLED",
+            "compatibility_identity": identity,
+            "canonical_device_model_id": canonical_id,
+            "attempted_install_count": 1,
+            "successful_install_count": 1,
+            "recognized_map_capable_evidence": True,
+        }, {
+            "model": "fēnix 8",
+            "variant": "47 mm",
+            "compatibility_identity": identity,
+            "canonical_device_model_id": None,
+            "attempted_install_count": 1,
+            "successful_install_count": 1,
+            "recognized_map_capable_evidence": False,
+        }]
+        self.database.compatibility_operations = [{
+            "operation_key": "canonical-operation",
+            "event_id": "canonical-event",
+            "occurred_at": "2026-09-03T00:20:00+00:00",
+            "compatibility_identity": identity,
+            "canonical_device_model_id": canonical_id,
+            "phase_outcome": "SUCCEEDED",
+            "automatic_finishing_result": "VERIFIED",
+            "identity_resolution_state": "RESOLVED",
+            "write_started": True,
+        }, {
+            "operation_key": "pending-operation",
+            "event_id": "pending-event",
+            "occurred_at": "2026-09-03T01:00:00+00:00",
+            "compatibility_identity": identity,
+            "canonical_device_model_id": None,
+            "phase_outcome": "SUCCEEDED",
+            "automatic_finishing_result": "VERIFIED",
+            "identity_resolution_state": "UNRESOLVED",
+            "write_started": True,
+        }]
+
+        path = "/admin/diagnostics?" + urlencode({
+            "identity": identity,
+            "identity_scope": "unresolved",
+        })
+        response, body = self.request("GET", path, headers={"Cookie": headers["Cookie"]})
+        self.assertEqual(response.status, 200)
+        self.assertIn(b"Resolve identity", body)
+        self.assertIn(b"pending-operation", body)
+        self.assertNotIn(b"canonical-operation", body)
+
+        assignment = urlencode({
+            "csrf_token": headers["csrf_token"],
+            "operation_key": "pending-operation",
+            "identity_action": "ASSIGN",
+            "canonical_device_model_id": canonical_id,
+            "identity_reason": "Exact model confirmed",
+            "return_to": path,
+        })
+        assigned, _ = self.request(
+            "POST", "/admin/diagnostics/identity", assignment,
+            {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Cookie": headers["Cookie"],
+            },
+        )
+        self.assertEqual(assigned.status, 303)
+        self.assertEqual(
+            assigned.headers["Location"],
+            "/admin/devices/garmin-fenix-8-47-amoled?from=installations#installations",
+        )
+        self.assertEqual(
+            self.database.identity_reviews[-1]["canonical_device_model_id"],
+            canonical_id,
+        )
 
     def test_admin_rejects_wrong_bootstrap_secret_and_csrf(self):
         setup_body = urlencode({

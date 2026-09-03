@@ -311,7 +311,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Last 7 days", body)
         self.assertIn("Install failed", body)
         self.assertIn("Device transport", body)
-        self.assertIn("/admin/diagnostics?identity=f%C4%93nix+8+%C2%B7+47+mm&amp;state=failed", body)
+        self.assertIn("/admin/diagnostics?identity=f%C4%93nix+8+%C2%B7+47+mm&amp;identity_scope=unresolved&amp;state=failed", body)
         self.assertIn("/admin/providers/opentopomap", body)
         self.assertIn("OpenTopoMap health Degraded", body)
         self.assertIn("<span>Map install operations</span><strong>4</strong>", body)
@@ -1001,6 +1001,74 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Identity pending", evidence_row)
         self.assertNotIn("error-count", evidence_row)
         self.assertIn("historical-number'>0</td>", evidence_row)
+
+    def test_pending_and_canonical_rows_with_the_same_text_keep_distinct_destinations(self):
+        identity = "fēnix 8 Pro · 47 mm, AMOLED"
+        canonical_id = "garmin-fenix-8-pro-47-amoled"
+        rows = [{
+            "model": "fēnix 8 Pro",
+            "variant": "47 mm, AMOLED",
+            "compatibility_identity": identity,
+            "canonical_device_model_id": canonical_id,
+            "attempted_install_count": 1,
+            "successful_install_count": 1,
+            "recognized_map_capable_evidence": True,
+        }, {
+            "model": "fēnix 8 Pro",
+            "variant": "47 mm",
+            "compatibility_identity": identity,
+            "canonical_device_model_id": None,
+            "attempted_install_count": 1,
+            "successful_install_count": 1,
+            "recognized_map_capable_evidence": False,
+        }]
+        operations = [{
+            "operation_key": "canonical-operation",
+            "compatibility_identity": identity,
+            "canonical_device_model_id": canonical_id,
+            "phase_outcome": "SUCCEEDED",
+            "automatic_finishing_result": "VERIFIED",
+            "identity_resolution_state": "RESOLVED",
+        }, {
+            "operation_key": "pending-operation",
+            "compatibility_identity": identity,
+            "canonical_device_model_id": None,
+            "phase_outcome": "SUCCEEDED",
+            "automatic_finishing_result": "VERIFIED",
+            "identity_resolution_state": "UNRESOLVED",
+        }]
+
+        body = dashboard_page(
+            rows, {"username": "operator"}, "csrf", operations=operations,
+        ).decode()
+
+        self.assertIn(
+            "data-diagnostics-url='/admin/devices/garmin-fenix-8-pro-47-amoled?from=installations#installations'",
+            body,
+        )
+        self.assertIn(
+            "data-diagnostics-url='/admin/diagnostics?identity=f%C4%93nix+8+Pro+%C2%B7+47+mm%2C+AMOLED&amp;identity_scope=unresolved'",
+            body,
+        )
+
+        diagnostics = diagnostics_page(
+            rows,
+            {"username": "operator"},
+            "csrf",
+            identity=identity,
+            operations=operations,
+            identity_devices=[{
+                "id": canonical_id,
+                "model": "fēnix 8 Pro",
+                "variant": "47 mm, AMOLED",
+                "familyName": "fēnix",
+            }],
+            unresolved_only=True,
+        ).decode()
+        self.assertIn("Diagnostic ID: <code>pending-operation</code>", diagnostics)
+        self.assertNotIn("Diagnostic ID: <code>canonical-operation</code>", diagnostics)
+        self.assertIn("Resolve identity", diagnostics)
+        self.assertIn("Assign canonical Garmin device", diagnostics)
 
     def test_canonical_diagnostics_include_all_raw_identity_spellings(self):
         canonical_id = "garmin-fenix-8-47-amoled"
