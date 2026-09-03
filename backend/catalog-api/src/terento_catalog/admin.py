@@ -284,6 +284,12 @@ def _diagnostics_url(value: dict[str, Any], *, state: str | None = None) -> str:
     canonical_id = str(value.get("canonical_device_model_id") or "").strip()
     if canonical_id:
         parameters["canonical_device_id"] = canonical_id
+    else:
+        # A textual identity can be shared by both a canonical aggregate and a
+        # still-unresolved aggregate. Preserve the unresolved scope so the
+        # diagnostics route cannot redirect the pending row to the canonical
+        # device before an operator reviews it.
+        parameters["identity_scope"] = "unresolved"
     if state:
         parameters["state"] = state
     return "/admin/diagnostics?" + urlencode(parameters)
@@ -723,11 +729,7 @@ def _overview_operation_href(operation: dict[str, Any]) -> str:
     device_id = str(operation.get("canonical_device_model_id") or "").strip()
     if device_id:
         return _device_detail_url(device_id, origin="installations", state=state, anchor="installations")
-    identity = str(operation.get("compatibility_identity") or operation.get("model") or "Unknown").strip()
-    parameters = {"identity": identity}
-    if state:
-        parameters["state"] = state
-    return "/admin/diagnostics?" + urlencode(parameters)
+    return _diagnostics_url(operation, state=state)
 
 
 def _overview_activity_row(operation: dict[str, Any]) -> str:
@@ -795,7 +797,6 @@ def _overview_failure_reasons(reasons: list[dict[str, Any]]) -> str:
 def _overview_model_activity_item(item: dict[str, Any]) -> str:
     model = str(item.get("model") or item.get("compatibility_identity") or "Unknown device").strip()
     variant = _normalise_variant(item.get("variant"))
-    identity = str(item.get("compatibility_identity") or model).strip()
     context = " · ".join(part for part in (model, variant if variant != "—" and variant not in model else "") if part)
     operation_count = int(item.get("operation_count") or 0)
     successful = int(item.get("successful_count") or 0)
@@ -806,7 +807,7 @@ def _overview_model_activity_item(item: dict[str, Any]) -> str:
     device_id = str(item.get("canonical_device_model_id") or "").strip()
     href = (
         _device_detail_url(device_id, origin="installations", state="open", anchor="installations")
-        if device_id else "/admin/diagnostics?" + urlencode({"identity": identity})
+        if device_id else _diagnostics_url(item)
     )
     result = f"{successful} successful · {failed} failed" if successful or failed else f"{operation_count} operation{'s' if operation_count != 1 else ''}"
     return (
@@ -832,11 +833,10 @@ def _overview_review_item(item: dict[str, Any]) -> str:
     review_status = str(item.get("review_status") or "PENDING").upper()
     public_enabled = bool(item.get("public_statistics_enabled"))
     label = "Unpublished" if review_status == "APPROVED" and not public_enabled else "Review required"
-    identity = str(item.get("compatibility_identity") or model).strip()
     device_id = str(item.get("canonical_device_model_id") or "").strip()
     href = (
         _device_detail_url(device_id, origin="installations")
-        if device_id else "/admin/diagnostics?" + urlencode({"identity": identity})
+        if device_id else _diagnostics_url(item)
     )
     return (
         f"<li class='overview-review-item'><a href='{html.escape(href, quote=True)}'>"
@@ -861,11 +861,10 @@ def _overview_review_attention_item(item: dict[str, Any]) -> str:
     review_status = str(item.get("review_status") or "PENDING").upper()
     public_enabled = bool(item.get("public_statistics_enabled"))
     label = "Unpublished" if review_status == "APPROVED" and not public_enabled else "Review required"
-    identity = str(item.get("compatibility_identity") or model).strip()
     device_id = str(item.get("canonical_device_model_id") or "").strip()
     href = (
         _device_detail_url(device_id, origin="installations")
-        if device_id else "/admin/diagnostics?" + urlencode({"identity": identity})
+        if device_id else _diagnostics_url(item)
     )
     return (
         "<li class='overview-attention-item overview-attention-review'>"
@@ -2923,11 +2922,17 @@ def diagnostics_page(
     resolved_operations: list[dict[str, Any]] | None = None,
     identity_devices: list[dict[str, Any]] | None = None,
     canonical_device_model_id: str | None = None,
+    unresolved_only: bool = False,
 ) -> bytes:
     identity = identity.strip()
     canonical_device_model_id = str(canonical_device_model_id or "").strip() or None
 
     def matches(value: dict[str, Any]) -> bool:
+        if unresolved_only:
+            return (
+                not str(value.get("canonical_device_model_id") or "").strip()
+                and str(value.get("compatibility_identity") or value.get("model") or "").strip() == identity
+            )
         if canonical_device_model_id:
             return str(value.get("canonical_device_model_id") or "").strip() == canonical_device_model_id
         return str(value.get("compatibility_identity") or value.get("model") or "").strip() == identity

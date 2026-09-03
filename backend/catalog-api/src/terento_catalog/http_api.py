@@ -12,7 +12,7 @@ from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
-from urllib.parse import parse_qs, unquote, urlsplit
+from urllib.parse import parse_qs, quote, unquote, urlsplit
 from uuid import uuid4
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -1121,13 +1121,14 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
                 identity = query.get("identity", [""])[0].strip()
                 canonical_device_id = query.get("canonical_device_id", [""])[0].strip()
+                unresolved_only = query.get("identity_scope", [""])[0].strip() == "unresolved"
                 if not identity:
                     self._redirect("/admin/installations", send_body=send_body)
                     return
                 try:
                     statistics = service.compatibility_statistics()
                     identity_devices = service.admin_devices().get("devices", [])
-                    if not canonical_device_id:
+                    if not canonical_device_id and not unresolved_only:
                         matching_statistic = next((
                             row for row in statistics
                             if str(row.get("compatibility_identity") or row.get("model") or "").strip() == identity
@@ -1154,6 +1155,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         resolved_operations=service.compatibility_resolved_operation_details(),
                         identity_devices=identity_devices,
                         canonical_device_model_id=canonical_device_id,
+                        unresolved_only=unresolved_only,
                     )
                 except Exception:
                     LOGGER.exception("compatibility diagnostics failed")
@@ -1544,10 +1546,12 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return
             if request_path == "/admin/diagnostics/identity":
                 try:
+                    identity_action = form.get("identity_action", "").strip().upper()
+                    canonical_device_model_id = form.get("canonical_device_model_id", "").strip() or None
                     changed = service.resolve_compatibility_identity(
                         form.get("operation_key", "").strip(),
-                        action=form.get("identity_action", "").strip().upper(),
-                        canonical_device_model_id=form.get("canonical_device_model_id", "").strip() or None,
+                        action=identity_action,
+                        canonical_device_model_id=canonical_device_model_id,
                         admin_user_id=int(session["id"]),
                         reason=form.get("identity_reason", "").strip() or None,
                         note=form.get("identity_note", "").strip() or None,
@@ -1558,7 +1562,14 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 except ValueError:
                     self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_identity_resolution"}, send_body=True, cache_control="no-store")
                     return
-                self._redirect(self._safe_admin_return(form.get("return_to"), "/admin"), send_body=True)
+                if identity_action == "ASSIGN" and canonical_device_model_id:
+                    target = (
+                        f"/admin/devices/{quote(canonical_device_model_id, safe='')}"
+                        "?from=installations#installations"
+                    )
+                else:
+                    target = self._safe_admin_return(form.get("return_to"), "/admin")
+                self._redirect(target, send_body=True)
                 return
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=True, cache_control="no-store")
 

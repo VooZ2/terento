@@ -129,7 +129,12 @@ Returns an authenticated, no-store/noindex diagnostic drill-down for one exact
 compatibility identity. Dashboard links add the internal `canonical_device_id`
 query parameter when available, so harmless formatting differences in legacy
 identity labels remain in one model history; identity text remains the fallback
-for records without a canonical link. The list uses the compact columns Date, Region, Result,
+for records without a canonical link. Links for records without a canonical
+device also add the internal `identity_scope=unresolved` parameter. That scope
+prevents a pending record from being redirected to a canonical device that
+happens to use the same textual identity and limits the drill-down to
+uncanonicalized operations. Assigning a canonical Garmin device redirects to
+that exact device history after the audited identity update. The list uses the compact columns Date, Region, Result,
 Stage, Code, Issue, and State, and defaults to Open. A Review action opens the
 detail dialog with the separate evidence/lifecycle summary, Resolve/Reopen,
 auditable identity selector, GitHub issue link/create actions, and collapsed
