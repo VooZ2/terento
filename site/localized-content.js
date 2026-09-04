@@ -4,110 +4,165 @@
       home: {
         description: "Installiere und verwalte Drittanbieter-Karten auf unterstützten Garmin-Smartwatches mit der kostenlosen macOS-App Terento für Apple Silicon.",
         title: "Terento — Drittanbieter-Karten für Garmin auf dem Mac",
-        hero: "Eine native macOS-App zum Installieren und Verwalten von Drittanbieter-Karten auf Garmin-Smartwatches.",
-        problem: "Die Installation von Drittanbieter-Karten sollte keine alten Programme oder manuelle Dateiübertragung erfordern.",
-        installStep: "Wähle die Karte, die du brauchst.",
-        install: "Durchsuche unterstützte Karten nach Region und prüfe den Speicherbedarf vor der Installation.",
-        manageEyebrow: "Installierte Karten",
-        manage: "Sieh, was installiert ist, aktualisiere Karten, wenn eine neuere Version verfügbar ist, und entferne unterstützte Drittanbieter-Karten sicher. Garmin- und Systemkarten bleiben geschützt.",
+        hero: "Installiere, aktualisiere und verwalte Drittanbieter-Karten mit einer nativen macOS-App — ohne manuelle Dateiübertragungen.",
+        experienceLabel: "So funktioniert es",
+        experienceTitle: "Verbinden → Installieren → Fertig",
+        featureTabsLabel: "Kartenfunktionen",
+        installLabel: "Karten installieren",
+        manageLabel: "Karten verwalten",
+        problem: "Die Installation von Drittanbieter-Karten sollte einfach und schnell sein — ohne zusätzliche Software, separate Download-Schritte oder technisches Vorwissen.",
+        problemSecondary: "Terento bündelt den gesamten Ablauf in drei einfachen Schritten.",
+        installStep: "Wähle Karten aus dem Katalog oder füge deine eigene kompatible .img-Karte hinzu.",
+        install: "Wähle Karten aus dem Katalog nach Region oder füge deine eigene kompatible .img-Karte hinzu.",
+        doneLabel: "Fertig",
+        doneStep: "Deine Karten sind installiert und auf deiner Uhr einsatzbereit.",
+        manage: "Sieh, was installiert ist, aktualisiere Karten, wenn neuere Versionen verfügbar sind, und entferne von Terento verwaltete Drittanbieter-Karten. Originale Garmin-Karten bleiben geschützt.",
         installAlt: "Terento zeigt Drittanbieter-Kartenanbieter und Regionen auf macOS",
         manageAlt: "Terento zeigt installierte Drittanbieter-Karten nach Anbieter gruppiert",
-        scope: "Terento ist für Garmin-Smartwatches mit Kartenunterstützung entwickelt. Die Kompatibilität wird für jedes Modell und jede Variante anhand echter Installationsergebnisse bestätigt.",
-        providerTitle: "Wähle eine Karte und leg los.",
-        providerCopy: "Heute verbindet Terento dich direkt mit Freizeitkarte und OpenTopoMap. Karten werden vom ursprünglichen Anbieter geladen.",
+        providerTitle: "Verfügbare Karten entdecken.",
+        providerCopy: "Heute verbindet Terento dich direkt mit Freizeitkarte und OpenTopoMap. Karten werden von der Originalquelle des jeweiligen Anbieters geladen.",
+        downloadLabel: "Herunterladen",
+        faqLabel: "Hast du Fragen?",
+        finalCtaEyebrow: "Heute loslegen",
+        finalCtaTitle: "Bereit für eine einfachere Karteninstallation?",
+        finalCtaBody: "Lade Terento herunter und verwalte Drittanbieter-Karten von deinem Mac aus.",
         faq: [
           ["Welche Garmin-Uhren funktionieren mit Terento?", "Auf der <a href=\"/de/compatibility/\">Kompatibilitätsseite</a> findest du Garmin-Modelle und Varianten, die durch echte Installationen bestätigt wurden."],
-          ["Kann ich Drittanbieter-Karten von einem Mac ohne BaseCamp auf einer Garmin-Uhr installieren?", "Ja. Terento führt dich von der Kartenauswahl bis zur Installation auf der Uhr. Du kannst auch eine kompatible Kartendatei von deinem Mac hinzufügen. Apple Silicon ist erforderlich. <a href=\"/de/guides/install-garmin-maps-mac/\">Lies die Installationsanleitung.</a>"],
-          ["Ist Terento sicher für vorhandene Garmin-Karten?", "Ja. Garmin- und Systemkarten bleiben geschützt. Terento ändert nur unterstützte Drittanbieter-Karten, nachdem du die Aktion bestätigt hast."],
-          ["Welche Drittanbieter-Kartenanbieter unterstützt Terento?", "Terento unterstützt Freizeitkarte und OpenTopoMap. Karten werden direkt vom ursprünglichen Anbieter geladen."],
+          ["Kann ich Drittanbieter-Karten von einem Mac ohne BaseCamp auf einer Garmin-Uhr installieren?", "Ja. Terento wurde entwickelt, um die Verwaltung von Drittanbieter-Karten auf macOS einfach und schnell zu machen — von der Kartenauswahl bis zur Installation, Aktualisierung und Verwaltung auf deiner Garmin-Uhr. <a href=\"/de/guides/install-garmin-maps-mac/\" data-umami-event=\"guide-link-click\" data-umami-event-location=\"home-faq-basecamp\">Lies die Installationsanleitung.</a>"],
+          ["Kann ich meine eigene .img-Karte hinzufügen?", "Ja. Füge eine kompatible .img-Karte von deinem Mac hinzu und installiere sie auf deiner verbundenen Garmin-Uhr."],
+          ["Kann ich Karten später aktualisieren?", "Ja. Terento zeigt, wenn neuere Veröffentlichungen verfügbar sind, und hilft dir, von Terento verwaltete Drittanbieter-Karten zu aktualisieren."],
           ["Was soll ich tun, wenn die Installation fehlschlägt?", "Öffne ein GitHub-Issue oder sende das Diagnoseprotokoll per E-Mail. Es enthält die Informationen, die wir zur Untersuchung benötigen.", { support: true }],
         ],
       },
       fr: {
         description: "Installez et gérez des cartes tierces sur les montres Garmin compatibles avec Terento, l’app macOS gratuite pour Apple Silicon.",
         title: "Terento — Cartes tierces pour Garmin sur Mac",
-        hero: "Une application macOS native pour installer et gérer des cartes tierces sur les montres Garmin.",
-        problem: "Installer des cartes tierces ne devrait pas nécessiter d’anciens logiciels ni de transferts manuels.",
-        installStep: "Choisissez la carte dont vous avez besoin.",
-        install: "Parcourez les cartes prises en charge par région et vérifiez l’espace nécessaire avant l’installation.",
-        manageEyebrow: "Cartes installées",
-        manage: "Consultez les cartes installées, mettez-les à jour lorsqu’une version plus récente est disponible et supprimez en toute sécurité les cartes tierces prises en charge. Les cartes Garmin et système restent protégées.",
+        hero: "Installez, mettez à jour et gérez des cartes tierces depuis une application macOS native — sans transferts manuels de fichiers.",
+        experienceLabel: "Comment ça marche",
+        experienceTitle: "Connecter → Installer → Terminé",
+        featureTabsLabel: "Fonctions cartographiques",
+        installLabel: "Installer des cartes",
+        manageLabel: "Gérer les cartes",
+        problem: "Installer des cartes tierces devrait être simple et rapide — sans logiciel supplémentaire, étapes de téléchargement séparées ni connaissances techniques.",
+        problemSecondary: "Terento réunit tout le parcours en trois étapes simples.",
+        installStep: "Choisissez des cartes dans le catalogue ou ajoutez votre propre carte .img compatible.",
+        install: "Choisissez des cartes dans le catalogue par région ou ajoutez votre propre carte .img compatible.",
+        doneLabel: "Terminé",
+        doneStep: "Vos cartes sont installées et prêtes à être utilisées sur votre montre.",
+        manage: "Consultez les cartes installées, mettez-les à jour lorsqu’une version plus récente est disponible et supprimez les cartes tierces gérées par Terento. Les cartes Garmin d’origine restent protégées.",
         installAlt: "Terento affiche les fournisseurs et les régions de cartes tierces sur macOS",
         manageAlt: "Terento affiche les cartes tierces installées, regroupées par fournisseur",
-        scope: "Terento est conçu pour les montres Garmin compatibles avec les cartes. La compatibilité est confirmée pour chaque modèle et chaque variante à partir de résultats d’installation réels.",
-        providerTitle: "Choisissez une carte et partez.",
-        providerCopy: "Aujourd’hui, Terento vous connecte directement à Freizeitkarte et OpenTopoMap. Les cartes sont téléchargées depuis leur source d’origine.",
+        providerTitle: "Découvrez les cartes disponibles.",
+        providerCopy: "Aujourd’hui, Terento vous connecte directement à Freizeitkarte et OpenTopoMap. Les cartes sont téléchargées depuis la source d’origine de chaque fournisseur.",
+        downloadLabel: "Télécharger",
+        faqLabel: "Vous avez des questions ?",
+        finalCtaEyebrow: "Commencez aujourd’hui",
+        finalCtaTitle: "Prêt pour une façon plus simple d’installer vos cartes ?",
+        finalCtaBody: "Téléchargez Terento et gérez vos cartes tierces depuis votre Mac.",
         faq: [
           ["Quelles montres Garmin fonctionnent avec Terento ?", "Consultez la <a href=\"/fr/compatibility/\">page Compatibilité</a> pour voir les modèles et variantes Garmin confirmés par des installations réelles."],
-          ["Puis-je installer des cartes tierces sur une montre Garmin depuis un Mac sans BaseCamp ?", "Oui. Terento vous guide du choix de la carte jusqu’à son installation sur la montre. Vous pouvez aussi ajouter un fichier cartographique compatible depuis votre Mac. Apple Silicon est requis. <a href=\"/fr/guides/install-garmin-maps-mac/\">Lisez le guide d’installation.</a>"],
-          ["Terento est-il sûr pour mes cartes Garmin existantes ?", "Oui. Les cartes Garmin et système restent protégées. Terento ne modifie que les cartes tierces prises en charge après votre confirmation."],
-          ["Quels fournisseurs de cartes tierces Terento prend-il en charge ?", "Terento prend en charge Freizeitkarte et OpenTopoMap. Les cartes sont téléchargées directement depuis leur source d’origine."],
+          ["Puis-je installer des cartes tierces sur une montre Garmin depuis un Mac sans BaseCamp ?", "Oui. Terento est conçu pour rendre la gestion des cartes tierces sur macOS simple et rapide — du choix de la carte à son installation, sa mise à jour et sa gestion sur votre montre Garmin. <a href=\"/fr/guides/install-garmin-maps-mac/\" data-umami-event=\"guide-link-click\" data-umami-event-location=\"home-faq-basecamp\">Lisez le guide d’installation.</a>"],
+          ["Puis-je ajouter ma propre carte .img ?", "Oui. Ajoutez une carte .img compatible depuis votre Mac et installez-la sur votre montre Garmin connectée."],
+          ["Puis-je mettre les cartes à jour plus tard ?", "Oui. Terento vous indique lorsqu’une version plus récente est disponible et vous aide à mettre à jour les cartes tierces gérées par Terento."],
           ["Que dois-je faire si l’installation échoue ?", "Ouvrez une issue GitHub ou envoyez le journal de diagnostic par e-mail. Il contient les informations nécessaires à l’analyse.", { support: true }],
         ],
       },
       pl: {
         description: "Instaluj i zarządzaj mapami innych firm na zgodnych zegarkach Garmin za pomocą bezpłatnej aplikacji Terento dla Maców z Apple Silicon.",
         title: "Terento — Mapy innych firm dla Garmina na Macu",
-        hero: "Natywna aplikacja macOS do instalowania i zarządzania mapami innych firm na zegarkach Garmin.",
-        problem: "Instalowanie map innych firm nie powinno wymagać starych programów ani ręcznego przesyłania plików.",
-        installStep: "Wybierz mapę, której potrzebujesz.",
-        install: "Przeglądaj obsługiwane mapy według regionu i sprawdź potrzebne miejsce przed instalacją.",
-        manageEyebrow: "Zainstalowane mapy",
-        manage: "Sprawdź, co jest zainstalowane, aktualizuj mapy, gdy dostępne są nowsze wydania, i bezpiecznie usuwaj obsługiwane mapy innych firm. Mapy Garmin i systemowe pozostają chronione.",
+        hero: "Instaluj, aktualizuj i zarządzaj mapami innych firm z natywnej aplikacji macOS — bez ręcznego przesyłania plików.",
+        experienceLabel: "Jak to działa",
+        experienceTitle: "Połącz → Zainstaluj → Gotowe",
+        featureTabsLabel: "Funkcje map",
+        installLabel: "Instaluj mapy",
+        manageLabel: "Zarządzaj mapami",
+        problem: "Instalowanie map innych firm powinno być proste i szybkie — bez dodatkowego oprogramowania, osobnych etapów pobierania ani wiedzy technicznej.",
+        problemSecondary: "Terento łączy cały proces w trzech prostych krokach.",
+        installStep: "Wybierz mapy z katalogu albo dodaj własną zgodną mapę .img.",
+        install: "Wybieraj mapy z katalogu według regionu albo dodaj własną zgodną mapę .img.",
+        doneLabel: "Gotowe",
+        doneStep: "Twoje mapy są zainstalowane i gotowe do użycia na zegarku.",
+        manage: "Sprawdź, co jest zainstalowane, aktualizuj mapy, gdy dostępne są nowsze wydania, i usuwaj mapy innych firm zarządzane przez Terento. Oryginalne mapy Garmin pozostają chronione.",
         installAlt: "Terento pokazuje dostawców i regiony map innych firm na macOS",
         manageAlt: "Terento pokazuje zainstalowane mapy innych firm pogrupowane według dostawcy",
-        scope: "Terento jest przeznaczone dla zegarków Garmin z obsługą map. Kompatybilność każdego modelu i wariantu jest potwierdzana na podstawie rzeczywistych instalacji.",
-        providerTitle: "Wybierz mapę i ruszaj.",
-        providerCopy: "Dziś Terento łączy Cię bezpośrednio z Freizeitkarte i OpenTopoMap. Mapy są pobierane od oryginalnego dostawcy.",
+        providerTitle: "Poznaj dostępne mapy.",
+        providerCopy: "Dziś Terento łączy Cię bezpośrednio z Freizeitkarte i OpenTopoMap. Mapy są pobierane z oryginalnego źródła każdego dostawcy.",
+        downloadLabel: "Pobierz",
+        faqLabel: "Masz pytania?",
+        finalCtaEyebrow: "Zacznij już dziś",
+        finalCtaTitle: "Gotowy na prostszy sposób instalowania map?",
+        finalCtaBody: "Pobierz Terento i zarządzaj mapami innych firm z Maca.",
         faq: [
           ["Jakie zegarki Garmin działają z Terento?", "Na <a href=\"/pl/compatibility/\">stronie kompatybilności</a> znajdziesz modele i warianty Garmin potwierdzone rzeczywistymi instalacjami."],
-          ["Czy mogę instalować mapy innych firm na zegarku Garmin z Maca bez BaseCamp?", "Tak. Terento prowadzi od wyboru mapy do instalacji na zegarku. Możesz też dodać zgodny plik mapy z Maca. Wymagany jest Apple Silicon. <a href=\"/pl/guides/install-garmin-maps-mac/\">Przeczytaj instrukcję instalacji.</a>"],
-          ["Czy Terento jest bezpieczne dla istniejących map Garmin?", "Tak. Mapy Garmin i systemowe pozostają chronione. Terento zmienia tylko obsługiwane mapy innych firm po potwierdzeniu działania."],
-          ["Których dostawców map innych firm obsługuje Terento?", "Terento obsługuje Freizeitkarte i OpenTopoMap. Mapy są pobierane bezpośrednio z oryginalnego źródła."],
+          ["Czy mogę instalować mapy innych firm na zegarku Garmin z Maca bez BaseCamp?", "Tak. Terento powstało po to, by instalowanie i zarządzanie mapami innych firm na macOS było proste i szybkie — od wyboru mapy po instalację, aktualizację i zarządzanie nią na zegarku Garmin. <a href=\"/pl/guides/install-garmin-maps-mac/\" data-umami-event=\"guide-link-click\" data-umami-event-location=\"home-faq-basecamp\">Przeczytaj instrukcję instalacji.</a>"],
+          ["Czy mogę dodać własną mapę .img?", "Tak. Dodaj zgodną mapę .img z Maca i zainstaluj ją na podłączonym zegarku Garmin."],
+          ["Czy mogę później aktualizować mapy?", "Tak. Terento pokazuje, gdy dostępne są nowsze wydania, i pomaga aktualizować mapy innych firm zarządzane przez Terento."],
           ["Co zrobić, jeśli instalacja się nie powiedzie?", "Otwórz zgłoszenie na GitHubie lub wyślij log diagnostyczny e-mailem. Zawiera informacje potrzebne do zbadania problemu.", { support: true }],
         ],
       },
       cs: {
         description: "Instalujte a spravujte mapy třetích stran na podporovaných hodinkách Garmin pomocí bezplatné aplikace Terento pro Macy s Apple Silicon.",
         title: "Terento — Mapy třetích stran pro Garmin na Macu",
-        hero: "Nativní aplikace pro macOS k instalaci a správě map třetích stran na hodinkách Garmin.",
-        problem: "Instalace map třetích stran by neměla vyžadovat staré programy ani ruční přenos souborů.",
-        installStep: "Vyberte mapu, kterou potřebujete.",
-        install: "Procházejte podporované mapy podle oblasti a před instalací zkontrolujte potřebné místo.",
-        manageEyebrow: "Nainstalované mapy",
-        manage: "Prohlédněte si nainstalované mapy, aktualizujte je, když je k dispozici novější vydání, a bezpečně odstraňujte podporované mapy třetích stran. Garmin a systémové mapy zůstávají chráněné.",
+        hero: "Instalujte, aktualizujte a spravujte mapy třetích stran z nativní aplikace pro macOS — bez ručních přenosů souborů.",
+        experienceLabel: "Jak to funguje",
+        experienceTitle: "Připojit → Instalovat → Hotovo",
+        featureTabsLabel: "Funkce map",
+        installLabel: "Instalovat mapy",
+        manageLabel: "Spravovat mapy",
+        problem: "Instalace map třetích stran by měla být jednoduchá a rychlá — bez dalšího softwaru, samostatných kroků stahování a technických znalostí.",
+        problemSecondary: "Terento celý proces spojuje do tří jednoduchých kroků.",
+        installStep: "Vybírejte mapy z katalogu podle oblasti nebo přidejte vlastní kompatibilní mapu .img.",
+        install: "Vybírejte mapy z katalogu podle oblasti nebo přidejte vlastní kompatibilní mapu .img.",
+        doneLabel: "Hotovo",
+        doneStep: "Vaše mapy jsou nainstalované a připravené k použití v hodinkách.",
+        manage: "Prohlédněte si nainstalované mapy, aktualizujte je, když je k dispozici novější vydání, a odstraňte mapy třetích stran spravované aplikací Terento. Původní mapy Garmin zůstávají chráněné.",
         installAlt: "Terento zobrazuje poskytovatele a oblasti map třetích stran v macOS",
         manageAlt: "Terento zobrazuje nainstalované mapy třetích stran seskupené podle poskytovatele",
-        scope: "Terento je určeno pro hodinky Garmin s podporou map. Kompatibilita každého modelu a varianty se potvrzuje pomocí skutečných výsledků instalace.",
-        providerTitle: "Vyberte mapu a vyrazte.",
-        providerCopy: "Dnes vás Terento propojí přímo s poskytovateli Freizeitkarte a OpenTopoMap. Mapy se stahují z původního zdroje.",
+        providerTitle: "Prozkoumejte dostupné mapy.",
+        providerCopy: "Dnes vás Terento propojí přímo s poskytovateli Freizeitkarte a OpenTopoMap. Mapy se stahují z původního zdroje každého poskytovatele.",
+        downloadLabel: "Stáhnout",
+        faqLabel: "Máte otázky?",
+        finalCtaEyebrow: "Začněte ještě dnes",
+        finalCtaTitle: "Chcete jednodušší způsob instalace map?",
+        finalCtaBody: "Stáhněte si Terento a spravujte mapy třetích stran z Macu.",
         faq: [
           ["Které hodinky Garmin fungují s Terento?", "Na stránce <a href=\"/cs/compatibility/\">Kompatibilita</a> najdete modely a varianty Garmin potvrzené skutečnými instalacemi."],
-          ["Mohu instalovat mapy třetích stran do hodinek Garmin z Macu bez BaseCamp?", "Ano. Terento vás provede od výběru mapy až po instalaci do hodinek. Z Macu můžete také přidat kompatibilní mapový soubor. Je vyžadován Apple Silicon. <a href=\"/cs/guides/install-garmin-maps-mac/\">Přečtěte si instalační příručku.</a>"],
-          ["Je Terento bezpečné pro stávající mapy Garmin?", "Ano. Garmin a systémové mapy zůstávají chráněné. Terento mění pouze podporované mapy třetích stran po potvrzení akce."],
-          ["Které poskytovatele map třetích stran Terento podporuje?", "Terento podporuje Freizeitkarte a OpenTopoMap. Mapy se stahují přímo z původního zdroje."],
+          ["Mohu instalovat mapy třetích stran do hodinek Garmin z Macu bez BaseCamp?", "Ano. Terento je navrženo tak, aby správa map třetích stran v macOS byla jednoduchá a rychlá — od výběru mapy po instalaci, aktualizaci a správu v hodinkách Garmin. <a href=\"/cs/guides/install-garmin-maps-mac/\" data-umami-event=\"guide-link-click\" data-umami-event-location=\"home-faq-basecamp\">Přečtěte si instalační příručku.</a>"],
+          ["Mohu přidat vlastní mapu .img?", "Ano. Přidejte kompatibilní mapu .img z Macu a nainstalujte ji do připojených hodinek Garmin."],
+          ["Mohu mapy aktualizovat později?", "Ano. Terento ukáže, když jsou k dispozici novější vydání, a pomůže vám aktualizovat mapy třetích stran spravované aplikací Terento."],
           ["Co mám dělat, když instalace selže?", "Otevřete issue na GitHubu nebo pošlete diagnostický log e-mailem. Obsahuje informace potřebné k prošetření problému.", { support: true }],
         ],
       },
       it: {
         description: "Installa e gestisci mappe di terze parti sugli smartwatch Garmin compatibili con Terento, l’app macOS gratuita per Apple Silicon.",
         title: "Terento — Mappe di terze parti per Garmin su Mac",
-        hero: "Un’app macOS nativa per installare e gestire mappe di terze parti sugli smartwatch Garmin.",
-        problem: "Installare mappe di terze parti non dovrebbe richiedere vecchi programmi o trasferimenti manuali.",
-        installStep: "Scegli la mappa che ti serve.",
-        install: "Sfoglia le mappe supportate per regione e controlla lo spazio necessario prima dell’installazione.",
-        manageEyebrow: "Mappe installate",
-        manage: "Visualizza le mappe installate, aggiornatele quando è disponibile una versione più recente e rimuovi in sicurezza le mappe di terze parti supportate. Le mappe Garmin e di sistema restano protette.",
+        hero: "Installa, aggiorna e gestisci mappe di terze parti da un’app macOS nativa — senza trasferimenti manuali di file.",
+        experienceLabel: "Come funziona",
+        experienceTitle: "Connetti → Installa → Fatto",
+        featureTabsLabel: "Funzioni delle mappe",
+        installLabel: "Installa mappe",
+        manageLabel: "Gestisci mappe",
+        problem: "Installare mappe di terze parti dovrebbe essere semplice e veloce — senza software aggiuntivo, passaggi di download separati o competenze tecniche.",
+        problemSecondary: "Terento riunisce l’intero processo in tre semplici passaggi.",
+        installStep: "Scegli le mappe dal catalogo oppure aggiungi la tua mappa .img compatibile.",
+        install: "Scegli le mappe dal catalogo per regione oppure aggiungi la tua mappa .img compatibile.",
+        doneLabel: "Fatto",
+        doneStep: "Le tue mappe sono installate e pronte per essere usate sullo smartwatch.",
+        manage: "Visualizza le mappe installate, aggiornatele quando è disponibile una versione più recente e rimuovi le mappe di terze parti gestite da Terento. Le mappe Garmin originali restano protette.",
         installAlt: "Terento mostra provider e regioni di mappe di terze parti su macOS",
         manageAlt: "Terento mostra le mappe di terze parti installate raggruppate per provider",
-        scope: "Terento è progettato per gli smartwatch Garmin con supporto alle mappe. La compatibilità di ogni modello e variante viene confermata con risultati di installazione reali.",
-        providerTitle: "Scegli una mappa e parti.",
-        providerCopy: "Oggi Terento ti collega direttamente a Freizeitkarte e OpenTopoMap. Le mappe vengono scaricate dalla fonte originale.",
+        providerTitle: "Scopri le mappe disponibili.",
+        providerCopy: "Oggi Terento ti collega direttamente a Freizeitkarte e OpenTopoMap. Le mappe vengono scaricate dalla fonte originale di ciascun provider.",
+        downloadLabel: "Scarica",
+        faqLabel: "Hai domande?",
+        finalCtaEyebrow: "Inizia oggi",
+        finalCtaTitle: "Pronto per un modo più semplice di installare le mappe?",
+        finalCtaBody: "Scarica Terento e gestisci le mappe di terze parti dal tuo Mac.",
         faq: [
           ["Quali smartwatch Garmin funzionano con Terento?", "Consulta la pagina <a href=\"/it/compatibility/\">Compatibilità</a> per i modelli e le varianti Garmin confermati da installazioni reali."],
-          ["Posso installare mappe di terze parti su uno smartwatch Garmin da un Mac senza BaseCamp?", "Sì. Terento ti guida dalla scelta della mappa all’installazione sullo smartwatch. Puoi anche aggiungere dal Mac un file cartografico compatibile. È richiesto Apple Silicon. <a href=\"/it/guides/install-garmin-maps-mac/\">Leggi la guida all’installazione.</a>"],
-          ["Terento è sicuro per le mappe Garmin esistenti?", "Sì. Le mappe Garmin e di sistema restano protette. Terento modifica solo le mappe di terze parti supportate dopo la tua conferma."],
-          ["Quali provider di mappe di terze parti supporta Terento?", "Terento supporta Freizeitkarte e OpenTopoMap. Le mappe vengono scaricate direttamente dalla fonte originale."],
+          ["Posso installare mappe di terze parti su uno smartwatch Garmin da un Mac senza BaseCamp?", "Sì. Terento è progettato per rendere semplice e veloce la gestione delle mappe di terze parti su macOS — dalla scelta della mappa all’installazione, all’aggiornamento e alla gestione sul tuo smartwatch Garmin. <a href=\"/it/guides/install-garmin-maps-mac/\" data-umami-event=\"guide-link-click\" data-umami-event-location=\"home-faq-basecamp\">Leggi la guida all’installazione.</a>"],
+          ["Posso aggiungere la mia mappa .img?", "Sì. Aggiungi una mappa .img compatibile dal tuo Mac e installala sul tuo smartwatch Garmin collegato."],
+          ["Posso aggiornare le mappe in un secondo momento?", "Sì. Terento mostra quando sono disponibili versioni più recenti e ti aiuta ad aggiornare le mappe di terze parti gestite da Terento."],
           ["Cosa devo fare se l’installazione non riesce?", "Apri una issue su GitHub oppure invia il log diagnostico via e-mail. Contiene le informazioni necessarie per analizzare il problema.", { support: true }],
         ],
       },
@@ -143,17 +198,59 @@
   function updateHome(copy) {
     updateMeta(copy);
     const text = (selector, value) => { const element = document.querySelector(selector); if (element) element.textContent = value; };
+    const actionText = (selector, value) => {
+      const element = document.querySelector(selector);
+      if (!element) return;
+      const arrow = element.querySelector('[aria-hidden="true"]');
+      element.textContent = value;
+      if (arrow) {
+        element.append(" ", arrow);
+      }
+    };
+    const workflowTitle = (value) => {
+      const element = document.querySelector("#experience-title");
+      if (!element) return;
+      element.replaceChildren();
+      value.split("→").map((part) => part.trim()).forEach((part, index) => {
+        if (index > 0) {
+          element.append(" ");
+          const arrow = document.createElement("span");
+          arrow.className = "workflow-title-arrow";
+          arrow.setAttribute("aria-hidden", "true");
+          arrow.textContent = "→";
+          const bullet = document.createElement("span");
+          bullet.className = "workflow-title-bullet";
+          bullet.setAttribute("aria-hidden", "true");
+          bullet.textContent = "•";
+          element.append(arrow, bullet, " ");
+          element.append(document.createTextNode(part));
+          return;
+        }
+        element.append(document.createTextNode(part));
+      });
+    };
     text(".hero-lede", copy.hero);
+    text("#experience-label", copy.experienceLabel);
+    workflowTitle(copy.experienceTitle);
+    text("#install-maps-tab", copy.installLabel);
+    text("#manage-maps-tab", copy.manageLabel);
+    const featureTabs = document.querySelector("[data-map-feature-tabs]");
+    if (featureTabs) featureTabs.setAttribute("aria-label", copy.featureTabsLabel);
     text(".problem-statement p:first-child", copy.problem);
+    text(".problem-statement p:nth-child(2)", copy.problemSecondary);
     text(".steps .step:nth-child(2) > p:last-child", copy.installStep);
+    text(".steps .step:nth-child(3) > h3", copy.doneLabel);
+    text(".steps .step:nth-child(3) > p:last-child", copy.doneStep);
     text("#install-maps-title + p", copy.install);
     text("#manage-maps-title + p", copy.manage);
-    text("#manage-maps-title", document.querySelector("#manage-maps-title")?.textContent || "");
-    const manageEyebrow = document.querySelector("#manage-maps-title")?.previousElementSibling;
-    if (manageEyebrow) manageEyebrow.textContent = copy.manageEyebrow;
-    text(".scope-copy", copy.scope);
     text("#providers-title", copy.providerTitle);
     text(".provider-copy > p", copy.providerCopy);
+    actionText(".hero-download-action", copy.downloadLabel);
+    actionText(".final-cta .download-action", copy.downloadLabel);
+    text("#faq .section-heading .eyebrow", copy.faqLabel);
+    text(".final-cta .eyebrow", copy.finalCtaEyebrow);
+    text("#final-cta-title", copy.finalCtaTitle);
+    text(".final-cta-copy > p:last-child", copy.finalCtaBody);
     const installImage = document.querySelector("#install-maps-title")?.closest("section")?.querySelector("img");
     if (installImage) installImage.alt = copy.installAlt;
     const manageImage = document.querySelector("#manage-maps-title")?.closest("section")?.querySelector("img");

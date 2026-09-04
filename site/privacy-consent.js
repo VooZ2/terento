@@ -107,7 +107,6 @@
   const linkLocation = (link) => {
     if (link.dataset.umamiEventLocation) return link.dataset.umamiEventLocation;
     if (link.classList.contains("hero-compatibility-link")) return "home-hero";
-    if (link.classList.contains("scope-link")) return "home-scope";
     if (link.classList.contains("download-info-link")) return "download-page";
     if (link.closest(".site-header")) return "header-nav";
     if (link.closest(".footer-nav")) return "footer-nav";

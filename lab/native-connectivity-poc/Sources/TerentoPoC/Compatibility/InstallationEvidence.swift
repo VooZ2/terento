@@ -579,7 +579,7 @@ final class InstallationEvidenceController: ObservableObject {
         store.consent()?.choice
     }
 
-    /// No consent record means anonymous diagnostics are enabled by default.
+    /// No consent record means privacy-minimised diagnostics are enabled by default.
     /// An explicit opt-out remains persisted across app updates.
     var compatibilitySharingEnabled: Bool {
         currentConsentChoice != .declined

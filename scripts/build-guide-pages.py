@@ -17,23 +17,23 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE_URL = "https://terento.app"
 GUIDE_SLUG = "guides/install-garmin-maps-mac/"
 PUBLISHED = "2026-08-28T00:00:00Z"
-REVIEWED = "2026-09-04T00:00:00Z"
+REVIEWED = "2026-09-02T00:00:00Z"
 IMAGE_VERSION = "20260902-your-garmin"
 READING_STATE_VERSION = "20260902-reading-state"
 GUIDE_PROGRESS_VERSION = "20260902-guide-progress"
 UMAMI_SCRIPT_VERSION = "20260904-public-link-events"
-STYLE_VERSION = "20260904-language-selector"
+STYLE_VERSION = "20260904-pass3-workflow-arrows-v7"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 ISSUES_URL = "https://github.com/VooZ2/terento/issues"
 EMAIL_URL = "mailto:hello@terento.app?subject=Terento%20installation%20issue"
 EMAIL_ADDRESS = "hello@terento.app"
 REVIEWED_DISPLAY_DATES = {
-    "en": "September 4, 2026",
-    "de": "4. September 2026",
-    "fr": "4 septembre 2026",
-    "pl": "4 września 2026",
-    "cs": "4. září 2026",
-    "it": "4 settembre 2026",
+    "en": "September 2, 2026",
+    "de": "2. September 2026",
+    "fr": "2 septembre 2026",
+    "pl": "2 września 2026",
+    "cs": "2. září 2026",
+    "it": "2 settembre 2026",
 }
 GARMIN_BASECAMP_URL = "https://support.garmin.com/en-GB/?faq=bcmC4za1sy9hykGnopP8l7&identifier=310&tab=topics"
 GARMIN_EXPRESS_URL = "https://support.garmin.com/en-US/?faq=4QVp7mKSIA1LDk5fc1OHX8"
@@ -126,6 +126,14 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
     home = localized_path(locale)
     download = localized_path(locale, "download/")
     compatibility = localized_path(locale, "compatibility/")
+    download_label = {
+        "en": "Download",
+        "de": "Herunterladen",
+        "fr": "Télécharger",
+        "pl": "Pobierz",
+        "cs": "Stáhnout",
+        "it": "Scarica",
+    }[locale]
     release_label = str(release["releaseLabel"])
     alternate_links = "\n".join(
         f'    <link rel="alternate" hreflang="{candidate}" href="{BASE_URL}{localized_path(candidate, GUIDE_SLUG)}">'
@@ -144,7 +152,7 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
                   <h3>{esc(step["title"])}</h3>
                   <p>{esc(step["body"])}</p>
                   {f'<p class="guide-step-note">{esc(step["note"])}</p>' if step.get("note") else ""}
-                  {f'<a class="guide-step-link text-link" href="{download}">{esc(step["link_label"])} <span aria-hidden="true">→</span></a>' if step.get("link_label") else ""}
+                  {f'<a class="guide-step-link text-link" href="{download}" data-umami-event="download-cta-click" data-umami-event-location="guide-step">{esc(step["link_label"])} <span aria-hidden="true">→</span></a>' if step.get("link_label") else ""}
                 </div>
                 {visual}
               </div>
@@ -207,7 +215,7 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
     </script>
   </head>
   <body>
-    <a class="skip-link" href="#main-content">{esc(copy["skip"])}</a>
+    <a class="skip-link" href="#main-content" data-umami-event="internal-link-click" data-umami-event-location="skip-link">{esc(copy["skip"])}</a>
     <header class="site-header"></header>
     <main id="main-content" class="guide-main">
       <article class="guide-article">
@@ -217,7 +225,7 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
             <h1>{esc(copy["h1"])}</h1>
             <p class="guide-lede">{esc(copy["intro"])}</p>
             <div class="guide-actions">
-              <a class="download-action" href="{download}" data-umami-event="download-cta-click" data-umami-event-location="guide-hero">{esc(copy["download_beta"])} <span aria-hidden="true">→</span></a>
+              <a class="download-action" href="{download}" data-umami-event="download-cta-click" data-umami-event-location="guide-hero">{esc(download_label)} <span aria-hidden="true">→</span></a>
               <a class="text-link" href="{compatibility}" data-umami-event="compatibility-link-click" data-umami-event-location="guide-preflight">{esc(copy["see_compatibility"])} <span aria-hidden="true">→</span></a>
             </div>
             <p class="guide-facts"><span>macOS 13+</span><span aria-hidden="true">·</span><span>Apple Silicon</span><span aria-hidden="true">·</span><span>{esc(copy["current_beta"])}</span></p>
@@ -225,11 +233,11 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
             <nav class="guide-progress" data-guide-progress aria-label="{esc(copy["progress_label"])}">
               <p class="guide-progress-eyebrow">{esc(copy["progress_eyebrow"])}</p>
               <ol>
-                <li><a href="#before-you-start"><span class="guide-progress-number" aria-hidden="true">01</span>{esc(copy["progress_before"])}</a></li>
-                <li><a href="#steps"><span class="guide-progress-number" aria-hidden="true">02</span>{esc(copy["progress_steps"])}</a></li>
-                <li><a href="#troubleshooting"><span class="guide-progress-number" aria-hidden="true">03</span>{esc(copy["progress_troubleshooting"])}</a></li>
-                <li><a href="#faq-help"><span class="guide-progress-number" aria-hidden="true">04</span>{esc(copy["progress_faq"])}</a></li>
-                <li><a href="#context"><span class="guide-progress-number" aria-hidden="true">05</span>{esc(copy["progress_context"])}</a></li>
+                <li><a href="#before-you-start" data-umami-event="internal-link-click" data-umami-event-location="guide-progress"><span class="guide-progress-number" aria-hidden="true">01</span>{esc(copy["progress_before"])}</a></li>
+                <li><a href="#steps" data-umami-event="internal-link-click" data-umami-event-location="guide-progress"><span class="guide-progress-number" aria-hidden="true">02</span>{esc(copy["progress_steps"])}</a></li>
+                <li><a href="#troubleshooting" data-umami-event="internal-link-click" data-umami-event-location="guide-progress"><span class="guide-progress-number" aria-hidden="true">03</span>{esc(copy["progress_troubleshooting"])}</a></li>
+                <li><a href="#faq-help" data-umami-event="internal-link-click" data-umami-event-location="guide-progress"><span class="guide-progress-number" aria-hidden="true">04</span>{esc(copy["progress_faq"])}</a></li>
+                <li><a href="#context" data-umami-event="internal-link-click" data-umami-event-location="guide-progress"><span class="guide-progress-number" aria-hidden="true">05</span>{esc(copy["progress_context"])}</a></li>
               </ol>
             </nav>
           </div>
@@ -252,7 +260,7 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
 
           <section class="guide-after-steps" aria-label="{esc(copy["after_steps_label"])}">
             <p>{esc(copy["after_steps_copy"])}</p>
-            <a class="download-action" href="{download}" data-umami-event="download-cta-click" data-umami-event-location="guide-after-steps">{esc(copy["download_beta"])} <span aria-hidden="true">→</span></a>
+            <a class="download-action" href="{download}" data-umami-event="download-cta-click" data-umami-event-location="guide-after-steps">{esc(download_label)} <span aria-hidden="true">→</span></a>
           </section>
 
           <section class="troubleshooting" id="troubleshooting" aria-labelledby="troubleshooting-title">
@@ -272,7 +280,7 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
 
           <section class="guide-bottom-cta" aria-labelledby="guide-bottom-title">
             <div><p class="eyebrow">{esc(copy["bottom_eyebrow"])}</p><h2 id="guide-bottom-title">{esc(copy["bottom_title"])}</h2></div>
-            <a class="download-action" href="{download}" data-umami-event="download-cta-click" data-umami-event-location="guide-bottom">{esc(copy["download_beta"])} <span aria-hidden="true">→</span></a>
+            <a class="download-action" href="{download}" data-umami-event="download-cta-click" data-umami-event-location="guide-bottom">{esc(download_label)} <span aria-hidden="true">→</span></a>
           </section>
         </div>
       </article>

@@ -30,7 +30,7 @@ reject_review_text() {
 
 require_review_text 'Text("Terento will install these maps to your Garmin. Existing Garmin maps will not be changed.")' 'safety copy is not one compact sentence'
 require_review_text '.font(.terentoUI(size: 13, weight: .regular))' 'safety copy is not supporting text'
-require_review_text 'Terento sends anonymous diagnostics by default to help improve the app and its services. You can turn this off anytime in Terento → Diagnostics.' 'diagnostics disclosure is missing'
+require_review_text 'Terento sends privacy-minimised diagnostics by default to help improve the app and its services. You can turn this off anytime in Terento → Diagnostics.' 'diagnostics disclosure is missing'
 require_review_text '.padding(.bottom, TerentoPageLayout.sectionSpacing)' 'sharing block does not keep a stable gap above the footer'
 require_review_text '.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)' 'Review content cannot absorb the fixed body height'
 require_review_text 'bodyScrolls: mapEngine.installationPhase == .failed' 'normal Review state may scroll as a whole page'

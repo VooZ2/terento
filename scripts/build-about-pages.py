@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE_URL = "https://terento.app"
 ABOUT_SLUG = "about/"
 SHELL_VERSION = "20260904-language-selector"
-STYLE_VERSION = "20260904-language-selector"
+STYLE_VERSION = "20260904-pass3-workflow-arrows-v7"
 UMAMI_SCRIPT_VERSION = "20260904-public-link-events"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
@@ -42,7 +42,7 @@ COPY = {
         "description": "Learn why Terento exists: a free, open-source macOS app for installing and managing third-party maps on Garmin smartwatches.",
         "eyebrow": "About Terento",
         "skip": "Skip to content",
-        "h1": "A solution, not a process.",
+        "h1": "A solution, not a process",
         "intro": "Terento is a free, open-source macOS app that makes community maps easier to install and keep current on modern Garmin smartwatches.",
         "section_eyebrow": "The idea",
         "section_title": "Your device, ready for where you’re going.",
@@ -58,7 +58,7 @@ COPY = {
         "description": "Warum es Terento gibt: eine kostenlose Open-Source-macOS-App zum Installieren und Verwalten von Drittanbieter-Karten auf Garmin-Smartwatches.",
         "eyebrow": "Über Terento",
         "skip": "Zum Inhalt springen",
-        "h1": "Eine Lösung, kein Prozess.",
+        "h1": "Eine Lösung, kein Prozess",
         "intro": "Terento ist eine kostenlose Open-Source-macOS-App, die Community-Karten auf modernen Garmin-Smartwatches einfacher installieren und aktuell halten lässt.",
         "section_eyebrow": "Die Idee",
         "section_title": "Dein Gerät, bereit für dein nächstes Ziel.",
@@ -74,7 +74,7 @@ COPY = {
         "description": "Découvrez pourquoi Terento existe : une application macOS gratuite et open source pour installer et gérer des cartes tierces sur les montres Garmin.",
         "eyebrow": "À propos de Terento",
         "skip": "Aller au contenu",
-        "h1": "Une solution, pas un processus.",
+        "h1": "Une solution, pas un processus",
         "intro": "Terento est une application macOS gratuite et open source qui simplifie l’installation et la mise à jour de cartes communautaires sur les montres Garmin modernes.",
         "section_eyebrow": "L’idée",
         "section_title": "Votre appareil, prêt pour votre prochaine aventure.",
@@ -90,7 +90,7 @@ COPY = {
         "description": "Dowiedz się, dlaczego powstało Terento: bezpłatna aplikacja macOS open source do instalowania i zarządzania mapami innych firm na zegarkach Garmin.",
         "eyebrow": "O Terento",
         "skip": "Przejdź do treści",
-        "h1": "Rozwiązanie, nie proces.",
+        "h1": "Rozwiązanie, nie proces",
         "intro": "Terento to bezpłatna aplikacja macOS open source, która ułatwia instalowanie i aktualizowanie map społecznościowych na nowoczesnych zegarkach Garmin.",
         "section_eyebrow": "Pomysł",
         "section_title": "Twoje urządzenie gotowe na kolejną trasę.",
@@ -106,7 +106,7 @@ COPY = {
         "description": "Zjistěte, proč Terento vzniklo: bezplatná open-source aplikace pro macOS k instalaci a správě map třetích stran na hodinkách Garmin.",
         "eyebrow": "O Terento",
         "skip": "Přejít k obsahu",
-        "h1": "Řešení, ne proces.",
+        "h1": "Řešení, ne proces",
         "intro": "Terento je bezplatná open-source aplikace pro macOS, která usnadňuje instalaci a aktualizaci komunitních map na moderních hodinkách Garmin.",
         "section_eyebrow": "Myšlenka",
         "section_title": "Vaše zařízení připravené na další cestu.",
@@ -122,7 +122,7 @@ COPY = {
         "description": "Scopri perché esiste Terento: un’app macOS gratuita e open source per installare e gestire mappe di terze parti sugli smartwatch Garmin.",
         "eyebrow": "Informazioni su Terento",
         "skip": "Vai al contenuto",
-        "h1": "Una soluzione, non un processo.",
+        "h1": "Una soluzione, non un processo",
         "intro": "Terento è un’app macOS gratuita e open source che semplifica l’installazione e l’aggiornamento delle mappe della community sugli smartwatch Garmin moderni.",
         "section_eyebrow": "L’idea",
         "section_title": "Il tuo dispositivo, pronto per la prossima meta.",

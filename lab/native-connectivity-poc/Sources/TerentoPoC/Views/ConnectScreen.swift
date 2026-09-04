@@ -742,7 +742,7 @@ struct ConnectScreen: View {
                     }
 
                     aboutSection(title: "Privacy") {
-                        Text("Terento sends anonymous diagnostics by default to help improve the app and its services. Device state, maps, manifests, Unit IDs, serial numbers, and local paths stay on this Mac.")
+                        Text("Terento sends privacy-minimised diagnostics by default to help improve the app and its services. Device state, maps, manifests, Unit IDs, serial numbers, and local paths stay on this Mac.")
                             .font(.terentoUI(size: 15, weight: .medium))
                             .foregroundStyle(TerentoColors.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
@@ -1635,7 +1635,7 @@ struct ConnectScreen: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, 10)
 
-                    Text("Terento sends anonymous diagnostics by default to help improve the app and its services. You can turn this off anytime in Terento → Diagnostics.")
+                    Text("Terento sends privacy-minimised diagnostics by default to help improve the app and its services. You can turn this off anytime in Terento → Diagnostics.")
                         .font(.terentoUI(size: 13, weight: .regular))
                         .foregroundStyle(TerentoColors.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)

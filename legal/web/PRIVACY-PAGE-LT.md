@@ -18,10 +18,11 @@ kompiuteryje. Jie nesiunčiami kaip debesies laikrodžio profilis.
 
 libmtp ir libusb naudojamos tik native macOS programoje, ne šioje svetainėje. Kūrimo versijos naudoja Homebrew, o produkcinė programa naudoja teisinių pranešimų skyriuje aprašytas prisegtas dinamines bibliotekas.
 
-## Anoniminė suderinamumo diagnostika programoje
+## Privatumą tausojanti suderinamumo diagnostika programoje
 
-macOS beta pagal nutylėjimą siunčia privatumą tausojančią anoniminę
-suderinamumo diagnostiką į `api.terento.app`, kad gerintų diegimo patikimumą
+macOS beta pagal nutylėjimą siunčia privatumą tausojančią suderinamumo
+diagnostiką, nesusietą su paskyra ar tiesioginiu įrenginio identifikatoriumi,
+į `api.terento.app`, kad gerintų diegimo patikimumą
 ir suderinamumo aprėptį pagal laikrodžio modelį bei firmware. Diegimo lange
 nėra dalijimosi pasirinkimo. Šį srautą galima bet kada išjungti per
 **Terento → Diagnostics**; išjungimas neblokuoja diegimo ir nemažina programos
@@ -46,9 +47,9 @@ palaikomų įrenginių aprėptį. Būsimą dalijimąsi galima sustabdyti per
 veiksmo; su privatumo teisių klausimais kreipkitės į
 [privacy@terento.app](mailto:privacy@terento.app).
 
-## Anoniminė žemėlapių naudojimo diagnostika
+## Privatumą tausojanti žemėlapių naudojimo diagnostika
 
-Programa pagal nutylėjimą siunčia atskirą privatumą tausojančios anoniminės
+Programa pagal nutylėjimą siunčia atskirą privatumą tausojančios
 žemėlapių naudojimo diagnostikos srautą, kad matuotų žemėlapių atsisiuntimo ir
 diegimo rezultatus. Įvykis gali turėti tik atsitiktinius įvykio ir operacijos
 ID, laiką, teikėją, žemėlapį, regioną, įvykio tipą, rezultatą ir programos
@@ -123,7 +124,7 @@ nesumažina.
 
 Tikslas — pristatyti ir apsaugoti svetainę, matyti agreguotą lankomumą bei
 gerinti programos ir suderinamumo kokybę. Lankomumo statistika ir privatumą
-tausojanti anoniminė diagnostika tvarkomos pagal teisėtą interesą (BDAR 6 str.
-1 d. f p.).
+tausojanti diagnostika, nesusieta su paskyra ar tiesioginiu įrenginio
+identifikatoriumi, tvarkomos pagal teisėtą interesą (BDAR 6 str. 1 d. f p.).
 
 Šis pranešimas yra skaidrumo tekstas, ne teisinė konsultacija.

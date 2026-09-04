@@ -5,8 +5,8 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 const styles = read("site/styles.css");
-const styleVersion = "20260904-language-selector";
-const localizedContentVersion = "20260904-download-page-cards";
+const styleVersion = "20260904-pass3-workflow-arrows-v7";
+const localizedContentVersion = "20260904-pass3-workflow-arrows-v4";
 
 const cssBlock = (selector) => {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -111,6 +111,7 @@ for (const [locale, contract] of Object.entries(locales)) {
   assert.equal((html.match(/class="download-detail"/g) || []).length, 2, `${locale} must use two decision-support detail cards`);
   assert.doesNotMatch(html, /class="download-visual"|class="app-shot app-shot--download"|your-garmin-640\.avif/);
   assert.doesNotMatch(html, /class="download-requirement"/);
+  assert.doesNotMatch(html, /class="download-trust"|Free · Notarized|Kostenlos · Notarisiert|Gratuit · Notarié|Bezpłatna · Notaryzowana|Zdarma · Notarizovaná|Gratuita · Notarizzata/);
   const intro = html.match(/<p class="download-intro"[^>]*>[\s\S]*?<\/p>/);
   assert.ok(intro, `${locale} must have a Download intro`);
   assert.doesNotMatch(intro[0], /<strong>/);
@@ -152,6 +153,7 @@ for (const locale of Object.keys(locales)) {
 
 assert.doesNotMatch(read("site/localized-content.js"), /download-compatibility-link/);
 assert.doesNotMatch(read("site/localized-content.js"), /download-requirement|download-item|copy\.included/);
+assert.doesNotMatch(styles, /\.download-trust\s*\{/);
 
 for (const [locale, contract] of Object.entries(locales)) {
   const html = read(contract.file);

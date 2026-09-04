@@ -10,9 +10,9 @@ connect_source="$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/Views/
 for text in \
     'struct DiagnosticsView: View' \
     'Text("Diagnostics")' \
-    'Text("Anonymous diagnostics help improve the Terento app and its services.")' \
-    'Send anonymous compatibility diagnostics' \
-    'Send anonymous map usage diagnostics' \
+    'Text("Privacy-minimised diagnostics help improve the Terento app and its services.")' \
+    'Send privacy-minimised compatibility diagnostics' \
+    'Send privacy-minimised map usage diagnostics' \
     'Text("Both diagnostics streams are enabled by default.' \
     'DiagnosticsActionButton(title: isSending ? "Sending diagnostics…" : "Send diagnostics")' \
     '.disabled(pendingCount == 0 || isSending)' \

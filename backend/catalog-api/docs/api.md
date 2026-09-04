@@ -10,8 +10,8 @@ The map and device catalog routes are public read-only metadata. Compatibility
 evidence and map-operation statistics are separate data boundaries: the former
 is an explicit product-purpose sharing flow, while the latter accepts only
 privacy-minimised map operation events from registered providers. Compatibility evidence is
-accepted for the explicit reviewed provider allowlist (`freizeitkarte` and
-`opentopomap`) plus the separate `custom` local-IMG source label. Custom
+accepted for the explicit currently enabled and reviewed provider set plus the
+separate `custom` local-IMG source label. Custom
 events use literal `custom` region and release labels so no local filename,
 hash-derived identity, or provider claim is uploaded. Provider installation
 evidence can be linked to map-operation events by a shared operation ID when
@@ -23,7 +23,7 @@ authenticated admin routes. No route serves map binaries.
 ## `POST /compatibility/events`
 
 Accepts at most 16 KiB of allowlisted schema-version-1 through schema-version-4 JSON under the client’s
-default-on anonymous diagnostics policy. Event UUIDs are idempotent. Unknown fields, local paths, malformed
+default-on privacy-minimised diagnostics policy. Event UUIDs are idempotent. Unknown fields, local paths, malformed
 payloads, providers/sources outside the current compatibility-evidence allowlist, and
 privacy-prohibited data are rejected. The compatibility evidence source
 allowlist is explicit and remains separate from the provider-neutral map

@@ -30,6 +30,14 @@ const currentBetaSignals = {
   cs: /Freizeitkarte \+ OpenTopoMap \+ místní import/,
   it: /Freizeitkarte \+ OpenTopoMap \+ importazione locale/,
 };
+const downloadLabels = {
+  en: "Download",
+  de: "Herunterladen",
+  fr: "Télécharger",
+  pl: "Pobierz",
+  cs: "Stáhnout",
+  it: "Scarica",
+};
 
 function visibleText(fragment) {
   return fragment.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&apos;/g, "'").replace(/\s+/g, " ").trim();
@@ -90,6 +98,9 @@ for (const locale of locales) {
   assert.match(source, /mailto:hello@terento\.app\?subject=Terento%20installation%20issue/);
   assert.match(source, /hello@terento\.app/);
   assert.equal((source.match(/data-umami-event="download-cta-click"/g) || []).length, 3, locale + ": three download CTAs");
+  const downloadButtons = [...source.matchAll(/<a class="download-action"[^>]*>([^<]+)<span aria-hidden="true">→<\/span><\/a>/g)];
+  assert.equal(downloadButtons.length, 3, locale + ": three rendered download buttons");
+  for (const button of downloadButtons) assert.equal(button[1].trim(), downloadLabels[locale], locale + ": download button label");
   for (const location of ["guide-hero", "guide-after-steps", "guide-bottom"]) assert.ok(source.includes('data-umami-event-location="' + location + '"'), locale + ": " + location);
   assert.match(source, /data-umami-event="compatibility-link-click" data-umami-event-location="guide-preflight"/);
   assert.match(source, /data-umami-event="support-link-click" data-umami-event-location="guide-install-failed" data-umami-event-channel="github-issue"/);

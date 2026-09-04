@@ -43,7 +43,9 @@ for (const file of homeFiles) {
 }
 
 assert.doesNotMatch(styles, /<article class="step" role="listitem">/);
-assert.match(styles, /\.steps\s*\{[^}]*margin:\s*72px 0 0;[^}]*padding:\s*0;[^}]*list-style:\s*none;/s);
+assert.match(styles, /\.steps\s*\{[^}]*margin:\s*56px 0 0;[^}]*padding:\s*0;[^}]*list-style:\s*none;/s);
+assert.match(styles, /\.steps::before\s*\{[^}]*background:\s*var\(--border\)/s);
+assert.match(styles, /\.map-feature-tab\s*\{[^}]*min-height:\s*48px/s);
 assert.match(styles, /\.text-link\s*\{[^}]*color:\s*var\(--link-text\)/s);
 assert.match(styles, /\.text-link:hover\s*\{[^}]*color:\s*var\(--link-text-hover\)/s);
 assert.match(styles, /\.eyebrow\s*\{[^}]*color:\s*var\(--eyebrow-text\)/s);

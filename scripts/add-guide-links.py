@@ -16,12 +16,11 @@ COPY = {
         "download_compatibility": "Check compatibility",
         "download_details_eyebrow": "Before you install",
         "download_details_title": "Check the essentials first.",
-        "download_trust": "Free · Notarized · Open source",
         "compatibility": "First time installing third-party maps? Read the Mac guide",
         "community_eyebrow": "Community testing",
         "community_heading": "Have another Garmin smartwatch with map support?",
         "community_body": "Try the beta and share the result.",
-        "community_download": "Download the beta",
+        "community_download": "Download",
         "evidence_note": "These counts come from successful installations shared with Terento. They are not Garmin certification.",
     },
     "de": {
@@ -30,12 +29,11 @@ COPY = {
         "download_compatibility": "Kompatibilität prüfen",
         "download_details_eyebrow": "Vor der Installation",
         "download_details_title": "Prüfe zuerst die wichtigsten Voraussetzungen.",
-        "download_trust": "Kostenlos · Notarisiert · Open Source",
         "compatibility": "Zum ersten Mal Drittanbieter-Karten installieren? Lies die Mac-Anleitung",
         "community_eyebrow": "Community-Tests",
         "community_heading": "Hast du eine weitere Garmin-Smartwatch mit Kartenunterstützung?",
         "community_body": "Teste die Beta und teile das Ergebnis.",
-        "community_download": "Beta herunterladen",
+        "community_download": "Herunterladen",
         "evidence_note": "Diese Zahlen stammen aus erfolgreichen Installationen, die mit Terento geteilt wurden. Sie sind keine Garmin-Zertifizierung.",
     },
     "fr": {
@@ -44,12 +42,11 @@ COPY = {
         "download_compatibility": "Vérifier la compatibilité",
         "download_details_eyebrow": "Avant l’installation",
         "download_details_title": "Vérifiez l’essentiel avant de commencer.",
-        "download_trust": "Gratuit · Notarié · Open source",
         "compatibility": "Vous installez des cartes tierces pour la première fois ? Lisez le guide Mac",
         "community_eyebrow": "Tests communautaires",
         "community_heading": "Vous avez une autre montre Garmin compatible avec les cartes ?",
         "community_body": "Testez la bêta et partagez le résultat.",
-        "community_download": "Télécharger la bêta",
+        "community_download": "Télécharger",
         "evidence_note": "Ces chiffres proviennent d’installations réussies partagées avec Terento. Ils ne constituent pas une certification Garmin.",
     },
     "pl": {
@@ -58,12 +55,11 @@ COPY = {
         "download_compatibility": "Sprawdź kompatybilność",
         "download_details_eyebrow": "Przed instalacją",
         "download_details_title": "Sprawdź najważniejsze informacje.",
-        "download_trust": "Bezpłatna · Notaryzowana · Open source",
         "compatibility": "Instalujesz mapy innych firm pierwszy raz? Przeczytaj instrukcję na Macu",
         "community_eyebrow": "Testy społeczności",
         "community_heading": "Masz inny zegarek Garmin obsługujący mapy?",
         "community_body": "Przetestuj betę i udostępnij wynik.",
-        "community_download": "Pobierz wersję beta",
+        "community_download": "Pobierz",
         "evidence_note": "Te dane pochodzą z udanych instalacji udostępnionych Terento. Nie są certyfikatem firmy Garmin.",
     },
     "cs": {
@@ -72,12 +68,11 @@ COPY = {
         "download_compatibility": "Ověřit kompatibilitu",
         "download_details_eyebrow": "Před instalací",
         "download_details_title": "Nejdřív si ověřte to podstatné.",
-        "download_trust": "Zdarma · Notarizovaná · Open source",
         "compatibility": "Instalujete mapy třetích stran poprvé? Přečtěte si průvodce pro Mac",
         "community_eyebrow": "Komunitní testování",
         "community_heading": "Máte jiné hodinky Garmin s podporou map?",
         "community_body": "Vyzkoušejte betu a sdílejte výsledek.",
-        "community_download": "Stáhnout betu",
+        "community_download": "Stáhnout",
         "evidence_note": "Tato čísla pocházejí z úspěšných instalací sdílených s Terento. Nejde o certifikaci Garmin.",
     },
     "it": {
@@ -86,12 +81,11 @@ COPY = {
         "download_compatibility": "Verifica la compatibilità",
         "download_details_eyebrow": "Prima dell’installazione",
         "download_details_title": "Controlla i requisiti essenziali.",
-        "download_trust": "Gratuita · Notarizzata · Open source",
         "compatibility": "Installi mappe di terze parti per la prima volta? Leggi la guida per Mac",
         "community_eyebrow": "Test della community",
         "community_heading": "Hai un altro smartwatch Garmin con supporto mappe?",
         "community_body": "Prova la beta e condividi il risultato.",
-        "community_download": "Scarica la beta",
+        "community_download": "Scarica",
         "evidence_note": "Questi dati provengono da installazioni riuscite condivise con Terento. Non sono una certificazione Garmin.",
     },
 }
@@ -133,6 +127,7 @@ def download_link(label: str, href: str, *, event=None, location=None) -> str:
 
 def normalize_download_layout(source: str, locale: str) -> str:
     """Bring Download pages onto a focused actions + technical-details layout."""
+    source = re.sub(r'\s*<p class="download-trust">[\s\S]*?</p>', '', source, count=1)
     if 'class="download-layout"' in source or 'class="download-hero"' in source:
         source = re.sub(r'<div class="download-visual">[\s\S]*?</div>', '', source, count=1)
         source = source.replace('class="download-layout"', 'class="download-hero"', 1)
@@ -209,7 +204,6 @@ def normalize_download_layout(source: str, locale: str) -> str:
         top,
         count=1,
     )
-    top += f'<p class="download-trust">{COPY[locale]["download_trust"]}</p>'
     sections = re.findall(r'<section class="download-item">[\s\S]*?</section>', match.group("sections"))[:2]
     sections = ''.join(section.replace('class="download-item"', 'class="download-detail"', 1) for section in sections)
     details = (
@@ -254,7 +248,7 @@ def add_home_link(locale: str) -> None:
     }[locale]
     sentence = COPY[locale]["home"]
     visible = f'<p>{answer}</p>'
-    visible_with_link = f'<p>{answer} <a href="{localized_guide(locale)}">{sentence}</a></p>'
+    visible_with_link = f'<p>{answer} <a href="{localized_guide(locale)}" data-umami-event="guide-link-click" data-umami-event-location="home-faq-guide">{sentence}</a></p>'
     if visible in source:
         source = source.replace(visible, visible_with_link, 1)
     json_answer = f'"text": "{answer}"'
@@ -267,7 +261,12 @@ def add_home_link(locale: str) -> None:
 def add_download_link(locale: str) -> None:
     path = path_for(locale, "download/index.html")
     source = normalize_download_layout(path.read_text(encoding="utf-8"), locale)
-    guide = download_link(COPY[locale]["download_guide"], localized_guide(locale))
+    guide = download_link(
+        COPY[locale]["download_guide"],
+        localized_guide(locale),
+        event="guide-link-click",
+        location="download-page",
+    )
     compatibility = download_link(
         COPY[locale]["download_compatibility"],
         localized_compatibility(locale),
@@ -302,7 +301,7 @@ def add_compatibility_link(locale: str) -> None:
         )
         if not note_count:
             raise RuntimeError(f"Compatibility evidence explanation not found for {locale}")
-    guide = f'<a class="text-link compatibility-guide-link" href="{localized_guide(locale)}">{COPY[locale]["compatibility"]} <span aria-hidden="true">→</span></a>'
+    guide = f'<a class="text-link compatibility-guide-link" href="{localized_guide(locale)}" data-umami-event="guide-link-click" data-umami-event-location="compatibility-community-testing">{COPY[locale]["compatibility"]} <span aria-hidden="true">→</span></a>'
     download = f'<a class="download-action download-action-primary compatibility-community-link" href="{localized_download(locale)}" data-umami-event="download-cta-click" data-umami-event-location="compatibility-community-testing">{COPY[locale]["community_download"]}</a>'
     community = (
         '<div class="compatibility-community-cta">'

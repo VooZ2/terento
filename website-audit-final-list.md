@@ -1,8 +1,8 @@
 # Terento.app — galutinis sujungtas taisymų sąrašas
 
 Šis dokumentas sujungia vartotojo pateiktą sutarimo planą ir 2026-09-04 gyvo
-puslapio audito radinius. Tai yra diskusijos ir darbų planas, ne dar atliktų
-pakeitimų aprašas.
+puslapio audito radinius. Tai yra darbų planas su užfiksuotu lokalių pakeitimų
+statusu; tai nėra publikavimo ar deploy patvirtinimas.
 
 ## Sutarimas
 
@@ -45,7 +45,10 @@ Viešas release truth turi būti formuluojamas taip:
 - viešas suderinamumas lieka modelis po modelio ir remiasi tikra evidence;
 - `OpenTopoMap` optional contours ar kitos papildomos variacijos nėra
   automatiškai įtraukiamos į pažadą, jei jų neapima konkretus release;
-- nauji provider’iai į šį scope neįtraukiami.
+- ateities provider’iai nėra dabartinio release truth dalis, tačiau gali būti
+  įtraukti iki FZK/OTM update vartų uždarymo tik po atskiros source, licencijos,
+  metadata, artifact, acquisition ir saugumo peržiūros; nėra fiksuoto maksimalaus
+  provider’ių skaičiaus, o maždaug penki yra dabartinis UI orientyras.
 
 P0 įgyvendinimo metu vienu dokumentacijos ir public-copy sync’u sulyginti Home,
 Download, Guide, About, legal copy, provider catalog fallback, Compatibility
@@ -59,7 +62,8 @@ o ne release stadiją.
 Uždarymo patikra:
 
 - visos šešios lokalizacijos vienodai įvardija dabartinę Beta ir abu provider’ius;
-- Home provider katalogo fallback ir dinaminis katalogas leidžia viešai rodyti tik `Freizeitkarte` bei `OpenTopoMap`;
+- Home provider katalogo fallback ir dinaminis katalogas leidžia viešai rodyti dabartinius aktyvius provider’ius — šiuo metu `Freizeitkarte` bei `OpenTopoMap`;
+- dabartines viešas suderinamumo eilutes sprendžia `/admin`, o svetainė jas gauna per API; viešai rodomi statusai nuo `TESTED`, `TESTING` lieka vidinis;
 - Download, Guide, About ir Compatibility copy nebesiunčia prieštaringo `Pre-MVP` ar bendro Garmin pažado;
 - legal/privacy tekstai jau buvo suderinti su abiejų provider’ių naudojimu;
 - produkto screenshot’uose abu provider’iai jau matomi, todėl jų keisti nereikėjo;
@@ -176,8 +180,8 @@ CTA ir registruoja `compatibility-link-click` su `location: "home-hero"`.
 - DMG lieka primary.
 - ZIP tampa secondary action arba text link.
 - Release notes lieka tertiary.
-- Vieną kartą ramiai ir faktiškai nurodyti `Free · Notarized · Open source`
-  lokalizuotu variantu.
+- Pašalinti žemos vertės trust eilutę, nes nematerialiai nepagerina Download
+  sprendimo ir dubliuoja kitus signalus.
 - `Import a compatible map file from your Mac` įrašyti į EN HTML ir visas
   `translations.download.*` lokalizacijas.
 - `.img` eilutės turi būti aiškiai aprašytos kaip supported import, ne kaip
@@ -189,9 +193,11 @@ Requirements ir Beta status pateikti kaip du aiškūs balti sprendimo blokai.
 DMG yra primary, ZIP secondary, release notes — tertiary. „What is included“
 blokas pašalintas, nes jo funkcijų inventorius dubliuoja kitus paviršius ir
 nepadeda priimti atsisiuntimo sprendimo. Pasitikėjimo eilutė `Free · Notarized ·
-Open source` palikta, bet sumažintas jos vizualinis svoris. Atskirasis
-pasikartojantis Apple Silicon tekstas pašalintas; reikalavimas lieka tik
-Requirements bloke. Compatibility nuoroda turi `compatibility-link-click` su
+Open source` taip pat pašalinta; jos informacija dubliavo kitus signalus.
+Release-to-details tarpas sutrumpintas, kortelių antraštės atskirtos nuo
+turinio, o Requirements punktų ritmas sugriežtintas. Atskirasis pasikartojantis
+Apple Silicon tekstas pašalintas; reikalavimas lieka tik Requirements bloke.
+Compatibility nuoroda turi `compatibility-link-click` su
 `location: "download-page"`; `.img` aprašytas kaip palaikomas trečiosios šalies
 importas.
 
@@ -261,6 +267,14 @@ Lokaliuose variantuose išlaikyti tą pačią prasmę: žemėlapis laikrodyje i�
 Mac, be senos programinės įrangos ir rankinio failų medžio. `BaseCamp` lieka
 FAQ/gide, kad hero nebūtų perkrautas Garmin terminologija.
 
+**3.1 statusas: įgyvendinta lokaliai.** H1 dabar tiesiai kalba apie žemėlapių
+įdiegimą į Garmin laikrodžius: `Install maps on Garmin watches, simply.` Lede
+paaiškina visą veiksmų seką ir pašalina rankinį failų perkėlimą: `Install,
+update, and manage third-party maps from a native macOS app — without manual
+file transfers.` Visose šešiose lokalizacijose pašalintos pasikartojančios Beta
+ir Apple Silicon Hero eilutės; vienintelis Beta statusas lieka eyebrow
+eilutėje.
+
 ### 3.2 Constraint eilutės sutraukiamos — P1
 
 Po CTA palikti vieną ramią, faktišką eilutę, pvz.:
@@ -273,35 +287,74 @@ Lokali copy neturi paversti reikalavimų triukšmingu warning bloku. Esamas
 
 ### 3.3 „Connect → Install → Go“ tampa vizualiai uždara istorija — P1
 
-- Install žingsnį perrašyti į „Browse by region, review storage, then install.“
-  ir lokalizuoti per `site/localized-content.js`.
-- Antram showcase blokui pridėti esamą `.product-showcase--reverse`.
-- `How it works` palikti ant muted canvas, o showcases naudoti muted ritmą.
-- Tarp Install ir Manage panaudoti vieną esamą
-  `ready-to-install` arba `installing-maps` kadrą.
-- Testas, skaičiuojantis tikslų
-  `class="product-showcase product-showcase--muted" == 2`, turi toleruoti
-  `--reverse`.
-- Showcase copy turi tęsti tą pačią seką, ne pristatyti tris atskiras
-  funkcijas be bendro rezultato.
+- How it works antraštę rodyti tik vieną kartą; nebedubliuoti jos su fraze apie
+  tris paprastus žingsnius.
+- Connect, Install ir Done rodyti kaip vieną aiškią seką: desktop’e su
+  horizontalia jungiamąja linija, mobile’e be jungiančių linijų; mobile’e
+  žodžius atskirti tos pačios sky-blue spalvos bullet’ais.
+- Problem statement turi aiškiai pasakyti, kad trečiųjų šalių žemėlapių
+  diegimas yra paprastas ir greitas, be papildomos programinės įrangos,
+  atskirų atsisiuntimo žingsnių ar techninių žinių.
+- Install žingsnyje ir showcase copy pabrėžti du kelius: katalogo žemėlapius
+  pagal regioną arba savo suderinamą .img žemėlapį.
+- Manage copy turi nurodyti, kad Terento šalina tik savo valdomus trečiųjų
+  šalių žemėlapius, o originalūs Garmin žemėlapiai lieka apsaugoti.
+- Install maps ir Manage maps sujungti į vieną produkto feature bloką su dviem
+  aiškiais tabs mygtukais. Vienu metu rodyti tik pasirinktą panelį, kad turinys
+  nebetemptų puslapio ir abu kadrai išlaikytų vieną vizualinę hierarchiją.
+- Install maps naudoti esamą aukštos raiškos katalogo/importo produkto kadrą;
+  Manage maps — esamą įdiegtų žemėlapių valdymo kadrą. Numeracija paliekama
+  tik Connect / Install / Done sekai, ne produkto kadrams.
+- ready-to-install ir installing-maps kadrų į Home nedėti: vienas install-maps
+  kadras geriausiai parodo katalogą ir .img importą, o diegimo progreso būsena
+  yra per techninė pirmam įspūdžiui.
+- How it works, tabs ir feature blokų copy lokalizuoti per generatorių ir
+  site/localized-content.js; tabs turi veikti su pele, klaviatūra ir išlaikyti
+  tinkamą ARIA būseną.
 
-### 3.4 Providerio ir scope copy — P1
+**3.3 statusas: įgyvendinta lokaliai.** How it works rodoma kaip mažas eyebrow,
+o pagrindinė antraštė yra `Connect → Install → Done`; desktop’e naudojamos
+ankstesnio stiliaus sky-blue rodyklės, o mobile’e — tos pačios spalvos bullet’ai.
+Numeruota seka desktop’e turi jungiamąją liniją, workflow antraštė desktop’e
+lieka vienoje eilutėje, tačiau mobile’e visos linijos pašalintos, kad žingsniai
+būtų lengvi ir nesuskaidyti į techninę schemą.
+Install maps ir Manage maps dabar yra viename tabs feature bloke; vienu metu
+rodomas tik pasirinktas produkto kadras. Naudojami esami aukštos raiškos
+katalogo/importo ir įdiegtų žemėlapių valdymo kadrai. Pašalintas perteklinis
+storage review pažadas; Manage copy apsiriboja Terento valdomais trečiųjų
+šalių žemėlapiais ir aiškiai apsaugo originalius Garmin žemėlapius. Pakeitimai
+sugeneruoti visoms šešioms lokalizacijoms, patikrinti desktop, mobile ir
+klaviatūros sąveikoje. Tabs kampai suvienodinti su kompaktišku button stiliumi,
+o pakeitimai laikomi lokaliai iki bendro Pass 3 deploy.
 
-- Provideriai neturi būti tik dekoratyvinės pill’ės: prie kiekvieno rodyti
-  trumpą konkretų faktą.
-- `site/provider-list.js` neturi ištrinti HTML fallback descriptorių; ACTIVE
-  provideriams naudoti žinomų faktų mapping’ą.
+### 3.4 Available maps provider cards — P1
+
+- Pašalinti visą `Beta scope` bloką; suderinamumo kelias lieka Hero ir
+  navigacijoje.
+- `Available today` pakeisti į `Available maps`, o „Choose a map and get
+  moving“ pakeisti į `Explore available maps.`.
+- Providerius rodyti dviem tikromis kortelėmis, ne dekoratyvinėmis pill’ėmis.
+- Kortelėse rodyti katalogo dydį ir 3–5 realius naudojimo privalumus; nerašyti
+  licencijų ar techninių atsisiuntimo detalių.
+- Skaičius atnaujinti iš viešo katalogo API, išlaikant server-rendered fallback,
+  jei API nepasiekiamas.
 - Neturi atsirasti providerio, kurio nėra uždarytame 0 skyriuje.
-- Scope link turi nuvesti į Compatibility ir kalbėti apie tikras instaliacijas,
-  ne bendrą Garmin palaikymo matricą.
+
+**3.4 statusas: įgyvendinta lokaliai.** Beta scope blokas pašalintas, o
+Available maps sekcija dabar turi dvi provider cards. Freizeitkarte aiškiai
+pozicionuojama kaip universalesnė hiking/cycling/outdoor mapa, o OpenTopoMap —
+kaip topografijai ir reljefo detalumui skirta mapa. Kortelių paketų skaičiai
+dinamiškai atnaujinami iš katalogo API ir turi statinį fallback. Pakeitimai
+sugeneruoti visoms šešioms lokalizacijoms, patikrinti lokaliais testais ir
+laikomi lokaliai iki bendro Pass 3 deploy.
 
 ### 3.5 Pasikartojančios brand frazės — P2
 
-„Your device, ready…“ ir artimos formuluotės dabar kartojasi hero, scope,
-final CTA ir About vietose. Reikia atskirti jų funkciją:
+„Your device, ready…“ ir artimos formuluotės dabar kartojasi hero, final CTA ir
+About vietose. Reikia atskirti jų funkciją:
 
 - Hero: rezultatas ir produkto pažadas.
-- Scope / Compatibility: įrodymas ir ribos.
+- Compatibility: įrodymas ir ribos.
 - Final CTA: konkretus download veiksmas.
 - About: kodėl projektas egzistuoja.
 
@@ -312,26 +365,40 @@ heading’us pakeisti iš `h2` į `h3`. Pakeitimus daryti per
 FR `aventure` formuluotes pakeisti į `destination/readiness` kryptį ten, kur
 jos kartojasi: Home H1, step 03, final CTA ir About.
 
+**3.5 statusas: Home dalis įgyvendinta lokaliai, About atidėtas po Pass 3.**
+Home FAQ eyebrow dabar yra klausimas naudotojui, Q2 atsakymas aiškiai kalba apie
+paprastą ir greitą žemėlapių valdymą bei turi `guide-link-click` eventą su
+`home-faq-basecamp` location. Q3 pakeistas į savo suderinamo `.img` žemėlapio
+įkėlimą, o Q4 — į vėlesnių žemėlapių atnaujinimą be perteklinio kartojimo.
+Final CTA dabar orientuotas į lengvesnį žemėlapių diegimą, o Home, Guide ir
+Compatibility download veiksmo mygtukai visose lokalizacijose naudoja stabilų
+„Download“ atitikmenį be „Beta“. `About` perrašymas lieka atskiram darbui po
+Pass 3.
+
 ### 3.6 Desktop whitespace ir ritmas — P2
 
 1440 px capture matyti per didelės tuščios zonos po trijų žingsnių kortelėmis,
-po produkto screenshot’ais ir prieš scope/providerio turinį.
+po produkto screenshot’ais ir prieš providerio turinį.
 
 Taisyti tik ritmą, ne brand’o kryptį:
 
 - išmatuoti realų viewport’o santykį;
-- mažinti perteklinį padding per `.experience.section`, `.steps`,
-  `.product-showcase` ir `.scope-section`;
+- mažinti perteklinį padding per `.experience.section`, `.steps` ir
+  `.product-showcase`;
 - palikti vieną sąmoningą hero „breath“;
 - nekurti naujų kortelių ar dekoratyvinių užpildų vien tuščiai erdvei uždengti.
+
+**3.6 statusas: uždaryta be papildomų pakeitimų.** Po 3.3–3.5 pakeitimų
+pakartotinė desktop 1440 × 900 ir mobile 390 × 844 peržiūra neparodė kritinio
+perteklinio vertikalaus tarpo. Workflow, showcase ir provider sekcijos turi
+pakankamą atskyrimą, o likusi tuščia erdvė Hero zonoje yra sąmoninga Home
+landing page kompozicijos dalis.
 
 ### 3.7 Pigūs nits — P3
 
 - Įvertinti `overflow-wrap: anywhere` nuėmimą nuo `h1`, `h2`, `h3`, jei tai
   nebereikalinga lokalizacijoms.
 - FAQ palikti vieną aiškią `FAQ` antraštę.
-- Connect → Install → Go rodyklėms naudoti pakankamą kontrastą arba palikti
-  `aria-hidden` ir užtikrinti, kad tekstinė seka suprantama be jų.
 
 ## Pass 4 — tikri visual asset’ai, ne nauja sistema
 

@@ -32,7 +32,7 @@ require_text 'idealHeight: Self.maximumListHeight' 'selected-map region does not
 require_text 'MapSelectionRow(' 'Review does not reuse the shared map row presentation'
 require_text 'Text("Terento will install these maps to your Garmin. Existing Garmin maps will not be changed.")' 'compact safety sentence is missing'
 require_text '.font(.terentoUI(size: 13, weight: .regular))' 'safety copy is not using compact supporting typography'
-require_text 'Terento sends anonymous diagnostics by default to help improve the app and its services. You can turn this off anytime in Terento → Diagnostics.' 'diagnostics disclosure is missing'
+require_text 'Terento sends privacy-minimised diagnostics by default to help improve the app and its services. You can turn this off anytime in Terento → Diagnostics.' 'diagnostics disclosure is missing'
 require_text '.padding(.bottom, TerentoPageLayout.sectionSpacing)' 'sharing block does not keep the approved footer separation'
 require_text 'PrimaryButton(title: "Install maps")' 'Install maps action changed'
 reject_text 'Terento will install these maps to your Garmin.\nExisting Garmin maps will not be changed.' 'two-line safety copy remains'

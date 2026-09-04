@@ -13,7 +13,7 @@ import sys
 root = Path(sys.argv[1])
 privacy_script = (root / "site/privacy-consent.js").read_text(encoding="utf-8")
 site_shell = (root / "site/site-shell.js").read_text(encoding="utf-8")
-umami_version = "20260904-public-link-events"
+umami_version = "20260904-public-link-events-v2"
 
 assert '"download-click"' in privacy_script
 assert '"download-cta-click"' in privacy_script
@@ -28,7 +28,6 @@ assert '"project-link-click"' in privacy_script
 assert 'instrumentCompatibilityLinks(campaignParams)' in privacy_script
 assert 'instrumentSupportAndProjectLinks(campaignParams)' in privacy_script
 assert 'a[href]:not(.language-option)' in privacy_script
-assert '"home-scope"' in privacy_script
 assert '"footer-nav"' in privacy_script
 assert '"github-issues"' in privacy_script
 assert '"github-source"' in privacy_script
@@ -85,6 +84,33 @@ def anchors(path):
     return parser.anchors
 
 
+allowed_internal_events = {
+    "compatibility-link-click",
+    "download-cta-click",
+    "faq-link-click",
+    "guide-link-click",
+    "home-link-click",
+    "internal-link-click",
+    "language-switch-click",
+    "legal-link-click",
+    "navigation-link-click",
+    "privacy-link-click",
+}
+for path in sorted((root / "site").rglob("*.html")):
+    html = path.read_text(encoding="utf-8")
+    for heading in re.findall(r"<h1\b[^>]*>([\s\S]*?)</h1>", html, flags=re.IGNORECASE):
+        text = re.sub(r"<[^>]+>", "", heading).strip()
+        assert not text.endswith("."), f"{path}: H1 must not end with a full stop"
+    for item in anchors(path):
+        href = item["href"]
+        if not (href.startswith("/") or href.startswith("#")):
+            continue
+        event = item["attributes"].get("data-umami-event")
+        location = item["attributes"].get("data-umami-event-location")
+        assert event in allowed_internal_events, f"{path}: internal link {href!r} has no standard Umami event"
+        assert location and re.fullmatch(r"[a-z0-9-]+", location), f"{path}: internal link {href!r} has no standard Umami location"
+
+
 home_files = [
     root / "site/index.html",
     root / "site/de/index.html",
@@ -104,8 +130,11 @@ download_files = [
 
 for path in home_files:
     html = path.read_text(encoding="utf-8")
-    assert html.count('class="product-showcase product-showcase--muted"') == 2, f"{path}: expected two product showcases"
-    assert html.count('class="scope-section"') == 1, f"{path}: expected beta scope section"
+    assert html.count('class="map-feature-section"') == 1, f"{path}: expected one consolidated map feature section"
+    assert html.count('class="map-feature-tab"') == 2, f"{path}: expected Install and Manage feature tabs"
+    assert 'class="scope-section"' not in html, f"{path}: Beta scope section must be removed"
+    assert html.count('class="provider-card"') == 2, f"{path}: expected two provider cards"
+    assert html.count('class="provider-benefits"') == 2, f"{path}: expected one benefits list per provider"
     assert html.count("<details>") == 5, f"{path}: expected five FAQ answers"
     assert 'class="final-cta"' in html, f"{path}: expected final CTA"
     assert "/assets/app/optimized/your-garmin-640.avif" in html, f"{path}: expected responsive hero artwork"

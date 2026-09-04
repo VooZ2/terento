@@ -35,9 +35,9 @@ function visibleFaq(source, file) {
 
 const questionSignals = [
   [/Garmin.*Terento/i, /Compatibility|Kompatibilitätsseite|Compatibilité|kompatybilności|Kompatibilita|Compatibilità/i],
-  [/BaseCamp/i, /Mac/],
-  [/existing|vorhand|exist|istnie|stávaj|esist/i, /Terento|map/i],
-  [/maps|Karten|cartes|mapy|map|mappe|provider|fournisseur|dostawc|poskytovatel/i, /Terento|map/i],
+  [/BaseCamp/i, /Mac|macOS/],
+  [/own|my own|ma propre|moją|vlastn|mia|\.img/i, /\.img|map|mapa|carte|Karte|mapy|mappa/i],
+  [/update|aktual|mise à jour|à jour|nowsz|novější|più recent|aggiorn/i, /Terento|map/i],
   [/fail|fehlsch|échou|nie powied|selže|riesce/i, /GitHub|hello@terento\.app/i],
 ];
 
@@ -49,15 +49,18 @@ for (const locale of locales) {
     assert.match(entry.question, questionSignals[index][0], `${home}: FAQ question ${index + 1} semantic order`);
     assert.match(entry.answer, questionSignals[index][1], `${home}: FAQ answer ${index + 1} content`);
   });
-  assert.match(entries[1].answer, /map file|Kartendatei|fichier cartographique|plik mapy|mapový soubor|file cartografico/i, `${home}: BaseCamp answer mentions compatible local map import in user language`);
-  assert.match(entries[2].answer, /protected|geschützt|protég|chronione|chráněné|protette/i, `${home}: safety answer protects Garmin/system maps`);
-  assert.match(entries[3].question, /provider|anbieter|fournisseur|dostawc|poskytovatel/i, `${home}: provider FAQ question`);
+  assert.match(entries[1].answer, /simple|einfach|simple|proste|jednoduch|semplice/i, `${home}: BaseCamp answer explains simple map management`);
+  assert.match(entries[2].answer, /\.img|compatible|kompatib|zgodn|kompatibil|support/i, `${home}: own-map answer explains compatible local import`);
+  assert.match(entries[3].question, /update|aktual|mise à jour|à jour|nowsz|novější|più recent|aggiorn/i, `${home}: update FAQ question`);
+  assert.match(entries[3].answer, /newer|neuere|plus récente|nowsz|novější|più recent/i, `${home}: update FAQ answer`);
   assert.match(source, /class="provider-section section"[^>]*id="providers"[\s\S]*Freizeitkarte[\s\S]*OpenTopoMap/i, `${home}: provider directory names current providers`);
-  assert.match(source, /data-provider-list/, `${home}: provider directory is data-driven`);
-  assert.doesNotMatch(entries[3].answer, /beta|bêta|version|release|wersj|verz|versi/i, `${home}: provider FAQ describes Terento without release wording`);
+  assert.match(source, /data-provider-card="freizeitkarte"[\s\S]*data-provider-card="opentopomap"/, `${home}: provider cards are data-driven`);
+  assert.doesNotMatch(entries[3].answer, /beta|bêta|betę|betu/i, `${home}: update FAQ avoids beta-specific wording`);
   assert.doesNotMatch(source, /back up|backup|sauvegarder|zálohovat|wykonać kopię|zálohovat|eseguire il backup/i, `${home}: removed backup promise`);
   assert.match(entries[0].markup, new RegExp(`href="${localePath(locale, "compatibility/")}"`), `${home}: Compatibility link`);
   assert.match(entries[1].markup, new RegExp(`href="${localePath(locale, guideSlug)}"`), `${home}: Guide link`);
+  assert.match(entries[1].markup, /data-umami-event="guide-link-click"/);
+  assert.match(entries[1].markup, /data-umami-event-location="home-faq-basecamp"/);
   assert.match(entries[4].markup, /href="https:\/\/github\.com\/VooZ2\/terento\/issues"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/);
   assert.match(entries[4].markup, /href="mailto:hello@terento\.app\?subject=Terento%20installation%20issue"/);
   assert.match(entries[4].markup, /data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="github-issue"/);

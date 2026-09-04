@@ -90,7 +90,7 @@ if grep -Fq 'Help improve Garmin compatibility' "$connect_screen" \
     exit 1
 fi
 
-if ! grep -Fq 'Terento sends anonymous diagnostics by default to help improve the app and its services. You can turn this off anytime in Terento → Diagnostics.' "$connect_screen" \
+if ! grep -Fq 'Terento sends privacy-minimised diagnostics by default to help improve the app and its services. You can turn this off anytime in Terento → Diagnostics.' "$connect_screen" \
     || ! grep -Fq 'SecondaryButton(title: "Manage diagnostics")' "$connect_screen"; then
     print -u2 "FAIL: Review/About diagnostics disclosure or settings entry point is missing"
     exit 1

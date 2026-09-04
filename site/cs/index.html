@@ -2,7 +2,7 @@
 <html lang="cs" data-language="cs">
   <head>
     <script defer src="/site-shell.js?v=20260904-language-selector"></script>
-    <link rel="stylesheet" href="/styles.css?v=20260904-language-selector">
+    <link rel="stylesheet" href="/styles.css?v=20260904-pass3-workflow-arrows-v7">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -41,9 +41,10 @@
     <link rel="mask-icon" href="/safari-pinned-tab.svg?v=20260820-4" color="#7898A8">
     <link rel="manifest" href="/manifest.webmanifest">
     <script defer src="/language.js?v=20260904-language-selector"></script>
-    <script defer src="/privacy-consent.js?v=20260904-public-link-events"></script>
-    <script defer src="/provider-list.js?v=20260904-beta-provider-scope"></script>
-    <script defer src="/localized-content.js?v=20260904-download-page-cards"></script>
+    <script defer src="/privacy-consent.js?v=20260904-public-link-events-v2"></script>
+    <script defer src="/provider-list.js?v=20260904-home-provider-cards"></script>
+    <script defer src="/home-features.js?v=20260904-home-workflow-tabs"></script>
+    <script defer src="/localized-content.js?v=20260904-pass3-workflow-arrows-v4"></script>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -110,23 +111,23 @@
                 "name": "Mohu instalovat mapy třetích stran do hodinek Garmin z Macu bez BaseCamp?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Ano. Terento vás provede od výběru mapy až po instalaci do hodinek. Z Macu můžete také přidat kompatibilní mapový soubor. Je vyžadován Apple Silicon. Přečtěte si instalační příručku."
+                  "text": "Ano. Terento je navrženo tak, aby správa map třetích stran v macOS byla jednoduchá a rychlá — od výběru mapy po instalaci, aktualizaci a správu v hodinkách Garmin. Přečtěte si instalační příručku."
                 }
               },
               {
                 "@type": "Question",
-                "name": "Je Terento bezpečné pro stávající mapy Garmin?",
+                "name": "Mohu přidat vlastní mapu .img?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Ano. Garmin a systémové mapy zůstávají chráněné. Terento mění pouze podporované mapy třetích stran po potvrzení akce."
+                  "text": "Ano. Přidejte kompatibilní mapu .img z Macu a nainstalujte ji do připojených hodinek Garmin."
                 }
               },
               {
                 "@type": "Question",
-                "name": "Které poskytovatele map třetích stran Terento podporuje?",
+                "name": "Mohu mapy aktualizovat později?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Terento podporuje Freizeitkarte a OpenTopoMap. Mapy se stahují přímo z původního zdroje."
+                  "text": "Ano. Terento ukáže, když jsou k dispozici novější vydání, a pomůže vám aktualizovat mapy třetích stran spravované aplikací Terento."
                 }
               },
               {
@@ -144,18 +145,18 @@
     </script>
 </head>
   <body>
-    <a class="skip-link" href="#main-content">Přejít k obsahu</a>
+    <a class="skip-link" href="#main-content" data-umami-event="internal-link-click" data-umami-event-location="skip-link">Přejít k obsahu</a>
     <header class="site-header">
       <div class="shell header-inner">
-        <a class="brand-lockup" href="/cs/" aria-label="Domů Terento">
+        <a class="brand-lockup" href="/cs/" aria-label="Domů Terento" data-umami-event="home-link-click" data-umami-event-location="header-brand">
           <img src="/assets/logo-sky.svg" alt="" width="40" height="40">
           <span>Terento</span>
         </a>
         <nav class="primary-nav" aria-label="Hlavní navigace">
-          <a href="/cs/compatibility/">Kompatibilita</a><a href="/cs/guides/install-garmin-maps-mac/">Průvodce</a><a href="/cs/about/">O projektu</a><a class="download-action" href="/cs/download/">Stáhnout</a>
+          <a href="/cs/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="header-nav">Kompatibilita</a><a href="/cs/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="header-nav">Průvodce</a><a href="/cs/about/" data-umami-event="navigation-link-click" data-umami-event-location="header-nav">O projektu</a><a class="download-action" href="/cs/download/" data-umami-event="download-cta-click" data-umami-event-location="header-nav">Stáhnout</a>
           <span class="language-switcher"><details class="language-menu">
           <summary class="language-trigger" aria-label="Vybrat jazyk"><span class="language-code" aria-hidden="true">CS</span></summary>
-          <div class="language-options"><a class="language-option" href="/" data-language-switch="en" lang="en" aria-label="English"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/" data-language-switch="de" lang="de" aria-label="Deutsch"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/" data-language-switch="fr" lang="fr" aria-label="Français"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/" data-language-switch="pl" lang="pl" aria-label="Polski"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/" data-language-switch="cs" lang="cs" aria-label="Čeština" aria-current="page"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/" data-language-switch="it" lang="it" aria-label="Italiano"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
+          <div class="language-options"><a class="language-option" href="/" data-language-switch="en" lang="en" aria-label="English" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/" data-language-switch="de" lang="de" aria-label="Deutsch" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/" data-language-switch="fr" lang="fr" aria-label="Français" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/" data-language-switch="pl" lang="pl" aria-label="Polski" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/" data-language-switch="cs" lang="cs" aria-label="Čeština" aria-current="page" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/" data-language-switch="it" lang="it" aria-label="Italiano" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
         </details></span>
         </nav>
         <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="Menu">
@@ -166,55 +167,82 @@
       <div class="mobile-nav" id="mobile-nav" hidden>
         <div class="shell mobile-nav-inner">
           <nav class="mobile-nav-links" aria-label="Hlavní navigace">
-            <a href="/cs/compatibility/">Kompatibilita</a><a href="/cs/guides/install-garmin-maps-mac/">Průvodce</a><a href="/cs/about/">O projektu</a><a class="download-action" href="/cs/download/">Stáhnout</a>
+            <a href="/cs/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="mobile-nav">Kompatibilita</a><a href="/cs/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="mobile-nav">Průvodce</a><a href="/cs/about/" data-umami-event="navigation-link-click" data-umami-event-location="mobile-nav">O projektu</a><a class="download-action" href="/cs/download/" data-umami-event="download-cta-click" data-umami-event-location="mobile-nav">Stáhnout</a>
           </nav>
           <div class="mobile-nav-language"><details class="language-menu mobile-language-menu">
             <summary class="language-trigger" aria-label="Vybrat jazyk"><span class="mobile-language-label">CS</span></summary>
-            <div class="language-options"><a class="language-option" href="/" data-language-switch="en" lang="en" aria-label="English"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/" data-language-switch="de" lang="de" aria-label="Deutsch"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/" data-language-switch="fr" lang="fr" aria-label="Français"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/" data-language-switch="pl" lang="pl" aria-label="Polski"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/" data-language-switch="cs" lang="cs" aria-label="Čeština" aria-current="page"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/" data-language-switch="it" lang="it" aria-label="Italiano"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
+            <div class="language-options"><a class="language-option" href="/" data-language-switch="en" lang="en" aria-label="English" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/" data-language-switch="de" lang="de" aria-label="Deutsch" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/" data-language-switch="fr" lang="fr" aria-label="Français" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/" data-language-switch="pl" lang="pl" aria-label="Polski" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/" data-language-switch="cs" lang="cs" aria-label="Čeština" aria-current="page" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/" data-language-switch="it" lang="it" aria-label="Italiano" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
           </details></div>
         </div>
       </div>
     </header>
 
     <main id="main-content">
-      <section class="hero" aria-labelledby="hero-title"><div class="shell hero-grid"><div class="hero-copy"><p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Open-source projekt · Beta</p><h1 id="hero-title">Vaše zařízení, připravené na další cestu.</h1><p class="hero-lede">Nativní aplikace pro macOS k instalaci a správě map třetích stran na hodinkách Garmin.</p><p class="hero-requirement">Vyžaduje Mac s Apple Silicon.</p><p class="hero-status">Beta je dostupná · Kompatibilita se potvrzuje pro každý model zvlášť.</p><div class="hero-actions"><a class="download-action hero-download-action" href="/cs/download/">Stáhnout betu <span aria-hidden="true">→</span></a><a class="text-link hero-compatibility-link" href="/cs/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="home-hero">Ověřit kompatibilitu <span aria-hidden="true">→</span></a></div></div><div class="hero-visual"><figure class="app-shot app-shot--hero"><picture><source type="image/avif" srcset="/assets/app/optimized/your-garmin-640.avif?v=20260902-your-garmin 640w, /assets/app/optimized/your-garmin-960.avif?v=20260902-your-garmin 960w, /assets/app/optimized/your-garmin-1280.avif?v=20260902-your-garmin 1280w, /assets/app/optimized/your-garmin-1600.avif?v=20260902-your-garmin 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw"><source type="image/webp" srcset="/assets/app/optimized/your-garmin-640.webp?v=20260902-your-garmin 640w, /assets/app/optimized/your-garmin-960.webp?v=20260902-your-garmin 960w, /assets/app/optimized/your-garmin-1280.webp?v=20260902-your-garmin 1280w, /assets/app/optimized/your-garmin-1600.webp?v=20260902-your-garmin 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw"><img src="/assets/app/optimized/your-garmin-1600.png?v=20260902-your-garmin" width="2200" height="1346" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw" alt="Terento zobrazuje připojené hodinky Garmin v systému macOS" fetchpriority="high" decoding="async"></picture></figure></div></div></section>
+      <section class="hero" aria-labelledby="hero-title"><div class="shell hero-grid"><div class="hero-copy"><p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Open-source projekt · Beta</p><h1 id="hero-title">Instalujte mapy do hodinek Garmin jednoduše</h1><p class="hero-lede">Instalujte, aktualizujte a spravujte mapy třetích stran z nativní aplikace pro macOS — bez ručních přenosů souborů.</p><div class="hero-actions"><a class="download-action hero-download-action" href="/cs/download/" data-umami-event="download-cta-click" data-umami-event-location="home-hero">Stáhnout <span aria-hidden="true">→</span></a><a class="text-link hero-compatibility-link" href="/cs/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="home-hero">Ověřit kompatibilitu <span aria-hidden="true">→</span></a></div></div><div class="hero-visual"><figure class="app-shot app-shot--hero"><picture><source type="image/avif" srcset="/assets/app/optimized/your-garmin-640.avif?v=20260902-your-garmin 640w, /assets/app/optimized/your-garmin-960.avif?v=20260902-your-garmin 960w, /assets/app/optimized/your-garmin-1280.avif?v=20260902-your-garmin 1280w, /assets/app/optimized/your-garmin-1600.avif?v=20260902-your-garmin 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw"><source type="image/webp" srcset="/assets/app/optimized/your-garmin-640.webp?v=20260902-your-garmin 640w, /assets/app/optimized/your-garmin-960.webp?v=20260902-your-garmin 960w, /assets/app/optimized/your-garmin-1280.webp?v=20260902-your-garmin 1280w, /assets/app/optimized/your-garmin-1600.webp?v=20260902-your-garmin 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw"><img src="/assets/app/optimized/your-garmin-1600.png?v=20260902-your-garmin" width="2200" height="1346" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw" alt="Terento zobrazuje připojené hodinky Garmin v systému macOS" fetchpriority="high" decoding="async"></picture></figure></div></div></section>
 
-      <section class="experience section" id="how-it-works" aria-labelledby="experience-title"><div class="shell"><div class="section-heading"><p class="eyebrow">Jak to funguje</p><h2 id="experience-title">Připojit <span aria-hidden="true">→</span> Nainstalovat <span aria-hidden="true">→</span> Vyrazit</h2></div><div class="problem-statement"><p>Instalace map třetích stran by neměla vyžadovat staré programy ani ruční přenos souborů.</p><p>Beta Terento přesouvá tento postup do nativní aplikace pro macOS.</p></div><ol class="steps"><li class="step"><p class="step-number" aria-hidden="true">01</p><h3>Připojit</h3><p>Terento rozpozná hodinky Garmin a ukáže, kdy jsou připravené.</p></li><li class="step"><p class="step-number" aria-hidden="true">02</p><h3>Nainstalovat</h3><p>Vyberte mapu, kterou potřebujete.</p></li><li class="step"><p class="step-number" aria-hidden="true">03</p><h3>Vyrazit</h3><p>Vaše hodinky jsou připravené na další cestu.</p></li></ol></div></section>
+      <section class="experience section" id="how-it-works" aria-labelledby="experience-title"><div class="shell"><div class="section-heading"><p class="eyebrow" id="experience-label">Jak to funguje</p><h2 id="experience-title">Připojit <span class="workflow-title-arrow" aria-hidden="true">→</span><span class="workflow-title-bullet" aria-hidden="true">•</span> Instalovat <span class="workflow-title-arrow" aria-hidden="true">→</span><span class="workflow-title-bullet" aria-hidden="true">•</span> Hotovo</h2></div><div class="problem-statement"><p>Instalace map třetích stran by měla být jednoduchá a rychlá — bez dalšího softwaru, samostatných kroků stahování a technických znalostí.</p><p>Terento celý proces spojuje do tří jednoduchých kroků.</p></div><ol class="steps"><li class="step"><p class="step-number" aria-hidden="true">01</p><h3>Připojit</h3><p>Terento rozpozná hodinky Garmin a ukáže, kdy jsou připravené.</p></li><li class="step"><p class="step-number" aria-hidden="true">02</p><h3>Nainstalovat</h3><p>Vybírejte mapy z katalogu podle oblasti nebo přidejte vlastní kompatibilní mapu .img.</p></li><li class="step"><p class="step-number" aria-hidden="true">03</p><h3>Hotovo</h3><p>Vaše mapy jsou nainstalované a připravené k použití v hodinkách.</p></li></ol></div></section>
 
-      <section class="product-showcase product-showcase--muted" aria-labelledby="install-maps-title"><div class="shell product-showcase-grid"><div class="product-showcase-copy"><p class="eyebrow">Vybrat mapy</p><h2 id="install-maps-title">Instalovat mapy</h2><p>Procházejte podporované mapy podle oblasti a před instalací zkontrolujte potřebné místo.</p></div><div class="product-showcase-media"><figure class="app-shot app-shot--feature"><picture><source type="image/avif" srcset="/assets/app/optimized/install-maps-640.avif 640w, /assets/app/optimized/install-maps-960.avif 960w, /assets/app/optimized/install-maps-1280.avif 1280w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw"><source type="image/webp" srcset="/assets/app/optimized/install-maps-640.webp 640w, /assets/app/optimized/install-maps-960.webp 960w, /assets/app/optimized/install-maps-1280.webp 1280w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw"><img src="/assets/app/optimized/install-maps-1280.png" width="1555" height="1012" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw" alt="Terento zobrazuje poskytovatele a oblasti map třetích stran v macOS" loading="lazy" decoding="async"></picture></figure></div></div></section>
-      <section class="product-showcase product-showcase--muted" aria-labelledby="manage-maps-title"><div class="shell product-showcase-grid"><div class="product-showcase-copy"><p class="eyebrow">Správa map</p><h2 id="manage-maps-title">Spravovat mapy</h2><p>Prohlédněte si nainstalované mapy, aktualizujte je, když je k dispozici novější vydání, a bezpečně odstraňujte podporované mapy třetích stran. Garmin a systémové mapy zůstávají chráněné.</p></div><div class="product-showcase-media"><figure class="app-shot app-shot--feature"><picture><source type="image/avif" srcset="/assets/app/optimized/manage-maps-640.avif 640w, /assets/app/optimized/manage-maps-960.avif 960w, /assets/app/optimized/manage-maps-1280.avif 1280w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw"><source type="image/webp" srcset="/assets/app/optimized/manage-maps-640.webp 640w, /assets/app/optimized/manage-maps-960.webp 960w, /assets/app/optimized/manage-maps-1280.webp 1280w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw"><img src="/assets/app/optimized/manage-maps-1280.png" width="1561" height="1008" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw" alt="Terento zobrazuje nainstalované mapy třetích stran seskupené podle poskytovatele" loading="lazy" decoding="async"></picture></figure></div></div></section>
-
-      <section class="scope-section" id="scope" aria-labelledby="scope-title"><div class="shell scope-grid"><div><div class="section-heading"><p class="eyebrow">Rozsah bety</p><h2 id="scope-title">Kompatibilita roste s každou sdílenou instalací.</h2></div><p class="scope-copy">Terento je určeno pro hodinky Garmin s podporou map. Kompatibilita každého modelu a varianty se potvrzuje pomocí skutečných výsledků instalace.</p><a class="text-link scope-link" href="/cs/compatibility/">Zobrazit kompatibilitu <span aria-hidden="true">→</span></a></div></div></section>
-      <section class="provider-section section" id="providers" aria-labelledby="providers-title">
-        <div class="shell provider-grid">
-          <div class="section-heading"><p class="eyebrow">Dostupné dnes</p><h2 id="providers-title">Vyberte mapu a vyrazte.</h2></div>
-          <div class="provider-copy"><p>Dnes vás Terento propojí přímo s poskytovateli Freizeitkarte a OpenTopoMap. Mapy se stahují z původního zdroje.</p><ul class="provider-list" data-provider-list aria-label="Podporovaní poskytovatelé map"><li>Freizeitkarte</li><li>OpenTopoMap</li></ul></div>
+      <section class="map-feature-section" aria-label="Funkce map">
+        <div class="shell">
+          <div class="map-feature-tabs" data-map-feature-tabs role="tablist" aria-label="Funkce map">
+            <button class="map-feature-tab" type="button" role="tab" id="install-maps-tab" aria-controls="install-maps-panel" aria-selected="true">Instalovat mapy</button>
+            <button class="map-feature-tab" type="button" role="tab" id="manage-maps-tab" aria-controls="manage-maps-panel" aria-selected="false">Spravovat mapy</button>
+          </div>
+        </div>
+        <div class="map-feature-panels">
+          <div class="map-feature-panel" id="install-maps-panel" role="tabpanel" tabindex="0" aria-labelledby="install-maps-tab">
+<section class="product-showcase product-showcase--muted" aria-labelledby="install-maps-title"><div class="shell product-showcase-panel"><div class="product-showcase-grid"><div class="product-showcase-copy"><h2 id="install-maps-title">Instalovat mapy</h2><p>Vybírejte mapy z katalogu podle oblasti nebo přidejte vlastní kompatibilní mapu .img.</p></div><div class="product-showcase-media"><figure class="app-shot app-shot--feature"><picture><source type="image/avif" srcset="/assets/app/optimized/install-maps-640.avif 640w, /assets/app/optimized/install-maps-960.avif 960w, /assets/app/optimized/install-maps-1280.avif 1280w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw"><source type="image/webp" srcset="/assets/app/optimized/install-maps-640.webp 640w, /assets/app/optimized/install-maps-960.webp 960w, /assets/app/optimized/install-maps-1280.webp 1280w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw"><img src="/assets/app/optimized/install-maps-1280.png" width="1555" height="1012" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw" alt="Terento zobrazuje poskytovatele a oblasti map třetích stran v macOS" loading="lazy" decoding="async"></picture></figure></div></div></div></section>
+        </div>
+          <div class="map-feature-panel" id="manage-maps-panel" role="tabpanel" tabindex="0" aria-labelledby="manage-maps-tab">
+<section class="product-showcase product-showcase--muted product-showcase--reverse" aria-labelledby="manage-maps-title"><div class="shell product-showcase-panel"><div class="product-showcase-grid"><div class="product-showcase-copy"><h2 id="manage-maps-title">Spravovat mapy</h2><p>Prohlédněte si nainstalované mapy, aktualizujte je, když je k dispozici novější vydání, a odstraňte mapy třetích stran spravované aplikací Terento. Původní mapy Garmin zůstávají chráněné.</p></div><div class="product-showcase-media"><figure class="app-shot app-shot--feature"><picture><source type="image/avif" srcset="/assets/app/optimized/manage-maps-640.avif 640w, /assets/app/optimized/manage-maps-960.avif 960w, /assets/app/optimized/manage-maps-1280.avif 1280w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw"><source type="image/webp" srcset="/assets/app/optimized/manage-maps-640.webp 640w, /assets/app/optimized/manage-maps-960.webp 960w, /assets/app/optimized/manage-maps-1280.webp 1280w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw"><img src="/assets/app/optimized/manage-maps-1280.png" width="1561" height="1008" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw" alt="Terento zobrazuje nainstalované mapy třetích stran seskupené podle poskytovatele" loading="lazy" decoding="async"></picture></figure></div></div></div></section>
+        </div>
         </div>
       </section>
-      <section class="faq section" id="faq" aria-labelledby="faq-title"><div class="shell faq-grid"><div class="section-heading"><p class="eyebrow">Dobré otázky</p><h2 id="faq-title">FAQ</h2></div><div class="faq-list">
-            <details><summary>Které hodinky Garmin fungují s Terento?</summary><p>Na stránce <a href="/cs/compatibility/">Kompatibilita</a> najdete modely a varianty Garmin potvrzené skutečnými instalacemi.</p></details>
-            <details><summary>Mohu instalovat mapy třetích stran do hodinek Garmin z Macu bez BaseCamp?</summary><p>Ano. Terento vás provede od výběru mapy až po instalaci do hodinek. Z Macu můžete také přidat kompatibilní mapový soubor. Je vyžadován Apple Silicon. <a href="/cs/guides/install-garmin-maps-mac/">Přečtěte si instalační příručku.</a></p></details>
-            <details><summary>Je Terento bezpečné pro stávající mapy Garmin?</summary><p>Ano. Garmin a systémové mapy zůstávají chráněné. Terento mění pouze podporované mapy třetích stran po potvrzení akce.</p></details>
-            <details><summary>Které poskytovatele map třetích stran Terento podporuje?</summary><p>Terento podporuje Freizeitkarte a OpenTopoMap. Mapy se stahují přímo z původního zdroje.</p></details>
+      <section class="provider-section section" id="providers" aria-labelledby="providers-title">
+        <div class="shell">
+          <div class="section-heading provider-intro"><p class="eyebrow">Dostupné mapy</p><h2 id="providers-title">Prozkoumejte dostupné mapy.</h2><p class="provider-copy">Dnes vás Terento propojí přímo s poskytovateli Freizeitkarte a OpenTopoMap. Mapy se stahují z původního zdroje každého poskytovatele.</p></div>
+          <div class="provider-cards" data-provider-cards aria-label="Poskytovatelé map">
+            <article class="provider-card" data-provider-card="freizeitkarte">
+              <div class="provider-card-header">
+                <h3>Freizeitkarte</h3>
+                <p class="provider-count" data-provider-count data-count-template="{count} mapových balíčků · {countries} zemí/oblastí">63 mapových balíčků · 54 zemí/oblastí</p>
+              </div>
+              <ul class="provider-benefits"><li>Vyvážená mapa pro pěší turistiku, cyklistiku a každodenní navigaci</li><li>Profily tras pro pěší, cyklisty a řidiče</li><li>Integrované vrstevnice pro lepší představu o převýšení</li><li>Podrobné body zájmu a užitečné informace o dopravě</li></ul>
+            </article>
+<article class="provider-card" data-provider-card="opentopomap">
+              <div class="provider-card-header">
+                <h3>OpenTopoMap</h3>
+                <p class="provider-count" data-provider-count data-count-template="{count} mapových balíčků jednotlivých zemí">177 mapových balíčků jednotlivých zemí</p>
+              </div>
+              <ul class="provider-benefits"><li>Především topografická mapa pro čtení terénu</li><li>Stínování reliéfu a výšková data pro lepší kontext terénu</li><li>Volitelné vrstevnice, když potřebujete více detailů</li><li>Podpora výpočtu tras na zařízeních Garmin</li></ul>
+            </article>
+          </div>
+        </div>
+      </section>
+      <section class="faq section" id="faq" aria-labelledby="faq-title"><div class="shell faq-grid"><div class="section-heading"><p class="eyebrow">Máte otázky?</p><h2 id="faq-title">FAQ</h2></div><div class="faq-list">
+            <details><summary>Které hodinky Garmin fungují s Terento?</summary><p>Na stránce <a href="/cs/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="home-faq-compatibility">Kompatibilita</a> najdete modely a varianty Garmin potvrzené skutečnými instalacemi.</p></details>
+            <details><summary>Mohu instalovat mapy třetích stran do hodinek Garmin z Macu bez BaseCamp?</summary><p>Ano. Terento je navrženo tak, aby správa map třetích stran v macOS byla jednoduchá a rychlá — od výběru mapy po instalaci, aktualizaci a správu v hodinkách Garmin. <a href="/cs/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="home-faq-basecamp">Přečtěte si instalační příručku.</a></p></details>
+            <details><summary>Mohu přidat vlastní mapu .img?</summary><p>Ano. Přidejte kompatibilní mapu .img z Macu a nainstalujte ji do připojených hodinek Garmin.</p></details>
+            <details><summary>Mohu mapy aktualizovat později?</summary><p>Ano. Terento ukáže, když jsou k dispozici novější vydání, a pomůže vám aktualizovat mapy třetích stran spravované aplikací Terento.</p></details>
             <details><summary>Co mám dělat, když instalace selže?</summary><p>Otevřete issue na GitHubu nebo pošlete diagnostický log e-mailem. Obsahuje informace potřebné k prošetření problému.</p><div class="faq-support-actions"><a class="text-link" href="https://github.com/VooZ2/terento/issues" target="_blank" rel="noopener noreferrer" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="github-issue">Otevřít issue <span aria-hidden="true">→</span></a><a class="text-link" href="mailto:hello@terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email">Poslat log e-mailem <span aria-hidden="true">→</span></a></div></details>
             </div></div></section>
 
-      <section class="final-cta" aria-labelledby="final-cta-title"><div class="shell final-cta-inner"><div class="final-cta-copy"><p class="eyebrow">Připraveno, až budete</p><h2 id="final-cta-title">Připravte hodinky Garmin na další cestu.</h2><p>Stáhněte si notarizovanou betu Terento pro Mac s Apple Silicon.</p></div><a class="download-action" href="/cs/download/">Stáhnout betu</a></div></section>
+      <section class="final-cta" aria-labelledby="final-cta-title"><div class="shell final-cta-inner"><div class="final-cta-copy"><p class="eyebrow">Začněte ještě dnes</p><h2 id="final-cta-title">Chcete jednodušší způsob instalace map?</h2><p>Stáhněte si Terento a spravujte mapy třetích stran z Macu.</p></div><a class="download-action" href="/cs/download/" data-umami-event="download-cta-click" data-umami-event-location="home-content">Stáhnout</a></div></section>
     </main>
 
     <footer class="site-footer">
       <div class="shell footer-grid">
         <div class="footer-identity">
-          <a class="brand-lockup footer-brand" href="/cs/" aria-label="Domů Terento">
+          <a class="brand-lockup footer-brand" href="/cs/" aria-label="Domů Terento" data-umami-event="home-link-click" data-umami-event-location="footer-brand">
             <img src="/assets/logo-white.svg" alt="" width="32" height="32">
             <span>Terento</span>
           </a>
           <div class="footer-meta"><a class="footer-status footer-project-link" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer">Open-source projekt</a><a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
         </div>
         <nav class="footer-nav" aria-label="Navigace v zápatí">
-          <a href="/cs/about/">O projektu</a><a href="/cs/compatibility/">Kompatibilita</a><a href="/cs/guides/install-garmin-maps-mac/">Průvodce</a><a href="/cs/#faq">FAQ</a><a href="/cs/download/">Stáhnout</a>
-          <a href="/legal/">Právní informace</a>
-          <a href="/privacy/">Soukromí</a>
+          <a href="/cs/about/" data-umami-event="navigation-link-click" data-umami-event-location="footer-nav">O projektu</a><a href="/cs/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="footer-nav">Kompatibilita</a><a href="/cs/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Průvodce</a><a href="/cs/#faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a><a href="/cs/download/" data-umami-event="download-cta-click" data-umami-event-location="footer-nav">Stáhnout</a>
+          <a href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="footer-nav">Právní informace</a>
+          <a href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="footer-nav">Soukromí</a>
         </nav>
       </div>
       <div class="shell footer-bottom"><p>© 2026 Terento Project · Beta</p></div>

@@ -20,7 +20,7 @@ struct DiagnosticsView: View {
 
     private var pendingSummary: String {
         let noun = pendingCount == 1 ? "diagnostic" : "diagnostics"
-        return "\(pendingCount) anonymous \(noun) stored locally and waiting to send."
+        return "\(pendingCount) privacy-minimised \(noun) stored locally and waiting to send."
     }
 
     var body: some View {
@@ -35,7 +35,7 @@ struct DiagnosticsView: View {
                             .font(.terentoHeading(size: 30, weight: .semibold))
                             .foregroundStyle(TerentoColors.graphite)
 
-                        Text("Anonymous diagnostics help improve the Terento app and its services.")
+                        Text("Privacy-minimised diagnostics help improve the Terento app and its services.")
                             .font(.terentoBody(size: 17, weight: .medium))
                             .foregroundStyle(TerentoColors.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
@@ -45,7 +45,7 @@ struct DiagnosticsView: View {
                     diagnosticsSection(title: "Sharing") {
                         Toggle(isOn: compatibilitySharingBinding) {
                             VStack(alignment: .leading, spacing: 3) {
-                                Text("Send anonymous compatibility diagnostics")
+                                Text("Send privacy-minimised compatibility diagnostics")
                                     .font(.terentoUI(size: 14, weight: .semibold))
                                 Text("Watch model, firmware, connection details, map and software versions, and the installation result. No Unit ID, serial number, local path, manifest, or map file is included.")
                                     .font(.terentoUI(size: 12, weight: .regular))
@@ -58,7 +58,7 @@ struct DiagnosticsView: View {
 
                         Toggle(isOn: mapStatisticsSharingBinding) {
                             VStack(alignment: .leading, spacing: 3) {
-                                Text("Send anonymous map usage diagnostics")
+                                Text("Send privacy-minimised map usage diagnostics")
                                     .font(.terentoUI(size: 14, weight: .semibold))
                                 Text("Provider, map, region, event type, outcome, operation ID, timestamp, and app build. These events never include watch identity or local file information.")
                                     .font(.terentoUI(size: 12, weight: .regular))
@@ -90,7 +90,7 @@ struct DiagnosticsView: View {
 
                         Text(
                             pendingCount == 0
-                                ? "There are no anonymous diagnostics waiting to send."
+                                ? "There are no privacy-minimised diagnostics waiting to send."
                                 : pendingSummary
                         )
                             .font(.terentoUI(size: 13, weight: .medium))

@@ -4,16 +4,18 @@ Release date: 2026-09-02
 Maintenance build: 2026-09-04
 
 Beta.9 build 10 fixes compatibility reporting for local custom `.img`
-installations and makes anonymous diagnostics consistent and available by
-default. It keeps the preceding release's provider and device scope
-unchanged.
+installations and makes privacy-minimised diagnostics consistent and available
+by default. The public beta currently supports Freizeitkarte and OpenTopoMap
+main-map packages; optional OpenTopoMap contours are planned but not supported.
 
 Because the original beta.9 GitHub release is immutable, this maintenance
 build is published under `v1.0.0-beta.9-build10`. Terento still displays
 `Version 1.0.0-beta.9 (10)`.
 
-This remains a pre-MVP beta for hardware validation. Model eligibility is not
-a claim that every exact watch has been independently verified.
+This is a public beta for hardware validation. The MVP first-install baseline
+is established, but the beta remains open until one real safe update has passed
+for each currently enabled provider. Model eligibility is not a claim that
+every exact watch has been independently verified.
 
 ## Fixes and safeguards
 
@@ -31,7 +33,7 @@ a claim that every exact watch has been independently verified.
   deployment, on release-tag/manual CI, and every day against the shipped
   client contract.
 - Record the connected watch model for a successful custom `.img`
-  installation in the default-on anonymous compatibility report, using only
+  installation in the default-on privacy-minimised compatibility report, using only
   the coarse `custom` source labels and never a hash-derived local identity.
 - Keep custom `.img` installations out of map statistics; they appear in the
   dashboard as Custom installation activity through compatibility evidence.
@@ -95,8 +97,9 @@ a claim that every exact watch has been independently verified.
   verified compatibility.
 - A single installation batch can contain maps from only one provider.
 - OpenTopoMap contour-package selection is deferred to a later beta.
-- macOS 13 or later on Apple Silicon is required. Intel Macs, App Store, PKG,
-  Windows and Linux distributions are not included.
+- macOS 13 or later on Apple Silicon is required. Intel Macs, PKG, Windows and
+  Linux distributions are not included in this beta. App Store distribution is
+  a long-term stable-release target, not a current beta or MVP dependency.
 
 ## Release artifacts
 

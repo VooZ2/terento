@@ -293,7 +293,7 @@ final class MapStatisticsEventController: ObservableObject {
         if sharingEnabled { scheduleFlush() }
     }
 
-    /// Anonymous map usage diagnostics are enabled by default. An explicit
+    /// Privacy-minimised map usage diagnostics are enabled by default. An explicit
     /// opt-out remains persisted and is independent from compatibility data.
     var sharingEnabled: Bool {
         store.consent()?.choice != .declined

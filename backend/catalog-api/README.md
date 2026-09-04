@@ -85,7 +85,7 @@ therefore requires Node.js. Set `TERENTO_NODE_BIN` when Node.js is not on
   /admin/map-statistics.json` exposes its private aggregates and never returns
   raw events or device identifiers. Raw map events are pruned after 24 months.
 - `POST /compatibility/events` accepts validated, rate-limited, idempotent
-  privacy-minimised install events under the default-on anonymous diagnostics
+  privacy-minimised install events under the default-on diagnostics
   policy. It stores only allowlisted columns and never stores the submitted JSON
   body. Exact model variants are retained separately; reconnect observations are
   optional and never gate compatibility status.

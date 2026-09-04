@@ -130,7 +130,7 @@ no longer than 24 months before pruning.
 
 For this SwiftPM PoC target, the normal SwiftUI window contains no map write or
 device modification path. The production Xcode app owns the guarded map
-installation and default-on anonymous diagnostics flow. The separate
+installation and default-on privacy-minimised diagnostics flow. The separate
 `TerentoWriteTest` command is deliberately narrower: it accepts only
 `terento-write-test.txt`, advertises it as a generic MTP object, targets only
 `/GARMIN/terento-write-test.txt` on the validated fēnix 8 profile, refuses an

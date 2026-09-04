@@ -15,10 +15,11 @@ version is available. This automatic update request is not used for analytics
 or user tracking; it only fetches release metadata. Terento does not download,
 mount or install the DMG in the background.
 
-## Anonymous compatibility diagnostics
+## Privacy-minimised compatibility diagnostics
 
-The macOS beta sends privacy-minimised anonymous compatibility diagnostics by
-default to `api.terento.app` to improve installation reliability and
+The macOS beta sends privacy-minimised compatibility diagnostics that are not
+linked to an account or direct device identifier by default to
+`api.terento.app` to improve installation reliability and
 compatibility coverage by watch model and firmware. There is no sharing choice
 in the installation flow. You can turn this stream off at any time under
 **Terento → Diagnostics**; doing so does not limit the app or map installation.
@@ -31,9 +32,9 @@ reliability and supported-device coverage. You can stop future sharing under
 uploaded diagnostics; contact [privacy@terento.app](mailto:privacy@terento.app)
 for privacy-rights requests.
 
-## Anonymous map-usage diagnostics
+## Privacy-minimised map-usage diagnostics
 
-The app sends a separate stream of privacy-minimised anonymous map-usage
+The app sends a separate stream of privacy-minimised map-usage
 diagnostics by default to measure map download and installation outcomes. Each
 event may contain only random event and operation IDs, timestamp, provider,
 map, region, event type, outcome and app build. It does not contain a watch
@@ -80,4 +81,5 @@ requests, contact [privacy@terento.app](mailto:privacy@terento.app).
 The controller relies on legitimate interests under Article 6(1)(f) GDPR to
 deliver and secure the website and API, prevent abuse, maintain network and
 information security, understand site reach, measure campaigns and improve
-Terento through privacy-minimised anonymous diagnostics.
+Terento through privacy-minimised diagnostics that are not linked to an account
+or direct device identifier.

@@ -119,8 +119,8 @@ ribas: du provider’iai, bet ne bendras visų Garmin modelių pažadas.
 
 **Pataisa:** vienu release truth sync’u sulyginti Home, Download, Guide, legal
 copy, katalogo vaizdus ir app screenshot’us su patvirtinta Beta + dviejų
-providerių capability. Viešame tekste naudoti `Beta` arba `Pre-release beta`,
-ne `Pre-MVP-Beta`, jei kalbama apie release stadiją.
+providerių capability. Viešame tekste naudoti `Beta`, o ne seną
+`Pre-MVP-Beta` formuluotę, jei kalbama apie release stadiją.
 
 ### [P1] Standartinio teksto nuorodų spalva tikėtina per mažo kontrasto
 
@@ -280,7 +280,7 @@ kas tai yra, kodėl saugu, ką daryti dabar.
 
 ## Galutinis vertinimas
 
-Terento.app jau atrodo geriau nei tipinis pre-MVP projektas: turi tikrą
+Terento.app jau atrodo geriau nei tipinis ankstyvos stadijos projektas: turi tikrą
 vizualinę sistemą, realų produkto vaizdą, aiškią struktūrą ir gana patikimą
 toną. Ji **parduoda idėją iš dalies** — ypač „native Mac įrankio“ ir saugesnio
 proceso idėją — bet dar nepakankamai agresyviai parduoda vartotojo rezultatą.
