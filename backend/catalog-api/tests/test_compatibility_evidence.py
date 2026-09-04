@@ -41,6 +41,9 @@ def event(**changes):
 
 
 class FakeEvidenceDatabase:
+    def operational_health_snapshot(self):
+        return {}
+
     def __init__(self):
         self.events = {}
         self.users = []

@@ -28,6 +28,9 @@ UTC = timezone.utc
 
 
 class FakeProviderDatabase:
+    def operational_health_snapshot(self):
+        return {}
+
     def __init__(self) -> None:
         self.events: set[str] = set()
         self.status = "ACTIVE"

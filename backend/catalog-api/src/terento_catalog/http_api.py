@@ -465,6 +465,7 @@ class CatalogService:
             ),
             "compatibility": self.database.admin_overview_snapshot(since),
             "providers": self.admin_providers().get("providers", []),
+            "system": self.operational_health(),
         }
 
     def asset_response(self, request_path: str) -> tuple[bytes, str, str] | None:
@@ -1920,7 +1921,8 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
 
         def _handle_health(self, *, send_body: bool) -> None:
             try:
-                service.health()
+                if not service.health():
+                    raise RuntimeError("service is not ready")
             except Exception:  # pragma: no cover - database availability is deployment state
                 LOGGER.exception("catalog health check failed")
                 self._send_json(

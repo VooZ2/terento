@@ -16,6 +16,7 @@ from .historical_devices import historical_device_for_event
 from .map_capability import classify_map_capable
 from .provider_catalog import ProviderDefinition, ProviderSnapshot
 from .provider_health import ProviderHealthResult
+from .github_issue_sync import sync_health
 
 
 def _overview_time_zone(value: str) -> ZoneInfo:
@@ -119,7 +120,32 @@ class Database:
 
     def health(self) -> bool:
         with self.connection() as connection:
-            connection.execute("SELECT 1")
+            # Read-only readiness: never insert synthetic compatibility evidence.
+            connection.execute("SET LOCAL statement_timeout = '3000ms'")
+            applied = {row["version"] for row in connection.execute(
+                "SELECT version FROM schema_migrations"
+            ).fetchall()}
+            required = {path.name.split("_", 1)[0] for path in migration_directory().glob("[0-9]*.sql")}
+            if not required.issubset(applied):
+                raise RuntimeError("diagnostic storage migrations are incomplete")
+            column = connection.execute("""
+                SELECT is_nullable FROM information_schema.columns
+                WHERE table_schema = current_schema()
+                  AND table_name = 'compatibility_evidence_event'
+                  AND column_name = 'deletion_token_hash'
+            """).fetchone()
+            if not column or column["is_nullable"] != "YES":
+                raise RuntimeError("diagnostic storage is incompatible with schema v4")
+            connection.execute("""
+                SELECT event_id, operation_id, app_build, failure_stage, failure_code,
+                       native_failure_code, transfer_progress_bucket, identity_resolution_code,
+                       deletion_token_hash FROM compatibility_evidence_event WHERE FALSE
+            """)
+            connection.execute("""
+                SELECT event_id, operation_id, provider_id, map_package_id, region,
+                       event_type, outcome, occurred_at, app_build
+                FROM map_download_event WHERE FALSE
+            """)
         return True
 
     def record_operational_observation(self, observation: dict[str, Any]) -> bool:
@@ -148,6 +174,7 @@ class Database:
 
     def operational_health_snapshot(self) -> dict[str, Any]:
         with self.connection() as connection:
+            github_sync = sync_health(connection)
             observations = list(connection.execute(
                 """
                 SELECT DISTINCT ON (component)
@@ -178,6 +205,7 @@ class Database:
                 """
             ).fetchone()
         return {
+            "githubSync": github_sync,
             "observations": [dict(row) for row in observations],
             "weekly": dict(weekly) if weekly else None,
             "scheduler": dict(scheduler) if scheduler else None,
@@ -500,7 +528,7 @@ class Database:
                 SELECT count(*) AS ready_to_publish
                 FROM compatibility_model_statistics
                 WHERE canonical_device_model_id IS NOT NULL
-                  AND calculated_status IN ('TESTING', 'TESTED', 'SUPPORTED', 'VERIFIED')
+                  AND calculated_status IN ('TESTED', 'SUPPORTED', 'VERIFIED')
                   AND (
                       review_status = 'PENDING'
                       OR (review_status = 'APPROVED' AND public_statistics_enabled = false)
@@ -573,6 +601,9 @@ class Database:
                         AS operation_succeeded,
                     bool_or(e.phase_outcome = 'FAILED') AS has_failed,
                     bool_or(e.phase_outcome = 'NOT_STARTED') AS has_not_started,
+                    bool_or(e.canonical_device_model_id IS NULL AND
+                        COALESCE(e.identity_resolution_state, 'UNRESOLVED')
+                        NOT IN ('RESOLVED', 'NOT_IDENTIFIABLE')) AS identity_pending,
                     bool_or(
                         e.diagnostic_status = 'ACTIVE'
                         AND (
@@ -589,6 +620,15 @@ class Database:
         """
         scoped = f"{operation_cte}, scoped_operations AS (\n                SELECT *\n                FROM operation_rows\n                WHERE last_occurred_at >= %s\n            )"
         with self.connection() as connection:
+            attention = list(connection.execute(
+                f"""{operation_cte}
+                SELECT *, count(*) FILTER (WHERE open_error) OVER () AS total_open_errors,
+                    count(*) FILTER (WHERE identity_pending) OVER () AS total_identity_pending
+                FROM operation_rows WHERE open_error OR identity_pending
+                ORDER BY open_error DESC, last_occurred_at DESC, operation_key
+                LIMIT %s
+                """, (recent_limit,),
+            ).fetchall())
             summary = connection.execute(
                 f"""
                 {scoped}
@@ -683,15 +723,15 @@ class Database:
                     review_status, public_statistics_enabled, public_display_name,
                     last_evidence
                 FROM compatibility_model_statistics
-                WHERE last_evidence >= %s
+                WHERE canonical_device_model_id IS NOT NULL
+                  AND calculated_status IN ('TESTED', 'SUPPORTED', 'VERIFIED')
                   AND (
-                      COALESCE(review_status, 'PENDING') <> 'APPROVED'
-                      OR COALESCE(public_statistics_enabled, false) = false
+                      review_status = 'PENDING'
+                      OR (review_status = 'APPROVED' AND public_statistics_enabled = false)
                   )
                 ORDER BY last_evidence DESC NULLS LAST, model, variant
                 LIMIT 8
                 """,
-                (since,),
             ).fetchall())
         failure_reason_counts: dict[str, int] = {}
         for row in failure_reason_rows:
@@ -710,6 +750,9 @@ class Database:
             )[:8]
         ]
         return {
+            "attention": [dict(row) for row in attention],
+            "allTimeOpenErrorCount": int(attention[0].get("total_open_errors") or 0) if attention else 0,
+            "allTimeIdentityPendingCount": int(attention[0].get("total_identity_pending") or 0) if attention else 0,
             "operationCount": int(summary.get("operation_count") or 0),
             "successfulInstallCount": int(summary.get("successful_install_count") or 0),
             "failedInstallCount": int(summary.get("failed_install_count") or 0),

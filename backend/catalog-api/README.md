@@ -233,3 +233,42 @@ The daily scheduler runs the reviewed Freizeitkarte and OpenTopoMap adapters
 as isolated map phases. On Monday it then runs the separate Garmin device
 collection. A provider or Garmin collection failure is logged and retained
 without clearing any previous known-good catalog.
+
+### Build 11 diagnostics storage correction
+
+Migration 033 drops only the legacy deletion-token NOT NULL constraint. Schema
+v4 events have no token; legacy hashes and all retained events are preserved.
+Public event APIs remain immutable and retries retain the same event ID.
+`/health` checks the installed migration set, the nullable token column, and
+read-only projections of both diagnostic tables with a local statement timeout.
+Missing or incompatible storage returns 503 without creating a test event.
+
+### Admin issue synchronization and attention
+
+The API process now runs a bounded GitHub issue-state worker (migration 034).
+After normal migration-before-start deployment, closed explicitly linked
+`VooZ2/terento` issues resolve ACTIVE diagnostics, normally within 15 minutes.
+Ten oldest due issues are checked per cycle; rate limits or a larger backlog can
+delay completion. System health reports errors and overdue checks. No GitHub token
+or webhook is required. This is one-way closure synchronization; relink/remove a
+closed reference before investigating a manually reopened new problem. See
+`internal/adr/0019-admin-github-issue-resolution-sync.md` for audit and safety rules.
+
+Overview attention is independent of the statistics date filter. Visible admin
+pages check every minute and offer Refresh when data changes, protecting unsaved
+form edits. These changes are locally tested, not yet production-verified.
+
+At phone widths (up to 700 px), admin navigation collapses into Menu with a review
+shortcut, Overview attention precedes statistics, and the existing tables become
+labelled records. Search remains visible; secondary device/installation filters
+and the full device sorter are under Filters and sorting. Primary controls and
+form typography are sized for touch. Diagnostic dialogs keep their close header
+visible during content scrolling. These presentation changes reuse existing
+endpoints and permissions. Local evidence is recorded in
+`internal/audits/2026-09-05-admin-mobile-audit.md`; production rollout is pending.
+
+Desktop admin tables fit their cards and wrap long values. Provider source
+details show complete URLs; campaign output wraps. Installation history uses
+page scrolling and diagnostic dialogs keep their close header visible. The
+local ten-page audit and long-content evidence are recorded in
+`internal/audits/2026-09-05-admin-desktop-fit-audit.md`; rollout is pending.

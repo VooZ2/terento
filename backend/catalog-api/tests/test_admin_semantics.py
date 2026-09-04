@@ -20,6 +20,9 @@ from terento_catalog.admin import (
     _admin_map_display_name,
     _admin_region_identity,
     _admin_timezone_script,
+    _admin_freshness_script,
+    _admin_mobile_script,
+    _layout,
     _campaign_links_script,
     _client_issue_note_sanitizer_script,
     _dashboard_script,
@@ -165,6 +168,8 @@ class AdminSemanticsTests(unittest.TestCase):
             "devices": _devices_script(),
             "diagnostics-and-model": _diagnostics_script(),
             "timezone": _admin_timezone_script(),
+            "freshness": _admin_freshness_script(),
+            "mobile": _admin_mobile_script(),
             "campaign-links": _campaign_links_script(),
             "providers": _providers_list_script(),
             "provider-detail": _provider_detail_script(),
@@ -178,6 +183,57 @@ class AdminSemanticsTests(unittest.TestCase):
                     capture_output=True, text=True,
                 )
                 self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_freshness_notice_preserves_edits_and_handles_stale_checks(self):
+        harness = r"""
+        const assert = require('node:assert/strict');
+        const listeners = {}; let check, reloads = 0, confirmed = false, revision = 'a', fail = false;
+        const elements = [];
+        const current = {dataset:{adminRevision:'a'},getAttribute:()=>null};
+        global.document = {hidden:false,
+          querySelector:s=>s==='[data-admin-revision]'?current:s==='.admin-topbar'?{after:()=>{}}:null,
+          createElement:()=>{const e={setAttribute:()=>{},append:()=>{},addEventListener:(k,f)=>e[k]=f};elements.push(e);return e;},
+          addEventListener:(k,f)=>listeners[k]=f};
+        global.window = {location:{href:'https://example.test/admin',reload:()=>reloads++},confirm:()=>confirmed};
+        global.setInterval = f=>check=f;
+        global.fetch = async()=>{if(fail)throw Error('offline');return {ok:true,text:async()=>revision};};
+        global.DOMParser = class {parseFromString(s){return {querySelector:()=>({dataset:{adminRevision:s}})};}};
+        eval(process.argv[1]);
+        (async()=>{
+          await check(); assert.equal(elements[0].hidden,true);
+          revision='b'; await check(); assert.equal(elements[0].hidden,false);
+          assert.match(elements[1].textContent,/New activity/); assert.equal(reloads,0);
+          listeners.input({target:{closest:()=>true}});elements[2].click();assert.equal(reloads,0);
+          confirmed=true;elements[2].click();assert.equal(reloads,1);
+          fail=true;await check();assert.match(elements[1].textContent,/out of date/);
+          document.hidden=true;elements[0].hidden=true;await check();assert.equal(elements[0].hidden,true);
+        })().catch(e=>{console.error(e);process.exitCode=1});
+        """
+        self._run_node(harness, _admin_freshness_script())
+
+    def test_mobile_menu_and_attention_survive_breakpoint_and_content_changes(self):
+        harness = r"""
+        const assert = require('node:assert/strict');
+        const documentEvents = {}, windowEvents = {}, mediaEvents = [];
+        const media = {matches:true,addEventListener:(k,f)=>mediaEvents.push(f)};
+        global.matchMedia = ()=>media;
+        const control = ()=>({attrs:{},hidden:false,events:{},setAttribute(k,v){this.attrs[k]=v},getAttribute(k){return this.attrs[k]},addEventListener(k,f){this.events[k]=f},focus(){this.focused=true}});
+        const toggle=control(), panel=control(), header={contains:target=>target==='inside',classList:{add:()=>{}}};
+        let before=0,after=0;
+        let kpis={before:()=>before++,after:()=>after++};
+        global.document={querySelector:s=>({'.admin-topbar':header,'#admin-menu-toggle':toggle,'#admin-menu-panel':panel,'.overview-kpis':kpis,'.overview-attention-panel':{},'.attention-shortcuts':{}}[s]||null),querySelectorAll:()=>[],addEventListener:(k,f)=>documentEvents[k]=f};
+        global.window={addEventListener:(k,f)=>windowEvents[k]=f};
+        eval(process.argv[1]);
+        assert.equal(panel.hidden,true); assert.equal(toggle.hidden,false); assert.equal(before,1);
+        toggle.events.click(); assert.equal(panel.hidden,false); assert.equal(toggle.attrs['aria-expanded'],'true');
+        documentEvents.keydown({key:'Escape'}); assert.equal(panel.hidden,true);assert.equal(toggle.focused,true);
+        toggle.events.click();documentEvents.click({target:'outside'});assert.equal(panel.hidden,true);
+        toggle.events.click();panel.events.click({target:{closest:()=>({})}});assert.equal(panel.hidden,true);
+        media.matches=false;mediaEvents.forEach(f=>f());assert.equal(panel.hidden,false);assert.equal(toggle.hidden,true);assert.equal(after,1);
+        media.matches=true;mediaEvents.forEach(f=>f());assert.equal(panel.hidden,true);
+        kpis={before:()=>before+=10,after:()=>after+=10};windowEvents['terento-admin-content-changed']();assert.equal(before,12);
+        """
+        self._run_node(harness, _admin_mobile_script())
 
     def test_variant_formatting_normalizes_sizes_without_dropping_functional_labels(self):
         self.assertEqual(
@@ -228,6 +284,55 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Unavailable", body)
         self.assertIn("data-status=''", body)
         self.assertNotIn("data-status='testing'", body)
+
+    def test_overview_retains_old_open_errors_outside_recent_activity(self):
+        body = overview_page({
+            "period": "24h", "data": {"hasData": False},
+            "compatibility": {"hasData": False, "recentActivity": [],
+                "allTimeOpenErrorCount": 12,
+                "attention": [{"model": "Old unresolved watch", "open_error": True,
+                    "has_failed": True, "last_occurred_at": "2026-01-01T00:00:00Z"}]},
+        }, {"username": "operator"}, "csrf").decode()
+        self.assertIn("<span>Open errors</span><strong>12</strong>", body)
+        self.assertIn("Old unresolved watch", body)
+        self.assertIn("All unresolved · any date", body)
+        self.assertNotIn("No issues need attention", body)
+        self.assertIn("All attention queues", body)
+
+    def test_overview_query_uses_independent_unresolved_queue(self):
+        from unittest.mock import MagicMock
+        connection = MagicMock()
+        connection.execute.return_value.fetchall.return_value = []
+        connection.execute.return_value.fetchone.return_value = {}
+        database = Database("unused")
+        database.connection = MagicMock()
+        database.connection.return_value.__enter__.return_value = connection
+        database.admin_overview_snapshot(datetime(2026, 9, 5, tzinfo=timezone.utc))
+        queries = [call.args for call in connection.execute.call_args_list]
+        attention = next(args for args in queries if "total_open_errors" in args[0])
+        self.assertNotIn("last_occurred_at >=", attention[0])
+        self.assertIn("WHERE open_error OR identity_pending", attention[0])
+        self.assertEqual(attention[1], (8,))
+        review = next(args for args in queries if "FROM compatibility_model_statistics" in args[0])
+        self.assertNotIn("last_evidence >=", review[0])
+        self.assertIn("('TESTED', 'SUPPORTED', 'VERIFIED')", review[0])
+
+    def test_revision_ignores_render_time_but_detects_new_events(self):
+        import re
+        def revision(time, count):
+            markup = f'<main id="main-content"><p>{count} errors</p><script>{{"generatedAt":"{time}"}}</script></main>'
+            return re.search(r'data-admin-revision="([^"]+)"', _layout("Test", markup).decode())[1]
+        self.assertEqual(revision("time-one", 2), revision("time-two", 2))
+        self.assertNotEqual(revision("time-one", 2), revision("time-one", 3))
+
+    def test_health_sorts_failures_before_healthy_and_exposes_sync(self):
+        body = system_health_page({"api":"HEALTHY", "database":"FAILED",
+            "githubSync":{"overdue":1,"errors":1}}, {"username":"operator"}, "csrf").decode()
+        cards = body.split("aria-label='System health summary'>")[1]
+        self.assertLess(cards.index("<h2>Database</h2>"), cards.index("<h2>API</h2>"))
+        self.assertIn("GitHub issue sync", cards)
+        self.assertIn("checks need attention", body)
+        self.assertIn("<details class='overview-panel admin-disclosure'><summary>Quality-gate results", body)
 
     def test_overview_does_not_turn_missing_evidence_into_zero(self):
         body = overview_page(
@@ -482,7 +587,7 @@ class AdminSemanticsTests(unittest.TestCase):
             },
             {"username": "operator"}, "csrf",
         ).decode()
-        attention = body.split("overview-attention-panel", 1)[1].split("</section>", 1)[0]
+        attention = body.split("<section class='overview-panel overview-attention-panel", 1)[1].split("</section>", 1)[0]
         self.assertIn("No issues need attention", attention)
         self.assertNotIn("Download failed", attention)
 
@@ -824,7 +929,7 @@ class AdminSemanticsTests(unittest.TestCase):
         )
         self.assertIn('target="_blank" rel="noopener noreferrer"', body)
         self.assertIn('Website <span aria-hidden="true">↗</span>', body)
-        self.assertIn('aria-label="Signed in as operator"', body)
+        self.assertIn('aria-label="Account settings for operator"', body)
         self.assertNotIn('>Account</a>', body)
         self.assertIn("Auto · ${browserTimeZone}", body)
         self.assertIn("Automatic browser time zone: ${browserTimeZone}", body)
@@ -1476,7 +1581,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("<th scope='col'>Last check</th><th scope='col'>Issues</th>", body)
         self.assertNotIn(">Adapter<", body)
         self.assertNotIn("Open map statistics", body)
-        self.assertIn("<small>opentopomap</small>", body)
+        self.assertNotIn("<small>opentopomap</small>", body)
 
     def test_provider_detail_uses_progressive_disclosure_and_human_audit_actions(self):
         body = provider_detail_page(
@@ -1604,7 +1709,7 @@ class AdminSemanticsTests(unittest.TestCase):
             operations=active, resolved_operations=resolved,
         ).decode()
         statistics = body.split("class='diagnostic-model-metrics model-statistics'", 1)[1].split("</section>", 1)[0]
-        for label, value in (("Attempts", "2"), ("Successful", "1"), ("Failed", "1"), ("Open errors", "0")):
+        for label, value in (("Attempts", "1"), ("Successful", "1"), ("Failed", "0"), ("Open errors", "0")):
             self.assertIn(f"<span>{label}</span><strong>{value}</strong>", statistics)
         self.assertIn("<span>Last activity</span><strong>—</strong>", statistics)
         self.assertNotIn("<span>Compatibility status</span>", statistics)
@@ -1664,7 +1769,7 @@ class AdminSemanticsTests(unittest.TestCase):
             operations=successful + open_failed, resolved_operations=resolved_failed,
         ).decode()
         statistics = body.split("class='diagnostic-model-metrics model-statistics'", 1)[1].split("</section>", 1)[0]
-        for label, value in (("Attempts", "10"), ("Successful", "7"), ("Failed", "3"), ("Open errors", "1")):
+        for label, value in (("Attempts", "8"), ("Successful", "7"), ("Failed", "1"), ("Open errors", "1")):
             self.assertIn(f"<span>{label}</span><strong>{value}</strong>", statistics)
         self.assertIn("<span>Last activity</span><strong>—</strong>", statistics)
         self.assertNotIn("<span>Compatibility status</span>", statistics)
