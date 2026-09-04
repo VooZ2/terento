@@ -8,29 +8,48 @@ It does not cover the privacy practices of Freizeitkarte, OpenTopoMap, or OpenSt
 
 ## Local app data
 
-The website and app do not provide an account or login and do not require an email address. Device state, maps, Terento manifests and local installation records stay on your Mac. Local installation records are not sent to Terento unless you choose to share compatibility reports.
+The website and app do not provide an account or login and do not require an email address. Device state, maps, Terento manifests and local installation records stay on your Mac. The app sends only the privacy-minimised diagnostic fields described below and never sends those local records.
 
 The app may contact `terento.app` when it starts to check whether a newer
 version is available. This automatic update request is not used for analytics
 or user tracking; it only fetches release metadata. Terento does not download,
 mount or install the DMG in the background.
 
-## Compatibility reports
+## Anonymous compatibility diagnostics
 
-For a new installation, the macOS beta shows a visible compatibility-sharing
-choice before installation and selects it by default. If you leave it enabled
-and continue with the installation, the app sends privacy-minimised
-installation reports to `api.terento.app` to measure installation reliability
-and compatibility evidence by watch model and firmware. You can uncheck the
-choice before installing; declining does not limit the app or map installation.
+The macOS beta sends privacy-minimised anonymous compatibility diagnostics by
+default to `api.terento.app` to improve installation reliability and
+compatibility coverage by watch model and firmware. There is no sharing choice
+in the installation flow. You can turn this stream off at any time under
+**Terento → Diagnostics**; doing so does not limit the app or map installation.
 
 A report may contain random event and per-installation operation IDs, timestamp, watch model and family, sanitized raw MTP model label, firmware version, USB vendor and product identifiers, MTP transport, a category stating only whether local identity came from an MTP serial, Garmin Unit ID, or was unavailable, map provider, selected regions and releases, exact Terento release/build, macOS version, per-map outcome, failure stage, allowlisted Terento/native failure codes, whether device writing or cleanup started, and a coarse transfer-progress range. Pre-write provider and validation failures are kept separate from watch compatibility rates. It does not contain the Garmin Unit ID or serial value, local watch identifier, account information, email address, local file paths, MTP object IDs, Terento manifests, map files, map hashes, raw error text or diagnostic logs.
 
-These reports are processed with your consent under Article 6(1)(a) GDPR. You can stop future sharing or delete uploaded reports in the app under **About Terento → Privacy**. Withdrawal does not affect processing that took place before it.
+These diagnostics are used to improve Terento's app quality, installation
+reliability and supported-device coverage. You can stop future sharing under
+**Terento → Diagnostics**. The app does not provide a delete action for
+uploaded diagnostics; contact [privacy@terento.app](mailto:privacy@terento.app)
+for privacy-rights requests.
+
+## Anonymous map-usage diagnostics
+
+The app sends a separate stream of privacy-minimised anonymous map-usage
+diagnostics by default to measure map download and installation outcomes. Each
+event may contain only random event and operation IDs, timestamp, provider,
+map, region, event type, outcome and app build. It does not contain a watch
+model or identifier, serial or Garmin Unit ID value, account, local file path,
+manifest, map file or diagnostic log. You can turn this stream off under
+**Terento → Diagnostics**; doing so does not limit installation. Custom IMG
+installations are reported only through compatibility diagnostics and never
+through this map-usage stream.
 
 ## Storage and public statistics
 
-Compatibility reports are stored in Terento's PostgreSQL database on its hosting infrastructure for no longer than 24 months and are then deleted. Access to individual reports is restricted to the private administration service.
+Compatibility diagnostics and map-usage diagnostics are stored in Terento's
+PostgreSQL database on its hosting infrastructure for no longer than 24 months
+and are then deleted. Access to individual events is restricted to the private
+administration service. The app does not provide a user-facing delete action
+for uploaded diagnostics.
 
 Terento may publish only reviewed aggregate compatibility statistics. Raw reports, operation or event IDs, firmware lists, error details and request metadata are not published.
 
@@ -54,6 +73,11 @@ There is no analytics consent popup or analytics settings control. You may objec
 
 Under the GDPR you may have rights to access, rectify, erase, restrict processing, object, data portability, withdraw consent and lodge a complaint with a supervisory authority. In Lithuania that is the State Data Protection Inspectorate (VDAI).
 
-Use the app to stop sharing or delete uploaded compatibility reports. For other requests, contact [privacy@terento.app](mailto:privacy@terento.app).
+Use **Terento → Diagnostics** to stop future diagnostic sharing. The app does
+not provide a delete action for uploaded diagnostics. For privacy-rights
+requests, contact [privacy@terento.app](mailto:privacy@terento.app).
 
-The controller relies on legitimate interests under Article 6(1)(f) GDPR to deliver and secure the website and API, prevent abuse, maintain network and information security, understand site reach and measure campaigns. Website analytics use that legal basis; optional compatibility reports continue to require consent under Article 6(1)(a) GDPR.
+The controller relies on legitimate interests under Article 6(1)(f) GDPR to
+deliver and secure the website and API, prevent abuse, maintain network and
+information security, understand site reach, measure campaigns and improve
+Terento through privacy-minimised anonymous diagnostics.

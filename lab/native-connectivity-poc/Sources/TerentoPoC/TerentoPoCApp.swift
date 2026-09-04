@@ -6,6 +6,8 @@ struct TerentoPoCApp: App {
     @StateObject private var deviceEngine = DeviceEngine()
     @StateObject private var mapEngine = MapEngine()
     @StateObject private var appUpdateController = AppUpdateController()
+    @StateObject private var evidenceController = InstallationEvidenceController()
+    @StateObject private var mapStatisticsController = MapStatisticsEventController()
     @Environment(\.openWindow) private var openWindow
 
     var body: some Scene {
@@ -13,7 +15,9 @@ struct TerentoPoCApp: App {
             ContentView(
                 deviceEngine: deviceEngine,
                 mapEngine: mapEngine,
-                appUpdateController: appUpdateController
+                appUpdateController: appUpdateController,
+                evidenceController: evidenceController,
+                mapStatisticsController: mapStatisticsController
             )
             .background(TerentoWindowConfigurator())
             .task {
@@ -30,6 +34,12 @@ struct TerentoPoCApp: App {
             CommandGroup(replacing: .appInfo) {
                 Button("About Terento") {
                     openWindow(id: "about")
+                }
+                Button("Diagnostics") {
+                    openWindow(id: "diagnostics")
+                }
+                Button("Check updates") {
+                    appUpdateController.checkForUpdates()
                 }
             }
             CommandGroup(replacing: .help) {
@@ -50,7 +60,16 @@ struct TerentoPoCApp: App {
         Window("About Terento", id: "about") {
             AboutTerentoView(appUpdateController: appUpdateController)
         }
-        .defaultSize(width: 360, height: 330)
+        .defaultSize(width: 420, height: 330)
+        .windowResizability(.contentSize)
+        .windowStyle(.titleBar)
+        Window("Diagnostics", id: "diagnostics") {
+            DiagnosticsView(
+                evidenceController: evidenceController,
+                mapStatisticsController: mapStatisticsController
+            )
+        }
+        .defaultSize(width: 520, height: 600)
         .windowResizability(.contentSize)
         .windowStyle(.titleBar)
     }

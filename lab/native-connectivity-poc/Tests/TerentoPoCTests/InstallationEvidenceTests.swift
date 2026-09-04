@@ -4,7 +4,6 @@ private actor UploadRecorder: InstallationEvidenceUploading {
     let shouldFail: Bool
     var failuresRemaining: Int
     private(set) var uploaded: [UUID] = []
-    private(set) var deleted: [UUID] = []
     init(shouldFail: Bool = false, failuresRemaining: Int = 0) {
         self.shouldFail = shouldFail
         self.failuresRemaining = failuresRemaining
@@ -16,12 +15,7 @@ private actor UploadRecorder: InstallationEvidenceUploading {
         }
         uploaded.append(event.id)
     }
-    func delete(_ event: InstallationEvidenceEvent) async throws {
-        if shouldFail { throw URLError(.cannotConnectToHost) }
-        deleted.append(event.id)
-    }
     func count() -> Int { uploaded.count }
-    func deletionCount() -> Int { deleted.count }
 }
 
 @main
@@ -34,7 +28,7 @@ struct InstallationEvidenceTests {
         try await testConsentAndUploadIsolation()
         testDiagnosticSanitization()
         testPreparedInstallationIssue()
-        print("PASS: installation evidence, privacy, consent, upload, report, and promotion tests")
+        print("PASS: installation evidence, privacy, default-on upload, report, and promotion tests")
     }
 
     static let identity = DeviceIdentity(
@@ -83,7 +77,10 @@ struct InstallationEvidenceTests {
         )
         let payload = String(decoding: try JSONEncoder().encode(event), as: UTF8.self)
         expect(
-            !payload.contains("deadbeef") && !payload.contains("img_"),
+            payload.contains("\"schemaVersion\":4")
+                && !payload.contains("deadbeef")
+                && !payload.contains("img_")
+                && !payload.contains("deletionToken"),
             "custom IMG evidence does not upload the local content fingerprint"
         )
     }
@@ -351,11 +348,12 @@ struct InstallationEvidenceTests {
         )
         let stale = InstallationEvidenceController(
             store: LocalInstallationEvidenceStore(rootURL: staleRoot),
-            uploader: UploadRecorder()
+            uploader: UploadRecorder(),
+            automaticRetryDelays: [60_000_000_000]
         )
-        expect(stale.currentConsentChoice == nil, "an older consent notice requires a fresh visible choice")
-        expect(stale.compatibilitySharingEnabled, "the fresh visible choice keeps the documented checked default")
-        expect(stale.store.pendingUploads().isEmpty, "invalidating stale consent clears its upload queue")
+        expect(stale.currentConsentChoice == .accepted, "an older accepted choice migrates to the current diagnostics policy")
+        expect(stale.compatibilitySharingEnabled, "the migrated accepted choice keeps diagnostics enabled")
+        expect(stale.store.pendingUploads().count == 1, "an accepted legacy queue is preserved for delivery")
 
         let declinedRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let declinedUploader = UploadRecorder()
@@ -372,6 +370,19 @@ struct InstallationEvidenceTests {
         await declined.flushPendingUploads()
         let declinedUploadCount = await declinedUploader.count()
         expect(declinedUploadCount == 0, "declined consent disables upload")
+
+        let defaultRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let defaultUploader = UploadRecorder()
+        let defaultOn = InstallationEvidenceController(
+            store: LocalInstallationEvidenceStore(rootURL: defaultRoot),
+            uploader: defaultUploader,
+            automaticRetryDelays: []
+        )
+        expect(defaultOn.compatibilitySharingEnabled, "new installations enable compatibility diagnostics by default")
+        let defaultStatus = await defaultOn.recordAndUpload([makeEvent()])
+        expect(defaultStatus == .sent(count: 1), "default-on compatibility diagnostics upload without an install-time choice")
+        let defaultUploadCount = await defaultUploader.count()
+        expect(defaultUploadCount == 1, "default-on compatibility diagnostics are sent")
 
         let acceptedRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let acceptedUploader = UploadRecorder()
@@ -390,12 +401,12 @@ struct InstallationEvidenceTests {
         expect(acceptedReloaded.compatibilitySharingEnabled, "the accepted preference persists across controller instances")
         let immediateStatus = await accepted.recordAndUpload([makeEvent()])
         if case let .sent(count) = immediateStatus {
-            expect(count == 1, "immediate opt-in upload reports the current event as sent")
+            expect(count == 1, "immediate diagnostics upload reports the current event as sent")
         } else {
-            expect(false, "immediate opt-in upload exposes sent status")
+            expect(false, "immediate diagnostics upload exposes sent status")
         }
         let acceptedUploadCount = await acceptedUploader.count()
-        expect(acceptedUploadCount >= 1, "opt-in uploads installation evidence")
+        expect(acceptedUploadCount >= 1, "enabled diagnostics upload installation evidence")
         expect(accepted.store.pendingUploads().isEmpty, "successful immediate upload clears the pending queue")
 
         let declinedImmediateRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -468,20 +479,6 @@ struct InstallationEvidenceTests {
         let retriedUploadCount = await retryUploader.count()
         expect(retriedUploadCount == 1, "retried evidence is marked uploaded after success")
 
-        let deletionRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        let deletionUploader = UploadRecorder()
-        let deletion = InstallationEvidenceController(
-            store: LocalInstallationEvidenceStore(rootURL: deletionRoot),
-            uploader: deletionUploader,
-            automaticRetryDelays: []
-        )
-        deletion.decideConsent(.accepted)
-        deletion.record(makeEvent())
-        await deletion.flushPendingUploads()
-        let deleted = await deletion.deleteUploadedReports()
-        let deletionCount = await deletionUploader.deletionCount()
-        expect(deleted == 1 && deletionCount == 1, "uploaded reports can be deleted with their local deletion token")
-        expect(deletion.store.uploadedEvents().isEmpty, "deleted reports are no longer marked as uploaded")
     }
 
     static func expect(_ condition: @autoclosure () -> Bool, _ message: String) {

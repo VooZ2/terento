@@ -13,6 +13,7 @@
   ],
   "app": [
     "Tests/run-app-about-screen-contract-tests.sh",
+    "lab/native-connectivity-poc/Tests/run-app-diagnostics-contract-tests.sh",
     "Tests/run-app-shell-contract-tests.sh",
     "Tests/run-app-connection-ui-contract-tests.sh",
     "Tests/run-app-installation-progress-format-tests.sh",

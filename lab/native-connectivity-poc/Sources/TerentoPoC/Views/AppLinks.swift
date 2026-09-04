@@ -7,7 +7,18 @@ enum TerentoAppLinks {
     static let documentation = URL(string: "https://github.com/VooZ2/terento#readme")!
     static let issues = URL(string: "https://github.com/VooZ2/terento/issues")!
     static let repository = URL(string: "https://github.com/VooZ2/terento")!
-    static let privacy = URL(string: "https://terento.app/privacy/#compatibility-reports")!
+    static let donate = URL(string: "https://buymeacoffee.com/vooz2")!
+    static let privacy = URL(string: "https://terento.app/privacy/")!
+    static let legal = URL(string: "https://terento.app/legal/")!
+
+    // The public site already preserves and reports UTM campaign parameters.
+    // Keep app-originated web visits distinguishable without adding analytics
+    // or a tracking identifier to the native app.
+    private static let appReferralQuery =
+        "utm_source=terento_app&utm_medium=referral&utm_campaign=app_about"
+    static let websiteFromApp = URL(string: "https://terento.app/?\(appReferralQuery)")!
+    static let privacyFromApp = URL(string: "https://terento.app/privacy/?\(appReferralQuery)")!
+    static let legalFromApp = URL(string: "https://terento.app/legal/?\(appReferralQuery)")!
 }
 
 enum TerentoUpdateChannel: String, Codable, Equatable, Sendable {

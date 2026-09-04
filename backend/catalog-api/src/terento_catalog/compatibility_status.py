@@ -1,6 +1,6 @@
 """Canonical compatibility status contract.
 
-Only privacy-minimised, opt-in installation reports reach this classifier.
+Only privacy-minimised, shared installation reports reach this classifier.
 The exact model/variant identity is selected by the caller; this function
 only classifies its qualifying successful-install count.
 """
@@ -40,8 +40,8 @@ def calculate_compatibility_status(
 
     ``None`` is used for a non-map device or an identity with no qualifying
     map-capable evidence. It is deliberately not a compatibility status.
-    Successful reports are already consent-gated by the evidence endpoint;
-    failed reports and recognition-only evidence contribute zero successes.
+    Successful reports are already filtered by the evidence endpoint; failed
+    reports and recognition-only evidence contribute zero successes.
     """
 
     if successful_install_count < 0:

@@ -15,25 +15,25 @@ accepted for the explicit reviewed provider allowlist (`freizeitkarte` and
 events use literal `custom` region and release labels so no local filename,
 hash-derived identity, or provider claim is uploaded. Provider installation
 evidence can be linked to map-operation events by a shared operation ID when
-both opt-ins are enabled; custom events are evidence-only and have no map-
+both default-on diagnostics streams are enabled; users can disable either
+stream from the app's Diagnostics window. Custom events are evidence-only and have no map-
 statistics event. Provider controls and statistics are private
 authenticated admin routes. No route serves map binaries.
 
 ## `POST /compatibility/events`
 
-Accepts at most 16 KiB of allowlisted schema-version-1, schema-version-2, or schema-version-3 JSON after client
-opt-in. Event UUIDs are idempotent. Unknown fields, local paths, malformed
+Accepts at most 16 KiB of allowlisted schema-version-1 through schema-version-4 JSON under the client’s
+default-on anonymous diagnostics policy. Event UUIDs are idempotent. Unknown fields, local paths, malformed
 payloads, providers/sources outside the current compatibility-evidence allowlist, and
 privacy-prohibited data are rejected. The compatibility evidence source
 allowlist is explicit and remains separate from the provider-neutral map
 catalog; a new reviewed provider must be added to that allowlist and pass the
 normal review before its compatibility events are accepted. `custom` is a
 fixed local-IMG source label, not a provider, and only accepts literal
-`custom` region and release values. A random per-event deletion token is required; older beta payloads
-without one are rejected rather than retained without a self-service deletion
-credential. The endpoint is rate limited and stores allowlisted columns in the
-separate compatibility table. The original JSON body is not retained; only
-the approved fields and a SHA-256 hash of the event deletion token are stored.
+`custom` region and release values. New schema-version-4 clients do not send
+deletion credentials; schema versions 1–3 remain readable for backward
+compatibility. The endpoint is rate limited and stores allowlisted columns in
+the separate compatibility table. The original JSON body is not retained.
 New clients do not send a post-install
 confirmation signal; legacy `userConfirmed` fields are tolerated only for
 backward compatibility with older beta clients. Upload failure never changes
@@ -47,7 +47,7 @@ such model-only evidence must not be matched to a sibling exact variant.
 Reconnect is never required for any compatibility status. The canonical
 aggregate groups by `canonicalDeviceId` when available and uses exact
 `compatibilityIdentity` only as the fallback for older uncanonicalized events.
-It then uses the successful opt-in installation count: `TESTING` for zero successful installations on
+It then uses the successful shared installation count: `TESTING` for zero successful installations on
 recognized map-capable evidence, `TESTED` for 1–2, `SUPPORTED` for 3–4, and
 `VERIFIED` for 5 or more. Failed reports, opt-out local installs, and duplicate
 event IDs do not increase the successful count. Firmware variation, physical
@@ -69,13 +69,9 @@ distinct write-started operations, not child map rows; a multi-map operation
 succeeds only when all of its selected map results verify. Legacy events remain
 one operation each.
 
-## `DELETE /compatibility/events`
-
-Accepts the event UUID and its 64-character deletion token. The service hashes
-the supplied token and deletes the matching event. A missing event and an
-incorrect token both return the same not-found response. This prevents the
-event UUID alone from authorizing deletion. The route is rate limited and the
-client keeps deletion tokens locally; the server stores only their hashes.
+Schema version 4 keeps the structured diagnostics contract while removing the
+per-event deletion token. Uploaded compatibility events are immutable through
+the public API; `DELETE /compatibility/events` returns `405 Method Not Allowed`.
 
 Compatibility events older than 24 months are pruned from the active database
 by the service health cycle.
@@ -524,9 +520,10 @@ UUIDs and are idempotent. The server stores only the normalized columns in
 insert returns `201`, a duplicate returns `200`, and both return the
 `operationId`.
 
-This endpoint is intended for explicit map-operation statistics consent and
-must not be used as unrelated background telemetry. It contains no raw device
-identifier and does not alter compatibility evidence.
+This endpoint receives map-usage diagnostics while the independent map-usage
+diagnostics switch is enabled in `Terento → Diagnostics`; it must not be used
+as unrelated background telemetry. It contains no raw device identifier and
+does not alter compatibility evidence.
 
 ## `GET /admin/map-statistics.json`
 

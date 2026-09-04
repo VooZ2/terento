@@ -85,13 +85,13 @@ therefore requires Node.js. Set `TERENTO_NODE_BIN` when Node.js is not on
   /admin/map-statistics.json` exposes its private aggregates and never returns
   raw events or device identifiers. Raw map events are pruned after 24 months.
 - `POST /compatibility/events` accepts validated, rate-limited, idempotent
-  privacy-minimised install events after client consent. It stores only
-  allowlisted columns, hashes the per-event deletion token, and never stores
-  the submitted JSON body. Exact model variants are retained separately;
-  reconnect observations are optional and never gate compatibility status.
-- `DELETE /compatibility/events` lets the client erase one uploaded event by
-  presenting its event UUID and secret deletion token. Events are also pruned
-  automatically after 24 months.
+  privacy-minimised install events under the default-on anonymous diagnostics
+  policy. It stores only allowlisted columns and never stores the submitted JSON
+  body. Exact model variants are retained separately; reconnect observations are
+  optional and never gate compatibility status.
+- Uploaded compatibility events are immutable through the public API;
+  `DELETE /compatibility/events` returns `405 Method Not Allowed`. Events are
+  also pruned automatically after 24 months by the service health cycle.
 - `GET https://api.terento.app/admin` serves the authenticated, noindex
   aggregate operator dashboard from the same API container as the catalog
   and account settings. The first account requires `ADMIN_BOOTSTRAP_SECRET`;

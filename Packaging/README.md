@@ -39,7 +39,7 @@ release label:
 RELEASE_TAG=v1.0.0-beta.9 \
 Packaging/release.sh \
   --version 1.0.0 \
-  --build 9 \
+  --build 10 \
   --release-version 1.0.0-beta.9 \
   --overwrite
 ```
@@ -89,7 +89,7 @@ To exercise the fresh build, tests, signing, Hardened Runtime, and runtime-path
 checks without contacting Apple or creating release artifacts:
 
 ```sh
-Packaging/release.sh --no-notarize --version 1.0.0 --build 9 \
+Packaging/release.sh --no-notarize --version 1.0.0 --build 10 \
   --release-version 1.0.0-beta.9
 ```
 

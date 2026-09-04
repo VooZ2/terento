@@ -166,18 +166,20 @@ better to wait for a later release.
 
 Terento works without an account.
 
-Before a new installation, you can choose whether to share privacy-minimised
-installation results to help improve compatibility information for other
-Garmin users. Sharing can be turned off and does not affect installation.
+Terento sends two privacy-minimised anonymous diagnostics streams by default:
+compatibility installation results and map-usage outcomes. You can turn either
+stream off anytime in `Terento → Diagnostics`; this does not affect
+installation. Custom `.img` installations are shared only as compatibility
+diagnostics, never as map-usage diagnostics.
 
-The app also offers a separate, off-by-default choice to share anonymous map
-download and installation outcomes. These events contain provider, map,
-region, outcome, random operation/event IDs, timestamp, and app build only.
+Map-usage events contain provider, map, region, outcome, random
+operation/event IDs, timestamp, and app build only.
 
 Reports do not include Garmin Unit IDs, serial numbers, accounts, file paths,
 map files, or raw diagnostic logs.
 
-Your maps, device files, and diagnostics stay on your Mac.
+Your maps, device files, manifests, and device identifiers stay on your Mac;
+only the documented anonymous diagnostics are shared.
 
 See the full
 [Privacy Policy](https://terento.app/privacy/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_privacy).

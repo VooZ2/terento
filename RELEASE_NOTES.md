@@ -4,7 +4,8 @@ Release date: 2026-09-02
 Maintenance build: 2026-09-04
 
 Beta.9 build 10 fixes compatibility reporting for local custom `.img`
-installations. It keeps the preceding release's provider and device scope
+installations and makes anonymous diagnostics consistent and available by
+default. It keeps the preceding release's provider and device scope
 unchanged.
 
 This remains a pre-MVP beta for hardware validation. Model eligibility is not
@@ -26,10 +27,18 @@ a claim that every exact watch has been independently verified.
   deployment, on release-tag/manual CI, and every day against the shipped
   client contract.
 - Record the connected watch model for a successful custom `.img`
-  installation when compatibility sharing is enabled, using only the coarse
-  `custom` source labels and never a hash-derived local identity.
+  installation in the default-on anonymous compatibility report, using only
+  the coarse `custom` source labels and never a hash-derived local identity.
 - Keep custom `.img` installations out of map statistics; they appear in the
   dashboard as Custom installation activity through compatibility evidence.
+- Send compatibility reports and map statistics by default, without an
+  opt-in/opt-out choice in the installation flow. The only opt-out is in
+  `Terento → Diagnostics`.
+- Add one `Send diagnostics` action for queued reports. It is enabled only
+  when reports are waiting, and uploaded reports cannot be deleted from the
+  app.
+- Refresh About with the direct `Update` and `Manage diagnostics` actions,
+  Donate plus Privacy/Legal links, and add `Terento → Check updates`.
 
 ## Application updates
 
@@ -46,9 +55,12 @@ a claim that every exact watch has been independently verified.
   write-new → verify → remove-old and never deletes the working map first.
 - Device manifests and physical-watch ownership keys remain local. There is no
   account, login, cloud device profile or server-side Garmin identifier storage.
-- Map statistics are independent from compatibility evidence, optional, queued
-  locally and non-blocking. They exclude watch identifiers, serial numbers,
-  Unit IDs, file paths, manifests, binaries and diagnostic logs.
+- Map statistics are independent from compatibility evidence, default-on,
+  queued locally and non-blocking. They exclude watch identifiers, serial
+  numbers, Unit IDs, file paths, manifests, binaries and diagnostic logs.
+- Both diagnostics streams can be disabled later in `Terento → Diagnostics`;
+  queued reports remain local until sent and there is no delete action for
+  reports already uploaded.
 - Custom `.img` imports use compatibility evidence only; they do not create
   map-statistics events.
 - Maps download directly from the selected provider. Terento does not host,
@@ -56,8 +68,8 @@ a claim that every exact watch has been independently verified.
 
 ## Validation status
 
-- All 42 native test scripts pass, including generated identity checks for all
-  63 Freizeitkarte and 177 OpenTopoMap catalog rows.
+- All native safety and app regression suites pass, including generated
+  identity checks for all 63 Freizeitkarte and 177 OpenTopoMap catalog rows.
 - The exact current 219,494,190-byte OpenTopoMap Lithuania archive passes ZIP,
   artifact-size, production parser, release, and catalog identity validation.
 - The complete catalog backend regression suite passes, and the exact live
@@ -84,15 +96,11 @@ a claim that every exact watch has been independently verified.
 
 ## Release artifacts
 
-Build 10 is a local release candidate pending Apple notarization and
-publication. The checksums below belong to the previously published beta.9
-build 9 and must be replaced before this release body or manifest is
-published.
-
-Previous beta.9 build 9 notarization submission
-`f3709255-7674-4707-ae4f-649b6d0f0b54` was accepted with no issues.
+Build 10 was signed, notarized, stapled, and validated by the release
+pipeline. Apple submission `be22894f-9a7a-44b5-bfff-55fe0ec3cece` was
+accepted with no issues.
 
 ```text
-Terento-1.0.0-beta.9-macOS-arm64.dmg  56887be4ba89d2fda15dafc5bb0f189ac945428959a9179df28591e0da09f64e
-Terento-1.0.0-beta.9-macOS-arm64.zip  1c42a6402df821c95775bc41660fae1ecfea2d3104528b96e510d66f7056ef5b
+Terento-1.0.0-beta.9-macOS-arm64.dmg  2f14858f494d1faa5fb27f24e833d714fe3eeb9e13a4664ab7eec3319aa5dd51
+Terento-1.0.0-beta.9-macOS-arm64.zip  4a161c67997b6dbdca783bd6a8b9803ce4b0d2b8a8c3340a155ae78c2365d990
 ```

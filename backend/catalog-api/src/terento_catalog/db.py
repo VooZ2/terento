@@ -327,19 +327,6 @@ class Database:
             ),
         )
 
-    def delete_compatibility_event(self, event_id: str, deletion_token: str) -> bool:
-        query = """
-            DELETE FROM compatibility_evidence_event
-            WHERE event_id = %s AND deletion_token_hash = %s
-            RETURNING event_id
-        """
-        with self.connection() as connection:
-            row = connection.execute(
-                query,
-                (event_id, self._token_hash(deletion_token)),
-            ).fetchone()
-        return row is not None
-
     def prune_compatibility_events(self) -> int:
         with self.connection() as connection:
             result = connection.execute(

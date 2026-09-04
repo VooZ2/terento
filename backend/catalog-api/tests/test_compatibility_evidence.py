@@ -396,20 +396,43 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertNotIn("openmtbmap", migration)
         self.assertNotIn("DROP TABLE", migration)
 
-    def test_event_deletion_requires_matching_token(self):
+    def test_event_deletion_is_not_supported(self):
         body = json.dumps(event()).encode()
         created, _ = self.request("POST", "/compatibility/events", body, {"Content-Type": "application/json"})
         self.assertEqual(created.status, 201)
 
-        wrong = json.dumps({"id": event()["id"], "deletionToken": "b" * 64}).encode()
-        denied, _ = self.request("DELETE", "/compatibility/events", wrong, {"Content-Type": "application/json"})
-        self.assertEqual(denied.status, 404)
+        response, response_body = self.request(
+            "DELETE", "/compatibility/events", b"{}",
+            {"Content-Type": "application/json"},
+        )
+        self.assertEqual(response.status, 405)
+        self.assertEqual(json.loads(response_body)["error"], "deletion_not_supported")
+        self.assertIn(event()["id"], self.database.events)
 
-        correct = json.dumps({"id": event()["id"], "deletionToken": "a" * 64}).encode()
-        deleted, response_body = self.request("DELETE", "/compatibility/events", correct, {"Content-Type": "application/json"})
-        self.assertEqual(deleted.status, 200)
-        self.assertEqual(json.loads(response_body)["status"], "deleted")
-        self.assertFalse(self.database.events)
+    def test_schema_v4_does_not_require_or_accept_deletion_token(self):
+        payload = event(
+            schemaVersion=4,
+            id="323e4567-e89b-12d3-a456-426614174000",
+            operationId="423e4567-e89b-12d3-a456-426614174000",
+            mapResultIndex=0,
+            selectedMapCount=1,
+            appBuild="10",
+            releaseLabel="1.0.0-beta.9",
+            writeStarted=True,
+            remoteObjectCreated=False,
+            cleanupAttempted=False,
+            cleanupSucceeded=False,
+            transferProgressBucket="100",
+        )
+        payload.pop("deletionToken")
+        response, _ = self.request(
+            "POST", "/compatibility/events", json.dumps(payload).encode(),
+            {"Content-Type": "application/json"},
+        )
+        self.assertEqual(response.status, 201)
+
+        with self.assertRaisesRegex(EvidenceValidationError, "deletion_not_supported"):
+            validate_event(json.dumps({**payload, "deletionToken": "a" * 64}).encode())
 
     def test_database_binds_omitted_optional_fields_as_null(self):
         database = CaptureDatabase()

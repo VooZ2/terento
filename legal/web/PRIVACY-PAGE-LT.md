@@ -18,15 +18,16 @@ kompiuteryje. Jie nesiunčiami kaip debesies laikrodžio profilis.
 
 libmtp ir libusb naudojamos tik native macOS programoje, ne šioje svetainėje. Kūrimo versijos naudoja Homebrew, o produkcinė programa naudoja teisinių pranešimų skyriuje aprašytas prisegtas dinamines bibliotekas.
 
-## Suderinamumo ataskaitos programoje
+## Anoniminė suderinamumo diagnostika programoje
 
-Naujo diegimo metu macOS beta prieš diegimą rodo suderinamumo duomenų
-dalijimosi pasirinkimą. Naujam diegimui jis pažymėtas pagal nutylėjimą, tačiau
-jį galima atžymėti prieš diegiant. Atžymėjimas neblokuoja diegimo ir nemažina
-programos funkcionalumo.
+macOS beta pagal nutylėjimą siunčia privatumą tausojančią anoniminę
+suderinamumo diagnostiką į `api.terento.app`, kad gerintų diegimo patikimumą
+ir suderinamumo aprėptį pagal laikrodžio modelį bei firmware. Diegimo lange
+nėra dalijimosi pasirinkimo. Šį srautą galima bet kada išjungti per
+**Terento → Diagnostics**; išjungimas neblokuoja diegimo ir nemažina programos
+funkcionalumo.
 
-Jei pasirinkimas paliekamas įjungtas ir diegimas tęsiamas, siunčiami tik
-privatumą tausojantys suderinamumo duomenys: atsitiktiniai įvykio ir vieno
+Siunčiami tik privatumą tausojantys suderinamumo duomenys: atsitiktiniai įvykio ir vieno
 diegimo paspaudimo operacijos ID, laikas, laikrodžio modelis ar šeima,
 išvalyta žalia MTP modelio etiketė, firmware, USB VID/PID, MTP transportas,
 kategorija, nurodanti tik ar vietinė tapatybė gauta iš MTP serijos numerio,
@@ -39,8 +40,31 @@ nėra Garmin Unit ID ar serijos numerio reikšmės, vietinio laikrodžio rakto, 
 el. pašto, vietinių kelių, MTP object ID, manifestų, žemėlapių failų ar hash,
 nefiltruoto klaidos teksto ar diagnostikos žurnalų.
 
-Dalijimąsi galima sustabdyti, o įkeltas ataskaitas ištrinti programoje per
-**About Terento → Privacy**.
+Šie duomenys naudojami gerinti Terento programos kokybę, diegimo patikimumą ir
+palaikomų įrenginių aprėptį. Būsimą dalijimąsi galima sustabdyti per
+**Terento → Diagnostics**. Programa neturi įkeltos diagnostikos trynimo
+veiksmo; su privatumo teisių klausimais kreipkitės į
+[privacy@terento.app](mailto:privacy@terento.app).
+
+## Anoniminė žemėlapių naudojimo diagnostika
+
+Programa pagal nutylėjimą siunčia atskirą privatumą tausojančios anoniminės
+žemėlapių naudojimo diagnostikos srautą, kad matuotų žemėlapių atsisiuntimo ir
+diegimo rezultatus. Įvykis gali turėti tik atsitiktinius įvykio ir operacijos
+ID, laiką, teikėją, žemėlapį, regioną, įvykio tipą, rezultatą ir programos
+build. Jame nėra laikrodžio modelio ar identifikatoriaus, serijos numerio ar
+Garmin Unit ID reikšmės, paskyros, vietinio kelio, manifesto, žemėlapio failo
+ar diagnostikos žurnalo. Šį srautą galima išjungti per **Terento →
+Diagnostics**; tai neriboja diegimo. Pasirinktinių `.img` diegimai siunčiami
+tik kaip suderinamumo diagnostika, niekada ne kaip žemėlapių naudojimo
+diagnostika.
+
+## Diagnostikos saugojimas
+
+Suderinamumo ir žemėlapių naudojimo diagnostika Terento PostgreSQL duomenų
+bazėje saugoma ne ilgiau kaip 24 mėnesius, po to pašalinama. Prieiga prie
+atskirų įvykių apribota privačiai administravimo paslaugai. Programa neturi
+naudotojui skirto įkeltos diagnostikos trynimo veiksmo.
 
 ## Kas veikia svetainėje
 
@@ -91,14 +115,15 @@ Poraštėje nerašykite absoliutaus „slapukai nenaudojami“, jei Cloudflare s
 
 Pagal BDAR galite turėti teisę susipažinti su duomenimis, juos taisyti, ištrinti, apriboti tvarkymą, nesutikti ir pateikti skundą priežiūros institucijai. Lietuvoje tai Valstybinė duomenų apsaugos inspekcija (VDAI).
 
-Šias teises galite įgyvendinti kreipdamiesi adresu
+Būsimą diagnostikos dalijimąsi galima sustabdyti per **Terento → Diagnostics**.
+Programa neturi įkeltos diagnostikos trynimo veiksmo. Šias teises galite
+įgyvendinti kreipdamiesi adresu
 [privacy@terento.app](mailto:privacy@terento.app). Šis tekstas tų teisių
 nesumažina.
 
 Tikslas — pristatyti ir apsaugoti svetainę, matyti agreguotą lankomumą bei
-gerinti programos suderinamumą. Lankomumo statistika tvarkoma pagal teisėtą
-interesą (BDAR 6 str. 1 d. f p.), o suderinamumo ataskaitos siunčiamos tik tęsiant
-diegimą su matomu, pagal nutylėjimą pažymėtu pasirinkimu; jų tvarkymas grindžiamas
-BDAR 6 str. 1 d. a p. sutikimu.
+gerinti programos ir suderinamumo kokybę. Lankomumo statistika ir privatumą
+tausojanti anoniminė diagnostika tvarkomos pagal teisėtą interesą (BDAR 6 str.
+1 d. f p.).
 
 Šis pranešimas yra skaidrumo tekstas, ne teisinė konsultacija.

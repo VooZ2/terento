@@ -272,15 +272,16 @@ and does not authorize writes. Unrecognised models remain `NULL` / Unknown.
 
 ## Compatibility evidence and statistics
 
-`compatibility_evidence_event` contains idempotent opt-in event rows identified
+`compatibility_evidence_event` contains idempotent shared event rows identified
 by a client-generated UUID. Only allowlisted columns are retained; the original
-JSON payload is not stored. A per-event deletion token is retained only as a
-SHA-256 hash, allowing the client to erase an uploaded event without an
-account. Rows older than 24 months are deleted automatically. The retired
-confirmation table has been removed because the current client does not create
-a separate post-install confirmation signal. Migration 011 also removes older
-beta events that had no deletion token, rather than retaining reports the
-revised client could not erase. `compatibility_model_review`
+JSON payload is not stored. The nullable `deletion_token_hash` column remains
+only for legacy schema-version-1 through schema-version-3 rows; current
+schema-version-4 clients send no deletion credential, and uploaded events are
+immutable through the public API. Rows older than 24 months are deleted
+automatically. The retired confirmation table has been removed because the
+current client does not create a separate post-install confirmation signal.
+Migration 011 removed older beta events that had no deletion token, rather than
+retaining reports the revised client could not erase. `compatibility_model_review`
 stores maintainer-reviewed physical-device evidence, notes, review state, and
 the default-false public-statistics switch/display name.
 
@@ -338,7 +339,7 @@ failed installation counts, success rate, firmware coverage, latest outcomes,
 error-category totals and the canonical evidence status. Events carry an exact
 compatibility identity plus optional variant/case-size and reconnect/map-
 visibility observations. Reconnect is informational only. Status depends only
-on successful opt-in installations: zero is `TESTING`, 1–2 is `TESTED`, 3–4
+on successful shared installations: zero is `TESTING`, 1–2 is `TESTED`, 3–4
 is `SUPPORTED`, and 5 or more is `VERIFIED`. The private dashboard reads this view. The
 prepared public query additionally requires both `review_status = 'APPROVED'`
 and `public_statistics_enabled = true` and only exposes evidence-backed

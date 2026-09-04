@@ -34,10 +34,15 @@ rg -Fq 'CFBundleIconName' "$repo_root/app/Terento/Info.plist"
 rg -Fq 'CommandGroup(replacing: .appInfo)' "$app_source"
 rg -Fq 'CommandGroup(replacing: .help)' "$app_source"
 rg -Fq 'Window("About Terento", id: "about")' "$app_source"
+rg -Fq 'Window("Diagnostics", id: "diagnostics")' "$app_source"
 rg -Fq 'Image(nsImage: NSApplication.shared.applicationIconImage)' "$about_source"
 app_info_commands="$(sed -n '/CommandGroup(replacing: .appInfo)/,/CommandGroup(replacing: .help)/p' "$app_source")"
 if ! grep -Fq 'Button("About Terento")' <<<"$app_info_commands" \
     || ! grep -Fq 'openWindow(id: "about")' <<<"$app_info_commands" \
+    || ! grep -Fq 'Button("Diagnostics")' <<<"$app_info_commands" \
+    || ! grep -Fq 'openWindow(id: "diagnostics")' <<<"$app_info_commands" \
+    || ! grep -Fq 'Button("Check updates")' <<<"$app_info_commands" \
+    || ! grep -Fq 'appUpdateController.checkForUpdates()' <<<"$app_info_commands" \
     || [[ "$(rg -Fc 'Button("About Terento")' "$app_source")" != "1" ]]; then
     print -u2 "FAIL: standard macOS About is not the single custom About route"
     exit 1
