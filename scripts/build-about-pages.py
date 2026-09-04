@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE_URL = "https://terento.app"
 ABOUT_SLUG = "about/"
 SHELL_VERSION = "20260904-pass3-internal-link-events-v1"
-STYLE_VERSION = "20260905-about-story-v1"
+STYLE_VERSION = "20260905-about-story-v2"
 UMAMI_SCRIPT_VERSION = "20260904-public-link-events"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
@@ -309,7 +309,7 @@ def render(locale: str, copy: dict[str, object]) -> str:
     <main id="main-content">
       <section class="about-story" aria-labelledby="about-title">
         <div class="shell about-story-inner">
-          <p class="eyebrow">{esc(copy["story_eyebrow"])}</p>
+          <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>{esc(copy["story_eyebrow"])}</p>
           <h1 id="about-title">{esc(copy["story_heading"])}</h1>
           <div class="about-story-copy">
 {story}

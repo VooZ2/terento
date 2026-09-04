@@ -5,7 +5,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 const styles = read("site/styles.css");
-const styleVersion = "20260905-about-story-v1";
+const styleVersion = "20260905-about-story-v2";
 const localizedContentVersion = "20260904-pass3-internal-link-events-v1";
 
 const cssBlock = (selector) => {
@@ -187,6 +187,7 @@ for (const locale of Object.keys(locales)) {
   assert.doesNotMatch(html, /class="compatibility-hero about-hero"/);
   assert.equal((html.match(/<h1\b/g) || []).length, 1, `${locale} must have one primary About heading`);
   assert.match(html, /<section class="about-story" aria-labelledby="about-title">[\s\S]*<h1 id="about-title">/);
+  assert.match(html, /<p class="eyebrow"><span class="status-dot" aria-hidden="true"><\/span>/, `${locale} About story eyebrow must use the shared status dot`);
   const storyCopy = html.match(/<div class="about-story-copy">[\s\S]*?<\/div>/)?.[0];
   assert.ok(storyCopy, `${locale} must have a story copy block`);
   assert.equal((storyCopy.match(/<p>/g) || []).length, 4, `${locale} must group the story into four idea-led paragraphs`);
