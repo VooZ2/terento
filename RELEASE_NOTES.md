@@ -103,7 +103,8 @@ every exact watch has been independently verified.
   OpenTopoMap Luxembourg installations on the fēnix 8 47 mm AMOLED, firmware
   2244. Transfer, Finishing, Manage maps, and diagnostic delivery passed.
   Existing maps and the earlier incomplete OpenTopoMap Andorra were preserved.
-  On-watch usability and reconnect checks are pending owner confirmation.
+  The owner confirmed both maps are visible and usable on the watch.
+  Physical reconnect and refreshed Manage maps also passed.
 
 ## Known limitations
 
