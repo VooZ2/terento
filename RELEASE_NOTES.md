@@ -3,19 +3,33 @@
 Release date: 2026-09-02
 Maintenance build: 2026-09-04
 
-Beta.9 build 10 fixes compatibility reporting for local custom `.img`
-installations and makes privacy-minimised diagnostics consistent and available
-by default. The public beta currently supports Freizeitkarte and OpenTopoMap
-main-map packages; optional OpenTopoMap contours are planned but not supported.
+Beta.9 build 11 addresses stalled installation finishing and diagnostics delivery.
+Freizeitkarte and OpenTopoMap main-map packages remain the enabled providers.
+The display version stays 1.0.0-beta.9; the distributed build is 11.
 
 Because the original beta.9 GitHub release is immutable, this maintenance
-build is published under `v1.0.0-beta.9-build10`. Terento still displays
-`Version 1.0.0-beta.9 (10)`.
+build is published under `v1.0.0-beta.9-build11`. Terento still displays
+`Version 1.0.0-beta.9 (11)`.
 
 This is a public beta for hardware validation. The MVP first-install baseline
 is established, but the beta remains open until one real safe update has passed
 for each currently enabled provider. Model eligibility is not a claim that
 every exact watch has been independently verified.
+
+## Build 11 fixes
+
+- Bound native sampled verification and exact cleanup with an isolated worker
+  deadline. Stop the worker before continuing; never retry the map write.
+- Read the same verification regions in smaller chunks and revalidate the
+  exact target whenever a read-only session is reopened.
+- Preserve failed-install recovery when cleanup cannot be confirmed. A partial
+  or unverified map is never recorded as successfully installed.
+- Restore schema-v4 compatibility event storage without deleting queued or
+  uploaded reports, changing idempotency, or reopening the immutable API.
+- Keep transfer progress tied to the validated source size, separately from
+  sampled verification progress, in the UI and diagnostic reports.
+- Make health/readiness fail when diagnostic storage migrations or the schema
+  are incompatible, using read-only checks for both diagnostic streams.
 
 ## Fixes and safeguards
 
@@ -48,7 +62,7 @@ every exact watch has been independently verified.
 
 ## Application updates
 
-- About reports `1.0.0-beta.9` and distributed build `10`.
+- About reports `1.0.0-beta.9` and distributed build `11`.
 - Release and public Download metadata are generated from one manifest and
   checked for version, URL, date, and checksum drift.
 
@@ -85,11 +99,12 @@ every exact watch has been independently verified.
 - The arm64 release build is Developer ID signed, notarized by Apple with no
   issues, stapled, Gatekeeper accepted, and launch-smoke verified from both the
   ZIP and DMG paths.
-- Owner hardware verification on the beta.9 release candidate
-  confirms OpenTopoMap Lithuania installation, map visibility on the fēnix 8,
-  persistence after disconnect/reconnect, and discovery in Manage maps. The
-  final rebuild changes only catalog timestamp decoding and diagnostics; its
-  unchanged installation path passed the complete automated regression suite.
+- The build 11 Release candidate completed Freizeitkarte Andorra and
+  OpenTopoMap Luxembourg installations on the fēnix 8 47 mm AMOLED, firmware
+  2244. Transfer, Finishing, Manage maps, and diagnostic delivery passed.
+  Existing maps and the earlier incomplete OpenTopoMap Andorra were preserved.
+  The owner confirmed both maps are visible and usable on the watch.
+  Physical reconnect and refreshed Manage maps also passed.
 
 ## Known limitations
 
@@ -103,11 +118,11 @@ every exact watch has been independently verified.
 
 ## Release artifacts
 
-Build 10 was signed, notarized, stapled, and validated by the release
-pipeline. Apple submission `be22894f-9a7a-44b5-bfff-55fe0ec3cece` was
+Build 11 was signed, notarized, stapled, and validated by the release
+pipeline. Apple submission `2940b354-9107-4947-9b5a-01b7c3a1c5e7` was
 accepted with no issues.
 
 ```text
-Terento-1.0.0-beta.9-macOS-arm64.dmg  2f14858f494d1faa5fb27f24e833d714fe3eeb9e13a4664ab7eec3319aa5dd51
-Terento-1.0.0-beta.9-macOS-arm64.zip  4a161c67997b6dbdca783bd6a8b9803ce4b0d2b8a8c3340a155ae78c2365d990
+Terento-1.0.0-beta.9-macOS-arm64.dmg  77343739b489a05a5f7b927f227325da53b890abf2ddc178cd27f3cbd768744e
+Terento-1.0.0-beta.9-macOS-arm64.zip  a9240c316a9a01cf634882674355d27d575f247630a896fe8fa3494f1c629b3e
 ```
