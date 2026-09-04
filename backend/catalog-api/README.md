@@ -233,3 +233,12 @@ The daily scheduler runs the reviewed Freizeitkarte and OpenTopoMap adapters
 as isolated map phases. On Monday it then runs the separate Garmin device
 collection. A provider or Garmin collection failure is logged and retained
 without clearing any previous known-good catalog.
+
+### Build 11 diagnostics storage correction
+
+Migration 033 drops only the legacy deletion-token NOT NULL constraint. Schema
+v4 events have no token; legacy hashes and all retained events are preserved.
+Public event APIs remain immutable and retries retain the same event ID.
+`/health` checks the installed migration set, the nullable token column, and
+read-only projections of both diagnostic tables with a local statement timeout.
+Missing or incompatible storage returns 503 without creating a test event.

@@ -119,7 +119,32 @@ class Database:
 
     def health(self) -> bool:
         with self.connection() as connection:
-            connection.execute("SELECT 1")
+            # Read-only readiness: never insert synthetic compatibility evidence.
+            connection.execute("SET LOCAL statement_timeout = '3000ms'")
+            applied = {row["version"] for row in connection.execute(
+                "SELECT version FROM schema_migrations"
+            ).fetchall()}
+            required = {path.name.split("_", 1)[0] for path in migration_directory().glob("[0-9]*.sql")}
+            if not required.issubset(applied):
+                raise RuntimeError("diagnostic storage migrations are incomplete")
+            column = connection.execute("""
+                SELECT is_nullable FROM information_schema.columns
+                WHERE table_schema = current_schema()
+                  AND table_name = 'compatibility_evidence_event'
+                  AND column_name = 'deletion_token_hash'
+            """).fetchone()
+            if not column or column["is_nullable"] != "YES":
+                raise RuntimeError("diagnostic storage is incompatible with schema v4")
+            connection.execute("""
+                SELECT event_id, operation_id, app_build, failure_stage, failure_code,
+                       native_failure_code, transfer_progress_bucket, identity_resolution_code,
+                       deletion_token_hash FROM compatibility_evidence_event WHERE FALSE
+            """)
+            connection.execute("""
+                SELECT event_id, operation_id, provider_id, map_package_id, region,
+                       event_type, outcome, occurred_at, app_build
+                FROM map_download_event WHERE FALSE
+            """)
         return True
 
     def record_operational_observation(self, observation: dict[str, Any]) -> bool:

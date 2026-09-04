@@ -1920,7 +1920,8 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
 
         def _handle_health(self, *, send_body: bool) -> None:
             try:
-                service.health()
+                if not service.health():
+                    raise RuntimeError("service is not ready")
             except Exception:  # pragma: no cover - database availability is deployment state
                 LOGGER.exception("catalog health check failed")
                 self._send_json(
