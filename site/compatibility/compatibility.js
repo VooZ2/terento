@@ -23,6 +23,8 @@
     status: "ALL",
     family: "ALL",
     sort: "attempts",
+    loadState: "loading",
+    hasLoaded: false,
   };
   const elements = {
     grid: document.querySelector("#watch-grid"),
@@ -39,6 +41,9 @@
     summarySuccesses: document.querySelector('[data-summary="successes"]'),
     summaryUpdated: document.querySelector('[data-summary="updated"]'),
     summaryUpdatedLine: document.querySelector('[data-summary-updated]'),
+    summary: document.querySelector("#compatibility-summary"),
+    summaryLoading: document.querySelector("[data-summary-loading]"),
+    summaryContent: document.querySelector("[data-summary-content]"),
     evidenceNote: document.querySelector('[data-compatibility-evidence-note]'),
     statusList: document.querySelector("#compatibility-status-list"),
   };
@@ -160,11 +165,14 @@
 
     elements.grid.innerHTML = filtered.map(createCard).join("");
     hydrateImages();
-    elements.empty.hidden = filtered.length > 0;
-    elements.results.textContent = filtered.length === state.rows.length
-      ? `${filtered.length.toLocaleString(locale.dateLocale)} ${filtered.length === 1 ? locale.results.modelOne : locale.results.modelMany}`
-      : `${filtered.length.toLocaleString(locale.dateLocale)} ${locale.results.of} ${state.rows.length.toLocaleString(locale.dateLocale)} ${locale.results.modelMany}`;
-    elements.grid.setAttribute("aria-busy", "false");
+    const ready = state.loadState === "ready";
+    elements.empty.hidden = !ready || filtered.length > 0;
+    elements.results.textContent = !ready
+      ? ""
+      : filtered.length === state.rows.length
+        ? `${filtered.length.toLocaleString(locale.dateLocale)} ${filtered.length === 1 ? locale.results.modelOne : locale.results.modelMany}`
+        : `${filtered.length.toLocaleString(locale.dateLocale)} ${locale.results.of} ${state.rows.length.toLocaleString(locale.dateLocale)} ${locale.results.modelMany}`;
+    elements.grid.setAttribute("aria-busy", state.loadState === "loading" ? "true" : "false");
   }
 
   function populateFamilies() {
@@ -206,6 +214,44 @@
       .filter((row) => row.status);
   }
 
+  function setSettledState(loadState) {
+    state.loadState = loadState;
+    elements.summaryLoading.hidden = true;
+    elements.summaryLoading.style.display = "none";
+    elements.summaryContent.hidden = loadState !== "ready";
+    elements.summaryContent.style.display = loadState === "ready" ? "" : "none";
+    elements.summary.setAttribute("aria-busy", "false");
+    elements.grid.setAttribute("aria-busy", "false");
+  }
+
+  function readSnapshot() {
+    const snapshotElement = document.querySelector("#compatibility-snapshot");
+    if (!snapshotElement) return null;
+    try {
+      const payload = JSON.parse(snapshotElement.textContent || "{}");
+      return payload.schemaVersion === 1 && Array.isArray(payload.models) ? payload : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function initializeSnapshot() {
+    const snapshot = readSnapshot();
+    if (!snapshot) return false;
+    try {
+      state.rows = mergeRows(snapshot.models.map(parseStat));
+      state.hasLoaded = true;
+      populateFamilies();
+      updateSummary();
+      elements.error.hidden = true;
+      setSettledState("ready");
+      render();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async function load({ quiet = false } = {}) {
     try {
       const refreshToken = Date.now();
@@ -213,18 +259,26 @@
       let stats = [];
       if (publicStatsResponse.ok) {
         const payload = await publicStatsResponse.json();
-        stats = Array.isArray(payload.models) ? payload.models.map(parseStat) : [];
+        if (!Array.isArray(payload.models)) throw new Error("invalid_compatibility_response");
+        stats = payload.models.map(parseStat);
       } else if (isLocalPreview) {
         stats = previewStats.map(parseStat);
+      } else {
+        throw new Error(`compatibility_http_${publicStatsResponse.status}`);
       }
       state.rows = mergeRows(stats);
+      state.hasLoaded = true;
       populateFamilies();
       updateSummary();
+      elements.error.hidden = true;
+      setSettledState("ready");
       render();
     } catch (error) {
-      if (!quiet) {
-        elements.grid.setAttribute("aria-busy", "false");
+      const preserveExistingResults = quiet && state.hasLoaded;
+      if (!preserveExistingResults) {
+        setSettledState("error");
         elements.error.hidden = false;
+        render();
       }
       console.error("Terento compatibility results failed", error);
     }
@@ -237,7 +291,9 @@
   elements.sort.addEventListener("change", (event) => { state.sort = event.target.value; render(); });
   if (elements.evidenceNote && locale.evidenceNote) elements.evidenceNote.textContent = locale.evidenceNote;
   renderStatusExplanations();
-  load();
+  const hasSnapshot = initializeSnapshot();
+  if (!hasSnapshot) render();
+  load({ quiet: hasSnapshot });
   // Public evidence is deliberately cached at the API edge, so a quiet
   // refresh uses a cache-busting query and keeps model counts/statuses current
   // while the page remains open. Existing filters stay in the local state.

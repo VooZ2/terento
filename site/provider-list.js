@@ -3,9 +3,11 @@
   if (!lists.length) return;
 
   const API_URL = "https://api.terento.app/maps/catalog.json";
+  const PUBLIC_PROVIDER_IDS = new Set(["freizeitkarte", "opentopomap"]);
 
   const render = (providers) => {
     const names = providers
+      .filter((provider) => PUBLIC_PROVIDER_IDS.has(String(provider?.id || "").trim().toLowerCase()))
       .filter((provider) => String(provider?.status || "").toUpperCase() === "ACTIVE")
       .map((provider) => String(provider?.name || "").trim())
       .filter(Boolean);

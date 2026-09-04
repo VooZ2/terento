@@ -22,12 +22,12 @@ const guideFile = (locale) => path.join(root, "site", locale === "en" ? slug : p
 const metadata = JSON.parse(read(path.join(root, "site", "metadata.json")));
 const metadataByPath = new Map(metadata.pages.map((page) => [page.path, page]));
 const currentBetaSignals = {
-  en: /Third-party maps \+ local import/,
-  de: /Drittanbieter-Karten \+ lokaler Import/,
-  fr: /Cartes tierces \+ import local/,
-  pl: /Mapy innych firm \+ lokalny import/,
-  cs: /Mapy třetích stran \+ místní import/,
-  it: /Mappe di terze parti \+ importazione locale/,
+  en: /Freizeitkarte \+ OpenTopoMap \+ local import/,
+  de: /Freizeitkarte \+ OpenTopoMap \+ lokaler Import/,
+  fr: /Freizeitkarte \+ OpenTopoMap \+ import local/,
+  pl: /Freizeitkarte \+ OpenTopoMap \+ lokalny import/,
+  cs: /Freizeitkarte \+ OpenTopoMap \+ místní import/,
+  it: /Freizeitkarte \+ OpenTopoMap \+ importazione locale/,
 };
 
 function visibleText(fragment) {
@@ -66,7 +66,7 @@ for (const locale of locales) {
   assert.match(source, /USB/);
   assert.match(source, /free storage|freier Speicher|espace libre|wolnego miejsca|volného místa|spazio libero/i);
   assert.match(source, /1–2 minutes?|1–2 Minuten|1 à 2 minutes|1–2 minuty|1–2 minuti/);
-  assert.match(source, currentBetaSignals[locale], locale + ": provider-neutral current beta label");
+  assert.match(source, currentBetaSignals[locale], locale + ": current beta provider scope label");
   assert.match(source, /Choose a map|Karte auswählen|Choisir une carte|Wybierz mapę|Vyberte mapu|Scegli una mappa/);
   assert.match(source, /third-party \.img|supported map file|unterstützte Kartendatei|fichier cartographique pris en charge|obsługiwany plik mapy|podporovaný mapový soubor|file cartografico supportato/i, locale + ": local map import guidance");
   assert.doesNotMatch(source, /Current beta uses Freizeitkarte|aktuelle Beta verwendet Freizeitkarte|bêta actuelle utilise Freizeitkarte|obecna beta korzysta z Freizeitkarte|aktuální beta používá Freizeitkarte|beta attuale usa Freizeitkarte/i, locale + ": no provider-specific current-beta claim");
@@ -152,7 +152,7 @@ for (const locale of locales) {
     const primary = source.match(/<nav class="primary-nav"[^>]*>([\s\S]*?)<\/nav>/)?.[1];
     const footer = source.match(/<nav class="footer-nav"[^>]*>([\s\S]*?)<\/nav>/)?.[1];
     assert.ok(primary && footer, relative + ": static shell navs");
-    const hrefs = (fragment) => [...fragment.matchAll(/<a href="([^"]+)"/g)].map((match) => match[1]);
+    const hrefs = (fragment) => [...fragment.matchAll(/<a[^>]*href="([^"]+)"/g)].map((match) => match[1]);
     assert.deepEqual(hrefs(primary).slice(0, 4), [rootPath + "compatibility/", rootPath + slug, rootPath + "about/", rootPath + "download/"], relative + ": primary nav");
     assert.deepEqual(hrefs(footer), [rootPath + "about/", rootPath + "compatibility/", rootPath + slug, rootPath + "#faq", rootPath + "download/", "/legal/", "/privacy/"], relative + ": footer nav");
     assert.match(source, /Support Terento/);
@@ -186,7 +186,8 @@ assert.match(styles, /\.guide-progress\s*\{/);
 assert.match(styles, /\.guide-progress a\[aria-current="location"\]/);
 const shell = read(path.join(root, "site", "site-shell.js"));
 for (const label of ["Guide", "Anleitung", "Guide", "Poradnik", "Průvodce", "Guida"]) assert.ok(shell.includes(`guide: "${label}"`), `shell Guide label: ${label}`);
-assert.match(shell, /navLink\("compatibility"\).*navLink\("guide"\).*navLink\("about"\).*navLink\("download"\)/s);
+assert.match(shell, /navLink\("compatibility"\).*navLink\("guide"\).*navLink\("about"\).*navLink\("download", "download-action"\)/s);
+assert.match(shell, /<nav class="footer-nav"[\s\S]*navLink\("download"\)/s);
 const languageScript = read(path.join(root, "site", "language.js"));
 assert.match(languageScript, /shellLanguageMenu/);
 assert.match(languageScript, /shellLanguageMenu\?\.update\?\.\(language\)/);
@@ -197,6 +198,6 @@ for (const file of ["site/legal/index.html", "site/privacy/index.html"]) {
   assert.match(source, /data-page="(?:legal|privacy)"/);
   const primary = source.match(/<nav class="primary-nav"[^>]*>([\s\S]*?)<\/nav>/)?.[1];
   assert.ok(primary, file + ": static shell nav");
-  assert.deepEqual([...primary.matchAll(/<a href="([^"]+)"/g)].slice(0, 4).map((match) => match[1]), ["/compatibility/", "/guides/install-garmin-maps-mac/", "/about/", "/download/"], file + ": primary nav");
+  assert.deepEqual([...primary.matchAll(/<a[^>]*href="([^"]+)"/g)].slice(0, 4).map((match) => match[1]), ["/compatibility/", "/guides/install-garmin-maps-mac/", "/about/", "/download/"], file + ": primary nav");
 }
 console.log("Guide content, localization, shell, metadata, schema, links, and Umami contract tests passed.");

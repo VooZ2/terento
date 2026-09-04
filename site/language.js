@@ -14,12 +14,8 @@
   };
 
   const updateLanguageMenu = (language) => {
-    const currentLink = document.querySelector(`[data-language-switch="${language}"]`);
-    const currentFlag = currentLink?.querySelector(".language-option-flag")?.textContent.trim() || "";
-    const currentName = currentLink?.getAttribute("aria-label") || language.toUpperCase();
-    document.querySelectorAll("[data-language-current]").forEach((element) => {
-      element.textContent = currentFlag;
-      element.setAttribute("aria-label", currentName);
+    document.querySelectorAll(".language-code, .mobile-language-label").forEach((element) => {
+      element.textContent = language.toUpperCase();
     });
   };
 

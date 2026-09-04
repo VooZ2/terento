@@ -68,6 +68,28 @@ def main() -> int:
     assert "traefik.http.routers.terento-operations.service" not in deploy_api
     deploy_site = (WORKFLOWS / "deploy-site.yml").read_text(encoding="utf-8")
     assert "Retain website deployment health" in deploy_site
+    compatibility_refresh = (WORKFLOWS / "refresh-compatibility-snapshot.yml").read_text(encoding="utf-8")
+    for contract in (
+        'cron: "30 3 * * *"',
+        "workflow_dispatch:",
+        "contents: write",
+        "ref: beta",
+        "scripts/update-compatibility-snapshot.py",
+        "scripts/build-compatibility-pages.py",
+        "Tests/run-test-suite.py site",
+        "git diff --name-only",
+        "git push origin HEAD:beta",
+        "site/compatibility/public-models.snapshot.json",
+        "site/de/compatibility/index.html",
+        "site/fr/compatibility/index.html",
+        "site/pl/compatibility/index.html",
+        "site/cs/compatibility/index.html",
+        "site/it/compatibility/index.html",
+    ):
+        assert contract in compatibility_refresh, (
+            "refresh-compatibility-snapshot.yml is missing "
+            f"{contract!r}"
+        )
     codeql = (WORKFLOWS / "codeql.yml").read_text(encoding="utf-8")
     assert "name: CodeQL (python)" in codeql
     assert "languages: python" in codeql

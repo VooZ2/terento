@@ -92,6 +92,93 @@
     };
   };
 
+  const pageLocation = () => {
+    const path = window.location.pathname.replace(/\/+$/, "") || "/";
+    if (path === "/") return "home-page";
+    if (/\/download$/.test(path)) return "download-page";
+    if (/\/guides\/install-garmin-maps-mac$/.test(path)) return "guide-page";
+    if (/\/compatibility$/.test(path)) return "compatibility-page";
+    if (/\/about$/.test(path)) return "about-page";
+    if (/\/legal$/.test(path)) return "legal-page";
+    if (/\/privacy$/.test(path)) return "privacy-page";
+    return "public-page";
+  };
+
+  const linkLocation = (link) => {
+    if (link.dataset.umamiEventLocation) return link.dataset.umamiEventLocation;
+    if (link.classList.contains("hero-compatibility-link")) return "home-hero";
+    if (link.classList.contains("scope-link")) return "home-scope";
+    if (link.classList.contains("download-info-link")) return "download-page";
+    if (link.closest(".site-header")) return "header-nav";
+    if (link.closest(".footer-nav")) return "footer-nav";
+    if (link.closest(".footer-identity")) return "footer";
+    return pageLocation();
+  };
+
+  const instrumentCompatibilityLinks = (campaignParams) => {
+    document.querySelectorAll('a[href]:not(.language-option)').forEach((link) => {
+      let url;
+      try {
+        url = new URL(link.href, window.location.href);
+      } catch {
+        return;
+      }
+      if (url.origin !== window.location.origin || !/\/compatibility\/?$/.test(url.pathname)) return;
+      setConversionEvent(link, "compatibility-link-click", withCampaignProperties({
+        location: linkLocation(link)
+      }, campaignParams));
+    });
+  };
+
+  const instrumentSupportAndProjectLinks = (campaignParams) => {
+    document.querySelectorAll("a[href]").forEach((link) => {
+      let url;
+      try {
+        url = new URL(link.href, window.location.href);
+      } catch {
+        return;
+      }
+      const hostname = url.hostname.toLowerCase();
+      const path = url.pathname.replace(/\/+$/, "").toLowerCase() || "/";
+      const location = linkLocation(link);
+
+      if (hostname === "github.com" && path === "/vooz2/terento") {
+        setConversionEvent(link, "project-link-click", withCampaignProperties({
+          location,
+          destination: "github"
+        }, campaignParams));
+        return;
+      }
+      if (hostname === "github.com" && path.startsWith("/vooz2/terento/issues")) {
+        setConversionEvent(link, "support-link-click", withCampaignProperties({
+          location,
+          destination: "github-issues"
+        }, campaignParams));
+        return;
+      }
+      if (hostname === "github.com" && path.startsWith("/vooz2/terento/blob/")) {
+        setConversionEvent(link, "project-link-click", withCampaignProperties({
+          location,
+          destination: "github-source"
+        }, campaignParams));
+        return;
+      }
+      if (hostname === "support.garmin.com" || hostname === "support.apple.com") {
+        setConversionEvent(link, "support-link-click", withCampaignProperties({
+          location,
+          destination: hostname === "support.garmin.com" ? "garmin-support" : "apple-support"
+        }, campaignParams));
+        return;
+      }
+      if (url.protocol === "mailto:") {
+        setConversionEvent(link, "support-link-click", withCampaignProperties({
+          location,
+          destination: "email"
+        }, campaignParams));
+      }
+    });
+  };
+
   const instrumentConversionLinks = (campaignParams) => {
     document.querySelectorAll("a[href]").forEach((link) => {
       let url;
@@ -109,7 +196,7 @@
       }
     });
 
-    document.querySelectorAll('.hero-copy .text-link[href], .final-cta a.download-action[href]').forEach((link) => {
+    document.querySelectorAll('.hero-copy a.download-action[href], .final-cta a.download-action[href], .site-header a.download-action[href]').forEach((link) => {
       let url;
       try {
         url = new URL(link.href, window.location.href);
@@ -117,7 +204,11 @@
         return;
       }
       if (!url.pathname.endsWith("/download/")) return;
-      const location = link.closest(".final-cta") ? "home-final-cta" : "home-hero";
+      const location = link.closest(".site-header")
+        ? "header-nav"
+        : link.closest(".final-cta")
+          ? "home-final-cta"
+          : "home-hero";
       setConversionEvent(link, "download-cta-click", withCampaignProperties({ location }, campaignParams));
     });
 
@@ -127,6 +218,16 @@
         destination: "buymeacoffee"
       });
     });
+
+    document.querySelectorAll(".footer-project-link[href]").forEach((link) => {
+      setConversionEvent(link, "project-link-click", {
+        location: "footer",
+        destination: "github"
+      });
+    });
+
+    instrumentCompatibilityLinks(campaignParams);
+    instrumentSupportAndProjectLinks(campaignParams);
   };
 
   const campaignParams = getCampaignParams();

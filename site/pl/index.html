@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="pl" data-language="pl">
   <head>
-    <script defer src="/site-shell.js?v=20260902-ia-navigation"></script>
-    <link rel="stylesheet" href="/styles.css?v=20260904-analytics-all-visitors">
+    <script defer src="/site-shell.js?v=20260904-language-selector"></script>
+    <link rel="stylesheet" href="/styles.css?v=20260904-language-selector">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -33,16 +33,17 @@
     <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
     <title>Terento — Mapy innych firm dla Garmina na Macu</title>
 
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222A2B">
 
     <link rel="icon" href="/favicon.ico?v=20260820-4" sizes="any">
     <link rel="icon" href="/favicon.svg?v=20260820-4" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260820-4">
     <link rel="mask-icon" href="/safari-pinned-tab.svg?v=20260820-4" color="#7898A8">
     <link rel="manifest" href="/manifest.webmanifest">
-    <script defer src="/language.js?v=20260829-compat-language"></script>
-    <script defer src="/privacy-consent.js?v=20260904-analytics-all-visitors"></script>
-    <script defer src="/provider-list.js?v=20260902-provider-catalog"></script>
-    <script defer src="/localized-content.js?v=20260902-website-copy"></script>
+    <script defer src="/language.js?v=20260904-language-selector"></script>
+    <script defer src="/privacy-consent.js?v=20260904-public-link-events"></script>
+    <script defer src="/provider-list.js?v=20260904-beta-provider-scope"></script>
+    <script defer src="/localized-content.js?v=20260904-download-page-cards"></script>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -125,7 +126,7 @@
                 "name": "Których dostawców map innych firm obsługuje Terento?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Terento korzysta z obsługiwanych dostawców pokazanych powyżej. Mapy są pobierane bezpośrednio z oryginalnego źródła."
+                  "text": "Terento obsługuje Freizeitkarte i OpenTopoMap. Mapy są pobierane bezpośrednio z oryginalnego źródła."
                 }
               },
               {
@@ -151,9 +152,9 @@
           <span>Terento</span>
         </a>
         <nav class="primary-nav" aria-label="Główna nawigacja">
-          <a href="/pl/compatibility/">Kompatybilność</a><a href="/pl/guides/install-garmin-maps-mac/">Poradnik</a><a href="/pl/about/">O projekcie</a><a href="/pl/download/">Pobierz</a>
+          <a href="/pl/compatibility/">Kompatybilność</a><a href="/pl/guides/install-garmin-maps-mac/">Poradnik</a><a href="/pl/about/">O projekcie</a><a class="download-action" href="/pl/download/">Pobierz</a>
           <span class="language-switcher"><details class="language-menu">
-          <summary class="language-trigger" aria-label="Wybierz język"><span class="language-current" aria-hidden="true">🇵🇱</span></summary>
+          <summary class="language-trigger" aria-label="Wybierz język"><span class="language-code" aria-hidden="true">PL</span></summary>
           <div class="language-options"><a class="language-option" href="/" data-language-switch="en" lang="en" aria-label="English"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/" data-language-switch="de" lang="de" aria-label="Deutsch"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/" data-language-switch="fr" lang="fr" aria-label="Français"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/" data-language-switch="pl" lang="pl" aria-label="Polski" aria-current="page"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/" data-language-switch="cs" lang="cs" aria-label="Čeština"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/" data-language-switch="it" lang="it" aria-label="Italiano"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
         </details></span>
         </nav>
@@ -165,10 +166,10 @@
       <div class="mobile-nav" id="mobile-nav" hidden>
         <div class="shell mobile-nav-inner">
           <nav class="mobile-nav-links" aria-label="Główna nawigacja">
-            <a href="/pl/compatibility/">Kompatybilność</a><a href="/pl/guides/install-garmin-maps-mac/">Poradnik</a><a href="/pl/about/">O projekcie</a><a href="/pl/download/">Pobierz</a>
+            <a href="/pl/compatibility/">Kompatybilność</a><a href="/pl/guides/install-garmin-maps-mac/">Poradnik</a><a href="/pl/about/">O projekcie</a><a class="download-action" href="/pl/download/">Pobierz</a>
           </nav>
           <div class="mobile-nav-language"><details class="language-menu mobile-language-menu">
-            <summary class="language-trigger" aria-label="Wybierz język"><span class="mobile-language-label">Wybierz język</span><span class="language-current" aria-hidden="true">🇵🇱</span></summary>
+            <summary class="language-trigger" aria-label="Wybierz język"><span class="mobile-language-label">PL</span></summary>
             <div class="language-options"><a class="language-option" href="/" data-language-switch="en" lang="en" aria-label="English"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/" data-language-switch="de" lang="de" aria-label="Deutsch"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/" data-language-switch="fr" lang="fr" aria-label="Français"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/" data-language-switch="pl" lang="pl" aria-label="Polski" aria-current="page"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/" data-language-switch="cs" lang="cs" aria-label="Čeština"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/" data-language-switch="it" lang="it" aria-label="Italiano"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
           </details></div>
         </div>
@@ -176,7 +177,7 @@
     </header>
 
     <main id="main-content">
-      <section class="hero" aria-labelledby="hero-title"><div class="shell hero-grid"><div class="hero-copy"><p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Projekt open source · Beta</p><h1 id="hero-title">Twoje urządzenie, gotowe na kolejną trasę.</h1><p class="hero-lede">Natywna aplikacja macOS do instalowania i zarządzania mapami innych firm na zegarkach Garmin.</p><p class="hero-requirement">Wymaga Maca z Apple Silicon.</p><p class="hero-status">Beta jest dostępna · Kompatybilność jest potwierdzana dla każdego modelu osobno.</p><a class="download-action hero-download-action" href="/pl/download/">Pobierz wersję beta <span aria-hidden="true">↘</span></a></div><div class="hero-visual"><figure class="app-shot app-shot--hero"><picture><source type="image/avif" srcset="/assets/app/optimized/your-garmin-640.avif?v=20260902-your-garmin 640w, /assets/app/optimized/your-garmin-960.avif?v=20260902-your-garmin 960w, /assets/app/optimized/your-garmin-1280.avif?v=20260902-your-garmin 1280w, /assets/app/optimized/your-garmin-1600.avif?v=20260902-your-garmin 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw"><source type="image/webp" srcset="/assets/app/optimized/your-garmin-640.webp?v=20260902-your-garmin 640w, /assets/app/optimized/your-garmin-960.webp?v=20260902-your-garmin 960w, /assets/app/optimized/your-garmin-1280.webp?v=20260902-your-garmin 1280w, /assets/app/optimized/your-garmin-1600.webp?v=20260902-your-garmin 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw"><img src="/assets/app/optimized/your-garmin-1600.png?v=20260902-your-garmin" width="2200" height="1346" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw" alt="Terento pokazuje połączony zegarek Garmin w systemie macOS" fetchpriority="high" decoding="async"></picture></figure></div></div></section>
+      <section class="hero" aria-labelledby="hero-title"><div class="shell hero-grid"><div class="hero-copy"><p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Projekt open source · Beta</p><h1 id="hero-title">Twoje urządzenie, gotowe na kolejną trasę.</h1><p class="hero-lede">Natywna aplikacja macOS do instalowania i zarządzania mapami innych firm na zegarkach Garmin.</p><p class="hero-requirement">Wymaga Maca z Apple Silicon.</p><p class="hero-status">Beta jest dostępna · Kompatybilność jest potwierdzana dla każdego modelu osobno.</p><div class="hero-actions"><a class="download-action hero-download-action" href="/pl/download/">Pobierz wersję beta <span aria-hidden="true">→</span></a><a class="text-link hero-compatibility-link" href="/pl/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="home-hero">Sprawdź kompatybilność <span aria-hidden="true">→</span></a></div></div><div class="hero-visual"><figure class="app-shot app-shot--hero"><picture><source type="image/avif" srcset="/assets/app/optimized/your-garmin-640.avif?v=20260902-your-garmin 640w, /assets/app/optimized/your-garmin-960.avif?v=20260902-your-garmin 960w, /assets/app/optimized/your-garmin-1280.avif?v=20260902-your-garmin 1280w, /assets/app/optimized/your-garmin-1600.avif?v=20260902-your-garmin 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw"><source type="image/webp" srcset="/assets/app/optimized/your-garmin-640.webp?v=20260902-your-garmin 640w, /assets/app/optimized/your-garmin-960.webp?v=20260902-your-garmin 960w, /assets/app/optimized/your-garmin-1280.webp?v=20260902-your-garmin 1280w, /assets/app/optimized/your-garmin-1600.webp?v=20260902-your-garmin 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw"><img src="/assets/app/optimized/your-garmin-1600.png?v=20260902-your-garmin" width="2200" height="1346" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw" alt="Terento pokazuje połączony zegarek Garmin w systemie macOS" fetchpriority="high" decoding="async"></picture></figure></div></div></section>
 
       <section class="experience section" id="how-it-works" aria-labelledby="experience-title"><div class="shell"><div class="section-heading"><p class="eyebrow">Jak to działa</p><h2 id="experience-title">Połącz <span aria-hidden="true">→</span> Zainstaluj <span aria-hidden="true">→</span> Ruszaj</h2></div><div class="problem-statement"><p>Instalowanie map innych firm nie powinno wymagać starych programów ani ręcznego przesyłania plików.</p><p>Beta Terento przenosi ten proces do natywnej aplikacji macOS.</p></div><ol class="steps"><li class="step"><p class="step-number" aria-hidden="true">01</p><h3>Połącz</h3><p>Terento rozpoznaje zegarek Garmin i pokazuje, kiedy jest gotowy.</p></li><li class="step"><p class="step-number" aria-hidden="true">02</p><h3>Zainstaluj</h3><p>Wybierz mapę, której potrzebujesz.</p></li><li class="step"><p class="step-number" aria-hidden="true">03</p><h3>Ruszaj</h3><p>Twój zegarek jest gotowy na kolejną trasę.</p></li></ol></div></section>
 
@@ -187,14 +188,14 @@
       <section class="provider-section section" id="providers" aria-labelledby="providers-title">
         <div class="shell provider-grid">
           <div class="section-heading"><p class="eyebrow">Dostępne dziś</p><h2 id="providers-title">Wybierz mapę i ruszaj.</h2></div>
-          <div class="provider-copy"><p>Terento łączy Cię bezpośrednio z obsługiwanymi dostawcami map. Lista pozostaje aktualna, gdy rośnie zakres obsługi.</p><ul class="provider-list" data-provider-list aria-label="Obsługiwani dostawcy map"><li>Freizeitkarte</li><li>OpenTopoMap</li></ul></div>
+          <div class="provider-copy"><p>Dziś Terento łączy Cię bezpośrednio z Freizeitkarte i OpenTopoMap. Mapy są pobierane od oryginalnego dostawcy.</p><ul class="provider-list" data-provider-list aria-label="Obsługiwani dostawcy map"><li>Freizeitkarte</li><li>OpenTopoMap</li></ul></div>
         </div>
       </section>
       <section class="faq section" id="faq" aria-labelledby="faq-title"><div class="shell faq-grid"><div class="section-heading"><p class="eyebrow">Dobre pytania</p><h2 id="faq-title">FAQ</h2></div><div class="faq-list">
             <details><summary>Jakie zegarki Garmin działają z Terento?</summary><p>Na <a href="/pl/compatibility/">stronie kompatybilności</a> znajdziesz modele i warianty Garmin potwierdzone rzeczywistymi instalacjami.</p></details>
             <details><summary>Czy mogę instalować mapy innych firm na zegarku Garmin z Maca bez BaseCamp?</summary><p>Tak. Terento prowadzi od wyboru mapy do instalacji na zegarku. Możesz też dodać zgodny plik mapy z Maca. Wymagany jest Apple Silicon. <a href="/pl/guides/install-garmin-maps-mac/">Przeczytaj instrukcję instalacji.</a></p></details>
             <details><summary>Czy Terento jest bezpieczne dla istniejących map Garmin?</summary><p>Tak. Mapy Garmin i systemowe pozostają chronione. Terento zmienia tylko obsługiwane mapy innych firm po potwierdzeniu działania.</p></details>
-            <details><summary>Których dostawców map innych firm obsługuje Terento?</summary><p>Terento korzysta z obsługiwanych dostawców pokazanych powyżej. Mapy są pobierane bezpośrednio z oryginalnego źródła.</p></details>
+            <details><summary>Których dostawców map innych firm obsługuje Terento?</summary><p>Terento obsługuje Freizeitkarte i OpenTopoMap. Mapy są pobierane bezpośrednio z oryginalnego źródła.</p></details>
             <details><summary>Co zrobić, jeśli instalacja się nie powiedzie?</summary><p>Otwórz zgłoszenie na GitHubie lub wyślij log diagnostyczny e-mailem. Zawiera informacje potrzebne do zbadania problemu.</p><div class="faq-support-actions"><a class="text-link" href="https://github.com/VooZ2/terento/issues" target="_blank" rel="noopener noreferrer" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="github-issue">Otwórz zgłoszenie <span aria-hidden="true">→</span></a><a class="text-link" href="mailto:hello@terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email">Wyślij log e-mailem <span aria-hidden="true">→</span></a></div></details>
             </div></div></section>
 
@@ -205,10 +206,10 @@
       <div class="shell footer-grid">
         <div class="footer-identity">
           <a class="brand-lockup footer-brand" href="/pl/" aria-label="Strona główna Terento">
-            <img src="/assets/logo-sky.svg" alt="" width="32" height="32">
+            <img src="/assets/logo-white.svg" alt="" width="32" height="32">
             <span>Terento</span>
           </a>
-          <div class="footer-meta"><p class="footer-status">Projekt open source</p><a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
+          <div class="footer-meta"><a class="footer-status footer-project-link" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer">Projekt open source</a><a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
         </div>
         <nav class="footer-nav" aria-label="Nawigacja w stopce">
           <a href="/pl/about/">O projekcie</a><a href="/pl/compatibility/">Kompatybilność</a><a href="/pl/guides/install-garmin-maps-mac/">Poradnik</a><a href="/pl/#faq">FAQ</a><a href="/pl/download/">Pobierz</a>

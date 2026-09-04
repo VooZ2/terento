@@ -5,12 +5,12 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 const styles = read("site/styles.css");
-const styleVersion = "20260904-analytics-all-visitors";
-const localizedContentVersion = "20260902-website-copy";
+const styleVersion = "20260904-language-selector";
+const localizedContentVersion = "20260904-download-page-cards";
 
 const cssBlock = (selector) => {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = styles.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, "s"));
+  const match = styles.match(new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]*)\\}`, "s"));
   assert.ok(match, `Missing CSS block for ${selector}`);
   return match[1];
 };
@@ -43,9 +43,12 @@ assert.match(cssBlock(".download-info-link:hover,\n.download-info-link:focus-vis
 assert.doesNotMatch(cssBlock(".download-info-link-label"), /underline/);
 assert.match(cssBlock(".download-info-link-tail"), /white-space:\s*nowrap/);
 assert.match(cssBlock(".download-info-link-arrow"), /text-decoration:\s*none/);
-assert.match(styles, /\.download-item a:not\(\.text-link\)\s*\{/);
-assert.match(cssBlock(".download-sections .download-item"), /display:\s*flex/);
-assert.match(styles, /\.download-sections \.download-info-link\s*\{\s*margin-top:\s*0;/s);
+assert.match(styles, /\.download-detail a:not\(\.text-link\)\s*\{/);
+assert.match(cssBlock(".download-hero"), /max-width:\s*920px/);
+assert.match(cssBlock(".download-details-list"), /grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+assert.match(cssBlock(".download-details"), /border-top:\s*1px solid var\(--border\)/);
+assert.match(cssBlock(".download-detail"), /background:\s*var\(--surface\)/);
+assert.match(cssBlock(".download-detail"), /border-radius:\s*16px/);
 assert.match(styles, /a:focus-visible,[\s\S]*?outline:\s*3px solid var\(--focus-ring\)/);
 
 const locales = {
@@ -103,19 +106,31 @@ for (const [locale, contract] of Object.entries(locales)) {
   const html = read(contract.file);
   assert.match(html, new RegExp(`/styles\\.css\\?v=${styleVersion}`));
   assert.equal((html.match(/<link rel="stylesheet" href="\/styles\.css\?v=[^"]+">/g) || []).length, 1, `${locale} must load the shared stylesheet once`);
-  assert.equal((html.match(/class="download-sections"/g) || []).length, 1, `${locale} must use one three-column information grid`);
-  assert.doesNotMatch(html, /class="download-grid"/);
+  assert.equal((html.match(/class="download-hero"/g) || []).length, 1, `${locale} must use one focused download hero`);
+  assert.equal((html.match(/class="download-details"/g) || []).length, 1, `${locale} must use one technical details section`);
+  assert.equal((html.match(/class="download-detail"/g) || []).length, 2, `${locale} must use two decision-support detail cards`);
+  assert.doesNotMatch(html, /class="download-visual"|class="app-shot app-shot--download"|your-garmin-640\.avif/);
+  assert.doesNotMatch(html, /class="download-requirement"/);
+  const intro = html.match(/<p class="download-intro"[^>]*>[\s\S]*?<\/p>/);
+  assert.ok(intro, `${locale} must have a Download intro`);
+  assert.doesNotMatch(intro[0], /<strong>/);
+  assert.match(html, /class="download-action download-action-primary"[^>]+\.dmg/);
+  assert.match(html, /class="download-action download-action-secondary"[^>]+\.zip/);
+  assert.match(html, /class="download-action download-action-tertiary"[^>]+releases\/tag/);
+  assert.doesNotMatch(html, /class="download-sections"|class="download-grid"|What is included|Was enthalten ist|Ce qui est inclus|Co zawiera|Co obsahuje|Cosa include/);
   assert.doesNotMatch(html, /New to third-party maps\?|Neu bei Drittanbieter-Karten\?|Vous débutez avec les cartes tierces|Dopiero zaczynasz z mapami innych firm|Začínáte s mapami třetích stran|È la prima volta che installi mappe di terze parti/);
 
-  const anchors = [...html.matchAll(/<a class="text-link download-info-link" href="([^"]+)">([\s\S]*?)<\/a>/g)];
+  const anchors = [...html.matchAll(/<a class="text-link download-info-link" href="([^"]+)"([^>]*)>([\s\S]*?)<\/a>/g)];
   assert.equal(anchors.length, 2, `${locale} must expose exactly two Download information links`);
   assert.deepEqual(anchors.map((match) => match[1]), [contract.guide, contract.compatibility]);
-  assert.deepEqual(anchors.map((match) => visibleText(match[2])), [contract.guideLabel, contract.compatibilityLabel]);
+  assert.deepEqual(anchors.map((match) => visibleText(match[3])), [contract.guideLabel, contract.compatibilityLabel]);
   for (const match of anchors) {
-    assert.match(match[2], /class="download-info-link-tail"/);
-    assert.match(match[2], /class="download-info-link-arrow" aria-hidden="true">→<\/span>/);
+    assert.match(match[3], /class="download-info-link-tail"/);
+    assert.match(match[3], /class="download-info-link-arrow" aria-hidden="true">→<\/span>/);
     assert.doesNotMatch(match[1], /utm_/i);
   }
+  assert.match(anchors[1][2], /data-umami-event="compatibility-link-click"/);
+  assert.match(anchors[1][2], /data-umami-event-location="download-page"/);
   if (locale !== "en") {
     assert.match(html, new RegExp(`/localized-content\\.js\\?v=${localizedContentVersion}`));
   }
@@ -136,4 +151,22 @@ for (const locale of Object.keys(locales)) {
 }
 
 assert.doesNotMatch(read("site/localized-content.js"), /download-compatibility-link/);
+assert.doesNotMatch(read("site/localized-content.js"), /download-requirement|download-item|copy\.included/);
+
+for (const [locale, contract] of Object.entries(locales)) {
+  const html = read(contract.file);
+  const trigger = html.match(/<summary class="language-trigger"[^>]*>([\s\S]*?)<\/summary>/)?.[1];
+  assert.ok(trigger, `${locale} must have a language trigger`);
+  assert.match(trigger, new RegExp(`class="language-code"[^>]*>${locale.toUpperCase()}<`));
+  assert.doesNotMatch(trigger, /language-current|🇬🇧|🇩🇪|🇫🇷|🇵🇱|🇨🇿|🇮🇹/);
+  assert.match(html, /class="language-option-flag"[^>]*>[^<]+<\/span><span>[^<]+<\/span>/);
+  assert.match(html, /class="language-option"[^>]*aria-current="page"/);
+}
+
+assert.doesNotMatch(styles, /language-trigger::after|mobile-language-menu[^{]*\.language-trigger::after/);
+assert.match(cssBlock(".language-options"), /width:\s*176px/);
+assert.match(cssBlock(".language-option"), /justify-content:\s*flex-start/);
+assert.match(cssBlock(".language-option > span:not(.language-option-flag)"), /text-overflow:\s*ellipsis/);
+assert.match(styles, /\.mobile-language-menu \.language-options\s*\{[^}]*grid-template-columns:\s*1fr/s);
+assert.match(styles, /\.mobile-language-menu \.language-option\s*\{[^}]*width:\s*100%[^}]*min-height:\s*44px/s);
 console.log("Public page intro and Download link layout contracts passed for all six locales.");

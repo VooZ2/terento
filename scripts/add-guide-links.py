@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Add the guide's contextual links to existing public-site surfaces."""
 
+import html
 import re
 from pathlib import Path
 
@@ -13,6 +14,9 @@ COPY = {
         "home": "Read the full Mac installation guide.",
         "download_guide": "Read the Mac installation guide",
         "download_compatibility": "Check compatibility",
+        "download_details_eyebrow": "Before you install",
+        "download_details_title": "Check the essentials first.",
+        "download_trust": "Free · Notarized · Open source",
         "compatibility": "First time installing third-party maps? Read the Mac guide",
         "community_eyebrow": "Community testing",
         "community_heading": "Have another Garmin smartwatch with map support?",
@@ -24,6 +28,9 @@ COPY = {
         "home": "Lies die vollständige Mac-Installationsanleitung.",
         "download_guide": "Mac-Installationsanleitung lesen",
         "download_compatibility": "Kompatibilität prüfen",
+        "download_details_eyebrow": "Vor der Installation",
+        "download_details_title": "Prüfe zuerst die wichtigsten Voraussetzungen.",
+        "download_trust": "Kostenlos · Notarisiert · Open Source",
         "compatibility": "Zum ersten Mal Drittanbieter-Karten installieren? Lies die Mac-Anleitung",
         "community_eyebrow": "Community-Tests",
         "community_heading": "Hast du eine weitere Garmin-Smartwatch mit Kartenunterstützung?",
@@ -35,6 +42,9 @@ COPY = {
         "home": "Lisez le guide complet d’installation sur Mac.",
         "download_guide": "Lire le guide d’installation sur Mac",
         "download_compatibility": "Vérifier la compatibilité",
+        "download_details_eyebrow": "Avant l’installation",
+        "download_details_title": "Vérifiez l’essentiel avant de commencer.",
+        "download_trust": "Gratuit · Notarié · Open source",
         "compatibility": "Vous installez des cartes tierces pour la première fois ? Lisez le guide Mac",
         "community_eyebrow": "Tests communautaires",
         "community_heading": "Vous avez une autre montre Garmin compatible avec les cartes ?",
@@ -46,6 +56,9 @@ COPY = {
         "home": "Przeczytaj pełną instrukcję instalacji na Macu.",
         "download_guide": "Przeczytaj instrukcję instalacji na Macu",
         "download_compatibility": "Sprawdź kompatybilność",
+        "download_details_eyebrow": "Przed instalacją",
+        "download_details_title": "Sprawdź najważniejsze informacje.",
+        "download_trust": "Bezpłatna · Notaryzowana · Open source",
         "compatibility": "Instalujesz mapy innych firm pierwszy raz? Przeczytaj instrukcję na Macu",
         "community_eyebrow": "Testy społeczności",
         "community_heading": "Masz inny zegarek Garmin obsługujący mapy?",
@@ -57,6 +70,9 @@ COPY = {
         "home": "Přečtěte si úplného průvodce instalací na Macu.",
         "download_guide": "Přečíst průvodce instalací na Macu",
         "download_compatibility": "Ověřit kompatibilitu",
+        "download_details_eyebrow": "Před instalací",
+        "download_details_title": "Nejdřív si ověřte to podstatné.",
+        "download_trust": "Zdarma · Notarizovaná · Open source",
         "compatibility": "Instalujete mapy třetích stran poprvé? Přečtěte si průvodce pro Mac",
         "community_eyebrow": "Komunitní testování",
         "community_heading": "Máte jiné hodinky Garmin s podporou map?",
@@ -68,6 +84,9 @@ COPY = {
         "home": "Leggi la guida completa all’installazione su Mac.",
         "download_guide": "Leggi la guida all’installazione su Mac",
         "download_compatibility": "Verifica la compatibilità",
+        "download_details_eyebrow": "Prima dell’installazione",
+        "download_details_title": "Controlla i requisiti essenziali.",
+        "download_trust": "Gratuita · Notarizzata · Open source",
         "compatibility": "Installi mappe di terze parti per la prima volta? Leggi la guida per Mac",
         "community_eyebrow": "Test della community",
         "community_heading": "Hai un altro smartwatch Garmin con supporto mappe?",
@@ -94,11 +113,16 @@ def localized_compatibility(locale: str) -> str:
     return f"/{'' if locale == 'en' else f'{locale}/'}compatibility/"
 
 
-def download_link(label: str, href: str) -> str:
+def download_link(label: str, href: str, *, event=None, location=None) -> str:
     """Return an intrinsic-width link whose final word stays with its arrow."""
     prefix, tail = label.rsplit(" ", 1)
+    attributes = ""
+    if event:
+        attributes += f' data-umami-event="{html.escape(event, quote=True)}"'
+    if location:
+        attributes += f' data-umami-event-location="{html.escape(location, quote=True)}"'
     return (
-        f'<a class="text-link download-info-link" href="{href}">'
+        f'<a class="text-link download-info-link" href="{href}"{attributes}>'
         f'<span class="download-info-link-label">{prefix}</span> '
         '<span class="download-info-link-tail">'
         f'<span class="download-info-link-label">{tail}</span>'
@@ -107,8 +131,45 @@ def download_link(label: str, href: str) -> str:
     )
 
 
-def normalize_download_layout(source: str) -> str:
-    """Bring legacy localized Download markup onto the shared three-column layout."""
+def normalize_download_layout(source: str, locale: str) -> str:
+    """Bring Download pages onto a focused actions + technical-details layout."""
+    if 'class="download-layout"' in source or 'class="download-hero"' in source:
+        source = re.sub(r'<div class="download-visual">[\s\S]*?</div>', '', source, count=1)
+        source = source.replace('class="download-layout"', 'class="download-hero"', 1)
+        source = re.sub(
+            r'(<p class="download-intro">[^<]*)\s*<strong>[^<]*</strong>',
+            r'\1',
+            source,
+            count=1,
+        )
+        source = re.sub(
+            r'(<div class="download-copy">[\s\S]*?)\s*<p class="download-requirement">[\s\S]*?</p>',
+            r'\1',
+            source,
+            count=1,
+        )
+        source = re.sub(
+            r'(<div class="download-actions">[\s\S]*?<a class=")[^"]+(" href="https://github\.com/VooZ2/terento/releases/download/[^" ]+\.dmg")',
+            r'\1download-action download-action-primary\2',
+            source,
+            count=1,
+        )
+        source = re.sub(
+            r'(<div class="download-actions">[\s\S]*?<a class=")[^"]+(" href="https://github\.com/VooZ2/terento/releases/tag/)',
+            r'\1download-action download-action-tertiary\2',
+            source,
+            count=1,
+        )
+        sections = list(re.finditer(r'<section class="download-detail">[\s\S]*?</section>', source))
+        for section in reversed(sections[2:]):
+            source = source[:section.start()] + source[section.end():]
+        source = re.sub(
+            r'</section>\s*</div></section></main>',
+            r'</section></div></section></main>',
+            source,
+            count=1,
+        )
+        return source
     pattern = re.compile(
         r'<div class="download-grid">'
         r'<div class="section-heading"><p class="eyebrow">(?P<label>.*?)</p>'
@@ -117,20 +178,57 @@ def normalize_download_layout(source: str) -> str:
         r'<div class="download-list">(?P<sections>[\s\S]*?)</div></div>'
     )
     match = pattern.search(source)
+    if match:
+        replacement = (
+            f'<p class="download-release">{match.group("label")}: '
+            f'<strong>{match.group("version")}</strong> '
+            '<span aria-hidden="true">·</span> '
+            f'{match.group("release")}</p>'
+            f'<div class="download-sections">{match.group("sections")}</div>'
+        )
+        source = source[:match.start()] + replacement + source[match.end():]
+
+    pattern = re.compile(
+        r'(?P<top>\s*<p class="eyebrow">[\s\S]*?<p class="download-release">[\s\S]*?</p>)\s*'
+        r'<div class="download-sections">(?P<sections>[\s\S]*?)</div>\s*</div>(?P<main_close></main>)'
+    )
+    match = pattern.search(source)
     if not match:
         return source
+    top = re.sub(r'\s*<p class="download-requirement">[\s\S]*?</p>', '', match.group("top"), count=1)
+    top = re.sub(r'(<p class="download-intro">[^<]*)\s*<strong>[^<]*</strong>', r'\1', top, count=1)
+    top = re.sub(
+        r'(<div class="download-actions">[\s\S]*?<a class=")[^"]+(" href="https://github\.com/VooZ2/terento/releases/download/[^" ]+\.dmg")',
+        r'\1download-action download-action-primary\2',
+        top,
+        count=1,
+    )
+    top = re.sub(
+        r'(<div class="download-actions">[\s\S]*?<a class=")[^"]+(" href="https://github\.com/VooZ2/terento/releases/tag/)',
+        r'\1download-action download-action-tertiary\2',
+        top,
+        count=1,
+    )
+    top += f'<p class="download-trust">{COPY[locale]["download_trust"]}</p>'
+    sections = re.findall(r'<section class="download-item">[\s\S]*?</section>', match.group("sections"))[:2]
+    sections = ''.join(section.replace('class="download-item"', 'class="download-detail"', 1) for section in sections)
+    details = (
+        '<section class="download-details" aria-labelledby="download-details-title">'
+        f'<div class="download-details-heading"><p class="eyebrow">{COPY[locale]["download_details_eyebrow"]}</p>'
+        f'<h2 id="download-details-title">{COPY[locale]["download_details_title"]}</h2></div>'
+        f'<div class="download-details-list">{sections}</div>'
+        '</section>'
+    )
     replacement = (
-        f'<p class="download-release">{match.group("label")}: '
-        f'<strong>{match.group("version")}</strong> '
-        '<span aria-hidden="true">·</span> '
-        f'{match.group("release")}</p>'
-        f'<div class="download-sections">{match.group("sections")}</div>'
+        f'<div class="download-hero"><div class="download-copy">{top}</div>'
+        '</div>'
+        f'{details}{match.group("main_close")}'
     )
     return source[:match.start()] + replacement + source[match.end():]
 
 
 def replace_download_section_link(source: str, section_index: int, anchor: str) -> str:
-    sections = list(re.finditer(r'<section class="download-item">[\s\S]*?</section>', source))
+    sections = list(re.finditer(r'<section class="download-(?:item|detail)">[\s\S]*?</section>', source))
     if len(sections) < 2:
         raise RuntimeError("Download page must contain at least two information sections")
     match = sections[section_index]
@@ -168,11 +266,13 @@ def add_home_link(locale: str) -> None:
 
 def add_download_link(locale: str) -> None:
     path = path_for(locale, "download/index.html")
-    source = normalize_download_layout(path.read_text(encoding="utf-8"))
+    source = normalize_download_layout(path.read_text(encoding="utf-8"), locale)
     guide = download_link(COPY[locale]["download_guide"], localized_guide(locale))
     compatibility = download_link(
         COPY[locale]["download_compatibility"],
         localized_compatibility(locale),
+        event="compatibility-link-click",
+        location="download-page",
     )
     source = replace_download_section_link(source, 1, compatibility)
     source = replace_download_section_link(source, 0, guide)

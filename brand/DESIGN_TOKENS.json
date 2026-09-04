@@ -222,7 +222,7 @@
     "web": {
       "light": {
         "linkText": {
-          "$value": "#416979",
+          "$value": "#315466",
           "$type": "color",
           "$description": "Accessible link text on Alpine Off-White."
         },

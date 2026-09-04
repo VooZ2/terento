@@ -10,36 +10,42 @@ const locales = new Map([
     file: path.join(root, "site", "index.html"),
     status: "Beta available · Compatibility is confirmed model by model.",
     scope: "See compatibility",
+    heroCompatibility: "Check compatibility",
     download: "Download the beta",
   }],
   ["de", {
     file: path.join(root, "site", "de", "index.html"),
     status: "Beta verfügbar · Die Kompatibilität wird für jedes Modell einzeln bestätigt.",
     scope: "Kompatibilität ansehen",
+    heroCompatibility: "Kompatibilität prüfen",
     download: "Beta herunterladen",
   }],
   ["fr", {
     file: path.join(root, "site", "fr", "index.html"),
     status: "Bêta disponible · La compatibilité est confirmée modèle par modèle.",
     scope: "Voir la compatibilité",
+    heroCompatibility: "Vérifier la compatibilité",
     download: "Télécharger la bêta",
   }],
   ["pl", {
     file: path.join(root, "site", "pl", "index.html"),
     status: "Beta jest dostępna · Kompatybilność jest potwierdzana dla każdego modelu osobno.",
     scope: "Zobacz kompatybilność",
+    heroCompatibility: "Sprawdź kompatybilność",
     download: "Pobierz wersję beta",
   }],
   ["cs", {
     file: path.join(root, "site", "cs", "index.html"),
     status: "Beta je dostupná · Kompatibilita se potvrzuje pro každý model zvlášť.",
     scope: "Zobrazit kompatibilitu",
+    heroCompatibility: "Ověřit kompatibilitu",
     download: "Stáhnout betu",
   }],
   ["it", {
     file: path.join(root, "site", "it", "index.html"),
     status: "Beta disponibile · La compatibilità viene confermata modello per modello.",
     scope: "Vedi la compatibilità",
+    heroCompatibility: "Verifica la compatibilità",
     download: "Scarica la beta",
   }],
 ]);
@@ -49,15 +55,15 @@ const classTokens = (classValue) => new Set(classValue.trim().split(/\s+/));
 const anchorFor = (page, className) => {
   const escapedClass = className.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = page.match(new RegExp(
-    `<a class="([^"]*\\b${escapedClass}\\b[^"]*)" href="([^"]+)">([^<]+)<span aria-hidden="true">([^<]+)</span></a>`
+    `<a class="([^"]*\\b${escapedClass}\\b[^"]*)" href="([^"]+)"([^>]*)>([^<]+)<span aria-hidden="true">([^<]+)</span></a>`
   ));
   assert.ok(match, `missing ${className} CTA`);
-  return { classes: classTokens(match[1]), href: match[2], label: match[3].trim(), arrow: match[4] };
+  return { classes: classTokens(match[1]), href: match[2], attributes: match[3], label: match[4].trim(), arrow: match[5] };
 };
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20260904-analytics-all-visitors">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20260904-language-selector">/, `${locale}: Home stylesheet cache bust`);
   assert.match(page, /your-garmin-1600\.png\?v=20260902-your-garmin/, `${locale}: updated Garmin screenshot cache bust`);
   const status = page.match(/<p class="hero-status">([^<]+)<\/p>/);
   assert.ok(status, `${locale}: missing hero status`);
@@ -65,6 +71,7 @@ for (const [locale, expected] of locales) {
 
   const scope = anchorFor(page, "scope-link");
   const download = anchorFor(page, "hero-download-action");
+  const heroCompatibility = anchorFor(page, "hero-compatibility-link");
   assert.ok(scope.classes.has("text-link"), `${locale}: scope CTA must use shared text-link class`);
   assert.ok(scope.classes.has("scope-link"), `${locale}: scope CTA must retain section spacing modifier`);
   assert.equal(scope.label, expected.scope, `${locale}: scope CTA label`);
@@ -72,7 +79,15 @@ for (const [locale, expected] of locales) {
   assert.equal(scope.href, locale === "en" ? "/compatibility/" : `/${locale}/compatibility/`, `${locale}: static localized Compatibility href`);
   assert.ok(download.classes.has("download-action"), `${locale}: hero Download CTA uses the solid action style`);
   assert.equal(download.label, expected.download, `${locale}: download CTA label`);
-  assert.equal(download.arrow, "↘", `${locale}: download CTA arrow`);
+  assert.equal(download.arrow, "→", `${locale}: download CTA arrow`);
+  assert.ok(heroCompatibility.classes.has("text-link"), `${locale}: Hero Compatibility CTA uses the shared text-link style`);
+  assert.ok(heroCompatibility.classes.has("hero-compatibility-link"), `${locale}: Hero Compatibility CTA uses its layout modifier`);
+  assert.equal(heroCompatibility.label, expected.heroCompatibility, `${locale}: Hero Compatibility CTA label`);
+  assert.equal(heroCompatibility.arrow, "→", `${locale}: Hero Compatibility CTA arrow`);
+  assert.equal(heroCompatibility.href, locale === "en" ? "/compatibility/" : `/${locale}/compatibility/`, `${locale}: Hero Compatibility CTA href`);
+  assert.match(heroCompatibility.attributes, /data-umami-event="compatibility-link-click"/);
+  assert.match(heroCompatibility.attributes, /data-umami-event-location="home-hero"/);
+  assert.match(page, /<div class="hero-actions"><a class="download-action hero-download-action"[\s\S]*?<a class="text-link hero-compatibility-link"/);
   assert.equal(
     (page.match(/<a class="text-link scope-link" href="[^"]+">/g) || []).length,
     1,
@@ -111,6 +126,20 @@ for (const declaration of [
 }
 assert.match(styles, /\.primary-nav a,\s*\.footer-nav a,\s*\.text-link\s*\{[^}]*text-decoration: none/s);
 assert.match(styles, /\.text-link:hover\s*\{[^}]*color: var\(--link-text-hover\)/s);
+const heroAction = styles.match(/\.hero-download-action\s*\{([^}]*)\}/s);
+assert.ok(heroAction, "missing Hero Download CTA sizing block");
+assert.match(heroAction[1], /min-height:\s*52px/);
+assert.match(heroAction[1], /padding:\s*12px 22px/);
+assert.match(heroAction[1], /font-size:\s*15px/);
+const heroActions = styles.match(/\.hero-actions\s*\{([^}]*)\}/s);
+assert.ok(heroActions, "missing Hero action stack block");
+assert.match(heroActions[1], /display:\s*flex/);
+assert.match(heroActions[1], /flex-direction:\s*column/);
+assert.match(heroActions[1], /align-items:\s*flex-start/);
+assert.match(heroActions[1], /gap:\s*14px/);
+const heroCompatibilityLink = styles.match(/\.hero-compatibility-link\s*\{([^}]*)\}/s);
+assert.ok(heroCompatibilityLink, "missing Hero Compatibility CTA touch target block");
+assert.match(heroCompatibilityLink[1], /min-height:\s*44px/);
 assert.match(styles, /a:focus-visible,\s*button:focus-visible,\s*summary:focus-visible\s*\{[^}]*outline: 3px solid var\(--focus-ring\)/s);
 assert.doesNotMatch(scopeModifier[1], /display|align-items|gap|color|font-size|font-weight|text-decoration/);
 assert.match(styles, /\.experience\.section\s*\{[^}]*padding:\s*clamp\(72px, 9vw, 116px\) 0/s);

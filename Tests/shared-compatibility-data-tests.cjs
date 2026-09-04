@@ -133,7 +133,7 @@ assert.doesNotMatch(compatibilityPage, /class="section-heading compatibility-hea
 assert.doesNotMatch(compatibilityPage, /aria-labelledby="directory-title"/);
 assert.match(compatibilityPage, /data-summary-model-label>models with evidence/);
 assert.match(compatibilityPage, /More models ready for testing/);
-assert.match(compatibilityPage, /Public compatibility is based on real installation evidence from exact Garmin models and variants\. Each successful installation shared by users helps us confirm compatibility with greater confidence\./);
+assert.match(compatibilityPage, /Public compatibility is based on real installation evidence for exact Garmin models and variants\. Each successful installation shared by users helps us confirm compatibility with greater confidence\./);
 assert.match(compatibilityPage, /These counts come from successful installations shared with Terento\. They are not Garmin certification\./);
 assert.match(compatibilityPage, /Garmin Watch Compatibility — Terento/);
 assert.match(compatibilityPage, /data-umami-event="download-cta-click"/);

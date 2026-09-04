@@ -11,9 +11,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BASE_URL = "https://terento.app"
 ABOUT_SLUG = "about/"
-SHELL_VERSION = "20260902-ia-navigation"
-STYLE_VERSION = "20260904-analytics-all-visitors"
-UMAMI_SCRIPT_VERSION = "20260904-analytics-all-visitors"
+SHELL_VERSION = "20260904-language-selector"
+STYLE_VERSION = "20260904-language-selector"
+UMAMI_SCRIPT_VERSION = "20260904-public-link-events"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
 META_LOCALES = {"en": "en_US", "de": "de_DE", "fr": "fr_FR", "pl": "pl_PL", "cs": "cs_CZ", "it": "it_IT"}
@@ -49,7 +49,7 @@ COPY = {
         "items": [
             ("Built around the result", "Terento keeps the main path simple: connect your watch, choose a map and get ready to go."),
             ("Open source by default", "Terento is developed in public and released under GPL-3.0-or-later. The project is free to use; the app does not require an account or a cloud device profile."),
-            ("Independent and careful", 'Garmin names are used descriptively for compatibility. Map providers keep their own licences, and map files travel directly from the original provider to your Mac and then to your watch. See <a href="/legal/">Legal</a> and <a href="/privacy/">Privacy</a> for details.'),
+            ("Independent and careful", 'The current Beta supports Freizeitkarte and OpenTopoMap. Garmin names are used descriptively for compatibility. Map providers keep their own licences, and map files travel directly from the original provider to your Mac and then to your watch. See <a href="/legal/">Legal</a> and <a href="/privacy/">Privacy</a> for details.'),
             ("Built with the community", 'Compatibility is confirmed model by model using real installation results. If something does not work, share an issue on <a href="https://github.com/VooZ2/terento/issues" target="_blank" rel="noopener noreferrer">GitHub</a> so the project can learn from it.'),
         ],
     },
@@ -65,7 +65,7 @@ COPY = {
         "items": [
             ("Das Ergebnis im Mittelpunkt", "Terento hält den Ablauf einfach: Uhr verbinden, Karte auswählen und loslegen."),
             ("Open Source als Grundlage", "Terento wird öffentlich entwickelt und unter GPL-3.0-or-later veröffentlicht. Das Projekt ist kostenlos; die App benötigt kein Konto und kein Geräteprofil in der Cloud."),
-            ("Unabhängig und sorgfältig", 'Garmin-Namen werden beschreibend für Kompatibilität verwendet. Kartenanbieter behalten ihre eigenen Lizenzen. Kartendateien werden direkt vom ursprünglichen Anbieter auf deinen Mac und anschließend auf deine Uhr übertragen. Details stehen unter <a href="/legal/">Rechtliches</a> und <a href="/privacy/">Datenschutz</a>.'),
+            ("Unabhängig und sorgfältig", 'Die aktuelle Beta unterstützt Freizeitkarte und OpenTopoMap. Garmin-Namen werden beschreibend für Kompatibilität verwendet. Kartenanbieter behalten ihre eigenen Lizenzen. Kartendateien werden direkt vom ursprünglichen Anbieter auf deinen Mac und anschließend auf deine Uhr übertragen. Details stehen unter <a href="/legal/">Rechtliches</a> und <a href="/privacy/">Datenschutz</a>.'),
             ("Mit der Community entwickelt", 'Die Kompatibilität wird für jedes Modell einzeln anhand echter Installationsergebnisse bestätigt. Wenn etwas nicht funktioniert, teile ein Issue auf <a href="https://github.com/VooZ2/terento/issues" target="_blank" rel="noopener noreferrer">GitHub</a>, damit das Projekt daraus lernen kann.'),
         ],
     },
@@ -81,7 +81,7 @@ COPY = {
         "items": [
             ("Pensé pour le résultat", "Terento simplifie le parcours : connectez la montre, choisissez une carte et partez."),
             ("Open source par choix", "Terento est développé publiquement et publié sous GPL-3.0-or-later. Le projet est gratuit ; l’application ne nécessite ni compte ni profil d’appareil dans le cloud."),
-            ("Indépendant et prudent", 'Les noms Garmin sont utilisés à titre descriptif pour la compatibilité. Les fournisseurs conservent leurs propres licences et les fichiers cartographiques vont directement du fournisseur d’origine vers votre Mac, puis votre montre. Consultez les <a href="/legal/">mentions légales</a> et la <a href="/privacy/">confidentialité</a>.'),
+            ("Indépendant et prudent", 'La bêta actuelle prend en charge Freizeitkarte et OpenTopoMap. Les noms Garmin sont utilisés à titre descriptif pour la compatibilité. Les fournisseurs conservent leurs propres licences et les fichiers cartographiques vont directement du fournisseur d’origine vers votre Mac, puis votre montre. Consultez les <a href="/legal/">mentions légales</a> et la <a href="/privacy/">confidentialité</a>.'),
             ("Construit avec la communauté", 'La compatibilité est confirmée modèle par modèle grâce à des résultats d’installation réels. Si quelque chose ne fonctionne pas, partagez une issue sur <a href="https://github.com/VooZ2/terento/issues" target="_blank" rel="noopener noreferrer">GitHub</a> pour aider le projet à progresser.'),
         ],
     },
@@ -97,7 +97,7 @@ COPY = {
         "items": [
             ("Liczy się rezultat", "Terento upraszcza cały proces: podłącz zegarek, wybierz mapę i ruszaj."),
             ("Open source od podstaw", "Terento jest rozwijane publicznie i wydawane na licencji GPL-3.0-or-later. Projekt jest bezpłatny; aplikacja nie wymaga konta ani profilu urządzenia w chmurze."),
-            ("Niezależnie i ostrożnie", 'Nazwy Garmin są używane opisowo w kontekście kompatybilności. Dostawcy zachowują własne licencje, a pliki map trafiają bezpośrednio od dostawcy na Maca, a następnie na zegarek. Szczegóły znajdziesz w sekcjach <a href="/legal/">Informacje prawne</a> i <a href="/privacy/">Prywatność</a>.'),
+            ("Niezależnie i ostrożnie", 'Aktualna beta obsługuje Freizeitkarte i OpenTopoMap. Nazwy Garmin są używane opisowo w kontekście kompatybilności. Dostawcy zachowują własne licencje, a pliki map trafiają bezpośrednio od dostawcy na Maca, a następnie na zegarek. Szczegóły znajdziesz w sekcjach <a href="/legal/">Informacje prawne</a> i <a href="/privacy/">Prywatność</a>.'),
             ("Tworzone ze społecznością", 'Kompatybilność jest potwierdzana dla każdego modelu na podstawie rzeczywistych wyników instalacji. Jeśli coś nie działa, zgłoś problem na <a href="https://github.com/VooZ2/terento/issues" target="_blank" rel="noopener noreferrer">GitHubie</a>, aby projekt mógł się na tym uczyć.'),
         ],
     },
@@ -113,7 +113,7 @@ COPY = {
         "items": [
             ("Důležitý je výsledek", "Terento udržuje postup jednoduchý: připojte hodinky, vyberte mapu a vyrazte."),
             ("Open source jako základ", "Terento vzniká veřejně a je vydáváno pod licencí GPL-3.0-or-later. Projekt je bezplatný; aplikace nevyžaduje účet ani cloudový profil zařízení."),
-            ("Nezávisle a opatrně", 'Názvy Garmin používáme popisně kvůli kompatibilitě. Poskytovatelé si ponechávají vlastní licence a mapové soubory putují přímo od původního poskytovatele do vašeho Macu a poté do hodinek. Podrobnosti najdete v sekcích <a href="/legal/">Právní informace</a> a <a href="/privacy/">Soukromí</a>.'),
+            ("Nezávisle a opatrně", 'Aktuální beta podporuje Freizeitkarte a OpenTopoMap. Názvy Garmin používáme popisně kvůli kompatibilitě. Poskytovatelé si ponechávají vlastní licence a mapové soubory putují přímo od původního poskytovatele do vašeho Macu a poté do hodinek. Podrobnosti najdete v sekcích <a href="/legal/">Právní informace</a> a <a href="/privacy/">Soukromí</a>.'),
             ("Tvoříme s komunitou", 'Kompatibilita se potvrzuje pro každý model na základě skutečných výsledků instalace. Pokud něco nefunguje, otevřete issue na <a href="https://github.com/VooZ2/terento/issues" target="_blank" rel="noopener noreferrer">GitHubu</a>, aby se z toho projekt mohl poučit.'),
         ],
     },
@@ -129,7 +129,7 @@ COPY = {
         "items": [
             ("Il risultato prima di tutto", "Terento mantiene il percorso semplice: collega l’orologio, scegli una mappa e parti."),
             ("Open source alla base", "Terento è sviluppato pubblicamente e rilasciato con licenza GPL-3.0-or-later. Il progetto è gratuito; l’app non richiede un account né un profilo del dispositivo nel cloud."),
-            ("Indipendente e prudente", 'I nomi Garmin sono usati in modo descrittivo per la compatibilità. I provider mantengono le proprie licenze e i file delle mappe passano direttamente dal provider originale al tuo Mac e poi all’orologio. Per i dettagli, vedi <a href="/legal/">Note legali</a> e <a href="/privacy/">Privacy</a>.'),
+            ("Indipendente e prudente", 'La beta attuale supporta Freizeitkarte e OpenTopoMap. I nomi Garmin sono usati in modo descrittivo per la compatibilità. I provider mantengono le proprie licenze e i file delle mappe passano direttamente dal provider originale al tuo Mac e poi all’orologio. Per i dettagli, vedi <a href="/legal/">Note legali</a> e <a href="/privacy/">Privacy</a>.'),
             ("Costruito con la community", 'La compatibilità viene confermata modello per modello usando risultati reali di installazione. Se qualcosa non funziona, apri una issue su <a href="https://github.com/VooZ2/terento/issues" target="_blank" rel="noopener noreferrer">GitHub</a> per aiutare il progetto a migliorare.'),
         ],
     },
@@ -154,6 +154,7 @@ def render(locale: str, copy: dict[str, object]) -> str:
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222A2B">
     <meta name="description" content="{esc(copy["description"])}">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="{canonical}">

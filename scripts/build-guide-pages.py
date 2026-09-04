@@ -21,8 +21,8 @@ REVIEWED = "2026-09-02T00:00:00Z"
 IMAGE_VERSION = "20260902-your-garmin"
 READING_STATE_VERSION = "20260902-reading-state"
 GUIDE_PROGRESS_VERSION = "20260902-guide-progress"
-UMAMI_SCRIPT_VERSION = "20260904-analytics-all-visitors"
-STYLE_VERSION = "20260904-analytics-all-visitors"
+UMAMI_SCRIPT_VERSION = "20260904-public-link-events"
+STYLE_VERSION = "20260904-language-selector"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 ISSUES_URL = "https://github.com/VooZ2/terento/issues"
 EMAIL_URL = "mailto:hello@terento.app?subject=Terento%20installation%20issue"
@@ -166,12 +166,13 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
     return f'''<!doctype html>
 <html lang="{locale}" data-language="{locale}" data-page="guide">
   <head>
-    <script defer src="/site-shell.js?v=20260828-guide"></script>
+    <script defer src="/site-shell.js?v=20260904-language-selector"></script>
     <script defer src="/reading-state.js?v={READING_STATE_VERSION}"></script>
     <script defer src="/guide-progress.js?v={GUIDE_PROGRESS_VERSION}"></script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222A2B">
     <meta name="description" content="{esc(copy["meta_description"])}">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="{canonical}">
@@ -199,7 +200,7 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
     <link rel="mask-icon" href="/safari-pinned-tab.svg?v=20260820-4" color="#7898A8">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="stylesheet" href="/styles.css?v={STYLE_VERSION}">
-    <script defer src="/language.js?v=20260824-2"></script>
+    <script defer src="/language.js?v=20260904-language-selector"></script>
     <script defer src="/privacy-consent.js?v={UMAMI_SCRIPT_VERSION}"></script>
     <script type="application/ld+json">
 {guide_json}
@@ -393,7 +394,7 @@ COPY_REFINEMENTS = {
         "title": "Install Third-Party Garmin Maps on Mac — Terento",
         "meta_description": "Install supported third-party maps on a Garmin smartwatch from an Apple Silicon Mac. Connect the watch, choose a map and install with Terento.",
         "intro": "Terento gives you a clear Apple Silicon workflow for installing third-party maps: connect the watch, choose a map, review storage and install.",
-        "current_beta": "Third-party maps + local import",
+        "current_beta": "Freizeitkarte + OpenTopoMap + local import",
         "compatibility_note": "The official Compatibility page is the single public list of exact models and variants with real installation evidence. It is not a promise for every Garmin watch. After you connect your watch, Terento checks it and tells you whether you can continue safely.",
         "after_steps_copy": "Terento checks the map, available space and result to help keep your watch safe.",
         "faq_link_eyebrow": "More help",
@@ -411,7 +412,7 @@ COPY_REFINEMENTS = {
         "connect_caption": "The watch may take 1–2 minutes to appear after connection.",
         "detect_body": "Wait up to 1–2 minutes after connecting. If the watch still does not appear, reconnect it, check that the cable supports data and close other apps that may be using it.",
         "step0_body": "Download the latest beta, open it and move Terento to Applications.",
-        "step2_body": "Choose a map and region. Terento shows the map size and available space before you install. You can also add a supported map file from your Mac.",
+        "step2_body": "Choose Freizeitkarte or OpenTopoMap and a region. Terento shows the map size and available space before you install. You can also add a supported map file from your Mac.",
         "step3_body": "Check your choices, then start. Keep the watch connected while Terento transfers and checks the map.",
         "step4_body": "When Terento says it is done, safely disconnect the watch and check that the map is there.",
     },
@@ -419,7 +420,7 @@ COPY_REFINEMENTS = {
         "title": "Drittanbieter-Karten auf Garmin vom Mac installieren — Terento",
         "meta_description": "Installiere unterstützte Drittanbieter-Karten auf einer Garmin-Smartwatch vom Apple-Silicon-Mac. Uhr verbinden, Karte wählen und mit Terento installieren.",
         "intro": "Terento bietet einen klaren Ablauf für Apple Silicon: Uhr verbinden, Karte wählen, Speicher prüfen und installieren.",
-        "current_beta": "Drittanbieter-Karten + lokaler Import",
+        "current_beta": "Freizeitkarte + OpenTopoMap + lokaler Import",
         "compatibility_note": "Die offizielle Kompatibilitätsseite ist die einzige öffentliche Liste genauer Modelle und Varianten mit echten Installationsnachweisen. Sie ist kein Versprechen für jede Garmin-Uhr. Nach dem Verbinden prüft Terento deine Uhr und sagt dir, ob du sicher fortfahren kannst.",
         "after_steps_copy": "Terento prüft Karte, freien Speicher und Ergebnis, damit deine Uhr geschützt bleibt.",
         "faq_link_eyebrow": "Mehr Hilfe",
@@ -437,7 +438,7 @@ COPY_REFINEMENTS = {
         "connect_caption": "Nach dem Verbinden kann es 1–2 Minuten dauern, bis die Uhr erscheint.",
         "detect_body": "Warte nach dem Verbinden bis zu 1–2 Minuten. Wenn die Uhr weiterhin nicht erscheint, verbinde sie erneut, prüfe das Datenkabel und schließe andere Programme, die sie verwenden könnten.",
         "step0_body": "Lade die aktuelle Beta herunter, öffne sie und verschiebe Terento in den Ordner Programme.",
-        "step2_body": "Wähle eine Karte und eine Region. Terento zeigt Kartengröße und freien Speicher, bevor du installierst. Du kannst auch eine unterstützte Kartendatei von deinem Mac hinzufügen.",
+        "step2_body": "Wähle Freizeitkarte oder OpenTopoMap und eine Region. Terento zeigt Kartengröße und freien Speicher, bevor du installierst. Du kannst auch eine unterstützte Kartendatei von deinem Mac hinzufügen.",
         "step3_body": "Prüfe deine Auswahl und starte dann. Lass die Uhr verbunden, während Terento die Karte überträgt und prüft.",
         "step4_body": "Wenn Terento fertig meldet, trenne die Uhr sicher und prüfe, ob die Karte verfügbar ist.",
     },
@@ -445,7 +446,7 @@ COPY_REFINEMENTS = {
         "title": "Installer des cartes tierces Garmin sur Mac — Terento",
         "meta_description": "Installez des cartes tierces prises en charge sur une montre Garmin depuis un Mac Apple Silicon. Connectez la montre, choisissez une carte et utilisez Terento.",
         "intro": "Terento propose un parcours clair pour Apple Silicon : connectez la montre, choisissez une carte, vérifiez l’espace et installez.",
-        "current_beta": "Cartes tierces + import local",
+        "current_beta": "Freizeitkarte + OpenTopoMap + import local",
         "compatibility_note": "La page Compatibilité officielle est la liste publique unique des modèles et variantes précis avec des preuves d’installation réelles. Elle ne promet pas la compatibilité avec toutes les montres Garmin. Après la connexion, Terento vérifie votre montre et vous indique si vous pouvez continuer en toute sécurité.",
         "after_steps_copy": "Terento vérifie la carte, l’espace disponible et le résultat pour protéger votre montre.",
         "faq_link_eyebrow": "Plus d’aide",
@@ -463,7 +464,7 @@ COPY_REFINEMENTS = {
         "connect_caption": "La montre peut mettre 1 à 2 minutes à apparaître après la connexion.",
         "detect_body": "Attendez 1 à 2 minutes après la connexion. Si la montre n’apparaît toujours pas, reconnectez-la, vérifiez que le câble permet les données et fermez les autres apps susceptibles de l’utiliser.",
         "step0_body": "Téléchargez la dernière bêta, ouvrez-la et déplacez Terento dans Applications.",
-        "step2_body": "Choisissez une carte et une région. Terento affiche la taille de la carte et l’espace disponible avant l’installation. Vous pouvez aussi ajouter un fichier cartographique pris en charge depuis votre Mac.",
+        "step2_body": "Choisissez Freizeitkarte ou OpenTopoMap et une région. Terento affiche la taille de la carte et l’espace disponible avant l’installation. Vous pouvez aussi ajouter un fichier cartographique pris en charge depuis votre Mac.",
         "step3_body": "Vérifiez votre choix, puis lancez l’installation. Gardez la montre connectée pendant que Terento transfère et vérifie la carte.",
         "step4_body": "Lorsque Terento indique que tout est terminé, déconnectez la montre en toute sécurité et vérifiez que la carte est disponible.",
     },
@@ -471,7 +472,7 @@ COPY_REFINEMENTS = {
         "title": "Instalacja map innych firm na Garminie z Maca — Terento",
         "meta_description": "Instaluj obsługiwane mapy innych firm na zegarku Garmin z Maca z Apple Silicon. Podłącz zegarek, wybierz mapę i zainstaluj ją z Terento.",
         "intro": "Terento zapewnia prosty proces na Macach z Apple Silicon: podłącz zegarek, wybierz mapę, sprawdź pamięć i zainstaluj.",
-        "current_beta": "Mapy innych firm + lokalny import",
+        "current_beta": "Freizeitkarte + OpenTopoMap + lokalny import",
         "compatibility_note": "Oficjalna strona kompatybilności jest jedyną publiczną listą konkretnych modeli i wariantów z rzeczywistymi dowodami instalacji. Nie jest obietnicą zgodności z każdym zegarkiem Garmin. Po podłączeniu Terento sprawdzi zegarek i powie, czy można bezpiecznie kontynuować.",
         "after_steps_copy": "Terento sprawdza mapę, wolne miejsce i wynik, aby chronić Twój zegarek.",
         "faq_link_eyebrow": "Więcej pomocy",
@@ -489,7 +490,7 @@ COPY_REFINEMENTS = {
         "connect_caption": "Zegarek może pojawić się 1–2 minuty po podłączeniu.",
         "detect_body": "Odczekaj 1–2 minuty po podłączeniu. Jeśli zegarek nadal się nie pojawia, podłącz go ponownie, sprawdź kabel do transmisji danych i zamknij inne aplikacje, które mogą z niego korzystać.",
         "step0_body": "Pobierz najnowszą betę, otwórz ją i przenieś Terento do folderu Programy.",
-        "step2_body": "Wybierz mapę i region. Terento pokaże rozmiar mapy i wolne miejsce przed instalacją. Możesz też dodać obsługiwany plik mapy z Maca.",
+        "step2_body": "Wybierz Freizeitkarte lub OpenTopoMap i region. Terento pokaże rozmiar mapy i wolne miejsce przed instalacją. Możesz też dodać obsługiwany plik mapy z Maca.",
         "step3_body": "Sprawdź wybór i rozpocznij instalację. Pozostaw zegarek podłączony, aż Terento prześle i sprawdzi mapę.",
         "step4_body": "Gdy Terento poinformuje o zakończeniu, bezpiecznie odłącz zegarek i sprawdź, czy mapa jest dostępna.",
     },
@@ -497,7 +498,7 @@ COPY_REFINEMENTS = {
         "title": "Instalace map třetích stran do Garminu z Macu — Terento",
         "meta_description": "Instalujte podporované mapy třetích stran do hodinek Garmin z Macu s Apple Silicon. Připojte hodinky, vyberte mapu a nainstalujte ji s Terento.",
         "intro": "Terento nabízí jasný postup pro Macy s Apple Silicon: připojte hodinky, vyberte mapu, zkontrolujte místo a instalujte.",
-        "current_beta": "Mapy třetích stran + místní import",
+        "current_beta": "Freizeitkarte + OpenTopoMap + místní import",
         "compatibility_note": "Oficiální stránka Kompatibilita je jediným veřejným seznamem konkrétních modelů a variant s reálnými doklady instalace. Není příslibem kompatibility se všemi hodinkami Garmin. Po připojení Terento hodinky zkontroluje a řekne vám, zda lze bezpečně pokračovat.",
         "after_steps_copy": "Terento zkontroluje mapu, volné místo a výsledek, aby hodinky zůstaly chráněné.",
         "faq_link_eyebrow": "Další pomoc",
@@ -515,7 +516,7 @@ COPY_REFINEMENTS = {
         "connect_caption": "Hodinky se po připojení mohou zobrazit až za 1–2 minuty.",
         "detect_body": "Po připojení počkejte 1–2 minuty. Pokud se hodinky stále nezobrazí, připojte je znovu, ověřte datový kabel a ukončete ostatní aplikace, které je mohou používat.",
         "step0_body": "Stáhněte nejnovější betu, otevřete ji a přesuňte Terento do složky Aplikace.",
-        "step2_body": "Vyberte mapu a oblast. Terento před instalací zobrazí velikost mapy a volné místo. Z Macu můžete také přidat podporovaný mapový soubor.",
+        "step2_body": "Vyberte Freizeitkarte nebo OpenTopoMap a oblast. Terento před instalací zobrazí velikost mapy a volné místo. Z Macu můžete také přidat podporovaný mapový soubor.",
         "step3_body": "Zkontrolujte výběr a spusťte instalaci. Nechte hodinky připojené, dokud Terento mapu nepřenese a nezkontroluje.",
         "step4_body": "Až Terento oznámí dokončení, hodinky bezpečně odpojte a ověřte, že je mapa dostupná.",
     },
@@ -523,7 +524,7 @@ COPY_REFINEMENTS = {
         "title": "Installare mappe di terze parti Garmin da Mac — Terento",
         "meta_description": "Installa mappe di terze parti supportate su uno smartwatch Garmin da un Mac Apple Silicon. Collega l’orologio, scegli una mappa e usa Terento.",
         "intro": "Terento offre un flusso chiaro per Apple Silicon: collega l’orologio, scegli una mappa, controlla lo spazio e installa.",
-        "current_beta": "Mappe di terze parti + importazione locale",
+        "current_beta": "Freizeitkarte + OpenTopoMap + importazione locale",
         "compatibility_note": "La pagina Compatibilità ufficiale è l’unico elenco pubblico di modelli e varianti esatti con prove reali di installazione. Non promette la compatibilità con ogni smartwatch Garmin. Dopo il collegamento, Terento controlla l’orologio e ti dice se puoi continuare in sicurezza.",
         "after_steps_copy": "Terento controlla la mappa, lo spazio disponibile e il risultato per proteggere il tuo orologio.",
         "faq_link_eyebrow": "Altra assistenza",
@@ -541,7 +542,7 @@ COPY_REFINEMENTS = {
         "connect_caption": "Dopo il collegamento possono servire 1–2 minuti perché lo smartwatch appaia.",
         "detect_body": "Attendi 1–2 minuti dopo il collegamento. Se lo smartwatch non appare, ricollegalo, controlla il cavo dati e chiudi le altre app che potrebbero usarlo.",
         "step0_body": "Scarica l’ultima beta, aprila e sposta Terento nella cartella Applicazioni.",
-        "step2_body": "Scegli una mappa e una regione. Terento mostra le dimensioni della mappa e lo spazio disponibile prima dell’installazione. Puoi anche aggiungere un file cartografico supportato dal Mac.",
+        "step2_body": "Scegli Freizeitkarte o OpenTopoMap e una regione. Terento mostra le dimensioni della mappa e lo spazio disponibile prima dell’installazione. Puoi anche aggiungere un file cartografico supportato dal Mac.",
         "step3_body": "Controlla la scelta e avvia l’installazione. Lascia l’orologio collegato mentre Terento trasferisce e verifica la mappa.",
         "step4_body": "Quando Terento segnala che ha finito, scollega l’orologio in sicurezza e verifica che la mappa sia disponibile.",
     },
