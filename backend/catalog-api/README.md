@@ -123,9 +123,10 @@ existing private database, replaces only the API and scheduler containers,
 removes services from the known stale Compose project without deleting its
 volumes, and asserts that exactly one API, scheduler, and healthy database are
 running. It verifies the image release label, internal API-to-database health,
-the public catalog/device endpoints, the website's API reference, and the
-authenticated admin gate at `api.terento.app`. It keeps the previous API image
-available for rollback and does not change the PostgreSQL or asset volumes.
+the public catalog/device endpoints, the website's API reference, the
+authenticated admin gate at `api.terento.app`, and the immutable compatibility
+event contract. It keeps the previous API image available for rollback and
+does not change the PostgreSQL or asset volumes.
 
 The catalog includes a map only after a collector has a normalized version and
 a known download size. A missing size is retained in the database but omitted

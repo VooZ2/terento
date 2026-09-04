@@ -72,6 +72,10 @@ one operation each.
 Schema version 4 keeps the structured diagnostics contract while removing the
 per-event deletion token. Uploaded compatibility events are immutable through
 the public API; `DELETE /compatibility/events` returns `405 Method Not Allowed`.
+The authenticated `/admin` pages are a read-only projection of the same
+persisted compatibility columns and remain schema-version agnostic: v4 uses
+the existing model, variant, firmware, operation, outcome, and failure fields,
+so no separate admin database migration or UI contract break is required.
 
 Compatibility events older than 24 months are pruned from the active database
 by the service health cycle.

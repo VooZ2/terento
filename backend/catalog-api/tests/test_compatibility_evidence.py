@@ -434,6 +434,71 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(EvidenceValidationError, "deletion_not_supported"):
             validate_event(json.dumps({**payload, "deletionToken": "a" * 64}).encode())
 
+    def test_schema_v4_custom_event_remains_visible_in_admin_installations(self):
+        payload = event(
+            schemaVersion=4,
+            id="523e4567-e89b-12d3-a456-426614174000",
+            model="fēnix 7 Pro",
+            compatibilityIdentity="fēnix 7 Pro",
+            provider="custom",
+            region="custom",
+            mapRelease="custom",
+            operationId="623e4567-e89b-12d3-a456-426614174000",
+            mapResultIndex=0,
+            selectedMapCount=1,
+            appBuild="10",
+            releaseLabel="1.0.0-beta.9",
+            writeStarted=True,
+            remoteObjectCreated=True,
+            cleanupAttempted=False,
+            cleanupSucceeded=False,
+            transferProgressBucket="100",
+        )
+        payload.pop("deletionToken")
+        response, _ = self.request(
+            "POST", "/compatibility/events", json.dumps(payload).encode(),
+            {"Content-Type": "application/json"},
+        )
+        self.assertEqual(response.status, 201)
+
+        self.database.compatibility_rows = [{
+            "model": "fēnix 7 Pro",
+            "compatibility_identity": "fēnix 7 Pro",
+            "attempted_install_count": 1,
+            "successful_install_count": 1,
+            "failed_install_count": 0,
+            "success_rate": 100.0,
+            "calculated_status": "TESTING",
+            "recognized_map_capable_evidence": False,
+            "last_success": datetime(2026, 9, 4, tzinfo=timezone.utc),
+            "last_failure": None,
+            "last_evidence": datetime(2026, 9, 4, tzinfo=timezone.utc),
+        }]
+        self.database.compatibility_operations = [{
+            "operation_key": payload["operationId"],
+            "operation_id": payload["operationId"],
+            "event_id": payload["id"],
+            "occurred_at": payload["timestamp"],
+            "model": payload["model"],
+            "compatibility_identity": payload["compatibilityIdentity"],
+            "provider": "custom",
+            "region": "custom",
+            "phase_outcome": "SUCCEEDED",
+            "automatic_finishing_result": "VERIFIED",
+            "write_started": True,
+        }]
+
+        credentials = self.authenticated_admin_headers()
+        admin_response, body = self.request(
+            "GET", "/admin/installations", headers={"Cookie": credentials["Cookie"]},
+        )
+        self.assertEqual(admin_response.status, 200)
+        rendered = body.decode()
+        self.assertIn("fēnix 7 Pro", rendered)
+        self.assertIn("Custom installation", rendered)
+        self.assertIn("All-time compatibility evidence from Terento users.", rendered)
+        self.assertNotIn("Map install operations", rendered)
+
     def test_database_binds_omitted_optional_fields_as_null(self):
         database = CaptureDatabase()
         payload = event()
