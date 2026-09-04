@@ -145,7 +145,7 @@ for (const locale of locales) {
   assert.equal(guideOrganization.url, `${baseUrl}/`, `${guide}: organization URL`);
   const guideArticle = entity(guideData.data, "Article", guide);
   assert.equal(guideArticle.datePublished, "2026-08-28T00:00:00Z", `${guide}: ISO publication datetime`);
-  assert.equal(guideArticle.dateModified, "2026-09-02T00:00:00Z", `${guide}: ISO modified datetime`);
+  assert.equal(guideArticle.dateModified, `${release.publishedAt}T00:00:00Z`, `${guide}: ISO modified datetime`);
   assert.equal(graph.filter((item) => item["@type"] === "Article").length, 1, `${guide}: Article entity`);
   assert.equal(graph.filter((item) => item["@type"] === "BreadcrumbList").length, 1, `${guide}: BreadcrumbList entity`);
   assert.equal(graph.filter((item) => item["@type"] === "FAQPage").length, 0, `${guide}: Guide must not publish FAQPage schema`);
