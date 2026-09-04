@@ -99,11 +99,11 @@ every exact watch has been independently verified.
 - The arm64 release build is Developer ID signed, notarized by Apple with no
   issues, stapled, Gatekeeper accepted, and launch-smoke verified from both the
   ZIP and DMG paths.
-- Owner hardware verification on the beta.9 release candidate
-  confirms OpenTopoMap Lithuania installation, map visibility on the fēnix 8,
-  persistence after disconnect/reconnect, and discovery in Manage maps. The
-  final rebuild changes only catalog timestamp decoding and diagnostics; its
-  unchanged installation path passed the complete automated regression suite.
+- The build 11 Release candidate completed Freizeitkarte Andorra and
+  OpenTopoMap Luxembourg installations on the fēnix 8 47 mm AMOLED, firmware
+  2244. Transfer, Finishing, Manage maps, and diagnostic delivery passed.
+  Existing maps and the earlier incomplete OpenTopoMap Andorra were preserved.
+  On-watch usability and reconnect checks are pending owner confirmation.
 
 ## Known limitations
 
@@ -117,11 +117,11 @@ every exact watch has been independently verified.
 
 ## Release artifacts
 
-Build 10 was signed, notarized, stapled, and validated by the release
-pipeline. Apple submission `be22894f-9a7a-44b5-bfff-55fe0ec3cece` was
+Build 11 was signed, notarized, stapled, and validated by the release
+pipeline. Apple submission `2940b354-9107-4947-9b5a-01b7c3a1c5e7` was
 accepted with no issues.
 
 ```text
-Terento-1.0.0-beta.9-macOS-arm64.dmg  2f14858f494d1faa5fb27f24e833d714fe3eeb9e13a4664ab7eec3319aa5dd51
-Terento-1.0.0-beta.9-macOS-arm64.zip  4a161c67997b6dbdca783bd6a8b9803ce4b0d2b8a8c3340a155ae78c2365d990
+Terento-1.0.0-beta.9-macOS-arm64.dmg  77343739b489a05a5f7b927f227325da53b890abf2ddc178cd27f3cbd768744e
+Terento-1.0.0-beta.9-macOS-arm64.zip  a9240c316a9a01cf634882674355d27d575f247630a896fe8fa3494f1c629b3e
 ```
