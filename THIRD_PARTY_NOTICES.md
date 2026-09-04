@@ -25,14 +25,17 @@ Terento currently bundles the following web fonts for the public landing page. T
 
 ## Umami analytics
 
-The production site can load the Umami tracker supplied by the project owner only
-after the visitor gives consent:
+The production site loads the Umami tracker supplied by the project owner for
+all public-site visitors:
 
 `https://stats.enduristas.lt/script.js`
 
 Website ID: `d8097a98-ffe4-478e-b212-9f06b5bcccbe`
 
-This is a runtime service reference, not a bundled dependency or secret. It is included on production pages only after consent; test environments must use a no-tracking build. See the [Umami documentation](https://docs.umami.is/docs) for the service's privacy model and configuration details.
+This is a runtime service reference, not a bundled dependency or secret. It is
+included on production pages for all visitors; test and lab environments must
+use a no-tracking build. See the [Umami documentation](https://docs.umami.is/docs)
+for the service's privacy model and configuration details.
 
 ## Native connectivity PoC dependencies
 

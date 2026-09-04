@@ -40,15 +40,15 @@ Cloudflare provides services used to deliver and secure the website and API, inc
 
 ## Umami analytics
 
-The site loads the Umami analytics script from `stats.enduristas.lt` only after you consent, to measure visits. Umami does not use tracking cookies or create personal profiles. Visit statistics are processed with your consent under Article 6(1)(a) GDPR.
+The site loads the Umami analytics script from `stats.enduristas.lt` for all visitors to measure visits and download events. Umami does not use tracking cookies or create personal profiles. Visit statistics are processed on the basis of Terento’s legitimate interests under Article 6(1)(f) GDPR: understanding site reach and campaign performance, improving the public site, and supporting a free open-source project.
 
-It may record the page path, referrer, browser and device type, and country-level context to produce aggregated statistics. It is not used for advertising or personal profiling. See the [Umami FAQ](https://umami.is/docs/faq).
+It may record the page path, referrer, browser, operating system, device type, and country-level context to produce aggregated statistics. Download events may include non-personal UTM campaign values to distinguish campaign sources and creative variants. It is not used for advertising or personal profiling. See the [Umami FAQ](https://umami.is/docs/faq).
 
 ## Language preference and cookies
 
 When you choose a site language, the site stores `terento-language` in your browser's local storage. The site does not use advertising or profiling cookies. Cloudflare security cookies, if used, serve infrastructure and security purposes.
 
-If you do not consent to analytics, Umami is not loaded. You can change or withdraw analytics consent at any time using the website privacy settings.
+There is no analytics consent popup or analytics settings control. You may object to this processing by contacting [privacy@terento.app](mailto:privacy@terento.app).
 
 ## Your rights
 
@@ -56,4 +56,4 @@ Under the GDPR you may have rights to access, rectify, erase, restrict processin
 
 Use the app to stop sharing or delete uploaded compatibility reports. For other requests, contact [privacy@terento.app](mailto:privacy@terento.app).
 
-The controller relies on legitimate interests under Article 6(1)(f) GDPR to deliver and secure the website and API, prevent abuse, and maintain network and information security. Website analytics and optional compatibility reports are processed only with consent under Article 6(1)(a) GDPR.
+The controller relies on legitimate interests under Article 6(1)(f) GDPR to deliver and secure the website and API, prevent abuse, maintain network and information security, understand site reach and measure campaigns. Website analytics use that legal basis; optional compatibility reports continue to require consent under Article 6(1)(a) GDPR.

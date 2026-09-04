@@ -1414,99 +1414,6 @@ details p {
   text-align: right;
 }
 
-.privacy-settings {
-  display: inline;
-  margin: 0 0 0 8px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: color-mix(in srgb, var(--footer-text) 82%, transparent);
-  font: inherit;
-  font-size: 13px;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-}
-
-.privacy-settings:hover,
-.privacy-settings:focus-visible {
-  color: var(--footer-text);
-}
-
-.consent-banner {
-  position: fixed;
-  right: calc(16px + env(safe-area-inset-right));
-  bottom: calc(16px + env(safe-area-inset-bottom));
-  left: calc(16px + env(safe-area-inset-left));
-  z-index: 1000;
-}
-
-.consent-banner[hidden] {
-  display: none;
-}
-
-.consent-banner-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 28px;
-  width: min(calc(100% - 0px), var(--max-width));
-  margin: 0 auto;
-  padding: 22px 24px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: var(--surface);
-  box-shadow: 0 18px 48px color-mix(in srgb, var(--graphite) 18%, transparent);
-}
-
-.consent-copy {
-  max-width: 720px;
-}
-
-.consent-copy h2 {
-  margin: 0 0 6px;
-  font-size: 19px;
-  line-height: 1.2;
-}
-
-.consent-copy p {
-  margin: 0;
-  color: var(--secondary);
-  font-size: 14px;
-}
-
-.consent-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 10px;
-  flex: 0 0 auto;
-}
-
-.consent-button {
-  min-height: 42px;
-  padding: 9px 15px;
-  border: 1px solid var(--link-text);
-  border-radius: 9px;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.consent-button-primary,
-.consent-button-secondary {
-  background: var(--surface-muted);
-  color: var(--link-text);
-}
-
-.consent-button-primary:hover,
-.consent-button-primary:focus-visible,
-.consent-button-secondary:hover,
-.consent-button-secondary:focus-visible {
-  background: color-mix(in srgb, var(--interactive) 12%, var(--surface));
-}
-
 @media (max-width: 1099px) {
   .hero-grid,
   .testing-grid,
@@ -1702,13 +1609,6 @@ details p {
     gap: 4px 8px;
   }
 
-  .privacy-settings {
-    display: inline-block;
-    min-height: 40px;
-    margin-left: 0;
-    padding: 4px 0;
-  }
-
   .legal-main {
     padding-top: 56px;
   }
@@ -1765,17 +1665,6 @@ details p {
   .final-cta-inner .download-action {
     justify-content: center;
     width: 100%;
-  }
-
-  .consent-banner-inner {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 18px;
-    padding: 20px;
-  }
-
-  .consent-actions {
-    justify-content: flex-start;
   }
 
   .mobile-language-menu .language-options {

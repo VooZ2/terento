@@ -283,7 +283,7 @@
       "path": "/privacy/",
       "locale": "en",
       "title": "Privacy — Terento",
-      "description": "Terento privacy notice for the public website and macOS beta, including optional compatibility reports, Cloudflare services and consent-based visit statistics.",
+      "description": "Terento privacy notice for the public website and macOS beta, including optional compatibility reports, Cloudflare services and privacy-preserving Umami visit statistics.",
       "indexable": false,
       "alternates": false
     }

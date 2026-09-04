@@ -21,7 +21,8 @@ REVIEWED = "2026-09-02T00:00:00Z"
 IMAGE_VERSION = "20260902-your-garmin"
 READING_STATE_VERSION = "20260902-reading-state"
 GUIDE_PROGRESS_VERSION = "20260902-guide-progress"
-STYLE_VERSION = "20260902-visual-fix"
+UMAMI_SCRIPT_VERSION = "20260904-analytics-all-visitors"
+STYLE_VERSION = "20260904-analytics-all-visitors"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 ISSUES_URL = "https://github.com/VooZ2/terento/issues"
 EMAIL_URL = "mailto:hello@terento.app?subject=Terento%20installation%20issue"
@@ -199,7 +200,7 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="stylesheet" href="/styles.css?v={STYLE_VERSION}">
     <script defer src="/language.js?v=20260824-2"></script>
-    <script defer src="/privacy-consent.js?v=20260826-2"></script>
+    <script defer src="/privacy-consent.js?v={UMAMI_SCRIPT_VERSION}"></script>
     <script type="application/ld+json">
 {guide_json}
     </script>

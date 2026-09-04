@@ -54,8 +54,9 @@ Nieko čia parašyto negalima suprasti kaip atsisakymo teisių, kurių pagal tai
 
 ## Kas veikia svetainėje ir programoje
 
-Viešą svetainę pristato ir saugo **Cloudflare**. Lankomumą skaičiuoja
-**Umami** (be slapukų ir be asmeninio profiliavimo). Kalbos pasirinkimas gali
+Viešą svetainę pristato ir saugo **Cloudflare**. Lankomumą visiems lankytojams
+skaičiuoja privatumo siekianti **Umami** analitika (be slapukų ir be asmeninio
+profiliavimo), be sutikimo popup’o. Kalbos pasirinkimas gali
 būti įrašytas jūsų naršyklėje.
 
 Naujo macOS beta diegimo metu suderinamumo duomenų dalijimosi pasirinkimas

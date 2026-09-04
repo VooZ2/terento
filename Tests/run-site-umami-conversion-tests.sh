@@ -27,7 +27,13 @@ conversion_block = privacy_script.split("const setConversionEvent", 1)[1].split(
 assert "addEventListener" not in conversion_block
 assert "preventDefault" not in conversion_block
 assert "window.umami" not in conversion_block
-assert "utm_" not in conversion_block
+assert "utm_" in conversion_block
+assert "terento-analytics-consent" not in privacy_script
+assert "consent-banner" not in privacy_script
+assert "privacy-settings" not in privacy_script
+assert "getChoice" not in privacy_script
+assert "localStorage" not in privacy_script
+assert privacy_script.index("instrumentConversionLinks(campaignParams);") < privacy_script.index("loadUmami();")
 
 
 class AnchorParser(HTMLParser):
@@ -158,11 +164,34 @@ for path in [root / "site/index.html", *sorted(root.glob("site/*/index.html")), 
         continue
     assert 'href="https://buymeacoffee.com/vooz2"' in html, f"{path}: missing static support link"
     assert 'class="footer-support-link"' in html, f"{path}: missing support link class"
-    assert 'data-umami-event="support-click"' not in html, f"{path}: tracking must remain consent-gated"
+    assert 'data-umami-event="support-click"' not in html, f"{path}: support event metadata must remain script-owned"
     support = [item for item in anchors(path) if "footer-support-link" in item["class"]]
     assert len(support) == 1, f"{path}: expected one support link"
     assert any("footer-identity" in ancestor for ancestor in support[0]["ancestors"]), f"{path}: support link moved out of footer metadata"
     assert not any("footer-nav" in ancestor for ancestor in support[0]["ancestors"]), f"{path}: support link entered footer navigation"
 
+tracked_pages = [
+    root / "site/404.html",
+    root / "site/index.html",
+    root / "site/about/index.html",
+    root / "site/compatibility/index.html",
+    root / "site/download/index.html",
+    root / "site/guides/install-garmin-maps-mac/index.html",
+    root / "site/legal/index.html",
+    root / "site/privacy/index.html",
+    *sorted(root.glob("site/*/index.html")),
+    *sorted(root.glob("site/*/about/index.html")),
+    *sorted(root.glob("site/*/compatibility/index.html")),
+    *sorted(root.glob("site/*/download/index.html")),
+    *sorted(root.glob("site/*/guides/install-garmin-maps-mac/index.html")),
+]
+tracked_pages = [path for path in tracked_pages if path != root / "site/supported-watches/index.html"]
+for path in set(tracked_pages):
+    html = path.read_text(encoding="utf-8")
+    assert html.count('src="/privacy-consent.js?v=') == 1, f"{path}: expected one Umami loader"
+
 print("PASS: localized beta parity, Umami conversion taxonomy, CTA scope, download links, and failure-safe behavior")
 PY
+
+. "$repo_root/Tests/node-runtime.sh"
+"$NODE_BIN" "$repo_root/Tests/site-campaign-attribution-tests.cjs"

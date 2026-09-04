@@ -12,7 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE_URL = "https://terento.app"
 ABOUT_SLUG = "about/"
 SHELL_VERSION = "20260902-ia-navigation"
-STYLE_VERSION = "20260902-visual-fix"
+STYLE_VERSION = "20260904-analytics-all-visitors"
+UMAMI_SCRIPT_VERSION = "20260904-analytics-all-visitors"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
 META_LOCALES = {"en": "en_US", "de": "de_DE", "fr": "fr_FR", "pl": "pl_PL", "cs": "cs_CZ", "it": "it_IT"}
@@ -181,6 +182,7 @@ def render(locale: str, copy: dict[str, object]) -> str:
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260820-4">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="stylesheet" href="/styles.css?v={STYLE_VERSION}">
+    <script defer src="/privacy-consent.js?v={UMAMI_SCRIPT_VERSION}"></script>
 </head>
   <body class="about-page">
     <a class="skip-link" href="#main-content">{esc(copy["skip"])}</a>

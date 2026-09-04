@@ -54,9 +54,18 @@ Cloudflare **gali** nustatyti saugumo slapukus (pvz. `__cf_bm`, `cf_clearance`),
 
 ### Umami statistika
 
-Gamybinė svetainė krauna Umami scenarijų iš `stats.enduristas.lt`, kad būtų skaičiuojami apsilankymai. Umami teigia ir scenarijus patvirtina: **sekimo slapukų nenaudoja**. Nėra paskyros, el. pašto ir asmeninio profilio per kelis apsilankymus.
+Gamybinė svetainė krauna Umami scenarijų iš `stats.enduristas.lt` visiems
+lankytojams, kad būtų skaičiuojami apsilankymai ir atsisiuntimo įvykiai. Umami
+teigia ir scenarijus patvirtina: **sekimo slapukų nenaudoja**. Nėra paskyros,
+el. pašto ir asmeninio profilio per kelis apsilankymus. Lankomumo statistika
+tvarkoma pagal Terento teisėtą interesą pagal BDAR 6 straipsnio 1 dalies f punktą:
+suprasti svetainės pasiekiamumą ir kampanijų veikimą, gerinti viešą svetainę ir
+remti nemokamą atvirojo kodo projektą.
 
-Paprastai fiksuojama: kelias, nuoroda (referrer), naršyklės ir įrenginio tipas, šalies lygio kontekstas. Terento neįjungia Umami `identify()`. Scenarijus gali perskaityti `localStorage` raktą `umami.disabled`, jei jį nustatėte patys kaip atsisakymą.
+Paprastai fiksuojama: kelias, nuoroda (referrer), naršyklė, operacinė sistema,
+įrenginio tipas ir šalies lygio kontekstas. Kampanijos nuorodų atsisiuntimo
+įvykiai gali turėti neasmenines UTM reikšmes šaltiniams ir kūrybos variantams
+atskirti. Terento neįjungia Umami `identify()`.
 
 Žr. [Umami DUK](https://umami.is/docs/faq).
 
@@ -68,9 +77,13 @@ Jei patys pasirenkate svetainės kalbą, naršyklėje gali būti įrašytas `ter
 
 **Sutikimo juostos nereikia.**
 
-Svetainė nenaudoja reklamos ar profiliavimo slapukų. Statistika (Umami) be slapukų ir be asmeninio profiliavimo. Kalbos `localStorage` — tik tada, kai pasirenkate kalbą. Cloudflare saugumo slapukai, jei kada nors atsirastų, būtų infrastruktūrai, ne marketingui.
+Svetainė nenaudoja reklamos ar profiliavimo slapukų. Statistika (Umami) be
+sekimo slapukų ir be asmeninio profiliavimo įjungta visiems lankytojams. Kalbos
+`localStorage` — tik tada, kai pasirenkate kalbą. Cloudflare saugumo slapukai,
+jei kada nors atsirastų, būtų infrastruktūrai, ne marketingui.
 
-Jei tai pasikeistų (pvz. būtų įjungti neesminiai slapukai ar profiliuojanti analitika), šį puslapį reikėtų atnaujinti ir tada — tik tada — prašyti sutikimo.
+Analitikai nėra sutikimo popup’o ar nustatymo. Jei norite nesutikti su tokiu
+tvarkymu, kreipkitės adresu [privacy@terento.app](mailto:privacy@terento.app).
 
 Poraštėje nerašykite absoliutaus „slapukai nenaudojami“, jei Cloudflare sąranka gali pasikeisti. Tikslesnė formulė: lankomumo statistika slapukų nenaudoja; daugiau — šiame puslapyje.
 
@@ -83,8 +96,8 @@ Pagal BDAR galite turėti teisę susipažinti su duomenimis, juos taisyti, ištr
 nesumažina.
 
 Tikslas — pristatyti ir apsaugoti svetainę, matyti agreguotą lankomumą bei
-gerinti programos suderinamumą. Lankomumo statistika tvarkoma su jūsų sutikimu
-(BDAR 6 str. 1 d. a p.), o suderinamumo ataskaitos siunčiamos tik tęsiant
+gerinti programos suderinamumą. Lankomumo statistika tvarkoma pagal teisėtą
+interesą (BDAR 6 str. 1 d. f p.), o suderinamumo ataskaitos siunčiamos tik tęsiant
 diegimą su matomu, pagal nutylėjimą pažymėtu pasirinkimu; jų tvarkymas grindžiamas
 BDAR 6 str. 1 d. a p. sutikimu.
 

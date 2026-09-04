@@ -48,8 +48,7 @@ assert.match(styles, /\.text-link\s*\{[^}]*color:\s*var\(--link-text\)/s);
 assert.match(styles, /\.text-link:hover\s*\{[^}]*color:\s*var\(--link-text-hover\)/s);
 assert.match(styles, /\.eyebrow\s*\{[^}]*color:\s*var\(--eyebrow-text\)/s);
 assert.match(styles, /\.step-number\s*\{[^}]*color:\s*var\(--accent-text\)/s);
-assert.match(styles, /\.consent-button\s*\{[^}]*border:\s*1px solid var\(--link-text\)/s);
-assert.match(styles, /\.consent-button-primary,\s*\.consent-button-secondary\s*\{[^}]*color:\s*var\(--link-text\)/s);
+assert.doesNotMatch(styles, /\.consent-banner|\.consent-button|\.privacy-settings/);
 assert.match(styles, /a:focus-visible,\s*button:focus-visible,\s*summary:focus-visible\s*\{[^}]*outline:\s*3px solid var\(--focus-ring\)/s);
 assert.doesNotMatch(styles, /\.text-link\s*\{[^}]*opacity:/s);
 
@@ -102,7 +101,6 @@ for (const [name, theme] of [["light", light], ["dark", dark]]) {
   assertContrast(theme, "accent-text", "surface-muted", 4.5, `${name} step number`);
   assertContrast(theme, "eyebrow-text", "surface-muted", 4.5, `${name} How it works eyebrow`);
   assertContrast(theme, "muted-text", "surface-muted", 4.5, `${name} muted step description`);
-  assertContrast(theme, "link-text", "surface-muted", 4.5, `${name} secondary consent action`);
   assertContrast(theme, "focus-ring", "off-white", 3, `${name} focus boundary on page`);
 }
 
