@@ -25,10 +25,34 @@ assert.equal(
 const publicLabel = versionMatch[4] || label;
 
 const readme = read("README.md");
-assert.ok(readme.includes(`The latest public release is ${publicLabel}:`));
-assert.ok(readme.includes(`Download Terento ${publicLabel}`));
+assert.ok(readme.includes(`The latest public release is **${publicLabel} (build ${release.build})**`));
 assert.match(readme, /The Compatibility page is the official public list/);
-assert.match(readme, /`TESTING` means 0 successful installations[\s\S]*`TESTED` means 1–2[\s\S]*`SUPPORTED`[\s\S]*3–4[\s\S]*`VERIFIED`[\s\S]*5 or more/);
+assert.match(readme, /\*\*Tested\*\* — 1–2[\s\S]*\*\*Supported\*\* — 3–4[\s\S]*\*\*Verified\*\* — 5 or more/);
+
+const siteLinks = [...readme.matchAll(/https:\/\/terento\.app[^\s)"<>]*/g)];
+assert.ok(siteLinks.length > 0, "README must link to the public site");
+const linkLocations = new Set();
+for (const [href] of siteLinks) {
+  const url = new URL(href.replaceAll("&amp;", "&"));
+  for (const [key, value] of Object.entries({
+    utm_source: "github", utm_medium: "referral", utm_campaign: "repository",
+  })) {
+    assert.deepEqual(url.searchParams.getAll(key), [value], `${href}: invalid ${key}`);
+  }
+  const locations = url.searchParams.getAll("utm_content");
+  assert.equal(locations.length, 1, `${href}: must have one attribution location`);
+  assert.match(locations[0], /^readme_[a-z0-9_]+$/);
+  assert.ok(!linkLocations.has(locations[0]), `${href}: duplicate attribution location`);
+  linkLocations.add(locations[0]);
+  const sitePath = path.join(root, "site", url.pathname, "index.html");
+  assert.ok(fs.existsSync(sitePath), `${href}: destination page must exist`);
+}
+const screenshotPaths = [...readme.matchAll(/<img\s+src="([^"]+)"/g)];
+assert.ok(screenshotPaths.length > 0, "README must show application screenshots");
+for (const [, asset] of screenshotPaths) {
+  assert.ok(asset.startsWith("site/assets/app/masters/"), "README must reuse website screenshots");
+  assert.ok(fs.existsSync(path.join(root, asset)), `${asset}: missing README screenshot`);
+}
 
 const notes = read("RELEASE_NOTES.md");
 assert.match(notes, new RegExp(`^# Terento v${label}$`, "m"));

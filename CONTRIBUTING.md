@@ -49,14 +49,35 @@ The current native source module and production app expect:
 - libmtp 1.1.23; and
 - libusb 1.0.30, used by libmtp.
 
-From the repository root, the normal build and test commands are:
+Build the SwiftPM source module from the repository root:
 
-    cd lab/native-connectivity-poc
-    swift build
-    cd ../..
-    Tests/run-backend-tests.sh
-    for test_script in Tests/run-*.sh; do "$test_script"; done
-    for test_script in lab/native-connectivity-poc/Tests/run-*.sh; do "$test_script"; done
+```sh
+swift build --package-path lab/native-connectivity-poc
+```
+
+### Automated tests
+
+Run the suite relevant to your change from the repository root, or use
+`Tests/run-all-tests.sh` for the complete release-equivalent matrix:
+
+```sh
+Tests/run-site-tests.sh
+Tests/run-app-tests.sh
+Tests/run-native-tests.sh
+Tests/run-backend-tests.sh
+Tests/run-release-tests.sh
+Tests/run-shared-tests.sh
+Tests/run-all-tests.sh
+```
+
+`Tests/test-suites.json` is the canonical inventory. Leaf runner names use
+`site-`, `app-`, `native-`, `backend-`, `release-`, `shared-`, or `ci-` scope
+prefixes. Inventory checks reject unassigned, missing, duplicated, or
+incorrectly named tests.
+
+Pull requests run the minimum safe suites selected from changed paths. Tags,
+manual full runs, weekly runs, and `Packaging/release.sh` execute the complete
+matrix. Every release uses the same release gate, independent of its beta number.
 
 If Node.js is not on `PATH`, set `TERENTO_NODE_BIN` to its executable before
 running the checks. The repository's web, native, backend, and release
