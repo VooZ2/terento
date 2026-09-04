@@ -686,9 +686,21 @@ def normalize_home(source: str, path: Path, locale: str) -> str:
         source,
         count=1,
     )
+    def mark_final_cta(match: re.Match[str]) -> str:
+        tag = match.group(0)
+        if 'data-umami-event="' in tag:
+            tag = re.sub(r'data-umami-event="[^"]*"', 'data-umami-event="download-cta-click"', tag, count=1)
+        else:
+            tag = tag[:-1] + ' data-umami-event="download-cta-click">'
+        if 'data-umami-event-location="' in tag:
+            tag = re.sub(r'data-umami-event-location="[^"]*"', 'data-umami-event-location="home-final-cta"', tag, count=1)
+        else:
+            tag = tag[:-1] + ' data-umami-event-location="home-final-cta">'
+        return tag
+
     source = re.sub(
-        r'(<section class="final-cta"[\s\S]*?<a class="download-action")(?![^>]*data-umami-event=)(?=[^>]*>)',
-        r'\1 data-umami-event="download-cta-click" data-umami-event-location="home-final-cta"',
+        r'<section class="final-cta"[\s\S]*?<a class="download-action"[^>]*>',
+        mark_final_cta,
         source,
         count=1,
     )

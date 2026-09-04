@@ -110,6 +110,16 @@ for path in sorted((root / "site").rglob("*.html")):
         assert event in allowed_internal_events, f"{path}: internal link {href!r} has no standard Umami event"
         assert location and re.fullmatch(r"[a-z0-9-]+", location), f"{path}: internal link {href!r} has no standard Umami location"
 
+for path in [root / "site/localized-content.js"]:
+    source = path.read_text(encoding="utf-8").replace('\\"', '"')
+    for tag in re.findall(r"<a\b[^>]*>", source, flags=re.IGNORECASE):
+        attributes = dict(re.findall(r'([\w:-]+)="([^"]*)"', tag))
+        href = attributes.get("href", "")
+        if not (href.startswith("/") or href.startswith("#")):
+            continue
+        assert attributes.get("data-umami-event") in allowed_internal_events, f"{path}: runtime internal link {href!r} has no standard Umami event"
+        assert attributes.get("data-umami-event-location"), f"{path}: runtime internal link {href!r} has no Umami location"
+
 
 home_files = [
     root / "site/index.html",

@@ -9,11 +9,11 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SHELL_VERSION = "20260904-language-selector"
+SHELL_VERSION = "20260904-pass3-internal-link-events-v1"
 STYLE_VERSION = "20260904-pass3-workflow-arrows-v7"
 IMAGE_VERSION = "20260902-your-garmin"
 LANGUAGE_VERSION = "20260904-language-selector"
-LOCALIZED_CONTENT_VERSION = "20260904-pass3-workflow-arrows-v4"
+LOCALIZED_CONTENT_VERSION = "20260904-pass3-internal-link-events-v1"
 COMPATIBILITY_LOCALES_VERSION = "20260904-beta-provider-scope"
 COMPATIBILITY_VERSION = "20260904-snapshot"
 UMAMI_SCRIPT_VERSION = "20260904-public-link-events-v2"

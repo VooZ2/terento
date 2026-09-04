@@ -30,7 +30,7 @@ const locales = new Map([
   }],
   ["de", {
     file: path.join(root, "site", "de", "index.html"),
-    h1: "Karten einfach auf Garmin-Uhren installieren.",
+    h1: "Karten einfach auf Garmin-Uhren installieren",
     hero: "Installiere, aktualisiere und verwalte Drittanbieter-Karten mit einer nativen macOS-App — ohne manuelle Dateiübertragungen.",
     experienceLabel: "So funktioniert es",
     experienceTitle: "Verbinden → Installieren → Fertig",
@@ -52,7 +52,7 @@ const locales = new Map([
   }],
   ["fr", {
     file: path.join(root, "site", "fr", "index.html"),
-    h1: "Installez simplement des cartes sur les montres Garmin.",
+    h1: "Installez simplement des cartes sur les montres Garmin",
     hero: "Installez, mettez à jour et gérez des cartes tierces depuis une application macOS native — sans transferts manuels de fichiers.",
     experienceLabel: "Comment ça marche",
     experienceTitle: "Connecter → Installer → Terminé",
@@ -74,7 +74,7 @@ const locales = new Map([
   }],
   ["pl", {
     file: path.join(root, "site", "pl", "index.html"),
-    h1: "Instaluj mapy na zegarkach Garmin — po prostu.",
+    h1: "Instaluj mapy na zegarkach Garmin — po prostu",
     hero: "Instaluj, aktualizuj i zarządzaj mapami innych firm z natywnej aplikacji macOS — bez ręcznego przesyłania plików.",
     experienceLabel: "Jak to działa",
     experienceTitle: "Połącz → Zainstaluj → Gotowe",
@@ -96,7 +96,7 @@ const locales = new Map([
   }],
   ["cs", {
     file: path.join(root, "site", "cs", "index.html"),
-    h1: "Instalujte mapy do hodinek Garmin jednoduše.",
+    h1: "Instalujte mapy do hodinek Garmin jednoduše",
     hero: "Instalujte, aktualizujte a spravujte mapy třetích stran z nativní aplikace pro macOS — bez ručních přenosů souborů.",
     experienceLabel: "Jak to funguje",
     experienceTitle: "Připojit → Instalovat → Hotovo",
@@ -118,7 +118,7 @@ const locales = new Map([
   }],
   ["it", {
     file: path.join(root, "site", "it", "index.html"),
-    h1: "Installa le mappe sugli smartwatch Garmin, in modo semplice.",
+    h1: "Installa le mappe sugli smartwatch Garmin, in modo semplice",
     hero: "Installa, aggiorna e gestisci mappe di terze parti da un’app macOS nativa — senza trasferimenti manuali di file.",
     experienceLabel: "Come funziona",
     experienceTitle: "Connetti → Installa → Fatto",

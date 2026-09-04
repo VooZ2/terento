@@ -27,7 +27,7 @@
         finalCtaTitle: "Bereit für eine einfachere Karteninstallation?",
         finalCtaBody: "Lade Terento herunter und verwalte Drittanbieter-Karten von deinem Mac aus.",
         faq: [
-          ["Welche Garmin-Uhren funktionieren mit Terento?", "Auf der <a href=\"/de/compatibility/\">Kompatibilitätsseite</a> findest du Garmin-Modelle und Varianten, die durch echte Installationen bestätigt wurden."],
+          ["Welche Garmin-Uhren funktionieren mit Terento?", "Auf der <a href=\"/de/compatibility/\" data-umami-event=\"compatibility-link-click\" data-umami-event-location=\"home-faq-compatibility\">Kompatibilitätsseite</a> findest du Garmin-Modelle und Varianten, die durch echte Installationen bestätigt wurden."],
           ["Kann ich Drittanbieter-Karten von einem Mac ohne BaseCamp auf einer Garmin-Uhr installieren?", "Ja. Terento wurde entwickelt, um die Verwaltung von Drittanbieter-Karten auf macOS einfach und schnell zu machen — von der Kartenauswahl bis zur Installation, Aktualisierung und Verwaltung auf deiner Garmin-Uhr. <a href=\"/de/guides/install-garmin-maps-mac/\" data-umami-event=\"guide-link-click\" data-umami-event-location=\"home-faq-basecamp\">Lies die Installationsanleitung.</a>"],
           ["Kann ich meine eigene .img-Karte hinzufügen?", "Ja. Füge eine kompatible .img-Karte von deinem Mac hinzu und installiere sie auf deiner verbundenen Garmin-Uhr."],
           ["Kann ich Karten später aktualisieren?", "Ja. Terento zeigt, wenn neuere Veröffentlichungen verfügbar sind, und hilft dir, von Terento verwaltete Drittanbieter-Karten zu aktualisieren."],
@@ -60,7 +60,7 @@
         finalCtaTitle: "Prêt pour une façon plus simple d’installer vos cartes ?",
         finalCtaBody: "Téléchargez Terento et gérez vos cartes tierces depuis votre Mac.",
         faq: [
-          ["Quelles montres Garmin fonctionnent avec Terento ?", "Consultez la <a href=\"/fr/compatibility/\">page Compatibilité</a> pour voir les modèles et variantes Garmin confirmés par des installations réelles."],
+          ["Quelles montres Garmin fonctionnent avec Terento ?", "Consultez la <a href=\"/fr/compatibility/\" data-umami-event=\"compatibility-link-click\" data-umami-event-location=\"home-faq-compatibility\">page Compatibilité</a> pour voir les modèles et variantes Garmin confirmés par des installations réelles."],
           ["Puis-je installer des cartes tierces sur une montre Garmin depuis un Mac sans BaseCamp ?", "Oui. Terento est conçu pour rendre la gestion des cartes tierces sur macOS simple et rapide — du choix de la carte à son installation, sa mise à jour et sa gestion sur votre montre Garmin. <a href=\"/fr/guides/install-garmin-maps-mac/\" data-umami-event=\"guide-link-click\" data-umami-event-location=\"home-faq-basecamp\">Lisez le guide d’installation.</a>"],
           ["Puis-je ajouter ma propre carte .img ?", "Oui. Ajoutez une carte .img compatible depuis votre Mac et installez-la sur votre montre Garmin connectée."],
           ["Puis-je mettre les cartes à jour plus tard ?", "Oui. Terento vous indique lorsqu’une version plus récente est disponible et vous aide à mettre à jour les cartes tierces gérées par Terento."],
@@ -93,7 +93,7 @@
         finalCtaTitle: "Gotowy na prostszy sposób instalowania map?",
         finalCtaBody: "Pobierz Terento i zarządzaj mapami innych firm z Maca.",
         faq: [
-          ["Jakie zegarki Garmin działają z Terento?", "Na <a href=\"/pl/compatibility/\">stronie kompatybilności</a> znajdziesz modele i warianty Garmin potwierdzone rzeczywistymi instalacjami."],
+          ["Jakie zegarki Garmin działają z Terento?", "Na <a href=\"/pl/compatibility/\" data-umami-event=\"compatibility-link-click\" data-umami-event-location=\"home-faq-compatibility\">stronie kompatybilności</a> znajdziesz modele i warianty Garmin potwierdzone rzeczywistymi instalacjami."],
           ["Czy mogę instalować mapy innych firm na zegarku Garmin z Maca bez BaseCamp?", "Tak. Terento powstało po to, by instalowanie i zarządzanie mapami innych firm na macOS było proste i szybkie — od wyboru mapy po instalację, aktualizację i zarządzanie nią na zegarku Garmin. <a href=\"/pl/guides/install-garmin-maps-mac/\" data-umami-event=\"guide-link-click\" data-umami-event-location=\"home-faq-basecamp\">Przeczytaj instrukcję instalacji.</a>"],
           ["Czy mogę dodać własną mapę .img?", "Tak. Dodaj zgodną mapę .img z Maca i zainstaluj ją na podłączonym zegarku Garmin."],
           ["Czy mogę później aktualizować mapy?", "Tak. Terento pokazuje, gdy dostępne są nowsze wydania, i pomaga aktualizować mapy innych firm zarządzane przez Terento."],
@@ -126,7 +126,7 @@
         finalCtaTitle: "Chcete jednodušší způsob instalace map?",
         finalCtaBody: "Stáhněte si Terento a spravujte mapy třetích stran z Macu.",
         faq: [
-          ["Které hodinky Garmin fungují s Terento?", "Na stránce <a href=\"/cs/compatibility/\">Kompatibilita</a> najdete modely a varianty Garmin potvrzené skutečnými instalacemi."],
+          ["Které hodinky Garmin fungují s Terento?", "Na stránce <a href=\"/cs/compatibility/\" data-umami-event=\"compatibility-link-click\" data-umami-event-location=\"home-faq-compatibility\">Kompatibilita</a> najdete modely a varianty Garmin potvrzené skutečnými instalacemi."],
           ["Mohu instalovat mapy třetích stran do hodinek Garmin z Macu bez BaseCamp?", "Ano. Terento je navrženo tak, aby správa map třetích stran v macOS byla jednoduchá a rychlá — od výběru mapy po instalaci, aktualizaci a správu v hodinkách Garmin. <a href=\"/cs/guides/install-garmin-maps-mac/\" data-umami-event=\"guide-link-click\" data-umami-event-location=\"home-faq-basecamp\">Přečtěte si instalační příručku.</a>"],
           ["Mohu přidat vlastní mapu .img?", "Ano. Přidejte kompatibilní mapu .img z Macu a nainstalujte ji do připojených hodinek Garmin."],
           ["Mohu mapy aktualizovat později?", "Ano. Terento ukáže, když jsou k dispozici novější vydání, a pomůže vám aktualizovat mapy třetích stran spravované aplikací Terento."],
@@ -159,7 +159,7 @@
         finalCtaTitle: "Pronto per un modo più semplice di installare le mappe?",
         finalCtaBody: "Scarica Terento e gestisci le mappe di terze parti dal tuo Mac.",
         faq: [
-          ["Quali smartwatch Garmin funzionano con Terento?", "Consulta la pagina <a href=\"/it/compatibility/\">Compatibilità</a> per i modelli e le varianti Garmin confermati da installazioni reali."],
+          ["Quali smartwatch Garmin funzionano con Terento?", "Consulta la pagina <a href=\"/it/compatibility/\" data-umami-event=\"compatibility-link-click\" data-umami-event-location=\"home-faq-compatibility\">Compatibilità</a> per i modelli e le varianti Garmin confermati da installazioni reali."],
           ["Posso installare mappe di terze parti su uno smartwatch Garmin da un Mac senza BaseCamp?", "Sì. Terento è progettato per rendere semplice e veloce la gestione delle mappe di terze parti su macOS — dalla scelta della mappa all’installazione, all’aggiornamento e alla gestione sul tuo smartwatch Garmin. <a href=\"/it/guides/install-garmin-maps-mac/\" data-umami-event=\"guide-link-click\" data-umami-event-location=\"home-faq-basecamp\">Leggi la guida all’installazione.</a>"],
           ["Posso aggiungere la mia mappa .img?", "Sì. Aggiungi una mappa .img compatibile dal tuo Mac e installala sul tuo smartwatch Garmin collegato."],
           ["Posso aggiornare le mappe in un secondo momento?", "Sì. Terento mostra quando sono disponibili versioni più recenti e ti aiuta ad aggiornare le mappe di terze parti gestite da Terento."],

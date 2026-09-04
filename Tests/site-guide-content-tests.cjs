@@ -85,7 +85,7 @@ for (const locale of locales) {
   assert.equal([...source.matchAll(/<li class="guide-step">[\s\S]*?<\/li>/g)].length, 5, locale + ": five ordered steps");
   assert.match(source, /<ol class="guide-timeline">/);
   assert.match(source, /<nav class="guide-progress" data-guide-progress[^>]*aria-label="[^"]+">/);
-  assert.equal([...source.matchAll(/<li><a href="#[^"]+"><span class="guide-progress-number"/g)].length, 5, locale + ": five progress links");
+  assert.equal([...source.matchAll(/<li><a href="#[^"]+"[^>]*><span class="guide-progress-number"/g)].length, 5, locale + ": five progress links");
   for (const section of ["before-you-start", "steps", "troubleshooting", "faq-help", "context"]) {
     assert.match(source, new RegExp(`id="${section}"`), `${locale}: progress target ${section}`);
   }
@@ -97,7 +97,7 @@ for (const locale of locales) {
   assert.match(source, /href="https:\/\/github\.com\/VooZ2\/terento\/issues"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/);
   assert.match(source, /mailto:hello@terento\.app\?subject=Terento%20installation%20issue/);
   assert.match(source, /hello@terento\.app/);
-  assert.equal((source.match(/data-umami-event="download-cta-click"/g) || []).length, 3, locale + ": three download CTAs");
+  assert.equal((source.match(/data-umami-event-location="guide-(?:hero|after-steps|bottom)"/g) || []).length, 3, locale + ": three guide download CTAs");
   const downloadButtons = [...source.matchAll(/<a class="download-action"[^>]*>([^<]+)<span aria-hidden="true">→<\/span><\/a>/g)];
   assert.equal(downloadButtons.length, 3, locale + ": three rendered download buttons");
   for (const button of downloadButtons) assert.equal(button[1].trim(), downloadLabels[locale], locale + ": download button label");
@@ -199,7 +199,7 @@ assert.match(styles, /\.guide-progress a\[aria-current="location"\]/);
 const shell = read(path.join(root, "site", "site-shell.js"));
 for (const label of ["Guide", "Anleitung", "Guide", "Poradnik", "Průvodce", "Guida"]) assert.ok(shell.includes(`guide: "${label}"`), `shell Guide label: ${label}`);
 assert.match(shell, /navLink\("compatibility"\).*navLink\("guide"\).*navLink\("about"\).*navLink\("download", "download-action"\)/s);
-assert.match(shell, /<nav class="footer-nav"[\s\S]*navLink\("download"\)/s);
+assert.match(shell, /<nav class="footer-nav"[\s\S]*navLink\("download"(?:, "", "footer-nav")?\)/s);
 const languageScript = read(path.join(root, "site", "language.js"));
 assert.match(languageScript, /shellLanguageMenu/);
 assert.match(languageScript, /shellLanguageMenu\?\.update\?\.\(language\)/);

@@ -268,7 +268,7 @@ Mac, be senos programinės įrangos ir rankinio failų medžio. `BaseCamp` lieka
 FAQ/gide, kad hero nebūtų perkrautas Garmin terminologija.
 
 **3.1 statusas: įgyvendinta lokaliai.** H1 dabar tiesiai kalba apie žemėlapių
-įdiegimą į Garmin laikrodžius: `Install maps on Garmin watches, simply.` Lede
+įdiegimą į Garmin laikrodžius: `Install maps on Garmin watches, simply` Lede
 paaiškina visą veiksmų seką ir pašalina rankinį failų perkėlimą: `Install,
 update, and manage third-party maps from a native macOS app — without manual
 file transfers.` Visose šešiose lokalizacijose pašalintos pasikartojančios Beta
@@ -394,7 +394,24 @@ perteklinio vertikalaus tarpo. Workflow, showcase ir provider sekcijos turi
 pakankamą atskyrimą, o likusi tuščia erdvė Hero zonoje yra sąmoninga Home
 landing page kompozicijos dalis.
 
-### 3.7 Pigūs nits — P3
+### 3.7 H1 ir vidinių nuorodų analitikos standartizavimas — P0 prieš deploy
+
+- Visų viešų puslapių H1 suvienodinti be baigiamojo taško, įskaitant About,
+  Compatibility, Download, Guide, Legal, Privacy, 404 ir lokalizuotas versijas.
+- Kiekvienai vidinei nuorodai pridėti standartinį `data-umami-event` ir
+  `data-umami-event-location`; vieta turi atskirti header, mobile nav, footer,
+  hero, FAQ, Download, Guide ir turinio nuorodas.
+- Patikrinti ir runtime sugeneruojamas nuorodas: kalbų meniu, perpiešiamą
+  shell bei lokalizuotą FAQ turinį.
+
+**3.7 statusas: įgyvendinta lokaliai.** Visi 1 106 sugeneruoto puslapio
+vidiniai anchor’ai turi eventą ir location, H1 su baigiamuoju tašku nebeliko.
+Pridėtas automatinis kontraktas, kuris tikrina HTML ir runtime lokalizuoto
+turinio nuorodas. Generator parity praeina; Node.js pagrįstas testų etapas
+lokaliai neįvykdytas, nes šiame aplinkos profilyje nėra Node.js. Deploy dar
+neatliktas.
+
+### 3.8 Pigūs nits — P3
 
 - Įvertinti `overflow-wrap: anywhere` nuėmimą nuo `h1`, `h2`, `h3`, jei tai
   nebereikalinga lokalizacijoms.

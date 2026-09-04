@@ -174,7 +174,7 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
     return f'''<!doctype html>
 <html lang="{locale}" data-language="{locale}" data-page="guide">
   <head>
-    <script defer src="/site-shell.js?v=20260904-language-selector"></script>
+    <script defer src="/site-shell.js?v=20260904-pass3-internal-link-events-v1"></script>
     <script defer src="/reading-state.js?v={READING_STATE_VERSION}"></script>
     <script defer src="/guide-progress.js?v={GUIDE_PROGRESS_VERSION}"></script>
     <meta charset="utf-8">
