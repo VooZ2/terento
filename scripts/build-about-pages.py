@@ -12,9 +12,12 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE_URL = "https://terento.app"
 ABOUT_SLUG = "about/"
 SHELL_VERSION = "20260904-pass3-internal-link-events-v1"
-STYLE_VERSION = "20260905-guide-flow-v1"
-UMAMI_SCRIPT_VERSION = "20260904-public-link-events"
+STYLE_VERSION = "20260905-guide-flow-v3"
+UMAMI_SCRIPT_VERSION = "20260905-public-link-events-v3"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
+EMAIL_ADDRESS = "hello@terento.app"
+EMAIL_ADDRESS_HTML = EMAIL_ADDRESS.replace("@", "&#64;")
+EMAIL_HREF = f"mailto:{EMAIL_ADDRESS_HTML}"
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
 META_LOCALES = {"en": "en_US", "de": "de_DE", "fr": "fr_FR", "pl": "pl_PL", "cs": "cs_CZ", "it": "it_IT"}
 SOCIAL_IMAGE_ALTS = {
@@ -52,6 +55,7 @@ COPY = {
         "social_eyebrow": "Connect with the maker",
         "linkedin": "LinkedIn",
         "reddit": "Reddit",
+        "email": "Email",
         "donate_prompt": "Like the project?",
         "donate": "Donate",
         "section_title": "Focused on the result — not the process.",
@@ -86,6 +90,7 @@ COPY = {
         "social_eyebrow": "Mit dem Entwickler verbinden",
         "linkedin": "LinkedIn",
         "reddit": "Reddit",
+        "email": "E-Mail",
         "donate_prompt": "Gefällt dir das Projekt?",
         "donate": "Spenden",
         "section_title": "Das Ergebnis im Mittelpunkt — nicht der Prozess.",
@@ -120,6 +125,7 @@ COPY = {
         "social_eyebrow": "Se connecter avec le créateur",
         "linkedin": "LinkedIn",
         "reddit": "Reddit",
+        "email": "E-mail",
         "donate_prompt": "Vous aimez le projet ?",
         "donate": "Faire un don",
         "section_title": "Axé sur le résultat — pas sur le processus.",
@@ -154,6 +160,7 @@ COPY = {
         "social_eyebrow": "Połącz się z twórcą",
         "linkedin": "LinkedIn",
         "reddit": "Reddit",
+        "email": "E-mail",
         "donate_prompt": "Podoba Ci się projekt?",
         "donate": "Wesprzyj",
         "section_title": "Liczy się rezultat — nie proces.",
@@ -188,6 +195,7 @@ COPY = {
         "social_eyebrow": "Spojte se s tvůrcem",
         "linkedin": "LinkedIn",
         "reddit": "Reddit",
+        "email": "E-mail",
         "donate_prompt": "Líbí se vám projekt?",
         "donate": "Přispět",
         "section_title": "Zaměřeno na výsledek — ne na proces.",
@@ -222,6 +230,7 @@ COPY = {
         "social_eyebrow": "Connettiti con il creatore",
         "linkedin": "LinkedIn",
         "reddit": "Reddit",
+        "email": "Email",
         "donate_prompt": "Ti piace il progetto?",
         "donate": "Dona",
         "section_title": "Il risultato prima di tutto — non il processo.",
@@ -259,10 +268,11 @@ def render(locale: str, copy: dict[str, object]) -> str:
           <div class="about-social-links">
             <a class="about-social-link" href="https://www.linkedin.com/in/gediminasc/" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="linkedin"><img src="/assets/social/linkedin.svg" alt="" width="16" height="16"><span>{esc(copy["linkedin"])}</span></a>
             <a class="about-social-link" href="https://www.reddit.com/user/MrDonas/" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="reddit"><img src="/assets/social/reddit.svg" alt="" width="16" height="16"><span>{esc(copy["reddit"])}</span></a>
+            <a class="about-social-link about-email-link" href="{EMAIL_HREF}" data-umami-event="support-link-click" data-umami-event-location="about-story" data-umami-event-channel="email"><img src="/assets/social/email.svg" alt="" width="16" height="16"><span>{esc(copy["email"])}</span><span class="about-social-address">{EMAIL_ADDRESS_HTML}</span></a>
           </div>
           <div class="about-donate">
             <span>{esc(copy["donate_prompt"])}</span>
-            <a class="about-social-link about-social-link--donate" href="https://buymeacoffee.com/vooz2" target="_blank" rel="noopener noreferrer" data-umami-event="support-link-click" data-umami-event-location="about-story" data-umami-event-channel="donate"><img src="/assets/social/buymeacoffee.svg" alt="" width="16" height="16"><span>{esc(copy["donate"])}</span></a>
+            <a class="about-social-link about-social-link--donate" href="https://buymeacoffee.com/vooz2" target="_blank" rel="noopener noreferrer" data-umami-event="donate" data-umami-event-location="about-story" data-umami-event-channel="donate"><img src="/assets/social/buymeacoffee.svg" alt="" width="16" height="16"><span>{esc(copy["donate"])}</span></a>
           </div>
         </div>'''
     return f'''<!doctype html>

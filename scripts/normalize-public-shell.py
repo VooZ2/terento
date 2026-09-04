@@ -10,13 +10,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20260904-pass3-internal-link-events-v1"
-STYLE_VERSION = "20260905-guide-flow-v1"
-IMAGE_VERSION = "20260902-your-garmin"
+STYLE_VERSION = "20260905-guide-flow-v3"
+IMAGE_VERSION = "20260905-app-screens-v1"
 LANGUAGE_VERSION = "20260904-language-selector"
 LOCALIZED_CONTENT_VERSION = "20260904-pass3-internal-link-events-v1"
 COMPATIBILITY_LOCALES_VERSION = "20260904-beta-provider-scope"
 COMPATIBILITY_VERSION = "20260904-snapshot"
-UMAMI_SCRIPT_VERSION = "20260904-public-link-events-v2"
+UMAMI_SCRIPT_VERSION = "20260905-public-link-events-v3"
 LOCALES = {
     "en": {"flag": "🇬🇧", "name": "English", "home": "Terento home", "primary": "Primary navigation", "menu": "Menu", "close": "Close menu", "about": "About", "compatibility": "Compatibility", "guide": "Guide", "faq": "FAQ", "download": "Download", "language": "Choose language", "footer": "Footer navigation", "status": "Open-source project", "legal": "Legal", "privacy": "Privacy", "support": "Support Terento", "stats": "Visit statistics (Umami) do not use cookies."},
     "de": {"flag": "🇩🇪", "name": "Deutsch", "home": "Terento Startseite", "primary": "Hauptnavigation", "menu": "Menü", "close": "Menü schließen", "about": "Über uns", "compatibility": "Kompatibilität", "guide": "Anleitung", "faq": "FAQ", "download": "Download", "language": "Sprache wählen", "footer": "Footer-Navigation", "status": "Open-Source-Projekt", "legal": "Rechtliches", "privacy": "Datenschutz", "support": "Support Terento", "stats": "Besuchsstatistik (Umami) verwendet keine Cookies."},
@@ -217,6 +217,24 @@ def normalize_internal_link_events(source: str, page: str) -> str:
     return re.sub(r"<a\b[^>]*>", replace, source, flags=re.IGNORECASE)
 
 
+def normalize_email_links(source: str, page: str) -> str:
+    """Obfuscate public mailto addresses and attach support analytics metadata."""
+    location = "privacy-contact" if page == "privacy" else f"{page}-contact"
+
+    def replace(match: re.Match[str]) -> str:
+        tag = match.group(0)
+        attributes = dict(re.findall(r'([\w:-]+)="([^"]*)"', tag))
+        href = attributes.get("href", "")
+        obfuscated_href = href.replace("@", "&#64;", 1)
+        if href != obfuscated_href:
+            tag = re.sub(r'href="[^"]*"', f'href="{obfuscated_href}"', tag, count=1)
+        tag = _add_attribute(tag, "data-umami-event", "support-link-click")
+        tag = _add_attribute(tag, "data-umami-event-location", location)
+        return _add_attribute(tag, "data-umami-event-channel", "email")
+
+    return re.sub(r'<a\b[^>]*href="mailto:[^"]+"[^>]*>', replace, source, flags=re.IGNORECASE)
+
+
 def files() -> list[tuple[str, str, str]]:
     result = []
     for locale in LOCALES:
@@ -267,11 +285,12 @@ def main() -> None:
         if style_anchor_count != 1:
             raise SystemExit(f"missing site-shell script before stylesheet in {relative}")
         source = re.sub(
-            r'(/assets/app/optimized/your-garmin-\d+\.(?:avif|webp|png))(?!\?v=)[^"\s]*',
+            r'(/assets/app/optimized/your-garmin-\d+\.(?:avif|webp|png))(?:\?v=[^"\s]+)?',
             rf'\1?v={IMAGE_VERSION}',
             source,
         )
-        source = source.replace('width="2205" height="1348"', 'width="2200" height="1346"')
+        source = source.replace('width="2205" height="1348"', 'width="2198" height="1335"')
+        source = source.replace('width="2200" height="1346"', 'width="2198" height="1335"')
         source = re.sub(
             r'(/localized-content\.js\?v=)[^"\s]+',
             rf'\g<1>{LOCALIZED_CONTENT_VERSION}',
@@ -289,14 +308,17 @@ def main() -> None:
             source = re.sub(r'(/compatibility/compatibility\.js\?v=)[^"\s]+', rf'\g<1>{COMPATIBILITY_VERSION}', source)
         source = normalize_h1_punctuation(source)
         source = normalize_internal_link_events(source, page)
+        source = normalize_email_links(source, page)
         path.write_text(source, encoding="utf-8")
     for relative, page in standalone_files():
         path = ROOT / relative
         if not path.exists():
             continue
         source = path.read_text(encoding="utf-8")
+        source = re.sub(r'(/privacy-consent\.js\?v=)[^"\s]+', rf'\g<1>{UMAMI_SCRIPT_VERSION}', source)
         source = normalize_h1_punctuation(source)
         source = normalize_internal_link_events(source, page)
+        source = normalize_email_links(source, page)
         path.write_text(source, encoding="utf-8")
     print("Synchronized static public headers and footers.")
 

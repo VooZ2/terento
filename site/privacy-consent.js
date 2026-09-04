@@ -212,7 +212,7 @@
     });
 
     document.querySelectorAll(".footer-support-link[href]").forEach((link) => {
-      setConversionEvent(link, "support-click", {
+      setConversionEvent(link, "donate", {
         location: "footer",
         destination: "buymeacoffee"
       });

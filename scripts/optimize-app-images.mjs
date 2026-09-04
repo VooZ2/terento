@@ -16,6 +16,8 @@ const sourceNames = [
   "ready-to-install.png",
   "installing-maps.png",
   "manage-maps.png",
+  "about.png",
+  "maps-done.png",
 ];
 
 await fs.mkdir(optimizedDir, { recursive: true });

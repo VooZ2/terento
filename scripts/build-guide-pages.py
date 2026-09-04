@@ -19,11 +19,11 @@ GUIDE_SLUG = "guides/install-garmin-maps-mac/"
 PUBLISHED = "2026-08-28T00:00:00Z"
 RELEASE = json.loads((ROOT / "site/updates/macos-arm64.json").read_text())
 REVIEWED = RELEASE["publishedAt"] + "T00:00:00Z"
-IMAGE_VERSION = "20260902-your-garmin"
+IMAGE_VERSION = "20260905-app-screens-v1"
 READING_STATE_VERSION = "20260902-reading-state"
 GUIDE_PROGRESS_VERSION = "20260902-guide-progress"
-UMAMI_SCRIPT_VERSION = "20260904-public-link-events"
-STYLE_VERSION = "20260905-guide-flow-v1"
+UMAMI_SCRIPT_VERSION = "20260905-public-link-events-v3"
+STYLE_VERSION = "20260905-guide-flow-v3"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 ISSUES_URL = "https://github.com/VooZ2/terento/issues"
 EMAIL_URL = "mailto:hello@terento.app?subject=Terento%20installation%20issue"
@@ -50,6 +50,21 @@ def link(label: str, href: str, *, external: bool = False) -> str:
     return f'<a href="{esc(href)}"{rel}>{esc(label)}</a>'
 
 
+def troubleshooting_body(item: dict[str, object]) -> str:
+    """Render troubleshooting copy, obfuscating the support email in HTML."""
+    body = esc(str(item["body"]))
+    if not item.get("email_link"):
+        return body
+    email_link = (
+        '<a class="text-link" '
+        'href="mailto:hello&#64;terento.app?subject=Terento%20installation%20issue" '
+        'data-umami-event="support-link-click" '
+        'data-umami-event-location="guide-map-not-visible" '
+        'data-umami-event-channel="email">hello&#64;terento.app</a>'
+    )
+    return body.replace(EMAIL_ADDRESS, email_link)
+
+
 def localized_path(locale: str, suffix: str = "") -> str:
     prefix = "" if locale == "en" else f"{locale}/"
     return f"/{prefix}{suffix}"
@@ -57,7 +72,7 @@ def localized_path(locale: str, suffix: str = "") -> str:
 
 def image_markup(asset: str, width: int, height: int, alt: str, caption: str) -> str:
     stem = asset.rsplit("/", 1)[-1]
-    version = f"?v={IMAGE_VERSION}" if stem == "your-garmin" else ""
+    version = f"?v={IMAGE_VERSION}" if stem in {"your-garmin", "install-maps", "installing-maps", "ready-to-install", "maps-done"} else ""
     responsive_widths = tuple(size for size in (640, 960, 1280, 1600) if size < width)
     sources = ", ".join(
         f"/assets/app/optimized/{stem}-{size}.avif{version} {size}w"
@@ -160,10 +175,9 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
     for item in copy["troubleshooting"]:
         troubleshooting.append(f'''<section class="troubleshooting-item">
               <h3>{esc(item["title"])}</h3>
-              <p>{esc(item["body"])}</p>
+              <p>{troubleshooting_body(item)}</p>
             </section>''')
     guide_json = guide_json_ld(locale, copy, release_label)
-    reviewed_date = REVIEWED_DISPLAY_DATES[locale]
     facts = "".join(f'<span>{esc(fact)}</span>' for fact in copy["facts"])
     return f'''<!doctype html>
 <html lang="{locale}" data-language="{locale}" data-page="guide">
@@ -217,11 +231,7 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
             <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>{esc(copy["eyebrow"])}</p>
             <h1>{esc(copy["h1"])}</h1>
             <p class="guide-lede">{esc(copy["intro"])}</p>
-            <div class="guide-actions">
-              <a class="download-action" href="{download}" data-umami-event="download-cta-click" data-umami-event-location="guide-hero">{esc(download_label)} <span aria-hidden="true">→</span></a>
-            </div>
             <p class="guide-facts">{facts}</p>
-            <p class="guide-meta"><span><strong>{esc(copy["last_reviewed"])}:</strong> <time datetime="{REVIEWED}">{esc(reviewed_date)}</time></span><span aria-hidden="true">·</span><span><strong>{esc(copy["applies_to"])}:</strong> Terento {esc(release_label)}</span></p>
           </div>
         </header>
 
@@ -711,7 +721,6 @@ def merged_copy(locale: str) -> dict[str, object]:
         {
             "title": flow["connect_title"],
             "body": flow["connect_body"],
-            "note": flow["connect_note"],
             "caption": flow["connect_caption"],
         },
         {
@@ -723,7 +732,6 @@ def merged_copy(locale: str) -> dict[str, object]:
         {
             "title": flow["done_title"],
             "body": flow["done_body"],
-            "note": flow["done_note"],
             "caption": flow["done_caption"],
         },
     )
@@ -740,9 +748,27 @@ def merged_copy(locale: str) -> dict[str, object]:
                 {"title": title, "body": body}
                 for title, body in flow_step["substeps"]
             ]
-        image = source_steps[source_index].get("image")
+        if source_index == 3:
+            image = {
+                "asset": "maps-done",
+                "width": 2198,
+                "height": 1335,
+                "alt": {
+                    "en": "Terento showing a completed map installation on a Garmin watch",
+                    "de": "Terento zeigt eine abgeschlossene Karteninstallation auf einer Garmin-Uhr",
+                    "fr": "Terento affiche une installation de carte terminée sur une montre Garmin",
+                    "pl": "Terento pokazuje ukończoną instalację mapy na zegarku Garmin",
+                    "cs": "Terento zobrazuje dokončenou instalaci mapy do hodinek Garmin",
+                    "it": "Terento mostra un’installazione della mappa completata su uno smartwatch Garmin",
+                }[locale],
+                "caption": flow_step["caption"],
+            }
+        else:
+            image = source_steps[source_index].get("image")
         if image:
             step["image"] = image.copy()
+            if source_index == 1:
+                step["image"].update({"width": 2198, "height": 1335})
             step["image"]["caption"] = flow_step["caption"]
         base["steps"].append(step)
 
@@ -750,7 +776,7 @@ def merged_copy(locale: str) -> dict[str, object]:
     base["troubleshooting"] = [
         {"title": source_troubleshooting[0]["title"], "body": refinement["detect_body"]},
         {"title": source_troubleshooting[1]["title"], "body": flow["installation_failed"]},
-        {"title": source_troubleshooting[3]["title"], "body": flow["not_visible"]},
+        {"title": source_troubleshooting[3]["title"], "body": flow["not_visible"], "email_link": True},
     ]
     return base
 

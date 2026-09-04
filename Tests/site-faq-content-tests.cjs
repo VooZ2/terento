@@ -62,7 +62,8 @@ for (const locale of locales) {
   assert.match(entries[1].markup, /data-umami-event="guide-link-click"/);
   assert.match(entries[1].markup, /data-umami-event-location="home-faq-basecamp"/);
   assert.match(entries[4].markup, /href="https:\/\/github\.com\/VooZ2\/terento\/issues"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/);
-  assert.match(entries[4].markup, /href="mailto:hello@terento\.app\?subject=Terento%20installation%20issue"/);
+  assert.match(entries[4].markup, /href="mailto:hello&#64;terento\.app\?subject=Terento%20installation%20issue"/);
+  assert.doesNotMatch(entries[4].markup, /href="mailto:hello@terento\.app/);
   assert.match(entries[4].markup, /data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="github-issue"/);
   assert.match(entries[4].markup, /data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email"/);
   if (locale === "en") {

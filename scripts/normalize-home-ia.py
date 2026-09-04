@@ -14,6 +14,8 @@ LOCALES = ("en", "de", "fr", "pl", "cs", "it")
 FAQ_KEEP = (0, 1, 4, 5, 6)
 PROVIDER_SCRIPT_VERSION = "20260904-home-provider-cards"
 FEATURE_SCRIPT_VERSION = "20260904-home-workflow-tabs"
+EMAIL_URL = "mailto:hello@terento.app?subject=Terento%20installation%20issue"
+EMAIL_URL_HTML = EMAIL_URL.replace("@", "&#64;")
 HOME_COPY = {
     "en": {
         "scope_href": "/compatibility/",
@@ -582,6 +584,7 @@ def normalize_home(source: str, path: Path, locale: str) -> str:
     for entry, rewritten in reversed(list(zip(entries, rewritten_entries))):
         faq_body = faq_body[: entry.start()] + rewritten + faq_body[entry.end() :]
     source = source[: faq_match.start(2)] + faq_body + source[faq_match.end(2) :]
+    source = source.replace(f'href="{EMAIL_URL}"', f'href="{EMAIL_URL_HTML}"')
     source = re.sub(
         r'(<section class="faq section"[^>]*>[\s\S]*?<div class="section-heading">\s*<p class="eyebrow">)[^<]*(</p>)',
         rf'\g<1>{copy["faq_eyebrow"]}\g<2>',

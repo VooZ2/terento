@@ -13,7 +13,7 @@ import sys
 root = Path(sys.argv[1])
 privacy_script = (root / "site/privacy-consent.js").read_text(encoding="utf-8")
 site_shell = (root / "site/site-shell.js").read_text(encoding="utf-8")
-umami_version = "20260904-public-link-events-v2"
+umami_version = "20260905-public-link-events-v3"
 
 assert '"download-click"' in privacy_script
 assert '"download-cta-click"' in privacy_script
@@ -23,7 +23,8 @@ assert '"home-hero"' in privacy_script
 assert '"home-final-cta"' in privacy_script
 assert '"header-nav"' in privacy_script
 assert '"compatibility-link-click"' in privacy_script
-assert '"support-click"' in privacy_script
+assert 'setConversionEvent(link, "donate"' in privacy_script
+assert '"support-click"' not in privacy_script
 assert '"project-link-click"' in privacy_script
 assert 'instrumentCompatibilityLinks(campaignParams)' in privacy_script
 assert 'instrumentSupportAndProjectLinks(campaignParams)' in privacy_script
@@ -109,6 +110,19 @@ for path in sorted((root / "site").rglob("*.html")):
         location = item["attributes"].get("data-umami-event-location")
         assert event in allowed_internal_events, f"{path}: internal link {href!r} has no standard Umami event"
         assert location and re.fullmatch(r"[a-z0-9-]+", location), f"{path}: internal link {href!r} has no standard Umami location"
+        normalized_target = href.split("?", 1)[0].split("#", 1)[0].rstrip("/") or "/"
+        if normalized_target == "/privacy":
+            assert event == "privacy-link-click", f"{path}: privacy link must use privacy-link-click"
+
+    email_tags = re.findall(r'<a\b[^>]*href="mailto:[^"]+"[^>]*>', html, flags=re.IGNORECASE)
+    for tag in email_tags:
+        attributes = dict(re.findall(r'([\w:-]+)="([^"]*)"', tag))
+        assert "&#64;" in tag, f"{path}: email href must use HTML address obfuscation"
+        assert attributes.get("data-umami-event") == "support-link-click", f"{path}: email link must use support-link-click"
+        assert attributes.get("data-umami-event-location"), f"{path}: email link has no Umami location"
+        assert attributes.get("data-umami-event-channel") == "email", f"{path}: email link must use email channel"
+        if path == root / "site/privacy/index.html":
+            assert attributes.get("data-umami-event-location") == "privacy-contact", f"{path}: privacy email link must use privacy-contact"
 
 for path in [root / "site/localized-content.js"]:
     source = path.read_text(encoding="utf-8").replace('\\"', '"')
