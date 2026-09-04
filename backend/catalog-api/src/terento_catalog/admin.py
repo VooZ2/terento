@@ -711,16 +711,38 @@ def _overview_operation_label(operation: dict[str, Any]) -> tuple[str, str]:
     return "Install operation", "unknown"
 
 
+def _compatibility_source_label(value: Any) -> str:
+    source = str(value or "").strip()
+    return "Custom" if source.casefold() == "custom" else source
+
+
 def _overview_operation_context(operation: dict[str, Any]) -> str:
     model = str(operation.get("model") or operation.get("compatibility_identity") or "Unknown device").strip()
     variant = _normalise_variant(operation.get("variant"))
-    provider = str(operation.get("provider") or "").strip()
+    provider = _compatibility_source_label(operation.get("provider"))
     parts = [model]
     if variant != "—" and variant not in model:
         parts.append(variant)
     if provider:
         parts.append(provider)
     return " · ".join(parts)
+
+
+def _overview_compatibility_activity_row(operation: dict[str, Any]) -> str:
+    label, state = _overview_operation_label(operation)
+    if str(operation.get("provider") or "").strip().casefold() == "custom":
+        label = {
+            "succeeded": "Custom installation",
+            "failed": "Custom installation failed",
+            "not-started": "Custom installation not started",
+        }.get(state, "Custom installation")
+    href = _overview_operation_href(operation)
+    return (
+        f"<li class='overview-activity-item overview-activity-{state}'>"
+        f"<a href='{html.escape(href, quote=True)}'><span class='overview-activity-label'>{html.escape(label)}</span>"
+        f"<span>{html.escape(_overview_operation_context(operation))}</span></a>"
+        f"{_timestamp_markup(operation.get('last_occurred_at'))}</li>"
+    )
 
 
 def _overview_operation_href(operation: dict[str, Any]) -> str:
@@ -738,7 +760,7 @@ def _overview_operation_href(operation: dict[str, Any]) -> str:
 def _overview_activity_row(operation: dict[str, Any]) -> str:
     label, state = _overview_operation_label(operation)
     context = _overview_operation_context(operation)
-    provider = str(operation.get("provider") or "—").strip()
+    provider = _compatibility_source_label(operation.get("provider")) or "—"
     href = _overview_operation_href(operation)
     reason = _overview_failure_reason_label(operation.get("error_category")) if state in {"failed", "not-started"} else ""
     detail = f"<span>{html.escape(context)}</span>"
@@ -1235,12 +1257,20 @@ def overview_page(
         "/admin/providers" if attention_providers else map_statistics_href
     )
     failure_reasons = list(compatibility.get("failureReasons") or [])
+    compatibility_recent = list(compatibility.get("recentActivity") or [])
+    compatibility_recent_content = (
+        ""
+        if not compatibility_recent else
+        "<div class='overview-compatibility-activity' aria-label='Recent compatibility activity'><div class='section-heading'><div><p class='section-kicker'>Latest</p><h3>Recent compatibility activity</h3></div><a class='section-link' href='/admin/installations'>View all&nbsp;→</a></div><ul class='overview-activity-list'>" +
+        "".join(_overview_compatibility_activity_row(item) for item in compatibility_recent) +
+        "</ul></div>"
+    )
     reasons_section = (
         f"<section class='overview-panel' aria-labelledby='overview-reasons-title'><div class='section-heading'><div><p class='section-kicker'>Compatibility evidence</p><h2 id='overview-reasons-title'>Failures by reason</h2></div><span class='overview-info' title='Compatibility evidence only.' aria-label='Compatibility evidence only.'>i</span></div>{_overview_failure_reasons(failure_reasons)}<p class='overview-chart-note'>Compatibility evidence only. Map-operation failure counts are shown above.</p></section>"
         if failure_reasons else ""
     )
     compatibility_summary = (
-        f"<section class='overview-panel overview-compatibility-summary' aria-labelledby='overview-compatibility-title'><div class='section-heading'><div><p class='section-kicker'>Secondary domain</p><h2 id='overview-compatibility-title'>Compatibility evidence</h2></div></div><div class='overview-compatibility-grid'><div><span>Write-started attempts</span><strong>{compatibility_attempts}</strong></div><div><span>Variants</span><strong>{compatibility_variants}</strong></div><div><span>Evidence success</span><strong>{compatibility_rate}</strong></div></div><p class='overview-chart-note'>Device compatibility evidence is not merged with map-operation telemetry.</p></section>"
+        f"<section class='overview-panel overview-compatibility-summary' aria-labelledby='overview-compatibility-title'><div class='section-heading'><div><p class='section-kicker'>Secondary domain</p><h2 id='overview-compatibility-title'>Compatibility evidence</h2></div></div><div class='overview-compatibility-grid'><div><span>Write-started attempts</span><strong>{compatibility_attempts}</strong></div><div><span>Variants</span><strong>{compatibility_variants}</strong></div><div><span>Evidence success</span><strong>{compatibility_rate}</strong></div></div><p class='overview-chart-note'>Device compatibility evidence is not merged with map-operation telemetry.</p>{compatibility_recent_content}</section>"
         if compatibility_has_data else
         "<section class='overview-panel overview-compatibility-summary overview-compact-empty' aria-labelledby='overview-compatibility-title'><div class='section-heading'><div><p class='section-kicker'>Secondary domain</p><h2 id='overview-compatibility-title'>Compatibility evidence</h2></div></div><p class='overview-empty-state'>No compatibility evidence in this period.</p></section>"
     )
@@ -1535,8 +1565,17 @@ def dashboard_page(
     )
     historical_failures = max(0, failures - open_errors)
     success_rate = (successes / attempts * 100) if attempts else None
+    custom_installation_identities = {
+        _identity_group_key(event)
+        for event in (operations or [])
+        if str(event.get("provider") or "").strip().casefold() == "custom"
+    }
     table_rows = "".join(
-        _statistics_row(row, diagnostic_summary.get(_identity_group_key(row), {}))
+        _statistics_row(
+            row,
+            diagnostic_summary.get(_identity_group_key(row), {}),
+            custom_installation=_identity_group_key(row) in custom_installation_identities,
+        )
         for row in rows
     )
     empty = "<p class='empty'>No installation evidence yet.</p>" if not rows else ""
@@ -3602,7 +3641,12 @@ def account_page(user: dict[str, Any], csrf_token: str, *, error: str | None = N
     )
 
 
-def _statistics_row(row: dict[str, Any], diagnostic_summary: dict[str, int] | None = None) -> str:
+def _statistics_row(
+    row: dict[str, Any],
+    diagnostic_summary: dict[str, int] | None = None,
+    *,
+    custom_installation: bool = False,
+) -> str:
     model, variant, identity = _identity_parts(row)
     summary = diagnostic_summary or {}
     attempted = int(summary["attempts"]) if "attempts" in summary else int(row.get("attempted_install_count") or 0)
@@ -3620,6 +3664,11 @@ def _statistics_row(row: dict[str, Any], diagnostic_summary: dict[str, int] | No
         model_cell += (
             f" <span class='identity-pending-indicator' aria-label='{pending_count} identity pending'>"
             "Identity pending</span>"
+        )
+    if custom_installation:
+        model_cell += (
+            " <span class='diagnostic-chip custom-installation-indicator' "
+            "aria-label='Custom installation'>Custom installation</span>"
         )
     open_errors_markup = (
         f"<a class='error-count' href='{html.escape(_model_detail_url(row, state='open'), quote=True)}' aria-label='View {open_errors} open errors'>{open_errors}</a>"

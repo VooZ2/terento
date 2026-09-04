@@ -1,10 +1,11 @@
 # Terento v1.0.0-beta.9
 
 Release date: 2026-09-02
+Maintenance build: 2026-09-04
 
-Beta.9 fixes OpenTopoMap Lithuania installation and hardens the boundary
-between Terento releases and the independently changing live map catalog.
-It keeps the preceding release's provider and device scope unchanged.
+Beta.9 build 10 fixes compatibility reporting for local custom `.img`
+installations. It keeps the preceding release's provider and device scope
+unchanged.
 
 This remains a pre-MVP beta for hardware validation. Model eligibility is not
 a claim that every exact watch has been independently verified.
@@ -24,10 +25,15 @@ a claim that every exact watch has been independently verified.
 - Validate the exact production catalog during release packaging, after API
   deployment, on release-tag/manual CI, and every day against the shipped
   client contract.
+- Record the connected watch model for a successful custom `.img`
+  installation when compatibility sharing is enabled, using only the coarse
+  `custom` source labels and never a hash-derived local identity.
+- Keep custom `.img` installations out of map statistics; they appear in the
+  dashboard as Custom installation activity through compatibility evidence.
 
 ## Application updates
 
-- About reports `1.0.0-beta.9` and distributed build `9`.
+- About reports `1.0.0-beta.9` and distributed build `10`.
 - Release and public Download metadata are generated from one manifest and
   checked for version, URL, date, and checksum drift.
 
@@ -43,6 +49,8 @@ a claim that every exact watch has been independently verified.
 - Map statistics are independent from compatibility evidence, optional, queued
   locally and non-blocking. They exclude watch identifiers, serial numbers,
   Unit IDs, file paths, manifests, binaries and diagnostic logs.
+- Custom `.img` imports use compatibility evidence only; they do not create
+  map-statistics events.
 - Maps download directly from the selected provider. Terento does not host,
   mirror, proxy or repackage provider binaries.
 
@@ -76,8 +84,13 @@ a claim that every exact watch has been independently verified.
 
 ## Release artifacts
 
-Apple notarization submission `f3709255-7674-4707-ae4f-649b6d0f0b54` was
-accepted with no issues.
+Build 10 is a local release candidate pending Apple notarization and
+publication. The checksums below belong to the previously published beta.9
+build 9 and must be replaced before this release body or manifest is
+published.
+
+Previous beta.9 build 9 notarization submission
+`f3709255-7674-4707-ae4f-649b6d0f0b54` was accepted with no issues.
 
 ```text
 Terento-1.0.0-beta.9-macOS-arm64.dmg  56887be4ba89d2fda15dafc5bb0f189ac945428959a9179df28591e0da09f64e

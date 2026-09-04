@@ -9,21 +9,27 @@ https://api.terento.app
 The map and device catalog routes are public read-only metadata. Compatibility
 evidence and map-operation statistics are separate data boundaries: the former
 is an explicit product-purpose sharing flow, while the latter accepts only
-privacy-minimised map operation events. Compatibility evidence is
+privacy-minimised map operation events from registered providers. Compatibility evidence is
 accepted for the explicit reviewed provider allowlist (`freizeitkarte` and
-`opentopomap`) so the two streams can be linked by a shared operation ID when
-both opt-ins are enabled. Provider controls and statistics are private
+`opentopomap`) plus the separate `custom` local-IMG source label. Custom
+events use literal `custom` region and release labels so no local filename,
+hash-derived identity, or provider claim is uploaded. Provider installation
+evidence can be linked to map-operation events by a shared operation ID when
+both opt-ins are enabled; custom events are evidence-only and have no map-
+statistics event. Provider controls and statistics are private
 authenticated admin routes. No route serves map binaries.
 
 ## `POST /compatibility/events`
 
 Accepts at most 16 KiB of allowlisted schema-version-1, schema-version-2, or schema-version-3 JSON after client
 opt-in. Event UUIDs are idempotent. Unknown fields, local paths, malformed
-payloads, providers outside the current compatibility-evidence allowlist, and
-privacy-prohibited data are rejected. The compatibility evidence provider
+payloads, providers/sources outside the current compatibility-evidence allowlist, and
+privacy-prohibited data are rejected. The compatibility evidence source
 allowlist is explicit and remains separate from the provider-neutral map
-catalog; a new provider must be added to that allowlist and pass the normal
-review before its compatibility events are accepted. A random per-event deletion token is required; older beta payloads
+catalog; a new reviewed provider must be added to that allowlist and pass the
+normal review before its compatibility events are accepted. `custom` is a
+fixed local-IMG source label, not a provider, and only accepts literal
+`custom` region and release values. A random per-event deletion token is required; older beta payloads
 without one are rejected rather than retained without a self-service deletion
 credential. The endpoint is rate limited and stores allowlisted columns in the
 separate compatibility table. The original JSON body is not retained; only

@@ -8,7 +8,10 @@ from datetime import datetime, timezone
 from typing import Any
 
 MAX_EVENT_BYTES = 16_384
-SUPPORTED_COMPATIBILITY_PROVIDERS = frozenset({"freizeitkarte", "opentopomap"})
+# `custom` is a local IMG source, not a map provider. It is accepted here so
+# consented custom installs can contribute device compatibility evidence while
+# the client sends only the coarse custom/custom/custom labels.
+SUPPORTED_COMPATIBILITY_SOURCES = frozenset({"freizeitkarte", "opentopomap", "custom"})
 ALLOWED_KEYS = {
     "schemaVersion", "id", "timestamp", "model", "compatibilityIdentity", "variant", "caseSizeMm", "displayType", "canonicalDeviceId", "family", "firmwareVersion",
     "usbVendorID", "usbProductID", "transport", "provider", "region",
@@ -122,8 +125,12 @@ def validate_event(raw: bytes) -> dict[str, Any]:
     if event.get("mapVisibleAfterReconnect") and not event.get("reconnectVerified"):
         raise EvidenceValidationError("inconsistent_reconnect_evidence")
     provider = event["provider"].lower()
-    if provider not in SUPPORTED_COMPATIBILITY_PROVIDERS:
+    if provider not in SUPPORTED_COMPATIBILITY_SOURCES:
         raise EvidenceValidationError("unsupported_provider")
+    if provider == "custom" and (
+        event["region"] != "custom" or event["mapRelease"] != "custom"
+    ):
+        raise EvidenceValidationError("invalid_custom_identity")
     event["provider"] = provider
     if "userConfirmed" in event and not isinstance(event["userConfirmed"], bool):
         raise EvidenceValidationError("invalid_confirmation")

@@ -37,6 +37,7 @@ struct MapStatisticsEventTests {
     static func main() async throws {
         try testPayloadAndOperationIdentity()
         try testCustomMapPrivacyBoundary()
+        try await testCustomMapStatsNeverUpload()
         try testQueueAndIdempotency()
         await testSeparateOptInAndRetry()
         print("PASS: map statistics payload, privacy, consent, queue, retry, and idempotency tests")
@@ -94,6 +95,42 @@ struct MapStatisticsEventTests {
         expect(event.providerId == "custom", "custom provider uses a coarse label")
         expect(event.mapId == "custom-map", "custom local identity is redacted")
         expect(event.region == nil, "custom local region is not shared")
+    }
+
+    @MainActor
+    static func testCustomMapStatsNeverUpload() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = LocalMapStatisticsEventStore(rootURL: root)
+        let uploader = MapStatisticsUploadRecorder()
+        let controller = MapStatisticsEventController(
+            store: store,
+            uploader: uploader,
+            retryDelays: []
+        )
+        controller.decideConsent(.accepted)
+        let custom = MapPackage(
+            id: "custom-stale-local-fingerprint",
+            providerId: "custom",
+            regionId: "custom",
+            name: "Custom map",
+            version: MapVersion(year: 2000, month: 1)!,
+            sizeBytes: 1,
+            sourceURL: nil,
+            releaseDate: nil,
+            identifier: nil,
+            sourceKind: .custom
+        )
+        let event = MapStatisticsEvent(
+            operationId: UUID(),
+            package: custom,
+            eventType: .installSucceeded,
+            outcome: .succeeded
+        )
+        try store.append(event)
+        await controller.flushPendingEvents()
+        expect(store.pendingEvents().isEmpty, "stale custom map-statistics events are discarded locally")
+        let uploaded = await uploader.uploadedEvents()
+        expect(uploaded.isEmpty, "custom IMG events never reach the map-statistics uploader")
     }
 
     static func testQueueAndIdempotency() throws {

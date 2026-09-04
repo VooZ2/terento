@@ -29,6 +29,7 @@ struct InstallationEvidenceTests {
     @MainActor
     static func main() async throws {
         try testEventStorageAndDuplicatePrevention()
+        try testCustomIMGEvidencePayload()
         testStatisticsAndPromotionThresholds()
         try await testConsentAndUploadIsolation()
         testDiagnosticSanitization()
@@ -46,6 +47,46 @@ struct InstallationEvidenceTests {
         name: "Germany", version: MapVersion(year: 2026, month: 8)!, sizeBytes: 1,
         sourceURL: nil, releaseDate: nil, identifier: "DEU+"
     )
+    static let customIMGPackage = MapPackage(
+        id: "custom-sha256-local-fingerprint",
+        providerId: "custom",
+        regionId: "img_deadbeef0123456789abcdef",
+        name: "Custom map",
+        version: MapVersion(year: 2000, month: 1)!,
+        sizeBytes: 1,
+        sourceURL: nil,
+        releaseDate: nil,
+        identifier: "img_deadbeef0123456789abcdef",
+        sourceKind: .custom
+    )
+
+    static func testCustomIMGEvidencePayload() throws {
+        let watchIdentity = DeviceIdentity(
+            manufacturer: "Garmin", model: "fenix 7 Pro", family: "fēnix", variant: "47mm",
+            usbVendorId: 0x091e, usbProductId: 0x2841, firmware: "20.19",
+            storageCapacity: 32_000_000_000, freeSpace: 10_000_000_000
+        )
+        let event = InstallationEvidenceEvent(
+            identity: watchIdentity,
+            package: customIMGPackage,
+            outcome: .succeeded,
+            finishingResult: .verified,
+            terentoVersion: "test",
+            macOSVersion: "test"
+        )
+        expect(
+            event.model == "fenix 7 Pro"
+                && event.provider == "custom"
+                && event.region == "custom"
+                && event.mapRelease == "custom",
+            "custom IMG evidence keeps the watch model and uses coarse source labels"
+        )
+        let payload = String(decoding: try JSONEncoder().encode(event), as: UTF8.self)
+        expect(
+            !payload.contains("deadbeef") && !payload.contains("img_"),
+            "custom IMG evidence does not upload the local content fingerprint"
+        )
+    }
 
     static func makeEvent(
         id: UUID = UUID(), firmware: String = "20.19",

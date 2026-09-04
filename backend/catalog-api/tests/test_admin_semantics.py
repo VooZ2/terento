@@ -330,6 +330,39 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertNotIn("Pending metric definition", body)
         self.assertNotIn("<span>Success rate</span>", body)
 
+    def test_overview_shows_custom_img_as_compatibility_activity_not_map_activity(self):
+        body = overview_page(
+            {
+                "period": "24h",
+                "data": {"hasData": False, "recentActivity": [], "attention": [], "trend": [], "bucket": "hour"},
+                "compatibility": {
+                    "hasData": True,
+                    "recentActivity": [{
+                        "operation_key": "223e4567-e89b-12d3-a456-426614174000",
+                        "model": "fēnix 7 Pro",
+                        "compatibility_identity": "fēnix 7 Pro",
+                        "provider": "custom",
+                        "variant": None,
+                        "operation_succeeded": True,
+                        "has_failed": False,
+                        "has_not_started": False,
+                        "open_error": False,
+                        "last_occurred_at": "2026-09-04T08:00:00+00:00",
+                    }],
+                    "writeStartedCount": 1,
+                    "variantCount": 1,
+                    "evidenceSuccessRate": 100,
+                },
+                "providers": [],
+            },
+            {"username": "operator"}, "csrf",
+        ).decode()
+        self.assertIn("Recent compatibility activity", body)
+        self.assertIn("Custom installation", body)
+        self.assertIn("fēnix 7 Pro · Custom", body)
+        self.assertIn("No map telemetry in this period", body)
+        self.assertIn("No map activity in this period", body)
+
     def test_overview_presents_model_activity_and_exact_period_vocabulary(self):
         body = overview_page(
             {

@@ -454,6 +454,17 @@ class Beta8APITests(unittest.TestCase):
         }
         with self.assertRaises(MapEventValidationError):
             validate_map_event(json.dumps(payload).encode())
+        custom_payload = {
+            key: value for key, value in payload.items()
+            if key != "unitId"
+        }
+        custom_payload.update({
+            "providerId": "custom",
+            "mapId": "custom-map",
+            "region": None,
+        })
+        with self.assertRaisesRegex(MapEventValidationError, "unsupported_provider"):
+            validate_map_event(json.dumps(custom_payload).encode())
         with self.assertRaises(MapEventValidationError):
             validate_statistics_filters({"region": "LT", "dateFrom": "2026-09-01T00:00:00Z", "dateTo": "2026-08-31T00:00:00Z"})
 

@@ -320,6 +320,10 @@ authorization remain separate from device write authorization.
 `compatibility_model_statistics` is a live SQL view over the evidence event
 table and model review metadata. It includes only `ACTIVE` diagnostic events;
 resolved history remains queryable through the private diagnostics path.
+Migration `032_custom_img_compatibility_evidence.sql` extends the event source
+constraint with the fixed `custom` local-IMG label. Custom evidence still
+uses the same watch/model aggregation and never creates a map-operation
+statistics row.
 Events with a `canonical_device_model_id` are
 grouped by that exact Garmin catalog record; textual `compatibility_identity`
 is only the fallback for older uncanonicalized events. Formatting changes

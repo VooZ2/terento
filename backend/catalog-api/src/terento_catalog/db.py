@@ -369,7 +369,7 @@ class Database:
             SELECT
                 COALESCE(operation_id::text, 'legacy:' || event_id::text) AS operation_key,
                 operation_id, event_id, occurred_at, model, compatibility_identity,
-                variant, firmware_version, region, map_release, terento_version,
+                variant, firmware_version, provider, region, map_release, terento_version,
                 app_build, release_label, map_result_index, selected_map_count,
                 phase_outcome, automatic_finishing_result, failure_stage, failure_code, native_failure_code,
                 COALESCE(write_started, true) AS write_started,

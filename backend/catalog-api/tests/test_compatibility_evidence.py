@@ -349,6 +349,53 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertEqual(second.status, 200)
         self.assertEqual(json.loads(duplicate)["status"], "duplicate")
 
+    def test_custom_img_evidence_is_accepted_and_keeps_watch_identity(self):
+        payload = event(
+            id="223e4567-e89b-12d3-a456-426614174000",
+            provider="custom",
+            region="custom",
+            mapRelease="custom",
+        )
+        response, _ = self.request(
+            "POST", "/compatibility/events", json.dumps(payload).encode(),
+            {"Content-Type": "application/json"},
+        )
+        self.assertEqual(response.status, 201)
+        self.assertEqual(self.database.events[payload["id"]]["model"], "fēnix 8")
+        self.assertEqual(self.database.events[payload["id"]]["provider"], "custom")
+        self.assertEqual(self.database.events[payload["id"]]["region"], "custom")
+        self.assertEqual(self.database.events[payload["id"]]["mapRelease"], "custom")
+
+    def test_custom_img_evidence_rejects_hash_derived_identity(self):
+        payload = event(
+            provider="custom",
+            region="img_deadbeef",
+            mapRelease="custom",
+        )
+        response, body = self.request(
+            "POST", "/compatibility/events", json.dumps(payload).encode(),
+            {"Content-Type": "application/json"},
+        )
+        self.assertEqual(response.status, 400)
+        self.assertEqual(json.loads(body)["error"], "invalid_custom_identity")
+
+    def test_custom_img_constraint_migration_keeps_provider_allowlist_narrow(self):
+        from pathlib import Path
+
+        migration = (
+            Path(__file__).parents[1]
+            / "src"
+            / "terento_catalog"
+            / "migrations"
+            / "032_custom_img_compatibility_evidence.sql"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "provider IN ('freizeitkarte', 'opentopomap', 'custom')",
+            migration,
+        )
+        self.assertNotIn("openmtbmap", migration)
+        self.assertNotIn("DROP TABLE", migration)
+
     def test_event_deletion_requires_matching_token(self):
         body = json.dumps(event()).encode()
         created, _ = self.request("POST", "/compatibility/events", body, {"Content-Type": "application/json"})
@@ -444,6 +491,35 @@ class CompatibilityEvidenceTests(unittest.TestCase):
 
         self.assertIn("Sign in", login_page().decode())
         self.assertIn("Create the first admin account", setup_page().decode())
+
+    def test_admin_installations_marks_custom_img_evidence(self):
+        row = {
+            "model": "fēnix 7 Pro",
+            "compatibility_identity": "fēnix 7 Pro",
+            "attempted_install_count": 1,
+            "successful_install_count": 1,
+            "failed_install_count": 0,
+            "success_rate": 100.0,
+            "calculated_status": "TESTING",
+            "recognized_map_capable_evidence": False,
+            "last_success": datetime(2026, 9, 4, tzinfo=timezone.utc),
+            "last_failure": None,
+            "last_evidence": datetime(2026, 9, 4, tzinfo=timezone.utc),
+        }
+        operation = {
+            "operation_key": "223e4567-e89b-12d3-a456-426614174000",
+            "compatibility_identity": "fēnix 7 Pro",
+            "model": "fēnix 7 Pro",
+            "provider": "custom",
+            "phase_outcome": "SUCCEEDED",
+            "automatic_finishing_result": "VERIFIED",
+            "write_started": True,
+        }
+        body = dashboard_page(
+            [row], {"username": "operator"}, "csrf", operations=[operation]
+        ).decode()
+        self.assertIn("Custom installation", body)
+        self.assertIn("fēnix 7 Pro", body)
 
     def test_admin_dashboard_links_errors_to_structured_operation_details(self):
         row = {

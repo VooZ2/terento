@@ -87,6 +87,8 @@ def validate_map_event(raw: bytes) -> dict[str, Any]:
         raise MapEventValidationError("timestamp_requires_timezone")
     event = dict(event)
     event["providerId"] = event["providerId"].lower()
+    if event["providerId"] == "custom":
+        raise MapEventValidationError("unsupported_provider")
     if event.get("mapId") is not None:
         event["mapId"] = event["mapId"].lower()
     if event.get("region") is not None:

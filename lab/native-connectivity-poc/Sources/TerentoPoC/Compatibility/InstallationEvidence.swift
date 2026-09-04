@@ -173,12 +173,22 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         self.usbVendorID = identity.usbVendorId
         self.usbProductID = identity.usbProductId
         self.transport = "MTP"
-        self.provider = package.providerId
-        // `regionId` is the provider's grouping region. Some catalog entries
-        // share that group (for example AZORES and BALEARICS), so evidence
-        // must use the concrete package identity to remain unambiguous.
-        self.region = package.canonicalRegionId
-        self.mapRelease = String(describing: package.version)
+        if package.sourceKind == .custom {
+            // A custom IMG has no trusted provider identity. Its canonical
+            // region is derived from the local content hash, so never send
+            // that value (or a local release guess) as compatibility evidence.
+            self.provider = "custom"
+            self.region = "custom"
+            self.mapRelease = "custom"
+        } else {
+            self.provider = package.providerId
+            // `regionId` is the provider's grouping region. Some catalog
+            // entries share that group (for example AZORES and BALEARICS),
+            // so evidence must use the concrete package identity to remain
+            // unambiguous.
+            self.region = package.canonicalRegionId
+            self.mapRelease = String(describing: package.version)
+        }
         self.terentoVersion = terentoVersion
         self.macOSVersion = macOSVersion
         self.phaseOutcome = outcome

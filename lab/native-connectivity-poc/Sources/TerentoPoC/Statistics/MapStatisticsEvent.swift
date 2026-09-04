@@ -299,7 +299,9 @@ final class MapStatisticsEventController: ObservableObject {
     /// Saving and delivery happen outside the installation task. Any local or
     /// network error is contained here and can never change installation state.
     func record(_ event: MapStatisticsEvent) {
-        guard sharingEnabled else { return }
+        // Custom IMG imports belong to compatibility evidence only. Keep this
+        // boundary defensive so a stale caller cannot add them to map stats.
+        guard sharingEnabled, event.providerId != "custom" else { return }
         let store = self.store
         Task { [weak self] in
             let inserted = await Task.detached(priority: .utility) {
@@ -346,6 +348,12 @@ final class MapStatisticsEventController: ObservableObject {
         }
         uploadStatus = .uploading(pending.count)
         for event in pending {
+            // Discard any custom event left by an older client before it can
+            // reach the map-statistics endpoint.
+            if event.providerId == "custom" {
+                try? store.markUploaded(eventID: event.id)
+                continue
+            }
             do {
                 try await uploader.upload(event)
                 try store.markUploaded(eventID: event.id)

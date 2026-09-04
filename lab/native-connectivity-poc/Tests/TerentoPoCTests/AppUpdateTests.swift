@@ -38,6 +38,7 @@ struct AppUpdateTests {
     static func main() async throws {
         try testSameVersionIsUpToDate()
         try testHigherBuildIsAvailable()
+        try testBeta9MaintenanceBuildIsAvailable()
         try testHigherMarketingVersionIsAvailable()
         try testOlderReleaseIsUpToDate()
         try testIncompatibleMinimumMacOS()
@@ -50,7 +51,7 @@ struct AppUpdateTests {
         try await testDeferredUpdateCanOfferNewerBuild()
         try await testPromptWaitsForSafeIdle()
         try testTrustedURLsAreRestricted()
-        print("PASS: 14 app update tests")
+        print("PASS: 15 app update tests")
     }
 
     private static func testSameVersionIsUpToDate() throws {
@@ -67,6 +68,21 @@ struct AppUpdateTests {
             current: installedVersion(build: 1)
         )
         expect(isAvailable(result, version: "1.0.0"), "higher build is available")
+    }
+
+    private static func testBeta9MaintenanceBuildIsAvailable() throws {
+        let result = try TerentoAppUpdateService.evaluate(
+            manifest: manifest(
+                version: "1.0.0",
+                build: 10,
+                releaseLabel: "1.0.0-beta.9"
+            ),
+            current: installedVersion(build: 9)
+        )
+        expect(
+            isAvailable(result, version: "1.0.0"),
+            "beta.9 build 10 is offered to beta.9 build 9"
+        )
     }
 
     private static func testHigherMarketingVersionIsAvailable() throws {
@@ -349,6 +365,7 @@ struct AppUpdateTests {
     private static func manifest(
         version: String,
         build: Int,
+        releaseLabel: String? = nil,
         minimumMacOS: String? = "13.0",
         releaseNotesURL: URL? = URL(
             string: "https://github.com/VooZ2/terento/releases/tag/test"
@@ -361,7 +378,7 @@ struct AppUpdateTests {
             architecture: "arm64",
             version: version,
             build: build,
-            releaseLabel: "\(version)-beta.test",
+            releaseLabel: releaseLabel ?? "\(version)-beta.test",
             downloadURL: URL(
                 string: "https://github.com/VooZ2/terento/releases/download/test/Terento.dmg"
             )!,
