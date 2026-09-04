@@ -85,13 +85,13 @@ therefore requires Node.js. Set `TERENTO_NODE_BIN` when Node.js is not on
   /admin/map-statistics.json` exposes its private aggregates and never returns
   raw events or device identifiers. Raw map events are pruned after 24 months.
 - `POST /compatibility/events` accepts validated, rate-limited, idempotent
-  privacy-minimised install events after client consent. It stores only
-  allowlisted columns, hashes the per-event deletion token, and never stores
-  the submitted JSON body. Exact model variants are retained separately;
-  reconnect observations are optional and never gate compatibility status.
-- `DELETE /compatibility/events` lets the client erase one uploaded event by
-  presenting its event UUID and secret deletion token. Events are also pruned
-  automatically after 24 months.
+  privacy-minimised install events under the default-on diagnostics
+  policy. It stores only allowlisted columns and never stores the submitted JSON
+  body. Exact model variants are retained separately; reconnect observations are
+  optional and never gate compatibility status.
+- Uploaded compatibility events are immutable through the public API;
+  `DELETE /compatibility/events` returns `405 Method Not Allowed`. Events are
+  also pruned automatically after 24 months by the service health cycle.
 - `GET https://api.terento.app/admin` serves the authenticated, noindex
   aggregate operator dashboard from the same API container as the catalog
   and account settings. The first account requires `ADMIN_BOOTSTRAP_SECRET`;
@@ -123,9 +123,10 @@ existing private database, replaces only the API and scheduler containers,
 removes services from the known stale Compose project without deleting its
 volumes, and asserts that exactly one API, scheduler, and healthy database are
 running. It verifies the image release label, internal API-to-database health,
-the public catalog/device endpoints, the website's API reference, and the
-authenticated admin gate at `api.terento.app`. It keeps the previous API image
-available for rollback and does not change the PostgreSQL or asset volumes.
+the public catalog/device endpoints, the website's API reference, the
+authenticated admin gate at `api.terento.app`, and the immutable compatibility
+event contract. It keeps the previous API image available for rollback and
+does not change the PostgreSQL or asset volumes.
 
 The catalog includes a map only after a collector has a normalized version and
 a known download size. A missing size is retained in the database but omitted
@@ -232,3 +233,75 @@ The daily scheduler runs the reviewed Freizeitkarte and OpenTopoMap adapters
 as isolated map phases. On Monday it then runs the separate Garmin device
 collection. A provider or Garmin collection failure is logged and retained
 without clearing any previous known-good catalog.
+
+### Build 11 diagnostics storage correction
+
+Migration 033 drops only the legacy deletion-token NOT NULL constraint. Schema
+v4 events have no token; legacy hashes and all retained events are preserved.
+Public event APIs remain immutable and retries retain the same event ID.
+`/health` checks the installed migration set, the nullable token column, and
+read-only projections of both diagnostic tables with a local statement timeout.
+Missing or incompatible storage returns 503 without creating a test event.
+
+### Admin issue synchronization and attention
+
+The API process now runs a bounded GitHub issue-state worker (migration 034).
+After normal migration-before-start deployment, closed explicitly linked
+`VooZ2/terento` issues resolve ACTIVE diagnostics, normally within 15 minutes.
+Ten oldest due issues are checked per cycle; rate limits or a larger backlog can
+delay completion. System health reports errors and overdue checks. No GitHub token
+or webhook is required. This is one-way closure synchronization; relink/remove a
+closed reference before investigating a manually reopened new problem. See
+`internal/adr/0019-admin-github-issue-resolution-sync.md` for audit and safety rules.
+
+Overview attention is independent of the statistics date filter. Visible admin
+pages check every minute and offer Refresh when data changes, protecting unsaved
+form edits. These changes are production-verified in release `932d757` (deployment run `33925498939`).
+
+At phone widths (up to 700 px), admin navigation collapses into Menu with a review
+shortcut, Overview attention precedes statistics, and the existing tables become
+labelled records. Search remains visible; secondary device/installation filters
+and the full device sorter are under Filters and sorting. Primary controls and
+form typography are sized for touch. Diagnostic dialogs keep their close header
+visible during content scrolling. These presentation changes reuse existing
+endpoints and permissions. Local evidence is recorded in
+`internal/audits/2026-09-05-admin-mobile-audit.md`; production rollout completed in release `932d757`.
+
+Desktop admin tables fit their cards and wrap long values. Provider source
+details show complete URLs; campaign output wraps. Installation history uses
+page scrolling and diagnostic dialogs keep their close header visible. The
+local ten-page audit and long-content evidence are recorded in
+`internal/audits/2026-09-05-admin-desktop-fit-audit.md`; rollout completed in release `932d757`.
+
+Production validation on 2026-09-05 covered all ten admin page types at 1280 px
+and 390 px, the mobile menu, and automatic resolution of the two active
+diagnostics linked to closed GitHub issue #94. Historical failure results were
+retained. Deployment workflow: https://github.com/VooZ2/terento/actions/runs/33925498939.
+
+### Admin custom IMG chart series — 2026-09-05
+
+The Overview chart adds a separately labelled green Custom .img series from
+successful, verified, complete compatibility operations whose provider is custom.
+Grouped operation IDs (legacy event IDs when absent) prevent multi-map double
+counting; bucket placement uses completion time and the selected time zone.
+This is a read-only admin aggregation: custom imports remain excluded from
+provider map telemetry, KPI success rates and the public catalog. No filenames
+or paths are collected. HTML legend swatches now use background colors, matching
+the SVG fills. Deployed as `ee9d25e`; workflow 33926631093 passed all jobs, including
+237 backend tests and release-client catalog validation. Live Overview shows
+one Custom .img installation in both 24h (00:00 Europe/Vilnius bucket) and
+all-time views. The legend fits at 390 px without horizontal overflow.
+
+Admin chart follow-up: event types remain stacked in one continuous bar per
+time bucket. Segments have square joins; only the complete column silhouette
+has rounded corners through one shared clip path. Each segment has its own
+hover title and accessible label with event type, count and time. Data
+aggregation is unchanged. Deployed as `4f47d35`, workflow `33927056958` PASS, including 238 tests
+and release-client validation. Live segments share one x position and square
+internal joins; individual titles show type, count and local time.
+
+Admin model rows no longer show the Custom installation badge. Manual IMG
+imports remain visible in the chart and installation history. Presentation-only
+change; evidence and counters are unchanged. Deployed as `40272ed`; workflow `33927386387` passed all jobs and 238
+backend tests. Live Installations has zero custom badges, and the existing
+custom installation history entry remains visible.

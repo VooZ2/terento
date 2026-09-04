@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="cs" data-language="cs" data-page="about">
   <head>
-    <script defer src="/site-shell.js?v=20260902-ia-navigation"></script>
-    <link rel="stylesheet" href="/styles.css?v=20260902-visual-fix">
+    <script defer src="/site-shell.js?v=20260904-pass3-internal-link-events-v1"></script>
+    <link rel="stylesheet" href="/styles.css?v=20260905-guide-flow-v3">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -33,25 +33,27 @@
     <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
     <title>O Terento — Bezplatné open-source mapy Garminu na Macu</title>
 
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222A2B">
 
     <link rel="icon" href="/favicon.ico?v=20260820-4" sizes="any">
     <link rel="icon" href="/favicon.svg?v=20260820-4" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260820-4">
     <link rel="manifest" href="/manifest.webmanifest">
+    <script defer src="/privacy-consent.js?v=20260905-public-link-events-v3"></script>
 </head>
   <body class="about-page">
-    <a class="skip-link" href="#main-content">Přejít k obsahu</a>
+    <a class="skip-link" href="#main-content" data-umami-event="internal-link-click" data-umami-event-location="skip-link">Přejít k obsahu</a>
     <header class="site-header">
       <div class="shell header-inner">
-        <a class="brand-lockup" href="/cs/" aria-label="Domů Terento">
+        <a class="brand-lockup" href="/cs/" aria-label="Domů Terento" data-umami-event="home-link-click" data-umami-event-location="header-brand">
           <img src="/assets/logo-sky.svg" alt="" width="40" height="40">
           <span>Terento</span>
         </a>
         <nav class="primary-nav" aria-label="Hlavní navigace">
-          <a href="/cs/compatibility/">Kompatibilita</a><a href="/cs/guides/install-garmin-maps-mac/">Průvodce</a><a href="/cs/about/" aria-current="page">O projektu</a><a href="/cs/download/">Stáhnout</a>
+          <a href="/cs/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="header-nav">Kompatibilita</a><a href="/cs/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="header-nav">Průvodce</a><a href="/cs/about/" aria-current="page" data-umami-event="navigation-link-click" data-umami-event-location="header-nav">O projektu</a><a class="download-action" href="/cs/download/" data-umami-event="download-cta-click" data-umami-event-location="header-nav">Stáhnout</a>
           <span class="language-switcher"><details class="language-menu">
-          <summary class="language-trigger" aria-label="Vybrat jazyk"><span class="language-current" aria-hidden="true">🇨🇿</span></summary>
-          <div class="language-options"><a class="language-option" href="/about/" data-language-switch="en" lang="en" aria-label="English"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/about/" data-language-switch="de" lang="de" aria-label="Deutsch"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/about/" data-language-switch="fr" lang="fr" aria-label="Français"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/about/" data-language-switch="pl" lang="pl" aria-label="Polski"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/about/" data-language-switch="cs" lang="cs" aria-label="Čeština" aria-current="page"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/about/" data-language-switch="it" lang="it" aria-label="Italiano"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
+          <summary class="language-trigger" aria-label="Vybrat jazyk"><span class="language-code" aria-hidden="true">CS</span></summary>
+          <div class="language-options"><a class="language-option" href="/about/" data-language-switch="en" lang="en" aria-label="English" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/about/" data-language-switch="de" lang="de" aria-label="Deutsch" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/about/" data-language-switch="fr" lang="fr" aria-label="Français" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/about/" data-language-switch="pl" lang="pl" aria-label="Polski" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/about/" data-language-switch="cs" lang="cs" aria-label="Čeština" aria-current="page" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/about/" data-language-switch="it" lang="it" aria-label="Italiano" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
         </details></span>
         </nav>
         <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="Menu">
@@ -62,31 +64,57 @@
       <div class="mobile-nav" id="mobile-nav" hidden>
         <div class="shell mobile-nav-inner">
           <nav class="mobile-nav-links" aria-label="Hlavní navigace">
-            <a href="/cs/compatibility/">Kompatibilita</a><a href="/cs/guides/install-garmin-maps-mac/">Průvodce</a><a href="/cs/about/" aria-current="page">O projektu</a><a href="/cs/download/">Stáhnout</a>
+            <a href="/cs/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="mobile-nav">Kompatibilita</a><a href="/cs/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="mobile-nav">Průvodce</a><a href="/cs/about/" aria-current="page" data-umami-event="navigation-link-click" data-umami-event-location="mobile-nav">O projektu</a><a class="download-action" href="/cs/download/" data-umami-event="download-cta-click" data-umami-event-location="mobile-nav">Stáhnout</a>
           </nav>
           <div class="mobile-nav-language"><details class="language-menu mobile-language-menu">
-            <summary class="language-trigger" aria-label="Vybrat jazyk"><span class="mobile-language-label">Vybrat jazyk</span><span class="language-current" aria-hidden="true">🇨🇿</span></summary>
-            <div class="language-options"><a class="language-option" href="/about/" data-language-switch="en" lang="en" aria-label="English"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/about/" data-language-switch="de" lang="de" aria-label="Deutsch"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/about/" data-language-switch="fr" lang="fr" aria-label="Français"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/about/" data-language-switch="pl" lang="pl" aria-label="Polski"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/about/" data-language-switch="cs" lang="cs" aria-label="Čeština" aria-current="page"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/about/" data-language-switch="it" lang="it" aria-label="Italiano"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
+            <summary class="language-trigger" aria-label="Vybrat jazyk"><span class="mobile-language-label">CS</span></summary>
+            <div class="language-options"><a class="language-option" href="/about/" data-language-switch="en" lang="en" aria-label="English" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/about/" data-language-switch="de" lang="de" aria-label="Deutsch" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/about/" data-language-switch="fr" lang="fr" aria-label="Français" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/about/" data-language-switch="pl" lang="pl" aria-label="Polski" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/about/" data-language-switch="cs" lang="cs" aria-label="Čeština" aria-current="page" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/about/" data-language-switch="it" lang="it" aria-label="Italiano" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
           </details></div>
         </div>
       </div>
     </header>
     <main id="main-content">
-      <section class="compatibility-hero about-hero" aria-labelledby="about-title">
-        <div class="shell compatibility-hero-inner"><div class="compatibility-hero-copy">
-          <p class="eyebrow">O Terento</p>
-          <h1 id="about-title">Řešení, ne proces.</h1>
-          <p class="hero-lede">Terento je bezplatná open-source aplikace pro macOS, která usnadňuje instalaci a aktualizaci komunitních map na moderních hodinkách Garmin.</p>
-        </div></div>
+      <section class="about-story" aria-labelledby="about-title">
+        <div class="shell about-story-inner">
+          <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Poznámka od tvůrce</p>
+          <h1 id="about-title">Ahoj, jsem Gediminas</h1>
+          <div class="about-story-copy">
+          <p>Myslím, že jsem Garmin začal používat někdy kolem modelu fēnix 3 a v průběhu let se z něj stalo víc než jen zařízení — stal se součástí toho, jak cestuji a trávím čas venku. Nejraději chodím po horách a před dovolenou si rád aktualizuji hodinky mapami míst, která navštívím.</p>
+          <p>Tento proces byl často složitější, než by měl být: Garmin Express se mohl zaseknout, zatímco instalace map třetích stran vyžadovala jejich samostatné hledání a stahování i další software. Ani vlastní mapy Garminu mi ne vždy poskytly potřebnou úroveň detailů.</p>
+          <p>Tato frustrace mě přivedla k myšlence najít jednodušší způsob, jak dostat správné mapy do hodinek. Nejsem softwarový vývojář, ale když stále více lidí začalo řešit praktické problémy pomocí AI asistovaného „vibe codingu“, uvědomil jsem si, že bych mohl zkusit toto řešení vytvořit sám. Z tohoto experimentu vzniklo Terento — komplexní aplikace pro Mac k výběru, instalaci, aktualizaci a správě map třetích stran.</p>
+          <p>Vytvářím ji bezplatně a jako open source, protože z ní nechci budovat firmu; chci pomoci komunitě. Neměli byste být technicky zaměření, abyste mohli připravit hodinky na místa, kam míříte.</p>
+          </div>
+        <div class="about-socials" aria-label="Spojte se s tvůrcem">
+          <p class="about-social-label">Spojte se s tvůrcem</p>
+          <div class="about-social-links">
+            <a class="about-social-link" href="https://www.linkedin.com/in/gediminasc/" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="linkedin"><img src="/assets/social/linkedin.svg" alt="" width="16" height="16"><span>LinkedIn</span></a>
+            <a class="about-social-link" href="https://www.reddit.com/user/MrDonas/" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="reddit"><img src="/assets/social/reddit.svg" alt="" width="16" height="16"><span>Reddit</span></a>
+            <a class="about-social-link about-email-link" href="mailto:hello&#64;terento.app" data-umami-event="support-link-click" data-umami-event-location="about-story" data-umami-event-channel="email"><img src="/assets/social/email.svg" alt="" width="16" height="16"><span>E-mail</span><span class="about-social-address">hello&#64;terento.app</span></a>
+          </div>
+          <div class="about-donate">
+            <span>Líbí se vám projekt?</span>
+            <a class="about-social-link about-social-link--donate" href="https://buymeacoffee.com/vooz2" target="_blank" rel="noopener noreferrer" data-umami-event="donate" data-umami-event-location="about-story" data-umami-event-channel="donate"><img src="/assets/social/buymeacoffee.svg" alt="" width="16" height="16"><span>Přispět</span></a>
+          </div>
+        </div>
+        </div>
       </section>
-      <section class="about-main">
+      <section class="about-main" aria-labelledby="about-principle-title">
         <div class="shell about-grid">
-          <div class="section-heading"><p class="eyebrow">Myšlenka</p><h2>Vaše zařízení připravené na další cestu.</h2></div>
+          <div class="section-heading about-slogan"><h2 id="about-principle-title">Zaměřeno na výsledek — ne na proces.</h2></div>
           <div class="about-list">
-            <section class="about-item"><h2>Důležitý je výsledek</h2><p>Terento udržuje postup jednoduchý: připojte hodinky, vyberte mapu a vyrazte.</p></section>
-            <section class="about-item"><h2>Open source jako základ</h2><p>Terento vzniká veřejně a je vydáváno pod licencí GPL-3.0-or-later. Projekt je bezplatný; aplikace nevyžaduje účet ani cloudový profil zařízení.</p></section>
-            <section class="about-item"><h2>Nezávisle a opatrně</h2><p>Názvy Garmin používáme popisně kvůli kompatibilitě. Poskytovatelé si ponechávají vlastní licence a mapové soubory putují přímo od původního poskytovatele do vašeho Macu a poté do hodinek. Podrobnosti najdete v sekcích <a href="/legal/">Právní informace</a> a <a href="/privacy/">Soukromí</a>.</p></section>
-            <section class="about-item"><h2>Tvoříme s komunitou</h2><p>Kompatibilita se potvrzuje pro každý model na základě skutečných výsledků instalace. Pokud něco nefunguje, otevřete issue na <a href="https://github.com/VooZ2/terento/issues" target="_blank" rel="noopener noreferrer">GitHubu</a>, aby se z toho projekt mohl poučit.</p></section>
+            <section class="about-item about-item--group"><h2>Co Terento dělá</h2><ul class="about-bullet-list">
+              <li>Vyberte mapy z Freizeitkarte nebo OpenTopoMap, případně přidejte vlastní kompatibilní mapu .img.</li>
+              <li>Instalujte, aktualizujte a spravujte mapy třetích stran z jednoho místa.</li>
+              <li>Podporuje Macy s procesory Apple Silicon.</li>
+              <li>Chrání originální mapy Garminu.</li>
+            </ul></section>
+            <section class="about-item about-item--group"><h2>Co Terento nedělá</h2><ul class="about-bullet-list">
+              <li>Terento vás neposílá zpět do Garmin Express nebo BaseCamp.</li>
+              <li>Terento neslibuje kompatibilitu s každým zařízením Garmin.</li>
+              <li>Terento mapové soubory nehostuje, nezrcadlí ani znovu nebalí.</li>
+              <li>Terento nevyžaduje účet ani cloudový profil zařízení.</li>
+              <li>Terento nepodporuje Macy s procesory Intel.</li>
+            </ul></section>
           </div>
         </div>
       </section>
@@ -94,16 +122,16 @@
     <footer class="site-footer">
       <div class="shell footer-grid">
         <div class="footer-identity">
-          <a class="brand-lockup footer-brand" href="/cs/" aria-label="Domů Terento">
-            <img src="/assets/logo-sky.svg" alt="" width="32" height="32">
+          <a class="brand-lockup footer-brand" href="/cs/" aria-label="Domů Terento" data-umami-event="home-link-click" data-umami-event-location="footer-brand">
+            <img src="/assets/logo-white.svg" alt="" width="32" height="32">
             <span>Terento</span>
           </a>
-          <div class="footer-meta"><p class="footer-status">Open-source projekt</p><a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
+          <div class="footer-meta"><a class="footer-status footer-project-link" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer">Open-source projekt</a><a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
         </div>
         <nav class="footer-nav" aria-label="Navigace v zápatí">
-          <a href="/cs/about/" aria-current="page">O projektu</a><a href="/cs/compatibility/">Kompatibilita</a><a href="/cs/guides/install-garmin-maps-mac/">Průvodce</a><a href="/cs/#faq">FAQ</a><a href="/cs/download/">Stáhnout</a>
-          <a href="/legal/">Právní informace</a>
-          <a href="/privacy/">Soukromí</a>
+          <a href="/cs/about/" aria-current="page" data-umami-event="navigation-link-click" data-umami-event-location="footer-nav">O projektu</a><a href="/cs/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="footer-nav">Kompatibilita</a><a href="/cs/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Průvodce</a><a href="/cs/#faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a><a href="/cs/download/" data-umami-event="download-cta-click" data-umami-event-location="footer-nav">Stáhnout</a>
+          <a href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="footer-nav">Právní informace</a>
+          <a href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="footer-nav">Soukromí</a>
         </nav>
       </div>
       <div class="shell footer-bottom"><p>© 2026 Terento Project · Beta</p></div>

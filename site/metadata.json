@@ -220,7 +220,7 @@
       "path": "/guides/install-garmin-maps-mac/",
       "locale": "en",
       "title": "Install Third-Party Garmin Maps on Mac — Terento",
-      "description": "Install supported third-party maps on a Garmin smartwatch from an Apple Silicon Mac. Connect the watch, choose a map and install with Terento.",
+      "description": "Install third-party maps on a compatible Garmin watch from an Apple Silicon Mac. Connect your watch, choose a map or upload your own .img file, and finish in three simple steps with Terento.",
       "ogType": "article",
       "alternates": true
     },
@@ -229,7 +229,7 @@
       "path": "/de/guides/install-garmin-maps-mac/",
       "locale": "de",
       "title": "Drittanbieter-Karten auf Garmin vom Mac installieren — Terento",
-      "description": "Installiere unterstützte Drittanbieter-Karten auf einer Garmin-Smartwatch vom Apple-Silicon-Mac. Uhr verbinden, Karte wählen und mit Terento installieren.",
+      "description": "Installiere Drittanbieter-Karten auf einer kompatiblen Garmin-Uhr mit einem Apple-Silicon-Mac. Verbinde die Uhr, wähle eine Karte oder lade deine eigene .img-Datei hoch und installiere sie mit Terento in drei einfachen Schritten.",
       "ogType": "article",
       "alternates": true
     },
@@ -238,7 +238,7 @@
       "path": "/fr/guides/install-garmin-maps-mac/",
       "locale": "fr",
       "title": "Installer des cartes tierces Garmin sur Mac — Terento",
-      "description": "Installez des cartes tierces prises en charge sur une montre Garmin depuis un Mac Apple Silicon. Connectez la montre, choisissez une carte et utilisez Terento.",
+      "description": "Installez des cartes tierces sur une montre Garmin compatible depuis un Mac Apple Silicon. Connectez la montre, choisissez une carte ou importez votre propre fichier .img, puis installez avec Terento en trois étapes simples.",
       "ogType": "article",
       "alternates": true
     },
@@ -247,7 +247,7 @@
       "path": "/pl/guides/install-garmin-maps-mac/",
       "locale": "pl",
       "title": "Instalacja map innych firm na Garminie z Maca — Terento",
-      "description": "Instaluj obsługiwane mapy innych firm na zegarku Garmin z Maca z Apple Silicon. Podłącz zegarek, wybierz mapę i zainstaluj ją z Terento.",
+      "description": "Instaluj mapy innych firm na zgodnym zegarku Garmin z Maca z Apple Silicon. Podłącz zegarek, wybierz mapę lub dodaj własny plik .img i zainstaluj ją z Terento w trzech prostych krokach.",
       "ogType": "article",
       "alternates": true
     },
@@ -256,7 +256,7 @@
       "path": "/cs/guides/install-garmin-maps-mac/",
       "locale": "cs",
       "title": "Instalace map třetích stran do Garminu z Macu — Terento",
-      "description": "Instalujte podporované mapy třetích stran do hodinek Garmin z Macu s Apple Silicon. Připojte hodinky, vyberte mapu a nainstalujte ji s Terento.",
+      "description": "Instalujte mapy třetích stran do kompatibilních hodinek Garmin z Macu s Apple Silicon. Připojte hodinky, vyberte mapu nebo přidejte vlastní soubor .img a nainstalujte ji s Terento ve třech jednoduchých krocích.",
       "ogType": "article",
       "alternates": true
     },
@@ -265,7 +265,7 @@
       "path": "/it/guides/install-garmin-maps-mac/",
       "locale": "it",
       "title": "Installare mappe di terze parti Garmin da Mac — Terento",
-      "description": "Installa mappe di terze parti supportate su uno smartwatch Garmin da un Mac Apple Silicon. Collega l’orologio, scegli una mappa e usa Terento.",
+      "description": "Installa mappe di terze parti supportate su uno smartwatch Garmin compatibile da un Mac Apple Silicon. Collega l’orologio, scegli una mappa o aggiungi il tuo file .img e installa con Terento in tre semplici passaggi.",
       "ogType": "article",
       "alternates": true
     },
@@ -283,7 +283,7 @@
       "path": "/privacy/",
       "locale": "en",
       "title": "Privacy — Terento",
-      "description": "Terento privacy notice for the public website and macOS beta, including optional compatibility reports, Cloudflare services and consent-based visit statistics.",
+      "description": "Terento privacy notice for the public website and macOS beta, including optional compatibility reports, Cloudflare services and privacy-preserving Umami visit statistics.",
       "indexable": false,
       "alternates": false
     }

@@ -69,6 +69,24 @@ def render(source: str, locale: str, release: dict[str, object], path: Path) -> 
         f'href="{release_url}"',
         source,
     )
+    source, schema_version_count = re.subn(
+        r'("softwareVersion":\s*)"[^\"]+"',
+        rf'\g<1>"{label}"',
+        source,
+        count=1,
+    )
+    source, schema_download_count = re.subn(
+        r'("downloadUrl":\s*)"https://github\.com/VooZ2/terento/releases/download/[^\"]+\.dmg"',
+        rf'\g<1>"{dmg_url}"',
+        source,
+        count=1,
+    )
+    source, schema_notes_count = re.subn(
+        r'("releaseNotes":\s*)"https://github\.com/VooZ2/terento/releases/tag/[^\"]+"',
+        rf'\g<1>"{release_url}"',
+        source,
+        count=1,
+    )
     published = date.fromisoformat(str(release["publishedAt"]))
     source, line_count = re.subn(
         r'<p class="download-release">[\s\S]*?</p>',
@@ -76,10 +94,10 @@ def render(source: str, locale: str, release: dict[str, object], path: Path) -> 
         source,
         count=1,
     )
-    if (dmg_count, zip_count, notes_count, line_count) != (1, 1, 1, 1):
+    if (dmg_count, zip_count, notes_count, line_count, schema_version_count, schema_download_count, schema_notes_count) != (1, 1, 1, 1, 1, 1, 1):
         raise ValueError(
-            f"{path}: expected one DMG, ZIP, notes, and visible release record; "
-            f"got {(dmg_count, zip_count, notes_count, line_count)}"
+            f"{path}: expected one DMG, ZIP, notes, visible release record, and schema release record; "
+            f"got {(dmg_count, zip_count, notes_count, line_count, schema_version_count, schema_download_count, schema_notes_count)}"
         )
     return source
 

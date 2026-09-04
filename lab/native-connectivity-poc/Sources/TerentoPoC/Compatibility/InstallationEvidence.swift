@@ -85,7 +85,7 @@ enum EvidenceErrorCategory: String, Codable, CaseIterable, Sendable {
 }
 
 struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
-    static let schemaVersion = 3
+    static let schemaVersion = 4
 
     let schemaVersion: Int
     let id: UUID
@@ -126,7 +126,6 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
     let cleanupAttempted: Bool?
     let cleanupSucceeded: Bool?
     let transferProgressBucket: EvidenceTransferProgressBucket?
-    let deletionToken: String?
 
     init(
         id: UUID = UUID(),
@@ -156,8 +155,7 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         terentoVersion: String = (Bundle.main.infoDictionary?["TerentoReleaseLabel"] as? String)
             ?? (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String)
             ?? "development",
-        macOSVersion: String = ProcessInfo.processInfo.operatingSystemVersionString,
-        deletionToken: String = InstallationEvidenceEvent.makeDeletionToken()
+        macOSVersion: String = ProcessInfo.processInfo.operatingSystemVersionString
     ) {
         self.schemaVersion = Self.schemaVersion
         self.id = id
@@ -173,12 +171,22 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         self.usbVendorID = identity.usbVendorId
         self.usbProductID = identity.usbProductId
         self.transport = "MTP"
-        self.provider = package.providerId
-        // `regionId` is the provider's grouping region. Some catalog entries
-        // share that group (for example AZORES and BALEARICS), so evidence
-        // must use the concrete package identity to remain unambiguous.
-        self.region = package.canonicalRegionId
-        self.mapRelease = String(describing: package.version)
+        if package.sourceKind == .custom {
+            // A custom IMG has no trusted provider identity. Its canonical
+            // region is derived from the local content hash, so never send
+            // that value (or a local release guess) as compatibility evidence.
+            self.provider = "custom"
+            self.region = "custom"
+            self.mapRelease = "custom"
+        } else {
+            self.provider = package.providerId
+            // `regionId` is the provider's grouping region. Some catalog
+            // entries share that group (for example AZORES and BALEARICS),
+            // so evidence must use the concrete package identity to remain
+            // unambiguous.
+            self.region = package.canonicalRegionId
+            self.mapRelease = String(describing: package.version)
+        }
         self.terentoVersion = terentoVersion
         self.macOSVersion = macOSVersion
         self.phaseOutcome = outcome
@@ -201,14 +209,13 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         self.cleanupAttempted = cleanupAttempted
         self.cleanupSucceeded = cleanupSucceeded
         self.transferProgressBucket = transferProgressBucket
-        self.deletionToken = deletionToken
     }
 
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, id, timestamp, model, compatibilityIdentity, variant, caseSizeMm,
              displayType, canonicalDeviceId, family, firmwareVersion, usbVendorID, usbProductID, transport, provider, region,
              mapRelease, terentoVersion, macOSVersion, phaseOutcome, automaticFinishingResult,
-             reconnectVerified, mapVisibleAfterReconnect, errorCategory, deletionToken
+             reconnectVerified, mapVisibleAfterReconnect, errorCategory
         case rawMTPModel, identityResolutionCode
         case operationId, mapResultIndex, selectedMapCount, appBuild, releaseLabel,
              failureStage, failureCode, nativeFailureCode, writeStarted, remoteObjectCreated,
@@ -256,11 +263,6 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         cleanupAttempted = try container.decodeIfPresent(Bool.self, forKey: .cleanupAttempted)
         cleanupSucceeded = try container.decodeIfPresent(Bool.self, forKey: .cleanupSucceeded)
         transferProgressBucket = try container.decodeIfPresent(EvidenceTransferProgressBucket.self, forKey: .transferProgressBucket)
-        deletionToken = try container.decodeIfPresent(String.self, forKey: .deletionToken)
-    }
-
-    private static func makeDeletionToken() -> String {
-        (UUID().uuidString + UUID().uuidString).replacingOccurrences(of: "-", with: "").lowercased()
     }
 
     private static func sanitizedDiagnosticLabel(_ value: String) -> String? {
@@ -280,7 +282,7 @@ enum EvidenceConsentChoice: String, Codable, Sendable {
 }
 
 struct VersionedEvidenceConsent: Codable, Equatable, Sendable {
-    static let currentNoticeVersion = 3
+    static let currentNoticeVersion = 4
     let noticeVersion: Int
     let choice: EvidenceConsentChoice
     let decidedAt: Date
@@ -400,11 +402,21 @@ final class LocalInstallationEvidenceStore: @unchecked Sendable {
         }
     }
 
-    func invalidateConsentForNoticeChange() throws {
+    func migrateConsentToCurrentNotice() throws {
         try lock.withLock {
             var file = try loadUnlocked()
-            file.consent = nil
-            file.pendingUploadEventIDs.removeAll()
+            guard let consent = file.consent,
+                  consent.noticeVersion != VersionedEvidenceConsent.currentNoticeVersion else {
+                return
+            }
+            file.consent = VersionedEvidenceConsent(
+                noticeVersion: VersionedEvidenceConsent.currentNoticeVersion,
+                choice: consent.choice,
+                decidedAt: consent.decidedAt
+            )
+            if consent.choice == .declined {
+                file.pendingUploadEventIDs.removeAll()
+            }
             try saveUnlocked(file)
         }
     }
@@ -424,20 +436,6 @@ final class LocalInstallationEvidenceStore: @unchecked Sendable {
                 uploaded.append(eventID)
             }
             file.uploadedEventIDs = uploaded
-            try saveUnlocked(file)
-        }
-    }
-
-    func uploadedEvents() -> [InstallationEvidenceEvent] {
-        let file = lockedLoad()
-        let ids = Set(file.uploadedEventIDs ?? [])
-        return file.events.filter { ids.contains($0.id) && $0.deletionToken != nil }
-    }
-
-    func markDeleted(eventID: UUID) throws {
-        try lock.withLock {
-            var file = try loadUnlocked()
-            file.uploadedEventIDs?.removeAll { $0 == eventID }
             try saveUnlocked(file)
         }
     }
@@ -472,7 +470,6 @@ private extension NSLock {
 
 protocol InstallationEvidenceUploading: Sendable {
     func upload(_ event: InstallationEvidenceEvent) async throws
-    func delete(_ event: InstallationEvidenceEvent) async throws
 }
 
 enum InstallationEvidenceUploadError: LocalizedError, Equatable, Sendable {
@@ -531,28 +528,6 @@ struct HTTPInstallationEvidenceUploader: InstallationEvidenceUploading {
         }
     }
 
-    func delete(_ event: InstallationEvidenceEvent) async throws {
-        guard let deletionToken = event.deletionToken else {
-            throw URLError(.userAuthenticationRequired)
-        }
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "DELETE"
-        request.timeoutInterval = 15
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: [
-            "id": event.id.uuidString.lowercased(),
-            "deletionToken": deletionToken,
-        ])
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw InstallationEvidenceUploadError.invalidResponse
-        }
-        guard (200..<300).contains(http.statusCode) else {
-            let body = String(decoding: data.prefix(512), as: UTF8.self)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            throw InstallationEvidenceUploadError.httpStatus(code: http.statusCode, body: body)
-        }
-    }
 }
 
 enum InstallationEvidenceUploadStatus: Equatable, Sendable {
@@ -590,30 +565,22 @@ final class InstallationEvidenceController: ObservableObject {
         self.store = store
         self.uploader = uploader
         self.automaticRetryDelays = automaticRetryDelays
-        if let consent = store.consent(),
-           consent.noticeVersion != VersionedEvidenceConsent.currentNoticeVersion {
-            try? store.invalidateConsentForNoticeChange()
-        }
+        try? store.migrateConsentToCurrentNotice()
         if uploadEnabled {
             schedulePendingUploadFlush()
         }
     }
 
     var uploadEnabled: Bool {
-        currentConsentChoice == .accepted
+        compatibilitySharingEnabled
     }
 
     var currentConsentChoice: EvidenceConsentChoice? {
-        guard let consent = store.consent(),
-              consent.noticeVersion == VersionedEvidenceConsent.currentNoticeVersion else {
-            return nil
-        }
-        return consent.choice
+        store.consent()?.choice
     }
 
-    /// One shared, persisted preference for Ready, About, and report delivery.
-    /// No consent record means the visible first-install default is checked;
-    /// the first installation commits that default as an explicit choice.
+    /// No consent record means privacy-minimised diagnostics are enabled by default.
+    /// An explicit opt-out remains persisted across app updates.
     var compatibilitySharingEnabled: Bool {
         currentConsentChoice != .declined
     }
@@ -629,13 +596,6 @@ final class InstallationEvidenceController: ObservableObject {
             uploadTaskGeneration = nil
             uploadStatus = .idle
         }
-    }
-
-    /// Commits the visible default only when the user starts an installation.
-    /// Existing decisions are already persisted by `decideConsent`.
-    func commitCurrentSharingChoice() {
-        guard currentConsentChoice == nil else { return }
-        decideConsent(compatibilitySharingEnabled ? .accepted : .declined)
     }
 
     func resetLatestDeliveryStatus() {
@@ -863,19 +823,6 @@ final class InstallationEvidenceController: ObservableObject {
         return "The compatibility report could not be sent."
     }
 
-    func deleteUploadedReports() async -> Int {
-        var deleted = 0
-        for event in store.uploadedEvents() {
-            do {
-                try await uploader.delete(event)
-                try store.markDeleted(eventID: event.id)
-                deleted += 1
-            } catch {
-                return deleted
-            }
-        }
-        return deleted
-    }
 }
 
 private extension JSONEncoder {

@@ -34,3 +34,7 @@ temporary Docker build context and does not rewrite that checkout.
 
 The update manifest is deliberately sent with `Cache-Control: no-store` so an
 old app-update response cannot remain cached after a release.
+
+The public-shell normalizer also synchronizes the stylesheet cache version on
+standalone pages (404 and legacy redirect). The shared brand contract checks
+every HTML page, including these pages, before deployment.

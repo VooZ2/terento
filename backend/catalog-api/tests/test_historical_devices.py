@@ -47,6 +47,14 @@ class HistoricalDeviceRegistryTests(unittest.TestCase):
         self.assertIsNotNone(spec)
         self.assertEqual(spec.id, "garmin-fenix-7s-42")
 
+    def test_fenix_7_pro_does_not_match_historical_fenix_7_record(self):
+        spec = historical_device_for_event({
+            "model": "fēnix 7 Pro",
+            "compatibilityIdentity": "fēnix 7 Pro",
+            "caseSizeMm": 47,
+        })
+        self.assertIsNone(spec)
+
     def test_registry_contains_reviewed_source_and_no_write_authorization(self):
         self.assertEqual(len(HISTORICAL_DEVICE_REGISTRY), 22)
         self.assertTrue(all(spec.source_url.startswith("https://") for spec in HISTORICAL_DEVICE_REGISTRY))

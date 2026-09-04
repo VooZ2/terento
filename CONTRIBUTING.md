@@ -4,7 +4,7 @@ Thank you for taking an interest in Terento. Contributions, bug reports, documen
 
 ## Project status
 
-Terento is an active beta and pre-MVP project for macOS. It is not a stable
+Terento is an active public beta project for macOS. It is not a stable
 production release. The current release identity, supported artifacts, and
 availability are maintained in `RELEASE_NOTES.md`, GitHub Releases, and the
 current release metadata; do not copy a version number into this document.

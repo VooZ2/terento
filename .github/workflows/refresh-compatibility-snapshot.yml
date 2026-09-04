@@ -1,0 +1,106 @@
+name: Refresh public compatibility snapshot
+
+on:
+  schedule:
+    # Run after the 03:00 UTC provider/catalog collection cycle.
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-compatibility-snapshot
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Refresh evidence-backed model list
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out beta
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: beta
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+
+      - name: Check the live compatibility evidence
+        id: refresh
+        shell: bash
+        run: |
+          set -euo pipefail
+          snapshot="site/compatibility/public-models.snapshot.json"
+          before="$(git hash-object "$snapshot")"
+          python scripts/update-compatibility-snapshot.py
+          after="$(git hash-object "$snapshot")"
+          if [[ "$before" == "$after" ]]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Regenerate localized compatibility pages
+        if: steps.refresh.outputs.changed == 'true'
+        run: python scripts/build-compatibility-pages.py
+
+      - name: Run public-site regression suite
+        if: steps.refresh.outputs.changed == 'true'
+        run: python Tests/run-test-suite.py site
+
+      - name: Verify the generated change is narrowly scoped
+        if: steps.refresh.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          allowed_paths=(
+            "site/compatibility/public-models.snapshot.json"
+            "site/compatibility/index.html"
+            "site/de/compatibility/index.html"
+            "site/fr/compatibility/index.html"
+            "site/pl/compatibility/index.html"
+            "site/cs/compatibility/index.html"
+            "site/it/compatibility/index.html"
+          )
+          while IFS= read -r path; do
+            [[ -z "$path" ]] && continue
+            allowed=false
+            for expected in "${allowed_paths[@]}"; do
+              if [[ "$path" == "$expected" ]]; then
+                allowed=true
+                break
+              fi
+            done
+            if [[ "$allowed" != true ]]; then
+              echo "Unexpected generated path: $path" >&2
+              exit 1
+            fi
+          done < <(git diff --name-only)
+
+      - name: Commit and publish the refreshed snapshot
+        if: steps.refresh.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -- \
+            site/compatibility/public-models.snapshot.json \
+            site/compatibility/index.html \
+            site/de/compatibility/index.html \
+            site/fr/compatibility/index.html \
+            site/pl/compatibility/index.html \
+            site/cs/compatibility/index.html \
+            site/it/compatibility/index.html
+          if git diff --cached --quiet; then
+            echo "No staged compatibility changes remain."
+            exit 0
+          fi
+          git diff --cached --check
+          git config user.name "Terento automation"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: refresh compatibility snapshot"
+          git push origin HEAD:beta

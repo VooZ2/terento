@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="it" data-language="it" data-page="about">
   <head>
-    <script defer src="/site-shell.js?v=20260902-ia-navigation"></script>
-    <link rel="stylesheet" href="/styles.css?v=20260902-visual-fix">
+    <script defer src="/site-shell.js?v=20260904-pass3-internal-link-events-v1"></script>
+    <link rel="stylesheet" href="/styles.css?v=20260905-guide-flow-v3">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -33,25 +33,27 @@
     <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
     <title>Informazioni su Terento — Mappe Garmin gratuite e open source su Mac</title>
 
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222A2B">
 
     <link rel="icon" href="/favicon.ico?v=20260820-4" sizes="any">
     <link rel="icon" href="/favicon.svg?v=20260820-4" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260820-4">
     <link rel="manifest" href="/manifest.webmanifest">
+    <script defer src="/privacy-consent.js?v=20260905-public-link-events-v3"></script>
 </head>
   <body class="about-page">
-    <a class="skip-link" href="#main-content">Vai al contenuto</a>
+    <a class="skip-link" href="#main-content" data-umami-event="internal-link-click" data-umami-event-location="skip-link">Vai al contenuto</a>
     <header class="site-header">
       <div class="shell header-inner">
-        <a class="brand-lockup" href="/it/" aria-label="Home Terento">
+        <a class="brand-lockup" href="/it/" aria-label="Home Terento" data-umami-event="home-link-click" data-umami-event-location="header-brand">
           <img src="/assets/logo-sky.svg" alt="" width="40" height="40">
           <span>Terento</span>
         </a>
         <nav class="primary-nav" aria-label="Navigazione principale">
-          <a href="/it/compatibility/">Compatibilità</a><a href="/it/guides/install-garmin-maps-mac/">Guida</a><a href="/it/about/" aria-current="page">Informazioni</a><a href="/it/download/">Scarica</a>
+          <a href="/it/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="header-nav">Compatibilità</a><a href="/it/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="header-nav">Guida</a><a href="/it/about/" aria-current="page" data-umami-event="navigation-link-click" data-umami-event-location="header-nav">Informazioni</a><a class="download-action" href="/it/download/" data-umami-event="download-cta-click" data-umami-event-location="header-nav">Scarica</a>
           <span class="language-switcher"><details class="language-menu">
-          <summary class="language-trigger" aria-label="Scegli la lingua"><span class="language-current" aria-hidden="true">🇮🇹</span></summary>
-          <div class="language-options"><a class="language-option" href="/about/" data-language-switch="en" lang="en" aria-label="English"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/about/" data-language-switch="de" lang="de" aria-label="Deutsch"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/about/" data-language-switch="fr" lang="fr" aria-label="Français"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/about/" data-language-switch="pl" lang="pl" aria-label="Polski"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/about/" data-language-switch="cs" lang="cs" aria-label="Čeština"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/about/" data-language-switch="it" lang="it" aria-label="Italiano" aria-current="page"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
+          <summary class="language-trigger" aria-label="Scegli la lingua"><span class="language-code" aria-hidden="true">IT</span></summary>
+          <div class="language-options"><a class="language-option" href="/about/" data-language-switch="en" lang="en" aria-label="English" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/about/" data-language-switch="de" lang="de" aria-label="Deutsch" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/about/" data-language-switch="fr" lang="fr" aria-label="Français" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/about/" data-language-switch="pl" lang="pl" aria-label="Polski" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/about/" data-language-switch="cs" lang="cs" aria-label="Čeština" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/about/" data-language-switch="it" lang="it" aria-label="Italiano" aria-current="page" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
         </details></span>
         </nav>
         <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="Menu">
@@ -62,31 +64,57 @@
       <div class="mobile-nav" id="mobile-nav" hidden>
         <div class="shell mobile-nav-inner">
           <nav class="mobile-nav-links" aria-label="Navigazione principale">
-            <a href="/it/compatibility/">Compatibilità</a><a href="/it/guides/install-garmin-maps-mac/">Guida</a><a href="/it/about/" aria-current="page">Informazioni</a><a href="/it/download/">Scarica</a>
+            <a href="/it/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="mobile-nav">Compatibilità</a><a href="/it/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="mobile-nav">Guida</a><a href="/it/about/" aria-current="page" data-umami-event="navigation-link-click" data-umami-event-location="mobile-nav">Informazioni</a><a class="download-action" href="/it/download/" data-umami-event="download-cta-click" data-umami-event-location="mobile-nav">Scarica</a>
           </nav>
           <div class="mobile-nav-language"><details class="language-menu mobile-language-menu">
-            <summary class="language-trigger" aria-label="Scegli la lingua"><span class="mobile-language-label">Scegli la lingua</span><span class="language-current" aria-hidden="true">🇮🇹</span></summary>
-            <div class="language-options"><a class="language-option" href="/about/" data-language-switch="en" lang="en" aria-label="English"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/about/" data-language-switch="de" lang="de" aria-label="Deutsch"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/about/" data-language-switch="fr" lang="fr" aria-label="Français"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/about/" data-language-switch="pl" lang="pl" aria-label="Polski"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/about/" data-language-switch="cs" lang="cs" aria-label="Čeština"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/about/" data-language-switch="it" lang="it" aria-label="Italiano" aria-current="page"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
+            <summary class="language-trigger" aria-label="Scegli la lingua"><span class="mobile-language-label">IT</span></summary>
+            <div class="language-options"><a class="language-option" href="/about/" data-language-switch="en" lang="en" aria-label="English" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/about/" data-language-switch="de" lang="de" aria-label="Deutsch" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/about/" data-language-switch="fr" lang="fr" aria-label="Français" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/about/" data-language-switch="pl" lang="pl" aria-label="Polski" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/about/" data-language-switch="cs" lang="cs" aria-label="Čeština" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/about/" data-language-switch="it" lang="it" aria-label="Italiano" aria-current="page" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
           </details></div>
         </div>
       </div>
     </header>
     <main id="main-content">
-      <section class="compatibility-hero about-hero" aria-labelledby="about-title">
-        <div class="shell compatibility-hero-inner"><div class="compatibility-hero-copy">
-          <p class="eyebrow">Informazioni su Terento</p>
-          <h1 id="about-title">Una soluzione, non un processo.</h1>
-          <p class="hero-lede">Terento è un’app macOS gratuita e open source che semplifica l’installazione e l’aggiornamento delle mappe della community sugli smartwatch Garmin moderni.</p>
-        </div></div>
+      <section class="about-story" aria-labelledby="about-title">
+        <div class="shell about-story-inner">
+          <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Una nota dal creatore</p>
+          <h1 id="about-title">Ciao, sono Gediminas</h1>
+          <div class="about-story-copy">
+          <p>Credo di aver iniziato a usare Garmin intorno ai tempi del fēnix 3 e, negli anni, è diventato più di un dispositivo: è diventato parte del modo in cui viaggio e trascorro il tempo all’aperto. Amo soprattutto le escursioni in montagna e, prima di una vacanza, mi piace aggiornare l’orologio con le mappe dei luoghi che visiterò.</p>
+          <p>Questo processo era spesso più complicato del necessario: Garmin Express poteva bloccarsi, mentre installare mappe di terze parti significava cercarle e scaricarle separatamente e usare software aggiuntivo. Anche le mappe Garmin non offrivano sempre il livello di dettaglio di cui avevo bisogno.</p>
+          <p>Questa frustrazione mi ha fatto desiderare un modo più semplice per portare le mappe giuste sul mio orologio. Non sono uno sviluppatore software, ma quando sempre più persone hanno iniziato a risolvere problemi pratici con il “vibe coding” assistito dall’AI, ho capito che potevo provare a costruire da solo la soluzione che cercavo. Da quell’esperimento è nata Terento — un’app Mac tutto-in-uno per scegliere, installare, aggiornare e gestire mappe di terze parti.</p>
+          <p>La rendo gratuita e open source perché non sto costruendo un’azienda; voglio aiutare la community. Non dovrebbe servire essere persone tecniche per preparare il proprio orologio ai luoghi verso cui si è diretti.</p>
+          </div>
+        <div class="about-socials" aria-label="Connettiti con il creatore">
+          <p class="about-social-label">Connettiti con il creatore</p>
+          <div class="about-social-links">
+            <a class="about-social-link" href="https://www.linkedin.com/in/gediminasc/" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="linkedin"><img src="/assets/social/linkedin.svg" alt="" width="16" height="16"><span>LinkedIn</span></a>
+            <a class="about-social-link" href="https://www.reddit.com/user/MrDonas/" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="reddit"><img src="/assets/social/reddit.svg" alt="" width="16" height="16"><span>Reddit</span></a>
+            <a class="about-social-link about-email-link" href="mailto:hello&#64;terento.app" data-umami-event="support-link-click" data-umami-event-location="about-story" data-umami-event-channel="email"><img src="/assets/social/email.svg" alt="" width="16" height="16"><span>Email</span><span class="about-social-address">hello&#64;terento.app</span></a>
+          </div>
+          <div class="about-donate">
+            <span>Ti piace il progetto?</span>
+            <a class="about-social-link about-social-link--donate" href="https://buymeacoffee.com/vooz2" target="_blank" rel="noopener noreferrer" data-umami-event="donate" data-umami-event-location="about-story" data-umami-event-channel="donate"><img src="/assets/social/buymeacoffee.svg" alt="" width="16" height="16"><span>Dona</span></a>
+          </div>
+        </div>
+        </div>
       </section>
-      <section class="about-main">
+      <section class="about-main" aria-labelledby="about-principle-title">
         <div class="shell about-grid">
-          <div class="section-heading"><p class="eyebrow">L’idea</p><h2>Il tuo dispositivo, pronto per la prossima meta.</h2></div>
+          <div class="section-heading about-slogan"><h2 id="about-principle-title">Il risultato prima di tutto — non il processo.</h2></div>
           <div class="about-list">
-            <section class="about-item"><h2>Il risultato prima di tutto</h2><p>Terento mantiene il percorso semplice: collega l’orologio, scegli una mappa e parti.</p></section>
-            <section class="about-item"><h2>Open source alla base</h2><p>Terento è sviluppato pubblicamente e rilasciato con licenza GPL-3.0-or-later. Il progetto è gratuito; l’app non richiede un account né un profilo del dispositivo nel cloud.</p></section>
-            <section class="about-item"><h2>Indipendente e prudente</h2><p>I nomi Garmin sono usati in modo descrittivo per la compatibilità. I provider mantengono le proprie licenze e i file delle mappe passano direttamente dal provider originale al tuo Mac e poi all’orologio. Per i dettagli, vedi <a href="/legal/">Note legali</a> e <a href="/privacy/">Privacy</a>.</p></section>
-            <section class="about-item"><h2>Costruito con la community</h2><p>La compatibilità viene confermata modello per modello usando risultati reali di installazione. Se qualcosa non funziona, apri una issue su <a href="https://github.com/VooZ2/terento/issues" target="_blank" rel="noopener noreferrer">GitHub</a> per aiutare il progetto a migliorare.</p></section>
+            <section class="about-item about-item--group"><h2>Cosa fa Terento</h2><ul class="about-bullet-list">
+              <li>Scegli mappe da Freizeitkarte o OpenTopoMap oppure aggiungi la tua mappa .img compatibile.</li>
+              <li>Installa, aggiorna e gestisci le mappe di terze parti da un unico posto.</li>
+              <li>Supporta i Mac con processori Apple Silicon.</li>
+              <li>Protegge le mappe Garmin originali.</li>
+            </ul></section>
+            <section class="about-item about-item--group"><h2>Cosa non fa Terento</h2><ul class="about-bullet-list">
+              <li>Terento non ti rimanda a Garmin Express o BaseCamp.</li>
+              <li>Terento non promette la compatibilità con ogni dispositivo Garmin.</li>
+              <li>Terento non ospita, non replica e non riconfeziona i file delle mappe.</li>
+              <li>Terento non richiede un account né un profilo del dispositivo nel cloud.</li>
+              <li>Terento non supporta i Mac con processori Intel.</li>
+            </ul></section>
           </div>
         </div>
       </section>
@@ -94,16 +122,16 @@
     <footer class="site-footer">
       <div class="shell footer-grid">
         <div class="footer-identity">
-          <a class="brand-lockup footer-brand" href="/it/" aria-label="Home Terento">
-            <img src="/assets/logo-sky.svg" alt="" width="32" height="32">
+          <a class="brand-lockup footer-brand" href="/it/" aria-label="Home Terento" data-umami-event="home-link-click" data-umami-event-location="footer-brand">
+            <img src="/assets/logo-white.svg" alt="" width="32" height="32">
             <span>Terento</span>
           </a>
-          <div class="footer-meta"><p class="footer-status">Progetto open source</p><a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
+          <div class="footer-meta"><a class="footer-status footer-project-link" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer">Progetto open source</a><a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
         </div>
         <nav class="footer-nav" aria-label="Navigazione del piè di pagina">
-          <a href="/it/about/" aria-current="page">Informazioni</a><a href="/it/compatibility/">Compatibilità</a><a href="/it/guides/install-garmin-maps-mac/">Guida</a><a href="/it/#faq">FAQ</a><a href="/it/download/">Scarica</a>
-          <a href="/legal/">Note legali</a>
-          <a href="/privacy/">Privacy</a>
+          <a href="/it/about/" aria-current="page" data-umami-event="navigation-link-click" data-umami-event-location="footer-nav">Informazioni</a><a href="/it/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="footer-nav">Compatibilità</a><a href="/it/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Guida</a><a href="/it/#faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a><a href="/it/download/" data-umami-event="download-cta-click" data-umami-event-location="footer-nav">Scarica</a>
+          <a href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="footer-nav">Note legali</a>
+          <a href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="footer-nav">Privacy</a>
         </nav>
       </div>
       <div class="shell footer-bottom"><p>© 2026 Terento Project · Beta</p></div>

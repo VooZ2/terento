@@ -93,6 +93,14 @@
     faq: `${localizedRoot(language)}#faq`,
     download: `${localizedRoot(language)}download/`,
   }[key]);
+  const eventForNavKey = {
+    about: "navigation-link-click",
+    compatibility: "compatibility-link-click",
+    guide: "guide-link-click",
+    faq: "faq-link-click",
+    download: "download-cta-click",
+  };
+  const umamiAttributes = (event, location) => ` data-umami-event="${event}" data-umami-event-location="${location}"`;
 
   const renderShell = (language) => {
     const copy = translations[language] || translations.en;
@@ -102,24 +110,27 @@
       || (key === "download" && pageType === "download")
       || (key === "guide" && pageType === "guide");
     const homeHash = pageType === "home" && window.location.hash === "#faq" ? "#faq" : "";
-    const languageOptions = languages.map((item) => {
+    const languageOptions = (location) => languages.map((item) => {
       const href = item.code === "en" ? `/${pageRoute}` : `/${item.code}/${pageRoute}`;
       const current = item.code === language ? ' aria-current="page"' : "";
-      return `<a class="language-option" href="${href}${homeHash}" data-language-switch="${item.code}" lang="${item.code}" aria-label="${item.name}"${current}><span class="language-option-flag" aria-hidden="true">${item.flag}</span><span>${item.name}</span></a>`;
+      return `<a class="language-option" href="${href}${homeHash}" data-language-switch="${item.code}" lang="${item.code}" aria-label="${item.name}"${current}${umamiAttributes("language-switch-click", location)}><span class="language-option-flag" aria-hidden="true">${item.flag}</span><span>${item.name}</span></a>`;
     }).join("");
     const languageMenu = (mobile = false) => `<details class="language-menu${mobile ? " mobile-language-menu" : ""}">
-    <summary class="language-trigger" aria-label="${copy.language}">${mobile ? `<span class="mobile-language-label">${copy.language}</span>` : ""}<span class="language-current" data-language-current aria-hidden="true">${languages.find((item) => item.code === language)?.flag || "🇬🇧"}</span></summary>
-    <div class="language-options">${languageOptions}</div>
+    <summary class="language-trigger" aria-label="${copy.language}">${mobile ? `<span class="mobile-language-label">${language.toUpperCase()}</span>` : `<span class="language-code" aria-hidden="true">${language.toUpperCase()}</span>`}</summary>
+    <div class="language-options">${languageOptions(mobile ? "mobile-language" : "header-language")}</div>
   </details>`;
-    const navLink = (key) => `<a href="${link(language, key)}"${active(key) ? ' aria-current="page"' : ""}>${copy[key]}</a>`;
+    const navLink = (key, variant = "", location = "header-nav") => {
+      const classAttribute = variant ? ` class="${variant}"` : "";
+      return `<a${classAttribute} href="${link(language, key)}"${active(key) ? ' aria-current="page"' : ""}${umamiAttributes(eventForNavKey[key], location)}>${copy[key]}</a>`;
+    };
     const header = `<header class="site-header">
     <div class="shell header-inner">
-      <a class="brand-lockup" href="${root}" aria-label="${copy.home}">
+      <a class="brand-lockup" href="${root}" aria-label="${copy.home}"${umamiAttributes("home-link-click", "header-brand")}>
         <img src="/assets/logo-sky.svg" alt="" width="40" height="40">
         <span>Terento</span>
       </a>
       <nav class="primary-nav" aria-label="${copy.primary}">
-        ${navLink("compatibility")}${navLink("guide")}${navLink("about")}${navLink("download")}
+        ${navLink("compatibility")}${navLink("guide")}${navLink("about")}${navLink("download", "download-action")}
         <span class="language-switcher">${languageMenu()}</span>
       </nav>
       <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="${copy.menu}">
@@ -130,7 +141,7 @@
     <div class="mobile-nav" id="mobile-nav" hidden>
       <div class="shell mobile-nav-inner">
         <nav class="mobile-nav-links" aria-label="${copy.primary}">
-          ${navLink("compatibility")}${navLink("guide")}${navLink("about")}${navLink("download")}
+          ${navLink("compatibility", "", "mobile-nav")}${navLink("guide", "", "mobile-nav")}${navLink("about", "", "mobile-nav")}${navLink("download", "download-action", "mobile-nav")}
         </nav>
         <div class="mobile-nav-language">${languageMenu(true)}</div>
       </div>
@@ -140,19 +151,19 @@
     const footer = `<footer class="site-footer">
     <div class="shell footer-grid">
       <div class="footer-identity">
-        <a class="brand-lockup footer-brand" href="${root}" aria-label="${copy.home}">
-          <img src="/assets/logo-sky.svg" alt="" width="32" height="32">
+        <a class="brand-lockup footer-brand" href="${root}" aria-label="${copy.home}"${umamiAttributes("home-link-click", "footer-brand")}>
+          <img src="/assets/logo-white.svg" alt="" width="32" height="32">
           <span>Terento</span>
         </a>
         <div class="footer-meta">
-          <p class="footer-status">${copy.status}</p>
+          <a class="footer-status footer-project-link" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer">${copy.status}</a>
           <a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">${copy.support}</a>
         </div>
       </div>
       <nav class="footer-nav" aria-label="${copy.footer}">
-        ${navLink("about")}${navLink("compatibility")}${navLink("guide")}${navLink("faq")}${navLink("download")}
-        <a href="/legal/">${copy.legal}</a>
-        <a href="/privacy/">${copy.privacy}</a>
+        ${navLink("about", "", "footer-nav")}${navLink("compatibility", "", "footer-nav")}${navLink("guide", "", "footer-nav")}${navLink("faq", "", "footer-nav")}${navLink("download", "", "footer-nav")}
+        <a href="/legal/"${umamiAttributes("legal-link-click", "footer-nav")}>${copy.legal}</a>
+        <a href="/privacy/"${umamiAttributes("privacy-link-click", "footer-nav")}>${copy.privacy}</a>
       </nav>
     </div>
     <div class="shell footer-bottom"><p>© 2026 Terento Project · Beta</p></div>

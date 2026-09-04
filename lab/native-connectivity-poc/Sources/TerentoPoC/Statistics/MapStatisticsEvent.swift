@@ -103,7 +103,7 @@ enum MapStatisticsConsentChoice: String, Codable, Sendable {
 }
 
 struct VersionedMapStatisticsConsent: Codable, Equatable, Sendable {
-    static let currentNoticeVersion = 1
+    static let currentNoticeVersion = 2
     let noticeVersion: Int
     let choice: MapStatisticsConsentChoice
     let decidedAt: Date
@@ -148,17 +148,35 @@ final class LocalMapStatisticsEventStore: @unchecked Sendable {
     }
 
     @discardableResult
-    func appendIfConsented(_ event: MapStatisticsEvent) throws -> Bool {
+    func appendIfSharingEnabled(_ event: MapStatisticsEvent) throws -> Bool {
         try lock.withLock {
             var file = try loadUnlocked()
-            guard file.consent?.noticeVersion == VersionedMapStatisticsConsent.currentNoticeVersion,
-                  file.consent?.choice == .accepted,
+            guard file.consent?.choice != .declined,
                   !file.pendingEvents.contains(where: { $0.id == event.id }) else {
                 return false
             }
             file.pendingEvents.append(event)
             try saveUnlocked(file)
             return true
+        }
+    }
+
+    func migrateConsentToCurrentNotice() throws {
+        try lock.withLock {
+            var file = try loadUnlocked()
+            guard let consent = file.consent,
+                  consent.noticeVersion != VersionedMapStatisticsConsent.currentNoticeVersion else {
+                return
+            }
+            file.consent = VersionedMapStatisticsConsent(
+                noticeVersion: VersionedMapStatisticsConsent.currentNoticeVersion,
+                choice: consent.choice,
+                decidedAt: consent.decidedAt
+            )
+            if consent.choice == .declined {
+                file.pendingEvents.removeAll()
+            }
+            try saveUnlocked(file)
         }
     }
 
@@ -271,17 +289,14 @@ final class MapStatisticsEventController: ObservableObject {
         self.store = store
         self.uploader = uploader
         self.retryDelays = retryDelays
+        try? store.migrateConsentToCurrentNotice()
         if sharingEnabled { scheduleFlush() }
     }
 
-    /// Statistics are OFF until the user explicitly accepts this independent
-    /// notice. Compatibility-report consent is never consulted here.
+    /// Privacy-minimised map usage diagnostics are enabled by default. An explicit
+    /// opt-out remains persisted and is independent from compatibility data.
     var sharingEnabled: Bool {
-        guard let consent = store.consent(),
-              consent.noticeVersion == VersionedMapStatisticsConsent.currentNoticeVersion else {
-            return false
-        }
-        return consent.choice == .accepted
+        store.consent()?.choice != .declined
     }
 
     func decideConsent(_ choice: MapStatisticsConsentChoice) {
@@ -299,11 +314,13 @@ final class MapStatisticsEventController: ObservableObject {
     /// Saving and delivery happen outside the installation task. Any local or
     /// network error is contained here and can never change installation state.
     func record(_ event: MapStatisticsEvent) {
-        guard sharingEnabled else { return }
+        // Custom IMG imports belong to compatibility evidence only. Keep this
+        // boundary defensive so a stale caller cannot add them to map stats.
+        guard sharingEnabled, event.providerId != "custom" else { return }
         let store = self.store
         Task { [weak self] in
             let inserted = await Task.detached(priority: .utility) {
-                (try? store.appendIfConsented(event)) == true
+                (try? store.appendIfSharingEnabled(event)) == true
             }.value
             guard inserted else { return }
             self?.scheduleFlush()
@@ -346,6 +363,12 @@ final class MapStatisticsEventController: ObservableObject {
         }
         uploadStatus = .uploading(pending.count)
         for event in pending {
+            // Discard any custom event left by an older client before it can
+            // reach the map-statistics endpoint.
+            if event.providerId == "custom" {
+                try? store.markUploaded(eventID: event.id)
+                continue
+            }
             do {
                 try await uploader.upload(event)
                 try store.markUploaded(eventID: event.id)

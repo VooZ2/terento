@@ -30,19 +30,20 @@ reject_review_text() {
 
 require_review_text 'Text("Terento will install these maps to your Garmin. Existing Garmin maps will not be changed.")' 'safety copy is not one compact sentence'
 require_review_text '.font(.terentoUI(size: 13, weight: .regular))' 'safety copy is not supporting text'
-require_review_text 'Spacer(minLength: TerentoPageLayout.sectionSpacing)' 'sharing block is not moved with flexible space'
-require_review_text '.frame(maxWidth: 740, alignment: .leading)' 'sharing block width is not compact'
+require_review_text 'Terento sends privacy-minimised diagnostics by default to help improve the app and its services. You can turn this off anytime in Terento → Diagnostics.' 'diagnostics disclosure is missing'
 require_review_text '.padding(.bottom, TerentoPageLayout.sectionSpacing)' 'sharing block does not keep a stable gap above the footer'
 require_review_text '.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)' 'Review content cannot absorb the fixed body height'
 require_review_text 'bodyScrolls: mapEngine.installationPhase == .failed' 'normal Review state may scroll as a whole page'
 require_review_text 'ReadyToInstallSelectedMapsHeader(count: plan.selectedItems.count)' 'selected-map count is not sourced from the plan'
 require_review_text 'ReadyToInstallSelectedMapsList(items: plan.selectedItems)' 'selected-map list behavior changed'
 require_review_text 'MapSelectionStorageSummary(' 'Storage placement changed'
-require_review_text 'Text("Help improve Garmin compatibility")' 'compatibility sharing title changed'
-require_review_text 'Share anonymous installation results to help improve Garmin compatibility.' 'sharing description changed'
-require_review_text 'Text("Share anonymous map statistics")' 'separate map-statistics choice is missing'
-require_review_text 'This is off until you choose it.' 'map-statistics choice is not explicit opt-in'
-require_review_text 'What is shared and how to stop sharing ↗' 'sharing link changed'
+if [[ "$review_content" == *'Toggle(isOn: compatibilitySharingBinding)'* \
+    || "$review_content" == *'Toggle(isOn: mapStatisticsSharingBinding)'* \
+    || "$review_content" == *'Help improve Garmin compatibility'* \
+    || "$review_content" == *'Share anonymous map statistics'* ]]; then
+    print -u2 'FAIL: Review still exposes a diagnostics opt-in or opt-out control'
+    exit 1
+fi
 require_review_text 'PrimaryButton(title: "Install maps")' 'footer action changed'
 reject_review_text 'Terento will install these maps to your Garmin.\nExisting Garmin maps will not be changed.' 'legacy two-line safety copy remains'
 

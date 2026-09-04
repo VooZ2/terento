@@ -117,16 +117,20 @@ page measures the real window viewport, keeps a 28-point bottom breathing
 space when content fits, sizes one- to three-map lists to their visible rows,
 and retains native scrolling for four or more maps or reduced window height.
 
-Map-operation statistics use a separate, explicit opt-in from compatibility
-evidence. Provider maps enqueue idempotent download/install lifecycle events
-without Garmin identifiers, serials, local paths, manifests, binary content,
-or diagnostic logs. Delivery is best-effort through a local retry queue and
-never blocks installation. Server-side raw map events are retained for no
-longer than 24 months before pruning.
+Map-usage diagnostics are an independent default-on stream alongside
+compatibility diagnostics. Provider maps enqueue idempotent download/install
+lifecycle events without Garmin identifiers, serials, local paths, manifests,
+binary content, or diagnostic logs. Both streams can be turned off only from
+the production app's `Terento → Diagnostics` window; the installation review
+contains no sharing choice. Delivery is best-effort through local retry queues,
+the window shows pending counts and offers `Send diagnostics` when needed, and
+delivery never blocks installation. Custom `.img` installations are reported
+only as compatibility diagnostics. Server-side raw map events are retained for
+no longer than 24 months before pruning.
 
 For this SwiftPM PoC target, the normal SwiftUI window contains no map write or
 device modification path. The production Xcode app owns the guarded map
-installation and optional compatibility-report flow. The separate
+installation and default-on privacy-minimised diagnostics flow. The separate
 `TerentoWriteTest` command is deliberately narrower: it accepts only
 `terento-write-test.txt`, advertises it as a generic MTP object, targets only
 `/GARMIN/terento-write-test.txt` on the validated fēnix 8 profile, refuses an

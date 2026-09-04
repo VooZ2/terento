@@ -8,7 +8,10 @@ from datetime import datetime, timezone
 from typing import Any
 
 MAX_EVENT_BYTES = 16_384
-SUPPORTED_COMPATIBILITY_PROVIDERS = frozenset({"freizeitkarte", "opentopomap"})
+# `custom` is a local IMG source, not a map provider. It is accepted here so
+# shared custom installs can contribute device compatibility evidence while
+# the client sends only the coarse custom/custom/custom labels.
+SUPPORTED_COMPATIBILITY_SOURCES = frozenset({"freizeitkarte", "opentopomap", "custom"})
 ALLOWED_KEYS = {
     "schemaVersion", "id", "timestamp", "model", "compatibilityIdentity", "variant", "caseSizeMm", "displayType", "canonicalDeviceId", "family", "firmwareVersion",
     "usbVendorID", "usbProductID", "transport", "provider", "region",
@@ -43,15 +46,20 @@ def validate_event(raw: bytes) -> dict[str, Any]:
         for part in FORBIDDEN_KEY_PARTS
     ):
         raise EvidenceValidationError("forbidden_field")
+    schema_version = event.get("schemaVersion")
+    if not isinstance(schema_version, int) or isinstance(schema_version, bool):
+        raise EvidenceValidationError("unsupported_schema")
+    if schema_version not in {1, 2, 3, 4}:
+        raise EvidenceValidationError("unsupported_schema")
     required = {
         "schemaVersion", "id", "timestamp", "model", "usbVendorID", "usbProductID",
         "transport", "provider", "region", "mapRelease", "terentoVersion",
-        "macOSVersion", "phaseOutcome", "automaticFinishingResult", "deletionToken",
+        "macOSVersion", "phaseOutcome", "automaticFinishingResult",
     }
+    if schema_version in {1, 2, 3}:
+        required.add("deletionToken")
     if required - set(event):
         raise EvidenceValidationError("missing_fields")
-    if event["schemaVersion"] not in {1, 2, 3}:
-        raise EvidenceValidationError("unsupported_schema")
     if not re.fullmatch(r"[0-9a-fA-F-]{36}", str(event["id"])):
         raise EvidenceValidationError("invalid_event_id")
     for key in ("model", "transport", "provider", "region", "mapRelease", "terentoVersion", "macOSVersion"):
@@ -59,7 +67,7 @@ def validate_event(raw: bytes) -> dict[str, Any]:
             raise EvidenceValidationError(f"invalid_{key}")
         if "/Users/" in event[key] or "file://" in event[key]:
             raise EvidenceValidationError("local_path")
-    allowed_outcomes = {"SUCCEEDED", "FAILED", "NOT_STARTED"} if event["schemaVersion"] == 3 else {"SUCCEEDED", "FAILED"}
+    allowed_outcomes = {"SUCCEEDED", "FAILED", "NOT_STARTED"} if schema_version in {3, 4} else {"SUCCEEDED", "FAILED"}
     if event["phaseOutcome"] not in allowed_outcomes:
         raise EvidenceValidationError("invalid_outcome")
     if event["automaticFinishingResult"] not in {"VERIFIED", "FAILED", "NOT_REACHED"}:
@@ -122,14 +130,21 @@ def validate_event(raw: bytes) -> dict[str, Any]:
     if event.get("mapVisibleAfterReconnect") and not event.get("reconnectVerified"):
         raise EvidenceValidationError("inconsistent_reconnect_evidence")
     provider = event["provider"].lower()
-    if provider not in SUPPORTED_COMPATIBILITY_PROVIDERS:
+    if provider not in SUPPORTED_COMPATIBILITY_SOURCES:
         raise EvidenceValidationError("unsupported_provider")
+    if provider == "custom" and (
+        event["region"] != "custom" or event["mapRelease"] != "custom"
+    ):
+        raise EvidenceValidationError("invalid_custom_identity")
     event["provider"] = provider
     if "userConfirmed" in event and not isinstance(event["userConfirmed"], bool):
         raise EvidenceValidationError("invalid_confirmation")
-    if not re.fullmatch(r"[0-9a-fA-F]{64}", str(event["deletionToken"])):
-        raise EvidenceValidationError("invalid_deletion_token")
-    if event["schemaVersion"] == 3:
+    if schema_version in {1, 2, 3}:
+        if not re.fullmatch(r"[0-9a-fA-F]{64}", str(event["deletionToken"])):
+            raise EvidenceValidationError("invalid_deletion_token")
+    elif "deletionToken" in event:
+        raise EvidenceValidationError("deletion_not_supported")
+    if schema_version in {3, 4}:
         _validate_v3(event)
     return event
 
@@ -208,24 +223,6 @@ def _validate_v3(event: dict[str, Any]) -> None:
         raise EvidenceValidationError("inconsistent_remote_object")
     if event["cleanupSucceeded"] and not event["cleanupAttempted"]:
         raise EvidenceValidationError("inconsistent_cleanup")
-
-
-def validate_deletion_request(raw: bytes) -> tuple[str, str]:
-    if not raw or len(raw) > 2048:
-        raise EvidenceValidationError("payload_size")
-    try:
-        request = json.loads(raw)
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise EvidenceValidationError("invalid_json") from exc
-    if not isinstance(request, dict) or set(request) != {"id", "deletionToken"}:
-        raise EvidenceValidationError("invalid_deletion_request")
-    event_id = str(request["id"])
-    deletion_token = str(request["deletionToken"])
-    if not re.fullmatch(r"[0-9a-fA-F-]{36}", event_id):
-        raise EvidenceValidationError("invalid_event_id")
-    if not re.fullmatch(r"[0-9a-fA-F]{64}", deletion_token):
-        raise EvidenceValidationError("invalid_deletion_token")
-    return event_id, deletion_token
 
 
 def operator_page(rows: list[dict[str, Any]]) -> bytes:

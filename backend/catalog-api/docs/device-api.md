@@ -40,7 +40,7 @@ stored separately and is not copied to other devices.
 The historical registry in `terento_catalog.historical_devices` is versioned
 and sourced from Garmin's official Connect IQ compatible-device references.
 It includes fēnix 7, fēnix 7S/7X, fēnix 6 variants, epix Gen 2, and Forerunner
-955. A consented evidence event can resolve to one of these rows even when
+955. A shared evidence event can resolve to one of these rows even when
 the current retail collector has never returned it. Historical rows are never
 deactivated by retail absence.
 

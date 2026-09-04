@@ -20,14 +20,15 @@ const localePath = (locale, suffix) => locale === "en" ? "/" + (suffix || "") : 
 const read = (file) => fs.readFileSync(file, "utf8");
 const guideFile = (locale) => path.join(root, "site", locale === "en" ? slug : path.join(locale, slug), "index.html");
 const metadata = JSON.parse(read(path.join(root, "site", "metadata.json")));
+const release = JSON.parse(read(path.join(root, "site", "updates", "macos-arm64.json")));
 const metadataByPath = new Map(metadata.pages.map((page) => [page.path, page]));
-const currentBetaSignals = {
-  en: /Third-party maps \+ local import/,
-  de: /Drittanbieter-Karten \+ lokaler Import/,
-  fr: /Cartes tierces \+ import local/,
-  pl: /Mapy innych firm \+ lokalny import/,
-  cs: /Mapy třetích stran \+ místní import/,
-  it: /Mappe di terze parti \+ importazione locale/,
+const downloadLabels = {
+  en: "Download",
+  de: "Herunterladen",
+  fr: "Télécharger",
+  pl: "Pobierz",
+  cs: "Stáhnout",
+  it: "Scarica",
 };
 
 function visibleText(fragment) {
@@ -64,48 +65,55 @@ for (const locale of locales) {
   assert.match(source, /Apple Silicon/);
   assert.match(source, /macOS 13/);
   assert.match(source, /USB/);
-  assert.match(source, /free storage|freier Speicher|espace libre|wolnego miejsca|volného místa|spazio libero/i);
+  const facts = source.match(/<p class="guide-facts">([\s\S]*?)<\/p>/)?.[1];
+  assert.ok(facts, locale + ": guide fact badges");
+  assert.equal((facts.match(/<span>/g) || []).length, 3, locale + ": three guide fact badges");
+  assert.doesNotMatch(source, /class="guide-actions"|class="guide-meta"|Last reviewed|Zuletzt geprüft|Dernière vérification|Ostatni przegląd|Naposledy ověřeno|Ultima verifica/);
   assert.match(source, /1–2 minutes?|1–2 Minuten|1 à 2 minutes|1–2 minuty|1–2 minuti/);
-  assert.match(source, currentBetaSignals[locale], locale + ": provider-neutral current beta label");
-  assert.match(source, /Choose a map|Karte auswählen|Choisir une carte|Wybierz mapę|Vyberte mapu|Scegli una mappa/);
-  assert.match(source, /third-party \.img|supported map file|unterstützte Kartendatei|fichier cartographique pris en charge|obsługiwany plik mapy|podporovaný mapový soubor|file cartografico supportato/i, locale + ": local map import guidance");
-  assert.doesNotMatch(source, /Current beta uses Freizeitkarte|aktuelle Beta verwendet Freizeitkarte|bêta actuelle utilise Freizeitkarte|obecna beta korzysta z Freizeitkarte|aktuální beta používá Freizeitkarte|beta attuale usa Freizeitkarte/i, locale + ": no provider-specific current-beta claim");
+  assert.match(source, /Choose from the catalog|Aus dem Katalog wählen|Choisir dans le catalogue|Wybierz z katalogu|Vybrat z katalogu|Scegli dal catalogo/);
+  assert.match(source, /\.img/ , locale + ": local map import guidance");
+  assert.match(source, /Freizeitkarte|OpenTopoMap/ , locale + ": active provider catalog guidance");
+  assert.doesNotMatch(source, /free storage|freier Speicher|espace libre|wolnego miejsca|volného místa|spazio libero|Not enough storage|Nicht genügend Speicher|Espace de stockage insuffisant|Za mało miejsca|Nedostatek úložiště|Spazio insufficiente/i, locale + ": no storage copy");
   assert.match(source, /install-maps-1280\.avif[^\n]*width="1555" height="1012"/);
-  assert.match(source, /installing-maps-1280\.avif[^\n]*width="1568" height="1003"/);
-  assert.match(source, /your-garmin-1600\.avif\?v=20260902-your-garmin[^\n]*width="2200" height="1346"/);
-  assert.equal([...source.matchAll(/<li class="guide-step">[\s\S]*?<\/li>/g)].length, 5, locale + ": five ordered steps");
+  assert.match(source, /maps-done-1600\.avif\?v=20260905-app-screens-v1[^\n]*width="2198" height="1335"/);
+  assert.match(source, /your-garmin-1600\.avif\?v=20260905-app-screens-v1[^\n]*width="2198" height="1335"/);
+  assert.equal([...source.matchAll(/<li class="guide-step">[\s\S]*?<\/li>/g)].length, 3, locale + ": three ordered steps");
   assert.match(source, /<ol class="guide-timeline">/);
-  assert.match(source, /<nav class="guide-progress" data-guide-progress[^>]*aria-label="[^"]+">/);
-  assert.equal([...source.matchAll(/<li><a href="#[^"]+"><span class="guide-progress-number"/g)].length, 5, locale + ": five progress links");
-  for (const section of ["before-you-start", "steps", "troubleshooting", "faq-help", "context"]) {
+  assert.match(source, /<ol class="guide-substeps">/);
+  assert.doesNotMatch(source, /class="guide-step-note"/);
+  assert.equal([...source.matchAll(/<li><h4>[^<]+<\/h4><p>[^<]+<\/p><\/li>/g)].length, 2, locale + ": two install choices");
+  assert.doesNotMatch(source, /class="guide-progress"|data-guide-progress/);
+  for (const section of ["before-you-start", "steps", "troubleshooting"]) {
     assert.match(source, new RegExp(`id="${section}"`), `${locale}: progress target ${section}`);
   }
-  assert.match(source, /\/guide-progress\.js\?v=20260902-guide-progress/);
+  assert.doesNotMatch(source, /\/guide-progress\.js\?v=/);
   assert.match(source, /\/reading-state\.js\?v=20260902-reading-state/);
   assert.equal((source.match(/class="guide-screenshot"/g) || []).length, 3, locale + ": three screenshots");
-  assert.match(source, /your-garmin|install-maps|installing-maps/);
+  assert.match(source, /your-garmin|install-maps|maps-done/);
   assert.doesNotMatch(source, /manage-maps|ready-to-install|object IDs?|MTP object trees?|transaction internals?|\/GARMIN|gmappmap\.img|gmaptz\.img|D\*\.img|hashes/i);
-  assert.match(source, /href="https:\/\/github\.com\/VooZ2\/terento\/issues"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/);
-  assert.match(source, /mailto:hello@terento\.app\?subject=Terento%20installation%20issue/);
-  assert.match(source, /hello@terento\.app/);
-  assert.equal((source.match(/data-umami-event="download-cta-click"/g) || []).length, 3, locale + ": three download CTAs");
-  for (const location of ["guide-hero", "guide-after-steps", "guide-bottom"]) assert.ok(source.includes('data-umami-event-location="' + location + '"'), locale + ": " + location);
+  assert.match(source, /<a class="text-link" href="mailto:hello&#64;terento\.app\?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="guide-map-not-visible" data-umami-event-channel="email">hello&#64;terento\.app<\/a>/);
+  assert.equal((source.match(/data-umami-event="support-link-click"/g) || []).length, 1, locale + ": one Guide support email event");
+  assert.doesNotMatch(source, /mailto:hello@terento\.app/);
+  assert.doesNotMatch(source, /mailto:hello@terento\.app\?subject=Terento%20installation%20issue/);
+  assert.equal((source.match(/data-umami-event-location="guide-bottom"/g) || []).length, 1, locale + ": one guide download CTA");
+  const downloadButtons = [...source.matchAll(/<a class="download-action"[^>]*>([^<]+)<span aria-hidden="true">→<\/span><\/a>/g)];
+  assert.equal(downloadButtons.length, 1, locale + ": one rendered download button");
+  for (const button of downloadButtons) assert.equal(button[1].trim(), downloadLabels[locale], locale + ": download button label");
+  assert.ok(source.includes('data-umami-event-location="guide-bottom"'), locale + ": guide-bottom");
+  assert.doesNotMatch(source, /data-umami-event-location="guide-hero"/);
   assert.match(source, /data-umami-event="compatibility-link-click" data-umami-event-location="guide-preflight"/);
-  assert.match(source, /data-umami-event="support-link-click" data-umami-event-location="guide-install-failed" data-umami-event-channel="github-issue"/);
-  assert.match(source, /data-umami-event="support-link-click" data-umami-event-location="guide-install-failed" data-umami-event-channel="email"/);
+  assert.doesNotMatch(source, /guide-support-actions/);
   assert.doesNotMatch(source, /[?&]utm_/i);
   assert.doesNotMatch(source, /Written by|Byline|Gediminas|author photo/i);
-  assert.match(source, /https:\/\/support\.garmin\.com\/en-GB\/\?faq=bcmC4za1sy9hykGnopP8l7/);
-  assert.match(source, /https:\/\/support\.garmin\.com\/en-US\/\?faq=4QVp7mKSIA1LDk5fc1OHX8/);
-  assert.match(source, /https:\/\/support\.apple\.com\/en-ca\/102527/);
-  assert.match(source, /does not replace Garmin Express|ersetzt Garmin Express nicht|ne remplace pas Garmin Express|nie zastępuje Garmin Express|nenahrazuje Garmin Express|non sostituisce Garmin Express/i);
+  assert.doesNotMatch(source, /https:\/\/support\.garmin\.com|https:\/\/support\.apple\.com/);
+  assert.doesNotMatch(source, /does not replace Garmin Express|ersetzt Garmin Express nicht|ne remplace pas Garmin Express|nie zastępuje Garmin Express|nenahrazuje Garmin Express|non sostituisce Garmin Express/i);
   assert.doesNotMatch(source, /class="breadcrumbs"|<nav\b[^>]*(?:breadcrumb|Brotkrümel|Fil d’Ariane|Okruszki|Drobečková)/i, locale + ": no visible Guide breadcrumb navigation");
 
   const data = jsonLd(source, file);
   assert.equal(data["@context"], "https://schema.org");
   const article = oneEntity(data, "Article", file);
   assert.equal(article.datePublished, "2026-08-28T00:00:00Z", `${file}: ISO publication datetime`);
-  assert.equal(article.dateModified, "2026-09-02T00:00:00Z", `${file}: ISO modified datetime`);
+  assert.equal(article.dateModified, `${release.publishedAt}T00:00:00Z`, `${file}: ISO modified datetime`);
   assert.deepEqual(oneEntity(data, "Organization", file), {
     "@type": "Organization",
     "@id": baseUrl + "/#organization",
@@ -129,9 +137,7 @@ for (const locale of locales) {
   );
   assert.equal(data["@graph"].filter((item) => item["@type"] === "FAQPage").length, 0, locale + ": Guide has no FAQ schema");
   assert.doesNotMatch(source, /<section class="guide-faq"\b|id="faq"/i, locale + ": Guide FAQ section removed");
-  assert.match(source, /<section class="guide-faq-link"[^>]*aria-label="[^"]+"/);
-  assert.match(source, new RegExp('href="' + localePath(locale) + '#faq"'));
-  assert.match(source, /data-umami-event="faq-link-click" data-umami-event-location="guide-troubleshooting"/);
+  assert.doesNotMatch(source, /guide-faq-link|id="faq-help"|id="context"/);
 }
 
 for (const locale of locales) {
@@ -152,7 +158,7 @@ for (const locale of locales) {
     const primary = source.match(/<nav class="primary-nav"[^>]*>([\s\S]*?)<\/nav>/)?.[1];
     const footer = source.match(/<nav class="footer-nav"[^>]*>([\s\S]*?)<\/nav>/)?.[1];
     assert.ok(primary && footer, relative + ": static shell navs");
-    const hrefs = (fragment) => [...fragment.matchAll(/<a href="([^"]+)"/g)].map((match) => match[1]);
+    const hrefs = (fragment) => [...fragment.matchAll(/<a[^>]*href="([^"]+)"/g)].map((match) => match[1]);
     assert.deepEqual(hrefs(primary).slice(0, 4), [rootPath + "compatibility/", rootPath + slug, rootPath + "about/", rootPath + "download/"], relative + ": primary nav");
     assert.deepEqual(hrefs(footer), [rootPath + "about/", rootPath + "compatibility/", rootPath + slug, rootPath + "#faq", rootPath + "download/", "/legal/", "/privacy/"], relative + ": footer nav");
     assert.match(source, /Support Terento/);
@@ -182,11 +188,14 @@ assert.match(styles, /\.guide-step-copy\s*\{[^}]*grid-column:\s*3/s);
 assert.match(styles, /\.guide-screenshot\s*\{[^}]*grid-column:\s*1/s);
 assert.match(styles, /\.guide-step-content\s*\{[^}]*display:\s*contents/s);
 assert.doesNotMatch(styles, /zigzag|zig-zag/i);
-assert.match(styles, /\.guide-progress\s*\{/);
-assert.match(styles, /\.guide-progress a\[aria-current="location"\]/);
+assert.match(styles, /\.guide-facts span\s*\{[^}]*border-radius:\s*999px/s);
+assert.match(styles, /\.guide-facts span\s*\{[^}]*background:\s*color-mix\(in srgb, var\(--sky\) 25%, var\(--surface\)\)/s);
+assert.match(styles, /\.guide-substeps\s*\{/);
+assert.doesNotMatch(styles, /\.guide-progress\s*\{/);
 const shell = read(path.join(root, "site", "site-shell.js"));
 for (const label of ["Guide", "Anleitung", "Guide", "Poradnik", "Průvodce", "Guida"]) assert.ok(shell.includes(`guide: "${label}"`), `shell Guide label: ${label}`);
-assert.match(shell, /navLink\("compatibility"\).*navLink\("guide"\).*navLink\("about"\).*navLink\("download"\)/s);
+assert.match(shell, /navLink\("compatibility"\).*navLink\("guide"\).*navLink\("about"\).*navLink\("download", "download-action"\)/s);
+assert.match(shell, /<nav class="footer-nav"[\s\S]*navLink\("download"(?:, "", "footer-nav")?\)/s);
 const languageScript = read(path.join(root, "site", "language.js"));
 assert.match(languageScript, /shellLanguageMenu/);
 assert.match(languageScript, /shellLanguageMenu\?\.update\?\.\(language\)/);
@@ -197,6 +206,6 @@ for (const file of ["site/legal/index.html", "site/privacy/index.html"]) {
   assert.match(source, /data-page="(?:legal|privacy)"/);
   const primary = source.match(/<nav class="primary-nav"[^>]*>([\s\S]*?)<\/nav>/)?.[1];
   assert.ok(primary, file + ": static shell nav");
-  assert.deepEqual([...primary.matchAll(/<a href="([^"]+)"/g)].slice(0, 4).map((match) => match[1]), ["/compatibility/", "/guides/install-garmin-maps-mac/", "/about/", "/download/"], file + ": primary nav");
+  assert.deepEqual([...primary.matchAll(/<a[^>]*href="([^"]+)"/g)].slice(0, 4).map((match) => match[1]), ["/compatibility/", "/guides/install-garmin-maps-mac/", "/about/", "/download/"], file + ": primary nav");
 }
 console.log("Guide content, localization, shell, metadata, schema, links, and Umami contract tests passed.");

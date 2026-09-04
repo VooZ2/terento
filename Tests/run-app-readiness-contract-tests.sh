@@ -19,22 +19,22 @@ if ! grep -Fq 'return "Not enough space available. Remove a map or select fewer 
     exit 1
 fi
 
-if grep -Fq 'shareCompatibilityEvidence' "$connect_screen" \
-    || ! grep -Fq 'get: { evidenceController.compatibilitySharingEnabled }' "$connect_screen" \
-    || ! grep -Fq 'evidenceController.commitCurrentSharingChoice()' "$connect_screen"; then
-    print -u2 "FAIL: Ready/About/reporting do not share one persisted preference"
+if grep -Fq 'compatibilitySharingBinding' "$connect_screen" \
+    || grep -Fq 'mapStatisticsSharingBinding' "$connect_screen" \
+    || grep -Fq 'commitCurrentSharingChoice' "$connect_screen"; then
+    print -u2 "FAIL: Ready still owns a diagnostics preference or consent commit"
     exit 1
 fi
 
-if ! grep -Fq 'Text("Help improve Garmin compatibility")' "$connect_screen" \
-    || ! grep -Fq 'Share anonymous installation results to help improve Garmin compatibility.' "$connect_screen" \
-    || grep -Fq 'Selected by default;' "$connect_screen"; then
-    print -u2 "FAIL: Ready compatibility-sharing copy is not concise"
+if ! grep -Fq 'Terento sends privacy-minimised diagnostics by default to help improve the app and its services. You can turn this off anytime in Terento → Diagnostics.' "$connect_screen" \
+    || grep -Fq 'Help improve Garmin compatibility' "$connect_screen" \
+    || grep -Fq 'Share anonymous map statistics' "$connect_screen"; then
+    print -u2 "FAIL: Ready diagnostics disclosure is missing or still exposes old copy"
     exit 1
 fi
 
-if ! grep -Fq 'Compatibility reports are up to date.' "$connect_screen" \
-    || ! grep -Fq 'Terento will retry automatically.' "$connect_screen" \
+if grep -Fq 'Compatibility reports are up to date.' "$connect_screen" \
+    || grep -Fq 'Terento will retry automatically.' "$connect_screen" \
     || grep -Fq 'Compatibility report was not sent because sharing was turned off.' "$connect_screen" \
     || grep -Fq 'Reason: \(reason\)' "$connect_screen" \
     || grep -Fq 'Last upload response:' "$connect_screen"; then
@@ -42,8 +42,10 @@ if ! grep -Fq 'Compatibility reports are up to date.' "$connect_screen" \
     exit 1
 fi
 
-if ! grep -Fq 'Open-source macOS app for installing and managing third-party maps on compatible Garmin smartwatches.' "$about"; then
-    print -u2 "FAIL: About description still exposes internal map-origin wording"
+if ! grep -Fq 'Install maps on Garmin watches, simply.' "$connect_screen" \
+    || grep -Fq 'TerentoAppMetadata.description' "$connect_screen" \
+    || grep -Fq 'TerentoAppMetadata.description' "$about"; then
+    print -u2 "FAIL: About does not use the concise installation tagline"
     exit 1
 fi
 

@@ -56,7 +56,6 @@ from .device_catalog import (
 )
 from .compatibility_evidence import (
     EvidenceValidationError,
-    validate_deletion_request,
     validate_event,
 )
 from .compatibility_status import calculate_compatibility_status
@@ -466,6 +465,7 @@ class CatalogService:
             ),
             "compatibility": self.database.admin_overview_snapshot(since),
             "providers": self.admin_providers().get("providers", []),
+            "system": self.operational_health(),
         }
 
     def asset_response(self, request_path: str) -> tuple[bytes, str, str] | None:
@@ -475,10 +475,6 @@ class CatalogService:
 
     def receive_compatibility_event(self, body: bytes) -> bool:
         return self.database.insert_compatibility_event(validate_event(body))
-
-    def delete_compatibility_event(self, body: bytes) -> bool:
-        event_id, deletion_token = validate_deletion_request(body)
-        return self.database.delete_compatibility_event(event_id, deletion_token)
 
     def compatibility_statistics(self) -> list[dict[str, Any]]:
         return self._canonicalize_statistics(self.database.compatibility_statistics())
@@ -794,7 +790,12 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
         def do_DELETE(self) -> None:  # noqa: N802 - stdlib handler API
             request_path = urlsplit(self.path).path
             if request_path == "/compatibility/events":
-                self._handle_compatibility_event_deletion()
+                self._send_json(
+                    HTTPStatus.METHOD_NOT_ALLOWED,
+                    {"error": "deletion_not_supported"},
+                    send_body=True,
+                    cache_control="no-store",
+                )
                 return
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"}, send_body=True, cache_control="no-store")
 
@@ -878,34 +879,6 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "evidence_unavailable"}, send_body=True, cache_control="no-store")
                 return
             self._send_json(HTTPStatus.CREATED if inserted else HTTPStatus.OK, {"status": "stored" if inserted else "duplicate"}, send_body=True, cache_control="no-store")
-
-        def _handle_compatibility_event_deletion(self) -> None:
-            client = f"compatibility-delete:{self.client_address[0]}"
-            if self._rate_limited(client, limit=10, window=60):
-                self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=True, cache_control="no-store")
-                return
-            try:
-                length = int(self.headers.get("Content-Length", "0"))
-            except ValueError:
-                length = 0
-            if length <= 0 or length > 2048:
-                self._send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"error": "invalid_size"}, send_body=True, cache_control="no-store")
-                return
-            try:
-                deleted = service.delete_compatibility_event(self.rfile.read(length))
-            except EvidenceValidationError as exc:
-                self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)}, send_body=True, cache_control="no-store")
-                return
-            except Exception:
-                LOGGER.exception("compatibility event deletion failed")
-                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "evidence_unavailable"}, send_body=True, cache_control="no-store")
-                return
-            self._send_json(
-                HTTPStatus.OK if deleted else HTTPStatus.NOT_FOUND,
-                {"status": "deleted"} if deleted else {"error": "not_found"},
-                send_body=True,
-                cache_control="no-store",
-            )
 
         def _handle_admin_get(self, request_path: str, *, send_body: bool) -> None:
             try:
@@ -1948,7 +1921,8 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
 
         def _handle_health(self, *, send_body: bool) -> None:
             try:
-                service.health()
+                if not service.health():
+                    raise RuntimeError("service is not ready")
             except Exception:  # pragma: no cover - database availability is deployment state
                 LOGGER.exception("catalog health check failed")
                 self._send_json(

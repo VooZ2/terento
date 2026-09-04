@@ -4,18 +4,22 @@ struct ContentView: View {
     @ObservedObject var deviceEngine: DeviceEngine
     @ObservedObject var mapEngine: MapEngine
     @ObservedObject var appUpdateController: AppUpdateController
+    @ObservedObject var evidenceController: InstallationEvidenceController
+    @ObservedObject var mapStatisticsController: MapStatisticsEventController
     @StateObject private var lifecycleViewModel: MapLifecycleViewModel
-    @StateObject private var evidenceController = InstallationEvidenceController()
-    @StateObject private var mapStatisticsController = MapStatisticsEventController()
 
     init(
         deviceEngine: DeviceEngine,
         mapEngine: MapEngine,
-        appUpdateController: AppUpdateController
+        appUpdateController: AppUpdateController,
+        evidenceController: InstallationEvidenceController,
+        mapStatisticsController: MapStatisticsEventController
     ) {
         self.deviceEngine = deviceEngine
         self.mapEngine = mapEngine
         self.appUpdateController = appUpdateController
+        self.evidenceController = evidenceController
+        self.mapStatisticsController = mapStatisticsController
         _lifecycleViewModel = StateObject(
             wrappedValue: MapLifecycleViewModel(
                 deviceEngine: deviceEngine,

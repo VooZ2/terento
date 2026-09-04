@@ -40,6 +40,7 @@ regenerate_site() {
   PYTHONDONTWRITEBYTECODE=1 python3 scripts/normalize-home-ia.py >/dev/null
   PYTHONDONTWRITEBYTECODE=1 python3 scripts/build-guide-pages.py
   PYTHONDONTWRITEBYTECODE=1 python3 scripts/add-guide-links.py >/dev/null
+  PYTHONDONTWRITEBYTECODE=1 python3 scripts/build-compatibility-pages.py >/dev/null
   PYTHONDONTWRITEBYTECODE=1 python3 scripts/normalize-public-shell.py >/dev/null
   PYTHONDONTWRITEBYTECODE=1 python3 scripts/normalize-site-metadata.py --write >/dev/null
 }

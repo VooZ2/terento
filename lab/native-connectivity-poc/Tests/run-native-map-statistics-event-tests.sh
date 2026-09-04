@@ -3,6 +3,12 @@ set -euo pipefail
 
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
 build_dir="$(mktemp -d "${TMPDIR:-/tmp}/terento-map-statistics-tests.XXXXXX")"
+map_engine="$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift"
+
+grep -Fq 'guard package.sourceKind == .provider else { return }' "$map_engine" || {
+  print -u2 'FAIL: custom IMG installations must stay out of map-statistics uploads'
+  exit 1
+}
 
 swiftc -parse-as-library -module-name TerentoMapStatisticsEventTests \
   "$project_root/Sources/TerentoPoC/MapCatalog/MapIdentity.swift" \

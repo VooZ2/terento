@@ -133,7 +133,7 @@ assert.doesNotMatch(compatibilityPage, /class="section-heading compatibility-hea
 assert.doesNotMatch(compatibilityPage, /aria-labelledby="directory-title"/);
 assert.match(compatibilityPage, /data-summary-model-label>models with evidence/);
 assert.match(compatibilityPage, /More models ready for testing/);
-assert.match(compatibilityPage, /Public compatibility is based on real installation evidence from exact Garmin models and variants\. Each successful installation shared by users helps us confirm compatibility with greater confidence\./);
+assert.match(compatibilityPage, /Public compatibility is based on real installation evidence for exact Garmin models and variants\. Each successful installation shared by users helps us confirm compatibility with greater confidence\./);
 assert.match(compatibilityPage, /These counts come from successful installations shared with Terento\. They are not Garmin certification\./);
 assert.match(compatibilityPage, /Garmin Watch Compatibility — Terento/);
 assert.match(compatibilityPage, /data-umami-event="download-cta-click"/);
@@ -162,25 +162,14 @@ for (const [locale, page] of localizedCompatibilityPages) {
   assert.doesNotMatch(page, /<a class="text-link compatibility-community-link"/);
 }
 
-assert.match(homePage, /<h2 id="scope-title">Compatibility grows with every shared installation\.<\/h2>/);
-assert.match(homePage, /Terento is built for Garmin smartwatches with map support\. Compatibility is confirmed for each model and variant using real installation results\./);
-assert.match(homePage, /See the <a href="\/compatibility\/">Compatibility page<\/a> for Garmin models and variants confirmed by real installations\./);
-assert.doesNotMatch(homePage, /class="scope-list"|class="scope-item"/);
+assert.doesNotMatch(homePage, /class="scope-section"|class="scope-list"|class="scope-item"/);
+assert.match(homePage, /<a class="text-link hero-compatibility-link" href="\/compatibility\/"[^>]*>Check compatibility/);
 assert.doesNotMatch(homePage, /Selected scope, not every Garmin\.|small, evidence-led set/);
 
-const localizedScopeHeadings = {
-  de: "Kompatibilität wächst mit jeder geteilten Installation.",
-  fr: "La compatibilité progresse à chaque installation partagée.",
-  pl: "Kompatybilność rośnie z każdą udostępnioną instalacją.",
-  cs: "Kompatibilita roste s každou sdílenou instalací.",
-  it: "La compatibilità cresce con ogni installazione condivisa.",
-};
 for (const [locale, page] of localizedHomePages) {
-  assert.match(page, new RegExp(`<h2 id="scope-title">${localizedScopeHeadings[locale].replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/h2>`));
+  assert.doesNotMatch(page, /class="scope-section"|class="scope-list"|class="scope-item"/);
   assert.match(page, /localized-content\.js/);
-  assert.match(page, /Installationsergebnisse|résultats d’installation|rzeczywistych instalacji|výsledků instalace|risultati di installazione/i);
-  assert.match(page, new RegExp(`href="/${locale}/compatibility/"`));
-  assert.doesNotMatch(page, /class="scope-list"|class="scope-item"/);
+  assert.match(page, new RegExp(`<a class="text-link hero-compatibility-link" href="/${locale}/compatibility/"[^>]*>`));
   assert.doesNotMatch(page, /small, evidence-led|kleine, evidenzbasierte|petit ensemble|niewielkiej, opartej|malou, důkazy|piccolo insieme/);
 }
 

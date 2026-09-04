@@ -49,13 +49,13 @@ struct ConnectScreen: View {
     @State private var customMapDropTargeted = false
     @FocusState private var mapSearchFieldFocused: Bool
     @State private var resolvedDeviceAsset = ResolvedDeviceAsset.fallback
-    @State private var privacyActionMessage: String?
     @State private var diagnosticLogMessage: String?
     @State private var isShowingInstallationFailure = false
     @State private var evidenceOperationID = UUID()
     @State private var evidenceOperationIdentity: DeviceIdentity?
     @State private var evidenceRecordedForCurrentWrite = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.openWindow) private var openWindow
 
     private var snapshot: DeviceSnapshot? {
         deviceEngine.snapshot
@@ -697,7 +697,7 @@ struct ConnectScreen: View {
                                 .font(.terentoHeading(size: 30, weight: .semibold))
                                 .foregroundStyle(TerentoColors.graphite)
 
-                            Text("Your device, ready for where you're going.")
+                            Text("Install maps on Garmin watches, simply.")
                                 .font(.terentoBody(size: 17, weight: .medium))
                                 .foregroundStyle(TerentoColors.secondaryText)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -709,195 +709,54 @@ struct ConnectScreen: View {
                     }
                     .padding(.top, TerentoPageLayout.firstSectionTopPadding)
 
-                    Text(TerentoAppMetadata.description)
-                        .font(.terentoBody(size: 16, weight: .medium))
-                        .foregroundStyle(TerentoColors.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 14)
+                    HStack(spacing: 12) {
+                        PrimaryButton(title: "Update") {
+                            aboutUpdateAction()
+                        }
+                        .disabled(appUpdateController.isChecking)
 
-                    aboutSection(title: "Updates") {
-                        switch appUpdateController.state {
-                        case .idle:
-                            Text("Check whether a newer Terento version is available.")
-                                .font(.terentoUI(size: 15, weight: .medium))
-                                .foregroundStyle(TerentoColors.secondaryText)
-
-                            SecondaryButton(title: "Check for updates") {
-                                checkForAppUpdate()
-                            }
-                            .padding(.top, 8)
-                        case .checking:
-                            Text("Checking for updates…")
-                                .font(.terentoUI(size: 15, weight: .medium))
-                                .foregroundStyle(TerentoColors.secondaryText)
-
-                            SecondaryButton(title: "Check for updates") {
-                                checkForAppUpdate()
-                            }
-                            .disabled(true)
-                            .padding(.top, 8)
-                        case .upToDate:
-                            Text("You're using the latest version.")
-                                .font(.terentoUI(size: 15, weight: .medium))
-                                .foregroundStyle(TerentoColors.secondaryText)
-
-                            SecondaryButton(title: "Check for updates") {
-                                checkForAppUpdate()
-                            }
-                            .padding(.top, 8)
-                        case let .available(update):
-                            Text("Terento \(update.displayVersion) is available.")
-                                .font(.terentoUI(size: 15, weight: .medium))
-                                .foregroundStyle(TerentoColors.secondaryText)
-
-                            HStack(spacing: 12) {
-                                SecondaryButton(title: "Download") {
-                                    _ = appUpdateController.openDownload(for: update)
-                                }
-
-                                if update.releaseNotesURL != nil {
-                                    Button("What’s new ↗") {
-                                        _ = appUpdateController.openReleaseNotes(for: update)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .foregroundStyle(TerentoColors.interactive)
-                                }
-                            }
-                            .padding(.top, 8)
-                        case let .incompatible(update):
-                            Text(
-                                "A newer version of Terento is available, but it requires macOS "
-                                    + "\(update.minimumMacOS ?? "a newer version") or later."
-                            )
-                                .font(.terentoUI(size: 15, weight: .medium))
-                                .foregroundStyle(TerentoColors.secondaryText)
-
-                            if update.releaseNotesURL != nil {
-                                Button("What’s new ↗") {
-                                    _ = appUpdateController.openReleaseNotes(for: update)
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(TerentoColors.interactive)
-                                .padding(.top, 8)
-                            }
-                        case let .failed(message):
-                            Text(message)
-                                .font(.terentoUI(size: 15, weight: .medium))
-                                .foregroundStyle(TerentoColors.secondaryText)
-
-                            SecondaryButton(title: "Check for updates") {
-                                checkForAppUpdate()
-                            }
-                            .padding(.top, 8)
+                        SecondaryButton(title: "Manage diagnostics") {
+                            openWindow(id: "diagnostics")
                         }
                     }
+                    .padding(.top, 20)
+
+                    aboutUpdateStatus
 
                     aboutSection(title: "Support") {
                         ViewThatFits(in: .horizontal) {
                             HStack(alignment: .firstTextBaseline, spacing: 18) {
                                 externalLink("GitHub repository ↗", urlString: TerentoAppLinks.repository.absoluteString)
                                 externalLink("Report an issue ↗", urlString: TerentoAppLinks.issues.absoluteString)
-                                externalLink("Website ↗", urlString: TerentoAppLinks.website.absoluteString)
+                                externalLink("Website ↗", urlString: TerentoAppLinks.websiteFromApp.absoluteString)
+                                externalLink("Donate ↗", urlString: TerentoAppLinks.donate.absoluteString)
                             }
 
                             VStack(alignment: .leading, spacing: 8) {
                                 externalLink("GitHub repository ↗", urlString: TerentoAppLinks.repository.absoluteString)
                                 externalLink("Report an issue ↗", urlString: TerentoAppLinks.issues.absoluteString)
-                                externalLink("Website ↗", urlString: TerentoAppLinks.website.absoluteString)
+                                externalLink("Website ↗", urlString: TerentoAppLinks.websiteFromApp.absoluteString)
+                                externalLink("Donate ↗", urlString: TerentoAppLinks.donate.absoluteString)
                             }
                         }
                     }
 
                     aboutSection(title: "Privacy") {
-                        Text("Device state, maps, and Terento manifests stay on this Mac. Compatibility reports and map statistics are separate optional sharing choices.")
+                        Text("Terento sends privacy-minimised diagnostics by default to help improve the app and its services. Device state, maps, manifests, Unit IDs, serial numbers, and local paths stay on this Mac.")
                             .font(.terentoUI(size: 15, weight: .medium))
                             .foregroundStyle(TerentoColors.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
 
                         Text("Terento may contact terento.app when the app starts to check whether a newer version is available. This request is not used for analytics or user tracking.")
                             .font(.terentoUI(size: 13, weight: .regular))
                             .foregroundStyle(TerentoColors.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
 
-                        Toggle("Share compatibility reports", isOn: compatibilitySharingBinding)
-                            .toggleStyle(.checkbox)
-                            .padding(.top, 8)
-
-                        Text("Reports include the watch model label, firmware, USB details, whether a local identity source was available, map and software versions, and the installation result. They do not include the Garmin Unit ID or serial value, account information, file paths, manifests, or map files.")
-                            .font(.terentoUI(size: 13, weight: .regular))
-                            .foregroundStyle(TerentoColors.secondaryText)
-                            .fixedSize(horizontal: false, vertical: true)
-
-                        switch evidenceController.uploadStatus {
-                        case .idle:
-                            EmptyView()
-                        case let .uploading(count):
-                            Text("Sending \(count) compatibility report\(count == 1 ? "" : "s")…")
-                                .font(.terentoUI(size: 13, weight: .medium))
-                                .foregroundStyle(TerentoColors.secondaryText)
-                        case .uploaded:
-                            Text("Compatibility reports are up to date.")
-                                .font(.terentoUI(size: 13, weight: .medium))
-                                .foregroundStyle(TerentoColors.secondaryText)
-                        case let .waiting(count, _, willRetry):
-                            Text(
-                                willRetry
-                                    ? "\(count) compatibility report\(count == 1 ? " is" : "s are") waiting to upload. Terento will retry automatically."
-                                    : "\(count) compatibility report\(count == 1 ? " is" : "s are") waiting to upload. Terento will try again when the app is reopened."
-                            )
-                            .font(.terentoUI(size: 13, weight: .medium))
-                            .foregroundStyle(TerentoColors.secondaryText)
-                            .fixedSize(horizontal: false, vertical: true)
-                        }
-
-                        Toggle("Share anonymous map statistics", isOn: mapStatisticsSharingBinding)
-                            .toggleStyle(.checkbox)
-                            .padding(.top, 8)
-
-                        Text("Map statistics include only provider, map, region, event type, outcome, operation ID, timestamp, and app build. They do not include watch identifiers, serial or Unit ID values, file paths, manifests, map files, or diagnostic logs.")
-                            .font(.terentoUI(size: 13, weight: .regular))
-                            .foregroundStyle(TerentoColors.secondaryText)
-                            .fixedSize(horizontal: false, vertical: true)
-
-                        switch mapStatisticsController.uploadStatus {
-                        case .idle:
-                            EmptyView()
-                        case let .uploading(count):
-                            Text("Sending \(count) map statistic event\(count == 1 ? "" : "s")…")
-                                .font(.terentoUI(size: 13, weight: .medium))
-                                .foregroundStyle(TerentoColors.secondaryText)
-                        case .uploaded:
-                            Text("Map statistics are up to date.")
-                                .font(.terentoUI(size: 13, weight: .medium))
-                                .foregroundStyle(TerentoColors.secondaryText)
-                        case let .waiting(count, willRetry):
-                            Text(
-                                willRetry
-                                    ? "\(count) map statistic event\(count == 1 ? " is" : "s are") waiting to upload. Terento will retry automatically."
-                                    : "\(count) map statistic event\(count == 1 ? " is" : "s are") waiting to upload. Terento will try again when the app is reopened."
-                            )
-                            .font(.terentoUI(size: 13, weight: .medium))
-                            .foregroundStyle(TerentoColors.secondaryText)
-                            .fixedSize(horizontal: false, vertical: true)
-                        }
-
-                        ViewThatFits(in: .horizontal) {
-                            HStack(alignment: .firstTextBaseline, spacing: 14) {
-                                externalLink("Privacy notice ↗", urlString: TerentoAppLinks.privacy.absoluteString)
-                                deleteUploadedReportsLink
-                            }
-
-                            VStack(alignment: .leading, spacing: 8) {
-                                externalLink("Privacy notice ↗", urlString: TerentoAppLinks.privacy.absoluteString)
-                                deleteUploadedReportsLink
-                            }
+                        HStack(spacing: 18) {
+                            externalLink("Privacy ↗", urlString: TerentoAppLinks.privacyFromApp.absoluteString)
+                            externalLink("Legal ↗", urlString: TerentoAppLinks.legalFromApp.absoluteString)
                         }
                         .padding(.top, 5)
-
-                        if let privacyActionMessage {
-                            Text(privacyActionMessage)
-                                .font(.terentoUI(size: 13, weight: .regular))
-                                .foregroundStyle(TerentoColors.secondaryText)
-                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -906,19 +765,49 @@ struct ConnectScreen: View {
     }
 
     @ViewBuilder
-    private var deleteUploadedReportsLink: some View {
-        if !evidenceController.store.uploadedEvents().isEmpty {
-            Button("Delete uploaded reports") {
-                Task {
-                    let deleted = await evidenceController.deleteUploadedReports()
-                    privacyActionMessage = deleted > 0
-                        ? "Uploaded reports deleted."
-                        : "Uploaded reports could not be deleted. Try again later or contact privacy@terento.app."
-                }
-            }
-            .buttonStyle(.plain)
-            .font(.terentoUI(size: 14, weight: .medium))
-            .foregroundStyle(TerentoColors.interactive)
+    private var aboutUpdateStatus: some View {
+        switch appUpdateController.state {
+        case .idle:
+            EmptyView()
+        case .checking:
+            Text("Checking for updates…")
+                .font(.terentoUI(size: 13, weight: .regular))
+                .foregroundStyle(TerentoColors.secondaryText)
+                .padding(.top, 8)
+        case .upToDate:
+            Text("You're using the latest version.")
+                .font(.terentoUI(size: 13, weight: .regular))
+                .foregroundStyle(TerentoColors.secondaryText)
+                .padding(.top, 8)
+        case let .available(update):
+            Text("Terento \(update.displayVersion) is available. Press Update to download it.")
+                .font(.terentoUI(size: 13, weight: .regular))
+                .foregroundStyle(TerentoColors.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 8)
+        case let .incompatible(update):
+            Text(
+                "Terento \(update.displayVersion) requires macOS "
+                    + "\(update.minimumMacOS ?? "a newer version") or later."
+            )
+                .font(.terentoUI(size: 13, weight: .regular))
+                .foregroundStyle(TerentoColors.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 8)
+        case let .failed(message):
+            Text(message)
+                .font(.terentoUI(size: 13, weight: .regular))
+                .foregroundStyle(TerentoColors.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 8)
+        }
+    }
+
+    private func aboutUpdateAction() {
+        if case let .available(update) = appUpdateController.state {
+            _ = appUpdateController.openDownload(for: update)
+        } else {
+            checkForAppUpdate()
         }
     }
 
@@ -1746,41 +1635,14 @@ struct ConnectScreen: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, 10)
 
+                    Text("Terento sends privacy-minimised diagnostics by default to help improve the app and its services. You can turn this off anytime in Terento → Diagnostics.")
+                        .font(.terentoUI(size: 13, weight: .regular))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 10)
+
                     Spacer(minLength: TerentoPageLayout.sectionSpacing)
-
-                    VStack(alignment: .leading, spacing: 12) {
-                        Toggle(isOn: compatibilitySharingBinding) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Help improve Garmin compatibility")
-                                    .font(.terentoUI(size: 14, weight: .semibold))
-                                Text("Share anonymous installation results to help improve Garmin compatibility.")
-                                    .font(.terentoUI(size: 12, weight: .regular))
-                                    .foregroundStyle(TerentoColors.secondaryText)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                        .toggleStyle(.checkbox)
-                        .tint(TerentoColors.interactive)
-
-                        Toggle(isOn: mapStatisticsSharingBinding) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Share anonymous map statistics")
-                                    .font(.terentoUI(size: 14, weight: .semibold))
-                                Text("Share provider, map, region, and download or installation outcomes to help improve the map catalog. This is off until you choose it.")
-                                    .font(.terentoUI(size: 12, weight: .regular))
-                                    .foregroundStyle(TerentoColors.secondaryText)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                        .toggleStyle(.checkbox)
-                        .tint(TerentoColors.interactive)
-
-                        Link("What is shared and how to stop sharing ↗", destination: TerentoAppLinks.privacy)
-                            .font(.terentoUI(size: 12, weight: .medium))
-                            .foregroundStyle(TerentoColors.interactive)
-                    }
-                    .frame(maxWidth: 740, alignment: .leading)
-                    .padding(.bottom, TerentoPageLayout.sectionSpacing)
+                        .padding(.bottom, TerentoPageLayout.sectionSpacing)
 
                 } else if let reason = installAvailability.userReason {
                     Text(reason)
@@ -2449,28 +2311,7 @@ struct ConnectScreen: View {
         evidenceOperationIdentity = identity
         evidenceRecordedForCurrentWrite = false
         evidenceController.resetLatestDeliveryStatus()
-        evidenceController.commitCurrentSharingChoice()
         mapEngine.beginInstallation(plan: plan, operationId: operationID)
-    }
-
-    private var compatibilitySharingBinding: Binding<Bool> {
-        Binding(
-            get: { evidenceController.compatibilitySharingEnabled },
-            set: { enabled in
-                privacyActionMessage = nil
-                evidenceController.decideConsent(enabled ? .accepted : .declined)
-            }
-        )
-    }
-
-    private var mapStatisticsSharingBinding: Binding<Bool> {
-        Binding(
-            get: { mapStatisticsController.sharingEnabled },
-            set: { enabled in
-                privacyActionMessage = nil
-                mapStatisticsController.decideConsent(enabled ? .accepted : .declined)
-            }
-        )
     }
 
     private func recordInstallationEvidenceIfNeeded() {

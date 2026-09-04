@@ -46,9 +46,11 @@ Use this order when sources disagree:
 - Public claims must match functionality available in the current release.
   Beta limitations must remain truthful.
 - `internal/DEVICE_COMPATIBILITY.md` is the single source for the official
-  exact-model compatibility list and its shared `TESTING` (0), `TESTED` (1–2),
-  `SUPPORTED` (3–4), and `VERIFIED` (5+) criteria. Public pages, app/API copy,
-  release notes, and reviews must not introduce another list or threshold.
+  exact-model compatibility criteria: `TESTING` (0), `TESTED` (1–2),
+  `SUPPORTED` (3–4), and `VERIFIED` (5+). The current administrator-approved
+  public rows come from `/admin` through the compatibility API; public pages,
+  app/API copy, release notes, and reviews must not introduce another list or
+  threshold.
 - Do not reduce accessibility or keyboard focus behavior.
 - Do not alter unrelated working behavior during visual or documentation
   work.

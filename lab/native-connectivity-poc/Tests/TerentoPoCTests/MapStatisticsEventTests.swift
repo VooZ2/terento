@@ -37,9 +37,10 @@ struct MapStatisticsEventTests {
     static func main() async throws {
         try testPayloadAndOperationIdentity()
         try testCustomMapPrivacyBoundary()
+        try await testCustomMapStatsNeverUpload()
         try testQueueAndIdempotency()
         await testSeparateOptInAndRetry()
-        print("PASS: map statistics payload, privacy, consent, queue, retry, and idempotency tests")
+        print("PASS: map usage diagnostics payload, privacy, default-on queue, retry, and idempotency tests")
     }
 
     static func testPayloadAndOperationIdentity() throws {
@@ -96,6 +97,42 @@ struct MapStatisticsEventTests {
         expect(event.region == nil, "custom local region is not shared")
     }
 
+    @MainActor
+    static func testCustomMapStatsNeverUpload() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = LocalMapStatisticsEventStore(rootURL: root)
+        let uploader = MapStatisticsUploadRecorder()
+        let controller = MapStatisticsEventController(
+            store: store,
+            uploader: uploader,
+            retryDelays: []
+        )
+        controller.decideConsent(.accepted)
+        let custom = MapPackage(
+            id: "custom-stale-local-fingerprint",
+            providerId: "custom",
+            regionId: "custom",
+            name: "Custom map",
+            version: MapVersion(year: 2000, month: 1)!,
+            sizeBytes: 1,
+            sourceURL: nil,
+            releaseDate: nil,
+            identifier: nil,
+            sourceKind: .custom
+        )
+        let event = MapStatisticsEvent(
+            operationId: UUID(),
+            package: custom,
+            eventType: .installSucceeded,
+            outcome: .succeeded
+        )
+        try store.append(event)
+        await controller.flushPendingEvents()
+        expect(store.pendingEvents().isEmpty, "stale custom map-statistics events are discarded locally")
+        let uploaded = await uploader.uploadedEvents()
+        expect(uploaded.isEmpty, "custom IMG events never reach the map-statistics uploader")
+    }
+
     static func testQueueAndIdempotency() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let store = LocalMapStatisticsEventStore(rootURL: root)
@@ -105,7 +142,7 @@ struct MapStatisticsEventTests {
             eventType: .downloadStarted,
             outcome: .unknown
         )
-        expect(store.consent() == nil, "statistics have no implicit consent")
+        expect(store.consent() == nil, "new map usage diagnostics have no persisted opt-out")
         let inserted = try store.append(event)
         let duplicated = try store.append(event)
         expect(inserted, "new event enters the local queue")
@@ -132,13 +169,7 @@ struct MapStatisticsEventTests {
             outcome: .succeeded
         )
 
-        controller.record(event)
-        try? await Task.sleep(nanoseconds: 20_000_000)
-        expect(store.pendingEvents().isEmpty, "default-off statistics do not collect an event")
-        let uploadedBeforeConsent = await uploader.uploadedEvents()
-        expect(uploadedBeforeConsent.isEmpty, "default-off statistics do not upload")
-
-        controller.decideConsent(.accepted)
+        expect(controller.sharingEnabled, "new map usage diagnostics are enabled by default")
         controller.record(event)
         for _ in 0..<50 {
             if !(await uploader.uploadedEvents()).isEmpty { break }
@@ -149,7 +180,7 @@ struct MapStatisticsEventTests {
         expect(store.pendingEvents().isEmpty, "successful retry clears the queue")
 
         controller.decideConsent(.declined)
-        expect(!controller.sharingEnabled, "statistics consent remains independent and reversible")
+        expect(!controller.sharingEnabled, "map usage diagnostics remain independently reversible")
     }
 
     static func expect(_ condition: @autoclosure () -> Bool, _ message: String) {

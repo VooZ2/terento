@@ -16,6 +16,7 @@ from .historical_devices import historical_device_for_event
 from .map_capability import classify_map_capable
 from .provider_catalog import ProviderDefinition, ProviderSnapshot
 from .provider_health import ProviderHealthResult
+from .github_issue_sync import sync_health
 
 
 def _overview_time_zone(value: str) -> ZoneInfo:
@@ -90,6 +91,7 @@ def _fill_overview_trend_buckets(
             "bucket": current,
             "success_count": 0,
             "failed_count": 0,
+            "custom_count": 0,
         })
         current = _next_overview_bucket(current, bucket, time_zone=time_zone)
     return result
@@ -119,7 +121,32 @@ class Database:
 
     def health(self) -> bool:
         with self.connection() as connection:
-            connection.execute("SELECT 1")
+            # Read-only readiness: never insert synthetic compatibility evidence.
+            connection.execute("SET LOCAL statement_timeout = '3000ms'")
+            applied = {row["version"] for row in connection.execute(
+                "SELECT version FROM schema_migrations"
+            ).fetchall()}
+            required = {path.name.split("_", 1)[0] for path in migration_directory().glob("[0-9]*.sql")}
+            if not required.issubset(applied):
+                raise RuntimeError("diagnostic storage migrations are incomplete")
+            column = connection.execute("""
+                SELECT is_nullable FROM information_schema.columns
+                WHERE table_schema = current_schema()
+                  AND table_name = 'compatibility_evidence_event'
+                  AND column_name = 'deletion_token_hash'
+            """).fetchone()
+            if not column or column["is_nullable"] != "YES":
+                raise RuntimeError("diagnostic storage is incompatible with schema v4")
+            connection.execute("""
+                SELECT event_id, operation_id, app_build, failure_stage, failure_code,
+                       native_failure_code, transfer_progress_bucket, identity_resolution_code,
+                       deletion_token_hash FROM compatibility_evidence_event WHERE FALSE
+            """)
+            connection.execute("""
+                SELECT event_id, operation_id, provider_id, map_package_id, region,
+                       event_type, outcome, occurred_at, app_build
+                FROM map_download_event WHERE FALSE
+            """)
         return True
 
     def record_operational_observation(self, observation: dict[str, Any]) -> bool:
@@ -148,6 +175,7 @@ class Database:
 
     def operational_health_snapshot(self) -> dict[str, Any]:
         with self.connection() as connection:
+            github_sync = sync_health(connection)
             observations = list(connection.execute(
                 """
                 SELECT DISTINCT ON (component)
@@ -178,6 +206,7 @@ class Database:
                 """
             ).fetchone()
         return {
+            "githubSync": github_sync,
             "observations": [dict(row) for row in observations],
             "weekly": dict(weekly) if weekly else None,
             "scheduler": dict(scheduler) if scheduler else None,
@@ -327,19 +356,6 @@ class Database:
             ),
         )
 
-    def delete_compatibility_event(self, event_id: str, deletion_token: str) -> bool:
-        query = """
-            DELETE FROM compatibility_evidence_event
-            WHERE event_id = %s AND deletion_token_hash = %s
-            RETURNING event_id
-        """
-        with self.connection() as connection:
-            row = connection.execute(
-                query,
-                (event_id, self._token_hash(deletion_token)),
-            ).fetchone()
-        return row is not None
-
     def prune_compatibility_events(self) -> int:
         with self.connection() as connection:
             result = connection.execute(
@@ -369,7 +385,7 @@ class Database:
             SELECT
                 COALESCE(operation_id::text, 'legacy:' || event_id::text) AS operation_key,
                 operation_id, event_id, occurred_at, model, compatibility_identity,
-                variant, firmware_version, region, map_release, terento_version,
+                variant, firmware_version, provider, region, map_release, terento_version,
                 app_build, release_label, map_result_index, selected_map_count,
                 phase_outcome, automatic_finishing_result, failure_stage, failure_code, native_failure_code,
                 COALESCE(write_started, true) AS write_started,
@@ -513,7 +529,7 @@ class Database:
                 SELECT count(*) AS ready_to_publish
                 FROM compatibility_model_statistics
                 WHERE canonical_device_model_id IS NOT NULL
-                  AND calculated_status IN ('TESTING', 'TESTED', 'SUPPORTED', 'VERIFIED')
+                  AND calculated_status IN ('TESTED', 'SUPPORTED', 'VERIFIED')
                   AND (
                       review_status = 'PENDING'
                       OR (review_status = 'APPROVED' AND public_statistics_enabled = false)
@@ -586,6 +602,9 @@ class Database:
                         AS operation_succeeded,
                     bool_or(e.phase_outcome = 'FAILED') AS has_failed,
                     bool_or(e.phase_outcome = 'NOT_STARTED') AS has_not_started,
+                    bool_or(e.canonical_device_model_id IS NULL AND
+                        COALESCE(e.identity_resolution_state, 'UNRESOLVED')
+                        NOT IN ('RESOLVED', 'NOT_IDENTIFIABLE')) AS identity_pending,
                     bool_or(
                         e.diagnostic_status = 'ACTIVE'
                         AND (
@@ -602,6 +621,15 @@ class Database:
         """
         scoped = f"{operation_cte}, scoped_operations AS (\n                SELECT *\n                FROM operation_rows\n                WHERE last_occurred_at >= %s\n            )"
         with self.connection() as connection:
+            attention = list(connection.execute(
+                f"""{operation_cte}
+                SELECT *, count(*) FILTER (WHERE open_error) OVER () AS total_open_errors,
+                    count(*) FILTER (WHERE identity_pending) OVER () AS total_identity_pending
+                FROM operation_rows WHERE open_error OR identity_pending
+                ORDER BY open_error DESC, last_occurred_at DESC, operation_key
+                LIMIT %s
+                """, (recent_limit,),
+            ).fetchall())
             summary = connection.execute(
                 f"""
                 {scoped}
@@ -696,15 +724,15 @@ class Database:
                     review_status, public_statistics_enabled, public_display_name,
                     last_evidence
                 FROM compatibility_model_statistics
-                WHERE last_evidence >= %s
+                WHERE canonical_device_model_id IS NOT NULL
+                  AND calculated_status IN ('TESTED', 'SUPPORTED', 'VERIFIED')
                   AND (
-                      COALESCE(review_status, 'PENDING') <> 'APPROVED'
-                      OR COALESCE(public_statistics_enabled, false) = false
+                      review_status = 'PENDING'
+                      OR (review_status = 'APPROVED' AND public_statistics_enabled = false)
                   )
                 ORDER BY last_evidence DESC NULLS LAST, model, variant
                 LIMIT 8
                 """,
-                (since,),
             ).fetchall())
         failure_reason_counts: dict[str, int] = {}
         for row in failure_reason_rows:
@@ -723,6 +751,9 @@ class Database:
             )[:8]
         ]
         return {
+            "attention": [dict(row) for row in attention],
+            "allTimeOpenErrorCount": int(attention[0].get("total_open_errors") or 0) if attention else 0,
+            "allTimeIdentityPendingCount": int(attention[0].get("total_identity_pending") or 0) if attention else 0,
             "operationCount": int(summary.get("operation_count") or 0),
             "successfulInstallCount": int(summary.get("successful_install_count") or 0),
             "failedInstallCount": int(summary.get("failed_install_count") or 0),
@@ -755,8 +786,8 @@ class Database:
         """Return map-operation aggregates for the authenticated Overview.
 
         Map telemetry is intentionally kept separate from compatibility
-        evidence. This query only reads the existing map event tables and
-        exposes no new public/API payload.
+        evidence. The chart adds a separately labelled successful custom-IMG series
+        from compatibility evidence; provider KPI statistics remain separate.
         """
         # Keep the date_trunc field as a trusted SQL literal. PostgreSQL can
         # resolve a bound value here in some driver/server combinations, but
@@ -780,7 +811,7 @@ class Database:
             # for a young installation with only a few days of history.
             with self.connection() as connection:
                 extent = connection.execute(
-                    "SELECT min(occurred_at) AS first_occurred_at, max(occurred_at) AS last_occurred_at FROM map_download_event"
+                    "SELECT min(occurred_at) AS first_occurred_at, max(occurred_at) AS last_occurred_at FROM (SELECT occurred_at FROM map_download_event UNION ALL SELECT occurred_at FROM compatibility_evidence_event WHERE provider = 'custom') AS chart_events"
                 ).fetchone() or {}
             first = extent.get("first_occurred_at")
             last = extent.get("last_occurred_at")
@@ -850,6 +881,18 @@ class Database:
                         timezone(%s, e.occurred_at) AS local_occurred_at
                     FROM map_download_event AS e
                     WHERE e.occurred_at >= %s
+                    UNION ALL
+                    SELECT
+                        e.operation_id, 'CUSTOM_SUCCEEDED', 'SUCCEEDED',
+                        timezone(%s, max(e.occurred_at)) AS local_occurred_at
+                    FROM compatibility_evidence_event AS e
+                    WHERE e.provider = 'custom'
+                    GROUP BY e.operation_id,
+                        CASE WHEN e.operation_id IS NULL THEN e.event_id END
+                    HAVING max(e.occurred_at) >= %s
+                        AND bool_and(e.phase_outcome = 'SUCCEEDED'
+                            AND e.automatic_finishing_result = 'VERIFIED')
+                        AND count(*) = max(COALESCE(e.selected_map_count, 1))
                 )
                 SELECT
                     ({bucket_expression} AT TIME ZONE %s) AS bucket,
@@ -860,12 +903,13 @@ class Database:
                     count(DISTINCT operation_id) FILTER (
                         WHERE event_type = 'INSTALL_FAILED'
                           AND outcome = 'FAILED'
-                    ) AS failed_count
+                    ) AS failed_count,
+                    count(*) FILTER (WHERE event_type = 'CUSTOM_SUCCEEDED') AS custom_count
                 FROM localized_events
                 GROUP BY {bucket_expression}
                 ORDER BY bucket
                 """,
-                (time_zone, since, time_zone),
+                (time_zone, since, time_zone, since, time_zone),
             ).fetchall())
         trend_rows = [dict(row) for row in trend]
         if trend_rows:

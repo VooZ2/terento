@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="cs" data-language="cs" data-page="compatibility">
   <head>
-    <script defer src="/site-shell.js?v=20260902-ia-navigation"></script>
-    <link rel="stylesheet" href="/styles.css?v=20260902-visual-fix"><script defer src="/privacy-consent.js?v=20260826-2"></script>
+    <script defer src="/site-shell.js?v=20260904-pass3-internal-link-events-v1"></script>
+    <link rel="stylesheet" href="/styles.css?v=20260905-guide-flow-v3"><script defer src="/privacy-consent.js?v=20260905-public-link-events-v3"></script>
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#F7F3EC">
     <meta name="description" content="Ověřte kompatibilitu hodinek Garmin s Terento podle skutečných instalací pro konkrétní model a variantu.">
     <meta name="robots" content="index,follow">
@@ -31,20 +31,21 @@
     <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
     <title>Kompatibilita hodinek Garmin — Terento</title>
 
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222A2B">
 
     <link rel="icon" href="/favicon.ico?v=20260820-4" sizes="any"><link rel="icon" href="/favicon.svg?v=20260820-4" type="image/svg+xml">
 </head>
-  <body class="compatibility-page"><a class="skip-link" href="#main-content">Přejít k obsahu</a><header class="site-header">
+  <body class="compatibility-page"><a class="skip-link" href="#main-content" data-umami-event="internal-link-click" data-umami-event-location="skip-link">Přejít k obsahu</a><header class="site-header">
       <div class="shell header-inner">
-        <a class="brand-lockup" href="/cs/" aria-label="Domů Terento">
+        <a class="brand-lockup" href="/cs/" aria-label="Domů Terento" data-umami-event="home-link-click" data-umami-event-location="header-brand">
           <img src="/assets/logo-sky.svg" alt="" width="40" height="40">
           <span>Terento</span>
         </a>
         <nav class="primary-nav" aria-label="Hlavní navigace">
-          <a href="/cs/compatibility/" aria-current="page">Kompatibilita</a><a href="/cs/guides/install-garmin-maps-mac/">Průvodce</a><a href="/cs/about/">O projektu</a><a href="/cs/download/">Stáhnout</a>
+          <a href="/cs/compatibility/" aria-current="page" data-umami-event="compatibility-link-click" data-umami-event-location="header-nav">Kompatibilita</a><a href="/cs/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="header-nav">Průvodce</a><a href="/cs/about/" data-umami-event="navigation-link-click" data-umami-event-location="header-nav">O projektu</a><a class="download-action" href="/cs/download/" data-umami-event="download-cta-click" data-umami-event-location="header-nav">Stáhnout</a>
           <span class="language-switcher"><details class="language-menu">
-          <summary class="language-trigger" aria-label="Vybrat jazyk"><span class="language-current" aria-hidden="true">🇨🇿</span></summary>
-          <div class="language-options"><a class="language-option" href="/compatibility/" data-language-switch="en" lang="en" aria-label="English"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/compatibility/" data-language-switch="de" lang="de" aria-label="Deutsch"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/compatibility/" data-language-switch="fr" lang="fr" aria-label="Français"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/compatibility/" data-language-switch="pl" lang="pl" aria-label="Polski"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/compatibility/" data-language-switch="cs" lang="cs" aria-label="Čeština" aria-current="page"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/compatibility/" data-language-switch="it" lang="it" aria-label="Italiano"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
+          <summary class="language-trigger" aria-label="Vybrat jazyk"><span class="language-code" aria-hidden="true">CS</span></summary>
+          <div class="language-options"><a class="language-option" href="/compatibility/" data-language-switch="en" lang="en" aria-label="English" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/compatibility/" data-language-switch="de" lang="de" aria-label="Deutsch" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/compatibility/" data-language-switch="fr" lang="fr" aria-label="Français" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/compatibility/" data-language-switch="pl" lang="pl" aria-label="Polski" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/compatibility/" data-language-switch="cs" lang="cs" aria-label="Čeština" aria-current="page" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/compatibility/" data-language-switch="it" lang="it" aria-label="Italiano" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
         </details></span>
         </nav>
         <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="Menu">
@@ -55,34 +56,101 @@
       <div class="mobile-nav" id="mobile-nav" hidden>
         <div class="shell mobile-nav-inner">
           <nav class="mobile-nav-links" aria-label="Hlavní navigace">
-            <a href="/cs/compatibility/" aria-current="page">Kompatibilita</a><a href="/cs/guides/install-garmin-maps-mac/">Průvodce</a><a href="/cs/about/">O projektu</a><a href="/cs/download/">Stáhnout</a>
+            <a href="/cs/compatibility/" aria-current="page" data-umami-event="compatibility-link-click" data-umami-event-location="mobile-nav">Kompatibilita</a><a href="/cs/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="mobile-nav">Průvodce</a><a href="/cs/about/" data-umami-event="navigation-link-click" data-umami-event-location="mobile-nav">O projektu</a><a class="download-action" href="/cs/download/" data-umami-event="download-cta-click" data-umami-event-location="mobile-nav">Stáhnout</a>
           </nav>
           <div class="mobile-nav-language"><details class="language-menu mobile-language-menu">
-            <summary class="language-trigger" aria-label="Vybrat jazyk"><span class="mobile-language-label">Vybrat jazyk</span><span class="language-current" aria-hidden="true">🇨🇿</span></summary>
-            <div class="language-options"><a class="language-option" href="/compatibility/" data-language-switch="en" lang="en" aria-label="English"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/compatibility/" data-language-switch="de" lang="de" aria-label="Deutsch"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/compatibility/" data-language-switch="fr" lang="fr" aria-label="Français"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/compatibility/" data-language-switch="pl" lang="pl" aria-label="Polski"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/compatibility/" data-language-switch="cs" lang="cs" aria-label="Čeština" aria-current="page"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/compatibility/" data-language-switch="it" lang="it" aria-label="Italiano"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
+            <summary class="language-trigger" aria-label="Vybrat jazyk"><span class="mobile-language-label">CS</span></summary>
+            <div class="language-options"><a class="language-option" href="/compatibility/" data-language-switch="en" lang="en" aria-label="English" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/compatibility/" data-language-switch="de" lang="de" aria-label="Deutsch" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/compatibility/" data-language-switch="fr" lang="fr" aria-label="Français" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/compatibility/" data-language-switch="pl" lang="pl" aria-label="Polski" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/compatibility/" data-language-switch="cs" lang="cs" aria-label="Čeština" aria-current="page" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/compatibility/" data-language-switch="it" lang="it" aria-label="Italiano" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
           </details></div>
         </div>
       </div>
     </header>
-    <main id="main-content"><section class="compatibility-hero" aria-labelledby="compatibility-title"><div class="shell compatibility-hero-inner"><div class="compatibility-hero-copy"><p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Kompatibilita</p><h1 id="compatibility-title">Kompatibilita Garmin</h1><p class="hero-lede">Prohlédněte si skutečné výsledky instalace map třetích stran pomocí Terento pro konkrétní model a variantu hodinek Garmin. Kompatibilita roste s každou další úspěšnou instalací sdílenou uživateli.</p></div></div></section><section class="compatibility-directory section" aria-label="Výsledky kompatibility"><div class="shell"><div class="compatibility-summary" id="compatibility-summary" aria-live="polite" aria-busy="true"><p class="compatibility-summary-line"><span class="compatibility-summary-item"><strong data-summary="models">0</strong> <span data-summary-model-label>modely s ověřením</span> <span class="compatibility-summary-separator" aria-hidden="true">·</span></span><span class="compatibility-summary-item"><strong data-summary="successes">0</strong> úspěšných instalací <span class="compatibility-summary-separator" aria-hidden="true">·</span></span><span class="compatibility-summary-item compatibility-summary-more">Další modely připravené k testování <span class="compatibility-summary-separator" aria-hidden="true">·</span></span><span class="compatibility-summary-item compatibility-summary-updated" data-summary-updated hidden>Aktualizováno <time data-summary="updated"></time></span></p></div><details class="compatibility-how"><summary>Jak kompatibilita funguje</summary><div class="compatibility-how-body"><p>Veřejná kompatibilita vychází ze skutečných instalačních výsledků pro konkrétní modely a varianty Garmin. Každá úspěšná instalace sdílená uživateli nám pomáhá potvrdit kompatibilitu s větší jistotou.</p><p class="compatibility-evidence-note" data-compatibility-evidence-note>Tato čísla pocházejí z úspěšných instalací sdílených s Terento. Nejde o certifikaci Garmin.</p><div class="compatibility-status-list" id="compatibility-status-list"></div></div></details><form class="compatibility-filters" id="compatibility-filters" role="search"><label class="compatibility-filter-control compatibility-search"><span class="sr-only">Hledat modely</span><input id="watch-search" type="search" placeholder="Hledat modely" autocomplete="off"></label><label class="compatibility-filter-control compatibility-filter-select"><span class="sr-only">Filtrovat podle stavu</span><select id="status-filter"><option value="ALL">Všechny stavy</option><option value="VERIFIED">Ověřeno</option><option value="SUPPORTED">Podporováno</option><option value="TESTED">Testováno</option><option value="TESTING">Testování</option></select></label><label class="compatibility-filter-control compatibility-filter-select"><span class="sr-only">Filtrovat podle řady</span><select id="family-filter"><option value="ALL">Všechny řady</option></select></label><label class="compatibility-filter-control compatibility-filter-select"><span class="sr-only">Řadit modely</span><select id="sort-filter"><option value="attempts">Nejvíce instalací</option><option value="successes">Nejvíce úspěšných</option><option value="name">A–Z</option><option value="status">Stav</option></select></label></form><p class="compatibility-results-count" id="results-count" aria-live="polite"></p><div class="watch-grid" id="watch-grid" aria-live="polite" aria-busy="true"></div><p class="compatibility-empty" id="compatibility-empty" hidden>Žádný testovaný model neodpovídá těmto filtrům.</p><p class="compatibility-error" id="compatibility-error" hidden>Výsledky kompatibility jsou dočasně nedostupné. Zkuste to později znovu.</p><div class="compatibility-community-cta"><div class="compatibility-community-copy"><p class="eyebrow">Komunitní testování</p><h2>Máte jiné hodinky Garmin s podporou map?</h2><p>Vyzkoušejte betu a sdílejte výsledek.</p><a class="text-link compatibility-guide-link" href="/cs/guides/install-garmin-maps-mac/">Instalujete mapy třetích stran poprvé? Přečtěte si průvodce pro Mac <span aria-hidden="true">→</span></a></div><a class="download-action download-action-primary compatibility-community-link" href="/cs/download/" data-umami-event="download-cta-click" data-umami-event-location="compatibility-community-testing">Stáhnout betu</a></div></div></section></main>
+    <main id="main-content"><section class="compatibility-hero" aria-labelledby="compatibility-title"><div class="shell compatibility-hero-inner"><div class="compatibility-hero-copy"><p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Kompatibilita</p><h1 id="compatibility-title">Kompatibilita Garmin</h1><p class="hero-lede">Prohlédněte si skutečné výsledky instalace map třetích stran pomocí Terento pro konkrétní model a variantu hodinek Garmin. Kompatibilita roste s každou další úspěšnou instalací sdílenou uživateli.</p></div></div></section><section class="compatibility-directory section" aria-label="Výsledky kompatibility"><div class="shell"><div class="compatibility-summary" id="compatibility-summary" aria-live="polite" aria-busy="false">
+  <p class="compatibility-summary-line compatibility-summary-loading" data-summary-loading role="status" hidden style="display:none">Loading compatibility evidence…</p>
+  <p class="compatibility-summary-line" data-summary-content>
+    <span class="compatibility-summary-item"><strong data-summary="models">4</strong> <span data-summary-model-label>modely s ověřením</span> <span class="compatibility-summary-separator" aria-hidden="true">·</span></span>
+    <span class="compatibility-summary-item"><strong data-summary="successes">19</strong> úspěšných instalací <span class="compatibility-summary-separator" aria-hidden="true">·</span></span>
+    <span class="compatibility-summary-item compatibility-summary-more">More models ready for testing <span class="compatibility-summary-separator" aria-hidden="true">·</span></span>
+    <span class="compatibility-summary-item compatibility-summary-updated" data-summary-updated>Aktualizováno <time data-summary="updated" datetime="2026-09-02T22:00:21+00:00">2. 9. 2026</time></span>
+  </p>
+</div>
+
+          <details class="compatibility-how"><summary>Jak kompatibilita funguje</summary><div class="compatibility-how-body"><p>Aktuální beta podporuje mapy Freizeitkarte a OpenTopoMap. Veřejná kompatibilita vychází ze skutečných instalačních výsledků pro konkrétní modely a varianty Garmin. Každá úspěšná instalace sdílená uživateli nám pomáhá potvrdit kompatibilitu s větší jistotou.</p><p class="compatibility-evidence-note" data-compatibility-evidence-note>Tato čísla pocházejí z úspěšných instalací sdílených s Terento. Nejde o certifikaci Garmin.</p><div class="compatibility-status-list" id="compatibility-status-list"></div></div></details><form class="compatibility-filters" id="compatibility-filters" role="search"><label class="compatibility-filter-control compatibility-search"><span class="sr-only">Hledat modely</span><input id="watch-search" type="search" placeholder="Hledat modely" autocomplete="off"></label><label class="compatibility-filter-control compatibility-filter-select"><span class="sr-only">Filtrovat podle stavu</span><select id="status-filter"><option value="ALL">Všechny stavy</option><option value="VERIFIED">Ověřeno</option><option value="SUPPORTED">Podporováno</option><option value="TESTED">Testováno</option><option value="TESTING">Testování</option></select></label><label class="compatibility-filter-control compatibility-filter-select"><span class="sr-only">Filtrovat podle řady</span><select id="family-filter"><option value="ALL">Všechny řady</option></select></label><label class="compatibility-filter-control compatibility-filter-select"><span class="sr-only">Řadit modely</span><select id="sort-filter"><option value="attempts">Nejvíce instalací</option><option value="successes">Nejvíce úspěšných</option><option value="name">A–Z</option><option value="status">Stav</option></select></label></form>  <p class="compatibility-results-count" id="results-count" aria-live="polite">4 modelů</p>
+          <div class="watch-grid" id="watch-grid" aria-live="polite" aria-busy="false"><article class="watch-card" aria-label="fēnix 8, 47 mm, AMOLED, Ověřeno, 15 úspěšných instalací, Poslední instalace 2. 9. 2026">
+  <div class="watch-card-image"><img class="is-ready" data-remote-src="https://api.terento.app/assets/devices/garmin/fenix-8-47-amoled.webp" src="https://api.terento.app/assets/devices/garmin/fenix-8-47-amoled.webp" alt="" loading="lazy"></div>
+  <div class="watch-card-body">
+    <div class="watch-card-heading">
+      <p class="watch-family">fēnix</p>
+      <div class="watch-card-model-row"><h3>fēnix 8</h3><span class="status-badge status-verified" aria-label="Ověřeno"><span>Ověřeno</span></span></div>
+      <p class="watch-variant">47 mm, AMOLED</p>
+    </div>
+    <p class="watch-install-count">15 úspěšných instalací</p>
+    <p class="watch-card-meta">Poslední instalace 2. 9. 2026</p>
+  </div>
+</article>
+<article class="watch-card" aria-label="fēnix 8 Pro, 47 mm, AMOLED, Testováno, 2 úspěšných instalací, Poslední instalace 2. 9. 2026">
+  <div class="watch-card-image"><img class="is-ready" data-remote-src="https://res.garmin.com/en/products/010-03198-00/g/cf-lg.jpg" src="https://res.garmin.com/en/products/010-03198-00/g/cf-lg.jpg" alt="" loading="lazy"></div>
+  <div class="watch-card-body">
+    <div class="watch-card-heading">
+      <p class="watch-family">fēnix</p>
+      <div class="watch-card-model-row"><h3>fēnix 8 Pro</h3><span class="status-badge status-tested" aria-label="Testováno"><span>Testováno</span></span></div>
+      <p class="watch-variant">47 mm, AMOLED</p>
+    </div>
+    <p class="watch-install-count">2 úspěšných instalací</p>
+    <p class="watch-card-meta">Poslední instalace 2. 9. 2026</p>
+  </div>
+</article>
+<article class="watch-card" aria-label="fēnix 8, 51 mm, AMOLED, Testováno, 1 úspěšná instalace, Poslední instalace 25. 8. 2026">
+  <div class="watch-card-image"><img class="is-ready" data-remote-src="https://res.garmin.com/en/products/010-02905-20/g/cf-lg.jpg" src="https://res.garmin.com/en/products/010-02905-20/g/cf-lg.jpg" alt="" loading="lazy"></div>
+  <div class="watch-card-body">
+    <div class="watch-card-heading">
+      <p class="watch-family">fēnix</p>
+      <div class="watch-card-model-row"><h3>fēnix 8</h3><span class="status-badge status-tested" aria-label="Testováno"><span>Testováno</span></span></div>
+      <p class="watch-variant">51 mm, AMOLED</p>
+    </div>
+    <p class="watch-install-count">1 úspěšná instalace</p>
+    <p class="watch-card-meta">Poslední instalace 25. 8. 2026</p>
+  </div>
+</article>
+<article class="watch-card" aria-label="fēnix 8 Pro, 51 mm, AMOLED, Testováno, 1 úspěšná instalace, Poslední instalace 27. 8. 2026">
+  <div class="watch-card-image"><img class="is-ready" data-remote-src="https://res.garmin.com/en/products/010-03199-00/g/cf-lg.jpg" src="https://res.garmin.com/en/products/010-03199-00/g/cf-lg.jpg" alt="" loading="lazy"></div>
+  <div class="watch-card-body">
+    <div class="watch-card-heading">
+      <p class="watch-family">fēnix</p>
+      <div class="watch-card-model-row"><h3>fēnix 8 Pro</h3><span class="status-badge status-tested" aria-label="Testováno"><span>Testováno</span></span></div>
+      <p class="watch-variant">51 mm, AMOLED</p>
+    </div>
+    <p class="watch-install-count">1 úspěšná instalace</p>
+    <p class="watch-card-meta">Poslední instalace 27. 8. 2026</p>
+  </div>
+</article></div>
+          <noscript class="compatibility-noscript">
+  <p>Nejnovější snapshot kompatibility podle skutečných instalací Terento:</p>
+  <ul>  <li><strong>fēnix 8</strong> — 47 mm, AMOLED — Ověřeno — 15 úspěšných instalací</li>
+  <li><strong>fēnix 8 Pro</strong> — 47 mm, AMOLED — Testováno — 2 úspěšných instalací</li>
+  <li><strong>fēnix 8</strong> — 51 mm, AMOLED — Testováno — 1 úspěšná instalace</li>
+  <li><strong>fēnix 8 Pro</strong> — 51 mm, AMOLED — Testováno — 1 úspěšná instalace</li></ul>
+</noscript>
+          <p class="compatibility-empty" id="compatibility-empty" hidden>Žádný testovaný model neodpovídá těmto filtrům.</p><p class="compatibility-error" id="compatibility-error" hidden>Výsledky kompatibility jsou dočasně nedostupné. Zkuste to později znovu.</p><div class="compatibility-community-cta"><div class="compatibility-community-copy"><p class="eyebrow">Komunitní testování</p><h2>Máte jiné hodinky Garmin s podporou map?</h2><p>Vyzkoušejte betu a sdílejte výsledek.</p><a class="text-link compatibility-guide-link" href="/cs/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="compatibility-community-testing">Instalujete mapy třetích stran poprvé? Přečtěte si průvodce pro Mac <span aria-hidden="true">→</span></a></div><a class="download-action download-action-primary compatibility-community-link" href="/cs/download/" data-umami-event="download-cta-click" data-umami-event-location="compatibility-community-testing">Stáhnout</a></div></div></section></main>
     <footer class="site-footer">
       <div class="shell footer-grid">
         <div class="footer-identity">
-          <a class="brand-lockup footer-brand" href="/cs/" aria-label="Domů Terento">
-            <img src="/assets/logo-sky.svg" alt="" width="32" height="32">
+          <a class="brand-lockup footer-brand" href="/cs/" aria-label="Domů Terento" data-umami-event="home-link-click" data-umami-event-location="footer-brand">
+            <img src="/assets/logo-white.svg" alt="" width="32" height="32">
             <span>Terento</span>
           </a>
-          <div class="footer-meta"><p class="footer-status">Open-source projekt</p><a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
+          <div class="footer-meta"><a class="footer-status footer-project-link" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer">Open-source projekt</a><a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
         </div>
         <nav class="footer-nav" aria-label="Navigace v zápatí">
-          <a href="/cs/about/">O projektu</a><a href="/cs/compatibility/" aria-current="page">Kompatibilita</a><a href="/cs/guides/install-garmin-maps-mac/">Průvodce</a><a href="/cs/#faq">FAQ</a><a href="/cs/download/">Stáhnout</a>
-          <a href="/legal/">Právní informace</a>
-          <a href="/privacy/">Soukromí</a>
+          <a href="/cs/about/" data-umami-event="navigation-link-click" data-umami-event-location="footer-nav">O projektu</a><a href="/cs/compatibility/" aria-current="page" data-umami-event="compatibility-link-click" data-umami-event-location="footer-nav">Kompatibilita</a><a href="/cs/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Průvodce</a><a href="/cs/#faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a><a href="/cs/download/" data-umami-event="download-cta-click" data-umami-event-location="footer-nav">Stáhnout</a>
+          <a href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="footer-nav">Právní informace</a>
+          <a href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="footer-nav">Soukromí</a>
         </nav>
       </div>
       <div class="shell footer-bottom"><p>© 2026 Terento Project · Beta</p></div>
       <div class="shell footer-note"><p>Statistiky návštěvnosti (Umami) nepoužívají cookies.</p></div>
     </footer>
-    <script defer src="/compatibility/compatibility-data.js?v=20260827-7"></script><script defer src="/compatibility/compatibility-locales.js?v=20260902-evidence-copy"></script><script defer src="/compatibility/compatibility.js?v=20260902-evidence-copy"></script>
+    <script defer src="/compatibility/compatibility-data.js?v=20260827-7"></script><script defer src="/compatibility/compatibility-locales.js?v=20260904-beta-provider-scope"></script><script type="application/json" id="compatibility-snapshot">{"schemaVersion":1,"generatedAt":"2026-09-04T14:54:58.468120+00:00","models":[{"model":"fēnix 8 · 47 mm AMOLED","canonicalModel":"fenix 8","family":"fenix","familyName":"fēnix","compatibilityIdentity":"fēnix 8 · 47 mm AMOLED","variant":"47 mm, AMOLED","caseSizeMm":47,"displayType":"AMOLED","canonicalDeviceId":"garmin-fenix-8-47-amoled","attemptedInstallations":15,"successfulInstallations":15,"reconnectVerifiedInstallations":0,"failedInstallations":0,"successRate":100.0,"evidenceStatus":"VERIFIED","lastSuccessfulInstallation":"2026-09-02T11:01:47+00:00","lastEvidence":"2026-09-02T11:01:47+00:00","image":{"url":"https://api.terento.app/assets/devices/garmin/fenix-8-47-amoled.webp","origin":"controlled","status":"AVAILABLE","scope":"MODEL_SIZE"}},{"model":"fēnix 8 Pro · 47 mm, AMOLED","canonicalModel":"fenix 8 pro","family":"fenix","familyName":"fēnix","compatibilityIdentity":"fēnix 8 Pro · 47 mm","variant":"47mm","caseSizeMm":47,"displayType":null,"canonicalDeviceId":"garmin-fenix-8-pro-47-amoled","attemptedInstallations":2,"successfulInstallations":2,"reconnectVerifiedInstallations":0,"failedInstallations":0,"successRate":100.0,"evidenceStatus":"TESTED","lastSuccessfulInstallation":"2026-09-02T22:00:21+00:00","lastEvidence":"2026-09-02T22:00:21+00:00","image":{"url":"https://res.garmin.com/en/products/010-03198-00/g/cf-lg.jpg","origin":"garmin-source","status":"SOURCE"}},{"model":"fēnix 8 Pro · 51 mm, AMOLED","canonicalModel":"fenix 8 pro","family":"fenix","familyName":"fēnix","compatibilityIdentity":"fēnix 8 Pro · 51 mm","variant":"51mm","caseSizeMm":51,"displayType":null,"canonicalDeviceId":"garmin-fenix-8-pro-51-amoled","attemptedInstallations":1,"successfulInstallations":1,"reconnectVerifiedInstallations":0,"failedInstallations":0,"successRate":100.0,"evidenceStatus":"TESTED","lastSuccessfulInstallation":"2026-08-27T04:53:40+00:00","lastEvidence":"2026-08-27T04:53:40+00:00","image":{"url":"https://res.garmin.com/en/products/010-03199-00/g/cf-lg.jpg","origin":"garmin-source","status":"SOURCE"}},{"model":"fēnix 8 · 51 mm AMOLED","canonicalModel":"fenix 8","family":"fenix","familyName":"fēnix","compatibilityIdentity":"fēnix 8 · 51 mm AMOLED","variant":"51 mm, AMOLED","caseSizeMm":51,"displayType":"AMOLED","canonicalDeviceId":"garmin-fenix-8-51-amoled","attemptedInstallations":1,"successfulInstallations":1,"reconnectVerifiedInstallations":0,"failedInstallations":0,"successRate":100.0,"evidenceStatus":"TESTED","lastSuccessfulInstallation":"2026-08-25T16:04:06+00:00","lastEvidence":"2026-08-25T16:04:06+00:00","image":{"url":"https://res.garmin.com/en/products/010-02905-20/g/cf-lg.jpg","origin":"garmin-source","status":"SOURCE"}}]}</script>
+    <script defer src="/compatibility/compatibility.js?v=20260904-snapshot"></script>
   </body>
 </html>

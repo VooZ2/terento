@@ -205,7 +205,13 @@ def historical_device_for_event(event: dict[str, object]) -> HistoricalDeviceSpe
     for spec in HISTORICAL_DEVICE_REGISTRY:
         aliases = {normalize_identity(alias) for alias in spec.aliases}
         if not any(
-            identity == alias or identity.startswith(f"{alias} ")
+            identity == alias
+            or (
+                identity.startswith(f"{alias} ")
+                and re.fullmatch(
+                    r"\d{2,3}\s*mm", identity[len(alias):].strip()
+                ) is not None
+            )
             for identity in identities
             for alias in aliases
         ):

@@ -119,11 +119,11 @@ for (const locale of locales) {
     visibleFaq(homeData.source, home),
     `${home}: FAQ JSON-LD must match visible FAQ exactly`
   );
-  assert.match(faq.mainEntity[1].acceptedAnswer.text, /map file|Kartendatei|fichier cartographique|plik mapy|mapový soubor|file cartografico/i, `${home}: BaseCamp schema answer uses user-facing map-file language`);
-  assert.doesNotMatch(faq.mainEntity[3].acceptedAnswer.text, /beta|bêta|version|release|wersj|verz|versi/i, `${home}: provider schema answer describes Terento without release wording`);
-  assert.match(faq.mainEntity[2].acceptedAnswer.text, /protected|geschützt|protég|chronione|chráněné|protette/i, `${home}: safety answer protects Garmin/system maps`);
-  assert.match(faq.mainEntity[3].name, /provider|anbieter|fournisseur|dostawc|poskytovatel/i, `${home}: provider FAQ question`);
-  assert.match(homeData.source, /data-provider-list[\s\S]*Freizeitkarte[\s\S]*OpenTopoMap/, `${home}: provider directory names current providers`);
+  assert.match(faq.mainEntity[1].acceptedAnswer.text, /simple|einfach|simple|proste|jednoduch|semplice/i, `${home}: BaseCamp schema answer explains simple map management`);
+  assert.doesNotMatch(faq.mainEntity[3].acceptedAnswer.text, /beta|bêta|betę|betu/i, `${home}: update schema answer avoids beta-specific wording`);
+  assert.match(faq.mainEntity[2].acceptedAnswer.text, /\.img|compatible|kompatib|zgodn|kompatibil|support/i, `${home}: own-map schema answer explains compatible local import`);
+  assert.match(faq.mainEntity[3].name, /update|aktual|mise à jour|à jour|nowsz|novější|più recent|aggiorn/i, `${home}: update FAQ question`);
+  assert.match(homeData.source, /data-provider-card="freizeitkarte"[\s\S]*Freizeitkarte[\s\S]*data-provider-card="opentopomap"[\s\S]*OpenTopoMap/, `${home}: provider cards name current providers`);
   assert.doesNotMatch(homeData.source, /back up|backup|sauvegarder|zálohovat|wykonać kopię|eseguire il backup/i, `${home}: no backup promise in source`);
 
   const download = downloadFile(locale);
@@ -145,7 +145,7 @@ for (const locale of locales) {
   assert.equal(guideOrganization.url, `${baseUrl}/`, `${guide}: organization URL`);
   const guideArticle = entity(guideData.data, "Article", guide);
   assert.equal(guideArticle.datePublished, "2026-08-28T00:00:00Z", `${guide}: ISO publication datetime`);
-  assert.equal(guideArticle.dateModified, "2026-09-02T00:00:00Z", `${guide}: ISO modified datetime`);
+  assert.equal(guideArticle.dateModified, `${release.publishedAt}T00:00:00Z`, `${guide}: ISO modified datetime`);
   assert.equal(graph.filter((item) => item["@type"] === "Article").length, 1, `${guide}: Article entity`);
   assert.equal(graph.filter((item) => item["@type"] === "BreadcrumbList").length, 1, `${guide}: BreadcrumbList entity`);
   assert.equal(graph.filter((item) => item["@type"] === "FAQPage").length, 0, `${guide}: Guide must not publish FAQPage schema`);

@@ -80,21 +80,19 @@ if ! grep -Fq 'Text("Terento will install these maps to your Garmin. Existing Ga
     exit 1
 fi
 
-if ! grep -Fq 'Text("Help improve Garmin compatibility")' "$connect_screen" \
-    || ! grep -Fq 'Share anonymous installation results to help improve Garmin compatibility.' "$connect_screen" \
-    || ! grep -Fq 'Text("Share anonymous map statistics")' "$connect_screen" \
-    || ! grep -Fq 'This is off until you choose it.' "$connect_screen" \
-    || ! grep -Fq '.tint(TerentoColors.interactive)' "$connect_screen" \
-    || grep -Fq 'Help improve Terento for other watch owners' "$connect_screen" \
-    || grep -Fq 'No Garmin Unit ID or serial number is collected.' "$connect_screen"; then
-    print -u2 "FAIL: Review compatibility opt-in copy is too long or outdated"
+if grep -Fq 'Help improve Garmin compatibility' "$connect_screen" \
+    || grep -Fq 'Share anonymous installation results to help improve Garmin compatibility.' "$connect_screen" \
+    || grep -Fq 'Share anonymous map statistics' "$connect_screen" \
+    || grep -Fq 'This is off until you choose it.' "$connect_screen" \
+    || grep -Fq 'Toggle(isOn: compatibilitySharingBinding)' "$connect_screen" \
+    || grep -Fq 'Toggle(isOn: mapStatisticsSharingBinding)' "$connect_screen"; then
+    print -u2 "FAIL: Review still exposes a diagnostics opt-in or opt-out control"
     exit 1
 fi
 
-if grep -Fq 'shareCompatibilityEvidence' "$connect_screen" \
-    || ! grep -Fq 'evidenceController.compatibilitySharingEnabled' "$connect_screen" \
-    || ! grep -Fq 'evidenceController.commitCurrentSharingChoice()' "$connect_screen"; then
-    print -u2 "FAIL: compatibility sharing does not use the shared persisted preference"
+if ! grep -Fq 'Terento sends privacy-minimised diagnostics by default to help improve the app and its services. You can turn this off anytime in Terento → Diagnostics.' "$connect_screen" \
+    || ! grep -Fq 'SecondaryButton(title: "Manage diagnostics")' "$connect_screen"; then
+    print -u2 "FAIL: Review/About diagnostics disclosure or settings entry point is missing"
     exit 1
 fi
 
