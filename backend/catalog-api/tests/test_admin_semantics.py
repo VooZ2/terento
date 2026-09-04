@@ -692,6 +692,16 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("2026-08-21 23:51", body)
         self.assertIn("2026-08-31 19:49", body)
 
+    def test_custom_only_chart_has_visible_series_and_legend(self):
+        from terento_catalog.admin import _overview_trend_chart
+        body = _overview_trend_chart([{
+            "bucket": "2026-09-05T00:00:00Z", "custom_count": 3,
+        }], "hour")
+        self.assertIn("0 succeeded, 0 failed, 3 custom .img succeeded", body)
+        self.assertRegex(body, r"class='overview-chart-custom'[^>]*height='220.0'")
+        self.assertIn("</i>Custom .img</span>", body)
+        self.assertIn("Custom .img: successful manual installations.", body)
+
     def test_map_overview_uses_a_server_compatible_bucket_expression(self):
         database = RecordingDatabase()
         since = datetime(2026, 9, 1, tzinfo=timezone.utc)
@@ -708,7 +718,10 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("date_trunc('day', local_occurred_at)", trend_query)
         self.assertIn("AT TIME ZONE %s", trend_query)
         self.assertNotIn("date_trunc(%s", trend_query)
-        self.assertEqual(trend_parameters, ("UTC", since, "UTC"))
+        self.assertEqual(trend_parameters, ("UTC", since, "UTC", since, "UTC"))
+        self.assertIn("e.provider = 'custom'", trend_query)
+        self.assertIn("AS custom_count", trend_query)
+        self.assertIn("AND count(*) = max(COALESCE(e.selected_map_count, 1))", trend_query)
 
     def test_installation_authorization_is_separate_from_compatibility_evidence(self):
         source = inspect.getsource(Database.update_device_support_status)

@@ -277,3 +277,14 @@ Production validation on 2026-09-05 covered all ten admin page types at 1280 px
 and 390 px, the mobile menu, and automatic resolution of the two active
 diagnostics linked to closed GitHub issue #94. Historical failure results were
 retained. Deployment workflow: https://github.com/VooZ2/terento/actions/runs/33925498939.
+
+### Admin custom IMG chart series — 2026-09-05
+
+The Overview chart adds a separately labelled green Custom .img series from
+successful, verified, complete compatibility operations whose provider is custom.
+Grouped operation IDs (legacy event IDs when absent) prevent multi-map double
+counting; bucket placement uses completion time and the selected time zone.
+This is a read-only admin aggregation: custom imports remain excluded from
+provider map telemetry, KPI success rates and the public catalog. No filenames
+or paths are collected. HTML legend swatches now use background colors, matching
+the SVG fills. Implementation is local pending validation and deployment.

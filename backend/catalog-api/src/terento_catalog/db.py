@@ -91,6 +91,7 @@ def _fill_overview_trend_buckets(
             "bucket": current,
             "success_count": 0,
             "failed_count": 0,
+            "custom_count": 0,
         })
         current = _next_overview_bucket(current, bucket, time_zone=time_zone)
     return result
@@ -785,8 +786,8 @@ class Database:
         """Return map-operation aggregates for the authenticated Overview.
 
         Map telemetry is intentionally kept separate from compatibility
-        evidence. This query only reads the existing map event tables and
-        exposes no new public/API payload.
+        evidence. The chart adds a separately labelled successful custom-IMG series
+        from compatibility evidence; provider KPI statistics remain separate.
         """
         # Keep the date_trunc field as a trusted SQL literal. PostgreSQL can
         # resolve a bound value here in some driver/server combinations, but
@@ -810,7 +811,7 @@ class Database:
             # for a young installation with only a few days of history.
             with self.connection() as connection:
                 extent = connection.execute(
-                    "SELECT min(occurred_at) AS first_occurred_at, max(occurred_at) AS last_occurred_at FROM map_download_event"
+                    "SELECT min(occurred_at) AS first_occurred_at, max(occurred_at) AS last_occurred_at FROM (SELECT occurred_at FROM map_download_event UNION ALL SELECT occurred_at FROM compatibility_evidence_event WHERE provider = 'custom') AS chart_events"
                 ).fetchone() or {}
             first = extent.get("first_occurred_at")
             last = extent.get("last_occurred_at")
@@ -880,6 +881,18 @@ class Database:
                         timezone(%s, e.occurred_at) AS local_occurred_at
                     FROM map_download_event AS e
                     WHERE e.occurred_at >= %s
+                    UNION ALL
+                    SELECT
+                        e.operation_id, 'CUSTOM_SUCCEEDED', 'SUCCEEDED',
+                        timezone(%s, max(e.occurred_at)) AS local_occurred_at
+                    FROM compatibility_evidence_event AS e
+                    WHERE e.provider = 'custom'
+                    GROUP BY e.operation_id,
+                        CASE WHEN e.operation_id IS NULL THEN e.event_id END
+                    HAVING max(e.occurred_at) >= %s
+                        AND bool_and(e.phase_outcome = 'SUCCEEDED'
+                            AND e.automatic_finishing_result = 'VERIFIED')
+                        AND count(*) = max(COALESCE(e.selected_map_count, 1))
                 )
                 SELECT
                     ({bucket_expression} AT TIME ZONE %s) AS bucket,
@@ -890,12 +903,13 @@ class Database:
                     count(DISTINCT operation_id) FILTER (
                         WHERE event_type = 'INSTALL_FAILED'
                           AND outcome = 'FAILED'
-                    ) AS failed_count
+                    ) AS failed_count,
+                    count(*) FILTER (WHERE event_type = 'CUSTOM_SUCCEEDED') AS custom_count
                 FROM localized_events
                 GROUP BY {bucket_expression}
                 ORDER BY bucket
                 """,
-                (time_zone, since, time_zone),
+                (time_zone, since, time_zone, since, time_zone),
             ).fetchall())
         trend_rows = [dict(row) for row in trend]
         if trend_rows:
