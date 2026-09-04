@@ -2,7 +2,7 @@
 <html lang="de" data-language="de" data-page="about">
   <head>
     <script defer src="/site-shell.js?v=20260904-pass3-internal-link-events-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20260904-pass3-workflow-arrows-v7">
+    <link rel="stylesheet" href="/styles.css?v=20260905-about-story-v1">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -74,21 +74,46 @@
       </div>
     </header>
     <main id="main-content">
-      <section class="compatibility-hero about-hero" aria-labelledby="about-title">
-        <div class="shell compatibility-hero-inner"><div class="compatibility-hero-copy">
-          <p class="eyebrow">Über Terento</p>
-          <h1 id="about-title">Eine Lösung, kein Prozess</h1>
-          <p class="hero-lede">Terento ist eine kostenlose Open-Source-macOS-App, die Community-Karten auf modernen Garmin-Smartwatches einfacher installieren und aktuell halten lässt.</p>
-        </div></div>
+      <section class="about-story" aria-labelledby="about-title">
+        <div class="shell about-story-inner">
+          <p class="eyebrow">Eine Notiz vom Entwickler</p>
+          <h1 id="about-title">Hallo, ich bin Gediminas</h1>
+          <div class="about-story-copy">
+          <p>Ich glaube, dass ich ungefähr mit der fēnix 3 angefangen habe, Garmin zu nutzen, und im Laufe der Jahre wurde Garmin mehr als ein Gerät — es wurde Teil davon, wie ich reise und Zeit draußen verbringe. Ich wandere besonders gern in den Bergen und aktualisiere vor einem Urlaub meine Uhr mit Karten für die Orte, die ich besuche.</p>
+          <p>Dieser Ablauf war oft schwieriger als nötig: Garmin Express konnte hängen bleiben, während die Installation von Drittanbieter-Karten separate Downloads und zusätzliche Software erforderte. Auch die Garmin-eigenen Karten boten nicht immer die Detailtiefe, die ich brauchte.</p>
+          <p>Diese Frustration hat in mir den Wunsch nach einer einfacheren Möglichkeit geweckt, die richtigen Karten auf meine Uhr zu bekommen. Ich bin kein Softwareentwickler, aber als immer mehr Menschen praktische Probleme mit KI-gestütztem „Vibe Coding“ lösten, dachte ich, dass ich diese Lösung selbst bauen könnte. Aus diesem Experiment entstand Terento — eine Mac-App zum Auswählen, Installieren, Aktualisieren und Verwalten von Drittanbieter-Karten.</p>
+          <p>Ich entwickle sie kostenlos und als Open Source, weil ich kein Unternehmen daraus machen möchte, sondern der Community helfen will. Du solltest kein technischer Mensch sein müssen, um deine Uhr für die Orte vorzubereiten, an die du unterwegs bist.</p>
+          </div>
+        <div class="about-socials" aria-label="Mit dem Entwickler verbinden">
+          <p class="about-social-label">Mit dem Entwickler verbinden</p>
+          <div class="about-social-links">
+            <a class="about-social-link" href="https://www.linkedin.com/in/gediminasc/" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="linkedin"><img src="/assets/social/linkedin.svg" alt="" width="16" height="16"><span>LinkedIn</span></a>
+            <a class="about-social-link" href="https://www.reddit.com/user/MrDonas/" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="reddit"><img src="/assets/social/reddit.svg" alt="" width="16" height="16"><span>Reddit</span></a>
+          </div>
+          <div class="about-donate">
+            <span>Gefällt dir das Projekt?</span>
+            <a class="about-social-link about-social-link--donate" href="https://buymeacoffee.com/vooz2" target="_blank" rel="noopener noreferrer" data-umami-event="support-link-click" data-umami-event-location="about-story" data-umami-event-channel="donate"><img src="/assets/social/buymeacoffee.svg" alt="" width="16" height="16"><span>Spenden</span></a>
+          </div>
+        </div>
+        </div>
       </section>
-      <section class="about-main">
+      <section class="about-main" aria-labelledby="about-principle-title">
         <div class="shell about-grid">
-          <div class="section-heading"><p class="eyebrow">Die Idee</p><h2>Dein Gerät, bereit für dein nächstes Ziel.</h2></div>
+          <div class="section-heading about-slogan"><h2 id="about-principle-title">Das Ergebnis im Mittelpunkt — nicht der Prozess.</h2></div>
           <div class="about-list">
-            <section class="about-item"><h2>Das Ergebnis im Mittelpunkt</h2><p>Terento hält den Ablauf einfach: Uhr verbinden, Karte auswählen und loslegen.</p></section>
-            <section class="about-item"><h2>Open Source als Grundlage</h2><p>Terento wird öffentlich entwickelt und unter GPL-3.0-or-later veröffentlicht. Das Projekt ist kostenlos; die App benötigt kein Konto und kein Geräteprofil in der Cloud.</p></section>
-            <section class="about-item"><h2>Unabhängig und sorgfältig</h2><p>Die aktuelle Beta unterstützt Freizeitkarte und OpenTopoMap. Garmin-Namen werden beschreibend für Kompatibilität verwendet. Kartenanbieter behalten ihre eigenen Lizenzen. Kartendateien werden direkt vom ursprünglichen Anbieter auf deinen Mac und anschließend auf deine Uhr übertragen. Details stehen unter <a href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="about-content">Rechtliches</a> und <a href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="about-content">Datenschutz</a>.</p></section>
-            <section class="about-item"><h2>Mit der Community entwickelt</h2><p>Die Kompatibilität wird für jedes Modell einzeln anhand echter Installationsergebnisse bestätigt. Wenn etwas nicht funktioniert, teile ein Issue auf <a href="https://github.com/VooZ2/terento/issues" target="_blank" rel="noopener noreferrer">GitHub</a>, damit das Projekt daraus lernen kann.</p></section>
+            <section class="about-item about-item--group"><h2>Was Terento macht</h2><ul class="about-bullet-list">
+              <li>Wähle Karten von Freizeitkarte oder OpenTopoMap oder füge deine eigene kompatible .img-Karte hinzu.</li>
+              <li>Installiere, aktualisiere und verwalte Drittanbieter-Karten an einem Ort.</li>
+              <li>Unterstützt Macs mit Apple-Silicon-Prozessoren.</li>
+              <li>Originale Garmin-Karten bleiben geschützt.</li>
+            </ul></section>
+            <section class="about-item about-item--group"><h2>Was Terento nicht macht</h2><ul class="about-bullet-list">
+              <li>Terento schickt dich nicht zurück zu Garmin Express oder BaseCamp.</li>
+              <li>Terento verspricht keine Kompatibilität mit jedem Garmin-Gerät.</li>
+              <li>Terento hostet, spiegelt oder verpackt Kartendateien nicht neu.</li>
+              <li>Terento benötigt kein Konto und kein Geräteprofil in der Cloud.</li>
+              <li>Terento unterstützt keine Macs mit Intel-Prozessoren.</li>
+            </ul></section>
           </div>
         </div>
       </section>

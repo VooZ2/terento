@@ -365,7 +365,21 @@ heading’us pakeisti iš `h2` į `h3`. Pakeitimus daryti per
 FR `aventure` formuluotes pakeisti į `destination/readiness` kryptį ten, kur
 jos kartojasi: Home H1, step 03, final CTA ir About.
 
-**3.5 statusas: Home dalis įgyvendinta lokaliai, About atidėtas po Pass 3.**
+**3.5 statusas: įgyvendinta lokaliai.** Home FAQ eyebrow dabar yra klausimas
+naudotojui, Q2 atsakymas aiškiai kalba apie paprastą ir greitą žemėlapių
+valdymą bei turi `guide-link-click` eventą su `home-faq-basecamp` location. Q3
+pakeistas į savo suderinamo `.img` žemėlapio įkėlimą, o Q4 — į vėlesnių
+žemėlapių atnaujinimą be perteklinio kartojimo. Final CTA dabar orientuotas į
+lengvesnį žemėlapių diegimą, o Home, Guide ir Compatibility download veiksmo
+mygtukai visose lokalizacijose naudoja stabilų „Download“ atitikmenį be „Beta“.
+About dabar atsidaro tiesiai asmenine Gedimino istorija: pašalintas bendras
+`About Terento / A solution, not a process` hero, o istorija tapo pagrindiniu
+H1 bloku. Istorija suskirstyta į keturias minties pastraipas, o ne į atskirus
+sakinius; tekstas desktop’e platesnis ir mažesnio dydžio. Taip pat liko maži antriniai
+LinkedIn, Reddit ir Donate veiksmai bei aiškus „What Terento does / doesn’t“
+scope kontrastas. Pakeitimai sugeneruoti visoms šešioms lokalizacijoms ir
+praeina lokalius svetainės testus; About iliustracinė nuotrauka sąmoningai
+nepridėta.
 Home FAQ eyebrow dabar yra klausimas naudotojui, Q2 atsakymas aiškiai kalba apie
 paprastą ir greitą žemėlapių valdymą bei turi `guide-link-click` eventą su
 `home-faq-basecamp` location. Q3 pakeistas į savo suderinamo `.img` žemėlapio
@@ -413,7 +427,7 @@ deploy’intą į VPS iš commit’o `c158393` per GitHub Actions run’ą
 `33917658895`; workflow live manifest’o patikra ir pagrindinių puslapių HTTP
 200 patikra praėjo.
 
-### 3.8 Pigūs nits — P3
+### 3.9 Pigūs nits — P3
 
 - Įvertinti `overflow-wrap: anywhere` nuėmimą nuo `h1`, `h2`, `h3`, jei tai
   nebereikalinga lokalizacijoms.

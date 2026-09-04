@@ -2,7 +2,7 @@
 <html lang="cs" data-language="cs" data-page="about">
   <head>
     <script defer src="/site-shell.js?v=20260904-pass3-internal-link-events-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20260904-pass3-workflow-arrows-v7">
+    <link rel="stylesheet" href="/styles.css?v=20260905-about-story-v1">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -74,21 +74,46 @@
       </div>
     </header>
     <main id="main-content">
-      <section class="compatibility-hero about-hero" aria-labelledby="about-title">
-        <div class="shell compatibility-hero-inner"><div class="compatibility-hero-copy">
-          <p class="eyebrow">O Terento</p>
-          <h1 id="about-title">Řešení, ne proces</h1>
-          <p class="hero-lede">Terento je bezplatná open-source aplikace pro macOS, která usnadňuje instalaci a aktualizaci komunitních map na moderních hodinkách Garmin.</p>
-        </div></div>
+      <section class="about-story" aria-labelledby="about-title">
+        <div class="shell about-story-inner">
+          <p class="eyebrow">Poznámka od tvůrce</p>
+          <h1 id="about-title">Ahoj, jsem Gediminas</h1>
+          <div class="about-story-copy">
+          <p>Myslím, že jsem Garmin začal používat někdy kolem modelu fēnix 3 a v průběhu let se z něj stalo víc než jen zařízení — stal se součástí toho, jak cestuji a trávím čas venku. Nejraději chodím po horách a před dovolenou si rád aktualizuji hodinky mapami míst, která navštívím.</p>
+          <p>Tento proces byl často složitější, než by měl být: Garmin Express se mohl zaseknout, zatímco instalace map třetích stran vyžadovala jejich samostatné hledání a stahování i další software. Ani vlastní mapy Garminu mi ne vždy poskytly potřebnou úroveň detailů.</p>
+          <p>Tato frustrace mě přivedla k myšlence najít jednodušší způsob, jak dostat správné mapy do hodinek. Nejsem softwarový vývojář, ale když stále více lidí začalo řešit praktické problémy pomocí AI asistovaného „vibe codingu“, uvědomil jsem si, že bych mohl zkusit toto řešení vytvořit sám. Z tohoto experimentu vzniklo Terento — komplexní aplikace pro Mac k výběru, instalaci, aktualizaci a správě map třetích stran.</p>
+          <p>Vytvářím ji bezplatně a jako open source, protože z ní nechci budovat firmu; chci pomoci komunitě. Neměli byste být technicky zaměření, abyste mohli připravit hodinky na místa, kam míříte.</p>
+          </div>
+        <div class="about-socials" aria-label="Spojte se s tvůrcem">
+          <p class="about-social-label">Spojte se s tvůrcem</p>
+          <div class="about-social-links">
+            <a class="about-social-link" href="https://www.linkedin.com/in/gediminasc/" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="linkedin"><img src="/assets/social/linkedin.svg" alt="" width="16" height="16"><span>LinkedIn</span></a>
+            <a class="about-social-link" href="https://www.reddit.com/user/MrDonas/" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="reddit"><img src="/assets/social/reddit.svg" alt="" width="16" height="16"><span>Reddit</span></a>
+          </div>
+          <div class="about-donate">
+            <span>Líbí se vám projekt?</span>
+            <a class="about-social-link about-social-link--donate" href="https://buymeacoffee.com/vooz2" target="_blank" rel="noopener noreferrer" data-umami-event="support-link-click" data-umami-event-location="about-story" data-umami-event-channel="donate"><img src="/assets/social/buymeacoffee.svg" alt="" width="16" height="16"><span>Přispět</span></a>
+          </div>
+        </div>
+        </div>
       </section>
-      <section class="about-main">
+      <section class="about-main" aria-labelledby="about-principle-title">
         <div class="shell about-grid">
-          <div class="section-heading"><p class="eyebrow">Myšlenka</p><h2>Vaše zařízení připravené na další cestu.</h2></div>
+          <div class="section-heading about-slogan"><h2 id="about-principle-title">Zaměřeno na výsledek — ne na proces.</h2></div>
           <div class="about-list">
-            <section class="about-item"><h2>Důležitý je výsledek</h2><p>Terento udržuje postup jednoduchý: připojte hodinky, vyberte mapu a vyrazte.</p></section>
-            <section class="about-item"><h2>Open source jako základ</h2><p>Terento vzniká veřejně a je vydáváno pod licencí GPL-3.0-or-later. Projekt je bezplatný; aplikace nevyžaduje účet ani cloudový profil zařízení.</p></section>
-            <section class="about-item"><h2>Nezávisle a opatrně</h2><p>Aktuální beta podporuje Freizeitkarte a OpenTopoMap. Názvy Garmin používáme popisně kvůli kompatibilitě. Poskytovatelé si ponechávají vlastní licence a mapové soubory putují přímo od původního poskytovatele do vašeho Macu a poté do hodinek. Podrobnosti najdete v sekcích <a href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="about-content">Právní informace</a> a <a href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="about-content">Soukromí</a>.</p></section>
-            <section class="about-item"><h2>Tvoříme s komunitou</h2><p>Kompatibilita se potvrzuje pro každý model na základě skutečných výsledků instalace. Pokud něco nefunguje, otevřete issue na <a href="https://github.com/VooZ2/terento/issues" target="_blank" rel="noopener noreferrer">GitHubu</a>, aby se z toho projekt mohl poučit.</p></section>
+            <section class="about-item about-item--group"><h2>Co Terento dělá</h2><ul class="about-bullet-list">
+              <li>Vyberte mapy z Freizeitkarte nebo OpenTopoMap, případně přidejte vlastní kompatibilní mapu .img.</li>
+              <li>Instalujte, aktualizujte a spravujte mapy třetích stran z jednoho místa.</li>
+              <li>Podporuje Macy s procesory Apple Silicon.</li>
+              <li>Chrání originální mapy Garminu.</li>
+            </ul></section>
+            <section class="about-item about-item--group"><h2>Co Terento nedělá</h2><ul class="about-bullet-list">
+              <li>Terento vás neposílá zpět do Garmin Express nebo BaseCamp.</li>
+              <li>Terento neslibuje kompatibilitu s každým zařízením Garmin.</li>
+              <li>Terento mapové soubory nehostuje, nezrcadlí ani znovu nebalí.</li>
+              <li>Terento nevyžaduje účet ani cloudový profil zařízení.</li>
+              <li>Terento nepodporuje Macy s procesory Intel.</li>
+            </ul></section>
           </div>
         </div>
       </section>

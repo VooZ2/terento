@@ -37,6 +37,17 @@ included on production pages for all visitors; test and lab environments must
 use a no-tracking build. See the [Umami documentation](https://docs.umami.is/docs)
 for the service's privacy model and configuration details.
 
+## Simple Icons
+
+- Version: 13.x, downloaded on 2026-09-05
+- Upstream: <https://github.com/simple-icons/simple-icons>
+- License: CC0 1.0
+- Files: `site/assets/social/linkedin.svg`, `site/assets/social/reddit.svg`,
+  and `site/assets/social/buymeacoffee.svg`
+- Use: small, recognizable profile and donation link marks on the About page
+- Trademark note: LinkedIn, Reddit, and Buy Me a Coffee names and marks remain
+  the property of their respective owners.
+
 ## Native connectivity PoC dependencies
 
 The isolated native connectivity PoC under

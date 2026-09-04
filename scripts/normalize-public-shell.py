@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20260904-pass3-internal-link-events-v1"
-STYLE_VERSION = "20260904-pass3-workflow-arrows-v7"
+STYLE_VERSION = "20260905-about-story-v1"
 IMAGE_VERSION = "20260902-your-garmin"
 LANGUAGE_VERSION = "20260904-language-selector"
 LOCALIZED_CONTENT_VERSION = "20260904-pass3-internal-link-events-v1"

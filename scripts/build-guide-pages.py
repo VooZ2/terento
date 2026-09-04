@@ -17,23 +17,24 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE_URL = "https://terento.app"
 GUIDE_SLUG = "guides/install-garmin-maps-mac/"
 PUBLISHED = "2026-08-28T00:00:00Z"
-REVIEWED = "2026-09-02T00:00:00Z"
+RELEASE = json.loads((ROOT / "site/updates/macos-arm64.json").read_text())
+REVIEWED = RELEASE["publishedAt"] + "T00:00:00Z"
 IMAGE_VERSION = "20260902-your-garmin"
 READING_STATE_VERSION = "20260902-reading-state"
 GUIDE_PROGRESS_VERSION = "20260902-guide-progress"
 UMAMI_SCRIPT_VERSION = "20260904-public-link-events"
-STYLE_VERSION = "20260904-pass3-workflow-arrows-v7"
+STYLE_VERSION = "20260905-about-story-v1"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 ISSUES_URL = "https://github.com/VooZ2/terento/issues"
 EMAIL_URL = "mailto:hello@terento.app?subject=Terento%20installation%20issue"
 EMAIL_ADDRESS = "hello@terento.app"
 REVIEWED_DISPLAY_DATES = {
-    "en": "September 2, 2026",
-    "de": "2. September 2026",
-    "fr": "2 septembre 2026",
-    "pl": "2 września 2026",
-    "cs": "2. září 2026",
-    "it": "2 settembre 2026",
+    "en": "September 4, 2026",
+    "de": "4. September 2026",
+    "fr": "4 septembre 2026",
+    "pl": "4 września 2026",
+    "cs": "4. září 2026",
+    "it": "4 settembre 2026",
 }
 GARMIN_BASECAMP_URL = "https://support.garmin.com/en-GB/?faq=bcmC4za1sy9hykGnopP8l7&identifier=310&tab=topics"
 GARMIN_EXPRESS_URL = "https://support.garmin.com/en-US/?faq=4QVp7mKSIA1LDk5fc1OHX8"

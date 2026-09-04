@@ -544,6 +544,97 @@ h1 {
   padding: clamp(72px, 9vw, 120px) 0 clamp(96px, 12vw, 160px);
 }
 
+.about-story {
+  padding: clamp(72px, 9vw, 120px) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.about-story-inner {
+  max-width: var(--max-width);
+}
+
+.about-story h1 {
+  max-width: 760px;
+  margin: 14px 0 28px;
+  font-size: clamp(38px, 5vw, 64px);
+  line-height: 1.03;
+}
+
+.about-story-copy {
+  max-width: 1020px;
+}
+
+.about-story-copy p {
+  margin: 0;
+  color: var(--secondary);
+  font-size: clamp(16px, 1.5vw, 18px);
+  line-height: 1.55;
+}
+
+.about-story-copy p + p {
+  margin-top: 18px;
+}
+
+.about-socials {
+  margin-top: 40px;
+}
+
+.about-social-label {
+  margin: 0 0 10px;
+  color: var(--eyebrow-text);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+
+.about-social-links,
+.about-donate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.about-donate {
+  margin-top: 12px;
+  gap: 10px;
+  color: var(--secondary);
+  font-size: 14px;
+}
+
+.about-social-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 7px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--link-text);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.about-social-link:hover,
+.about-social-link:focus-visible {
+  border-color: var(--interactive);
+  color: var(--link-text-hover);
+}
+
+.about-social-link img {
+  display: block;
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+}
+
+.about-donate .about-social-link {
+  background: transparent;
+}
+
 .about-grid {
   display: grid;
   grid-template-columns: minmax(220px, .72fr) minmax(0, 1.28fr);
@@ -582,6 +673,30 @@ h1 {
 
 .about-item a:hover {
   color: var(--link-text-hover);
+}
+
+.about-slogan h2 {
+  max-width: 520px;
+  font-size: clamp(44px, 6vw, 82px);
+  line-height: 1.02;
+}
+
+.about-item--group {
+  padding: 28px 0 32px;
+}
+
+.about-bullet-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--secondary);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.about-bullet-list li::marker {
+  color: var(--sky);
 }
 
 .download-main {
@@ -1757,6 +1872,31 @@ details p {
 
   .legal-main {
     padding-top: 56px;
+  }
+
+  .about-story {
+    padding: 64px 0;
+  }
+
+  .about-story h1 {
+    margin-bottom: 24px;
+    font-size: clamp(36px, 11vw, 52px);
+  }
+
+  .about-story-copy p {
+    font-size: 17px;
+  }
+
+  .about-socials {
+    margin-top: 32px;
+  }
+
+  .about-slogan h2 {
+    font-size: clamp(44px, 13vw, 64px);
+  }
+
+  .about-item--group {
+    padding: 24px 0 28px;
   }
 
   .download-actions {

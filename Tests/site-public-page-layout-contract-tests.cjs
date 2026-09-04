@@ -5,7 +5,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 const styles = read("site/styles.css");
-const styleVersion = "20260904-pass3-workflow-arrows-v7";
+const styleVersion = "20260905-about-story-v1";
 const localizedContentVersion = "20260904-pass3-internal-link-events-v1";
 
 const cssBlock = (selector) => {
@@ -171,4 +171,32 @@ assert.match(cssBlock(".language-option"), /justify-content:\s*flex-start/);
 assert.match(cssBlock(".language-option > span:not(.language-option-flag)"), /text-overflow:\s*ellipsis/);
 assert.match(styles, /\.mobile-language-menu \.language-options\s*\{[^}]*grid-template-columns:\s*1fr/s);
 assert.match(styles, /\.mobile-language-menu \.language-option\s*\{[^}]*width:\s*100%[^}]*min-height:\s*44px/s);
+
+assert.match(cssBlock(".about-social-link"), /min-height:\s*36px/);
+assert.match(cssBlock(".about-social-link"), /padding:\s*7px 11px/);
+assert.match(cssBlock(".about-social-link"), /border-radius:\s*8px/);
+assert.match(cssBlock(".about-bullet-list"), /gap:\s*12px/);
+
+for (const locale of Object.keys(locales)) {
+  const prefix = locale === "en" ? "" : `${locale}/`;
+  const html = read(`site/${prefix}about/index.html`);
+  assert.match(html, new RegExp(`/styles\\.css\\?v=${styleVersion}`));
+  assert.equal((html.match(/class="about-story"/g) || []).length, 1, `${locale} must have one personal story section`);
+  assert.equal((html.match(/class="about-socials"/g) || []).length, 1, `${locale} must have one social links group`);
+  assert.equal((html.match(/class="about-item about-item--group"/g) || []).length, 2, `${locale} must have one Does and one Doesn't group`);
+  assert.doesNotMatch(html, /class="compatibility-hero about-hero"/);
+  assert.equal((html.match(/<h1\b/g) || []).length, 1, `${locale} must have one primary About heading`);
+  assert.match(html, /<section class="about-story" aria-labelledby="about-title">[\s\S]*<h1 id="about-title">/);
+  const storyCopy = html.match(/<div class="about-story-copy">[\s\S]*?<\/div>/)?.[0];
+  assert.ok(storyCopy, `${locale} must have a story copy block`);
+  assert.equal((storyCopy.match(/<p>/g) || []).length, 4, `${locale} must group the story into four idea-led paragraphs`);
+  assert.match(html, /class="[^"]*about-slogan/);
+  assert.equal((html.match(/class="about-bullet-list"/g) || []).length, 2, `${locale} must use lists for Does and Doesn't`);
+  assert.match(html, /href="https:\/\/www\.linkedin\.com\/in\/gediminasc\/"[^>]+data-umami-event="social-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="linkedin"/);
+  assert.match(html, /href="https:\/\/www\.reddit\.com\/user\/MrDonas\/"[^>]+data-umami-event="social-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="reddit"/);
+  assert.match(html, /href="https:\/\/buymeacoffee\.com\/vooz2"[^>]+data-umami-event="support-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="donate"/);
+  assert.match(html, /\/assets\/social\/(?:linkedin|reddit|buymeacoffee)\.svg/);
+  assert.doesNotMatch(html, /Your device, ready for where you['’]re going|Open source by choice|Open source par choix|Open source od podstaw|Open source jako základ|Open source alla base/);
+}
+
 console.log("Public page intro and Download link layout contracts passed for all six locales.");

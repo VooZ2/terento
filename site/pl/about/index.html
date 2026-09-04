@@ -2,7 +2,7 @@
 <html lang="pl" data-language="pl" data-page="about">
   <head>
     <script defer src="/site-shell.js?v=20260904-pass3-internal-link-events-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20260904-pass3-workflow-arrows-v7">
+    <link rel="stylesheet" href="/styles.css?v=20260905-about-story-v1">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -74,21 +74,46 @@
       </div>
     </header>
     <main id="main-content">
-      <section class="compatibility-hero about-hero" aria-labelledby="about-title">
-        <div class="shell compatibility-hero-inner"><div class="compatibility-hero-copy">
-          <p class="eyebrow">O Terento</p>
-          <h1 id="about-title">Rozwiązanie, nie proces</h1>
-          <p class="hero-lede">Terento to bezpłatna aplikacja macOS open source, która ułatwia instalowanie i aktualizowanie map społecznościowych na nowoczesnych zegarkach Garmin.</p>
-        </div></div>
+      <section class="about-story" aria-labelledby="about-title">
+        <div class="shell about-story-inner">
+          <p class="eyebrow">Notatka od twórcy</p>
+          <h1 id="about-title">Cześć, jestem Gediminas</h1>
+          <div class="about-story-copy">
+          <p>Wydaje mi się, że zacząłem korzystać z Garmina około czasów fēnix 3 i przez lata stał się on czymś więcej niż urządzeniem — stał się częścią tego, jak podróżuję i spędzam czas na świeżym powietrzu. Szczególnie lubię górskie wędrówki, a przed urlopem chcę aktualizować zegarek mapami miejsc, które odwiedzam.</p>
+          <p>Ten proces często był trudniejszy, niż powinien: Garmin Express potrafił się zawiesić, a instalowanie map innych firm wymagało osobnego wyszukiwania i pobierania map oraz dodatkowego oprogramowania. Mapy Garmina również nie zawsze miały poziom szczegółowości, którego potrzebowałem.</p>
+          <p>Ta frustracja sprawiła, że chciałem znaleźć prostszy sposób na dodanie właściwych map do zegarka. Nie jestem programistą, ale gdy coraz więcej osób zaczęło rozwiązywać praktyczne problemy za pomocą wspomaganego przez AI „vibe codingu”, pomyślałem, że też mogę spróbować zbudować takie rozwiązanie. Tak powstało Terento — kompleksowa aplikacja na Maca do wybierania, instalowania, aktualizowania i zarządzania mapami innych firm.</p>
+          <p>Tworzę ją bezpłatnie i jako open source, bo nie buduję z tego firmy; chcę pomóc społeczności. Nie powinieneś być osobą techniczną, aby przygotować zegarek na miejsca, do których się wybierasz.</p>
+          </div>
+        <div class="about-socials" aria-label="Połącz się z twórcą">
+          <p class="about-social-label">Połącz się z twórcą</p>
+          <div class="about-social-links">
+            <a class="about-social-link" href="https://www.linkedin.com/in/gediminasc/" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="linkedin"><img src="/assets/social/linkedin.svg" alt="" width="16" height="16"><span>LinkedIn</span></a>
+            <a class="about-social-link" href="https://www.reddit.com/user/MrDonas/" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="reddit"><img src="/assets/social/reddit.svg" alt="" width="16" height="16"><span>Reddit</span></a>
+          </div>
+          <div class="about-donate">
+            <span>Podoba Ci się projekt?</span>
+            <a class="about-social-link about-social-link--donate" href="https://buymeacoffee.com/vooz2" target="_blank" rel="noopener noreferrer" data-umami-event="support-link-click" data-umami-event-location="about-story" data-umami-event-channel="donate"><img src="/assets/social/buymeacoffee.svg" alt="" width="16" height="16"><span>Wesprzyj</span></a>
+          </div>
+        </div>
+        </div>
       </section>
-      <section class="about-main">
+      <section class="about-main" aria-labelledby="about-principle-title">
         <div class="shell about-grid">
-          <div class="section-heading"><p class="eyebrow">Pomysł</p><h2>Twoje urządzenie gotowe na kolejną trasę.</h2></div>
+          <div class="section-heading about-slogan"><h2 id="about-principle-title">Liczy się rezultat — nie proces.</h2></div>
           <div class="about-list">
-            <section class="about-item"><h2>Liczy się rezultat</h2><p>Terento upraszcza cały proces: podłącz zegarek, wybierz mapę i ruszaj.</p></section>
-            <section class="about-item"><h2>Open source od podstaw</h2><p>Terento jest rozwijane publicznie i wydawane na licencji GPL-3.0-or-later. Projekt jest bezpłatny; aplikacja nie wymaga konta ani profilu urządzenia w chmurze.</p></section>
-            <section class="about-item"><h2>Niezależnie i ostrożnie</h2><p>Aktualna beta obsługuje Freizeitkarte i OpenTopoMap. Nazwy Garmin są używane opisowo w kontekście kompatybilności. Dostawcy zachowują własne licencje, a pliki map trafiają bezpośrednio od dostawcy na Maca, a następnie na zegarek. Szczegóły znajdziesz w sekcjach <a href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="about-content">Informacje prawne</a> i <a href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="about-content">Prywatność</a>.</p></section>
-            <section class="about-item"><h2>Tworzone ze społecznością</h2><p>Kompatybilność jest potwierdzana dla każdego modelu na podstawie rzeczywistych wyników instalacji. Jeśli coś nie działa, zgłoś problem na <a href="https://github.com/VooZ2/terento/issues" target="_blank" rel="noopener noreferrer">GitHubie</a>, aby projekt mógł się na tym uczyć.</p></section>
+            <section class="about-item about-item--group"><h2>Co robi Terento</h2><ul class="about-bullet-list">
+              <li>Wybieraj mapy z Freizeitkarte lub OpenTopoMap albo dodaj własną kompatybilną mapę .img.</li>
+              <li>Instaluj, aktualizuj i zarządzaj mapami innych firm w jednym miejscu.</li>
+              <li>Obsługuje Maci z procesorami Apple Silicon.</li>
+              <li>Chroni oryginalne mapy Garmina.</li>
+            </ul></section>
+            <section class="about-item about-item--group"><h2>Czego Terento nie robi</h2><ul class="about-bullet-list">
+              <li>Terento nie odsyła Cię do Garmin Express ani BaseCamp.</li>
+              <li>Terento nie obiecuje kompatybilności z każdym urządzeniem Garmin.</li>
+              <li>Terento nie hostuje, nie kopiuje ani nie przepakowuje plików map.</li>
+              <li>Terento nie wymaga konta ani chmurowego profilu urządzenia.</li>
+              <li>Terento nie obsługuje Maców z procesorami Intel.</li>
+            </ul></section>
           </div>
         </div>
       </section>
