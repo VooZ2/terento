@@ -287,4 +287,7 @@ counting; bucket placement uses completion time and the selected time zone.
 This is a read-only admin aggregation: custom imports remain excluded from
 provider map telemetry, KPI success rates and the public catalog. No filenames
 or paths are collected. HTML legend swatches now use background colors, matching
-the SVG fills. Implementation is local pending validation and deployment.
+the SVG fills. Deployed as `ee9d25e`; workflow 33926631093 passed all jobs, including
+237 backend tests and release-client catalog validation. Live Overview shows
+one Custom .img installation in both 24h (00:00 Europe/Vilnius bucket) and
+all-time views. The legend fits at 390 px without horizontal overflow.
