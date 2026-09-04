@@ -11,8 +11,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BASE_URL = "https://terento.app"
 ABOUT_SLUG = "about/"
-SHELL_VERSION = "20260904-pass3-internal-link-events-v1"
-STYLE_VERSION = "20260905-guide-flow-v3"
+SHELL_VERSION = "20260905-mobile-menu-language-v1"
+STYLE_VERSION = "20260905-mobile-menu-language-v1"
 UMAMI_SCRIPT_VERSION = "20260905-public-link-events-v3"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 EMAIL_ADDRESS = "hello@terento.app"
@@ -69,7 +69,6 @@ COPY = {
         "doesnt_title": "What Terento doesn’t",
         "doesnt_items": [
             "It does not send you back to Garmin Express or BaseCamp.",
-            "It does not promise compatibility with every Garmin device.",
             "It does not host, mirror, or repackage map files.",
             "It does not require an account or cloud device profile.",
             "It does not support Macs with Intel processors.",
@@ -104,7 +103,6 @@ COPY = {
         "doesnt_title": "Was Terento nicht macht",
         "doesnt_items": [
             "Terento schickt dich nicht zurück zu Garmin Express oder BaseCamp.",
-            "Terento verspricht keine Kompatibilität mit jedem Garmin-Gerät.",
             "Terento hostet, spiegelt oder verpackt Kartendateien nicht neu.",
             "Terento benötigt kein Konto und kein Geräteprofil in der Cloud.",
             "Terento unterstützt keine Macs mit Intel-Prozessoren.",
@@ -139,7 +137,6 @@ COPY = {
         "doesnt_title": "Ce que Terento ne fait pas",
         "doesnt_items": [
             "Terento ne vous renvoie pas vers Garmin Express ou BaseCamp.",
-            "Terento ne promet pas la compatibilité avec tous les appareils Garmin.",
             "Terento n’héberge pas, ne met pas en miroir et ne reconditionne pas les fichiers cartographiques.",
             "Terento ne nécessite ni compte ni profil d’appareil dans le cloud.",
             "Terento ne prend pas en charge les Mac équipés de processeurs Intel.",
@@ -174,7 +171,6 @@ COPY = {
         "doesnt_title": "Czego Terento nie robi",
         "doesnt_items": [
             "Terento nie odsyła Cię do Garmin Express ani BaseCamp.",
-            "Terento nie obiecuje kompatybilności z każdym urządzeniem Garmin.",
             "Terento nie hostuje, nie kopiuje ani nie przepakowuje plików map.",
             "Terento nie wymaga konta ani chmurowego profilu urządzenia.",
             "Terento nie obsługuje Maców z procesorami Intel.",
@@ -209,7 +205,6 @@ COPY = {
         "doesnt_title": "Co Terento nedělá",
         "doesnt_items": [
             "Terento vás neposílá zpět do Garmin Express nebo BaseCamp.",
-            "Terento neslibuje kompatibilitu s každým zařízením Garmin.",
             "Terento mapové soubory nehostuje, nezrcadlí ani znovu nebalí.",
             "Terento nevyžaduje účet ani cloudový profil zařízení.",
             "Terento nepodporuje Macy s procesory Intel.",
@@ -244,7 +239,6 @@ COPY = {
         "doesnt_title": "Cosa non fa Terento",
         "doesnt_items": [
             "Terento non ti rimanda a Garmin Express o BaseCamp.",
-            "Terento non promette la compatibilità con ogni dispositivo Garmin.",
             "Terento non ospita, non replica e non riconfeziona i file delle mappe.",
             "Terento non richiede un account né un profilo del dispositivo nel cloud.",
             "Terento non supporta i Mac con processori Intel.",
@@ -268,7 +262,7 @@ def render(locale: str, copy: dict[str, object]) -> str:
           <div class="about-social-links">
             <a class="about-social-link" href="https://www.linkedin.com/in/gediminasc/" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="linkedin"><img src="/assets/social/linkedin.svg" alt="" width="16" height="16"><span>{esc(copy["linkedin"])}</span></a>
             <a class="about-social-link" href="https://www.reddit.com/user/MrDonas/" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="reddit"><img src="/assets/social/reddit.svg" alt="" width="16" height="16"><span>{esc(copy["reddit"])}</span></a>
-            <a class="about-social-link about-email-link" href="{EMAIL_HREF}" data-umami-event="support-link-click" data-umami-event-location="about-story" data-umami-event-channel="email"><img src="/assets/social/email.svg" alt="" width="16" height="16"><span>{esc(copy["email"])}</span><span class="about-social-address">{EMAIL_ADDRESS_HTML}</span></a>
+            <a class="about-social-link about-email-link" href="{EMAIL_HREF}" data-umami-event="support-link-click" data-umami-event-location="about-story" data-umami-event-channel="email"><img src="/assets/social/email.svg" alt="" width="16" height="16"><span>{esc(copy["email"])}</span></a>
           </div>
           <div class="about-donate">
             <span>{esc(copy["donate_prompt"])}</span>

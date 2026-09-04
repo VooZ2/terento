@@ -5,8 +5,11 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 const styles = read("site/styles.css");
-const styleVersion = "20260905-guide-flow-v3";
+const shellSource = read("site/site-shell.js");
+const languageSource = read("site/language.js");
+const styleVersion = "20260905-mobile-menu-language-v1";
 const localizedContentVersion = "20260904-pass3-internal-link-events-v1";
+const mobileLanguageNames = { en: "English", de: "Deutsch", fr: "Français", pl: "Polski", cs: "Čeština", it: "Italiano" };
 
 const cssBlock = (selector) => {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -163,6 +166,12 @@ for (const [locale, contract] of Object.entries(locales)) {
   assert.doesNotMatch(trigger, /language-current|🇬🇧|🇩🇪|🇫🇷|🇵🇱|🇨🇿|🇮🇹/);
   assert.match(html, /class="language-option-flag"[^>]*>[^<]+<\/span><span>[^<]+<\/span>/);
   assert.match(html, /class="language-option"[^>]*aria-current="page"/);
+  const mobileNav = html.match(/<nav class="mobile-nav-links"[^>]*>([\s\S]*?)<\/nav>/);
+  assert.ok(mobileNav, `${locale} must have a mobile navigation`);
+  assert.doesNotMatch(mobileNav[1], /href="[^"]*download\//, `${locale} mobile navigation must not expose Download`);
+  const mobileTrigger = html.match(/<details class="language-menu mobile-language-menu">\s*<summary class="language-trigger"[^>]*><span class="mobile-language-label">([^<]+)<\/span>/);
+  assert.ok(mobileTrigger, `${locale} must have a full-name mobile language trigger`);
+  assert.equal(mobileTrigger[1], mobileLanguageNames[locale], `${locale} mobile language trigger must use the full language name`);
 }
 
 assert.doesNotMatch(styles, /language-trigger::after|mobile-language-menu[^{]*\.language-trigger::after/);
@@ -176,6 +185,20 @@ assert.match(cssBlock(".about-social-link"), /min-height:\s*36px/);
 assert.match(cssBlock(".about-social-link"), /padding:\s*7px 11px/);
 assert.match(cssBlock(".about-social-link"), /border-radius:\s*8px/);
 assert.match(cssBlock(".about-bullet-list"), /gap:\s*12px/);
+assert.match(styles, /@media \(min-width: 1100px\)\s*\{\s*\.app-shot--hero\s*\{[^}]*width:\s*115%/s);
+assert.match(cssBlock(".problem-statement p"), /font-family:\s*var\(--font-ui\)/);
+assert.match(cssBlock(".problem-statement p"), /font-size:\s*clamp\(18px, 2vw, 21px\)/);
+assert.match(cssBlock(".faq.section"), /padding:\s*clamp\(64px, 8vw, 96px\) 0/);
+assert.match(cssBlock('.primary-nav .download-action[aria-current="page"]'), /background:\s*var\(--interactive\)/);
+assert.match(cssBlock(".mobile-language-menu .language-trigger"), /border:\s*1px solid var\(--border\)/);
+assert.match(cssBlock(".mobile-language-menu .language-trigger"), /background:\s*var\(--surface-muted\)/);
+assert.match(cssBlock(".mobile-language-menu .language-options"), /border:\s*1px solid var\(--border\)/);
+assert.match(cssBlock(".mobile-language-menu .language-options"), /background:\s*var\(--surface\)/);
+assert.doesNotMatch(styles, /\.mobile-language-menu \.language-options\s*\{[^}]*grid-template-columns:\s*repeat/);
+assert.doesNotMatch(shellSource, /navLink\("download", "download-action", "mobile-nav"\)/);
+assert.match(shellSource, /currentLanguageName/);
+assert.match(languageSource, /mobile-language-label/);
+assert.match(languageSource, /languageNames/);
 
 for (const locale of Object.keys(locales)) {
   const prefix = locale === "en" ? "" : `${locale}/`;
@@ -195,9 +218,12 @@ for (const locale of Object.keys(locales)) {
   assert.equal((html.match(/class="about-bullet-list"/g) || []).length, 2, `${locale} must use lists for Does and Doesn't`);
   assert.match(html, /href="https:\/\/www\.linkedin\.com\/in\/gediminasc\/"[^>]+data-umami-event="social-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="linkedin"/);
   assert.match(html, /href="https:\/\/www\.reddit\.com\/user\/MrDonas\/"[^>]+data-umami-event="social-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="reddit"/);
-  assert.match(html, /href="mailto:hello&#64;terento\.app"[^>]+data-umami-event="support-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="email"[^>]*>[\s\S]*about-social-address[^>]*>hello&#64;terento\.app<\/span>/);
+  assert.match(html, /<a class="about-social-link about-email-link" href="mailto:hello&#64;terento\.app"[^>]+data-umami-event="support-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="email"[^>]*>[\s\S]*<span>(?:Email|E-Mail|E-mail)<\/span><\/a>/);
+  assert.doesNotMatch(html, /about-social-address|hello&#64;terento\.app<\/a>/, `${locale} must keep the email address out of the visible About social links`);
   assert.match(html, /href="https:\/\/buymeacoffee\.com\/vooz2"[^>]+data-umami-event="donate"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="donate"/);
   assert.equal((html.match(/class="about-social-link(?:\s|\")/g) || []).length, 4, `${locale} must have LinkedIn, Reddit, Email, and Donate links`);
+  assert.equal((html.match(/class="about-bullet-list"/g) || []).length, 2, `${locale} must use two About bullet lists`);
+  assert.doesNotMatch(html, /does not promise compatibility|verspricht keine Kompatibilität|ne promet pas la compatibilité|nie obiecuje kompatybilności|neslibuje kompatibilitu|non promette la compatibilità/);
   assert.match(html, /\/assets\/social\/(?:email|linkedin|reddit|buymeacoffee)\.svg/);
   assert.doesNotMatch(html, /href="mailto:hello@terento\.app"/);
   assert.doesNotMatch(html, /Your device, ready for where you['’]re going|Open source by choice|Open source par choix|Open source od podstaw|Open source jako základ|Open source alla base/);
