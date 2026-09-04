@@ -404,12 +404,14 @@ landing page kompozicijos dalis.
 - Patikrinti ir runtime sugeneruojamas nuorodas: kalbų meniu, perpiešiamą
   shell bei lokalizuotą FAQ turinį.
 
-**3.7 statusas: įgyvendinta lokaliai.** Visi 1 106 sugeneruoto puslapio
+**3.7 statusas: įgyvendinta ir deploy’inta.** Visi 1 106 sugeneruoto puslapio
 vidiniai anchor’ai turi eventą ir location, H1 su baigiamuoju tašku nebeliko.
 Pridėtas automatinis kontraktas, kuris tikrina HTML ir runtime lokalizuoto
-turinio nuorodas. Generator parity praeina; Node.js pagrįstas testų etapas
-lokaliai neįvykdytas, nes šiame aplinkos profilyje nėra Node.js. Deploy dar
-neatliktas.
+turinio nuorodas. Generator parity ir Node.js pagrįstas testų etapas
+lokaliai praeina su darbiniame profilyje esančiu Node.js runtime. Svetainė
+deploy’intą į VPS iš commit’o `c158393` per GitHub Actions run’ą
+`33917658895`; workflow live manifest’o patikra ir pagrindinių puslapių HTTP
+200 patikra praėjo.
 
 ### 3.8 Pigūs nits — P3
 
