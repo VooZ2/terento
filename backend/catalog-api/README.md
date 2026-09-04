@@ -302,4 +302,6 @@ internal joins; individual titles show type, count and local time.
 
 Admin model rows no longer show the Custom installation badge. Manual IMG
 imports remain visible in the chart and installation history. Presentation-only
-change; evidence and counters are unchanged. Validation/rollout pending.
+change; evidence and counters are unchanged. Deployed as `40272ed`; workflow `33927386387` passed all jobs and 238
+backend tests. Live Installations has zero custom badges, and the existing
+custom installation history entry remains visible.
