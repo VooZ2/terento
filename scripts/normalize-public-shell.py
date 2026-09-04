@@ -295,6 +295,7 @@ def main() -> None:
         if not path.exists():
             continue
         source = path.read_text(encoding="utf-8")
+        source = re.sub(r'(\/styles\.css\?v=)[^"\s]+', rf'\g<1>{STYLE_VERSION}', source)
         source = normalize_h1_punctuation(source)
         source = normalize_internal_link_events(source, page)
         path.write_text(source, encoding="utf-8")
