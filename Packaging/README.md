@@ -36,7 +36,7 @@ For a beta release, keep the app's marketing version separate from the public
 release label:
 
 ```sh
-RELEASE_TAG=v1.0.0-beta.9 \
+RELEASE_TAG=v1.0.0-beta.9-build10 \
 Packaging/release.sh \
   --version 1.0.0 \
   --build 10 \
@@ -112,7 +112,7 @@ Before distributing a public build:
 - increment `CFBundleVersion` monotonically and set the public release label;
 - set the intended `TERENTO_RELEASE_CHANNEL` (`beta` or `stable`);
 - update `site/updates/macos-arm64.json` with the matching version, build,
-  minimum macOS, channel, and canonical DMG `downloadURL`;
+  minimum macOS, channel, release tag, and canonical DMG `downloadURL`;
 - provide a concise plain-text `summary` and the canonical `releaseNotesURL`;
 - run `Tests/run-all-tests.sh` and retain its per-suite summary in CI output;
 - synchronize all six visible Download pages with
@@ -124,6 +124,10 @@ Before distributing a public build:
 - publish and notarize the DMG using this existing process;
 - validate the manifest after publication and confirm its download and notes
   URLs remain official Terento destinations.
+
+If an existing GitHub release is immutable, keep the in-app release label and
+bundle build unchanged while using a unique build-specific `releaseTag` (for
+example `v1.0.0-beta.9-build10`) for the new release and its asset URLs.
 
 The app performs only a background metadata check and a user-confirmed
 `NSWorkspace` hand-off. It does not download, mount, or replace the app in the

@@ -8,6 +8,7 @@ const root = path.resolve(__dirname, "..");
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 const release = JSON.parse(read("site/updates/macos-arm64.json"));
 const label = release.releaseLabel;
+const releaseTag = release.releaseTag || `v${label}`;
 const semanticVersion = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 const versionMatch = label.match(semanticVersion);
 
@@ -15,6 +16,7 @@ assert.ok(versionMatch, "update manifest must contain a semantic release label")
 assert.equal(release.version, `${versionMatch[1]}.${versionMatch[2]}.${versionMatch[3]}`);
 assert.ok(Number.isInteger(release.build) && release.build > 0, "distributed build must be positive");
 assert.ok(["beta", "stable"].includes(release.channel), "release channel must be beta or stable");
+assert.match(releaseTag, /^v[0-9A-Za-z][0-9A-Za-z.-]*$/, "release tag must be an explicit safe Git tag");
 assert.equal(
   release.channel === "stable",
   versionMatch[4] === undefined,
@@ -33,9 +35,9 @@ assert.match(notes, new RegExp(`^# Terento v${label}$`, "m"));
 assert.ok(notes.includes(release.sha256), "release notes must contain the manifest DMG SHA-256");
 assert.equal(
   release.downloadURL,
-  `https://github.com/VooZ2/terento/releases/download/v${label}/Terento-${label}-macOS-arm64.dmg`,
+  `https://github.com/VooZ2/terento/releases/download/${releaseTag}/Terento-${label}-macOS-arm64.dmg`,
 );
-assert.equal(release.releaseURL, `https://github.com/VooZ2/terento/releases/tag/v${label}`);
+assert.equal(release.releaseURL, `https://github.com/VooZ2/terento/releases/tag/${releaseTag}`);
 assert.equal(release.releaseNotesURL, release.releaseURL);
 assert.match(read("README.md"), /Freizeitkarte[\s\S]*OpenTopoMap/);
 assert.match(notes, /Freizeitkarte[\s\S]*OpenTopoMap/);

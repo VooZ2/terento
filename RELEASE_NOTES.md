@@ -8,6 +8,10 @@ installations and makes anonymous diagnostics consistent and available by
 default. It keeps the preceding release's provider and device scope
 unchanged.
 
+Because the original beta.9 GitHub release is immutable, this maintenance
+build is published under `v1.0.0-beta.9-build10`. Terento still displays
+`Version 1.0.0-beta.9 (10)`.
+
 This remains a pre-MVP beta for hardware validation. Model eligibility is not
 a claim that every exact watch has been independently verified.
 
