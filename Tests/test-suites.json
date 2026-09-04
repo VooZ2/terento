@@ -60,7 +60,8 @@
     "lab/native-connectivity-poc/Tests/run-native-map-lifecycle-tests.sh",
     "lab/native-connectivity-poc/Tests/run-native-read-backup-tests.sh",
     "lab/native-connectivity-poc/Tests/run-native-safe-delete-tests.sh",
-    "lab/native-connectivity-poc/Tests/run-native-safe-update-tests.sh"
+    "lab/native-connectivity-poc/Tests/run-native-safe-update-tests.sh",
+    "lab/native-connectivity-poc/Tests/run-native-bounded-process-tests.sh"
   ],
   "backend": [
     "Tests/run-backend-api-unit-tests.sh"

@@ -3,19 +3,33 @@
 Release date: 2026-09-02
 Maintenance build: 2026-09-04
 
-Beta.9 build 10 fixes compatibility reporting for local custom `.img`
-installations and makes privacy-minimised diagnostics consistent and available
-by default. The public beta currently supports Freizeitkarte and OpenTopoMap
-main-map packages; optional OpenTopoMap contours are planned but not supported.
+Beta.9 build 11 addresses stalled installation finishing and diagnostics delivery.
+Freizeitkarte and OpenTopoMap main-map packages remain the enabled providers.
+The display version stays 1.0.0-beta.9; the distributed build is 11.
 
 Because the original beta.9 GitHub release is immutable, this maintenance
-build is published under `v1.0.0-beta.9-build10`. Terento still displays
-`Version 1.0.0-beta.9 (10)`.
+build is published under `v1.0.0-beta.9-build11`. Terento still displays
+`Version 1.0.0-beta.9 (11)`.
 
 This is a public beta for hardware validation. The MVP first-install baseline
 is established, but the beta remains open until one real safe update has passed
 for each currently enabled provider. Model eligibility is not a claim that
 every exact watch has been independently verified.
+
+## Build 11 fixes
+
+- Bound native sampled verification and exact cleanup with an isolated worker
+  deadline. Stop the worker before continuing; never retry the map write.
+- Read the same verification regions in smaller chunks and revalidate the
+  exact target whenever a read-only session is reopened.
+- Preserve failed-install recovery when cleanup cannot be confirmed. A partial
+  or unverified map is never recorded as successfully installed.
+- Restore schema-v4 compatibility event storage without deleting queued or
+  uploaded reports, changing idempotency, or reopening the immutable API.
+- Keep transfer progress tied to the validated source size, separately from
+  sampled verification progress, in the UI and diagnostic reports.
+- Make health/readiness fail when diagnostic storage migrations or the schema
+  are incompatible, using read-only checks for both diagnostic streams.
 
 ## Fixes and safeguards
 
@@ -48,7 +62,7 @@ every exact watch has been independently verified.
 
 ## Application updates
 
-- About reports `1.0.0-beta.9` and distributed build `10`.
+- About reports `1.0.0-beta.9` and distributed build `11`.
 - Release and public Download metadata are generated from one manifest and
   checked for version, URL, date, and checksum drift.
 

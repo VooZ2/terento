@@ -36,10 +36,10 @@ For a beta release, keep the app's marketing version separate from the public
 release label:
 
 ```sh
-RELEASE_TAG=v1.0.0-beta.9-build10 \
+RELEASE_TAG=v1.0.0-beta.9-build11 \
 Packaging/release.sh \
   --version 1.0.0 \
-  --build 10 \
+  --build 11 \
   --release-version 1.0.0-beta.9 \
   --overwrite
 ```
@@ -89,7 +89,7 @@ To exercise the fresh build, tests, signing, Hardened Runtime, and runtime-path
 checks without contacting Apple or creating release artifacts:
 
 ```sh
-Packaging/release.sh --no-notarize --version 1.0.0 --build 10 \
+Packaging/release.sh --no-notarize --version 1.0.0 --build 11 \
   --release-version 1.0.0-beta.9
 ```
 
@@ -127,7 +127,7 @@ Before distributing a public build:
 
 If an existing GitHub release is immutable, keep the in-app release label and
 bundle build unchanged while using a unique build-specific `releaseTag` (for
-example `v1.0.0-beta.9-build10`) for the new release and its asset URLs.
+example `v1.0.0-beta.9-build11`) for the new release and its asset URLs.
 
 The app performs only a background metadata check and a user-confirmed
 `NSWorkspace` hand-off. It does not download, mount, or replace the app in the

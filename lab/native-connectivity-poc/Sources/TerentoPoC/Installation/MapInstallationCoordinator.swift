@@ -534,8 +534,9 @@ struct MapInstallationCoordinator: Sendable {
                     sourceURL: artifact.localIMGURL,
                     targetFilename: targetFilename,
                     progress: { progress in
-                        progressState.value = progress
-                        onProgress?(progress)
+                        let canonical = progress.normalized(sourceSize: artifact.installSizeBytes)
+                        progressState.value = canonical
+                        onProgress?(canonical)
                     }
                 )
             } catch {
@@ -555,6 +556,14 @@ struct MapInstallationCoordinator: Sendable {
                 )
             }
 
+            // A successful native write has completed the write even when the
+            // native library omitted its last callback. Read-back is a separate
+            // phase and must never replace transfer diagnostics.
+            progressState.value = TransferProgress(
+                bytesTransferred: artifact.installSizeBytes,
+                totalBytes: artifact.installSizeBytes
+            )
+            onProgress?(progressState.value)
             try transaction.transition(to: .verifying)
             onPhase?(.finishing)
             onPhaseProgress?(.finishing, 0.05)
@@ -578,8 +587,7 @@ struct MapInstallationCoordinator: Sendable {
                     ),
                     sampleLength: Self.verificationSampleLength,
                     progress: { progress in
-                        progressState.value = progress
-                        onProgress?(progress)
+                        onPhaseProgress?(.finishing, 0.05 + 0.20 * progress.fractionCompleted)
                     }
                 )
             } catch {

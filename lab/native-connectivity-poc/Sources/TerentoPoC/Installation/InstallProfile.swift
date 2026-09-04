@@ -40,7 +40,7 @@ struct DeviceInstallProfile: Equatable, Sendable {
 /// Per-operation production authorization. Unlike compatibility identity, all
 /// values here come from the live snapshot and can be compared again by C
 /// after it opens the device in a new MTP session.
-struct DeviceMapOperationProfile: Equatable, Sendable {
+struct DeviceMapOperationProfile: Codable, Equatable, Sendable {
     static let currentVersion: UInt32 = 1
 
     let version: UInt32

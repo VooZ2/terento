@@ -180,6 +180,18 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
         guard let operationProfile else {
             throw InstallationTransportError.unsupportedDevice
         }
+        if !MTPFinishingWorker.isWorker {
+            let response = try MTPFinishingWorker.perform(.init(
+                operation: .samples, profile: operationProfile, sourceURL: sourceURL,
+                filename: targetFilename, itemID: expectedItemID, size: expectedSizeBytes,
+                offsets: sampleOffsets, length: sampleLength
+            ))
+            guard let object = response.object, object.targetPath == targetPath else {
+                throw InstallationTransportError.objectIdentityMismatch
+            }
+            progress(TransferProgress(bytesTransferred: object.sampledBytes, totalBytes: object.sampledBytes))
+            return object
+        }
         guard targetPath == "\(Self.targetDirectory)/\(targetFilename)" else {
             throw InstallationTransportError.operationFailed(
                 "The managed map target path is invalid.",
@@ -315,6 +327,13 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
         guard let operationProfile else {
             throw InstallationTransportError.unsupportedDevice
         }
+        if !MTPFinishingWorker.isWorker {
+            _ = try MTPFinishingWorker.perform(.init(
+                operation: .cleanup, profile: operationProfile,
+                filename: targetFilename, itemID: expectedItemID, size: expectedSizeBytes
+            ))
+            return
+        }
         var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
         let result = withNativeMapOperationProfile(operationProfile) { nativeProfile in
             targetFilename.withCString { filename in
@@ -384,12 +403,124 @@ extension MapInstallationCoordinator {
                 operationGate: operationGate,
                 lifecycleLease: lifecycleLease
             ),
-            deviceReader: MTPTransport(
+            deviceReader: BoundedInstallationDeviceReader(
                 operationGate: operationGate,
                 lifecycleLease: lifecycleLease
             ),
             manifestStore: manifestStore,
             recoveryStore: recoveryStore
         )
+    }
+}
+
+/// IPC is local to a fresh private temporary directory. It never contains a
+/// Garmin serial, Unit ID, XML, manifest, or map bytes. No worker can write maps.
+enum MTPFinishingWorker {
+    enum Operation: String, Codable { case samples, cleanup, inventory, snapshot }
+    struct Request: Codable {
+        var operation: Operation
+        var profile: DeviceMapOperationProfile? = nil
+        var sourceURL: URL? = nil
+        var filename: String? = nil
+        var itemID: UInt32? = nil
+        var size: UInt64? = nil
+        var offsets: [UInt64]? = nil
+        var length: UInt32? = nil
+    }
+    struct Response: Codable {
+        var object: MTPReadBackMapObject? = nil
+        var files: [DeviceFile]? = nil
+        var snapshot: DeviceSnapshot? = nil
+        var error: InstallationTransportError? = nil
+    }
+    static var isWorker: Bool { CommandLine.arguments.dropFirst().first == "--terento-finishing-worker" }
+
+    static func perform(_ request: Request) throws -> Response {
+        guard let executable = Bundle.main.executableURL else {
+            throw InstallationTransportError.operationFailed("Native verification is unavailable.", createdItemID: nil)
+        }
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false,
+                                               attributes: [.posixPermissions: 0o700])
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let output = directory.appendingPathComponent("result.json")
+        do {
+            try BoundedNativeProcess.run(executable: executable,
+                arguments: ["--terento-finishing-worker", output.path],
+                input: JSONEncoder().encode(request),
+                timeout: request.operation == .samples ? 120 : 45,
+                // Cleanup is a separate bounded safety operation even if the
+                // enclosing install was cancelled. Never cancel it immediately.
+                cancelled: { request.operation != .cleanup && Task<Never, Never>.isCancelled })
+        } catch {
+            throw InstallationTransportError.operationFailed(
+                "Native \(request.operation.rawValue) stopped: deadline, cancellation, or worker failure.", createdItemID: nil)
+        }
+        let response = try JSONDecoder().decode(Response.self, from: Data(contentsOf: output))
+        if let error = response.error { throw error }
+        return response
+    }
+
+    static func runIfRequested() -> Bool {
+        guard isWorker else { return false }
+        guard CommandLine.arguments.count == 3 else { return true }
+        let output = URL(fileURLWithPath: CommandLine.arguments[2])
+        var response = Response()
+        do {
+            let input = try FileHandle.standardInput.read(upToCount: 8193) ?? Data()
+            guard input.count <= 8192 else { throw NativeProcessFailure.failed }
+            let request = try JSONDecoder().decode(Request.self, from: input)
+            let transport = MTPMapInstallationTransport(operationProfile: request.profile)
+            switch request.operation {
+            case .samples:
+                guard let source = request.sourceURL, let filename = request.filename,
+                      let itemID = request.itemID, let size = request.size,
+                      let offsets = request.offsets, let length = request.length else {
+                    throw NativeProcessFailure.failed
+                }
+                response.object = try transport.readBack(sourceURL: source, targetFilename: filename,
+                    expectedItemID: itemID, targetPath: "/GARMIN/\(filename)", expectedSizeBytes: size,
+                    sampleOffsets: offsets, sampleLength: length, progress: { _ in })
+            case .cleanup:
+                guard let filename = request.filename, let itemID = request.itemID else {
+                    throw NativeProcessFailure.failed
+                }
+                try transport.deleteExact(targetFilename: filename, expectedItemID: itemID, expectedSizeBytes: request.size)
+            case .inventory:
+                response.files = try MTPTransport().readFileInventory()
+            case .snapshot:
+                let snapshot = try MTPTransport().readSnapshot()
+                response.snapshot = DeviceSnapshot(manufacturer: snapshot.manufacturer, model: snapshot.model,
+                    deviceVersion: snapshot.deviceVersion, vendorID: snapshot.vendorID, productID: snapshot.productID,
+                    storages: snapshot.storages)
+            }
+        } catch let error as InstallationTransportError {
+            response.error = error
+        } catch {
+            response.error = .operationFailed("Native finishing operation failed.", createdItemID: nil)
+        }
+        try? JSONEncoder().encode(response).write(to: output, options: .atomic)
+        return true
+    }
+}
+
+private struct BoundedInstallationDeviceReader: InstallationDeviceReader {
+    let operationGate: MTPOperationGate
+    let lifecycleLease: MTPOperationLease?
+    func readFileInventory() throws -> [DeviceFile] {
+        try operationGate.withOperation(kind: .inventory, lifecycleLease: lifecycleLease) {
+            guard let files = try MTPFinishingWorker.perform(.init(operation: .inventory)).files else {
+                throw InstallationTransportError.remoteFileMissing
+            }
+            return files
+        }
+    }
+    func readSnapshot() throws -> DeviceSnapshot {
+        try operationGate.withOperation(kind: .inventory, lifecycleLease: lifecycleLease) {
+            guard let snapshot = try MTPFinishingWorker.perform(.init(operation: .snapshot)).snapshot else {
+                throw InstallationTransportError.operationFailed("Final device check failed.", createdItemID: nil)
+            }
+            return snapshot
+        }
     }
 }
