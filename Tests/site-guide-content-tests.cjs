@@ -20,6 +20,7 @@ const localePath = (locale, suffix) => locale === "en" ? "/" + (suffix || "") : 
 const read = (file) => fs.readFileSync(file, "utf8");
 const guideFile = (locale) => path.join(root, "site", locale === "en" ? slug : path.join(locale, slug), "index.html");
 const metadata = JSON.parse(read(path.join(root, "site", "metadata.json")));
+const release = JSON.parse(read(path.join(root, "site", "updates", "macos-arm64.json")));
 const metadataByPath = new Map(metadata.pages.map((page) => [page.path, page]));
 const currentBetaSignals = {
   en: /Freizeitkarte \+ OpenTopoMap \+ local import/,
@@ -105,7 +106,7 @@ for (const locale of locales) {
   assert.equal(data["@context"], "https://schema.org");
   const article = oneEntity(data, "Article", file);
   assert.equal(article.datePublished, "2026-08-28T00:00:00Z", `${file}: ISO publication datetime`);
-  assert.equal(article.dateModified, "2026-09-02T00:00:00Z", `${file}: ISO modified datetime`);
+  assert.equal(article.dateModified, `${release.publishedAt}T00:00:00Z`, `${file}: ISO modified datetime`);
   assert.deepEqual(oneEntity(data, "Organization", file), {
     "@type": "Organization",
     "@id": baseUrl + "/#organization",
