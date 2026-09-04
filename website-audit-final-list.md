@@ -1,8 +1,9 @@
 # Terento.app — galutinis sujungtas taisymų sąrašas
 
 Šis dokumentas sujungia vartotojo pateiktą sutarimo planą ir 2026-09-04 gyvo
-puslapio audito radinius. Tai yra darbų planas su užfiksuotu lokalių pakeitimų
-statusu; tai nėra publikavimo ar deploy patvirtinimas.
+puslapio audito radinius. Pass 3 pakeitimai įgyvendinti, patikrinti ir
+publikuoti production 2026-09-05; žemiau išlaikytas sprendimų bei darbų
+statuso kontekstas.
 
 ## Sutarimas
 
@@ -267,7 +268,7 @@ Lokaliuose variantuose išlaikyti tą pačią prasmę: žemėlapis laikrodyje i�
 Mac, be senos programinės įrangos ir rankinio failų medžio. `BaseCamp` lieka
 FAQ/gide, kad hero nebūtų perkrautas Garmin terminologija.
 
-**3.1 statusas: įgyvendinta lokaliai.** H1 dabar tiesiai kalba apie žemėlapių
+**3.1 statusas: įgyvendinta ir publikuota production.** H1 dabar tiesiai kalba apie žemėlapių
 įdiegimą į Garmin laikrodžius: `Install maps on Garmin watches, simply` Lede
 paaiškina visą veiksmų seką ir pašalina rankinį failų perkėlimą: `Install,
 update, and manage third-party maps from a native macOS app — without manual
@@ -312,7 +313,7 @@ Lokali copy neturi paversti reikalavimų triukšmingu warning bloku. Esamas
   site/localized-content.js; tabs turi veikti su pele, klaviatūra ir išlaikyti
   tinkamą ARIA būseną.
 
-**3.3 statusas: įgyvendinta lokaliai.** How it works rodoma kaip mažas eyebrow,
+**3.3 statusas: įgyvendinta ir publikuota production.** How it works rodoma kaip mažas eyebrow,
 o pagrindinė antraštė yra `Connect → Install → Done`; desktop’e naudojamos
 ankstesnio stiliaus sky-blue rodyklės, o mobile’e — tos pačios spalvos bullet’ai.
 Numeruota seka desktop’e turi jungiamąją liniją, workflow antraštė desktop’e
@@ -325,7 +326,7 @@ storage review pažadas; Manage copy apsiriboja Terento valdomais trečiųjų
 šalių žemėlapiais ir aiškiai apsaugo originalius Garmin žemėlapius. Pakeitimai
 sugeneruoti visoms šešioms lokalizacijoms, patikrinti desktop, mobile ir
 klaviatūros sąveikoje. Tabs kampai suvienodinti su kompaktišku button stiliumi,
-o pakeitimai laikomi lokaliai iki bendro Pass 3 deploy.
+o pakeitimai įtraukti į 2026-09-05 Pass 3 production deploy.
 
 ### 3.4 Available maps provider cards — P1
 
@@ -340,13 +341,13 @@ o pakeitimai laikomi lokaliai iki bendro Pass 3 deploy.
   jei API nepasiekiamas.
 - Neturi atsirasti providerio, kurio nėra uždarytame 0 skyriuje.
 
-**3.4 statusas: įgyvendinta lokaliai.** Beta scope blokas pašalintas, o
+**3.4 statusas: įgyvendinta ir publikuota production.** Beta scope blokas pašalintas, o
 Available maps sekcija dabar turi dvi provider cards. Freizeitkarte aiškiai
 pozicionuojama kaip universalesnė hiking/cycling/outdoor mapa, o OpenTopoMap —
 kaip topografijai ir reljefo detalumui skirta mapa. Kortelių paketų skaičiai
 dinamiškai atnaujinami iš katalogo API ir turi statinį fallback. Pakeitimai
 sugeneruoti visoms šešioms lokalizacijoms, patikrinti lokaliais testais ir
-laikomi lokaliai iki bendro Pass 3 deploy.
+įtraukti į 2026-09-05 Pass 3 production deploy.
 
 ### 3.5 Pasikartojančios brand frazės — P2
 
@@ -365,7 +366,7 @@ heading’us pakeisti iš `h2` į `h3`. Pakeitimus daryti per
 FR `aventure` formuluotes pakeisti į `destination/readiness` kryptį ten, kur
 jos kartojasi: Home H1, step 03, final CTA ir About.
 
-**3.5 statusas: įgyvendinta lokaliai.** Home FAQ eyebrow dabar yra klausimas
+**3.5 statusas: įgyvendinta ir publikuota production.** Home FAQ eyebrow dabar yra klausimas
 naudotojui, Q2 atsakymas aiškiai kalba apie paprastą ir greitą žemėlapių
 valdymą bei turi `guide-link-click` eventą su `home-faq-basecamp` location. Q3
 pakeistas į savo suderinamo `.img` žemėlapio įkėlimą, o Q4 — į vėlesnių
