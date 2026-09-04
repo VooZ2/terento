@@ -697,10 +697,26 @@ class AdminSemanticsTests(unittest.TestCase):
         body = _overview_trend_chart([{
             "bucket": "2026-09-05T00:00:00Z", "custom_count": 3,
         }], "hour")
-        self.assertIn("0 succeeded, 0 failed, 3 custom .img succeeded", body)
+        self.assertIn("Custom .img installed: 3", body)
         self.assertRegex(body, r"class='overview-chart-custom'[^>]*height='220.0'")
         self.assertIn("</i>Custom .img</span>", body)
         self.assertIn("Custom .img: successful manual installations.", body)
+
+    def test_chart_series_are_separate_bars_on_one_baseline(self):
+        import xml.etree.ElementTree as ET
+        from terento_catalog.admin import _overview_trend_chart
+        body = _overview_trend_chart([{
+            "bucket": "2026-09-05T00:00:00Z", "success_count": 2,
+            "failed_count": 1, "custom_count": 3,
+        }], "hour")
+        svg = ET.fromstring(body[body.index("<svg"):body.index("</svg>") + 6])
+        bars = svg.findall("rect")
+        self.assertEqual(len(bars), 3)
+        for bar in bars:
+            self.assertAlmostEqual(float(bar.attrib["y"]) + float(bar.attrib["height"]), 230, places=1)
+            self.assertIn(": ", bar.find("title").text)
+        for left, right in zip(bars, bars[1:]):
+            self.assertLess(float(left.attrib["x"]) + float(left.attrib["width"]), float(right.attrib["x"]))
 
     def test_map_overview_uses_a_server_compatible_bucket_expression(self):
         database = RecordingDatabase()

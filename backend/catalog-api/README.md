@@ -291,3 +291,8 @@ the SVG fills. Deployed as `ee9d25e`; workflow 33926631093 passed all jobs, incl
 237 backend tests and release-client catalog validation. Live Overview shows
 one Custom .img installation in both 24h (00:00 Europe/Vilnius bucket) and
 all-time views. The legend fits at 390 px without horizontal overflow.
+
+Admin chart follow-up: event types now use separate solid bars sharing a zero
+baseline, grouped by time bucket. Each nonzero bar has its own hover title and
+accessible label with event type, count and time. Zero values create no phantom
+bars. Data aggregation is unchanged. Local implementation pending rollout.
