@@ -299,3 +299,7 @@ hover title and accessible label with event type, count and time. Data
 aggregation is unchanged. Deployed as `4f47d35`, workflow `33927056958` PASS, including 238 tests
 and release-client validation. Live segments share one x position and square
 internal joins; individual titles show type, count and local time.
+
+Admin model rows no longer show the Custom installation badge. Manual IMG
+imports remain visible in the chart and installation history. Presentation-only
+change; evidence and counters are unchanged. Validation/rollout pending.

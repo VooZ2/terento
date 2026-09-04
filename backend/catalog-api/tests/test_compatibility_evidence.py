@@ -498,7 +498,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertEqual(admin_response.status, 200)
         rendered = body.decode()
         self.assertIn("fēnix 7 Pro", rendered)
-        self.assertIn("Custom installation", rendered)
+        self.assertNotIn("custom-installation-indicator", rendered)
         self.assertIn("All-time compatibility evidence from Terento users.", rendered)
         self.assertNotIn("Map install operations", rendered)
 
@@ -609,7 +609,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         body = dashboard_page(
             [row], {"username": "operator"}, "csrf", operations=[operation]
         ).decode()
-        self.assertIn("Custom installation", body)
+        self.assertNotIn("custom-installation-indicator", body)
         self.assertIn("fēnix 7 Pro", body)
 
     def test_admin_dashboard_links_errors_to_structured_operation_details(self):

@@ -1617,16 +1617,10 @@ def dashboard_page(
     )
     historical_failures = max(0, failures - open_errors)
     success_rate = (successes / attempts * 100) if attempts else None
-    custom_installation_identities = {
-        _identity_group_key(event)
-        for event in (operations or [])
-        if str(event.get("provider") or "").strip().casefold() == "custom"
-    }
     table_rows = "".join(
         _statistics_row(
             row,
             diagnostic_summary.get(_identity_group_key(row), {}),
-            custom_installation=_identity_group_key(row) in custom_installation_identities,
         )
         for row in rows
     )
@@ -3690,8 +3684,6 @@ def account_page(user: dict[str, Any], csrf_token: str, *, error: str | None = N
 def _statistics_row(
     row: dict[str, Any],
     diagnostic_summary: dict[str, int] | None = None,
-    *,
-    custom_installation: bool = False,
 ) -> str:
     model, variant, identity = _identity_parts(row)
     summary = diagnostic_summary or {}
@@ -3710,11 +3702,6 @@ def _statistics_row(
         model_cell += (
             f" <span class='identity-pending-indicator' aria-label='{pending_count} identity pending'>"
             "Identity pending</span>"
-        )
-    if custom_installation:
-        model_cell += (
-            " <span class='diagnostic-chip custom-installation-indicator' "
-            "aria-label='Custom installation'>Custom installation</span>"
         )
     open_errors_markup = (
         f"<a class='error-count' href='{html.escape(_model_detail_url(row, state='open'), quote=True)}' aria-label='View {open_errors} open errors'>{open_errors}</a>"
