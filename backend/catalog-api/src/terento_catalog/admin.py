@@ -1108,7 +1108,7 @@ def _overview_trend_chart(
         (max(0, int(item.get("success_count") or 0)), max(0, int(item.get("failed_count") or 0)), max(0, int(item.get("custom_count") or 0)))
         for item in trend
     ]
-    maximum = max((max(series) for series in values), default=1) or 1
+    maximum = max((sum(series) for series in values), default=1) or 1
     scale_maximum = max(maximum, 3)
     chart_width, chart_height = 720, 260
     left, top, bottom = 10, 10, 30
@@ -1122,21 +1122,28 @@ def _overview_trend_chart(
             ("success", "failed", "custom"),
             ("Install succeeded", "Install failed", "Custom .img installed"), counts,
         ) if count > 0]
-        group_width = min(108, slot * 0.78)
-        gap = min(5, slot * 0.07)
-        bar_width = min(32, (group_width - gap * (len(active) - 1)) / max(1, len(active)))
-        start = center - (bar_width * len(active) + gap * (len(active) - 1)) / 2
-        for offset, (name, label, count) in enumerate(active):
-            x = start + offset * (bar_width + gap)
+        bar_width = min(44, slot * 0.58)
+        x = center - bar_width / 2
+        total_height = plot_height * sum(counts) / scale_maximum
+        y = top + plot_height
+        clip_id = f"overview-bar-clip-{index}"
+        bars.append(
+            f"<defs><clipPath id='{clip_id}'><rect x='{x:.1f}' "
+            f"y='{y - total_height:.1f}' width='{bar_width:.1f}' "
+            f"height='{total_height:.1f}' rx='3'></rect></clipPath></defs>"
+            f"<g clip-path='url(#{clip_id})'>"
+        )
+        for name, label, count in active:
             height = plot_height * count / scale_maximum
-            y = top + plot_height - height
+            y -= height
             title = f"{label}: {count} · {_overview_chart_bucket_label(item.get('bucket'), bucket, time_zone)}"
             bars.append(
                 f"<rect class='overview-chart-{name}' x='{x:.1f}' y='{y:.1f}' "
-                f"width='{bar_width:.1f}' height='{height:.1f}' rx='3' tabindex='0' "
+                f"width='{bar_width:.1f}' height='{height:.1f}' tabindex='0' "
                 f"role='img' aria-label='{html.escape(title, quote=True)}'>"
                 f"<title>{html.escape(title)}</title></rect>"
             )
+        bars.append("</g>")
         label_step = max(1, round((len(values) - 1) / 5))
         if len(values) <= 12 or index % label_step == 0 or index == len(values) - 1:
             labels.append(f"<text x='{center:.1f}' y='{chart_height - 8}' text-anchor='middle'>{html.escape(_overview_chart_bucket_label(item.get('bucket'), bucket, time_zone))}</text>")

@@ -702,7 +702,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("</i>Custom .img</span>", body)
         self.assertIn("Custom .img: successful manual installations.", body)
 
-    def test_chart_series_are_separate_bars_on_one_baseline(self):
+    def test_chart_segments_join_without_individual_rounding(self):
         import xml.etree.ElementTree as ET
         from terento_catalog.admin import _overview_trend_chart
         body = _overview_trend_chart([{
@@ -710,13 +710,15 @@ class AdminSemanticsTests(unittest.TestCase):
             "failed_count": 1, "custom_count": 3,
         }], "hour")
         svg = ET.fromstring(body[body.index("<svg"):body.index("</svg>") + 6])
-        bars = svg.findall("rect")
+        bars = svg.findall("g/rect")
         self.assertEqual(len(bars), 3)
         for bar in bars:
-            self.assertAlmostEqual(float(bar.attrib["y"]) + float(bar.attrib["height"]), 230, places=1)
+            self.assertNotIn("rx", bar.attrib)
             self.assertIn(": ", bar.find("title").text)
-        for left, right in zip(bars, bars[1:]):
-            self.assertLess(float(left.attrib["x"]) + float(left.attrib["width"]), float(right.attrib["x"]))
+        self.assertEqual(len({bar.attrib["x"] for bar in bars}), 1)
+        for lower, upper in zip(bars, bars[1:]):
+            self.assertAlmostEqual(float(upper.attrib["y"]) + float(upper.attrib["height"]), float(lower.attrib["y"]), places=1)
+        self.assertEqual(svg.find("defs/clipPath/rect").attrib["rx"], "3")
 
     def test_map_overview_uses_a_server_compatible_bucket_expression(self):
         database = RecordingDatabase()

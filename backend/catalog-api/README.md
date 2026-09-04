@@ -292,7 +292,8 @@ the SVG fills. Deployed as `ee9d25e`; workflow 33926631093 passed all jobs, incl
 one Custom .img installation in both 24h (00:00 Europe/Vilnius bucket) and
 all-time views. The legend fits at 390 px without horizontal overflow.
 
-Admin chart follow-up: event types now use separate solid bars sharing a zero
-baseline, grouped by time bucket. Each nonzero bar has its own hover title and
-accessible label with event type, count and time. Zero values create no phantom
-bars. Data aggregation is unchanged. Local implementation pending rollout.
+Admin chart follow-up: event types remain stacked in one continuous bar per
+time bucket. Segments have square joins; only the complete column silhouette
+has rounded corners through one shared clip path. Each segment has its own
+hover title and accessible label with event type, count and time. Data
+aggregation is unchanged. Corrected implementation pending rollout.
