@@ -104,9 +104,7 @@ for (const locale of locales) {
 for (const locale of locales) {
   const guide = pageFile(locale, `${guideSlug}index.html`);
   const source = read(guide);
-  assert.equal((source.match(/class="guide-faq-link"/g) || []).length, 1, `${guide}: one Home FAQ link`);
-  assert.match(source, new RegExp(`href="${localePath(locale)}#faq"`), `${guide}: localized Home FAQ link`);
-  assert.match(source, /data-umami-event="faq-link-click" data-umami-event-location="guide-troubleshooting"/);
+  assert.doesNotMatch(source, /class="guide-faq-link"|id="faq-help"|id="context"/, `${guide}: Guide keeps the focused flow without duplicate help sections`);
   assert.doesNotMatch(source, /<section class="guide-faq"\b|<details>\s*<summary>/i, `${guide}: no duplicated Guide FAQ`);
   assert.doesNotMatch(source, /"@type":\s*"FAQPage"/);
 }
@@ -116,4 +114,4 @@ assert.match(styles, /\.faq-grid\s*\{[\s\S]*grid-template-columns:\s*minmax\(220
 assert.doesNotMatch(styles, /\.guide-faq(?!-link)/, "Guide must not own FAQ layout styles");
 assert.match(read(path.join(root, "site", "site-shell.js")), /window\.location\.hash === "#faq"/);
 
-console.log("Canonical localized Home FAQ, Guide deduplication, routing, actions, and shell tests passed.");
+console.log("Canonical localized Home FAQ, focused Guide flow, routing, actions, and shell tests passed.");

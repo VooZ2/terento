@@ -22,14 +22,6 @@ const guideFile = (locale) => path.join(root, "site", locale === "en" ? slug : p
 const metadata = JSON.parse(read(path.join(root, "site", "metadata.json")));
 const release = JSON.parse(read(path.join(root, "site", "updates", "macos-arm64.json")));
 const metadataByPath = new Map(metadata.pages.map((page) => [page.path, page]));
-const currentBetaSignals = {
-  en: /Freizeitkarte \+ OpenTopoMap \+ local import/,
-  de: /Freizeitkarte \+ OpenTopoMap \+ lokaler Import/,
-  fr: /Freizeitkarte \+ OpenTopoMap \+ import local/,
-  pl: /Freizeitkarte \+ OpenTopoMap \+ lokalny import/,
-  cs: /Freizeitkarte \+ OpenTopoMap \+ místní import/,
-  it: /Freizeitkarte \+ OpenTopoMap \+ importazione locale/,
-};
 const downloadLabels = {
   en: "Download",
   de: "Herunterladen",
@@ -73,44 +65,43 @@ for (const locale of locales) {
   assert.match(source, /Apple Silicon/);
   assert.match(source, /macOS 13/);
   assert.match(source, /USB/);
-  assert.match(source, /free storage|freier Speicher|espace libre|wolnego miejsca|volného místa|spazio libero/i);
+  const facts = source.match(/<p class="guide-facts">([\s\S]*?)<\/p>/)?.[1];
+  assert.ok(facts, locale + ": guide fact badges");
+  assert.equal((facts.match(/<span>/g) || []).length, 3, locale + ": three guide fact badges");
   assert.match(source, /1–2 minutes?|1–2 Minuten|1 à 2 minutes|1–2 minuty|1–2 minuti/);
-  assert.match(source, currentBetaSignals[locale], locale + ": current beta provider scope label");
-  assert.match(source, /Choose a map|Karte auswählen|Choisir une carte|Wybierz mapę|Vyberte mapu|Scegli una mappa/);
-  assert.match(source, /third-party \.img|supported map file|unterstützte Kartendatei|fichier cartographique pris en charge|obsługiwany plik mapy|podporovaný mapový soubor|file cartografico supportato/i, locale + ": local map import guidance");
-  assert.doesNotMatch(source, /Current beta uses Freizeitkarte|aktuelle Beta verwendet Freizeitkarte|bêta actuelle utilise Freizeitkarte|obecna beta korzysta z Freizeitkarte|aktuální beta používá Freizeitkarte|beta attuale usa Freizeitkarte/i, locale + ": no provider-specific current-beta claim");
+  assert.match(source, /Choose from the catalog|Aus dem Katalog wählen|Choisir dans le catalogue|Wybierz z katalogu|Vybrat z katalogu|Scegli dal catalogo/);
+  assert.match(source, /\.img/ , locale + ": local map import guidance");
+  assert.match(source, /Freizeitkarte|OpenTopoMap/ , locale + ": active provider catalog guidance");
+  assert.doesNotMatch(source, /free storage|freier Speicher|espace libre|wolnego miejsca|volného místa|spazio libero|Not enough storage|Nicht genügend Speicher|Espace de stockage insuffisant|Za mało miejsca|Nedostatek úložiště|Spazio insufficiente/i, locale + ": no storage copy");
   assert.match(source, /install-maps-1280\.avif[^\n]*width="1555" height="1012"/);
   assert.match(source, /installing-maps-1280\.avif[^\n]*width="1568" height="1003"/);
   assert.match(source, /your-garmin-1600\.avif\?v=20260902-your-garmin[^\n]*width="2200" height="1346"/);
-  assert.equal([...source.matchAll(/<li class="guide-step">[\s\S]*?<\/li>/g)].length, 5, locale + ": five ordered steps");
+  assert.equal([...source.matchAll(/<li class="guide-step">[\s\S]*?<\/li>/g)].length, 3, locale + ": three ordered steps");
   assert.match(source, /<ol class="guide-timeline">/);
-  assert.match(source, /<nav class="guide-progress" data-guide-progress[^>]*aria-label="[^"]+">/);
-  assert.equal([...source.matchAll(/<li><a href="#[^"]+"[^>]*><span class="guide-progress-number"/g)].length, 5, locale + ": five progress links");
-  for (const section of ["before-you-start", "steps", "troubleshooting", "faq-help", "context"]) {
+  assert.match(source, /<ol class="guide-substeps">/);
+  assert.equal([...source.matchAll(/<li><h4>[^<]+<\/h4><p>[^<]+<\/p><\/li>/g)].length, 2, locale + ": two install choices");
+  assert.doesNotMatch(source, /class="guide-progress"|data-guide-progress/);
+  for (const section of ["before-you-start", "steps", "troubleshooting"]) {
     assert.match(source, new RegExp(`id="${section}"`), `${locale}: progress target ${section}`);
   }
-  assert.match(source, /\/guide-progress\.js\?v=20260902-guide-progress/);
+  assert.doesNotMatch(source, /\/guide-progress\.js\?v=/);
   assert.match(source, /\/reading-state\.js\?v=20260902-reading-state/);
   assert.equal((source.match(/class="guide-screenshot"/g) || []).length, 3, locale + ": three screenshots");
   assert.match(source, /your-garmin|install-maps|installing-maps/);
   assert.doesNotMatch(source, /manage-maps|ready-to-install|object IDs?|MTP object trees?|transaction internals?|\/GARMIN|gmappmap\.img|gmaptz\.img|D\*\.img|hashes/i);
-  assert.match(source, /href="https:\/\/github\.com\/VooZ2\/terento\/issues"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/);
-  assert.match(source, /mailto:hello@terento\.app\?subject=Terento%20installation%20issue/);
   assert.match(source, /hello@terento\.app/);
-  assert.equal((source.match(/data-umami-event-location="guide-(?:hero|after-steps|bottom)"/g) || []).length, 3, locale + ": three guide download CTAs");
+  assert.doesNotMatch(source, /mailto:hello@terento\.app\?subject=Terento%20installation%20issue/);
+  assert.equal((source.match(/data-umami-event-location="guide-(?:hero|bottom)"/g) || []).length, 2, locale + ": two guide download CTAs");
   const downloadButtons = [...source.matchAll(/<a class="download-action"[^>]*>([^<]+)<span aria-hidden="true">→<\/span><\/a>/g)];
-  assert.equal(downloadButtons.length, 3, locale + ": three rendered download buttons");
+  assert.equal(downloadButtons.length, 2, locale + ": two rendered download buttons");
   for (const button of downloadButtons) assert.equal(button[1].trim(), downloadLabels[locale], locale + ": download button label");
-  for (const location of ["guide-hero", "guide-after-steps", "guide-bottom"]) assert.ok(source.includes('data-umami-event-location="' + location + '"'), locale + ": " + location);
+  for (const location of ["guide-hero", "guide-bottom"]) assert.ok(source.includes('data-umami-event-location="' + location + '"'), locale + ": " + location);
   assert.match(source, /data-umami-event="compatibility-link-click" data-umami-event-location="guide-preflight"/);
-  assert.match(source, /data-umami-event="support-link-click" data-umami-event-location="guide-install-failed" data-umami-event-channel="github-issue"/);
-  assert.match(source, /data-umami-event="support-link-click" data-umami-event-location="guide-install-failed" data-umami-event-channel="email"/);
+  assert.doesNotMatch(source, /support-link-click|guide-support-actions/);
   assert.doesNotMatch(source, /[?&]utm_/i);
   assert.doesNotMatch(source, /Written by|Byline|Gediminas|author photo/i);
-  assert.match(source, /https:\/\/support\.garmin\.com\/en-GB\/\?faq=bcmC4za1sy9hykGnopP8l7/);
-  assert.match(source, /https:\/\/support\.garmin\.com\/en-US\/\?faq=4QVp7mKSIA1LDk5fc1OHX8/);
-  assert.match(source, /https:\/\/support\.apple\.com\/en-ca\/102527/);
-  assert.match(source, /does not replace Garmin Express|ersetzt Garmin Express nicht|ne remplace pas Garmin Express|nie zastępuje Garmin Express|nenahrazuje Garmin Express|non sostituisce Garmin Express/i);
+  assert.doesNotMatch(source, /https:\/\/support\.garmin\.com|https:\/\/support\.apple\.com/);
+  assert.doesNotMatch(source, /does not replace Garmin Express|ersetzt Garmin Express nicht|ne remplace pas Garmin Express|nie zastępuje Garmin Express|nenahrazuje Garmin Express|non sostituisce Garmin Express/i);
   assert.doesNotMatch(source, /class="breadcrumbs"|<nav\b[^>]*(?:breadcrumb|Brotkrümel|Fil d’Ariane|Okruszki|Drobečková)/i, locale + ": no visible Guide breadcrumb navigation");
 
   const data = jsonLd(source, file);
@@ -141,9 +132,7 @@ for (const locale of locales) {
   );
   assert.equal(data["@graph"].filter((item) => item["@type"] === "FAQPage").length, 0, locale + ": Guide has no FAQ schema");
   assert.doesNotMatch(source, /<section class="guide-faq"\b|id="faq"/i, locale + ": Guide FAQ section removed");
-  assert.match(source, /<section class="guide-faq-link"[^>]*aria-label="[^"]+"/);
-  assert.match(source, new RegExp('href="' + localePath(locale) + '#faq"'));
-  assert.match(source, /data-umami-event="faq-link-click" data-umami-event-location="guide-troubleshooting"/);
+  assert.doesNotMatch(source, /guide-faq-link|id="faq-help"|id="context"/);
 }
 
 for (const locale of locales) {
@@ -194,8 +183,9 @@ assert.match(styles, /\.guide-step-copy\s*\{[^}]*grid-column:\s*3/s);
 assert.match(styles, /\.guide-screenshot\s*\{[^}]*grid-column:\s*1/s);
 assert.match(styles, /\.guide-step-content\s*\{[^}]*display:\s*contents/s);
 assert.doesNotMatch(styles, /zigzag|zig-zag/i);
-assert.match(styles, /\.guide-progress\s*\{/);
-assert.match(styles, /\.guide-progress a\[aria-current="location"\]/);
+assert.match(styles, /\.guide-facts span\s*\{[^}]*border-radius:\s*999px/s);
+assert.match(styles, /\.guide-substeps\s*\{/);
+assert.doesNotMatch(styles, /\.guide-progress\s*\{/);
 const shell = read(path.join(root, "site", "site-shell.js"));
 for (const label of ["Guide", "Anleitung", "Guide", "Poradnik", "Průvodce", "Guida"]) assert.ok(shell.includes(`guide: "${label}"`), `shell Guide label: ${label}`);
 assert.match(shell, /navLink\("compatibility"\).*navLink\("guide"\).*navLink\("about"\).*navLink\("download", "download-action"\)/s);

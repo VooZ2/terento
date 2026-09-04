@@ -5,7 +5,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 const styles = read("site/styles.css");
-const styleVersion = "20260905-about-story-v2";
+const styleVersion = "20260905-guide-flow-v1";
 const localizedContentVersion = "20260904-pass3-internal-link-events-v1";
 
 const cssBlock = (selector) => {

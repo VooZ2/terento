@@ -2,13 +2,12 @@
 <html lang="it" data-language="it" data-page="guide">
   <head>
     <script defer src="/site-shell.js?v=20260904-pass3-internal-link-events-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20260905-about-story-v2">
+    <link rel="stylesheet" href="/styles.css?v=20260905-guide-flow-v1">
     <script defer src="/reading-state.js?v=20260902-reading-state"></script>
-    <script defer src="/guide-progress.js?v=20260902-guide-progress"></script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
-    <meta name="description" content="Installa mappe di terze parti supportate su uno smartwatch Garmin da un Mac Apple Silicon. Collega l’orologio, scegli una mappa e usa Terento.">
+    <meta name="description" content="Installa mappe di terze parti supportate su uno smartwatch Garmin compatibile da un Mac Apple Silicon. Collega l’orologio, scegli una mappa o aggiungi il tuo file .img e installa con Terento in tre semplici passaggi.">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://terento.app/it/guides/install-garmin-maps-mac/">
     <link rel="alternate" hreflang="en" href="https://terento.app/guides/install-garmin-maps-mac/">
@@ -21,7 +20,7 @@
     <meta property="og:type" content="article">
     <meta property="og:site_name" content="Terento">
     <meta property="og:title" content="Installare mappe di terze parti Garmin da Mac — Terento">
-    <meta property="og:description" content="Installa mappe di terze parti supportate su uno smartwatch Garmin da un Mac Apple Silicon. Collega l’orologio, scegli una mappa e usa Terento.">
+    <meta property="og:description" content="Installa mappe di terze parti supportate su uno smartwatch Garmin compatibile da un Mac Apple Silicon. Collega l’orologio, scegli una mappa o aggiungi il tuo file .img e installa con Terento in tre semplici passaggi.">
     <meta property="og:url" content="https://terento.app/it/guides/install-garmin-maps-mac/">
     <meta property="og:image" content="https://terento.app/assets/social/terento-og.png">
     <meta property="og:image:type" content="image/png">
@@ -31,7 +30,7 @@
     <meta property="og:locale" content="it_IT">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Installare mappe di terze parti Garmin da Mac — Terento">
-    <meta name="twitter:description" content="Installa mappe di terze parti supportate su uno smartwatch Garmin da un Mac Apple Silicon. Collega l’orologio, scegli una mappa e usa Terento.">
+    <meta name="twitter:description" content="Installa mappe di terze parti supportate su uno smartwatch Garmin compatibile da un Mac Apple Silicon. Collega l’orologio, scegli una mappa o aggiungi il tuo file .img e installa con Terento in tre semplici passaggi.">
     <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
     <title>Installare mappe di terze parti Garmin da Mac — Terento</title>
 
@@ -61,8 +60,8 @@
     {
       "@type": "Article",
       "@id": "https://terento.app/it/guides/install-garmin-maps-mac/#article",
-      "headline": "Come installare mappe di terze parti su uno smartwatch Garmin da Mac",
-      "description": "Installa mappe di terze parti supportate su uno smartwatch Garmin da un Mac Apple Silicon. Collega l’orologio, scegli una mappa e usa Terento.",
+      "headline": "Installa mappe di terze parti sul tuo Garmin in tre semplici passaggi",
+      "description": "Installa mappe di terze parti supportate su uno smartwatch Garmin compatibile da un Mac Apple Silicon. Collega l’orologio, scegli una mappa o aggiungi il tuo file .img e installa con Terento in tre semplici passaggi.",
       "datePublished": "2026-08-28T00:00:00Z",
       "dateModified": "2026-09-04T00:00:00Z",
       "mainEntityOfPage": {
@@ -139,24 +138,13 @@
         <header class="guide-intro">
           <div class="shell">
             <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Guida all’installazione su Mac</p>
-            <h1>Come installare mappe di terze parti su uno smartwatch Garmin da Mac</h1>
-            <p class="guide-lede">Terento offre un flusso chiaro per Apple Silicon: collega l’orologio, scegli una mappa, controlla lo spazio e installa.</p>
+            <h1>Installa mappe di terze parti sul tuo Garmin in tre semplici passaggi</h1>
+            <p class="guide-lede">Collega l’orologio, scegli una mappa e lascia che Terento gestisca l’installazione — senza trasferimenti manuali di file.</p>
             <div class="guide-actions">
               <a class="download-action" href="/it/download/" data-umami-event="download-cta-click" data-umami-event-location="guide-hero">Scarica <span aria-hidden="true">→</span></a>
-              <a class="text-link" href="/it/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="guide-preflight">Vedi la compatibilità <span aria-hidden="true">→</span></a>
             </div>
-            <p class="guide-facts"><span>macOS 13+</span><span aria-hidden="true">·</span><span>Apple Silicon</span><span aria-hidden="true">·</span><span>Freizeitkarte + OpenTopoMap + importazione locale</span></p>
+            <p class="guide-facts"><span>macOS 13+</span><span>Apple Silicon</span><span>Smartwatch Garmin con supporto alle mappe</span></p>
             <p class="guide-meta"><span><strong>Ultima verifica:</strong> <time datetime="2026-09-04T00:00:00Z">4 settembre 2026</time></span><span aria-hidden="true">·</span><span><strong>Si applica a:</strong> Terento 1.0.0-beta.9</span></p>
-            <nav class="guide-progress" data-guide-progress aria-label="Sezioni della guida">
-              <p class="guide-progress-eyebrow">In breve</p>
-              <ol>
-                <li><a href="#before-you-start" data-umami-event="internal-link-click" data-umami-event-location="guide-progress"><span class="guide-progress-number" aria-hidden="true">01</span>Prima di iniziare</a></li>
-                <li><a href="#steps" data-umami-event="internal-link-click" data-umami-event-location="guide-progress"><span class="guide-progress-number" aria-hidden="true">02</span>Cinque passaggi</a></li>
-                <li><a href="#troubleshooting" data-umami-event="internal-link-click" data-umami-event-location="guide-progress"><span class="guide-progress-number" aria-hidden="true">03</span>Risoluzione dei problemi</a></li>
-                <li><a href="#faq-help" data-umami-event="internal-link-click" data-umami-event-location="guide-progress"><span class="guide-progress-number" aria-hidden="true">04</span>FAQ della Home</a></li>
-                <li><a href="#context" data-umami-event="internal-link-click" data-umami-event-location="guide-progress"><span class="guide-progress-number" aria-hidden="true">05</span>Un po’ di contesto</a></li>
-              </ol>
-            </nav>
           </div>
         </header>
 
@@ -164,32 +152,22 @@
           <section class="guide-preflight" id="before-you-start" aria-labelledby="before-you-start-title">
             <div class="guide-section-heading"><p class="eyebrow">Un controllo rapido</p><h2 id="before-you-start-title">Prima di iniziare</h2></div>
             <div class="guide-preflight-copy">
-              <ul class="guide-checklist"><li>Mac Apple Silicon</li><li>macOS 13 o versioni successive</li><li>Smartwatch Garmin con supporto alle mappe</li><li>Cavo USB che supporti il trasferimento dati</li><li>Ultima beta di Terento</li><li>Spazio libero sufficiente sull’orologio</li></ul>
-              <p>La pagina Compatibilità ufficiale è l’unico elenco pubblico di modelli e varianti esatti con prove reali di installazione. Non promette la compatibilità con ogni smartwatch Garmin. Dopo il collegamento, Terento controlla l’orologio e ti dice se puoi continuare in sicurezza.</p>
+              <ul class="guide-checklist"><li>Mac Apple Silicon</li><li>macOS 13 o successivo</li><li>Smartwatch Garmin con supporto alle mappe</li><li>Cavo USB per il trasferimento dati</li></ul>
+              <p>Terento controlla l’orologio dopo il collegamento. Consulta le prove attuali di compatibilità per i modelli e le varianti testati durante installazioni reali.</p>
               <a class="text-link" href="/it/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="guide-preflight">Vedi le prove attuali di compatibilità <span aria-hidden="true">→</span></a>
             </div>
           </section>
 
           <section class="guide-steps" id="steps" aria-labelledby="steps-title">
-            <div class="guide-section-heading"><p class="eyebrow">Il flusso</p><h2 id="steps-title">Installa in cinque passaggi</h2></div>
+            <div class="guide-section-heading"><p class="eyebrow">Il percorso</p><h2 id="steps-title">Installa in tre passaggi</h2></div>
             <ol class="guide-timeline"><li class="guide-step">
               <div class="guide-step-marker" aria-hidden="true">01</div>
               <div class="guide-step-content">
                 <div class="guide-step-copy">
-                  <h3>Scarica Terento</h3>
-                  <p>Scarica l’ultima beta, aprila e sposta Terento nella cartella Applicazioni.</p>
-                  <p class="guide-step-note">Sono richiesti Apple Silicon e macOS 13 o versioni successive.</p>
+                  <h3>Collega</h3>
+                  <p>Collega lo smartwatch con un cavo USB dati. Terento lo riconosce e controlla se puoi continuare in sicurezza.</p>
 
-                </div>
-
-              </div>
-            </li><li class="guide-step">
-              <div class="guide-step-marker" aria-hidden="true">02</div>
-              <div class="guide-step-content">
-                <div class="guide-step-copy">
-                  <h3>Collega il tuo Garmin</h3>
-                  <p>Collega lo smartwatch con un cavo USB dati. Potrebbero servire 1–2 minuti perché appaia. Lascialo collegato mentre Terento completa il rilevamento.</p>
-                  <p class="guide-step-note">Chiudi Garmin Express o altre app che potrebbero già usare l’orologio.</p>
+                  <p class="guide-step-note">Lascia l’orologio collegato mentre Terento completa il rilevamento.</p>
 
                 </div>
                 <figure class="guide-screenshot">
@@ -198,15 +176,18 @@
             <source type="image/webp" srcset="/assets/app/optimized/your-garmin-640.webp?v=20260902-your-garmin 640w, /assets/app/optimized/your-garmin-960.webp?v=20260902-your-garmin 960w, /assets/app/optimized/your-garmin-1280.webp?v=20260902-your-garmin 1280w, /assets/app/optimized/your-garmin-1600.webp?v=20260902-your-garmin 1600w" sizes="(max-width: 760px) 100vw, 42vw">
             <img src="/assets/app/optimized/your-garmin-1600.avif?v=20260902-your-garmin" srcset="/assets/app/optimized/your-garmin-640.avif?v=20260902-your-garmin 640w, /assets/app/optimized/your-garmin-960.avif?v=20260902-your-garmin 960w, /assets/app/optimized/your-garmin-1280.avif?v=20260902-your-garmin 1280w, /assets/app/optimized/your-garmin-1600.avif?v=20260902-your-garmin 1600w" sizes="(max-width: 760px) 100vw, 42vw" width="2200" height="1346" loading="lazy" decoding="async" alt="Terento mostra uno smartwatch Garmin collegato e lo stato del rilevamento">
           </picture>
-          <figcaption>Dopo il collegamento possono servire 1–2 minuti perché lo smartwatch appaia.</figcaption>
+          <figcaption>Terento riconosce lo smartwatch Garmin collegato prima dell’installazione.</figcaption>
         </figure>
               </div>
             </li><li class="guide-step">
-              <div class="guide-step-marker" aria-hidden="true">03</div>
+              <div class="guide-step-marker" aria-hidden="true">02</div>
               <div class="guide-step-content">
                 <div class="guide-step-copy">
-                  <h3>Scegli una mappa</h3>
-                  <p>Scegli Freizeitkarte o OpenTopoMap e una regione. Terento mostra le dimensioni della mappa e lo spazio disponibile prima dell’installazione. Puoi anche aggiungere un file cartografico supportato dal Mac.</p>
+                  <h3>Installa</h3>
+                  <p>Scegli una mappa dal catalogo oppure aggiungi il tuo file .img compatibile. Terento gestisce l’installazione.</p>
+                  <ol class="guide-substeps">
+                  <li><h4>Scegli dal catalogo</h4><p>Scegli una regione dal catalogo Freizeitkarte o OpenTopoMap.</p></li>                  <li><h4>Aggiungi la tua mappa</h4><p>Aggiungi una mappa .img compatibile dal Mac.</p></li>
+                </ol>
 
 
                 </div>
@@ -216,16 +197,17 @@
             <source type="image/webp" srcset="/assets/app/optimized/install-maps-640.webp 640w, /assets/app/optimized/install-maps-960.webp 960w, /assets/app/optimized/install-maps-1280.webp 1280w" sizes="(max-width: 760px) 100vw, 42vw">
             <img src="/assets/app/optimized/install-maps-1280.avif" srcset="/assets/app/optimized/install-maps-640.avif 640w, /assets/app/optimized/install-maps-960.avif 960w, /assets/app/optimized/install-maps-1280.avif 1280w" sizes="(max-width: 760px) 100vw, 42vw" width="1555" height="1012" loading="lazy" decoding="async" alt="Terento mostra i provider, le regioni delle mappe di terze parti e lo spazio disponibile sul Garmin">
           </picture>
-          <figcaption>Scegli una mappa dopo che Terento ha controllato l’orologio e lo spazio disponibile.</figcaption>
+          <figcaption>Scegli una mappa dal catalogo oppure aggiungi il tuo file compatibile.</figcaption>
         </figure>
               </div>
             </li><li class="guide-step">
-              <div class="guide-step-marker" aria-hidden="true">04</div>
+              <div class="guide-step-marker" aria-hidden="true">03</div>
               <div class="guide-step-content">
                 <div class="guide-step-copy">
-                  <h3>Controlla e installa</h3>
-                  <p>Controlla la scelta e avvia l’installazione. Lascia l’orologio collegato mentre Terento trasferisce e verifica la mappa.</p>
-                  <p class="guide-step-note">Terento controlla la fonte della mappa, lo spazio disponibile, il trasferimento completato e il risultato finale.</p>
+                  <h3>Fatto</h3>
+                  <p>Quando Terento conferma che l’installazione è completa, scollega l’orologio in sicurezza e verifica che la mappa sia disponibile.</p>
+
+                  <p class="guide-step-note">Lascia l’orologio collegato finché Terento non segnala che l’installazione è terminata.</p>
 
                 </div>
                 <figure class="guide-screenshot">
@@ -237,23 +219,7 @@
           <figcaption>Lascia l’orologio collegato fino al completamento del trasferimento e della verifica.</figcaption>
         </figure>
               </div>
-            </li><li class="guide-step">
-              <div class="guide-step-marker" aria-hidden="true">05</div>
-              <div class="guide-step-content">
-                <div class="guide-step-copy">
-                  <h3>Controlla il risultato</h3>
-                  <p>Quando Terento segnala che ha finito, scollega l’orologio in sicurezza e verifica che la mappa sia disponibile.</p>
-                  <p class="guide-step-note">La visibilità della mappa e le impostazioni delle attività possono variare in base al modello Garmin. Se la condivisione della compatibilità è attiva, il risultato aiuta a confermare la compatibilità del modello e della variante esatti.</p>
-
-                </div>
-
-              </div>
             </li></ol>
-          </section>
-
-          <section class="guide-after-steps" aria-label="Passaggio successivo">
-            <p>Terento controlla la mappa, lo spazio disponibile e il risultato per proteggere il tuo orologio.</p>
-            <a class="download-action" href="/it/download/" data-umami-event="download-cta-click" data-umami-event-location="guide-after-steps">Scarica <span aria-hidden="true">→</span></a>
           </section>
 
           <section class="troubleshooting" id="troubleshooting" aria-labelledby="troubleshooting-title">
@@ -261,40 +227,17 @@
             <div class="troubleshooting-list"><section class="troubleshooting-item">
               <h3>Terento non rileva l’orologio</h3>
               <p>Attendi 1–2 minuti dopo il collegamento. Se lo smartwatch non appare, ricollegalo, controlla il cavo dati e chiudi le altre app che potrebbero usarlo.</p>
-
             </section><section class="troubleshooting-item">
               <h3>Installazione non riuscita</h3>
-              <p>Apri una issue su GitHub oppure invia il log diagnostico a <a href="mailto:hello@terento.app?subject=Terento%20installation%20issue">hello@terento.app</a>. Il log contiene le informazioni necessarie per l’analisi, quindi non devi controllare manualmente le cartelle del dispositivo.</p>
-              <div class="guide-support-actions">
-              <a class="text-link" href="https://github.com/VooZ2/terento/issues" target="_blank" rel="noopener noreferrer" data-umami-event="support-link-click" data-umami-event-location="guide-install-failed" data-umami-event-channel="github-issue">Apri una issue <span aria-hidden="true">→</span></a>
-              <a class="text-link" href="mailto:hello@terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="guide-install-failed" data-umami-event-channel="email">Invia il log <span aria-hidden="true">→</span></a>
-            </div>
-            </section><section class="troubleshooting-item">
-              <h3>Spazio insufficiente</h3>
-              <p>Scegli una regione più piccola oppure rimuovi una mappa gestita da Terento che non ti serve più.</p>
-
+              <p>Se un’installazione non riesce, Terento proporrà di aprire una issue su GitHub con le informazioni diagnostiche necessarie per analizzare il problema.</p>
             </section><section class="troubleshooting-item">
               <h3>La mappa è installata ma non è visibile</h3>
-              <p>Ricollega o riavvia l’orologio e controlla le impostazioni della mappa. Se la mappa non appare ancora, apri una issue oppure invia il log diagnostico a <a href="mailto:hello@terento.app?subject=Terento%20installation%20issue">hello@terento.app</a>.</p>
-              <div class="guide-support-actions">
-              <a class="text-link" href="https://github.com/VooZ2/terento/issues" target="_blank" rel="noopener noreferrer" data-umami-event="support-link-click" data-umami-event-location="guide-install-failed" data-umami-event-channel="github-issue">Apri una issue <span aria-hidden="true">→</span></a>
-              <a class="text-link" href="mailto:hello@terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="guide-install-failed" data-umami-event-channel="email">Invia il log <span aria-hidden="true">→</span></a>
-            </div>
+              <p>Ricollega o riavvia l’orologio e controlla le impostazioni della mappa. Se la mappa non appare ancora, apri una issue oppure invia il log diagnostico a hello@terento.app.</p>
             </section></div>
           </section>
 
-          <section class="guide-faq-link" id="faq-help" aria-label="Altra assistenza">
-            <div class="guide-faq-link-copy"><p class="eyebrow">Altra assistenza</p><p>Cerchi una risposta rapida? La FAQ della Home risponde alle domande più comuni.</p></div>
-            <a class="text-link" href="/it/#faq" data-reading-context="home-faq" data-umami-event="faq-link-click" data-umami-event-location="guide-troubleshooting">Apri la FAQ della Home <span aria-hidden="true">→</span></a>
-          </section>
-
-          <section class="guide-context" id="context" aria-labelledby="context-title">
-            <div class="guide-section-heading"><p class="eyebrow">Un po’ di contesto</p><h2 id="context-title">Perché è utile un flusso Mac nativo</h2></div>
-            <div class="guide-context-copy"><p>Garmin indica attualmente che <a href="https://support.garmin.com/en-GB/?faq=bcmC4za1sy9hykGnopP8l7&amp;identifier=310&amp;tab=topics" rel="noopener noreferrer">BaseCamp</a> per Mac è destinato ai Mac con processore Intel e che Rosetta può consentirne l’uso su Apple Silicon. Garmin dà indicazioni simili per <a href="https://support.garmin.com/en-US/?faq=4QVp7mKSIA1LDk5fc1OHX8" rel="noopener noreferrer">Garmin Express</a>. Apple spiega come <a href="https://support.apple.com/en-ca/102527" rel="noopener noreferrer">Rosetta</a> permette di eseguire app Intel su Apple Silicon. Terento è nativo per Apple Silicon e si concentra sull’installazione e la gestione di mappe di terze parti.</p><p>Terento non sostituisce Garmin Express per gli aggiornamenti ufficiali dei dispositivi né BaseCamp per i flussi più ampi di pianificazione dei percorsi.</p></div>
-          </section>
-
           <section class="guide-bottom-cta" aria-labelledby="guide-bottom-title">
-            <div><p class="eyebrow">Pronto quando vuoi</p><h2 id="guide-bottom-title">Installa sul tuo orologio la mappa di cui hai bisogno.</h2></div>
+            <div><p class="eyebrow">Pronto quando vuoi</p><h2 id="guide-bottom-title">Pronto a installare la tua prima mappa?</h2></div>
             <a class="download-action" href="/it/download/" data-umami-event="download-cta-click" data-umami-event-location="guide-bottom">Scarica <span aria-hidden="true">→</span></a>
           </section>
         </div>

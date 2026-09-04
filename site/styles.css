@@ -2537,25 +2537,35 @@ details p {
 }
 
 .guide-actions .download-action,
-.guide-after-steps .download-action,
 .guide-bottom-cta .download-action {
   min-height: 46px;
 }
 
-.guide-facts,
+.guide-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 22px 0 0;
+}
+
+.guide-facts span {
+  padding: 7px 11px;
+  border: 1px solid color-mix(in srgb, var(--border) 86%, var(--sky));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  color: var(--graphite);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
 .guide-meta {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 6px 10px;
-  margin: 22px 0 0;
-  color: var(--graphite);
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.guide-meta {
-  margin-top: 10px;
+  margin: 10px 0 0;
   color: var(--secondary);
   font-size: 13px;
   font-weight: 400;
@@ -2566,66 +2576,14 @@ details p {
   font-weight: 650;
 }
 
-.guide-progress {
-  margin-top: 32px;
-  padding-top: 16px;
-  border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-}
-
-.guide-progress-eyebrow {
-  margin: 0 0 12px;
-  color: var(--eyebrow-text);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-
-.guide-progress ol {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 24px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.guide-progress a {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--secondary);
-  font-size: 13px;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.guide-progress a:hover,
-.guide-progress a:focus-visible,
-.guide-progress a[aria-current="location"] {
-  color: var(--link-text);
-}
-
-.guide-progress-number {
-  color: var(--muted-text);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .06em;
-}
-
-.guide-progress a[aria-current="location"] .guide-progress-number {
-  color: var(--accent-text);
-}
-
 .guide-preflight,
 .guide-steps,
-.troubleshooting,
-.guide-context {
+.troubleshooting {
   display: grid;
   grid-template-columns: minmax(220px, .7fr) minmax(0, 1.3fr);
   gap: clamp(42px, 8vw, 112px);
   align-items: start;
-  padding: clamp(72px, 9vw, 120px) 0;
+  padding: clamp(64px, 8vw, 104px) 0;
   border-bottom: 1px solid var(--border);
 }
 
@@ -2652,8 +2610,7 @@ details p {
   line-height: 1.05;
 }
 
-.guide-preflight-copy,
-.guide-context-copy {
+.guide-preflight-copy {
   max-width: 680px;
   color: var(--secondary);
   font-size: 16px;
@@ -2774,8 +2731,7 @@ details p {
 }
 
 .guide-step-copy > p,
-.troubleshooting-item > p,
-.guide-context-copy p {
+.troubleshooting-item > p {
   margin-bottom: 0;
   color: var(--secondary);
   font-size: 15px;
@@ -2793,6 +2749,45 @@ details p {
 
 .guide-step-link {
   margin-top: 18px;
+}
+
+.guide-substeps {
+  display: grid;
+  gap: 14px;
+  margin: 22px 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: guide-substep;
+}
+
+.guide-substeps li {
+  position: relative;
+  padding-left: 34px;
+}
+
+.guide-substeps li::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  counter-increment: guide-substep;
+  color: var(--accent-text);
+  content: "2." counter(guide-substep);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+
+.guide-substeps h4 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.guide-substeps p {
+  margin: 0;
+  color: var(--secondary);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .guide-screenshot {
@@ -2821,7 +2816,6 @@ details p {
   line-height: 1.45;
 }
 
-.guide-after-steps,
 .guide-bottom-cta {
   display: flex;
   align-items: center;
@@ -2831,14 +2825,6 @@ details p {
   border-bottom: 1px solid var(--border);
 }
 
-.guide-after-steps p {
-  max-width: 600px;
-  margin: 0;
-  color: var(--secondary);
-  font-size: 15px;
-}
-
-.guide-after-steps .download-action,
 .guide-bottom-cta .download-action {
   flex: 0 0 auto;
   white-space: nowrap;
@@ -2858,51 +2844,11 @@ details p {
   font-size: 23px;
 }
 
-.troubleshooting-item > p a,
-.guide-context-copy a {
+.troubleshooting-item > p a {
   color: var(--link-text);
   font-weight: 650;
   text-decoration: underline;
   text-underline-offset: 3px;
-}
-
-.guide-support-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 22px;
-  margin-top: 16px;
-}
-
-.guide-support-actions .text-link {
-  font-size: 14px;
-}
-
-.guide-context-copy p + p {
-  margin-top: 18px;
-}
-
-.guide-faq-link {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 28px;
-  padding: 28px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.guide-faq-link-copy {
-  margin: 0;
-  color: var(--secondary);
-  font-size: 15px;
-}
-
-.guide-faq-link-copy .eyebrow {
-  margin: 0 0 8px;
-  color: var(--graphite);
-}
-
-.guide-faq-link-copy > p:last-child {
-  margin: 0;
 }
 
 .guide-bottom-cta {
@@ -2920,8 +2866,7 @@ details p {
 @media (max-width: 760px) {
   .guide-preflight,
   .guide-steps,
-  .troubleshooting,
-  .guide-context {
+  .troubleshooting {
     grid-template-columns: 1fr;
     gap: 34px;
     padding: 64px 0;
@@ -2931,21 +2876,8 @@ details p {
     max-width: 620px;
   }
 
-  .guide-faq-link {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 18px;
-    padding: 24px 0;
-  }
-
   .guide-checklist {
     grid-template-columns: 1fr;
-  }
-
-  .guide-progress ol {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px 16px;
   }
 
   .guide-step {
@@ -2984,14 +2916,12 @@ details p {
     margin-top: 24px;
   }
 
-  .guide-after-steps,
   .guide-bottom-cta {
     align-items: flex-start;
     flex-direction: column;
     padding: 28px 0;
   }
 
-  .guide-after-steps .download-action,
   .guide-bottom-cta .download-action {
     width: 100%;
   }
@@ -3042,14 +2972,12 @@ details p {
     width: 100%;
   }
 
-  .guide-facts,
   .guide-meta {
     align-items: flex-start;
     flex-direction: column;
     gap: 4px;
   }
 
-  .guide-facts span[aria-hidden="true"],
   .guide-meta span[aria-hidden="true"] {
     display: none;
   }

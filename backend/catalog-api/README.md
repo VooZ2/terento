@@ -256,7 +256,7 @@ closed reference before investigating a manually reopened new problem. See
 
 Overview attention is independent of the statistics date filter. Visible admin
 pages check every minute and offer Refresh when data changes, protecting unsaved
-form edits. These changes are locally tested, not yet production-verified.
+form edits. These changes are production-verified in release `932d757` (deployment run `33925498939`).
 
 At phone widths (up to 700 px), admin navigation collapses into Menu with a review
 shortcut, Overview attention precedes statistics, and the existing tables become
@@ -265,10 +265,15 @@ and the full device sorter are under Filters and sorting. Primary controls and
 form typography are sized for touch. Diagnostic dialogs keep their close header
 visible during content scrolling. These presentation changes reuse existing
 endpoints and permissions. Local evidence is recorded in
-`internal/audits/2026-09-05-admin-mobile-audit.md`; production rollout is pending.
+`internal/audits/2026-09-05-admin-mobile-audit.md`; production rollout completed in release `932d757`.
 
 Desktop admin tables fit their cards and wrap long values. Provider source
 details show complete URLs; campaign output wraps. Installation history uses
 page scrolling and diagnostic dialogs keep their close header visible. The
 local ten-page audit and long-content evidence are recorded in
-`internal/audits/2026-09-05-admin-desktop-fit-audit.md`; rollout is pending.
+`internal/audits/2026-09-05-admin-desktop-fit-audit.md`; rollout completed in release `932d757`.
+
+Production validation on 2026-09-05 covered all ten admin page types at 1280 px
+and 390 px, the mobile menu, and automatic resolution of the two active
+diagnostics linked to closed GitHub issue #94. Historical failure results were
+retained. Deployment workflow: https://github.com/VooZ2/terento/actions/runs/33925498939.
