@@ -1,0 +1,58 @@
+name: Check restricted VPS access
+on:
+  push:
+    branches: [terento/vps-image-publish]
+    paths: [.github/workflows/check-vps-access.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: rukas-access-check
+  cancel-in-progress: false
+jobs:
+  check:
+    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/terento/vps-image-publish'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: rukas-${{ matrix.role }}
+    strategy:
+      fail-fast: false
+      matrix:
+        role: [site, api]
+    steps:
+      - name: Verify forced commands and rehearsed deployment
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          ROLE: ${{ matrix.role }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          keydir="$(mktemp -d "$RUNNER_TEMP/rukas-ssh.XXXXXX")"
+          trap 'rm -rf "$keydir"' EXIT
+          printf '%s\n' "$VPS_SSH_KEY" > "$keydir/key"
+          unset VPS_SSH_KEY
+          printf '%s\n' '179.198.204.47 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII4/GzEE6xDFxBp4kE17EKNR3q70vpmkOJSp7/otiAq0' > "$keydir/known_hosts"
+          ssh_args=(-i "$keydir/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$keydir/known_hosts" -o ConnectTimeout=15)
+          target="terento-ci-$ROLE@179.198.204.47"
+          expect() {
+            expected="$1"; shift
+            result=0
+            ssh "${ssh_args[@]}" "$target" "$@" > "$keydir/output" 2>&1 || result=$?
+            cat "$keydir/output"
+            if [[ "$result" != "$expected" ]]; then
+              printf 'Expected exit %s, received %s\n' "$expected" "$result"
+              exit 1
+            fi
+          }
+          expect 64 id
+          grep -q 'Only the fixed image deployment command is permitted' "$keydir/output"
+          expect 64 'deploy api sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+          grep -q 'Only the fixed image deployment command is permitted' "$keydir/output"
+          if [[ "$ROLE" == site ]]; then
+            expect 0 'deploy sha256:5d224338ed3289e23c0e8dfd5f5e88ffe38254569494a2662db0642b017ee027 f7e394d0f13fa00796a9dfccad16fd11c673f264'
+            printf 'Site: authenticated, restricted, loopback deployment passed.\n' >> "$GITHUB_STEP_SUMMARY"
+          else
+            expect 1 'deploy sha256:b35ed2f0cb3f89c50b1b5d483dd063ad2fa25301e7e5afd2b98e5e884a748663 f7e394d0f13fa00796a9dfccad16fd11c673f264'
+            printf 'API: authenticated and restricted; deployment remains disabled pending data migration.\n' >> "$GITHUB_STEP_SUMMARY"
+          fi
