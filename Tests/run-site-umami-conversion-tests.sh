@@ -161,7 +161,7 @@ for path in home_files:
     assert html.count('class="provider-benefits"') == 2, f"{path}: expected one benefits list per provider"
     assert html.count("<details>") == 5, f"{path}: expected five FAQ answers"
     assert 'class="final-cta"' in html, f"{path}: expected final CTA"
-    assert "/assets/app/optimized/your-garmin-640.avif" in html, f"{path}: expected responsive hero artwork"
+    assert "/assets/app/optimized/installing-maps-640.avif" in html, f"{path}: expected responsive hero artwork"
     items = anchors(path)
     hero = [item for item in items if "hero-download-action" in item["class"] and "download-action" in item["class"] and urlparse(item["href"]).path.endswith("/download/")]
     assert len(hero) == 1, f"{path}: expected one home hero CTA"

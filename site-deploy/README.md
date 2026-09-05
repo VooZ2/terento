@@ -38,3 +38,13 @@ old app-update response cannot remain cached after a release.
 The public-shell normalizer also synchronizes the stylesheet cache version on
 standalone pages (404 and legacy redirect). The shared brand contract checks
 every HTML page, including these pages, before deployment.
+
+## 2026-09-05 website presentation refresh
+
+The prepared website release leads About with product value and a compact
+first-person maker story, uses Installing maps in the six Home heroes, and
+adds a small Your Garmin preview to Download. Download’s Free, Notarized and
+Apple Silicon labels share the Guide badge CSS rule. The stylesheet cache
+version is `20260905-shared-badges-v1`. Download links and the distributed app
+release remain unchanged. This change does not add hardware compatibility
+evidence. Publication status must be confirmed by the deployment workflow.

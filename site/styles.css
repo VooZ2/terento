@@ -561,7 +561,7 @@ h1 {
 }
 
 .about-story-copy {
-  max-width: 1020px;
+  max-width: 680px;
 }
 
 .about-story-copy p {
@@ -845,7 +845,26 @@ h1 {
 }
 
 .download-hero {
-  max-width: 920px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 400px);
+  gap: clamp(32px, 4vw, 64px);
+  align-items: center;
+}
+
+.download-copy { min-width: 0; }
+.download-visual { width: 100%; max-width: 400px; }
+.app-shot--download { margin: 0; }
+.download-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 20px 0 0;
+}
+
+@media (max-width: 899px) {
+  .download-hero { grid-template-columns: minmax(0, 1fr); gap: 32px; }
 }
 
 .download-details {
@@ -2562,7 +2581,8 @@ details p {
   margin: 22px 0 0;
 }
 
-.guide-facts span {
+.guide-facts span,
+.download-badges li {
   padding: 7px 11px;
   border: 1px solid color-mix(in srgb, var(--sky) 52%, var(--border));
   border-radius: 999px;
@@ -3098,3 +3118,15 @@ details p {
     gap: 8px;
   }
 }
+
+/* About: product purpose precedes the compact maker story. */
+.about-intro { padding: var(--internal-page-intro-padding-top) 0 0; }
+.about-intro h1 { max-width: 900px; margin: 14px 0 24px; font-size: clamp(38px, 5vw, 64px); line-height: 1.08; }
+.about-intro-copy { max-width: 680px; font-size: 18px; color: var(--secondary); }
+.about-beta { max-width: 680px; font-size: 14px; color: var(--secondary); }
+.about-beta a { display: inline; }
+.about-page .about-main { padding: 48px 0 64px; }
+.about-page .about-slogan h2 { font-size: clamp(30px, 3.5vw, 44px); }
+.about-page .about-story { padding: 48px 0 64px; border-top: 1px solid var(--border); }
+.about-story h2 { max-width: 680px; font-size: clamp(28px, 3vw, 40px); margin: 14px 0 24px; }
+.about-story-actions { margin-top: 28px; }

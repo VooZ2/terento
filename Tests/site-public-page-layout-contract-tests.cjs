@@ -5,8 +5,11 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 const styles = read("site/styles.css");
-const styleVersion = "20260905-privacy-legal-v1";
+const shellSource = read("site/site-shell.js");
+const languageSource = read("site/language.js");
+const styleVersion = "20260905-shared-badges-v1";
 const localizedContentVersion = "20260904-pass3-internal-link-events-v1";
+const mobileLanguageNames = { en: "English", de: "Deutsch", fr: "Français", pl: "Polski", cs: "Čeština", it: "Italiano" };
 
 const cssBlock = (selector) => {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -44,7 +47,7 @@ assert.doesNotMatch(cssBlock(".download-info-link-label"), /underline/);
 assert.match(cssBlock(".download-info-link-tail"), /white-space:\s*nowrap/);
 assert.match(cssBlock(".download-info-link-arrow"), /text-decoration:\s*none/);
 assert.match(styles, /\.download-detail a:not\(\.text-link\)\s*\{/);
-assert.match(cssBlock(".download-hero"), /max-width:\s*920px/);
+assert.match(cssBlock(".download-hero"), /grid-template-columns:\s*minmax\(0, 1fr\) minmax\(0, 400px\)/);
 assert.match(cssBlock(".download-details-list"), /grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
 assert.match(cssBlock(".download-details"), /border-top:\s*1px solid var\(--border\)/);
 assert.match(cssBlock(".download-detail"), /background:\s*var\(--surface\)/);
@@ -109,7 +112,16 @@ for (const [locale, contract] of Object.entries(locales)) {
   assert.equal((html.match(/class="download-hero"/g) || []).length, 1, `${locale} must use one focused download hero`);
   assert.equal((html.match(/class="download-details"/g) || []).length, 1, `${locale} must use one technical details section`);
   assert.equal((html.match(/class="download-detail"/g) || []).length, 2, `${locale} must use two decision-support detail cards`);
-  assert.doesNotMatch(html, /class="download-visual"|class="app-shot app-shot--download"|your-garmin-640\.avif/);
+  assert.equal((html.match(/class="download-visual"/g) || []).length, 1);
+  assert.match(html, /your-garmin-640\.avif\?v=20260905-app-screens-v1/);
+  const badges = html.match(/<ul class="download-badges">[\s\S]*?<\/ul>/)?.[0];
+  assert.ok(badges);
+  assert.equal((badges.match(/<li>/g) || []).length, 3);
+  assert.match(badges, /Apple Silicon/);
+  assert.doesNotMatch(badges, /beta|<a|<button/i);
+  assert.ok(html.indexOf('class="download-actions"') < html.indexOf('class="download-visual"'));
+  assert.ok(html.indexOf('class="download-visual"') < html.indexOf('class="download-details"'));
+
   assert.doesNotMatch(html, /class="download-requirement"/);
   assert.doesNotMatch(html, /class="download-trust"|Free · Notarized|Kostenlos · Notarisiert|Gratuit · Notarié|Bezpłatna · Notaryzowana|Zdarma · Notarizovaná|Gratuita · Notarizzata/);
   const intro = html.match(/<p class="download-intro"[^>]*>[\s\S]*?<\/p>/);
@@ -163,6 +175,7 @@ for (const [locale, contract] of Object.entries(locales)) {
   assert.doesNotMatch(trigger, /language-current|🇬🇧|🇩🇪|🇫🇷|🇵🇱|🇨🇿|🇮🇹/);
   assert.match(html, /class="language-option-flag"[^>]*>[^<]+<\/span><span>[^<]+<\/span>/);
   assert.match(html, /class="language-option"[^>]*aria-current="page"/);
+
 }
 
 assert.doesNotMatch(styles, /language-trigger::after|mobile-language-menu[^{]*\.language-trigger::after/);
@@ -186,21 +199,35 @@ for (const locale of Object.keys(locales)) {
   assert.equal((html.match(/class="about-item about-item--group"/g) || []).length, 2, `${locale} must have one Does and one Doesn't group`);
   assert.doesNotMatch(html, /class="compatibility-hero about-hero"/);
   assert.equal((html.match(/<h1\b/g) || []).length, 1, `${locale} must have one primary About heading`);
-  assert.match(html, /<section class="about-story" aria-labelledby="about-title">[\s\S]*<h1 id="about-title">/);
+  assert.match(html, /<section class="about-intro" aria-labelledby="about-title">[\s\S]*<h1 id="about-title">/);
   assert.match(html, /<p class="eyebrow"><span class="status-dot" aria-hidden="true"><\/span>/, `${locale} About story eyebrow must use the shared status dot`);
   const storyCopy = html.match(/<div class="about-story-copy">[\s\S]*?<\/div>/)?.[0];
   assert.ok(storyCopy, `${locale} must have a story copy block`);
-  assert.equal((storyCopy.match(/<p>/g) || []).length, 4, `${locale} must group the story into four idea-led paragraphs`);
+  assert.equal((storyCopy.match(/<p>/g) || []).length, 2, `${locale} must keep the maker story concise`);
+  assert.ok(html.indexOf('class="about-intro"') < html.indexOf('class="about-main"'));
+  assert.ok(html.indexOf('class="about-main"') < html.indexOf('class="about-story"'));
+  assert.doesNotMatch(html, /vibe coding|software developer|Softwareentwickler|développeur logiciel|programistą|vývojář|sviluppatore software/i);
+  const main = html.match(/<main[\s\S]*?<\/main>/)[0];
+  assert.equal((main.match(/class="download-action"/g) || []).length, 1);
+  assert.ok(main.indexOf('class="download-action"') < main.indexOf('class="about-main"'), `${locale} Download belongs with the product intro`);
+  assert.match(main, new RegExp(`href="/${prefix}download/" data-umami-event="download-cta-click" data-umami-event-location="about-intro"`));
+  assert.match(main, new RegExp(`href="/${prefix}compatibility/"`));
+  assert.match(main, /\.img/);
   assert.match(html, /class="[^"]*about-slogan/);
   assert.equal((html.match(/class="about-bullet-list"/g) || []).length, 2, `${locale} must use lists for Does and Doesn't`);
   assert.match(html, /href="https:\/\/www\.linkedin\.com\/in\/gediminasc\/"[^>]+data-umami-event="social-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="linkedin"/);
   assert.match(html, /href="https:\/\/www\.reddit\.com\/user\/MrDonas\/"[^>]+data-umami-event="social-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="reddit"/);
-  assert.match(html, /href="mailto:hello&#64;terento\.app"[^>]+data-umami-event="support-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="email"[^>]*>[\s\S]*about-social-address[^>]*>hello&#64;terento\.app<\/span>/);
+  assert.match(html, /<a class="about-social-link about-email-link" href="mailto:hello&#64;terento\.app"[^>]+data-umami-event="support-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="email"[^>]*>[\s\S]*<span>(?:Email|E-Mail|E-mail)<\/span><\/a>/);
+  assert.doesNotMatch(html, /about-social-address|hello&#64;terento\.app<\/a>/, `${locale} must keep the email address out of the visible About social links`);
   assert.match(html, /href="https:\/\/buymeacoffee\.com\/vooz2"[^>]+data-umami-event="donate"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="donate"/);
   assert.equal((html.match(/class="about-social-link(?:\s|\")/g) || []).length, 4, `${locale} must have LinkedIn, Reddit, Email, and Donate links`);
+  assert.equal((html.match(/class="about-bullet-list"/g) || []).length, 2, `${locale} must use two About bullet lists`);
+  assert.doesNotMatch(html, /does not promise compatibility|verspricht keine Kompatibilität|ne promet pas la compatibilité|nie obiecuje kompatybilności|neslibuje kompatibilitu|non promette la compatibilità/);
   assert.match(html, /\/assets\/social\/(?:email|linkedin|reddit|buymeacoffee)\.svg/);
   assert.doesNotMatch(html, /href="mailto:hello@terento\.app"/);
   assert.doesNotMatch(html, /Your device, ready for where you['’]re going|Open source by choice|Open source par choix|Open source od podstaw|Open source jako základ|Open source alla base/);
 }
 
 console.log("Public page intro and Download link layout contracts passed for all six locales.");
+
+assert.match(styles, /\.guide-facts span,\s*\.download-badges li\s*\{[^}]*border-radius:\s*999px/);
