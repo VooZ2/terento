@@ -27,7 +27,7 @@ def main() -> int:
     expect(["site/updates/macos-arm64.json"], baseline | {"site", "release", "app"})
     expect(["app/Terento/Info.plist"], baseline | {"app"})
     expect(
-        ["lab/native-connectivity-poc/Sources/TerentoPoC/Installation/MapLifecycle.swift"],
+        ["app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecycle.swift"],
         baseline | {"app", "native"},
     )
     expect(["backend/catalog-api/src/terento_catalog/admin.py"], baseline | {"backend"})
@@ -40,6 +40,10 @@ def main() -> int:
     expect(["scripts/generate-brand-tokens.py"], baseline | {"site", "app"})
     expect(["Tests/site-faq-content-tests.cjs"], set(MODULE.ALL_SUITES))
     expect([".github/workflows/swift-ci.yml"], set(MODULE.ALL_SUITES))
+    expect(["contracts/map-catalog.schema.json"], set(MODULE.ALL_SUITES))
+    expect(["contracts/fixtures/map-event.valid.json"], set(MODULE.ALL_SUITES))
+    expect(["contracts/README.md"], set(MODULE.ALL_SUITES))
+    expect(["app/TerentoCore/Package.swift"], {"app", "native", "shared", "ci"})
     expect(["Packaging/release.sh"], set(MODULE.ALL_SUITES))
     expect(["unknown-project-file.toml"], set(MODULE.ALL_SUITES))
     expect([], set(MODULE.ALL_SUITES))

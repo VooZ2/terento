@@ -1,0 +1,53 @@
+{
+  "catalogVersion": 2,
+  "updatedAt": "2026-05-03T00:00:00Z",
+  "manufacturer": "Garmin",
+  "legal": {
+    "manufacturerNotice": true,
+    "text": "Garmin and fēnix are trademarks of Garmin Ltd. Terento is an independent open-source project and is not affiliated with Garmin."
+  },
+  "devices": [
+    {
+      "id": "garmin-fenix-8-47-amoled",
+      "manufacturer": "Garmin",
+      "family": "fenix",
+      "familyName": "fēnix",
+      "model": "fēnix 8",
+      "variant": "47 mm, AMOLED",
+      "caseSizeMm": 47,
+      "displayType": "AMOLED",
+      "partNumber": "010-02904-10",
+      "productURL": "https://www.garmin.com/en-US/p/1228429/",
+      "active": true,
+      "mapCapable": true,
+      "asset": {
+        "status": "AVAILABLE",
+        "type": "product-image",
+        "url": "https://api.terento.app/assets/devices/garmin/fenix-8.webp",
+        "scope": "MODEL_SIZE",
+        "sha256": "abc123",
+        "mimeType": "image/webp",
+        "width": 640,
+        "height": 640,
+        "version": 1,
+        "attribution": "Garmin; approved Terento asset record",
+        "source": {
+          "type": "OFFICIAL_PRODUCT_MEDIA",
+          "brand": "Garmin",
+          "attributionRequired": true
+        }
+      },
+      "sourceAsset": {
+        "url": "https://res.garmin.com/en/products/010-02904-10/g/cf-lg.jpg",
+        "scope": "MODEL",
+        "version": 1,
+        "attribution": "Garmin official product media",
+        "source": {
+          "type": "OFFICIAL_PRODUCT_MEDIA",
+          "brand": "Garmin",
+          "attributionRequired": true
+        }
+      }
+    }
+  ]
+}

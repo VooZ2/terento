@@ -2,12 +2,12 @@
 set -euo pipefail
 
 repo_root="${0:A:h:h}"
-connect_screen="$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/Views/ConnectScreen.swift"
-evidence="$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/Compatibility/InstallationEvidence.swift"
-diagnostics="$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/Diagnostics/TerentoDiagnosticLog.swift"
-about="$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/Views/AboutTerentoView.swift"
-download="$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/MapCatalog/MapPackageAcquisition.swift"
-engine="$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/MapCatalog/MapEngine.swift"
+connect_screen="$repo_root/app/TerentoCore/Sources/TerentoPoC/Views/ConnectScreen.swift"
+evidence="$repo_root/app/TerentoCore/Sources/TerentoPoC/Compatibility/InstallationEvidence.swift"
+diagnostics="$repo_root/app/TerentoCore/Sources/TerentoPoC/Diagnostics/TerentoDiagnosticLog.swift"
+about="$repo_root/app/TerentoCore/Sources/TerentoPoC/Views/AboutTerentoView.swift"
+download="$repo_root/app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapPackageAcquisition.swift"
+engine="$repo_root/app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapEngine.swift"
 
 if grep -Fq 'Enough space remains after installation.' "$connect_screen"; then
     print -u2 "FAIL: allowed storage still shows a success warning"

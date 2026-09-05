@@ -307,7 +307,7 @@ export CLANG_MODULE_CACHE_PATH="$run_dir/clang-module-cache"
 
 run_logged "swift-build" \
     swift build \
-    --package-path "$repo_root/lab/native-connectivity-poc" \
+    --package-path "$repo_root/app/TerentoCore" \
     --product TerentoPoC \
     --build-path "$run_dir/swift-build"
 

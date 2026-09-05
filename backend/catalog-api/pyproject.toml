@@ -11,6 +11,9 @@ dependencies = [
   "psycopg[binary]==3.3.4",
 ]
 
+[project.optional-dependencies]
+test = ["jsonschema==4.26.0"]
+
 [project.scripts]
 terento-catalog-api = "terento_catalog.app:main"
 terento-catalog-migrate = "terento_catalog.migrate:main"

@@ -48,10 +48,10 @@ for the service's privacy model and configuration details.
 - Trademark note: LinkedIn, Reddit, and Buy Me a Coffee names and marks remain
   the property of their respective owners.
 
-## Native connectivity PoC dependencies
+## Native core dependencies
 
-The isolated native connectivity PoC under
-`lab/native-connectivity-poc/` links to Homebrew-installed libraries during
+The production SwiftPM native core under
+`app/TerentoCore/` links to Homebrew-installed libraries during
 development. The production Xcode target rebuilds these libraries from the
 pinned upstream sources recorded below and bundles the resulting dynamic
 libraries in `Terento.app/Contents/Frameworks`.
@@ -62,7 +62,7 @@ libraries in `Terento.app/Contents/Frameworks`.
 - Upstream: <https://github.com/libmtp/libmtp>
 - License: GNU Lesser General Public License 2.1 or later (LGPL-2.1-or-later)
 - Copyright: libmtp contributors
-- Use: read-only Garmin MTP detection, device information, and storage information
+- Use: Garmin MTP detection, device/storage information and guarded map transfers
 - Distribution: bundled in the production `Terento.app` under `Contents/Frameworks`; SwiftPM development builds may still use a local Homebrew prefix.
 - Build: pinned upstream source archive and checksum are recorded in `Packaging/NativeDependencies/build.sh`.
 - Compatibility: Terento code is GPL-3.0-or-later; the dynamically linked libmtp remains under LGPL-2.1-or-later. Terento does not relicense libmtp.
@@ -89,10 +89,27 @@ libraries in `Terento.app/Contents/Frameworks`.
 
 ## psycopg
 
-- Version: 3.2.9 (`psycopg[binary]`)
+- Version: 3.3.4 (`psycopg[binary]`, as pinned by the backend package)
 - Upstream: <https://www.psycopg.org/psycopg3/>
 - License: GNU Lesser General Public License 3.0 or later
 - Use: PostgreSQL connection and migration access for the metadata-only
   catalog service
 - Distribution: installed in the catalog API Docker image; the dependency's
   own license and notice requirements remain applicable
+
+## JSON Schema test validation
+
+- Dependency: jsonschema 4.26.0, pinned in the backend `test` optional group
+- Upstream: <https://github.com/python-jsonschema/jsonschema>
+- License: MIT
+- Use: offline Draft 2020-12 public contract and fixture checks only
+- Distribution: installed in CI/developer test environments, not added to the
+  production API image, macOS bundle or website
+- Redistribution: permitted by MIT with copyright and license notice retained;
+  no copyleft linking or source-disclosure obligation is introduced
+- Keep upstream license files if redistributing the test environment. Test
+  installation also resolves jsonschema's MIT-licensed dependencies: attrs
+  (<https://github.com/python-attrs/attrs>), jsonschema-specifications
+  (<https://github.com/python-jsonschema/jsonschema-specifications>), referencing
+  (<https://github.com/python-jsonschema/referencing>) and rpds-py
+  (<https://github.com/crate-py/rpds>). Their own notices remain applicable.

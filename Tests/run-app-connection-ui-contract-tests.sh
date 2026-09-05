@@ -2,10 +2,10 @@
 set -euo pipefail
 
 repo_root="${0:A:h:h}"
-connect_screen="$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/Views/ConnectScreen.swift"
-device_engine="$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/DeviceEngine/DeviceEngine.swift"
-map_lifecycle="$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/Installation/MapLifecycle.swift"
-connecting_illustration="$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/Resources/Illustrations/connect-illustration-connecting.png"
+connect_screen="$repo_root/app/TerentoCore/Sources/TerentoPoC/Views/ConnectScreen.swift"
+device_engine="$repo_root/app/TerentoCore/Sources/TerentoPoC/DeviceEngine/DeviceEngine.swift"
+map_lifecycle="$repo_root/app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecycle.swift"
+connecting_illustration="$repo_root/app/TerentoCore/Sources/TerentoPoC/Resources/Illustrations/connect-illustration-connecting.png"
 project_file="$repo_root/Terento.xcodeproj/project.pbxproj"
 
 assert_contains() {
@@ -62,7 +62,7 @@ assert_contains 'InstallationFailureDialog(' "$connect_screen"
 assert_contains 'onReportIssue: { reportInstallationIssue(for: selectedInstallationPlan) }' "$connect_screen"
 assert_contains 'InstallationIssueReport.copyAndOpenGitHub(draft)' "$connect_screen"
 assert_contains 'The report is still copied and ready to paste.' "$connect_screen"
-assert_contains 'NSWorkspace.shared.open(fileURL)' "$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/Diagnostics/TerentoDiagnosticLog.swift"
+assert_contains 'NSWorkspace.shared.open(fileURL)' "$repo_root/app/TerentoCore/Sources/TerentoPoC/Diagnostics/TerentoDiagnosticLog.swift"
 assert_contains 'TerentoDiagnosticLog.swift in Sources' "$project_file"
 assert_absent 'Button("Show log.txt")' "$connect_screen"
 assert_absent 'Button("Report issue")' "$connect_screen"

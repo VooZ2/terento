@@ -11,7 +11,8 @@ tests.
 
 - macOS and Xcode with the `Terento.xcodeproj` toolchain available;
 - Node.js for the JavaScript-backed native/web regression contracts;
-- Python 3 for static release and catalog contract checks;
+- Python 3.12 or 3.13 with `backend/catalog-api[test]` installed in the active
+  environment for backend and shared JSON contract checks;
 - the Developer ID Application identity for Team ID `VXALAZU3B5` in the local
   Keychain;
 - the notarytool Keychain profile `TerentoNotary` configured outside the

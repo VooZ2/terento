@@ -1,0 +1,662 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "compatibility-event.schema.json",
+  "title": "Compatibility installation evidence request",
+  "description": "POST /compatibility/events body only. Existing allowlist and version-dependent checks; transport limits and ISO parsing remain server checks. No new collection permission is granted.",
+  "type": "object",
+  "properties": {
+    "model": {
+      "$ref": "#/$defs/safeText"
+    },
+    "transport": {
+      "$ref": "#/$defs/safeText"
+    },
+    "provider": {
+      "type": "string",
+      "pattern": "^(?:[fF][rR][eE][iI][zZ][eE][iI][tT][kK][aA][rR][tT][eE]|[oO][pP][eE][nN][tT][oO][pP][oO][mM][aA][pP]|[cC][uU][sS][tT][oO][mM])$"
+    },
+    "region": {
+      "$ref": "#/$defs/safeText"
+    },
+    "mapRelease": {
+      "$ref": "#/$defs/safeText"
+    },
+    "terentoVersion": {
+      "$ref": "#/$defs/safeText"
+    },
+    "macOSVersion": {
+      "$ref": "#/$defs/safeText"
+    },
+    "schemaVersion": {
+      "type": "integer",
+      "enum": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "description": "Evidence body version. Versions 1–3 retain a legacy deletionToken; version 4 forbids it. Not an app release."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F-]{36}$",
+      "description": "Random event identity, not a Garmin unit identifier."
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "ISO timestamp accepted by datetime.fromisoformat; legacy evidence permits a missing timezone."
+    },
+    "phaseOutcome": {
+      "enum": [
+        "SUCCEEDED",
+        "FAILED",
+        "NOT_STARTED"
+      ]
+    },
+    "automaticFinishingResult": {
+      "enum": [
+        "VERIFIED",
+        "FAILED",
+        "NOT_REACHED"
+      ]
+    },
+    "usbVendorID": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535
+    },
+    "usbProductID": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535
+    },
+    "errorCategory": {
+      "enum": [
+        null,
+        "acquisition",
+        "transport",
+        "verification",
+        "storage",
+        "deviceDisconnected",
+        "sourceValidation",
+        "unknown"
+      ]
+    },
+    "canonicalDeviceId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-z0-9][a-z0-9-]{0,159}$",
+      "description": "Public model identity, not a Garmin unit identifier."
+    },
+    "caseSizeMm": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1,
+      "maximum": 999
+    },
+    "rawMTPModel": {
+      "anyOf": [
+        {
+          "type": "string",
+          "maxLength": 160,
+          "pattern": "^(?![\\s\\S]*(?:/Users/|file://|[\\u0000-\\u001f]))[\\s\\S]*\\S[\\s\\S]*$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Sanitized model label only. No raw logs or device serial."
+    },
+    "deletionToken": {
+      "type": "string",
+      "description": "Legacy versions 1–3 only: historical random deletion token. It is not a credential; deletion is no longer supported. Never emit in version 4."
+    },
+    "compatibilityIdentity": {
+      "$ref": "#/$defs/optionalText"
+    },
+    "variant": {
+      "$ref": "#/$defs/optionalText"
+    },
+    "displayType": {
+      "$ref": "#/$defs/optionalText"
+    },
+    "family": {
+      "$ref": "#/$defs/optionalText"
+    },
+    "firmwareVersion": {
+      "$ref": "#/$defs/optionalText"
+    },
+    "reconnectVerified": {
+      "type": "boolean"
+    },
+    "mapVisibleAfterReconnect": {
+      "type": "boolean"
+    },
+    "userConfirmed": {
+      "type": "boolean"
+    },
+    "operationId": {
+      "description": "Random operation identity groups map results; not a physical device identifier. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+    },
+    "mapResultIndex": {
+      "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+    },
+    "selectedMapCount": {
+      "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+    },
+    "appBuild": {
+      "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+    },
+    "releaseLabel": {
+      "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+    },
+    "writeStarted": {
+      "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+    },
+    "remoteObjectCreated": {
+      "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+    },
+    "cleanupAttempted": {
+      "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+    },
+    "cleanupSucceeded": {
+      "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+    },
+    "transferProgressBucket": {
+      "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+    },
+    "failureStage": {
+      "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+    },
+    "identityResolutionCode": {
+      "description": "Resolution method name only; never the underlying serial or Unit ID. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+    },
+    "failureCode": {
+      "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+    },
+    "nativeFailureCode": {
+      "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "timestamp",
+    "model",
+    "usbVendorID",
+    "usbProductID",
+    "transport",
+    "provider",
+    "region",
+    "mapRelease",
+    "terentoVersion",
+    "macOSVersion",
+    "phaseOutcome",
+    "automaticFinishingResult"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "schemaVersion": {
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "deletionToken"
+        ],
+        "properties": {
+          "deletionToken": {
+            "pattern": "^[0-9a-fA-F]{64}$"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "schemaVersion": {
+            "const": 4
+          }
+        },
+        "required": [
+          "schemaVersion"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "deletionToken"
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "schemaVersion": {
+            "enum": [
+              1,
+              2
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "phaseOutcome": {
+            "enum": [
+              "SUCCEEDED",
+              "FAILED"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phaseOutcome": {
+            "const": "SUCCEEDED"
+          }
+        },
+        "required": [
+          "phaseOutcome"
+        ]
+      },
+      "then": {
+        "properties": {
+          "automaticFinishingResult": {
+            "const": "VERIFIED"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phaseOutcome": {
+            "const": "FAILED"
+          }
+        },
+        "required": [
+          "phaseOutcome"
+        ]
+      },
+      "then": {
+        "properties": {
+          "automaticFinishingResult": {
+            "enum": [
+              "FAILED",
+              "NOT_REACHED"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phaseOutcome": {
+            "const": "NOT_STARTED"
+          }
+        },
+        "required": [
+          "phaseOutcome"
+        ]
+      },
+      "then": {
+        "properties": {
+          "automaticFinishingResult": {
+            "const": "NOT_REACHED"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reconnectVerified": {
+            "const": true
+          }
+        },
+        "required": [
+          "reconnectVerified"
+        ]
+      },
+      "then": {
+        "properties": {
+          "phaseOutcome": {
+            "const": "SUCCEEDED"
+          },
+          "automaticFinishingResult": {
+            "const": "VERIFIED"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mapVisibleAfterReconnect": {
+            "const": true
+          }
+        },
+        "required": [
+          "mapVisibleAfterReconnect"
+        ]
+      },
+      "then": {
+        "required": [
+          "reconnectVerified"
+        ],
+        "properties": {
+          "reconnectVerified": {
+            "const": true
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "provider": {
+            "pattern": "^[cC][uU][sS][tT][oO][mM]$"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "region": {
+            "const": "custom"
+          },
+          "mapRelease": {
+            "const": "custom"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "schemaVersion": {
+            "enum": [
+              3,
+              4
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "operationId": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F-]{36}$",
+            "description": "Random operation identity groups map results; not a physical device identifier."
+          },
+          "mapResultIndex": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 99
+          },
+          "selectedMapCount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "appBuild": {
+            "type": "string",
+            "maxLength": 80,
+            "pattern": "^(?![\\s\\S]*(?:/Users/|file://))[\\s\\S]*\\S[\\s\\S]*$"
+          },
+          "releaseLabel": {
+            "type": "string",
+            "maxLength": 80,
+            "pattern": "^(?![\\s\\S]*(?:/Users/|file://))[\\s\\S]*\\S[\\s\\S]*$"
+          },
+          "writeStarted": {
+            "type": "boolean"
+          },
+          "remoteObjectCreated": {
+            "type": "boolean"
+          },
+          "cleanupAttempted": {
+            "type": "boolean"
+          },
+          "cleanupSucceeded": {
+            "type": "boolean"
+          },
+          "transferProgressBucket": {
+            "enum": [
+              "0",
+              "1-24",
+              "25-99",
+              "100"
+            ]
+          },
+          "failureStage": {
+            "enum": [
+              null,
+              "download",
+              "extract",
+              "source-validation",
+              "preflight",
+              "write",
+              "verify",
+              "cleanup",
+              "manifest"
+            ]
+          },
+          "identityResolutionCode": {
+            "enum": [
+              null,
+              "MTP_SERIAL",
+              "GARMIN_UNIT_ID",
+              "UNAVAILABLE"
+            ],
+            "description": "Resolution method name only; never the underlying serial or Unit ID."
+          },
+          "failureCode": {
+            "enum": [
+              null,
+              "INSTALL_BLOCKED_BACKUP_FAILED",
+              "INSTALL_BLOCKED_DOWNLOAD_FAILED",
+              "INSTALL_BLOCKED_EXISTING_MAP_CONFLICT",
+              "INSTALL_BLOCKED_INSUFFICIENT_SPACE",
+              "INSTALL_BLOCKED_MAP_IDENTITY_AMBIGUOUS",
+              "INSTALL_BLOCKED_SOURCE_ARTIFACT_INVALID",
+              "INSTALL_BLOCKED_SOURCE_VALIDATION_FAILED",
+              "INSTALL_BLOCKED_STABLE_WATCH_IDENTITY_UNAVAILABLE",
+              "INSTALL_BLOCKED_TRANSACTION_ALREADY_RUNNING",
+              "INSTALL_BLOCKED_UNKNOWN_INSTALL_SIZE",
+              "INSTALL_BLOCKED_UNKNOWN_TARGET",
+              "INSTALL_BLOCKED_VERIFICATION_REQUIRED",
+              "INSTALL_FAILED_CLEANUP",
+              "INSTALL_FAILED_DEVICE_DISCONNECTED",
+              "INSTALL_FAILED_HASH_MISMATCH",
+              "INSTALL_FAILED_INVALID_STATE_TRANSITION",
+              "INSTALL_FAILED_MANIFEST",
+              "INSTALL_FAILED_METADATA_MISMATCH",
+              "INSTALL_FAILED_PROTECTION_VIOLATION",
+              "INSTALL_FAILED_REMOTE_FILE_MISSING",
+              "INSTALL_FAILED_SIZE_MISMATCH",
+              "INSTALL_FAILED_WRITE",
+              "INSTALL_NOT_STARTED_AFTER_EARLIER_FAILURE"
+            ]
+          },
+          "nativeFailureCode": {
+            "enum": [
+              null,
+              "DELETE_FAILED",
+              "DEVICE_DISCONNECTED",
+              "GARMIN_DEVICE_XML_INVALID",
+              "GARMIN_ROOT_COUNT_INVALID",
+              "LIVE_IDENTITY_MISMATCH",
+              "MTP_OPEN_FAILED",
+              "OBJECT_ID_MISMATCH",
+              "PREFLIGHT_MTP_READ_FAILED",
+              "READBACK_FAILED",
+              "REMOTE_FILE_MISSING",
+              "SEND_OBJECT_FAILED",
+              "STABLE_WATCH_IDENTITY_UNAVAILABLE",
+              "TARGET_ALREADY_EXISTS",
+              "UNSUPPORTED_DEVICE"
+            ]
+          }
+        },
+        "required": [
+          "operationId",
+          "mapResultIndex",
+          "selectedMapCount",
+          "appBuild",
+          "releaseLabel",
+          "writeStarted",
+          "remoteObjectCreated",
+          "cleanupAttempted",
+          "cleanupSucceeded",
+          "transferProgressBucket"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "phaseOutcome": {
+                  "const": "SUCCEEDED"
+                }
+              },
+              "required": [
+                "phaseOutcome"
+              ]
+            },
+            "then": {
+              "properties": {
+                "failureStage": {
+                  "type": "null"
+                },
+                "failureCode": {
+                  "type": "null"
+                },
+                "nativeFailureCode": {
+                  "type": "null"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "phaseOutcome": {
+                  "enum": [
+                    "FAILED",
+                    "NOT_STARTED"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "failureStage",
+                "failureCode"
+              ],
+              "properties": {
+                "failureStage": {
+                  "not": {
+                    "type": "null"
+                  }
+                },
+                "failureCode": {
+                  "not": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "phaseOutcome": {
+                  "const": "NOT_STARTED"
+                }
+              },
+              "required": [
+                "phaseOutcome"
+              ]
+            },
+            "then": {
+              "properties": {
+                "writeStarted": {
+                  "const": false
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "remoteObjectCreated": {
+                  "const": true
+                }
+              },
+              "required": [
+                "remoteObjectCreated"
+              ]
+            },
+            "then": {
+              "properties": {
+                "writeStarted": {
+                  "const": true
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "cleanupSucceeded": {
+                  "const": true
+                }
+              },
+              "required": [
+                "cleanupSucceeded"
+              ]
+            },
+            "then": {
+              "properties": {
+                "cleanupAttempted": {
+                  "const": true
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "safeText": {
+      "type": "string",
+      "maxLength": 160,
+      "pattern": "^(?![\\s\\S]*(?:/Users/|file://))[\\s\\S]*\\S[\\s\\S]*$"
+    },
+    "optionalText": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 160,
+      "pattern": "^(?![\\s\\S]*(?:/Users/|file://))[\\s\\S]*$"
+    }
+  }
+}

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="${0:A:h:h}"
-about_source="$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/Views/ConnectScreen.swift"
+about_source="$repo_root/app/TerentoCore/Sources/TerentoPoC/Views/ConnectScreen.swift"
 about_content="$(sed -n '/private var aboutContent/,/private var managedMapsContent/p' "$about_source")"
 
 if ! grep -Fq 'HStack(alignment: .center, spacing: 16)' <<<"$about_content" \
@@ -15,12 +15,12 @@ if ! grep -Fq 'HStack(alignment: .center, spacing: 16)' <<<"$about_content" \
 fi
 
 if ! grep -Fq 'Text(TerentoAppMetadata.displayVersion)' \
-    "$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/Views/AboutTerentoView.swift"; then
+    "$repo_root/app/TerentoCore/Sources/TerentoPoC/Views/AboutTerentoView.swift"; then
     print -u2 "FAIL: Help → About does not use the shared display version"
     exit 1
 fi
 
-standalone_about_source="$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/Views/AboutTerentoView.swift"
+standalone_about_source="$repo_root/app/TerentoCore/Sources/TerentoPoC/Views/AboutTerentoView.swift"
 for presentation in \
     'TerentoColors.canvas' \
     '.background(TerentoColors.canvas)' \
@@ -109,7 +109,7 @@ for referral in \
     'utm_source=terento_app' \
     'utm_medium=referral' \
     'utm_campaign=app_about'; do
-    if ! grep -Fq "$referral" "$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/Views/AppLinks.swift"; then
+    if ! grep -Fq "$referral" "$repo_root/app/TerentoCore/Sources/TerentoPoC/Views/AppLinks.swift"; then
         print -u2 "FAIL: app referral parameter is missing: $referral"
         exit 1
     fi

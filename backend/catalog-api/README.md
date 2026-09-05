@@ -15,7 +15,7 @@ serial numbers, manifests, accounts, private logs, or map binaries.
 
 ## Local development
 
-Python 3.12+ is required. A PostgreSQL database is required for migrations and
+Python 3.12 or 3.13 is required. A PostgreSQL database is required for migrations and
 the API; parser and HTTP contract tests use fakes and do not require a live
 database.
 
@@ -38,15 +38,21 @@ The API listens on `http://127.0.0.1:8000` by default when `CATALOG_HOST` is
 set to `127.0.0.1`. The production Compose file binds the service only to the
 private Docker network and lets Traefik provide HTTPS.
 
-Run the dependency-free tests from the repository root:
+Run the offline tests from the repository root after installing the test extra:
 
 ```sh
+python -m pip install -e 'backend/catalog-api[test]'
 Tests/run-backend-tests.sh
 ```
 
 The backend regression suite includes generated-admin JavaScript checks and
 therefore requires Node.js. Set `TERENTO_NODE_BIN` when Node.js is not on
 `PATH`.
+
+The shared [public schemas and fixtures](../../contracts/README.md) document
+current map/device projections and event bodies. Tests use jsonschema only in
+the optional test environment; the production container keeps its existing
+runtime dependencies.
 
 ## Endpoints
 

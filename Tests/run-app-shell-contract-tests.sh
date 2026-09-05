@@ -4,9 +4,9 @@ set -euo pipefail
 repo_root="${0:A:h:h}"
 icon_directory="$repo_root/app/Terento/Assets.xcassets/AppIcon.appiconset"
 icon_contents="$icon_directory/Contents.json"
-app_source="$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/TerentoPoCApp.swift"
-about_source="$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/Views/AboutTerentoView.swift"
-links_source="$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/Views/AppLinks.swift"
+app_source="$repo_root/app/TerentoCore/Sources/TerentoPoC/TerentoPoCApp.swift"
+about_source="$repo_root/app/TerentoCore/Sources/TerentoPoC/Views/AboutTerentoView.swift"
+links_source="$repo_root/app/TerentoCore/Sources/TerentoPoC/Views/AppLinks.swift"
 project_file="$repo_root/Terento.xcodeproj/project.pbxproj"
 
 [[ -f "$icon_contents" ]] || { print -u2 "Missing AppIcon Contents.json"; exit 1; }
@@ -61,7 +61,7 @@ for url in 'https://terento.app' 'https://github.com/VooZ2/terento#readme' 'http
     rg -Fq "$url" "$links_source"
 done
 
-if rg -Fq "Help isn't available for Terento." "$repo_root/lab/native-connectivity-poc/Sources"; then
+if rg -Fq "Help isn't available for Terento." "$repo_root/app/TerentoCore/Sources"; then
     print -u2 "The default unavailable Help message is still present"
     exit 1
 fi

@@ -1,0 +1,368 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "map-catalog.schema.json",
+  "title": "Public map catalog",
+  "description": "GET /maps/catalog.json. Current serialized projection with legacy aliases; unknown additive response fields are allowed.",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": 2,
+      "description": "Provider-neutral public payload shape. Not the Terento release number."
+    },
+    "catalogVersion": {
+      "const": 1,
+      "description": "Independent legacy map-catalog decoder contract version."
+    },
+    "updatedAt": {
+      "type": "string"
+    },
+    "providers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/provider"
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "catalogVersion",
+    "updatedAt",
+    "providers"
+  ],
+  "additionalProperties": true,
+  "$defs": {
+    "version": {
+      "type": "object",
+      "properties": {
+        "year": {
+          "type": "integer"
+        },
+        "month": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "year",
+        "month"
+      ],
+      "additionalProperties": true
+    },
+    "releaseMetadata": {
+      "type": "object",
+      "properties": {
+        "releaseId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "versionLabel": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "generatedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sourceUpdatedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "releaseId",
+        "versionLabel",
+        "generatedAt",
+        "sourceUpdatedAt"
+      ],
+      "additionalProperties": true
+    },
+    "artifact": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "sourceUrl": {
+          "type": "string"
+        },
+        "sourceURL": {
+          "type": "string"
+        },
+        "sizeBytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Final Garmin image bytes when known; null means storage planning needs a measured image size."
+        },
+        "downloadSizeBytes": {
+          "type": "integer",
+          "description": "Provider download/archive bytes, not final installed image bytes."
+        },
+        "installSizeBytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Final Garmin image bytes when known; null means storage planning needs a measured image size."
+        },
+        "checksumSha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "checksum": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "contentType": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "validationStatus": {
+          "type": "string"
+        },
+        "validationState": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "required",
+        "sourceUrl",
+        "sourceURL",
+        "sizeBytes",
+        "downloadSizeBytes",
+        "installSizeBytes",
+        "checksumSha256",
+        "checksum",
+        "contentType",
+        "validationStatus",
+        "validationState"
+      ],
+      "additionalProperties": true
+    },
+    "map": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "country": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "description": "Legacy map-level download/package size; unlike artifact.sizeBytes this is not install size."
+        },
+        "downloadSizeBytes": {
+          "type": "integer",
+          "description": "Provider download/archive bytes, not final installed image bytes."
+        },
+        "installSizeBytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Final Garmin image bytes when known; null means storage planning needs a measured image size."
+        },
+        "sourceURL": {
+          "type": "string"
+        },
+        "sourceUrl": {
+          "type": "string"
+        },
+        "releaseDate": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "identifier": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "providerRegionId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "canonicalRegionId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "countryCodes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "regionKind": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "release": {
+          "type": "string",
+          "description": "Provider release label, independent of app and API versions."
+        },
+        "availability": {
+          "type": "string"
+        },
+        "releaseMetadata": {
+          "$ref": "#/$defs/releaseMetadata"
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/artifact"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "region",
+        "name",
+        "country",
+        "version",
+        "sizeBytes",
+        "downloadSizeBytes",
+        "installSizeBytes",
+        "sourceURL",
+        "sourceUrl",
+        "releaseDate",
+        "identifier",
+        "providerRegionId",
+        "canonicalRegionId",
+        "countryCodes",
+        "regionKind",
+        "tags",
+        "capabilities",
+        "release",
+        "artifacts"
+      ],
+      "additionalProperties": true
+    },
+    "provider": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "adapterId": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "health": {
+          "type": "string"
+        },
+        "lastCheckedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lastSuccessfulCatalogSync": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "website": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "attribution": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "licenseURL": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "licenseInformation": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "maps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/map"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "adapterId",
+        "status",
+        "health",
+        "website",
+        "attribution",
+        "licenseURL",
+        "licenseInformation",
+        "maps"
+      ],
+      "additionalProperties": true
+    }
+  }
+}

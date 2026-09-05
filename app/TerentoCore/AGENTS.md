@@ -2,7 +2,7 @@
 
 These instructions supplement the repository-level `AGENTS.md` and apply to
 the SwiftPM app module, its tests, developer tools, and resources under this
-directory. The root instructions remain authoritative for product scope,
+`app/TerentoCore/` directory. The root instructions remain authoritative for product scope,
 architecture, safety, documentation, and delivery.
 
 ## Current module and review boundary

@@ -1,0 +1,272 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "device-catalog.schema.json",
+  "title": "Public device catalog",
+  "description": "GET /devices/catalog.json. Retail model metadata and controlled image attribution; no unit identity or compatibility-status claim.",
+  "type": "object",
+  "properties": {
+    "catalogVersion": {
+      "const": 2,
+      "description": "Device catalog contract version, independent of map and app versions."
+    },
+    "updatedAt": {
+      "type": "string"
+    },
+    "manufacturer": {
+      "type": "string"
+    },
+    "legal": {
+      "$ref": "#/$defs/legal"
+    },
+    "devices": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/device"
+      }
+    }
+  },
+  "required": [
+    "catalogVersion",
+    "updatedAt",
+    "manufacturer",
+    "legal",
+    "devices"
+  ],
+  "additionalProperties": true,
+  "$defs": {
+    "device": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Public model/variant identity, never a physical device identifier."
+        },
+        "manufacturer": {
+          "type": "string"
+        },
+        "family": {
+          "type": "string"
+        },
+        "familyName": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "canonicalModel": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "caseSizeMm": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "displayType": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "partNumber": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Retail product SKU, not a unit serial number."
+        },
+        "productURL": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "mapCapable": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "asset": {
+          "$ref": "#/$defs/asset"
+        },
+        "sourceAsset": {
+          "$ref": "#/$defs/sourceAsset"
+        }
+      },
+      "required": [
+        "id",
+        "manufacturer",
+        "family",
+        "familyName",
+        "model",
+        "canonicalModel",
+        "variant",
+        "caseSizeMm",
+        "displayType",
+        "partNumber",
+        "productURL",
+        "active",
+        "mapCapable",
+        "asset"
+      ],
+      "additionalProperties": true
+    },
+    "asset": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mimeType": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "width": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "height": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "version": {
+          "type": "integer"
+        },
+        "attribution": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source": {
+          "$ref": "#/$defs/assetSource"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "AVAILABLE"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "status",
+              "type",
+              "url",
+              "scope",
+              "sha256",
+              "mimeType",
+              "width",
+              "height",
+              "version",
+              "attribution",
+              "source"
+            ]
+          }
+        }
+      ]
+    },
+    "assetSource": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "brand": {
+          "type": "string"
+        },
+        "attributionRequired": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "type",
+        "brand",
+        "attributionRequired"
+      ],
+      "additionalProperties": true
+    },
+    "sourceAsset": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        },
+        "attribution": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/assetSource"
+        }
+      },
+      "required": [
+        "url",
+        "scope",
+        "version",
+        "attribution",
+        "source"
+      ],
+      "additionalProperties": true
+    },
+    "legal": {
+      "type": "object",
+      "properties": {
+        "manufacturerNotice": {
+          "type": "boolean"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "manufacturerNotice",
+        "text"
+      ],
+      "additionalProperties": true
+    }
+  }
+}

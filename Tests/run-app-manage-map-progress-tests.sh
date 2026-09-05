@@ -2,8 +2,8 @@
 set -euo pipefail
 
 repo_root="${0:A:h:h}"
-connect_screen="$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/Views/ConnectScreen.swift"
-phase_source="$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/Installation/MapLifecyclePresentation.swift"
+connect_screen="$repo_root/app/TerentoCore/Sources/TerentoPoC/Views/ConnectScreen.swift"
+phase_source="$repo_root/app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecyclePresentation.swift"
 
 assert_contains() {
     local needle="$1"
