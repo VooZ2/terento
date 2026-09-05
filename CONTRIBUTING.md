@@ -45,7 +45,8 @@ The current native source module and production app expect:
 - macOS 13 or newer;
 - Swift 6 or newer and Xcode with SwiftUI support;
 - Homebrew;
-- Node.js for JavaScript-backed web, native, admin, and release checks;
+- Node.js 22 for JavaScript-backed web, native, admin, and release checks;
+- Python 3.12 or 3.13 for backend tests;
 - libmtp 1.1.23; and
 - libusb 1.0.30, used by libmtp.
 
@@ -55,7 +56,20 @@ Build the SwiftPM source module from the repository root:
 swift build --package-path app/TerentoCore
 ```
 
+The production core and its regression harness live in `app/TerentoCore/`;
+the app shell stays in `app/Terento/` and the Xcode project stays at the root.
+Existing Swift module and executable names are retained.
+
 ### Automated tests
+
+Install backend test dependencies in a virtual environment before running backend
+or full-repository checks:
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python3 -m pip install -e 'backend/catalog-api[test]'
+```
 
 Run the suite relevant to your change from the repository root, or use
 `Tests/run-all-tests.sh` for the complete release-equivalent matrix:
@@ -82,6 +96,10 @@ matrix. Every release uses the same release gate, independent of its beta number
 If Node.js is not on `PATH`, set `TERENTO_NODE_BIN` to its executable before
 running the checks. The repository's web, native, backend, and release
 runners use the same override and do not depend on a machine-specific path.
+
+Shared API contracts and fixtures live in [contracts/](contracts/README.md).
+Read the fixtures directly; do not copy them into individual language packages.
+Contract changes select all suites.
 
 Hardware tests require an explicitly authorised personal Garmin device. They are not a substitute for automated tests and should not be run against a device containing irreplaceable data.
 

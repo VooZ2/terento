@@ -174,6 +174,23 @@ that uses the repository's SwiftPM source module.
 - [Security](SECURITY.md) — reporting security issues.
 - [Packaging](Packaging/README.md) — build, signing, and release details.
 
+## Repository structure
+
+Terento stays in one monorepo:
+
+| Directory | Purpose |
+| --- | --- |
+| `app/Terento/` | Native macOS shell, resources, entitlements and app configuration |
+| `app/TerentoCore/` | SwiftPM core, libmtp bridge, map/device logic and native tests |
+| `backend/catalog-api/` | Catalog, device metadata, compatibility evidence, diagnostics and admin API |
+| `site/` | Public website and localized pages |
+| [`contracts/`](contracts/README.md) | Shared public API schemas and cross-language fixtures |
+| `Tests/` | Repository test runners and cross-component contract checks |
+| `Packaging/` | macOS build, validation, signing and release tooling |
+| `site-deploy/` | Public website container configuration |
+
+See [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) for the detailed repository map.
+
 ## License and attribution
 
 Terento source code is licensed under [GPL-3.0-or-later](LICENSE).

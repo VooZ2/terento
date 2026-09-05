@@ -55,6 +55,14 @@ Use this order when sources disagree:
 - Do not alter unrelated working behavior during visual or documentation
   work.
 
+## Source locations
+
+The production native core and its regression harness live in `app/TerentoCore/`.
+The application shell is `app/Terento/`; keep `Terento.xcodeproj/` at the root.
+Shared public payload schemas and fixtures live in `contracts/`; read fixtures
+there directly from each language's tests. Do not add runtime schema validation
+or change application/API behavior as a side effect of contract documentation.
+
 ## Change discipline
 
 - Prefer small, focused diffs and avoid opportunistic cleanup.
