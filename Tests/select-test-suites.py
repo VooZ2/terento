@@ -22,7 +22,7 @@ def select_suites(paths: list[str]) -> list[str]:
         if not text:
             continue
 
-        if text.startswith(("Tests/", ".github/")):
+        if text.startswith(("Tests/", ".github/", "contracts/")):
             return list(ALL_SUITES)
         if text.startswith("Packaging/"):
             return list(ALL_SUITES)

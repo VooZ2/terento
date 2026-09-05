@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "map-event.schema.json",
+  "title": "Map operation event request",
+  "description": "POST /map-events body only. Existing allowlist; UUID normalization, timezone parsing and raw byte limits remain server checks. Custom IMG operations are excluded.",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "enum": [
+        1,
+        true
+      ],
+      "description": "Current server compares with 1 and also accepts true; this documents existing behavior without changing validation."
+    },
+    "id": {
+      "type": "string",
+      "description": "Random UUID accepted and normalized by Python UUID; no physical device identifier."
+    },
+    "operationId": {
+      "type": "string",
+      "description": "Random UUID linking map events within an operation; no persistent device identity."
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "ISO timestamp parsed by datetime.fromisoformat; timezone required."
+    },
+    "providerId": {
+      "$ref": "#/$defs/safeId",
+      "not": {
+        "pattern": "^[cC][uU][sS][tT][oO][mM]$"
+      }
+    },
+    "mapId": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/safeId"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "region": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/safeId"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "eventType": {
+      "enum": [
+        "DOWNLOAD_STARTED",
+        "DOWNLOAD_SUCCEEDED",
+        "DOWNLOAD_FAILED",
+        "INSTALL_SUCCEEDED",
+        "INSTALL_FAILED"
+      ]
+    },
+    "outcome": {
+      "enum": [
+        "SUCCEEDED",
+        "FAILED",
+        "UNKNOWN"
+      ]
+    },
+    "appBuild": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 80,
+      "pattern": "\\S"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "operationId",
+    "timestamp",
+    "providerId",
+    "eventType",
+    "outcome"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "safeId": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,159}$"
+    }
+  }
+}

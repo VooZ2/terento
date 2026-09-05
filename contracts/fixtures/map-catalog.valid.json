@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 2,
+  "catalogVersion": 1,
+  "updatedAt": "2026-05-03T00:00:00Z",
+  "providers": [
+    {
+      "id": "freizeitkarte",
+      "name": "Freizeitkarte",
+      "adapterId": "freizeitkarte",
+      "status": "ACTIVE",
+      "health": "UNKNOWN",
+      "website": "https://www.freizeitkarte-osm.de/garmin/en/mitteleuropa.html",
+      "attribution": "Map data © OpenStreetMap contributors",
+      "licenseURL": "https://www.freizeitkarte-osm.de/garmin/en/imprint.html",
+      "licenseInformation": "OSM / FZK",
+      "maps": [
+        {
+          "id": "freizeitkarte-deu",
+          "region": "DEU",
+          "name": "Germany",
+          "country": "Germany",
+          "version": {
+            "year": 2026,
+            "month": 5
+          },
+          "sizeBytes": 361187697,
+          "downloadSizeBytes": 361187697,
+          "installSizeBytes": 348684288,
+          "sourceURL": "https://download.freizeitkarte-osm.de/garmin/latest/DEU+_en_gmapsupp.img.zip",
+          "releaseDate": "2026-05-03",
+          "identifier": "DEU+",
+          "providerRegionId": "DEU+",
+          "canonicalRegionId": "DEU",
+          "countryCodes": [
+            "DEU"
+          ],
+          "regionKind": "country",
+          "tags": [],
+          "capabilities": [
+            "main"
+          ],
+          "release": "2026-05",
+          "sourceUrl": "https://download.freizeitkarte-osm.de/garmin/latest/DEU+_en_gmapsupp.img.zip",
+          "artifacts": [
+            {
+              "id": "freizeitkarte-deu-main",
+              "kind": "main",
+              "required": true,
+              "sourceUrl": "https://download.freizeitkarte-osm.de/garmin/latest/DEU+_en_gmapsupp.img.zip",
+              "sourceURL": "https://download.freizeitkarte-osm.de/garmin/latest/DEU+_en_gmapsupp.img.zip",
+              "sizeBytes": 348684288,
+              "downloadSizeBytes": 361187697,
+              "installSizeBytes": 348684288,
+              "checksumSha256": null,
+              "checksum": null,
+              "contentType": "application/zip",
+              "validationStatus": "VALIDATED",
+              "validationState": "validated"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
