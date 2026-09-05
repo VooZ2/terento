@@ -175,7 +175,12 @@ for (const [locale, contract] of Object.entries(locales)) {
   assert.doesNotMatch(trigger, /language-current|🇬🇧|🇩🇪|🇫🇷|🇵🇱|🇨🇿|🇮🇹/);
   assert.match(html, /class="language-option-flag"[^>]*>[^<]+<\/span><span>[^<]+<\/span>/);
   assert.match(html, /class="language-option"[^>]*aria-current="page"/);
-
+  const mobileNav = html.match(/<nav class="mobile-nav-links"[^>]*>([\s\S]*?)<\/nav>/);
+  assert.ok(mobileNav, `${locale} must have a mobile navigation`);
+  assert.doesNotMatch(mobileNav[1], /href="[^"]*download\//, `${locale} mobile navigation must not expose Download`);
+  const mobileTrigger = html.match(/<details class="language-menu mobile-language-menu">\s*<summary class="language-trigger"[^>]*><span class="mobile-language-label">([^<]+)<\/span>/);
+  assert.ok(mobileTrigger, `${locale} must have a full-name mobile language trigger`);
+  assert.equal(mobileTrigger[1], mobileLanguageNames[locale], `${locale} mobile language trigger must use the full language name`);
 }
 
 assert.doesNotMatch(styles, /language-trigger::after|mobile-language-menu[^{]*\.language-trigger::after/);
@@ -189,6 +194,20 @@ assert.match(cssBlock(".about-social-link"), /min-height:\s*36px/);
 assert.match(cssBlock(".about-social-link"), /padding:\s*7px 11px/);
 assert.match(cssBlock(".about-social-link"), /border-radius:\s*8px/);
 assert.match(cssBlock(".about-bullet-list"), /gap:\s*12px/);
+assert.match(styles, /@media \(min-width: 1100px\)\s*\{\s*\.app-shot--hero\s*\{[^}]*width:\s*115%/s);
+assert.match(cssBlock(".problem-statement p"), /font-family:\s*var\(--font-ui\)/);
+assert.match(cssBlock(".problem-statement p"), /font-size:\s*clamp\(18px, 2vw, 21px\)/);
+assert.match(cssBlock(".faq.section"), /padding:\s*clamp\(64px, 8vw, 96px\) 0/);
+assert.match(cssBlock('.primary-nav .download-action[aria-current="page"]'), /background:\s*var\(--interactive\)/);
+assert.match(cssBlock(".mobile-language-menu .language-trigger"), /border:\s*1px solid var\(--border\)/);
+assert.match(cssBlock(".mobile-language-menu .language-trigger"), /background:\s*var\(--surface-muted\)/);
+assert.match(cssBlock(".mobile-language-menu .language-options"), /border:\s*1px solid var\(--border\)/);
+assert.match(cssBlock(".mobile-language-menu .language-options"), /background:\s*var\(--surface\)/);
+assert.doesNotMatch(styles, /\.mobile-language-menu \.language-options\s*\{[^}]*grid-template-columns:\s*repeat/);
+assert.doesNotMatch(shellSource, /navLink\("download", "download-action", "mobile-nav"\)/);
+assert.match(shellSource, /currentLanguageName/);
+assert.match(languageSource, /mobile-language-label/);
+assert.match(languageSource, /languageNames/);
 
 for (const locale of Object.keys(locales)) {
   const prefix = locale === "en" ? "" : `${locale}/`;

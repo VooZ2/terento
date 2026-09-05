@@ -9,10 +9,10 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SHELL_VERSION = "20260904-pass3-internal-link-events-v1"
+SHELL_VERSION = "20260905-mobile-menu-language-v1"
 STYLE_VERSION = "20260905-shared-badges-v1"
 IMAGE_VERSION = "20260905-app-screens-v1"
-LANGUAGE_VERSION = "20260904-language-selector"
+LANGUAGE_VERSION = "20260905-language-selector-full-name-v1"
 LOCALIZED_CONTENT_VERSION = "20260904-pass3-internal-link-events-v1"
 COMPATIBILITY_LOCALES_VERSION = "20260904-beta-provider-scope"
 COMPATIBILITY_VERSION = "20260904-snapshot"
@@ -91,10 +91,10 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
       <div class="mobile-nav" id="mobile-nav" hidden>
         <div class="shell mobile-nav-inner">
           <nav class="mobile-nav-links" aria-label="{copy["primary"]}">
-            {nav_link("compatibility", location="mobile-nav")}{nav_link("guide", location="mobile-nav")}{nav_link("about", location="mobile-nav")}{nav_link("download", "download-action", "mobile-nav")}
+            {nav_link("compatibility", location="mobile-nav")}{nav_link("guide", location="mobile-nav")}{nav_link("about", location="mobile-nav")}
           </nav>
           <div class="mobile-nav-language"><details class="language-menu mobile-language-menu">
-            <summary class="language-trigger" aria-label="{copy["language"]}"><span class="mobile-language-label">{locale.upper()}</span></summary>
+            <summary class="language-trigger" aria-label="{copy["language"]}"><span class="mobile-language-label">{copy["name"]}</span></summary>
             <div class="language-options">{language_links(locale, route_for_language, "mobile-language")}</div>
           </details></div>
         </div>

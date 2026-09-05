@@ -39,12 +39,16 @@ The public-shell normalizer also synchronizes the stylesheet cache version on
 standalone pages (404 and legacy redirect). The shared brand contract checks
 every HTML page, including these pages, before deployment.
 
-## 2026-09-05 website presentation refresh
+The September 2026 legal-notice rollout also synchronizes the previously
+published `970a16a` public-site polish into `beta`. Production had received
+that site revision through a separate deployment. Retain its shared menu,
+language-label and layout behavior when deploying the legal-notice update.
 
-The prepared website release leads About with product value and a compact
-first-person maker story, uses Installing maps in the six Home heroes, and
-adds a small Your Garmin preview to Download. Download’s Free, Notarized and
-Apple Silicon labels share the Guide badge CSS rule. The stylesheet cache
-version is `20260905-shared-badges-v1`. Download links and the distributed app
-release remain unchanged. This change does not add hardware compatibility
-evidence. Publication status must be confirmed by the deployment workflow.
+## 2026-09-05 About, Home and Download refresh
+
+About now leads with product value and a short maker story. Home uses the
+Installing maps screenshot. Download pairs a compact Your Garmin preview with
+Free, Notarized and Apple Silicon badges sharing the Guide CSS rule. All six
+locales use stylesheet version `20260905-shared-badges-v1`. App release files
+and hardware compatibility claims are unchanged. Full public-site and release
+preflight checks must pass before the workflow publishes this source.

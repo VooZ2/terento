@@ -1,5 +1,8 @@
 (() => {
   const supportedLanguages = new Set(["en", "de", "fr", "pl", "cs", "it"]);
+  const languageNames = {
+    en: "English", de: "Deutsch", fr: "Français", pl: "Polski", cs: "Čeština", it: "Italiano",
+  };
   const preferenceKey = "terento-language";
 
   const languagePath = (language) => language === "en" ? "/" : `/${language}/`;
@@ -14,8 +17,11 @@
   };
 
   const updateLanguageMenu = (language) => {
-    document.querySelectorAll(".language-code, .mobile-language-label").forEach((element) => {
+    document.querySelectorAll(".language-code").forEach((element) => {
       element.textContent = language.toUpperCase();
+    });
+    document.querySelectorAll(".mobile-language-label").forEach((element) => {
+      element.textContent = languageNames[language] || language.toUpperCase();
     });
   };
 

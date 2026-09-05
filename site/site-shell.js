@@ -105,6 +105,7 @@
   const renderShell = (language) => {
     const copy = translations[language] || translations.en;
     const root = localizedRoot(language);
+    const currentLanguageName = languages.find((item) => item.code === language)?.name || language;
     const active = (key) => (key === "about" && pageType === "about")
       || (key === "compatibility" && pageType === "compatibility")
       || (key === "download" && pageType === "download")
@@ -116,7 +117,7 @@
       return `<a class="language-option" href="${href}${homeHash}" data-language-switch="${item.code}" lang="${item.code}" aria-label="${item.name}"${current}${umamiAttributes("language-switch-click", location)}><span class="language-option-flag" aria-hidden="true">${item.flag}</span><span>${item.name}</span></a>`;
     }).join("");
     const languageMenu = (mobile = false) => `<details class="language-menu${mobile ? " mobile-language-menu" : ""}">
-    <summary class="language-trigger" aria-label="${copy.language}">${mobile ? `<span class="mobile-language-label">${language.toUpperCase()}</span>` : `<span class="language-code" aria-hidden="true">${language.toUpperCase()}</span>`}</summary>
+    <summary class="language-trigger" aria-label="${copy.language}">${mobile ? `<span class="mobile-language-label">${currentLanguageName}</span>` : `<span class="language-code" aria-hidden="true">${language.toUpperCase()}</span>`}</summary>
     <div class="language-options">${languageOptions(mobile ? "mobile-language" : "header-language")}</div>
   </details>`;
     const navLink = (key, variant = "", location = "header-nav") => {
@@ -141,7 +142,7 @@
     <div class="mobile-nav" id="mobile-nav" hidden>
       <div class="shell mobile-nav-inner">
         <nav class="mobile-nav-links" aria-label="${copy.primary}">
-          ${navLink("compatibility", "", "mobile-nav")}${navLink("guide", "", "mobile-nav")}${navLink("about", "", "mobile-nav")}${navLink("download", "download-action", "mobile-nav")}
+          ${navLink("compatibility", "", "mobile-nav")}${navLink("guide", "", "mobile-nav")}${navLink("about", "", "mobile-nav")}
         </nav>
         <div class="mobile-nav-language">${languageMenu(true)}</div>
       </div>
