@@ -2,6 +2,13 @@ import AppKit
 import SwiftUI
 
 @main
+struct TerentoEntryPoint {
+    static func main() {
+        if MTPFinishingWorker.runIfRequested() { return }
+        TerentoPoCApp.main()
+    }
+}
+
 struct TerentoPoCApp: App {
     @StateObject private var deviceEngine = DeviceEngine()
     @StateObject private var mapEngine = MapEngine()

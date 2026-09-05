@@ -1935,9 +1935,14 @@ int terento_mtp_verify_managed_map_samples(
     int result = 0;
 
     for (size_t index = 0; index < sample_count; index += 1) {
-        uint64_t offset = sample_offsets[index];
-        uint64_t remaining = expected_size_bytes - offset;
-        uint32_t requested = remaining < sample_length ? (uint32_t)remaining : sample_length;
+        uint64_t remaining = expected_size_bytes - sample_offsets[index];
+        uint32_t region_length = remaining < sample_length ? (uint32_t)remaining : sample_length;
+        /* Keep the exact sampled byte coverage, but do not ask Garmin firmware
+           to buffer a multi-megabyte GetPartialObject response in one call. */
+        for (uint32_t consumed = 0; consumed < region_length;) {
+        uint64_t offset = sample_offsets[index] + consumed;
+        uint32_t requested = region_length - consumed;
+        if (requested > 64 * 1024) requested = 64 * 1024;
         unsigned int failed_attempts = 0;
         int sample_verified = 0;
 
@@ -2046,7 +2051,7 @@ int terento_mtp_verify_managed_map_samples(
             }
 
             *sampled_bytes += requested;
-            *matched_samples += 1;
+            consumed += requested;
             sample_verified = 1;
             if (progress_callback != NULL
                 && progress_callback(*sampled_bytes, total_sample_bytes, progress_context) != 0) {
@@ -2055,6 +2060,12 @@ int terento_mtp_verify_managed_map_samples(
                 goto sample_cleanup;
             }
         }
+        }
+        *matched_samples += 1;
+        /* A clean session boundary between regions lets firmware settle and
+           avoids carrying a stale object cache through randomized seeks. */
+        LIBMTP_Release_Device(device);
+        device = NULL;
     }
 
 sample_cleanup:
