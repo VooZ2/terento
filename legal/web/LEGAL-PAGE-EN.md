@@ -1,59 +1,39 @@
 # Legal notices
 
-These legal notices describe the Terento website, the Terento project, the public beta macOS app, and the third-party software and map data associated with them.
+Terento is a free, open-source macOS app for installing and managing third-party maps on Garmin smartwatches. These notices cover the app and this website.
 
-Map data and map files remain subject to the terms and licences of their respective providers.
+## The project
 
-## Garmin
+Terento is an independent project published by a private individual. Meet the maker on the [About page](/about/). Contact: [hello@terento.app](mailto:hello@terento.app).
 
-Garmin belongs to Garmin Ltd. Terento is not affiliated with Garmin and is not endorsed, certified, or a partner of Garmin.
+The app is a Public beta for Apple Silicon Macs. Compatibility is evaluated for each exact watch model and variant. See [Compatibility](/compatibility/) before using it. Donations are optional and do not unlock features, maps or provider access.
 
-Garmin names, including product names, are used only to describe compatibility, testing, documentation, and search. Terento does not use Garmin logos.
+## Software and third-party licences
 
-## Apple and macOS
+Terento source code and original website HTML, CSS and JavaScript are licensed under **GPL-3.0-or-later**, unless a file states otherwise. Read the [licence](https://github.com/VooZ2/terento/blob/beta/LICENSE).
 
-Apple, Mac, macOS, and Apple Silicon belong to Apple Inc. Terento is not affiliated with Apple. Those names are used descriptively because the beta is available for Apple Silicon Mac.
+Bundled libraries retain their own licences: **libmtp 1.1.23** and **libusb 1.0.30** use LGPL-2.1-or-later. Fonts and other third-party assets also retain their respective terms. Licence notices and source information are in [Third-party notices](https://github.com/VooZ2/terento/blob/beta/THIRD_PARTY_NOTICES.md).
 
-## Maps
+The software licence does not grant trademark rights in Terento. Modified versions must not be presented as official Terento releases.
 
-Terento does not create, relicense, or call the maps “Terento maps.”
+## Map licences
 
-Freizeitkarte, OpenTopoMap, OpenStreetMap, and other data providers keep their own licences. Terento connects the path from the original provider to your Mac and watch. Terento does not host or redistribute map files on its own servers.
+Maps come from [Freizeitkarte](https://www.freizeitkarte-osm.de/) and [OpenTopoMap](https://garmin.opentopomap.org/) and remain subject to their providers’ licences and [OpenStreetMap attribution](https://www.openstreetmap.org/copyright). Your own imported maps remain subject to their applicable terms.
 
-See [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/), and [OpenStreetMap copyright](https://www.openstreetmap.org/copyright).
+Terento does not create or relicense these maps, or host, mirror or redistribute their files on its servers. Catalog maps download from the original provider to your Mac and then your watch.
 
-## Software licence
+## Names and independence
 
-Terento source code is licensed under the GNU GPL 3.0 or later. The full text is available in the repository [LICENSE](https://github.com/VooZ2/terento/blob/beta/LICENSE).
+Garmin and its product names are trademarks of Garmin Ltd. Apple, Mac, macOS and Apple Silicon are trademarks of Apple Inc. They are used descriptively. Terento is not affiliated with, endorsed or certified by either company.
 
-The GPL grants freedoms in the code. It does not grant rights to use the name or mark “Terento” as a trademark or to claim that an unofficial modified version is an official Terento release.
+## Beta software and your rights
 
-Website HTML, CSS, and JavaScript of Terento origin are also GPL unless a file says otherwise. Fonts and other third-party parts stay under their own licences. See [THIRD_PARTY_NOTICES.md](https://github.com/VooZ2/terento/blob/beta/THIRD_PARTY_NOTICES.md).
+Beta software may contain errors, including errors affecting maps, device operation or data. To the extent permitted by applicable law, the software is provided without warranty as described in its licence.
 
-## Other software
+No notice here excludes or limits liability where the law prohibits that exclusion or limitation, including liability for intent or gross negligence. Your mandatory rights under Lithuanian and EU law remain unaffected.
 
-The production build of the macOS beta uses **libmtp** to communicate with compatible devices over MTP. It includes the dynamically linked **libmtp** and **libusb** libraries, built from pinned upstream source releases and bundled in `Terento.app/Contents/Frameworks`:
+## Privacy
 
-- **libmtp** 1.1.23 — LGPL-2.1-or-later, [github.com/libmtp/libmtp](https://github.com/libmtp/libmtp)
-- **libusb** 1.0.30 — LGPL-2.1-or-later, [github.com/libusb/libusb](https://github.com/libusb/libusb)
+For data processing, diagnostics and website statistics, read the [Privacy notice](/privacy/).
 
-`libusb` is a runtime dependency of `libmtp`. Each library remains under its own licence. Terento does not relicense these libraries.
-
-## No warranty
-
-The software is distributed in the hope that it will be useful, but **without any warranty**. Terento is not responsible if using the project, website, or software makes a device unusable, loses data, or if maps fail.
-
-The product rule is to stop rather than guess and cause damage. That is not a promise that nothing will go wrong.
-
-Nothing here waives rights that cannot be waived under applicable law, including EU and Lithuanian consumer protection.
-
-## Online services
-
-The public site and API are delivered and protected through online
-infrastructure described in the Privacy notice. Privacy-preserving visit
-statistics use Umami for all visitors without a consent popup. For a new installation, the macOS beta shows a visible
-compatibility-sharing choice before installation and selects it by default.
-Reports are sent only when the user continues with that choice; the user can
-uncheck it before installing.
-
-Details: [Privacy](/privacy/).
+Updated: 5 September 2026.

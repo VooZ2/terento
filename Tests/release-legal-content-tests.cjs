@@ -18,9 +18,15 @@ for (const locale of locales) {
   assert.match(privacy, privacyLocaleBlock, `${locale}: privacy page names OpenTopoMap`);
 }
 
-assert.match(read("legal/web/LEGAL-PAGE-EN.md"), /OpenTopoMap/);
-assert.match(read("legal/web/LEGAL-PAGE-LT.md"), /OpenTopoMap/);
-assert.match(read("legal/web/PRIVACY-PAGE-EN.md"), /OpenTopoMap/);
-assert.match(read("legal/web/PRIVACY-PAGE-LT.md"), /OpenTopoMap/);
-
-console.log("Legal and privacy provider-content tests passed for all six locales.");
+for (const locale of locales) {
+  for (const page of ["LEGAL", "PRIVACY"]) {
+    const source = read(`legal/web/${page}-PAGE-${locale.toUpperCase()}.md`);
+    assert.match(source, /OpenTopoMap/);
+    assert.match(source, page === "PRIVACY" ? /privacy@terento.app/ : /hello@terento.app/);
+    assert.ok(!source.includes("ANALYTICS_COPY"));
+  }
+}
+assert.ok(!fs.existsSync(path.join(root, "legal/web/LEGAL-PAGE-LT.md")));
+assert.ok(!fs.existsSync(path.join(root, "legal/web/PRIVACY-PAGE-LT.md")));
+require("node:child_process").execFileSync("python3", ["scripts/build-legal-pages.py", "--check"], {cwd: root, stdio: "inherit"});
+console.log("Legal/Privacy source and locale contracts passed.");

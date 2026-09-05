@@ -3,7 +3,9 @@ set -eu
 
 cd "$(dirname "$0")/.."
 
-generated="site/guides/install-garmin-maps-mac/index.html
+generated="site/privacy/index.html
+site/legal/index.html
+site/guides/install-garmin-maps-mac/index.html
 site/de/guides/install-garmin-maps-mac/index.html
 site/fr/guides/install-garmin-maps-mac/index.html
 site/pl/guides/install-garmin-maps-mac/index.html
@@ -35,6 +37,7 @@ site/cs/compatibility/index.html
 site/it/compatibility/index.html"
 
 regenerate_site() {
+  PYTHONDONTWRITEBYTECODE=1 python3 scripts/build-legal-pages.py >/dev/null
   PYTHONDONTWRITEBYTECODE=1 python3 scripts/normalize-release-pages.py --write
   PYTHONDONTWRITEBYTECODE=1 python3 scripts/build-about-pages.py >/dev/null
   PYTHONDONTWRITEBYTECODE=1 python3 scripts/normalize-home-ia.py >/dev/null

@@ -10,13 +10,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20260904-pass3-internal-link-events-v1"
-STYLE_VERSION = "20260905-guide-flow-v3"
+STYLE_VERSION = "20260905-privacy-legal-v1"
 IMAGE_VERSION = "20260905-app-screens-v1"
 LANGUAGE_VERSION = "20260904-language-selector"
 LOCALIZED_CONTENT_VERSION = "20260904-pass3-internal-link-events-v1"
 COMPATIBILITY_LOCALES_VERSION = "20260904-beta-provider-scope"
 COMPATIBILITY_VERSION = "20260904-snapshot"
-UMAMI_SCRIPT_VERSION = "20260905-public-link-events-v3"
+UMAMI_SCRIPT_VERSION = "20260905-campaign-url-only-v1"
 LOCALES = {
     "en": {"flag": "🇬🇧", "name": "English", "home": "Terento home", "primary": "Primary navigation", "menu": "Menu", "close": "Close menu", "about": "About", "compatibility": "Compatibility", "guide": "Guide", "faq": "FAQ", "download": "Download", "language": "Choose language", "footer": "Footer navigation", "status": "Open-source project", "legal": "Legal", "privacy": "Privacy", "support": "Support Terento", "stats": "Visit statistics (Umami) do not use cookies."},
     "de": {"flag": "🇩🇪", "name": "Deutsch", "home": "Terento Startseite", "primary": "Hauptnavigation", "menu": "Menü", "close": "Menü schließen", "about": "Über uns", "compatibility": "Kompatibilität", "guide": "Anleitung", "faq": "FAQ", "download": "Download", "language": "Sprache wählen", "footer": "Footer-Navigation", "status": "Open-Source-Projekt", "legal": "Rechtliches", "privacy": "Datenschutz", "support": "Support Terento", "stats": "Besuchsstatistik (Umami) verwendet keine Cookies."},
@@ -296,6 +296,7 @@ def main() -> None:
             rf'\g<1>{LOCALIZED_CONTENT_VERSION}',
             source,
         )
+        source = re.sub(r'(/(?:privacy|legal)-language\.js\?v=)[^"\s]+', r'\g<1>20260905-legal-language-v1', source)
         source = re.sub(r'(/language\.js\?v=)[^"\s]+', rf'\g<1>{LANGUAGE_VERSION}', source)
         source = re.sub(r'(/privacy-consent\.js\?v=)[^"\s]+', rf'\g<1>{UMAMI_SCRIPT_VERSION}', source)
         source = re.sub(

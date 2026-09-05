@@ -1,7 +1,6 @@
 (() => {
   const umamiSource = "https://stats.enduristas.lt/script.js";
   const umamiWebsiteId = "d8097a98-ffe4-478e-b212-9f06b5bcccbe";
-  const campaignStorageKey = "terento-campaign-attribution";
   const campaignParameterKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"];
   const campaignValuePattern = /^[A-Za-z0-9._~-]{1,80}$/;
   const loadUmami = () => {
@@ -23,22 +22,8 @@
     return result;
   };
 
-  const getCampaignParams = () => {
-    const current = readCampaignParams(new URL(window.location.href));
-    let stored = {};
-    try {
-      const candidate = JSON.parse(window.sessionStorage.getItem(campaignStorageKey) || "{}");
-      if (candidate && typeof candidate === "object" && !Array.isArray(candidate)) {
-        stored = readCampaignParams(new URL(`https://terento.app/?${new URLSearchParams(candidate)}`));
-      }
-      if (Object.keys(current).length > 0) {
-        window.sessionStorage.setItem(campaignStorageKey, JSON.stringify({ ...stored, ...current }));
-      }
-    } catch {
-      // Attribution remains page-local if session storage is unavailable.
-    }
-    return { ...stored, ...current };
-  };
+  // Campaign values travel in the URL only; no browser storage is read or written.
+  const getCampaignParams = () => readCampaignParams(new URL(window.location.href));
 
   const appendCampaignParams = (link, campaignParams) => {
     if (!link || Object.keys(campaignParams).length === 0) return;

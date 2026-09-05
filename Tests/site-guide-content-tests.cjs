@@ -199,8 +199,8 @@ assert.match(shell, /<nav class="footer-nav"[\s\S]*navLink\("download"(?:, "", "
 const languageScript = read(path.join(root, "site", "language.js"));
 assert.match(languageScript, /shellLanguageMenu/);
 assert.match(languageScript, /shellLanguageMenu\?\.update\?\.\(language\)/);
-assert.match(read(path.join(root, "site", "legal-language.js")), /bindLanguageLinks/);
-assert.match(read(path.join(root, "site", "privacy-language.js")), /bindLanguageLinks/);
+assert.match(read(path.join(root, "site", "legal-language.js")), /document\.addEventListener\("click"/);
+assert.match(read(path.join(root, "site", "privacy-language.js")), /document\.addEventListener\("click"/);
 for (const file of ["site/legal/index.html", "site/privacy/index.html"]) {
   const source = read(path.join(root, file));
   assert.match(source, /data-page="(?:legal|privacy)"/);
