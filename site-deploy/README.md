@@ -27,8 +27,8 @@ The accounts, destination and SSH host key are pinned in
 `scripts/infra/deploy-vps-image.sh`. Each SSH key is bound to a fixed project
 command; neither CI account needs Docker-group membership or a general shell.
 Image publication receives only GitHub's job token with package-write permission
-and no VPS credentials. The retired shared `TERENTO_SITE_SSH_*` repository
-secrets are not used by these workflows.
+and no VPS credentials. The five retired shared `TERENTO_SITE_SSH_*` repository
+secrets have been removed; these workflows use only the scoped environment keys.
 
 The update manifest is deliberately sent with `Cache-Control: no-store` so an
 old app-update response cannot remain cached after a release.
@@ -76,11 +76,12 @@ Test the boundary rules with `python3 Tests/admin-access-boundary-tests.py`.
 
 ### Production release and migration boundaries
 
-Both GitHub environments permit branch `beta`; `rukas-site` also permits `v*`
-tags. The publisher requires a tagged site revision to be an ancestor of `beta`.
+The `rukas-api` environment permits only branch `beta`; `rukas-site` permits
+branch `beta` and `v*` tags. The publisher requires a tagged site revision to be an ancestor of `beta`.
 API release dispatch remains beta-only. The access-check workflow performs command
-rejection checks only and cannot replay an older deployment. Remove the temporary
-`terento/vps-image-publish` environment policy when rehearsal access is retired.
+rejection checks only and cannot replay an older deployment. The temporary
+`terento/vps-image-publish` environment policies have been removed. Workflows
+paused for the cutover have been re-enabled.
 
 API publication depends on the backend/PostgreSQL quality workflow. The installed
 root-owned handler owns schema migration and internal checks. Public Access/API
@@ -89,12 +90,15 @@ Both server `verify-public` markers must remain present during production releas
 so the handler checks public routes as well as loopback. Public checks establish
 this host's serving readiness only after DNS actually routes traffic here.
 
-The personal-VPS cutover and scoped workflow merge have occurred. At this
-documentation update, final migrated-owner login confirmation and obsolete-access
-cleanup remain separate pending acceptance items; successful CI is not evidence
-that either is complete. Verify independent owner/console rollback access before
-revoking the demo CI key's exact authorized-key entry. Removing old repository
-secrets and revoking the corresponding server key are separate operations.
+The personal-VPS cutover and scoped workflow merge have occurred. Site deployment
+run `33996930727` and API deployment run `33996929154`, including its native
+release-client check, passed. At this documentation update, final migrated-owner
+login confirmation and independent demo recovery access remain pending acceptance
+items; successful CI does not establish either. The old demo authorized public key
+and local CI private key are retained until those checks pass. Removing the old
+repository secrets does not revoke that server key. After verifying independent
+owner/console rollback access, revoke only the exact demo CI authorized-key entry
+and retire its local private key; preserve unrelated accounts and keys.
 
 Root provisioning preserves operations-ingest secret continuity; CI no longer
 uploads or edits server environment files. Future rotation must update root
