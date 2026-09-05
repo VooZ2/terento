@@ -23,7 +23,9 @@ IMAGE_VERSION = "20260905-app-screens-v1"
 READING_STATE_VERSION = "20260902-reading-state"
 GUIDE_PROGRESS_VERSION = "20260902-guide-progress"
 UMAMI_SCRIPT_VERSION = "20260905-campaign-url-only-v1"
-STYLE_VERSION = "20260905-privacy-legal-v1"
+SHELL_VERSION = "20260905-mobile-menu-language-v1"
+STYLE_VERSION = "20260905-privacy-legal-v2"
+LANGUAGE_VERSION = "20260905-language-selector-full-name-v1"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 ISSUES_URL = "https://github.com/VooZ2/terento/issues"
 EMAIL_URL = "mailto:hello@terento.app?subject=Terento%20installation%20issue"
@@ -182,7 +184,7 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
     return f'''<!doctype html>
 <html lang="{locale}" data-language="{locale}" data-page="guide">
   <head>
-    <script defer src="/site-shell.js?v=20260904-pass3-internal-link-events-v1"></script>
+    <script defer src="/site-shell.js?v={SHELL_VERSION}"></script>
     <script defer src="/reading-state.js?v={READING_STATE_VERSION}"></script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -215,7 +217,7 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
     <link rel="mask-icon" href="/safari-pinned-tab.svg?v=20260820-4" color="#7898A8">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="stylesheet" href="/styles.css?v={STYLE_VERSION}">
-    <script defer src="/language.js?v=20260904-language-selector"></script>
+    <script defer src="/language.js?v={LANGUAGE_VERSION}"></script>
     <script defer src="/privacy-consent.js?v={UMAMI_SCRIPT_VERSION}"></script>
     <script type="application/ld+json">
 {guide_json}
