@@ -7,7 +7,7 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "u
 const styles = read("site/styles.css");
 const shellSource = read("site/site-shell.js");
 const languageSource = read("site/language.js");
-const styleVersion = "20260905-about-product-v1";
+const styleVersion = "20260905-privacy-legal-v2";
 const localizedContentVersion = "20260904-pass3-internal-link-events-v1";
 const mobileLanguageNames = { en: "English", de: "Deutsch", fr: "Français", pl: "Polski", cs: "Čeština", it: "Italiano" };
 
@@ -209,20 +209,11 @@ for (const locale of Object.keys(locales)) {
   assert.equal((html.match(/class="about-item about-item--group"/g) || []).length, 2, `${locale} must have one Does and one Doesn't group`);
   assert.doesNotMatch(html, /class="compatibility-hero about-hero"/);
   assert.equal((html.match(/<h1\b/g) || []).length, 1, `${locale} must have one primary About heading`);
-  assert.match(html, /<section class="about-intro" aria-labelledby="about-title">[\s\S]*<h1 id="about-title">/);
+  assert.match(html, /<section class="about-story" aria-labelledby="about-title">[\s\S]*<h1 id="about-title">/);
   assert.match(html, /<p class="eyebrow"><span class="status-dot" aria-hidden="true"><\/span>/, `${locale} About story eyebrow must use the shared status dot`);
   const storyCopy = html.match(/<div class="about-story-copy">[\s\S]*?<\/div>/)?.[0];
   assert.ok(storyCopy, `${locale} must have a story copy block`);
-  assert.equal((storyCopy.match(/<p>/g) || []).length, 2, `${locale} must keep the maker story concise`);
-  assert.ok(html.indexOf('class="about-intro"') < html.indexOf('class="about-main"'));
-  assert.ok(html.indexOf('class="about-main"') < html.indexOf('class="about-story"'));
-  assert.doesNotMatch(html, /vibe coding|software developer|Softwareentwickler|développeur logiciel|programistą|vývojář|sviluppatore software/i);
-  const main = html.match(/<main[\s\S]*?<\/main>/)[0];
-  assert.equal((main.match(/class="download-action"/g) || []).length, 1);
-  assert.ok(main.indexOf('class="download-action"') < main.indexOf('class="about-main"'), `${locale} Download belongs with the product intro`);
-  assert.match(main, new RegExp(`href="/${prefix}download/" data-umami-event="download-cta-click" data-umami-event-location="about-intro"`));
-  assert.match(main, new RegExp(`href="/${prefix}compatibility/"`));
-  assert.match(main, /\.img/);
+  assert.equal((storyCopy.match(/<p>/g) || []).length, 4, `${locale} must group the story into four idea-led paragraphs`);
   assert.match(html, /class="[^"]*about-slogan/);
   assert.equal((html.match(/class="about-bullet-list"/g) || []).length, 2, `${locale} must use lists for Does and Doesn't`);
   assert.match(html, /href="https:\/\/www\.linkedin\.com\/in\/gediminasc\/"[^>]+data-umami-event="social-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="linkedin"/);

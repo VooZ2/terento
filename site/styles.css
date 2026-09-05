@@ -587,7 +587,7 @@ h1 {
 }
 
 .about-story-copy {
-  max-width: 680px;
+  max-width: 1020px;
 }
 
 .about-story-copy p {
@@ -3109,15 +3109,3 @@ details p {
     gap: 8px;
   }
 }
-
-/* About: product purpose precedes the compact maker story. */
-.about-intro { padding: var(--internal-page-intro-padding-top) 0 0; }
-.about-intro h1 { max-width: 900px; margin: 14px 0 24px; font-size: clamp(38px, 5vw, 64px); line-height: 1.08; }
-.about-intro-copy { max-width: 680px; font-size: 18px; color: var(--secondary); }
-.about-beta { max-width: 680px; font-size: 14px; color: var(--secondary); }
-.about-beta a { display: inline; }
-.about-page .about-main { padding: 48px 0 64px; }
-.about-page .about-slogan h2 { font-size: clamp(30px, 3.5vw, 44px); }
-.about-page .about-story { padding: 48px 0 64px; border-top: 1px solid var(--border); }
-.about-story h2 { max-width: 680px; font-size: clamp(28px, 3vw, 40px); margin: 14px 0 24px; }
-.about-story-actions { margin-top: 28px; }
