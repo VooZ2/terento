@@ -13,7 +13,7 @@ import sys
 root = Path(sys.argv[1])
 privacy_script = (root / "site/privacy-consent.js").read_text(encoding="utf-8")
 site_shell = (root / "site/site-shell.js").read_text(encoding="utf-8")
-umami_version = "20260905-public-link-events-v3"
+umami_version = "20260905-campaign-url-only-v1"
 
 assert '"download-click"' in privacy_script
 assert '"download-cta-click"' in privacy_script

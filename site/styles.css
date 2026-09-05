@@ -973,6 +973,28 @@ h1 {
   line-height: 1.48;
 }
 
+.legal-summary {
+  max-width: 680px;
+  margin-top: 24px;
+  color: var(--muted-text);
+  font-size: 18px;
+}
+
+.legal-toc ul {
+  display: grid;
+  gap: 12px;
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legal-toc a {
+  color: var(--link-text);
+  text-underline-offset: 4px;
+}
+
+.legal-item { scroll-margin-top: 100px; }
+
 .legal-grid {
   display: grid;
   grid-template-columns: minmax(220px, .72fr) minmax(0, 1.28fr);
