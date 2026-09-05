@@ -20,7 +20,12 @@ def main() -> int:
         assert "permissions:" in source, f"{workflow.name}: permissions must be explicit"
         for line_number, line in enumerate(source.splitlines(), start=1):
             if line.lstrip().startswith("uses:"):
-                assert PINNED_ACTION.match(line), (
+                local_call = re.fullmatch(
+                    r"\s*uses: (\./\.github/workflows/[a-z0-9-]+\.yml)\s*", line
+                )
+                if local_call:
+                    assert (REPO_ROOT / local_call.group(1)).is_file(), "local workflow is missing"
+                assert PINNED_ACTION.match(line) or local_call, (
                     f"{workflow.name}:{line_number}: action must be pinned to a full SHA"
                 )
 
@@ -39,9 +44,7 @@ def main() -> int:
         "name: build-and-test",
         "Tests/select-test-suites.py --json --stdin",
         "xcodebuild \\",
-        "postgres:16-alpine",
         "docker build --pull=false -f site-deploy/Dockerfile",
-        "docker build --pull=false -t terento-catalog-api:ci",
         "Publish weekly or release health report",
         "scripts/send-weekly-health-report.py",
         "TERENTO_OPERATIONS_INGEST_SECRET",
@@ -54,7 +57,23 @@ def main() -> int:
     ):
         assert contract in swift, f"swift-ci.yml is missing {contract!r}"
 
+    reusable = (WORKFLOWS / "reusable-catalog-api-quality.yml").read_text(encoding="utf-8")
+    for contract in (
+        "workflow_call:", "postgres:16-alpine", 'python-version: "3.12"',
+        'node-version: "22"', 'backend/catalog-api[test]',
+        "Tests/run-backend-tests.sh", "Database(settings.database_url).health()",
+        "docker build --pull=false -t terento-catalog-api:ci",
+    ):
+        assert contract in reusable, f"reusable API quality gate is missing {contract!r}"
+    assert reusable.count("          terento-catalog-migrate\n") == 2
+    assert "secrets." not in reusable
+    assert "ref:" not in reusable, "checkout must use the caller commit"
+    assert "uses: ./.github/workflows/reusable-catalog-api-quality.yml" in swift
+    assert "      - backend-tests" in swift
+
     deploy_api = (WORKFLOWS / "deploy-catalog-api.yml").read_text(encoding="utf-8")
+    assert "uses: ./.github/workflows/reusable-catalog-api-quality.yml" in deploy_api
+
     assert "needs: tests" in deploy_api, "catalog deploy must wait for backend tests"
     assert "Retain API deployment health" in deploy_api
     assert "Synchronize operations ingest secret" in deploy_api
