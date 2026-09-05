@@ -27,7 +27,7 @@ def main() -> int:
     expect(["site/updates/macos-arm64.json"], baseline | {"site", "release", "app"})
     expect(["app/Terento/Info.plist"], baseline | {"app"})
     expect(
-        ["lab/native-connectivity-poc/Sources/TerentoPoC/Installation/MapLifecycle.swift"],
+        ["app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecycle.swift"],
         baseline | {"app", "native"},
     )
     expect(["backend/catalog-api/src/terento_catalog/admin.py"], baseline | {"backend"})

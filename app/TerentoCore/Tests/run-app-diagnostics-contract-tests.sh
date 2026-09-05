@@ -2,10 +2,10 @@
 set -euo pipefail
 
 repo_root="${0:A:h:h:h:h}"
-app_source="$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/TerentoPoCApp.swift"
-diagnostics_source="$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/Views/DiagnosticsView.swift"
-about_source="$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/Views/AboutTerentoView.swift"
-connect_source="$repo_root/lab/native-connectivity-poc/Sources/TerentoPoC/Views/ConnectScreen.swift"
+app_source="$repo_root/app/TerentoCore/Sources/TerentoPoC/TerentoPoCApp.swift"
+diagnostics_source="$repo_root/app/TerentoCore/Sources/TerentoPoC/Views/DiagnosticsView.swift"
+about_source="$repo_root/app/TerentoCore/Sources/TerentoPoC/Views/AboutTerentoView.swift"
+connect_source="$repo_root/app/TerentoCore/Sources/TerentoPoC/Views/ConnectScreen.swift"
 
 for text in \
     'struct DiagnosticsView: View' \

@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TOKENS_PATH = ROOT / "brand" / "DESIGN_TOKENS.json"
 BRAND_CSS_PATH = ROOT / "brand" / "tokens.css"
 APP_TOKENS_PATH = (
-    ROOT / "lab" / "native-connectivity-poc" / "Sources" / "TerentoPoC"
+    ROOT / "app" / "TerentoCore" / "Sources" / "TerentoPoC"
     / "Views" / "DesignSystem" / "TerentoTokens.generated.swift"
 )
 SITE_CSS_PATH = ROOT / "site" / "styles.css"

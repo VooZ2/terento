@@ -12,7 +12,7 @@ repository, subject to the normal review of the current worktree:
 | Area | Purpose |
 | --- | --- |
 | `app/Terento/` | macOS application shell, `Info.plist`, entitlements, resources, and the bridging header |
-| `lab/native-connectivity-poc/` | Current SwiftPM source module, native bridge, resources, and tests used by the app target. The name is historical and is retained for now to avoid breaking project paths. |
+| `app/TerentoCore/` | Current SwiftPM source module, native bridge, resources, and tests used by the app target. The name is historical and is retained for now to avoid breaking project paths. |
 | `Terento.xcodeproj/` | macOS application target and Xcode build configuration |
 | `Packaging/` | Repeatable local build/release preparation scripts and signing documentation. It must not contain certificates, credentials, or generated release files. |
 | `site/` | Public website, localized pages, legal pages, and public assets |
@@ -44,8 +44,8 @@ ignored locations:
 
 | Location | Purpose |
 | --- | --- |
-| `lab/native-connectivity-poc/.build/` | SwiftPM build cache |
-| `lab/native-connectivity-poc/.swiftpm/` | SwiftPM local metadata |
+| `app/TerentoCore/.build/` | SwiftPM build cache |
+| `app/TerentoCore/.swiftpm/` | SwiftPM local metadata |
 | `dist/` | Local release artifacts, including validated arm64 ZIP and DMG files when present |
 
 These paths are ignored by `.gitignore`. A release is identified by its
@@ -55,7 +55,7 @@ whole repository into a `production/` or `ready/` directory.
 ## Current application boundary
 
 The production Xcode target consumes source files from
-`lab/native-connectivity-poc/`. Moving that code to a cleaner name such as
+`app/TerentoCore/`. Moving that code to a cleaner name such as
 `app/core/` or `Sources/TerentoCore/` would require coordinated Xcode project,
 bridging-header, SwiftPM, test, and documentation changes. It is therefore a
 separate refactor and is deliberately not part of this cleanup.

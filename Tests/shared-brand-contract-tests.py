@@ -15,10 +15,10 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 TOKENS_PATH = ROOT / "brand" / "DESIGN_TOKENS.json"
 APP_TOKENS_PATH = (
-    ROOT / "lab" / "native-connectivity-poc" / "Sources" / "TerentoPoC"
+    ROOT / "app" / "TerentoCore" / "Sources" / "TerentoPoC"
     / "Views" / "DesignSystem" / "TerentoTokens.generated.swift"
 )
-CONNECT_SCREEN_PATH = ROOT / "lab" / "native-connectivity-poc" / "Sources" / "TerentoPoC" / "Views" / "ConnectScreen.swift"
+CONNECT_SCREEN_PATH = ROOT / "app" / "TerentoCore" / "Sources" / "TerentoPoC" / "Views" / "ConnectScreen.swift"
 SITE_CSS_PATH = ROOT / "site" / "styles.css"
 ADMIN_SOURCE_PATH = ROOT / "backend" / "catalog-api" / "src" / "terento_catalog" / "admin.py"
 ADMIN_MODULE_PATH = ROOT / "backend" / "catalog-api" / "src" / "terento_catalog" / "admin_brand_tokens_generated.py"

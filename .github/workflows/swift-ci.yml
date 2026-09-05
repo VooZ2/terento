@@ -146,7 +146,7 @@ jobs:
           set -euo pipefail
           export LIBMTP_PREFIX="$(brew --prefix libmtp)"
           export CLANG_MODULE_CACHE_PATH="$RUNNER_TEMP/terento-app-clang-module-cache"
-          swift build --package-path lab/native-connectivity-poc
+          swift build --package-path app/TerentoCore
           Tests/run-app-tests.sh
       - name: Build and inspect the Xcode app product
         run: |

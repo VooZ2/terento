@@ -11,7 +11,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 TESTS_ROOT = REPO_ROOT / "Tests"
-NATIVE_TESTS_ROOT = REPO_ROOT / "lab" / "native-connectivity-poc" / "Tests"
+NATIVE_TESTS_ROOT = REPO_ROOT / "app" / "TerentoCore" / "Tests"
 AGGREGATE_RUNNERS = {
     "run-all-tests.sh",
     "run-app-tests.sh",

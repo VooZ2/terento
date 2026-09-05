@@ -10,14 +10,14 @@ availability are maintained in `RELEASE_NOTES.md`, GitHub Releases, and the
 current release metadata; do not copy a version number into this document.
 
 The production app is the root Xcode macOS target and consumes the SwiftPM
-source module in `lab/native-connectivity-poc/`. The SwiftPM target also
+source module in `app/TerentoCore/`. The SwiftPM target also
 contains legacy read-only and developer-only connectivity tests. Device-writing
 and interruption tests are developer-only tests and must never be treated as a
 general map-installation test.
 
 ## Before you start
 
-- Read the root README and the README in lab/native-connectivity-poc.
+- Read the root README and the README in app/TerentoCore.
 - Search existing issues and pull requests before opening a new one.
 - For security vulnerabilities, follow SECURITY.md instead of opening a public issue.
 - Do not upload Garmin device dumps, map binaries, private logs, credentials, API keys, or personal data.
@@ -52,7 +52,7 @@ The current native source module and production app expect:
 Build the SwiftPM source module from the repository root:
 
 ```sh
-swift build --package-path lab/native-connectivity-poc
+swift build --package-path app/TerentoCore
 ```
 
 ### Automated tests

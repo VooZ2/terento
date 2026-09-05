@@ -51,7 +51,7 @@ for the service's privacy model and configuration details.
 ## Native connectivity PoC dependencies
 
 The isolated native connectivity PoC under
-`lab/native-connectivity-poc/` links to Homebrew-installed libraries during
+`app/TerentoCore/` links to Homebrew-installed libraries during
 development. The production Xcode target rebuilds these libraries from the
 pinned upstream sources recorded below and bundles the resulting dynamic
 libraries in `Terento.app/Contents/Frameworks`.

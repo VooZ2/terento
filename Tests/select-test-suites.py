@@ -54,7 +54,7 @@ def select_suites(paths: list[str]) -> list[str]:
             else:
                 return list(ALL_SUITES)
             continue
-        if text.startswith("lab/native-connectivity-poc/"):
+        if text.startswith("app/TerentoCore/"):
             selected.update(("app", "native"))
             continue
         if text.startswith("app/") or text.startswith("Terento.xcodeproj/"):

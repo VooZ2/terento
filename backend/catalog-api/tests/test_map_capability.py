@@ -15,7 +15,7 @@ class MapCapabilityTests(unittest.TestCase):
     def test_python_and_native_prefix_contracts_are_exactly_aligned(self) -> None:
         swift_source = (
             Path(__file__).parents[3]
-            / "lab/native-connectivity-poc/Sources/TerentoPoC/Compatibility/MapCapability.swift"
+            / "app/TerentoCore/Sources/TerentoPoC/Compatibility/MapCapability.swift"
         ).read_text()
 
         def values(name: str) -> set[str]:
