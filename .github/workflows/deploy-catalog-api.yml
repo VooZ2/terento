@@ -48,7 +48,7 @@ jobs:
       TERENTO_ADMIN_ACCESS_REQUIRED: 'true'
     steps:
       - name: Check out source
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
       - name: Deploy immutable API image through its scoped account
@@ -122,7 +122,7 @@ jobs:
     runs-on: macos-15
     steps:
       - name: Check out source
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - name: Validate deployed catalog against the native client
         run: /bin/zsh Packaging/validate-live-map-catalog.sh
