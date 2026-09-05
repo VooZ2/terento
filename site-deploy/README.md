@@ -38,3 +38,8 @@ old app-update response cannot remain cached after a release.
 The public-shell normalizer also synchronizes the stylesheet cache version on
 standalone pages (404 and legacy redirect). The shared brand contract checks
 every HTML page, including these pages, before deployment.
+
+The September 2026 legal-notice rollout also synchronizes the previously
+published `970a16a` public-site polish into `beta`. Production had received
+that site revision through a separate deployment. Retain its shared menu,
+language-label and layout behavior when deploying the legal-notice update.

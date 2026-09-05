@@ -153,9 +153,17 @@ const anchorFor = (page, className) => {
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20260905-privacy-legal-v1">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20260905-about-product-v1">/, `${locale}: Home stylesheet cache bust`);
   assert.match(page, /<script defer src="\/home-features\.js\?v=20260904-home-workflow-tabs"><\/script>/, `${locale}: Home feature script cache bust`);
-  assert.match(page, /your-garmin-1600\.png\?v=20260905-app-screens-v1/, `${locale}: updated Garmin screenshot cache bust`);
+  assert.match(page, /installing-maps-1600\.png\?v=20260905-app-screens-v1/, `${locale}: installation screenshot cache bust`);
+  const heroArtwork = page.match(/<figure class="app-shot app-shot--hero">[\s\S]*?<\/figure>/)?.[0];
+  assert.ok(heroArtwork, `${locale}: hero screenshot exists`);
+  assert.doesNotMatch(heroArtwork, /your-garmin/);
+  for (const format of ["avif", "webp", "png"]) {
+    assert.ok(heroArtwork.includes(`installing-maps-1600.${format}?v=20260905-app-screens-v1`));
+  }
+  assert.match(heroArtwork, /width="2198" height="1335"/);
+  assert.match(heroArtwork, /alt="[^"]+" fetchpriority="high"/);
   const h1 = page.match(/<h1 id="hero-title">([^<]+)<\/h1>/);
   assert.ok(h1, `${locale}: missing hero H1`);
   assert.equal(h1[1], expected.h1, `${locale}: hero H1 copy`);

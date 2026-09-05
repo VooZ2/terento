@@ -98,6 +98,9 @@ for (const locale of locales) {
       } else {
         assert.deepEqual(faqLinks, [], `${file}: ${navClass} must not expose FAQ`);
       }
+      if (navClass === "mobile-nav-links") {
+        assert.doesNotMatch(nav[1], /href="[^"]*download\//, `${file}: mobile navigation must not expose Download`);
+      }
     }
   }
 }
