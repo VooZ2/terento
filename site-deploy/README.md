@@ -63,3 +63,27 @@ lock. Public shell/CSS versions and generated pages are maintained by the
 normalizer. The retired Guide progress script is removed; reading-position
 restoration is retained. Download normalization accepts the current layout and
 fails explicitly for obsolete layouts.
+
+
+## Personal VPS image publication (migration preparation)
+
+`publish-vps-images.yml` validates the public site/release contracts and backend
+regressions, then publishes `ghcr.io/vooz2/terento-site` and
+`ghcr.io/vooz2/terento-catalog` with source/revision labels and commit-specific
+tags. Each job records the registry SHA-256 digest in its run summary. Deploy
+by that digest; the commit tag is a lookup convenience, not an immutable trust
+boundary. Registry publishing authority must remain limited to trusted writers.
+
+The initial push trigger is limited to `terento/vps-image-publish`. Manual runs
+are restricted to that branch or `beta`. This workflow has no VPS credentials,
+SSH commands or deployment step. Existing production deployment workflows and
+secrets remain unchanged. Its only write permission is GitHub Packages; it uses
+the job-scoped GITHUB_TOKEN rather than a personal token. New GHCR packages are
+private by default; anonymous VPS pulling requires explicitly making these
+source-only application images public and verifying a pull without credentials.
+
+The Caddy image removes its binary's `cap_net_bind_service` file capability.
+The personal VPS Compose configuration runs it as UID10001 with all capabilities
+dropped, a read-only root and `net.ipv4.ip_unprivileged_port_start=0`, which permits
+port80 without file capabilities. This configuration passed an isolated VPS
+runtime rehearsal; it is not yet the production deployment configuration.

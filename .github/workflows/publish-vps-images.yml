@@ -1,0 +1,87 @@
+name: Publish VPS images
+
+on:
+  push:
+    branches:
+      - terento/vps-image-publish
+    paths:
+      - .github/workflows/publish-vps-images.yml
+      - site-deploy/**
+      - backend/catalog-api/**
+      - site/**
+      - Tests/**
+      - scripts/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vps-images-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Test and publish ${{ matrix.target }}
+    # Only trusted repository branches can publish. No pull-request trigger.
+    if: github.repository == 'VooZ2/terento' && (github.ref == 'refs/heads/terento/vps-image-publish' || github.ref == 'refs/heads/beta')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: site
+            image: ghcr.io/vooz2/terento-site
+            context: .
+            dockerfile: site-deploy/Dockerfile
+          - target: api
+            image: ghcr.io/vooz2/terento-catalog
+            context: backend/catalog-api
+            dockerfile: backend/catalog-api/Dockerfile
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '22'
+      - name: Validate public site and release contracts
+        if: matrix.target == 'site'
+        run: |
+          Tests/run-site-tests.sh
+          Tests/run-release-documentation-tests.sh
+          Tests/run-release-legal-content-tests.sh
+      - name: Validate backend
+        if: matrix.target == 'api'
+        run: |
+          python -m pip install --disable-pip-version-check -e backend/catalog-api
+          Tests/run-backend-tests.sh
+      - name: Build and publish immutable release candidate
+        env:
+          IMAGE: ${{ matrix.image }}
+          CONTEXT: ${{ matrix.context }}
+          DOCKERFILE: ${{ matrix.dockerfile }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCKER_CONFIG: ${{ runner.temp }}/terento-docker-${{ matrix.target }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --platform linux/amd64 \
+            --label "org.opencontainers.image.source=https://github.com/VooZ2/terento" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --label "org.opencontainers.image.licenses=GPL-3.0-or-later" \
+            --file "$DOCKERFILE" --tag "$IMAGE:sha-$GITHUB_SHA" "$CONTEXT"
+          trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker push "$IMAGE:sha-$GITHUB_SHA"
+          docker pull "$IMAGE:sha-$GITHUB_SHA"
+          reference="$(docker image inspect --format '{{index .RepoDigests 0}}' "$IMAGE:sha-$GITHUB_SHA")"
+          [[ "$reference" == "$IMAGE"@sha256:* ]]
+          printf '%s\n' "### $IMAGE" "Commit: $GITHUB_SHA" "Digest: $reference" >> "$GITHUB_STEP_SUMMARY"
