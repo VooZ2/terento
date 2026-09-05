@@ -627,6 +627,23 @@ def normalize_home(source: str, path: Path, locale: str) -> str:
         source,
         count=1,
     )
+    hero_image_alts = {
+        "en": "Terento showing community map installation progress on macOS",
+        "de": "Terento zeigt den Installationsfortschritt von Community-Karten unter macOS",
+        "fr": "Terento affiche la progression de l’installation de cartes communautaires sur macOS",
+        "pl": "Terento pokazuje postęp instalacji map społecznościowych w macOS",
+        "cs": "Terento zobrazuje průběh instalace komunitních map v macOS",
+        "it": "Terento mostra l’avanzamento dell’installazione di mappe della comunità su macOS",
+    }
+    def installing_hero(match):
+        hero = match.group(0).replace("your-garmin-", "installing-maps-")
+        return re.sub(r'(<img\b[^>]* alt=")[^"]*(")',
+                      lambda image: image.group(1) + hero_image_alts[locale] + image.group(2), hero)
+
+    source, hero_count = re.subn(r'<figure class="app-shot app-shot--hero">[\s\S]*?</figure>',
+                                 installing_hero, source, count=1)
+    if hero_count != 1:
+        raise ValueError(f"{path}: expected one Home hero screenshot")
     source = normalize_hero_copy(source, path, copy)
     source = normalize_hero_actions(source, path, copy)
     source = re.sub(

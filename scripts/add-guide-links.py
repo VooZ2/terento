@@ -125,6 +125,43 @@ def download_link(label: str, href: str, *, event=None, location=None) -> str:
     )
 
 
+DOWNLOAD_PRESENTATION = {
+    "en": ("A native Mac app for installing and managing community maps on compatible Garmin watches.", "Free", "Notarized", "Terento showing a connected Garmin watch on macOS"),
+    "de": ("Eine native Mac-App zum Installieren und Verwalten von Community-Karten auf kompatiblen Garmin-Uhren.", "Kostenlos", "Notarisiert", "Terento zeigt eine verbundene Garmin-Uhr unter macOS"),
+    "fr": ("Une application Mac native pour installer et gérer des cartes communautaires sur les montres Garmin compatibles.", "Gratuit", "Notarié", "Terento affiche une montre Garmin connectée sur macOS"),
+    "pl": ("Natywna aplikacja na Maca do instalowania i zarządzania mapami społecznościowymi na zgodnych zegarkach Garmin.", "Bezpłatna", "Notaryzowana", "Terento pokazuje podłączony zegarek Garmin w macOS"),
+    "cs": ("Nativní aplikace pro Mac k instalaci a správě komunitních map na kompatibilních hodinkách Garmin.", "Zdarma", "Notarizovaná", "Terento zobrazuje připojené hodinky Garmin v macOS"),
+    "it": ("Un’app Mac nativa per installare e gestire mappe della comunità sugli orologi Garmin compatibili.", "Gratuita", "Notarizzata", "Terento mostra un orologio Garmin collegato su macOS"),
+}
+
+
+def download_presentation(source: str, locale: str) -> str:
+    intro, free, notarized, alt = DOWNLOAD_PRESENTATION[locale]
+    source = re.sub(r'<ul class="download-badges">[\s\S]*?</ul>', '', source)
+    badges = '<ul class="download-badges">' + ''.join(
+        f'<li>{html.escape(label)}</li>' for label in (free, notarized, "Apple Silicon")
+    ) + '</ul>'
+    source = re.sub(r'<p class="download-intro">[\s\S]*?</p>',
+                    f'<p class="download-intro">{html.escape(intro)}</p>{badges}', source, count=1)
+    sizes = '(max-width: 899px) min(400px, calc(100vw - 48px)), 400px'
+    sources = ''.join(
+        f'<source type="image/{fmt}" srcset="' + ', '.join(
+            f'/assets/app/optimized/your-garmin-{width}.{fmt}?v=20260905-app-screens-v1 {width}w'
+            for width in (640, 960, 1280, 1600)
+        ) + f'" sizes="{sizes}">'
+        for fmt in ('avif', 'webp')
+    )
+    visual = ('<div class="download-visual"><figure class="app-shot app-shot--download"><picture>'
+              + sources + '<img src="/assets/app/optimized/your-garmin-1600.png?v=20260905-app-screens-v1" '
+              + f'width="2198" height="1335" sizes="{sizes}" alt="{html.escape(alt, quote=True)}" decoding="async">'
+              + '</picture></figure></div>')
+    anchor = r'(<p class="download-release">[\s\S]*?</p></div>)(</div>)'
+    source, count = re.subn(anchor, lambda m: m.group(1) + visual + m.group(2), source, count=1)
+    if count != 1:
+        raise ValueError(f"{locale}: Download image insertion point missing")
+    return source
+
+
 def normalize_download_layout(source: str, locale: str) -> str:
     """Bring Download pages onto a focused actions + technical-details layout."""
     source = re.sub(r'\s*<p class="download-trust">[\s\S]*?</p>', '', source, count=1)
@@ -164,7 +201,7 @@ def normalize_download_layout(source: str, locale: str) -> str:
             source,
             count=1,
         )
-        return source
+        return download_presentation(source, locale)
     pattern = re.compile(
         r'<div class="download-grid">'
         r'<div class="section-heading"><p class="eyebrow">(?P<label>.*?)</p>'
@@ -189,7 +226,7 @@ def normalize_download_layout(source: str, locale: str) -> str:
     )
     match = pattern.search(source)
     if not match:
-        return source
+        return download_presentation(source, locale)
     top = re.sub(r'\s*<p class="download-requirement">[\s\S]*?</p>', '', match.group("top"), count=1)
     top = re.sub(r'(<p class="download-intro">[^<]*)\s*<strong>[^<]*</strong>', r'\1', top, count=1)
     top = re.sub(

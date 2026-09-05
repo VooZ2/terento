@@ -43,3 +43,12 @@ The September 2026 legal-notice rollout also synchronizes the previously
 published `970a16a` public-site polish into `beta`. Production had received
 that site revision through a separate deployment. Retain its shared menu,
 language-label and layout behavior when deploying the legal-notice update.
+
+## 2026-09-05 About, Home and Download refresh
+
+About now leads with product value and a short maker story. Home uses the
+Installing maps screenshot. Download pairs a compact Your Garmin preview with
+Free, Notarized and Apple Silicon badges sharing the Guide CSS rule. All six
+locales use stylesheet version `20260905-shared-badges-v1`. App release files
+and hardware compatibility claims are unchanged. Full public-site and release
+preflight checks must pass before the workflow publishes this source.

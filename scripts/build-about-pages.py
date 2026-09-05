@@ -39,213 +39,212 @@ def localized_path(locale: str, suffix: str = "") -> str:
     return f"/{prefix}{suffix}"
 
 
-COPY = {
-    "en": {
-        "title": "About Terento — Free, Open-Source Garmin Maps for Mac",
-        "description": "Meet the maker behind Terento and learn why this free, open-source Mac app exists for third-party Garmin maps.",
-        "skip": "Skip to content",
-        "story_eyebrow": "A note from the maker",
-        "story_heading": "Hi, I’m Gediminas",
-        "story": [
-            "I think I started using Garmin around the time of the fēnix 3, and over the years it became more than a device — it became part of how I travel and spend time outdoors. I especially enjoy mountain hiking, and before a holiday I like to update my watch with maps for the places I’m visiting.",
-            "That process was often harder than it should have been: Garmin Express could get stuck, and installing third-party maps meant finding and downloading them separately, then using additional software. Garmin’s own maps also did not always provide the level of detail I needed.",
-            "That frustration made me want a simpler way to get the right maps onto my watch. I’m not a software developer, but as more people started solving practical problems with AI-assisted “vibe coding,” I realized I could try to build that solution myself. That experiment became Terento — an all-in-one Mac app for choosing, installing, updating, and managing third-party maps.",
-            "I’m making it free and open source because I’m not building a business around it; I want it to help the community. You should not need to be a technical person to get your watch ready for the places you’re going.",
-        ],
-        "social_eyebrow": "Connect with the maker",
-        "linkedin": "LinkedIn",
-        "reddit": "Reddit",
-        "email": "Email",
-        "donate_prompt": "Like the project?",
-        "donate": "Donate",
-        "section_title": "Focused on the result — not the process.",
-        "does_title": "What Terento does",
-        "does_items": [
-            "Choose maps from Freizeitkarte or OpenTopoMap, or add your own compatible .img map.",
-            "Install, update, and manage third-party maps from one place.",
-            "Supports Macs with Apple Silicon processors.",
-            "Keeps original Garmin maps protected.",
-        ],
-        "doesnt_title": "What Terento doesn’t",
-        "doesnt_items": [
-            "It does not send you back to Garmin Express or BaseCamp.",
-            "It does not host, mirror, or repackage map files.",
-            "It does not require an account or cloud device profile.",
-            "It does not support Macs with Intel processors.",
-        ],
-    },
-    "de": {
-        "title": "Über Terento — Kostenlose Open-Source-Garmin-Karten für den Mac",
-        "description": "Lerne den Menschen hinter Terento kennen und erfahre, warum diese kostenlose Open-Source-Mac-App für Garmin-Karten entstanden ist.",
-        "skip": "Zum Inhalt springen",
-        "story_eyebrow": "Eine Notiz vom Entwickler",
-        "story_heading": "Hallo, ich bin Gediminas",
-        "story": [
-            "Ich glaube, dass ich ungefähr mit der fēnix 3 angefangen habe, Garmin zu nutzen, und im Laufe der Jahre wurde Garmin mehr als ein Gerät — es wurde Teil davon, wie ich reise und Zeit draußen verbringe. Ich wandere besonders gern in den Bergen und aktualisiere vor einem Urlaub meine Uhr mit Karten für die Orte, die ich besuche.",
-            "Dieser Ablauf war oft schwieriger als nötig: Garmin Express konnte hängen bleiben, während die Installation von Drittanbieter-Karten separate Downloads und zusätzliche Software erforderte. Auch die Garmin-eigenen Karten boten nicht immer die Detailtiefe, die ich brauchte.",
-            "Diese Frustration hat in mir den Wunsch nach einer einfacheren Möglichkeit geweckt, die richtigen Karten auf meine Uhr zu bekommen. Ich bin kein Softwareentwickler, aber als immer mehr Menschen praktische Probleme mit KI-gestütztem „Vibe Coding“ lösten, dachte ich, dass ich diese Lösung selbst bauen könnte. Aus diesem Experiment entstand Terento — eine Mac-App zum Auswählen, Installieren, Aktualisieren und Verwalten von Drittanbieter-Karten.",
-            "Ich entwickle sie kostenlos und als Open Source, weil ich kein Unternehmen daraus machen möchte, sondern der Community helfen will. Du solltest kein technischer Mensch sein müssen, um deine Uhr für die Orte vorzubereiten, an die du unterwegs bist.",
-        ],
-        "social_eyebrow": "Mit dem Entwickler verbinden",
-        "linkedin": "LinkedIn",
-        "reddit": "Reddit",
-        "email": "E-Mail",
-        "donate_prompt": "Gefällt dir das Projekt?",
-        "donate": "Spenden",
-        "section_title": "Das Ergebnis im Mittelpunkt — nicht der Prozess.",
-        "does_title": "Was Terento macht",
-        "does_items": [
-            "Wähle Karten von Freizeitkarte oder OpenTopoMap oder füge deine eigene kompatible .img-Karte hinzu.",
-            "Installiere, aktualisiere und verwalte Drittanbieter-Karten an einem Ort.",
-            "Unterstützt Macs mit Apple-Silicon-Prozessoren.",
-            "Originale Garmin-Karten bleiben geschützt.",
-        ],
-        "doesnt_title": "Was Terento nicht macht",
-        "doesnt_items": [
-            "Terento schickt dich nicht zurück zu Garmin Express oder BaseCamp.",
-            "Terento hostet, spiegelt oder verpackt Kartendateien nicht neu.",
-            "Terento benötigt kein Konto und kein Geräteprofil in der Cloud.",
-            "Terento unterstützt keine Macs mit Intel-Prozessoren.",
-        ],
-    },
-    "fr": {
-        "title": "À propos de Terento — Cartes Garmin gratuites et open source sur Mac",
-        "description": "Découvrez la personne derrière Terento et pourquoi cette application Mac gratuite et open source pour les cartes Garmin existe.",
-        "skip": "Aller au contenu",
-        "story_eyebrow": "Une note du créateur",
-        "story_heading": "Bonjour, je m’appelle Gediminas",
-        "story": [
-            "Je crois avoir commencé à utiliser Garmin avec la fēnix 3 et, au fil des années, c’est devenu plus qu’un appareil : une partie de ma façon de voyager et de passer du temps dehors. J’aime particulièrement la randonnée en montagne et, avant les vacances, j’aime mettre à jour ma montre avec les cartes des endroits que je vais visiter.",
-            "Ce processus était souvent plus compliqué qu’il ne devrait l’être : Garmin Express pouvait se bloquer, tandis que l’installation de cartes tierces demandait de les trouver et de les télécharger séparément, ainsi que d’utiliser des logiciels supplémentaires. Les cartes Garmin ne fournissaient pas toujours non plus le niveau de détail dont j’avais besoin.",
-            "Cette frustration m’a donné envie de trouver une manière plus simple d’ajouter les bonnes cartes à ma montre. Je ne suis pas développeur logiciel, mais lorsque de plus en plus de personnes ont commencé à résoudre des problèmes pratiques avec le « vibe coding » assisté par l’IA, je me suis dit que je pouvais essayer de construire cette solution moi-même. Cette expérience a donné naissance à Terento : une application Mac tout-en-un pour choisir, installer, mettre à jour et gérer des cartes tierces.",
-            "Je la rends gratuite et open source parce que je ne cherche pas à en faire une entreprise ; je veux aider la communauté. Vous ne devriez pas avoir besoin d’être une personne technique pour préparer votre montre aux endroits où vous allez.",
-        ],
-        "social_eyebrow": "Se connecter avec le créateur",
-        "linkedin": "LinkedIn",
-        "reddit": "Reddit",
-        "email": "E-mail",
-        "donate_prompt": "Vous aimez le projet ?",
-        "donate": "Faire un don",
-        "section_title": "Axé sur le résultat — pas sur le processus.",
-        "does_title": "Ce que fait Terento",
-        "does_items": [
-            "Choisir des cartes auprès de Freizeitkarte ou OpenTopoMap, ou ajouter votre propre carte .img compatible.",
-            "Installer, mettre à jour et gérer les cartes tierces depuis un seul endroit.",
-            "Prend en charge les Mac équipés de processeurs Apple Silicon.",
-            "Protège les cartes Garmin d’origine.",
-        ],
-        "doesnt_title": "Ce que Terento ne fait pas",
-        "doesnt_items": [
-            "Terento ne vous renvoie pas vers Garmin Express ou BaseCamp.",
-            "Terento n’héberge pas, ne met pas en miroir et ne reconditionne pas les fichiers cartographiques.",
-            "Terento ne nécessite ni compte ni profil d’appareil dans le cloud.",
-            "Terento ne prend pas en charge les Mac équipés de processeurs Intel.",
-        ],
-    },
-    "pl": {
-        "title": "O Terento — Bezpłatne, otwartoźródłowe mapy Garmina na Macu",
-        "description": "Poznaj twórcę Terento i dowiedz się, dlaczego powstała ta bezpłatna aplikacja open source na Maca do obsługi map Garmina.",
-        "skip": "Przejdź do treści",
-        "story_eyebrow": "Notatka od twórcy",
-        "story_heading": "Cześć, jestem Gediminas",
-        "story": [
-            "Wydaje mi się, że zacząłem korzystać z Garmina około czasów fēnix 3 i przez lata stał się on czymś więcej niż urządzeniem — stał się częścią tego, jak podróżuję i spędzam czas na świeżym powietrzu. Szczególnie lubię górskie wędrówki, a przed urlopem chcę aktualizować zegarek mapami miejsc, które odwiedzam.",
-            "Ten proces często był trudniejszy, niż powinien: Garmin Express potrafił się zawiesić, a instalowanie map innych firm wymagało osobnego wyszukiwania i pobierania map oraz dodatkowego oprogramowania. Mapy Garmina również nie zawsze miały poziom szczegółowości, którego potrzebowałem.",
-            "Ta frustracja sprawiła, że chciałem znaleźć prostszy sposób na dodanie właściwych map do zegarka. Nie jestem programistą, ale gdy coraz więcej osób zaczęło rozwiązywać praktyczne problemy za pomocą wspomaganego przez AI „vibe codingu”, pomyślałem, że też mogę spróbować zbudować takie rozwiązanie. Tak powstało Terento — kompleksowa aplikacja na Maca do wybierania, instalowania, aktualizowania i zarządzania mapami innych firm.",
-            "Tworzę ją bezpłatnie i jako open source, bo nie buduję z tego firmy; chcę pomóc społeczności. Nie powinieneś być osobą techniczną, aby przygotować zegarek na miejsca, do których się wybierasz.",
-        ],
-        "social_eyebrow": "Połącz się z twórcą",
-        "linkedin": "LinkedIn",
-        "reddit": "Reddit",
-        "email": "E-mail",
-        "donate_prompt": "Podoba Ci się projekt?",
-        "donate": "Wesprzyj",
-        "section_title": "Liczy się rezultat — nie proces.",
-        "does_title": "Co robi Terento",
-        "does_items": [
-            "Wybieraj mapy z Freizeitkarte lub OpenTopoMap albo dodaj własną kompatybilną mapę .img.",
-            "Instaluj, aktualizuj i zarządzaj mapami innych firm w jednym miejscu.",
-            "Obsługuje Maci z procesorami Apple Silicon.",
-            "Chroni oryginalne mapy Garmina.",
-        ],
-        "doesnt_title": "Czego Terento nie robi",
-        "doesnt_items": [
-            "Terento nie odsyła Cię do Garmin Express ani BaseCamp.",
-            "Terento nie hostuje, nie kopiuje ani nie przepakowuje plików map.",
-            "Terento nie wymaga konta ani chmurowego profilu urządzenia.",
-            "Terento nie obsługuje Maców z procesorami Intel.",
-        ],
-    },
-    "cs": {
-        "title": "O Terento — Bezplatné open-source mapy Garminu na Macu",
-        "description": "Poznejte tvůrce Terento a zjistěte, proč tato bezplatná open-source aplikace pro Mac vznikla pro mapy Garmin.",
-        "skip": "Přejít k obsahu",
-        "story_eyebrow": "Poznámka od tvůrce",
-        "story_heading": "Ahoj, jsem Gediminas",
-        "story": [
-            "Myslím, že jsem Garmin začal používat někdy kolem modelu fēnix 3 a v průběhu let se z něj stalo víc než jen zařízení — stal se součástí toho, jak cestuji a trávím čas venku. Nejraději chodím po horách a před dovolenou si rád aktualizuji hodinky mapami míst, která navštívím.",
-            "Tento proces byl často složitější, než by měl být: Garmin Express se mohl zaseknout, zatímco instalace map třetích stran vyžadovala jejich samostatné hledání a stahování i další software. Ani vlastní mapy Garminu mi ne vždy poskytly potřebnou úroveň detailů.",
-            "Tato frustrace mě přivedla k myšlence najít jednodušší způsob, jak dostat správné mapy do hodinek. Nejsem softwarový vývojář, ale když stále více lidí začalo řešit praktické problémy pomocí AI asistovaného „vibe codingu“, uvědomil jsem si, že bych mohl zkusit toto řešení vytvořit sám. Z tohoto experimentu vzniklo Terento — komplexní aplikace pro Mac k výběru, instalaci, aktualizaci a správě map třetích stran.",
-            "Vytvářím ji bezplatně a jako open source, protože z ní nechci budovat firmu; chci pomoci komunitě. Neměli byste být technicky zaměření, abyste mohli připravit hodinky na místa, kam míříte.",
-        ],
-        "social_eyebrow": "Spojte se s tvůrcem",
-        "linkedin": "LinkedIn",
-        "reddit": "Reddit",
-        "email": "E-mail",
-        "donate_prompt": "Líbí se vám projekt?",
-        "donate": "Přispět",
-        "section_title": "Zaměřeno na výsledek — ne na proces.",
-        "does_title": "Co Terento dělá",
-        "does_items": [
-            "Vyberte mapy z Freizeitkarte nebo OpenTopoMap, případně přidejte vlastní kompatibilní mapu .img.",
-            "Instalujte, aktualizujte a spravujte mapy třetích stran z jednoho místa.",
-            "Podporuje Macy s procesory Apple Silicon.",
-            "Chrání originální mapy Garminu.",
-        ],
-        "doesnt_title": "Co Terento nedělá",
-        "doesnt_items": [
-            "Terento vás neposílá zpět do Garmin Express nebo BaseCamp.",
-            "Terento mapové soubory nehostuje, nezrcadlí ani znovu nebalí.",
-            "Terento nevyžaduje účet ani cloudový profil zařízení.",
-            "Terento nepodporuje Macy s procesory Intel.",
-        ],
-    },
-    "it": {
-        "title": "Informazioni su Terento — Mappe Garmin gratuite e open source su Mac",
-        "description": "Scopri chi c’è dietro Terento e perché esiste questa app gratuita e open source per Mac dedicata alle mappe Garmin.",
-        "skip": "Vai al contenuto",
-        "story_eyebrow": "Una nota dal creatore",
-        "story_heading": "Ciao, sono Gediminas",
-        "story": [
-            "Credo di aver iniziato a usare Garmin intorno ai tempi del fēnix 3 e, negli anni, è diventato più di un dispositivo: è diventato parte del modo in cui viaggio e trascorro il tempo all’aperto. Amo soprattutto le escursioni in montagna e, prima di una vacanza, mi piace aggiornare l’orologio con le mappe dei luoghi che visiterò.",
-            "Questo processo era spesso più complicato del necessario: Garmin Express poteva bloccarsi, mentre installare mappe di terze parti significava cercarle e scaricarle separatamente e usare software aggiuntivo. Anche le mappe Garmin non offrivano sempre il livello di dettaglio di cui avevo bisogno.",
-            "Questa frustrazione mi ha fatto desiderare un modo più semplice per portare le mappe giuste sul mio orologio. Non sono uno sviluppatore software, ma quando sempre più persone hanno iniziato a risolvere problemi pratici con il “vibe coding” assistito dall’AI, ho capito che potevo provare a costruire da solo la soluzione che cercavo. Da quell’esperimento è nata Terento — un’app Mac tutto-in-uno per scegliere, installare, aggiornare e gestire mappe di terze parti.",
-            "La rendo gratuita e open source perché non sto costruendo un’azienda; voglio aiutare la community. Non dovrebbe servire essere persone tecniche per preparare il proprio orologio ai luoghi verso cui si è diretti.",
-        ],
-        "social_eyebrow": "Connettiti con il creatore",
-        "linkedin": "LinkedIn",
-        "reddit": "Reddit",
-        "email": "Email",
-        "donate_prompt": "Ti piace il progetto?",
-        "donate": "Dona",
-        "section_title": "Il risultato prima di tutto — non il processo.",
-        "does_title": "Cosa fa Terento",
-        "does_items": [
-            "Scegli mappe da Freizeitkarte o OpenTopoMap oppure aggiungi la tua mappa .img compatibile.",
-            "Installa, aggiorna e gestisci le mappe di terze parti da un unico posto.",
-            "Supporta i Mac con processori Apple Silicon.",
-            "Protegge le mappe Garmin originali.",
-        ],
-        "doesnt_title": "Cosa non fa Terento",
-        "doesnt_items": [
-            "Terento non ti rimanda a Garmin Express o BaseCamp.",
-            "Terento non ospita, non replica e non riconfeziona i file delle mappe.",
-            "Terento non richiede un account né un profilo del dispositivo nel cloud.",
-            "Terento non supporta i Mac con processori Intel.",
-        ],
-    },
-}
-
+COPY = {'en': {'title': 'About Terento — Free, Open-Source Garmin Maps for Mac',
+        'description': 'Terento is a free, open-source Mac app for choosing, installing, and managing '
+                       'community maps on compatible Garmin watches. Built to make getting ready for your '
+                       'next trip simpler.',
+        'skip': 'Skip to content',
+        'story_eyebrow': 'A note from the maker',
+        'story_heading': 'Why I started Terento',
+        'story': ['I’m Gediminas, a Garmin user who enjoys hiking in the mountains. Before a trip, I want my '
+                  'watch ready with maps for where I’m going. Getting those maps onto it often took more '
+                  'effort than it should.',
+                  'I started Terento to make that easier for myself and other Mac users. I’m keeping it free '
+                  'and open source because I want this small solution to be useful to the community.'],
+        'social_eyebrow': 'Connect with the maker',
+        'linkedin': 'LinkedIn',
+        'reddit': 'Reddit',
+        'email': 'Email',
+        'donate_prompt': 'Like the project?',
+        'donate': 'Donate',
+        'section_title': 'Made for your next trip',
+        'does_title': 'Maps, in one place',
+        'does_items': ['Choose and install maps from Freizeitkarte or OpenTopoMap.',
+                       'Add your own compatible map (.img); custom maps have no automatic updates.',
+                       'Update and manage Terento-installed provider maps in one Mac app.',
+                       'Keeps original Garmin maps protected.'],
+        'doesnt_title': 'Free and open to everyone',
+        'doesnt_items': ['Free to use, with no account required.',
+                         'Open source: explore the code or help improve it on GitHub.',
+                         'Maps come from their providers, with their attribution preserved.'],
+        'product_heading': 'Community maps. A simpler way onto your Garmin.',
+        'beta': 'Public beta for Apple Silicon Macs. Compatibility is evaluated model by model.',
+        'compatibility': 'Check compatibility',
+        'download': 'Download'},
+ 'de': {'title': 'Über Terento — Kostenlose Open-Source-Garmin-Karten für den Mac',
+        'description': 'Terento ist eine kostenlose Open-Source-Mac-App zum Auswählen, Installieren und '
+                       'Verwalten von Community-Karten auf kompatiblen Garmin-Uhren. Damit die Vorbereitung '
+                       'auf deine nächste Reise einfacher wird.',
+        'skip': 'Zum Inhalt springen',
+        'story_eyebrow': 'Eine Notiz vom Entwickler',
+        'story_heading': 'Warum ich Terento gestartet habe',
+        'story': ['Ich bin Gediminas, Garmin-Nutzer und gern in den Bergen unterwegs. Vor einer Reise möchte '
+                  'ich meine Uhr mit Karten für mein Reiseziel vorbereiten. Diese Karten auf die Uhr zu '
+                  'bekommen, war oft aufwendiger als nötig.',
+                  'Ich habe Terento gestartet, um das für mich und andere Mac-Nutzer einfacher zu machen. '
+                  'Ich halte es kostenlos und quelloffen, weil ich möchte, dass diese kleine Lösung der '
+                  'Community hilft.'],
+        'social_eyebrow': 'Mit dem Entwickler verbinden',
+        'linkedin': 'LinkedIn',
+        'reddit': 'Reddit',
+        'email': 'E-Mail',
+        'donate_prompt': 'Gefällt dir das Projekt?',
+        'donate': 'Spenden',
+        'section_title': 'Für deine nächste Reise',
+        'does_title': 'Karten an einem Ort',
+        'does_items': ['Wähle und installiere Karten von Freizeitkarte oder OpenTopoMap.',
+                       'Füge deine eigene kompatible Karte (.img) hinzu; eigene Karten erhalten keine '
+                       'automatischen Updates.',
+                       'Aktualisiere und verwalte mit Terento installierte Anbieterkarten in einer Mac-App.',
+                       'Originale Garmin-Karten bleiben geschützt.'],
+        'doesnt_title': 'Kostenlos und offen für alle',
+        'doesnt_items': ['Kostenlos nutzbar, ohne Konto.',
+                         'Open Source: Sieh dir den Code an oder hilf auf GitHub mit.',
+                         'Die Karten stammen von ihren Anbietern; deren Quellenangaben bleiben erhalten.'],
+        'product_heading': 'Community-Karten. Einfacher auf deiner Garmin.',
+        'beta': 'Public Beta für Macs mit Apple Silicon. Die Kompatibilität wird für jedes Modell einzeln '
+                'bewertet.',
+        'compatibility': 'Kompatibilität prüfen',
+        'download': 'Download'},
+ 'fr': {'title': 'À propos de Terento — Cartes Garmin gratuites et open source sur Mac',
+        'description': 'Terento est une application Mac gratuite et open source pour choisir, installer et '
+                       'gérer des cartes communautaires sur les montres Garmin compatibles. Pour préparer '
+                       'plus simplement votre prochaine escapade.',
+        'skip': 'Aller au contenu',
+        'story_eyebrow': 'Une note du créateur',
+        'story_heading': 'Pourquoi j’ai créé Terento',
+        'story': ['Je suis Gediminas, utilisateur de Garmin et amateur de randonnée en montagne. Avant un '
+                  'voyage, je veux préparer ma montre avec les cartes de ma destination. Les transférer sur '
+                  'ma montre demandait souvent trop d’efforts.',
+                  'J’ai créé Terento pour simplifier cela, pour moi et pour les autres utilisateurs de Mac. '
+                  'Je le garde gratuit et open source pour que cette petite solution soit utile à la '
+                  'communauté.'],
+        'social_eyebrow': 'Se connecter avec le créateur',
+        'linkedin': 'LinkedIn',
+        'reddit': 'Reddit',
+        'email': 'E-mail',
+        'donate_prompt': 'Vous aimez le projet ?',
+        'donate': 'Faire un don',
+        'section_title': 'Pour votre prochaine escapade',
+        'does_title': 'Vos cartes au même endroit',
+        'does_items': ['Choisissez et installez des cartes de Freizeitkarte ou OpenTopoMap.',
+                       'Ajoutez votre propre carte compatible (.img) ; les cartes personnelles ne '
+                       'bénéficient pas de mises à jour automatiques.',
+                       'Mettez à jour et gérez les cartes de fournisseurs installées par Terento dans une '
+                       'seule application Mac.',
+                       'Protège les cartes Garmin d’origine.'],
+        'doesnt_title': 'Gratuit et ouvert à tous',
+        'doesnt_items': ['Gratuit, sans compte obligatoire.',
+                         'Open source : consultez le code ou contribuez sur GitHub.',
+                         'Les cartes proviennent de leurs fournisseurs et conservent leurs attributions.'],
+        'product_heading': 'Des cartes communautaires. Plus simplement sur votre Garmin.',
+        'beta': 'Bêta publique pour les Mac avec Apple Silicon. La compatibilité est évaluée modèle par '
+                'modèle.',
+        'compatibility': 'Vérifier la compatibilité',
+        'download': 'Télécharger'},
+ 'pl': {'title': 'O Terento — Bezpłatne, otwartoźródłowe mapy Garmina na Macu',
+        'description': 'Terento to bezpłatna aplikacja open source na Maca do wybierania, instalowania i '
+                       'zarządzania mapami społecznościowymi na zgodnych zegarkach Garmin. Ułatwia '
+                       'przygotowania do kolejnej podróży.',
+        'skip': 'Przejdź do treści',
+        'story_eyebrow': 'Notatka od twórcy',
+        'story_heading': 'Dlaczego stworzyłem Terento',
+        'story': ['Mam na imię Gediminas, używam Garmina i lubię górskie wędrówki. Przed podróżą chcę '
+                  'przygotować zegarek z mapami miejsc, do których się wybieram. Wgranie tych map często '
+                  'wymagało więcej wysiłku, niż powinno.',
+                  'Stworzyłem Terento, aby ułatwić to sobie i innym użytkownikom Maca. Projekt pozostaje '
+                  'bezpłatny i open source, bo chcę, aby to małe rozwiązanie służyło społeczności.'],
+        'social_eyebrow': 'Połącz się z twórcą',
+        'linkedin': 'LinkedIn',
+        'reddit': 'Reddit',
+        'email': 'E-mail',
+        'donate_prompt': 'Podoba Ci się projekt?',
+        'donate': 'Wesprzyj',
+        'section_title': 'Na Twoją kolejną podróż',
+        'does_title': 'Mapy w jednym miejscu',
+        'does_items': ['Wybieraj i instaluj mapy Freizeitkarte lub OpenTopoMap.',
+                       'Dodaj własną zgodną mapę (.img); własne mapy nie mają automatycznych aktualizacji.',
+                       'Aktualizuj i zarządzaj mapami dostawców zainstalowanymi przez Terento w jednej '
+                       'aplikacji na Maca.',
+                       'Chroni oryginalne mapy Garmina.'],
+        'doesnt_title': 'Bezpłatne i otwarte dla wszystkich',
+        'doesnt_items': ['Bezpłatnie, bez konieczności zakładania konta.',
+                         'Open source: przeglądaj kod lub pomóż go ulepszać na GitHubie.',
+                         'Mapy pochodzą od ich dostawców, z zachowaniem informacji o autorstwie.'],
+        'product_heading': 'Mapy społecznościowe. Prościej na Twoim Garminie.',
+        'beta': 'Publiczna beta dla Maców z Apple Silicon. Zgodność jest oceniana dla każdego modelu osobno.',
+        'compatibility': 'Sprawdź zgodność',
+        'download': 'Pobierz'},
+ 'cs': {'title': 'O Terento — Bezplatné open-source mapy Garminu na Macu',
+        'description': 'Terento je bezplatná open-source aplikace pro Mac k výběru, instalaci a správě '
+                       'komunitních map na kompatibilních hodinkách Garmin. Usnadňuje přípravu na další '
+                       'cestu.',
+        'skip': 'Přejít k obsahu',
+        'story_eyebrow': 'Poznámka od tvůrce',
+        'story_heading': 'Proč jsem vytvořil Terento',
+        'story': ['Jmenuji se Gediminas, používám Garmin a rád chodím po horách. Před cestou chci mít v '
+                  'hodinkách mapy míst, kam se chystám. Dostat do nich tyto mapy často vyžadovalo více '
+                  'úsilí, než by mělo.',
+                  'Vytvořil jsem Terento, abych to usnadnil sobě i ostatním uživatelům Macu. Nechávám ho '
+                  'zdarma a s otevřeným kódem, protože chci, aby toto malé řešení pomáhalo komunitě.'],
+        'social_eyebrow': 'Spojte se s tvůrcem',
+        'linkedin': 'LinkedIn',
+        'reddit': 'Reddit',
+        'email': 'E-mail',
+        'donate_prompt': 'Líbí se vám projekt?',
+        'donate': 'Přispět',
+        'section_title': 'Pro vaši příští cestu',
+        'does_title': 'Mapy na jednom místě',
+        'does_items': ['Vyberte a nainstalujte mapy od Freizeitkarte nebo OpenTopoMap.',
+                       'Přidejte vlastní kompatibilní mapu (.img); vlastní mapy nemají automatické '
+                       'aktualizace.',
+                       'Aktualizujte a spravujte mapy poskytovatelů nainstalované přes Terento v jedné '
+                       'aplikaci pro Mac.',
+                       'Chrání originální mapy Garminu.'],
+        'doesnt_title': 'Zdarma a otevřené všem',
+        'doesnt_items': ['Zdarma, bez nutnosti účtu.',
+                         'Open source: prohlédněte si kód nebo pomozte s jeho vylepšením na GitHubu.',
+                         'Mapy pocházejí od svých poskytovatelů a zachovávají údaje o autorství.'],
+        'product_heading': 'Komunitní mapy. Jednodušeji do vašeho Garminu.',
+        'beta': 'Veřejná beta pro Macy s Apple Silicon. Kompatibilita se posuzuje pro každý model zvlášť.',
+        'compatibility': 'Ověřit kompatibilitu',
+        'download': 'Stáhnout'},
+ 'it': {'title': 'Informazioni su Terento — Mappe Garmin gratuite e open source su Mac',
+        'description': 'Terento è un’app Mac gratuita e open source per scegliere, installare e gestire '
+                       'mappe della comunità sugli orologi Garmin compatibili. Per prepararti più facilmente '
+                       'al prossimo viaggio.',
+        'skip': 'Vai al contenuto',
+        'story_eyebrow': 'Una nota dal creatore',
+        'story_heading': 'Perché ho creato Terento',
+        'story': ['Sono Gediminas, uso Garmin e amo le escursioni in montagna. Prima di un viaggio voglio '
+                  'preparare l’orologio con le mappe dei luoghi che visiterò. Trasferire quelle mappe '
+                  'richiedeva spesso più impegno del necessario.',
+                  'Ho creato Terento per semplificare tutto questo, per me e per gli altri utenti Mac. Lo '
+                  'mantengo gratuito e open source perché voglio che questa piccola soluzione sia utile alla '
+                  'comunità.'],
+        'social_eyebrow': 'Connettiti con il creatore',
+        'linkedin': 'LinkedIn',
+        'reddit': 'Reddit',
+        'email': 'Email',
+        'donate_prompt': 'Ti piace il progetto?',
+        'donate': 'Dona',
+        'section_title': 'Per il tuo prossimo viaggio',
+        'does_title': 'Le mappe in un unico posto',
+        'does_items': ['Scegli e installa mappe da Freizeitkarte o OpenTopoMap.',
+                       'Aggiungi la tua mappa compatibile (.img); le mappe personali non hanno aggiornamenti '
+                       'automatici.',
+                       'Aggiorna e gestisci le mappe dei fornitori installate da Terento in un’unica app '
+                       'Mac.',
+                       'Protegge le mappe Garmin originali.'],
+        'doesnt_title': 'Gratuito e aperto a tutti',
+        'doesnt_items': ['Gratuito, senza bisogno di un account.',
+                         'Open source: esplora il codice o contribuisci su GitHub.',
+                         'Le mappe provengono dai loro fornitori e mantengono le attribuzioni.'],
+        'product_heading': 'Mappe della comunità. Più semplicemente sul tuo Garmin.',
+        'beta': 'Beta pubblica per Mac con Apple Silicon. La compatibilità viene valutata modello per '
+                'modello.',
+        'compatibility': 'Verifica la compatibilità',
+        'download': 'Scarica'}}
 
 def render(locale: str, copy: dict[str, object]) -> str:
     canonical = f"{BASE_URL}{localized_path(locale, ABOUT_SLUG)}"
@@ -311,14 +310,13 @@ def render(locale: str, copy: dict[str, object]) -> str:
     <a class="skip-link" href="#main-content">{esc(copy["skip"])}</a>
     <header class="site-header"></header>
     <main id="main-content">
-      <section class="about-story" aria-labelledby="about-title">
-        <div class="shell about-story-inner">
-          <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>{esc(copy["story_eyebrow"])}</p>
-          <h1 id="about-title">{esc(copy["story_heading"])}</h1>
-          <div class="about-story-copy">
-{story}
-          </div>
-{social}
+      <section class="about-intro" aria-labelledby="about-title">
+        <div class="shell">
+          <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Terento</p>
+          <h1 id="about-title">{esc(copy["product_heading"])}</h1>
+          <p class="about-intro-copy">{esc(copy["description"])}</p>
+          <p class="about-beta">{esc(copy["beta"])} <a class="text-link" href="{localized_path(locale, 'compatibility/')}" data-umami-event="compatibility-link-click" data-umami-event-location="about-intro">{esc(copy["compatibility"])}</a></p>
+          <div class="hero-actions"><a class="download-action" href="{localized_path(locale, 'download/')}" data-umami-event="download-cta-click" data-umami-event-location="about-intro">{esc(copy["download"])}</a></div>
         </div>
       </section>
       <section class="about-main" aria-labelledby="about-principle-title">
@@ -332,6 +330,16 @@ def render(locale: str, copy: dict[str, object]) -> str:
 {doesnt}
             </ul></section>
           </div>
+        </div>
+      </section>
+      <section class="about-story" aria-labelledby="about-story-title">
+        <div class="shell about-story-inner">
+          <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>{esc(copy["story_eyebrow"])}</p>
+          <h2 id="about-story-title">{esc(copy["story_heading"])}</h2>
+          <div class="about-story-copy">
+{story}
+          </div>
+{social}
         </div>
       </section>
     </main>
