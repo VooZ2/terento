@@ -3,6 +3,25 @@ set -eu
 
 cd "$(dirname "$0")/.."
 
+PYTHONDONTWRITEBYTECODE=1 python3 - <<'PYTHON'
+import runpy
+
+links = runpy.run_path("scripts/add-guide-links.py")
+normalize = links["normalize_download_layout"]
+for locale in links["COPY"]:
+    source = links["path_for"](locale, "download/index.html").read_text(encoding="utf-8")
+    normalized = normalize(source, locale)
+    assert normalize(normalized, locale) == normalized, locale
+    for layout in ("download-layout", "download-grid", "download-sections", "unknown"):
+        try:
+            normalize(source.replace('class="download-hero"', f'class="{layout}"'), locale)
+        except ValueError as error:
+            assert "download-hero" in str(error), error
+        else:
+            raise AssertionError(f"{locale}: obsolete or unknown layout accepted: {layout}")
+print("Download layout checks passed for all six locales.")
+PYTHON
+
 generated="site/privacy/index.html
 site/legal/index.html
 site/guides/install-garmin-maps-mac/index.html

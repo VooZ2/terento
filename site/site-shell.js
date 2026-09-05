@@ -114,7 +114,10 @@
     const languageOptions = (location) => languages.map((item) => {
       const href = item.code === "en" ? `/${pageRoute}` : `/${item.code}/${pageRoute}`;
       const current = item.code === language ? ' aria-current="page"' : "";
-      return `<a class="language-option" href="${href}${homeHash}" data-language-switch="${item.code}" lang="${item.code}" aria-label="${item.name}"${current}${umamiAttributes("language-switch-click", location)}><span class="language-option-flag" aria-hidden="true">${item.flag}</span><span>${item.name}</span></a>`;
+      // In-page actions must not look like navigation to the analytics tracker.
+      const tag = pageType === "legal" || pageType === "privacy" ? "button" : "a";
+      const destination = tag === "button" ? 'type="button"' : `href="${href}${homeHash}"`;
+      return `<${tag} class="language-option" ${destination} data-language-switch="${item.code}" lang="${item.code}" aria-label="${item.name}"${current}${umamiAttributes("language-switch-click", location)}><span class="language-option-flag" aria-hidden="true">${item.flag}</span><span>${item.name}</span></${tag}>`;
     }).join("");
     const languageMenu = (mobile = false) => `<details class="language-menu${mobile ? " mobile-language-menu" : ""}">
     <summary class="language-trigger" aria-label="${copy.language}">${mobile ? `<span class="mobile-language-label">${currentLanguageName}</span>` : `<span class="language-code" aria-hidden="true">${language.toUpperCase()}</span>`}</summary>
@@ -184,7 +187,7 @@
       document.documentElement.classList.toggle("mobile-menu-open", open);
     };
     menuButton?.addEventListener("click", () => setMenu(menuButton.getAttribute("aria-expanded") !== "true"));
-    mobileNav?.querySelectorAll("a").forEach((item) => item.addEventListener("click", () => setMenu(false)));
+    mobileNav?.querySelectorAll("a, [data-language-switch]").forEach((item) => item.addEventListener("click", () => setMenu(false)));
     document.querySelectorAll("[data-language-switch]").forEach((item) => {
       item.addEventListener("click", () => {
         try { window.localStorage.setItem("terento-language", item.dataset.languageSwitch); } catch { /* optional */ }

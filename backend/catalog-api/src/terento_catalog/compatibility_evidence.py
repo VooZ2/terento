@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import html
 import json
 import re
 from dataclasses import dataclass
@@ -223,17 +222,3 @@ def _validate_v3(event: dict[str, Any]) -> None:
         raise EvidenceValidationError("inconsistent_remote_object")
     if event["cleanupSucceeded"] and not event["cleanupAttempted"]:
         raise EvidenceValidationError("inconsistent_cleanup")
-
-
-def operator_page(rows: list[dict[str, Any]]) -> bytes:
-    body = "".join(
-        "<tr>" + "".join(f"<td>{html.escape(str(row.get(key) if row.get(key) is not None else '—'))}</td>" for key in (
-            "model", "firmware_versions", "attempted_install_count", "successful_install_count",
-            "failed_install_count", "success_rate", "last_success", "last_failure",
-            "error_categories", "calculated_status", "physical_device_evidence_count", "review_notes",
-        )) + "</tr>"
-        for row in rows
-    )
-    return f"""<!doctype html><html><head><meta charset=utf-8><meta name=robots content=\"noindex,nofollow\">
-<title>Terento compatibility evidence</title><style>body{{font:14px system-ui;margin:2rem}}table{{border-collapse:collapse}}th,td{{border:1px solid #ccc;padding:.5rem;text-align:left}}</style></head>
-<body><h1>Compatibility evidence</h1><table><thead><tr>{''.join(f'<th>{x}</th>' for x in ('Model','Firmware','Attempts','Successes','Failures','Rate','Last success','Last failure','Errors','Calculated','Physical devices','Review notes'))}</tr></thead><tbody>{body}</tbody></table></body></html>""".encode()

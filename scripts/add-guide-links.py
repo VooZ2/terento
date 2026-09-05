@@ -14,8 +14,6 @@ COPY = {
         "home": "Read the full Mac installation guide.",
         "download_guide": "Read the Mac installation guide",
         "download_compatibility": "Check compatibility",
-        "download_details_eyebrow": "Before you install",
-        "download_details_title": "Check the essentials first.",
         "compatibility": "First time installing third-party maps? Read the Mac guide",
         "community_eyebrow": "Community testing",
         "community_heading": "Have another Garmin smartwatch with map support?",
@@ -27,8 +25,6 @@ COPY = {
         "home": "Lies die vollständige Mac-Installationsanleitung.",
         "download_guide": "Mac-Installationsanleitung lesen",
         "download_compatibility": "Kompatibilität prüfen",
-        "download_details_eyebrow": "Vor der Installation",
-        "download_details_title": "Prüfe zuerst die wichtigsten Voraussetzungen.",
         "compatibility": "Zum ersten Mal Drittanbieter-Karten installieren? Lies die Mac-Anleitung",
         "community_eyebrow": "Community-Tests",
         "community_heading": "Hast du eine weitere Garmin-Smartwatch mit Kartenunterstützung?",
@@ -40,8 +36,6 @@ COPY = {
         "home": "Lisez le guide complet d’installation sur Mac.",
         "download_guide": "Lire le guide d’installation sur Mac",
         "download_compatibility": "Vérifier la compatibilité",
-        "download_details_eyebrow": "Avant l’installation",
-        "download_details_title": "Vérifiez l’essentiel avant de commencer.",
         "compatibility": "Vous installez des cartes tierces pour la première fois ? Lisez le guide Mac",
         "community_eyebrow": "Tests communautaires",
         "community_heading": "Vous avez une autre montre Garmin compatible avec les cartes ?",
@@ -53,8 +47,6 @@ COPY = {
         "home": "Przeczytaj pełną instrukcję instalacji na Macu.",
         "download_guide": "Przeczytaj instrukcję instalacji na Macu",
         "download_compatibility": "Sprawdź kompatybilność",
-        "download_details_eyebrow": "Przed instalacją",
-        "download_details_title": "Sprawdź najważniejsze informacje.",
         "compatibility": "Instalujesz mapy innych firm pierwszy raz? Przeczytaj instrukcję na Macu",
         "community_eyebrow": "Testy społeczności",
         "community_heading": "Masz inny zegarek Garmin obsługujący mapy?",
@@ -66,8 +58,6 @@ COPY = {
         "home": "Přečtěte si úplného průvodce instalací na Macu.",
         "download_guide": "Přečíst průvodce instalací na Macu",
         "download_compatibility": "Ověřit kompatibilitu",
-        "download_details_eyebrow": "Před instalací",
-        "download_details_title": "Nejdřív si ověřte to podstatné.",
         "compatibility": "Instalujete mapy třetích stran poprvé? Přečtěte si průvodce pro Mac",
         "community_eyebrow": "Komunitní testování",
         "community_heading": "Máte jiné hodinky Garmin s podporou map?",
@@ -79,8 +69,6 @@ COPY = {
         "home": "Leggi la guida completa all’installazione su Mac.",
         "download_guide": "Leggi la guida all’installazione su Mac",
         "download_compatibility": "Verifica la compatibilità",
-        "download_details_eyebrow": "Prima dell’installazione",
-        "download_details_title": "Controlla i requisiti essenziali.",
         "compatibility": "Installi mappe di terze parti per la prima volta? Leggi la guida per Mac",
         "community_eyebrow": "Test della community",
         "community_heading": "Hai un altro smartwatch Garmin con supporto mappe?",
@@ -164,102 +152,48 @@ def download_presentation(source: str, locale: str) -> str:
 
 def normalize_download_layout(source: str, locale: str) -> str:
     """Bring Download pages onto a focused actions + technical-details layout."""
+    if source.count('class="download-hero"') != 1:
+        raise ValueError(f"Download page ({locale}) must use the current download-hero layout")
     source = re.sub(r'\s*<p class="download-trust">[\s\S]*?</p>', '', source, count=1)
-    if 'class="download-layout"' in source or 'class="download-hero"' in source:
-        source = re.sub(r'<div class="download-visual">[\s\S]*?</div>', '', source, count=1)
-        source = source.replace('class="download-layout"', 'class="download-hero"', 1)
-        source = re.sub(
-            r'(<p class="download-intro">[^<]*)\s*<strong>[^<]*</strong>',
-            r'\1',
-            source,
-            count=1,
-        )
-        source = re.sub(
-            r'(<div class="download-copy">[\s\S]*?)\s*<p class="download-requirement">[\s\S]*?</p>',
-            r'\1',
-            source,
-            count=1,
-        )
-        source = re.sub(
-            r'(<div class="download-actions">[\s\S]*?<a class=")[^"]+(" href="https://github\.com/VooZ2/terento/releases/download/[^" ]+\.dmg")',
-            r'\1download-action download-action-primary\2',
-            source,
-            count=1,
-        )
-        source = re.sub(
-            r'(<div class="download-actions">[\s\S]*?<a class=")[^"]+(" href="https://github\.com/VooZ2/terento/releases/tag/)',
-            r'\1download-action download-action-tertiary\2',
-            source,
-            count=1,
-        )
-        sections = list(re.finditer(r'<section class="download-detail">[\s\S]*?</section>', source))
-        for section in reversed(sections[2:]):
-            source = source[:section.start()] + source[section.end():]
-        source = re.sub(
-            r'</section>\s*</div></section></main>',
-            r'</section></div></section></main>',
-            source,
-            count=1,
-        )
-        return download_presentation(source, locale)
-    pattern = re.compile(
-        r'<div class="download-grid">'
-        r'<div class="section-heading"><p class="eyebrow">(?P<label>.*?)</p>'
-        r'<h2>(?P<version>.*?)</h2>'
-        r'<p class="supporting-copy">(?P<release>.*?)</p></div>'
-        r'<div class="download-list">(?P<sections>[\s\S]*?)</div></div>'
+    source = re.sub(r'<div class="download-visual">[\s\S]*?</div>', '', source, count=1)
+    source = re.sub(
+        r'(<p class="download-intro">[^<]*)\s*<strong>[^<]*</strong>',
+        r'\1',
+        source,
+        count=1,
     )
-    match = pattern.search(source)
-    if match:
-        replacement = (
-            f'<p class="download-release">{match.group("label")}: '
-            f'<strong>{match.group("version")}</strong> '
-            '<span aria-hidden="true">·</span> '
-            f'{match.group("release")}</p>'
-            f'<div class="download-sections">{match.group("sections")}</div>'
-        )
-        source = source[:match.start()] + replacement + source[match.end():]
-
-    pattern = re.compile(
-        r'(?P<top>\s*<p class="eyebrow">[\s\S]*?<p class="download-release">[\s\S]*?</p>)\s*'
-        r'<div class="download-sections">(?P<sections>[\s\S]*?)</div>\s*</div>(?P<main_close></main>)'
+    source = re.sub(
+        r'(<div class="download-copy">[\s\S]*?)\s*<p class="download-requirement">[\s\S]*?</p>',
+        r'\1',
+        source,
+        count=1,
     )
-    match = pattern.search(source)
-    if not match:
-        return download_presentation(source, locale)
-    top = re.sub(r'\s*<p class="download-requirement">[\s\S]*?</p>', '', match.group("top"), count=1)
-    top = re.sub(r'(<p class="download-intro">[^<]*)\s*<strong>[^<]*</strong>', r'\1', top, count=1)
-    top = re.sub(
+    source = re.sub(
         r'(<div class="download-actions">[\s\S]*?<a class=")[^"]+(" href="https://github\.com/VooZ2/terento/releases/download/[^" ]+\.dmg")',
         r'\1download-action download-action-primary\2',
-        top,
+        source,
         count=1,
     )
-    top = re.sub(
+    source = re.sub(
         r'(<div class="download-actions">[\s\S]*?<a class=")[^"]+(" href="https://github\.com/VooZ2/terento/releases/tag/)',
         r'\1download-action download-action-tertiary\2',
-        top,
+        source,
         count=1,
     )
-    sections = re.findall(r'<section class="download-item">[\s\S]*?</section>', match.group("sections"))[:2]
-    sections = ''.join(section.replace('class="download-item"', 'class="download-detail"', 1) for section in sections)
-    details = (
-        '<section class="download-details" aria-labelledby="download-details-title">'
-        f'<div class="download-details-heading"><p class="eyebrow">{COPY[locale]["download_details_eyebrow"]}</p>'
-        f'<h2 id="download-details-title">{COPY[locale]["download_details_title"]}</h2></div>'
-        f'<div class="download-details-list">{sections}</div>'
-        '</section>'
+    sections = list(re.finditer(r'<section class="download-detail">[\s\S]*?</section>', source))
+    for section in reversed(sections[2:]):
+        source = source[:section.start()] + source[section.end():]
+    source = re.sub(
+        r'</section>\s*</div></section></main>',
+        r'</section></div></section></main>',
+        source,
+        count=1,
     )
-    replacement = (
-        f'<div class="download-hero"><div class="download-copy">{top}</div>'
-        '</div>'
-        f'{details}{match.group("main_close")}'
-    )
-    return source[:match.start()] + replacement + source[match.end():]
+    return download_presentation(source, locale)
 
 
 def replace_download_section_link(source: str, section_index: int, anchor: str) -> str:
-    sections = list(re.finditer(r'<section class="download-(?:item|detail)">[\s\S]*?</section>', source))
+    sections = list(re.finditer(r'<section class="download-detail">[\s\S]*?</section>', source))
     if len(sections) < 2:
         raise RuntimeError("Download page must contain at least two information sections")
     match = sections[section_index]

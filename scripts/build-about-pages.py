@@ -11,8 +11,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BASE_URL = "https://terento.app"
 ABOUT_SLUG = "about/"
-SHELL_VERSION = "20260905-mobile-menu-language-v1"
-STYLE_VERSION = "20260905-mobile-menu-language-v1"
+SHELL_VERSION = "20260905-in-page-language-v1"
+STYLE_VERSION = "20260905-in-page-language-v1"
 UMAMI_SCRIPT_VERSION = "20260905-public-link-events-v3"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 EMAIL_ADDRESS = "hello@terento.app"

@@ -52,3 +52,14 @@ Free, Notarized and Apple Silicon badges sharing the Guide CSS rule. All six
 locales use stylesheet version `20260905-shared-badges-v1`. App release files
 and hardware compatibility claims are unchanged. Full public-site and release
 preflight checks must pass before the workflow publishes this source.
+
+### In-page language switching
+
+Legal and Privacy language choices use native buttons so analytics tracking
+cannot redirect an in-page language change to Home. Both pages share the
+language controller in `site/page-language.js`; translations remain in their
+page-specific scripts. Mobile language choices also release the menu scroll
+lock. Public shell/CSS versions and generated pages are maintained by the
+normalizer. The retired Guide progress script is removed; reading-position
+restoration is retained. Download normalization accepts the current layout and
+fails explicitly for obsolete layouts.

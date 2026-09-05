@@ -9,14 +9,15 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SHELL_VERSION = "20260905-mobile-menu-language-v1"
-STYLE_VERSION = "20260905-shared-badges-v1"
+SHELL_VERSION = "20260905-in-page-language-v1"
+STYLE_VERSION = "20260905-in-page-language-v1"
 IMAGE_VERSION = "20260905-app-screens-v1"
 LANGUAGE_VERSION = "20260905-language-selector-full-name-v1"
 LOCALIZED_CONTENT_VERSION = "20260904-pass3-internal-link-events-v1"
 COMPATIBILITY_LOCALES_VERSION = "20260904-beta-provider-scope"
 COMPATIBILITY_VERSION = "20260904-snapshot"
 UMAMI_SCRIPT_VERSION = "20260905-campaign-url-only-v1"
+PAGE_LANGUAGE_VERSION = "20260905-shared-page-language-v1"
 LOCALES = {
     "en": {"flag": "🇬🇧", "name": "English", "home": "Terento home", "primary": "Primary navigation", "menu": "Menu", "close": "Close menu", "about": "About", "compatibility": "Compatibility", "guide": "Guide", "faq": "FAQ", "download": "Download", "language": "Choose language", "footer": "Footer navigation", "status": "Open-source project", "legal": "Legal", "privacy": "Privacy", "support": "Support Terento", "stats": "Visit statistics (Umami) do not use cookies."},
     "de": {"flag": "🇩🇪", "name": "Deutsch", "home": "Terento Startseite", "primary": "Hauptnavigation", "menu": "Menü", "close": "Menü schließen", "about": "Über uns", "compatibility": "Kompatibilität", "guide": "Anleitung", "faq": "FAQ", "download": "Download", "language": "Sprache wählen", "footer": "Footer-Navigation", "status": "Open-Source-Projekt", "legal": "Rechtliches", "privacy": "Datenschutz", "support": "Support Terento", "stats": "Besuchsstatistik (Umami) verwendet keine Cookies."},
@@ -39,12 +40,14 @@ def umami_attributes(event: str, location: str) -> str:
     return f' data-umami-event="{event}" data-umami-event-location="{location}"'
 
 
-def language_links(locale: str, route: str, location: str) -> str:
+def language_links(locale: str, route: str, location: str, in_page: bool = False) -> str:
     links = []
     for candidate, candidate_copy in LOCALES.items():
         href = route_for(candidate, route)
         current = ' aria-current="page"' if candidate == locale else ""
-        links.append(f'<a class="language-option" href="{href}" data-language-switch="{candidate}" lang="{candidate}" aria-label="{candidate_copy["name"]}"{current}{umami_attributes("language-switch-click", location)}><span class="language-option-flag" aria-hidden="true">{candidate_copy["flag"]}</span><span>{candidate_copy["name"]}</span></a>')
+        tag = "button" if in_page else "a"
+        destination = 'type="button"' if in_page else f'href="{href}"'
+        links.append(f'<{tag} class="language-option" {destination} data-language-switch="{candidate}" lang="{candidate}" aria-label="{candidate_copy["name"]}"{current}{umami_attributes("language-switch-click", location)}><span class="language-option-flag" aria-hidden="true">{candidate_copy["flag"]}</span><span>{candidate_copy["name"]}</span></{tag}>')
     return "".join(links)
 
 
@@ -71,7 +74,7 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
         return f'<a{class_attribute} href="{nav[key]}"{current}{umami_attributes(nav_events[key], location)}>{copy[key]}</a>'
     language_menu = f'''<details class="language-menu">
           <summary class="language-trigger" aria-label="{copy["language"]}"><span class="language-code" aria-hidden="true">{locale.upper()}</span></summary>
-          <div class="language-options">{language_links(locale, route_for_language, "header-language")}</div>
+          <div class="language-options">{language_links(locale, route_for_language, "header-language", page in {"legal", "privacy"})}</div>
         </details>'''
     header = f'''<header class="site-header">
       <div class="shell header-inner">
@@ -95,7 +98,7 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
           </nav>
           <div class="mobile-nav-language"><details class="language-menu mobile-language-menu">
             <summary class="language-trigger" aria-label="{copy["language"]}"><span class="mobile-language-label">{copy["name"]}</span></summary>
-            <div class="language-options">{language_links(locale, route_for_language, "mobile-language")}</div>
+            <div class="language-options">{language_links(locale, route_for_language, "mobile-language", page in {"legal", "privacy"})}</div>
           </details></div>
         </div>
       </div>
@@ -296,7 +299,13 @@ def main() -> None:
             rf'\g<1>{LOCALIZED_CONTENT_VERSION}',
             source,
         )
-        source = re.sub(r'(/(?:privacy|legal)-language\.js\?v=)[^"\s]+', r'\g<1>20260905-legal-language-v1', source)
+        source = re.sub(
+            r'(?:<script defer src="/page-language\.js\?v=[^"\s]+"></script>\s*)?'
+            r'<script defer src="/(privacy|legal)-language\.js\?v=[^"\s]+"></script>',
+            rf'<script defer src="/page-language.js?v={PAGE_LANGUAGE_VERSION}"></script>\n'
+            rf'    <script defer src="/\1-language.js?v={PAGE_LANGUAGE_VERSION}"></script>',
+            source,
+        )
         source = re.sub(r'(/language\.js\?v=)[^"\s]+', rf'\g<1>{LANGUAGE_VERSION}', source)
         source = re.sub(r'(/privacy-consent\.js\?v=)[^"\s]+', rf'\g<1>{UMAMI_SCRIPT_VERSION}', source)
         source = re.sub(

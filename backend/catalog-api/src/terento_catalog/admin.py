@@ -389,24 +389,6 @@ def _normalise_github_issue_reference(value: Any) -> str | None:
     return f"#{int(match.group(1))}"
 
 
-def _error_cell(row: dict[str, Any], diagnostic_summary: dict[str, int] | None = None) -> str:
-    summary = diagnostic_summary or {}
-    count = int(summary.get("errors") or 0)
-    identity = str(row.get("compatibility_identity") or row.get("model") or "unknown")
-    target = _model_detail_url(row, state="open")
-    if count:
-        return (
-            f"<a class='error-count' href='{html.escape(target, quote=True)}' "
-            f"aria-label='View {count} unresolved errors for {html.escape(identity)}'>"
-            f"{count} error{'s' if count != 1 else ''}</a>"
-        )
-    return "<span class='muted-value'>—</span>"
-
-
-def _diagnostics_id(identity: str) -> str:
-    return "diagnostics-" + hashlib.sha256(identity.encode("utf-8")).hexdigest()[:16]
-
-
 def _diagnostic_state_badge(value: str) -> str:
     normalized = str(value).upper()
     if normalized == "NONE":
@@ -418,17 +400,6 @@ def _diagnostic_state_badge(value: str) -> str:
     else:
         state, label = "OPEN", "Open"
     return f"<span class='diagnostic-state diagnostic-state-{state.lower()}'>{label}</span>"
-
-
-def _github_issue_markup(value: Any) -> str:
-    raw = str(value or "").strip()
-    if not raw:
-        return ""
-    match = re.fullmatch(r"#?(\d+)", raw)
-    if not match:
-        return f" · GitHub {html.escape(raw)}"
-    issue_number = match.group(1)
-    return f" · <a class='github-issue' href='https://github.com/VooZ2/terento/issues/{issue_number}' target='_blank' rel='noreferrer'>Issue #{issue_number}</a>"
 
 
 def _github_issue_chip(value: Any) -> str:
@@ -483,42 +454,6 @@ def _diagnostic_result(value: Any) -> str:
     )
 
 
-def _diagnostic_code(result: dict[str, Any]) -> str:
-    code = str(result.get("failure_code") or "").strip()
-    native = str(result.get("native_failure_code") or "").strip()
-    if not code and not native:
-        return "<span class='muted-value'>—</span>"
-    primary = html.escape(code or "—")
-    native_markup = (
-        f"<small class='diagnostic-native-code'>Native: {html.escape(native)}</small>"
-        if native else ""
-    )
-    return f"<span class='diagnostic-code-value'>{primary}{native_markup}</span>"
-
-
-def _diagnostic_cleanup(result: dict[str, Any]) -> str:
-    attempted = _diagnostic_boolean(result.get("cleanup_attempted"))
-    if attempted == "No" or attempted.startswith("<span"):
-        return "Not attempted"
-    return "Yes" if _diagnostic_boolean(result.get("cleanup_succeeded")) == "Yes" else "No"
-
-
-def _diagnostic_summary_rows(results: list[dict[str, Any]]) -> str:
-    rows: list[str] = []
-    for result in sorted(results, key=lambda item: int(item.get("map_result_index") or 0)):
-        rows.append(
-            "<tr>"
-            f"<td>{_diagnostic_value(result.get('region'))}</td>"
-            f"<td>{_diagnostic_result(result.get('phase_outcome'))}</td>"
-            f"<td>{_diagnostic_value(result.get('failure_stage'))}</td>"
-            f"<td>{_diagnostic_code(result)}</td>"
-            f"<td>{_diagnostic_boolean(result.get('write_started'))}</td>"
-            f"<td>{_diagnostic_cleanup(result)}</td>"
-            "</tr>"
-        )
-    return "".join(rows)
-
-
 def _diagnostic_technical_details(result: dict[str, Any], result_number: int) -> str:
     fields: list[tuple[str, Any]] = []
     for label, key in (
@@ -553,50 +488,6 @@ def _diagnostic_technical_details(result: dict[str, Any], result_number: int) ->
         f"<details class='diagnostic-technical-details'>"
         f"<summary>Technical details · map result {result_number}</summary>"
         f"{content}</details>"
-    )
-
-
-def _diagnostic_group_summary(identity: str, operations: dict[str, list[dict[str, Any]]]) -> str:
-    parts = [part.strip() for part in identity.split("·") if part.strip()]
-    title_parts: list[str] = []
-    chips: list[str] = []
-    for part in parts:
-        lowered = part.casefold()
-        if lowered in {"identity pending", "identity unresolved", "identity not identifiable"}:
-            chips.append(f"<span class='diagnostic-chip'>{html.escape(part)}</span>")
-            continue
-        if re.fullmatch(r"(?:issue\s*)?#?\d+", part, flags=re.IGNORECASE):
-            chips.append(_github_issue_chip(part.removeprefix("issue ").strip()))
-            continue
-        title_parts.append(part)
-    if not title_parts:
-        title_parts = [identity]
-    elif len(title_parts) == 1:
-        size_match = re.fullmatch(r"(.+?)\s+(\d{2,3}\s*mm)", title_parts[0], flags=re.IGNORECASE)
-        if size_match:
-            title_parts = [
-                size_match.group(1).strip(),
-                re.sub(r"(\d{2,3})\s*mm", r"\1 mm", size_match.group(2), flags=re.IGNORECASE),
-            ]
-    issue = next(
-        (
-            event.get("linked_github_issue")
-            for result_group in operations.values()
-            for event in result_group
-            if event.get("linked_github_issue")
-        ),
-        None,
-    )
-    if issue and not any("github.com/VooZ2/terento/issues/" in chip for chip in chips):
-        chips.append(_github_issue_chip(issue))
-    count = len(operations)
-    chips.append(
-        f"<span class='diagnostic-chip'>{count} diagnostic{'s' if count != 1 else ''}</span>"
-    )
-    return (
-        f"<span class='diagnostic-group-title'>{html.escape(' · '.join(title_parts))}</span>"
-        f"<span class='diagnostic-group-meta'>{''.join(chips)}</span>"
-        "<span class='diagnostic-summary-action'>View details</span>"
     )
 
 
@@ -757,23 +648,6 @@ def _overview_operation_href(operation: dict[str, Any]) -> str:
     if device_id:
         return _device_detail_url(device_id, origin="installations", state=state, anchor="installations")
     return _diagnostics_url(operation, state=state)
-
-
-def _overview_activity_row(operation: dict[str, Any]) -> str:
-    label, state = _overview_operation_label(operation)
-    context = _overview_operation_context(operation)
-    provider = _compatibility_source_label(operation.get("provider")) or "—"
-    href = _overview_operation_href(operation)
-    reason = _overview_failure_reason_label(operation.get("error_category")) if state in {"failed", "not-started"} else ""
-    detail = f"<span>{html.escape(context)}</span>"
-    if reason:
-        detail += f"<small>{html.escape(reason)}</small>"
-    return (
-        f"<li class='overview-activity-item overview-activity-{state}'>"
-        f"<a href='{html.escape(href, quote=True)}'><span class='overview-activity-label'>{html.escape(label)}</span>{detail}</a>"
-        f"<span class='overview-activity-provider'>{html.escape(provider)}</span>"
-        f"{_timestamp_markup(operation.get('last_occurred_at'))}</li>"
-    )
 
 
 def _overview_attention_item(operation: dict[str, Any]) -> str:
@@ -1052,20 +926,6 @@ def _overview_map_activity_row(event: dict[str, Any]) -> str:
         f"<a href='{html.escape(href, quote=True)}'><span class='overview-activity-label'>{html.escape(label)}</span>"
         f"<span>{html.escape(_overview_map_event_context(event))}</span></a>"
         f"{_timestamp_markup(event.get('occurred_at'))}</li>"
-    )
-
-
-def _overview_map_attention_item(event: dict[str, Any]) -> str:
-    label, state = _overview_map_event_label(event)
-    href = _overview_map_event_href(event)
-    reason = "Download failed" if event.get("event_type") == "DOWNLOAD_FAILED" else "Install failed"
-    return (
-        f"<li class='overview-attention-item overview-attention-{state}'>"
-        f"<span class='overview-attention-dot' aria-hidden='true'>●</span>"
-        f"<div><a href='{html.escape(href, quote=True)}'><strong>{html.escape(label)}</strong></a>"
-        f"<span>{html.escape(_overview_map_event_context(event))}</span>"
-        f"<small>{html.escape(reason)} · {_timestamp_markup(event.get('occurred_at'))}</small></div>"
-        f"<a class='overview-detail-link' href='{html.escape(href, quote=True)}'>Details&nbsp;→</a></li>"
     )
 
 
@@ -1755,24 +1615,6 @@ def _provider_action_label(value: Any) -> str:
     }
     raw = str(value or "").strip()
     return labels.get(raw, raw.replace("_", " ").title() or "Provider action")
-
-
-def _provider_bytes(value: Any) -> str:
-    try:
-        amount = int(value)
-    except (TypeError, ValueError):
-        return "—"
-    if amount < 0:
-        return "—"
-    units = ("B", "KiB", "MiB", "GiB")
-    number = float(amount)
-    unit = units[0]
-    for candidate in units:
-        unit = candidate
-        if number < 1024 or candidate == units[-1]:
-            break
-        number /= 1024
-    return f"{int(number) if number.is_integer() else number:.1f} {unit}"
 
 
 def _provider_action_button(
@@ -2751,12 +2593,6 @@ def _github_issue_url(
     return candidate, True
 
 
-def _github_create_issue_url(
-    identity: str, results: list[dict[str, Any]], *, device: dict[str, Any] | None = None,
-) -> str:
-    return _github_issue_url(identity, results, device=device)[0]
-
-
 def _diagnostic_detail_dialog(
     identity: str,
     operation_key: str,
@@ -3199,118 +3035,6 @@ def diagnostics_page(
       <script>{_diagnostics_script()}</script>
     """
     return _layout("Installation details", content)
-
-
-def _diagnostic_details(rows: list[dict[str, Any]], events: list[dict[str, Any]], csrf_token: str) -> str:
-    identities = {
-        str(row.get("compatibility_identity") or row.get("model") or "Unknown")
-        for row in rows
-    }
-    return _render_diagnostic_details(
-        events,
-        identities=identities,
-        heading="Diagnostics",
-        summary_prefix="",
-        csrf_token=csrf_token,
-    )
-
-
-def _resolved_diagnostic_details(events: list[dict[str, Any]], csrf_token: str) -> str:
-    return _render_diagnostic_details(
-        events,
-        identities=None,
-        heading="Resolved / historical diagnostics",
-        summary_prefix="",
-        note="These records are retained for diagnosis but are excluded from current compatibility counts or rates.",
-        csrf_token=csrf_token,
-    )
-
-
-def _render_diagnostic_details(
-    events: list[dict[str, Any]],
-    *,
-    identities: set[str] | None,
-    heading: str,
-    summary_prefix: str,
-    note: str | None = None,
-    csrf_token: str = "",
-) -> str:
-    by_identity: dict[str, dict[str, list[dict[str, Any]]]] = {}
-    for event in events:
-        identity = str(event.get("compatibility_identity") or event.get("model") or "Unknown")
-        if identities is not None and identity not in identities:
-            continue
-        operation = str(event.get("operation_key") or event.get("operation_id") or event.get("event_id"))
-        by_identity.setdefault(identity, {}).setdefault(operation, []).append(event)
-    sections: list[str] = []
-    identities_to_render = identities if identities is not None else set(by_identity)
-    for identity in sorted(identities_to_render):
-        operations = by_identity.get(identity, {})
-        if not operations:
-            continue
-        operation_cards: list[str] = []
-        details_id = _diagnostics_id(identity)
-        if heading == "Resolved / historical diagnostics":
-            details_id = "resolved-" + details_id
-        for operation_key, results in operations.items():
-            first = results[0]
-            summary_rows = _diagnostic_summary_rows(results)
-            technical_details = "".join(
-                _diagnostic_technical_details(result, index)
-                for index, result in enumerate(
-                    sorted(results, key=lambda item: int(item.get("map_result_index") or 0)),
-                    start=1,
-                )
-            )
-            app_version = _admin_app_version_label(
-                first.get("release_label") or first.get("terento_version") or "legacy",
-                first.get("app_build"),
-            )
-            resolution = ""
-            if str(first.get("diagnostic_status") or "").upper() == "RESOLVED":
-                resolution = " · " + html.escape(
-                    str(first.get("resolution_reason") or first.get("resolution_code") or "Resolved")
-                )
-                if first.get("resolution_note"):
-                    resolution += " · " + html.escape(str(first["resolution_note"]))
-                if first.get("resolved_at"):
-                    resolution += " · resolved " + _timestamp_markup(first.get("resolved_at"))
-                if first.get("resolved_by_username"):
-                    resolution += " · by " + html.escape(str(first["resolved_by_username"]))
-            diagnostic_status = str(first.get("diagnostic_status") or "ACTIVE").upper()
-            lifecycle = _diagnostic_state_badge(diagnostic_status)
-            identity_state = str(first.get("identity_resolution_state") or "UNRESOLVED").upper()
-            if diagnostic_status == "RESOLVED":
-                action = f"""<form method='post' action='/admin/diagnostics/reopen' class='diagnostic-inline-form admin-async-action'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='operation_key' value='{html.escape(str(operation_key), quote=True)}'><button type='submit' class='secondary-button'>Reopen</button></form>"""
-            else:
-                action = f"""<button type='button' class='secondary-button' data-resolve-operation='{html.escape(str(operation_key), quote=True)}'>Resolve</button>"""
-            identity_action = f"""<button type='button' class='secondary-button' data-identity-operation='{html.escape(str(operation_key), quote=True)}'>Resolve identity</button>"""
-            operation_cards.append(f"""
-              <article class='diagnostic-operation'>
-                <div class='diagnostic-operation-heading'><div><h4>Diagnostic record</h4><p>{_timestamp_markup(first.get('occurred_at'))} · {html.escape(app_version)} · Write: {_diagnostic_boolean(first.get('write_started'))} · {len(results)} map result{'s' if len(results) != 1 else ''}</p><p class='diagnostic-id'>Diagnostic ID: <code>{html.escape(str(operation_key))}</code></p></div><div class='diagnostic-actions'>{lifecycle}{action}{identity_action}</div></div>
-                <p class='diagnostic-meta'>Identity: {html.escape(identity_state.title().replace('_', ' '))}{resolution}</p>
-                <div class='table-wrap diagnostic-summary-wrap'><table class='diagnostic-summary-table'><caption class='sr-only'>Diagnostic summary</caption><thead><tr><th scope='col'>Region</th><th scope='col'>Result</th><th scope='col'>Stage</th><th scope='col'>Code</th><th scope='col'>Write</th><th scope='col'>Cleanup</th></tr></thead><tbody>{summary_rows}</tbody></table></div>
-                {technical_details}
-              </article>""")
-        sections.append(f"""
-          <details class='diagnostic-details' id='{details_id}'>
-            <summary>{_diagnostic_group_summary(summary_prefix + identity, operations)}</summary>
-            {''.join(operation_cards)}
-          </details>""")
-    if not sections:
-        return ""
-    note_markup = f"<p class='table-help'>{html.escape(note)}</p>" if note else ""
-    section_class = (
-        "diagnostics-list resolved-diagnostics"
-        if heading == "Resolved / historical diagnostics"
-        else "diagnostics-list"
-    )
-    return (
-        f"<section class='{section_class}' aria-label='{html.escape(heading)}'>"
-        f"<h3>{html.escape(heading)}</h3>{note_markup}"
-        + "".join(sections)
-        + "</section>"
-    )
 
 
 def _admin_map_capability(value: Any) -> tuple[str, str]:
@@ -4622,7 +4346,7 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .evidence-table-wrap table{min-width:760px}.evidence-model-row{cursor:pointer}.evidence-model-row:hover{background:color-mix(in srgb,var(--surface-muted) 52%,white)}.evidence-model-row:focus-visible{outline:3px solid color-mix(in srgb,var(--sky) 58%,white);outline-offset:-3px}.evidence-model-row td:nth-child(3),.evidence-model-row td:nth-child(4){font-variant-numeric:tabular-nums}.error-count{text-decoration:none}.identity-pending-indicator{display:inline-flex;align-items:center;margin-left:6px;padding:3px 6px;border:1px solid var(--border);border-radius:999px;color:var(--secondary);font-size:10px;font-weight:700;white-space:nowrap}.evidence-table-note{margin:10px 3px 0}.back-link{margin:0 0 20px;color:var(--interactive);font-size:13px;font-weight:700}.back-link a{text-underline-offset:3px}.diagnostic-model-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 30px}.diagnostic-model-metrics article{min-height:82px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px}.diagnostic-model-metrics span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.diagnostic-model-metrics strong{display:block;margin-top:4px;font-family:var(--font-brand);font-size:25px;line-height:1.15}.diagnostic-model-metrics .status-badge{margin-top:5px}.diagnostic-filter-bar{justify-content:flex-start}.diagnostic-list-wrap{max-height:min(70vh,720px)}.diagnostic-list-table{min-width:920px}.diagnostic-list-table th,.diagnostic-list-table td{white-space:normal;overflow-wrap:anywhere}.diagnostic-list-table td:first-child{white-space:nowrap}.diagnostic-list-table th:last-child,.diagnostic-list-table td:last-child{text-align:right}.diagnostic-list-table tbody tr:hover{background:color-mix(in srgb,var(--surface-muted) 52%,white)}.diagnostic-state{display:inline-flex;align-items:center;min-height:24px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;font-size:10px;font-weight:750;line-height:1;white-space:nowrap}.diagnostic-state-open{background:var(--status-error-surface);border-color:var(--status-error-border);color:var(--status-error-text)}.diagnostic-state-resolved{background:var(--status-success-surface);border-color:var(--status-success-border);color:var(--status-success-text)}.diagnostic-state-identity_pending{background:var(--surface-muted);color:var(--secondary)}.diagnostic-list-table .github-issue,.github-current .github-issue{color:var(--interactive);font-weight:700;white-space:nowrap}.diagnostic-detail-dialog{width:min(860px,calc(100% - 32px));max-height:min(900px,calc(100% - 32px));padding:0;border:0;border-radius:16px;background:var(--surface);color:var(--graphite);box-shadow:0 24px 80px rgba(34,42,43,.24)}.diagnostic-detail-dialog::backdrop{background:rgba(34,42,43,.34)}.diagnostic-detail-inner{max-height:min(900px,calc(100vh - 32px));padding:24px;overflow:auto}.diagnostic-detail-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;margin:0;border-top:1px solid var(--border)}.diagnostic-detail-summary div{display:grid;grid-template-columns:minmax(95px,.8fr) minmax(0,1.2fr);gap:12px;padding:9px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 72%,transparent)}.diagnostic-detail-summary dt{color:var(--secondary);font-size:12px}.diagnostic-detail-summary dd{margin:0;overflow-wrap:anywhere;font-size:13px;font-weight:650;text-align:right}.diagnostic-actions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:22px}.diagnostic-action-form{min-width:0;padding:14px;background:var(--surface-muted);border-radius:10px}.diagnostic-action-form h4{margin:0 0 10px;font-size:13px}.diagnostic-action-form label{display:block;margin:10px 0;color:var(--graphite);font-size:12px;font-weight:650}.diagnostic-action-form input,.diagnostic-action-form select,.diagnostic-action-form textarea{display:block;width:100%;margin-top:5px;min-height:36px;padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--graphite);font-size:12px}.diagnostic-action-form textarea{resize:vertical}.diagnostic-action-form button{margin-top:6px}.identity-selection{margin:8px 0;color:var(--secondary);font-size:11px}.identity-selection code{color:var(--graphite);font-family:var(--font-mono);overflow-wrap:anywhere}.github-review{grid-column:1/-1}.github-current{margin:0 0 8px;font-size:13px}.github-actions{margin:0 0 4px}.github-link-form{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:10px}.github-link-form label{margin:0}.github-link-form button{white-space:nowrap}.github-remove-form{display:inline-block;margin:8px 0 0}.diagnostic-technical-all{margin-top:16px}.diagnostic-technical-all>summary{font-size:13px}
 .diagnostic-action-form input,.diagnostic-action-form select,.diagnostic-action-form textarea{min-height:var(--admin-control-height);padding:8px var(--admin-control-padding-x);border-radius:var(--admin-control-radius)}
 .github-issue-disclosure{margin-top:8px}.github-issue-disclosure>summary{width:max-content;cursor:pointer;color:var(--interactive);font-size:12px;font-weight:750;text-underline-offset:3px}.github-issue-disclosure>summary:hover{text-decoration:underline}.github-issue-controls{margin-top:12px}
-.diagnostic-operation table{min-width:0}.diagnostic-id{font-size:11px!important;color:var(--secondary)!important}.diagnostic-id code{font-size:10px;color:var(--secondary)}.diagnostic-summary-table{min-width:0!important;table-layout:fixed}.diagnostic-summary-table th,.diagnostic-summary-table td{white-space:normal;overflow-wrap:anywhere}.diagnostic-summary-table th:nth-child(1){width:18%}.diagnostic-summary-table th:nth-child(2){width:18%}.diagnostic-summary-table th:nth-child(3){width:18%}.diagnostic-summary-table th:nth-child(4){width:20%}.diagnostic-summary-table th:nth-child(5){width:12%}.diagnostic-summary-table th:nth-child(6){width:14%}.diagnostic-code-value{display:inline-flex;flex-direction:column;gap:2px;overflow-wrap:anywhere}.diagnostic-native-code{color:var(--secondary);font-size:10px;font-weight:500}.diagnostic-result{display:inline-flex;align-items:center;min-height:22px;padding:4px 7px;border:1px solid var(--border);border-radius:999px;font-size:10px;font-weight:750;line-height:1;white-space:nowrap}.diagnostic-result-succeeded{background:var(--status-success-surface);border-color:var(--status-success-border);color:var(--status-success-text)}.diagnostic-result-failed{background:var(--status-error-surface);border-color:var(--status-error-border);color:var(--status-error-text)}.diagnostic-result-not-started,.diagnostic-result-unknown{background:var(--surface-muted);color:var(--secondary)}.diagnostic-group-title{font-weight:700}.diagnostic-group-meta{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;margin-left:8px}.diagnostic-chip{display:inline-flex;align-items:center;min-height:21px;padding:3px 7px;border:1px solid var(--border);border-radius:999px;background:var(--surface-muted);color:var(--secondary);font-size:10px;font-weight:750;line-height:1;white-space:nowrap}.diagnostic-chip.github-issue{color:var(--interactive)}.diagnostic-summary-action{float:right;color:var(--secondary);font-size:11px;font-weight:600}.diagnostic-technical-details{margin:10px 0 0;padding:9px 11px;background:var(--surface-muted);border-radius:8px}.diagnostic-technical-details summary{cursor:pointer;color:var(--secondary);font-size:12px;font-weight:700}.diagnostic-technical-details dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px;margin:10px 0 0}.diagnostic-technical-details dl div{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-top:1px solid color-mix(in srgb,var(--border) 72%,transparent)}.diagnostic-technical-details dt{color:var(--secondary);font-size:11px}.diagnostic-technical-details dd{margin:0;text-align:right;font:500 11px var(--font-mono);overflow-wrap:anywhere}
+.diagnostic-id{font-size:11px!important;color:var(--secondary)!important}.diagnostic-id code{font-size:10px;color:var(--secondary)}.diagnostic-result{display:inline-flex;align-items:center;min-height:22px;padding:4px 7px;border:1px solid var(--border);border-radius:999px;font-size:10px;font-weight:750;line-height:1;white-space:nowrap}.diagnostic-result-succeeded{background:var(--status-success-surface);border-color:var(--status-success-border);color:var(--status-success-text)}.diagnostic-result-failed{background:var(--status-error-surface);border-color:var(--status-error-border);color:var(--status-error-text)}.diagnostic-result-not-started,.diagnostic-result-unknown{background:var(--surface-muted);color:var(--secondary)}.diagnostic-chip{display:inline-flex;align-items:center;min-height:21px;padding:3px 7px;border:1px solid var(--border);border-radius:999px;background:var(--surface-muted);color:var(--secondary);font-size:10px;font-weight:750;line-height:1;white-space:nowrap}.diagnostic-chip.github-issue{color:var(--interactive)}.diagnostic-technical-details{margin:10px 0 0;padding:9px 11px;background:var(--surface-muted);border-radius:8px}.diagnostic-technical-details summary{cursor:pointer;color:var(--secondary);font-size:12px;font-weight:700}.diagnostic-technical-details dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px;margin:10px 0 0}.diagnostic-technical-details dl div{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-top:1px solid color-mix(in srgb,var(--border) 72%,transparent)}.diagnostic-technical-details dt{color:var(--secondary);font-size:11px}.diagnostic-technical-details dd{margin:0;text-align:right;font:500 11px var(--font-mono);overflow-wrap:anywhere}
 .status-badge{display:inline-flex;align-items:center;justify-content:center;min-width:74px;min-height:28px;padding:6px 10px;border:1px solid transparent;border-radius:999px;font-size:11px;font-weight:750;letter-spacing:.03em;line-height:1;text-transform:uppercase}
 .status-tested{background:var(--status-tested-surface);border-color:var(--status-tested-border);color:var(--status-tested-text)}
 .status-supported{background:var(--status-supported-surface);border-color:var(--status-supported-border);color:var(--status-supported-text)}
@@ -4786,9 +4510,9 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 @media(max-width:1100px){.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}.admin-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.map-statistics-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.provider-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.map-statistics-reliability{grid-template-columns:repeat(3,minmax(0,1fr))}.map-statistics-linkage-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.provider-detail .provider-history-wrap{overflow-x:auto}}
 @media(max-width:700px){.admin-kpi-grid,.map-statistics-kpis,.map-statistics-reliability{grid-template-columns:repeat(2,minmax(0,1fr))}.map-statistics-linkage-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.installation-heading{align-items:flex-start}.page-meta{white-space:normal}.provider-latest-summary{align-items:flex-start;flex-direction:column;gap:6px}.filter-disclosure .disclosure-body{position:static;margin-top:8px;box-shadow:none}.map-statistics-filter-bar .filter-disclosure{width:100%}.map-statistics-filter-bar .filter-disclosure>summary{justify-content:flex-start}}
 @media(max-width:480px){.admin-kpi-grid,.map-statistics-kpis,.map-statistics-reliability,.map-statistics-linkage-grid{grid-template-columns:1fr}.admin-kpi-grid article{min-height:70px;padding:12px}.inline-filter-row{align-items:stretch;flex-direction:column}.inline-filter-row label,.inline-filter-row select{width:100%;flex-basis:auto}.provider-pagination{gap:8px;font-size:11px}.provider-pagination span{max-width:130px}.provider-action-overflow>div{position:static;margin-top:7px}.provider-action-overflow>summary{width:100%}}
-@media(max-width:800px){.admin-topbar-inner,.dashboard{width:min(calc(100% - 32px),var(--max-width))}.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}.heading-row{align-items:flex-start;flex-direction:column;gap:12px}.diagnostic-model-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-bar{align-items:stretch}.filter-bar label,.filter-bar select,.filter-bar input{flex:1 1 170px}.filter-bar .results-count{width:100%;margin:2px 4px 0}.public-status{align-items:flex-start;flex-direction:column}.public-status-value{width:100%;justify-content:space-between;flex-wrap:wrap}.status-guide-grid{grid-template-columns:1fr}.campaign-fields{grid-template-columns:1fr}.campaign-field-wide{grid-column:auto}.attribution-preview{grid-template-columns:1fr}.sync-summary{white-space:normal!important}.device-detail-grid{grid-template-columns:1fr}.device-support-review form{grid-template-columns:1fr}.diagnostic-operation-heading{flex-direction:column}.diagnostic-actions{justify-content:flex-start}.diagnostic-detail-summary{grid-template-columns:1fr}.diagnostic-actions-grid{grid-template-columns:1fr}.github-review{grid-column:auto}}
+@media(max-width:800px){.admin-topbar-inner,.dashboard{width:min(calc(100% - 32px),var(--max-width))}.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}.heading-row{align-items:flex-start;flex-direction:column;gap:12px}.diagnostic-model-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-bar{align-items:stretch}.filter-bar label,.filter-bar select,.filter-bar input{flex:1 1 170px}.filter-bar .results-count{width:100%;margin:2px 4px 0}.public-status{align-items:flex-start;flex-direction:column}.public-status-value{width:100%;justify-content:space-between;flex-wrap:wrap}.status-guide-grid{grid-template-columns:1fr}.campaign-fields{grid-template-columns:1fr}.campaign-field-wide{grid-column:auto}.attribution-preview{grid-template-columns:1fr}.sync-summary{white-space:normal!important}.device-detail-grid{grid-template-columns:1fr}.device-support-review form{grid-template-columns:1fr}.diagnostic-detail-summary{grid-template-columns:1fr}.diagnostic-actions-grid{grid-template-columns:1fr}.github-review{grid-column:auto}}
 @media(max-width:980px){.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}}
-@media(max-width:560px){.admin-topbar-inner{align-items:flex-start;flex-direction:column;padding:14px 0}.admin-header-left,.admin-section-nav,.admin-nav{width:100%}.admin-section-nav{order:0;overflow:auto;justify-content:flex-start}.admin-section-nav a{white-space:nowrap}.admin-nav{justify-content:space-between;gap:10px;flex-wrap:wrap}.timezone-control{width:100%;justify-content:space-between}.timezone-control select{width:auto;flex:1}.dashboard{padding-top:28px}.diagnostic-model-metrics{gap:8px}.diagnostic-model-metrics article{padding:12px}.auth-card{width:calc(100% - 32px);padding:24px}.section-heading{align-items:flex-start;flex-direction:column;gap:4px}.campaign-card{padding:16px}.campaign-preset-row{align-items:stretch;flex-direction:column;gap:8px}.campaign-preset-row .campaign-label,.campaign-preset-row select{flex:none}.campaign-preset-row select{width:100%;height:var(--admin-control-height);margin-left:0}.generated-url-row{grid-template-columns:1fr}.copy-button{width:100%}.copy-status{min-height:18px}.device-dialog-inner,.diagnostic-detail-inner{padding:18px}.device-detail-grid dl div,.device-detail-secondary dl div{grid-template-columns:1fr;gap:2px}.device-detail-grid dd,.device-detail-secondary dd{text-align:left}.diagnostic-technical-details dl{grid-template-columns:1fr}.diagnostic-summary-action{float:none;display:block;margin-top:6px}.github-link-form{grid-template-columns:1fr}.github-link-form button{width:100%}}
+@media(max-width:560px){.admin-topbar-inner{align-items:flex-start;flex-direction:column;padding:14px 0}.admin-header-left,.admin-section-nav,.admin-nav{width:100%}.admin-section-nav{order:0;overflow:auto;justify-content:flex-start}.admin-section-nav a{white-space:nowrap}.admin-nav{justify-content:space-between;gap:10px;flex-wrap:wrap}.timezone-control{width:100%;justify-content:space-between}.timezone-control select{width:auto;flex:1}.dashboard{padding-top:28px}.diagnostic-model-metrics{gap:8px}.diagnostic-model-metrics article{padding:12px}.auth-card{width:calc(100% - 32px);padding:24px}.section-heading{align-items:flex-start;flex-direction:column;gap:4px}.campaign-card{padding:16px}.campaign-preset-row{align-items:stretch;flex-direction:column;gap:8px}.campaign-preset-row .campaign-label,.campaign-preset-row select{flex:none}.campaign-preset-row select{width:100%;height:var(--admin-control-height);margin-left:0}.generated-url-row{grid-template-columns:1fr}.copy-button{width:100%}.copy-status{min-height:18px}.device-dialog-inner,.diagnostic-detail-inner{padding:18px}.device-detail-grid dl div,.device-detail-secondary dl div{grid-template-columns:1fr;gap:2px}.device-detail-grid dd,.device-detail-secondary dd{text-align:left}.diagnostic-technical-details dl{grid-template-columns:1fr}.github-link-form{grid-template-columns:1fr}.github-link-form button{width:100%}}
 @media(max-width:560px){.admin-section-nav{overflow:visible;flex-wrap:wrap}.needs-review-popover{left:0;right:auto}}
 @media(max-width:800px){.admin-summary-strip{align-items:flex-start;flex-direction:column;gap:6px}.admin-summary-context,.device-summary-sync{text-align:left;white-space:normal}.device-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.device-detail-grid{grid-template-columns:1fr}.device-catalog-details dl div{grid-template-columns:1fr;gap:2px}.device-catalog-details dd{text-align:left}.device-detail-grid dd{text-align:left}.device-filter-bar .results-count{margin-left:0}.device-dialog-inner{padding:18px}}
@@ -4891,7 +4615,7 @@ table td small,.table-secondary,.provider-name-link small,.provider-package-id,.
 table code,.technical-value,.provider-table-wrap code,.audit-technical-details code{font-size:var(--admin-type-technical-size);line-height:var(--admin-type-technical-line)}
 .device-table-wrap tbody td{padding:7px 12px;font-size:var(--admin-type-table-primary-size);line-height:var(--admin-type-table-primary-line)}
 .device-table-wrap th{font-size:var(--admin-type-table-header-size);line-height:var(--admin-type-table-header-line)}
-.device-model-button strong,.provider-name-link strong,.provider-package-name,.diagnostic-group-title{font-size:var(--admin-type-table-primary-size);line-height:var(--admin-type-table-primary-line)}
+.device-model-button strong,.provider-name-link strong,.provider-package-name{font-size:var(--admin-type-table-primary-size);line-height:var(--admin-type-table-primary-line)}
 .provider-error,.provider-activation-note,.incomplete-state,.diagnostic-failure-summary{font-size:var(--admin-type-helper-size);line-height:var(--admin-type-helper-line)}
 .provider-information-list dt,.model-information-list dt,.device-detail-grid dt,.device-catalog-details dt,.device-support-review label,.device-public-review label,.administration-grid label{font-size:var(--admin-type-label-size);line-height:var(--admin-type-helper-line)}
 .provider-information-list dd,.model-information-list dd,.device-detail-grid dd,.device-catalog-details dd{font-size:var(--admin-type-table-primary-size);line-height:20px}

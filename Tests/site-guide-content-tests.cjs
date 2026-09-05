@@ -193,19 +193,127 @@ assert.match(styles, /\.guide-facts span,\s*\.download-badges li\s*\{[^}]*backgr
 assert.match(styles, /\.guide-substeps\s*\{/);
 assert.doesNotMatch(styles, /\.guide-progress\s*\{/);
 const shell = read(path.join(root, "site", "site-shell.js"));
+assert.match(shell, /mobileNav\?\.querySelectorAll\("a, \[data-language-switch\]"\)/, "Language buttons must close the mobile menu and release its scroll lock");
 for (const label of ["Guide", "Anleitung", "Guide", "Poradnik", "Průvodce", "Guida"]) assert.ok(shell.includes(`guide: "${label}"`), `shell Guide label: ${label}`);
 assert.match(shell, /navLink\("compatibility"\).*navLink\("guide"\).*navLink\("about"\).*navLink\("download", "download-action"\)/s);
 assert.match(shell, /<nav class="footer-nav"[\s\S]*navLink\("download"(?:, "", "footer-nav")?\)/s);
 const languageScript = read(path.join(root, "site", "language.js"));
 assert.match(languageScript, /shellLanguageMenu/);
 assert.match(languageScript, /shellLanguageMenu\?\.update\?\.\(language\)/);
-assert.match(read(path.join(root, "site", "legal-language.js")), /document\.addEventListener\("click"/);
-assert.match(read(path.join(root, "site", "privacy-language.js")), /document\.addEventListener\("click"/);
+const pageLanguageScript = read(path.join(root, "site", "page-language.js"));
+assert.match(pageLanguageScript, /document\.addEventListener\("click"/);
 for (const file of ["site/legal/index.html", "site/privacy/index.html"]) {
   const source = read(path.join(root, file));
   assert.match(source, /data-page="(?:legal|privacy)"/);
+  const scripts = [...source.matchAll(/<script defer src="([^"]+)"/g)].map((match) => match[1]);
+  const controller = "/page-language.js?v=20260905-shared-page-language-v1";
+  const copy = `/${file.split("/")[1]}-language.js?v=20260905-shared-page-language-v1`;
+  assert.equal(scripts.filter((src) => src === controller).length, 1);
+  assert.equal(scripts.filter((src) => src === copy).length, 1);
+  assert.ok(scripts.findIndex((src) => src.startsWith("/language.js?")) < scripts.indexOf(controller));
+  assert.equal(scripts.indexOf(copy), scripts.indexOf(controller) + 1);
   const primary = source.match(/<nav class="primary-nav"[^>]*>([\s\S]*?)<\/nav>/)?.[1];
   assert.ok(primary, file + ": static shell nav");
   assert.deepEqual([...primary.matchAll(/<a[^>]*href="([^"]+)"/g)].slice(0, 4).map((match) => match[1]), ["/compatibility/", "/guides/install-garmin-maps-mac/", "/about/", "/download/"], file + ": primary nav");
 }
-console.log("Guide content, localization, shell, metadata, schema, links, and Umami contract tests passed.");
+// Exercise in-page switching after the shell replaces every language link.
+const vm = require("node:vm");
+function checkLanguageControls(markup, inPage) {
+  const controls = [...markup.matchAll(/<(a|button) class="language-option"([^>]+)>/g)];
+  assert.equal(controls.length, 12, "Six desktop and six mobile language choices");
+  for (const [index, [, tag, attributes]] of controls.entries()) {
+    // Umami's capture listener explicitly navigates tracked anchors even when
+    // another handler prevents default. Buttons keep tracking without a URL.
+    assert.equal(tag, inPage ? "button" : "a");
+    if (inPage) {
+      assert.match(attributes, /type="button"/);
+      assert.doesNotMatch(attributes, /href=/);
+    } else assert.match(attributes, /href="\//);
+    assert.match(attributes, new RegExp(`data-language-switch="${locales[index % 6]}"`));
+    assert.match(attributes, /data-umami-event="language-switch-click"/);
+    assert.match(attributes, /data-umami-event-location="(?:header|mobile)-language"/);
+  }
+}
+for (const pageName of ["legal", "privacy", "home", "guide"]) {
+  const inPage = pageName === "legal" || pageName === "privacy";
+  const file = pageName === "home" ? "index.html" : pageName === "guide" ? `${slug}index.html` : `${pageName}/index.html`;
+  const source = read(path.join(root, "site", file));
+  checkLanguageControls(source, inPage);
+  let renderedHeader;
+  const document = {
+    documentElement: {dataset: {page: pageName}, lang: "en"},
+    createRange: () => ({createContextualFragment: (markup) => markup}),
+    querySelector: (selector) => selector === "header.site-header" ? {replaceWith(markup) { renderedHeader = markup; }} : null,
+    querySelectorAll: () => [], addEventListener() {},
+  };
+  const window = {location: new URL(`https://terento.app/${file.replace("index.html", "")}`)};
+  vm.runInNewContext(shell, {document, window});
+  for (const locale of locales) {
+    window.TerentoLanguageMenu.update(locale);
+    checkLanguageControls(renderedHeader, inPage);
+  }
+}
+const pageTitles = {
+  legal: ["Legal notices", "Rechtliche Hinweise", "Mentions légales", "Informacje prawne", "Právní informace", "Note legali"],
+  privacy: ["Privacy", "Datenschutz", "Confidentialité", "Prywatność", "Soukromí", "Privacy"],
+};
+for (const pageName of ["legal", "privacy"]) {
+  for (const preference of [null, "invalid", ...locales, "unavailable"]) {
+    let saved = preference;
+    const nodes = new Map();
+    const node = (selector) => {
+      if (!nodes.has(selector)) nodes.set(selector, {dataset: {}, setAttribute(name, value) { this[name] = value; }});
+      return nodes.get(selector);
+    };
+    const events = {};
+    let links = [];
+    const document = {
+      documentElement: {}, querySelector: node,
+      querySelectorAll(selector) { return selector === "[data-language-switch]" ? links : [node(selector)]; },
+      addEventListener(type, callback) { assert.equal(events[type], undefined); events[type] = callback; },
+    };
+    node("[data-i18n]").dataset.i18n = "privacy";
+    node("[data-i18n-aria]").dataset.i18nAria = "languageSelection";
+    const window = {
+      localStorage: {
+        getItem() { if (preference === "unavailable") throw Error("Storage denied"); return saved; },
+        setItem(key, value) { if (preference === "unavailable") throw Error("Storage denied"); assert.equal(key, "terento-language"); saved = value; },
+      },
+      TerentoLanguageMenu: {update() {
+        links = locales.map((language) => ({
+          dataset: {languageSwitch: language},
+          toggleAttribute(name, enabled) { this[name] = enabled; },
+        }));
+      }},
+    };
+    const context = vm.createContext({document, window});
+    vm.runInContext(pageLanguageScript, context);
+    vm.runInContext(read(path.join(root, "site", `${pageName}-language.js`)), context);
+    const check = (language) => {
+      assert.equal(node(".page-lang").dataset.pageLanguage, language);
+      assert.equal(document.documentElement.lang, language);
+      assert.equal(document.title, `${pageTitles[pageName][locales.indexOf(language)]} — Terento`);
+      assert.equal(node('meta[property="og:title"]').content, document.title);
+      assert.equal(node('meta[name="twitter:title"]').content, document.title);
+      assert.equal(node('meta[property="og:locale"]').content, {en:"en_US", de:"de_DE", fr:"fr_FR", pl:"pl_PL", cs:"cs_CZ", it:"it_IT"}[language]);
+      assert.ok(node('meta[name="description"]').content.length > 20);
+      assert.equal(node('meta[property="og:description"]').content, node('meta[name="description"]').content);
+      assert.equal(node('meta[name="twitter:description"]').content, node('meta[name="description"]').content);
+      assert.ok(node("[data-i18n]").textContent);
+      assert.ok(node("[data-i18n-aria]")["aria-label"]);
+      assert.ok(node("[data-footer-copy]").textContent);
+      assert.deepEqual(links.filter((link) => link["aria-current"]).map((link) => link.dataset.languageSwitch), [language]);
+    };
+    check(locales.includes(preference) ? preference : "en");
+    for (const language of [...locales, ...locales].reverse()) {
+      const link = links.find((candidate) => candidate.dataset.languageSwitch === language);
+      let prevented = false;
+      events.click({target: {closest: () => link}, preventDefault() { prevented = true; }});
+      assert.ok(prevented);
+      check(language);
+      if (preference !== "unavailable") assert.equal(saved, language);
+    }
+    events.click({target: {closest: () => null}, preventDefault() { assert.fail("Unrelated clicks must navigate normally"); }});
+  }
+}
+console.log("Guide and Legal/Privacy language contracts passed, including six-locale switching, rebuilt menus and unavailable storage.");
