@@ -1,36 +1,34 @@
 # Public site deployment
 
-The production site is currently served by a Caddy container on the existing
-Hostinger VPS. Cloudflare provides DNS, HTTPS and the proxy edge; it is not the
-site origin or a Cloudflare Pages project.
+The production site runs on the personal Hostinger VPS. Cloudflare provides DNS,
+HTTPS and the proxy edge; it is not the site origin or a Cloudflare Pages project.
+A restricted host Caddy service terminates origin TLS and forwards site traffic to
+the unprivileged Caddy container on loopback. API traffic uses its separate route.
 
 `.github/workflows/deploy-site.yml` publishes the tracked `site/` tree after a
-push to `beta` or a `v*` tag. The workflow connects to the VPS with a GitHub
-Actions SSH key, builds the pinned Caddy image, replaces only the `terento-web`
-container, and keeps the previous web container as a rollback target only
-until the new deployment passes its checks. The workflow then removes that
-temporary rollback container; rerunning the same commit also clears a stale
-rollback bearing the same release identifier before switching containers. It
-does not touch Traefik, the catalog API, PostgreSQL, or map files. After the
-new container starts, the workflow first verifies that the update manifest
-exists inside the image, then waits up to 60 seconds for the public
-Traefik/Cloudflare route to serve the arm64 manifest. A transient route-refresh
-delay therefore does not cause an unnecessary rollback.
+push to `beta` or a `v*` tag. The reusable `publish-vps-images.yml` workflow runs
+site/release/legal checks and builds the pinned Caddy image on GitHub Actions. It
+publishes the image to GHCR and returns its immutable digest. The site deploy job
+then sends only that digest and the matching source revision to the VPS. The
+root-owned handler controls Compose, health verification, container registration
+and previous-image rollback. CI cannot upload scripts, edit server configuration
+or run arbitrary Docker commands. Site deployment does not replace the API or DB.
 
-Configure these GitHub repository secrets before enabling the workflow:
+Configure the following scoped GitHub secrets:
 
-- `TERENTO_SITE_SSH_HOST` — VPS hostname or IP;
-- `TERENTO_SITE_SSH_PORT` — usually `22`;
-- `TERENTO_SITE_SSH_USER` — the restricted deployment user;
-- `TERENTO_SITE_SSH_KEY` — a private deploy key whose public key is authorized
-  for that user;
-- `TERENTO_SITE_SSH_KNOWN_HOSTS` — the pinned `known_hosts` line for the VPS.
+- Environment `rukas-site`: its independent `VPS_SSH_KEY` for `terento-ci-site`.
+- Environment `rukas-api`: its independent `VPS_SSH_KEY` for `terento-ci-api`.
+- Repository `TERENTO_OPERATIONS_INGEST_SECRET`: deployment health observations
+  and operational reporting; preserve its value in root-provisioned API settings.
+- Repository `SMTP2GO_USERNAME` and `SMTP2GO_PASSWORD`: operational email reports,
+  not SSH access or image publication.
 
-The deployment user needs Docker access and membership/permission for the
-`terento-site` Docker network, but must not receive repository secrets or
-passwords. The current VPS operator account does not have write access to the
-root-owned `/docker/terento-site` checkout, so the workflow deploys from a
-temporary Docker build context and does not rewrite that checkout.
+The accounts, destination and SSH host key are pinned in
+`scripts/infra/deploy-vps-image.sh`. Each SSH key is bound to a fixed project
+command; neither CI account needs Docker-group membership or a general shell.
+Image publication receives only GitHub's job token with package-write permission
+and no VPS credentials. The five retired shared `TERENTO_SITE_SSH_*` repository
+secrets have been removed; these workflows use only the scoped environment keys.
 
 The update manifest is deliberately sent with `Cache-Control: no-store` so an
 old app-update response cannot remain cached after a release.
@@ -66,46 +64,46 @@ fails explicitly for obsolete layouts.
 
 ### Admin edge authentication
 
-API deployment verifies the native login and private-page redirect inside its
-container. Public checks use `scripts/infra/check-admin-boundary.py`, without an
-administrator credential or Access bypass token. The rollout checker accepts the
-existing application gate or the exact configured Cloudflare Access login redirect.
-After activation, repository variable `TERENTO_ADMIN_ACCESS_REQUIRED=true`
-requires the edge gate; unrelated redirects and errors fail. Test with
-`python3 Tests/admin-access-boundary-tests.py`.
+The root-owned VPS verifier checks native application login and private-page
+protection through loopback. Public CI checks use
+`scripts/infra/check-admin-boundary.py` without administrator credentials or an
+Access bypass token. `deploy-catalog-api.yml` explicitly sets the checker
+environment `TERENTO_ADMIN_ACCESS_REQUIRED: 'true'`, so public native login,
+unrelated redirects and errors fail. The former repository variable of that name
+is no longer read by the workflow. For a manual strict check, set the environment
+variable explicitly; the standalone script retains its transition-mode default.
+Test the boundary rules with `python3 Tests/admin-access-boundary-tests.py`.
 
-### Personal VPS production workflow cutover candidate
+### Production release and migration boundaries
 
-The scoped deployment workflows publish tested immutable GHCR images in a job
-without VPS credentials, then send only an image digest and matching caller
-revision to the root-owned personal VPS deployment handler. `rukas-site` and
-`rukas-api` each supply their own `VPS_SSH_KEY`; accounts, address and host key
-are pinned in `scripts/infra/deploy-vps-image.sh`. API schema migration and native
-admin checks stay in the installed root-owned handler/verifier. Public Access,
-API contracts, release-client validation and operations observations remain CI
-gates. The image publisher retains the public site/release/legal checks, and API
-publication depends on the existing backend/PostgreSQL quality workflow.
+The `rukas-api` environment permits only branch `beta`; `rukas-site` permits
+branch `beta` and `v*` tags. The publisher requires a tagged site revision to be an ancestor of `beta`.
+API release dispatch remains beta-only. The access-check workflow performs command
+rejection checks only and cannot replay an older deployment. The temporary
+`terento/vps-image-publish` environment policies have been removed. Workflows
+paused for the cutover have been re-enabled.
 
-This change is a cutover candidate: merging it replaces demo deployment workflows.
-Do not merge until the final database/assets copy, root-owned API configuration,
-origin protections and personal VPS activation are ready, production DNS routes
-to the personal VPS, and both root-owned `verify-public` markers are installed.
-Before that point public CI checks can reach the demo and cannot establish that a
-personal-VPS deployment is publicly serving traffic. Freeze automated demo deploys
-and scheduler before final data export; never run two writable production copies.
+API publication depends on the backend/PostgreSQL quality workflow. The installed
+root-owned handler owns schema migration and internal checks. Public Access/API
+contracts, release-client validation and operations observations remain CI gates.
+Both server `verify-public` markers must remain present during production releases
+so the handler checks public routes as well as loopback. Public checks establish
+this host's serving readiness only after DNS actually routes traffic here.
 
-At coordinated cutover, permit branch `beta` in both GitHub environments and tag
-pattern `v*` in `rukas-site` only. Existing site tag releases are preserved; the
-publisher additionally requires the tagged commit to be an ancestor of `beta`.
-API release dispatch remains beta-only. Remove the rehearsal branch policy after
-cutover. Environment policy and secret changes are separate owner-authorized
-infrastructure operations, not effects of merging this candidate. The access-check
-workflow now performs command rejection checks only and cannot replay an old image.
+The personal-VPS cutover and scoped workflow merge have occurred. Site deployment
+run `33996930727` and API deployment run `33996929154`, including its native
+release-client check, passed. At this documentation update, final migrated-owner
+login confirmation and independent demo recovery access remain pending acceptance
+items; successful CI does not establish either. The old demo authorized public key
+and local CI private key are retained until those checks pass. Removing the old
+repository secrets does not revoke that server key. After verifying independent
+owner/console rollback access, revoke only the exact demo CI authorized-key entry
+and retire its local private key; preserve unrelated accounts and keys.
 
-Root provisioning preserves `TERENTO_OPERATIONS_INGEST_SECRET` continuity; CI no
-longer uploads or edits server environment files. Future rotation must update root
-configuration and GitHub together. No Access administrator/service bypass token is
-provided to CI. Keep old demo credentials for the controlled rollback window, then
-revoke them after migration acceptance. Once any new writer runs, including the
-scheduler, returning to the demo requires a freeze and reverse data synchronization;
-image or DNS rollback does not revert database writes or schema migrations.
+Root provisioning preserves operations-ingest secret continuity; CI no longer
+uploads or edits server environment files. Future rotation must update root
+configuration and GitHub together. No Access administrator or service bypass token
+is provided to CI. Never run two writable production copies. Once any new writer
+runs, including the scheduler, returning to the demo requires a freeze and reverse
+data synchronization; image or DNS rollback does not revert database writes or
+schema migrations.
