@@ -9,6 +9,8 @@ on:
       - "backend/catalog-api/Dockerfile"
       - "backend/catalog-api/pyproject.toml"
       - ".github/workflows/deploy-catalog-api.yml"
+      - "scripts/infra/check-admin-boundary.py"
+      - "Tests/admin-access-boundary-tests.py"
   workflow_dispatch:
 
 permissions:
@@ -34,6 +36,7 @@ jobs:
       CATALOG_SSH_KEY: ${{ secrets.TERENTO_SITE_SSH_KEY }}
       CATALOG_SSH_KNOWN_HOSTS: ${{ secrets.TERENTO_SITE_SSH_KNOWN_HOSTS }}
       OPERATIONS_INGEST_SECRET: ${{ secrets.TERENTO_OPERATIONS_INGEST_SECRET }}
+      TERENTO_ADMIN_ACCESS_REQUIRED: ${{ vars.TERENTO_ADMIN_ACCESS_REQUIRED }}
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
@@ -249,7 +252,7 @@ jobs:
           fi
 
           if ! docker exec "$api_container" python -c \
-            'import urllib.request; assert b"<title>Admin sign in \xc2\xb7 Terento</title>" in urllib.request.urlopen("http://127.0.0.1:8000/admin/login", timeout=5).read()'; then
+            'import urllib.request; assert b"<title>Admin sign in \xc2\xb7 Terento</title>" in urllib.request.urlopen("http://127.0.0.1:8000/admin/login", timeout=5).read(); import http.client; c=http.client.HTTPConnection("127.0.0.1",8000,timeout=5); c.request("GET","/admin/campaign-links"); r=c.getresponse(); assert r.status==303 and r.getheader("Location")=="/admin/login"'; then
             rollback
             exit 1
           fi
@@ -263,6 +266,9 @@ jobs:
           rm -rf -- "$stage" "$override"
           REMOTE
 
+      - name: Validate admin edge boundary checker
+        run: python3 Tests/admin-access-boundary-tests.py
+
       - name: Verify public catalog API
         shell: bash
         run: |
@@ -270,28 +276,20 @@ jobs:
           health="$(curl --fail --silent --show-error --connect-timeout 5 --max-time 10 https://api.terento.app/health)"
           maps="$(curl --fail --silent --show-error --connect-timeout 5 --max-time 15 https://api.terento.app/maps/catalog.json)"
           devices="$(curl --fail --silent --show-error --connect-timeout 5 --max-time 15 https://api.terento.app/devices/catalog.json)"
-          login="$(curl --fail --silent --show-error --connect-timeout 5 --max-time 10 https://api.terento.app/admin/login)"
+          python3 scripts/infra/check-admin-boundary.py
           deletion_body_file="$RUNNER_TEMP/terento-compatibility-delete-contract.json"
           deletion_status="$(curl --silent --show-error --connect-timeout 5 --max-time 10 \
             -H 'Content-Type: application/json' --data '{}' -X DELETE \
             -o "$deletion_body_file" -w '%{http_code}' \
             https://api.terento.app/compatibility/events)"
           deletion_body="$(cat "$deletion_body_file")"
-          headers="$(curl --silent --show-error --connect-timeout 5 --max-time 10 -D - -o /dev/null https://api.terento.app/admin/campaign-links || true)"
-          status="$(printf '%s\n' "$headers" | awk 'toupper($1) ~ /^HTTP\// {code=$2} END {print code}')"
-          location="$(printf '%s\n' "$headers" | awk 'tolower($1)=="location:" {print $2; exit}' | tr -d '\r')"
           if [ "$health" != '{"status":"ok"}' ] \
             || ! grep -Fq '"catalogVersion"' <<<"$maps" \
             || ! jq -e '.schemaVersion == 2 and (.providers | type == "array") and any(.providers[]; .id == "freizeitkarte")' <<<"$maps" >/dev/null \
             || ! grep -Fq '"catalogVersion"' <<<"$devices" \
-            || ! grep -Fq '<title>Admin sign in · Terento</title>' <<<"$login" \
-            || [ "$status" != "303" ] \
-            || [ "$location" != "/admin/login" ] \
-            || ! grep -Fqi "script-src 'none'" <<<"$headers" \
             || [ "$deletion_status" != "405" ] \
             || ! jq -e '.error == "deletion_not_supported"' <<<"$deletion_body" >/dev/null; then
             printf '%s\n' "Public catalog verification failed" >&2
-            printf '%s\n' "$headers" >&2
             printf 'compatibility DELETE status=%s body=%s\n' "$deletion_status" "$deletion_body" >&2
             exit 1
           fi

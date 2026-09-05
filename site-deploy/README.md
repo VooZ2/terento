@@ -63,3 +63,13 @@ lock. Public shell/CSS versions and generated pages are maintained by the
 normalizer. The retired Guide progress script is removed; reading-position
 restoration is retained. Download normalization accepts the current layout and
 fails explicitly for obsolete layouts.
+
+### Admin edge authentication
+
+API deployment verifies the native login and private-page redirect inside its
+container. Public checks use `scripts/infra/check-admin-boundary.py`, without an
+administrator credential or Access bypass token. The rollout checker accepts the
+existing application gate or the exact configured Cloudflare Access login redirect.
+After activation, repository variable `TERENTO_ADMIN_ACCESS_REQUIRED=true`
+requires the edge gate; unrelated redirects and errors fail. Test with
+`python3 Tests/admin-access-boundary-tests.py`.
