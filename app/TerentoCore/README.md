@@ -134,9 +134,10 @@ delivery never blocks installation. Custom `.img` installations are reported
 only as compatibility diagnostics. Server-side raw map events are retained for
 no longer than 24 months before pruning.
 
-For this SwiftPM PoC target, the normal SwiftUI window contains no map write or
-device modification path. The production Xcode app owns the guarded map
-installation and default-on privacy-minimised diagnostics flow. The separate
+SwiftPM and the production Xcode target compile the shared application sources,
+including guarded map installation and default-on privacy-minimised diagnostics.
+Launching the developer executable must not be treated as a read-only device
+test. The separate
 `TerentoWriteTest` command is deliberately narrower: it accepts only
 `terento-write-test.txt`, advertises it as a generic MTP object, targets only
 `/GARMIN/terento-write-test.txt` on the validated fēnix 8 profile, refuses an
@@ -155,8 +156,8 @@ The beta.9 production lifecycle path forwards native MTP read progress through
 the local read-back adapter. Backup and one-file external Remove can therefore
 show measured byte progress; Remove additionally reports determinate progress
 through exact verification, deletion, and bounded post-delete rescans. This
-does not change the PoC's read-only scope or claim hardware evidence for the
-production lifecycle path.
+preserves the existing lifecycle behavior; this source-directory move does not
+add hardware evidence for those operations.
 
 ## Dependencies
 
@@ -166,8 +167,9 @@ production lifecycle path.
 - Homebrew `libmtp` 1.1.23
 - Homebrew `libusb` 1.0.30, used by libmtp
 
-The PoC links to the Homebrew libraries on the development Mac. It does not
-bundle or redistribute either dependency.
+The SwiftPM development build links to locally supplied library prefixes,
+including Homebrew. Production Xcode builds use the pinned source-built and
+bundled libraries described in `Packaging/NativeDependencies/README.md`.
 
 ## Build
 
@@ -278,10 +280,10 @@ MacDroid, and other MTP clients first.
 The developer-details toggle shows local diagnostic messages, VID/PID, stages,
 errors, timing, identity fields, map identity/version evidence, catalog source,
 and compatibility evidence. Normal UI does not expose USB IDs, MTP terminology,
-or protocol details. For this SwiftPM PoC target the network paths are the
-metadata-only catalog lookup and current public compatibility-status lookup;
-map binary download and map installation belong to the production Xcode app,
-while analytics and account paths remain absent. The compatibility lookup
+or protocol details. The shared application sources include metadata catalogs,
+public compatibility lookup, app update metadata, provider downloads and
+privacy-minimised diagnostic submission. The directory move adds no new network
+path or account requirement. The compatibility lookup
 uses the exact model/size/display identity, refreshes from the public aggregate
 API after discovery, and falls back only to a recent exact-identity cache. It
 never changes device write authorization. The separately reviewed Garmin
