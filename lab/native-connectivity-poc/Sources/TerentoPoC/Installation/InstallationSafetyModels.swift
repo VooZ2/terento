@@ -171,6 +171,11 @@ struct TransferProgress: Equatable, Sendable {
         self.bytesPerSecond = bytesPerSecond
     }
 
+    func normalized(sourceSize: UInt64) -> TransferProgress {
+        TransferProgress(bytesTransferred: min(bytesTransferred, sourceSize),
+                         totalBytes: sourceSize, bytesPerSecond: bytesPerSecond)
+    }
+
     var fractionCompleted: Double {
         guard totalBytes > 0 else {
             return 0

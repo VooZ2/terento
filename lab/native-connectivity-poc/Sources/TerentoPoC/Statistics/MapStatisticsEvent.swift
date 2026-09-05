@@ -328,9 +328,11 @@ final class MapStatisticsEventController: ObservableObject {
     }
 
     func flushPendingEvents() async {
-        uploadTask?.cancel()
+        let previous = uploadTask
+        previous?.cancel()
+        await previous?.value
         uploadTask = nil
-        _ = await uploadOnce()
+        if await uploadOnce() == .retryableFailure { scheduleFlush() }
     }
 
     private func scheduleFlush() {

@@ -674,10 +674,14 @@ final class InstallationEvidenceController: ObservableObject {
     }
 
     func flushPendingUploads() async {
-        uploadTask?.cancel()
+        let previous = uploadTask
+        previous?.cancel()
+        await previous?.value
         uploadTask = nil
         uploadTaskGeneration = nil
-        _ = await uploadPendingEventsOnce()
+        if await uploadPendingEventsOnce() == .retryableFailure {
+            schedulePendingUploadFlush()
+        }
     }
 
     private func schedulePendingUploadFlush() {

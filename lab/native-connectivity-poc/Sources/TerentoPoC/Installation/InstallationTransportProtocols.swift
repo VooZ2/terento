@@ -17,7 +17,7 @@ struct MTPWrittenMapObject: Equatable, Sendable {
     let sizeBytes: UInt64
 }
 
-struct MTPReadBackMapObject: Equatable, Sendable {
+struct MTPReadBackMapObject: Codable, Equatable, Sendable {
     let itemID: UInt32
     let targetPath: String
     let reportedSizeBytes: UInt64
@@ -26,7 +26,7 @@ struct MTPReadBackMapObject: Equatable, Sendable {
     let matchedSampleCount: Int
 }
 
-enum InstallationTransportError: LocalizedError, Equatable, Sendable {
+enum InstallationTransportError: Codable, LocalizedError, Equatable, Sendable {
     case targetAlreadyExists
     case remoteFileMissing
     case objectIdentityMismatch

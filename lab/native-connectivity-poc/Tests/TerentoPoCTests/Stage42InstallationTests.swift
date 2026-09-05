@@ -248,6 +248,7 @@ private final class MockTransport: MapInstallationTransport, @unchecked Sendable
 struct Stage42InstallationTests {
     static func main() throws {
         var passed = 0
+        passed += testCanonicalTransferProgress()
         passed += testValidNewInstall()
         passed += testExistingFranceBlocksNewInstall()
         passed += testInsufficientSpaceBlocksWrite()
@@ -281,6 +282,22 @@ struct Stage42InstallationTests {
         passed += testFailedVerificationPreservesRecoveryRecordWhenCleanupFails()
 
         print("PASS: \(passed) Stage 4.2 installation tests")
+    }
+
+    private static func testCanonicalTransferProgress() -> Int {
+        let callback = TransferProgress(bytesTransferred: 12_582_912, totalBytes: 29_360_128)
+        let canonical = callback.normalized(sourceSize: 12_793_856)
+        let harness = makeHarness()
+        harness.transport.readBackMode = .hashMismatch
+        let result = harness.run()
+        return expect(
+            canonical.totalBytes == 12_793_856 && canonical.fractionCompleted > 0.98
+                && result.diagnostics.bytesTransferred == UInt64(harness.remoteData.count)
+                && result.diagnostics.transferTotalBytes == UInt64(harness.remoteData.count)
+                && result.status != .installVerified
+                && harness.transport.writeCount == 1,
+            "invalid native total is normalized and read-back cannot replace completed transfer diagnostics"
+        )
     }
 
     private static func testValidNewInstall() -> Int {

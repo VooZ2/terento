@@ -1,6 +1,6 @@
 import Foundation
 
-enum GarminDeviceXMLReadStatus: Equatable, Sendable {
+enum GarminDeviceXMLReadStatus: Codable, Equatable, Sendable {
     case unavailable
     case available
     case ambiguous
@@ -8,7 +8,7 @@ enum GarminDeviceXMLReadStatus: Equatable, Sendable {
     case readFailed
 }
 
-struct DeviceSnapshot: Sendable {
+struct DeviceSnapshot: Codable, Sendable {
     let manufacturer: String
     let model: String
     let deviceVersion: String
@@ -54,7 +54,7 @@ struct DeviceSnapshot: Sendable {
     }
 }
 
-struct StorageInfo: Identifiable, Sendable {
+struct StorageInfo: Codable, Identifiable, Sendable {
     let id: UInt32
     let description: String
     let volumeIdentifier: String
@@ -62,7 +62,7 @@ struct StorageInfo: Identifiable, Sendable {
     let freeSpace: UInt64
 }
 
-struct DeviceFile: Identifiable, Equatable, Sendable {
+struct DeviceFile: Codable, Identifiable, Equatable, Sendable {
     let itemID: UInt32
     let parentID: UInt32
     let storageID: UInt32

@@ -465,6 +465,18 @@ struct InstallationEvidenceTests {
         failing.decideConsent(.declined)
         expect(failing.store.pendingUploads().isEmpty, "withdrawing consent clears queued reports")
 
+        let manualRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let manualUploader = UploadRecorder(failuresRemaining: 1)
+        let manual = InstallationEvidenceController(
+            store: LocalInstallationEvidenceStore(rootURL: manualRoot),
+            uploader: manualUploader, automaticRetryDelays: [50_000_000, 50_000_000])
+        manual.record(makeEvent())
+        await manual.flushPendingUploads()
+        expect(manual.store.pendingUploads().count == 1, "manual send failure retains its event")
+        try await Task.sleep(nanoseconds: 180_000_000)
+        expect(manual.store.pendingUploads().isEmpty, "manual send preserves automatic retry")
+        expect(manual.uploadStatus == .uploaded, "manual retry success updates Diagnostics status")
+
         let retryRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let retryUploader = UploadRecorder(failuresRemaining: 1)
         let retrying = InstallationEvidenceController(
@@ -476,6 +488,7 @@ struct InstallationEvidenceTests {
         retrying.record(makeEvent())
         try await Task.sleep(nanoseconds: 100_000_000)
         expect(retrying.store.pendingUploads().isEmpty, "transient upload failure is retried automatically")
+        expect(retrying.uploadStatus == .uploaded, "Diagnostics observes successful retry completion")
         let retriedUploadCount = await retryUploader.count()
         expect(retriedUploadCount == 1, "retried evidence is marked uploaded after success")
 
