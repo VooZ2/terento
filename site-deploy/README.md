@@ -73,3 +73,39 @@ existing application gate or the exact configured Cloudflare Access login redire
 After activation, repository variable `TERENTO_ADMIN_ACCESS_REQUIRED=true`
 requires the edge gate; unrelated redirects and errors fail. Test with
 `python3 Tests/admin-access-boundary-tests.py`.
+
+### Personal VPS production workflow cutover candidate
+
+The scoped deployment workflows publish tested immutable GHCR images in a job
+without VPS credentials, then send only an image digest and matching caller
+revision to the root-owned personal VPS deployment handler. `rukas-site` and
+`rukas-api` each supply their own `VPS_SSH_KEY`; accounts, address and host key
+are pinned in `scripts/infra/deploy-vps-image.sh`. API schema migration and native
+admin checks stay in the installed root-owned handler/verifier. Public Access,
+API contracts, release-client validation and operations observations remain CI
+gates. The image publisher retains the public site/release/legal checks, and API
+publication depends on the existing backend/PostgreSQL quality workflow.
+
+This change is a cutover candidate: merging it replaces demo deployment workflows.
+Do not merge until the final database/assets copy, root-owned API configuration,
+origin protections and personal VPS activation are ready, production DNS routes
+to the personal VPS, and both root-owned `verify-public` markers are installed.
+Before that point public CI checks can reach the demo and cannot establish that a
+personal-VPS deployment is publicly serving traffic. Freeze automated demo deploys
+and scheduler before final data export; never run two writable production copies.
+
+At coordinated cutover, permit branch `beta` in both GitHub environments and tag
+pattern `v*` in `rukas-site` only. Existing site tag releases are preserved; the
+publisher additionally requires the tagged commit to be an ancestor of `beta`.
+API release dispatch remains beta-only. Remove the rehearsal branch policy after
+cutover. Environment policy and secret changes are separate owner-authorized
+infrastructure operations, not effects of merging this candidate. The access-check
+workflow now performs command rejection checks only and cannot replay an old image.
+
+Root provisioning preserves `TERENTO_OPERATIONS_INGEST_SECRET` continuity; CI no
+longer uploads or edits server environment files. Future rotation must update root
+configuration and GitHub together. No Access administrator/service bypass token is
+provided to CI. Keep old demo credentials for the controlled rollback window, then
+revoke them after migration acceptance. Once any new writer runs, including the
+scheduler, returning to the demo requires a freeze and reverse data synchronization;
+image or DNS rollback does not revert database writes or schema migrations.

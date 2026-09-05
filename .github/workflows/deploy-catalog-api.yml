@@ -11,6 +11,8 @@ on:
       - ".github/workflows/deploy-catalog-api.yml"
       - "scripts/infra/check-admin-boundary.py"
       - "Tests/admin-access-boundary-tests.py"
+      - ".github/workflows/publish-vps-images.yml"
+      - "scripts/infra/deploy-vps-image.sh"
   workflow_dispatch:
 
 permissions:
@@ -25,246 +27,35 @@ jobs:
     name: Backend regression suite
     uses: ./.github/workflows/reusable-catalog-api-quality.yml
 
-  deploy:
+  publish:
     needs: tests
-    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/beta'
+    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/beta'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/publish-vps-images.yml
+    with:
+      role: api
+
+  deploy:
+    needs: publish
+    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/beta'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: rukas-api
     env:
-      CATALOG_SSH_HOST: ${{ secrets.TERENTO_SITE_SSH_HOST }}
-      CATALOG_SSH_PORT: ${{ secrets.TERENTO_SITE_SSH_PORT }}
-      CATALOG_SSH_USER: ${{ secrets.TERENTO_SITE_SSH_USER }}
-      CATALOG_SSH_KEY: ${{ secrets.TERENTO_SITE_SSH_KEY }}
-      CATALOG_SSH_KNOWN_HOSTS: ${{ secrets.TERENTO_SITE_SSH_KNOWN_HOSTS }}
       OPERATIONS_INGEST_SECRET: ${{ secrets.TERENTO_OPERATIONS_INGEST_SECRET }}
-      TERENTO_ADMIN_ACCESS_REQUIRED: ${{ vars.TERENTO_ADMIN_ACCESS_REQUIRED }}
+      TERENTO_ADMIN_ACCESS_REQUIRED: 'true'
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
-
-      - name: Validate deployment configuration
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "$CATALOG_SSH_HOST"
-          test -n "$CATALOG_SSH_USER"
-          test -n "$CATALOG_SSH_KEY"
-          test -n "$CATALOG_SSH_KNOWN_HOSTS"
-          test -n "$OPERATIONS_INGEST_SECRET"
-
-      - name: Configure pinned SSH access
-        shell: bash
-        run: |
-          set -euo pipefail
-          install -d -m 700 "$HOME/.ssh"
-          printf '%s\n' "$CATALOG_SSH_KEY" > "$HOME/.ssh/terento_catalog"
-          printf '%s\n' "$CATALOG_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
-          chmod 600 "$HOME/.ssh/terento_catalog" "$HOME/.ssh/known_hosts"
-
-      - name: Synchronize operations ingest secret
-        shell: bash
-        run: |
-          set -euo pipefail
-          port="${CATALOG_SSH_PORT:-22}"
-          local_secret="$RUNNER_TEMP/terento-operations-ingest-secret"
-          remote_secret="/tmp/terento-operations-ingest-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          cleanup() {
-            rm -f -- "$local_secret"
-            ssh -i "$HOME/.ssh/terento_catalog" -p "$port" -o BatchMode=yes \
-              "$CATALOG_SSH_USER@$CATALOG_SSH_HOST" "rm -f -- '$remote_secret'" || true
-          }
-          trap cleanup EXIT
-          umask 077
-          printf '%s\n' "$OPERATIONS_INGEST_SECRET" > "$local_secret"
-          scp -i "$HOME/.ssh/terento_catalog" -P "$port" -o BatchMode=yes \
-            "$local_secret" "$CATALOG_SSH_USER@$CATALOG_SSH_HOST:$remote_secret"
-          ssh -i "$HOME/.ssh/terento_catalog" -p "$port" -o BatchMode=yes \
-            "$CATALOG_SSH_USER@$CATALOG_SSH_HOST" "bash -s -- '$remote_secret'" <<'REMOTE'
-          set -euo pipefail
-          secret_file="$1"
-          env_file="/docker/terento-catalog/deploy/hostinger/catalog/.env"
-          replacement="${env_file}.operations.$$"
-          cleanup() {
-            rm -f -- "$secret_file" "$replacement"
-          }
-          trap cleanup EXIT
-          test -f "$env_file"
-          test -s "$secret_file"
-          secret="$(tr -d '\r\n' < "$secret_file")"
-          test "${#secret}" -ge 32
-          test "${#secret}" -le 512
-          umask 077
-          awk '!/^OPERATIONS_INGEST_SECRET=/' "$env_file" > "$replacement"
-          printf 'OPERATIONS_INGEST_SECRET=%s\n' "$secret" >> "$replacement"
-          chmod --reference="$env_file" "$replacement"
-          chown --reference="$env_file" "$replacement"
-          mv -f -- "$replacement" "$env_file"
-          rm -f -- "$secret_file"
-          trap - EXIT
-          REMOTE
-
-      - name: Package catalog API source
-        shell: bash
-        run: |
-          set -euo pipefail
-          tar -czf "$RUNNER_TEMP/terento-catalog-api.tgz" backend/catalog-api
-
-      - name: Upload source to the VPS
-        shell: bash
-        run: |
-          set -euo pipefail
-          port="${CATALOG_SSH_PORT:-22}"
-          release_id="${GITHUB_SHA:0:12}"
-          remote_stage="/tmp/terento-catalog-api-${release_id}"
-          ssh -i "$HOME/.ssh/terento_catalog" -p "$port" -o BatchMode=yes "$CATALOG_SSH_USER@$CATALOG_SSH_HOST" \
-            "rm -rf -- '$remote_stage' && mkdir -m 700 -p '$remote_stage'"
-          scp -i "$HOME/.ssh/terento_catalog" -P "$port" -o BatchMode=yes \
-            "$RUNNER_TEMP/terento-catalog-api.tgz" "$CATALOG_SSH_USER@$CATALOG_SSH_HOST:$remote_stage/source.tgz"
-          ssh -i "$HOME/.ssh/terento_catalog" -p "$port" -o BatchMode=yes "$CATALOG_SSH_USER@$CATALOG_SSH_HOST" \
-            "tar -xzf '$remote_stage/source.tgz' -C '$remote_stage' && rm -f '$remote_stage/source.tgz'"
-
-      - name: Build and roll out the API container
-        shell: bash
-        run: |
-          set -euo pipefail
-          port="${CATALOG_SSH_PORT:-22}"
-          release_id="${GITHUB_SHA:0:12}"
-          ssh -i "$HOME/.ssh/terento_catalog" -p "$port" -o BatchMode=yes "$CATALOG_SSH_USER@$CATALOG_SSH_HOST" \
-            "bash -s -- '$release_id'" <<'REMOTE'
-          set -euo pipefail
-          release_id="$1"
-          stage="/tmp/terento-catalog-api-${release_id}"
-          project="/docker/terento-catalog/deploy/hostinger/catalog"
-          compose="$project/docker-compose.yml"
-          env_file="$project/.env"
-          image="terento-catalog-api:publish-${release_id}"
-          override="/tmp/terento-catalog-api-override-${release_id}.yml"
-          # The production checkout lives in a directory named `catalog`, so
-          # Docker Compose's existing production project is `catalog`.
-          # Keep this explicit: inferring from an arbitrary service container
-          # previously selected a stale duplicate project.
-          compose_project="catalog"
-          old_image=""
-          old_container=""
-
-          test -f "$compose"
-          test -f "$env_file"
-          old_container="$(docker ps -aq \
-            --filter label=com.docker.compose.project=${compose_project} \
-            --filter label=com.docker.compose.service=catalog-api | head -n 1)"
-          if [ -n "$old_container" ]; then
-            old_image="$(docker inspect --format '{{.Config.Image}}' "$old_container")"
-          fi
-          if [ -z "$old_image" ]; then
-            old_image="$(docker compose --project-directory "$project" --env-file "$env_file" -f "$compose" images -q catalog-api | head -n 1)"
-          fi
-          test -n "$old_image"
-
-          docker build --pull=false \
-            --label "io.terento.release=$release_id" \
-            -f "$stage/backend/catalog-api/Dockerfile" \
-            -t "$image" \
-            "$stage/backend/catalog-api"
-
-          cat > "$override" <<EOF
-          services:
-            catalog-api:
-              image: $image
-              environment:
-                OPERATIONS_INGEST_SECRET: \${OPERATIONS_INGEST_SECRET}
-              labels:
-                traefik.http.routers.terento-admin.rule: 'Host(\`api.terento.app\`) && PathPrefix(\`/admin\`)'
-                traefik.http.routers.terento-operations.rule: 'Host(\`api.terento.app\`) && PathPrefix(\`/internal/operations/\`)'
-                traefik.http.routers.terento-operations.entrypoints: websecure
-                traefik.http.routers.terento-operations.tls: 'true'
-                traefik.http.routers.terento-operations.tls.certresolver: letsencrypt
-            catalog-scheduler:
-              image: $image
-              environment:
-                COLLECTOR_SCHEDULE_UTC: '03:00'
-            catalog-migrate:
-              image: $image
-          EOF
-
-          compose_args=(--project-name "$compose_project" --project-directory "$project" --env-file "$env_file" -f "$compose" -f "$override")
-          docker compose "${compose_args[@]}" config --quiet
-          # The remote script itself arrives over stdin. Keep the migration
-          # container detached from that stream or it consumes the remaining
-          # rollout commands after printing its migration result.
-          docker compose "${compose_args[@]}" --profile manual run --rm --no-deps -T catalog-migrate </dev/null
-
-          rollback() {
-            cat > "$override" <<EOF
-          services:
-            catalog-api:
-              image: $old_image
-            catalog-scheduler:
-              image: $old_image
-          EOF
-            docker compose "${compose_args[@]}" up -d --force-recreate --no-build catalog-api catalog-scheduler || true
-            rm -rf -- "$stage" "$override"
-          }
-
-          if ! docker compose "${compose_args[@]}" up -d --force-recreate --no-build catalog-api catalog-scheduler; then
-            rollback
-            exit 1
-          fi
-
-          echo "Catalog API containers after rollout:"
-          for container in $(docker ps -aq --filter label=com.docker.compose.service=catalog-api); do
-            docker inspect --format '{{.Name}} project={{ index .Config.Labels "com.docker.compose.project" }} image={{.Config.Image}} admin={{ index .Config.Labels "traefik.http.routers.terento-admin.rule" }}' "$container"
-          done
-
-          # Remove only services from the known duplicate project created by
-          # the earlier rollout attempts. Database/asset volumes are retained.
-          duplicate_project="terento-catalog"
-          duplicate_args=(--project-name "$duplicate_project" --project-directory "$project" --env-file "$env_file" -f "$compose" -f "$override")
-          docker compose "${duplicate_args[@]}" rm -sf catalog-api catalog-scheduler catalog-db || true
-
-          mapfile -t api_containers < <(docker ps --no-trunc -q --filter label=com.docker.compose.service=catalog-api)
-          mapfile -t scheduler_containers < <(docker ps --no-trunc -q --filter label=com.docker.compose.service=catalog-scheduler)
-          mapfile -t db_containers < <(docker ps --no-trunc -q --filter label=com.docker.compose.service=catalog-db)
-          api_container="$(docker compose "${compose_args[@]}" ps -q catalog-api)"
-          scheduler_container="$(docker compose "${compose_args[@]}" ps -q catalog-scheduler)"
-          db_container="$(docker compose "${compose_args[@]}" ps -q catalog-db)"
-
-          if [ "${#api_containers[@]}" -ne 1 ] || [ "${#scheduler_containers[@]}" -ne 1 ] || [ "${#db_containers[@]}" -ne 1 ] \
-            || [ "${api_containers[0]:-}" != "$api_container" ] \
-            || [ "${scheduler_containers[0]:-}" != "$scheduler_container" ] \
-            || [ "${db_containers[0]:-}" != "$db_container" ]; then
-            docker ps -a --format 'container={{.Names}} image={{.Image}} status={{.Status}}' \
-              --filter label=com.docker.compose.service
-            rollback
-            exit 1
-          fi
-
-          api_release="$(docker inspect --format '{{ index .Config.Labels "io.terento.release" }}' "$api_container")"
-          scheduler_release="$(docker inspect --format '{{ index .Config.Labels "io.terento.release" }}' "$scheduler_container")"
-          db_health="$(docker inspect --format '{{.State.Health.Status}}' "$db_container")"
-          if [ "$api_release" != "$release_id" ] || [ "$scheduler_release" != "$release_id" ] || [ "$db_health" != "healthy" ]; then
-            rollback
-            exit 1
-          fi
-
-          if ! docker exec "$api_container" python -c \
-            'import urllib.request; assert urllib.request.urlopen("http://127.0.0.1:8000/health", timeout=5).read() == b"{\"status\":\"ok\"}"'; then
-            rollback
-            exit 1
-          fi
-
-          if ! docker exec "$api_container" python -c \
-            'import urllib.request; assert b"<title>Admin sign in \xc2\xb7 Terento</title>" in urllib.request.urlopen("http://127.0.0.1:8000/admin/login", timeout=5).read(); import http.client; c=http.client.HTTPConnection("127.0.0.1",8000,timeout=5); c.request("GET","/admin/campaign-links"); r=c.getresponse(); assert r.status==303 and r.getheader("Location")=="/admin/login"'; then
-            rollback
-            exit 1
-          fi
-
-          echo "Catalog services: one API, one scheduler, one healthy database; release $release_id"
-          echo "Active Traefik containers:"
-          for container in $(docker ps -q --filter label=traefik.enable=true); do
-            docker inspect --format '{{.Name}} project={{ index .Config.Labels "com.docker.compose.project" }} image={{.Config.Image}} catalog={{ index .Config.Labels "traefik.http.routers.terento-catalog.rule" }} admin={{ index .Config.Labels "traefik.http.routers.terento-admin.rule" }}' "$container"
-          done
-
-          rm -rf -- "$stage" "$override"
-          REMOTE
+        with:
+          persist-credentials: false
+      - name: Deploy immutable API image through its scoped account
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}
+        run: bash scripts/infra/deploy-vps-image.sh api
 
       - name: Validate admin edge boundary checker
         run: python3 Tests/admin-access-boundary-tests.py

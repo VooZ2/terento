@@ -4,12 +4,59 @@
 from __future__ import annotations
 
 import re
+import json
+import os
+import subprocess
+import tempfile
 from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WORKFLOWS = REPO_ROOT / ".github" / "workflows"
 PINNED_ACTION = re.compile(r"^\s*uses:\s*[^\s@]+@[0-9a-f]{40}\s*$")
+
+
+def verify_scoped_transport() -> None:
+    """Exercise the real request script with a local SSH spy; no network or secrets."""
+    script = REPO_ROOT / "scripts/infra/deploy-vps-image.sh"
+    subprocess.run(["bash", "-n", str(script)], check=True)
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        spy = root / "ssh"
+        spy.write_text("#!/usr/bin/env python3\n" +
+            "import json, os, pathlib, sys\n" +
+            "args=sys.argv[1:]; key=pathlib.Path(args[args.index('-i')+1])\n" +
+            "assert key.stat().st_mode & 0o777 == 0o600\n" +
+            "assert 'VPS_SSH_KEY' not in os.environ\n" +
+            "pathlib.Path(os.environ['SSH_RECORD']).write_text(json.dumps(args))\n")
+        spy.chmod(0o700)
+        record = root / "record.json"
+        env = dict(os.environ, PATH=str(root)+os.pathsep+os.environ["PATH"],
+                   GITHUB_REPOSITORY="VooZ2/terento", GITHUB_REF="refs/heads/beta",
+                   GITHUB_SHA="a"*40, VPS_IMAGE_DIGEST="sha256:"+"b"*64,
+                   VPS_SSH_KEY="synthetic-test-key", RUNNER_TEMP=temporary,
+                   SSH_RECORD=str(record))
+        for role, ref in (("api", "refs/heads/beta"), ("site", "refs/heads/beta"),
+                          ("site", "refs/tags/v0.1.0")):
+            result = subprocess.run(["bash", str(script), role], env=dict(env, GITHUB_REF=ref), capture_output=True)
+            assert result.returncode == 0, result.stderr.decode()
+            args = json.loads(record.read_text())
+            assert args[-2:] == [f"terento-ci-{role}@179.198.204.47", "deploy sha256:"+"b"*64+" "+"a"*40]
+            assert "StrictHostKeyChecking=yes" in args and "IdentitiesOnly=yes" in args
+            key = Path(args[args.index("-i")+1])
+            assert not key.parent.exists(), "temporary credentials must be removed"
+            record.unlink()
+        rejected = [(["root"], {}), (["site", "extra"], {}),
+                    (["api"], {"GITHUB_REF": "refs/tags/v0.1.0"}),
+                    (["site"], {"GITHUB_REF": "refs/heads/unreviewed"}),
+                    (["site"], {"GITHUB_REPOSITORY": "someone/terento"}),
+                    (["api"], {"VPS_IMAGE_DIGEST": "sha256:"+"b"*64+"; id"}),
+                    (["api"], {"GITHUB_SHA": "a"*40+" x"})]
+        for args, changes in rejected:
+            result = subprocess.run(["bash", str(script), *args], env=dict(env, **changes), capture_output=True)
+            assert result.returncode == 64, (args, changes, result.returncode)
+            assert not record.exists(), "invalid input reached SSH"
+        assert not list(root.glob("rukas-ssh.*"))
 
 
 def main() -> int:
@@ -76,17 +123,37 @@ def main() -> int:
 
     assert "needs: tests" in deploy_api, "catalog deploy must wait for backend tests"
     assert "Retain API deployment health" in deploy_api
-    assert "Synchronize operations ingest secret" in deploy_api
-    assert "OPERATIONS_INGEST_SECRET=%s" in deploy_api
-    assert "OPERATIONS_INGEST_SECRET: \\${OPERATIONS_INGEST_SECRET}" in deploy_api
-    assert "chmod --reference=\"$env_file\"" in deploy_api
-    assert "traefik.http.routers.terento-operations.rule" in deploy_api
-    assert "PathPrefix(\\`/internal/operations/\\`)" in deploy_api
-    assert "COLLECTOR_SCHEDULE_UTC: '03:00'" in deploy_api
     assert "https://api.terento.app/internal/operations/report-context" in deploy_api
-    assert "traefik.http.routers.terento-operations.service" not in deploy_api
+    assert "verify-release-client-contract:" in deploy_api
+    assert "Packaging/validate-live-map-catalog.sh" in deploy_api
+    assert "TERENTO_ADMIN_ACCESS_REQUIRED: 'true'" in deploy_api
     deploy_site = (WORKFLOWS / "deploy-site.yml").read_text(encoding="utf-8")
     assert "Retain website deployment health" in deploy_site
+    publisher = (WORKFLOWS / "publish-vps-images.yml").read_text(encoding="utf-8")
+    assert "workflow_call:" in publisher
+    assert "digest: ${{ steps.image.outputs.digest }}" in publisher
+    assert "value: ${{ jobs.publish.outputs.digest }}" in publisher
+    assert "git merge-base --is-ancestor" in publisher
+    assert "VPS_SSH_KEY" not in publisher and "environment:" not in publisher
+    assert "secrets." not in publisher.replace("secrets.GITHUB_TOKEN", "TOKEN")
+    for gate in ("Tests/run-site-tests.sh", "Tests/run-release-documentation-tests.sh",
+                 "Tests/run-release-legal-content-tests.sh"):
+        assert gate in publisher
+    for role, source in (("api", deploy_api), ("site", deploy_site)):
+        assert "needs: publish" in source
+        assert f"environment: rukas-{role}" in source
+        assert f"bash scripts/infra/deploy-vps-image.sh {role}" in source
+        assert "${{ needs.publish.outputs.digest }}" in source
+        assert "github.ref == 'refs/heads/beta'" in source
+        assert "github.event_name == 'workflow_dispatch' ||" not in source
+        assert "TERENTO_SITE_SSH" not in source
+        assert "scp " not in source and "bash -s" not in source
+        assert "Synchronize operations ingest secret" not in source
+    rejection = (WORKFLOWS / "check-vps-access.yml").read_text(encoding="utf-8")
+    assert "expect 64 id" in rejection
+    assert "expect 0 " not in rejection and "expect 1 " not in rejection
+    assert "f7e394d" not in rejection
+    verify_scoped_transport()
     compatibility_refresh = (WORKFLOWS / "refresh-compatibility-snapshot.yml").read_text(encoding="utf-8")
     for contract in (
         'cron: "30 3 * * *"',
