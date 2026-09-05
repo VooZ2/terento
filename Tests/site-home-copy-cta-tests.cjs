@@ -153,7 +153,7 @@ const anchorFor = (page, className) => {
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20260905-shared-badges-v1">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20260905-in-page-language-v1">/, `${locale}: Home stylesheet cache bust`);
   assert.match(page, /<script defer src="\/home-features\.js\?v=20260904-home-workflow-tabs"><\/script>/, `${locale}: Home feature script cache bust`);
   assert.match(page, /installing-maps-1600\.png\?v=20260905-app-screens-v1/, `${locale}: installation screenshot cache bust`);
   const heroArtwork = page.match(/<figure class="app-shot app-shot--hero">[\s\S]*?<\/figure>/)?.[0];

@@ -101,16 +101,24 @@ class CompatibilityAggregationMigrationTests(unittest.TestCase):
         )
         self.assertIn("excluded from current compatibility statistics", migration)
 
-    def test_admin_has_a_separate_historical_diagnostics_section(self) -> None:
-        admin_source = (
-            Path(__file__).resolve().parents[1]
-            / "src"
-            / "terento_catalog"
-            / "admin.py"
-        ).read_text(encoding="utf-8")
-        self.assertIn("Resolved / historical diagnostics", admin_source)
-        self.assertIn("resolved_operations", admin_source)
-        self.assertIn("excluded from current compatibility counts or rates", admin_source)
+    def test_admin_keeps_resolved_failures_in_history(self) -> None:
+        from terento_catalog.admin import diagnostics_page
+
+        body = diagnostics_page(
+            [], {"username": "operator"}, "csrf", identity="Test model",
+            resolved_operations=[{
+                "operation_key": "historical-failure",
+                "compatibility_identity": "Test model",
+                "phase_outcome": "FAILED",
+                "diagnostic_status": "RESOLVED",
+                "resolution_reason": "FIXED",
+            }],
+        ).decode()
+        self.assertIn("data-diagnostic-state='resolved'", body)
+        self.assertIn("data-diagnostic-result='failed'", body)
+        self.assertIn("Diagnostic ID: <code>historical-failure</code>", body)
+        self.assertIn("action='/admin/diagnostics/reopen'", body)
+        self.assertNotIn("action='/admin/diagnostics/resolve'", body)
 
 
 if __name__ == "__main__":

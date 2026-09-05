@@ -36,6 +36,5 @@ for (const page of metadata.pages.filter((candidate) => candidate.indexable !== 
 assert.match(read("site/index.html"), /provider-list\.js\?v=20260904-home-provider-cards/);
 assert.match(read("site/provider-list.js"), /https:\/\/api\.terento\.app\/maps\/catalog\.json/);
 assert.match(read("site/reading-state.js"), /terento-reading-state/);
-assert.match(read("site/guide-progress.js"), /data-guide-progress/);
 
-console.log("Website metadata, sitemap, provider catalog, reading-state, and progress contracts passed.");
+console.log("Website metadata, sitemap, provider catalog, and reading-state contracts passed.");

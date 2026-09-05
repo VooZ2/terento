@@ -32,7 +32,6 @@ from terento_catalog.admin import (
     _diagnostics_script,
     _github_issue_report,
     _github_issue_url,
-    _render_diagnostic_details,
     _sanitised_issue_value,
     _identity_comparison_key,
     _map_statistics_summary,
@@ -1033,23 +1032,21 @@ class AdminSemanticsTests(unittest.TestCase):
             "diagnostic_status": "ACTIVE",
             "linked_github_issue": "#32",
         }
-        body = _render_diagnostic_details(
-            [result],
-            identities=None,
-            heading="Diagnostics",
-            summary_prefix="",
-            csrf_token="csrf",
-        )
-        self.assertIn("Region</th><th scope='col'>Result</th><th scope='col'>Stage</th><th scope='col'>Code</th><th scope='col'>Write</th><th scope='col'>Cleanup", body)
-        self.assertNotIn("<th scope='col'>Raw MTP model", body)
-        self.assertIn("Technical details · map result 1", body)
-        self.assertIn("Raw MTP model", body)
-        self.assertIn("Diagnostic ID: <code>legacy:diagnostic-1</code>", body)
-        self.assertIn("diagnostic-chip", body)
-        self.assertIn("Issue #32", body)
-        self.assertIn("Failed", body)
-        self.assertIn("Yes", body)
-        self.assertIn("Not attempted", body)
+        body = diagnostics_page(
+            [], {"username": "operator"}, "csrf",
+            identity=result["compatibility_identity"], operations=[result],
+        ).decode()
+        table = body.split("class='diagnostic-list-table'", 1)[1].split("</table>", 1)[0]
+        for label in ("Region", "Result", "Stage", "Code"):
+            self.assertIn(f">{label}<", table)
+        self.assertNotIn("Raw MTP model", table)
+        dialog = body.split("<dialog class='diagnostic-detail-dialog'", 1)[1].split("</dialog>", 1)[0]
+        for value in ("Technical details · map result 1", "Raw MTP model", "fenix 8 51mm",
+                      "LIBMTP_ERROR_IO", "25-50%", "Cleanup attempted", "Failed",
+                      "Diagnostic ID: <code>legacy:diagnostic-1</code>", "#32"):
+            self.assertIn(value, dialog)
+        self.assertIn("SEND_OBJECT_FAILED", table)
+        self.assertIn("action='/admin/diagnostics/resolve'", dialog)
 
     def test_dashboard_is_model_summary_only_and_errors_link_to_exact_drilldown(self):
         identity = "fēnix 8 · 51 mm, AMOLED"
@@ -2016,19 +2013,25 @@ class AdminSemanticsTests(unittest.TestCase):
             "resolution_reason": "FIXED",
             "linked_github_issue": "#32",
         }
-        body = _render_diagnostic_details(
-            [result],
-            identities=None,
-            heading="Resolved / historical diagnostics",
-            summary_prefix="",
-            csrf_token="csrf",
-        )
-        self.assertIn("fēnix 8 Pro · 51 mm", body)
-        self.assertIn("Identity pending", body)
-        self.assertIn("1 diagnostic", body)
-        self.assertNotIn("Resolved / historical · Identity pending", body)
-        self.assertIn("<th scope='col'>Region</th>", body)
-        self.assertIn("Technical details · map result 1", body)
+        for outcome in ("SUCCEEDED", "FAILED"):
+            with self.subTest(outcome=outcome):
+                result["phase_outcome"] = outcome
+                second = {**result, "map_result_index": 1, "region": "DEU+",
+                          "raw_mtp_model": "<script>alert(1)</script>"}
+                body = diagnostics_page(
+                    [], {"username": "operator"}, "csrf",
+                    identity=result["compatibility_identity"],
+                    resolved_operations=[result, second],
+                ).decode()
+                self.assertEqual(body.count("<dialog class='diagnostic-detail-dialog'"), 1)
+                dialog = body.split("<dialog class='diagnostic-detail-dialog'", 1)[1].split("</dialog>", 1)[0]
+                for value in ("fēnix 8 Pro", "51 mm", "FRA+", "DEU+", "Resolved", "#32",
+                              "Technical details · map result 1", "Technical details · map result 2",
+                              "action='/admin/diagnostics/reopen'", "&lt;script&gt;alert(1)&lt;/script&gt;"):
+                    self.assertIn(value, dialog)
+                self.assertIn("Failed" if outcome == "FAILED" else "Succeeded", dialog)
+                self.assertNotIn("<script>alert(1)</script>", dialog)
+                self.assertNotIn("action='/admin/diagnostics/resolve'", dialog)
 
     def test_migration_is_additive_and_keeps_historical_records_active(self):
         migration = MIGRATION.read_text(encoding="utf-8")
