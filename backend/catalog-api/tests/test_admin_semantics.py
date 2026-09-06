@@ -668,6 +668,8 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertIn("Last 24 hours", body)
         self.assertIn("Provider activity", body)
+        self.assertIn("Provider activity and popular maps", body)
+        self.assertEqual(body.count("<p class='section-kicker'>Popularity</p>"), 1)
         self.assertIn("id='map-statistics-coverage'", body)
         self.assertIn("id='world-map-svg'", body)
         self.assertIn("window.terentoWorldMapSvg", body)
