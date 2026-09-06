@@ -431,6 +431,8 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("overview-chart-panel", body)
         self.assertIn("Recent map activity", body)
         self.assertIn("Compatibility evidence", body)
+        self.assertIn("Custom .img is shown separately; it is not included in map-operation KPI totals.", body)
+        self.assertIn(".overview-primary-grid{align-items:stretch}", body)
         self.assertNotIn("Pending metric definition", body)
         self.assertNotIn("<span>Success rate</span>", body)
 
@@ -489,6 +491,7 @@ class AdminSemanticsTests(unittest.TestCase):
             {"username": "operator"}, "csrf",
         ).decode()
         self.assertIn("Device/model activity", body)
+        self.assertIn("Compatibility evidence only · separate from map-operation telemetry.", body)
         self.assertIn("fēnix 8 · 47 mm, AMOLED", body)
         self.assertIn("New / review-required devices", body)
         self.assertIn("Needs attention", body)
@@ -706,7 +709,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Custom .img installed: 3", body)
         self.assertRegex(body, r"class='overview-chart-custom'[^>]*height='220.0'")
         self.assertIn("</i>Custom .img</span>", body)
-        self.assertIn("Custom .img: successful manual installations.", body)
+        self.assertIn("Custom .img is shown separately; it is not included in map-operation KPI totals.", body)
 
     def test_chart_segments_join_without_individual_rounding(self):
         import xml.etree.ElementTree as ET
