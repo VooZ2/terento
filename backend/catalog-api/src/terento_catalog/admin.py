@@ -1507,6 +1507,7 @@ def dashboard_page(
             <label><span class="sr-only">Filter by status</span><select id="evidence-status"><option value="all">All statuses</option>{status_options}</select></label>
             <label><span class="sr-only">Sort models</span><select id="evidence-sort"><option value="attempts">Most attempts</option><option value="errors">Most errors</option><option value="latest" selected>Latest activity</option><option value="model">Model name</option></select></label>
             <p class="results-count" id="results-count" aria-live="polite">{len(rows)} {"variant" if len(rows) == 1 else "variants"}</p>
+            <button type="button" class="secondary-button filter-clear" data-filter-clear aria-label="Clear installation filters">Clear</button>
           </form>
           <div class="table-wrap evidence-table-wrap"><table class="admin-table"><caption class="sr-only">Installations by exact device identity</caption><thead><tr><th scope="col">Model</th><th scope="col">Variant</th><th scope="col">Status</th><th scope="col">Attempts</th><th scope="col">Successful</th><th scope="col">Failed</th><th scope="col">Open errors</th><th scope="col">Last success</th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
         </section>
@@ -1693,7 +1694,7 @@ def providers_page(
         <section class='admin-summary-strip' aria-label='Provider summary'><p class='admin-summary-metrics'><strong>{len(provider_rows)} providers</strong><span> · {active} active · {healthy} healthy · {packages} packages · {issues} issues</span></p></section>
         {empty}
         <section class='provider-section' aria-label='Provider list'>
-          <form class='filter-bar provider-filter-bar' id='provider-filters' role='search'><label class='filter-search'><span class='sr-only'>Search providers</span><input id='provider-search' type='search' placeholder='Search providers' autocomplete='off'></label><p class='results-count' id='provider-results-count' aria-live='polite'>{len(provider_rows)} providers</p></form>
+          <form class='filter-bar provider-filter-bar' id='provider-filters' role='search'><label class='filter-search'><span class='sr-only'>Search providers</span><input id='provider-search' type='search' placeholder='Search providers' autocomplete='off'></label><p class='results-count' id='provider-results-count' aria-live='polite'>{len(provider_rows)} providers</p><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear provider filters'>Clear</button></form>
           <div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Map provider status</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Activity</th><th scope='col'>Health</th><th scope='col'>Packages</th><th scope='col'>Catalog sync</th><th scope='col'>Last check</th><th scope='col'>Issues</th></tr></thead><tbody id='provider-rows'>{rows}</tbody></table></div>
         </section>
       </main>
@@ -2037,7 +2038,7 @@ def map_statistics_page(
       {_admin_header(user, csrf_token, active='map-statistics')}
       <main class='dashboard map-statistics-page' id='main-content'>
         <div class='heading-row'><div><p class='eyebrow'>Map operations</p><h1>Map statistics</h1><p class='lede'>Downloads, installs, and provider health.</p></div></div>
-        <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search'><label><span class='sr-only'>Time range</span><select id='map-statistics-range'>{statistics_period_options}</select></label><label><span class='sr-only'>Provider</span><select id='map-statistics-provider'><option value=''>All providers</option>{provider_options}</select></label><details class='admin-disclosure filter-disclosure' id='map-statistics-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Map ID</span><input id='map-statistics-map' type='search' placeholder='Map ID'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event'><option value=''>All events</option><option value='DOWNLOAD_SUCCEEDED'>Download succeeded</option><option value='DOWNLOAD_FAILED'>Download failed</option><option value='INSTALL_SUCCEEDED'>Install succeeded</option><option value='INSTALL_FAILED'>Install failed</option><option value='DOWNLOAD_STARTED'>Download started</option></select></label></div></details><p class='results-count' id='map-statistics-status' aria-live='polite'>{event_status}</p></form>
+        <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search'><label><span class='sr-only'>Time range</span><select id='map-statistics-range'>{statistics_period_options}</select></label><label><span class='sr-only'>Provider</span><select id='map-statistics-provider'><option value=''>All providers</option>{provider_options}</select></label><details class='admin-disclosure filter-disclosure' id='map-statistics-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Map ID</span><input id='map-statistics-map' type='search' placeholder='Map ID'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event'><option value=''>All events</option><option value='DOWNLOAD_SUCCEEDED'>Download succeeded</option><option value='DOWNLOAD_FAILED'>Download failed</option><option value='INSTALL_SUCCEEDED'>Install succeeded</option><option value='INSTALL_FAILED'>Install failed</option><option value='DOWNLOAD_STARTED'>Download started</option></select></label></div></details><p class='results-count' id='map-statistics-status' aria-live='polite'>{event_status}</p><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear map statistics filters'>Clear</button></form>
         <p class='table-help map-statistics-definition-note'>Counts map packages; one install can include multiple packages.</p>
         <section class='admin-kpi-grid map-statistics-kpis' id='map-statistics-metrics' aria-label='Map statistics summary'><article><span>Downloads</span><strong data-stat='completedDownloads'>{event_value('completedDownloads')}</strong></article><article><span>Download rate</span><strong data-stat='downloadSuccessRate'>{_format_rate(summary['downloadSuccessRate'])}</strong></article><article><span>Installs</span><strong data-stat='completedInstalls'>{event_value('completedInstalls')}</strong></article><article><span>Install rate</span><strong data-stat='installSuccessRate'>{_format_rate(summary['installSuccessRate'])}</strong></article></section>
         <section class='map-statistics-empty' id='map-statistics-empty' {'hidden' if has_event_data else ''} aria-live='polite'><h2>No map operation data yet</h2><p>Statistics will appear after opted-in map operations are received.</p></section>
@@ -2053,6 +2054,7 @@ def map_statistics_page(
 
 def _providers_list_script() -> str:
     return r"""(() => {
+      const form = document.querySelector('#provider-filters');
       const search = document.querySelector('#provider-search');
       const rows = [...document.querySelectorAll('#provider-rows tr[data-provider-search]')];
       const count = document.querySelector('#provider-results-count');
@@ -2064,6 +2066,10 @@ def _providers_list_script() -> str:
         if (count) count.textContent = `${visible} provider${visible === 1 ? '' : 's'}`;
       };
       search?.addEventListener('input', refresh);
+      form?.addEventListener('terento-admin-clear-filters', () => {
+        if (search) search.value = '';
+        refresh();
+      });
       document.querySelectorAll('[data-provider-action="check"]').forEach((button) => {
         button.addEventListener('click', async () => {
           const id = button.dataset.providerId;
@@ -2152,6 +2158,7 @@ def _map_statistics_script() -> str:
       const initial = window.terentoMapStatistics || {rows: []};
       const providers = window.terentoAdminProviders || [];
       const filters = window.terentoMapStatisticsFilters || {};
+      const form = document.querySelector('#map-statistics-filters');
       const range = document.querySelector('#map-statistics-range');
       const provider = document.querySelector('#map-statistics-provider');
       const map = document.querySelector('#map-statistics-map');
@@ -2343,6 +2350,15 @@ def _map_statistics_script() -> str:
         if (status) status.textContent = 'Loading…';
         try { const response = await fetch(`/admin/map-statistics.json?${parameters}`, {credentials: 'same-origin', headers: {'Accept': 'application/json'}}); const payload = await response.json(); if (!response.ok) throw new Error(payload.error || 'Statistics unavailable'); render(payload); } catch (error) { if (status) status.textContent = error.message || 'Statistics unavailable'; }
       };
+      form?.addEventListener('terento-admin-clear-filters', () => {
+        range.value = 'all';
+        provider.value = '';
+        map.value = '';
+        region.value = '';
+        event.value = '';
+        if (moreFilters) moreFilters.open = false;
+        sync({resetDetailPage: true});
+      });
       if (allMapsDisclosure) allMapsDisclosure.addEventListener('toggle', () => render(currentPayload));
       const initialRange = ['24h', '7d', '30d', 'all'].includes(String(filters.period || '')) ? String(filters.period) : 'all'; range.value = initialRange; if (filters.provider) provider.value = filters.provider; if (filters.map) map.value = filters.map; if (filters.region) region.value = filters.region; if (filters.eventType) event.value = filters.eventType;
       if (moreFilters && (filters.map || filters.region || filters.eventType)) moreFilters.open = true;
@@ -2971,7 +2987,7 @@ def device_detail_page(
         {alert}
         <section class='diagnostics-detail-section model-page-section' id='installations' aria-labelledby='installation-history-title'>
           <div class='section-heading'><div><p class='section-kicker'>Operational history</p><h2 id='installation-history-title'>Installation history</h2></div><p class='table-help'>Failed results remain historical after their error is resolved.</p></div>
-          <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'><div class='quick-filter-group' role='group' aria-label='Quick history filters'><button type='button' class='quick-filter active' data-history-filter='all' aria-pressed='true'>All</button><button type='button' class='quick-filter' data-history-filter='failed' aria-pressed='false'>Failed</button><button type='button' class='quick-filter' data-history-filter='open' aria-pressed='false'>Open errors</button><button type='button' class='quick-filter' data-history-filter='succeeded' aria-pressed='false'>Succeeded</button></div><details class='admin-disclosure filter-disclosure history-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all'>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='open'>Open errors</option><option value='resolved-errors'>Resolved errors</option></select></label></div></details></form>
+          <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'><div class='quick-filter-group' role='group' aria-label='Quick history filters'><button type='button' class='quick-filter active' data-history-filter='all' aria-pressed='true'>All</button><button type='button' class='quick-filter' data-history-filter='failed' aria-pressed='false'>Failed</button><button type='button' class='quick-filter' data-history-filter='open' aria-pressed='false'>Open errors</button><button type='button' class='quick-filter' data-history-filter='succeeded' aria-pressed='false'>Succeeded</button></div><details class='admin-disclosure filter-disclosure history-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all'>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='open'>Open errors</option><option value='resolved-errors'>Resolved errors</option></select></label></div></details><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button></form>
           <p class='results-count' id='diagnostic-results-count' aria-live='polite'>{len(history)} records</p>
           <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table model-history-table'><caption class='sr-only'>Installation history for this exact model and variant</caption><thead><tr><th scope='col'>Date</th><th scope='col'>Map</th><th scope='col'>Result</th><th scope='col'>Error</th><th scope='col'>GitHub issue</th><th scope='col'>App version</th><th scope='col'>Action</th></tr></thead><tbody id='diagnostic-rows'>{history_rows}</tbody></table></div>
           <div class='provider-pagination' id='diagnostic-history-pagination' aria-live='polite'><label>Rows <select id='diagnostic-history-page-size' aria-label='Rows per installation history page'><option value='25' selected>25</option><option value='50'>50</option></select></label><button type='button' data-history-page='previous' disabled>Previous</button><span>Showing {1 if history else 0}–{min(len(history), 25)} of {len(history)} · page 1 of {max(1, (len(history) + 24) // 25)}</span><button type='button' data-history-page='next' {'disabled' if len(history) <= 25 else ''}>Next</button></div>
@@ -3040,7 +3056,7 @@ def diagnostics_page(
     )
     errors = sum(1 for results in active_diagnostics.values() if _operation_is_problematic(results))
     status = _row_compatibility_status(model_row) if model_row else None
-    filters = """<label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all' selected>All</option><option value='succeeded'>Succeeded</option><option value='failed'>Failed</option><option value='open'>Open</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity pending</option><option value='with-issue'>With issue</option></select></label>"""
+    filters = """<label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all' selected>All</option><option value='succeeded'>Succeeded</option><option value='failed'>Failed</option><option value='open'>Open</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity pending</option><option value='with-issue'>With issue</option></select></label><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button>"""
     rows_markup: list[str] = []
     dialogs: list[str] = []
     for index, (operation_key, results, resolved) in enumerate(diagnostic_groups):
@@ -3340,6 +3356,7 @@ def devices_page(
             <label><span class="sr-only">Filter by compatibility status</span><select id="device-status"><option value="all">All statuses</option><option value="TESTING">Testing</option><option value="TESTED">Tested</option><option value="SUPPORTED">Supported</option><option value="VERIFIED">Verified</option><option value="unavailable">Unavailable</option></select></label>
             <label class="device-mobile-sort"><span class="sr-only">Sort devices</span><select id="device-mobile-sort">{mobile_sort_options}</select></label>
             <p class="results-count" id="device-results-count" aria-live="polite">{summary['mapCapable']} results</p>
+            <button type="button" class="secondary-button filter-clear" data-filter-clear aria-label="Clear device filters">Clear</button>
           </form>
           {empty}
           <div class="device-sticky-header" id="device-sticky-header"><div class="device-sticky-header-scroll"><table class="admin-table"><caption class="sr-only">Device catalog columns</caption>{table_columns}{table_header}</table></div></div>
@@ -3669,6 +3686,21 @@ def _devices_script() -> str:
         mobileSort.value = `${sortKey}:${sortDirection}`;
         mobileSort.addEventListener('change', () => { [sortKey, sortDirection] = mobileSort.value.split(':'); updateSortHeaders(); page = 0; refresh(); });
       }
+      form.addEventListener('terento-admin-clear-filters', () => {
+        search.value = '';
+        family.value = 'all';
+        map.value = 'yes';
+        support.value = 'all';
+        status.value = 'all';
+        sortKey = 'model';
+        sortDirection = 'ascending';
+        if (mobileSort) mobileSort.value = 'model:ascending';
+        showNew = false;
+        publicationReview = false;
+        page = 0;
+        updateSortHeaders();
+        refresh();
+      });
       form.addEventListener('submit', (event) => event.preventDefault());
       [search, family, map, support, status].forEach((control) => control.addEventListener(control === search ? 'input' : 'change', reset));
       sortButtons.forEach((button) => button.addEventListener('click', () => {
@@ -3948,6 +3980,13 @@ def _dashboard_script() -> str:
         history.replaceState(null, '', stateQuery.size ? `${window.location.pathname}?${stateQuery}` : window.location.pathname);
       };
       form.addEventListener('submit', (event) => event.preventDefault());
+      form.addEventListener('terento-admin-clear-filters', () => {
+        search.value = '';
+        status.value = 'all';
+        sort.value = 'latest';
+        selectedQuickFilter = 'all';
+        refresh();
+      });
       quickFilters.forEach((button) => button.addEventListener('click', () => {
         selectedQuickFilter = button.dataset.installationFilter || 'all';
         refresh();
@@ -3992,6 +4031,7 @@ def _client_issue_note_sanitizer_script() -> str:
 
 def _diagnostics_script() -> str:
     script = r"""(() => {
+      const filterForm = document.querySelector('#diagnostic-filters');
       const filter = document.querySelector('#diagnostic-state-filter');
       const quickFilters = [...document.querySelectorAll('[data-history-filter]')];
       const body = document.querySelector('#diagnostic-rows');
@@ -4072,6 +4112,15 @@ def _diagnostics_script() -> str:
         page = 1;
         refresh();
       }));
+      filterForm?.addEventListener('terento-admin-clear-filters', () => {
+        selectedFilter = 'all';
+        page = 1;
+        const parameters = new URLSearchParams(window.location.search);
+        parameters.delete('state');
+        const query = parameters.toString();
+        history.replaceState(null, '', query ? `${window.location.pathname}?${query}` : window.location.pathname);
+        refresh();
+      });
       document.querySelectorAll('form[data-confirm]').forEach((form) => form.addEventListener('submit', (event) => {
         if (!window.confirm(form.dataset.confirm || 'Continue?')) event.preventDefault();
       }));
@@ -4388,6 +4437,7 @@ h2{font-size:22px;line-height:1.15}
 .filter-bar select{min-width:150px}
 .filter-bar input::placeholder{color:var(--admin-placeholder);font-weight:500}
 .filter-bar .results-count{align-self:center;margin:0 4px 0 auto;white-space:nowrap}
+.filter-bar .filter-clear{align-self:center;flex:0 0 auto;white-space:nowrap}
 .table-wrap{max-height:none;overflow-x:auto;overflow-y:visible;background:var(--surface);border:1px solid var(--border);border-radius:14px}
 table{border-collapse:collapse;width:100%;min-width:1060px}
 th,td{padding:10px 14px;border-bottom:1px solid color-mix(in srgb,var(--border) 78%,transparent);text-align:left;white-space:nowrap;vertical-align:middle}
@@ -4768,6 +4818,7 @@ h1,h2,h3,h4,.administration-grid h3,.overview-kpi strong,.admin-kpi-grid article
   .installation-kpis{margin-bottom:12px}.historical-failure-note{margin-bottom:16px}
   .admin-filter-bar,.filter-bar{min-width:0;max-width:100%;gap:8px}.admin-filter-bar{align-items:stretch}
   .filter-bar label,.filter-search{min-width:0!important;max-width:100%;flex:1 1 100%}
+  .filter-bar .filter-clear{width:100%}
   input:not([type='checkbox']):not([type='radio']),select,textarea{font-size:16px!important;max-width:100%;min-width:0;min-height:44px}
   .quick-filter-group{min-width:0;max-width:100%;display:flex;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;flex-basis:100%;gap:5px;padding-bottom:3px}
   .quick-filter{flex:0 0 auto;min-height:44px;font-size:13px}
@@ -4848,7 +4899,7 @@ def _layout(title: str, content: str) -> bytes:
         stable_content = re.sub(r'("generatedAt"\s*:\s*)"[^"]*"', r'\1""', content)
         revision = hashlib.sha256(stable_content.encode()).hexdigest()
         content = re.sub(r'(<main\b)', rf'\1 data-admin-revision="{revision}"', content, count=1)
-        content += f"<script>{_admin_freshness_script()}{_admin_mobile_script()}</script>"
+        content += f"<script>{_admin_freshness_script()}{_admin_mobile_script()}{_admin_filter_clear_script()}</script>"
     content = content.replace(
         "<script>", f"<script nonce=\"{_ADMIN_NONCE_PLACEHOLDER}\">"
     )
@@ -4935,6 +4986,19 @@ def _admin_mobile_script() -> str:
       labelTables();
       const main = document.querySelector('main');
       if (main) new MutationObserver(labelTables).observe(main, {childList:true, subtree:true});
+    })();"""
+
+
+def _admin_filter_clear_script() -> str:
+    return r"""(() => {
+      document.querySelectorAll('[data-filter-clear]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const form = button.closest('form');
+          if (!form) return;
+          form.dispatchEvent(new CustomEvent('terento-admin-clear-filters'));
+          form.dispatchEvent(new CustomEvent('change'));
+        });
+      });
     })();"""
 
 
