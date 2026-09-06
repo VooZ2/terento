@@ -1006,6 +1006,8 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Garmin device", detail_body)
         self.assertIn("device-information-section", detail_body)
         self.assertIn(".device-information-section .model-information-list{max-width:780px}", detail_body)
+        self.assertIn(".model-page-section,.model-technical-details{box-sizing:border-box;margin-top:16px;padding:16px", detail_body)
+        self.assertIn(".model-administration[open]>summary,.device-information-section[open]>summary{margin-bottom:12px}", detail_body)
         self.assertIn("grid-template-columns:150px minmax(0,1fr)", detail_body)
         self.assertNotIn("Change history", detail_body)
         self.assertIn("placeholder=\"garmin maps\"", campaign_body)
