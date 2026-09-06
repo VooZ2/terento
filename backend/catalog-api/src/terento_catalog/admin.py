@@ -4726,6 +4726,7 @@ h1,h2,h3,h4,.administration-grid h3,.overview-kpi strong,.admin-kpi-grid article
 .overview-compatibility-summary>summary,.model-administration>summary,.device-information-section>summary{margin-bottom:12px}
 .model-administration,.device-information-section{padding:16px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
 .model-page-section,.model-technical-details{box-sizing:border-box;margin-top:16px;padding:16px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}.model-administration>summary,.device-information-section>summary{margin-bottom:0}.model-administration[open]>summary,.device-information-section[open]>summary{margin-bottom:12px}
+.model-information-list dt,.model-information-list dd{min-width:0;overflow-wrap:anywhere;word-break:break-word}.model-technical-details .model-information-list dd{text-align:left}
 .attention-shortcuts{display:flex;flex-wrap:wrap;gap:8px 18px;margin:12px 0 20px;font-size:13px}
 .attention-shortcuts a{color:var(--interactive);text-underline-offset:3px}
 .attention-shortcuts strong{margin-left:4px}
