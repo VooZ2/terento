@@ -4650,8 +4650,8 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
 .overview-attention-empty h2,.overview-provider-panel h2{font-family:var(--font-ui);font-size:var(--admin-type-subsection-size);line-height:var(--admin-type-subsection-line);letter-spacing:0}
 .overview-attention-empty .section-kicker,.overview-provider-panel .section-kicker{margin-bottom:1px}
 .overview-attention-empty .overview-empty-state{padding:0;font-size:var(--admin-type-helper-size);line-height:var(--admin-type-helper-line);font-weight:500}
-.overview-provider-panel{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:18px;min-height:76px;padding:12px 16px}
-.overview-provider-panel .overview-provider-summary{justify-content:flex-start}
+.overview-provider-panel{display:grid;grid-template-columns:minmax(150px,max-content) minmax(0,1fr) max-content;align-items:center;gap:18px;min-height:76px;padding:12px 16px}
+.overview-provider-panel>div:first-child,.overview-provider-panel .overview-provider-summary,.overview-provider-panel>.section-link{align-self:center}.overview-provider-panel .overview-provider-summary{justify-content:flex-start;min-width:0;align-items:center}.overview-provider-panel .overview-provider-summary>strong{flex:0 0 auto;white-space:nowrap;line-height:1.35}.overview-provider-panel .overview-provider-summary a{flex:0 0 auto;align-items:center;white-space:nowrap}
 .device-information-section .model-information-list{max-width:780px}
 .device-information-section .model-information-list div{grid-template-columns:150px minmax(0,1fr);gap:16px}
 .device-information-section .model-information-list dd{text-align:left}

@@ -531,6 +531,9 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("value='30d' selected", body)
         self.assertIn("overview-attention-empty", body)
         self.assertIn("overview-provider-panel", body)
+        self.assertIn("grid-template-columns:minmax(150px,max-content) minmax(0,1fr) max-content", body)
+        self.assertIn(".overview-provider-panel>div:first-child,.overview-provider-panel .overview-provider-summary,.overview-provider-panel>.section-link{align-self:center}", body)
+        self.assertIn(".overview-provider-panel .overview-provider-summary a{flex:0 0 auto;align-items:center;white-space:nowrap}", body)
 
     def test_overview_trend_fills_selected_range_without_fabricating_events(self):
         event_bucket = datetime(2026, 9, 1, 8, tzinfo=timezone.utc)
