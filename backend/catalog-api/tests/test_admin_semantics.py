@@ -22,6 +22,7 @@ from terento_catalog.admin import (
     _admin_timezone_script,
     _admin_freshness_script,
     _admin_mobile_script,
+    _admin_filter_clear_script,
     _layout,
     _campaign_links_script,
     _client_issue_note_sanitizer_script,
@@ -169,6 +170,7 @@ class AdminSemanticsTests(unittest.TestCase):
             "timezone": _admin_timezone_script(),
             "freshness": _admin_freshness_script(),
             "mobile": _admin_mobile_script(),
+            "filter-clear": _admin_filter_clear_script(),
             "campaign-links": _campaign_links_script(),
             "providers": _providers_list_script(),
             "provider-detail": _provider_detail_script(),
@@ -233,6 +235,27 @@ class AdminSemanticsTests(unittest.TestCase):
         kpis={before:()=>before+=10,after:()=>after+=10};windowEvents['terento-admin-content-changed']();assert.equal(before,12);
         """
         self._run_node(harness, _admin_mobile_script())
+
+    def test_admin_filter_clear_is_present_and_dispatches_a_shared_reset_event(self):
+        harness = r"""
+        const assert = require('node:assert/strict');
+        const events = [];
+        const form = {dispatchEvent: event => events.push(event.type)};
+        const button = {closest: () => form, addEventListener: (name, handler) => button.handler = handler};
+        global.CustomEvent = class CustomEvent { constructor(type) { this.type = type; } };
+        global.document = {querySelectorAll: () => [button]};
+        eval(process.argv[1]);
+        button.handler();
+        assert.deepEqual(events, ['terento-admin-clear-filters', 'change']);
+        """
+        self._run_node(harness, _admin_filter_clear_script())
+        dashboard_body = dashboard_page([], {"username": "operator"}, "csrf").decode()
+        self.assertIn('data-filter-clear aria-label="Clear installation filters"', dashboard_body)
+        self.assertIn('.filter-bar .filter-clear{align-self:center', dashboard_body)
+        self.assertIn("selectedQuickFilter = 'all';", _dashboard_script())
+        self.assertIn("range.value = 'all';", _map_statistics_script())
+        self.assertIn("map.value = 'yes';", _devices_script())
+        self.assertIn("parameters.delete('state');", _diagnostics_script())
 
     def test_variant_formatting_normalizes_sizes_without_dropping_functional_labels(self):
         self.assertEqual(
