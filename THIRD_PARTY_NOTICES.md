@@ -97,6 +97,18 @@ libraries in `Terento.app/Contents/Frameworks`.
 - Distribution: installed in the catalog API Docker image; the dependency's
   own license and notice requirements remain applicable
 
+## Simple World Map
+
+- Version/source: `flekschas/simple-world-map`, commit
+  `d3c4ebb2d0b7fc90a89d2c1e8da0d579fea3871c`
+- Upstream: <https://github.com/flekschas/simple-world-map>
+- File: `backend/catalog-api/src/terento_catalog/admin_world_map.py`
+- License: Creative Commons Attribution-ShareAlike 3.0 Unported
+- Use: local country geometry for the private Umami-style Admin map-statistics
+  coverage view
+- Attribution: the upstream SVG retains its author/editor/license metadata;
+  the map is not used as a public marketing asset
+
 ## JSON Schema test validation
 
 - Dependency: jsonschema 4.26.0, pinned in the backend `test` optional group
