@@ -664,12 +664,13 @@ class AdminSemanticsTests(unittest.TestCase):
             selected_filters={"period": "24h"},
         ).decode()
         self.assertIn("Last 24 hours", body)
-        self.assertIn("Activity by provider", body)
+        self.assertIn("Provider activity", body)
         self.assertIn("id='map-statistics-coverage'", body)
         self.assertIn("id='world-map-svg'", body)
         self.assertIn("window.terentoWorldMapSvg", body)
         popular_maps = body.split("id='map-statistics-popularity'", 1)[1].split("popularity-regions-disclosure", 1)[0]
-        self.assertIn("<th scope='col'>Package installs</th>", popular_maps)
+        self.assertIn("<th scope='col'>Count</th>", popular_maps)
+        self.assertNotIn("<th scope='col'>Package installs</th>", popular_maps)
         self.assertNotIn("<h2>Downloads per provider</h2>", body)
         self.assertNotIn("<th scope='col'>Completed map-package installs</th>", popular_maps)
         self.assertNotIn("90 days", body)
@@ -1568,20 +1569,19 @@ class AdminSemanticsTests(unittest.TestCase):
             {"username": "operator"},
             "csrf",
         ).decode()
-        self.assertIn("Watch event linkage", body)
-        self.assertIn("DATA QUALITY · Watch event linkage", body)
+        self.assertNotIn("Watch event linkage", body)
+        self.assertNotIn("DATA QUALITY ·", body)
         self.assertIn("id='map-rows'", body)
-        self.assertIn("View all maps", body)
-        self.assertIn("<h3>Top maps</h3>", body)
-        self.assertIn("Map install operations</span><strong data-stat='mapInstallationCount'>4", body)
-        self.assertIn("Linked watch events</span><strong data-stat='linkedInstallationCount'>3", body)
-        self.assertIn("Unlinked installs</span><strong data-stat='mapOnlyInstallationCount'>1", body)
-        self.assertIn("Linkage coverage</span><strong data-stat='linkageRate'>75%", body)
-        self.assertIn("Watch-confirmed failures</span><strong data-stat='linkedFailedInstallCount'>1", body)
+        self.assertIn("All maps", body)
+        self.assertIn("<h3>Top 5</h3>", body)
+        self.assertNotIn("Map install operations", body)
+        self.assertNotIn("Linked watch events", body)
+        self.assertNotIn("Linkage coverage", body)
+        self.assertNotIn("Watch-confirmed failures", body)
 
         script = _map_statistics_script()
-        self.assertIn("const linkage = payload.linkage || {};", script)
-        self.assertIn("set('linkedSuccessfulInstallCount', linkageValue('linkedSuccessfulInstallCount'))", script)
+        self.assertNotIn("const linkage = payload.linkage || {};", script)
+        self.assertNotIn("linkedSuccessfulInstallCount", script)
 
     def test_map_statistics_linkage_query_joins_only_shared_operation_ids(self):
         source = inspect.getsource(Database.map_statistics_linkage)
