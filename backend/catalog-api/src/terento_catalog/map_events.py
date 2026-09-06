@@ -21,6 +21,7 @@ ALLOWED_EVENT_KEYS = {
     "eventType",
     "outcome",
     "appBuild",
+    "releaseLabel",
 }
 ALLOWED_EVENT_TYPES = {
     "DOWNLOAD_STARTED",
@@ -67,12 +68,14 @@ def validate_map_event(raw: bytes) -> dict[str, Any]:
             not isinstance(value, str) or not SAFE_ID.fullmatch(value.lower())
         ):
             raise MapEventValidationError(f"invalid_{key}")
-    for key in ("appBuild",):
+    for key in ("appBuild", "releaseLabel"):
         value = event.get(key)
         if value is not None and (
             not isinstance(value, str) or not value.strip() or len(value) > 80
         ):
             raise MapEventValidationError(f"invalid_{key}")
+        if isinstance(value, str):
+            event[key] = value.strip()
     if not isinstance(event["eventType"], str) or event["eventType"] not in ALLOWED_EVENT_TYPES:
         raise MapEventValidationError("invalid_event_type")
     if not isinstance(event["outcome"], str) or event["outcome"] not in ALLOWED_OUTCOMES:

@@ -84,6 +84,9 @@ therefore requires Node.js. Set `TERENTO_NODE_BIN` when Node.js is not on
   privacy-minimised map-operation event contract. `GET
   /admin/map-statistics.json` exposes its private aggregates and never returns
   raw events or device identifiers. Raw map events are pruned after 24 months.
+  Events from the explicit local-build release-label contract are excluded
+  from production aggregates and are available for authenticated purge from
+  `/admin/test-data`.
 - `POST /compatibility/events` accepts validated, rate-limited, idempotent
   privacy-minimised install events under the default-on diagnostics
   policy. It stores only allowlisted columns and never stores the submitted JSON
@@ -92,6 +95,10 @@ therefore requires Node.js. Set `TERENTO_NODE_BIN` when Node.js is not on
 - Uploaded compatibility events are immutable through the public API;
   `DELETE /compatibility/events` returns `405 Method Not Allowed`. Events are
   also pruned automatically after 24 months by the service health cycle.
+  Compatibility events from a local build are classified server-side from a
+  release label ending in `-local`; the authenticated `/admin/test-data` page
+  can delete only those classified local-test rows, across both telemetry
+  streams, in one audited transaction.
 - `GET https://api.terento.app/admin` serves the authenticated, noindex
   aggregate operator dashboard from the same API container as the catalog
   and account settings. The first account requires `ADMIN_BOOTSTRAP_SECRET`;

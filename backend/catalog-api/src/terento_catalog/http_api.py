@@ -29,6 +29,7 @@ from .admin import (
     overview_page,
     provider_detail_page,
     providers_page,
+    test_data_page,
     _admin_device_payload,
     _admin_map_display_name,
     _admin_region_identity,
@@ -434,6 +435,17 @@ class CatalogService:
             "detailPageSize": detail_page_size,
             "linkage": linkage,
         }
+
+    def local_test_telemetry(self) -> dict[str, Any]:
+        return self.database.local_test_telemetry_snapshot()
+
+    def delete_local_test_telemetry(
+        self, *, admin_user_id: int | None, request_id: str | None = None,
+    ) -> dict[str, int]:
+        return self.database.delete_local_test_telemetry(
+            admin_user_id=admin_user_id,
+            request_id=request_id,
+        )
 
     def admin_overview(
         self, period: str = "24h", time_zone: str = "UTC",
@@ -1103,6 +1115,37 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     return
                 self._send_admin_html(body, send_body=send_body)
                 return
+            if request_path in {"/admin/test-data", "/admin/test-data/"}:
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                deleted = None
+                if query.get("deleted") == ["1"]:
+                    try:
+                        deleted = {
+                            "compatibilityEventCount": max(0, int(query.get("compatibility", ["0"])[-1])),
+                            "mapEventCount": max(0, int(query.get("map", ["0"])[-1])),
+                        }
+                        deleted["eventCount"] = (
+                            deleted["compatibilityEventCount"] + deleted["mapEventCount"]
+                        )
+                    except (TypeError, ValueError):
+                        deleted = None
+                try:
+                    body = test_data_page(
+                        service.local_test_telemetry(), session, csrf_token,
+                        deleted=deleted,
+                    )
+                except Exception:
+                    LOGGER.exception("local test data page failed")
+                    self._send_json(
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                        {"error": "test_data_unavailable"},
+                        send_body=send_body,
+                        cache_control="no-store",
+                        noindex=True,
+                    )
+                    return
+                self._send_admin_html(body, send_body=send_body)
+                return
             provider_page_match = re.fullmatch(
                 r"/admin/providers/([a-z0-9][a-z0-9._-]{0,159})",
                 request_path,
@@ -1467,6 +1510,27 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if request_path == "/admin/logout":
                 service.logout_admin(session_token)
                 self._redirect("/admin/login", send_body=True, clear_cookie=True)
+                return
+            if request_path == "/admin/test-data/delete":
+                try:
+                    deleted = service.delete_local_test_telemetry(
+                        admin_user_id=int(session["id"]),
+                        request_id=self.headers.get("X-Request-ID") or str(uuid4()),
+                    )
+                except Exception:
+                    LOGGER.exception("local test data deletion failed")
+                    self._send_json(
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                        {"error": "test_data_delete_unavailable"},
+                        send_body=True,
+                        cache_control="no-store",
+                    )
+                    return
+                self._redirect(
+                    "/admin/test-data?deleted=1&compatibility="
+                    f"{deleted['compatibilityEventCount']}&map={deleted['mapEventCount']}",
+                    send_body=True,
+                )
                 return
             if request_path == "/admin/account":
                 try:

@@ -19,6 +19,19 @@ from .provider_health import ProviderHealthResult
 from .github_issue_sync import sync_health
 
 
+_LOCAL_TEST_RELEASE_LABEL = re.compile(
+    r"^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?-local$",
+    re.IGNORECASE,
+)
+
+
+def is_local_test_release_label(value: Any) -> bool:
+    """Return true only for the explicit local-build release-label contract."""
+    if not isinstance(value, str):
+        return False
+    return _LOCAL_TEST_RELEASE_LABEL.fullmatch(value.strip()) is not None
+
+
 def _overview_time_zone(value: str) -> ZoneInfo:
     try:
         return ZoneInfo(value)
@@ -140,11 +153,13 @@ class Database:
             connection.execute("""
                 SELECT event_id, operation_id, app_build, failure_stage, failure_code,
                        native_failure_code, transfer_progress_bucket, identity_resolution_code,
-                       deletion_token_hash FROM compatibility_evidence_event WHERE FALSE
+                       deletion_token_hash, is_local_test
+                FROM compatibility_evidence_event WHERE FALSE
             """)
             connection.execute("""
                 SELECT event_id, operation_id, provider_id, map_package_id, region,
-                       event_type, outcome, occurred_at, app_build
+                       event_type, outcome, occurred_at, app_build,
+                       release_label, is_local_test
                 FROM map_download_event WHERE FALSE
             """)
         return True
@@ -254,7 +269,7 @@ class Database:
                 selected_map_count, app_build, release_label, failure_stage, failure_code,
                 native_failure_code, write_started, remote_object_created,
                 cleanup_attempted, cleanup_succeeded, transfer_progress_bucket,
-                raw_mtp_model, identity_resolution_code
+                is_local_test, raw_mtp_model, identity_resolution_code
             ) VALUES (
                 %(id)s, %(timestamp)s, %(model)s, %(compatibilityIdentity)s, %(variant)s, %(caseSizeMm)s,
                 %(displayType)s, %(canonicalDeviceId)s, %(identityResolutionState)s,
@@ -266,7 +281,8 @@ class Database:
                 %(selectedMapCount)s, %(appBuild)s, %(releaseLabel)s, %(failureStage)s,
                 %(failureCode)s, %(nativeFailureCode)s, %(writeStarted)s,
                 %(remoteObjectCreated)s, %(cleanupAttempted)s, %(cleanupSucceeded)s,
-                %(transferProgressBucket)s, %(rawMTPModel)s, %(identityResolutionCode)s
+                %(transferProgressBucket)s, %(isLocalTest)s, %(rawMTPModel)s,
+                %(identityResolutionCode)s
             ) ON CONFLICT (event_id) DO NOTHING
             RETURNING event_id
         """
@@ -298,6 +314,7 @@ class Database:
             "cleanupAttempted": event.get("cleanupAttempted"),
             "cleanupSucceeded": event.get("cleanupSucceeded"),
             "transferProgressBucket": event.get("transferProgressBucket"),
+            "isLocalTest": is_local_test_release_label(event.get("releaseLabel")),
             "rawMTPModel": event.get("rawMTPModel"),
             "identityResolutionCode": event.get("identityResolutionCode"),
         }
@@ -400,6 +417,7 @@ class Database:
             FROM compatibility_evidence_event
             LEFT JOIN admin_user ON admin_user.id = compatibility_evidence_event.resolved_by
             WHERE diagnostic_status = %s
+              AND is_local_test IS NOT TRUE
             ORDER BY occurred_at DESC, operation_key, map_result_index NULLS FIRST
             LIMIT %s
         """
@@ -524,6 +542,7 @@ class Database:
                     ) AS identity_pending
                 FROM compatibility_evidence_event
                 WHERE diagnostic_status = 'ACTIVE'
+                  AND is_local_test IS NOT TRUE
                 GROUP BY COALESCE(operation_id::text, 'legacy:' || event_id::text)
             ), publication_reviews AS (
                 SELECT count(*) AS ready_to_publish
@@ -616,6 +635,7 @@ class Database:
                     ) AS open_error
                 FROM compatibility_evidence_event AS e
                 WHERE e.diagnostic_status = 'ACTIVE'
+                  AND e.is_local_test IS NOT TRUE
                 GROUP BY COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text)
             )
         """
@@ -811,7 +831,7 @@ class Database:
             # for a young installation with only a few days of history.
             with self.connection() as connection:
                 extent = connection.execute(
-                    "SELECT min(occurred_at) AS first_occurred_at, max(occurred_at) AS last_occurred_at FROM (SELECT occurred_at FROM map_download_event UNION ALL SELECT occurred_at FROM compatibility_evidence_event WHERE provider = 'custom') AS chart_events"
+                    "SELECT min(occurred_at) AS first_occurred_at, max(occurred_at) AS last_occurred_at FROM (SELECT occurred_at FROM map_download_event WHERE is_local_test IS NOT TRUE UNION ALL SELECT occurred_at FROM compatibility_evidence_event WHERE provider = 'custom' AND is_local_test IS NOT TRUE) AS chart_events"
                 ).fetchone() or {}
             first = extent.get("first_occurred_at")
             last = extent.get("last_occurred_at")
@@ -831,6 +851,7 @@ class Database:
             LEFT JOIN map_provider AS p ON p.id = e.provider_id
             LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
             WHERE e.occurred_at >= %s
+              AND e.is_local_test IS NOT TRUE
         """
         with self.connection() as connection:
             summary = connection.execute(
@@ -881,12 +902,14 @@ class Database:
                         timezone(%s, e.occurred_at) AS local_occurred_at
                     FROM map_download_event AS e
                     WHERE e.occurred_at >= %s
+                      AND e.is_local_test IS NOT TRUE
                     UNION ALL
                     SELECT
                         e.operation_id, 'CUSTOM_SUCCEEDED', 'SUCCEEDED',
                         timezone(%s, max(e.occurred_at)) AS local_occurred_at
                     FROM compatibility_evidence_event AS e
                     WHERE e.provider = 'custom'
+                      AND e.is_local_test IS NOT TRUE
                     GROUP BY e.operation_id,
                         CASE WHEN e.operation_id IS NULL THEN e.event_id END
                     HAVING max(e.occurred_at) >= %s
@@ -2300,8 +2323,9 @@ class Database:
                 """
                 INSERT INTO map_download_event (
                     event_id, operation_id, provider_id, map_package_id,
-                    region, event_type, outcome, occurred_at, app_build
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    region, event_type, outcome, occurred_at, app_build,
+                    release_label, is_local_test
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT DO NOTHING
                 RETURNING event_id
                 """,
@@ -2309,13 +2333,15 @@ class Database:
                     event["id"], event["operationId"], event["providerId"],
                     map_package_id, event.get("region"), event["eventType"],
                     event["outcome"], event["timestamp"], event.get("appBuild"),
+                    event.get("releaseLabel"),
+                    is_local_test_release_label(event.get("releaseLabel")),
                 ),
             ).fetchone()
         return row is not None
 
     @staticmethod
     def _map_statistics_filter(filters: dict[str, Any], alias: str = "e") -> tuple[list[str], list[Any]]:
-        clauses = ["1 = 1"]
+        clauses = [f"{alias}.is_local_test IS NOT TRUE"]
         values: list[Any] = []
         if filters.get("provider"):
             clauses.append(f"{alias}.provider_id = %s")
@@ -2408,6 +2434,7 @@ class Database:
                         AS operation_succeeded
                 FROM compatibility_evidence_event AS e
                 WHERE e.operation_id IS NOT NULL
+                  AND e.is_local_test IS NOT TRUE
                 GROUP BY e.operation_id
             ), linked_operations AS (
                 SELECT
@@ -2479,6 +2506,80 @@ class Database:
             "linkedPrewriteFailureCount": integer("linked_prewrite_failure_count"),
             "linkageRate": float(linkage_rate) if linkage_rate is not None else None,
         }
+
+    def local_test_telemetry_snapshot(self) -> dict[str, Any]:
+        """Return only explicitly classified local-test telemetry counts."""
+        with self.connection() as connection:
+            row = connection.execute(
+                """
+                SELECT
+                    (SELECT count(*) FROM compatibility_evidence_event
+                     WHERE is_local_test IS TRUE) AS compatibility_event_count,
+                    (SELECT count(*) FROM map_download_event
+                     WHERE is_local_test IS TRUE) AS map_event_count,
+                    (SELECT count(DISTINCT operation_id)
+                     FROM (
+                         SELECT operation_id FROM compatibility_evidence_event
+                         WHERE is_local_test IS TRUE AND operation_id IS NOT NULL
+                         UNION
+                         SELECT operation_id FROM map_download_event
+                         WHERE is_local_test IS TRUE
+                     ) AS operations) AS operation_count,
+                    (SELECT max(occurred_at) FROM (
+                         SELECT occurred_at FROM compatibility_evidence_event
+                         WHERE is_local_test IS TRUE
+                         UNION ALL
+                         SELECT occurred_at FROM map_download_event
+                         WHERE is_local_test IS TRUE
+                     ) AS events) AS last_occurred_at
+                """
+            ).fetchone() or {}
+        return {
+            "compatibilityEventCount": int(row.get("compatibility_event_count") or 0),
+            "mapEventCount": int(row.get("map_event_count") or 0),
+            "operationCount": int(row.get("operation_count") or 0),
+            "lastOccurredAt": row.get("last_occurred_at"),
+        }
+
+    def delete_local_test_telemetry(
+        self,
+        *,
+        admin_user_id: int | None,
+        request_id: str | None = None,
+    ) -> dict[str, int]:
+        """Delete only server-classified local-test events in one transaction."""
+        with self.connection() as connection:
+            counts = connection.execute(
+                """
+                WITH deleted_map AS (
+                    DELETE FROM map_download_event
+                    WHERE is_local_test IS TRUE
+                    RETURNING event_id
+                ), deleted_compatibility AS (
+                    DELETE FROM compatibility_evidence_event
+                    WHERE is_local_test IS TRUE
+                    RETURNING event_id
+                )
+                SELECT
+                    (SELECT count(*) FROM deleted_compatibility) AS compatibility_event_count,
+                    (SELECT count(*) FROM deleted_map) AS map_event_count
+                """
+            ).fetchone() or {}
+            result = {
+                "compatibilityEventCount": int(counts.get("compatibility_event_count") or 0),
+                "mapEventCount": int(counts.get("map_event_count") or 0),
+            }
+            result["eventCount"] = result["compatibilityEventCount"] + result["mapEventCount"]
+            self._insert_admin_audit(
+                connection,
+                admin_user_id=admin_user_id,
+                action="telemetry.local_test_data_deleted",
+                target="local-test",
+                request_id=request_id,
+                reason="Explicit admin purge of events classified by the -local release-label contract.",
+                details=result,
+            )
+        return result
 
     def map_size_targets(self) -> list[dict[str, Any]]:
         query = """
@@ -2787,6 +2888,7 @@ class Database:
                         min(e.received_at) AS received_at
                     FROM compatibility_evidence_event AS e
                     WHERE e.canonical_device_model_id = dm.id
+                      AND e.is_local_test IS NOT TRUE
                     GROUP BY COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text)
                 ) AS o
                 CROSS JOIN compatibility_device_card_failure_epoch AS epoch

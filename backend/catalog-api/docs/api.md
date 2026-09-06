@@ -517,7 +517,7 @@ address. This is deliberately separate from `/compatibility/events` and does
 not accept compatibility, device, manifest, path, serial, Unit ID, raw log, or
 raw error fields. The allowlisted fields are `id`, `operationId`, `timestamp`,
 `providerId`, optional `mapId`/`region`, `eventType`, `outcome`, and optional
-`appBuild`. Event types are `DOWNLOAD_STARTED`, `DOWNLOAD_SUCCEEDED`,
+`appBuild`/`releaseLabel`. Event types are `DOWNLOAD_STARTED`, `DOWNLOAD_SUCCEEDED`,
 `DOWNLOAD_FAILED`, `INSTALL_SUCCEEDED`, and `INSTALL_FAILED`; event IDs are
 UUIDs and are idempotent. The server stores only the normalized columns in
 `map_download_event`; it does not retain the raw JSON body. A successful
@@ -527,7 +527,10 @@ insert returns `201`, a duplicate returns `200`, and both return the
 This endpoint receives map-usage diagnostics while the independent map-usage
 diagnostics switch is enabled in `Terento → Diagnostics`; it must not be used
 as unrelated background telemetry. It contains no raw device identifier and
-does not alter compatibility evidence.
+does not alter compatibility evidence. A release label ending in `-local` is
+classified server-side as local-test data; it is excluded from production
+aggregates and can be reviewed and purged through the authenticated test-data
+maintenance page.
 
 ## `GET /admin/map-statistics.json`
 
@@ -592,6 +595,17 @@ rather than silently presented zeros. Unauthenticated requests redirect to
 `/admin/login`. Linkage is possible only when the app's map-statistics and
 compatibility-evidence choices are both enabled for the same installation
 operation.
+
+## `GET /admin/test-data`
+
+Authenticated, no-store/noindex maintenance page for local release testing. It
+shows the number of compatibility and map-operation events classified from the
+strict `-local` release-label contract. The CSRF-protected
+`POST /admin/test-data/delete` action requires the existing admin session and
+browser confirmation, deletes only classified local rows from both telemetry
+tables in one transaction, and writes an `admin_audit_log` record with the
+deleted counts. Production, malformed, missing-label, and ordinary diagnostic
+rows are not eligible. The public event endpoints remain immutable.
 
 ## `GET /devices/catalog.json`
 
