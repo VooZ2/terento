@@ -156,10 +156,11 @@ def _latest_data_timestamp(rows: list[dict[str, Any]]) -> datetime | None:
 
 def _row_compatibility_status(row: dict[str, Any]) -> CompatibilityStatus | None:
     """Recompute the display status from the canonical evidence dimensions."""
+    successful = int(row.get("successful_install_count") or 0)
     return calculate_compatibility_status(
-        successful_install_count=int(row.get("successful_install_count") or 0),
+        successful_install_count=successful,
         recognized_map_capable_evidence=(
-            row.get("recognized_map_capable_evidence") is True
+            row.get("recognized_map_capable_evidence") is True or successful > 0
         ),
     )
 
@@ -540,31 +541,50 @@ def local_test_data_page(
     *, success: str | None = None, error: str | None = None,
 ) -> bytes:
     """Authenticated, explicit purge UI for local-only telemetry."""
+    diagnostic_event_count = int(summary.get("diagnosticEventCount") or 0)
+    map_event_count = int(summary.get("mapEventCount") or 0)
+    operation_count = int(summary.get("operationCount") or 0)
     labels = ", ".join(
         html.escape(str(label)) for label in summary.get("releaseLabels", [])
     ) or "None"
     content = f"""
       {_admin_header(user, csrf_token, active='test-data')}
-      <main id="main-content" class="admin-main" aria-labelledby="test-data-title">
-        <p class="eyebrow">Admin · local only</p>
-        <h1 id="test-data-title">Test data</h1>
-        <p class="lede">Only events classified by the server as local test telemetry are shown here. Production telemetry is excluded and cannot be removed from this page.</p>
+      <main id="main-content" class="dashboard test-data-page" aria-labelledby="test-data-title">
+        <div class="heading-row">
+          <div>
+            <p class="eyebrow">Administration · local only</p>
+            <h1 id="test-data-title">Test data</h1>
+            <p class="lede">Only events classified by the server as local test telemetry are shown here. Production telemetry is excluded and cannot be removed from this page.</p>
+          </div>
+        </div>
         {_success(success)}{_error(error)}
-        <section class="admin-card" aria-labelledby="local-telemetry-title">
-          <h2 id="local-telemetry-title">Purgeable local telemetry</h2>
-          <dl class="admin-summary-grid">
-            <div><dt>Diagnostic events</dt><dd>{int(summary.get('diagnosticEventCount') or 0)}</dd></div>
-            <div><dt>Map events</dt><dd>{int(summary.get('mapEventCount') or 0)}</dd></div>
-            <div><dt>Shared operations</dt><dd>{int(summary.get('operationCount') or 0)}</dd></div>
-          </dl>
-          <p class="muted-value">Release labels: <code>{labels}</code></p>
-          <form method="post" action="/admin/test-data/purge" class="admin-danger-form">
-            <input type="hidden" name="csrf_token" value="{html.escape(csrf_token, quote=True)}">
-            <label>Type <code>DELETE_LOCAL_TEST_DATA</code> to confirm
-              <input name="confirmation" required autocomplete="off" pattern="DELETE_LOCAL_TEST_DATA" spellcheck="false">
-            </label>
-            <button type="submit" class="danger-button">Delete local test data</button>
-          </form>
+        <section class="provider-card test-data-card" aria-labelledby="local-telemetry-title">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">Local only</p>
+              <h2 id="local-telemetry-title">Purgeable local telemetry</h2>
+            </div>
+          </div>
+          <section class="admin-kpi-grid test-data-metrics" aria-label="Local test telemetry summary">
+            <article><span>Diagnostic events</span><strong>{diagnostic_event_count}</strong></article>
+            <article><span>Map events</span><strong>{map_event_count}</strong></article>
+            <article><span>Shared operations</span><strong>{operation_count}</strong></article>
+          </section>
+          <p class="test-data-release-labels">Release labels <code>{labels}</code></p>
+          <div class="test-data-danger-zone">
+            <div>
+              <p class="section-kicker">Danger zone</p>
+              <h3>Delete local test data</h3>
+              <p class="table-help">This removes only server-classified local test telemetry.</p>
+            </div>
+            <form method="post" action="/admin/test-data/purge" class="admin-danger-form">
+              <input type="hidden" name="csrf_token" value="{html.escape(csrf_token, quote=True)}">
+              <label>Type <code>DELETE_LOCAL_TEST_DATA</code> to confirm
+                <input name="confirmation" required autocomplete="off" pattern="DELETE_LOCAL_TEST_DATA" placeholder="DELETE_LOCAL_TEST_DATA" spellcheck="false">
+              </label>
+              <button type="submit" class="danger-button">Delete local test data</button>
+            </form>
+          </div>
         </section>
       </main>
     """
@@ -1546,7 +1566,7 @@ def dashboard_page(
             <p class="results-count" id="results-count" aria-live="polite">{len(rows)} {"variant" if len(rows) == 1 else "variants"}</p>
             <button type="button" class="secondary-button filter-clear" data-filter-clear aria-label="Clear installation filters">Clear</button>
           </form>
-          <div class="table-wrap evidence-table-wrap"><table class="admin-table"><caption class="sr-only">Installations by exact device identity</caption><thead><tr><th scope="col">Model</th><th scope="col">Variant</th><th scope="col">Status</th><th scope="col">Attempts</th><th scope="col">Successful</th><th scope="col">Failed</th><th scope="col">Open errors</th><th scope="col">Last success</th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
+          <div class="table-wrap evidence-table-wrap"><table class="admin-table"><caption class="sr-only">Installations by exact device identity</caption><colgroup><col class="evidence-column-model"><col class="evidence-column-variant"><col class="evidence-column-status"><col class="evidence-column-attempts"><col class="evidence-column-successful"><col class="evidence-column-failed"><col class="evidence-column-open-errors"><col class="evidence-column-last-success"></colgroup><thead><tr><th scope="col">Model</th><th scope="col">Variant</th><th scope="col">Status</th><th scope="col">Attempts</th><th scope="col">Successful</th><th scope="col">Failed</th><th scope="col">Open errors</th><th scope="col">Last success</th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
         </section>
       </main>
       <script>{_dashboard_script()}</script>
@@ -3189,7 +3209,9 @@ def _admin_device_payload(
             row.get("manufacturer") or "Garmin",
         )
         map_capable = (
-            stored_map_capable if stored_map_capable is not None else classified_map_capable
+            True
+            if stored_map_capable is None and successful > 0
+            else stored_map_capable if stored_map_capable is not None else classified_map_capable
         )
         evidence_status = calculate_compatibility_status(
             successful_install_count=successful,
@@ -4562,6 +4584,9 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .admin-summary-strip p{margin:0;min-width:0}
 .admin-summary-metrics strong,.admin-summary-context strong,.device-summary-metrics strong,.device-summary-sync strong{color:var(--graphite);font-weight:750}
 .admin-summary-context,.device-summary-sync{text-align:right;white-space:nowrap}
+.evidence-table-wrap table{table-layout:fixed}.evidence-table-wrap .evidence-column-model{width:24%}.evidence-table-wrap .evidence-column-variant{width:14%}.evidence-table-wrap .evidence-column-status{width:12%}.evidence-table-wrap .evidence-column-attempts{width:7%}.evidence-table-wrap .evidence-column-successful{width:9%}.evidence-table-wrap .evidence-column-failed{width:7%}.evidence-table-wrap .evidence-column-open-errors{width:11%}.evidence-table-wrap .evidence-column-last-success{width:16%}
+.test-data-page{padding-top:30px}.test-data-card{margin-top:0}.test-data-metrics{grid-template-columns:repeat(3,minmax(0,1fr));margin:0 0 20px}.test-data-release-labels{margin:0;color:var(--secondary);font-size:12px;line-height:18px}.test-data-release-labels code{color:var(--graphite);font:500 11px var(--font-mono);overflow-wrap:anywhere}.test-data-danger-zone{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,.95fr);align-items:start;gap:24px;margin-top:22px;padding-top:20px;border-top:1px solid var(--border)}.test-data-danger-zone h3{margin:0;font-size:var(--admin-type-subsection-size);line-height:var(--admin-type-subsection-line)}.test-data-danger-zone .section-kicker{margin-bottom:5px;color:var(--danger)}.test-data-danger-zone .table-help{max-width:460px;margin:6px 0 0}.admin-danger-form{display:grid;gap:10px;padding:14px;background:var(--error-surface);border:1px solid var(--status-error-border);border-radius:12px}.admin-danger-form label{display:grid;gap:6px;color:var(--graphite);font-size:12px;font-weight:650}.admin-danger-form code{font:500 11px var(--font-mono)}.admin-danger-form input{width:100%;min-height:var(--admin-control-height);box-sizing:border-box;padding:8px var(--admin-control-padding-x);border:1px solid var(--status-error-border);border-radius:var(--admin-control-radius);background:var(--surface);color:var(--graphite);font:500 var(--admin-control-font-size)/1.2 var(--font-mono)}.admin-danger-form input:focus{border-color:var(--danger);outline:3px solid color-mix(in srgb,var(--danger) 18%,transparent);outline-offset:1px}.danger-button{min-height:var(--admin-control-height);padding:8px 12px;border:0;border-radius:var(--admin-control-radius);background:var(--danger);color:var(--interactive-primary-text);font:600 var(--admin-type-button-size)/var(--admin-type-button-line) var(--font-ui)}.danger-button:hover{background:color-mix(in srgb,var(--danger) 86%,var(--graphite))}
+@media(max-width:760px){.test-data-danger-zone{grid-template-columns:1fr;gap:16px}}
 .device-filter-bar{position:sticky;top:var(--admin-topbar-height);z-index:22;align-items:stretch;margin-bottom:0;background:var(--surface);border-radius:12px 12px 0 0;box-shadow:0 2px 0 rgba(34,42,43,.07)}
 .device-table-wrap{overflow:visible;border-top:0;border-radius:0 0 14px 14px}
 .device-sticky-header{display:none}
@@ -4904,6 +4929,7 @@ h1,h2,h3,h4,.administration-grid h3,.overview-kpi strong,.admin-kpi-grid article
 .diagnostic-list-wrap{max-height:none}
 @media(min-width:701px){
   .table-wrap table,.device-sticky-header table{min-width:0!important;width:100%;table-layout:fixed}
+  .evidence-table-wrap th:first-child,.evidence-table-wrap td:first-child{white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis}
   .table-wrap th,.table-wrap td,.device-sticky-header th{min-width:0;white-space:normal!important;overflow-wrap:anywhere}
   .table-wrap .admin-timestamp,.device-sticky-header .admin-timestamp{white-space:normal}
   .model-history-table th:nth-child(4){width:20%}.model-history-table th:nth-child(7){width:11%}

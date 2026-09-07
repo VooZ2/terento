@@ -35,9 +35,16 @@ class CompatibilityStatusTests(unittest.TestCase):
     def test_failed_reports_are_not_successes(self):
         self.assertEqual(self.status(1), CompatibilityStatus.TESTED)
 
-    def test_non_map_devices_have_no_compatibility_status(self):
+    def test_unknown_map_capability_is_promoted_by_successful_installation(self):
         self.assertIsNone(self.status(0, recognized_map_capable_evidence=False))
-        self.assertIsNone(self.status(5, recognized_map_capable_evidence=False))
+        self.assertEqual(
+            self.status(1, recognized_map_capable_evidence=False),
+            CompatibilityStatus.TESTED,
+        )
+        self.assertEqual(
+            self.status(5, recognized_map_capable_evidence=False),
+            CompatibilityStatus.VERIFIED,
+        )
 
     def test_old_promotion_dimensions_do_not_change_status(self):
         self.assertEqual(self.status(1), CompatibilityStatus.TESTED)

@@ -27,12 +27,19 @@ class CompatibilityStatusContractTests(unittest.TestCase):
                     status,
                 )
 
-    def test_non_map_identity_has_no_evidence_status(self):
+    def test_unknown_identity_is_promoted_by_successful_evidence(self):
         self.assertIsNone(
             calculate_compatibility_status(
-                successful_install_count=5,
+                successful_install_count=0,
                 recognized_map_capable_evidence=False,
             )
+        )
+        self.assertEqual(
+            calculate_compatibility_status(
+                successful_install_count=1,
+                recognized_map_capable_evidence=False,
+            ),
+            CompatibilityStatus.TESTED,
         )
 
 

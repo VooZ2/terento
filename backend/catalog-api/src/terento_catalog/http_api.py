@@ -471,7 +471,8 @@ class CatalogService:
             "timeZone": time_zone,
             "since": since,
             # Keep map-operation telemetry and compatibility evidence as
-            # distinct admin domains. Neither changes the public API payload.
+            # distinct stored domains. The read model may reconcile a missing
+            # provider success without changing either public API payload.
             "data": self.database.admin_overview_map_snapshot(
                 since, period=period, time_zone=time_zone,
             ),
@@ -667,13 +668,20 @@ class CatalogService:
         """Apply the one status classifier before any consumer renders rows."""
         canonical: list[dict[str, Any]] = []
         for row in rows:
-            status = calculate_compatibility_status(
-                successful_install_count=int(row.get("successful_install_count") or 0),
-                recognized_map_capable_evidence=(
-                    row.get("recognized_map_capable_evidence") is True
-                ),
+            successful = int(row.get("successful_install_count") or 0)
+            recognized = (
+                row.get("recognized_map_capable_evidence") is True
+                or successful > 0
             )
-            canonical.append({**row, "calculated_status": status.value if status else None})
+            status = calculate_compatibility_status(
+                successful_install_count=successful,
+                recognized_map_capable_evidence=recognized,
+            )
+            canonical.append({
+                **row,
+                "calculated_status": status.value if status else None,
+                "recognized_map_capable_evidence": recognized,
+            })
         return canonical
 
 
