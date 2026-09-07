@@ -338,6 +338,38 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertNotIn("last_evidence >=", review[0])
         self.assertIn("('TESTED', 'SUPPORTED', 'VERIFIED')", review[0])
 
+    def test_overview_model_activity_keeps_resolved_failures_in_historical_counts(self):
+        source = inspect.getsource(Database.admin_overview_snapshot)
+        self.assertIn("WHERE e.is_local_test IS NOT TRUE", source)
+        self.assertIn("e.diagnostic_status = 'ACTIVE'", source)
+        self.assertNotIn(
+            "WHERE e.diagnostic_status = 'ACTIVE'\n                  AND e.is_local_test IS NOT TRUE",
+            source,
+        )
+        self.assertNotIn("WHERE write_started AND operation_succeeded", source)
+        self.assertNotIn("WHERE write_started AND has_failed", source)
+        body = overview_page(
+            {
+                "period": "7d",
+                "data": {"hasData": True, "completedInstallCount": 1, "recentActivity": [], "attention": [], "trend": [], "bucket": "day"},
+                "compatibility": {
+                    "hasData": True,
+                    "modelActivity": [{
+                        "model": "fēnix 8", "variant": "47 mm",
+                        "operation_count": 3, "successful_count": 1,
+                        "failed_count": 2, "open_error_count": 0,
+                        "last_occurred_at": "2026-09-07T19:43:00+00:00",
+                    }],
+                    "reviewRequired": [], "recentActivity": [], "failureReasons": [],
+                    "writeStartedCount": 3, "variantCount": 1, "evidenceSuccessRate": 33.3,
+                },
+                "providers": [],
+            },
+            {"username": "operator"}, "csrf",
+        ).decode()
+        self.assertIn("1 successful · 2 failed · Historical failures", body)
+        self.assertIn("Includes resolved historical outcomes", body)
+
     def test_revision_ignores_render_time_but_detects_new_events(self):
         import re
         def revision(time, count):
