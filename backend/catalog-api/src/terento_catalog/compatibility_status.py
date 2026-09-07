@@ -38,15 +38,17 @@ def calculate_compatibility_status(
 ) -> CompatibilityStatus | None:
     """Return the canonical status for one exact model and variant.
 
-    ``None`` is used for a non-map device or an identity with no qualifying
-    map-capable evidence. It is deliberately not a compatibility status.
-    Successful reports are already filtered by the evidence endpoint; failed
-    reports and recognition-only evidence contribute zero successes.
+    ``None`` is used only when there is no successful installation and the
+    catalog has not recognized the identity as map-capable. A fully verified
+    successful installation is itself qualifying map-capable evidence for the
+    exact model and variant, even when the catalog classifier has not learned
+    that model yet. Failed reports and recognition-only evidence contribute
+    zero successes.
     """
 
     if successful_install_count < 0:
         raise ValueError("successful_install_count must not be negative")
-    if not recognized_map_capable_evidence:
+    if successful_install_count == 0 and not recognized_map_capable_evidence:
         return None
     # Keep the threshold order explicit: this is the shared classifier used
     # by the public projection, admin projection, and tests.  The database

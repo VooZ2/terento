@@ -10,6 +10,7 @@ from typing import Any, Iterator
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .failure_reasons import normalize_failure_reason
+from .compatibility_status import calculate_compatibility_status
 from .models import CollectedDevice, CollectedMap
 from .asset_attribution import normalize_asset_source
 from .historical_devices import historical_device_for_event
@@ -433,7 +434,10 @@ class Database:
             FROM compatibility_model_statistics
             WHERE public_statistics_enabled = true
               AND review_status = 'APPROVED'
-              AND calculated_status IN ('TESTING', 'TESTED', 'SUPPORTED', 'VERIFIED')
+              AND (
+                  calculated_status IN ('TESTING', 'TESTED', 'SUPPORTED', 'VERIFIED')
+                  OR successful_install_count > 0
+              )
             ORDER BY successful_install_count DESC, attempted_install_count DESC, public_display_name
             LIMIT %s
         """
@@ -507,7 +511,10 @@ class Database:
             ) AS asset ON TRUE
             WHERE s.public_statistics_enabled = true
               AND s.review_status = 'APPROVED'
-              AND s.calculated_status IN ('TESTING', 'TESTED', 'SUPPORTED', 'VERIFIED')
+              AND (
+                  s.calculated_status IN ('TESTING', 'TESTED', 'SUPPORTED', 'VERIFIED')
+                  OR s.successful_install_count > 0
+              )
             ORDER BY s.successful_install_count DESC,
                      s.attempted_install_count DESC,
                      s.public_display_name
@@ -536,7 +543,10 @@ class Database:
                 SELECT count(*) AS ready_to_publish
                 FROM compatibility_model_statistics
                 WHERE canonical_device_model_id IS NOT NULL
-                  AND calculated_status IN ('TESTED', 'SUPPORTED', 'VERIFIED')
+                  AND (
+                      calculated_status IN ('TESTED', 'SUPPORTED', 'VERIFIED')
+                      OR successful_install_count > 0
+                  )
                   AND (
                       review_status = 'PENDING'
                       OR (review_status = 'APPROVED' AND public_statistics_enabled = false)
@@ -733,7 +743,10 @@ class Database:
                     last_evidence
                 FROM compatibility_model_statistics
                 WHERE canonical_device_model_id IS NOT NULL
-                  AND calculated_status IN ('TESTED', 'SUPPORTED', 'VERIFIED')
+                  AND (
+                      calculated_status IN ('TESTED', 'SUPPORTED', 'VERIFIED')
+                      OR successful_install_count > 0
+                  )
                   AND (
                       review_status = 'PENDING'
                       OR (review_status = 'APPROVED' AND public_statistics_enabled = false)
@@ -793,9 +806,11 @@ class Database:
     ) -> dict[str, Any]:
         """Return map-operation aggregates for the authenticated Overview.
 
-        Map telemetry is intentionally kept separate from compatibility
-        evidence. The chart adds a separately labelled successful custom-IMG series
-        from compatibility evidence; provider KPI statistics remain separate.
+        The native map-event stream and compatibility evidence share the same
+        random operation ID when both are available. A successful compatibility
+        operation is used as a display-only fallback when its map event was not
+        uploaded, while custom IMG evidence remains a separately labelled chart
+        series and is excluded from provider KPI totals.
         """
         # Keep the date_trunc field as a trusted SQL literal. PostgreSQL can
         # resolve a bound value here in some driver/server combinations, but
@@ -819,7 +834,7 @@ class Database:
             # for a young installation with only a few days of history.
             with self.connection() as connection:
                 extent = connection.execute(
-                    "SELECT min(occurred_at) AS first_occurred_at, max(occurred_at) AS last_occurred_at FROM (SELECT occurred_at FROM map_download_event WHERE is_local_test IS NOT TRUE UNION ALL SELECT occurred_at FROM compatibility_evidence_event WHERE provider = 'custom' AND is_local_test IS NOT TRUE) AS chart_events"
+                    "SELECT min(occurred_at) AS first_occurred_at, max(occurred_at) AS last_occurred_at FROM (SELECT occurred_at FROM map_download_event WHERE is_local_test IS NOT TRUE UNION ALL SELECT occurred_at FROM compatibility_evidence_event WHERE is_local_test IS NOT TRUE) AS chart_events"
                 ).fetchone() or {}
             first = extent.get("first_occurred_at")
             last = extent.get("last_occurred_at")
@@ -841,14 +856,50 @@ class Database:
             WHERE e.occurred_at >= %s
               AND e.is_local_test IS NOT TRUE
         """
+        compatibility_fallback_cte = """
+            WITH compatibility_fallback AS (
+                SELECT
+                    COALESCE(e.operation_id::text, 'compatibility:' || e.event_id::text)
+                        AS operation_key,
+                    e.operation_id,
+                    min(e.provider) AS provider_id,
+                    max(e.occurred_at) AS occurred_at
+                FROM compatibility_evidence_event AS e
+                WHERE e.is_local_test IS NOT TRUE
+                GROUP BY
+                    COALESCE(e.operation_id::text, 'compatibility:' || e.event_id::text),
+                    e.operation_id,
+                    CASE WHEN e.operation_id IS NULL THEN e.event_id END
+                HAVING max(e.occurred_at) >= %s
+                   AND bool_and(
+                       e.phase_outcome = 'SUCCEEDED'
+                       AND e.automatic_finishing_result = 'VERIFIED'
+                   )
+                   AND count(*) = max(COALESCE(e.selected_map_count, 1))
+                   AND NOT EXISTS (
+                       SELECT 1
+                       FROM map_download_event AS installed
+                       WHERE installed.operation_id = e.operation_id
+                         AND installed.is_local_test IS NOT TRUE
+                         AND installed.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
+                   )
+            )
+        """
         with self.connection() as connection:
             summary = connection.execute(
                 f"""
+                {compatibility_fallback_cte}
                 SELECT
-                    count(*) AS event_count,
+                    count(*) + (
+                        SELECT count(*) FROM compatibility_fallback
+                        WHERE provider_id <> 'custom'
+                    ) AS event_count,
                     count(DISTINCT e.operation_id) FILTER (
                         WHERE e.event_type = 'INSTALL_SUCCEEDED'
                           AND e.outcome = 'SUCCEEDED'
+                    ) + (
+                        SELECT count(*) FROM compatibility_fallback
+                        WHERE provider_id <> 'custom'
                     ) AS completed_install_count,
                     count(DISTINCT e.operation_id) FILTER (
                         WHERE e.event_type = 'INSTALL_FAILED'
@@ -856,10 +907,11 @@ class Database:
                     ) AS failed_install_count
                 {event_scope}
                 """,
-                (since,),
+                (since, since),
             ).fetchone() or {}
             recent = list(connection.execute(
                 f"""
+                {compatibility_fallback_cte}
                 SELECT
                     e.operation_id::text AS operation_id,
                     e.provider_id,
@@ -873,10 +925,26 @@ class Database:
                     e.app_build,
                     e.occurred_at
                 {event_scope}
-                ORDER BY e.occurred_at DESC, e.event_id DESC
+                UNION ALL
+                SELECT
+                    c.operation_id::text AS operation_id,
+                    c.provider_id,
+                    p.name AS provider_name,
+                    NULL AS map_package_id,
+                    p.name AS map_package_name,
+                    p.name AS display_name,
+                    NULL AS region,
+                    'INSTALL_SUCCEEDED' AS event_type,
+                    'SUCCEEDED' AS outcome,
+                    NULL AS app_build,
+                    c.occurred_at
+                FROM compatibility_fallback AS c
+                LEFT JOIN map_provider AS p ON p.id = c.provider_id
+                WHERE c.provider_id <> 'custom'
+                ORDER BY occurred_at DESC
                 LIMIT %s
                 """,
-                (since, recent_limit),
+                (since, since, recent_limit),
             ).fetchall())
             # Map events have no unresolved/actionable lifecycle state. Their
             # failures remain in Recent activity and statistics; actionable
@@ -884,34 +952,33 @@ class Database:
             attention: list[dict[str, Any]] = []
             trend = list(connection.execute(
                 f"""
-                WITH localized_events AS (
+                {compatibility_fallback_cte}, localized_events AS (
                     SELECT
-                        e.operation_id, e.event_type, e.outcome,
+                        e.operation_id::text AS operation_key,
+                        e.event_type,
+                        e.outcome,
                         timezone(%s, e.occurred_at) AS local_occurred_at
                     FROM map_download_event AS e
                     WHERE e.occurred_at >= %s
                       AND e.is_local_test IS NOT TRUE
                     UNION ALL
                     SELECT
-                        e.operation_id, 'CUSTOM_SUCCEEDED', 'SUCCEEDED',
-                        timezone(%s, max(e.occurred_at)) AS local_occurred_at
-                    FROM compatibility_evidence_event AS e
-                    WHERE e.provider = 'custom'
-                      AND e.is_local_test IS NOT TRUE
-                    GROUP BY e.operation_id,
-                        CASE WHEN e.operation_id IS NULL THEN e.event_id END
-                    HAVING max(e.occurred_at) >= %s
-                        AND bool_and(e.phase_outcome = 'SUCCEEDED'
-                            AND e.automatic_finishing_result = 'VERIFIED')
-                        AND count(*) = max(COALESCE(e.selected_map_count, 1))
+                        c.operation_key,
+                        CASE WHEN c.provider_id = 'custom'
+                            THEN 'CUSTOM_SUCCEEDED'
+                            ELSE 'INSTALL_SUCCEEDED'
+                        END AS event_type,
+                        'SUCCEEDED' AS outcome,
+                        timezone(%s, c.occurred_at) AS local_occurred_at
+                    FROM compatibility_fallback AS c
                 )
                 SELECT
                     ({bucket_expression} AT TIME ZONE %s) AS bucket,
-                    count(DISTINCT operation_id) FILTER (
+                    count(DISTINCT operation_key) FILTER (
                         WHERE event_type = 'INSTALL_SUCCEEDED'
                           AND outcome = 'SUCCEEDED'
                     ) AS success_count,
-                    count(DISTINCT operation_id) FILTER (
+                    count(DISTINCT operation_key) FILTER (
                         WHERE event_type = 'INSTALL_FAILED'
                           AND outcome = 'FAILED'
                     ) AS failed_count,
@@ -920,7 +987,7 @@ class Database:
                 GROUP BY {bucket_expression}
                 ORDER BY bucket
                 """,
-                (time_zone, since, time_zone, since, time_zone),
+                (since, time_zone, since, time_zone, time_zone),
             ).fetchall())
         trend_rows = [dict(row) for row in trend]
         if trend_rows:
@@ -1080,7 +1147,8 @@ class Database:
                 return False
             statistics = connection.execute(
                 """
-                SELECT compatibility_identity, calculated_status
+                SELECT compatibility_identity, calculated_status,
+                       successful_install_count, recognized_map_capable_evidence
                 FROM compatibility_model_statistics
                 WHERE canonical_device_model_id = %s
                 ORDER BY last_evidence DESC NULLS LAST
@@ -1093,9 +1161,15 @@ class Database:
                     raise ValueError("compatibility evidence is required before publication")
                 return True
             compatibility_identity = str(statistics["compatibility_identity"])
-            if normalized_action == "PUBLISH" and str(statistics["calculated_status"] or "") not in {
-                "TESTING", "TESTED", "SUPPORTED", "VERIFIED",
-            }:
+            successful_install_count = int(statistics.get("successful_install_count") or 0)
+            evidence_status = calculate_compatibility_status(
+                successful_install_count=successful_install_count,
+                recognized_map_capable_evidence=(
+                    statistics.get("recognized_map_capable_evidence") is True
+                    or successful_install_count > 0
+                ),
+            )
+            if normalized_action == "PUBLISH" and evidence_status is None:
                 raise ValueError("recognized map-capable evidence is required before publication")
             public_display_name = (
                 f"{device['model']} · {device['variant']}"
@@ -2458,6 +2532,37 @@ class Database:
             values.append(filters["dateTo"])
         return clauses, values
 
+    @staticmethod
+    def _compatibility_map_statistics_filter(
+        filters: dict[str, Any], alias: str = "e",
+    ) -> tuple[list[str], list[Any]]:
+        """Build the provider-only compatibility fallback filter.
+
+        Compatibility evidence has no package ID by design. A package filter
+        therefore cannot safely claim a match, and only complete successful
+        install operations can be projected into map statistics.
+        """
+        clauses = [
+            f"{alias}.is_local_test IS NOT TRUE",
+            f"{alias}.provider <> 'custom'",
+        ]
+        values: list[Any] = []
+        if filters.get("provider"):
+            clauses.append(f"{alias}.provider = %s")
+            values.append(filters["provider"])
+        if filters.get("map"):
+            clauses.append("1 = 0")
+        if filters.get("region"):
+            clauses.append(f"{alias}.region = %s")
+            values.append(filters["region"])
+        if filters.get("eventType") and filters["eventType"] != "INSTALL_SUCCEEDED":
+            clauses.append("1 = 0")
+        for key, operator in (("dateFrom", ">="), ("dateTo", "<=")):
+            if filters.get(key):
+                clauses.append(f"{alias}.occurred_at {operator} %s")
+                values.append(filters[key])
+        return clauses, values
+
     def map_statistics(
         self,
         filters: dict[str, Any],
@@ -2466,31 +2571,103 @@ class Database:
         offset: int = 0,
     ) -> list[dict[str, Any]]:
         clauses, values = self._map_statistics_filter(filters)
+        compatibility_clauses, compatibility_values = self._compatibility_map_statistics_filter(filters)
         query = f"""
+            WITH compatibility_fallback AS (
+                SELECT
+                    COALESCE(e.operation_id::text, 'compatibility:' || e.event_id::text)
+                        AS operation_key,
+                    e.operation_id,
+                    min(e.provider) AS provider_id,
+                    min(e.region) AS region,
+                    min(e.occurred_at) AS first_occurred_at,
+                    max(e.occurred_at) AS last_occurred_at
+                FROM compatibility_evidence_event AS e
+                WHERE {' AND '.join(compatibility_clauses)}
+                GROUP BY
+                    COALESCE(e.operation_id::text, 'compatibility:' || e.event_id::text),
+                    e.operation_id,
+                    CASE WHEN e.operation_id IS NULL THEN e.event_id END
+                HAVING bool_and(
+                    e.phase_outcome = 'SUCCEEDED'
+                    AND e.automatic_finishing_result = 'VERIFIED'
+                )
+                AND count(*) = max(COALESCE(e.selected_map_count, 1))
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM map_download_event AS installed
+                    WHERE installed.operation_id = e.operation_id
+                      AND installed.is_local_test IS NOT TRUE
+                      AND installed.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
+                )
+            ), event_rows AS (
+                SELECT
+                    COALESCE(e.operation_id::text, e.event_id::text) AS operation_key,
+                    e.provider_id,
+                    p.name AS provider_name,
+                    e.map_package_id,
+                    mp.name AS map_package_name,
+                    COALESCE(e.region, mp.region) AS region,
+                    mp.canonical_region_id,
+                    mp.country AS region_country,
+                    e.event_type,
+                    e.outcome,
+                    e.occurred_at
+                FROM map_download_event AS e
+                LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
+                LEFT JOIN map_provider AS p ON p.id = e.provider_id
+                WHERE {' AND '.join(clauses)}
+                UNION ALL
+                SELECT
+                    c.operation_key,
+                    c.provider_id,
+                    p.name AS provider_name,
+                    mp.id AS map_package_id,
+                    mp.name AS map_package_name,
+                    COALESCE(c.region, mp.region) AS region,
+                    mp.canonical_region_id,
+                    mp.country AS region_country,
+                    'INSTALL_SUCCEEDED' AS event_type,
+                    'SUCCEEDED' AS outcome,
+                    c.last_occurred_at AS occurred_at
+                FROM compatibility_fallback AS c
+                LEFT JOIN map_provider AS p ON p.id = c.provider_id
+                LEFT JOIN LATERAL (
+                    SELECT package.id, package.name, package.region,
+                           package.canonical_region_id, package.country
+                    FROM map_package AS package
+                    WHERE package.provider_id = c.provider_id
+                      AND (
+                          package.canonical_region_id = c.region
+                          OR package.provider_region_id = c.region
+                          OR package.region = c.region
+                      )
+                    ORDER BY CASE WHEN package.availability = 'AVAILABLE'
+                                  THEN 0 ELSE 1 END, package.id
+                    LIMIT 1
+                ) AS mp ON TRUE
+            )
             SELECT
-                e.provider_id,
-                p.name AS provider_name,
-                e.map_package_id,
-                mp.name AS map_package_name,
-                COALESCE(e.region, mp.region) AS region,
-                mp.canonical_region_id,
-                mp.country AS region_country,
-                e.event_type,
-                e.outcome,
+                provider_id,
+                provider_name,
+                map_package_id,
+                map_package_name,
+                region,
+                canonical_region_id,
+                region_country,
+                event_type,
+                outcome,
                 count(*) AS event_count,
-                count(DISTINCT e.operation_id) AS operation_count,
-                min(e.occurred_at) AS first_occurred_at,
-                max(e.occurred_at) AS last_occurred_at
-            FROM map_download_event AS e
-            LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
-            LEFT JOIN map_provider AS p ON p.id = e.provider_id
-            WHERE {' AND '.join(clauses)}
-            GROUP BY e.provider_id, p.name, e.map_package_id, mp.name,
-                     COALESCE(e.region, mp.region), mp.canonical_region_id,
-                     mp.country, e.event_type, e.outcome
-            ORDER BY last_occurred_at DESC, e.provider_id,
-                     e.map_package_id NULLS LAST, e.event_type, e.outcome
+                count(DISTINCT operation_key) AS operation_count,
+                min(occurred_at) AS first_occurred_at,
+                max(occurred_at) AS last_occurred_at
+            FROM event_rows
+            GROUP BY provider_id, provider_name, map_package_id, map_package_name,
+                     region, canonical_region_id, region_country, event_type, outcome
+            ORDER BY last_occurred_at DESC, provider_id,
+                     map_package_id NULLS LAST, event_type, outcome
         """
+        values = compatibility_values + values
         if limit is not None:
             query += " LIMIT %s OFFSET %s"
             values.extend([limit, max(0, offset)])
