@@ -17,6 +17,8 @@ class Settings:
     admin_session_ttl_seconds: int = 28_800
     public_compatibility_stats_enabled: bool = False
     operations_ingest_secret: str | None = None
+    opentopomap_contour_mode: str = "off"
+    opentopomap_contour_allowlist: tuple[str, ...] = ()
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -41,6 +43,8 @@ class Settings:
             admin_session_ttl_seconds=_positive_int("ADMIN_SESSION_TTL_SECONDS", 28_800),
             public_compatibility_stats_enabled=_boolean("PUBLIC_COMPATIBILITY_STATS_ENABLED", False),
             operations_ingest_secret=_optional_secret("OPERATIONS_INGEST_SECRET"),
+            opentopomap_contour_mode=_contour_mode(),
+            opentopomap_contour_allowlist=_csv("OPENTOPO_MAP_CONTOUR_ALLOWLIST"),
         )
 
 
@@ -76,3 +80,20 @@ def _optional_secret(name: str) -> str | None:
     if len(value) < 32 or len(value) > 512:
         raise RuntimeError(f"{name} must contain 32–512 characters")
     return value
+
+
+def _contour_mode() -> str:
+    value = os.environ.get("OPENTOPO_MAP_CONTOUR_MODE", "off").strip().lower()
+    if value not in {"off", "shadow", "allowlist", "public"}:
+        raise RuntimeError(
+            "OPENTOPO_MAP_CONTOUR_MODE must be off, shadow, allowlist, or public"
+        )
+    return value
+
+
+def _csv(name: str) -> tuple[str, ...]:
+    return tuple(
+        item.strip()
+        for item in os.environ.get(name, "").split(",")
+        if item.strip()
+    )

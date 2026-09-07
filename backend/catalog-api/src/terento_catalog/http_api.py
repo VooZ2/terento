@@ -26,6 +26,7 @@ from .admin import (
     diagnostics_page,
     devices_page,
     map_statistics_page,
+    local_test_data_page,
     overview_page,
     provider_detail_page,
     providers_page,
@@ -106,6 +107,8 @@ class CatalogService:
         admin_session_ttl_seconds: int = 28_800,
         public_compatibility_stats_enabled: bool = False,
         operations_ingest_secret: str | None = None,
+        opentopomap_contour_mode: str = "off",
+        opentopomap_contour_allowlist: tuple[str, ...] = (),
     ) -> None:
         self.database = database
         self.asset_storage = asset_storage
@@ -113,6 +116,8 @@ class CatalogService:
         self.admin_session_ttl_seconds = admin_session_ttl_seconds
         self.public_compatibility_stats_enabled = public_compatibility_stats_enabled
         self.operations_ingest_secret = operations_ingest_secret
+        self.opentopomap_contour_mode = opentopomap_contour_mode
+        self.opentopomap_contour_allowlist = frozenset(opentopomap_contour_allowlist)
 
     def health(self) -> bool:
         self.database.prune_compatibility_events()
@@ -160,7 +165,14 @@ class CatalogService:
 
     def catalog_response(self) -> tuple[bytes, str, datetime]:
         rows, updated_at = self.database.catalog_snapshot()
-        body = serialize_catalog(build_catalog(rows, updated_at))
+        body = serialize_catalog(
+            build_catalog(
+                rows,
+                updated_at,
+                contour_mode=self.opentopomap_contour_mode,
+                contour_allowlist=self.opentopomap_contour_allowlist,
+            )
+        )
         return body, catalog_etag(body), updated_at
 
     def device_catalog_response(self) -> tuple[bytes, str, datetime]:
@@ -579,6 +591,17 @@ class CatalogService:
 
     def admin_review_summary(self) -> dict[str, int]:
         return self.database.admin_review_summary()
+
+    def local_test_data(self) -> dict[str, Any]:
+        return self.database.local_test_telemetry_summary()
+
+    def purge_local_test_data(
+        self, *, admin_user_id: int | None, request_id: str | None = None,
+    ) -> dict[str, int]:
+        return self.database.purge_local_test_telemetry(
+            admin_user_id=admin_user_id,
+            request_id=request_id,
+        )
 
     def admin_is_configured(self) -> bool:
         return self.database.admin_user_count() > 0
@@ -1050,6 +1073,30 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     "readyToPublish": 0,
                     "total": 0,
                 }}
+            if request_path in {"/admin/test-data", "/admin/test-data/"}:
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                try:
+                    body = local_test_data_page(
+                        service.local_test_data(),
+                        session,
+                        csrf_token,
+                        success=(
+                            "Local test telemetry deleted."
+                            if query.get("purged", [""])[-1] == "1" else None
+                        ),
+                    )
+                except Exception:
+                    LOGGER.exception("admin local test data page failed")
+                    self._send_json(
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                        {"error": "local_test_data_unavailable"},
+                        send_body=send_body,
+                        cache_control="no-store",
+                        noindex=True,
+                    )
+                    return
+                self._send_admin_html(body, send_body=send_body)
+                return
             if request_path in {"/admin/providers", "/admin/providers/"}:
                 try:
                     body = providers_page(service.admin_providers(), session, csrf_token)
@@ -1467,6 +1514,31 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if request_path == "/admin/logout":
                 service.logout_admin(session_token)
                 self._redirect("/admin/login", send_body=True, clear_cookie=True)
+                return
+            if request_path == "/admin/test-data/purge":
+                if form.get("confirmation", "") != "DELETE_LOCAL_TEST_DATA":
+                    try:
+                        body = local_test_data_page(
+                            service.local_test_data(),
+                            session,
+                            self._csrf_cookie() or "",
+                            error="Type DELETE_LOCAL_TEST_DATA exactly to confirm the purge.",
+                        )
+                        self._send_admin_html(body, send_body=True, status=HTTPStatus.BAD_REQUEST)
+                    except Exception:
+                        LOGGER.exception("admin local test data validation failed")
+                        self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_purge_confirmation"}, send_body=True, cache_control="no-store")
+                    return
+                try:
+                    service.purge_local_test_data(
+                        admin_user_id=int(session["id"]),
+                        request_id=self._request_id(),
+                    )
+                except Exception:
+                    LOGGER.exception("admin local test data purge failed")
+                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "local_test_data_purge_unavailable"}, send_body=True, cache_control="no-store")
+                    return
+                self._redirect("/admin/test-data?purged=1", send_body=True)
                 return
             if request_path == "/admin/account":
                 try:

@@ -8,6 +8,8 @@ import re
 from typing import Any
 from uuid import UUID
 
+from .telemetry import validate_release_label
+
 
 MAX_EVENT_BYTES = 8 * 1024
 ALLOWED_EVENT_KEYS = {
@@ -21,6 +23,7 @@ ALLOWED_EVENT_KEYS = {
     "eventType",
     "outcome",
     "appBuild",
+    "releaseLabel",
 }
 ALLOWED_EVENT_TYPES = {
     "DOWNLOAD_STARTED",
@@ -48,7 +51,7 @@ def validate_map_event(raw: bytes) -> dict[str, Any]:
         raise MapEventValidationError("unknown_fields")
     required = {
         "schemaVersion", "id", "operationId", "timestamp", "providerId",
-        "eventType", "outcome",
+        "eventType", "outcome", "releaseLabel",
     }
     if required - set(event):
         raise MapEventValidationError("missing_fields")
@@ -73,6 +76,10 @@ def validate_map_event(raw: bytes) -> dict[str, Any]:
             not isinstance(value, str) or not value.strip() or len(value) > 80
         ):
             raise MapEventValidationError(f"invalid_{key}")
+    try:
+        event["releaseLabel"] = validate_release_label(event["releaseLabel"])
+    except ValueError as exc:
+        raise MapEventValidationError("invalid_releaseLabel") from exc
     if not isinstance(event["eventType"], str) or event["eventType"] not in ALLOWED_EVENT_TYPES:
         raise MapEventValidationError("invalid_event_type")
     if not isinstance(event["outcome"], str) or event["outcome"] not in ALLOWED_OUTCOMES:

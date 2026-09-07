@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "mode": "allowlist",
+  "provider": "opentopomap",
+  "status": "INTERNAL_RC_ONLY",
+  "sourceAudit": "opentopomap-contour-audit-2026-09-06.md",
+  "packageIds": [
+    "opentopomap-andorra",
+    "opentopomap-lithuania"
+  ],
+  "selectionRationale": {
+    "opentopomap-andorra": "Representative mountainous contour package; exact Garmin IMG payload identity was validated from the original provider ZIP.",
+    "opentopomap-lithuania": "Normal flat-country contour package retained for the Phase 3 internal RC comparison."
+  },
+  "publicActivation": false,
+  "hardwareGate": "HARDWARE_GATE_A"
+}
+

@@ -208,16 +208,19 @@ def snapshot_from_freizeitkarte_records(
 class OpenTopoMapFetcher:
     user_agent = "TerentoCatalog/0.1 (+https://terento.app)"
 
+    def __init__(self, *, timeout_seconds: int = 30) -> None:
+        self.timeout_seconds = max(1, timeout_seconds)
+
     def fetch_text(self, url: str) -> str:
         request = Request(url, headers={"User-Agent": self.user_agent})
         with urlopen(request, timeout=30) as response:
             return response.read().decode("utf-8", errors="replace")
 
     def head_size(self, url: str) -> int | None:
-        return HTTPRangeFetcher(timeout_seconds=30).head_size(url)
+        return HTTPRangeFetcher(timeout_seconds=self.timeout_seconds).head_size(url)
 
     def measure_zip(self, url: str) -> Any:
-        fetcher = HTTPRangeFetcher(timeout_seconds=30)
+        fetcher = HTTPRangeFetcher(timeout_seconds=self.timeout_seconds)
         return ZipRangeInspector(fetcher).inspect(url, expected_payload_path=None)
 
 
