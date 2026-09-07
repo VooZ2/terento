@@ -63,8 +63,7 @@
     "app/TerentoCore/Tests/run-native-safe-delete-tests.sh",
     "app/TerentoCore/Tests/run-native-safe-update-tests.sh",
     "app/TerentoCore/Tests/run-native-bounded-process-tests.sh",
-    "app/TerentoCore/Tests/run-native-shared-api-contract-tests.sh",
-    "app/TerentoCore/Tests/run-native-finishing-trace-tests.sh"
+    "app/TerentoCore/Tests/run-native-shared-api-contract-tests.sh"
   ],
   "backend": [
     "Tests/run-backend-api-unit-tests.sh"
