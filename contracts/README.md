@@ -49,6 +49,10 @@ Custom IMG compatibility events use coarse `custom` labels; map events exclude
 custom imports. No change to collection defaults, retention or privacy policy
 is authorized by these schemas.
 
+Current map events and compatibility diagnostic versions 3–4 require a strict
+SemVer `releaseLabel`. A valid label ending exactly in `-local` is classified
+server-side as local test telemetry; it is excluded from production aggregates
+and can only be purged through the authenticated admin test-data flow.
 Compatibility versions 1–3 retain the historical `deletionToken` field; version
 4 forbids it. This documents old request acceptance, not a restored deletion
 feature. Versions 3–4 check structured diagnostic types and consistency.

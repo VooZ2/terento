@@ -9,7 +9,13 @@ from typing import Any
 from . import CATALOG_VERSION
 
 
-def build_catalog(rows: list[dict[str, Any]], updated_at: datetime) -> dict[str, Any]:
+def build_catalog(
+    rows: list[dict[str, Any]],
+    updated_at: datetime,
+    *,
+    contour_mode: str = "off",
+    contour_allowlist: set[str] | frozenset[str] = frozenset(),
+) -> dict[str, Any]:
     """Build the versioned public contract from database rows.
 
     Rows without a normalized version or a known download size are kept out of
@@ -19,7 +25,12 @@ def build_catalog(rows: list[dict[str, Any]], updated_at: datetime) -> dict[str,
     """
 
     if any("package_id" in row for row in rows):
-        return _build_provider_neutral_catalog(rows, updated_at)
+        return _build_provider_neutral_catalog(
+            rows,
+            updated_at,
+            contour_mode=contour_mode,
+            contour_allowlist=contour_allowlist,
+        )
 
     providers: dict[str, dict[str, Any]] = {}
     for row in rows:
@@ -115,7 +126,11 @@ def build_catalog(rows: list[dict[str, Any]], updated_at: datetime) -> dict[str,
 
 
 def _build_provider_neutral_catalog(
-    rows: list[dict[str, Any]], updated_at: datetime
+    rows: list[dict[str, Any]],
+    updated_at: datetime,
+    *,
+    contour_mode: str,
+    contour_allowlist: set[str] | frozenset[str],
 ) -> dict[str, Any]:
     """Serialize the current package/artifact read model.
 
@@ -128,6 +143,12 @@ def _build_provider_neutral_catalog(
     providers: dict[str, dict[str, Any]] = {}
     packages: dict[tuple[str, str], dict[str, Any]] = {}
     for row in rows:
+        if not _contour_is_publishable(
+            row,
+            contour_mode=contour_mode,
+            contour_allowlist=contour_allowlist,
+        ):
+            continue
         provider_id = str(row["provider_id"])
         provider = providers.setdefault(
             provider_id,
@@ -250,6 +271,32 @@ def _build_provider_neutral_catalog(
         "updatedAt": _format_timestamp(updated_at),
         "providers": [providers[key] for key in sorted(providers)],
     }
+
+
+def _contour_is_publishable(
+    row: dict[str, Any],
+    *,
+    contour_mode: str,
+    contour_allowlist: set[str] | frozenset[str],
+) -> bool:
+    """Keep rollout policy at the public serialization boundary.
+
+    The database may retain shadow health evidence, but the client must never
+    receive optional contours while the rollout is off or shadow. A malformed
+    mode fails closed to the existing main-only behavior.
+    """
+
+    if str(row.get("artifact_kind") or "main").lower() != "contours":
+        return True
+    normalized_mode = str(contour_mode or "off").strip().lower()
+    if normalized_mode == "public":
+        return str(row.get("artifact_validation_status") or "").upper() == "VALIDATED"
+    if normalized_mode == "allowlist":
+        return (
+            str(row.get("package_id") or "") in contour_allowlist
+            and str(row.get("artifact_validation_status") or "").upper() == "VALIDATED"
+        )
+    return False
 
 
 def _release_version(

@@ -509,6 +509,7 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     providers_class = " class='active'" if active == "providers" else ""
     map_statistics_class = " class='active'" if active == "map-statistics" else ""
     system_health_class = " class='active'" if active == "system-health" else ""
+    test_data_class = " class='active'" if active == "test-data" else ""
     review = user.get("admin_review_summary") or {}
     installation_issues = int(review.get("installationIssues") or 0)
     identity_pending = int(review.get("identityPending") or 0)
@@ -528,10 +529,46 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
       <div class="admin-header-zone admin-header-left">{_admin_brand(show_badge=False)}<span class="admin-badge">Admin area</span><a class="admin-website-link" href="https://terento.app/" target="_blank" rel="noopener noreferrer" aria-label="Open Terento website in a new tab">Website <span aria-hidden="true">↗</span></a></div>
       <a class="admin-mobile-review" href="/admin#overview-attention-title" aria-label="Needs attention: {review_total}">Review <span class="needs-review-count">{review_total}</span></a>
       <button id="admin-menu-toggle" class="secondary-button" type="button" aria-controls="admin-menu-panel" aria-expanded="false" hidden>Menu</button>
-      <div id="admin-menu-panel"><nav class="admin-section-nav" aria-label="Admin sections"><a{overview_class} href="/admin">Overview</a><a{system_health_class} href="/admin/system-health">System health</a><a{evidence_class} href="/admin/installations">Installations</a><a{devices_class} href="/admin/devices">Devices</a><a{providers_class} href="/admin/providers">Providers</a><a{map_statistics_class} href="/admin/map-statistics">Map statistics</a><a{campaign_class} href="/admin/campaign-links">Campaign links</a>{review_menu}</nav>
+      <div id="admin-menu-panel"><nav class="admin-section-nav" aria-label="Admin sections"><a{overview_class} href="/admin">Overview</a><a{system_health_class} href="/admin/system-health">System health</a><a{evidence_class} href="/admin/installations">Installations</a><a{devices_class} href="/admin/devices">Devices</a><a{providers_class} href="/admin/providers">Providers</a><a{map_statistics_class} href="/admin/map-statistics">Map statistics</a><a{test_data_class} href="/admin/test-data">Test data</a><a{campaign_class} href="/admin/campaign-links">Campaign links</a>{review_menu}</nav>
       <nav class="admin-nav" aria-label="Admin navigation"><label class="timezone-control"><span class="sr-only">Time zone</span><select id="admin-timezone" aria-label="Time zone" title="Time zone"><option value="browser">Automatic (browser)</option><option value="UTC">UTC</option><option value="Europe/Vilnius">Europe/Vilnius</option><option value="Europe/London">Europe/London</option><option value="Europe/Berlin">Europe/Berlin</option><option value="America/New_York">America/New_York</option><option value="America/Los_Angeles">America/Los_Angeles</option><option value="Asia/Tokyo">Asia/Tokyo</option></select></label><a class="admin-user" href="/admin/account" aria-label="Account settings for {username}">{username}</a>
       <form method="post" action="/admin/logout"><input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}"><button class="link-button" type="submit">Sign out</button></form><a class="admin-mobile-website" href="https://terento.app/" target="_blank" rel="noopener noreferrer">Website ↗</a></nav></div>
     </div></header>"""
+
+
+def local_test_data_page(
+    summary: dict[str, Any], user: dict[str, Any], csrf_token: str,
+    *, success: str | None = None, error: str | None = None,
+) -> bytes:
+    """Authenticated, explicit purge UI for local-only telemetry."""
+    labels = ", ".join(
+        html.escape(str(label)) for label in summary.get("releaseLabels", [])
+    ) or "None"
+    content = f"""
+      {_admin_header(user, csrf_token, active='test-data')}
+      <main id="main-content" class="admin-main" aria-labelledby="test-data-title">
+        <p class="eyebrow">Admin · local only</p>
+        <h1 id="test-data-title">Test data</h1>
+        <p class="lede">Only events classified by the server as local test telemetry are shown here. Production telemetry is excluded and cannot be removed from this page.</p>
+        {_success(success)}{_error(error)}
+        <section class="admin-card" aria-labelledby="local-telemetry-title">
+          <h2 id="local-telemetry-title">Purgeable local telemetry</h2>
+          <dl class="admin-summary-grid">
+            <div><dt>Diagnostic events</dt><dd>{int(summary.get('diagnosticEventCount') or 0)}</dd></div>
+            <div><dt>Map events</dt><dd>{int(summary.get('mapEventCount') or 0)}</dd></div>
+            <div><dt>Shared operations</dt><dd>{int(summary.get('operationCount') or 0)}</dd></div>
+          </dl>
+          <p class="muted-value">Release labels: <code>{labels}</code></p>
+          <form method="post" action="/admin/test-data/purge" class="admin-danger-form">
+            <input type="hidden" name="csrf_token" value="{html.escape(csrf_token, quote=True)}">
+            <label>Type <code>DELETE_LOCAL_TEST_DATA</code> to confirm
+              <input name="confirmation" required autocomplete="off" pattern="DELETE_LOCAL_TEST_DATA" spellcheck="false">
+            </label>
+            <button type="submit" class="danger-button">Delete local test data</button>
+          </form>
+        </section>
+      </main>
+    """
+    return _layout("Test data", content)
 
 
 def setup_page(*, error: str | None = None) -> bytes:
@@ -4891,6 +4928,10 @@ h1,h2,h3,h4,.administration-grid h3,.overview-kpi strong,.admin-kpi-grid article
 
 def _error(message: str | None) -> str:
     return f"<p class='error'>{html.escape(message)}</p>" if message else ""
+
+
+def _success(message: str | None) -> str:
+    return f"<p class='success'>{html.escape(message)}</p>" if message else ""
 
 
 def _layout(title: str, content: str) -> bytes:

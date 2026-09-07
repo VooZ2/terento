@@ -33,6 +33,8 @@ def run_server(settings: Settings, database: Database) -> None:
             admin_session_ttl_seconds=settings.admin_session_ttl_seconds,
             public_compatibility_stats_enabled=settings.public_compatibility_stats_enabled,
             operations_ingest_secret=settings.operations_ingest_secret,
+            opentopomap_contour_mode=settings.opentopomap_contour_mode,
+            opentopomap_contour_allowlist=settings.opentopomap_contour_allowlist,
         ),
         settings.host,
         settings.port,

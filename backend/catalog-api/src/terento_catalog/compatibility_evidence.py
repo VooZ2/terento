@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
+from .telemetry import validate_release_label
+
 MAX_EVENT_BYTES = 16_384
 # `custom` is a local IMG source, not a map provider. It is accepted here so
 # shared custom installs can contribute device compatibility evidence while
@@ -173,6 +175,10 @@ def _validate_v3(event: dict[str, Any]) -> None:
             or "file://" in event[key]
         ):
             raise EvidenceValidationError(f"invalid_{key}")
+    try:
+        event["releaseLabel"] = validate_release_label(event["releaseLabel"])
+    except ValueError as exc:
+        raise EvidenceValidationError("invalid_releaseLabel") from exc
     for key in ("writeStarted", "remoteObjectCreated", "cleanupAttempted", "cleanupSucceeded"):
         if not isinstance(event[key], bool):
             raise EvidenceValidationError(f"invalid_{key}")

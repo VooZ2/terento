@@ -16,6 +16,8 @@ from terento_catalog.map_events import (
     validate_map_event,
     validate_statistics_filters,
 )
+from terento_catalog.opentopomap_contour_audit import audit_opentopomap_contours
+from terento_catalog.telemetry import is_local_release_label
 from terento_catalog.provider_catalog import (
     OPENTOPO_MAP,
     OpenTopoMapProviderAdapter,
@@ -39,6 +41,7 @@ class FakeProviderDatabase:
         self.run_overrides: dict[str, list[dict]] = {}
         self.map_statistic_filters: list[dict] = []
         self.overview_map_requests: list[tuple[datetime, str, str]] = []
+        self.local_purge_calls: list[dict] = []
 
     def admin_user_count(self) -> int:
         return 1
@@ -50,6 +53,18 @@ class FakeProviderDatabase:
             "readyToPublish": 0,
             "total": 0,
         }
+
+    def local_test_telemetry_summary(self):
+        return {
+            "diagnosticEventCount": 2,
+            "mapEventCount": 3,
+            "operationCount": 1,
+            "releaseLabels": ["1.0.0-beta.10-local"],
+        }
+
+    def purge_local_test_telemetry(self, **kwargs):
+        self.local_purge_calls.append(kwargs)
+        return {"diagnosticEventCount": 2, "mapEventCount": 3, "operationCount": 1}
 
     def admin_overview_snapshot(self, since):
         return {
@@ -307,6 +322,74 @@ class Beta8APITests(unittest.TestCase):
         self.assertEqual(artifact["downloadSizeBytes"], 219000000)
         self.assertEqual(artifact["validationState"], "validated")
 
+    def test_contour_rollout_modes_are_fail_closed_at_public_catalog_boundary(self):
+        common = {
+            "provider_id": "opentopomap",
+            "provider_name": "OpenTopoMap",
+            "provider_adapter_id": "opentopomap",
+            "provider_status": "PAUSED",
+            "provider_health": "UNKNOWN",
+            "provider_website": "https://opentopomap.org/",
+            "provider_attribution": "OpenTopoMap",
+            "provider_license_information": "ODbL",
+            "package_id": "opentopomap-andorra",
+            "provider_region_id": "andorra",
+            "canonical_region_id": "ANDORRA",
+            "package_name": "OpenTopoMap Andorra",
+            "package_region": "ANDORRA",
+            "package_country": "Andorra",
+            "release": "2026-05",
+            "release_id": "2026-05",
+            "version_label": "2026-05",
+            "country_codes": [],
+            "region_kind": "country",
+            "capabilities": ["main", "contours"],
+            "artifact_source_url": "https://garmin.opentopomap.org/europe/andorra/otm-andorra.zip",
+            "artifact_size_bytes": 100,
+            "artifact_install_size_bytes": 120,
+            "artifact_required": True,
+            "artifact_validation_status": "VALIDATED",
+        }
+        rows = [
+            {**common, "artifact_id": "opentopomap-andorra-main", "artifact_kind": "main"},
+            {
+                **common,
+                "artifact_id": "opentopomap-andorra-contours",
+                "artifact_kind": "contours",
+                "artifact_source_url": "https://garmin.opentopomap.org/europe/andorra/otm-andorra-contours.zip",
+                "artifact_required": False,
+            },
+        ]
+        timestamp = datetime(2026, 8, 31, tzinfo=UTC)
+        for mode, allowlist, expected in (
+            ("off", set(), 1),
+            ("shadow", set(), 1),
+            ("allowlist", {"opentopomap-andorra"}, 2),
+            ("public", set(), 2),
+        ):
+            document = build_catalog(
+                rows,
+                timestamp,
+                contour_mode=mode,
+                contour_allowlist=allowlist,
+            )
+            self.assertEqual(len(document["providers"][0]["maps"][0]["artifacts"]), expected)
+
+    def test_phase3_allowlist_fixture_is_internal_only_and_reviewed(self):
+        fixture_path = (
+            Path(__file__).parents[1]
+            / "reports"
+            / "opentopomap-contour-allowlist-2026-09-06.json"
+        )
+        fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+        self.assertEqual(fixture["status"], "INTERNAL_RC_ONLY")
+        self.assertFalse(fixture["publicActivation"])
+        self.assertEqual(
+            fixture["packageIds"],
+            ["opentopomap-andorra", "opentopomap-lithuania"],
+        )
+        self.assertEqual(fixture["hardwareGate"], "HARDWARE_GATE_A")
+
         unknown_install = build_catalog([
             {
                     "provider_id": "freizeitkarte",
@@ -437,6 +520,7 @@ class Beta8APITests(unittest.TestCase):
             "eventType": "INSTALL_SUCCEEDED",
             "outcome": "SUCCEEDED",
             "appBuild": "beta.8",
+            "releaseLabel": "1.0.0-beta.8",
         }).encode())
         self.assertEqual(event["providerId"], "freizeitkarte")
         self.assertEqual(event["mapId"], "fzk-ltu")
@@ -453,6 +537,7 @@ class Beta8APITests(unittest.TestCase):
             "providerId": "freizeitkarte",
             "eventType": "DOWNLOAD_STARTED",
             "outcome": "UNKNOWN",
+            "releaseLabel": "1.0.0-beta.8",
             "unitId": "must-not-be-accepted",
         }
         with self.assertRaises(MapEventValidationError):
@@ -470,6 +555,24 @@ class Beta8APITests(unittest.TestCase):
             validate_map_event(json.dumps(custom_payload).encode())
         with self.assertRaises(MapEventValidationError):
             validate_statistics_filters({"region": "LT", "dateFrom": "2026-09-01T00:00:00Z", "dateTo": "2026-08-31T00:00:00Z"})
+
+    def test_release_label_is_strict_and_local_classification_is_exact(self):
+        base = {
+            "schemaVersion": 1,
+            "id": "a8098c1a-f86e-11da-bd1a-00112444be1e",
+            "operationId": "b8098c1a-f86e-11da-bd1a-00112444be1e",
+            "timestamp": "2026-08-31T10:00:00Z",
+            "providerId": "freizeitkarte",
+            "eventType": "DOWNLOAD_STARTED",
+            "outcome": "UNKNOWN",
+        }
+        accepted = validate_map_event(json.dumps({**base, "releaseLabel": "1.0.0"}).encode())
+        self.assertFalse(is_local_release_label(accepted["releaseLabel"]))
+        local = validate_map_event(json.dumps({**base, "releaseLabel": "1.0.0-beta.10-local"}).encode())
+        self.assertTrue(is_local_release_label(local["releaseLabel"]))
+        for label in (None, "", "development", "1.0", "1.0.0-local ", "v1.0.0"):
+            with self.subTest(label=label), self.assertRaises(MapEventValidationError):
+                validate_map_event(json.dumps({**base, "releaseLabel": label}).encode())
 
     def test_opentopomap_parser_accepts_only_provider_zip_sources(self):
         html = """
@@ -587,6 +690,47 @@ class Beta8APITests(unittest.TestCase):
             OpenTopoMapProviderAdapter(
                 fetcher=Fetcher(), expected_main_package_count=2
             ).collect()
+
+    def test_opentopomap_contour_audit_is_shadow_only_and_counts_shared_sources(self):
+        html = """
+        <table>
+          <tr class="country"><td>Andorra</td>
+            <td><a href="europe/andorra/otm-andorra.zip">Garmin</a></td>
+            <td><a href="europe/andorra/otm-andorra-contours.zip">Contours</a></td>
+          </tr>
+          <tr class="country"><td>Canada East</td>
+            <td><a href="north-america/canada-east/otm-canada-east.zip">Garmin</a></td>
+            <td><a href="north-america/canada/otm-canada-contours.zip">Contours</a></td>
+          </tr>
+          <tr class="country"><td>Canada West</td>
+            <td><a href="north-america/canada-west/otm-canada-west.zip">Garmin</a></td>
+          </tr>
+        </table>
+        """
+
+        class Measurement:
+            download_size_bytes = 100
+            install_size_bytes = 120
+            payload_path = "gmapsupp.img"
+
+        class Fetcher:
+            def fetch_text(self, url):
+                return html
+
+            def measure_zip(self, url):
+                return Measurement()
+
+        report = audit_opentopomap_contours(
+            fetcher=Fetcher(),
+            expected_main_package_count=3,
+            sample_region=None,
+        )
+        self.assertEqual(report.main_package_count, 3)
+        self.assertEqual(report.unique_contour_source_count, 2)
+        self.assertEqual(report.package_to_contour_attachment_count, 3)
+        self.assertEqual(report.shared_contour_sources, 1)
+        self.assertEqual(report.validated_contours, 3)
+        self.assertEqual(report.sample_status, "NOT_REQUESTED")
 
     def test_opentopomap_russia_packages_emit_policy_country_code(self):
         html = """
@@ -709,6 +853,29 @@ class Beta8APITests(unittest.TestCase):
             self.assertEqual(json.loads(body)["providers"][0]["id"], "freizeitkarte")
             self.assertEqual(response.headers["X-Robots-Tag"], "noindex, nofollow")
 
+            test_data, test_data_body = self._request(
+                server, "GET", "/admin/test-data", headers={"Cookie": cookie}
+            )
+            self.assertEqual(test_data.status, 200)
+            self.assertIn(b"1.0.0-beta.10-local", test_data_body)
+            invalid_purge, _ = self._request(
+                server,
+                "POST",
+                "/admin/test-data/purge",
+                b"csrf_token=csrf&confirmation=wrong",
+                {"Content-Type": "application/x-www-form-urlencoded", "Cookie": cookie},
+            )
+            self.assertEqual(invalid_purge.status, 400)
+            purge, _ = self._request(
+                server,
+                "POST",
+                "/admin/test-data/purge",
+                b"csrf_token=csrf&confirmation=DELETE_LOCAL_TEST_DATA",
+                {"Content-Type": "application/x-www-form-urlencoded", "Cookie": cookie, "X-Request-Id": "local-test-1"},
+            )
+            self.assertEqual(purge.status, 303)
+            self.assertEqual(database.local_purge_calls[0]["request_id"], "local-test-1")
+
             event = json.dumps({
                 "schemaVersion": 1,
                 "id": "a8098c1a-f86e-11da-bd1a-00112444be1e",
@@ -720,6 +887,7 @@ class Beta8APITests(unittest.TestCase):
                 "eventType": "INSTALL_SUCCEEDED",
                 "outcome": "SUCCEEDED",
                 "appBuild": "beta.8",
+                "releaseLabel": "1.0.0-beta.8",
             }).encode()
             first, first_body = self._request(server, "POST", "/map-events", event, {"Content-Type": "application/json"})
             second, second_body = self._request(server, "POST", "/map-events", event, {"Content-Type": "application/json"})

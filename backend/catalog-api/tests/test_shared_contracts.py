@@ -124,6 +124,7 @@ class SharedContractTests(unittest.TestCase):
             {'model': '/Users/synthetic/watch'}, {'usbVendorID': 70000},
             {'rawMTPModel': 'model\nserial'}, {'identityResolutionCode': 'UNIT_ID:123'},
             {'releaseLabel': 'file:///Users/synthetic/build'},
+            {'releaseLabel': 'development'}, {'releaseLabel': '1.0'},
             {'nativeFailureCode': 'RAW: log'}, {'remoteObjectCreated': True, 'writeStarted': False},
             {'cleanupSucceeded': True, 'cleanupAttempted': False},
             {'mapVisibleAfterReconnect': True, 'reconnectVerified': False},

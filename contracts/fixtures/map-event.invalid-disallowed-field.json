@@ -4,6 +4,7 @@
   "operationId": "00000000-0000-4000-8000-000000000002",
   "timestamp": "2026-09-01T12:00:00Z",
   "providerId": "freizeitkarte",
+  "releaseLabel": "1.0.0-beta.10",
   "mapId": "freizeitkarte-deu",
   "region": "DE",
   "eventType": "INSTALL_SUCCEEDED",

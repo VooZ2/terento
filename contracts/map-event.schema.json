@@ -73,6 +73,10 @@
       ],
       "maxLength": 80,
       "pattern": "\\S"
+    },
+    "releaseLabel": {
+      "$ref": "#/$defs/releaseLabel",
+      "description": "SemVer app release identity. Local debug builds end in -local and are purgeable only in the authenticated admin test-data flow."
     }
   },
   "required": [
@@ -81,6 +85,7 @@
     "operationId",
     "timestamp",
     "providerId",
+    "releaseLabel",
     "eventType",
     "outcome"
   ],
@@ -89,6 +94,11 @@
     "safeId": {
       "type": "string",
       "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,159}$"
+    },
+    "releaseLabel": {
+      "type": "string",
+      "maxLength": 80,
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$"
     }
   }
 }

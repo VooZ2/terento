@@ -516,13 +516,17 @@ Accepts at most 8 KiB of schema-version-1 JSON and is rate limited per source
 address. This is deliberately separate from `/compatibility/events` and does
 not accept compatibility, device, manifest, path, serial, Unit ID, raw log, or
 raw error fields. The allowlisted fields are `id`, `operationId`, `timestamp`,
-`providerId`, optional `mapId`/`region`, `eventType`, `outcome`, and optional
-`appBuild`. Event types are `DOWNLOAD_STARTED`, `DOWNLOAD_SUCCEEDED`,
+`providerId`, `releaseLabel`, optional `mapId`/`region`, `eventType`, `outcome`,
+and optional `appBuild`. `releaseLabel` must be a strict SemVer app identity;
+the exact `-local` suffix classifies the row server-side as local test data.
+Event types are `DOWNLOAD_STARTED`, `DOWNLOAD_SUCCEEDED`,
 `DOWNLOAD_FAILED`, `INSTALL_SUCCEEDED`, and `INSTALL_FAILED`; event IDs are
 UUIDs and are idempotent. The server stores only the normalized columns in
 `map_download_event`; it does not retain the raw JSON body. A successful
 insert returns `201`, a duplicate returns `200`, and both return the
-`operationId`.
+`operationId`. Local rows are excluded from production map statistics and can
+be removed only by an authenticated, CSRF-protected admin action at
+`/admin/test-data`; the purge deletes both telemetry streams in one transaction.
 
 This endpoint receives map-usage diagnostics while the independent map-usage
 diagnostics switch is enabled in `Terento → Diagnostics`; it must not be used

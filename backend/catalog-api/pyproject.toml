@@ -22,6 +22,7 @@ terento-catalog-collect-devices = "terento_catalog.collect_devices:main"
 terento-catalog-backfill-sizes = "terento_catalog.backfill_sizes:main"
 terento-catalog-schedule = "terento_catalog.scheduler:main"
 terento-catalog-asset = "terento_catalog.asset_admin:main"
+terento-catalog-audit-opentopomap-contours = "terento_catalog.opentopomap_contour_audit:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
