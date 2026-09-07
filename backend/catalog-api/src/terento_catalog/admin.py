@@ -2185,7 +2185,7 @@ def _providers_list_script() -> str:
         if (count) count.textContent = `${visible} provider${visible === 1 ? '' : 's'}`;
       };
       search?.addEventListener('input', refresh);
-      form?.addEventListener('terento-admin-clear-filters', () => {
+      document.querySelector('#provider-filters')?.addEventListener('terento-admin-clear-filters', () => {
         if (search) search.value = '';
         refresh();
       });
@@ -2557,7 +2557,7 @@ def _map_statistics_script() -> str:
         if (status) status.textContent = 'Loading…';
         try { const response = await fetch(`/admin/map-statistics.json?${parameters}`, {credentials: 'same-origin', headers: {'Accept': 'application/json'}}); const payload = await response.json(); if (!response.ok) throw new Error(payload.error || 'Statistics unavailable'); render(payload); } catch (error) { if (status) status.textContent = error.message || 'Statistics unavailable'; }
       };
-      form?.addEventListener('terento-admin-clear-filters', () => {
+      document.querySelector('#map-statistics-filters')?.addEventListener('terento-admin-clear-filters', () => {
         range.value = 'all';
         provider.value = '';
         map.value = '';
@@ -4332,7 +4332,7 @@ def _diagnostics_script() -> str:
         page = 1;
         refresh();
       }));
-      filterForm?.addEventListener('terento-admin-clear-filters', () => {
+      document.querySelector('#diagnostic-filters')?.addEventListener('terento-admin-clear-filters', () => {
         selectedFilter = 'all';
         page = 1;
         const parameters = new URLSearchParams(window.location.search);

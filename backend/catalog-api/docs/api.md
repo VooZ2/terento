@@ -734,3 +734,5 @@ binaries and is returned with `Cache-Control: no-store`.
 ## Admin audit update — 2026-09-07
 
 Provider summaries expose `packageReleases` and the newest non-retired package release; individual regions retain their own release. Healthy system cards collapse by default and link to collection history and packages. Installation coverage normalizes provider country aliases, supports zoom/pan and region highlighting, and explicitly reports unmapped installations. Compatibility fallback validates the complete operation before filtering and preserves each provider/region. Local test activity remains isolated by `is_local_test=true` and is visible only in Test data; public beta events remain in user statistics. The local release-label guard requires Debug labels ending in `-local` and rejects those labels for public Release builds. No native application artifact is released by this API deployment.
+
+Post-deploy verification caught missing form bindings in the preserved Clear handlers. These handlers now resolve their own form directly so provider actions, map rendering and diagnostic controls initialize reliably.
