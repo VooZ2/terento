@@ -45,10 +45,12 @@ ordinary production diagnostic streams.
 
 ## Release artifacts
 
-The final packages are produced by the Developer ID signing, Apple notarization,
-stapling and Gatekeeper validation pipeline. Checksums below are finalized
-before publication.
+Developer ID signing, Apple notarization, stapling, Gatekeeper and launch checks
+passed for both packages. Apple submission `9c7d9a17-99a8-4466-8b84-666ce1be0589`
+was accepted with no issues. The complete release pipeline and live catalog
+validation passed.
 
 ```text
-Terento-1.0.0-beta.10-macOS-arm64.dmg  0000000000000000000000000000000000000000000000000000000000000000
+Terento-1.0.0-beta.10-macOS-arm64.dmg  bbbd2f01f36dbab56c4b63ad8810dd7934faf0f461b076319fb1a98281265052
+Terento-1.0.0-beta.10-macOS-arm64.zip  0e45a7627e2332d31e9b0a945cbf95a3f24367ec996bba47c67f390f5c24a851
 ```
