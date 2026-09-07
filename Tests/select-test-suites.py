@@ -70,6 +70,9 @@ def select_suites(paths: list[str]) -> list[str]:
             else:
                 return list(ALL_SUITES)
             continue
+        if text == "app/TerentoCore/Tests/run-release-map-catalog-contract-gate-tests.sh":
+            selected.add("release")
+            continue
         if text.startswith("app/TerentoCore/"):
             selected.update(("app", "native"))
             continue
