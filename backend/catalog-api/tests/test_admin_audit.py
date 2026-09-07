@@ -88,7 +88,9 @@ class AdminAuditTests(unittest.TestCase):
         markup = _overview_trend_chart([{'bucket':'2026-09-07T16:00:00Z','success_count':1,'success_times':['2026-09-07 19:43']}], 'hour', 'Europe/Vilnius')
         self.assertIn('2026-09-07 19:43', markup)
         self.assertIn("text-anchor='end'>1</text>", markup)
+        self.assertIn("text-anchor='end'>4</text>", markup)
         self.assertIn("text-anchor='end'>0</text>", markup)
+        self.assertRegex(markup, r"class='overview-chart-success'[^>]*height='51.50'")
 
     def test_collection_changes_have_readable_regions_and_escape_values(self):
         from terento_catalog.admin import _provider_audit_row

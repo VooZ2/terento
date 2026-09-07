@@ -5,6 +5,7 @@ import hashlib
 import hmac
 import html
 import json
+import math
 import re
 import secrets
 import unicodedata
@@ -1056,7 +1057,11 @@ def _overview_trend_chart(
         for item in trend
     ]
     maximum = max((sum(series) for series in values), default=1) or 1
-    scale_maximum = maximum
+    # Keep low-volume periods readable. A single operation should remain a
+    # single operation visually, rather than filling the entire plot because
+    # it happens to be the local maximum. Larger volumes get a little headroom
+    # so bars do not touch the top gridline.
+    scale_maximum = max(4, math.ceil(maximum * 1.2))
     chart_width, chart_height = 720, 260
     left, top, bottom = 38, 20, 34
     plot_height = chart_height - top - bottom
@@ -1093,8 +1098,8 @@ def _overview_trend_chart(
             if timestamps:
                 title = f"{label}: {count} · " + ', '.join(str(value) for value in timestamps) + f" · {time_zone}" + (' · first 20 times' if len(timestamps) == 20 else '')
             bars.append(
-                f"<rect class='overview-chart-{name}' x='{x:.1f}' y='{y:.1f}' "
-                f"width='{bar_width:.1f}' height='{height:.1f}' tabindex='0' "
+                f"<rect class='overview-chart-{name}' x='{x:.1f}' y='{y:.2f}' "
+                f"width='{bar_width:.1f}' height='{height:.2f}' tabindex='0' "
                 f"role='img' aria-label='{html.escape(title, quote=True)}'>"
                 f"<title>{html.escape(title)}</title></rect>"
             )
@@ -1106,7 +1111,7 @@ def _overview_trend_chart(
         "<div class='overview-chart-wrap'>"
         f"<svg class='overview-trend-chart' viewBox='0 0 {chart_width} {chart_height}' role='img' aria-label='Map install operations over time'>"
         f"{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
-        "<div class='overview-chart-legend'><span><i class='overview-chart-success'></i>Succeeded</span><span><i class='overview-chart-failed'></i>Failed</span><span><i class='overview-chart-custom'></i>Custom .img</span></div><p class='overview-chart-note'>Custom .img: successful manual installations.</p></div>"
+        "<div class='overview-chart-legend'><span><i class='overview-chart-success'></i>Succeeded</span><span><i class='overview-chart-failed'></i>Failed</span><span><i class='overview-chart-custom'></i>Custom .img</span></div></div>"
     )
 
 
