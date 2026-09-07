@@ -5,6 +5,7 @@ import Foundation
 enum SafeDeleteStatus: String, Equatable, Sendable {
     case success = "DELETE_SUCCESS"
     case failedDeviceDisconnected = "DELETE_FAILED_DEVICE_DISCONNECTED"
+    case failedDeviceBusy = "DELETE_FAILED_DEVICE_BUSY"
     case failedObjectNotFound = "DELETE_FAILED_OBJECT_NOT_FOUND"
     case blockedOwnership = "DELETE_BLOCKED_OWNERSHIP"
     case blockedIntegrityCheck = "DELETE_BLOCKED_INTEGRITY_CHECK"
@@ -17,12 +18,15 @@ enum SafeDeleteStatus: String, Equatable, Sendable {
 
 enum SafeDeleteTransportError: LocalizedError, Equatable, Sendable {
     case deviceDisconnected(String)
+    case deviceBusy(String)
     case objectNotFound
     case operationFailed(String)
 
     var errorDescription: String? {
         switch self {
         case .deviceDisconnected(let message):
+            return message
+        case .deviceBusy(let message):
             return message
         case .objectNotFound:
             return "The managed map object was not found on the Garmin device."
@@ -105,10 +109,23 @@ struct SafeDeleteTarget: Equatable, Sendable {
 
 struct SafeDeleteDeviceObject: Equatable, Sendable {
     let file: InstalledMapFile
-    /// Full SHA-256 of the freshly resolved live object. Manual removal may
-    /// use a temporary local read for this proof, but must not retain it as a
-    /// user backup unless the user explicitly requested Backup.
+    /// SHA-256 of the freshly resolved live object when a content read was
+    /// performed. A manual Remove of a Terento-owned object may deliberately
+    /// omit that expensive read: the local manifest plus the live exact path,
+    /// filename, size, and session-local object identity are the ownership
+    /// proof required by the device safety contract.
     let sha256: String
+    let contentHashVerified: Bool
+
+    init(
+        file: InstalledMapFile,
+        sha256: String,
+        contentHashVerified: Bool = true
+    ) {
+        self.file = file
+        self.sha256 = sha256
+        self.contentHashVerified = contentHashVerified
+    }
 }
 
 /// Transport boundary for SafeDeleteAdapter. The inspect operation must be
@@ -378,11 +395,13 @@ struct SafeDeleteAdapter: Sendable {
             // from the manifest-backed lifecycle context. Match normalized
             // identity here because composite provider regions such as
             // ESP_CANARIAS lose separators when represented as MapIdentity.
+            let artifactKind = generator.artifactKind(for: target.expectedFilename) ?? .main
             return generator.matchesIdentity(
                 target.expectedFilename,
                 providerId: target.mapIdentity.provider,
                 regionId: target.mapIdentity.region,
-                version: target.expectedVersion
+                version: target.expectedVersion,
+                artifactKind: artifactKind
             )
         case .detectedNotManaged:
             return target.allowsExternalRemoval
@@ -400,8 +419,9 @@ struct SafeDeleteAdapter: Sendable {
 
         if target.ownership == .detectedNotManaged {
             // External maps do not have a trusted local manifest hash. The
-            // transport must produce a fresh complete hash immediately before
-            // deletion; matchesExpectedObject validates that live proof.
+            // transport must produce fresh exact identity and recognized IMG
+            // proof immediately before deletion; a complete content hash is
+            // not required for this explicitly confirmed one-file action.
             return true
         }
 
@@ -449,6 +469,14 @@ struct SafeDeleteAdapter: Sendable {
 
         guard exactFile else { return false }
 
+        if !object.contentHashVerified {
+            // Managed files are authorized by the exact local manifest record
+            // plus this fresh live identity check. External files are first
+            // classified by the transport's bounded Garmin IMG-header check.
+            return target.ownership == .managedByTerento
+                || target.ownership == .detectedNotManaged
+        }
+
         let liveHash = normalizedHash(object.sha256)
         guard liveHash.count == 64,
               liveHash.allSatisfy(\.isHexDigit) else {
@@ -490,6 +518,8 @@ struct SafeDeleteAdapter: Sendable {
         switch error {
         case .deviceDisconnected:
             return .failedDeviceDisconnected
+        case .deviceBusy:
+            return .failedDeviceBusy
         case .objectNotFound:
             return .failedObjectNotFound
         case .operationFailed:
@@ -501,6 +531,8 @@ struct SafeDeleteAdapter: Sendable {
         switch error {
         case .deviceDisconnected:
             return "The Garmin device was disconnected. Nothing else was changed."
+        case .deviceBusy:
+            return "The Garmin watch is busy or another app is using its USB connection. Close Garmin Finder and Garmin Express, eject the watch from Finder, reconnect it, and choose Refresh. Nothing was removed."
         case .objectNotFound:
             return "The map was not found on the Garmin device. Nothing was removed."
         case .operationFailed:

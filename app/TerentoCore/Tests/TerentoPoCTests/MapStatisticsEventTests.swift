@@ -50,14 +50,16 @@ struct MapStatisticsEventTests {
             package: package,
             eventType: .downloadSucceeded,
             outcome: .succeeded,
-            appBuild: "7"
+            appBuild: "7-local",
+            releaseLabel: "1.0.0-beta.10-local"
         )
         let second = MapStatisticsEvent(
             operationId: operationID,
             package: package,
             eventType: .installSucceeded,
             outcome: .succeeded,
-            appBuild: "7"
+            appBuild: "7-local",
+            releaseLabel: "1.0.0-beta.10-local"
         )
         expect(first.operationId == second.operationId, "one user operation keeps one operationId")
         expect(first.id != second.id, "each event keeps its own idempotency ID")
@@ -65,9 +67,11 @@ struct MapStatisticsEventTests {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         let payload = String(decoding: try encoder.encode(first), as: UTF8.self)
-        for field in ["schemaVersion", "id", "operationId", "providerId", "mapId", "region", "eventType", "outcome", "timestamp", "appBuild"] {
+        for field in ["schemaVersion", "id", "operationId", "providerId", "mapId", "region", "eventType", "outcome", "timestamp", "appBuild", "releaseLabel"] {
             expect(payload.contains("\"\(field)\""), "payload includes \(field)")
         }
+        expect(first.releaseLabel == "1.0.0-beta.10-local", "map events carry the local release label")
+        expect(first.operationId == second.operationId, "all package events share the operation ID")
         for forbidden in ["device", "serial", "unitId", "filePath", "manifest", "diagnostic", "sourceURL", "/Users/"] {
             expect(!payload.lowercased().contains(forbidden.lowercased()), "payload excludes \(forbidden)")
         }

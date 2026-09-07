@@ -55,7 +55,20 @@ if ! grep -A100 '^int terento_mtp_delete_external_map(' "$bridge" \
     exit 1
 fi
 
+if grep -A5 '^        \*matched_samples += 1;' "$bridge" \
+    | grep -q 'LIBMTP_Release_Device(device)'; then
+    print -u2 "FAIL: sampled Install verification still closes MTP between every sample region"
+    exit 1
+fi
+
+if ! grep -A6 '^        \*matched_samples += 1;' "$bridge" \
+    | grep -q 'Keep the read-only verification session open'; then
+    print -u2 "FAIL: sampled Install verification does not document its low-churn session boundary"
+    exit 1
+fi
+
 print "PASS: production map operations require a live-bound native profile"
 print "PASS: production map operations do not use the lab PID lock"
 print "PASS: Write Test remains locked to PID 0x51b8"
 print "PASS: read-back and manual delete re-resolve session-local MTP handles"
+print "PASS: sampled Install verification reuses one read-only MTP session"

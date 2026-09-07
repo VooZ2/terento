@@ -36,8 +36,17 @@ struct Stage45MapSelectionTests {
         testCrimeaSearchAliasesAndPresentation()
         testStaleWithheldSelectionIsClearedAndBlocked()
         testAcquisitionAccessibilityLabels()
+        testDefaultPlanRemainsMainOnly()
+        testSelectedOptionalArtifactUsesExactCombinedSize()
+        testInvalidOptionalArtifactBlocksThePlan()
+        testOptionalArtifactMustBelongToThePackage()
+        testTwoRegionsKeepIndependentOptionalSelections()
+        testOptionalArtifactDoesNotChangeRegionCount()
+        testPackagesWithoutUsableOptionalArtifactsExposeNoChoice()
+        testParentDeselectionInvalidatesOptionalSelection()
+        testDuplicateArtifactDefinitionsAreRejected()
 
-        print("PASS: 27 Stage 4.5 map selection tests")
+        print("PASS: 36 Stage 4.5 map selection tests")
     }
 
     private static func testCatalogRegionsProduceOneCanonicalList() {
@@ -908,6 +917,247 @@ struct Stage45MapSelectionTests {
         )
     }
 
+    private static func testDefaultPlanRemainsMainOnly() {
+        let comparison = makeComparisonWithContours(
+            region: "LTU",
+            name: "Lithuania"
+        )
+        let items = MapSelectionPlanner().items(
+            comparisons: [comparison],
+            preflightStatuses: [comparison.id: .readyNewInstall],
+            recommendedRegionID: nil
+        )
+        let plan = MapSelectionPlanner().plan(
+            items: items,
+            selectedIDs: [comparison.id],
+            currentFreeSpace: 15 * gigabyte
+        )
+
+        expect(
+            plan.selectedPackagePlans.first?.artifactPlan.selectedArtifactIDs
+                == [comparison.catalogMap.id + "-main"]
+                && plan.storagePlan.selectedMapBytes == 300,
+            "the default artifact plan remains main-only for old clients"
+        )
+    }
+
+    private static func testSelectedOptionalArtifactUsesExactCombinedSize() {
+        let comparison = makeComparisonWithContours(
+            region: "LTU",
+            name: "Lithuania",
+            contourSize: 80
+        )
+        let items = MapSelectionPlanner().items(
+            comparisons: [comparison],
+            preflightStatuses: [comparison.id: .readyNewInstall],
+            recommendedRegionID: nil
+        )
+        let contourID = comparison.catalogMap.optionalArtifacts[0].id
+        let plan = MapSelectionPlanner().plan(
+            items: items,
+            selectedIDs: [comparison.id],
+            currentFreeSpace: 15 * gigabyte,
+            selectedOptionalArtifactIDs: [comparison.id: [contourID]]
+        )
+
+        expect(
+            plan.status == .ready
+                && plan.selectedPackagePlans.first?.selection.selectedOptionalArtifactIDs == [contourID]
+                && plan.storagePlan.selectedMapBytes == 380,
+            "selected optional artifacts use one immutable combined storage plan"
+        )
+    }
+
+    private static func testInvalidOptionalArtifactBlocksThePlan() {
+        let comparison = makeComparisonWithContours(
+            region: "LTU",
+            name: "Lithuania",
+            contourSize: nil
+        )
+        let items = MapSelectionPlanner().items(
+            comparisons: [comparison],
+            preflightStatuses: [comparison.id: .readyNewInstall],
+            recommendedRegionID: nil
+        )
+        let contourID = comparison.catalogMap.optionalArtifacts[0].id
+        let plan = MapSelectionPlanner().plan(
+            items: items,
+            selectedIDs: [comparison.id],
+            currentFreeSpace: 15 * gigabyte,
+            selectedOptionalArtifactIDs: [comparison.id: [contourID]]
+        )
+
+        expect(
+            items[0].usableOptionalArtifacts.isEmpty
+                && plan.status == .blocked
+                && plan.canContinue == false,
+            "an optional artifact without an exact install size cannot be selected"
+        )
+    }
+
+    private static func testOptionalArtifactMustBelongToThePackage() {
+        let comparison = makeComparisonWithContours(
+            region: "LTU",
+            name: "Lithuania"
+        )
+        let items = MapSelectionPlanner().items(
+            comparisons: [comparison],
+            preflightStatuses: [comparison.id: .readyNewInstall],
+            recommendedRegionID: nil
+        )
+        let plan = MapSelectionPlanner().plan(
+            items: items,
+            selectedIDs: [comparison.id],
+            currentFreeSpace: 15 * gigabyte,
+            selectedOptionalArtifactIDs: [comparison.id: ["other-package-contours"]]
+        )
+
+        expect(
+            plan.status == .blocked && plan.reason.contains("component"),
+            "an optional artifact from another package is rejected"
+        )
+    }
+
+    private static func testTwoRegionsKeepIndependentOptionalSelections() {
+        let lithuania = makeComparisonWithContours(region: "LTU", name: "Lithuania")
+        let latvia = makeComparisonWithContours(region: "LVA", name: "Latvia")
+        let items = MapSelectionPlanner().items(
+            comparisons: [lithuania, latvia],
+            preflightStatuses: [
+                lithuania.id: .readyNewInstall,
+                latvia.id: .readyNewInstall
+            ],
+            recommendedRegionID: nil
+        )
+        let lithuaniaContours = lithuania.catalogMap.optionalArtifacts[0].id
+        let plan = MapSelectionPlanner().plan(
+            items: items,
+            selectedIDs: [lithuania.id, latvia.id],
+            currentFreeSpace: 15 * gigabyte,
+            selectedOptionalArtifactIDs: [lithuania.id: [lithuaniaContours]]
+        )
+
+        let lithuaniaPlan = plan.selectedPackagePlans.first { $0.item.id == lithuania.id }
+        let latviaPlan = plan.selectedPackagePlans.first { $0.item.id == latvia.id }
+        expect(
+            lithuaniaPlan?.artifactPlan.optionalArtifacts.map(\.id) == [lithuaniaContours]
+                && latviaPlan?.artifactPlan.optionalArtifacts.isEmpty == true
+                && plan.storagePlan.selectedMapBytes == 640,
+            "two regions keep optional selections independent"
+        )
+    }
+
+    private static func testOptionalArtifactDoesNotChangeRegionCount() {
+        let comparison = makeComparisonWithContours(
+            region: "LTU",
+            name: "Lithuania"
+        )
+        let items = MapSelectionPlanner().items(
+            comparisons: [comparison],
+            preflightStatuses: [comparison.id: .readyNewInstall],
+            recommendedRegionID: nil
+        )
+        let contourID = comparison.catalogMap.optionalArtifacts[0].id
+        let plan = MapSelectionPlanner().plan(
+            items: items,
+            selectedIDs: [comparison.id],
+            currentFreeSpace: 15 * gigabyte,
+            selectedOptionalArtifactIDs: [comparison.id: [contourID]]
+        )
+
+        expect(
+            plan.selectedItems.count == 1
+                && plan.installItems.count == 1
+                && plan.selectedPackagePlans.count == 1,
+            "an optional artifact remains part of one selected region"
+        )
+    }
+
+    private static func testPackagesWithoutUsableOptionalArtifactsExposeNoChoice() {
+        let comparison = makeComparison(region: "DEU", name: "Germany", status: .notInstalled)
+        let items = MapSelectionPlanner().items(
+            comparisons: [comparison],
+            preflightStatuses: [comparison.id: .readyNewInstall],
+            recommendedRegionID: nil
+        )
+
+        expect(
+            items.first?.usableOptionalArtifacts.isEmpty == true,
+            "packages without a usable optional artifact expose no optional choice"
+        )
+    }
+
+    private static func testParentDeselectionInvalidatesOptionalSelection() {
+        let comparison = makeComparisonWithContours(region: "LTU", name: "Lithuania")
+        let items = MapSelectionPlanner().items(
+            comparisons: [comparison],
+            preflightStatuses: [comparison.id: .readyNewInstall],
+            recommendedRegionID: nil
+        )
+        let contourID = comparison.catalogMap.optionalArtifacts[0].id
+        let plan = MapSelectionPlanner().plan(
+            items: items,
+            selectedIDs: [],
+            currentFreeSpace: 15 * gigabyte,
+            selectedOptionalArtifactIDs: [comparison.id: [contourID]]
+        )
+
+        expect(
+            plan.status == .blocked
+                && plan.selectedPackagePlans.isEmpty
+                && plan.canContinue == false,
+            "a child selection cannot survive when its parent package is deselected"
+        )
+    }
+
+    private static func testDuplicateArtifactDefinitionsAreRejected() {
+        let packageID = "opentopomap-ltu"
+        let main = MapArtifact(
+            id: packageID + "-main",
+            kind: .main,
+            required: true,
+            sourceURL: URL(string: "https://garmin.opentopomap.org/lithuania.zip"),
+            sizeBytes: 300,
+            validationState: .validated
+        )
+        let contours = MapArtifact(
+            id: packageID + "-contours",
+            kind: .contours,
+            required: false,
+            sourceURL: URL(string: "https://garmin.opentopomap.org/lithuania-contours.zip"),
+            sizeBytes: 40,
+            validationState: .validated
+        )
+        let package = MapPackage(
+            id: packageID,
+            providerId: "opentopomap",
+            regionId: "LTU",
+            name: "Lithuania",
+            version: MapVersion(year: 2026, month: 5)!,
+            sizeBytes: 300,
+            sourceURL: main.sourceURL,
+            releaseDate: nil,
+            identifier: "LTU",
+            installSizeBytes: 300,
+            artifacts: [main, contours, contours]
+        )
+
+        do {
+            _ = try MapPackageSelection(
+                package: package,
+                selectedOptionalArtifactIDs: [contours.id]
+            )
+            expect(false, "duplicate artifact definitions are rejected")
+        } catch let error as MapPackageSelectionError {
+            expect(
+                error == .duplicateArtifact(contours.id),
+                "duplicate artifact definitions are rejected"
+            )
+        } catch {
+            expect(false, "duplicate artifact definitions are rejected")
+        }
+    }
+
     private static func makeComparison(
         id: String? = nil,
         providerID: String = "freizeitkarte",
@@ -919,7 +1169,8 @@ struct Stage45MapSelectionTests {
         size: UInt64 = 300,
         installSize: UInt64? = nil,
         identifier: String? = nil,
-        includeInstallSize: Bool = true
+        includeInstallSize: Bool = true,
+        artifacts: [MapArtifact]? = nil
     ) -> MapComparison {
         let package = MapPackage(
             id: id ?? "\(providerID)-\(region.lowercased())",
@@ -931,7 +1182,8 @@ struct Stage45MapSelectionTests {
             sourceURL: nil,
             releaseDate: nil,
             identifier: identifier,
-            installSizeBytes: includeInstallSize ? (installSize ?? size) : nil
+            installSizeBytes: includeInstallSize ? (installSize ?? size) : nil,
+            artifacts: artifacts
         )
 
         return MapComparison(
@@ -940,6 +1192,49 @@ struct Stage45MapSelectionTests {
             catalogMap: package,
             installedMap: installedMap,
             status: status
+        )
+    }
+
+    private static func makeComparisonWithContours(
+        region: String,
+        name: String,
+        contourSize: UInt64? = 40
+    ) -> MapComparison {
+        let packageID = "opentopomap-" + region.lowercased()
+        let main = MapArtifact(
+            id: packageID + "-main",
+            kind: .main,
+            required: true,
+            providerId: "opentopomap",
+            providerRegionId: region,
+            canonicalRegionId: region,
+            version: MapVersion(year: 2026, month: 5)!,
+            sourceURL: URL(string: "https://garmin.opentopomap.org/" + region.lowercased() + ".zip"),
+            sizeBytes: 300,
+            validationState: .validated
+        )
+        let contours = MapArtifact(
+            id: packageID + "-contours",
+            kind: .contours,
+            required: false,
+            providerId: "opentopomap",
+            providerRegionId: region,
+            canonicalRegionId: region,
+            version: MapVersion(year: 2026, month: 5)!,
+            sourceURL: URL(string: "https://garmin.opentopomap.org/" + region.lowercased() + "-contours.zip"),
+            sizeBytes: contourSize,
+            validationState: .validated
+        )
+        return makeComparison(
+            id: packageID,
+            providerID: "opentopomap",
+            providerName: "OpenTopoMap",
+            region: region,
+            name: name,
+            status: .notInstalled,
+            size: 300,
+            installSize: 300,
+            artifacts: [main, contours]
         )
     }
 

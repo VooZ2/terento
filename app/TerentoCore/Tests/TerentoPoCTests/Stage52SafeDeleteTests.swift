@@ -333,6 +333,38 @@ private func testOpenTopoMapLegacyAliasFilenameCanBeRemoved() throws {
     try require(transport.events == ["inspect", "delete"], "alias removal must still inspect before delete")
 }
 
+private func testOpenTopoMapContourFilenameCanBeRemoved() throws {
+    let contents = Data(repeating: 0x45, count: 12)
+    let identity = MapIdentity(provider: "OpenTopoMap", region: "LTU")!
+    let file = InstalledMapFile(
+        path: "/GARMIN/terento_opentopomap_ltu_contours.img",
+        filename: "terento_opentopomap_ltu_contours.img",
+        sizeBytes: UInt64(contents.count),
+        itemID: 204
+    )
+    let target = SafeDeleteTarget(
+        deviceKey: "fenix-8-091e-51b8",
+        mapIdentity: identity,
+        ownership: .managedByTerento,
+        objectID: 204,
+        expectedPath: file.path,
+        expectedFilename: file.filename,
+        expectedSizeBytes: file.sizeBytes,
+        expectedSHA256: sha256(contents),
+        backup: nil,
+        expectedVersion: MapVersion(year: 2026, month: 5)
+    )
+    let (result, transport) = run(
+        target: target,
+        current: deviceObject(for: target, sha256: nil),
+        requiresVerifiedBackup: false,
+        scans: [[]]
+    )
+
+    try require(result.status == .success, "an OpenTopoMap contour map must be removable as its own managed artifact")
+    try require(transport.events == ["inspect", "delete"], "contour removal must inspect before delete")
+}
+
 private func testManagedFilenameMustMatchNormalizedIdentity() throws {
     let prepared = validTarget()
     let wrongIdentity = MapIdentity(provider: "Freizeitkarte", region: "AUT")!
@@ -426,6 +458,49 @@ private func testRemovalReportsMeasuredProgress() throws {
         },
         "removal progress must never move backwards"
     )
+}
+
+private func testManagedRemovalCanUseExactIdentityWithoutFullHashRead() throws {
+    let prepared = validTarget()
+    let current = SafeDeleteDeviceObject(
+        file: prepared.target.sourceFile,
+        sha256: prepared.target.expectedSHA256,
+        contentHashVerified: false
+    )
+    let (result, transport) = run(
+        target: prepared.target,
+        current: current,
+        requiresVerifiedBackup: false,
+        scans: [[]]
+    )
+
+    try require(
+        result.status == .success,
+        "managed Remove should accept exact live identity without copying the full map"
+    )
+    try require(
+        transport.events == ["inspect", "delete"],
+        "managed fast Remove must still inspect before the one destructive delete"
+    )
+}
+
+private func testBusyDeviceFailureIsActionableAndNonDestructive() throws {
+    let prepared = validTarget()
+    let transport = FakeSafeDeleteTransport()
+    transport.currentObject = deviceObject(for: prepared.target)
+    transport.deleteError = .deviceBusy("PTP_ERROR_IO: failed to open session")
+
+    let (result, returnedTransport) = run(
+        target: prepared.target,
+        current: transport.currentObject,
+        requiresVerifiedBackup: false,
+        scans: [[]],
+        transport: transport
+    )
+
+    try require(result.status == .failedDeviceBusy, "busy USB failure must have a dedicated Remove status")
+    try require(result.message.contains("another app"), "busy USB failure must explain the recovery action")
+    try require(returnedTransport.events == ["inspect", "delete"], "busy failure must not repeat the destructive delete")
 }
 
 private func testHashMismatchAndMissingBackupAreBlocked() throws {
@@ -602,10 +677,13 @@ struct Stage52SafeDeleteTests {
             ("base managed filename allows recorded map version", testBaseManagedFilenameAllowsRecordedMapVersion),
             ("composite region managed filename can be removed", testCompositeRegionManagedFilenameCanBeRemoved),
             ("OpenTopoMap legacy alias filename can be removed", testOpenTopoMapLegacyAliasFilenameCanBeRemoved),
+            ("OpenTopoMap contour filename can be removed", testOpenTopoMapContourFilenameCanBeRemoved),
             ("managed filename must match normalized identity", testManagedFilenameMustMatchNormalizedIdentity),
             ("external and unknown maps are blocked", testExternalAndUnknownMapsAreBlocked),
             ("confirmed external map deletes without manifest cleanup", testConfirmedExternalMapDeletesWithoutManifestCleanup),
             ("removal reports measured progress", testRemovalReportsMeasuredProgress),
+            ("managed Remove can skip a full hash read after exact identity proof", testManagedRemovalCanUseExactIdentityWithoutFullHashRead),
+            ("busy USB removal failure is actionable and non-destructive", testBusyDeviceFailureIsActionableAndNonDestructive),
             ("hash mismatch and missing backup are blocked", testHashMismatchAndMissingBackupAreBlocked),
             ("disconnect and confirmation are blocked", testDisconnectAndConfirmationAreBlocked),
             ("post-delete rescan and exact identity are required", testPostDeleteRescanAndExactIdentityAreRequired),

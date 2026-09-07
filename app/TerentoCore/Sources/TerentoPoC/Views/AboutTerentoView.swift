@@ -2,15 +2,11 @@ import AppKit
 import SwiftUI
 
 enum TerentoAppMetadata {
-    static let version = (Bundle.main.object(
-        forInfoDictionaryKey: "CFBundleShortVersionString"
-    ) as? String) ?? "1.0.0"
-    static let build = (Bundle.main.object(
-        forInfoDictionaryKey: "CFBundleVersion"
-    ) as? String) ?? "1"
-    static let releaseLabel = (Bundle.main.object(
-        forInfoDictionaryKey: "TerentoReleaseLabel"
-    ) as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+    static let version = TerentoTelemetryMetadata.version
+    static let build = TerentoTelemetryMetadata.build
+    static let releaseLabel: String? = TerentoTelemetryMetadata.releaseLabel.isEmpty
+        ? nil
+        : TerentoTelemetryMetadata.releaseLabel
     static let displayVersion: String = {
         let label = releaseLabel?.isEmpty == false ? releaseLabel! : version
         return "Version \(label) (\(build))"

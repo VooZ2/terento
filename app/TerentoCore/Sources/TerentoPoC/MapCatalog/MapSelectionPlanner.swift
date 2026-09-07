@@ -52,6 +52,13 @@ struct MapSelectionItem: Identifiable, Equatable, Sendable {
 
     var action: MapSelectionAction { lifecycleAction }
 
+    /// Optional artifacts are exposed only after they have an independently
+    /// validated source and exact install size. A provider without such an
+    /// artifact keeps the normal one-row experience.
+    var usableOptionalArtifacts: [MapArtifact] {
+        package.optionalArtifacts.filter(\.isUsableOptionalSelection)
+    }
+
     var acquisitionAccessibilityLabel: String? {
         guard acquisitionAvailability != .available,
               let explanation = acquisitionAvailability.detailedExplanation else {
@@ -97,10 +104,32 @@ struct MapSelectionItem: Identifiable, Equatable, Sendable {
     }
 }
 
+struct SelectedMapPackagePlan: Equatable, Sendable {
+    let item: MapSelectionItem
+    let selection: MapPackageSelection
+    let artifactPlan: MapArtifactPlan
+
+    init(
+        item: MapSelectionItem,
+        selectedOptionalArtifactIDs: Set<String> = []
+    ) throws {
+        let selection = try MapPackageSelection(
+            package: item.package,
+            selectedOptionalArtifactIDs: selectedOptionalArtifactIDs
+        )
+        self.item = item
+        self.selection = selection
+        self.artifactPlan = item.package.artifactPlan(
+            includingOptionalArtifactIDs: selection.selectedOptionalArtifactIDs
+        )
+    }
+}
+
 /// A domain result passed from Choose to the next workflow step. The view does
 /// not calculate sizes, conflicts, or whether a selection may continue.
 struct InstallationPlan: Equatable, Sendable {
     let selectedItems: [MapSelectionItem]
+    let selectedPackagePlans: [SelectedMapPackagePlan]
     let installItems: [MapSelectionItem]
     let updateItems: [MapSelectionItem]
     let noActionItems: [MapSelectionItem]
@@ -248,9 +277,25 @@ struct MapSelectionPlanner: Sendable {
     func plan(
         items: [MapSelectionItem],
         selectedIDs: Set<String>,
-        currentFreeSpace: UInt64
+        currentFreeSpace: UInt64,
+        selectedOptionalArtifactIDs: [String: Set<String>] = [:]
     ) -> InstallationPlan {
         let selectedItems = items.filter { selectedIDs.contains($0.id) }
+        let selectedItemIDs = Set(selectedItems.map(\.id))
+        var selectedPackagePlans: [SelectedMapPackagePlan] = []
+        var hasInvalidOptionalSelection = selectedOptionalArtifactIDs.keys.contains {
+            !selectedItemIDs.contains($0)
+        }
+        for item in selectedItems {
+            do {
+                selectedPackagePlans.append(try SelectedMapPackagePlan(
+                    item: item,
+                    selectedOptionalArtifactIDs: selectedOptionalArtifactIDs[item.id] ?? []
+                ))
+            } catch {
+                hasInvalidOptionalSelection = true
+            }
+        }
         let selectedProviderIDs = Set(
             selectedItems
                 .filter { $0.package.sourceKind == .provider }
@@ -275,9 +320,12 @@ struct MapSelectionPlanner: Sendable {
         // Install owns only new map additions. An update item can still be
         // represented in a defensive plan for lifecycle tests, but it must
         // never consume the Install screen's storage projection.
-        let selectedSizes = selectedItems
-            .filter { $0.action == .install && $0.acquisitionAvailability == .available }
-            .map(\.installSizeBytes)
+        let selectedSizes = selectedPackagePlans
+            .filter {
+                $0.item.action == .install
+                    && $0.item.acquisitionAvailability == .available
+            }
+            .map { $0.artifactPlan.installSizeBytes }
         let storagePlan = storagePlanner.plan(
             currentFreeSpace: currentFreeSpace,
             selectedMapSizes: selectedSizes
@@ -286,7 +334,10 @@ struct MapSelectionPlanner: Sendable {
         let status: InstallationPlanStatus
         let reason: String
 
-        if selectedItems.isEmpty {
+        if hasInvalidOptionalSelection {
+            status = .blocked
+            reason = "One selected map component is no longer available. Refresh the catalog and try again."
+        } else if selectedItems.isEmpty {
             status = .noSelection
             reason = "Select a map to continue."
         } else if selectedProviderIDs.count > 1 {
@@ -317,6 +368,7 @@ struct MapSelectionPlanner: Sendable {
 
         return InstallationPlan(
             selectedItems: selectedItems,
+            selectedPackagePlans: selectedPackagePlans,
             installItems: installItems,
             updateItems: updateItems,
             noActionItems: noActionItems,

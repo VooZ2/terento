@@ -39,6 +39,7 @@ struct MapStatisticsEvent: Codable, Equatable, Identifiable, Sendable {
     let outcome: MapStatisticsEventOutcome
     let timestamp: Date
     let appBuild: String
+    let releaseLabel: String
 
     init(
         id: UUID = UUID(),
@@ -47,8 +48,8 @@ struct MapStatisticsEvent: Codable, Equatable, Identifiable, Sendable {
         eventType: MapStatisticsEventType,
         outcome: MapStatisticsEventOutcome,
         timestamp: Date = Date(),
-        appBuild: String = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
-            ?? "development"
+        appBuild: String = TerentoTelemetryMetadata.eventBuild,
+        releaseLabel: String = TerentoTelemetryMetadata.releaseLabel
     ) {
         schemaVersion = Self.schemaVersion
         self.id = id
@@ -70,6 +71,7 @@ struct MapStatisticsEvent: Codable, Equatable, Identifiable, Sendable {
         self.outcome = outcome
         self.timestamp = timestamp
         self.appBuild = String(appBuild.prefix(80))
+        self.releaseLabel = String(releaseLabel.prefix(80))
     }
 
     private static func optionalSafeIdentifier(_ value: String) -> String? {

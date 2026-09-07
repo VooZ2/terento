@@ -328,6 +328,27 @@ struct MapInventoryListBuilder: Sendable {
         namespace: String
     ) -> [String: [InstalledMap]] {
         Dictionary(grouping: maps) { map in
+            if namespace.hasPrefix("provider-"),
+               map.managementState == .managedByTerento,
+               let managedPackageID = map.managedPackageID,
+               !managedPackageID.isEmpty {
+                return "\(namespace):managed-package:\(managedPackageID)"
+            }
+
+            // Legacy manifests may not have a package component ID, and
+            // detected third-party files must never be merged with a managed
+            // file by a broad provider/region identity. Keep these exact
+            // objects separate so each Remove decision has one ownership
+            // proof and one MTP target.
+            if map.managementState == .unknown && namespace.hasPrefix("provider-") {
+                return "\(namespace):file:\(map.sourceFile.path)"
+            }
+
+            if namespace.hasPrefix("provider-")
+                && map.managementState == .managedByTerento {
+                return "\(namespace):legacy-managed-file:\(map.sourceFile.path)"
+            }
+
             // A verified custom import must never be grouped with an
             // unowned third-party IMG merely because both files expose the
             // same human-readable header name. Keep each managed custom

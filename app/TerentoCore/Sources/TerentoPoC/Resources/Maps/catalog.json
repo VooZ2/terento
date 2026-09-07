@@ -1106,7 +1106,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/afghanistan/otm-afghanistan-contours.zip",
               "sizeBytes": 511557632,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 480979232
             }
           ]
         },
@@ -1188,7 +1189,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/albania/otm-albania-contours.zip",
               "sizeBytes": 37560320,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 36109576
             }
           ]
         },
@@ -1270,7 +1272,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/algeria/otm-algeria-contours.zip",
               "sizeBytes": 624508928,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 526812858
             }
           ]
         },
@@ -1352,7 +1355,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/alps/otm-alps-contours.zip",
               "sizeBytes": 256364544,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 243688921
             }
           ]
         },
@@ -1434,7 +1438,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/andorra/otm-andorra-contours.zip",
               "sizeBytes": 4586496,
-              "validationState": "notValidated"
+              "downloadSizeBytes": 4437314,
+              "validationState": "validated"
             }
           ]
         },
@@ -1516,7 +1521,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/angola/otm-angola-contours.zip",
               "sizeBytes": 292216832,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 258442461
             }
           ]
         },
@@ -1598,7 +1604,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/south-america/argentina/otm-argentina-contours.zip",
               "sizeBytes": 759808000,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 690700666
             }
           ]
         },
@@ -1680,7 +1687,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/armenia/otm-armenia-contours.zip",
               "sizeBytes": 48386048,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 46557403
             }
           ]
         },
@@ -1762,7 +1770,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/australia-oceania/australia/otm-australia-contours.zip",
               "sizeBytes": 1008631808,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 858260623
             }
           ]
         },
@@ -1844,7 +1853,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/austria/otm-austria-contours.zip",
               "sizeBytes": 111878144,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 106723781
             }
           ]
         },
@@ -1926,7 +1936,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/azerbaijan/otm-azerbaijan-contours.zip",
               "sizeBytes": 72734720,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 69563523
             }
           ]
         },
@@ -2008,7 +2019,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/azores/otm-azores-contours.zip",
               "sizeBytes": 1152000,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 1103133
             }
           ]
         },
@@ -2090,7 +2102,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/bangladesh/otm-bangladesh-contours.zip",
               "sizeBytes": 55873536,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 50201709
             }
           ]
         },
@@ -2172,7 +2185,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/belarus/otm-belarus-contours.zip",
               "sizeBytes": 63389696,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 53864895
             }
           ]
         },
@@ -2254,7 +2268,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/belgium/otm-belgium-contours.zip",
               "sizeBytes": 21825536,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 20144100
             }
           ]
         },
@@ -2336,7 +2351,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/central-america/belize/otm-belize-contours.zip",
               "sizeBytes": 13357056,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 12275276
             }
           ]
         },
@@ -2418,7 +2434,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/benin/otm-benin-contours.zip",
               "sizeBytes": 28053504,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 24806150
             }
           ]
         },
@@ -2500,7 +2517,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/bhutan/otm-bhutan-contours.zip",
               "sizeBytes": 72519680,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 69522849
             }
           ]
         },
@@ -2582,7 +2600,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/south-america/bolivia/otm-bolivia-contours.zip",
               "sizeBytes": 462061568,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 421482607
             }
           ]
         },
@@ -2664,7 +2683,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/bosnia-herzegovina/otm-bosnia-herzegovina-contours.zip",
               "sizeBytes": 56612864,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 53416165
             }
           ]
         },
@@ -2746,7 +2766,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/botswana/otm-botswana-contours.zip",
               "sizeBytes": 95475712,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 73996214
             }
           ]
         },
@@ -2828,7 +2849,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/south-america/brazil/otm-brazil-contours.zip",
               "sizeBytes": 2205155328,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 1918116047
             }
           ]
         },
@@ -2910,7 +2932,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/british-isles/otm-british-isles-contours.zip",
               "sizeBytes": 73330688,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 69577517
             }
           ]
         },
@@ -2992,7 +3015,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/bulgaria/otm-bulgaria-contours.zip",
               "sizeBytes": 77099008,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 73670929
             }
           ]
         },
@@ -3074,7 +3098,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/burkina-faso/otm-burkina-faso-contours.zip",
               "sizeBytes": 64294912,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 53103861
             }
           ]
         },
@@ -3156,7 +3181,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/burundi/otm-burundi-contours.zip",
               "sizeBytes": 27604992,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 26021225
             }
           ]
         },
@@ -3238,7 +3264,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/cambodia/otm-cambodia-contours.zip",
               "sizeBytes": 58951680,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 53364461
             }
           ]
         },
@@ -3320,7 +3347,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/cameroon/otm-cameroon-contours.zip",
               "sizeBytes": 216735744,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 192913603
             }
           ]
         },
@@ -3402,7 +3430,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/north-america/canada/otm-canada-contours.zip",
               "sizeBytes": 2770993152,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 2446779796
             }
           ]
         },
@@ -3484,7 +3513,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/north-america/canada/otm-canada-contours.zip",
               "sizeBytes": 2770993152,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 2446779796
             }
           ]
         },
@@ -3566,7 +3596,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/canary-islands/otm-canary-islands-contours.zip",
               "sizeBytes": 11704320,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 9967211
             }
           ]
         },
@@ -3648,7 +3679,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/cape-verde/otm-cape-verde-contours.zip",
               "sizeBytes": 2340864,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 2228437
             }
           ]
         },
@@ -3730,7 +3762,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/central-african-republic/otm-central-african-republic-contours.zip",
               "sizeBytes": 177307648,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 154581474
             }
           ]
         },
@@ -3812,7 +3845,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/chad/otm-chad-contours.zip",
               "sizeBytes": 337158144,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 272668773
             }
           ]
         },
@@ -3894,7 +3928,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/south-america/chile/otm-chile-contours.zip",
               "sizeBytes": 619790336,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 586152843
             }
           ]
         },
@@ -3976,7 +4011,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/china/otm-china-contours.zip",
               "sizeBytes": 4271505408,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 3721409185
             }
           ]
         },
@@ -4058,7 +4094,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/south-america/colombia/otm-colombia-contours.zip",
               "sizeBytes": 530546688,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 482131089
             }
           ]
         },
@@ -4140,7 +4177,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/comores/otm-comores-contours.zip",
               "sizeBytes": 5617664,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 5179086
             }
           ]
         },
@@ -4222,7 +4260,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/congo-brazzaville/otm-congo-brazzaville-contours.zip",
               "sizeBytes": 165253120,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 147019442
             }
           ]
         },
@@ -4304,7 +4343,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/congo-democratic-republic/otm-congo-democratic-republic-contours.zip",
               "sizeBytes": 706052096,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 630904393
             }
           ]
         },
@@ -4386,7 +4426,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/croatia/otm-croatia-contours.zip",
               "sizeBytes": 58249216,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 54487119
             }
           ]
         },
@@ -4468,7 +4509,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/central-america/cuba/otm-cuba-contours.zip",
               "sizeBytes": 31842304,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 29112747
             }
           ]
         },
@@ -4550,7 +4592,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/cyprus/otm-cyprus-contours.zip",
               "sizeBytes": 5528576,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 5287549
             }
           ]
         },
@@ -4632,7 +4675,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/czech-republic/otm-czech-republic-contours.zip",
               "sizeBytes": 48875520,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 45989214
             }
           ]
         },
@@ -4714,7 +4758,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/dach/otm-dach-contours.zip",
               "sizeBytes": 270221312,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 253322791
             }
           ]
         },
@@ -4796,7 +4841,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/denmark/otm-denmark-contours.zip",
               "sizeBytes": 22425600,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 19887200
             }
           ]
         },
@@ -4878,7 +4924,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/djibouti/otm-djibouti-contours.zip",
               "sizeBytes": 19933184,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 18224022
             }
           ]
         },
@@ -4960,7 +5007,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/south-america/ecuador/otm-ecuador-contours.zip",
               "sizeBytes": 186474496,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 172937501
             }
           ]
         },
@@ -5042,7 +5090,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/egypt/otm-egypt-contours.zip",
               "sizeBytes": 254656512,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 214111597
             }
           ]
         },
@@ -5124,7 +5173,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/equatorial-guinea/otm-equatorial-guinea-contours.zip",
               "sizeBytes": 31782912,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 28515227
             }
           ]
         },
@@ -5206,7 +5256,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/eritrea/otm-eritrea-contours.zip",
               "sizeBytes": 87019520,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 79652049
             }
           ]
         },
@@ -5288,7 +5339,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/estonia/otm-estonia-contours.zip",
               "sizeBytes": 18051072,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 15557807
             }
           ]
         },
@@ -5370,7 +5422,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/ethiopia/otm-ethiopia-contours.zip",
               "sizeBytes": 449118208,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 412866500
             }
           ]
         },
@@ -5452,7 +5505,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/faroe-islands/otm-faroe-islands-contours.zip",
               "sizeBytes": 1813504,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 1734653
             }
           ]
         },
@@ -5534,7 +5588,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/australia-oceania/fiji/otm-fiji-contours.zip",
               "sizeBytes": 378880,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 350921
             }
           ]
         },
@@ -5616,7 +5671,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/finland/otm-finland-contours.zip",
               "sizeBytes": 43259904,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 37863377
             }
           ]
         },
@@ -5698,7 +5754,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/france/otm-france-contours.zip",
               "sizeBytes": 223219712,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 211648884
             }
           ]
         },
@@ -5780,7 +5837,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/gabon/otm-gabon-contours.zip",
               "sizeBytes": 152100864,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 136119320
             }
           ]
         },
@@ -5862,7 +5920,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/gcc-states/otm-gcc-states-contours.zip",
               "sizeBytes": 679051264,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 573891263
             }
           ]
         },
@@ -5944,7 +6003,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/georgia/otm-georgia-contours.zip",
               "sizeBytes": 93462528,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 89998156
             }
           ]
         },
@@ -6026,7 +6086,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/germany/otm-germany-contours.zip",
               "sizeBytes": 132175872,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 123465538
             }
           ]
         },
@@ -6108,7 +6169,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/ghana/otm-ghana-contours.zip",
               "sizeBytes": 73474048,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 65085815
             }
           ]
         },
@@ -6190,7 +6252,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/great-britain/otm-great-britain-contours.zip",
               "sizeBytes": 64966656,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 61678146
             }
           ]
         },
@@ -6272,7 +6335,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/greece/otm-greece-contours.zip",
               "sizeBytes": 117915648,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 113265618
             }
           ]
         },
@@ -6354,7 +6418,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/north-america/greenland/otm-greenland-contours.zip",
               "sizeBytes": 320643072,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 291228689
             }
           ]
         },
@@ -6436,7 +6501,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/central-america/guatemala/otm-guatemala-contours.zip",
               "sizeBytes": 77119488,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 71697150
             }
           ]
         },
@@ -6518,7 +6584,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/guinea/otm-guinea-contours.zip",
               "sizeBytes": 105136128,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 96526545
             }
           ]
         },
@@ -6600,7 +6667,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/guinea-bissau/otm-guinea-bissau-contours.zip",
               "sizeBytes": 5523456,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 4945225
             }
           ]
         },
@@ -6682,7 +6750,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/central-america/haiti-and-domrep/otm-haiti-and-domrep-contours.zip",
               "sizeBytes": 41488384,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 39121645
             }
           ]
         },
@@ -6764,7 +6833,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/hungary/otm-hungary-contours.zip",
               "sizeBytes": 44707840,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 40785926
             }
           ]
         },
@@ -6846,7 +6916,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/iceland/otm-iceland-contours.zip",
               "sizeBytes": 26812416,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 25314634
             }
           ]
         },
@@ -6928,7 +6999,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/india/otm-india-contours.zip",
               "sizeBytes": 1198620672,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 1086906805
             }
           ]
         },
@@ -7010,7 +7082,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/indonesia/otm-indonesia-contours.zip",
               "sizeBytes": 849133568,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 784857421
             }
           ]
         },
@@ -7092,7 +7165,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/iran/otm-iran-contours.zip",
               "sizeBytes": 719945728,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 663304984
             }
           ]
         },
@@ -7174,7 +7248,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/iraq/otm-iraq-contours.zip",
               "sizeBytes": 126353408,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 109694602
             }
           ]
         },
@@ -7256,7 +7331,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/ireland-and-northern-ireland/otm-ireland-and-northern-ireland-contours.zip",
               "sizeBytes": 21399552,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 20220794
             }
           ]
         },
@@ -7338,7 +7414,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/isle-of-man/otm-isle-of-man-contours.zip",
               "sizeBytes": 13440000,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 12687953
             }
           ]
         },
@@ -7420,7 +7497,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/israel-and-palestine/otm-israel-and-palestine-contours.zip",
               "sizeBytes": 23592960,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 21935184
             }
           ]
         },
@@ -7502,7 +7580,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/italy/otm-italy-contours.zip",
               "sizeBytes": 233209856,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 223513682
             }
           ]
         },
@@ -7584,7 +7663,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/ivory-coast/otm-ivory-coast-contours.zip",
               "sizeBytes": 95418368,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 84914230
             }
           ]
         },
@@ -7666,7 +7746,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/central-america/jamaica/otm-jamaica-contours.zip",
               "sizeBytes": 12386304,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 11530403
             }
           ]
         },
@@ -7748,7 +7829,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/japan/otm-japan-contours.zip",
               "sizeBytes": 290562048,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 274904835
             }
           ]
         },
@@ -7830,7 +7912,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/jordan/otm-jordan-contours.zip",
               "sizeBytes": 42061824,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 37317730
             }
           ]
         },
@@ -7912,7 +7995,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/kazakhstan/otm-kazakhstan-contours.zip",
               "sizeBytes": 483024896,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 418056344
             }
           ]
         },
@@ -7994,7 +8078,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/kenya/otm-kenya-contours.zip",
               "sizeBytes": 139194368,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 125640456
             }
           ]
         },
@@ -8076,7 +8161,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/kosovo/otm-kosovo-contours.zip",
               "sizeBytes": 20133888,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 19366854
             }
           ]
         },
@@ -8158,7 +8244,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/kyrgyzstan/otm-kyrgyzstan-contours.zip",
               "sizeBytes": 258957312,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 248708177
             }
           ]
         },
@@ -8240,7 +8327,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/laos/otm-laos-contours.zip",
               "sizeBytes": 265588736,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 248877815
             }
           ]
         },
@@ -8322,7 +8410,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/latvia/otm-latvia-contours.zip",
               "sizeBytes": 20965376,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 17993644
             }
           ]
         },
@@ -8404,7 +8493,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/lebanon/otm-lebanon-contours.zip",
               "sizeBytes": 18718720,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 17714880
             }
           ]
         },
@@ -8486,7 +8576,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/lesotho/otm-lesotho-contours.zip",
               "sizeBytes": 40411136,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 38844022
             }
           ]
         },
@@ -8568,7 +8659,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/liberia/otm-liberia-contours.zip",
               "sizeBytes": 60743680,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 53684042
             }
           ]
         },
@@ -8650,7 +8742,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/libya/otm-libya-contours.zip",
               "sizeBytes": 362807296,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 294031113
             }
           ]
         },
@@ -8732,7 +8825,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/liechtenstein/otm-liechtenstein-contours.zip",
               "sizeBytes": 6893568,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 6635955
             }
           ]
         },
@@ -8815,8 +8909,9 @@
                 "sourceUpdatedAt": "2021-06-17"
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/lithuania/otm-lithuania-contours.zip",
-              "sizeBytes": 17605776,
-              "validationState": "notValidated"
+              "sizeBytes": 20283392,
+              "downloadSizeBytes": 17605776,
+              "validationState": "validated"
             }
           ]
         },
@@ -8898,7 +8993,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/luxembourg/otm-luxembourg-contours.zip",
               "sizeBytes": 8415232,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 7962504
             }
           ]
         },
@@ -8980,7 +9076,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/macedonia/otm-macedonia-contours.zip",
               "sizeBytes": 32995328,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 31843257
             }
           ]
         },
@@ -9062,7 +9159,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/madagascar/otm-madagascar-contours.zip",
               "sizeBytes": 228896768,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 212415102
             }
           ]
         },
@@ -9144,7 +9242,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/malawi/otm-malawi-contours.zip",
               "sizeBytes": 66586624,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 61962516
             }
           ]
         },
@@ -9226,7 +9325,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/malaysia-singapore-brunei/otm-malaysia-singapore-brunei-contours.zip",
               "sizeBytes": 234704896,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 218040324
             }
           ]
         },
@@ -9308,7 +9408,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/maldives/otm-maldives-contours.zip",
               "sizeBytes": 8179712,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 7549409
             }
           ]
         },
@@ -9390,7 +9491,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/mali/otm-mali-contours.zip",
               "sizeBytes": 284991488,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 224535352
             }
           ]
         },
@@ -9472,7 +9574,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/malta/otm-malta-contours.zip",
               "sizeBytes": 2715648,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 2590026
             }
           ]
         },
@@ -9554,7 +9657,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/mauritania/otm-mauritania-contours.zip",
               "sizeBytes": 249634816,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 193255946
             }
           ]
         },
@@ -9636,7 +9740,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/mauritius/otm-mauritius-contours.zip",
               "sizeBytes": 2536448,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 2428812
             }
           ]
         },
@@ -9718,7 +9823,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/north-america/mexico/otm-mexico-contours.zip",
               "sizeBytes": 888700928,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 825540199
             }
           ]
         },
@@ -9800,7 +9906,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/moldova/otm-moldova-contours.zip",
               "sizeBytes": 20534272,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 19446566
             }
           ]
         },
@@ -9882,7 +9989,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/monaco/otm-monaco-contours.zip",
               "sizeBytes": 2322432,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 2242576
             }
           ]
         },
@@ -9964,7 +10072,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/mongolia/otm-mongolia-contours.zip",
               "sizeBytes": 553844736,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 514354961
             }
           ]
         },
@@ -10046,7 +10155,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/montenegro/otm-montenegro-contours.zip",
               "sizeBytes": 27557888,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 26411745
             }
           ]
         },
@@ -10128,7 +10238,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/morocco/otm-morocco-contours.zip",
               "sizeBytes": 251580416,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 222878945
             }
           ]
         },
@@ -10210,7 +10321,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/mozambique/otm-mozambique-contours.zip",
               "sizeBytes": 184532992,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 168789764
             }
           ]
         },
@@ -10292,7 +10404,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/myanmar/otm-myanmar-contours.zip",
               "sizeBytes": 553943040,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 517052357
             }
           ]
         },
@@ -10374,7 +10487,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/namibia/otm-namibia-contours.zip",
               "sizeBytes": 200855552,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 170550401
             }
           ]
         },
@@ -10456,7 +10570,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/nepal/otm-nepal-contours.zip",
               "sizeBytes": 227749888,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 214886487
             }
           ]
         },
@@ -10538,7 +10653,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/netherlands/otm-netherlands-contours.zip",
               "sizeBytes": 13600768,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 12172370
             }
           ]
         },
@@ -10620,7 +10736,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/australia-oceania/new-caledonia/otm-new-caledonia-contours.zip",
               "sizeBytes": 16236544,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 15455793
             }
           ]
         },
@@ -10702,7 +10819,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/australia-oceania/new-zealand/otm-new-zealand-contours.zip",
               "sizeBytes": 190193664,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 181472162
             }
           ]
         },
@@ -10784,7 +10902,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/central-america/nicaragua/otm-nicaragua-contours.zip",
               "sizeBytes": 67092480,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 62197436
             }
           ]
         },
@@ -10866,7 +10985,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/niger/otm-niger-contours.zip",
               "sizeBytes": 336470016,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 266230332
             }
           ]
         },
@@ -10948,7 +11068,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/nigeria/otm-nigeria-contours.zip",
               "sizeBytes": 186429440,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 162996263
             }
           ]
         },
@@ -11030,7 +11151,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/north-korea/otm-north-korea-contours.zip",
               "sizeBytes": 127264768,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 121589768
             }
           ]
         },
@@ -11112,7 +11234,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/norway/otm-norway-contours.zip",
               "sizeBytes": 195944448,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 185705572
             }
           ]
         },
@@ -11194,7 +11317,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/pakistan/otm-pakistan-contours.zip",
               "sizeBytes": 517611520,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 477821934
             }
           ]
         },
@@ -11276,7 +11400,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/australia-oceania/papua-new-guinea/otm-papua-new-guinea-contours.zip",
               "sizeBytes": 273956864,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 256913179
             }
           ]
         },
@@ -11358,7 +11483,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/south-america/paraguay/otm-paraguay-contours.zip",
               "sizeBytes": 93243392,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 77049640
             }
           ]
         },
@@ -11440,7 +11566,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/south-america/peru/otm-peru-contours.zip",
               "sizeBytes": 843759616,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 776518860
             }
           ]
         },
@@ -11522,7 +11649,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/philippines/otm-philippines-contours.zip",
               "sizeBytes": 180727808,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 169726620
             }
           ]
         },
@@ -11604,7 +11732,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/poland/otm-poland-contours.zip",
               "sizeBytes": 81219584,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 72987101
             }
           ]
         },
@@ -11686,7 +11815,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/portugal/otm-portugal-contours.zip",
               "sizeBytes": 51789824,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 49153884
             }
           ]
         },
@@ -11768,7 +11898,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/romania/otm-romania-contours.zip",
               "sizeBytes": 110569472,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 104869290
             }
           ]
         },
@@ -11852,7 +11983,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/russia-asian-part/otm-russia-asian-part-contours.zip",
               "sizeBytes": 4174905344,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 3692471925
             }
           ]
         },
@@ -11936,7 +12068,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/russia-european-part/otm-russia-european-part-contours.zip",
               "sizeBytes": 307757056,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 274598077
             }
           ]
         },
@@ -12018,7 +12151,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/rwanda/otm-rwanda-contours.zip",
               "sizeBytes": 33124352,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 31321546
             }
           ]
         },
@@ -12159,7 +12293,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/sao-tome-and-principe/otm-sao-tome-and-principe-contours.zip",
               "sizeBytes": 2974720,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 2585266
             }
           ]
         },
@@ -12241,7 +12376,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/senegal-and-gambia/otm-senegal-and-gambia-contours.zip",
               "sizeBytes": 35715072,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 30712587
             }
           ]
         },
@@ -12323,7 +12459,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/serbia/otm-serbia-contours.zip",
               "sizeBytes": 60491776,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 57501708
             }
           ]
         },
@@ -12405,7 +12542,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/seychelles/otm-seychelles-contours.zip",
               "sizeBytes": 15441920,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 13521430
             }
           ]
         },
@@ -12487,7 +12625,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/sierra-leone/otm-sierra-leone-contours.zip",
               "sizeBytes": 37507072,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 33926191
             }
           ]
         },
@@ -12569,7 +12708,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/slovakia/otm-slovakia-contours.zip",
               "sizeBytes": 46016512,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 43045646
             }
           ]
         },
@@ -12651,7 +12791,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/slovenia/otm-slovenia-contours.zip",
               "sizeBytes": 29276160,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 27718685
             }
           ]
         },
@@ -12733,7 +12874,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/somalia/otm-somalia-contours.zip",
               "sizeBytes": 113293312,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 96512355
             }
           ]
         },
@@ -12815,7 +12957,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/south-africa/otm-south-africa-contours.zip",
               "sizeBytes": 332955648,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 305691764
             }
           ]
         },
@@ -12897,7 +13040,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/south-africa-and-lesotho/otm-south-africa-and-lesotho-contours.zip",
               "sizeBytes": 332955648,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 305691850
             }
           ]
         },
@@ -12979,7 +13123,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/south-korea/otm-south-korea-contours.zip",
               "sizeBytes": 97028096,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 91382680
             }
           ]
         },
@@ -13061,7 +13206,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/south-sudan/otm-south-sudan-contours.zip",
               "sizeBytes": 152109056,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 125175954
             }
           ]
         },
@@ -13143,7 +13289,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/spain/otm-spain-contours.zip",
               "sizeBytes": 234037248,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 222714241
             }
           ]
         },
@@ -13225,7 +13372,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/sri-lanka/otm-sri-lanka-contours.zip",
               "sizeBytes": 21071872,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 19221816
             }
           ]
         },
@@ -13307,7 +13455,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/sudan/otm-sudan-contours.zip",
               "sizeBytes": 423002112,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 342172228
             }
           ]
         },
@@ -13389,7 +13538,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/south-america/suriname/otm-suriname-contours.zip",
               "sizeBytes": 85207040,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 74122514
             }
           ]
         },
@@ -13471,7 +13621,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/swaziland/otm-swaziland-contours.zip",
               "sizeBytes": 22833152,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 21693898
             }
           ]
         },
@@ -13553,7 +13704,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/sweden/otm-sweden-contours.zip",
               "sizeBytes": 108406784,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 99413631
             }
           ]
         },
@@ -13635,7 +13787,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/switzerland/otm-switzerland-contours.zip",
               "sizeBytes": 74203136,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 71176347
             }
           ]
         },
@@ -13717,7 +13870,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/syria/otm-syria-contours.zip",
               "sizeBytes": 64083968,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 56510859
             }
           ]
         },
@@ -13799,7 +13953,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/taiwan/otm-taiwan-contours.zip",
               "sizeBytes": 48406528,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 46060299
             }
           ]
         },
@@ -13881,7 +14036,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/tajikistan/otm-tajikistan-contours.zip",
               "sizeBytes": 239517696,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 229274302
             }
           ]
         },
@@ -13963,7 +14119,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/tanzania/otm-tanzania-contours.zip",
               "sizeBytes": 240447488,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 222196574
             }
           ]
         },
@@ -14045,7 +14202,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/thailand/otm-thailand-contours.zip",
               "sizeBytes": 290619392,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 268168263
             }
           ]
         },
@@ -14127,7 +14285,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/togo/otm-togo-contours.zip",
               "sizeBytes": 30443520,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 27202568
             }
           ]
         },
@@ -14209,7 +14368,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/tunisia/otm-tunisia-contours.zip",
               "sizeBytes": 58535936,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 51836945
             }
           ]
         },
@@ -14291,7 +14451,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/turkey/otm-turkey-contours.zip",
               "sizeBytes": 426565632,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 408138348
             }
           ]
         },
@@ -14373,7 +14534,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/turkmenistan/otm-turkmenistan-contours.zip",
               "sizeBytes": 138665984,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 119842929
             }
           ]
         },
@@ -14455,7 +14617,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/uganda/otm-uganda-contours.zip",
               "sizeBytes": 79376384,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 73837937
             }
           ]
         },
@@ -14537,7 +14700,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/europe/ukraine/otm-ukraine-contours.zip",
               "sizeBytes": 133240832,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 121006032
             }
           ]
         },
@@ -14619,7 +14783,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/south-america/uruguay/otm-uruguay-contours.zip",
               "sizeBytes": 40677376,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 35161840
             }
           ]
         },
@@ -14701,7 +14866,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/north-america/us-midwest/otm-us-midwest-contours.zip",
               "sizeBytes": 311762944,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 284129953
             }
           ]
         },
@@ -14783,7 +14949,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/north-america/us-northeast/otm-us-northeast-contours.zip",
               "sizeBytes": 144977920,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 136249066
             }
           ]
         },
@@ -14865,7 +15032,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/north-america/us-pacific/otm-us-pacific-contours.zip",
               "sizeBytes": 717783040,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 678175083
             }
           ]
         },
@@ -14947,7 +15115,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/north-america/us-south/otm-us-south-contours.zip",
               "sizeBytes": 458973184,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 422566514
             }
           ]
         },
@@ -15029,7 +15198,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/north-america/us-west/otm-us-west-contours.zip",
               "sizeBytes": 1337589760,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 1250331862
             }
           ]
         },
@@ -15111,7 +15281,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/uzbekistan/otm-uzbekistan-contours.zip",
               "sizeBytes": 177217536,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 155319076
             }
           ]
         },
@@ -15193,7 +15364,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/south-america/venezuela/otm-venezuela-contours.zip",
               "sizeBytes": 387399680,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 349928293
             }
           ]
         },
@@ -15275,7 +15447,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/vietnam/otm-vietnam-contours.zip",
               "sizeBytes": 314548224,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 292107033
             }
           ]
         },
@@ -15357,7 +15530,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/asia/yemen/otm-yemen-contours.zip",
               "sizeBytes": 224972800,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 204456975
             }
           ]
         },
@@ -15439,7 +15613,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/zambia/otm-zambia-contours.zip",
               "sizeBytes": 158609408,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 140258786
             }
           ]
         },
@@ -15521,7 +15696,8 @@
               },
               "sourceURL": "https://garmin.opentopomap.org/africa/zimbabwe/otm-zimbabwe-contours.zip",
               "sizeBytes": 117876736,
-              "validationState": "notValidated"
+              "validationState": "validated",
+              "downloadSizeBytes": 105142337
             }
           ]
         }

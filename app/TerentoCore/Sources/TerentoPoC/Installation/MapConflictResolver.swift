@@ -15,10 +15,14 @@ struct MapConflictResolver: Sendable {
     func resolve(
         selectedPackage: MapPackage,
         targetPath: String,
+        artifactKind: MapArtifactKind = .main,
         installedMaps: [InstalledMap],
         inspectedFiles: [InstalledMapFile]
     ) -> MapConflictResolution {
         if let matchingMap = installedMaps.first(where: { installedMap in
+            guard artifactKind == .main || installedMap.sourceFile.path == targetPath else {
+                return false
+            }
             guard let installedIdentity = installedMap.identity,
                   let selectedIdentity = selectedPackage.identity else {
                 return false
@@ -63,11 +67,13 @@ struct MapConflictResolver: Sendable {
 
     func targetPath(
         profile: DeviceInstallProfile,
-        selectedPackage: MapPackage
+        selectedPackage: MapPackage,
+        artifactKind: MapArtifactKind = .main
     ) throws -> String {
         let filename = try filenameGenerator.filename(
             providerId: selectedPackage.providerId,
-            regionId: selectedPackage.canonicalRegionId
+            regionId: selectedPackage.canonicalRegionId,
+            artifactKind: artifactKind
         )
         return "\(profile.targetDirectory)/\(filename)"
     }

@@ -45,6 +45,47 @@ struct InstalledMap: Identifiable, Equatable, Sendable {
     let sourceFile: InstalledMapFile
     let metadataStatus: MapMetadataStatus
     let managementState: MapManagementState
+    /// Populated only from an exact local manifest match. It is never
+    /// inferred from a provider filename alone.
+    let managedPackageID: String?
+    let managedArtifactID: String?
+    let managedArtifactKind: MapArtifactKind?
+
+    init(
+        name: String,
+        provider: String?,
+        region: String?,
+        family: String?,
+        rawVersion: String?,
+        version: MapVersion?,
+        identifier: String?,
+        productId: UInt16?,
+        familyId: UInt16?,
+        sizeBytes: UInt64,
+        sourceFile: InstalledMapFile,
+        metadataStatus: MapMetadataStatus,
+        managementState: MapManagementState,
+        managedPackageID: String? = nil,
+        managedArtifactID: String? = nil,
+        managedArtifactKind: MapArtifactKind? = nil
+    ) {
+        self.name = name
+        self.provider = provider
+        self.region = region
+        self.family = family
+        self.rawVersion = rawVersion
+        self.version = version
+        self.identifier = identifier
+        self.productId = productId
+        self.familyId = familyId
+        self.sizeBytes = sizeBytes
+        self.sourceFile = sourceFile
+        self.metadataStatus = metadataStatus
+        self.managementState = managementState
+        self.managedPackageID = managedPackageID
+        self.managedArtifactID = managedArtifactID
+        self.managedArtifactKind = managedArtifactKind
+    }
 
     var id: String {
         sourceFile.id
@@ -311,11 +352,13 @@ struct GarminIMGMetadataParser: Sendable {
         )?.lowerBound ?? detail.endIndex
         let continuation = String(detail[..<dateStart])
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !continuation.isEmpty,
-              continuation.first?.isLetter == true else {
+        let sanitizedContinuation = String(
+            continuation.drop(while: { !$0.isLetter })
+        )
+        guard !sanitizedContinuation.isEmpty else {
             return nil
         }
-        return description + continuation
+        return description + sanitizedContinuation
     }
 
     /// OpenTopoMap's generated date can cross the binary gap between the
@@ -386,9 +429,7 @@ struct GarminIMGMetadataParser: Sendable {
                   let range = Range(match.range(at: 1), in: normalized) else {
                 return nil
             }
-            return String(normalized[range])
-                .replacingOccurrences(of: " ", with: "")
-                .uppercased()
+            return canonicalOpenTopoMapRegion(String(normalized[range]))
         }
 
         let normalizedHeader = normalizedOpenTopoMapText(header)
@@ -397,13 +438,27 @@ struct GarminIMGMetadataParser: Sendable {
         let title = String(normalizedHeader.dropFirst(providerPrefix.count))
         guard !title.isEmpty else { return nil }
 
+        return canonicalOpenTopoMapRegion(title)
+    }
+
+    private func canonicalOpenTopoMapRegion(_ value: String) -> String? {
+        let title = normalizedOpenTopoMapText(value)
+            .replacingOccurrences(of: "opentopomap ", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let withoutContours: String
+        if title.hasSuffix(" contours") {
+            withoutContours = String(title.dropLast(" contours".count))
+        } else {
+            withoutContours = title
+        }
+        guard !withoutContours.isEmpty else { return nil }
         // Keep the legacy LTU identity used by the first beta package. New
         // OTM records use the provider's normalized region slug, so the
         // generic path covers every official country and multi-country row.
-        if title == "lithuania" {
+        if withoutContours == "lithuania" {
             return "LTU"
         }
-        return title.replacingOccurrences(of: " ", with: "").uppercased()
+        return withoutContours.replacingOccurrences(of: " ", with: "").uppercased()
     }
     private func openTopoMapDisplayName(in value: String) -> String? {
         let normalized = value
@@ -473,12 +528,7 @@ struct GarminIMGMetadataParser: Sendable {
               prefix.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" }) else {
             return nil
         }
-        let region = prefix
-            .replacingOccurrences(of: "_", with: "")
-            .replacingOccurrences(of: "-", with: "")
-        return region == "lithuania"
-            ? "LTU"
-            : region.uppercased()
+        return canonicalOpenTopoMapRegion(prefix)
     }
 
     private func releaseLabel(in value: String, provider: String?) -> String? {
@@ -548,6 +598,11 @@ struct GarminMapScanner: Sendable {
                 metadata: metadata,
                 records: ownershipRecords
             )
+            let managedComponent = ownershipMatcher.managedComponent(
+                for: installedFile,
+                metadata: metadata,
+                records: ownershipRecords
+            )
             let isManagedCustom = ownershipMatcher.isExactCustomRecord(
                 for: installedFile,
                 records: ownershipRecords
@@ -583,7 +638,10 @@ struct GarminMapScanner: Sendable {
                         sizeBytes: file.sizeBytes,
                         sourceFile: installedFile,
                         metadataStatus: .parsed,
-                        managementState: managementState
+                        managementState: managementState,
+                        managedPackageID: managedComponent?.packageID,
+                        managedArtifactID: managedComponent?.artifactID,
+                        managedArtifactKind: managedComponent?.artifactKind
                     )
                 )
                 continue
@@ -603,7 +661,10 @@ struct GarminMapScanner: Sendable {
                     sizeBytes: file.sizeBytes,
                     sourceFile: installedFile,
                     metadataStatus: .parsed,
-                    managementState: managementState
+                    managementState: managementState,
+                    managedPackageID: managedComponent?.packageID,
+                    managedArtifactID: managedComponent?.artifactID,
+                    managedArtifactKind: managedComponent?.artifactKind
                 )
             )
         }

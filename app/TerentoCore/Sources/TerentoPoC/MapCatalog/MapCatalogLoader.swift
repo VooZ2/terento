@@ -14,6 +14,131 @@ enum MapCatalogSource: String, Sendable, Equatable {
     }
 }
 
+/// Release builds expose only source-validated contour metadata. Debug builds
+/// retain the explicit internal rollout override for focused diagnostics.
+struct MapContourRolloutPolicy: Sendable, Equatable {
+    enum Mode: String, Equatable, Sendable {
+        case off
+        case allowlist
+        case publicValidated
+    }
+
+    let mode: Mode
+    let allowlist: Set<String>
+
+    init(mode: Mode = .off, allowlist: Set<String> = []) {
+        self.mode = mode
+        self.allowlist = allowlist
+    }
+
+    #if DEBUG
+    static var localDebugRC: MapContourRolloutPolicy {
+        let environment = ProcessInfo.processInfo.environment
+        let mode = Mode(rawValue: environment[
+            "TERENTO_OPENTOPO_MAP_CONTOUR_MODE"
+        ]?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? "off") ?? .off
+        let allowlist = Set(
+            (environment["TERENTO_OPENTOPO_MAP_CONTOUR_ALLOWLIST"] ?? "")
+                .split(separator: ",")
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+        )
+        return MapContourRolloutPolicy(mode: mode, allowlist: allowlist)
+    }
+    #else
+    static let localDebugRC = MapContourRolloutPolicy(mode: .publicValidated)
+    #endif
+
+    func applying(to catalog: MapCatalog) -> MapCatalog {
+        let packages = catalog.packages.map { package in
+            let artifacts = package.artifacts.map { artifact in
+                guard artifact.kind == .contours,
+                      MapIdentity.normalizeProvider(artifact.providerId ?? "") == "opentopomap" else {
+                    return artifact
+                }
+                switch mode {
+                case .off:
+                    return artifact.withValidationState(
+                        artifact.validationState == .unavailable ? .unavailable : .notValidated
+                    )
+                case .publicValidated:
+                    return artifact.validationState == .validated
+                        ? artifact
+                        : artifact.withValidationState(.notValidated)
+                case .allowlist:
+                    guard artifact.validationState != .unavailable,
+                          isAllowlisted(package) else {
+                        return artifact.withValidationState(.notValidated)
+                    }
+                    return artifact.withValidationState(.validated)
+                }
+            }
+            return package.withArtifacts(artifacts)
+        }
+        return MapCatalog(
+            catalogVersion: catalog.catalogVersion,
+            updatedAt: catalog.updatedAt,
+            providers: catalog.providers,
+            regions: catalog.regions,
+            packages: packages
+        )
+    }
+
+    private func isAllowlisted(_ package: MapPackage) -> Bool {
+        let normalizedAllowlist = Set(allowlist.map(normalizeAllowlistToken))
+        if normalizedAllowlist.contains(normalizeAllowlistToken(package.id)) {
+            return true
+        }
+
+        let providerID = MapIdentity.normalizeProvider(package.providerId)
+        let packageRegions = [
+            package.providerRegionId,
+            package.identifier,
+            package.canonicalRegionId,
+            package.regionId
+        ]
+        .compactMap { $0 }
+        .map(MapIdentity.normalizeRegion)
+        .filter { !$0.isEmpty }
+
+        return normalizedAllowlist.contains { token in
+            let prefix = "\(providerID)-"
+            guard token.hasPrefix(prefix) else { return false }
+            let allowlistedRegion = String(token.dropFirst(prefix.count))
+            return packageRegions.contains {
+                equivalentProviderRegions(
+                    providerID: providerID,
+                    lhs: allowlistedRegion,
+                    rhs: $0
+                )
+            }
+        }
+    }
+
+    private func normalizeAllowlistToken(_ value: String) -> String {
+        value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: "_", with: "-")
+    }
+
+    private func equivalentProviderRegions(
+        providerID: String,
+        lhs: String,
+        rhs: String
+    ) -> Bool {
+        let left = MapIdentity.normalizeRegion(lhs)
+        let right = MapIdentity.normalizeRegion(rhs)
+        guard left != right else { return true }
+
+        // OTM changed Lithuania's published region token from LTU to its
+        // country slug. Keep the reviewed local allowlist stable across that
+        // catalog transition.
+        return providerID == "opentopomap"
+            && Set([left, right]) == Set(["LTU", "LITHUANIA"])
+    }
+}
+
 struct MapCatalogLoadResult: Sendable {
     let catalog: MapCatalog
     let source: MapCatalogSource
@@ -25,9 +150,14 @@ struct MapCatalogLoader: Sendable {
     )?.url
 
     let endpoint: URL?
+    let contourRolloutPolicy: MapContourRolloutPolicy
 
-    init(endpoint: URL? = MapCatalogLoader.defaultEndpoint) {
+    init(
+        endpoint: URL? = MapCatalogLoader.defaultEndpoint,
+        contourRolloutPolicy: MapContourRolloutPolicy = .localDebugRC
+    ) {
         self.endpoint = endpoint
+        self.contourRolloutPolicy = contourRolloutPolicy
     }
 
     /// Metadata is fetched from the future catalog service first. The local
@@ -49,7 +179,9 @@ struct MapCatalogLoader: Sendable {
             // app. Keep the remote catalog authoritative for records it knows
             // and add only missing bundled records so a provider rollout does
             // not make the app silently lose an enabled provider.
-            let catalog = remoteCatalog.mergingSupplemental(bundledCatalog)
+            let catalog = contourRolloutPolicy.applying(
+                to: remoteCatalog.mergingSupplemental(bundledCatalog)
+            )
             return MapCatalogLoadResult(
                 catalog: catalog,
                 source: .remote
@@ -77,7 +209,9 @@ struct MapCatalogLoader: Sendable {
         }
 
         do {
-            return try decode(Data(contentsOf: resourceURL))
+            return contourRolloutPolicy.applying(
+                to: try decode(Data(contentsOf: resourceURL))
+            )
         } catch let error as MapCatalogError {
             throw error
         } catch {
@@ -92,7 +226,9 @@ struct MapCatalogLoader: Sendable {
         }
 
         do {
-            return try decode(Data(contentsOf: resourceURL))
+            return contourRolloutPolicy.applying(
+                to: try decode(Data(contentsOf: resourceURL))
+            )
         } catch let error as MapCatalogError {
             throw error
         } catch {
@@ -211,13 +347,64 @@ extension MapCatalog {
                 && !packageIDs.contains($0.id)
         }
 
+        // A remote catalog can contain the same provider package under a
+        // provider-renamed ID or region spelling. Preserve that remote
+        // package as authoritative, but add independently reviewed optional
+        // artifacts (currently OTM contours) from the bundled catalog. The
+        // previous ID-only merge silently dropped those artifacts whenever
+        // the remote catalog used a newer package ID such as
+        // `opentopomap-lithuania`.
+        let supplementalByIdentity = Dictionary(
+            supplemental.packages.compactMap { package in
+                packageMergeKey(for: package).map { ($0, package) }
+            },
+            uniquingKeysWith: { first, _ in first }
+        )
+        let mergedPackages = packages.map { package in
+            guard let key = packageMergeKey(for: package),
+                  let supplementalPackage = supplementalByIdentity[key] else {
+                return package
+            }
+
+            let existingKinds = Set(package.artifacts.map(\.kind))
+            let supplementalArtifacts = supplementalPackage.artifacts.filter { artifact in
+                artifact.kind != .main
+                    && !artifact.required
+                    && !existingKinds.contains(artifact.kind)
+                    && !package.artifacts.contains(where: { $0.id == artifact.id })
+            }
+            guard !supplementalArtifacts.isEmpty else { return package }
+            return package.withArtifacts(package.artifacts + supplementalArtifacts)
+        }
+
         return MapCatalog(
             catalogVersion: max(catalogVersion, supplemental.catalogVersion),
             updatedAt: max(updatedAt, supplemental.updatedAt),
             providers: providers + additionalProviders,
             regions: regions + additionalRegions,
-            packages: packages + additionalPackages
+            packages: mergedPackages + additionalPackages
         )
+    }
+
+    private func packageMergeKey(for package: MapPackage) -> String? {
+        let provider = MapIdentity.normalizeProvider(package.providerId)
+        guard !provider.isEmpty else { return nil }
+
+        let region = [
+            package.providerRegionId,
+            package.identifier,
+            package.canonicalRegionId,
+            package.regionId
+        ]
+        .compactMap { $0 }
+        .compactMap { value -> String? in
+            let normalized = MapIdentity.normalizeRegion(value)
+            return normalized.isEmpty ? nil : normalized
+        }
+        .first
+
+        guard let region else { return nil }
+        return "\(provider):\(region)"
     }
 }
 

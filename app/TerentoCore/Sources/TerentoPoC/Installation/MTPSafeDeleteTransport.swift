@@ -1,5 +1,4 @@
 import Foundation
-import CryptoKit
 
 /// Native Stage 5.2 transport. Inspection is read-only; deletion delegates
 /// to the existing exact managed-map bridge operation. It is not wired to UI.
@@ -38,6 +37,9 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
                 if isMissing(message) {
                     throw SafeDeleteTransportError.objectNotFound
                 }
+                if isBusy(message) {
+                    throw SafeDeleteTransportError.deviceBusy(message)
+                }
                 if isDisconnected(message) {
                     throw SafeDeleteTransportError.deviceDisconnected(message)
                 }
@@ -63,70 +65,64 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
             )
         }
 
-        let temporaryURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("terento-remove-verify-\(UUID().uuidString).img")
-        defer { try? FileManager.default.removeItem(at: temporaryURL) }
+        let liveFile = InstalledMapFile(
+            path: object.path,
+            filename: object.filename,
+            sizeBytes: object.sizeBytes,
+            itemID: object.itemID
+        )
 
-        let verifiedLiveItemID: UInt32
+        // Manual Remove must not copy/hash a large managed map just to
+        // authorize a file already proven Terento-owned by the local
+        // manifest. The live inventory above has re-established the exact
+        // session-local object identity, path, filename, and size.
+        if target.ownership == .managedByTerento {
+            onProgress?(TransferProgress(
+                bytesTransferred: target.expectedSizeBytes,
+                totalBytes: target.expectedSizeBytes
+            ))
+            return SafeDeleteDeviceObject(
+                file: liveFile,
+                sha256: target.expectedSHA256,
+                contentHashVerified: false
+            )
+        }
+
+        // A recognized third-party map has no trusted manifest hash. Read
+        // only the bounded Garmin IMG header to prove that the exact target
+        // is a map; never copy the whole external file merely to remove it.
         do {
-            let transfer = try MTPReadBackupAdapter(
-                operationProfile: operationProfile,
+            let prefix = try MTPTransport(
                 operationGate: operationGate,
                 lifecycleLease: lifecycleLease
-                ).readExistingFile(
-                file: InstalledMapFile(
-                    path: object.path,
-                    filename: object.filename,
-                    sizeBytes: object.sizeBytes,
-                    itemID: object.itemID
-                ),
-                to: temporaryURL,
-                onProgress: onProgress
+            ).readFilePrefix(
+                for: object,
+                maxLength: GarminIMGMetadataParser.prefixLength
             )
-
-            guard transfer.itemID != 0 else {
-                throw SafeDeleteTransportError.operationFailed(
-                    "The exact managed map no longer has a valid live object identity."
-                )
-            }
-
-            verifiedLiveItemID = transfer.itemID
-        } catch let error as MapLifecycleReadTransportError {
-            switch error {
-            case .deviceDisconnected(let message):
-                throw SafeDeleteTransportError.deviceDisconnected(message)
-            case .readFailed(let message):
-                throw SafeDeleteTransportError.operationFailed(message)
-            }
-        } catch {
-            throw SafeDeleteTransportError.operationFailed(error.localizedDescription)
-        }
-
-        let liveHash: String
-        do {
-            liveHash = try sha256(of: temporaryURL)
-        } catch {
-            throw SafeDeleteTransportError.operationFailed(
-                "The complete managed map could not be verified before removal."
-            )
-        }
-
-        if target.ownership == .detectedNotManaged {
-            guard try isRecognizedGarminIMG(at: temporaryURL) else {
+            guard GarminIMGMetadataParser().parse(prefix) != nil else {
                 throw SafeDeleteTransportError.operationFailed(
                     "The selected third-party file is not a recognized Garmin map image. Nothing was removed."
                 )
             }
+        } catch let error as MTPTransportError {
+            let message = error.localizedDescription
+            if isBusy(message) {
+                throw SafeDeleteTransportError.deviceBusy(message)
+            }
+            if isDisconnected(message) {
+                throw SafeDeleteTransportError.deviceDisconnected(message)
+            }
+            throw SafeDeleteTransportError.operationFailed(message)
+        } catch let error as SafeDeleteTransportError {
+            throw error
+        } catch {
+            throw SafeDeleteTransportError.operationFailed(error.localizedDescription)
         }
 
         return SafeDeleteDeviceObject(
-            file: InstalledMapFile(
-                path: object.path,
-                filename: object.filename,
-                sizeBytes: object.sizeBytes,
-                itemID: verifiedLiveItemID
-            ),
-            sha256: liveHash
+            file: liveFile,
+            sha256: String(repeating: "0", count: 64),
+            contentHashVerified: false
         )
     }
 
@@ -157,10 +153,18 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
             case .remoteFileMissing:
                 throw SafeDeleteTransportError.objectNotFound
             default:
-                throw SafeDeleteTransportError.operationFailed(error.localizedDescription)
+                let message = error.localizedDescription
+                if isBusy(message) {
+                    throw SafeDeleteTransportError.deviceBusy(message)
+                }
+                throw SafeDeleteTransportError.operationFailed(message)
             }
         } catch {
-            throw SafeDeleteTransportError.operationFailed(error.localizedDescription)
+            let message = error.localizedDescription
+            if isBusy(message) {
+                throw SafeDeleteTransportError.deviceBusy(message)
+            }
+            throw SafeDeleteTransportError.operationFailed(message)
         }
     }
 
@@ -178,24 +182,18 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
             || value.contains("no device")
     }
 
-    private func sha256(of url: URL) throws -> String {
-        let handle = try FileHandle(forReadingFrom: url)
-        defer { try? handle.close() }
-
-        var hasher = SHA256()
-        while true {
-            let data = try handle.read(upToCount: 1024 * 1024) ?? Data()
-            if data.isEmpty { break }
-            hasher.update(data: data)
-        }
-        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
-    }
-
-    private func isRecognizedGarminIMG(at url: URL) throws -> Bool {
-        let handle = try FileHandle(forReadingFrom: url)
-        defer { try? handle.close() }
-        let prefix = try handle.read(upToCount: GarminIMGMetadataParser.prefixLength) ?? Data()
-        return GarminIMGMetadataParser().parse(Array(prefix)) != nil
+    private func isBusy(_ message: String) -> Bool {
+        let value = message.lowercased()
+        return value.contains("failed to open session")
+            || value.contains("could not be opened")
+            || value.contains("ptp_error_io")
+            || value.contains("libusb")
+            || value.contains("claim interface")
+            || value.contains("claim_interface")
+            || value.contains("resource busy")
+            || value.contains("reset device")
+            || value.contains("detach_kernel_driver")
+            || value.contains("result too large")
     }
 
 }

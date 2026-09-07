@@ -90,6 +90,63 @@ struct TerentoManifestEntry: Codable, Equatable, Sendable {
     let sizeBytes: UInt64
     let sha256: String
     let installedAt: Date
+    /// Optional for backwards compatibility with manifests written before
+    /// package components were introduced. New writes always populate these
+    /// fields so lifecycle ownership is component-exact.
+    let packageID: String?
+    let artifactID: String?
+    let artifactKind: MapArtifactKind?
+
+    init(
+        deviceKey: String,
+        devicePath: String,
+        filename: String,
+        providerId: String,
+        regionId: String,
+        version: MapVersion,
+        sizeBytes: UInt64,
+        sha256: String,
+        installedAt: Date,
+        packageID: String? = nil,
+        artifactID: String? = nil,
+        artifactKind: MapArtifactKind? = nil
+    ) {
+        self.deviceKey = deviceKey
+        self.devicePath = devicePath
+        self.filename = filename
+        self.providerId = providerId
+        self.regionId = regionId
+        self.version = version
+        self.sizeBytes = sizeBytes
+        self.sha256 = sha256
+        self.installedAt = installedAt
+        self.packageID = packageID
+        self.artifactID = artifactID
+        self.artifactKind = artifactKind
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case deviceKey, devicePath, filename, providerId, regionId, version
+        case sizeBytes, sha256, installedAt, packageID, artifactID, artifactKind
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            deviceKey: try container.decode(String.self, forKey: .deviceKey),
+            devicePath: try container.decode(String.self, forKey: .devicePath),
+            filename: try container.decode(String.self, forKey: .filename),
+            providerId: try container.decode(String.self, forKey: .providerId),
+            regionId: try container.decode(String.self, forKey: .regionId),
+            version: try container.decode(MapVersion.self, forKey: .version),
+            sizeBytes: try container.decode(UInt64.self, forKey: .sizeBytes),
+            sha256: try container.decode(String.self, forKey: .sha256),
+            installedAt: try container.decode(Date.self, forKey: .installedAt),
+            packageID: try container.decodeIfPresent(String.self, forKey: .packageID),
+            artifactID: try container.decodeIfPresent(String.self, forKey: .artifactID),
+            artifactKind: try container.decodeIfPresent(MapArtifactKind.self, forKey: .artifactKind)
+        )
+    }
 }
 
 struct TerentoManifest: Codable, Equatable, Sendable {
@@ -110,6 +167,63 @@ struct TerentoFailedInstallRecoveryRecord: Codable, Equatable, Sendable {
     let sizeBytes: UInt64
     let sha256: String
     let createdAt: Date
+    /// Component identity is optional for recovery files written by older
+    /// beta builds. New writes keep it so a main map and its contour companion
+    /// can be recovered and removed independently.
+    let artifactID: String?
+    let artifactKind: MapArtifactKind?
+
+    init(
+        deviceKey: String,
+        packageID: String,
+        providerId: String,
+        regionId: String,
+        version: MapVersion,
+        devicePath: String,
+        filename: String,
+        sizeBytes: UInt64,
+        sha256: String,
+        createdAt: Date,
+        artifactID: String? = nil,
+        artifactKind: MapArtifactKind? = nil
+    ) {
+        self.deviceKey = deviceKey
+        self.packageID = packageID
+        self.providerId = providerId
+        self.regionId = regionId
+        self.version = version
+        self.devicePath = devicePath
+        self.filename = filename
+        self.sizeBytes = sizeBytes
+        self.sha256 = sha256
+        self.createdAt = createdAt
+        self.artifactID = artifactID
+        self.artifactKind = artifactKind
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case deviceKey, packageID, providerId, regionId, version
+        case devicePath, filename, sizeBytes, sha256, createdAt
+        case artifactID, artifactKind
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            deviceKey: try container.decode(String.self, forKey: .deviceKey),
+            packageID: try container.decode(String.self, forKey: .packageID),
+            providerId: try container.decode(String.self, forKey: .providerId),
+            regionId: try container.decode(String.self, forKey: .regionId),
+            version: try container.decode(MapVersion.self, forKey: .version),
+            devicePath: try container.decode(String.self, forKey: .devicePath),
+            filename: try container.decode(String.self, forKey: .filename),
+            sizeBytes: try container.decode(UInt64.self, forKey: .sizeBytes),
+            sha256: try container.decode(String.self, forKey: .sha256),
+            createdAt: try container.decode(Date.self, forKey: .createdAt),
+            artifactID: try container.decodeIfPresent(String.self, forKey: .artifactID),
+            artifactKind: try container.decodeIfPresent(MapArtifactKind.self, forKey: .artifactKind)
+        )
+    }
 
     func matches(
         deviceKey: String,
@@ -120,6 +234,23 @@ struct TerentoFailedInstallRecoveryRecord: Codable, Equatable, Sendable {
         regionId: String?,
         version: MapVersion?
     ) -> Bool {
+        // Custom imports intentionally have no provider identity in the scan.
+        // Only the exact recorded target may supply that missing identity.
+        // Header dates are not custom import versions (the import uses a sentinel).
+        if providerId == nil, regionId == nil,
+           MapIdentity.normalizeProvider(self.providerId) == "custom" {
+            return self.deviceKey == deviceKey
+                && devicePath == path
+                && self.filename == filename
+                && self.sizeBytes == sizeBytes
+                && sizeBytes > 0
+                && sha256.count == 64 && sha256.allSatisfy(\.isHexDigit)
+                && devicePath == "/GARMIN/\(filename)"
+                && TerentoManagedFilenameGenerator().matchesIdentity(
+                    filename, providerId: self.providerId, regionId: self.regionId
+                )
+        }
+
         guard let actualIdentity = MapIdentity(provider: providerId, region: regionId),
               let expectedIdentity = MapIdentity(
                   provider: self.providerId,
@@ -137,7 +268,10 @@ struct TerentoFailedInstallRecoveryRecord: Codable, Equatable, Sendable {
                 expected: expectedIdentity,
                 providerRegionId: self.regionId
             )
-            && self.version == version
+            // Contour IMG headers commonly omit the provider release. The
+            // recovery record remains authoritative because path, filename,
+            // size, provider and region are still matched exactly.
+            && (version == nil || self.version == version)
     }
 }
 
@@ -182,6 +316,44 @@ struct TransferProgress: Equatable, Sendable {
         }
 
         return min(1, Double(bytesTransferred) / Double(totalBytes))
+    }
+}
+
+/// The package-level outcome keeps the main map and an optional companion
+/// separate. A successful main-map transfer must not be reported as a fully
+/// completed package when the optional contour transfer failed.
+enum MapPackageInstallationStatus: String, Equatable, Sendable {
+    case completed = "COMPLETED"
+    case completedWithWarnings = "COMPLETED_WITH_WARNINGS"
+    case failed = "FAILED"
+}
+
+struct MapInstallationComponentOutcome: Equatable, Sendable {
+    let artifactID: String
+    let artifactKind: MapArtifactKind
+    let succeeded: Bool
+    let failure: InstallationFailure?
+
+    var isSuccess: Bool {
+        succeeded
+    }
+}
+
+struct MapPackageInstallationOutcome: Equatable, Sendable {
+    let packageID: String
+    let status: MapPackageInstallationStatus
+    let components: [MapInstallationComponentOutcome]
+
+    var isComplete: Bool {
+        status == .completed
+    }
+
+    var hasWarnings: Bool {
+        status == .completedWithWarnings
+    }
+
+    var failedComponent: MapInstallationComponentOutcome? {
+        components.first { !$0.isSuccess }
     }
 }
 

@@ -29,6 +29,8 @@ struct Stage41AcquisitionTests {
         await testSplitReleaseHeaderPasses()
         await testOpenTopoMapAcquisitionUsesOfficialURLAndIdentity()
         await testOpenTopoMapCurrentRemoteSlugIdentityPasses()
+        await testOptionalContoursAcquireTheExactArtifactSource()
+        await testLiveOpenTopoMapContourArtifactIfProvided()
         testRegionalProviderTokensRemainConcrete()
         testSharedCatalogRegionsUseDistinctManagedTargets()
         await testSharedCatalogRegionUsesConcreteSourceIdentity()
@@ -37,13 +39,18 @@ struct Stage41AcquisitionTests {
         await testMismatchedVersionIsRejected()
         await testArtifactUsesIMGSizeAndHash()
         await testFailedAcquisitionLeavesNoArtifact()
+        await testSuccessfulAcquisitionWorkspaceCleanup()
+        await testValidationFailureCleansWorkspace()
+        await testExtractionFailureCleansWorkspace()
+        await testCancelledAcquisitionCleansWorkspace()
+        testStartupScavengerRemovesOnlyStaleOrphans()
         testAcquisitionPolicyIdentityMapping()
         testBundledCatalogPolicyCounts()
         testAcquisitionErrorsHaveSafeUserCopy()
         await testWithheldAcquisitionFailsBeforeWorkspaceAndHTTP()
         testNoDeviceWriteDependency()
 
-        print("PASS: 27 Stage 4.1 acquisition tests")
+        print("PASS: 33 Stage 4.1 acquisition tests")
     }
 
     private static func testCatalogResolvesFrance() {
@@ -497,6 +504,162 @@ struct Stage41AcquisitionTests {
         }
     }
 
+    private static func testOptionalContoursAcquireTheExactArtifactSource() async {
+        let image = makeOpenTopoMapContoursIMG()
+        let mainURL = URL(string: "https://garmin.opentopomap.org/europe/lithuania/otm-lithuania.zip")!
+        let contourURL = URL(string: "https://garmin.opentopomap.org/europe/lithuania/otm-lithuania-contours.zip")!
+        let main = MapArtifact(
+            id: "opentopomap-lithuania-main",
+            kind: .main,
+            required: true,
+            providerId: "opentopomap",
+            providerRegionId: "lithuania",
+            canonicalRegionId: "LTU",
+            version: version(2026, 5),
+            sourceURL: mainURL,
+            sizeBytes: UInt64(image.count),
+            downloadSizeBytes: UInt64(image.count),
+            validationState: .validated
+        )
+        let contours = MapArtifact(
+            id: "opentopomap-lithuania-contours",
+            kind: .contours,
+            required: false,
+            providerId: "opentopomap",
+            providerRegionId: "lithuania",
+            canonicalRegionId: "LTU",
+            version: version(2026, 5),
+            sourceURL: contourURL,
+            sizeBytes: UInt64(image.count),
+            downloadSizeBytes: UInt64(image.count),
+            validationState: .validated
+        )
+        let package = MapPackage(
+            id: "opentopomap-lithuania",
+            providerId: "opentopomap",
+            regionId: "LTU",
+            name: "OpenTopoMap Lithuania",
+            version: version(2026, 5),
+            sizeBytes: UInt64(image.count),
+            sourceURL: mainURL,
+            releaseDate: "2026-05-25",
+            identifier: "lithuania",
+            providerRegionId: "lithuania",
+            canonicalRegionId: "LTU",
+            artifacts: [main, contours]
+        )
+        let recorder = URLRecorder()
+
+        do {
+            let source = try temporaryFile(data: image)
+            defer { try? FileManager.default.removeItem(at: source) }
+            let workspace = try makeWorkspace()
+            defer { try? workspace.cleanup() }
+            let artifact = try await MapPackageAcquirer(
+                downloadClient: RecordingDownloadClient(
+                    recorder: recorder,
+                    response: MapPackageDownloadResponse(
+                        statusCode: 200,
+                        temporaryFileURL: source
+                    )
+                )
+            ).acquire(
+                package: package,
+                artifact: contours,
+                canonicalRegion: "LTU",
+                workspace: workspace
+            )
+            expect(
+                recorder.url == contourURL
+                    && artifact.artifactID == contours.id
+                    && artifact.artifactKind == .contours
+                    && artifact.targetFilename == "terento_opentopomap_ltu_contours.img",
+                "optional contours acquire the exact artifact source"
+            )
+        } catch {
+            expect(false, "optional contours acquire the exact artifact source")
+        }
+    }
+
+    /// The normal suite stays offline and uses a synthetic IMG. Supplying the
+    /// official provider ZIP through the environment adds a bounded live
+    /// contract check for the exact contour payload used by the internal RC.
+    private static func testLiveOpenTopoMapContourArtifactIfProvided() async {
+        guard let path = ProcessInfo.processInfo.environment[
+            "TERENTO_LIVE_OTM_CONTOUR_ARCHIVE"
+        ]?.trimmingCharacters(in: .whitespacesAndNewlines),
+        !path.isEmpty else {
+            return
+        }
+
+        let archive = URL(fileURLWithPath: path)
+        guard FileManager.default.isReadableFile(atPath: archive.path) else {
+            expect(false, "the live OTM Lithuania contour archive is readable")
+            return
+        }
+
+        let mainURL = URL(string: "https://garmin.opentopomap.org/europe/lithuania/otm-lithuania.zip")!
+        let contourURL = URL(string: "https://garmin.opentopomap.org/europe/lithuania/otm-lithuania-contours.zip")!
+        let contours = MapArtifact(
+            id: "opentopomap-ltu-contours",
+            kind: .contours,
+            required: false,
+            providerId: "opentopomap",
+            providerRegionId: "lithuania",
+            canonicalRegionId: "LTU",
+            version: version(2021, 6),
+            sourceURL: contourURL,
+            sizeBytes: 20_283_392,
+            downloadSizeBytes: 17_605_776,
+            validationState: .validated
+        )
+        let package = MapPackage(
+            id: "opentopomap-lithuania",
+            providerId: "opentopomap",
+            regionId: "LITHUANIA",
+            name: "OpenTopoMap Lithuania",
+            version: version(2026, 5),
+            sizeBytes: 276_799_488,
+            sourceURL: mainURL,
+            releaseDate: "2026-05-25",
+            identifier: "lithuania",
+            providerRegionId: "lithuania",
+            canonicalRegionId: "LITHUANIA",
+            artifacts: [contours]
+        )
+
+        do {
+            let workspace = try makeWorkspace()
+            defer { try? workspace.cleanup() }
+            let artifact = try await MapPackageAcquirer(
+                downloadClient: RecordingDownloadClient(
+                    recorder: URLRecorder(),
+                    response: MapPackageDownloadResponse(
+                        statusCode: 200,
+                        temporaryFileURL: archive
+                    )
+                )
+            ).acquire(
+                package: package,
+                artifact: contours,
+                canonicalRegion: "LTU",
+                workspace: workspace
+            )
+            expect(
+                artifact.artifactID == contours.id
+                    && artifact.artifactKind == .contours
+                    && artifact.installSizeBytes == 20_283_392
+                    && artifact.targetFilename == "terento_opentopomap_lithuania_contours.img",
+                "the live OTM Lithuania contour archive passes acquisition validation"
+            )
+        } catch {
+            expect(
+                false,
+                "the live OTM Lithuania contour archive passes acquisition validation [\(error)]"
+            )
+        }
+    }
+
     private static func testRegionalProviderTokensRemainConcrete() {
         let tokens = [
             "DEU+NORTH",
@@ -711,26 +874,151 @@ struct Stage41AcquisitionTests {
     }
 
     private static func testFailedAcquisitionLeavesNoArtifact() async {
+        var root: URL?
         do {
             let source = try temporaryFile(data: Data([0x01]))
             defer { try? FileManager.default.removeItem(at: source) }
             let workspace = try makeWorkspace()
-            let root = workspace.rootURL
+            root = workspace.rootURL
             _ = try await MapPackageAcquirer(
                 downloadClient: StubDownloadClient(
                     response: MapPackageDownloadResponse(statusCode: 500, temporaryFileURL: source)
                 )
             ).acquire(package: makePackage(), workspace: workspace)
             expect(false, "failed acquisition produces no validated artifact")
-            try? FileManager.default.removeItem(at: root)
         } catch let error as MapAcquisitionError {
             if case .downloadFailed = error {
-                expect(true, "failed acquisition produces no validated artifact")
+                expect(
+                    root.map { !FileManager.default.fileExists(atPath: $0.path) } == true,
+                    "failed acquisition removes its workspace"
+                )
             } else {
                 expect(false, "failed acquisition produces no validated artifact")
             }
         } catch {
             expect(false, "failed acquisition produces no validated artifact")
+        }
+    }
+
+    private static func testSuccessfulAcquisitionWorkspaceCleanup() async {
+        do {
+            let image = makeIMG(region: "FRA", release: "26.05")
+            let source = try temporaryFile(data: image)
+            defer { try? FileManager.default.removeItem(at: source) }
+            let workspace = try makeWorkspace()
+            let artifact = try await MapPackageAcquirer(
+                downloadClient: StubDownloadClient(
+                    response: MapPackageDownloadResponse(statusCode: 200, temporaryFileURL: source)
+                )
+            ).acquire(package: makePackage(), workspace: workspace)
+
+            expect(FileManager.default.fileExists(atPath: artifact.localIMGURL.path),
+                   "successful acquisition retains IMG for install and Finishing")
+            try MapAcquisitionWorkspace.cleanup(rootURL: artifact.workspaceRootURL!)
+            expect(
+                !FileManager.default.fileExists(atPath: workspace.rootURL.path),
+                "successful acquisition removes its workspace at terminal handoff"
+            )
+        } catch {
+            expect(false, "successful acquisition removes its workspace at terminal handoff")
+        }
+    }
+
+    private static func testValidationFailureCleansWorkspace() async {
+        var root: URL?
+        do {
+            let source = try temporaryFile(data: makeIMG(region: "DEU", release: "26.05"))
+            defer { try? FileManager.default.removeItem(at: source) }
+            let workspace = try makeWorkspace()
+            root = workspace.rootURL
+            _ = try await MapPackageAcquirer(
+                downloadClient: StubDownloadClient(
+                    response: MapPackageDownloadResponse(statusCode: 200, temporaryFileURL: source)
+                )
+            ).acquire(package: makePackage(), workspace: workspace)
+            expect(false, "validation failure removes its workspace")
+        } catch {
+            expect(
+                root.map { !FileManager.default.fileExists(atPath: $0.path) } == true,
+                "validation failure removes its workspace"
+            )
+        }
+    }
+
+    private static func testCancelledAcquisitionCleansWorkspace() async {
+        var root: URL?
+        do {
+            let workspace = try makeWorkspace()
+            root = workspace.rootURL
+            let task = Task {
+                try await MapPackageAcquirer(
+                    downloadClient: CancellationAwareDownloadClient()
+                ).acquire(package: makePackage(), workspace: workspace)
+            }
+            task.cancel()
+            _ = try await task.value
+            expect(false, "cancelled acquisition removes its workspace")
+        } catch {
+            expect(
+                root.map { !FileManager.default.fileExists(atPath: $0.path) } == true,
+                "cancelled acquisition removes its workspace"
+            )
+        }
+    }
+
+    private static func testExtractionFailureCleansWorkspace() async {
+        var root: URL?
+        do {
+            let source = try temporaryFile(data: Data([0x50, 0x4B, 0x03, 0x04]))
+            defer { try? FileManager.default.removeItem(at: source) }
+            let workspace = try makeWorkspace()
+            root = workspace.rootURL
+            _ = try await MapPackageAcquirer(
+                downloadClient: StubDownloadClient(
+                    response: MapPackageDownloadResponse(statusCode: 200, temporaryFileURL: source)
+                ),
+                archiveExtractor: FailingArchiveExtractor()
+            ).acquire(package: makePackage(), workspace: workspace)
+            expect(false, "extraction failure removes its workspace")
+        } catch {
+            expect(
+                root.map { !FileManager.default.fileExists(atPath: $0.path) } == true,
+                "extraction failure removes its workspace"
+            )
+        }
+    }
+
+    private static func testStartupScavengerRemovesOnlyStaleOrphans() {
+        let fileManager = FileManager.default
+        let root = fileManager.temporaryDirectory
+            .appendingPathComponent("terento-acquisition-scavenger-\(UUID().uuidString)", isDirectory: true)
+        let stale = root.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let active: MapAcquisitionWorkspace
+        let oldDate = Date(timeIntervalSince1970: 1)
+        do {
+            try fileManager.createDirectory(at: stale, withIntermediateDirectories: true)
+            try Data(repeating: 7, count: 4).write(to: stale.appendingPathComponent("map.img"))
+            try fileManager.setAttributes([.modificationDate: oldDate], ofItemAtPath: stale.path)
+            active = try MapAcquisitionWorkspace(
+                rootURL: root.appendingPathComponent(UUID().uuidString, isDirectory: true)
+            )
+            try fileManager.setAttributes([.modificationDate: oldDate], ofItemAtPath: active.rootURL.path)
+
+            let removed = MapAcquisitionWorkspace.scavengeStale(
+                rootURL: root,
+                olderThan: 24 * 60 * 60,
+                now: Date(timeIntervalSince1970: 2 * 24 * 60 * 60)
+            )
+            expect(
+                removed == 1
+                    && !fileManager.fileExists(atPath: stale.path)
+                    && fileManager.fileExists(atPath: active.rootURL.path),
+                "startup scavenger removes stale orphan workspaces but keeps active acquisition"
+            )
+            try? active.cleanup()
+            try? fileManager.removeItem(at: root)
+        } catch {
+            expect(false, "startup scavenger removes stale orphan workspaces but keeps active acquisition")
         }
     }
 
@@ -945,6 +1233,15 @@ struct Stage41AcquisitionTests {
         return data
     }
 
+    private static func makeOpenTopoMapContoursIMG() -> Data {
+        var data = Data(repeating: 0, count: 8192)
+        write("DSKIMG", at: 0x10, length: 7, into: &data)
+        write("GARMIN", at: 0x41, length: 7, into: &data)
+        write("OpenTopoMap Lithuani", at: 0x49, length: 20, into: &data)
+        write("&a contours", at: 0x65, length: 31, into: &data)
+        return data
+    }
+
     /// Mirrors the official 2026-05 Canarias IMG header. The 20-byte
     /// description ends at `ESP_CA`; binary header bytes follow, and the
     /// remaining `NARIAS` starts in the detail field.
@@ -1018,6 +1315,19 @@ struct CountingDownloadClient: MapPackageDownloadClient, Sendable {
     func download(from url: URL) async throws -> MapPackageDownloadResponse {
         counter.downloads += 1
         throw MapAcquisitionError.downloadFailed("unexpected HTTP call")
+    }
+}
+
+struct CancellationAwareDownloadClient: MapPackageDownloadClient, Sendable {
+    func download(from url: URL) async throws -> MapPackageDownloadResponse {
+        try await Task.sleep(for: .seconds(60))
+        throw CancellationError()
+    }
+}
+
+struct FailingArchiveExtractor: MapPackageArchiveExtractor, Sendable {
+    func extract(archiveURL: URL, to extractionDirectory: URL) throws {
+        throw MapAcquisitionError.extractionFailed("fixture extraction failure")
     }
 }
 

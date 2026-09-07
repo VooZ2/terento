@@ -140,10 +140,8 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         operationId: UUID = UUID(),
         mapResultIndex: Int = 0,
         selectedMapCount: Int = 1,
-        appBuild: String = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "development",
-        releaseLabel: String = Bundle.main.infoDictionary?["TerentoReleaseLabel"] as? String
-            ?? Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
-            ?? "development",
+        appBuild: String = TerentoTelemetryMetadata.eventBuild,
+        releaseLabel: String = TerentoTelemetryMetadata.releaseLabel,
         failureStage: EvidenceFailureStage? = nil,
         failureCode: String? = nil,
         nativeFailureCode: EvidenceNativeFailureCode? = nil,
@@ -152,9 +150,7 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         cleanupAttempted: Bool = false,
         cleanupSucceeded: Bool = false,
         transferProgressBucket: EvidenceTransferProgressBucket = .zero,
-        terentoVersion: String = (Bundle.main.infoDictionary?["TerentoReleaseLabel"] as? String)
-            ?? (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String)
-            ?? "development",
+        terentoVersion: String = TerentoTelemetryMetadata.releaseLabel,
         macOSVersion: String = ProcessInfo.processInfo.operatingSystemVersionString
     ) {
         self.schemaVersion = Self.schemaVersion

@@ -33,10 +33,8 @@ enum InstallationIssueReport {
         cleanupSucceeded: Bool = false,
         diagnosticID: UUID = UUID(),
         timestamp: Date = Date(),
-        appVersion: String = (Bundle.main.infoDictionary?["TerentoReleaseLabel"] as? String)
-            ?? (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String)
-            ?? "development",
-        appBuild: String = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "development",
+        appVersion: String = TerentoTelemetryMetadata.releaseLabel,
+        appBuild: String = TerentoTelemetryMetadata.eventBuild,
         operatingSystem: String = ProcessInfo.processInfo.operatingSystemVersionString
     ) -> InstallationIssueDraft {
         let safeStage = sanitizedLine(stage, fallback: "Installation")
@@ -97,8 +95,8 @@ enum InstallationIssueReport {
         - Provider: \(providers.isEmpty ? "Unavailable" : providers.joined(separator: ", "))
         - Region: \(regions.isEmpty ? "Unavailable" : regions.joined(separator: ", "))
         - Map version: \(releases.isEmpty ? "Unavailable" : releases.joined(separator: ", "))
-        - App version: \(sanitizedLine(appVersion, fallback: "development"))
-        - Build: \(sanitizedLine(appBuild, fallback: "development"))
+        - App version: \(sanitizedLine(appVersion, fallback: TerentoTelemetryMetadata.version))
+        - Build: \(sanitizedLine(appBuild, fallback: TerentoTelemetryMetadata.eventBuild))
         - macOS: \(sanitizedLine(operatingSystem, fallback: "Unavailable"))
         - Timestamp: \(ISO8601DateFormatter().string(from: timestamp))
 
@@ -111,6 +109,10 @@ enum InstallationIssueReport {
         - Cleanup succeeded: \(cleanupSucceeded ? "Yes" : "No")
         - Transport: MTP
         \(safeError.map { "- Detail: \($0)" } ?? "")
+
+        ## Finishing diagnostics
+
+        \(FinishingTrace.failureReport.isEmpty ? "Unavailable" : FinishingTrace.failureReport)
 
         ## Reference
 

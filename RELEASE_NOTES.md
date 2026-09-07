@@ -1,128 +1,54 @@
-# Terento v1.0.0-beta.9
+# Terento v1.0.0-beta.10
 
-Release date: 2026-09-02
-Maintenance build: 2026-09-04
+Beta.10 adds OpenTopoMap contour lines, clearer Finishing diagnostics, and
+fixes for map removal and temporary disk usage. Distributed build: **13**.
+Freizeitkarte and OpenTopoMap remain the enabled map providers.
 
-Beta.9 build 11 addresses stalled installation finishing and diagnostics delivery.
-Freizeitkarte and OpenTopoMap main-map packages remain the enabled providers.
-The display version stays 1.0.0-beta.9; the distributed build is 11.
+## What changed
 
-Because the original beta.9 GitHub release is immutable, this maintenance
-build is published under `v1.0.0-beta.9-build11`. Terento still displays
-`Version 1.0.0-beta.9 (11)`.
+- Install and remove OpenTopoMap maps with validated contour-line packages.
+- Restore Remove availability for managed maps after reconnect and for
+  recognized incomplete custom imports, with exact ownership checks retained.
+- Remove Terento's temporary downloads and extracted map files after installation
+  and Finishing complete, including failure and cancellation paths. Original
+  custom files selected from Downloads are preserved.
+- Recheck a missing final inventory entry once after successful sampled
+  verification before reporting a missing map. The map upload is never retried.
+- Record bounded Finishing checkpoints and failure details in local diagnostics
+  and the user-reviewed Report issue draft to investigate intermittent failures.
+- Include minor presentation and diagnostic reporting corrections.
 
-This is a public beta for hardware validation. The MVP first-install baseline
-is established, but the beta remains open until one real safe update has passed
-for each currently enabled provider. Model eligibility is not a claim that
-every exact watch has been independently verified.
+## Validation and limitations
 
-## Build 11 fixes
+The owner confirmed Custom IMG, Freizeitkarte Lithuania/Andorra and OpenTopoMap
+Latvia with contours installation/removal in one session, followed by the
+requested reconnect and longer-connected checks. Mac temporary-file cleanup
+was checked separately. This is evidence for the tested fēnix 8 AMOLED, not a
+general compatibility claim for every Garmin model.
 
-- Bound native sampled verification and exact cleanup with an isolated worker
-  deadline. Stop the worker before continuing; never retry the map write.
-- Read the same verification regions in smaller chunks and revalidate the
-  exact target whenever a read-only session is reopened.
-- Preserve failed-install recovery when cleanup cannot be confirmed. A partial
-  or unverified map is never recorded as successfully installed.
-- Restore schema-v4 compatibility event storage without deleting queued or
-  uploaded reports, changing idempotency, or reopening the immutable API.
-- Keep transfer progress tied to the validated source size, separately from
-  sampled verification progress, in the UI and diagnostic reports.
-- Make health/readiness fail when diagnostic storage migrations or the schema
-  are incompatible, using read-only checks for both diagnostic streams.
+Intermittent USB/session failures are not claimed to be eliminated. If Finishing
+fails, use Report issue in this version to include the improved diagnostic
+summary. The original Forerunner 970 Australia scenario in #119 still benefits
+from confirmation on that exact device and map.
 
-## Fixes and safeguards
+macOS 13 or later on Apple Silicon is required. This remains a Public beta;
+real safe-update evidence for each provider remains a separate gate.
 
-- Accept the reviewed OpenTopoMap `LTU` and `LITHUANIA` identity pair at the
-  provider boundary, fixing the Lithuania failure reported in Issue #74.
-- Keep all other provider and region comparisons exact; the fix does not
-  weaken source validation, device ownership, or destructive-operation rules.
-- Correct fixed-width Freizeitkarte IMG header parsing so a full region field
-  cannot be joined with the following release field.
-- Accept catalog health timestamps with or without fractional seconds across
-  every supported macOS version instead of rejecting the complete live catalog.
-- Reject an incompatible live catalog as a whole and use the bundled
-  last-known-good snapshot instead of exposing only some broken maps.
-- Validate the exact production catalog during release packaging, after API
-  deployment, on release-tag/manual CI, and every day against the shipped
-  client contract.
-- Record the connected watch model for a successful custom `.img`
-  installation in the default-on privacy-minimised compatibility report, using only
-  the coarse `custom` source labels and never a hash-derived local identity.
-- Keep custom `.img` installations out of map statistics; they appear in the
-  dashboard as Custom installation activity through compatibility evidence.
-- Send compatibility reports and map statistics by default, without an
-  opt-in/opt-out choice in the installation flow. The only opt-out is in
-  `Terento → Diagnostics`.
-- Add one `Send diagnostics` action for queued reports. It is enabled only
-  when reports are waiting, and uploaded reports cannot be deleted from the
-  app.
-- Refresh About with the direct `Update` and `Manage diagnostics` actions,
-  Donate plus Privacy/Legal links, and add `Terento → Check updates`.
+## Privacy and safety
 
-## Application updates
-
-- About reports `1.0.0-beta.9` and distributed build `11`.
-- Release and public Download metadata are generated from one manifest and
-  checked for version, URL, date, and checksum drift.
-
-## Safety and privacy
-
-- Garmin-owned and unknown files remain read-only.
-- External-map removal targets one exact recognized `.img` object and requires
-  filename, path, size and hash checks plus a post-delete rescan.
-- New installs never overwrite an existing target. Safe Update still follows
-  write-new → verify → remove-old and never deletes the working map first.
-- Device manifests and physical-watch ownership keys remain local. There is no
-  account, login, cloud device profile or server-side Garmin identifier storage.
-- Map statistics are independent from compatibility evidence, default-on,
-  queued locally and non-blocking. They exclude watch identifiers, serial
-  numbers, Unit IDs, file paths, manifests, binaries and diagnostic logs.
-- Both diagnostics streams can be disabled later in `Terento → Diagnostics`;
-  queued reports remain local until sent and there is no delete action for
-  reports already uploaded.
-- Custom `.img` imports use compatibility evidence only; they do not create
-  map-statistics events.
-- Maps download directly from the selected provider. Terento does not host,
-  mirror, proxy or repackage provider binaries.
-
-## Validation status
-
-- All native safety and app regression suites pass, including generated
-  identity checks for all 63 Freizeitkarte and 177 OpenTopoMap catalog rows.
-- The exact current 219,494,190-byte OpenTopoMap Lithuania archive passes ZIP,
-  artifact-size, production parser, release, and catalog identity validation.
-- The complete catalog backend regression suite passes, and the exact live
-  240-package catalog passes the beta.9 client contract. The test runner
-  reports its current count automatically so release notes do not carry a
-  number that can drift.
-- The arm64 release build is Developer ID signed, notarized by Apple with no
-  issues, stapled, Gatekeeper accepted, and launch-smoke verified from both the
-  ZIP and DMG paths.
-- The build 11 Release candidate completed Freizeitkarte Andorra and
-  OpenTopoMap Luxembourg installations on the fēnix 8 47 mm AMOLED, firmware
-  2244. Transfer, Finishing, Manage maps, and diagnostic delivery passed.
-  Existing maps and the earlier incomplete OpenTopoMap Andorra were preserved.
-  The owner confirmed both maps are visible and usable on the watch.
-  Physical reconnect and refreshed Manage maps also passed.
-
-## Known limitations
-
-- Map-capable means eligible for a guarded beta attempt, not independently
-  verified compatibility.
-- A single installation batch can contain maps from only one provider.
-- OpenTopoMap contour-package selection is deferred to a later beta.
-- macOS 13 or later on Apple Silicon is required. Intel Macs, PKG, Windows and
-  Linux distributions are not included in this beta. App Store distribution is
-  a long-term stable-release target, not a current beta or MVP dependency.
+Garmin-owned and unknown files remain read-only. Existing working maps are not
+deleted before replacements are verified. Original custom source files and
+local device manifests remain on your Mac. Raw diagnostic logs are not uploaded
+automatically; compatibility and map-statistics preferences remain available
+in Terento → Diagnostics. This public build has no -local suffix and uses the
+ordinary production diagnostic streams.
 
 ## Release artifacts
 
-Build 11 was signed, notarized, stapled, and validated by the release
-pipeline. Apple submission `2940b354-9107-4947-9b5a-01b7c3a1c5e7` was
-accepted with no issues.
+The final packages are produced by the Developer ID signing, Apple notarization,
+stapling and Gatekeeper validation pipeline. Checksums below are finalized
+before publication.
 
 ```text
-Terento-1.0.0-beta.9-macOS-arm64.dmg  77343739b489a05a5f7b927f227325da53b890abf2ddc178cd27f3cbd768744e
-Terento-1.0.0-beta.9-macOS-arm64.zip  a9240c316a9a01cf634882674355d27d575f247630a896fe8fa3494f1c629b3e
+Terento-1.0.0-beta.10-macOS-arm64.dmg  0000000000000000000000000000000000000000000000000000000000000000
 ```

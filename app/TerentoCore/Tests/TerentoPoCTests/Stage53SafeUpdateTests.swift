@@ -186,7 +186,7 @@ private struct Harness {
     let gate: InstallationTransactionGate
 }
 
-private func makeHarness(oldVersioned: Bool = false) -> Harness {
+private func makeHarness(oldVersioned: Bool = false, withWorkspace: Bool = false) -> Harness {
     let identity = DeviceIdentity(
         manufacturer: "Garmin",
         model: "fenix 8 - 47mm",
@@ -257,7 +257,14 @@ private func makeHarness(oldVersioned: Bool = false) -> Harness {
         identifier: nil,
         installSizeBytes: 24
     )
-    let artifactURL = FileManager.default.temporaryDirectory
+    let workspaceRoot = withWorkspace
+        ? FileManager.default.temporaryDirectory
+            .appendingPathComponent("terento-stage53-acquisition-\(UUID().uuidString)", isDirectory: true)
+        : nil
+    if let workspaceRoot {
+        try? FileManager.default.createDirectory(at: workspaceRoot, withIntermediateDirectories: true)
+    }
+    let artifactURL = (workspaceRoot ?? FileManager.default.temporaryDirectory)
         .appendingPathComponent("terento-stage53-artifact-\(UUID().uuidString).img")
     try? Data(repeating: 0x42, count: 24).write(to: artifactURL, options: .atomic)
     let artifact = SafeUpdateSourceArtifact(
@@ -269,7 +276,8 @@ private func makeHarness(oldVersioned: Bool = false) -> Harness {
         sha256: sourceHash,
         sourcePackageURL: package.sourceURL!,
         catalogPackageID: package.id,
-        targetFilename: "terento_freizeitkarte_fra.img"
+        targetFilename: "terento_freizeitkarte_fra.img",
+        workspaceRootURL: workspaceRoot
     )
     let oldObject = SafeUpdateRemoteObject(
         file: oldFile,
@@ -326,7 +334,7 @@ private func run(_ harness: Harness) async -> SafeUpdateResult {
 }
 
 private func testSuccessfulUpdateAndOrdering() async throws {
-    let harness = makeHarness()
+    let harness = makeHarness(withWorkspace: true)
     let result = await run(harness)
     try require(result.status == .success, "valid update should succeed")
     try require(!result.oldMapPreserved, "old map should be replaced only after verification")
@@ -334,6 +342,15 @@ private func testSuccessfulUpdateAndOrdering() async throws {
     try require(harness.transport.events.contains("writeTransactionObject"), "new object should be written")
     try require(harness.transport.events.contains("verifyTransactionObject"), "new object should be verified")
     try require(harness.transport.events.firstIndex(of: "deleteExactObject")! > harness.transport.events.firstIndex(of: "verifyTransactionObject")!, "delete must follow verification")
+    try require(harness.artifact.workspaceRootURL.map { !FileManager.default.fileExists(atPath: $0.path) } == true, "successful update should remove its acquisition workspace")
+}
+
+private func testInstallFailureRemovesAcquisitionWorkspace() async throws {
+    let harness = makeHarness(withWorkspace: true)
+    harness.transport.mode = .writeFailure
+    let result = await run(harness)
+    try require(result.status == .failedWrite, "install failure should be reported")
+    try require(harness.artifact.workspaceRootURL.map { !FileManager.default.fileExists(atPath: $0.path) } == true, "install failure should remove its acquisition workspace")
 }
 
 private func testNoUpdateAndOwnershipAreBlockedBeforeTransport() async throws {
@@ -459,6 +476,7 @@ struct Stage53SafeUpdateTests {
     static func main() async throws {
         let tests: [(String, () async throws -> Void)] = [
             ("successful update and ordering", testSuccessfulUpdateAndOrdering),
+            ("install failure acquisition cleanup", testInstallFailureRemovesAcquisitionWorkspace),
             ("no-update and ownership gates", testNoUpdateAndOwnershipAreBlockedBeforeTransport),
             ("current-object revalidation", testCurrentObjectChangedStopsBeforeBackup),
             ("map identity gate", testMismatchedMapIdentityIsBlockedBeforeTransport),

@@ -31,6 +31,7 @@ private func terentoMTPProgressCallback(
 struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
     private static let errorCapacity = 2048
     private static let targetDirectory = "/GARMIN"
+    private static let readBackRetryDelays: [TimeInterval] = [0, 1.0, 2.0]
     private let operationGate: MTPOperationGate
     private let lifecycleLease: MTPOperationLease?
     private let operationProfile: DeviceMapOperationProfile?
@@ -150,20 +151,64 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
         sampleLength: UInt32,
         progress: @escaping @Sendable (TransferProgress) -> Void
     ) throws -> MTPReadBackMapObject {
-        try operationGate.withOperation(
-            kind: .install,
-            lifecycleLease: lifecycleLease
-        ) {
-            try readBackUncoordinated(
-                sourceURL: sourceURL,
-                targetFilename: targetFilename,
-                expectedItemID: expectedItemID,
-                targetPath: targetPath,
-                expectedSizeBytes: expectedSizeBytes,
-                sampleOffsets: sampleOffsets,
-                sampleLength: sampleLength,
-                progress: progress
-            )
+        var lastError: Error?
+        for (attempt, delay) in Self.readBackRetryDelays.enumerated() {
+            FinishingTrace.event("readback_attempt", "worker=\(MTPFinishingWorker.isWorker) attempt=\(attempt + 1) delay=\(delay)")
+            if attempt > 0 {
+                Thread.sleep(forTimeInterval: delay)
+            }
+
+            do {
+                return try operationGate.withOperation(
+                    kind: .install,
+                    lifecycleLease: lifecycleLease
+                ) {
+                    try readBackUncoordinated(
+                        sourceURL: sourceURL,
+                        targetFilename: targetFilename,
+                        expectedItemID: expectedItemID,
+                        targetPath: targetPath,
+                        expectedSizeBytes: expectedSizeBytes,
+                        sampleOffsets: sampleOffsets,
+                        sampleLength: sampleLength,
+                        progress: progress
+                    )
+                }
+            } catch {
+                FinishingTrace.event("readback_failed", "worker=\(MTPFinishingWorker.isWorker) attempt=\(attempt + 1) error=\(Self.traceError(error))")
+                lastError = error
+                guard Self.shouldRetryReadBack(error), attempt < Self.readBackRetryDelays.count - 1 else {
+                    throw error
+                }
+            }
+        }
+
+        throw lastError ?? InstallationTransportError.operationFailed(
+            "The Garmin map could not be read back after verification retries.",
+            createdItemID: nil
+        )
+    }
+
+    fileprivate static func traceError(_ error: Error) -> String {
+        guard let error = error as? InstallationTransportError else { return "other" }
+        switch error {
+        case .deviceDisconnected: return "deviceDisconnected"
+        case .operationFailed: return "operationFailed"
+        case .remoteFileMissing: return "remoteFileMissing"
+        case .objectIdentityMismatch: return "objectIdentityMismatch"
+        case .targetAlreadyExists: return "targetAlreadyExists"
+        case .unsupportedDevice: return "unsupportedDevice"
+        case .liveIdentityMismatch: return "liveIdentityMismatch"
+        }
+    }
+
+    private static func shouldRetryReadBack(_ error: Error) -> Bool {
+        guard let error = error as? InstallationTransportError else { return false }
+        switch error {
+        case .deviceDisconnected, .remoteFileMissing, .objectIdentityMismatch, .operationFailed:
+            return true
+        case .targetAlreadyExists, .unsupportedDevice, .liveIdentityMismatch:
+            return false
         }
     }
 
@@ -185,7 +230,7 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
                 operation: .samples, profile: operationProfile, sourceURL: sourceURL,
                 filename: targetFilename, itemID: expectedItemID, size: expectedSizeBytes,
                 offsets: sampleOffsets, length: sampleLength
-            ))
+            ), progress: progress)
             guard let object = response.object, object.targetPath == targetPath else {
                 throw InstallationTransportError.objectIdentityMismatch
             }
@@ -435,7 +480,7 @@ enum MTPFinishingWorker {
     }
     static var isWorker: Bool { CommandLine.arguments.dropFirst().first == "--terento-finishing-worker" }
 
-    static func perform(_ request: Request) throws -> Response {
+    static func perform(_ request: Request, progress: (@Sendable (TransferProgress) -> Void)? = nil) throws -> Response {
         guard let executable = Bundle.main.executableURL else {
             throw InstallationTransportError.operationFailed("Native verification is unavailable.", createdItemID: nil)
         }
@@ -443,21 +488,42 @@ enum MTPFinishingWorker {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false,
                                                attributes: [.posixPermissions: 0o700])
         defer { try? FileManager.default.removeItem(at: directory) }
+        let operationStarted = ProcessInfo.processInfo.systemUptime
         let output = directory.appendingPathComponent("result.json")
+        FinishingTrace.event("operation_begin", "operation=\(request.operation.rawValue) trace=\(directory.lastPathComponent)")
+        let progressURL = directory.appendingPathComponent("progress.json")
+        var lastProgress: [UInt64] = []
+        let traceURL = directory.appendingPathComponent("finishing.trace")
         do {
+            defer { FinishingTrace.captureWorker(traceURL) }
             try BoundedNativeProcess.run(executable: executable,
                 arguments: ["--terento-finishing-worker", output.path],
                 input: JSONEncoder().encode(request),
                 timeout: request.operation == .samples ? 120 : 45,
+                diagnosticFile: traceURL,
+                onPoll: {
+                    guard let progress,
+                          let data = try? Data(contentsOf: progressURL),
+                          let values = try? JSONDecoder().decode([UInt64].self, from: data),
+                          values.count == 2, values[1] > 0, values[0] <= values[1],
+                          values != lastProgress else { return }
+                    lastProgress = values
+                    progress(TransferProgress(bytesTransferred: values[0], totalBytes: values[1]))
+                },
                 // Cleanup is a separate bounded safety operation even if the
                 // enclosing install was cancelled. Never cancel it immediately.
                 cancelled: { request.operation != .cleanup && Task<Never, Never>.isCancelled })
         } catch {
+            FinishingTrace.event("operation_worker_failed", "operation=\(request.operation.rawValue) elapsed=\(ProcessInfo.processInfo.systemUptime - operationStarted) trace=\(directory.lastPathComponent)")
             throw InstallationTransportError.operationFailed(
                 "Native \(request.operation.rawValue) stopped: deadline, cancellation, or worker failure.", createdItemID: nil)
         }
         let response = try JSONDecoder().decode(Response.self, from: Data(contentsOf: output))
-        if let error = response.error { throw error }
+        if let error = response.error {
+            FinishingTrace.event("operation_failed", "operation=\(request.operation.rawValue) elapsed=\(ProcessInfo.processInfo.systemUptime - operationStarted) error=\(MTPMapInstallationTransport.traceError(error)) trace=\(directory.lastPathComponent)")
+            throw error
+        }
+        FinishingTrace.event("operation_complete", "operation=\(request.operation.rawValue) elapsed=\(ProcessInfo.processInfo.systemUptime - operationStarted) trace=\(directory.lastPathComponent)")
         return response
     }
 
@@ -470,6 +536,7 @@ enum MTPFinishingWorker {
             let input = try FileHandle.standardInput.read(upToCount: 8193) ?? Data()
             guard input.count <= 8192 else { throw NativeProcessFailure.failed }
             let request = try JSONDecoder().decode(Request.self, from: input)
+            FinishingTrace.event("worker_operation_begin", "operation=\(request.operation.rawValue) trace=\(output.deletingLastPathComponent().lastPathComponent)")
             let transport = MTPMapInstallationTransport(operationProfile: request.profile)
             switch request.operation {
             case .samples:
@@ -480,7 +547,9 @@ enum MTPFinishingWorker {
                 }
                 response.object = try transport.readBack(sourceURL: source, targetFilename: filename,
                     expectedItemID: itemID, targetPath: "/GARMIN/\(filename)", expectedSizeBytes: size,
-                    sampleOffsets: offsets, sampleLength: length, progress: { _ in })
+                    sampleOffsets: offsets, sampleLength: length,
+                    progress: SampleProgressWriter(url: output.deletingLastPathComponent()
+                        .appendingPathComponent("progress.json")).report)
             case .cleanup:
                 guard let filename = request.filename, let itemID = request.itemID else {
                     throw NativeProcessFailure.failed
@@ -495,6 +564,7 @@ enum MTPFinishingWorker {
                     storages: snapshot.storages)
             }
         } catch let error as InstallationTransportError {
+            FinishingTrace.event("worker_operation_failed", "error=\(MTPMapInstallationTransport.traceError(error))")
             response.error = error
         } catch {
             response.error = .operationFailed("Native finishing operation failed.", createdItemID: nil)
@@ -521,6 +591,24 @@ private struct BoundedInstallationDeviceReader: InstallationDeviceReader {
                 throw InstallationTransportError.operationFailed("Final device check failed.", createdItemID: nil)
             }
             return snapshot
+        }
+    }
+}
+
+/// Local progress only; throttled independently of USB reads and never fatal.
+private final class SampleProgressWriter: @unchecked Sendable {
+    let url: URL
+    private let lock = NSLock()
+    private var lastWrite: TimeInterval = -.infinity
+    init(url: URL) { self.url = url }
+    func report(_ progress: TransferProgress) {
+        lock.lock()
+        defer { lock.unlock() }
+        let now = ProcessInfo.processInfo.systemUptime
+        guard now - lastWrite >= 0.25 || progress.bytesTransferred == progress.totalBytes else { return }
+        lastWrite = now
+        if let data = try? JSONEncoder().encode([progress.bytesTransferred, progress.totalBytes]) {
+            try? data.write(to: url, options: .atomic)
         }
     }
 }
