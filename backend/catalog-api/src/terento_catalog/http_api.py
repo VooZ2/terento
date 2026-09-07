@@ -2252,6 +2252,7 @@ def _provider_summary_payload(
         "lastCollectionErrorDetail": row.get("last_collection_error_detail"),
         "lastCollectionSuccess": _format_json_value(row.get("last_collection_success_at")),
         "latestRelease": row.get("latest_release"),
+        "packageReleases": row.get("package_releases") or [],
         "latestReleaseDetectedAt": _format_json_value(row.get("latest_release_detected_at")),
         "packageCount": int(package_count or 0),
         "brokenPackageCount": int(row.get("broken_package_count") or 0),

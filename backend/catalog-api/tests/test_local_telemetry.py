@@ -13,6 +13,9 @@ class Result:
     def fetchone(self):
         return self.row
 
+    def fetchall(self):
+        return self.row if isinstance(self.row, list) else []
+
 
 class Connection:
     def __init__(self):
@@ -56,6 +59,7 @@ class LocalTelemetryTests(unittest.TestCase):
                 "mapEventCount": 3,
                 "operationCount": 1,
                 "releaseLabels": ["1.0.0-beta.10-local"],
+                "activity": [],
             },
         )
         self.assertTrue(all("is_local_test IS TRUE" in query for query, _ in connection.queries))
@@ -82,4 +86,3 @@ class LocalTelemetryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

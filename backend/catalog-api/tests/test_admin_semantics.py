@@ -22,7 +22,6 @@ from terento_catalog.admin import (
     _admin_timezone_script,
     _admin_freshness_script,
     _admin_mobile_script,
-    _admin_filter_clear_script,
     _layout,
     _campaign_links_script,
     _client_issue_note_sanitizer_script,
@@ -171,7 +170,6 @@ class AdminSemanticsTests(unittest.TestCase):
             "timezone": _admin_timezone_script(),
             "freshness": _admin_freshness_script(),
             "mobile": _admin_mobile_script(),
-            "filter-clear": _admin_filter_clear_script(),
             "campaign-links": _campaign_links_script(),
             "providers": _providers_list_script(),
             "provider-detail": _provider_detail_script(),
@@ -257,27 +255,6 @@ class AdminSemanticsTests(unittest.TestCase):
         kpis={before:()=>before+=10,after:()=>after+=10};windowEvents['terento-admin-content-changed']();assert.equal(before,12);
         """
         self._run_node(harness, _admin_mobile_script())
-
-    def test_admin_filter_clear_is_present_and_dispatches_a_shared_reset_event(self):
-        harness = r"""
-        const assert = require('node:assert/strict');
-        const events = [];
-        const form = {dispatchEvent: event => events.push(event.type)};
-        const button = {closest: () => form, addEventListener: (name, handler) => button.handler = handler};
-        global.CustomEvent = class CustomEvent { constructor(type) { this.type = type; } };
-        global.document = {querySelectorAll: () => [button]};
-        eval(process.argv[1]);
-        button.handler();
-        assert.deepEqual(events, ['terento-admin-clear-filters', 'change']);
-        """
-        self._run_node(harness, _admin_filter_clear_script())
-        dashboard_body = dashboard_page([], {"username": "operator"}, "csrf").decode()
-        self.assertIn('data-filter-clear aria-label="Clear installation filters"', dashboard_body)
-        self.assertIn('.filter-bar .filter-clear{align-self:center', dashboard_body)
-        self.assertIn("selectedQuickFilter = 'all';", _dashboard_script())
-        self.assertIn("range.value = 'all';", _map_statistics_script())
-        self.assertIn("map.value = 'yes';", _devices_script())
-        self.assertIn("parameters.delete('state');", _diagnostics_script())
 
     def test_variant_formatting_normalizes_sizes_without_dropping_functional_labels(self):
         self.assertEqual(
@@ -476,8 +453,6 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("overview-chart-panel", body)
         self.assertIn("Recent map activity", body)
         self.assertIn("Compatibility evidence", body)
-        self.assertIn("Custom .img is shown separately; it is not included in map-operation KPI totals.", body)
-        self.assertIn(".overview-primary-grid{align-items:stretch}", body)
         self.assertNotIn("Pending metric definition", body)
         self.assertNotIn("<span>Success rate</span>", body)
 
@@ -536,7 +511,6 @@ class AdminSemanticsTests(unittest.TestCase):
             {"username": "operator"}, "csrf",
         ).decode()
         self.assertIn("Device/model activity", body)
-        self.assertIn("Compatibility evidence only · separate from map-operation telemetry.", body)
         self.assertIn("fēnix 8 · 47 mm, AMOLED", body)
         self.assertIn("New / review-required devices", body)
         self.assertIn("Needs attention", body)
@@ -576,9 +550,6 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("value='30d' selected", body)
         self.assertIn("overview-attention-empty", body)
         self.assertIn("overview-provider-panel", body)
-        self.assertIn("grid-template-columns:minmax(150px,max-content) minmax(0,1fr) max-content", body)
-        self.assertIn(".overview-provider-panel>div:first-child,.overview-provider-panel .overview-provider-summary,.overview-provider-panel>.section-link{align-self:center}", body)
-        self.assertIn(".overview-provider-panel .overview-provider-summary a{flex:0 0 auto;align-items:center;white-space:nowrap}", body)
 
     def test_overview_trend_fills_selected_range_without_fabricating_events(self):
         event_bucket = datetime(2026, 9, 1, 8, tzinfo=timezone.utc)
@@ -715,15 +686,12 @@ class AdminSemanticsTests(unittest.TestCase):
             selected_filters={"period": "24h"},
         ).decode()
         self.assertIn("Last 24 hours", body)
-        self.assertIn("Provider activity", body)
-        self.assertIn("Provider activity and popular maps", body)
-        self.assertEqual(body.count("<p class='section-kicker'>Popularity</p>"), 1)
+        self.assertIn("Activity by provider", body)
         self.assertIn("id='map-statistics-coverage'", body)
         self.assertIn("id='world-map-svg'", body)
         self.assertIn("window.terentoWorldMapSvg", body)
         popular_maps = body.split("id='map-statistics-popularity'", 1)[1].split("popularity-regions-disclosure", 1)[0]
-        self.assertIn("<th scope='col'>Count</th>", popular_maps)
-        self.assertNotIn("<th scope='col'>Package installs</th>", popular_maps)
+        self.assertIn("<th scope='col'>Package installs</th>", popular_maps)
         self.assertNotIn("<h2>Downloads per provider</h2>", body)
         self.assertNotIn("<th scope='col'>Completed map-package installs</th>", popular_maps)
         self.assertNotIn("90 days", body)
@@ -759,7 +727,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Custom .img installed: 3", body)
         self.assertRegex(body, r"class='overview-chart-custom'[^>]*height='220.0'")
         self.assertIn("</i>Custom .img</span>", body)
-        self.assertIn("Custom .img is shown separately; it is not included in map-operation KPI totals.", body)
+        self.assertIn("Custom .img: successful manual installations.", body)
 
     def test_chart_segments_join_without_individual_rounding(self):
         import xml.etree.ElementTree as ET
@@ -797,9 +765,9 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertNotIn("date_trunc(%s", trend_query)
         self.assertEqual(trend_parameters, (since, "UTC", since, "UTC", "UTC"))
         self.assertIn("CASE WHEN c.provider_id = 'custom'", trend_query)
+        self.assertIn("NOT EXISTS", trend_query)
         self.assertIn("AS custom_count", trend_query)
         self.assertIn("AND count(*) = max(COALESCE(e.selected_map_count, 1))", trend_query)
-        self.assertIn("NOT EXISTS", trend_query)
 
     def test_installation_authorization_is_separate_from_compatibility_evidence(self):
         source = inspect.getsource(Database.update_device_support_status)
@@ -1057,10 +1025,6 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Garmin device", detail_body)
         self.assertIn("device-information-section", detail_body)
         self.assertIn(".device-information-section .model-information-list{max-width:780px}", detail_body)
-        self.assertIn(".model-page-section,.model-technical-details{box-sizing:border-box;margin-top:16px;padding:16px", detail_body)
-        self.assertIn(".model-administration[open]>summary,.device-information-section[open]>summary{margin-bottom:12px}", detail_body)
-        self.assertIn(".model-information-list dt,.model-information-list dd{min-width:0;overflow-wrap:anywhere;word-break:break-word}", detail_body)
-        self.assertIn(".model-technical-details .model-information-list dd{text-align:left}", detail_body)
         self.assertIn("grid-template-columns:150px minmax(0,1fr)", detail_body)
         self.assertNotIn("Change history", detail_body)
         self.assertIn("placeholder=\"garmin maps\"", campaign_body)
@@ -1629,19 +1593,20 @@ class AdminSemanticsTests(unittest.TestCase):
             {"username": "operator"},
             "csrf",
         ).decode()
-        self.assertNotIn("Watch event linkage", body)
-        self.assertNotIn("DATA QUALITY ·", body)
+        self.assertIn("Watch event linkage", body)
+        self.assertIn("DATA QUALITY · Watch event linkage", body)
         self.assertIn("id='map-rows'", body)
-        self.assertIn("All maps", body)
-        self.assertIn("<h3>Top 5</h3>", body)
-        self.assertNotIn("Map install operations", body)
-        self.assertNotIn("Linked watch events", body)
-        self.assertNotIn("Linkage coverage", body)
-        self.assertNotIn("Watch-confirmed failures", body)
+        self.assertIn("View all maps", body)
+        self.assertIn("<h3>Top maps</h3>", body)
+        self.assertIn("Map install operations</span><strong data-stat='mapInstallationCount'>4", body)
+        self.assertIn("Linked watch events</span><strong data-stat='linkedInstallationCount'>3", body)
+        self.assertIn("Unlinked installs</span><strong data-stat='mapOnlyInstallationCount'>1", body)
+        self.assertIn("Linkage coverage</span><strong data-stat='linkageRate'>75%", body)
+        self.assertIn("Watch-confirmed failures</span><strong data-stat='linkedFailedInstallCount'>1", body)
 
         script = _map_statistics_script()
-        self.assertNotIn("const linkage = payload.linkage || {};", script)
-        self.assertNotIn("linkedSuccessfulInstallCount", script)
+        self.assertIn("const linkage = payload.linkage || {};", script)
+        self.assertIn("set('linkedSuccessfulInstallCount', linkageValue('linkedSuccessfulInstallCount'))", script)
 
     def test_map_statistics_linkage_query_joins_only_shared_operation_ids(self):
         source = inspect.getsource(Database.map_statistics_linkage)

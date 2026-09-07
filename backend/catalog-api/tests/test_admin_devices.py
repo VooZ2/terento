@@ -186,6 +186,26 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertEqual(device["evidenceStatus"], "TESTED")
         self.assertEqual(device["installationStats"]["successful"], 1)
 
+    def test_successful_unknown_model_promotes_map_capability_for_exact_variant(self) -> None:
+        payload = _admin_device_payload(
+            [device_row(
+                device_id="garmin-fenix-9-pro-inreach-51",
+                model="fēnix 9 Pro · inReach",
+                canonical_model="fenix 9 pro",
+                variant="51 mm",
+                map_capable=None,
+                support_status="SUPPORTED",
+                attempted_install_count=1,
+                successful_install_count=1,
+                failed_install_count=0,
+            )],
+            None,
+        )
+        device = payload["devices"][0]
+        self.assertTrue(device["mapCapable"])
+        self.assertEqual(device["evidenceStatus"], "TESTED")
+        self.assertTrue(device["publicCompatibility"]["eligible"])
+
     def test_public_compatibility_review_is_separate_and_exact(self) -> None:
         pending = _admin_device_payload([device_row()], None)["devices"][0]
         self.assertTrue(pending["publicCompatibility"]["eligible"])
