@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
 FAQ_KEEP = (0, 1, 4, 5, 6)
-PROVIDER_SCRIPT_VERSION = "20260904-home-provider-cards"
+PROVIDER_SCRIPT_VERSION = "20260908-home-provider-cards-contours-v1"
 FEATURE_SCRIPT_VERSION = "20260904-home-workflow-tabs"
 EMAIL_URL = "mailto:hello@terento.app?subject=Terento%20installation%20issue"
 EMAIL_URL_HTML = EMAIL_URL.replace("@", "&#64;")
@@ -245,6 +245,17 @@ PROVIDER_CARD_COPY = {
                 "Routing support on Garmin devices",
             ],
         },
+        "opentopomap-contours": {
+            "name": "OpenTopoMap contour lines",
+            "badge": "Optional add-on",
+            "count_template": "{count} regions · OpenTopoMap add-on",
+            "benefits": [
+                "Add elevation lines to a selected OpenTopoMap region",
+                "Install it together with the main OpenTopoMap map",
+                "See more detail when reading climbs and terrain",
+                "Requires additional storage on your Garmin",
+            ],
+        },
     },
     "de": {
         "freizeitkarte": {
@@ -265,6 +276,17 @@ PROVIDER_CARD_COPY = {
                 "Schummerung und Höhendaten für mehr Geländekontext",
                 "Optionale Höhenlinien für zusätzliche Details",
                 "Unterstützung der Routenberechnung auf Garmin-Geräten",
+            ],
+        },
+        "opentopomap-contours": {
+            "name": "OpenTopoMap-Höhenlinien",
+            "badge": "Optionale Erweiterung",
+            "count_template": "{count} Regionen · OpenTopoMap-Erweiterung",
+            "benefits": [
+                "Füge einer ausgewählten OpenTopoMap-Region Höhenlinien hinzu",
+                "Installiere sie zusammen mit der OpenTopoMap-Hauptkarte",
+                "Erkenne Anstiege und Gelände mit mehr Details",
+                "Benötigt zusätzlichen Speicher auf deiner Garmin-Uhr",
             ],
         },
     },
@@ -289,6 +311,17 @@ PROVIDER_CARD_COPY = {
                 "Prise en charge du calcul d’itinéraires sur les appareils Garmin",
             ],
         },
+        "opentopomap-contours": {
+            "name": "Courbes de niveau OpenTopoMap",
+            "badge": "Complément optionnel",
+            "count_template": "{count} régions · complément OpenTopoMap",
+            "benefits": [
+                "Ajoutez des courbes de niveau à une région OpenTopoMap",
+                "Installez-les avec la carte OpenTopoMap principale",
+                "Visualisez plus de détails sur les montées et le relief",
+                "Nécessite de l’espace supplémentaire sur votre Garmin",
+            ],
+        },
     },
     "pl": {
         "freizeitkarte": {
@@ -309,6 +342,17 @@ PROVIDER_CARD_COPY = {
                 "Cieniowanie i dane wysokościowe zapewniają lepszy kontekst terenu",
                 "Opcjonalne poziomice, gdy potrzebujesz większej szczegółowości",
                 "Obsługa wyznaczania tras na urządzeniach Garmin",
+            ],
+        },
+        "opentopomap-contours": {
+            "name": "Poziomice OpenTopoMap",
+            "badge": "Opcjonalny dodatek",
+            "count_template": "{count} regionów · dodatek OpenTopoMap",
+            "benefits": [
+                "Dodaj poziomice do wybranego regionu OpenTopoMap",
+                "Zainstaluj je razem z główną mapą OpenTopoMap",
+                "Łatwiej odczytuj podejścia i ukształtowanie terenu",
+                "Wymaga dodatkowego miejsca w Garminie",
             ],
         },
     },
@@ -333,6 +377,17 @@ PROVIDER_CARD_COPY = {
                 "Podpora výpočtu tras na zařízeních Garmin",
             ],
         },
+        "opentopomap-contours": {
+            "name": "Vrstevnice OpenTopoMap",
+            "badge": "Volitelný doplněk",
+            "count_template": "{count} oblastí · doplněk OpenTopoMap",
+            "benefits": [
+                "Přidejte vrstevnice k vybrané oblasti OpenTopoMap",
+                "Instalujte je spolu s hlavní mapou OpenTopoMap",
+                "Získejte více detailů pro stoupání a terén",
+                "Vyžadují další úložiště v zařízení Garmin",
+            ],
+        },
     },
     "it": {
         "freizeitkarte": {
@@ -353,6 +408,17 @@ PROVIDER_CARD_COPY = {
                 "Ombreggiatura e dati altimetrici per un migliore contesto del terreno",
                 "Curve di livello opzionali per avere più dettagli",
                 "Supporto al calcolo dei percorsi sui dispositivi Garmin",
+            ],
+        },
+        "opentopomap-contours": {
+            "name": "Curve di livello OpenTopoMap",
+            "badge": "Aggiunta opzionale",
+            "count_template": "{count} regioni · aggiunta OpenTopoMap",
+            "benefits": [
+                "Aggiungi le curve di livello alla regione OpenTopoMap scelta",
+                "Installale insieme alla mappa OpenTopoMap principale",
+                "Leggi con più dettaglio salite e terreno",
+                "Richiedono spazio aggiuntivo sul Garmin",
             ],
         },
     },
@@ -538,14 +604,16 @@ def wrap_map_feature_tabs(source: str, copy: dict[str, str], path: Path) -> str:
 
 def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
     cards = []
-    for provider_id in ("freizeitkarte", "opentopomap"):
+    for provider_id in ("freizeitkarte", "opentopomap", "opentopomap-contours"):
         provider = PROVIDER_CARD_COPY[locale][provider_id]
         benefits = "".join(f"<li>{benefit}</li>" for benefit in provider["benefits"])
+        card_class = "provider-card provider-card--addon" if provider_id == "opentopomap-contours" else "provider-card"
+        badge = f'<p class="provider-card-badge">{provider["badge"]}</p>' if provider_id == "opentopomap-contours" else ""
         cards.append(
-            f'''<article class="provider-card" data-provider-card="{provider_id}">
+            f'''<article class="{card_class}" data-provider-card="{provider_id}">
               <div class="provider-card-header">
-                <h3>{provider["name"]}</h3>
-                <p class="provider-count" data-provider-count data-count-template="{provider["count_template"]}">{provider["count_template"].replace("{count}", "63" if provider_id == "freizeitkarte" else "177").replace("{countries}", "54")}</p>
+                <div class="provider-card-title">{badge}<h3>{provider["name"]}</h3></div>
+              <p class="provider-count" data-provider-count data-count-template="{provider["count_template"]}">{provider["count_template"].replace("{count}", "63" if provider_id == "freizeitkarte" else ("177" if provider_id == "opentopomap" else "157")).replace("{countries}", "54")}</p>
               </div>
               <ul class="provider-benefits">{benefits}</ul>
             </article>'''

@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20260905-in-page-language-v1"
-STYLE_VERSION = "20260905-in-page-language-v1"
+STYLE_VERSION = "20260908-home-provider-cards-contours-v1"
 IMAGE_VERSION = "20260905-app-screens-v1"
 LANGUAGE_VERSION = "20260905-language-selector-full-name-v1"
 LOCALIZED_CONTENT_VERSION = "20260904-pass3-internal-link-events-v1"
