@@ -153,7 +153,7 @@ const anchorFor = (page, className) => {
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20260905-in-page-language-v1">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20260908-home-provider-cards-contours-v1">/, `${locale}: Home stylesheet cache bust`);
   assert.match(page, /<script defer src="\/home-features\.js\?v=20260904-home-workflow-tabs"><\/script>/, `${locale}: Home feature script cache bust`);
   assert.match(page, /installing-maps-1600\.png\?v=20260905-app-screens-v1/, `${locale}: installation screenshot cache bust`);
   const heroArtwork = page.match(/<figure class="app-shot app-shot--hero">[\s\S]*?<\/figure>/)?.[0];
@@ -226,14 +226,20 @@ for (const [locale, expected] of locales) {
   assert.match(providerSection, new RegExp(`<p class="eyebrow">${expected.providerEyebrow.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/p>`));
   assert.match(providerSection, new RegExp(`<h2 id="providers-title">${expected.providerTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/h2>`));
   assert.match(providerSection, new RegExp(`<p class="provider-copy">${expected.providerCopy.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/p>`));
-  assert.equal((providerSection.match(/class="provider-card"/g) || []).length, 2, `${locale}: expected two provider cards`);
+  assert.equal((providerSection.match(/class="provider-card(?:\s|")/g) || []).length, 3, `${locale}: expected two provider cards plus the optional contour add-on`);
   assert.match(providerSection, /data-provider-card="freizeitkarte"/);
   assert.match(providerSection, /data-provider-card="opentopomap"/);
-  assert.equal((providerSection.match(/class="provider-benefits"/g) || []).length, 2, `${locale}: each provider card has a benefits list`);
-  assert.equal((providerSection.match(/<li>/g) || []).length, 8, `${locale}: provider cards have four benefits each`);
+  assert.match(providerSection, /data-provider-card="opentopomap-contours"/);
+  const contourCard = providerSection.match(/<article class="provider-card provider-card--addon" data-provider-card="opentopomap-contours">[\s\S]*?<\/article>/)?.[0];
+  assert.ok(contourCard, `${locale}: contour card uses the add-on visual treatment`);
+  assert.match(contourCard, /class="provider-card-badge"/);
+  assert.match(contourCard, /OpenTopoMap/);
+  assert.equal((providerSection.match(/class="provider-benefits"/g) || []).length, 3, `${locale}: each map card has a benefits list`);
+  assert.equal((providerSection.match(/<li>/g) || []).length, 12, `${locale}: map cards have four benefits each`);
   assert.match(providerSection, /data-count-template="[^"]*\{count\}[^"]*"/);
   assert.match(providerSection, /63/);
   assert.match(providerSection, /177/);
+  assert.match(providerSection, /157/);
   const cardFragments = [...providerSection.matchAll(/<article class="provider-card"[\s\S]*?<\/article>/g)].map((match) => match[0]);
   cardFragments.forEach((card, index) => {
     assert.doesNotMatch(card, /license|licen[cs]|source|download/i, `${locale}: provider card ${index + 1} avoids technical/legal copy`);
@@ -309,6 +315,8 @@ assert.match(styles, /\.section-heading h2 \.workflow-title-arrow\s*\{[^}]*displ
 assert.match(styles, /\.map-feature-panel\[hidden\]\s*\{[^}]*display:\s*none/s);
 assert.match(styles, /\.provider-cards\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)/s);
 assert.match(styles, /\.provider-card\s*\{[^}]*background:\s*var\(--surface\)/s);
+assert.match(styles, /\.provider-card--addon\s*\{[^}]*border-style:\s*dashed[^}]*background:\s*var\(--surface-muted\)/s);
+assert.match(styles, /\.provider-card-badge\s*\{[^}]*text-transform:\s*uppercase/s);
 assert.match(styles, /\.provider-benefits\s*\{[^}]*border-top:\s*1px solid var\(--border\)/s);
 const localizedContent = fs.readFileSync(path.join(root, "site", "localized-content.js"), "utf8");
 assert.doesNotMatch(localizedContent, /querySelector\("\.scope-copy"\)/s, "removed Home scope copy must not be updated by JavaScript");

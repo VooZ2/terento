@@ -2,7 +2,7 @@
 <html lang="it" data-language="it">
   <head>
     <script defer src="/site-shell.js?v=20260905-in-page-language-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20260905-in-page-language-v1">
+    <link rel="stylesheet" href="/styles.css?v=20260908-home-provider-cards-contours-v1">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -42,7 +42,7 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <script defer src="/language.js?v=20260905-language-selector-full-name-v1"></script>
     <script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script>
-    <script defer src="/provider-list.js?v=20260904-home-provider-cards"></script>
+    <script defer src="/provider-list.js?v=20260908-home-provider-cards-contours-v1"></script>
     <script defer src="/home-features.js?v=20260904-home-workflow-tabs"></script>
     <script defer src="/localized-content.js?v=20260904-pass3-internal-link-events-v1"></script>
     <script type="application/ld+json">
@@ -204,17 +204,24 @@
           <div class="provider-cards" data-provider-cards aria-label="Provider di mappe">
             <article class="provider-card" data-provider-card="freizeitkarte">
               <div class="provider-card-header">
-                <h3>Freizeitkarte</h3>
-                <p class="provider-count" data-provider-count data-count-template="{count} pacchetti di mappe · {countries} paesi/regioni">63 pacchetti di mappe · 54 paesi/regioni</p>
+                <div class="provider-card-title"><h3>Freizeitkarte</h3></div>
+              <p class="provider-count" data-provider-count data-count-template="{count} pacchetti di mappe · {countries} paesi/regioni">63 pacchetti di mappe · 54 paesi/regioni</p>
               </div>
               <ul class="provider-benefits"><li>Una mappa equilibrata per escursionismo, ciclismo e navigazione quotidiana</li><li>Profili di percorso per pedoni, ciclisti e automobilisti</li><li>Curve di livello integrate per capire il dislivello</li><li>Punti di interesse dettagliati e informazioni utili sui trasporti</li></ul>
             </article>
 <article class="provider-card" data-provider-card="opentopomap">
               <div class="provider-card-header">
-                <h3>OpenTopoMap</h3>
-                <p class="provider-count" data-provider-count data-count-template="{count} pacchetti di mappe per paese">177 pacchetti di mappe per paese</p>
+                <div class="provider-card-title"><h3>OpenTopoMap</h3></div>
+              <p class="provider-count" data-provider-count data-count-template="{count} pacchetti di mappe per paese">177 pacchetti di mappe per paese</p>
               </div>
               <ul class="provider-benefits"><li>Una mappa pensata prima di tutto per leggere il terreno</li><li>Ombreggiatura e dati altimetrici per un migliore contesto del terreno</li><li>Curve di livello opzionali per avere più dettagli</li><li>Supporto al calcolo dei percorsi sui dispositivi Garmin</li></ul>
+            </article>
+<article class="provider-card provider-card--addon" data-provider-card="opentopomap-contours">
+              <div class="provider-card-header">
+                <div class="provider-card-title"><p class="provider-card-badge">Aggiunta opzionale</p><h3>Curve di livello OpenTopoMap</h3></div>
+              <p class="provider-count" data-provider-count data-count-template="{count} regioni · aggiunta OpenTopoMap">157 regioni · aggiunta OpenTopoMap</p>
+              </div>
+              <ul class="provider-benefits"><li>Aggiungi le curve di livello alla regione OpenTopoMap scelta</li><li>Installale insieme alla mappa OpenTopoMap principale</li><li>Leggi con più dettaglio salite e terreno</li><li>Richiedono spazio aggiuntivo sul Garmin</li></ul>
             </article>
           </div>
         </div>

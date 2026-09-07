@@ -8,9 +8,9 @@ const fixture = name => JSON.parse(fs.readFileSync(path.join(root, 'contracts/fi
 const script = fs.readFileSync(path.join(root, 'site/provider-list.js'), 'utf8');
 
 // Run the production script without changing the public asset or its caching.
-async function present(payload, fail = false) {
-  const counter = { dataset: { countTemplate: '{count} packages in {countries} countries' }, textContent: 'Static fallback' };
-  const card = { dataset: { providerCard: 'freizeitkarte' }, hidden: false,
+async function present(payload, fail = false, cardID = 'freizeitkarte') {
+  const counter = { dataset: { countTemplate: cardID === 'opentopomap-contours' ? '{count} contour regions' : '{count} packages in {countries} countries' }, textContent: 'Static fallback' };
+  const card = { dataset: { providerCard: cardID }, hidden: false,
     querySelector: selector => { assert.equal(selector, '[data-provider-count]'); return counter; } };
   let requests = 0;
   vm.runInNewContext(script, {
@@ -57,5 +57,17 @@ async function present(payload, fail = false) {
   const missingProviderID = structuredClone(available);
   delete missingProviderID.providers[0].id;
   assert.equal((await present(missingProviderID)).hidden, true);
+  const contours = structuredClone(valid);
+  contours.providers = [{
+    id: 'opentopomap',
+    status: 'ACTIVE',
+    maps: [{
+      availability: 'AVAILABLE',
+      artifacts: [{ kind: 'contours', validationStatus: 'VALIDATED' }],
+    }],
+  }];
+  assert.deepEqual(await present(contours, false, 'opentopomap-contours'), { hidden: false, text: '1 contour regions' });
+  contours.providers[0].maps[0].artifacts[0].validationStatus = 'REJECTED';
+  assert.deepEqual(await present(contours, false, 'opentopomap-contours'), { hidden: true, text: 'Static fallback' });
   console.log('PASS: production provider cards consume shared fixtures, tolerate additive fields and preserve fallback behavior');
 })().catch(error => { console.error(error); process.exitCode = 1; });

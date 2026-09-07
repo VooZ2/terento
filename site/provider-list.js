@@ -12,7 +12,9 @@
       .map((provider) => [String(provider.id).trim().toLowerCase(), provider]));
 
     cards.forEach((card) => {
-      const provider = activeProviders.get(String(card.dataset.providerCard || "").trim().toLowerCase());
+      const cardID = String(card.dataset.providerCard || "").trim().toLowerCase();
+      const isContourCard = cardID === "opentopomap-contours";
+      const provider = activeProviders.get(isContourCard ? "opentopomap" : cardID);
       card.hidden = !provider;
       if (!provider) return;
 
@@ -20,7 +22,23 @@
         ? provider.maps.filter((map) => String(map?.availability || "").toUpperCase() === "AVAILABLE")
         : [];
       const countElement = card.querySelector("[data-provider-count]");
-      if (!countElement || !maps.length) return;
+      if (!countElement) return;
+      if (!maps.length) {
+        if (isContourCard) card.hidden = true;
+        return;
+      }
+
+      if (isContourCard) {
+        const contourCount = maps.filter((map) => Array.isArray(map?.artifacts)
+          && map.artifacts.some((artifact) => String(artifact?.kind || "").toLowerCase() === "contours"
+            && String(artifact?.validationStatus || artifact?.validationState || "").toUpperCase() === "VALIDATED"))
+          .length;
+        card.hidden = contourCount === 0;
+        if (contourCount === 0) return;
+        countElement.textContent = countElement.dataset.countTemplate
+          .replace("{count}", String(contourCount));
+        return;
+      }
 
       const countries = new Set(maps
         .map((map) => String(map?.country || "").trim())

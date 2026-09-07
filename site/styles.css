@@ -1397,11 +1397,31 @@ h1 {
   background: var(--surface);
 }
 
+.provider-card--addon {
+  border-style: dashed;
+  background: var(--surface-muted);
+}
+
 .provider-card-header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 20px;
+}
+
+.provider-card-title {
+  min-width: 0;
+}
+
+.provider-card-badge {
+  margin: 0 0 10px;
+  color: var(--sky);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
 }
 
 .provider-card h3 {

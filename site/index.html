@@ -2,7 +2,7 @@
 <html lang="en" data-language="en">
   <head>
     <script defer src="/site-shell.js?v=20260905-in-page-language-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20260905-in-page-language-v1">
+    <link rel="stylesheet" href="/styles.css?v=20260908-home-provider-cards-contours-v1">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -42,7 +42,7 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <script defer src="/language.js?v=20260905-language-selector-full-name-v1"></script>
     <script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script>
-    <script defer src="/provider-list.js?v=20260904-home-provider-cards"></script>
+    <script defer src="/provider-list.js?v=20260908-home-provider-cards-contours-v1"></script>
     <script defer src="/home-features.js?v=20260904-home-workflow-tabs"></script>
     <script type="application/ld+json">
       {
@@ -282,17 +282,24 @@
           <div class="provider-cards" data-provider-cards aria-label="Map providers">
             <article class="provider-card" data-provider-card="freizeitkarte">
               <div class="provider-card-header">
-                <h3>Freizeitkarte</h3>
-                <p class="provider-count" data-provider-count data-count-template="{count} map packages · {countries} countries/regions">63 map packages · 54 countries/regions</p>
+                <div class="provider-card-title"><h3>Freizeitkarte</h3></div>
+              <p class="provider-count" data-provider-count data-count-template="{count} map packages · {countries} countries/regions">63 map packages · 54 countries/regions</p>
               </div>
               <ul class="provider-benefits"><li>A balanced map for hiking, cycling, and everyday navigation</li><li>Routing profiles for walkers, cyclists, and drivers</li><li>Integrated contour lines for elevation context</li><li>Detailed points of interest and useful transport information</li></ul>
             </article>
 <article class="provider-card" data-provider-card="opentopomap">
               <div class="provider-card-header">
-                <h3>OpenTopoMap</h3>
-                <p class="provider-count" data-provider-count data-count-template="{count} country map packages">177 country map packages</p>
+                <div class="provider-card-title"><h3>OpenTopoMap</h3></div>
+              <p class="provider-count" data-provider-count data-count-template="{count} country map packages">177 country map packages</p>
               </div>
               <ul class="provider-benefits"><li>A topographic-first map for reading the terrain</li><li>Hillshade and elevation data for stronger terrain context</li><li>Optional contour lines when you want more detail</li><li>Routing support on Garmin devices</li></ul>
+            </article>
+<article class="provider-card provider-card--addon" data-provider-card="opentopomap-contours">
+              <div class="provider-card-header">
+                <div class="provider-card-title"><p class="provider-card-badge">Optional add-on</p><h3>OpenTopoMap contour lines</h3></div>
+              <p class="provider-count" data-provider-count data-count-template="{count} regions · OpenTopoMap add-on">157 regions · OpenTopoMap add-on</p>
+              </div>
+              <ul class="provider-benefits"><li>Add elevation lines to a selected OpenTopoMap region</li><li>Install it together with the main OpenTopoMap map</li><li>See more detail when reading climbs and terrain</li><li>Requires additional storage on your Garmin</li></ul>
             </article>
           </div>
         </div>
