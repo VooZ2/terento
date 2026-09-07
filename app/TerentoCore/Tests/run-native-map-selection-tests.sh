@@ -135,7 +135,7 @@ fi
 
 if ! grep -Fq 'InstallReviewAvailabilityResolver' "$connect_screen" \
     || ! grep -Fq 'ReadyToInstallSelectedMapsHeader(count: plan.selectedItems.count)' "$connect_screen" \
-    || ! grep -Fq 'ReadyToInstallSelectedMapsList(items: plan.selectedItems)' "$connect_screen" \
+    || ! grep -Fq 'ReadyToInstallSelectedMapsList(plan: plan)' "$connect_screen" \
     || ! grep -Fq 'private static let visibleRowCapacity = 3' "$connect_screen" \
     || ! grep -Fq 'idealHeight: Self.maximumListHeight' "$connect_screen" \
     || ! grep -Fq 'Spacer(minLength: TerentoPageLayout.sectionSpacing)' "$connect_screen"; then

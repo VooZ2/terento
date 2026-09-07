@@ -6,10 +6,15 @@ enum ManagedFilenameError: Error, Equatable, Sendable {
 }
 
 struct TerentoManagedFilenameGenerator: Sendable {
-    func filename(providerId: String, regionId: String) throws -> String {
+    func filename(
+        providerId: String,
+        regionId: String,
+        artifactKind: MapArtifactKind = .main
+    ) throws -> String {
         let provider = try component(providerId)
         let region = try component(regionId)
-        return "terento_\(provider)_\(region).img"
+        let suffix = artifactKind == .main ? "" : "_\(artifactKind.rawValue)"
+        return "terento_\(provider)_\(region)\(suffix).img"
     }
 
     /// A versioned filename is used for safe updates because the old map must
@@ -19,9 +24,14 @@ struct TerentoManagedFilenameGenerator: Sendable {
     func versionedFilename(
         providerId: String,
         regionId: String,
-        version: MapVersion
+        version: MapVersion,
+        artifactKind: MapArtifactKind = .main
     ) throws -> String {
-        let base = try filename(providerId: providerId, regionId: regionId)
+        let base = try filename(
+            providerId: providerId,
+            regionId: regionId,
+            artifactKind: artifactKind
+        )
         return base.replacingOccurrences(of: ".img", with: "_\(version.description).img")
     }
 
@@ -29,12 +39,14 @@ struct TerentoManagedFilenameGenerator: Sendable {
         _ filename: String,
         providerId: String,
         regionId: String,
-        version: MapVersion
+        version: MapVersion,
+        artifactKind: MapArtifactKind = .main
     ) -> Bool {
         guard let expected = try? versionedFilename(
             providerId: providerId,
             regionId: regionId,
-            version: version
+            version: version,
+            artifactKind: artifactKind
         ) else {
             return false
         }
@@ -51,17 +63,21 @@ struct TerentoManagedFilenameGenerator: Sendable {
         _ filename: String,
         providerId: String,
         regionId: String,
-        version: MapVersion? = nil
+        version: MapVersion? = nil,
+        artifactKind: MapArtifactKind = .main
     ) -> Bool {
         guard isValid(filename),
               let providerSentinel = try? self.filename(
                   providerId: providerId,
-                  regionId: "region"
+                  regionId: "region",
+                  artifactKind: artifactKind
               ) else {
             return false
         }
 
-        let sentinelSuffix = "region.img"
+        let sentinelSuffix = artifactKind == .main
+            ? "region.img"
+            : "region_\(artifactKind.rawValue).img"
         guard providerSentinel.hasSuffix(sentinelSuffix) else {
             return false
         }
@@ -74,6 +90,10 @@ struct TerentoManagedFilenameGenerator: Sendable {
         var encodedRegion = String(
             filename.dropFirst(providerPrefix.count).dropLast(".img".count)
         )
+        if artifactKind == .contours,
+           encodedRegion.hasSuffix("_contours") {
+            encodedRegion.removeLast("_contours".count)
+        }
         if let version {
             let versionSuffix = "_\(version.description)"
             if encodedRegion.hasSuffix(versionSuffix) {
@@ -116,6 +136,16 @@ struct TerentoManagedFilenameGenerator: Sendable {
 
         let range = NSRange(filename.startIndex..<filename.endIndex, in: filename)
         return expression.firstMatch(in: filename, range: range) != nil
+    }
+
+    /// Returns the artifact kind encoded by a valid Terento-managed filename.
+    /// This is intentionally available only for a filename that has already
+    /// passed the managed grammar; lifecycle code must not infer ownership
+    /// from an arbitrary provider or user filename.
+    func artifactKind(for filename: String) -> MapArtifactKind? {
+        guard isValid(filename) else { return nil }
+        let stem = String(filename.dropLast(".img".count))
+        return stem.contains("_contours") ? .contours : .main
     }
 
     private func component(_ value: String) throws -> String {

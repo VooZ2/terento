@@ -221,7 +221,10 @@ struct MapLifecycleContext: Sendable {
         self.profile = profile
         self.deviceKey = deviceKey
         self.expectedSHA256ByItemID = expectedSHA256ByItemID
-        self.mapIdentity = mapIdentity
+        self.mapIdentity = mapIdentity ?? failedInstallRecovery.flatMap {
+            guard MapIdentity.normalizeProvider($0.providerId) == "custom" else { return nil }
+            return MapIdentity(provider: $0.providerId, region: $0.regionId)
+        }
         self.failedInstallRecovery = failedInstallRecovery
     }
 

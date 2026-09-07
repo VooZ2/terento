@@ -101,7 +101,8 @@ struct InstallationPreflightEngine: Sendable {
         installedMaps: [InstalledMap],
         inspectedFiles: [InstalledMapFile],
         availableStorage: UInt64,
-        profile: DeviceInstallProfile?
+        profile: DeviceInstallProfile?,
+        artifactKind: MapArtifactKind = .main
     ) -> InstallationPreflightResult {
         let installedMatch = comparison.installedMap
         let ownership = ownership(for: installedMatch)
@@ -145,7 +146,8 @@ struct InstallationPreflightEngine: Sendable {
         do {
             proposedFilename = try TerentoManagedFilenameGenerator().filename(
                 providerId: selectedMap.providerId,
-                regionId: selectedMap.canonicalRegionId
+                regionId: selectedMap.canonicalRegionId,
+                artifactKind: artifactKind
             )
         } catch {
             return blocked(
@@ -200,7 +202,8 @@ struct InstallationPreflightEngine: Sendable {
         do {
             targetPath = try conflictResolver.targetPath(
                 profile: profile,
-                selectedPackage: selectedMap
+                selectedPackage: selectedMap,
+                artifactKind: artifactKind
             )
         } catch {
             return result(
@@ -216,6 +219,7 @@ struct InstallationPreflightEngine: Sendable {
         let conflict = conflictResolver.resolve(
             selectedPackage: selectedMap,
             targetPath: targetPath,
+            artifactKind: artifactKind,
             installedMaps: installedMaps,
             inspectedFiles: inspectedFiles
         )
@@ -224,7 +228,7 @@ struct InstallationPreflightEngine: Sendable {
         case .noConflict:
             // A comparison that contains an installed map must never silently
             // become a clean install, even if identity data is inconsistent.
-            guard comparison.status == .notInstalled, installedMatch == nil else {
+            guard artifactKind != .main || (comparison.status == .notInstalled && installedMatch == nil) else {
                 return result(
                     common: common,
                     replacementRequired: false,

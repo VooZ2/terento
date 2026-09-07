@@ -12,6 +12,16 @@ unchanged. Hardware developer tools require separate explicit authorization.
 Shared public API schemas and fixtures are documented in
 [contracts/README.md](../../contracts/README.md).
 
+The current local beta.11 RC worktree includes the internal, Debug-only
+OpenTopoMap contour path for the reviewed Phase 3 allowlist. Public catalog
+activation remains off. Contour IMG headers may omit a release date; the
+validated catalog release is used only after exact provider/region/path/size
+checks. Managed main and contour components share a safe lifecycle row and are
+removed one exact MTP object at a time. Recognized third-party IMG files can
+also be removed after exact live-object validation; unknown and Garmin-owned
+files remain read-only. The physical RC gate is still pending a connected MTP
+watch.
+
 ## Scope
 
 The connectivity baseline provides:
@@ -92,13 +102,12 @@ parser; OpenTopoMap generated dates use its own parser, including compact
 `0YY-MM-DD` and full dates split across the two fixed header fields. A missing
 or conflicting release remains a fail-closed acquisition error.
 
-The beta.9 Install maps flow presents an alphabetical provider dropdown
+The beta.10 Install maps flow presents an alphabetical provider dropdown
 without selecting a default provider. A batch may contain one or more maps
 from the selected provider only; rows from other providers become inactive and
 the planner rejects a defensive mixed-provider selection. Mixed-provider
-batch installation remains deferred. OpenTopoMap's optional
-contours artifacts are catalogued, but their user-selectable installation flow
-is deferred beyond beta.9; beta.9 installs the main map artifact.
+batch installation remains deferred. OpenTopoMap's validated optional contour artifacts can be selected and installed
+with their main map in beta.10.
 Map rows use the country/region as the title, normalize legacy provider-
 decorated names such as `Lithuania · Otm Lithuania`, and show provider plus
 normalized release on the second line. Same-provider regional variants use a
@@ -114,7 +123,7 @@ passed on real hardware in build 8; the equivalent two-map Freizeitkarte
 scenario also passed. Broader device evidence remains a separate release
 claim.
 
-The beta.9 app presentation keeps only `Update` and `Remove` in normal
+The beta.10 app presentation keeps only `Update` and `Remove` in normal
 Manage maps rows. `Update` appears only from the canonical provider-neutral
 lifecycle comparison and reuses the existing safe-update transaction; Backup
 and ownership-recovery tooling remain implemented for internal validation but
@@ -152,12 +161,13 @@ the operator to disconnect the watch, and then verifies cleanup after reconnect.
 It never accepts an IMG/map source and refuses to remove an object unless the
 exact object identity returned by the same transfer matches.
 
-The beta.9 production lifecycle path forwards native MTP read progress through
-the local read-back adapter. Backup and one-file external Remove can therefore
-show measured byte progress; Remove additionally reports determinate progress
-through exact verification, deletion, and bounded post-delete rescans. This
-preserves the existing lifecycle behavior; this source-directory move does not
-add hardware evidence for those operations.
+The beta.11 production lifecycle path forwards native MTP read progress through
+the local read-back adapter. Backup reports measured byte progress; manual
+Remove validates a managed map from the fresh exact inventory without copying
+the complete `.img`, and validates a recognized external map with only its
+bounded IMG header. Remove still reports determinate progress through exact
+verification, deletion, and bounded post-delete rescans. This source change
+does not add hardware evidence for those operations.
 
 ## Dependencies
 

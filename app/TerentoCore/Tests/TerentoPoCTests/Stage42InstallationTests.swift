@@ -72,7 +72,9 @@ private final class MockFailedInstallRecoveryStore: TerentoFailedInstallRecovery
 private final class MockDeviceReader: InstallationDeviceReader, @unchecked Sendable {
     var files: [DeviceFile]
     private let initialFiles: [DeviceFile]
-    private var inventoryReadCount = 0
+    private(set) var inventoryReadCount = 0
+    var missingTargetReads = 0
+    var failInventoryRead: Int?
     var renumberExistingObjectIDs = false
     var snapshot: DeviceSnapshot
     var shouldFail = false
@@ -103,7 +105,7 @@ private final class MockDeviceReader: InstallationDeviceReader, @unchecked Senda
     }
 
     func readFileInventory() throws -> [DeviceFile] {
-        if shouldFail {
+        if shouldFail || failInventoryRead == inventoryReadCount {
             throw InstallationTransportError.deviceDisconnected(
                 "device disconnected",
                 createdItemID: nil
@@ -111,6 +113,10 @@ private final class MockDeviceReader: InstallationDeviceReader, @unchecked Senda
         }
         defer { inventoryReadCount += 1 }
         let inventory = inventoryReadCount == 0 ? initialFiles : files
+        if inventoryReadCount > 0 && missingTargetReads > 0 {
+            missingTargetReads -= 1
+            return inventory.filter { $0.path != targetPath }
+        }
         guard renumberExistingObjectIDs, inventoryReadCount > 0 else {
             return inventory
         }
@@ -269,6 +275,8 @@ struct Stage42InstallationTests {
         passed += testDisconnectDuringWriteFails()
         passed += testPartialObjectIsCleanedAfterWriteDisconnect()
         passed += testMissingRemoteIsFailure()
+        passed += testPostVerificationInventoryRecheck()
+        passed += testPostVerificationChangedTargetsFailClosed()
         passed += testSizeMismatchIsFailure()
         passed += testSampleMismatchIsFailure()
         passed += testMatchingSizeAndSamplesVerify()
@@ -751,6 +759,60 @@ struct Stage42InstallationTests {
         )
     }
 
+    private static func testPostVerificationInventoryRecheck() -> Int {
+        var passed = 0
+        for missingReads in [0, 1, 2] {
+            let harness = makeHarness()
+            var reader: MockDeviceReader?
+            let result = harness.run(configureReader: {
+                $0.missingTargetReads = missingReads
+                reader = $0
+            })
+            passed += expect(
+                result.isSuccess == (missingReads < 2)
+                    && reader?.inventoryReadCount == (missingReads == 0 ? 2 : 3)
+                    && harness.transport.writeCount == 1
+                    && harness.transport.deleteCount == (missingReads < 2 ? 0 : 1),
+                "post-verify inventory missing \(missingReads) times: bounded recheck, no repeated write"
+            )
+        }
+        let harness = makeHarness()
+        let result = harness.run(configureReader: {
+            $0.missingTargetReads = 1
+            $0.failInventoryRead = 2
+        })
+        passed += expect(!result.isSuccess && harness.transport.writeCount == 1
+            && harness.transport.deleteCount == 1,
+            "disconnect during inventory recheck fails with existing exact cleanup")
+        return passed
+    }
+
+    private static func testPostVerificationChangedTargetsFailClosed() -> Int {
+        var passed = 0
+        for duplicate in [false, true] {
+            let harness = makeHarness()
+            var reader: MockDeviceReader?
+            let result = harness.run(configureReader: {
+                reader = $0
+                let target = $0.files.first { $0.path == targetPath }!
+                if duplicate {
+                    $0.files.append(target)
+                } else {
+                    $0.files = $0.files.map { file in
+                        guard file.path == targetPath else { return file }
+                        return DeviceFile(itemID: file.itemID, parentID: file.parentID,
+                            storageID: file.storageID, path: file.path, filename: file.filename,
+                            sizeBytes: file.sizeBytes + 1, isFolder: file.isFolder)
+                    }
+                }
+            })
+            passed += expect(!result.isSuccess && reader?.inventoryReadCount == 2
+                && harness.transport.writeCount == 1 && harness.transport.deleteCount == 1,
+                "present \(duplicate ? "duplicate" : "wrong-size") target fails without inventory retry")
+        }
+        return passed
+    }
+
     private static func testSizeMismatchIsFailure() -> Int {
         let harness = makeHarness()
         harness.transport.readBackMode = .sizeMismatch
@@ -777,9 +839,11 @@ struct Stage42InstallationTests {
 
     private static func testMatchingSizeAndSamplesVerify() -> Int {
         let harness = makeHarness()
-        let result = harness.run()
+        let progress = FinishingProgressRecorder()
+        let result = harness.run(onProgress: progress.receive, onPhase: progress.setPhase)
         return expect(
-            result.verification?.status == .verifiedSampledReadBack
+            progress.sawIncompleteRead && progress.sawCompleteRead
+                && result.verification?.status == .verifiedSampledReadBack
                 && result.verification?.mode == .sampledReadBack
                 && result.verification?.sampleCount == result.verification?.matchedSampleCount
                 && result.diagnostics.remoteObjectExists
@@ -934,13 +998,17 @@ struct Stage42InstallationTests {
         }
 
         func run(
-            transactionGate: InstallationTransactionGate = InstallationTransactionGate()
+            transactionGate: InstallationTransactionGate = InstallationTransactionGate(),
+            onProgress: (@Sendable (TransferProgress) -> Void)? = nil,
+            onPhase: (@Sendable (InstallationProcessPhase) -> Void)? = nil,
+            configureReader: (MockDeviceReader) -> Void = { _ in }
         ) -> MapInstallationResult {
             let reader = MockDeviceReader(
                 files: Self.makeAfterFiles(),
                 initialFiles: request.beforeDeviceFiles
             )
             reader.renumberExistingObjectIDs = renumberExistingObjectIDs
+            configureReader(reader)
             let validator = AllowArtifactValidator()
             return MapInstallationCoordinator(
                 artifactValidator: validator,
@@ -950,7 +1018,7 @@ struct Stage42InstallationTests {
                 recoveryStore: recovery,
                 transactionGate: transactionGate,
                 now: { Date(timeIntervalSince1970: 0) }
-            ).run(request)
+            ).run(request, onProgress: onProgress, onPhase: onPhase)
         }
 
         private static func identity() -> DeviceIdentity {
@@ -1148,5 +1216,22 @@ struct Stage42InstallationTests {
         }
         print("FAIL: \(description)")
         return 0
+    }
+}
+
+private final class FinishingProgressRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var phase: InstallationProcessPhase?
+    private(set) var sawIncompleteRead = false
+    private(set) var sawCompleteRead = false
+    func setPhase(_ value: InstallationProcessPhase) {
+        lock.lock(); defer { lock.unlock() }
+        phase = value
+    }
+    func receive(_ value: TransferProgress) {
+        lock.lock(); defer { lock.unlock() }
+        guard phase == .finishing, value.totalBytes > 0 else { return }
+        sawIncompleteRead = sawIncompleteRead || value.bytesTransferred < value.totalBytes
+        sawCompleteRead = sawCompleteRead || value.bytesTransferred == value.totalBytes
     }
 }

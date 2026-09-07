@@ -160,10 +160,10 @@ struct MapLifecycleItem: Identifiable, Equatable, Sendable {
             return false
         }
 
+        let filenameGenerator = TerentoManagedFilenameGenerator()
         return installedMaps.contains { map in
-            [map.name, map.family, map.sourceFile.filename]
-                .compactMap { $0 }
-                .contains { $0.localizedCaseInsensitiveContains("contour") }
+            map.managementState == .managedByTerento
+                && filenameGenerator.artifactKind(for: map.sourceFile.filename) == .contours
         }
     }
 

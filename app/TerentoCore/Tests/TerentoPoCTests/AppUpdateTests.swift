@@ -39,6 +39,7 @@ struct AppUpdateTests {
         try testSameVersionIsUpToDate()
         try testHigherBuildIsAvailable()
         try testBeta9MaintenanceBuildIsAvailable()
+        try testBeta10OfferedToBeta9()
         try testHigherMarketingVersionIsAvailable()
         try testOlderReleaseIsUpToDate()
         try testIncompatibleMinimumMacOS()
@@ -51,7 +52,7 @@ struct AppUpdateTests {
         try await testDeferredUpdateCanOfferNewerBuild()
         try await testPromptWaitsForSafeIdle()
         try testTrustedURLsAreRestricted()
-        print("PASS: 15 app update tests")
+        print("PASS: 16 app update tests")
     }
 
     private static func testSameVersionIsUpToDate() throws {
@@ -83,6 +84,14 @@ struct AppUpdateTests {
             isAvailable(result, version: "1.0.0"),
             "beta.9 build 10 is offered to beta.9 build 9"
         )
+    }
+
+    private static func testBeta10OfferedToBeta9() throws {
+        let result = try TerentoAppUpdateService.evaluate(
+            manifest: manifest(version: "1.0.0", build: 12, releaseLabel: "1.0.0-beta.10"),
+            current: installedVersion(build: 11)
+        )
+        expect(isAvailable(result, version: "1.0.0"), "beta.10 build 12 is offered to beta.9 build 11")
     }
 
     private static func testHigherMarketingVersionIsAvailable() throws {

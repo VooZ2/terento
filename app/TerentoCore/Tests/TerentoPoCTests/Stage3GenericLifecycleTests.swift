@@ -19,7 +19,28 @@ struct Stage3GenericLifecycleTests {
         testOpenTopoMapHeaderRestoresManagedCustomOwnership()
         testCustomOwnershipSurvivesProviderNeutralRescan()
         testLifecycleBuilderPreservesProviderAndCustomSources()
-        print("PASS: 11 Stage 3 generic lifecycle tests")
+        testManagedContoursUseExactManagedFilenameIdentity()
+        testManagedPackageComponentsShareOneLifecycleRow()
+        testOptionalContourFailureIsTypedAsPackageWarning()
+        testVersionlessContourLifecycleMatch()
+        print("PASS: 15 Stage 3 generic lifecycle tests")
+    }
+
+    private static func testVersionlessContourLifecycleMatch() {
+        let release = MapVersion(year: 2026, month: 5)!
+        func matches(_ version: MapVersion?, _ provider: String = "OpenTopoMap",
+                     _ filename: String = "terento_opentopomap_lithuania_contours.img",
+                     _ kind: MapArtifactKind? = .contours) -> Bool {
+            MapOwnershipMatcher.lifecycleVersionMatches(scanned: version, recorded: release,
+                provider: provider, filename: filename, artifactKind: kind)
+        }
+        expect(matches(nil), "recorded versionless OTM contours keep lifecycle integrity after reconnect")
+        expect(matches(release), "matching dated components remain manageable")
+        expect(!matches(MapVersion(year: 2026, month: 4)!), "a conflicting version stays blocked")
+        expect(!matches(nil, "Freizeitkarte"), "missing versions on other providers stay blocked")
+        expect(!matches(nil, "OpenTopoMap", "terento_opentopomap_lithuania.img", .main), "versionless main maps stay blocked")
+        expect(!matches(nil, "OpenTopoMap", "unknown_contours.img"), "unknown contour filenames stay blocked")
+        expect(!matches(nil, "OpenTopoMap", "terento_opentopomap_lithuania_contours.img", nil), "legacy records without component proof stay blocked")
     }
 
     private static func testRequiredArtifactIsSelectedByDefault() {
@@ -35,6 +56,107 @@ struct Stage3GenericLifecycleTests {
             plan.selectedArtifactIDs == ["otm-ltu-main"]
                 && plan.installSizeBytes == 100,
             "the main artifact is selected by default and optional contours are excluded"
+        )
+    }
+
+    private static func testManagedContoursUseExactManagedFilenameIdentity() {
+        let managed = makeInstalledMap(
+            name: "OpenTopoMap Lithuania",
+            provider: "opentopomap",
+            region: "LTU",
+            path: "/GARMIN/terento_opentopomap_ltu_contours.img",
+            managementState: .managedByTerento
+        )
+        let unmanaged = makeInstalledMap(
+            name: "OpenTopoMap Lithuania contours",
+            provider: "opentopomap",
+            region: "LTU",
+            path: "/GARMIN/provider-contours.img",
+            managementState: .detectedNotManaged
+        )
+        let managedItem = MapLifecycleItem(
+            id: "managed-contours",
+            title: "Lithuania",
+            provider: "opentopomap",
+            region: "LTU",
+            version: managed.version,
+            rawVersion: managed.rawVersion,
+            sizeBytes: managed.sizeBytes,
+            installedMaps: [managed],
+            classification: .terentoManaged
+        )
+        let unmanagedItem = MapLifecycleItem(
+            id: "unmanaged-contours",
+            title: "Lithuania",
+            provider: "opentopomap",
+            region: "LTU",
+            version: unmanaged.version,
+            rawVersion: unmanaged.rawVersion,
+            sizeBytes: unmanaged.sizeBytes,
+            installedMaps: [unmanaged],
+            classification: .externalRecognized
+        )
+        expect(
+            managedItem.manageMetadataLabel.contains("Contours included")
+                && !unmanagedItem.manageMetadataLabel.contains("Contours included"),
+            "managed contours use exact managed filename identity"
+        )
+    }
+
+    private static func testOptionalContourFailureIsTypedAsPackageWarning() {
+        let outcome = MapPackageInstallationOutcome(
+            packageID: "opentopomap-lithuania",
+            status: .completedWithWarnings,
+            components: [
+                MapInstallationComponentOutcome(
+                    artifactID: "opentopomap-lithuania-main",
+                    artifactKind: .main,
+                    succeeded: true,
+                    failure: nil
+                ),
+                MapInstallationComponentOutcome(
+                    artifactID: "opentopomap-lithuania-contours",
+                    artifactKind: .contours,
+                    succeeded: false,
+                    failure: .deviceDisconnected
+                )
+            ]
+        )
+        expect(
+            outcome.hasWarnings
+                && !outcome.isComplete
+                && outcome.failedComponent?.artifactKind == .contours,
+            "optional contour failure is typed as a package warning"
+        )
+    }
+
+    private static func testManagedPackageComponentsShareOneLifecycleRow() {
+        let main = makeInstalledMap(
+            name: "OpenTopoMap Lithuania",
+            provider: "opentopomap",
+            region: "LTU",
+            path: "/GARMIN/terento_opentopomap_ltu.img",
+            managementState: .managedByTerento,
+            managedPackageID: "otm-ltu",
+            managedArtifactKind: .main
+        )
+        let contours = makeInstalledMap(
+            name: "OpenTopoMap Lithuania",
+            provider: "opentopomap",
+            region: "LTU",
+            path: "/GARMIN/terento_opentopomap_ltu_contours.img",
+            managementState: .managedByTerento,
+            managedPackageID: "otm-ltu",
+            managedArtifactKind: .contours
+        )
+        let inventory = MapInventoryListBuilder().build(
+            scan: makeScan(installedMaps: [main, contours]),
+            comparisons: []
+        )
+        expect(
+            inventory.providerGroups.first?.entries.count == 1
+                && inventory.providerGroups.first?.entries.first?.installedFileCount == 2,
+            "managed package components share one lifecycle row"
         )
     }
 
@@ -434,7 +556,9 @@ struct Stage3GenericLifecycleTests {
         provider: String?,
         region: String?,
         path: String,
-        managementState: MapManagementState = .detectedNotManaged
+        managementState: MapManagementState = .detectedNotManaged,
+        managedPackageID: String? = nil,
+        managedArtifactKind: MapArtifactKind? = nil
     ) -> InstalledMap {
         InstalledMap(
             name: name,
@@ -454,7 +578,9 @@ struct Stage3GenericLifecycleTests {
                 itemID: UInt32(abs(path.hashValue % 10_000) + 1)
             ),
             metadataStatus: .parsed,
-            managementState: managementState
+            managementState: managementState,
+            managedPackageID: managedPackageID,
+            managedArtifactKind: managedArtifactKind
         )
     }
 

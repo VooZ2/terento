@@ -1,5 +1,7 @@
 import CryptoKit
+import Darwin
 import Foundation
+import os
 
 enum MapAcquisitionState: String, Codable, Equatable, Sendable {
     case idle = "IDLE"
@@ -520,6 +522,13 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
                 throw MapAcquisitionError.downloadFailed("A local download file could not be created.")
             }
 
+            var keepTemporaryFile = false
+            defer {
+                if !keepTemporaryFile {
+                    try? FileManager.default.removeItem(at: temporaryURL)
+                }
+            }
+
             let handle = try FileHandle(forWritingTo: temporaryURL)
             defer { try? handle.close() }
 
@@ -556,6 +565,7 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
                 speedEstimator: &speedEstimator
             ))
 
+            keepTemporaryFile = true
             return MapPackageDownloadResponse(
                 statusCode: httpResponse.statusCode,
                 temporaryFileURL: temporaryURL
@@ -677,6 +687,12 @@ struct SystemZIPArchiveExtractor: MapPackageArchiveExtractor, Sendable {
 }
 
 struct MapAcquisitionWorkspace: Sendable {
+    private static let ownerFilename = ".terento-owner"
+    private static let logger = Logger(
+        subsystem: "app.terento.native-connectivity-poc",
+        category: "MapAcquisition"
+    )
+
     let rootURL: URL
     let downloadURL: URL
     let customIMGURL: URL
@@ -693,6 +709,8 @@ struct MapAcquisitionWorkspace: Sendable {
                 at: rootURL,
                 withIntermediateDirectories: true
             )
+            try Data(String(ProcessInfo.processInfo.processIdentifier).utf8)
+                .write(to: rootURL.appendingPathComponent(Self.ownerFilename), options: .atomic)
         } catch {
             throw MapAcquisitionError.workspaceFailed(error.localizedDescription)
         }
@@ -713,7 +731,66 @@ struct MapAcquisitionWorkspace: Sendable {
         return try MapAcquisitionWorkspace(rootURL: rootURL)
     }
 
+    @discardableResult
+    static func scavengeStale(
+        rootURL: URL? = nil,
+        olderThan age: TimeInterval = 24 * 60 * 60,
+        now: Date = Date()
+    ) -> Int {
+        let rootURL = rootURL ?? defaultRootURL()
+        let fileManager = FileManager.default
+        guard let entries = try? fileManager.contentsOfDirectory(
+            at: rootURL,
+            includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey, .contentModificationDateKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return 0
+        }
+
+        var removedCount = 0
+        for entry in entries {
+            guard UUID(uuidString: entry.lastPathComponent) != nil,
+                  let values = try? entry.resourceValues(
+                      forKeys: [.isDirectoryKey, .isSymbolicLinkKey, .contentModificationDateKey]
+                  ),
+                  values.isDirectory == true,
+                  values.isSymbolicLink != true,
+                  let modifiedAt = values.contentModificationDate,
+                  now.timeIntervalSince(modifiedAt) > age,
+                  !isOwnedByLiveProcess(entry) else {
+                continue
+            }
+
+            do {
+                try remove(rootURL: entry)
+                removedCount += 1
+            } catch {
+                // A scavenger failure must not affect startup or an active install.
+            }
+        }
+        return removedCount
+    }
+
     func cleanup() throws {
+        try Self.remove(rootURL: rootURL)
+    }
+
+    static func cleanup(rootURL: URL) throws {
+        try remove(rootURL: rootURL)
+    }
+
+    private static func defaultRootURL() -> URL {
+        let cachesURL = FileManager.default.urls(
+            for: .cachesDirectory,
+            in: .userDomainMask
+        ).first ?? FileManager.default.temporaryDirectory
+
+        return cachesURL
+            .appendingPathComponent("Terento", isDirectory: true)
+            .appendingPathComponent("MapAcquisitions", isDirectory: true)
+    }
+
+    private static func remove(rootURL: URL) throws {
         guard FileManager.default.fileExists(atPath: rootURL.path) else {
             return
         }
@@ -721,12 +798,24 @@ struct MapAcquisitionWorkspace: Sendable {
         do {
             try FileManager.default.removeItem(at: rootURL)
         } catch {
+            logger.error("Could not remove acquisition workspace: \(error.localizedDescription, privacy: .private)")
             throw MapAcquisitionError.workspaceFailed(error.localizedDescription)
         }
+    }
+
+    private static func isOwnedByLiveProcess(_ rootURL: URL) -> Bool {
+        let ownerURL = rootURL.appendingPathComponent(ownerFilename)
+        guard FileManager.default.fileExists(atPath: ownerURL.path) else { return false }
+        guard let data = try? Data(contentsOf: ownerURL),
+              let pid = Int32(String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)),
+              pid > 0 else { return true } // Ambiguous ownership is retained.
+        return Darwin.kill(pid, 0) == 0 || errno != ESRCH
     }
 }
 
 struct ValidatedMapArtifact: Equatable, Sendable {
+    let artifactID: String
+    let artifactKind: MapArtifactKind
     let sourceKind: MapSourceKind
     let provider: String
     let region: String
@@ -734,6 +823,7 @@ struct ValidatedMapArtifact: Equatable, Sendable {
     let rawRelease: String
     let version: MapVersion
     let localIMGURL: URL
+    let workspaceRootURL: URL?
     let installSizeBytes: UInt64
     let sha256: String
     let sourcePackageURL: URL
@@ -745,12 +835,15 @@ struct ValidatedMapArtifact: Equatable, Sendable {
     let packageFormat: MapPackageFormat
 
     init(
+        artifactID: String? = nil,
+        artifactKind: MapArtifactKind = .main,
         provider: String,
         region: String,
         canonicalRegion: String,
         rawRelease: String,
         version: MapVersion,
         localIMGURL: URL,
+        workspaceRootURL: URL? = nil,
         installSizeBytes: UInt64,
         sha256: String,
         sourcePackageURL: URL,
@@ -762,6 +855,8 @@ struct ValidatedMapArtifact: Equatable, Sendable {
         packageFormat: MapPackageFormat,
         sourceKind: MapSourceKind = .provider
     ) {
+        self.artifactID = artifactID ?? catalogPackageID
+        self.artifactKind = artifactKind
         self.sourceKind = sourceKind
         self.provider = provider
         self.region = region
@@ -769,6 +864,7 @@ struct ValidatedMapArtifact: Equatable, Sendable {
         self.rawRelease = rawRelease
         self.version = version
         self.localIMGURL = localIMGURL
+        self.workspaceRootURL = workspaceRootURL
         self.installSizeBytes = installSizeBytes
         self.sha256 = sha256
         self.sourcePackageURL = sourcePackageURL
@@ -785,10 +881,10 @@ struct ValidatedMapArtifact: Equatable, Sendable {
     /// can hand the same neutral artifact shape to the shared pipeline.
     var mapArtifact: MapArtifact {
         MapArtifact(
-            id: catalogPackageID,
+            id: artifactID,
             source: sourceKind,
-            kind: .main,
-            required: true,
+            kind: artifactKind,
+            required: artifactKind == .main,
             providerId: provider,
             providerRegionId: region,
             canonicalRegionId: canonicalRegion,
@@ -796,6 +892,7 @@ struct ValidatedMapArtifact: Equatable, Sendable {
             sourceURL: sourcePackageURL,
             localURL: localIMGURL,
             sizeBytes: installSizeBytes,
+            downloadSizeBytes: downloadSizeBytes,
             checksum: sha256,
             validationState: .validated
         )
@@ -854,6 +951,12 @@ struct CustomMapSourceAcquirer: Sendable {
 
         try validateInputFile(fileURL)
         let workspace = try workspaceFactory()
+        var keepWorkspace = false
+        defer {
+            if !keepWorkspace {
+                try? workspace.cleanup()
+            }
+        }
 
         do {
             try FileManager.default.copyItem(
@@ -872,7 +975,7 @@ struct CustomMapSourceAcquirer: Sendable {
                 validated: validated,
                 workspaceURL: workspace.customIMGURL
             )
-            return CustomMapImportCandidate(
+            let candidate = CustomMapImportCandidate(
                 id: package.id,
                 package: package,
                 artifact: artifact,
@@ -880,11 +983,11 @@ struct CustomMapSourceAcquirer: Sendable {
                 metadata: validated.metadata,
                 workspaceRootURL: workspace.rootURL
             )
+            keepWorkspace = true
+            return candidate
         } catch let error as MapAcquisitionError {
-            try? workspace.cleanup()
             throw error
         } catch let error as MapSourceValidationError {
-            try? workspace.cleanup()
             if error == .invalidIMG {
                 throw MapAcquisitionError.customMapNotConfirmed(
                     "Terento could not confirm that \(fileURL.lastPathComponent) is a Garmin map image. No file was prepared for installation."
@@ -894,7 +997,6 @@ struct CustomMapSourceAcquirer: Sendable {
                 "The selected IMG could not be safely checked."
             )
         } catch {
-            try? workspace.cleanup()
             throw MapAcquisitionError.invalidPackage(
                 "The selected IMG could not be safely prepared."
             )
@@ -1025,6 +1127,7 @@ struct CustomMapSourceAcquirer: Sendable {
             rawRelease: validated.metadata.rawVersion ?? "",
             version: package.version,
             localIMGURL: workspaceURL,
+            workspaceRootURL: workspaceURL.deletingLastPathComponent(),
             installSizeBytes: validated.sizeBytes,
             sha256: validated.sha256,
             sourcePackageURL: originalFileURL,
@@ -1062,14 +1165,18 @@ struct MapPackageAcquirer: Sendable {
 
     func acquire(
         package: MapPackage,
+        artifact selectedArtifact: MapArtifact? = nil,
         canonicalRegion: String? = nil,
         workspace requestedWorkspace: MapAcquisitionWorkspace? = nil,
         onStateChange: (@Sendable (MapAcquisitionState) -> Void)? = nil,
         onDownloadProgress: (@Sendable (MapDownloadProgress) -> Void)? = nil
     ) async throws -> ValidatedMapArtifact {
         state(.resolvingPackage, onStateChange)
+        let acquisitionPackage = selectedArtifact.map {
+            package.acquisitionPackage(for: $0)
+        } ?? package
         do {
-            try MapPackageAcquisitionPolicyResolver().validate(package: package)
+            try MapPackageAcquisitionPolicyResolver().validate(package: acquisitionPackage)
         } catch let error as MapAcquisitionPolicyError {
             onStateChange?(.failed)
             throw MapAcquisitionError.acquisitionWithheld(error.availability)
@@ -1090,30 +1197,34 @@ struct MapPackageAcquirer: Sendable {
             throw MapAcquisitionError.workspaceFailed(error.localizedDescription)
         }
 
+        var handedOff = false
+        defer { if !handedOff { try? acquisitionWorkspace.cleanup() } }
         do {
             let artifact = try await acquireInWorkspace(
-                package: package,
+                package: acquisitionPackage,
+                artifact: selectedArtifact,
                 canonicalRegion: canonicalRegion,
                 workspace: acquisitionWorkspace,
                 onStateChange: onStateChange,
                 onDownloadProgress: onDownloadProgress
             )
+            handedOff = true
             return artifact
         } catch {
             onStateChange?(.failed)
-            try? acquisitionWorkspace.cleanup()
             throw error
         }
     }
 
     private func acquireInWorkspace(
         package: MapPackage,
+        artifact selectedArtifact: MapArtifact?,
         canonicalRegion: String?,
         workspace: MapAcquisitionWorkspace,
         onStateChange: (@Sendable (MapAcquisitionState) -> Void)?,
         onDownloadProgress: (@Sendable (MapDownloadProgress) -> Void)?
     ) async throws -> ValidatedMapArtifact {
-        guard let sourceURL = package.downloadURL else {
+        guard let sourceURL = selectedArtifact?.sourceURL ?? package.downloadURL else {
             throw MapAcquisitionError.downloadFailed("The catalog package has no source URL.")
         }
 
@@ -1125,7 +1236,9 @@ struct MapPackageAcquirer: Sendable {
                 onProgress: { progress in
                     let totalBytes = progress.totalBytes > 0
                         ? progress.totalBytes
-                        : package.expectedDownloadSizeBytes ?? 0
+                        : selectedArtifact?.downloadSizeBytes
+                            ?? package.expectedDownloadSizeBytes
+                            ?? 0
                     onDownloadProgress?(MapDownloadProgress(
                         bytesDownloaded: progress.bytesDownloaded,
                         totalBytes: totalBytes,
@@ -1142,6 +1255,13 @@ struct MapPackageAcquirer: Sendable {
             )
         }
 
+        defer {
+            if response.temporaryFileURL.standardizedFileURL
+                != workspace.downloadURL.standardizedFileURL {
+                try? FileManager.default.removeItem(at: response.temporaryFileURL)
+            }
+        }
+
         guard (200...299).contains(response.statusCode) else {
             throw await providerAwareDownloadError(
                 .downloadFailed("Provider returned HTTP \(response.statusCode)."),
@@ -1152,7 +1272,10 @@ struct MapPackageAcquirer: Sendable {
         state(.validatingDownload, onStateChange)
         let fileManager = FileManager.default
         guard fileManager.isReadableFile(atPath: response.temporaryFileURL.path) else {
-            throw MapAcquisitionError.downloadIncomplete(expected: package.expectedDownloadSizeBytes, actual: 0)
+            throw MapAcquisitionError.downloadIncomplete(
+                expected: selectedArtifact?.downloadSizeBytes ?? package.expectedDownloadSizeBytes,
+                actual: 0
+            )
         }
 
         do {
@@ -1164,7 +1287,7 @@ struct MapPackageAcquirer: Sendable {
         let downloadSize = try fileSize(of: workspace.downloadURL)
         guard downloadSize > 0 else {
             throw MapAcquisitionError.downloadIncomplete(
-                expected: package.expectedDownloadSizeBytes,
+                expected: selectedArtifact?.downloadSizeBytes ?? package.expectedDownloadSizeBytes,
                 actual: downloadSize
             )
         }
@@ -1209,7 +1332,10 @@ struct MapPackageAcquirer: Sendable {
             )
         }
 
-        guard let actualVersion = metadata.version, actualVersion == package.version else {
+        let isContourArtifact = package.artifacts.count == 1
+            && package.artifacts.first?.kind == .contours
+        guard metadata.version == package.version
+            || (isContourArtifact && metadata.version == nil) else {
             throw MapAcquisitionError.sourceVersionMismatch(
                 expected: package.version,
                 actual: metadata.version
@@ -1241,27 +1367,33 @@ struct MapPackageAcquirer: Sendable {
         do {
             targetFilename = try TerentoManagedFilenameGenerator().filename(
                 providerId: package.providerId,
-                regionId: package.canonicalRegionId
+                regionId: package.canonicalRegionId,
+                artifactKind: selectedArtifact?.kind ?? .main
             )
         } catch {
             throw MapAcquisitionError.invalidPackage("The managed target filename could not be generated.")
         }
 
         let artifact = ValidatedMapArtifact(
+            artifactID: selectedArtifact?.id ?? package.mainArtifact?.id,
+            artifactKind: selectedArtifact?.kind ?? .main,
             provider: expectedIdentity.provider,
             region: expectedIdentity.region,
             canonicalRegion: canonicalRegion ?? canonicalRegionName(for: package),
             rawRelease: validatedSource.metadata.rawVersion ?? "",
             version: validatedSource.metadata.version ?? package.version,
             localIMGURL: imgURL,
+            workspaceRootURL: workspace.rootURL,
             installSizeBytes: validatedSource.sizeBytes,
             sha256: validatedSource.sha256,
             sourcePackageURL: sourceURL,
             catalogPackageID: package.id,
             targetFilename: targetFilename,
             downloadSizeBytes: downloadSize,
-            catalogDownloadSizeBytes: package.expectedDownloadSizeBytes,
-            downloadSizeMatchesCatalog: package.expectedDownloadSizeBytes.map { $0 == downloadSize } ?? true,
+            catalogDownloadSizeBytes: selectedArtifact?.downloadSizeBytes
+                ?? package.expectedDownloadSizeBytes,
+            downloadSizeMatchesCatalog: (selectedArtifact?.downloadSizeBytes
+                ?? package.expectedDownloadSizeBytes).map { $0 == downloadSize } ?? true,
             packageFormat: format
         )
         state(.validated, onStateChange)

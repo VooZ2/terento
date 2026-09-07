@@ -84,7 +84,17 @@ const assertXcodeSetting = (setting, expected) => {
     `Every Xcode ${setting} value must match the update manifest`,
   );
 };
-assertXcodeSetting("TERENTO_RELEASE_LABEL", label);
+const configurationBody = (name) => [...project.matchAll(new RegExp(`^\\s*[^\\n]*\\/\\* ${name} \\*\\/ = \\{([\\s\\S]*?)\\}; name = ${name};`, "gm"))]
+  .map((match) => match[1])
+  .find((body) => body.includes("TERENTO_RELEASE_LABEL")) || "";
+const debugReleaseLabel = configurationBody("Debug").match(/TERENTO_RELEASE_LABEL = "([^"]+)";/)?.[1];
+const distributedReleaseLabel = configurationBody("Release").match(/TERENTO_RELEASE_LABEL = "([^"]+)";/)?.[1];
+assert.match(debugReleaseLabel || "", semanticVersion, "Debug builds must carry a semantic release label");
+assert.match(debugReleaseLabel || "", /-local$/, "Debug builds must be purgeable local telemetry");
+assert.equal(distributedReleaseLabel, label, "Release builds must keep the public update-manifest label");
+assert.doesNotMatch(label, /-local$/, "Public update manifests must never use a local release label");
+assert.doesNotMatch(distributedReleaseLabel || "", /-local$/, "Public Release builds must never use a local release label");
+assert.notEqual(distributedReleaseLabel, "development", "Public Release builds must never use development telemetry identity");
 assertXcodeSetting("CURRENT_PROJECT_VERSION", release.build);
 assertXcodeSetting("MARKETING_VERSION", release.version);
 

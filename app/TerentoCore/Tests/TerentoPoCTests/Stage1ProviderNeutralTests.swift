@@ -37,8 +37,11 @@ struct Stage1ProviderNeutralTests {
         testCatalogRegionsAreProviderScoped()
         testSourceKindsKeepProviderAndCustomInputsExplicit()
         testSourcePolicyRegistryResolvesByProviderID()
+        testContourRolloutPolicyIsOffByDefault()
+        testContourRolloutAllowlistMarksOnlyReviewedPackages()
         testBundledOpenTopoMapProviderPolicy()
         testOpenTopoMapIMGMetadataIsIdentified()
+        testOpenTopoMapContourIMGMetadataIsIdentified()
         testOpenTopoMapLegacyIdentityAliasIsScoped()
         testOpenTopoMapCompactDateHeaderIsIdentified()
         testOpenTopoMapSplitDateHeadersAreIdentified()
@@ -49,11 +52,12 @@ struct Stage1ProviderNeutralTests {
         testBundledCatalogIncludesOpenTopoMap()
         testBundledProvidersHaveReviewedInstallPaths()
         testRemoteCatalogReceivesBundledProviderSupplement()
+        testRemoteRenamedOpenTopoMapPackageReceivesBundledContours()
         testRemotePausedProviderDoesNotReceiveBundledPackages()
         testProviderLifecycleMetadataDecodesFailClosed()
         await testDownloadFailureUsesConfirmedProviderDownState()
 
-        print("PASS: 24 Stage 1 provider-neutral core tests")
+        print("PASS: 27 Stage 1 provider-neutral core tests")
     }
 
     private static func testLegacyPackageGetsRequiredMainArtifact() {
@@ -112,6 +116,60 @@ struct Stage1ProviderNeutralTests {
                 && package.optionalArtifacts.first?.kind == .contours
                 && package.hasUsableMainArtifact,
             "an unavailable optional contours artifact does not block the main map"
+        )
+    }
+
+    private static func testContourRolloutPolicyIsOffByDefault() {
+        let package = makePackageWithContour(id: "opentopomap-andorra")
+        let remotelyValidated = package.withArtifacts(
+            package.artifacts.map { artifact in
+                artifact.kind == .contours
+                    ? artifact.withValidationState(.validated)
+                    : artifact
+            }
+        )
+        let catalog = makeContractCatalog(package: remotelyValidated)
+        let publicCatalog = MapContourRolloutPolicy(mode: .publicValidated).applying(to: catalog)
+        expect(publicCatalog.packages.first?.optionalArtifacts.first?.validationState == .validated,
+               "public rollout retains independently validated contours")
+        let unreviewed = MapContourRolloutPolicy(mode: .publicValidated)
+            .applying(to: makeContractCatalog(package: package))
+        expect(unreviewed.packages.first?.optionalArtifacts.first?.validationState != .validated,
+               "public rollout never promotes unreviewed contours")
+        let applied = MapContourRolloutPolicy().applying(to: catalog)
+        expect(
+            applied.packages.first?.optionalArtifacts.first?.validationState == .notValidated,
+            "contour rollout stays off by default"
+        )
+    }
+
+    private static func testContourRolloutAllowlistMarksOnlyReviewedPackages() {
+        let reviewed = makePackageWithContour(id: "opentopomap-andorra")
+        let unreviewed = makePackageWithContour(id: "opentopomap-lithuania")
+        let catalog = MapCatalog(
+            catalogVersion: 1,
+            updatedAt: Date(timeIntervalSince1970: 0),
+            providers: [
+                MapProvider(
+                    id: "opentopomap",
+                    name: "OpenTopoMap",
+                    website: URL(string: "https://opentopomap.org/"),
+                    attribution: "OpenTopoMap",
+                    licenseURL: URL(string: "https://opentopomap.org/about"),
+                    health: .healthy
+                )
+            ],
+            regions: [],
+            packages: [reviewed, unreviewed]
+        )
+        let applied = MapContourRolloutPolicy(
+            mode: .allowlist,
+            allowlist: [reviewed.id]
+        ).applying(to: catalog)
+        expect(
+            applied.packages.first(where: { $0.id == reviewed.id })?.optionalArtifacts.first?.validationState == .validated
+                && applied.packages.first(where: { $0.id == unreviewed.id })?.optionalArtifacts.first?.validationState == .notValidated,
+            "contour allowlist activates only reviewed packages"
         )
     }
 
@@ -359,6 +417,28 @@ struct Stage1ProviderNeutralTests {
         expect(
             longNameMetadata?.region == "SAINTHELENAASCENSIONANDTRISTANDACUNHA",
             "long OpenTopoMap IMG names use the exact provider filename when the fixed header is truncated"
+        )
+    }
+
+    private static func testOpenTopoMapContourIMGMetadataIsIdentified() {
+        var bytes = Array(repeating: UInt8(0), count: 8192)
+        write("DSKIMG", at: 0x10, to: &bytes)
+        write("GARMIN", at: 0x41, to: &bytes)
+        write("OpenTopoMap Lithuani", at: 0x49, to: &bytes)
+        // The official contours image has no generated release in this fixed
+        // header; `&a` is the provider's continuation of "Lithuani".
+        write("&a contours", at: 0x65, to: &bytes)
+
+        let metadata = GarminIMGMetadataParser().parse(
+            bytes,
+            filename: "terento_opentopomap_ltu_contours.img"
+        )
+        expect(
+            metadata?.provider == "OpenTopoMap"
+                && metadata?.region == "LTU"
+                && metadata?.version == nil
+                && metadata?.name == "OpenTopoMap Lithuania contours",
+            "OpenTopoMap contour IMG headers keep the main region and allow a catalog release fallback"
         )
     }
 
@@ -631,7 +711,11 @@ struct Stage1ProviderNeutralTests {
             expect(openTopoMapPackages.count == 177, "the bundled catalog exposes all 177 OpenTopoMap Garmin rows")
             expect(
                 package?.sourceURL?.host == "garmin.opentopomap.org"
-                    && package?.optionalArtifacts.contains { $0.kind == .contours } == true,
+                    && package?.optionalArtifacts.contains {
+                        $0.kind == .contours
+                            && $0.sizeBytes == 20_283_392
+                            && $0.downloadSizeBytes == 17_605_776
+                    } == true,
                 "the OpenTopoMap Lithuania entry keeps its official source and optional contours"
             )
         } catch {
@@ -696,6 +780,78 @@ struct Stage1ProviderNeutralTests {
             )
         } catch {
             expect(false, "a live catalog without OTM keeps the bundled OTM provider visible")
+        }
+    }
+
+    private static func testRemoteRenamedOpenTopoMapPackageReceivesBundledContours() {
+        do {
+            let root = packageRoot
+            let data = try Data(contentsOf: root.appendingPathComponent(
+                "Sources/TerentoPoC/Resources/Maps/catalog.json"
+            ))
+            let bundled = try MapCatalogDocumentDecoder().decode(data)
+            guard let bundledPackage = bundled.packages.first(where: {
+                $0.id == "opentopomap-ltu"
+            }), let bundledMain = bundledPackage.mainArtifact else {
+                expect(false, "a renamed remote OTM package receives its bundled contours")
+                return
+            }
+
+            let remoteMain = MapArtifact(
+                id: "opentopomap-lithuania-main",
+                kind: .main,
+                required: true,
+                providerId: "opentopomap",
+                providerRegionId: "lithuania",
+                canonicalRegionId: "LITHUANIA",
+                version: bundledPackage.version,
+                releaseMetadata: bundledPackage.releaseMetadata,
+                sourceURL: bundledMain.sourceURL,
+                sizeBytes: bundledMain.sizeBytes,
+                downloadSizeBytes: bundledMain.downloadSizeBytes,
+                validationState: .validated
+            )
+            let remotePackage = MapPackage(
+                id: "opentopomap-lithuania",
+                providerId: "opentopomap",
+                regionId: "LITHUANIA",
+                name: "OpenTopoMap Lithuania",
+                version: bundledPackage.version,
+                sizeBytes: bundledPackage.sizeBytes,
+                sourceURL: bundledPackage.sourceURL,
+                releaseDate: bundledPackage.releaseDate,
+                identifier: "lithuania",
+                downloadSizeBytes: bundledPackage.downloadSizeBytes,
+                installSizeBytes: bundledPackage.installSizeBytes,
+                providerRegionId: "lithuania",
+                canonicalRegionId: "LITHUANIA",
+                regionKind: .country,
+                releaseMetadata: bundledPackage.releaseMetadata,
+                artifacts: [remoteMain]
+            )
+            let remote = MapCatalog(
+                catalogVersion: bundled.catalogVersion,
+                updatedAt: bundled.updatedAt,
+                providers: bundled.providers,
+                regions: bundled.regions,
+                packages: [remotePackage]
+            )
+
+            let merged = remote.mergingSupplemental(bundled)
+            let allowlisted = MapContourRolloutPolicy(
+                mode: .allowlist,
+                allowlist: ["opentopomap-ltu"]
+            ).applying(to: merged)
+            let package = allowlisted.packages.first
+            expect(
+                package?.id == "opentopomap-lithuania"
+                    && package?.optionalArtifacts.count == 1
+                    && package?.optionalArtifacts.first?.id == "opentopomap-ltu-contours"
+                    && package?.optionalArtifacts.first?.validationState == .validated,
+                "a renamed remote OTM package receives its bundled contours"
+            )
+        } catch {
+            expect(false, "a renamed remote OTM package receives its bundled contours")
         }
     }
 
@@ -867,6 +1023,52 @@ struct Stage1ProviderNeutralTests {
             installSizeBytes: 234_567,
             providerRegionId: "lithuania",
             canonicalRegionId: canonicalRegion
+        )
+    }
+
+    private static func makePackageWithContour(id: String) -> MapPackage {
+        let region = id.replacingOccurrences(of: "opentopomap-", with: "").uppercased()
+        let main = MapArtifact(
+            id: "\(id)-main",
+            kind: .main,
+            required: true,
+            providerId: "opentopomap",
+            providerRegionId: region,
+            canonicalRegionId: region,
+            version: version(2026, 8),
+            sourceURL: URL(string: "https://garmin.opentopomap.org/\(region).zip"),
+            sizeBytes: 100,
+            downloadSizeBytes: 50,
+            validationState: .validated
+        )
+        let contours = MapArtifact(
+            id: "\(id)-contours",
+            kind: .contours,
+            required: false,
+            providerId: "opentopomap",
+            providerRegionId: region,
+            canonicalRegionId: region,
+            version: version(2026, 8),
+            sourceURL: URL(string: "https://garmin.opentopomap.org/\(region)-contours.zip"),
+            sizeBytes: 80,
+            downloadSizeBytes: 40,
+            validationState: .notValidated
+        )
+        return MapPackage(
+            id: id,
+            providerId: "opentopomap",
+            regionId: region,
+            name: "OpenTopoMap \(region)",
+            version: version(2026, 8),
+            sizeBytes: 50,
+            sourceURL: main.sourceURL,
+            releaseDate: "2026-08-31",
+            identifier: region,
+            downloadSizeBytes: 50,
+            installSizeBytes: 100,
+            providerRegionId: region,
+            canonicalRegionId: region,
+            artifacts: [main, contours]
         )
     }
 

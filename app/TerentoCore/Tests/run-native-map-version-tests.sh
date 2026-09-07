@@ -15,6 +15,7 @@ swiftc \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapArtifactPlanning.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/InstalledMap.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapOwnership.swift" \
+    "$project_root/Sources/TerentoPoC/Installation/ManagedFilename.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapComparison.swift" \
     "$project_root/Tests/TerentoPoCTests/MapVersionComparisonTests.swift" \
     -o "$binary_path"

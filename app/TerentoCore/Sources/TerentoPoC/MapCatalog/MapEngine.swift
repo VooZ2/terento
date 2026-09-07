@@ -196,6 +196,11 @@ private struct MapInventoryScanOutput: Sendable {
     let preferredOwnershipManifestDeviceKey: String?
 }
 
+private struct InstallationRunBatch: Sendable {
+    let componentResults: [MapInstallationResult]
+    let packageOutcomes: [MapPackageInstallationOutcome]
+}
+
 @MainActor
 final class MapEngine: ObservableObject {
     /// Garmin may briefly keep its MTP object database busy after accepting
@@ -208,6 +213,7 @@ final class MapEngine: ObservableObject {
     @Published private(set) var result: MapInventoryResult?
     @Published private(set) var selectedPreflight: InstallationPreflightResult?
     @Published private(set) var validatedArtifacts: [String: ValidatedMapArtifact] = [:]
+    @Published private(set) var validatedArtifactSets: [String: [String: ValidatedMapArtifact]] = [:]
     @Published private(set) var acquisitionState: MapAcquisitionState = .idle
     @Published private(set) var acquisitionProgress: MapDownloadProgress?
     @Published private(set) var acquisitionErrorMessage: String?
@@ -218,6 +224,7 @@ final class MapEngine: ObservableObject {
     @Published private(set) var customMapImportRisk: CustomMapImportRisk?
     @Published private(set) var installationResult: MapInstallationResult?
     @Published private(set) var installationBatchResults: [MapInstallationResult] = []
+    @Published private(set) var packageInstallationOutcomes: [MapPackageInstallationOutcome] = []
     @Published private(set) var installationProgress: TransferProgress?
     @Published private(set) var finishingTransferProgress: TransferProgress?
     @Published private(set) var installationPhase: InstallationProcessPhase = .idle
@@ -275,18 +282,19 @@ final class MapEngine: ObservableObject {
     /// write, delete, move, or rename operation.
     func resetForDisconnectedDevice() {
         operationGate.invalidateLifecycleOperations()
-        activeTask?.cancel()
-        activeTask = nil
-        discardCustomMapImport()
+        cancelActiveTaskAndCleanupWorkspaces()
+        discardCustomMapImport(removeWorkspace: false)
         state = .idle
         result = nil
         selectedPreflight = nil
         validatedArtifacts = [:]
+        validatedArtifactSets = [:]
         acquisitionState = .idle
         acquisitionProgress = nil
         acquisitionErrorMessage = nil
         installationResult = nil
         installationBatchResults = []
+        packageInstallationOutcomes = []
         evidenceFailureStage = nil
         evidenceFailure = nil
         evidenceNativeFailureCode = nil
@@ -321,7 +329,8 @@ final class MapEngine: ObservableObject {
             return
         }
 
-        discardCustomMapImport()
+        cancelActiveTaskAndCleanupWorkspaces()
+        discardCustomMapImport(removeWorkspace: false)
 
         let preservedInstallationResult = preservingInstallationResult ? installationResult : nil
         let preservedInstallationPhase = preservingInstallationResult ? installationPhase : .idle
@@ -333,6 +342,7 @@ final class MapEngine: ObservableObject {
         result = nil
         selectedPreflight = nil
         validatedArtifacts = [:]
+        validatedArtifactSets = [:]
         acquisitionState = .idle
         acquisitionProgress = nil
         acquisitionErrorMessage = nil
@@ -450,7 +460,8 @@ final class MapEngine: ObservableObject {
             return
         }
 
-        discardCustomMapImport()
+        cancelActiveTaskAndCleanupWorkspaces()
+        discardCustomMapImport(removeWorkspace: false)
         customMapImportState = .validating
         customMapImportErrorMessage = nil
         customMapImportRisk = nil
@@ -464,8 +475,8 @@ final class MapEngine: ObservableObject {
                     try acquirer.prepare(fileURL: fileURL)
                 }
 
-                guard !Task.isCancelled else {
-                    try? FileManager.default.removeItem(at: candidate.workspaceRootURL)
+                guard !Task.isCancelled, self != nil else {
+                    try? MapAcquisitionWorkspace.cleanup(rootURL: candidate.workspaceRootURL)
                     return
                 }
                 self?.customMapImportCandidate = candidate
@@ -493,9 +504,8 @@ final class MapEngine: ObservableObject {
 
     /// Discards only a local staged import. It never touches the Garmin.
     func clearCustomMapImport() {
-        activeTask?.cancel()
-        activeTask = nil
-        discardCustomMapImport()
+        cancelActiveTaskAndCleanupWorkspaces()
+        discardCustomMapImport(removeWorkspace: false)
     }
 
     func dismissCustomMapImportWarning() {
@@ -532,9 +542,9 @@ final class MapEngine: ObservableObject {
         )
     }
 
-    private func discardCustomMapImport() {
-        if let workspaceRootURL = customMapImportCandidate?.workspaceRootURL {
-            try? FileManager.default.removeItem(at: workspaceRootURL)
+    private func discardCustomMapImport(removeWorkspace: Bool = true) {
+        if removeWorkspace, let workspaceRootURL = customMapImportCandidate?.workspaceRootURL {
+            try? MapAcquisitionWorkspace.cleanup(rootURL: workspaceRootURL)
         }
         customMapImportCandidate = nil
         customMapImportState = .idle
@@ -550,6 +560,42 @@ final class MapEngine: ObservableObject {
                     $0.catalogMap.sourceKind != .custom
                 }
             )
+        }
+    }
+
+    private nonisolated static func workspaceRoots(_ sets: [String: [String: ValidatedMapArtifact]]) -> Set<URL> {
+        Set(sets.values.flatMap { $0.values.compactMap(\.workspaceRootURL) })
+    }
+
+    private nonisolated static func cleanupAcquisitionWorkspaces(at roots: Set<URL>) {
+        for root in roots { try? MapAcquisitionWorkspace.cleanup(rootURL: root) }
+    }
+
+    private func releaseAcquisitionWorkspaces(at roots: Set<URL>) {
+        // A cancelled older task must not erase a newer task's prepared state.
+        validatedArtifacts = validatedArtifacts.filter { $0.value.workspaceRootURL.map { !roots.contains($0) } ?? true }
+        validatedArtifactSets = validatedArtifactSets.mapValues { artifacts in
+            artifacts.filter { $0.value.workspaceRootURL.map { !roots.contains($0) } ?? true }
+        }.filter { !$0.value.isEmpty }
+        if let root = customMapImportCandidate?.workspaceRootURL, roots.contains(root) {
+            discardCustomMapImport(removeWorkspace: false)
+        }
+    }
+
+    private func cancelActiveTaskAndCleanupWorkspaces() {
+        let task = activeTask
+        task?.cancel()
+        activeTask = nil
+        var roots = Self.workspaceRoots(validatedArtifactSets)
+        roots.formUnion(validatedArtifacts.values.compactMap(\.workspaceRootURL))
+        if let root = customMapImportCandidate?.workspaceRootURL { roots.insert(root) }
+        guard !roots.isEmpty else { return }
+        // CancellableDetached waits for native work to exit, including Finishing
+        // and device cleanup. Never unlink a source still being verified.
+        Task { [weak self] in
+            if let task { await task.value }
+            Self.cleanupAcquisitionWorkspaces(at: roots)
+            self?.releaseAcquisitionWorkspaces(at: roots)
         }
     }
 
@@ -599,7 +645,10 @@ final class MapEngine: ObservableObject {
                     providerId: entry.providerId,
                     regionId: entry.regionId,
                     version: entry.version,
-                    sizeBytes: entry.sizeBytes
+                    sizeBytes: entry.sizeBytes,
+                    packageID: entry.packageID,
+                    artifactID: entry.artifactID,
+                    artifactKind: entry.artifactKind
                 )
             }
         }
@@ -616,7 +665,10 @@ final class MapEngine: ObservableObject {
                     providerId: record.providerId,
                     regionId: record.regionId,
                     version: record.version,
-                    sizeBytes: record.sizeBytes
+                    sizeBytes: record.sizeBytes,
+                    packageID: record.packageID,
+                    artifactID: record.artifactID,
+                    artifactKind: record.artifactKind
                 )
             }
 
@@ -713,7 +765,10 @@ final class MapEngine: ObservableObject {
         )
     }
 
-    func installationPlan(for selectedIDs: Set<String>) -> InstallationPlan? {
+    func installationPlan(
+        for selectedIDs: Set<String>,
+        selectedOptionalArtifactIDs: [String: Set<String>] = [:]
+    ) -> InstallationPlan? {
         guard let availableStorage = currentAvailableStorage,
               result != nil else {
             return nil
@@ -722,7 +777,8 @@ final class MapEngine: ObservableObject {
         return MapSelectionPlanner().plan(
             items: mapSelectionItems,
             selectedIDs: selectedIDs,
-            currentFreeSpace: availableStorage
+            currentFreeSpace: availableStorage,
+            selectedOptionalArtifactIDs: selectedOptionalArtifactIDs
         )
     }
 
@@ -809,8 +865,7 @@ final class MapEngine: ObservableObject {
                 return (objectID, manifestEntry.sha256)
             }
 
-            if let version = installedMap.version,
-               let provider = installedMap.provider,
+            if let provider = installedMap.provider,
                let region = installedMap.region,
                let manifestEntry = manifestEntries.first(where: { entry in
                    guard let entryIdentity = MapIdentity(
@@ -831,7 +886,11 @@ final class MapEngine: ObservableObject {
                            expected: entryIdentity,
                            providerRegionId: entry.regionId
                        )
-                       && entry.version == version
+                       && MapOwnershipMatcher.lifecycleVersionMatches(
+                           scanned: installedMap.version, recorded: entry.version,
+                           provider: entry.providerId, filename: entry.filename,
+                           artifactKind: entry.artifactKind
+                       )
                }),
                !manifestEntry.sha256.isEmpty {
                 return (objectID, manifestEntry.sha256)
@@ -1058,6 +1117,7 @@ final class MapEngine: ObservableObject {
         selectedPreflight = nil
         installationResult = nil
         installationBatchResults = []
+        packageInstallationOutcomes = []
         evidenceFailureStage = nil
         evidenceFailure = nil
         evidenceNativeFailureCode = nil
@@ -1090,6 +1150,7 @@ final class MapEngine: ObservableObject {
                 )
             }
             recordInstallationFailure(installationErrorMessage)
+            discardCustomMapImport()
             return
         }
         prepareInstallationArtifacts()
@@ -1109,7 +1170,10 @@ final class MapEngine: ObservableObject {
         acquisitionState = .resolvingPackage
         acquisitionProgress = MapDownloadProgress(
             bytesDownloaded: 0,
-            totalBytes: plan.installItems.first?.package.expectedDownloadSizeBytes ?? 0,
+            totalBytes: plan.selectedPackagePlans
+                .flatMap(\.artifactPlan.selectedArtifacts)
+                .compactMap { $0.downloadSizeBytes ?? $0.sizeBytes }
+                .reduce(0, +),
             bytesPerSecond: 0
         )
         acquisitionErrorMessage = nil
@@ -1117,7 +1181,10 @@ final class MapEngine: ObservableObject {
         installationResult = nil
         installationErrorMessage = nil
 
-        let packages = plan.installItems.map(\.package)
+        let installPackageIDs = Set(plan.installItems.map { $0.package.id })
+        let packagePlans = plan.selectedPackagePlans.filter {
+            installPackageIDs.contains($0.item.package.id)
+        }
         let acquirer = MapPackageAcquirer(
             providerHealthChecker: FoundationMapProviderHealthChecker()
         )
@@ -1127,52 +1194,74 @@ final class MapEngine: ObservableObject {
         let progressRelay = MapEngineDownloadProgressRelay(engine: self)
         activeTask?.cancel()
         activeTask = Task { [weak self] in
+            var artifactSets: [String: [String: ValidatedMapArtifact]] = [:]
+            var handedOff = false
+            defer {
+                if !handedOff {
+                    var roots = Self.workspaceRoots(artifactSets)
+                    if let root = customCandidate?.workspaceRootURL { roots.insert(root) }
+                    Self.cleanupAcquisitionWorkspaces(at: roots)
+                    self?.releaseAcquisitionWorkspaces(at: roots)
+                }
+            }
             var activePackageIndex = 0
             do {
-                var artifacts: [String: ValidatedMapArtifact] = [:]
-                for (index, package) in packages.enumerated() {
+                for (index, packagePlan) in packagePlans.enumerated() {
+                    let package = packagePlan.item.package
                     activePackageIndex = index
                     try Task.checkCancellation()
-                    let artifact: ValidatedMapArtifact
-                    if package.sourceKind == .custom {
-                        guard let customCandidate,
-                              customCandidate.package.id == package.id else {
-                            throw MapAcquisitionError.invalidPackage(
-                                "The selected custom map is no longer available."
-                            )
-                        }
-                        stateRelay.send(.validatingDownload)
-                        artifact = try await CancellableDetached.run(priority: .userInitiated) {
-                            try customAcquirer.revalidate(customCandidate)
-                        }
-                        stateRelay.send(.inspectingIMG)
-                        stateRelay.send(.hashing)
-                        stateRelay.send(.validated)
-                    } else {
-                        self?.emitMapStatisticsEvent(
-                            package: package,
-                            type: .downloadStarted,
-                            outcome: .unknown
-                        )
-                        artifact = try await CancellableDetached.run(priority: .userInitiated) {
-                            try await acquirer.acquire(
+                    for selectedArtifact in packagePlan.artifactPlan.selectedArtifacts {
+                        let artifact: ValidatedMapArtifact
+                        if package.sourceKind == .custom {
+                            guard selectedArtifact.kind == .main,
+                                  let customCandidate,
+                                  customCandidate.package.id == package.id else {
+                                throw MapAcquisitionError.invalidPackage(
+                                    "The selected custom map is no longer available."
+                                )
+                            }
+                            stateRelay.send(.validatingDownload)
+                            artifact = try await CancellableDetached.run(priority: .userInitiated) {
+                                try customAcquirer.revalidate(customCandidate)
+                            }
+                            stateRelay.send(.inspectingIMG)
+                            stateRelay.send(.hashing)
+                            stateRelay.send(.validated)
+                        } else {
+                            self?.emitMapStatisticsEvent(
                                 package: package,
-                                canonicalRegion: package.canonicalRegionId,
-                                onStateChange: { state in stateRelay.send(state) },
-                                onDownloadProgress: { progress in progressRelay.send(progress) }
+                                type: .downloadStarted,
+                                outcome: .unknown
+                            )
+                            artifact = try await CancellableDetached.run(priority: .userInitiated) {
+                                try await acquirer.acquire(
+                                    package: package,
+                                    artifact: selectedArtifact,
+                                    canonicalRegion: package.canonicalRegionId,
+                                    onStateChange: { state in stateRelay.send(state) },
+                                    onDownloadProgress: { progress in progressRelay.send(progress) }
+                                )
+                            }
+                            self?.emitMapStatisticsEvent(
+                                package: package,
+                                type: .downloadSucceeded,
+                                outcome: .succeeded
                             )
                         }
-                        self?.emitMapStatisticsEvent(
-                            package: package,
-                            type: .downloadSucceeded,
-                            outcome: .succeeded
-                        )
+                        artifactSets[package.id, default: [:]][selectedArtifact.id] = artifact
                     }
-                    artifacts[package.id] = artifact
                 }
 
-                guard !Task.isCancelled else { return }
-                self?.validatedArtifacts = artifacts
+                guard !Task.isCancelled, self != nil else { return }
+                handedOff = true
+                self?.validatedArtifactSets = artifactSets
+                self?.validatedArtifacts = Dictionary(uniqueKeysWithValues: packagePlans.compactMap { packagePlan in
+                    guard let mainArtifact = packagePlan.artifactPlan.mainArtifact,
+                          let validated = artifactSets[packagePlan.item.package.id]?[mainArtifact.id] else {
+                        return nil
+                    }
+                    return (packagePlan.item.package.id, validated)
+                })
                 self?.acquisitionState = .validated
                 self?.state = .scanned
                 Task { @MainActor [weak self] in
@@ -1180,10 +1269,10 @@ final class MapEngine: ObservableObject {
                 }
             } catch {
                 guard !Task.isCancelled else { return }
-                if packages.indices.contains(activePackageIndex),
-                   packages[activePackageIndex].sourceKind == .provider {
+                if packagePlans.indices.contains(activePackageIndex),
+                   packagePlans[activePackageIndex].item.package.sourceKind == .provider {
                     self?.emitMapStatisticsEvent(
-                        package: packages[activePackageIndex],
+                        package: packagePlans[activePackageIndex].item.package,
                         type: .downloadFailed,
                         outcome: .failed
                     )
@@ -1219,7 +1308,7 @@ final class MapEngine: ObservableObject {
               let inventory = result,
               let identity = currentIdentity,
               let availableStorage = currentAvailableStorage,
-              !validatedArtifacts.isEmpty else {
+              !validatedArtifactSets.isEmpty else {
             return
         }
 
@@ -1227,7 +1316,11 @@ final class MapEngine: ObservableObject {
         installationPhase = .preparing
         installationPhaseProgress = 0
         installationErrorMessage = nil
-        let artifacts = validatedArtifacts
+        let artifacts = validatedArtifactSets
+        let installPackageIDs = Set(plan.installItems.map { $0.package.id })
+        let packagePlans = plan.selectedPackagePlans.filter {
+            installPackageIDs.contains($0.item.package.id)
+        }
         let profile = DeviceInstallProfileRegistry.local.profile(
             for: identity,
             deviceFiles: inventory.deviceFiles
@@ -1236,49 +1329,80 @@ final class MapEngine: ObservableObject {
         let activeMapIndex = InstallationMapIndexState()
         activeTask?.cancel()
         activeTask = Task { [weak self] in
+            var handedOff = false
+            defer {
+                if !handedOff {
+                    let roots = Self.workspaceRoots(artifacts)
+                    Self.cleanupAcquisitionWorkspaces(at: roots)
+                    self?.releaseAcquisitionWorkspaces(at: roots)
+                }
+            }
             do {
                 let results = try await CancellableDetached.run(priority: .userInitiated) {
                     var results: [MapInstallationResult] = []
-                    for (index, item) in plan.installItems.enumerated() {
+                    var shouldStop = false
+                    for (index, packagePlan) in packagePlans.enumerated() {
                         activeMapIndex.set(index)
-                        guard let artifact = artifacts[item.package.id],
+                        let item = packagePlan.item
+                        for selectedArtifact in packagePlan.artifactPlan.selectedArtifacts {
+                            guard let artifact = artifacts[item.package.id]?[selectedArtifact.id],
                               let comparison = inventory.comparisons.first(where: {
                                   $0.catalogMap.id == item.package.id
                               }) else {
-                            throw MapAcquisitionError.invalidPackage(
-                                "The selected catalog entry is unavailable."
-                            )
-                        }
+                                throw MapAcquisitionError.invalidPackage(
+                                    "The validated source for the selected map is unavailable."
+                                )
+                            }
 
-                        let request = MapInstallationRequest(
-                            identity: identity,
-                            selectedMap: comparison.catalogMap,
-                            comparison: comparison,
-                            installedMaps: inventory.scan.installedMaps,
-                            inspectedFiles: inventory.scan.files,
-                            beforeDeviceFiles: inventory.deviceFiles,
-                            availableStorage: availableStorage,
-                            profile: profile,
-                            artifact: artifact,
-                            userConfirmed: false
-                        )
-                        let result = coordinator.run(request)
-                        results.append(result)
-                        guard result.status == .confirmationRequired else { break }
+                            let request = MapInstallationRequest(
+                                identity: identity,
+                                selectedMap: comparison.catalogMap,
+                                comparison: comparison,
+                                installedMaps: inventory.scan.installedMaps,
+                                inspectedFiles: inventory.scan.files,
+                                beforeDeviceFiles: inventory.deviceFiles,
+                                availableStorage: availableStorage,
+                                profile: profile,
+                                artifact: artifact,
+                                userConfirmed: false
+                            )
+                            let result = coordinator.run(request)
+                            results.append(result)
+                            guard result.status == .confirmationRequired else {
+                                shouldStop = true
+                                break
+                            }
+                        }
+                        if shouldStop { break }
                     }
                     return results
                 }
 
                 guard !Task.isCancelled, let first = results.first else { return }
-                let allReady = results.count == plan.installItems.count
+                let expectedComponentCount = packagePlans.reduce(0) {
+                    $0 + $1.artifactPlan.selectedArtifacts.count
+                }
+                let allReady = results.count == expectedComponentCount
                     && results.allSatisfy { $0.status == .confirmationRequired }
                 let finalResult = allReady ? first : (results.last ?? first)
                 self?.installationResult = finalResult
                 self?.selectedPreflight = first.preflight
                 self?.installationProgress = TransferProgress(
                     bytesTransferred: 0,
-                    totalBytes: artifacts[plan.installItems.first!.package.id]?.installSizeBytes ?? 0
+                    totalBytes: artifacts.values
+                        .flatMap(\.values)
+                        .reduce(UInt64(0)) { $0 + $1.installSizeBytes }
                 )
+                var batchResults: [MapInstallationResult] = []
+                var resultCursor = 0
+                for packagePlan in packagePlans {
+                    let componentCount = packagePlan.artifactPlan.selectedArtifacts.count
+                    guard resultCursor < results.count else { break }
+                    let end = min(results.count, resultCursor + componentCount)
+                    batchResults.append(results[resultCursor])
+                    resultCursor = end
+                }
+                self?.installationBatchResults = batchResults
                 self?.installationErrorMessage = finalResult.failure?.userLabel
                 self?.installationPhase = allReady ? .awaitingConfirmation : .failed
                 self?.installationPhaseProgress = allReady ? 1 : nil
@@ -1301,6 +1425,7 @@ final class MapEngine: ObservableObject {
                     self?.recordInstallationFailure(finalResult.failure?.userLabel)
                 }
 
+                handedOff = allReady && !Task.isCancelled && self != nil
                 let shouldContinue = InstallationFlowPresentation.shouldContinueAfterPreflight(
                     userAuthorized: self?.installationAuthorizationGranted == true,
                     preflightSucceeded: allReady
@@ -1346,9 +1471,10 @@ final class MapEngine: ObservableObject {
     /// shared coordinator sequentially. A successful batch refreshes the
     /// catalog-backed inventory so Install and Manage show the same state.
     func installSelectedMaps() {
-        guard let plan = selectedInstallationPlan,
-              installationResult?.status == .confirmationRequired,
-              validatedArtifacts.count == plan.installItems.count,
+        guard let plan = selectedInstallationPlan else { return }
+        let installPackageIDs = Set(plan.installItems.map { $0.package.id })
+        guard installationResult?.status == .confirmationRequired,
+              validatedArtifactSets.count == installPackageIDs.count,
               state != .installing else {
             return
         }
@@ -1360,12 +1486,17 @@ final class MapEngine: ObservableObject {
         installationSpeedEstimator.reset()
         installationProgress = TransferProgress(
             bytesTransferred: 0,
-            totalBytes: validatedArtifact?.installSizeBytes ?? 0
+            totalBytes: validatedArtifactSets.values
+                .flatMap { $0.values }
+                .reduce(UInt64(0)) { $0 + $1.installSizeBytes }
         )
         installationErrorMessage = nil
 
         let operationGate = self.operationGate
-        let artifacts = validatedArtifacts
+        let artifacts = validatedArtifactSets
+        let packagePlans = plan.selectedPackagePlans.filter {
+            installPackageIDs.contains($0.item.package.id)
+        }
         let sessionIdentity = currentIdentity
         let sessionManifestDeviceKeys = ownershipManifestDeviceKeys
         let customPackages = plan.installItems
@@ -1378,88 +1509,131 @@ final class MapEngine: ObservableObject {
         let activeMapIndex = InstallationMapIndexState()
         activeTask?.cancel()
         activeTask = Task { [weak self] in
+            defer {
+                let roots = Self.workspaceRoots(artifacts)
+                Self.cleanupAcquisitionWorkspaces(at: roots)
+                self?.releaseAcquisitionWorkspaces(at: roots)
+            }
             do {
                 guard let catalog else {
                     throw MapAcquisitionError.invalidPackage("The selected map catalog is unavailable.")
                 }
 
-                let results = try await CancellableDetached.run(priority: .userInitiated) {
+                let batch = try await CancellableDetached.run(priority: .userInitiated) {
                     let lease = try await operationGate.beginLifecycleAsync()
                     defer { operationGate.endLifecycle(lease) }
 
-                    var results: [MapInstallationResult] = []
-                    for (index, item) in plan.installItems.enumerated() {
+                    var componentResults: [MapInstallationResult] = []
+                    var packageOutcomes: [MapPackageInstallationOutcome] = []
+                    var shouldStopBatch = false
+                    for (index, packagePlan) in packagePlans.enumerated() {
                         activeMapIndex.set(index)
-                        guard let artifact = artifacts[item.package.id] else {
-                            throw MapAcquisitionError.invalidPackage(
-                                "The validated source for the selected map is unavailable."
-                            )
-                        }
-
-                        let lifecycleReader = MTPTransport(
-                            operationGate: operationGate,
-                            lifecycleLease: lease
-                        )
-                        let snapshot = try lifecycleReader.readSnapshot()
-                        let identity = CompatibilityEngine().evaluate(snapshot: snapshot).identity
-                        let inventory = try MapInventoryEngine(
-                            reader: lifecycleReader,
-                            catalog: catalog,
-                            ownershipRecords: Self.loadOwnershipRecords(
-                                forDeviceKeys: Set(
-                                    sessionManifestDeviceKeys
-                                        .union(Self.manifestDeviceKeys(for: identity))
-                                ),
-                                recoveryIdentities: [sessionIdentity, identity]
-                            ),
-                            additionalPackages: customPackages
-                        ).scan()
-                        guard let comparison = inventory.comparisons.first(where: {
-                            $0.catalogMap.id == item.package.id
-                        }) else {
-                            throw MapAcquisitionError.invalidPackage(
-                                "The selected catalog entry is unavailable."
-                            )
-                        }
-
-                        let installProfile = DeviceInstallProfileRegistry.local.profile(
-                            for: identity,
-                            deviceFiles: inventory.deviceFiles
-                        )
-                        let operationProfile = DeviceMapOperationProfile(
-                            identity: identity,
-                            installProfile: installProfile
-                        )
-
-                        let request = MapInstallationRequest(
-                            identity: identity,
-                            selectedMap: comparison.catalogMap,
-                            comparison: comparison,
-                            installedMaps: inventory.scan.installedMaps,
-                            inspectedFiles: inventory.scan.files,
-                            beforeDeviceFiles: inventory.deviceFiles,
-                            availableStorage: snapshot.freeSpace,
-                            profile: installProfile,
-                            artifact: artifact,
-                            userConfirmed: true
-                        )
-
-                        let result = MapInstallationCoordinator.live(
-                            operationProfile: operationProfile,
-                            operationGate: operationGate,
-                            lifecycleLease: lease
-                        ).run(
-                            request,
-                            onProgress: { progress in progressRelay.send(progress) },
-                            onPhase: { phase in phaseRelay.send(phase) },
-                            onPhaseProgress: { phase, progress in
-                                phaseProgressRelay.send(phase, progress)
+                        var packageComponents: [MapInstallationComponentOutcome] = []
+                        var packageResults: [MapInstallationResult] = []
+                        for selectedArtifact in packagePlan.artifactPlan.selectedArtifacts {
+                            guard let artifact = artifacts[packagePlan.item.package.id]?[selectedArtifact.id] else {
+                                throw MapAcquisitionError.invalidPackage(
+                                    "The validated source for the selected map is unavailable."
+                                )
                             }
-                        )
-                        results.append(result)
-                        guard result.isSuccess else { break }
 
-                        if index + 1 < plan.installItems.count {
+                            let lifecycleReader = MTPTransport(
+                                operationGate: operationGate,
+                                lifecycleLease: lease
+                            )
+                            let snapshot = try lifecycleReader.readSnapshot()
+                            let identity = CompatibilityEngine().evaluate(snapshot: snapshot).identity
+                            let inventory = try MapInventoryEngine(
+                                reader: lifecycleReader,
+                                catalog: catalog,
+                                ownershipRecords: Self.loadOwnershipRecords(
+                                    forDeviceKeys: Set(
+                                        sessionManifestDeviceKeys
+                                            .union(Self.manifestDeviceKeys(for: identity))
+                                    ),
+                                    recoveryIdentities: [sessionIdentity, identity]
+                                ),
+                                additionalPackages: customPackages
+                            ).scan()
+                            guard let comparison = inventory.comparisons.first(where: {
+                                $0.catalogMap.id == packagePlan.item.package.id
+                            }) else {
+                                throw MapAcquisitionError.invalidPackage(
+                                    "The selected catalog entry is unavailable."
+                                )
+                            }
+
+                            let installProfile = DeviceInstallProfileRegistry.local.profile(
+                                for: identity,
+                                deviceFiles: inventory.deviceFiles
+                            )
+                            let operationProfile = DeviceMapOperationProfile(
+                                identity: identity,
+                                installProfile: installProfile
+                            )
+
+                            let request = MapInstallationRequest(
+                                identity: identity,
+                                selectedMap: comparison.catalogMap,
+                                comparison: comparison,
+                                installedMaps: inventory.scan.installedMaps,
+                                inspectedFiles: inventory.scan.files,
+                                beforeDeviceFiles: inventory.deviceFiles,
+                                availableStorage: snapshot.freeSpace,
+                                profile: installProfile,
+                                artifact: artifact,
+                                userConfirmed: true
+                            )
+
+                            let result = MapInstallationCoordinator.live(
+                                operationProfile: operationProfile,
+                                operationGate: operationGate,
+                                lifecycleLease: lease
+                            ).run(
+                                request,
+                                onProgress: { progress in progressRelay.send(progress) },
+                                onPhase: { phase in phaseRelay.send(phase) },
+                                onPhaseProgress: { phase, progress in
+                                    phaseProgressRelay.send(phase, progress)
+                                }
+                            )
+                            packageResults.append(result)
+                            componentResults.append(result)
+                            packageComponents.append(
+                                MapInstallationComponentOutcome(
+                                    artifactID: selectedArtifact.id,
+                                    artifactKind: selectedArtifact.kind,
+                                    succeeded: result.isSuccess,
+                                    failure: result.failure
+                                )
+                            )
+                            guard result.isSuccess else {
+                                shouldStopBatch = true
+                                break
+                            }
+                        }
+
+                        let packageStatus: MapPackageInstallationStatus
+                        if packageComponents.allSatisfy(\.isSuccess)
+                            && packageComponents.count == packagePlan.artifactPlan.selectedArtifacts.count {
+                            packageStatus = .completed
+                        } else if packageComponents.contains(where: { $0.artifactKind == .main && $0.isSuccess }) {
+                            packageStatus = .completedWithWarnings
+                        } else {
+                            packageStatus = .failed
+                        }
+                        packageOutcomes.append(
+                            MapPackageInstallationOutcome(
+                                packageID: packagePlan.item.package.id,
+                                status: packageStatus,
+                                components: packageComponents
+                            )
+                        )
+
+                        if !packageResults.isEmpty,
+                           packageResults.allSatisfy(\.isSuccess),
+                           index + 1 < plan.installItems.count,
+                           !shouldStopBatch {
                             // Move away from a misleading Finishing 100% state
                             // while the watch commits/indexes the completed
                             // object. No MTP call or device write is active
@@ -1468,23 +1642,37 @@ final class MapEngine: ObservableObject {
                             phaseProgressRelay.send(.preparing, 0)
                             try await Task.sleep(for: .seconds(5))
                         }
+                        if shouldStopBatch { break }
                     }
-                    return results
+                    return InstallationRunBatch(
+                        componentResults: componentResults,
+                        packageOutcomes: packageOutcomes
+                    )
                 }
 
-                guard !Task.isCancelled, let finalResult = results.last else { return }
-                let batchSucceeded = results.count == plan.installItems.count
-                    && results.allSatisfy(\.isSuccess)
-                for (index, result) in results.enumerated()
+                guard !Task.isCancelled, let finalResult = batch.componentResults.last else { return }
+                let batchSucceeded = batch.packageOutcomes.count == packagePlans.count
+                    && batch.packageOutcomes.allSatisfy { $0.status == .completed }
+                let hasPartialSuccess = batch.packageOutcomes.contains { $0.hasWarnings }
+                for (index, outcome) in batch.packageOutcomes.enumerated()
                 where plan.installItems.indices.contains(index) {
                     self?.emitMapStatisticsEvent(
                         package: plan.installItems[index].package,
-                        type: result.isSuccess ? .installSucceeded : .installFailed,
-                        outcome: result.isSuccess ? .succeeded : .failed
+                        type: outcome.isComplete ? .installSucceeded : .installFailed,
+                        outcome: outcome.isComplete ? .succeeded : .failed
                     )
                 }
                 self?.installationResult = finalResult
-                self?.installationBatchResults = results
+                self?.installationBatchResults = batch.packageOutcomes.compactMap { outcome in
+                    guard let index = packagePlans.firstIndex(where: {
+                        $0.item.package.id == outcome.packageID
+                    }) else { return nil }
+                    let componentOffset = packagePlans[..<index]
+                        .reduce(0) { $0 + $1.artifactPlan.selectedArtifacts.count }
+                    guard componentOffset < batch.componentResults.count else { return nil }
+                    return batch.componentResults[componentOffset]
+                }
+                self?.packageInstallationOutcomes = batch.packageOutcomes
                 self?.selectedPreflight = finalResult.preflight
                 self?.installationProgress = TransferProgress(
                     bytesTransferred: finalResult.diagnostics.bytesTransferred,
@@ -1492,15 +1680,21 @@ final class MapEngine: ObservableObject {
                     bytesPerSecond: 0
                 )
                 self?.installationErrorMessage = finalResult.failure?.userLabel
-                self?.installationPhase = batchSucceeded ? .completed : .failed
-                self?.installationPhaseProgress = batchSucceeded ? 1 : nil
-                self?.state = batchSucceeded ? .scanned : .failed
-                if batchSucceeded {
+                self?.installationPhase = (batchSucceeded || hasPartialSuccess) ? .completed : .failed
+                self?.installationPhaseProgress = (batchSucceeded || hasPartialSuccess) ? 1 : nil
+                self?.state = (batchSucceeded || hasPartialSuccess) ? .scanned : .failed
+                if batchSucceeded || hasPartialSuccess {
+                    if hasPartialSuccess {
+                        self?.installationErrorMessage = "The main map was installed, but an optional contour component needs attention."
+                    }
                     self?.refreshCurrentDeviceMaps()
                 } else {
                     self?.evidenceFailureStage = Self.evidenceStage(for: finalResult.failure)
                     self?.evidenceFailure = finalResult.failure
                     self?.recordInstallationFailure(finalResult.failure?.userLabel)
+                    if finalResult.diagnostics.remoteObjectCreated {
+                        self?.refreshCurrentDeviceMaps()
+                    }
                 }
             } catch {
                 guard !Task.isCancelled else { return }

@@ -35,7 +35,7 @@ require_review_text '.padding(.bottom, TerentoPageLayout.sectionSpacing)' 'shari
 require_review_text '.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)' 'Review content cannot absorb the fixed body height'
 require_review_text 'bodyScrolls: mapEngine.installationPhase == .failed' 'normal Review state may scroll as a whole page'
 require_review_text 'ReadyToInstallSelectedMapsHeader(count: plan.selectedItems.count)' 'selected-map count is not sourced from the plan'
-require_review_text 'ReadyToInstallSelectedMapsList(items: plan.selectedItems)' 'selected-map list behavior changed'
+require_review_text 'ReadyToInstallSelectedMapsList(plan: plan)' 'selected-map list behavior changed'
 require_review_text 'MapSelectionStorageSummary(' 'Storage placement changed'
 if [[ "$review_content" == *'Toggle(isOn: compatibilitySharingBinding)'* \
     || "$review_content" == *'Toggle(isOn: mapStatisticsSharingBinding)'* \

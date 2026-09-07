@@ -66,7 +66,10 @@ struct MapSourceValidator: Sendable {
             throw MapSourceValidationError.identityMismatch
         }
 
-        guard metadata.version == expectedPackage.version else {
+        let isContourArtifact = expectedPackage.artifacts.count == 1
+            && expectedPackage.artifacts.first?.kind == .contours
+        guard metadata.version == expectedPackage.version
+            || (isContourArtifact && metadata.version == nil) else {
             throw MapSourceValidationError.versionMismatch
         }
 

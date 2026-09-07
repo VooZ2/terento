@@ -278,6 +278,10 @@ struct InstallationEvidenceTests {
             storageCapacity: 32_000_000_000, freeSpace: 10_000_000_000,
             localHardwareIdentifier: "SERIAL-PRIVATE"
         )
+        FinishingTrace.beginInstallation()
+        FinishingTrace.event("read_failed", "offset=182108160 rc=-1 detail=0 verified_bytes=29229056")
+        FinishingTrace.event("operation_failed", "operation=cleanup elapsed=45 error=operationFailed")
+        FinishingTrace.freezeFailure()
         let draft = InstallationIssueReport.generate(
             identity: unsafeIdentity,
             maps: [
@@ -308,6 +312,10 @@ struct InstallationEvidenceTests {
             appBuild: "108",
             operatingSystem: "macOS 15.6"
         )
+        precondition(draft.body.contains("event=read_failed"))
+        precondition(draft.body.contains("verified_bytes=29229056"))
+        precondition(draft.body.contains("operation=cleanup elapsed=45"))
+        FinishingTrace.beginInstallation()
         expect(draft.title == "Installation stopped during Downloading — OpenTopoMap / Lithuania", "prepared issue title uses the real stage, provider, and region")
         expect(draft.body.contains("## Summary") && draft.body.contains("Failure stage: source-validation, preflight") && draft.body.contains("INSTALL_BLOCKED_SOURCE_VALIDATION_FAILED"), "prepared issue includes structured failure summary")
         expect(draft.body.contains("Provider: OpenTopoMap") && draft.body.contains("Region: LTU, AZORES") && draft.body.contains("Map version: 2026-08-30"), "prepared issue includes concise multi-map metadata")

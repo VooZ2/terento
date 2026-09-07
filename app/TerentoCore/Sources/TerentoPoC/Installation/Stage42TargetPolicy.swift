@@ -62,6 +62,7 @@ struct Stage42TargetPolicy: Sendable {
               !package.regionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               artifact.sourceKind == .provider,
               artifact.catalogPackageID == package.id,
+              artifactIDMatches(artifact, package: package),
               artifactProvider == packageProvider,
               let expectedIdentity = package.identity,
               MapIdentityMatcher.matches(
@@ -79,12 +80,29 @@ struct Stage42TargetPolicy: Sendable {
 
         let expectedFilename = try TerentoManagedFilenameGenerator().filename(
             providerId: package.providerId,
-            regionId: package.canonicalRegionId
+            regionId: package.canonicalRegionId,
+            artifactKind: artifact.artifactKind
         )
         guard artifact.targetFilename == expectedFilename,
               TerentoManagedFilenameGenerator().isValid(artifact.targetFilename) else {
             throw Stage42TargetPolicyError.unsupportedFilename
         }
+    }
+
+    private func artifactIDMatches(
+        _ artifact: ValidatedMapArtifact,
+        package: MapPackage
+    ) -> Bool {
+        guard let expected = package.artifacts.first(where: {
+            $0.kind == artifact.artifactKind
+        })?.id else {
+            return artifact.artifactKind == .main && artifact.artifactID == package.id
+        }
+
+        if artifact.artifactKind == .main {
+            return artifact.artifactID == expected || artifact.artifactID == package.id
+        }
+        return artifact.artifactID == expected
     }
 
     private func validateCustom(
@@ -105,7 +123,8 @@ struct Stage42TargetPolicy: Sendable {
 
         let expectedFilename = try TerentoManagedFilenameGenerator().filename(
             providerId: package.providerId,
-            regionId: package.canonicalRegionId
+            regionId: package.canonicalRegionId,
+            artifactKind: artifact.artifactKind
         )
         guard artifact.targetFilename == expectedFilename,
               TerentoManagedFilenameGenerator().isValid(artifact.targetFilename) else {

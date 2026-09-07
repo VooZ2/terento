@@ -18,6 +18,7 @@ enum TerentoDiagnosticLog {
     }()
 
     static func recordInstallationStarted(maps: [MapPackage]) {
+        FinishingTrace.beginInstallation()
         let mapLines = maps.map { map in
             "- \(map.name) [\(map.id), region=\(map.canonicalRegionId), release=\(map.version)]"
         }
@@ -43,6 +44,7 @@ enum TerentoDiagnosticLog {
         result: MapInstallationResult?,
         inventory: MapInventoryResult?
     ) {
+        FinishingTrace.freezeFailure()
         var lines = [
             "INSTALLATION FAILED",
             "Time: \(Self.timestamp())",
@@ -98,6 +100,7 @@ enum TerentoDiagnosticLog {
             }
         }
 
+        lines.append("Finishing diagnostics (full local trace: finishing.log):\n\(FinishingTrace.failureReport)")
         lines.append("Selected map IDs: \(maps.map(\.id).joined(separator: ", "))")
         append(lines.joined(separator: "\n"))
     }
@@ -194,15 +197,9 @@ enum TerentoDiagnosticLog {
     }
 
     private static var appVersion: String {
-        let releaseLabel = Bundle.main.object(
-            forInfoDictionaryKey: "TerentoReleaseLabel"
-        ) as? String
-        let shortVersion = Bundle.main.object(
-            forInfoDictionaryKey: "CFBundleShortVersionString"
-        ) as? String
-        return releaseLabel?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
-            ? releaseLabel!
-            : shortVersion ?? "development"
+        TerentoTelemetryMetadata.releaseLabel.isEmpty
+            ? TerentoTelemetryMetadata.version
+            : TerentoTelemetryMetadata.releaseLabel
     }
 
     private static func timestamp() -> String {

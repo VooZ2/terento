@@ -35,6 +35,7 @@ struct ConnectScreen: View {
     @State private var localInstallStep: LocalInstallStep = .choose
     @State private var troubleshootingExpanded = false
     @State private var selectedMapIDs: Set<String> = []
+    @State private var selectedOptionalArtifactIDs: [String: Set<String>] = [:]
     @State private var selectedInstallationPlan: InstallationPlan?
     @State private var availableMapsExpanded = true
     @State private var importedMapsExpanded = false
@@ -138,7 +139,10 @@ struct ConnectScreen: View {
         guard mapEngine.customMapImportReadyForInstallation else {
             return nil
         }
-        return mapEngine.installationPlan(for: selectedMapIDs)
+        return mapEngine.installationPlan(
+            for: selectedMapIDs,
+            selectedOptionalArtifactIDs: selectedOptionalArtifactIDs
+        )
     }
 
     private var installationFlowHasStarted: Bool {
@@ -222,6 +226,7 @@ struct ConnectScreen: View {
                 selectedSection = .device
                 localInstallStep = .choose
                 selectedMapIDs.removeAll()
+                selectedOptionalArtifactIDs.removeAll()
                 selectedInstallationPlan = nil
                 selectedMapProviderID = ""
                 lifecycleViewModel.resetForDisconnectedDevice()
@@ -255,6 +260,18 @@ struct ConnectScreen: View {
                 selectedMapIDs,
                 items: items
             )
+            let validIDs = Set(items.map(\.id))
+            selectedOptionalArtifactIDs = selectedOptionalArtifactIDs.reduce(
+                into: [:]
+            ) { result, entry in
+                guard validIDs.contains(entry.key),
+                      let item = items.first(where: { $0.id == entry.key }) else {
+                    return
+                }
+                result[entry.key] = entry.value.intersection(
+                    Set(item.usableOptionalArtifacts.map(\.id))
+                )
+            }
         }
         .onChange(of: mapProviderOptions) { providers in
             guard !selectedMapProviderID.isEmpty else { return }
@@ -452,6 +469,7 @@ struct ConnectScreen: View {
             availableStorage: snapshot.freeSpace
         )
         selectedMapIDs.removeAll()
+        selectedOptionalArtifactIDs.removeAll()
         mapSearchText = ""
     }
 
@@ -469,6 +487,7 @@ struct ConnectScreen: View {
 
     private func returnToDeviceAfterFailure() {
         selectedInstallationPlan = nil
+        selectedOptionalArtifactIDs.removeAll()
         localInstallStep = .choose
         selectedSection = .device
         refreshMapInventory()
@@ -1219,6 +1238,19 @@ struct ConnectScreen: View {
                                                             selectedMapIDs.insert(item.id)
                                                         } else {
                                                             selectedMapIDs.remove(item.id)
+                                                            selectedOptionalArtifactIDs.removeValue(forKey: item.id)
+                                                        }
+                                                    }
+                                                ),
+                                                selectedOptionalArtifactIDs: Binding(
+                                                    get: {
+                                                        selectedOptionalArtifactIDs[item.id] ?? []
+                                                    },
+                                                    set: { value in
+                                                        if value.isEmpty {
+                                                            selectedOptionalArtifactIDs.removeValue(forKey: item.id)
+                                                        } else {
+                                                            selectedOptionalArtifactIDs[item.id] = value
                                                         }
                                                     }
                                                 ),
@@ -1618,7 +1650,7 @@ struct ConnectScreen: View {
                 ReadyToInstallSelectedMapsHeader(count: plan.selectedItems.count)
                     .padding(.top, 18)
 
-                ReadyToInstallSelectedMapsList(items: plan.selectedItems)
+                ReadyToInstallSelectedMapsList(plan: plan)
                     .padding(.top, 4)
 
                 MapSelectionStorageSummary(
@@ -1732,6 +1764,7 @@ struct ConnectScreen: View {
                 state: installationStepState(for: .preparing),
                 progress: mapEngine.installationPhase == .preparing
                     && mapEngine.installationPhaseProgressIsMeasured
+                    && (mapEngine.installationPhaseProgress ?? 0) > 0.05
                     ? mapEngine.installationPhaseProgress
                     : nil,
                 bytes: nil,
@@ -1757,6 +1790,7 @@ struct ConnectScreen: View {
                 state: installationStepState(for: .finishing),
                 progress: mapEngine.installationPhase == .finishing
                     && mapEngine.installationPhaseProgressIsMeasured
+                    && (mapEngine.installationPhaseProgress ?? 0) > 0.05
                     ? mapEngine.installationPhaseProgress
                     : nil,
                 bytes: nil,
@@ -2047,7 +2081,12 @@ struct ConnectScreen: View {
         let progress = mapEngine.installationPhaseProgress ?? 0
         switch progress {
         case ..<0.25:
-            return "Checking sampled regions on your Garmin"
+            if let readBack = mapEngine.finishingTransferProgress, readBack.totalBytes > 0 {
+                let completed = ByteCountFormatter.string(fromByteCount: Int64(readBack.bytesTransferred), countStyle: .binary)
+                let total = ByteCountFormatter.string(fromByteCount: Int64(readBack.totalBytes), countStyle: .binary)
+                return "Checking your map · \(completed) of \(total) checked"
+            }
+            return "Waiting for your Garmin to finish saving the map, then checking it"
         case ..<0.45:
             return "Confirming the transferred file size and content"
         case ..<0.65:
@@ -2211,9 +2250,11 @@ struct ConnectScreen: View {
             VStack(alignment: .leading, spacing: 0) {
                 TerentoPageHeader(
                     title: "Maps installed",
-                    subtitle: installedCount == 1
-                        ? "Your selected map is ready on your Garmin."
-                        : "Your selected maps are ready on your Garmin."
+                    subtitle: hasPartialInstallation
+                        ? "The main map is ready. An optional contour component needs attention."
+                        : (installedCount == 1
+                            ? "Your selected map is ready on your Garmin."
+                            : "Your selected maps are ready on your Garmin.")
                 )
 
                 if mapEngine.installationPhase == .completed, !installedItems.isEmpty {
@@ -2227,14 +2268,16 @@ struct ConnectScreen: View {
                         .padding(.top, TerentoPageLayout.sectionContentTopPadding)
 
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Image(systemName: "checkmark.circle.fill")
+                        Image(systemName: hasPartialInstallation ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(TerentoColors.lichen)
                             .accessibilityHidden(true)
 
-                        Text(installedCount == 1
-                            ? "Your map is ready and verified. You can safely disconnect your Garmin."
-                            : "Your maps are ready and verified. You can safely disconnect your Garmin.")
+                        Text(hasPartialInstallation
+                            ? "The main map is ready and verified. You can safely disconnect your Garmin; the optional contours were not completed."
+                            : (installedCount == 1
+                                ? "Your map is ready and verified. You can safely disconnect your Garmin."
+                                : "Your maps are ready and verified. You can safely disconnect your Garmin."))
                             .font(.terentoUI(size: 14, weight: .medium))
                             .foregroundStyle(TerentoColors.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
@@ -2257,16 +2300,29 @@ struct ConnectScreen: View {
     private var successfullyInstalledItems: [MapSelectionItem] {
         guard mapEngine.installationPhase == .completed,
               let plan = selectedInstallationPlan,
-              mapEngine.installationBatchResults.count == plan.installItems.count else {
+              mapEngine.installationBatchResults.count == plan.installItems.count,
+              mapEngine.packageInstallationOutcomes.count == plan.installItems.count else {
             return []
         }
 
         let successfulPackageIDs = Set(
+            mapEngine.packageInstallationOutcomes
+                .filter { $0.status != .failed }
+                .map(\.packageID)
+        )
+        let resultSuccessfulPackageIDs = Set(
             zip(plan.installItems, mapEngine.installationBatchResults)
                 .filter { $0.1.isSuccess }
                 .map { $0.0.package.id }
         )
-        return plan.selectedItems.filter { successfulPackageIDs.contains($0.package.id) }
+        return plan.selectedItems.filter {
+            successfulPackageIDs.contains($0.package.id)
+                && resultSuccessfulPackageIDs.contains($0.package.id)
+        }
+    }
+
+    private var hasPartialInstallation: Bool {
+        mapEngine.packageInstallationOutcomes.contains { $0.hasWarnings }
     }
 
     private func returnToDeviceAfterSuccess() {
@@ -2324,34 +2380,35 @@ struct ConnectScreen: View {
 
         let succeeded = mapEngine.installationPhase == .completed
             && mapEngine.installationResult?.isSuccess == true
-        let category: EvidenceErrorCategory? = succeeded ? nil : {
-            switch mapEngine.installationResult?.failure {
-            case .insufficientSpace: return .storage
-            case .deviceDisconnected: return .deviceDisconnected
-            case .sourceArtifactInvalid: return .sourceValidation
-            case .stableWatchIdentityUnavailable: return .unknown
-            case .hashMismatch, .sizeMismatch, .remoteFileMissing, .metadataMismatch, .verificationRequired: return .verification
-            case .some: return .transport
-            case .none: return .unknown
-            }
-        }()
         let results = mapEngine.installationBatchResults
+        let packageOutcomes = mapEngine.packageInstallationOutcomes
         let primaryFailureIndex = mapEngine.evidencePrimaryFailureMapIndex ?? 0
         var events: [InstallationEvidenceEvent] = []
         for (index, item) in plan.installItems.enumerated() {
             let result = results.indices.contains(index)
                 ? results[index]
                 : (results.isEmpty && index == primaryFailureIndex ? mapEngine.installationResult : nil)
-            let itemSucceeded = result?.isSuccess == true || (plan.installItems.count == 1 && succeeded)
+            let packageOutcome = packageOutcomes.first {
+                $0.packageID == item.package.id
+            }
+            let packageIsComplete = packageOutcome?.isComplete ?? true
+            let itemSucceeded = packageIsComplete
+                && (result?.isSuccess == true || (plan.installItems.count == 1 && succeeded))
             let isPrimaryFailure = !itemSucceeded && (
-                result != nil || (results.isEmpty && index == primaryFailureIndex)
+                result != nil
+                    || packageOutcome != nil
+                    || (results.isEmpty && index == primaryFailureIndex)
             )
             let outcome: InstallationEvidenceOutcome = itemSucceeded
                 ? .succeeded
                 : (isPrimaryFailure ? .failed : .notStarted)
-            let failure = result?.failure ?? (isPrimaryFailure ? mapEngine.evidenceFailure : nil)
+            let failure = result?.failure
+                ?? packageOutcome?.failedComponent?.failure
+                ?? (isPrimaryFailure ? mapEngine.evidenceFailure : nil)
             let stage = result.map { evidenceStage(for: $0) }
-                ?? (isPrimaryFailure ? mapEngine.evidenceFailureStage ?? .preflight : .preflight)
+                ?? (failure.map { evidenceStage(for: $0) }
+                    ?? (isPrimaryFailure ? mapEngine.evidenceFailureStage ?? .preflight : .preflight))
+            let category = itemSucceeded ? nil : evidenceCategory(for: failure)
             let writeStarted = result?.diagnostics.writeStarted ?? false
             let remoteCreated = result?.diagnostics.remoteObjectCreated ?? false
             let cleanupAttempted = result?.diagnostics.cleanupAttempted ?? false
@@ -2390,7 +2447,11 @@ struct ConnectScreen: View {
     }
 
     private func evidenceStage(for result: MapInstallationResult) -> EvidenceFailureStage {
-        switch result.failure {
+        evidenceStage(for: result.failure)
+    }
+
+    private func evidenceStage(for failure: InstallationFailure?) -> EvidenceFailureStage {
+        switch failure {
         case .manifestFailed: return .manifest
         case .cleanupFailed: return .cleanup
         case .sizeMismatch, .hashMismatch, .remoteFileMissing, .metadataMismatch, .verificationRequired:
@@ -2398,6 +2459,26 @@ struct ConnectScreen: View {
         case .writeFailed, .deviceDisconnected: return .write
         case .sourceArtifactInvalid, .sourceValidationFailed: return .sourceValidation
         default: return .preflight
+        }
+    }
+
+    private func evidenceCategory(for failure: InstallationFailure?) -> EvidenceErrorCategory {
+        switch failure {
+        case .insufficientSpace:
+            return .storage
+        case .deviceDisconnected:
+            return .deviceDisconnected
+        case .sourceArtifactInvalid, .sourceValidationFailed:
+            return .sourceValidation
+        case .stableWatchIdentityUnavailable:
+            return .unknown
+        case .hashMismatch, .sizeMismatch, .remoteFileMissing,
+             .metadataMismatch, .verificationRequired:
+            return .verification
+        case .some:
+            return .transport
+        case .none:
+            return .unknown
         }
     }
 
@@ -4361,7 +4442,7 @@ private struct InstallationMapsList: View {
 }
 
 private struct ReadyToInstallSelectedMapsList: View {
-    let items: [MapSelectionItem]
+    let plan: InstallationPlan
 
     private static let visibleRowCapacity = 3
     private static let rowHeight: CGFloat = 62
@@ -4374,7 +4455,7 @@ private struct ReadyToInstallSelectedMapsList: View {
             rows
         }
         .scrollIndicators(
-            items.count > Self.visibleRowCapacity ? .automatic : .hidden
+            componentRowCount > Self.visibleRowCapacity ? .automatic : .hidden
         )
         .frame(
             maxWidth: .infinity,
@@ -4389,28 +4470,120 @@ private struct ReadyToInstallSelectedMapsList: View {
 
     private var rows: some View {
         VStack(spacing: 0) {
-            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+            ForEach(Array(plan.selectedPackagePlans.enumerated()), id: \.element.item.id) { packageIndex, packagePlan in
                 MapSelectionRow(
-                    item: item,
+                    item: packagePlan.item,
                     isSelected: .constant(false),
                     isAvailable: false,
                     showsSelectionControl: false,
                     showsSize: true,
-                    showsDivider: MapRowDividerPolicy.showsDivider(
-                        at: index,
-                        in: items.count
-                    )
+                    showsDivider: packagePlan.artifactPlan.optionalArtifacts.isEmpty
+                        ? !isLastComponent(packageIndex: packageIndex, artifactIndex: nil)
+                        : true
                 )
                 .frame(minHeight: Self.rowHeight)
+
+                ForEach(
+                    Array(packagePlan.artifactPlan.optionalArtifacts.enumerated()),
+                    id: \.element.id
+                ) { artifactIndex, artifact in
+                    SelectedMapArtifactSummaryRow(
+                        artifact: artifact,
+                        providerVersionLabel: packagePlan.item.providerVersionLabel,
+                        showsDivider: !isLastComponent(
+                            packageIndex: packageIndex,
+                            artifactIndex: artifactIndex
+                        )
+                    )
+                }
             }
         }
         .padding(.top, Self.contentTopPadding)
+    }
+
+    private var componentRowCount: Int {
+        plan.selectedPackagePlans.reduce(0) { count, packagePlan in
+            count + 1 + packagePlan.artifactPlan.optionalArtifacts.count
+        }
+    }
+
+    private func isLastComponent(packageIndex: Int, artifactIndex: Int?) -> Bool {
+        guard packageIndex == plan.selectedPackagePlans.count - 1,
+              let lastPackage = plan.selectedPackagePlans.last else {
+            return false
+        }
+
+        guard let artifactIndex else {
+            return lastPackage.artifactPlan.optionalArtifacts.isEmpty
+        }
+
+        return artifactIndex == lastPackage.artifactPlan.optionalArtifacts.count - 1
+    }
+}
+
+private struct SelectedMapArtifactSummaryRow: View {
+    let artifact: MapArtifact
+    let providerVersionLabel: String?
+    let showsDivider: Bool
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: "map")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(TerentoColors.lichenDark)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(artifactTitle)
+                    .font(.terentoUI(size: 16, weight: .semibold))
+                    .foregroundStyle(TerentoColors.graphite)
+
+                Text(providerVersionLabel ?? "Optional map component")
+                    .font(.terentoUI(size: 14, weight: .medium))
+                    .foregroundStyle(TerentoColors.secondaryText)
+            }
+
+            Spacer(minLength: 12)
+
+            Text(artifact.sizeBytes.map(formatBytes) ?? "Size calculated before installation")
+                .font(.terentoUI(size: 13, weight: .medium))
+                .foregroundStyle(TerentoColors.secondaryText)
+                .multilineTextAlignment(.trailing)
+                .frame(maxWidth: 190, alignment: .trailing)
+        }
+        .padding(.leading, 38)
+        .modifier(
+            MapRowSurface(
+                verticalPadding: 10,
+                showsDivider: showsDivider
+            )
+        )
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(artifactTitle), \(artifact.sizeBytes.map(formatBytes) ?? "size calculated before installation")")
+    }
+
+    private var artifactTitle: String {
+        switch artifact.kind {
+        case .contours:
+            return "Contour lines"
+        case .main:
+            return "Map"
+        }
+    }
+
+    private func formatBytes(_ bytes: UInt64) -> String {
+        ByteCountFormatter.string(
+            fromByteCount: Int64(min(bytes, UInt64(Int64.max))),
+            countStyle: .decimal
+        )
     }
 }
 
 struct MapSelectionRow: View {
     let item: MapSelectionItem
     @Binding var isSelected: Bool
+    @Binding var selectedOptionalArtifactIDs: Set<String>
     let isAvailable: Bool
     let selectionEnabled: Bool
     let showsSelectionControl: Bool
@@ -4420,6 +4593,7 @@ struct MapSelectionRow: View {
     init(
         item: MapSelectionItem,
         isSelected: Binding<Bool>,
+        selectedOptionalArtifactIDs: Binding<Set<String>> = .constant([]),
         isAvailable: Bool,
         selectionEnabled: Bool = true,
         showsSelectionControl: Bool = true,
@@ -4428,6 +4602,7 @@ struct MapSelectionRow: View {
     ) {
         self.item = item
         self._isSelected = isSelected
+        self._selectedOptionalArtifactIDs = selectedOptionalArtifactIDs
         self.isAvailable = isAvailable
         self.selectionEnabled = selectionEnabled
         self.showsSelectionControl = showsSelectionControl
@@ -4436,72 +4611,118 @@ struct MapSelectionRow: View {
     }
 
     var body: some View {
-        TerentoMapRow(
-            title: item.title,
-            detail: detail,
-            note: item.acquisitionAvailability.detailedExplanation,
-            contentSpacing: 9,
-            rowVerticalPadding: 10,
-            showsDivider: showsDivider
-        ) {
-            HStack(spacing: 6) {
-                if isAvailable && item.isSelectable && selectionEnabled && showsSelectionControl {
-                    Toggle("", isOn: $isSelected)
-                        .toggleStyle(.checkbox)
-                        .tint(TerentoColors.interactive)
-                        .labelsHidden()
-                } else if crossProviderSelectionDisabled {
-                    Toggle("", isOn: .constant(false))
-                        .toggleStyle(.checkbox)
-                        .tint(TerentoColors.interactive)
-                        .labelsHidden()
-                        .disabled(true)
-                        .help("Choose maps from one provider at a time.")
-                } else if showsSelectionControl
-                    && item.acquisitionAvailability == .available
-                    && !isAlreadyInstalledSearchResult {
-                    Image(systemName: statusIcon)
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(statusColor)
-                        .frame(width: 18)
-                }
+        VStack(alignment: .leading, spacing: 0) {
+            TerentoMapRow(
+                title: item.title,
+                detail: detail,
+                note: item.acquisitionAvailability.detailedExplanation,
+                contentSpacing: 9,
+                rowVerticalPadding: 10,
+                showsDivider: !showsOptionalControl
+            ) {
+                HStack(spacing: 6) {
+                    if isAvailable && item.isSelectable && selectionEnabled && showsSelectionControl {
+                        Toggle("", isOn: $isSelected)
+                            .toggleStyle(.checkbox)
+                            .tint(TerentoColors.interactive)
+                            .labelsHidden()
+                    } else if crossProviderSelectionDisabled {
+                        Toggle("", isOn: .constant(false))
+                            .toggleStyle(.checkbox)
+                            .tint(TerentoColors.interactive)
+                            .labelsHidden()
+                            .disabled(true)
+                            .help("Choose maps from one provider at a time.")
+                    } else if showsSelectionControl
+                        && item.acquisitionAvailability == .available
+                        && !isAlreadyInstalledSearchResult {
+                        Image(systemName: statusIcon)
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(statusColor)
+                            .frame(width: 18)
+                    }
 
-                Image(systemName: "map")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(TerentoColors.lichenDark)
-                    .frame(width: 24)
+                    Image(systemName: "map")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(TerentoColors.lichenDark)
+                        .frame(width: 24)
+                }
+            } trailing: {
+                if showsSize && item.acquisitionAvailability == .available {
+                    Text(item.installSizeBytes.map(formatBytes) ?? "Size calculated before installation")
+                        .font(.terentoUI(size: 13, weight: .medium))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 190, alignment: .trailing)
+                } else if item.acquisitionAvailability != .available {
+                    Text("Unavailable")
+                        .font(.terentoUI(size: 13, weight: .medium))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                }
             }
-        } trailing: {
-            if showsSize && item.acquisitionAvailability == .available {
-                Text(item.installSizeBytes.map(formatBytes) ?? "Size calculated before installation")
-                    .font(.terentoUI(size: 13, weight: .medium))
-                    .foregroundStyle(TerentoColors.secondaryText)
-                    .multilineTextAlignment(.trailing)
-                    .frame(maxWidth: 190, alignment: .trailing)
-            } else if item.acquisitionAvailability != .available {
-                Text("Unavailable")
-                    .font(.terentoUI(size: 13, weight: .medium))
-                    .foregroundStyle(TerentoColors.secondaryText)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                guard isAvailable, item.isSelectable, selectionEnabled else { return }
+                isSelected.toggle()
+            }
+            .opacity(crossProviderSelectionDisabled ? 0.62 : 1)
+            .help(crossProviderSelectionDisabled ? "Choose maps from one provider at a time." : "")
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(accessibilityLabel)
+            .accessibilityValue(isAvailable && item.isSelectable && selectionEnabled && showsSelectionControl
+                ? (isSelected ? "Selected" : "Not selected")
+                : detail)
+            .accessibilityHint(
+                crossProviderSelectionDisabled
+                    ? "Unavailable for this installation because maps from another provider are already selected."
+                    : ""
+            )
+
+            if showsOptionalControl {
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle(
+                        "Add contour lines",
+                        isOn: Binding(
+                            get: {
+                                selectedOptionalArtifactIDs.contains(
+                                    item.usableOptionalArtifacts[0].id
+                                )
+                            },
+                            set: { selected in
+                                let artifactID = item.usableOptionalArtifacts[0].id
+                                if selected {
+                                    selectedOptionalArtifactIDs.insert(artifactID)
+                                } else {
+                                    selectedOptionalArtifactIDs.remove(artifactID)
+                                }
+                            }
+                        )
+                    )
+                    .toggleStyle(.checkbox)
+                    .tint(TerentoColors.interactive)
+                    .font(.terentoUI(size: 13, weight: .semibold))
+                    .accessibilityLabel("Add contour lines for \(item.title)")
+                    .accessibilityHint("Adds elevation lines for understanding terrain and steepness.")
+
+                    Text("Shows elevation and terrain steepness. Useful for hiking and mountain biking.")
+                        .font(.terentoUI(size: 12, weight: .regular))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.leading, 24)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, 38)
+                .padding(.bottom, 10)
+                .overlay(alignment: .bottom) {
+                    if showsDivider {
+                        Rectangle()
+                            .fill(TerentoColors.border.opacity(0.82))
+                            .frame(height: 1)
+                    }
+                }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            guard isAvailable, item.isSelectable, selectionEnabled else { return }
-            isSelected.toggle()
-        }
-        .opacity(crossProviderSelectionDisabled ? 0.62 : 1)
-        .help(crossProviderSelectionDisabled ? "Choose maps from one provider at a time." : "")
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilityLabel)
-        .accessibilityValue(isAvailable && item.isSelectable && selectionEnabled && showsSelectionControl
-            ? (isSelected ? "Selected" : "Not selected")
-            : detail)
-        .accessibilityHint(
-            crossProviderSelectionDisabled
-                ? "Unavailable for this installation because maps from another provider are already selected."
-                : ""
-        )
     }
 
     private var detail: String {
@@ -4612,6 +4833,14 @@ struct MapSelectionRow: View {
             && item.package.sourceKind == .provider
             && item.acquisitionAvailability == .available
             && !isAlreadyInstalledSearchResult
+    }
+
+    private var showsOptionalControl: Bool {
+        isAvailable
+            && isSelected
+            && !crossProviderSelectionDisabled
+            && !item.usableOptionalArtifacts.isEmpty
+            && showsSelectionControl
     }
 
     private func formatBytes(_ bytes: UInt64) -> String {

@@ -142,7 +142,8 @@ struct Stage42ArtifactValidator: MapInstallationArtifactValidator, Sendable {
 
         let expectedFilename = try TerentoManagedFilenameGenerator().filename(
             providerId: package.providerId,
-            regionId: package.canonicalRegionId
+            regionId: package.canonicalRegionId,
+            artifactKind: artifact.artifactKind
         )
         let packageProvider = MapIdentity.normalizeProvider(package.providerId)
         let artifactProvider = MapIdentity.normalizeProvider(artifact.provider)
@@ -153,6 +154,7 @@ struct Stage42ArtifactValidator: MapInstallationArtifactValidator, Sendable {
               providerRegistry.adapter(for: packageProvider) != nil,
               !package.regionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               artifact.catalogPackageID == package.id,
+              artifactArtifactIDMatches(artifact, package: package),
               artifact.sourceKind == .provider,
               artifactProvider == packageProvider,
               let expectedIdentity = package.identity,
@@ -189,13 +191,31 @@ struct Stage42ArtifactValidator: MapInstallationArtifactValidator, Sendable {
         }
     }
 
+    private func artifactArtifactIDMatches(
+        _ artifact: ValidatedMapArtifact,
+        package: MapPackage
+    ) -> Bool {
+        guard let expected = package.artifacts.first(where: {
+            $0.kind == artifact.artifactKind
+        })?.id else {
+            return artifact.artifactKind == .main
+                && artifact.artifactID == package.id
+        }
+
+        if artifact.artifactKind == .main {
+            return artifact.artifactID == expected || artifact.artifactID == package.id
+        }
+        return artifact.artifactID == expected
+    }
+
     private func validateCustom(
         artifact: ValidatedMapArtifact,
         package: MapPackage
     ) throws {
         let expectedFilename = try TerentoManagedFilenameGenerator().filename(
             providerId: package.providerId,
-            regionId: package.canonicalRegionId
+            regionId: package.canonicalRegionId,
+            artifactKind: artifact.artifactKind
         )
 
         guard !package.id.isEmpty,
@@ -315,7 +335,8 @@ struct MapInstallationCoordinator: Sendable {
             installedMaps: request.installedMaps,
             inspectedFiles: request.inspectedFiles,
             availableStorage: request.availableStorage,
-            profile: request.profile
+            profile: request.profile,
+            artifactKind: request.artifact?.artifactKind ?? .main
         )
         var transaction = InstallationTransaction()
         var diagnostics = MapInstallationDiagnostics.initial(
@@ -489,7 +510,9 @@ struct MapInstallationCoordinator: Sendable {
             filename: targetFilename,
             sizeBytes: artifact.installSizeBytes,
             sha256: artifact.sha256,
-            createdAt: now()
+            createdAt: now(),
+            artifactID: artifact.artifactID,
+            artifactKind: artifact.artifactKind
         )
 
         let startedAt = ContinuousClock.now
@@ -571,7 +594,10 @@ struct MapInstallationCoordinator: Sendable {
             // Garmin devices may need a short settle after a large object is
             // committed and the write session is closed. This wait precedes
             // a new, read-only MTP session; the write is never retried.
-            Thread.sleep(forTimeInterval: 0.75)
+            // fēnix firmware can keep the just-written object busy after the
+            // write session closes. Give it a bounded settle window before a
+            // fresh read-only verification session.
+            Thread.sleep(forTimeInterval: 3.0)
 
             let readBack: MTPReadBackMapObject
             do {
@@ -587,6 +613,7 @@ struct MapInstallationCoordinator: Sendable {
                     ),
                     sampleLength: Self.verificationSampleLength,
                     progress: { progress in
+                        onProgress?(progress)
                         onPhaseProgress?(.finishing, 0.05 + 0.20 * progress.fractionCompleted)
                     }
                 )
@@ -669,7 +696,16 @@ struct MapInstallationCoordinator: Sendable {
             let afterFiles: [DeviceFile]
             let afterSnapshot: DeviceSnapshot
             do {
-                afterFiles = try deviceReader.readFileInventory()
+                let firstInventory = try deviceReader.readFileInventory()
+                // A freshly written, byte-verified object can be absent from a
+                // transient directory listing. Retry that read once before
+                // cleanup. A present-but-changed target is never retried into
+                // acceptance; the success path performs no extra device call.
+                if !firstInventory.contains(where: { $0.path == targetPath }) {
+                    afterFiles = try deviceReader.readFileInventory()
+                } else {
+                    afterFiles = firstInventory
+                }
                 afterSnapshot = try deviceReader.readSnapshot()
             } catch {
                 return failureResult(
@@ -684,12 +720,12 @@ struct MapInstallationCoordinator: Sendable {
                 )
             }
 
-            guard let targetObject = afterFiles.first(where: {
-                !$0.isFolder
-                    && $0.path == targetPath
-                    && $0.filename == targetFilename
-                    && $0.sizeBytes == artifact.installSizeBytes
-            }) else {
+            let targetCandidates = afterFiles.filter { $0.path == targetPath }
+            guard targetCandidates.count == 1, let targetObject = targetCandidates.first,
+                  !targetObject.isFolder,
+                  targetObject.itemID != 0,
+                  targetObject.filename == targetFilename,
+                  targetObject.sizeBytes == artifact.installSizeBytes else {
                 return failureResult(
                     failure: .remoteFileMissing,
                     transaction: &transaction,
@@ -743,7 +779,10 @@ struct MapInstallationCoordinator: Sendable {
                 version: artifact.version,
                 sizeBytes: artifact.installSizeBytes,
                 sha256: artifact.sha256,
-                installedAt: now()
+                installedAt: now(),
+                packageID: request.selectedMap.id,
+                artifactID: artifact.artifactID,
+                artifactKind: artifact.artifactKind
             )
 
             do {

@@ -78,6 +78,7 @@ struct SafeUpdateSourceArtifact: Equatable, Sendable {
     let sourcePackageURL: URL
     let catalogPackageID: String
     let targetFilename: String
+    let workspaceRootURL: URL?
 
     init(
         provider: String,
@@ -88,7 +89,8 @@ struct SafeUpdateSourceArtifact: Equatable, Sendable {
         sha256: String,
         sourcePackageURL: URL,
         catalogPackageID: String,
-        targetFilename: String
+        targetFilename: String,
+        workspaceRootURL: URL? = nil
     ) {
         self.provider = provider
         self.region = region
@@ -99,6 +101,7 @@ struct SafeUpdateSourceArtifact: Equatable, Sendable {
         self.sourcePackageURL = sourcePackageURL
         self.catalogPackageID = catalogPackageID
         self.targetFilename = targetFilename
+        self.workspaceRootURL = workspaceRootURL
     }
 
     init(_ artifact: ValidatedMapArtifact) {
@@ -111,7 +114,8 @@ struct SafeUpdateSourceArtifact: Equatable, Sendable {
             sha256: artifact.sha256,
             sourcePackageURL: artifact.sourcePackageURL,
             catalogPackageID: artifact.catalogPackageID,
-            targetFilename: artifact.targetFilename
+            targetFilename: artifact.targetFilename,
+            workspaceRootURL: artifact.workspaceRootURL
         )
     }
 }
@@ -529,6 +533,9 @@ struct SafeUpdateTransaction: Sendable {
             return failure(.failedAcquisition, "The selected map could not be acquired from its provider.")
         }
 
+        defer {
+            if let root = artifact.workspaceRootURL { try? MapAcquisitionWorkspace.cleanup(rootURL: root) }
+        }
         do {
             try sourceValidator.validate(artifact: artifact, package: request.selectedMap)
         } catch {

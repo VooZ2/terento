@@ -1,4 +1,5 @@
 #include "MTPBridge.h"
+#include "FinishingTrace.h"
 
 #include <libusb.h>
 #include <libmtp.h>
@@ -1930,11 +1931,14 @@ int terento_mtp_verify_managed_map_samples(
         return -7;
     }
 
+    TerentoFinishingTrace trace = terento_trace_start();
+    terento_trace_event(&trace, "verify_begin", 0, 0, sample_count);
     const unsigned int maximum_sample_attempts = 3;
     LIBMTP_mtpdevice_t *device = NULL;
     int result = 0;
 
     for (size_t index = 0; index < sample_count; index += 1) {
+        terento_trace_event(&trace, "region_begin", sample_offsets[index], 0, index);
         uint64_t remaining = expected_size_bytes - sample_offsets[index];
         uint32_t region_length = remaining < sample_length ? (uint32_t)remaining : sample_length;
         /* Keep the exact sampled byte coverage, but do not ask Garmin firmware
@@ -1950,6 +1954,7 @@ int terento_mtp_verify_managed_map_samples(
             if (device == NULL) {
                 uint16_t vendor_id = 0;
                 uint16_t product_id = 0;
+                terento_trace_event(&trace, "open_begin", offset, 0, failed_attempts);
                 device = open_single_garmin_device(
                     &vendor_id,
                     &product_id,
@@ -1957,11 +1962,13 @@ int terento_mtp_verify_managed_map_samples(
                     error_message_capacity,
                     1
                 );
+                terento_trace_event(&trace, "open_end", offset, device == NULL ? -8 : 0, failed_attempts);
                 if (device == NULL) {
                     result = -8;
                     goto sample_cleanup;
                 }
 
+                terento_trace_event(&trace, "identity_begin", offset, 0, 0);
                 int identity_result = validate_live_map_operation_device(
                         profile,
                         vendor_id,
@@ -1970,6 +1977,7 @@ int terento_mtp_verify_managed_map_samples(
                         error_message,
                         error_message_capacity
                     );
+                terento_trace_event(&trace, "identity_end", offset, identity_result, 0);
                 if (identity_result != 0) {
                     result = map_live_validation_error(identity_result);
                     goto sample_cleanup;
@@ -1978,6 +1986,7 @@ int terento_mtp_verify_managed_map_samples(
                 /* Resolve the current ID: the SendObject ID can be stale in
                    a fresh session even though the exact target is present. */
                 uint32_t current_item_id = 0;
+                terento_trace_event(&trace, "target_begin", offset, 0, 0);
                 result = validate_managed_map_object(
                     device,
                     target_filename,
@@ -1988,6 +1997,7 @@ int terento_mtp_verify_managed_map_samples(
                     error_message,
                     error_message_capacity
                 );
+                terento_trace_event(&trace, "target_end", offset, result, 0);
                 if (result != 0) {
                     goto sample_cleanup;
                 }
@@ -2012,6 +2022,12 @@ int terento_mtp_verify_managed_map_samples(
             );
 
             if (read_result != 0 || actual_length != requested) {
+                terento_trace_event(&trace, "read_failed", offset, read_result, actual_length);
+                if (trace.enabled) {
+                    LIBMTP_error_t *trace_error = LIBMTP_Get_Errorstack(device);
+                    terento_trace_event(&trace, "read_error_code", offset,
+                        trace_error == NULL ? 0 : (int)trace_error->errornumber, requested);
+                }
                 if (raw_bytes != NULL) {
                     LIBMTP_FreeMemory(raw_bytes);
                 }
@@ -2021,7 +2037,9 @@ int terento_mtp_verify_managed_map_samples(
                     result = -9;
                     goto sample_cleanup;
                 }
+                terento_trace_event(&trace, "retry_close_begin", offset, 0, failed_attempts);
                 LIBMTP_Release_Device(device);
+                terento_trace_event(&trace, "retry_close_returned", offset, 0, failed_attempts);
                 device = NULL;
                 usleep(250000);
                 continue;
@@ -2045,12 +2063,26 @@ int terento_mtp_verify_managed_map_samples(
             LIBMTP_FreeMemory(raw_bytes);
 
             if (!matches) {
-                set_error(error_message, error_message_capacity, "A sampled map region did not match the validated source");
-                result = -11;
-                goto sample_cleanup;
+                terento_trace_event(&trace, "compare_failed", offset, seek_result, source_length);
+                failed_attempts += 1;
+                if (failed_attempts >= maximum_sample_attempts) {
+                    set_error(error_message, error_message_capacity, "A sampled map region did not match the validated source");
+                    result = -11;
+                    goto sample_cleanup;
+                }
+                /* A stale read-only object cache is recoverable. Reopen the
+                   session and resolve the exact managed target before the
+                   same sample is compared again. */
+                terento_trace_event(&trace, "retry_close_begin", offset, 0, failed_attempts);
+                LIBMTP_Release_Device(device);
+                terento_trace_event(&trace, "retry_close_returned", offset, 0, failed_attempts);
+                device = NULL;
+                usleep(250000);
+                continue;
             }
 
             *sampled_bytes += requested;
+            terento_trace_verified(&trace, offset + requested, *sampled_bytes);
             consumed += requested;
             sample_verified = 1;
             if (progress_callback != NULL
@@ -2062,16 +2094,20 @@ int terento_mtp_verify_managed_map_samples(
         }
         }
         *matched_samples += 1;
-        /* A clean session boundary between regions lets firmware settle and
-           avoids carrying a stale object cache through randomized seeks. */
-        LIBMTP_Release_Device(device);
-        device = NULL;
+        /* Keep the read-only verification session open across all sampled
+           regions. This is the same low-churn pattern used by the fast safe
+           delete path; a failed read still releases and reopens the session
+           through the retry branch above. */
     }
 
 sample_cleanup:
+    terento_trace_event(&trace, "verify_result", trace.last_verified_end, result, *matched_samples);
     if (device != NULL) {
+        terento_trace_event(&trace, "final_close_begin", trace.last_verified_end, result, 0);
         LIBMTP_Release_Device(device);
+        terento_trace_event(&trace, "final_close_returned", trace.last_verified_end, result, 0);
     }
+    terento_trace_finish(&trace);
     fclose(source);
     return result;
 }

@@ -475,11 +475,58 @@ func runMapLifecyclePresentationTests() throws {
     )
 }
 
+private func testIncompleteCustomRecovery() throws {
+    let record = TerentoFailedInstallRecoveryRecord(
+        deviceKey: "test-watch", packageID: "custom-abc", providerId: "custom",
+        regionId: "img_abc", version: MapVersion(year: 2000, month: 1)!,
+        devicePath: "/GARMIN/terento_custom_img_abc.img", filename: "terento_custom_img_abc.img",
+        sizeBytes: 182239232, sha256: String(repeating: "a", count: 64), createdAt: Date())
+    func matches(device: String = "test-watch", path: String? = nil,
+                 filename: String? = nil, size: UInt64? = nil,
+                 provider: String? = nil, region: String? = nil) -> Bool {
+        record.matches(deviceKey: device, path: path ?? record.devicePath,
+            filename: filename ?? record.filename, sizeBytes: size ?? record.sizeBytes,
+            providerId: provider, regionId: region, version: installedVersion)
+    }
+    try require(matches(), "exact failed Custom target matches without provider metadata or sentinel header date")
+    try require(!matches(device: "another-watch"), "Custom recovery rejects another device")
+    try require(!matches(path: "/other/" + record.filename), "Custom recovery rejects a different path")
+    try require(!matches(filename: "unknown.img"), "Custom recovery rejects a different filename")
+    try require(!matches(size: record.sizeBytes - 1), "Custom recovery rejects truncated or changed objects")
+    try require(!matches(provider: "opentopomap", region: "LTU"), "Custom recovery does not absorb provider objects")
+    let map = InstalledMap(name: "Custom map", provider: nil, region: nil,
+        family: nil, rawVersion: nil, version: installedVersion, identifier: nil,
+        productId: nil, familyId: nil, sizeBytes: record.sizeBytes,
+        sourceFile: InstalledMapFile(path: record.devicePath, filename: record.filename,
+            sizeBytes: record.sizeBytes, itemID: 42), metadataStatus: .parsed,
+        managementState: .managedByTerento)
+    let inventory = UnifiedMapInventory(providerGroups: [], otherMaps: [MapInventoryEntry(
+        key: "custom", title: map.name, catalogPackage: nil, comparison: nil,
+        installedMaps: [map], isSelectedCatalogMap: false)])
+    let item = MapLifecycleInventoryBuilder().build(from: inventory, recoveryRecords: [record]).otherMaps[0]
+    try require(item.failedInstallRecovery == record && item.manageMetadataLabel.contains("Incomplete installation"),
+        "rescan associates exact Custom recovery and displays incomplete installation")
+    let context = MapLifecycleContext(item: item, comparison: nil, selectedMap: nil,
+        identity: identity(), availableStorage: 15000, profile: nil, deviceKey: record.deviceKey,
+        expectedSHA256ByItemID: [42: record.sha256], failedInstallRecovery: item.failedInstallRecovery)
+    try require(context.mapIdentity == MapIdentity(provider: "custom", region: "img_abc"),
+        "Remove receives the recorded Custom identity instead of the external fallback")
+    let actions = MapLifecyclePresentationResolver().resolve(item: item, comparison: nil,
+        hasIntegrityRecord: context.hasIntegrityRecord, hasValidatedUpdateProfile: false,
+        failedInstallRecovery: context.failedInstallRecovery != nil)
+    try require(actions.actions == [.remove], "incomplete Custom exposes only the existing confirmed Remove action")
+    let missing = MapLifecycleInventoryBuilder().build(from: inventory, recoveryRecords: []).otherMaps[0]
+    let blocked = MapLifecyclePresentationResolver().resolve(item: missing, comparison: nil,
+        hasIntegrityRecord: false, hasValidatedUpdateProfile: false)
+    try require(!blocked.allows(.remove), "filename without manifest or recovery proof never enables Remove")
+}
+
 @main
 private struct MapLifecyclePresentationTestRunner {
     static func main() {
         do {
             try runMapLifecyclePresentationTests()
+            try testIncompleteCustomRecovery()
             print("PASS: \(passed) Stage 5 UI lifecycle presentation tests")
         } catch {
             print("FAIL: \(error)")

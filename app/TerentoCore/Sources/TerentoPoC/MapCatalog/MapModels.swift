@@ -85,6 +85,7 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
     let sourceURL: URL?
     let localURL: URL?
     let sizeBytes: UInt64?
+    let downloadSizeBytes: UInt64?
     let checksum: String?
     let validationState: MapArtifactValidationState
 
@@ -101,6 +102,7 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
         sourceURL: URL? = nil,
         localURL: URL? = nil,
         sizeBytes: UInt64? = nil,
+        downloadSizeBytes: UInt64? = nil,
         checksum: String? = nil,
         validationState: MapArtifactValidationState = .notValidated
     ) {
@@ -116,6 +118,7 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
         self.sourceURL = sourceURL
         self.localURL = localURL
         self.sizeBytes = sizeBytes
+        self.downloadSizeBytes = downloadSizeBytes
         self.checksum = checksum
         self.validationState = validationState
     }
@@ -133,6 +136,7 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
         case sourceURL
         case localURL
         case sizeBytes
+        case downloadSizeBytes
         case checksum
         case validationState
     }
@@ -152,6 +156,7 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
             sourceURL: try container.decodeIfPresent(URL.self, forKey: .sourceURL),
             localURL: try container.decodeIfPresent(URL.self, forKey: .localURL),
             sizeBytes: try container.decodeIfPresent(UInt64.self, forKey: .sizeBytes),
+            downloadSizeBytes: try container.decodeIfPresent(UInt64.self, forKey: .downloadSizeBytes),
             checksum: try container.decodeIfPresent(String.self, forKey: .checksum),
             validationState: try container.decodeIfPresent(MapArtifactValidationState.self, forKey: .validationState) ?? .notValidated
         )
@@ -679,7 +684,8 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
                 version: version,
                 releaseMetadata: releaseMetadata,
                 sourceURL: sourceURL,
-                sizeBytes: installSizeBytes ?? sizeBytes
+                sizeBytes: installSizeBytes ?? sizeBytes,
+                downloadSizeBytes: downloadSizeBytes ?? sizeBytes
             )
         ]
     }
@@ -738,28 +744,78 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         artifacts.filter { !$0.required }
     }
 
-    var defaultArtifactPlan: MapArtifactPlan {
-        if hasExplicitArtifactCollection || installSizeBytes != nil {
-            return MapArtifactPlan(packageID: id, artifacts: artifacts)
-        }
-
-        // `sizeBytes` is historically the archive/download size. A legacy
-        // record with no measured install size must remain unresolved even
-        // though its synthesized compatibility artifact carries that value.
-        return MapArtifactPlan(
-            packageID: id,
-            artifacts: artifacts.map { artifact in
-                artifact.kind == .main ? artifact.withSize(nil) : artifact
-            }
+    /// Returns a package projection for acquiring one exact artifact. Package
+    /// identity and release remain unchanged; only the source and size
+    /// contract are narrowed to the selected artifact.
+    func acquisitionPackage(for artifact: MapArtifact) -> MapPackage {
+        MapPackage(
+            id: id,
+            providerId: providerId,
+            regionId: regionId,
+            name: name,
+            version: version,
+            sizeBytes: artifact.downloadSizeBytes ?? artifact.sizeBytes ?? sizeBytes,
+            sourceURL: artifact.sourceURL ?? sourceURL,
+            releaseDate: releaseDate,
+            identifier: identifier,
+            downloadSizeBytes: artifact.downloadSizeBytes ?? downloadSizeBytes,
+            installSizeBytes: artifact.sizeBytes,
+            providerRegionId: providerRegionId,
+            canonicalRegionId: canonicalRegionId,
+            countryCodes: countryCodes,
+            regionKind: regionKind,
+            tags: tags,
+            capabilities: capabilities,
+            releaseMetadata: releaseMetadata,
+            artifacts: [artifact],
+            sourceKind: sourceKind
         )
+    }
+
+    func withArtifacts(_ artifacts: [MapArtifact]) -> MapPackage {
+        MapPackage(
+            id: id,
+            providerId: providerId,
+            regionId: regionId,
+            name: name,
+            version: version,
+            sizeBytes: sizeBytes,
+            sourceURL: sourceURL,
+            releaseDate: releaseDate,
+            identifier: identifier,
+            downloadSizeBytes: downloadSizeBytes,
+            installSizeBytes: installSizeBytes,
+            providerRegionId: providerRegionId,
+            canonicalRegionId: canonicalRegionId,
+            countryCodes: countryCodes,
+            regionKind: regionKind,
+            tags: tags,
+            capabilities: capabilities,
+            releaseMetadata: releaseMetadata,
+            artifacts: artifacts,
+            sourceKind: sourceKind
+        )
+    }
+
+    var defaultArtifactPlan: MapArtifactPlan {
+        artifactPlan()
     }
 
     func artifactPlan(
         includingOptionalArtifactIDs optionalArtifactIDs: Set<String> = []
     ) -> MapArtifactPlan {
-        MapArtifactPlan(
+        let plannedArtifacts = hasExplicitArtifactCollection || installSizeBytes != nil
+            ? artifacts
+            : artifacts.map { artifact in
+                // `sizeBytes` is historically the archive/download size. A
+                // legacy record with no measured install size must remain
+                // unresolved even though its synthesized main artifact carries
+                // that value.
+                artifact.kind == .main ? artifact.withSize(nil) : artifact
+            }
+        return MapArtifactPlan(
             packageID: id,
-            artifacts: artifacts,
+            artifacts: plannedArtifacts,
             includingOptionalArtifactIDs: optionalArtifactIDs
         )
     }
@@ -891,7 +947,8 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
                     version: version,
                     releaseMetadata: releaseMetadata,
                     sourceURL: sourceURL,
-                    sizeBytes: installSizeBytes ?? sizeBytes
+                    sizeBytes: installSizeBytes ?? sizeBytes,
+                    downloadSizeBytes: downloadSizeBytes ?? sizeBytes
                 )
             ]
     }

@@ -89,7 +89,7 @@ are outside the current public scope.
 
 ## Download and beta status
 
-The latest public release is **beta.9 (build 11)**. The macOS app is notarized
+The latest public release is **beta.10 (build 13)**. The macOS app is notarized
 and does not require Homebrew.
 
 **[Download Terento](https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_download)**

@@ -5,6 +5,7 @@ import SwiftUI
 struct TerentoEntryPoint {
     static func main() {
         if MTPFinishingWorker.runIfRequested() { return }
+        Task.detached(priority: .utility) { MapAcquisitionWorkspace.scavengeStale() }
         TerentoPoCApp.main()
     }
 }

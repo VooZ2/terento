@@ -561,9 +561,7 @@ final class MapLifecycleViewModel: ObservableObject {
     private func remove(itemID: String) {
         guard let context = lifecycleContext(for: itemID),
               availability(for: context.item).allows(.remove),
-              context.item.installedMaps.count == 1,
-              let installedMap = context.item.installedMaps.first,
-              let objectID = installedMap.sourceFile.itemID,
+              !context.item.installedMaps.isEmpty,
               let operationProfile = DeviceMapOperationProfile(
                 identity: context.identity,
                 installProfile: context.profile
@@ -574,17 +572,24 @@ final class MapLifecycleViewModel: ObservableObject {
             return
         }
 
+        let filenameGenerator = TerentoManagedFilenameGenerator()
+        let installedMaps = context.item.installedMaps
         let isExternalRemoval = context.item.classification == .externalRecognized
             && context.failedInstallRecovery == nil
-            && !TerentoManagedFilenameGenerator().isValid(installedMap.sourceFile.filename)
+            && installedMaps.allSatisfy {
+                !filenameGenerator.isValid($0.sourceFile.filename)
+            }
         guard let mapIdentity = context.mapIdentity
                 ?? context.item.identity
                 ?? MapIdentity(provider: "external", region: context.item.id),
-              isExternalRemoval || context.expectedSHA256ByItemID[objectID] != nil else {
+              installedMaps.allSatisfy({ $0.sourceFile.itemID != nil }),
+              isExternalRemoval || installedMaps.allSatisfy({
+                  guard let itemID = $0.sourceFile.itemID else { return false }
+                  return context.expectedSHA256ByItemID[itemID] != nil
+              }) else {
             fail(itemID: itemID, action: .remove, message: "This map could not be verified for safe removal. Nothing was changed.")
             return
         }
-        let expectedHash = context.expectedSHA256ByItemID[objectID] ?? ""
 
         guard let operationToken = operationController.begin() else { return }
         let operationEpoch = lifecycleEpoch
@@ -602,7 +607,7 @@ final class MapLifecycleViewModel: ObservableObject {
             progress: SafeUpdateProgress(
                 state: .verifying,
                 bytesCompleted: 0,
-                totalBytes: installedMap.sourceFile.sizeBytes,
+                totalBytes: installedMaps.reduce(0) { $0 + $1.sourceFile.sizeBytes },
                 bytesPerSecond: 0
             ),
             message: isExternalRemoval
@@ -610,25 +615,12 @@ final class MapLifecycleViewModel: ObservableObject {
                 : "Removing the Terento-managed map…"
         )
 
-        let target = SafeDeleteTarget(
-            deviceKey: context.deviceKey,
-            mapIdentity: mapIdentity,
-            ownership: isExternalRemoval ? .detectedNotManaged : .managedByTerento,
-            objectID: objectID,
-            expectedPath: installedMap.sourceFile.path,
-            expectedFilename: installedMap.sourceFile.filename,
-            expectedSizeBytes: installedMap.sourceFile.sizeBytes,
-            expectedSHA256: expectedHash,
-            backup: nil,
-            expectedVersion: isExternalRemoval ? nil : context.item.version,
-            allowsExternalRemoval: isExternalRemoval
-        )
         let recoveryStore = self.recoveryStore
         let operationGate = self.operationGate
         let operationController = self.operationController
 
         let task = Task { [weak self] in
-            let result: SafeDeleteResult
+            var result: SafeDeleteResult?
             do {
                 result = try await CancellableDetached.run(priority: .userInitiated) {
                     let lease = try await operationGate.beginLifecycleAsync()
@@ -662,28 +654,61 @@ final class MapLifecycleViewModel: ObservableObject {
                         operationGate: operationGate,
                         lifecycleLease: lease
                     )
-                    return MapLifecycleManager().delete(
-                        target: target,
-                        confirmed: true,
-                        deviceConnected: operationGate.isValid(lease),
-                        rescan: {
-                            try deviceTransport.readFileInventory().map {
-                                InstalledMapFile(
-                                    path: $0.path,
-                                    filename: $0.filename,
-                                    sizeBytes: $0.sizeBytes,
-                                    itemID: $0.itemID
-                                )
-                            }
-                        },
-                        transport: transport,
-                        ownershipSource: isExternalRemoval
-                            ? .external
-                            : (context.failedInstallRecovery == nil
-                                ? .manifest
-                                : .failedInstallRecovery),
-                        requiresVerifiedBackup: false,
-                        onProgress: { progress in relay.sendRemoval(progress) }
+                    var lastResult: SafeDeleteResult?
+                    for installedMap in installedMaps {
+                        guard let objectID = installedMap.sourceFile.itemID else {
+                            lastResult = SafeDeleteResult(
+                                mapIdentity: mapIdentity,
+                                status: .blockedIntegrityCheck,
+                                message: "This map no longer has a verified live object identity. Nothing else was removed."
+                            )
+                            break
+                        }
+
+                        let target = SafeDeleteTarget(
+                            deviceKey: context.deviceKey,
+                            mapIdentity: mapIdentity,
+                            ownership: isExternalRemoval ? .detectedNotManaged : .managedByTerento,
+                            objectID: objectID,
+                            expectedPath: installedMap.sourceFile.path,
+                            expectedFilename: installedMap.sourceFile.filename,
+                            expectedSizeBytes: installedMap.sourceFile.sizeBytes,
+                            expectedSHA256: context.expectedSHA256ByItemID[objectID] ?? "",
+                            backup: nil,
+                            expectedVersion: isExternalRemoval ? nil : context.item.version,
+                            allowsExternalRemoval: isExternalRemoval
+                        )
+
+                        let componentResult = MapLifecycleManager().delete(
+                            target: target,
+                            confirmed: true,
+                            deviceConnected: operationGate.isValid(lease),
+                            rescan: {
+                                try deviceTransport.readFileInventory().map {
+                                    InstalledMapFile(
+                                        path: $0.path,
+                                        filename: $0.filename,
+                                        sizeBytes: $0.sizeBytes,
+                                        itemID: $0.itemID
+                                    )
+                                }
+                            },
+                            transport: transport,
+                            ownershipSource: isExternalRemoval
+                                ? .external
+                                : (context.failedInstallRecovery == nil
+                                    ? .manifest
+                                    : .failedInstallRecovery),
+                            requiresVerifiedBackup: false,
+                            onProgress: { progress in relay.sendRemoval(progress) }
+                        )
+                        lastResult = componentResult
+                        guard componentResult.isSuccess else { break }
+                    }
+                    return lastResult ?? SafeDeleteResult(
+                        mapIdentity: mapIdentity,
+                        status: .failedOperation,
+                        message: "No map component was available for removal."
                     )
                 }
             } catch {
@@ -693,6 +718,8 @@ final class MapLifecycleViewModel: ObservableObject {
                     message: "The Garmin connection changed before removal could finish. The result must be checked again."
                 )
             }
+
+            guard let result else { return }
 
             guard let self else { return }
             let isCurrent = operationController.isCurrent(operationToken)
@@ -718,6 +745,7 @@ final class MapLifecycleViewModel: ObservableObject {
                     progress: nil,
                     message: result.message
                 )
+                mapEngine.refreshCurrentDeviceMaps()
             }
         }
         operationTasks[itemID] = task
