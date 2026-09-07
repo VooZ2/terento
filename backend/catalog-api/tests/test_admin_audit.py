@@ -76,6 +76,13 @@ class AdminAuditTests(unittest.TestCase):
                 if allowed:
                     self.assertEqual(is_local_release_label(label),configuration=='Debug')
 
+    def test_clear_handlers_resolve_their_form_before_registering(self):
+        from terento_catalog.admin import _providers_list_script, _map_statistics_script, _diagnostics_script
+        for script, selector in [(_providers_list_script(), '#provider-filters'), (_map_statistics_script(), '#map-statistics-filters'), (_diagnostics_script(), '#diagnostic-filters')]:
+            self.assertIn("document.querySelector('" + selector + "')?.addEventListener('terento-admin-clear-filters'", script)
+            self.assertNotIn("form?.addEventListener('terento-admin-clear-filters'", script)
+            self.assertNotIn("filterForm?.addEventListener('terento-admin-clear-filters'", script)
+
     def test_disclosure_navigation_script_syntax(self):
         result=subprocess.run([os.environ.get('TERENTO_NODE_BIN','node'),'--check'],input=_admin_disclosure_script(),capture_output=True,text=True)
         self.assertEqual(result.returncode,0,result.stderr)
