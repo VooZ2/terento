@@ -775,7 +775,7 @@ def _overview_model_activity_item(item: dict[str, Any]) -> str:
     successful = int(item.get("successful_count") or 0)
     failed = int(item.get("failed_count") or 0)
     open_errors = int(item.get("open_error_count") or 0)
-    status = "Needs review" if open_errors else ("Failures" if failed else "Active")
+    status = "Needs review" if open_errors else ("Historical failures" if failed else "Active")
     status_class = "failed" if failed or open_errors else "succeeded"
     device_id = str(item.get("canonical_device_model_id") or "").strip()
     href = (
@@ -1268,7 +1268,7 @@ def overview_page(
         if review_required else ""
     )
     model_panel = (
-        f"<section class='overview-panel overview-model-panel' aria-labelledby='overview-model-title'><div class='section-heading'><div><p class='section-kicker'>Compatibility evidence</p><h2 id='overview-model-title'>Device/model activity</h2></div></div><p class='overview-chart-note'>Activity is grouped by canonical device model when available.</p>{_overview_model_activity(model_activity)}{review_section}</section>"
+        f"<section class='overview-panel overview-model-panel' aria-labelledby='overview-model-title'><div class='section-heading'><div><p class='section-kicker'>Compatibility evidence</p><h2 id='overview-model-title'>Device/model activity</h2></div></div><p class='overview-chart-note'>Includes resolved historical outcomes; Needs attention counts unresolved issues only.</p>{_overview_model_activity(model_activity)}{review_section}</section>"
         if model_activity or review_required else ""
     )
     primary_grid_class = "overview-primary-grid" if model_panel else "overview-primary-grid overview-primary-grid-single"

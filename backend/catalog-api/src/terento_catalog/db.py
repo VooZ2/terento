@@ -619,7 +619,8 @@ class Database:
                         AS operation_succeeded,
                     bool_or(e.phase_outcome = 'FAILED') AS has_failed,
                     bool_or(e.phase_outcome = 'NOT_STARTED') AS has_not_started,
-                    bool_or(e.canonical_device_model_id IS NULL AND
+                    bool_or(e.diagnostic_status = 'ACTIVE' AND
+                        e.canonical_device_model_id IS NULL AND
                         COALESCE(e.identity_resolution_state, 'UNRESOLVED')
                         NOT IN ('RESOLVED', 'NOT_IDENTIFIABLE')) AS identity_pending,
                     bool_or(
@@ -632,8 +633,7 @@ class Database:
                         )
                     ) AS open_error
                 FROM compatibility_evidence_event AS e
-                WHERE e.diagnostic_status = 'ACTIVE'
-                  AND e.is_local_test IS NOT TRUE
+                WHERE e.is_local_test IS NOT TRUE
                 GROUP BY COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text)
             )
         """
@@ -714,10 +714,10 @@ class Database:
                     ) AS variant,
                     count(*) AS operation_count,
                     count(*) FILTER (
-                        WHERE write_started AND operation_succeeded
+                        WHERE operation_succeeded
                     ) AS successful_count,
                     count(*) FILTER (
-                        WHERE write_started AND has_failed
+                        WHERE has_failed
                     ) AS failed_count,
                     count(*) FILTER (WHERE open_error) AS open_error_count,
                     max(last_occurred_at) AS last_occurred_at
