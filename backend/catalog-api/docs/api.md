@@ -767,3 +767,7 @@ Optional artifact `version` is the independent HTTP source year/month for the
 legacy decoder; `sourceProof.revision` remains the actual metadata identity,
 not a main-map release or payload checksum. PostgreSQL integration is required
 in CI before deployment. This candidate is not yet published.
+
+Provider-wide availability probes sample active required main artifacts only.
+Optional contour failure cannot mark the whole provider unavailable; contour
+validation remains attached to the independently collected optional artifact.

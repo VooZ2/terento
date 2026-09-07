@@ -23,4 +23,5 @@ assert item['sourceURL'] == main.source_url and item['downloadSizeBytes'] == 100
 assert len(item['artifacts']) == 2 and item['artifacts'][1]['sourceProof'] == contour.source_proof
 assert database.admin_overview_map_snapshot(now, time_zone='Europe/Vilnius') is not None
 assert database.provider_detail('opentopomap') is not None
+assert [row['source_url'] for row in database.provider_download_urls('opentopomap')] == [main.source_url]
 print('PASS: PostgreSQL snapshot update, source proof, main compatibility fields and Overview SQL')

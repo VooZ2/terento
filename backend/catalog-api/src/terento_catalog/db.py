@@ -2234,6 +2234,8 @@ class Database:
                 FROM map_artifact ma
                 JOIN map_package mp ON mp.id = ma.package_id
                 WHERE mp.provider_id = %s
+                  AND ma.required AND ma.kind = 'main'
+                  AND mp.availability <> 'RETIRED'
                 ORDER BY ma.source_url
                 LIMIT 8
                 """,
