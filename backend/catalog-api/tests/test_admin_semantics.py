@@ -446,7 +446,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("<span>Open errors</span><strong>1</strong>", body)
         self.assertIn("<span>Write-started attempts</span><strong>2</strong>", body)
         self.assertIn("<span>Variants</span><strong>1</strong>", body)
-        self.assertIn("<span>Evidence success</span><strong>50%</strong>", body)
+        self.assertIn("<span>Success rate</span><strong>50%</strong>", body)
         self.assertIn("Map install operations over time", body)
         self.assertIn("overview-chart-success", body)
         self.assertIn("viewBox='0 0 720 260'", body)
@@ -454,7 +454,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Recent map activity", body)
         self.assertIn("Compatibility evidence", body)
         self.assertNotIn("Pending metric definition", body)
-        self.assertNotIn("<span>Success rate</span>", body)
+        self.assertNotIn("<span>Evidence success</span>", body)
 
     def test_overview_shows_custom_img_as_compatibility_activity_not_map_activity(self):
         body = overview_page(
@@ -1126,7 +1126,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn('class="admin-kpi-grid installation-kpis"', body)
         self.assertIn("<span>Write-started attempts</span><strong>3</strong>", body)
         self.assertIn("<span>Successful</span><strong>1</strong>", body)
-        self.assertIn("<span>Evidence success</span><strong>33.3%</strong>", body)
+        self.assertIn("<span>Success rate</span><strong>33.3%</strong>", body)
         self.assertIn("Historical failures: 1", body)
         self.assertNotIn('id="evidence-title"', body)
         self.assertNotIn("<h2 id=\"evidence-title\">Installations</h2>", body)
@@ -1433,10 +1433,10 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertIn("<p class=\"eyebrow\">Compatibility</p>", body)
         self.assertIn('class="admin-kpi-grid installation-kpis"', body)
-        for label in ("Variants", "Write-started attempts", "Successful", "Evidence success", "Open errors"):
+        for label in ("Variants", "Write-started attempts", "Successful", "Success rate", "Open errors"):
             self.assertIn(f"<span>{label}</span>", body)
         self.assertIn("<span>Successful</span><strong>2</strong>", body)
-        self.assertIn("<span>Evidence success</span><strong>66.7%</strong>", body)
+        self.assertIn("<span>Success rate</span><strong>66.7%</strong>", body)
         self.assertIn("Historical failures: 2", body)
         self.assertIn("<th scope=\"col\">Status</th><th scope=\"col\">Attempts</th><th scope=\"col\">Successful</th>", body)
         self.assertNotIn("installation-summary-strip", body)
@@ -1596,7 +1596,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Watch event linkage", body)
         self.assertIn("Telemetry diagnostics · event matching", body)
         self.assertIn("id='map-rows'", body)
-        self.assertIn("View all maps", body)
+        self.assertIn("Browse all maps", body)
         self.assertIn("<h3>Top 5 maps</h3>", body)
         self.assertIn("Map install operations</span><strong data-stat='mapInstallationCount'>4", body)
         self.assertIn("Linked watch events</span><strong data-stat='linkedInstallationCount'>3", body)

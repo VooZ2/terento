@@ -780,3 +780,23 @@ readable header widths and top-aligned cells; the count column remains numeric.
 
 Map accessibility labels use standard country display names rather than
 normalized alias tokens, preserving spaces and accented country names.
+
+
+### Admin feedback, 2026-09-08
+
+Map dragging suppresses native browser selection, including WebKit selection;
+Reset clears stale selection and region emphasis. Top 5 remains a stable summary;
+Browse all maps has search and ten-row pagination instead of expanding the summary
+without a bound. Evidence success is labelled Success rate. Download sources use
+artifact metadata to show Main map / Contours labels and separate source counts
+(shared contour URLs count once).
+
+Map resource review: Leaflet's official GeoJSON choropleth example
+(https://leafletjs.com/examples/choropleth/) supplies country hover, fitBounds,
+legend and navigation primitives. OpenFreeMap's MapLibre integration
+(https://openfreemap.org/quick_start/) offers a modern vector basemap; it adds
+external tile requests and WebGL. OpenTopoMap tiles are a possible optional
+terrain background, subject to current service terms and visible attribution
+(https://wiki.opentopomap.org/about). Leaflet with the existing Natural Earth
+country data is the preferred future replacement. No new mapping dependency or
+external tile service is added by this selection/interaction fix.
