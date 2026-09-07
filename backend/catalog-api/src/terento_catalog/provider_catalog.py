@@ -304,7 +304,7 @@ class OpenTopoMapProviderAdapter:
                     try:
                         inspected[pending[future]] = future.result()
                     except Exception as exc:
-                        logging.getLogger(__name__).warning("Optional contour omitted: %s (%s)", pending[future], type(exc).__name__)
+                        logging.getLogger(__name__).warning("Optional contour omitted: %s (%s: %s)", pending[future], type(exc).__name__, str(exc)[:200])
             for link in contour_links:
                 measurement = inspected.get(link.source_url)
                 if measurement is None:
