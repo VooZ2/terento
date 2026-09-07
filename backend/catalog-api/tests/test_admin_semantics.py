@@ -725,9 +725,9 @@ class AdminSemanticsTests(unittest.TestCase):
             "bucket": "2026-09-05T00:00:00Z", "custom_count": 3,
         }], "hour")
         self.assertIn("Custom .img installed: 3", body)
-        self.assertRegex(body, r"class='overview-chart-custom'[^>]*height='206.0'")
+        self.assertRegex(body, r"class='overview-chart-custom'[^>]*height='154.50'")
         self.assertIn("</i>Custom .img</span>", body)
-        self.assertIn("Custom .img: successful manual installations.", body)
+        self.assertNotIn("Custom .img: successful manual installations.", body)
 
     def test_chart_segments_join_without_individual_rounding(self):
         import xml.etree.ElementTree as ET
