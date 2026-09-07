@@ -49,6 +49,7 @@ from terento_catalog.admin import (
     device_detail_page,
     diagnostics_page,
     devices_page,
+    local_test_data_page,
     map_statistics_page,
     overview_page,
     provider_detail_page,
@@ -184,6 +185,27 @@ class AdminSemanticsTests(unittest.TestCase):
                     capture_output=True, text=True,
                 )
                 self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_local_test_data_page_uses_shared_admin_layout(self):
+        body = local_test_data_page(
+            {
+                "diagnosticEventCount": 2,
+                "mapEventCount": 3,
+                "operationCount": 4,
+                "releaseLabels": ["1.0.0-beta.10-local"],
+            },
+            {"username": "operator"},
+            "csrf",
+        ).decode()
+        self.assertIn('class="dashboard test-data-page"', body)
+        self.assertIn('class="provider-card test-data-card"', body)
+        self.assertIn('class="admin-kpi-grid test-data-metrics"', body)
+        self.assertIn("<strong>2</strong>", body)
+        self.assertIn("<strong>3</strong>", body)
+        self.assertIn("<strong>4</strong>", body)
+        self.assertIn('class="test-data-danger-zone"', body)
+        self.assertIn('class="admin-danger-form"', body)
+        self.assertIn('placeholder="DELETE_LOCAL_TEST_DATA"', body)
 
     def test_freshness_notice_preserves_edits_and_handles_stale_checks(self):
         harness = r"""
