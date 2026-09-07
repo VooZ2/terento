@@ -800,3 +800,21 @@ terrain background, subject to current service terms and visible attribution
 (https://wiki.opentopomap.org/about). Leaflet with the existing Natural Earth
 country data is the preferred future replacement. No new mapping dependency or
 external tile service is added by this selection/interaction fix.
+
+### Leaflet coverage component
+
+Admin Map statistics uses self-hosted Leaflet 1.9.4 (BSD-2-Clause), loaded only
+on that page. Exact allowlisted `/admin/map-assets/` JS/CSS routes require the
+existing session and CSRF cookie checks. Assets are privately cached; script
+nonces and same-origin stylesheet policy preserve the admin CSP.
+
+`static/map/coverage-map-v1.js` exposes `TerentoCoverageMap(container, options)`:
+trusted bundled SVG, country names, callbacks, `update([{code,count,name}])`,
+`highlight(code, focus)`, `zoom(action)` and `destroy()`. The renderer performs
+no fetches and knows no admin routes, cookies, telemetry IDs or provider query
+schema. Admin aggregates its existing data and owns provider tooltip details.
+A future public page can reuse the renderer with separately approved aggregate
+data and its own asset delivery; no public statistics route is introduced now.
+Natural Earth boundaries use Leaflet CRS.Simple/SVGOverlay without downloading
+map tiles. CSS tokens have neutral fallbacks. JS/CSS footprint is approximately
+162 KB raw / 46 KB gzip before the small adapter; the existing SVG is reused.
