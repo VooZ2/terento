@@ -547,6 +547,14 @@ def local_test_data_page(
     labels = ", ".join(
         html.escape(str(label)) for label in summary.get("releaseLabels", [])
     ) or "None"
+    activity_rows = ''.join(
+        f"<tr><td>{html.escape(str(row.get('stream') or '—'))}</td>"
+        f"<td><code>{html.escape(str(row.get('release_label') or '—'))}</code></td>"
+        f"<td>{html.escape(str(row.get('outcome') or '—'))}</td>"
+        f"<td>{int(row.get('event_count') or 0)}</td>"
+        f"<td>{_timestamp_markup(row.get('last_occurred_at'))}</td></tr>"
+        for row in summary.get('activity', [])
+    ) or "<tr><td colspan='5'>No local test events recorded.</td></tr>"
     content = f"""
       {_admin_header(user, csrf_token, active='test-data')}
       <main id="main-content" class="dashboard test-data-page" aria-labelledby="test-data-title">
@@ -568,9 +576,11 @@ def local_test_data_page(
           <section class="admin-kpi-grid test-data-metrics" aria-label="Local test telemetry summary">
             <article><span>Diagnostic events</span><strong>{diagnostic_event_count}</strong></article>
             <article><span>Map events</span><strong>{map_event_count}</strong></article>
-            <article><span>Shared operations</span><strong>{operation_count}</strong></article>
+            <article><span>Distinct operations</span><strong>{operation_count}</strong></article>
           </section>
           <p class="test-data-release-labels">Release labels <code>{labels}</code></p>
+          <p class="table-help">Local builds end in <code>-local</code> and are stored with <code>is_local_test=true</code>. Public beta builds use a public release label and <code>is_local_test=false</code>. These test events never contribute to user dashboards or public compatibility counts.</p>
+          <div class="table-wrap"><table class="admin-table"><caption>Latest local activity · up to 50 release/outcome groups</caption><thead><tr><th scope="col">Stream</th><th scope="col">Release</th><th scope="col">Result</th><th scope="col">Events</th><th scope="col">Last activity</th></tr></thead><tbody>{activity_rows}</tbody></table></div>
           <div class="test-data-danger-zone">
             <div>
               <p class="section-kicker">Danger zone</p>
@@ -858,6 +868,15 @@ def _admin_event_outcome_label(value: Any) -> str:
 
 
 _ADMIN_REGION_DISPLAY_NAMES = {
+    "SVN": "Slovenia", "SI": "Slovenia", "POL": "Poland",
+    "CHE": "Switzerland", "DEU": "Germany", "AUT": "Austria",
+    "FRA": "France", "ITA": "Italy", "ESP": "Spain",
+    "PRT": "Portugal", "CZE": "Czechia", "SVK": "Slovakia",
+    "HRV": "Croatia", "HUN": "Hungary", "ROU": "Romania",
+    "BGR": "Bulgaria", "BEL": "Belgium", "NLD": "Netherlands",
+    "DNK": "Denmark", "SWE": "Sweden", "NOR": "Norway",
+    "FIN": "Finland", "EST": "Estonia", "GBR": "United Kingdom",
+    "IRL": "Ireland", "GRC": "Greece", "LUX": "Luxembourg",
     "AND": "Andorra",
     "ANDORRA": "Andorra",
     "AT": "Austria",
@@ -887,6 +906,11 @@ _ADMIN_REGION_DISPLAY_NAMES = {
 }
 
 _ADMIN_REGION_IDENTITY_ALIASES = {
+    "SI": "SLOVENIA", "SVN": "SLOVENIA",
+    "PL": "POLAND", "POL": "POLAND",
+    "CH": "SWITZERLAND", "CHE": "SWITZERLAND",
+    "SWISSCONFEDERATION": "SWITZERLAND",
+    "DE": "GERMANY", "DEU": "GERMANY",
     "AND": "ANDORRA",
     "ANDORRA": "ANDORRA",
     "PRINCIPALITYOFANDORRA": "ANDORRA",
@@ -908,6 +932,11 @@ def _admin_region_identity(
         return _ADMIN_REGION_IDENTITY_ALIASES.get(
             canonical_token, canonical_token,
         )
+    # A country is a fallback, not a region identity: Azores and Madeira
+    # must never collapse into whichever Portuguese region appears first.
+    region_token = re.sub(r"[^A-Za-z0-9]+", "", str(region or "")).upper()
+    if region_token:
+        return _ADMIN_REGION_IDENTITY_ALIASES.get(region_token, region_token)
     country_identity = re.sub(
         r"[^A-Za-z0-9]+", "", _admin_map_display_name(country)
     ).upper() if country else ""
@@ -1069,7 +1098,7 @@ def _overview_trend_chart(
         "<div class='overview-chart-wrap'>"
         f"<svg class='overview-trend-chart' viewBox='0 0 {chart_width} {chart_height}' role='img' aria-label='Map install operations over time'>"
         f"{''.join(bars)}{''.join(labels)}</svg>"
-        "<div class='overview-chart-legend'><span><i class='overview-chart-success'></i>Succeeded</span><span><i class='overview-chart-failed'></i>Failed</span><span><i class='overview-chart-custom'></i>Custom .img</span></div><p class='overview-chart-note'>Custom .img is shown separately; it is not included in map-operation KPI totals.</p></div>"
+        "<div class='overview-chart-legend'><span><i class='overview-chart-success'></i>Succeeded</span><span><i class='overview-chart-failed'></i>Failed</span><span><i class='overview-chart-custom'></i>Custom .img</span></div><p class='overview-chart-note'>Custom .img: successful manual installations.</p></div>"
     )
 
 
@@ -1217,7 +1246,7 @@ def overview_page(
         if failure_reasons else ""
     )
     compatibility_summary = (
-        f"<details class='overview-panel overview-compatibility-summary admin-disclosure' aria-labelledby='overview-compatibility-title'><summary id='overview-compatibility-title'>Compatibility evidence · details and activity</summary><div class='overview-compatibility-grid'><div><span>Write-started attempts</span><strong>{compatibility_attempts}</strong></div><div><span>Variants</span><strong>{compatibility_variants}</strong></div><div><span>Evidence success</span><strong>{compatibility_rate}</strong></div></div><p class='overview-chart-note'>Device compatibility evidence is not merged with map-operation telemetry.</p>{compatibility_recent_content}</details>"
+        f"<details class='overview-panel overview-compatibility-summary admin-disclosure' aria-labelledby='overview-compatibility-title'><summary id='overview-compatibility-title'>Compatibility evidence · details and activity</summary><div class='overview-compatibility-grid'><div><span>Write-started attempts</span><strong>{compatibility_attempts}</strong></div><div><span>Variants</span><strong>{compatibility_variants}</strong></div><div><span>Evidence success</span><strong>{compatibility_rate}</strong></div></div><p class='overview-chart-note'>Evidence remains stored separately; complete provider successes reconcile missing map-event rows in this view only.</p>{compatibility_recent_content}</details>"
         if compatibility_has_data else
         "<section class='overview-panel overview-compatibility-summary overview-compact-empty' aria-labelledby='overview-compatibility-title'><summary id='overview-compatibility-title'>Compatibility evidence · details and activity</summary><p class='overview-empty-state'>No compatibility evidence in this period.</p></section>"
     )
@@ -1226,7 +1255,7 @@ def overview_page(
         if review_required else ""
     )
     model_panel = (
-        f"<section class='overview-panel overview-model-panel' aria-labelledby='overview-model-title'><div class='section-heading'><div><p class='section-kicker'>Compatibility evidence</p><h2 id='overview-model-title'>Device/model activity</h2></div></div><p class='overview-chart-note'>Compatibility evidence only · separate from map-operation telemetry.</p>{_overview_model_activity(model_activity)}{review_section}</section>"
+        f"<section class='overview-panel overview-model-panel' aria-labelledby='overview-model-title'><div class='section-heading'><div><p class='section-kicker'>Compatibility evidence</p><h2 id='overview-model-title'>Device/model activity</h2></div></div><p class='overview-chart-note'>Activity is grouped by canonical device model when available.</p>{_overview_model_activity(model_activity)}{review_section}</section>"
         if model_activity or review_required else ""
     )
     primary_grid_class = "overview-primary-grid" if model_panel else "overview-primary-grid overview-primary-grid-single"
@@ -1256,6 +1285,7 @@ def overview_page(
       {_admin_header(user, csrf_token, active='overview')}
       <main class='dashboard overview-page' id='main-content'>
         <div class='heading-row overview-heading'><div><p class='eyebrow'>Operations</p><h1>Overview</h1><p class='lede'>Current Terento health and activity that needs attention.</p></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin'><label><span class='sr-only'>Time period</span><select id='overview-period' name='period'>{period_options}</select></label></form></div>
+        <p class='telemetry-scope-note'>User telemetry · Local tests excluded. <a href='/admin/test-data'>View test data →</a></p>
         <section class='overview-kpis' aria-label='Operational summary'>
           <a class='overview-kpi' href='{html.escape(map_statistics_href, quote=True)}'><span>Map install operations</span><strong>{event_metric(completed_installs + failed_installs)}</strong><small>{'Install actions in this period' if has_map_data else 'No map telemetry in this period'}</small></a>
           <a class='overview-kpi' href='{html.escape(map_statistics_href, quote=True)}'><span>Map operation success</span><strong>{success_rate}</strong><small>Successful install actions</small></a>
@@ -1313,12 +1343,18 @@ def _system_health_card(
     reason: str = "",
     action: str = "",
 ) -> dict[str, Any]:
+    evidence_time = (
+        "<p class='table-help'>Evidence recorded: "
+        + _timestamp_markup(observation.get('observed_at')) + "</p>"
+        if observation else ""
+    )
     markup = (
-        "<article class='system-health-card'>"
-        f"<div class='section-heading'><h2>{html.escape(title)}</h2>{_health_status_badge(status)}</div>"
-        f"<div class='system-health-description'>{description}</div>"
+        f"<details class='system-health-card admin-disclosure'{' open' if str(status or 'UNKNOWN').upper() != 'HEALTHY' else ''}>"
+        f"<summary><h2>{html.escape(title)}</h2>{_health_status_badge(status)}</summary>"
+        f"<div class='disclosure-body'><div class='system-health-description'>{description}</div>"
         f"{_health_attention(status, reason, action)}"
-        f"{_health_run_link(observation)}</article>"
+        f"{evidence_time}"
+        f"{_health_run_link(observation)}</div></details>"
     )
     return {"title": title, "status": str(status or "UNKNOWN").upper(), "html": markup, "reason": reason}
 
@@ -1410,11 +1446,18 @@ def _system_health_cards(health: dict[str, Any]) -> tuple[list[dict[str, Any]], 
     ]
     for provider in providers:
         state = provider_catalog_health(provider, now=now)
+        releases = ', '.join(str(value) for value in provider.get('packageReleases', []))
         description = (
-            f"<p>Latest release <strong>{html.escape(str(provider.get('latestRelease') or '—'))}</strong>; "
+            f"<p>Newest package release <strong>{html.escape(str(provider.get('latestRelease') or '—'))}</strong>; "
             f"{int(provider.get('packageCount') or 0)} packages.</p>"
+            "<p>Regions can have different releases. Collection time is not the map release date.</p>"
+            f"<p>Catalog releases: {html.escape(releases or str(provider.get('latestRelease') or 'Not recorded'))}.</p>"
+            f"<p>Latest collection attempt: {_timestamp_markup(provider.get('lastCollectionAttempt'))}. "
+            f"Result: {html.escape(str(provider.get('lastCollectionStatus') or 'Not recorded'))}.</p>"
             f"<p>Last successful collection: {_timestamp_markup(provider.get('lastCollectionSuccess') or provider.get('lastCatalogSync'))}. "
             f"Last detected release change: {_timestamp_markup(provider.get('latestReleaseDetectedAt'))}.</p>"
+            f"<a class='section-link' href='/admin/providers/{quote(str(provider.get('id')), safe='')}#provider-collection-history'>Collection results and history →</a> "
+            f"<a class='section-link' href='/admin/providers/{quote(str(provider.get('id')), safe='')}#provider-packages'>Package releases →</a>"
         )
         cards.append(_system_health_card(
             f"{str(provider.get('name') or provider.get('id') or 'Provider')} catalog",
@@ -1501,7 +1544,7 @@ def system_health_page(health: dict[str, Any], user: dict[str, Any], csrf_token:
       {_admin_header(user, csrf_token, active='system-health')}
       <main class='dashboard system-health-page' id='main-content'>
         <div class='heading-row'><div><p class='eyebrow'>Operations</p><h1>System health</h1><p class='lede'>Production state and retained GitHub evidence. Tests run in GitHub Actions, not in this admin panel.</p></div></div>
-        <p class='admin-health-summary' role='status'>{str(attention_count) + ' checks need attention' if attention_count else 'All checks healthy'}. Problems appear first.</p><section class='system-health-grid' aria-label='System health summary'>{card_markup}</section>
+        <p class='admin-health-summary' role='status'>{str(attention_count) + ' checks need attention' if attention_count else 'All checks healthy'}. Problems appear first; healthy checks stay collapsed. Expand a check for its evidence and next action.</p><section class='system-health-grid' aria-label='System health summary'>{card_markup}</section>
         <details class='overview-panel admin-disclosure'><summary>Quality-gate results · weekly report</summary>{_health_run_link(weekly)}<div class='table-wrap'><table class='admin-table'><thead><tr><th scope='col'>Check</th><th scope='col'>Health</th><th scope='col'>Result</th></tr></thead><tbody>{detail_rows}</tbody></table></div></details>
       </main>
     """
@@ -1548,6 +1591,7 @@ def dashboard_page(
       {_admin_header(user, csrf_token, active='installations')}
       <main class="dashboard" id="main-content">
         <div class="heading-row installation-heading"><div><p class="eyebrow">Compatibility</p><h1>Installations</h1><p class="lede">All-time compatibility evidence from Terento users.</p></div><p class="page-meta">{latest_copy}</p></div>
+        <p class='telemetry-scope-note'>User telemetry · Local tests excluded. <a href='/admin/test-data'>View test data →</a></p>
         <section class="admin-kpi-grid installation-kpis" aria-label="Installation summary">
           <article><span>Variants</span><strong>{len(rows)}</strong></article>
           <article><span>Write-started attempts</span><strong>{attempts}</strong></article>
@@ -1715,7 +1759,7 @@ def _provider_summary_row(provider: dict[str, Any]) -> str:
     )
     return (
         f"<tr data-provider-search='{html.escape(' '.join((provider_id, name, str(provider.get('adapterId') or ''), status, health)).casefold(), quote=True)}'>"
-        f"<td><a class='provider-name-link' href='/admin/providers/{provider_href}'><strong>{html.escape(name)}</strong></a></td>"
+        f"<td><a class='provider-name-link' href='/admin/providers/{provider_href}'><strong>{html.escape(name)}</strong></a><small class='table-secondary'>Newest package: {html.escape(str(provider.get('latestRelease') or 'Not recorded'))}</small></td>"
         f"<td>{_provider_status_badge(status)}</td>"
         f"<td>{_provider_status_badge(health, kind='health')}</td>"
         f"<td class='numeric'>{int(provider.get('packageCount') or 0)}</td>"
@@ -1822,7 +1866,7 @@ def _provider_run_row(run: dict[str, Any]) -> str:
     error_markup = html.escape(error) if error else "<span class='muted-value'>—</span>"
     return (
         f"<tr><td><code>{html.escape(str(run.get('id') or '—'))}</code></td><td>{_timestamp_markup(run.get('started_at'))}</td>"
-        f"<td>{_timestamp_markup(run.get('finished_at'))}</td><td>{_provider_status_badge(run.get('status'))}</td>"
+        f"<td>{_timestamp_markup(run.get('finished_at'))}</td><td>{_provider_status_badge(run.get('status'))}<small class='table-secondary'>{'Release change detected' if run.get('release_change_detected') is True else 'No release change detected' if run.get('release_change_detected') is False else 'Release change not recorded'} · {html.escape(str(run.get('latest_release') or '—'))}</small></td>"
         f"<td class='numeric'>{int(run.get('package_count') or 0)}</td><td class='numeric'>{int(run.get('artifact_count') or 0)}</td>"
         f"<td>{error_markup}</td></tr>"
     )
@@ -1874,6 +1918,14 @@ def provider_detail_page(
     health_history = list(provider.get("healthHistory") or [])
     broken_packages = sum(int(package.get("broken_artifact_count") or 0) for package in packages)
     package_count = int(provider.get("packageCount") or len(packages))
+    release_counts: dict[str, int] = {}
+    for package in packages:
+        release = str(package.get('release') or 'Not recorded')
+        release_counts[release] = release_counts.get(release, 0) + 1
+    release_summary = ' · '.join(
+        f"{html.escape(release)}: {count} packages"
+        for release, count in sorted(release_counts.items(), reverse=True)
+    ) or 'No package releases recorded.'
     latest_health = health_history[0] if health_history else {}
     previous_health = health_history[1:] if latest_health else []
     health_passed, health_not_evaluated = _provider_health_counts(latest_health)
@@ -1966,6 +2018,7 @@ def provider_detail_page(
           <p class='admin-action-status' id='provider-action-status' aria-live='polite'></p>
         </section>
         <section class='provider-metrics' aria-label='Provider summary'><article><span>Packages</span><strong>{package_count}</strong></article><article><span>Broken</span><strong>{broken_packages}</strong></article><article><span>Last catalog sync</span><strong>{_timestamp_markup(provider.get('lastCatalogSync'))}</strong></article><article><span>Last health check</span><strong>{_timestamp_markup(provider.get('lastHealthCheck'))}</strong></article></section>
+        <section class='provider-card provider-release-summary' aria-label='Package release distribution'><div class='section-heading'><h2>Package releases</h2><a class='section-link' href='#provider-packages'>Inspect packages →</a></div><p>{release_summary}</p><p class='table-help'>Each region keeps its own provider release. System health shows the newest package release; collecting a catalog does not update every map.</p></section>
         {download_source_section}
         <section class='provider-card'><details class='admin-disclosure' id='provider-packages'><summary>Regions and packages · {len(packages)} packages · {broken_packages} broken</summary><div class='disclosure-body'><div class='inline-filter-row'><label><span class='sr-only'>Search packages</span><input id='provider-package-search' type='search' placeholder='Search packages' autocomplete='off'></label><label><span class='sr-only'>Package status</span><select id='provider-package-filter'><option value='all'>All packages</option><option value='broken'>Broken only</option></select></label><label><span class='sr-only'>Package page size</span><select id='provider-package-page-size'><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label></div>{empty_packages}{package_table}<div class='provider-pagination' id='provider-package-pagination' aria-live='polite'></div></div></details></section>
         <section class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Health</p><h2>Latest health check</h2></div></div><div class='provider-latest-summary'><div>{health_summary}</div><span>{health_transport}</span></div><details class='admin-disclosure' id='provider-health-details'><summary>View check details</summary><div class='disclosure-body'>{empty_health}{latest_health_table}</div></details><details class='admin-disclosure' id='provider-health-history'><summary>Health check history · {len(previous_health)} previous checks</summary><div class='disclosure-body'>{empty_previous_health}{health_history_table}</div></details></section>
@@ -2058,6 +2111,14 @@ def map_statistics_page(
         1 for provider in scoped_providers if str(provider.get("health") or "").upper() == "HEALTHY"
     )
     event_value = lambda key: "—" if summary.get(key) is None else str(summary[key])
+    linkage = statistics.get("linkage") if isinstance(statistics.get("linkage"), dict) else {}
+    linkage_value = lambda key: (
+        "—" if not has_event_data or linkage.get(key) is None else str(linkage[key])
+    )
+    linkage_rate = _format_rate(linkage.get("linkageRate")) if has_event_data else "—"
+    linkage_summary = "DATA QUALITY · Watch event linkage"
+    if has_event_data:
+        linkage_summary += f" · {linkage_rate} linkage · {linkage_value('mapOnlyInstallationCount')} unlinked installs"
     event_status = (
         f"{summary['eventGroupCount']} event group{'s' if summary['eventGroupCount'] != 1 else ''} · "
         f"{summary['eventCount']} event record{'s' if summary['eventCount'] != 1 else ''}"
@@ -2099,9 +2160,11 @@ def map_statistics_page(
         <p class='table-help map-statistics-definition-note'>Counts map packages; one install can include multiple packages.</p>
         <section class='admin-kpi-grid map-statistics-kpis' id='map-statistics-metrics' aria-label='Map statistics summary'><article><span>Downloads</span><strong data-stat='completedDownloads'>{event_value('completedDownloads')}</strong></article><article><span>Download rate</span><strong data-stat='downloadSuccessRate'>{_format_rate(summary['downloadSuccessRate'])}</strong></article><article><span>Installs</span><strong data-stat='completedInstalls'>{event_value('completedInstalls')}</strong></article><article><span>Install rate</span><strong data-stat='installSuccessRate'>{_format_rate(summary['installSuccessRate'])}</strong></article></section>
         <section class='map-statistics-empty' id='map-statistics-empty' {'hidden' if has_event_data else ''} aria-live='polite'><h2>No map operation data yet</h2><p>Statistics will appear after opted-in map operations are received.</p></section>
-        <section class='map-statistics-reliability' aria-label='Reliability summary'><div><span>Failed installs</span><strong data-stat='failedInstalls'>{event_value('failedInstalls')}</strong></div><div><span>Failed downloads</span><strong data-stat='failedDownloads'>{event_value('failedDownloads')}</strong></div><div><span>Provider issues</span><strong data-stat='providerIssues'>{provider_issues}</strong></div></section>
-        <section class='map-statistics-provider-health' id='map-statistics-provider-health' aria-label='Provider health'><span>Provider health</span><strong data-stat='providerHealth'>{healthy_providers} / {len(scoped_providers)} healthy</strong><em data-stat='providerHealthIssues'> · {provider_issues} issues</em></section>
-        <section class='map-statistics-popularity-shell' id='map-statistics-popularity' {'hidden' if not has_event_data else ''} aria-labelledby='map-statistics-popularity-title'><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2 id='map-statistics-popularity-title'>Provider activity and popular maps</h2></div></div><section class='provider-card map-statistics-provider-table' id='map-statistics-provider-table'><div class='section-heading'><div><h2>Provider activity</h2></div></div><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Provider activity</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Downloads</th><th scope='col'>Installs</th><th scope='col'>Install rate</th><th scope='col'>Health</th></tr></thead><tbody id='provider-statistic-rows'></tbody></table></div></section><section class='map-statistics-coverage-layout' id='map-statistics-coverage' aria-label='Installation coverage'><section class='provider-card map-statistics-world-map-card' aria-labelledby='map-statistics-world-map-title'><div class='section-heading'><div><p class='section-kicker'>Coverage</p><h2 id='map-statistics-world-map-title'>Installs by country</h2></div><p class='table-help' id='map-statistics-world-map-status'>Completed installs</p></div><div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map of installs by country'><div class='world-map-svg' id='world-map-svg'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div><p class='table-help world-map-note'>White means no installs. Hover a country for providers.</p></section><section class='provider-card map-statistics-popularity-list'><div class='section-heading'><div><h2>Popular maps</h2></div></div><div class='popularity-subsection'><h3>Top 5</h3><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Popular maps</caption><thead><tr><th scope='col'>Map</th><th scope='col'>Source</th><th scope='col'>Count</th><th scope='col'>Last</th></tr></thead><tbody id='map-rows'></tbody></table></div><details class='admin-disclosure popularity-all-maps-disclosure'><summary id='all-maps-summary'>All maps</summary></details></div><details class='admin-disclosure popularity-regions-disclosure'><summary>Regions</summary><div class='disclosure-body'><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Top regions</caption><thead><tr><th scope='col'>Region</th><th scope='col'>Count</th><th scope='col'>Last</th></tr></thead><tbody id='top-region-rows'></tbody></table></div></div></details></section></section></section>
+        <section class='map-statistics-reliability' aria-label='Reliability summary'><div><span>Failed map-package installs</span><strong data-stat='failedInstalls'>{event_value('failedInstalls')}</strong></div><div><span>Failed downloads</span><strong data-stat='failedDownloads'>{event_value('failedDownloads')}</strong></div><div><span>Current provider issues</span><strong data-stat='providerIssues'>{provider_issues}</strong></div></section>
+        <section class='map-statistics-provider-health' id='map-statistics-provider-health' aria-label='Current provider health'><span>Current provider health</span><strong data-stat='providerHealth'>{healthy_providers} / {len(scoped_providers)} healthy</strong><em data-stat='providerHealthIssues'> · {provider_issues} issues</em></section>
+        <details class='provider-card map-statistics-linkage' id='map-statistics-linkage' aria-label='Watch event linkage'><summary id='map-statistics-linkage-summary'>{html.escape(linkage_summary)}</summary><div class='disclosure-body'><p class='table-help'>Matched only when the map and watch events share the same operation ID.</p><div class='map-statistics-linkage-grid'><div><span>Map install operations</span><strong data-stat='mapInstallationCount'>{linkage_value('mapInstallationCount')}</strong></div><div><span>Linked watch events</span><strong data-stat='linkedInstallationCount'>{linkage_value('linkedInstallationCount')}</strong></div><div><span>Unlinked installs</span><strong data-stat='mapOnlyInstallationCount'>{linkage_value('mapOnlyInstallationCount')}</strong></div><div><span>Linkage coverage</span><strong data-stat='linkageRate'>{linkage_rate}</strong></div><div><span>Watch-confirmed successes</span><strong data-stat='linkedSuccessfulInstallCount'>{linkage_value('linkedSuccessfulInstallCount')}</strong></div><div><span>Watch-confirmed failures</span><strong data-stat='linkedFailedInstallCount'>{linkage_value('linkedFailedInstallCount')}</strong></div></div><p class='table-help map-statistics-scope-note'>A missing watch event is shown as unlinked, not as a failure. Map statistics and compatibility evidence remain separate aggregates.</p></div></details>
+        <section class='provider-card map-statistics-provider-table' id='map-statistics-provider-table' {'hidden' if not has_event_data else ''}><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Activity by provider</h2></div></div><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Activity by provider</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Downloads</th><th scope='col'>Map-package installs</th><th scope='col'>Package install success</th><th scope='col'>Current health</th></tr></thead><tbody id='provider-statistic-rows'></tbody></table></div></section>
+        <section class='map-statistics-coverage-layout' id='map-statistics-coverage' {'hidden' if not has_event_data else ''} aria-label='Installation coverage'><section class='provider-card map-statistics-world-map-card' aria-labelledby='map-statistics-world-map-title'><div class='section-heading'><div><p class='section-kicker'>Coverage</p><h2 id='map-statistics-world-map-title'>Installations by country</h2></div><p class='table-help' id='map-statistics-world-map-status'>Successful map-package installs</p></div><div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map showing successful map-package installations by country'><div class='world-map-controls' role='group' aria-label='Map navigation'><button type='button' data-map-zoom='in' aria-label='Zoom in'>+</button><button type='button' data-map-zoom='out' aria-label='Zoom out'>−</button><button type='button' data-map-zoom='reset'>Reset map</button><span id='world-map-zoom-status' role='status'>100%</span></div><div class='world-map-svg' id='world-map-svg' tabindex='0' aria-label='Map viewport. Use arrow keys to pan, plus and minus to zoom, or drag the map.'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div><p class='table-help world-map-note'>Hover or focus a country for totals. Zoom with + / −, drag or use arrow keys to pan. Region links highlight the corresponding country, not the exact map coverage. Unmapped installs remain in the totals.</p></section><section class='provider-card map-statistics-popularity' id='map-statistics-popularity'><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Popular maps</h2></div></div><div class='popularity-subsection'><h3>Top maps</h3><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Popular maps</caption><thead><tr><th scope='col'>Map / region</th><th scope='col'>Provider</th><th scope='col'>Package installs</th><th scope='col'>Last activity</th></tr></thead><tbody id='map-rows'></tbody></table></div><details class='admin-disclosure popularity-all-maps-disclosure'><summary id='all-maps-summary'>View all maps</summary></details></div><details class='admin-disclosure popularity-regions-disclosure'><summary>Regions</summary><div class='disclosure-body'><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Top regions</caption><thead><tr><th scope='col'>Region</th><th scope='col' title='Completed map-package installs'>Installs</th><th scope='col'>Last activity</th></tr></thead><tbody id='top-region-rows'></tbody></table></div></div></details></section></section>
         <section class='provider-card map-events-card' {'hidden' if not has_event_data else ''}><details class='admin-disclosure' id='map-statistics-event-detail'><summary id='map-statistics-event-summary'>Event detail · {event_status}</summary><div class='disclosure-body' id='map-statistics-event-body'>{event_table}</div></details></section>
       </main>
       <script>window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};window.terentoWorldMapSvg = {_admin_json(WORLD_MAP_SVG)};window.terentoWorldMapCountryAliases = {_admin_json(WORLD_MAP_COUNTRY_ALIASES)};{_map_statistics_script()}</script>
@@ -2111,7 +2174,6 @@ def map_statistics_page(
 
 def _providers_list_script() -> str:
     return r"""(() => {
-      const form = document.querySelector('#provider-filters');
       const search = document.querySelector('#provider-search');
       const rows = [...document.querySelectorAll('#provider-rows tr[data-provider-search]')];
       const count = document.querySelector('#provider-results-count');
@@ -2215,7 +2277,6 @@ def _map_statistics_script() -> str:
       const initial = window.terentoMapStatistics || {rows: []};
       const providers = window.terentoAdminProviders || [];
       const filters = window.terentoMapStatisticsFilters || {};
-      const form = document.querySelector('#map-statistics-filters');
       const range = document.querySelector('#map-statistics-range');
       const provider = document.querySelector('#map-statistics-provider');
       const map = document.querySelector('#map-statistics-map');
@@ -2232,6 +2293,8 @@ def _map_statistics_script() -> str:
       const worldMapStatus = document.querySelector('#map-statistics-world-map-status');
       const worldMapLegendMax = document.querySelector('#world-map-legend-max');
       const providerTable = document.querySelector('#map-statistics-provider-table');
+      const linkageSection = document.querySelector('#map-statistics-linkage');
+      const linkageSummary = document.querySelector('#map-statistics-linkage-summary');
       const mapRows = document.querySelector('#map-rows');
       const allMapsDisclosure = document.querySelector('.popularity-all-maps-disclosure');
       const allMapsSummary = allMapsDisclosure?.querySelector('summary');
@@ -2253,7 +2316,7 @@ def _map_statistics_script() -> str:
       const countryAliases = window.terentoWorldMapCountryAliases || {};
       const countryNames = {};
       Object.entries(countryAliases).forEach(([key, code]) => {
-        if (key.length > 2 && !countryNames[code]) countryNames[code] = humanize(key);
+        if (key.length > 3 && !countryNames[code]) countryNames[code] = humanize(key.toLowerCase());
       });
       const normalizeCountryToken = (value) => String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '').toUpperCase();
       const countryCode = (row) => {
@@ -2287,15 +2350,87 @@ def _map_statistics_script() -> str:
         const providersMarkup = item?.providers
           ? Object.values(item.providers).sort((a, b) => b.count - a.count || a.id.localeCompare(b.id)).map((providerItem) => `<div class="world-map-provider-line"><span>${escapeHtml(providerName[providerItem.id] || providerItem.id)}</span><strong>${providerItem.count}</strong></div>`).join('')
           : '';
-        worldMapTooltip.innerHTML = `<strong>${escapeHtml(label)}</strong><span class="world-map-tooltip-total">${item?.count || 0} installs</span>${providersMarkup || '<span class="world-map-tooltip-empty">No installs</span>'}`;
+        worldMapTooltip.innerHTML = `<strong>${escapeHtml(label)}</strong><span class="world-map-tooltip-total">${item?.count || 0} completed install${item?.count === 1 ? '' : 's'}</span>${providersMarkup || '<span class="world-map-tooltip-empty">No recorded installs</span>'}`;
         worldMapTooltip.hidden = false;
+      };
+      let mapView = null;
+      let baseView = null;
+      let coverageByCountry = {};
+      const applyMapView = () => {
+        const svg = worldMapSvg?.querySelector('svg');
+        if (!svg || !mapView) return;
+        svg.setAttribute('viewBox', mapView.join(' '));
+        const zoom = baseView[2] / mapView[2];
+        const label = document.querySelector('#world-map-zoom-status');
+        if (label) label.textContent = `${Math.round(zoom * 100)}%`;
+        document.querySelectorAll('[data-map-zoom]').forEach((button) => {
+          button.disabled = button.dataset.mapZoom === 'in' ? zoom >= 16 : button.dataset.mapZoom === 'out' ? zoom <= 1 : false;
+        });
+      };
+      const zoomMap = (action) => {
+        if (!baseView) return;
+        if (action === 'reset') mapView = [...baseView];
+        else {
+          const zoom = Math.max(1, Math.min(16, baseView[2] / mapView[2] * (action === 'in' ? 1.6 : 1 / 1.6)));
+          const width = baseView[2] / zoom, height = baseView[3] / zoom;
+          mapView = [mapView[0] + (mapView[2] - width) / 2, mapView[1] + (mapView[3] - height) / 2, width, height];
+        }
+        applyMapView();
+      };
+      document.querySelectorAll('[data-map-zoom]').forEach((button) => button.addEventListener('click', () => zoomMap(button.dataset.mapZoom)));
+      worldMapSvg?.addEventListener('keydown', (event) => {
+        if (!mapView) return;
+        if (event.key === '+' || event.key === '=') { event.preventDefault(); zoomMap('in'); }
+        else if (event.key === '-') { event.preventDefault(); zoomMap('out'); }
+        else if (event.key === 'Home') { event.preventDefault(); zoomMap('reset'); }
+        else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+          event.preventDefault();
+          mapView[0] += (event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0) * mapView[2] * .15;
+          mapView[1] += (event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0) * mapView[3] * .15;
+          applyMapView();
+        }
+      });
+      let drag = null;
+      worldMapSvg?.addEventListener('pointerdown', (event) => {
+        if (!mapView || event.button !== 0) return;
+        drag = {x:event.clientX, y:event.clientY, view:[...mapView]};
+        worldMapSvg.setPointerCapture(event.pointerId);
+      });
+      worldMapSvg?.addEventListener('pointermove', (event) => {
+        if (!drag) return;
+        const rect = worldMapSvg.querySelector('svg').getBoundingClientRect();
+        mapView = [drag.view[0] - (event.clientX - drag.x) * drag.view[2] / rect.width, drag.view[1] - (event.clientY - drag.y) * drag.view[3] / rect.height, drag.view[2], drag.view[3]];
+        applyMapView();
+      });
+      ['pointerup','pointercancel','lostpointercapture'].forEach((name) => worldMapSvg?.addEventListener(name, () => { drag = null; }));
+      const highlightCountry = (code, focus = false) => {
+        worldMapSvg?.querySelectorAll('.is-region-highlight').forEach((path) => path.classList.remove('is-region-highlight'));
+        const path = /^[a-z]{2}$/.test(code || '') ? worldMapSvg?.querySelector(`[id="${code}"]`) : null;
+        if (!path) { if (worldMapTooltip) worldMapTooltip.hidden = true; return; }
+        path.classList.add('is-region-highlight');
+        showWorldMapTooltip(coverageByCountry[code], code);
+        if (focus && baseView) {
+          const box = path.getBBox();
+          const width = Math.min(baseView[2], Math.max(baseView[2] / 12, box.width * 1.8, box.height * 1.8 * baseView[2] / baseView[3]));
+          const height = width * baseView[3] / baseView[2];
+          mapView = [box.x + box.width / 2 - width / 2, box.y + box.height / 2 - height / 2, width, height];
+          applyMapView();
+        }
       };
       const renderWorldMap = (installRows) => {
         if (!worldMapSvg) return;
-        const items = countryCoverage(installRows);
+        worldMapSvg.innerHTML = window.terentoWorldMapSvg || '';
+        const svg = worldMapSvg.querySelector('svg');
+        if (!svg) return;
+        baseView = svg.getAttribute('viewBox').split(/\s+/).map(Number);
+        mapView ||= [...baseView];
+        applyMapView();
+        const drawableCodes = new Set([...worldMapSvg.querySelectorAll('[id]')].map((path) => path.id));
+        const items = countryCoverage(installRows).filter((item) => drawableCodes.has(item.code));
+        const unmapped = installRows.filter((row) => !drawableCodes.has(countryCode(row))).reduce((total, row) => total + operations(row), 0);
         const byCountry = Object.fromEntries(items.map((item) => [item.code, item]));
         const maximum = Math.max(0, ...items.map((item) => item.count));
-        worldMapSvg.innerHTML = window.terentoWorldMapSvg || '';
+        coverageByCountry = byCountry;
         const regions = [...worldMapSvg.querySelectorAll('[id]')];
         regions.forEach((path) => {
           const code = String(path.getAttribute('id') || '').toLowerCase();
@@ -2306,14 +2441,14 @@ def _map_statistics_script() -> str:
           path.classList.add('world-map-country');
           path.style.fill = item && maximum ? `hsl(198 25% ${lightness}%)` : 'var(--surface)';
           path.setAttribute('tabindex', '0');
-          path.setAttribute('role', 'button');
-          path.setAttribute('aria-label', `${countryNames[code] || code.toUpperCase()}: ${item?.count || 0} installs`);
+          path.setAttribute('role', 'img');
+          path.setAttribute('aria-label', `${countryNames[code] || code.toUpperCase()}: ${item?.count || 0} completed install${item?.count === 1 ? '' : 's'}`);
           path.addEventListener('mouseenter', () => showWorldMapTooltip(item, code));
           path.addEventListener('focus', () => showWorldMapTooltip(item, code));
           path.addEventListener('mouseleave', () => { if (worldMapTooltip) worldMapTooltip.hidden = true; });
           path.addEventListener('blur', () => { if (worldMapTooltip) worldMapTooltip.hidden = true; });
         });
-        if (worldMapStatus) worldMapStatus.textContent = maximum ? `${items.length} countries · ${items.reduce((total, item) => total + item.count, 0)} installs` : 'No installs in this period';
+        if (worldMapStatus) worldMapStatus.textContent = maximum ? `${items.length} ${items.length === 1 ? 'country' : 'countries'} · ${items.reduce((total, item) => total + item.count, 0)} mapped install${items.reduce((total, item) => total + item.count, 0) === 1 ? '' : 's'}${unmapped ? ` · ${unmapped} unmapped install${unmapped === 1 ? '' : 's'}` : ''}` : unmapped ? `${unmapped} installs without drawable country coverage` : 'No completed installs in this period';
         if (worldMapLegendMax) worldMapLegendMax.textContent = maximum ? String(maximum) : 'Most';
         if (worldMap) worldMap.dataset.countryCount = String(items.length);
       };
@@ -2321,6 +2456,7 @@ def _map_statistics_script() -> str:
         currentPayload = payload;
         const rows = payload.rows || [];
         const detailRows = payload.detailRows || rows;
+        const linkage = payload.linkage || {};
         const hasEventData = rows.length > 0;
         const installRows = rows.filter((row) => row.event_type === 'INSTALL_SUCCEEDED' && row.outcome === 'SUCCEEDED');
         const selectedProvider = String((payload.filters && payload.filters.provider) || provider?.value || '').trim().toLowerCase();
@@ -2331,13 +2467,22 @@ def _map_statistics_script() -> str:
         const installs = count(rows, 'INSTALL_SUCCEEDED', 'SUCCEEDED');
         const failedInstalls = count(rows, 'INSTALL_FAILED', 'FAILED');
         const set = (key, value) => { const node = document.querySelector(`[data-stat="${key}"]`); if (node) node.textContent = value; };
+        const linkageValue = (key) => hasEventData && linkage[key] !== null && linkage[key] !== undefined ? linkage[key] : '—';
         set('completedDownloads', hasEventData ? downloads : '—'); set('failedDownloads', hasEventData ? failedDownloads : '—'); set('completedInstalls', hasEventData ? installs : '—'); set('failedInstalls', hasEventData ? failedInstalls : '—');
         set('downloadSuccessRate', hasEventData ? formatRate(downloads + failedDownloads ? downloads / (downloads + failedDownloads) * 100 : null) : '—');
         set('installSuccessRate', hasEventData ? formatRate(installs + failedInstalls ? installs / (installs + failedInstalls) * 100 : null) : '—');
+        set('mapInstallationCount', linkageValue('mapInstallationCount'));
+        set('linkedInstallationCount', linkageValue('linkedInstallationCount'));
+        set('mapOnlyInstallationCount', linkageValue('mapOnlyInstallationCount'));
+        set('linkageRate', hasEventData ? formatRate(linkage.linkageRate) : '—');
+        set('linkedSuccessfulInstallCount', linkageValue('linkedSuccessfulInstallCount'));
+        set('linkedFailedInstallCount', linkageValue('linkedFailedInstallCount'));
         if (emptyState) emptyState.hidden = hasEventData;
         if (coverage) coverage.hidden = !hasEventData;
         if (popularity) popularity.hidden = !hasEventData;
         if (providerTable) providerTable.hidden = !hasEventData;
+        if (linkageSection) linkageSection.hidden = !hasEventData;
+        if (linkageSummary) linkageSummary.textContent = hasEventData ? `DATA QUALITY · Watch event linkage · ${formatRate(linkage.linkageRate)} linkage · ${linkageValue('mapOnlyInstallationCount')} unlinked installs` : 'DATA QUALITY · Watch event linkage';
         if (eventDetail) eventDetail.closest('.map-events-card').hidden = !hasEventData;
         if (providerHealth) providerHealth.hidden = false;
         const healthyCount = scopedProviders.filter((item) => String(item.health || '').toUpperCase() === 'HEALTHY').length;
@@ -2351,16 +2496,21 @@ def _map_statistics_script() -> str:
         document.querySelector('#provider-statistic-rows').innerHTML = providerRows || emptyRow(5);
         renderWorldMap(installRows);
         const byMap = {};
-        installRows.forEach((row) => { const key = `${row.provider_id || 'unknown'}\u0000${row.map_package_id || 'unknown'}\u0000${row.region || '—'}`; byMap[key] ||= {map: row.map_package_id || '—', name: row.display_name || row.map_package_name || '', provider: row.provider_id || '', region: row.region || '—', regionIdentity: row.region_identity || row.canonical_region_id || row.region || 'UNKNOWN', regionName: row.region_display_name || humanize(row.region), count: 0, last: row.last_occurred_at}; byMap[key].count += operations(row); if (String(row.last_occurred_at || '') > String(byMap[key].last || '')) byMap[key].last = row.last_occurred_at; });
+        installRows.forEach((row) => { const key = `${row.provider_id || 'unknown'}\u0000${row.map_package_id || 'unknown'}\u0000${row.region || '—'}`; byMap[key] ||= {map: row.map_package_id || '—', name: row.display_name || row.map_package_name || '', provider: row.provider_id || '', region: row.region || '—', regionIdentity: row.region_identity || row.canonical_region_id || row.region || 'UNKNOWN', regionName: row.region_display_name || humanize(row.region), country: countryCode(row), count: 0, last: row.last_occurred_at}; byMap[key].count += operations(row); if (String(row.last_occurred_at || '') > String(byMap[key].last || '')) byMap[key].last = row.last_occurred_at; });
         const mapItems = Object.values(byMap).sort((a, b) => b.count - a.count || a.map.localeCompare(b.map));
         const showAllMaps = Boolean(allMapsDisclosure?.open);
         const mapRow = (item) => `<tr><td><strong>${escapeHtml(item.name || item.regionName || '—')}</strong><small class="table-secondary"><code>${escapeHtml(item.map)}</code> · ${escapeHtml(item.regionName || '—')}</small></td><td>${escapeHtml(providerName[item.provider] || item.provider || '—')}</td><td class="numeric">${item.count}</td><td>${formatTimestamp(item.last)}</td></tr>`;
         if (mapRows) mapRows.innerHTML = (showAllMaps ? mapItems : mapItems.slice(0, 5)).map(mapRow).join('') || emptyRow(4);
-        if (allMapsSummary) allMapsSummary.textContent = showAllMaps ? 'Top 5' : 'All maps';
+        if (allMapsSummary) allMapsSummary.textContent = showAllMaps ? 'Show Top 5' : 'View all maps';
         const byRegion = {};
-        Object.values(byMap).forEach((item) => { const key = item.regionIdentity || item.region; byRegion[key] ||= {region: key, display: item.regionName, count: 0, last: item.last}; byRegion[key].count += item.count; if (String(item.last || '') > String(byRegion[key].last || '')) byRegion[key].last = item.last; });
-        const topRegions = Object.values(byRegion).sort((a, b) => b.count - a.count || a.region.localeCompare(b.region)).slice(0, 10).map((item) => `<tr><td>${escapeHtml(item.display || humanize(item.region))}</td><td class="numeric">${item.count}</td><td>${formatTimestamp(item.last)}</td></tr>`).join('');
+        Object.values(byMap).forEach((item) => { const key = item.regionIdentity || item.region; byRegion[key] ||= {region: key, display: item.regionName, country: item.country, count: 0, last: item.last}; byRegion[key].count += item.count; if (String(item.last || '') > String(byRegion[key].last || '')) byRegion[key].last = item.last; });
+        const topRegions = Object.values(byRegion).sort((a, b) => b.count - a.count || a.region.localeCompare(b.region)).slice(0, 10).map((item) => `<tr><td>${item.country ? `<button type="button" class="region-map-link" data-map-country="${escapeHtml(item.country)}" aria-label="Show ${escapeHtml(item.display || humanize(item.region))} on map">${escapeHtml(item.display || humanize(item.region))}</button>` : escapeHtml(item.display || humanize(item.region))}</td><td class="numeric">${item.count}</td><td>${formatTimestamp(item.last)}</td></tr>`).join('');
         document.querySelector('#top-region-rows').innerHTML = topRegions || emptyRow(3);
+        document.querySelectorAll('[data-map-country]').forEach((button) => {
+          ['mouseenter', 'focus'].forEach((name) => button.addEventListener(name, () => highlightCountry(button.dataset.mapCountry)));
+          ['mouseleave', 'blur'].forEach((name) => button.addEventListener(name, () => highlightCountry(null)));
+          button.addEventListener('click', () => highlightCountry(button.dataset.mapCountry, true));
+        });
         const detailMarkup = detailRows.map((row) => `<tr><td>${escapeHtml(row.provider_id || '—')}</td><td><code>${escapeHtml(row.map_package_id || '—')}</code></td><td>${escapeHtml(row.region_display_name || humanize(row.region))}</td><td>${escapeHtml(row.event_type || '—')}</td><td>${escapeHtml(outcomeLabel(row.outcome))}</td><td class="numeric">${operations(row)}</td><td>${formatTimestamp(row.last_occurred_at)}</td></tr>`).join('');
         document.querySelector('#map-statistics-rows').innerHTML = detailMarkup || emptyRow(7);
         const eventStatus = rows.length ? `${rows.length} event group${rows.length === 1 ? '' : 's'} · ${eventRecords} event record${eventRecords === 1 ? '' : 's'}` : 'No event groups';
@@ -2953,9 +3103,17 @@ def device_detail_page(
         is_resolved_error = resolved and result == "FAILED"
         region = _operation_text(results, "region", fallback="")
         map_release = _operation_text(results, "map_release", fallback="")
-        map_copy = html.escape(region or "Map not recorded")
+        map_names = list(dict.fromkeys(
+            _admin_map_display_name(item.get('region')) for item in results if item.get('region')
+        ))
+        map_copy = html.escape(', '.join(map_names) or "Map not recorded")
+        providers_in_operation = {str(item.get('provider') or '') for item in results}
+        regions_in_operation = {str(item.get('region') or '') for item in results}
+        if len(providers_in_operation) == len(regions_in_operation) == 1 and providers_in_operation <= {'freizeitkarte', 'opentopomap'} and region:
+            href = '/admin/map-statistics?' + urlencode({'provider': next(iter(providers_in_operation)), 'region': region, 'period': 'all'})
+            map_copy = f"<a href='{html.escape(href, quote=True)}' title='View map statistics'>{map_copy}</a>"
         if map_release:
-            map_copy += f"<small>{html.escape(map_release)}</small>"
+            map_copy += f"<small>{html.escape(region)} · {html.escape(map_release)}</small>"
         if result == "FAILED":
             error_state = _diagnostic_state_badge("RESOLVED" if resolved else "OPEN")
             error_markup = error_state + f"<small>{html.escape(_diagnostic_error_reason(results, resolved=resolved))}</small>"
@@ -3053,8 +3211,10 @@ def device_detail_page(
           <article><h3>Installation authorization</h3><form method='post' action='/admin/devices/authorization' class='admin-async-action' data-authorization-form data-current-authorization='{html.escape(str(device.get('supportStatus') or 'NOT_EVALUATED'), quote=True)}'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='device_id' value='{html.escape(device_id, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(detail_url, quote=True)}'><label>Status<select name='support_status'><option value='SUPPORTED'{' selected' if device.get('supportStatus') == 'SUPPORTED' else ''}>Approved</option><option value='UNSUPPORTED'{' selected' if device.get('supportStatus') == 'UNSUPPORTED' else ''}>Blocked</option><option value='NOT_EVALUATED'{' selected' if device.get('supportStatus') == 'NOT_EVALUATED' else ''}>Pending</option></select></label><label>Note <span class='optional-label'>Optional</span><textarea name='note' rows='2'></textarea></label><button type='submit'>Save authorization</button></form></article>
           <article><h3>Public compatibility</h3><p>{public_copy}</p>{public_form}</article>
         </div></details>
+        <div class='model-information-columns'>
         <details class='model-page-section device-information-section admin-disclosure'><summary id='device-information-title'>Device information</summary><dl class='model-information-list'>{device_info}</dl></details>
-        <details class='model-technical-details'><summary>Technical details</summary><dl class='model-information-list'>{technical_rows}</dl></details>
+        <details class='model-technical-details admin-disclosure'><summary>Technical details</summary><dl class='model-information-list'>{technical_rows}</dl></details>
+        </div>
         {''.join(dialogs)}
       </main>
       <script>{_diagnostics_script()}</script>
@@ -3209,10 +3369,12 @@ def _admin_device_payload(
             row.get("manufacturer") or "Garmin",
         )
         map_capable = (
-            True
-            if stored_map_capable is None and successful > 0
-            else stored_map_capable if stored_map_capable is not None else classified_map_capable
+            stored_map_capable if stored_map_capable is not None else classified_map_capable
         )
+        if map_capable is None and successful > 0:
+            # A verified successful installation is model/variant-specific
+            # evidence that the catalog classifier has not learned yet.
+            map_capable = True
         evidence_status = calculate_compatibility_status(
             successful_install_count=successful,
             recognized_map_capable_evidence=map_capable is True,
@@ -4090,7 +4252,6 @@ def _client_issue_note_sanitizer_script() -> str:
 
 def _diagnostics_script() -> str:
     script = r"""(() => {
-      const filterForm = document.querySelector('#diagnostic-filters');
       const filter = document.querySelector('#diagnostic-state-filter');
       const quickFilters = [...document.querySelectorAll('[data-history-filter]')];
       const body = document.querySelector('#diagnostic-rows');
@@ -4584,9 +4745,9 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .admin-summary-strip p{margin:0;min-width:0}
 .admin-summary-metrics strong,.admin-summary-context strong,.device-summary-metrics strong,.device-summary-sync strong{color:var(--graphite);font-weight:750}
 .admin-summary-context,.device-summary-sync{text-align:right;white-space:nowrap}
-.evidence-table-wrap table{table-layout:fixed}.evidence-table-wrap .evidence-column-model{width:24%}.evidence-table-wrap .evidence-column-variant{width:14%}.evidence-table-wrap .evidence-column-status{width:12%}.evidence-table-wrap .evidence-column-attempts{width:7%}.evidence-table-wrap .evidence-column-successful{width:9%}.evidence-table-wrap .evidence-column-failed{width:7%}.evidence-table-wrap .evidence-column-open-errors{width:11%}.evidence-table-wrap .evidence-column-last-success{width:16%}
 .test-data-page{padding-top:30px}.test-data-card{margin-top:0}.test-data-metrics{grid-template-columns:repeat(3,minmax(0,1fr));margin:0 0 20px}.test-data-release-labels{margin:0;color:var(--secondary);font-size:12px;line-height:18px}.test-data-release-labels code{color:var(--graphite);font:500 11px var(--font-mono);overflow-wrap:anywhere}.test-data-danger-zone{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,.95fr);align-items:start;gap:24px;margin-top:22px;padding-top:20px;border-top:1px solid var(--border)}.test-data-danger-zone h3{margin:0;font-size:var(--admin-type-subsection-size);line-height:var(--admin-type-subsection-line)}.test-data-danger-zone .section-kicker{margin-bottom:5px;color:var(--danger)}.test-data-danger-zone .table-help{max-width:460px;margin:6px 0 0}.admin-danger-form{display:grid;gap:10px;padding:14px;background:var(--error-surface);border:1px solid var(--status-error-border);border-radius:12px}.admin-danger-form label{display:grid;gap:6px;color:var(--graphite);font-size:12px;font-weight:650}.admin-danger-form code{font:500 11px var(--font-mono)}.admin-danger-form input{width:100%;min-height:var(--admin-control-height);box-sizing:border-box;padding:8px var(--admin-control-padding-x);border:1px solid var(--status-error-border);border-radius:var(--admin-control-radius);background:var(--surface);color:var(--graphite);font:500 var(--admin-control-font-size)/1.2 var(--font-mono)}.admin-danger-form input:focus{border-color:var(--danger);outline:3px solid color-mix(in srgb,var(--danger) 18%,transparent);outline-offset:1px}.danger-button{min-height:var(--admin-control-height);padding:8px 12px;border:0;border-radius:var(--admin-control-radius);background:var(--danger);color:var(--interactive-primary-text);font:600 var(--admin-type-button-size)/var(--admin-type-button-line) var(--font-ui)}.danger-button:hover{background:color-mix(in srgb,var(--danger) 86%,var(--graphite))}
 @media(max-width:760px){.test-data-danger-zone{grid-template-columns:1fr;gap:16px}}
+.evidence-table-wrap table{table-layout:fixed}.evidence-table-wrap .evidence-column-model{width:24%}.evidence-table-wrap .evidence-column-variant{width:14%}.evidence-table-wrap .evidence-column-status{width:12%}.evidence-table-wrap .evidence-column-attempts{width:7%}.evidence-table-wrap .evidence-column-successful{width:9%}.evidence-table-wrap .evidence-column-failed{width:7%}.evidence-table-wrap .evidence-column-open-errors{width:11%}.evidence-table-wrap .evidence-column-last-success{width:16%}
 .device-filter-bar{position:sticky;top:var(--admin-topbar-height);z-index:22;align-items:stretch;margin-bottom:0;background:var(--surface);border-radius:12px 12px 0 0;box-shadow:0 2px 0 rgba(34,42,43,.07)}
 .device-table-wrap{overflow:visible;border-top:0;border-radius:0 0 14px 14px}
 .device-sticky-header{display:none}
@@ -4672,11 +4833,11 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .page-meta{margin:0;color:var(--secondary);font-size:12px;white-space:nowrap}.installation-heading{align-items:flex-end}
 .admin-kpi-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:0 0 12px}.admin-kpi-grid article{min-width:0;min-height:84px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px}.admin-kpi-grid article>span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.admin-kpi-grid article>strong{display:block;margin-top:6px;color:var(--graphite);font-family:var(--font-brand);font-size:25px;line-height:1.15;font-variant-numeric:tabular-nums}.historical-failure-note{margin:0 0 24px;color:var(--secondary);font-size:12px}.historical-failure-note .info-control{margin-left:3px}
-.map-statistics-kpis{grid-template-columns:repeat(4,minmax(0,1fr));margin-top:18px}.map-statistics-kpis article>strong{font-size:25px}.map-statistics-empty{margin:0 0 18px;padding:28px 24px;border:1px dashed var(--border);border-radius:14px;background:var(--surface);text-align:center}.map-statistics-empty h2{font-size:20px}.map-statistics-empty p{margin:8px 0 0;color:var(--secondary);font-size:13px}.map-statistics-reliability{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 24px}.map-statistics-reliability div{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-muted)}.map-statistics-reliability span{color:var(--secondary);font-size:12px;font-weight:650}.map-statistics-reliability strong{font-family:var(--font-brand);font-size:19px;font-variant-numeric:tabular-nums}.map-statistics-provider-health{display:flex;align-items:center;gap:8px;margin:0 0 24px;color:var(--secondary);font-size:12px}.map-statistics-provider-health strong{color:var(--graphite);font-weight:750}.map-statistics-provider-health em{font-style:normal}.popularity-subsection+.popularity-subsection{margin-top:18px}.popularity-subsection h3{margin:0 0 9px;font:700 14px var(--font-brand);letter-spacing:-.01em}.map-events-card{margin-top:24px}
+.map-statistics-kpis{grid-template-columns:repeat(4,minmax(0,1fr));margin-top:18px}.map-statistics-kpis article>strong{font-size:25px}.map-statistics-empty{margin:0 0 18px;padding:28px 24px;border:1px dashed var(--border);border-radius:14px;background:var(--surface);text-align:center}.map-statistics-empty h2{font-size:20px}.map-statistics-empty p{margin:8px 0 0;color:var(--secondary);font-size:13px}.map-statistics-reliability{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 24px}.map-statistics-reliability div{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-muted)}.map-statistics-reliability span{color:var(--secondary);font-size:12px;font-weight:650}.map-statistics-reliability strong{font-family:var(--font-brand);font-size:19px;font-variant-numeric:tabular-nums}.map-statistics-provider-health{display:flex;align-items:center;gap:8px;margin:0 0 24px;color:var(--secondary);font-size:12px}.map-statistics-provider-health strong{color:var(--graphite);font-weight:750}.map-statistics-provider-health em{font-style:normal}.map-statistics-linkage{margin-top:0}.map-statistics-linkage .section-heading{align-items:flex-start}.map-statistics-linkage-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.map-statistics-linkage-grid div{min-width:0;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-muted)}.map-statistics-linkage-grid span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.map-statistics-linkage-grid strong{display:block;margin-top:5px;color:var(--graphite);font-family:var(--font-brand);font-size:19px;font-variant-numeric:tabular-nums}.map-statistics-linkage .map-statistics-scope-note{margin-bottom:0}.popularity-subsection+.popularity-subsection{margin-top:18px}.popularity-subsection h3{margin:0 0 9px;font:700 14px var(--font-brand);letter-spacing:-.01em}.map-events-card{margin-top:24px}
 .admin-disclosure{margin:0}.admin-disclosure>summary{cursor:pointer;color:var(--interactive);font-size:13px;font-weight:750;list-style-position:inside;text-underline-offset:3px}.admin-disclosure>summary:hover{text-decoration:underline}.admin-disclosure>summary:focus-visible{outline:3px solid var(--admin-focus-ring);outline-offset:3px}.disclosure-body{margin-top:14px}.filter-disclosure{align-self:stretch;min-width:130px;position:relative}.filter-disclosure>summary{display:flex;align-items:center;justify-content:center;height:var(--admin-control-height);padding:8px 10px;border:1px solid var(--border);border-radius:var(--admin-control-radius);background:var(--surface);color:var(--graphite);font-size:var(--admin-control-font-size);font-weight:650;list-style:none;text-decoration:none}.filter-disclosure>summary::-webkit-details-marker{display:none}.filter-disclosure .disclosure-body{display:flex;gap:8px;flex-wrap:wrap;position:absolute;z-index:5;margin-top:7px;padding:8px;border:1px solid var(--border);border-radius:10px;background:var(--surface);box-shadow:0 14px 34px rgba(34,42,43,.14)}.filter-disclosure .disclosure-body label{display:flex}.filter-disclosure .disclosure-body input,.filter-disclosure .disclosure-body select{min-width:140px}.inline-filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px}.inline-filter-row label{display:flex;flex:1 1 220px}.inline-filter-row select{flex:0 1 170px}.provider-pagination{display:flex;align-items:center;justify-content:center;gap:14px;min-height:34px;margin-top:12px;color:var(--secondary);font-size:12px;text-align:center}.provider-pagination button{min-height:34px;padding:7px 11px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--interactive);font:700 12px var(--font-ui)}.provider-pagination button:hover:not(:disabled){border-color:var(--interactive);background:var(--success-bg)}.provider-pagination button:disabled{cursor:not-allowed;opacity:.45}.provider-latest-summary{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 14px;border-radius:10px;background:var(--surface-muted);color:var(--secondary);font-size:12px}.provider-latest-summary>div{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.provider-action-overflow{position:relative}.provider-action-overflow>summary{display:inline-flex;align-items:center;justify-content:center;min-height:var(--admin-control-height);padding:8px 12px;border:1px solid var(--border);border-radius:var(--admin-control-radius);background:var(--surface);color:var(--graphite);cursor:pointer;font-size:13px;font-weight:700;list-style:none}.provider-action-overflow>summary::-webkit-details-marker{display:none}.provider-action-overflow>summary:hover{border-color:var(--interactive);color:var(--interactive)}.provider-action-overflow>div{position:absolute;z-index:4;right:0;top:calc(100% + 7px);min-width:180px;padding:7px;border:1px solid var(--border);border-radius:10px;background:var(--surface);box-shadow:0 14px 34px rgba(34,42,43,.14)}.provider-action-overflow button{width:100%}.provider-package-name{display:block;font-weight:700}.provider-package-id{display:block;margin-top:2px;color:var(--secondary)!important;font-size:10px!important}.provider-package-broken td:last-child{color:var(--danger)}.provider-issue-count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;padding:2px 7px;border:1px solid color-mix(in srgb,var(--danger) 35%,var(--border));border-radius:999px;color:var(--danger);font-weight:750}.audit-technical-details{margin-top:5px}.audit-technical-details summary{cursor:pointer;color:var(--interactive);font-size:11px;font-weight:700}.audit-technical-details code{display:block;margin-top:5px;max-width:300px;overflow:auto;white-space:pre-wrap;font:500 10px var(--font-mono);color:var(--secondary)}.provider-information-list dd{text-align:left}.provider-section .provider-table-wrap table{min-width:820px}.provider-detail .provider-table-wrap table{min-width:760px}.provider-detail .provider-history-wrap table{min-width:1240px}
-@media(max-width:1100px){.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}.admin-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.map-statistics-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.provider-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.map-statistics-reliability{grid-template-columns:repeat(3,minmax(0,1fr))}.provider-detail .provider-history-wrap{overflow-x:auto}}
-@media(max-width:700px){.admin-kpi-grid,.map-statistics-kpis,.map-statistics-reliability{grid-template-columns:repeat(2,minmax(0,1fr))}.installation-heading{align-items:flex-start}.page-meta{white-space:normal}.provider-latest-summary{align-items:flex-start;flex-direction:column;gap:6px}.filter-disclosure .disclosure-body{position:static;margin-top:8px;box-shadow:none}.map-statistics-filter-bar .filter-disclosure{width:100%}.map-statistics-filter-bar .filter-disclosure>summary{justify-content:flex-start}}
-@media(max-width:480px){.admin-kpi-grid,.map-statistics-kpis,.map-statistics-reliability,.admin-kpi-grid article{min-height:70px;padding:12px}.inline-filter-row{align-items:stretch;flex-direction:column}.inline-filter-row label,.inline-filter-row select{width:100%;flex-basis:auto}.provider-pagination{gap:8px;font-size:11px}.provider-pagination span{max-width:130px}.provider-action-overflow>div{position:static;margin-top:7px}.provider-action-overflow>summary{width:100%}}
+@media(max-width:1100px){.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}.admin-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.map-statistics-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.provider-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.map-statistics-reliability{grid-template-columns:repeat(3,minmax(0,1fr))}.map-statistics-linkage-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.provider-detail .provider-history-wrap{overflow-x:auto}}
+@media(max-width:700px){.admin-kpi-grid,.map-statistics-kpis,.map-statistics-reliability{grid-template-columns:repeat(2,minmax(0,1fr))}.map-statistics-linkage-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.installation-heading{align-items:flex-start}.page-meta{white-space:normal}.provider-latest-summary{align-items:flex-start;flex-direction:column;gap:6px}.filter-disclosure .disclosure-body{position:static;margin-top:8px;box-shadow:none}.map-statistics-filter-bar .filter-disclosure{width:100%}.map-statistics-filter-bar .filter-disclosure>summary{justify-content:flex-start}}
+@media(max-width:480px){.admin-kpi-grid,.map-statistics-kpis,.map-statistics-reliability,.map-statistics-linkage-grid{grid-template-columns:1fr}.admin-kpi-grid article{min-height:70px;padding:12px}.inline-filter-row{align-items:stretch;flex-direction:column}.inline-filter-row label,.inline-filter-row select{width:100%;flex-basis:auto}.provider-pagination{gap:8px;font-size:11px}.provider-pagination span{max-width:130px}.provider-action-overflow>div{position:static;margin-top:7px}.provider-action-overflow>summary{width:100%}}
 @media(max-width:800px){.admin-topbar-inner,.dashboard{width:min(calc(100% - 32px),var(--max-width))}.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}.heading-row{align-items:flex-start;flex-direction:column;gap:12px}.diagnostic-model-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-bar{align-items:stretch}.filter-bar label,.filter-bar select,.filter-bar input{flex:1 1 170px}.filter-bar .results-count{width:100%;margin:2px 4px 0}.public-status{align-items:flex-start;flex-direction:column}.public-status-value{width:100%;justify-content:space-between;flex-wrap:wrap}.status-guide-grid{grid-template-columns:1fr}.campaign-fields{grid-template-columns:1fr}.campaign-field-wide{grid-column:auto}.attribution-preview{grid-template-columns:1fr}.sync-summary{white-space:normal!important}.device-detail-grid{grid-template-columns:1fr}.device-support-review form{grid-template-columns:1fr}.diagnostic-detail-summary{grid-template-columns:1fr}.diagnostic-actions-grid{grid-template-columns:1fr}.github-review{grid-column:auto}}
 @media(max-width:980px){.admin-topbar-inner{display:flex;flex-wrap:wrap;gap:12px}.admin-header-left{flex:0 0 auto}.admin-section-nav{order:3;flex-basis:100%;margin-left:0}.admin-nav{flex:1 1 auto;justify-content:flex-end}}
 @media(max-width:560px){.admin-topbar-inner{align-items:flex-start;flex-direction:column;padding:14px 0}.admin-header-left,.admin-section-nav,.admin-nav{width:100%}.admin-section-nav{order:0;overflow:auto;justify-content:flex-start}.admin-section-nav a{white-space:nowrap}.admin-nav{justify-content:space-between;gap:10px;flex-wrap:wrap}.timezone-control{width:100%;justify-content:space-between}.timezone-control select{width:auto;flex:1}.dashboard{padding-top:28px}.diagnostic-model-metrics{gap:8px}.diagnostic-model-metrics article{padding:12px}.auth-card{width:calc(100% - 32px);padding:24px}.section-heading{align-items:flex-start;flex-direction:column;gap:4px}.campaign-card{padding:16px}.campaign-preset-row{align-items:stretch;flex-direction:column;gap:8px}.campaign-preset-row .campaign-label,.campaign-preset-row select{flex:none}.campaign-preset-row select{width:100%;height:var(--admin-control-height);margin-left:0}.generated-url-row{grid-template-columns:1fr}.copy-button{width:100%}.copy-status{min-height:18px}.device-dialog-inner,.diagnostic-detail-inner{padding:18px}.device-detail-grid dl div,.device-detail-secondary dl div{grid-template-columns:1fr;gap:2px}.device-detail-grid dd,.device-detail-secondary dd{text-align:left}.diagnostic-technical-details dl{grid-template-columns:1fr}.github-link-form{grid-template-columns:1fr}.github-link-form button{width:100%}}
@@ -4691,10 +4852,9 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 @media(max-height:760px){.device-dialog-inner{max-height:calc(100vh - 32px);overflow:auto}.device-dialog-header{position:sticky;top:-1px;z-index:2;padding-bottom:10px;background:var(--surface)}}
 .overview-page{padding-top:30px}.overview-heading{align-items:flex-end;margin-bottom:20px}.overview-period-form{margin:0}.overview-period-form select{min-width:154px}.overview-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:14px}.overview-kpi{display:flex;min-height:112px;flex-direction:column;justify-content:space-between;padding:15px 16px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:inherit;text-decoration:none;transition:border-color .15s ease,transform .15s ease}.overview-kpi:hover{border-color:color-mix(in srgb,var(--sky) 52%,var(--border));transform:translateY(-1px)}.overview-kpi span{color:var(--secondary);font-size:12px;font-weight:700}.overview-kpi strong{display:block;margin-top:8px;font-family:var(--font-brand);font-size:30px;line-height:1;font-variant-numeric:tabular-nums}.overview-kpi small{margin-top:8px;color:var(--secondary);font-size:11px;line-height:1.35}.overview-kpi-attention strong{color:var(--danger)}.overview-kpi-pending{background:var(--surface-muted)}.overview-kpi-pending strong{color:var(--secondary)}.overview-panel{margin-top:12px;padding:18px 20px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}.overview-panel .section-heading{margin-bottom:10px}.overview-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}.overview-columns .overview-panel{min-width:0}.overview-empty-state{margin:0;padding:12px 0;color:var(--secondary);font-weight:650}.overview-attention-list,.overview-activity-list,.overview-reason-list{list-style:none;margin:0;padding:0}.overview-attention-item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:10px;padding:10px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-attention-item:first-child{border-top:0;padding-top:3px}.overview-attention-dot{font-size:13px;line-height:1.5;color:var(--danger)}.overview-attention-provider .overview-attention-dot{color:var(--warning,var(--stone))}.overview-attention-item div{display:grid;gap:2px;min-width:0}.overview-attention-item a{color:var(--graphite);text-decoration:none}.overview-attention-item a:hover{text-decoration:underline;text-underline-offset:3px}.overview-attention-item strong{font-size:14px}.overview-attention-item span{color:var(--secondary);font-size:12px;overflow:hidden;text-overflow:ellipsis}.overview-attention-item small{color:var(--secondary);font-size:11px}.overview-detail-link,.section-link{color:var(--interactive);font-size:12px;font-weight:700;white-space:nowrap;text-decoration:none}.overview-detail-link:hover,.section-link:hover{text-decoration:underline;text-underline-offset:3px}.overview-activity-item{display:grid;grid-template-columns:126px minmax(0,1fr) max-content;align-items:center;gap:10px;padding:8px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-activity-item:first-child{border-top:0;padding-top:3px}.overview-activity-item time{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-activity-item a{display:grid;min-width:0;color:inherit;text-decoration:none}.overview-activity-item a:hover .overview-activity-label{text-decoration:underline;text-underline-offset:3px}.overview-activity-label{font-size:13px;font-weight:750}.overview-activity-item a span:not(.overview-activity-label){overflow:hidden;text-overflow:ellipsis;color:var(--secondary);font-size:12px;white-space:nowrap}.overview-activity-item a small{color:var(--danger);font-size:11px}.overview-activity-provider{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-activity-failed .overview-activity-label,.overview-activity-not-started .overview-activity-label{color:var(--danger)}.overview-reason-list{display:grid;gap:11px}.overview-reason-list li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center}.overview-reason-list li>span:first-child{font-size:13px}.overview-reason-list strong{font-variant-numeric:tabular-nums}.overview-bar{grid-column:1/-1;height:7px;overflow:hidden;border-radius:999px;background:var(--surface-muted)}.overview-bar i{display:block;height:100%;border-radius:inherit;background:var(--interactive)}.overview-chart-note,.overview-semantic-note{margin:12px 0 0;color:var(--secondary);font-size:11px}.overview-provider-summary{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.overview-provider-summary strong{margin-right:3px;font-variant-numeric:tabular-nums}.overview-provider-summary a{display:inline-flex;gap:5px;align-items:center;padding:5px 8px;border:1px solid var(--border);border-radius:999px;color:var(--graphite);font-size:12px;text-decoration:none}.overview-provider-summary a:hover{border-color:var(--sky);color:var(--interactive)}.overview-provider-summary a span{color:var(--secondary);font-size:11px}.overview-semantic-note{max-width:780px;margin-top:14px}.admin-section-nav{flex-wrap:wrap}
 .quick-filter-group{display:flex;align-items:center;gap:4px;flex:0 0 auto;flex-wrap:wrap}.quick-filter{min-height:var(--admin-control-height);padding:8px 10px;border:1px solid transparent;border-radius:var(--admin-control-radius);background:transparent;color:var(--secondary);font-weight:650}.quick-filter:hover{border-color:var(--border);color:var(--interactive)}.quick-filter.active{border-color:color-mix(in srgb,var(--sky) 45%,var(--border));background:var(--surface);color:var(--interactive);box-shadow:0 1px 1px rgba(34,42,43,.05)}
-.map-statistics-popularity-shell{margin-top:24px}.map-statistics-popularity-shell>.section-heading{margin-bottom:14px}.map-statistics-popularity-shell>.map-statistics-provider-table{margin-top:0}.map-statistics-popularity-shell>.map-statistics-coverage-layout{margin-top:12px}.map-statistics-coverage-layout{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:12px;margin-top:20px}.map-statistics-coverage-layout>.provider-card{min-width:0;margin-top:0}.map-statistics-popularity-list{min-width:0}.table-secondary{display:block;margin-top:3px;color:var(--secondary);font-size:11px;font-weight:500}.map-statistics-popularity-list table th:nth-child(1){width:40%}.map-statistics-popularity-list table th:nth-child(2){width:26%}.map-statistics-popularity-list table th:nth-child(3){width:14%}.map-statistics-popularity-list table th:nth-child(4){width:20%}
+.map-statistics-coverage-layout{display:grid;grid-template-columns:minmax(0,3fr) minmax(280px,1fr);gap:12px;margin-top:20px}.map-statistics-coverage-layout>.provider-card{min-width:0;margin-top:0}.map-statistics-popularity{grid-template-columns:minmax(0,1fr)}.map-statistics-popularity .provider-card{margin-top:0}.table-secondary{display:block;margin-top:3px;color:var(--secondary);font-size:11px;font-weight:500}
 .map-statistics-world-map{position:relative;min-height:300px;padding:8px 0 0;overflow:hidden;border:1px solid var(--border);border-radius:10px;background:var(--surface-muted)}.world-map-svg{width:100%;padding:0 8px}.world-map-svg svg{display:block;width:100%;height:auto;overflow:visible}.world-map-country{stroke:color-mix(in srgb,var(--interactive) 42%,var(--border));stroke-width:.65;vector-effect:non-scaling-stroke;cursor:help;outline:none;transition:filter .12s ease,stroke-width .12s ease}.world-map-country:hover,.world-map-country:focus{filter:brightness(.86);stroke:var(--interactive);stroke-width:1.5}.world-map-tooltip{position:absolute;z-index:2;top:12px;right:12px;min-width:170px;max-width:240px;padding:10px 12px;border:1px solid color-mix(in srgb,var(--interactive) 28%,var(--border));border-radius:9px;background:color-mix(in srgb,var(--surface) 94%,transparent);box-shadow:0 8px 24px rgba(34,42,43,.14);font-size:12px;pointer-events:none}.world-map-tooltip strong,.world-map-tooltip-total,.world-map-tooltip-empty{display:block}.world-map-tooltip-total{margin-top:2px;color:var(--secondary)}.world-map-tooltip-empty{margin-top:5px;color:var(--secondary);font-style:italic}.world-map-provider-line{display:flex;justify-content:space-between;gap:16px;margin-top:7px;padding-top:6px;border-top:1px solid var(--border)}.world-map-provider-line+ .world-map-provider-line{margin-top:5px;padding-top:5px}.world-map-provider-line span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.world-map-provider-line strong{font-variant-numeric:tabular-nums}.world-map-legend{display:flex;align-items:center;gap:8px;margin:8px 2px 0;color:var(--secondary);font-size:11px;font-variant-numeric:tabular-nums}.world-map-legend-gradient{display:block;flex:1;height:8px;border-radius:99px;background:linear-gradient(90deg,var(--surface),hsl(198 25% 49%));border:1px solid var(--border)}.world-map-note{margin:8px 2px 0}.map-statistics-world-map-card .section-heading{align-items:flex-start}.map-statistics-world-map-card .section-heading .table-help{padding-top:3px;text-align:right}
-.overview-columns{grid-template-columns:minmax(0,2fr) minmax(280px,1fr)}.overview-chart-wrap{overflow-x:auto}.overview-trend-chart{display:block;width:100%;min-width:520px;height:auto;min-height:180px}.overview-trend-chart text{fill:var(--secondary);font:500 11px var(--font-ui)}.overview-chart-success{fill:var(--interactive);background:var(--interactive)}.overview-chart-failed{fill:var(--danger);background:var(--danger)}.overview-chart-custom{fill:var(--status-success-text);background:var(--status-success-text)}.overview-chart-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:7px;color:var(--secondary);font-size:11px}.overview-chart-note{font-size:12px;color:var(--secondary);margin:10px 0 0}.overview-chart-legend span{display:inline-flex;align-items:center;gap:5px}.overview-chart-legend i{display:inline-block;width:9px;height:9px;border-radius:2px}.overview-info{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border:1px solid var(--border);border-radius:50%;color:var(--secondary);font-size:11px;font-weight:750;cursor:help}.overview-compatibility-summary{margin-top:12px}.overview-compatibility-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.overview-compatibility-grid div{padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-muted)}.overview-compatibility-grid span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.overview-compatibility-grid strong{display:block;margin-top:5px;font:700 20px var(--font-brand);font-variant-numeric:tabular-nums}.provider-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}.map-statistics-provider-table{display:block}.provider-empty-disclosure{padding:16px 20px}.provider-empty-disclosure>details>summary{list-style:none}.provider-empty-disclosure>details>summary::-webkit-details-marker{display:none}.diagnostic-failure-summary{margin:14px 0 0;padding:11px 13px;border-left:3px solid var(--danger);border-radius:6px;background:var(--error-surface);color:var(--danger);font-size:13px}.diagnostic-failure-summary strong{font-weight:750}.model-statistics article>.info-control{display:inline-flex;margin-top:6px;vertical-align:middle}.history-more-filters{min-width:130px}.history-more-filters .disclosure-body{min-width:170px}.map-statistics-popularity .popularity-all-maps-disclosure{margin-top:12px}.map-statistics-popularity .popularity-regions-disclosure{margin-top:12px}
-.map-statistics-popularity-list .popularity-all-maps-disclosure{margin-top:12px}.map-statistics-popularity-list .popularity-regions-disclosure{margin-top:12px}
+.overview-columns{grid-template-columns:minmax(0,2fr) minmax(280px,1fr)}.overview-chart-wrap{overflow-x:auto}.overview-trend-chart{display:block;width:100%;min-width:520px;height:auto;min-height:180px}.overview-trend-chart text{fill:var(--secondary);font:500 11px var(--font-ui)}.overview-chart-success{fill:var(--interactive);background:var(--interactive)}.overview-chart-failed{fill:var(--danger);background:var(--danger)}.overview-chart-custom{fill:var(--status-success-text);background:var(--status-success-text)}.overview-chart-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:7px;color:var(--secondary);font-size:11px}.overview-chart-note{font-size:12px;color:var(--secondary);margin:10px 0 0}.overview-chart-legend span{display:inline-flex;align-items:center;gap:5px}.overview-chart-legend i{display:inline-block;width:9px;height:9px;border-radius:2px}.overview-info{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border:1px solid var(--border);border-radius:50%;color:var(--secondary);font-size:11px;font-weight:750;cursor:help}.overview-compatibility-summary{margin-top:12px}.overview-compatibility-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.overview-compatibility-grid div{padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-muted)}.overview-compatibility-grid span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.overview-compatibility-grid strong{display:block;margin-top:5px;font:700 20px var(--font-brand);font-variant-numeric:tabular-nums}.provider-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}.map-statistics-provider-table{display:block}.map-statistics-linkage>summary{padding:0;color:var(--interactive);font-size:13px;font-weight:750;list-style:none}.map-statistics-linkage>summary::-webkit-details-marker{display:none}.map-statistics-linkage>summary:before{content:'›';display:inline-block;width:16px;transition:transform .15s ease}.map-statistics-linkage[open]>summary:before{transform:rotate(90deg)}.provider-empty-disclosure{padding:16px 20px}.provider-empty-disclosure>details>summary{list-style:none}.provider-empty-disclosure>details>summary::-webkit-details-marker{display:none}.diagnostic-failure-summary{margin:14px 0 0;padding:11px 13px;border-left:3px solid var(--danger);border-radius:6px;background:var(--error-surface);color:var(--danger);font-size:13px}.diagnostic-failure-summary strong{font-weight:750}.model-statistics article>.info-control{display:inline-flex;margin-top:6px;vertical-align:middle}.history-more-filters{min-width:130px}.history-more-filters .disclosure-body{min-width:170px}.map-statistics-popularity .popularity-all-maps-disclosure{margin-top:12px}.map-statistics-popularity .popularity-regions-disclosure{margin-top:12px}
 @media(max-width:1100px){.overview-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.overview-heading{align-items:flex-start;flex-direction:column;gap:12px}.overview-period-form,.overview-period-form select{width:100%}.overview-columns{grid-template-columns:1fr}.overview-kpi strong{font-size:26px}.overview-activity-item{grid-template-columns:1fr max-content;gap:3px 8px}.overview-activity-item time{grid-column:1/-1}.overview-activity-provider{grid-column:2;grid-row:2}.overview-activity-item a{grid-column:1;grid-row:2}}
 @media(max-width:560px){.overview-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.overview-panel{padding:16px}.overview-attention-item{grid-template-columns:auto minmax(0,1fr)}.overview-detail-link{grid-column:2}.overview-kpi{min-height:100px;padding:13px}.overview-kpi strong{font-size:24px}}
@@ -4762,8 +4922,8 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
 .overview-attention-empty h2,.overview-provider-panel h2{font-family:var(--font-ui);font-size:var(--admin-type-subsection-size);line-height:var(--admin-type-subsection-line);letter-spacing:0}
 .overview-attention-empty .section-kicker,.overview-provider-panel .section-kicker{margin-bottom:1px}
 .overview-attention-empty .overview-empty-state{padding:0;font-size:var(--admin-type-helper-size);line-height:var(--admin-type-helper-line);font-weight:500}
-.overview-provider-panel{display:grid;grid-template-columns:minmax(150px,max-content) minmax(0,1fr) max-content;align-items:center;gap:18px;min-height:76px;padding:12px 16px}
-.overview-provider-panel>div:first-child,.overview-provider-panel .overview-provider-summary,.overview-provider-panel>.section-link{align-self:center}.overview-provider-panel .overview-provider-summary{justify-content:flex-start;min-width:0;align-items:center}.overview-provider-panel .overview-provider-summary>strong{flex:0 0 auto;white-space:nowrap;line-height:1.35}.overview-provider-panel .overview-provider-summary a{flex:0 0 auto;align-items:center;white-space:nowrap}
+.overview-provider-panel{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:18px;min-height:76px;padding:12px 16px}
+.overview-provider-panel .overview-provider-summary{justify-content:flex-start}
 .device-information-section .model-information-list{max-width:780px}
 .device-information-section .model-information-list div{grid-template-columns:150px minmax(0,1fr);gap:16px}
 .device-information-section .model-information-list dd{text-align:left}
@@ -4834,11 +4994,9 @@ h1,h2,h3,h4,.administration-grid h3,.overview-kpi strong,.admin-kpi-grid article
 .diagnostic-action-form button[type='submit']:hover{background:var(--interactive-hover)}
 .diagnostic-action-form button.secondary-button,.model-administration button.secondary-button{background:var(--surface);color:var(--interactive);border:1px solid var(--border)}
 .timestamp-metric strong{font-size:var(--admin-type-subsection-size)!important;line-height:var(--admin-type-subsection-line)!important}
-.overview-secondary-grid{align-items:start}.overview-primary-grid{align-items:stretch}
+.overview-secondary-grid,.overview-primary-grid{align-items:start}
 .overview-compatibility-summary>summary,.model-administration>summary,.device-information-section>summary{margin-bottom:12px}
 .model-administration,.device-information-section{padding:16px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
-.model-page-section,.model-technical-details{box-sizing:border-box;margin-top:16px;padding:16px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}.model-administration>summary,.device-information-section>summary{margin-bottom:0}.model-administration[open]>summary,.device-information-section[open]>summary{margin-bottom:12px}
-.model-information-list dt,.model-information-list dd{min-width:0;overflow-wrap:anywhere;word-break:break-word}.model-technical-details .model-information-list dd{text-align:left}
 .attention-shortcuts{display:flex;flex-wrap:wrap;gap:8px 18px;margin:12px 0 20px;font-size:13px}
 .attention-shortcuts a{color:var(--interactive);text-underline-offset:3px}
 .attention-shortcuts strong{margin-left:4px}
@@ -4949,6 +5107,49 @@ h1,h2,h3,h4,.administration-grid h3,.overview-kpi strong,.admin-kpi-grid article
   .diagnostic-detail-inner>.device-dialog-header,.device-dialog-inner>.device-dialog-header{position:sticky;top:-24px;z-index:2;background:var(--surface);padding:12px 0}
 }
 
+
+/* Admin audit: consistent page hierarchy, disclosures and connected diagnostics. */
+main.dashboard{padding-top:30px}
+main.dashboard>.heading-row{align-items:flex-start}
+main.dashboard>.heading-row .eyebrow{margin:0 0 8px}
+main.dashboard>.heading-row h1{margin:0}
+main.dashboard>.heading-row .lede{margin:12px 0 0}
+.admin-disclosure:not(.filter-disclosure)>summary{position:relative;list-style:none;padding-left:18px;min-height:24px;line-height:24px}
+.admin-disclosure:not(.filter-disclosure)>summary::-webkit-details-marker{display:none}
+.admin-disclosure:not(.filter-disclosure)>summary::before{content:'›';position:absolute;left:0;top:0;width:12px;text-align:center;transform:none}
+.admin-disclosure[open]:not(.filter-disclosure)>summary::before{transform:rotate(90deg)}
+.system-health-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+.system-health-card{min-height:0;padding:16px 18px}
+.system-health-card>summary{display:flex;align-items:center;justify-content:space-between;gap:16px;color:var(--graphite)}
+.system-health-card>summary h2{margin:0;font-size:16px;line-height:24px}
+.system-health-card .section-link{display:inline-block;margin:8px 12px 0 0;white-space:normal}
+.model-information-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,3fr);gap:16px;align-items:start;margin-top:16px}
+.model-information-columns>details{margin:0;padding:16px;min-width:0}
+.model-information-columns .model-information-list{max-width:none;margin-top:14px}
+.model-information-columns .model-information-list div{padding:10px 12px;gap:4px 16px;grid-template-columns:minmax(100px,1fr) minmax(0,3fr)}
+.model-information-columns .device-information-section .model-information-list div{grid-template-columns:1fr}
+.model-information-columns .model-information-list dt,.model-information-columns .model-information-list dd{min-width:0;text-align:left;overflow-wrap:anywhere}
+.world-map-controls{display:flex;align-items:center;gap:8px;padding:4px 10px 10px}
+.world-map-controls button{min-height:36px;min-width:36px;padding:6px 10px;border-radius:var(--admin-control-radius);background:var(--surface);color:var(--interactive);border:1px solid var(--border)}
+.world-map-controls span{font-size:12px;color:var(--secondary)}
+.world-map-svg{touch-action:none;cursor:grab;overflow:hidden}
+.world-map-svg:active{cursor:grabbing}
+.world-map-svg:focus-visible{outline:2px solid var(--admin-focus-ring);outline-offset:-2px}
+.world-map-svg svg{fill:var(--surface)}
+.world-map-svg svg path{vector-effect:non-scaling-stroke}
+.world-map-country.is-region-highlight{fill:var(--interactive)!important;stroke:var(--graphite);stroke-width:2}
+.region-map-link{display:inline;padding:0;border:0;border-radius:0;background:none;color:var(--interactive);text-align:left;text-decoration:underline;text-underline-offset:3px;white-space:normal;font:inherit;cursor:pointer}
+.region-map-link:hover{background:none;color:var(--graphite)}
+.map-statistics-coverage-layout{align-items:start;grid-template-columns:minmax(0,3fr) minmax(360px,2fr)}
+.system-health-card[open]{grid-column:1/-1}
+.test-data-card caption{text-align:left;padding:12px;font-size:13px;font-weight:650}
+.telemetry-scope-note{margin:0 0 16px;color:var(--secondary);font-size:12px}.telemetry-scope-note a{color:var(--interactive)}
+[id]{scroll-margin-top:calc(var(--admin-topbar-height,100px) + 16px)}
+@media(min-width:1001px){.map-statistics-world-map-card{position:sticky;top:calc(var(--admin-topbar-height,100px) + 16px)}}
+@media(max-width:1000px){.map-statistics-coverage-layout{grid-template-columns:1fr}}
+.world-map-tooltip{top:64px}
+@media(max-width:900px){.model-information-columns{grid-template-columns:1fr}.model-information-columns .device-information-section .model-information-list div{grid-template-columns:minmax(100px,1fr) minmax(0,3fr)}}
+@media(max-width:700px){main.dashboard{padding-top:20px}.system-health-grid{grid-template-columns:1fr}.model-information-columns .model-information-list div{grid-template-columns:1fr}.system-health-card>summary{gap:8px}}
 """
 
 
@@ -4966,7 +5167,7 @@ def _layout(title: str, content: str) -> bytes:
         stable_content = re.sub(r'("generatedAt"\s*:\s*)"[^"]*"', r'\1""', content)
         revision = hashlib.sha256(stable_content.encode()).hexdigest()
         content = re.sub(r'(<main\b)', rf'\1 data-admin-revision="{revision}"', content, count=1)
-        content += f"<script>{_admin_freshness_script()}{_admin_mobile_script()}{_admin_filter_clear_script()}</script>"
+        content += f"<script>{_admin_freshness_script()}{_admin_mobile_script()}{_admin_filter_clear_script()}{_admin_disclosure_script()}</script>"
     content = content.replace(
         "<script>", f"<script nonce=\"{_ADMIN_NONCE_PLACEHOLDER}\">"
     )
@@ -4976,6 +5177,27 @@ def _layout(title: str, content: str) -> bytes:
         "<script>", f"<script nonce=\"{_ADMIN_NONCE_PLACEHOLDER}\">"
     )
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>{html.escape(title)} · Terento</title><style>{ADMIN_STYLES}</style></head><body>{content}</body></html>""".encode("utf-8")
+
+
+def _admin_disclosure_script() -> str:
+    return r"""(() => {
+      const reveal = () => {
+        let id;
+        try { id = decodeURIComponent(location.hash.slice(1)); } catch { return; }
+        if (!id) return;
+        const target = document.getElementById(id);
+        if (!target) return;
+        let node = target;
+        while (node) { if (node.tagName === 'DETAILS') node.open = true; node = node.parentElement; }
+        target.scrollIntoView({block:'start'});
+      };
+      window.addEventListener('hashchange', reveal);
+      document.addEventListener('click', (event) => {
+        const anchor = event.target.closest('a[href^="#"]');
+        if (anchor && anchor.hash === location.hash) reveal();
+      });
+      reveal();
+    })();"""
 
 
 def _admin_mobile_script() -> str:

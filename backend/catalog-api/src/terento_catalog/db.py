@@ -863,6 +863,7 @@ class Database:
                         AS operation_key,
                     e.operation_id,
                     min(e.provider) AS provider_id,
+                    CASE WHEN count(DISTINCT e.region) = 1 THEN min(e.region) END AS region,
                     max(e.occurred_at) AS occurred_at
                 FROM compatibility_evidence_event AS e
                 WHERE e.is_local_test IS NOT TRUE
@@ -931,9 +932,9 @@ class Database:
                     c.provider_id,
                     p.name AS provider_name,
                     NULL AS map_package_id,
-                    p.name AS map_package_name,
-                    p.name AS display_name,
-                    NULL AS region,
+                    c.region AS map_package_name,
+                    COALESCE(c.region, 'Multiple map regions') AS display_name,
+                    c.region AS region,
                     'INSTALL_SUCCEEDED' AS event_type,
                     'SUCCEEDED' AS outcome,
                     NULL AS app_build,
@@ -2069,7 +2070,8 @@ class Database:
                 latest_run.error_code AS last_collection_error_code,
                 latest_run.error_detail AS last_collection_error_detail,
                 latest_success.finished_at AS last_collection_success_at,
-                latest_success.latest_release,
+                COALESCE(pc.newest_package_release, latest_success.latest_release) AS latest_release,
+                pc.package_releases,
                 latest_change.finished_at AS latest_release_detected_at,
                 COALESCE(pc.active_package_count, 0) AS active_package_count,
                 COALESCE(pc.broken_package_count, 0) AS broken_package_count,
@@ -2107,6 +2109,10 @@ class Database:
             ) AS latest_change ON TRUE
             LEFT JOIN LATERAL (
                 SELECT
+                    max(mp.release) FILTER (WHERE mp.availability <> 'RETIRED') AS newest_package_release,
+                    array_agg(DISTINCT mp.release ORDER BY mp.release) FILTER (
+                        WHERE mp.availability <> 'RETIRED' AND mp.release IS NOT NULL
+                    ) AS package_releases,
                     count(DISTINCT mp.id) FILTER (WHERE mp.availability = 'AVAILABLE')
                         AS active_package_count,
                     count(DISTINCT mp.id) FILTER (
@@ -2439,12 +2445,30 @@ class Database:
                 ) local_operations
                 """
             ).fetchone() or {}
+            activity = list(connection.execute(
+                """
+                SELECT stream, release_label, outcome, count(*) AS event_count,
+                       max(occurred_at) AS last_occurred_at
+                FROM (
+                    SELECT 'Compatibility' AS stream, release_label,
+                           phase_outcome AS outcome, occurred_at
+                    FROM compatibility_evidence_event WHERE is_local_test IS TRUE
+                    UNION ALL
+                    SELECT 'Map usage' AS stream, release_label, outcome, occurred_at
+                    FROM map_download_event WHERE is_local_test IS TRUE
+                ) local_activity
+                GROUP BY stream, release_label, outcome
+                ORDER BY last_occurred_at DESC, stream, release_label, outcome
+                LIMIT 50
+                """
+            ).fetchall())
         labels = sorted(set(diagnostics.get("labels") or []) | set(maps.get("labels") or []))
         return {
             "diagnosticEventCount": int(diagnostics.get("event_count") or 0),
             "mapEventCount": int(maps.get("event_count") or 0),
             "operationCount": int(operations.get("operation_count") or 0),
             "releaseLabels": labels,
+            "activity": activity,
         }
 
     def purge_local_test_telemetry(
@@ -2573,17 +2597,13 @@ class Database:
         clauses, values = self._map_statistics_filter(filters)
         compatibility_clauses, compatibility_values = self._compatibility_map_statistics_filter(filters)
         query = f"""
-            WITH compatibility_fallback AS (
+            WITH complete_compatibility_operations AS (
                 SELECT
                     COALESCE(e.operation_id::text, 'compatibility:' || e.event_id::text)
                         AS operation_key,
-                    e.operation_id,
-                    min(e.provider) AS provider_id,
-                    min(e.region) AS region,
-                    min(e.occurred_at) AS first_occurred_at,
-                    max(e.occurred_at) AS last_occurred_at
+                    e.operation_id
                 FROM compatibility_evidence_event AS e
-                WHERE {' AND '.join(compatibility_clauses)}
+                WHERE e.is_local_test IS NOT TRUE
                 GROUP BY
                     COALESCE(e.operation_id::text, 'compatibility:' || e.event_id::text),
                     e.operation_id,
@@ -2600,6 +2620,18 @@ class Database:
                       AND installed.is_local_test IS NOT TRUE
                       AND installed.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
                 )
+            ), compatibility_fallback AS (
+                -- Validate the complete operation before applying region/date
+                -- filters. Preserve each provider/region rather than min(region).
+                SELECT c.operation_key, e.provider AS provider_id, e.region,
+                       min(e.occurred_at) AS first_occurred_at,
+                       max(e.occurred_at) AS last_occurred_at
+                FROM complete_compatibility_operations AS c
+                JOIN compatibility_evidence_event AS e
+                  ON COALESCE(e.operation_id::text, 'compatibility:' || e.event_id::text)
+                     = c.operation_key
+                WHERE {' AND '.join(compatibility_clauses)}
+                GROUP BY c.operation_key, e.provider, e.region
             ), event_rows AS (
                 SELECT
                     COALESCE(e.operation_id::text, e.event_id::text) AS operation_key,
