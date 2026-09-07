@@ -736,3 +736,34 @@ binaries and is returned with `Cache-Control: no-store`.
 Provider summaries expose `packageReleases` and the newest non-retired package release; individual regions retain their own release. Healthy system cards collapse by default and link to collection history and packages. Installation coverage normalizes provider country aliases, supports zoom/pan and region highlighting, and explicitly reports unmapped installations. Compatibility fallback validates the complete operation before filtering and preserves each provider/region. Local test activity remains isolated by `is_local_test=true` and is visible only in Test data; public beta events remain in user statistics. The local release-label guard requires Debug labels ending in `-local` and rejects those labels for public Release builds. No native application artifact is released by this API deployment.
 
 Post-deploy verification caught missing form bindings in the preserved Clear handlers. These handlers now resolve their own form directly so provider actions, map rendering and diagnostic controls initialize reliably.
+
+## Admin refinement — local, 2026-09-07
+
+Overview includes integer quantity ticks and up to 20 exact local event timestamps per series/bucket. Collection snapshot transactions retain changed map releases and regions in provider history from this version forward; previous per-map changes cannot be reconstructed from old summary-only runs. Healthy disclosure summaries use centered CSS chevrons; device information columns are 1:1. Health checks use aligned label/status rows. Map diagnostics stay collapsed, popularity explicitly says Top 5, and country geometry uses local Natural Earth 50m data.
+
+CI selects test-file suites by their scope; packaging selects app/release and relevant native tests, not unrelated site tests. Live native catalog validation remains required for public catalog/read-model/configuration changes, while admin-only rendering changes skip it. Unknown paths still select all suites.
+
+On 2026-09-07 the owner-authorized root console on rukas was used to set
+`OPENTOPO_MAP_CONTOUR_MODE=public` in the shared API/scheduler environment and
+recreate both containers with their existing images. Both processes report
+public and API health passes. The existing image collects main only; contour
+publication remains pending deployment of this collector and migration 036.
+
+The collector independently inspects optional official contour sources using
+bounded HTTP ranges (8 MiB total, 4 MiB per request), exact root IMG path,
+Garmin/provider/region header identity, stable strong ETag and Last-Modified.
+Unreachable or invalid optional sources are omitted without failing main.
+Shared Canada sources are inspected once and attached to both regions.
+Independent HTTP dates and metadata-derived source proofs are retained; revision
+is not a payload checksum. Legacy beta.9 URL/size fields always describe main,
+including when database rows arrive contours first. No map binaries are stored,
+mirrored or served. No native Install/Remove code is changed. No application
+release, website announcement or issue closure is included.
+
+Local candidate evidence: 270 backend tests PASS; bounded live source collection
+retains 177 main packages and 157 validated contour attachments; the combined
+candidate plus current FZK metadata passes 24 beta.9 provider-neutral tests.
+Optional artifact `version` is the independent HTTP source year/month for the
+legacy decoder; `sourceProof.revision` remains the actual metadata identity,
+not a main-map release or payload checksum. PostgreSQL integration is required
+in CI before deployment. This candidate is not yet published.

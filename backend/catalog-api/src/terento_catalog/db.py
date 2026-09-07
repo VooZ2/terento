@@ -983,7 +983,10 @@ class Database:
                         WHERE event_type = 'INSTALL_FAILED'
                           AND outcome = 'FAILED'
                     ) AS failed_count,
-                    count(*) FILTER (WHERE event_type = 'CUSTOM_SUCCEEDED') AS custom_count
+                    count(*) FILTER (WHERE event_type = 'CUSTOM_SUCCEEDED') AS custom_count,
+                    (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type = 'INSTALL_SUCCEEDED' AND outcome = 'SUCCEEDED'))[1:20] AS success_times,
+                    (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type = 'INSTALL_FAILED' AND outcome = 'FAILED'))[1:20] AS failed_times,
+                    (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type = 'CUSTOM_SUCCEEDED'))[1:20] AS custom_times
                 FROM localized_events
                 GROUP BY {bucket_expression}
                 ORDER BY bucket
@@ -1482,7 +1485,10 @@ class Database:
                 artifact.checksum_sha256 AS artifact_checksum_sha256,
                 artifact.content_type AS artifact_content_type,
                 artifact.required AS artifact_required,
-                artifact.validation_status AS artifact_validation_status
+                artifact.validation_status AS artifact_validation_status,
+                artifact.source_updated_at AS artifact_source_updated_at,
+                artifact.install_payload_path AS artifact_install_payload_path,
+                artifact.source_proof AS artifact_source_proof
             FROM map_provider AS p
             LEFT JOIN map_package AS package ON package.provider_id = p.id
                 AND package.availability <> 'RETIRED'
@@ -1946,6 +1952,24 @@ class Database:
         definition = snapshot.definition
         self.ensure_provider_definition(definition)
         with self.connection() as connection:
+            previous_packages = {
+                row['id']: row for row in connection.execute(
+                    "SELECT id, release, source_updated_at FROM map_package WHERE provider_id = %s",
+                    (definition.id,),
+                ).fetchall()
+            }
+            changes = []
+            for package in snapshot.packages:
+                before = previous_packages.get(package.id)
+                if before and (before.get('release') != package.release or before.get('source_updated_at') != package.source_updated_at):
+                    changes.append({'packageId': package.id, 'region': package.region,
+                                    'previousRelease': before.get('release'), 'release': package.release,
+                                    'sourceUpdatedAt': package.source_updated_at.isoformat() if package.source_updated_at else None})
+            if changes:
+                self._insert_admin_audit(connection, admin_user_id=None,
+                    action='CATALOG_RELEASES_UPDATED', provider_id=definition.id,
+                    reason=f"{len(changes)} map releases changed during catalog collection",
+                    details={'collectedAt': snapshot.collected_at.isoformat(), 'packages': changes})
             connection.execute(
                 """
                 UPDATE map_provider
@@ -1992,8 +2016,8 @@ class Database:
                             id, package_id, kind, source_url, size_bytes,
                             install_size_bytes, checksum_sha256, content_type,
                             required, validation_status, install_payload_path,
-                            source_updated_at, updated_at
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
+                            source_updated_at, source_proof, updated_at
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, now())
                         ON CONFLICT (id) DO UPDATE SET
                             package_id = EXCLUDED.package_id,
                             kind = EXCLUDED.kind,
@@ -2006,6 +2030,7 @@ class Database:
                             validation_status = EXCLUDED.validation_status,
                             install_payload_path = EXCLUDED.install_payload_path,
                             source_updated_at = EXCLUDED.source_updated_at,
+                            source_proof = EXCLUDED.source_proof,
                             updated_at = now()
                         """,
                         (
@@ -2014,6 +2039,7 @@ class Database:
                             artifact.checksum_sha256, artifact.content_type,
                             artifact.required, artifact.validation_status,
                             artifact.install_payload_path, artifact.source_updated_at,
+                            json.dumps(artifact.source_proof) if artifact.source_proof else None,
                         ),
                     )
                     connection.execute(
@@ -2160,6 +2186,11 @@ class Database:
                 """
                 SELECT mp.id, mp.name, mp.region, mp.release, mp.availability,
                        count(ma.id) AS artifact_count,
+                       COALESCE(jsonb_agg(jsonb_build_object(
+                           'kind', ma.kind, 'source_url', ma.source_url,
+                           'size_bytes', ma.size_bytes, 'install_size_bytes', ma.install_size_bytes,
+                           'validation_status', ma.validation_status, 'source_updated_at', ma.source_updated_at
+                       ) ORDER BY ma.kind) FILTER (WHERE ma.id IS NOT NULL), '[]'::jsonb) AS artifacts,
                        count(ma.id) FILTER (WHERE ma.kind = 'main')
                            AS main_artifact_count,
                        count(ma.id) FILTER (WHERE ma.validation_status IN ('FAILED', 'UNAVAILABLE'))

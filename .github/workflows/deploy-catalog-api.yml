@@ -23,6 +23,30 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  catalog-contract-scope:
+    runs-on: ubuntu-latest
+    outputs:
+      required: ${{ steps.scope.outputs.required }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: scope
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          EVENT_NAME: ${{ github.event_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" != push ] || ! git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+            echo 'required=true' >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "$BEFORE_SHA" HEAD | grep -Eq '^(contracts/|backend/catalog-api/src/terento_catalog/(catalog\.py|db\.py|http_api\.py|config\.py|provider_catalog\.py|contour_source\.py|collect\.py|collectors/|migrations/)|Packaging/validate-live-map-catalog\.sh|app/TerentoCore/)'; then
+            echo 'required=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'required=false' >> "$GITHUB_OUTPUT"
+          fi
+
   tests:
     name: Backend regression suite
     uses: ./.github/workflows/reusable-catalog-api-quality.yml
@@ -118,7 +142,8 @@ jobs:
 
   verify-release-client-contract:
     name: Verify deployed catalog with release client
-    needs: deploy
+    needs: [deploy, catalog-contract-scope]
+    if: needs.catalog-contract-scope.outputs.required == 'true'
     runs-on: macos-15
     steps:
       - name: Check out source
