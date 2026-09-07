@@ -83,6 +83,32 @@ class AdminAuditTests(unittest.TestCase):
             self.assertNotIn("form?.addEventListener('terento-admin-clear-filters'", script)
             self.assertNotIn("filterForm?.addEventListener('terento-admin-clear-filters'", script)
 
+    def test_chart_shows_integer_axis_and_exact_event_time(self):
+        from terento_catalog.admin import _overview_trend_chart
+        markup = _overview_trend_chart([{'bucket':'2026-09-07T16:00:00Z','success_count':1,'success_times':['2026-09-07 19:43']}], 'hour', 'Europe/Vilnius')
+        self.assertIn('2026-09-07 19:43', markup)
+        self.assertIn("text-anchor='end'>1</text>", markup)
+        self.assertIn("text-anchor='end'>0</text>", markup)
+
+    def test_collection_changes_have_readable_regions_and_escape_values(self):
+        from terento_catalog.admin import _provider_audit_row
+        markup = _provider_audit_row({'action':'CATALOG_RELEASES_UPDATED','details':{'packages':[{'region':'<unsafe>','previousRelease':'2026-05','release':'2026-08'}]}})
+        self.assertIn('&lt;unsafe&gt;: 2026-05 → 2026-08', markup)
+        self.assertNotIn('<unsafe>', markup)
+
+    def test_natural_earth_svg_has_unique_country_ids_and_no_external_resources(self):
+        import xml.etree.ElementTree as ET
+        from terento_catalog.admin_world_map import WORLD_MAP_SVG
+        root = ET.fromstring(WORLD_MAP_SVG)
+        paths = root.findall('{http://www.w3.org/2000/svg}path')
+        ids = [node.attrib['id'] for node in paths]
+        self.assertEqual(len(ids),len(set(ids)))
+        self.assertGreater(len(ids),220)
+        self.assertIn('si',ids)
+        self.assertIn('pl',ids)
+        self.assertNotIn('<script',WORLD_MAP_SVG)
+        self.assertNotIn('href=',WORLD_MAP_SVG)
+
     def test_disclosure_navigation_script_syntax(self):
         result=subprocess.run([os.environ.get('TERENTO_NODE_BIN','node'),'--check'],input=_admin_disclosure_script(),capture_output=True,text=True)
         self.assertEqual(result.returncode,0,result.stderr)

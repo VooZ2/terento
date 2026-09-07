@@ -303,7 +303,7 @@ class CatalogService:
         if provider_id == "freizeitkarte":
             adapter = FreizeitkarteProviderAdapter()
         elif provider_id == "opentopomap":
-            adapter = OpenTopoMapProviderAdapter()
+            adapter = OpenTopoMapProviderAdapter(contour_mode=self.opentopomap_contour_mode)
         else:  # pragma: no cover - guarded by the known registry
             raise LookupError("provider_adapter_not_found")
         try:

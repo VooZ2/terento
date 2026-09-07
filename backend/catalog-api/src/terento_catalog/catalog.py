@@ -252,6 +252,15 @@ def _build_provider_neutral_catalog(
                     row.get("artifact_validation_status") or "NOT_VALIDATED"
                 ),
             }
+            if row.get("artifact_source_proof"):
+                artifact["sourceProof"] = row["artifact_source_proof"]
+                artifact["sourceUpdatedAt"] = _format_optional_date(row.get("artifact_source_updated_at"))
+                artifact["installPayloadPath"] = row.get("artifact_install_payload_path")
+                source_date = row.get("artifact_source_updated_at")
+                if source_date is not None:
+                    # Legacy clients require a calendar value for optional artifacts.
+                    # This is the contour HTTP source month, never the main release.
+                    artifact["version"] = {"year": source_date.year, "month": source_date.month}
             if not any(item["id"] == artifact["id"] for item in package["artifacts"]):
                 package["artifacts"].append(artifact)
 
@@ -260,6 +269,12 @@ def _build_provider_neutral_catalog(
         for package in provider["maps"]:
             package["artifacts"].sort(key=lambda item: (item["kind"] != "main", item["id"]))
             if any(item["kind"] == "main" for item in package["artifacts"]):
+                main = next(item for item in package["artifacts"] if item["kind"] == "main")
+                # Legacy beta.9 fields must always describe main, regardless of SQL row order.
+                package.update(sourceURL=main["sourceURL"], sourceUrl=main["sourceUrl"],
+                               sizeBytes=main["downloadSizeBytes"], downloadSizeBytes=main["downloadSizeBytes"],
+                               installSizeBytes=main["installSizeBytes"],
+                               capabilities=[item["kind"] for item in package["artifacts"]])
                 valid_packages.append(package)
             else:
                 package.pop("artifacts", None)

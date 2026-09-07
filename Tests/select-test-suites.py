@@ -18,14 +18,30 @@ def select_suites(paths: list[str]) -> list[str]:
     selected = {"shared", "ci"}
     for raw_path in paths:
         path = PurePosixPath(raw_path.strip().replace("\\", "/"))
-        text = path.as_posix().lstrip("./")
+        text = path.as_posix().removeprefix("./")
         if not text:
             continue
 
-        if text.startswith(("Tests/", ".github/", "contracts/")):
+        if text.startswith("Tests/"):
+            stem = path.name.removeprefix("run-")
+            if stem.startswith(("ci-", "select-test-suites")):
+                selected.add("ci")
+                continue
+            suite = next((item for item in ALL_SUITES if stem.startswith(item + "-")), None)
+            if suite:
+                selected.add(suite)
+                continue
+            return list(ALL_SUITES)
+        if text in {".github/workflows/deploy-catalog-api.yml", ".github/workflows/reusable-catalog-api-quality.yml"}:
+            selected.add("backend")
+            continue
+        if text.startswith((".github/", "contracts/")):
             return list(ALL_SUITES)
         if text.startswith("Packaging/"):
-            return list(ALL_SUITES)
+            selected.update(("app", "release"))
+            if path.name not in {"verify-release-label.sh", "README.md"}:
+                selected.add("native")
+            continue
         if text.startswith("backend/catalog-api/"):
             selected.add("backend")
             if path.name in {
@@ -53,6 +69,9 @@ def select_suites(paths: list[str]) -> list[str]:
                 selected.update(("site", "release"))
             else:
                 return list(ALL_SUITES)
+            continue
+        if text == "app/TerentoCore/Tests/run-release-map-catalog-contract-gate-tests.sh":
+            selected.add("release")
             continue
         if text.startswith("app/TerentoCore/"):
             selected.update(("app", "native"))
