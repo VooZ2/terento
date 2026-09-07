@@ -1838,8 +1838,8 @@ def _provider_package_row(package: dict[str, Any]) -> str:
     if artifact_details:
         artifact_details = f"<details class='admin-disclosure' style='text-align:left;overflow-wrap:anywhere'><summary>Artifact details</summary>{artifact_details}</details>"
     return (
-        f"<tr class='{row_class.strip()}' data-package-search='{html.escape(search, quote=True)}' data-package-broken='{str(bool(broken_count)).lower()}'><td><span class='provider-package-name'>{html.escape(package_name)}</span><code class='provider-package-id'>{html.escape(package_id)}</code>{f'<small>{html.escape(region)}</small>' if region and region.casefold() != package_name.casefold() else ''}</td>"
-        f"<td>{html.escape(str(package.get('release') or '—'))}</td><td class='numeric'>{int(package.get('artifact_count') or 0)}{artifact_details}</td>"
+        f"<tr class='{row_class.strip()}' data-package-search='{html.escape(search, quote=True)}' data-package-broken='{str(bool(broken_count)).lower()}'><td><span class='provider-package-name'>{html.escape(package_name)}</span><code class='provider-package-id'>{html.escape(package_id)}</code>{f'<small>{html.escape(region)}</small>' if region and region.casefold() != package_name.casefold() else ''}{artifact_details}</td>"
+        f"<td>{html.escape(str(package.get('release') or '—'))}</td><td class='numeric'>{int(package.get('artifact_count') or 0)}</td>"
         f"<td>{broken_markup}{f' <small>{broken_count} broken</small>' if broken_count else ''}</td></tr>"
     )
 
@@ -2346,6 +2346,12 @@ def _map_statistics_script() -> str:
       Object.entries(countryAliases).forEach(([key, code]) => {
         if (key.length > 3 && !countryNames[code]) countryNames[code] = humanize(key.toLowerCase());
       });
+      if (typeof Intl.DisplayNames === 'function') {
+        const regionNames = new Intl.DisplayNames(['en'], {type: 'region'});
+        Object.values(countryAliases).forEach((code) => {
+          countryNames[code] = regionNames.of(code.toUpperCase()) || countryNames[code];
+        });
+      }
       const normalizeCountryToken = (value) => String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '').toUpperCase();
       const countryCode = (row) => {
         const candidates = [row.region_country, row.canonical_region_id, row.region_identity, row.region, row.region_display_name];
@@ -5125,7 +5131,7 @@ h1,h2,h3,h4,.administration-grid h3,.overview-kpi strong,.admin-kpi-grid article
   .provider-history-wrap th:nth-child(5){width:10%}.provider-history-wrap th:nth-child(6){width:10%}
   .provider-history-wrap th:nth-child(7){width:24%}
   .provider-source-table th:nth-child(1){width:14%}.provider-source-table th:nth-child(2){width:50%}.provider-source-table th:nth-child(3){width:12%}.provider-source-table th:nth-child(4){width:24%}
-  .provider-package-table th:nth-child(1){width:55%}.provider-package-table th:nth-child(2){width:20%}.provider-package-table th:nth-child(3){width:10%}.provider-package-table th:nth-child(4){width:15%}
+  .provider-package-table{min-width:640px!important}.provider-package-table th:nth-child(1){width:49%}.provider-package-table th:nth-child(2){width:18%}.provider-package-table th:nth-child(3){width:16%}.provider-package-table th:nth-child(4){width:17%}.provider-package-table td{vertical-align:top}.provider-package-table details{margin-top:8px;font-weight:400}
   .provider-run-table th:nth-child(1){width:6%}.provider-run-table th:nth-child(2),.provider-run-table th:nth-child(3){width:16%}.provider-run-table th:nth-child(4){width:12%}.provider-run-table th:nth-child(5),.provider-run-table th:nth-child(6){width:10%}.provider-run-table th:nth-child(7){width:30%}
   .provider-component{white-space:normal;flex-wrap:wrap}.provider-component-list{min-width:0}
   .provider-component .provider-status{white-space:normal;line-height:1.3}

@@ -737,7 +737,7 @@ Provider summaries expose `packageReleases` and the newest non-retired package r
 
 Post-deploy verification caught missing form bindings in the preserved Clear handlers. These handlers now resolve their own form directly so provider actions, map rendering and diagnostic controls initialize reliably.
 
-## Admin refinement — local, 2026-09-07
+## Admin refinement and contour activation — 2026-09-07
 
 Overview includes integer quantity ticks and up to 20 exact local event timestamps per series/bucket. Collection snapshot transactions retain changed map releases and regions in provider history from this version forward; previous per-map changes cannot be reconstructed from old summary-only runs. Healthy disclosure summaries use centered CSS chevrons; device information columns are 1:1. Health checks use aligned label/status rows. Map diagnostics stay collapsed, popularity explicitly says Top 5, and country geometry uses local Natural Earth 50m data.
 
@@ -746,8 +746,9 @@ CI selects test-file suites by their scope; packaging selects app/release and re
 On 2026-09-07 the owner-authorized root console on rukas was used to set
 `OPENTOPO_MAP_CONTOUR_MODE=public` in the shared API/scheduler environment and
 recreate both containers with their existing images. Both processes report
-public and API health passes. The existing image collects main only; contour
-publication remains pending deployment of this collector and migration 036.
+public and API health passes. Deployment `c352a6177fe730f608d516ab0d9f571ee379688e` applied the collector
+and migration 036. Production collection run 13 succeeded with 177 main packages
+and 157 validated contour attachments from 156 sources (334 artifacts).
 
 The collector independently inspects optional official contour sources using
 bounded HTTP ranges (8 MiB total, 4 MiB per request), exact root IMG path,
@@ -765,9 +766,17 @@ retains 177 main packages and 157 validated contour attachments; the combined
 candidate plus current FZK metadata passes 24 beta.9 provider-neutral tests.
 Optional artifact `version` is the independent HTTP source year/month for the
 legacy decoder; `sourceProof.revision` remains the actual metadata identity,
-not a main-map release or payload checksum. PostgreSQL integration is required
-in CI before deployment. This candidate is not yet published.
+not a main-map release or payload checksum. PostgreSQL integration passed in CI, including source-proof round trips,
+Overview queries and exclusion of optional contours from provider availability
+probes. The published catalog passed the same 24 beta.9 checks. Main URL,
+download size, install size and version fields match the pre-deployment catalog.
 
 Provider-wide availability probes sample active required main artifacts only.
 Optional contour failure cannot mark the whole provider unavailable; contour
 validation remains attached to the independently collected optional artifact.
+
+Artifact details are disclosed under the wide region/package column, with
+readable header widths and top-aligned cells; the count column remains numeric.
+
+Map accessibility labels use standard country display names rather than
+normalized alias tokens, preserving spaces and accented country names.
