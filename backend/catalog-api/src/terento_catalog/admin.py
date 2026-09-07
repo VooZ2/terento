@@ -778,8 +778,9 @@ def _overview_model_activity_item(item: dict[str, Any]) -> str:
     status = "Needs review" if open_errors else ("Historical failures" if failed else "Active")
     status_class = "failed" if failed or open_errors else "succeeded"
     device_id = str(item.get("canonical_device_model_id") or "").strip()
+    detail_state = "open" if open_errors else "resolved-errors" if failed else None
     href = (
-        _device_detail_url(device_id, origin="installations", state="open", anchor="installations")
+        _device_detail_url(device_id, origin="installations", state=detail_state, anchor="installations")
         if device_id else _diagnostics_url(item)
     )
     result = f"{successful} successful · {failed} failed" if successful or failed else f"{operation_count} operation{'s' if operation_count != 1 else ''}"
