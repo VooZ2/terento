@@ -2201,7 +2201,7 @@ def map_statistics_page(
         <section class='map-statistics-coverage-layout' id='map-statistics-coverage' {'hidden' if not has_event_data else ''} aria-label='Installation coverage'><section class='provider-card map-statistics-world-map-card' aria-labelledby='map-statistics-world-map-title'><div class='section-heading'><div><p class='section-kicker'>Coverage</p><h2 id='map-statistics-world-map-title'>Installations by country</h2></div><p class='table-help' id='map-statistics-world-map-status'>Successful map-package installs</p></div><div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map showing successful map-package installations by country'><div class='world-map-controls' role='group' aria-label='Map navigation'><button type='button' data-map-zoom='in' aria-label='Zoom in'>+</button><button type='button' data-map-zoom='out' aria-label='Zoom out'>−</button><button type='button' data-map-zoom='reset'>Reset map</button><span id='world-map-zoom-status' role='status'>100%</span></div><div class='world-map-svg' id='world-map-svg' tabindex='0' aria-label='Map viewport. Use arrow keys to pan, plus and minus to zoom, or drag the map.'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div><p class='table-help world-map-note'>Hover or focus a country for totals. Zoom with + / −, drag or use arrow keys to pan. Region links highlight the corresponding country, not the exact map coverage. Unmapped installs remain in the totals.</p></section><section class='provider-card map-statistics-popularity' id='map-statistics-popularity'><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Popular maps</h2></div></div><div class='popularity-subsection'><h3>Top 5 maps</h3><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Popular maps</caption><thead><tr><th scope='col'>Map / region</th><th scope='col'>Provider</th><th scope='col'>Package installs</th><th scope='col'>Last activity</th></tr></thead><tbody id='map-rows'></tbody></table></div><details class='admin-disclosure popularity-all-maps-disclosure'><summary id='all-maps-summary'>Browse all maps</summary><div class='disclosure-body'><label>Search maps<input type='search' id='all-maps-search' placeholder='Map, region or provider'></label><div class='table-wrap'><table class='admin-table'><thead><tr><th>Map / region</th><th>Provider</th><th>Installs</th><th>Last activity</th></tr></thead><tbody id='all-map-rows'></tbody></table></div><div class='provider-pagination'><button type='button' id='all-maps-prev'>Previous</button><span id='all-maps-page' role='status'></span><button type='button' id='all-maps-next'>Next</button></div></div></details></div><details class='admin-disclosure popularity-regions-disclosure'><summary>Regions</summary><div class='disclosure-body'><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Top regions</caption><thead><tr><th scope='col'>Region</th><th scope='col' title='Completed map-package installs'>Installs</th><th scope='col'>Last activity</th></tr></thead><tbody id='top-region-rows'></tbody></table></div></div></details></section></section>
         <section class='provider-card map-events-card' {'hidden' if not has_event_data else ''}><details class='admin-disclosure' id='map-statistics-event-detail'><summary id='map-statistics-event-summary'>Event detail · {event_status}</summary><div class='disclosure-body' id='map-statistics-event-body'>{event_table}</div></details></section>
       </main>
-      <script>window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};window.terentoWorldMapSvg = {_admin_json(WORLD_MAP_SVG)};window.terentoWorldMapCountryAliases = {_admin_json(WORLD_MAP_COUNTRY_ALIASES)};{_map_statistics_script()}</script>
+      <link rel="stylesheet" href="/admin/map-assets/leaflet-1.9.4.css"><link rel="stylesheet" href="/admin/map-assets/coverage-map-v1.css"><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/leaflet-1.9.4.js"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/coverage-map-v1.js"></script><script>window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};window.terentoWorldMapSvg = {_admin_json(WORLD_MAP_SVG)};window.terentoWorldMapCountryAliases = {_admin_json(WORLD_MAP_COUNTRY_ALIASES)};{_map_statistics_script()}</script>
     """
     return _layout("Map statistics", content)
 
@@ -2395,104 +2395,22 @@ def _map_statistics_script() -> str:
         worldMapTooltip.innerHTML = `<strong>${escapeHtml(label)}</strong><span class="world-map-tooltip-total">${item?.count || 0} completed install${item?.count === 1 ? '' : 's'}</span>${providersMarkup || '<span class="world-map-tooltip-empty">No recorded installs</span>'}`;
         worldMapTooltip.hidden = false;
       };
-      let mapView = null;
-      let baseView = null;
-      let coverageByCountry = {};
-      const applyMapView = () => {
-        const svg = worldMapSvg?.querySelector('svg');
-        if (!svg || !mapView) return;
-        svg.setAttribute('viewBox', mapView.join(' '));
-        const zoom = baseView[2] / mapView[2];
-        const label = document.querySelector('#world-map-zoom-status');
-        if (label) label.textContent = `${Math.round(zoom * 100)}%`;
-        document.querySelectorAll('[data-map-zoom]').forEach((button) => {
-          button.disabled = button.dataset.mapZoom === 'in' ? zoom >= 16 : button.dataset.mapZoom === 'out' ? zoom <= 1 : false;
-        });
-      };
-      const zoomMap = (action) => {
-        if (!baseView) return;
-        if (action === 'reset') { mapView = [...baseView]; window.getSelection()?.removeAllRanges(); highlightCountry(null); }
-        else {
-          const zoom = Math.max(1, Math.min(16, baseView[2] / mapView[2] * (action === 'in' ? 1.6 : 1 / 1.6)));
-          const width = baseView[2] / zoom, height = baseView[3] / zoom;
-          mapView = [mapView[0] + (mapView[2] - width) / 2, mapView[1] + (mapView[3] - height) / 2, width, height];
-        }
-        applyMapView();
-      };
-      document.querySelectorAll('[data-map-zoom]').forEach((button) => button.addEventListener('click', () => zoomMap(button.dataset.mapZoom)));
-      worldMapSvg?.addEventListener('keydown', (event) => {
-        if (!mapView) return;
-        if (event.key === '+' || event.key === '=') { event.preventDefault(); zoomMap('in'); }
-        else if (event.key === '-') { event.preventDefault(); zoomMap('out'); }
-        else if (event.key === 'Home') { event.preventDefault(); zoomMap('reset'); }
-        else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
-          event.preventDefault();
-          mapView[0] += (event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0) * mapView[2] * .15;
-          mapView[1] += (event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0) * mapView[3] * .15;
-          applyMapView();
-        }
-      });
-      let drag = null;
-      worldMapSvg?.addEventListener('pointerdown', (event) => {
-        if (!mapView || event.button !== 0) return;
-        event.preventDefault();
-        window.getSelection()?.removeAllRanges();
-        worldMapSvg.focus({preventScroll:true});
-        drag = {x:event.clientX, y:event.clientY, view:[...mapView]};
-        worldMapSvg.setPointerCapture(event.pointerId);
-      });
-      worldMapSvg?.addEventListener('pointermove', (event) => {
-        if (!drag) return;
-        const rect = worldMapSvg.querySelector('svg').getBoundingClientRect();
-        mapView = [drag.view[0] - (event.clientX - drag.x) * drag.view[2] / rect.width, drag.view[1] - (event.clientY - drag.y) * drag.view[3] / rect.height, drag.view[2], drag.view[3]];
-        applyMapView();
-      });
-      ['pointerup','pointercancel','lostpointercapture'].forEach((name) => worldMapSvg?.addEventListener(name, () => { drag = null; }));
-      const highlightCountry = (code, focus = false) => {
-        worldMapSvg?.querySelectorAll('.is-region-highlight').forEach((path) => path.classList.remove('is-region-highlight'));
-        const path = /^[a-z]{2}$/.test(code || '') ? worldMapSvg?.querySelector(`[id="${code}"]`) : null;
-        if (!path) { if (worldMapTooltip) worldMapTooltip.hidden = true; return; }
-        path.classList.add('is-region-highlight');
-        showWorldMapTooltip(coverageByCountry[code], code);
-        if (focus && baseView) {
-          const box = path.getBBox();
-          const width = Math.min(baseView[2], Math.max(baseView[2] / 12, box.width * 1.8, box.height * 1.8 * baseView[2] / baseView[3]));
-          const height = width * baseView[3] / baseView[2];
-          mapView = [box.x + box.width / 2 - width / 2, box.y + box.height / 2 - height / 2, width, height];
-          applyMapView();
-        }
-      };
+      let coverageMap = null;
+      const highlightCountry = (code, focus = false) => coverageMap?.highlight(code, focus);
+      document.querySelectorAll('[data-map-zoom]').forEach(button => button.addEventListener('click', () => coverageMap?.zoom(button.dataset.mapZoom)));
       const renderWorldMap = (installRows) => {
         if (!worldMapSvg) return;
-        worldMapSvg.innerHTML = window.terentoWorldMapSvg || '';
-        const svg = worldMapSvg.querySelector('svg');
-        if (!svg) return;
-        baseView = svg.getAttribute('viewBox').split(/\s+/).map(Number);
-        mapView ||= [...baseView];
-        applyMapView();
-        const drawableCodes = new Set([...worldMapSvg.querySelectorAll('[id]')].map((path) => path.id));
+        if (!coverageMap) coverageMap = new window.TerentoCoverageMap(worldMapSvg, {
+          svg: window.terentoWorldMapSvg, names: countryNames,
+          onCountry: (item, code) => { if (code) showWorldMapTooltip(item, code); else if (worldMapTooltip) worldMapTooltip.hidden = true; },
+          onZoom: (zoom, initial) => { document.querySelector('#world-map-zoom-status').textContent = `${Math.round(Math.pow(2, zoom - initial) * 100)}%`; }
+        });
+        const drawableCodes = coverageMap.codes;
         const items = countryCoverage(installRows).filter((item) => drawableCodes.has(item.code));
         const unmapped = installRows.filter((row) => !drawableCodes.has(countryCode(row))).reduce((total, row) => total + operations(row), 0);
         const byCountry = Object.fromEntries(items.map((item) => [item.code, item]));
         const maximum = Math.max(0, ...items.map((item) => item.count));
-        coverageByCountry = byCountry;
-        const regions = [...worldMapSvg.querySelectorAll('[id]')];
-        regions.forEach((path) => {
-          const code = String(path.getAttribute('id') || '').toLowerCase();
-          if (!/^[a-z]{2}$/.test(code)) return;
-          const item = byCountry[code];
-          const intensity = maximum && item ? Math.pow(item.count / maximum, 0.58) : 0;
-          const lightness = 97 - (intensity * 48);
-          path.classList.add('world-map-country');
-          path.style.fill = item && maximum ? `hsl(198 25% ${lightness}%)` : 'var(--surface)';
-          path.setAttribute('tabindex', '0');
-          path.setAttribute('role', 'img');
-          path.setAttribute('aria-label', `${countryNames[code] || code.toUpperCase()}: ${item?.count || 0} completed install${item?.count === 1 ? '' : 's'}`);
-          path.addEventListener('mouseenter', () => showWorldMapTooltip(item, code));
-          path.addEventListener('focus', () => showWorldMapTooltip(item, code));
-          path.addEventListener('mouseleave', () => { if (worldMapTooltip) worldMapTooltip.hidden = true; });
-          path.addEventListener('blur', () => { if (worldMapTooltip) worldMapTooltip.hidden = true; });
-        });
+        coverageMap.update(items);
         if (worldMapStatus) worldMapStatus.textContent = maximum ? `${items.length} ${items.length === 1 ? 'country' : 'countries'} · ${items.reduce((total, item) => total + item.count, 0)} mapped install${items.reduce((total, item) => total + item.count, 0) === 1 ? '' : 's'}${unmapped ? ` · ${unmapped} unmapped install${unmapped === 1 ? '' : 's'}` : ''}` : unmapped ? `${unmapped} installs without drawable country coverage` : 'No completed installs in this period';
         if (worldMapLegendMax) worldMapLegendMax.textContent = maximum ? String(maximum) : 'Most';
         if (worldMap) worldMap.dataset.countryCount = String(items.length);
@@ -5191,10 +5109,10 @@ main.dashboard>.heading-row .lede{margin:12px 0 0}
 .world-map-controls{display:flex;align-items:center;gap:8px;padding:4px 10px 10px}
 .world-map-controls button{min-height:36px;min-width:36px;padding:6px 10px;border-radius:var(--admin-control-radius);background:var(--surface);color:var(--interactive);border:1px solid var(--border)}
 .world-map-controls span{font-size:12px;color:var(--secondary)}
-.world-map-svg{touch-action:none;cursor:grab;overflow:hidden;user-select:none;-webkit-user-select:none}.world-map-svg *{user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
+.world-map-svg{height:420px;min-height:300px;touch-action:none;cursor:grab;overflow:hidden;user-select:none;-webkit-user-select:none}.world-map-svg *{user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
 .world-map-svg:active{cursor:grabbing}
 .world-map-svg:focus-visible{outline:2px solid var(--admin-focus-ring);outline-offset:-2px}
-.world-map-svg svg{fill:var(--surface)}
+.world-map-svg svg{fill:var(--surface)}.world-map-svg.leaflet-container{padding:0;background:var(--surface-muted);font-family:var(--font-ui)}.world-map-svg .leaflet-control-attribution{font-size:10px;background:var(--surface);color:var(--secondary)}
 .world-map-svg svg path{vector-effect:non-scaling-stroke}
 .world-map-country.is-region-highlight{fill:var(--interactive)!important;stroke:var(--graphite);stroke-width:2}
 .region-map-link{display:inline;padding:0;border:0;border-radius:0;background:none;color:var(--interactive);text-align:left;text-decoration:underline;text-underline-offset:3px;white-space:normal;font:inherit;cursor:pointer}

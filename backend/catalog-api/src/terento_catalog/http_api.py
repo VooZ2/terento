@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 import logging
 import hmac
 import re
@@ -941,6 +942,17 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if not csrf_token or not service.csrf_valid(session, csrf_token):
                 service.logout_admin(session_token)
                 self._redirect("/admin/login", send_body=send_body, clear_cookie=True)
+                return
+            map_assets = {"leaflet-1.9.4.js": "text/javascript", "leaflet-1.9.4.css": "text/css", "coverage-map-v1.js": "text/javascript", "coverage-map-v1.css": "text/css"}
+            asset_name = request_path.removeprefix("/admin/map-assets/")
+            if request_path.startswith("/admin/map-assets/") and asset_name in map_assets:
+                body = (Path(__file__).parent / "static" / "map" / asset_name).read_bytes()
+                self.send_response(HTTPStatus.OK)
+                self._common_headers(content_type=map_assets[asset_name], content_length=len(body), cache_control="private, max-age=86400")
+                self.send_header("X-Robots-Tag", "noindex, nofollow")
+                self.end_headers()
+                if send_body:
+                    self.wfile.write(body)
                 return
             if request_path in {"/admin/providers.json", "/admin/providers.json/"}:
                 try:
@@ -1936,7 +1948,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             script_policy = f"script-src 'nonce-{nonce}'" if nonce else "script-src 'none'"
             self.send_header(
                 "Content-Security-Policy",
-                f"default-src 'none'; {script_policy}; connect-src 'self'; style-src 'unsafe-inline' https://terento.app; font-src https://terento.app; img-src https://terento.app https://api.terento.app https://res.garmin.com data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+                f"default-src 'none'; {script_policy}; connect-src 'self'; style-src 'self' 'unsafe-inline' https://terento.app; font-src https://terento.app; img-src https://terento.app https://api.terento.app https://res.garmin.com data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
             )
             self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 

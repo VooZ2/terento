@@ -131,3 +131,11 @@ libraries in `Terento.app/Contents/Frameworks`.
 - Source: https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_50m_admin_0_countries.geojson (50m Admin 0 countries; exact input SHA-256 recorded in generated module).
 - License: public domain, https://www.naturalearthdata.com/about/terms-of-use/. Redistribution and modification permitted; no required attribution.
 - Use: local SVG country boundaries in private admin statistics, replacing the stylized map. No runtime dependency or tile service. Reproduction: backend/catalog-api/tools/build_admin_world_map.py.
+
+## Leaflet 1.9.4
+
+- Upstream: https://github.com/Leaflet/Leaflet/tree/v1.9.4
+- License: BSD-2-Clause; redistribution and modification permitted with copyright, conditions and disclaimer retained.
+- Use: admin country-statistics navigation (pan, zoom, keyboard and SVG overlay), with a reusable presentation component for a future separately approved public statistics page.
+- Bundled files: original minified JS and CSS in `backend/catalog-api/src/terento_catalog/static/map/`; full notice in `LEAFLET-LICENSE.txt` alongside them.
+- No runtime npm dependencies, remote tiles or CDN calls. No native application linking or source-disclosure requirement is introduced by Leaflet.

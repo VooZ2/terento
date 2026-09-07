@@ -1,0 +1,4 @@
+.terento-coverage-map{isolation:isolate;z-index:0;height:420px;min-height:300px;background:var(--surface-muted,#f1eee7);font-family:var(--font-ui,system-ui);user-select:none;-webkit-user-select:none}
+.terento-coverage-map .world-map-country{stroke:var(--border,#b8c4c8);stroke-width:.65;vector-effect:non-scaling-stroke;outline:none;cursor:pointer}
+.terento-coverage-map .world-map-country:hover,.terento-coverage-map .world-map-country:focus,.terento-coverage-map .is-region-highlight{stroke:var(--interactive,#577787);stroke-width:2;filter:brightness(.9)}
+.terento-coverage-map .leaflet-control-attribution{font-size:10px;background:var(--surface,#fff);color:var(--secondary,#6d706f)}
