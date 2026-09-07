@@ -89,7 +89,7 @@ libraries in `Terento.app/Contents/Frameworks`.
 
 ## psycopg
 
-- Version: 3.3.4 (`psycopg[binary]`, as pinned by the backend package)
+- Version: 3.3.5 (`psycopg[binary]`, as pinned by the backend package)
 - Upstream: <https://www.psycopg.org/psycopg3/>
 - License: GNU Lesser General Public License 3.0 or later
 - Use: PostgreSQL connection and migration access for the metadata-only
