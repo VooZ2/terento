@@ -125,3 +125,9 @@ libraries in `Terento.app/Contents/Frameworks`.
   (<https://github.com/python-jsonschema/jsonschema-specifications>), referencing
   (<https://github.com/python-jsonschema/referencing>) and rpds-py
   (<https://github.com/crate-py/rpds>). Their own notices remain applicable.
+
+## Natural Earth country geometry
+
+- Source: https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_50m_admin_0_countries.geojson (50m Admin 0 countries; exact input SHA-256 recorded in generated module).
+- License: public domain, https://www.naturalearthdata.com/about/terms-of-use/. Redistribution and modification permitted; no required attribution.
+- Use: local SVG country boundaries in private admin statistics, replacing the stylized map. No runtime dependency or tile service. Reproduction: backend/catalog-api/tools/build_admin_world_map.py.

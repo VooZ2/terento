@@ -81,7 +81,7 @@ class SchedulerTests(unittest.TestCase):
 
     def test_release_evidence_is_deterministic_and_changes_with_provider_release(self) -> None:
         artifact = SimpleNamespace(
-            id="map-main", source_url="https://provider.example/map.zip",
+            id="map-main", source_url="https://provider.example/map.zip", source_proof=None,
             source_updated_at=datetime(2026, 9, 1, tzinfo=timezone.utc),
         )
         package = SimpleNamespace(
@@ -94,6 +94,9 @@ class SchedulerTests(unittest.TestCase):
         release, fingerprint = snapshot_release_evidence(snapshot)
         self.assertEqual(release, "2026-09")
         self.assertEqual(fingerprint, snapshot_release_evidence(snapshot)[1])
+        artifact.source_proof = {"revision": "new-contour-source"}
+        self.assertNotEqual(fingerprint, snapshot_release_evidence(snapshot)[1])
+        artifact.source_proof = None
         changed_package = SimpleNamespace(**{**vars(package), "release": "2026-10"})
         self.assertNotEqual(
             fingerprint,

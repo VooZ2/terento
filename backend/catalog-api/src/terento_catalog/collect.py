@@ -51,6 +51,7 @@ def snapshot_release_evidence(snapshot: ProviderSnapshot) -> tuple[str, str]:
             "artifacts": [
                 {
                     "id": artifact.id,
+                    "sourceRevision": (artifact.source_proof or {}).get("revision"),
                     "sourceUpdatedAt": artifact.source_updated_at.isoformat()
                     if artifact.source_updated_at else None,
                 }

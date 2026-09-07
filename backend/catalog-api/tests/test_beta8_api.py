@@ -368,12 +368,13 @@ class Beta8APITests(unittest.TestCase):
             ("public", set(), 2),
         ):
             document = build_catalog(
-                rows,
+                list(reversed(rows)),
                 timestamp,
                 contour_mode=mode,
                 contour_allowlist=allowlist,
             )
             self.assertEqual(len(document["providers"][0]["maps"][0]["artifacts"]), expected)
+            self.assertEqual(document["providers"][0]["maps"][0]["sourceURL"], common["artifact_source_url"])
 
     def test_phase3_allowlist_fixture_is_internal_only_and_reviewed(self):
         fixture_path = (

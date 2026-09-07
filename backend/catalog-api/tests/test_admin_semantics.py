@@ -725,7 +725,7 @@ class AdminSemanticsTests(unittest.TestCase):
             "bucket": "2026-09-05T00:00:00Z", "custom_count": 3,
         }], "hour")
         self.assertIn("Custom .img installed: 3", body)
-        self.assertRegex(body, r"class='overview-chart-custom'[^>]*height='220.0'")
+        self.assertRegex(body, r"class='overview-chart-custom'[^>]*height='206.0'")
         self.assertIn("</i>Custom .img</span>", body)
         self.assertIn("Custom .img: successful manual installations.", body)
 
@@ -1594,10 +1594,10 @@ class AdminSemanticsTests(unittest.TestCase):
             "csrf",
         ).decode()
         self.assertIn("Watch event linkage", body)
-        self.assertIn("DATA QUALITY · Watch event linkage", body)
+        self.assertIn("Telemetry diagnostics · event matching", body)
         self.assertIn("id='map-rows'", body)
         self.assertIn("View all maps", body)
-        self.assertIn("<h3>Top maps</h3>", body)
+        self.assertIn("<h3>Top 5 maps</h3>", body)
         self.assertIn("Map install operations</span><strong data-stat='mapInstallationCount'>4", body)
         self.assertIn("Linked watch events</span><strong data-stat='linkedInstallationCount'>3", body)
         self.assertIn("Unlinked installs</span><strong data-stat='mapOnlyInstallationCount'>1", body)

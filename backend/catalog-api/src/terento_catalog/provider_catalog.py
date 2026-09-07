@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from html.parser import HTMLParser
 import re
+import logging
+import os
 import time
 from typing import Any, Protocol
 from urllib.parse import unquote, urljoin, urlparse
@@ -50,6 +52,7 @@ class CatalogArtifact:
     validation_status: str
     install_payload_path: str | None = None
     source_updated_at: datetime | None = None
+    source_proof: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -120,9 +123,7 @@ KNOWN_PROVIDER_DEFINITIONS: dict[str, ProviderDefinition] = {
     item.id: item for item in (FREIZEITKARTE, OPENTOPO_MAP)
 }
 
-# The current product exposes only OpenTopoMap's ready-to-install Garmin main archives.
-# Optional contours remain outside the collection gate until their own
-# validation contract is accepted.
+# Main package membership stays independent of optional contour availability.
 OPENTOPO_MAP_BETA8_MAIN_PACKAGE_COUNT = 177
 
 # The product policy needs a canonical identity for explicit OTM
@@ -235,8 +236,10 @@ class OpenTopoMapProviderAdapter:
         expected_main_package_count: int = OPENTOPO_MAP_BETA8_MAIN_PACKAGE_COUNT,
         max_workers: int = 4,
         measurement_attempts: int = 2,
+        contour_mode: str | None = None,
     ) -> None:
         self.fetcher = fetcher or OpenTopoMapFetcher()
+        self.contour_mode = (contour_mode if contour_mode is not None else os.environ.get("OPENTOPO_MAP_CONTOUR_MODE", "off")).lower()
         self.catalog_url = catalog_url or self.definition.catalog_url
         self.expected_main_package_count = expected_main_package_count
         self.max_workers = max(1, min(max_workers, 4))
@@ -244,11 +247,8 @@ class OpenTopoMapProviderAdapter:
 
     def collect(self) -> ProviderSnapshot:
         html = self.fetcher.fetch_text(self.catalog_url)
-        links = [
-            link
-            for link in parse_opentopomap_catalog(html, self.catalog_url)
-            if link.kind == "main"
-        ]
+        all_links = parse_opentopomap_catalog(html, self.catalog_url)
+        links = [link for link in all_links if link.kind == "main"]
         if len(links) != self.expected_main_package_count:
             raise ProviderCollectionError(
                 "OpenTopoMap main catalog count changed: "
@@ -292,13 +292,42 @@ class OpenTopoMapProviderAdapter:
                 source_updated_at=link.source_updated_at,
             )
 
+        # Optional source inspection is isolated from the main snapshot. Shared
+        # URLs (Canada East/West) are measured once and attached to both packages.
+        if self.contour_mode in {"shadow", "allowlist", "public"}:
+            from .contour_source import inspect_contour
+            contour_links = [link for link in all_links if link.kind == "contours" and link.region in packages_by_region]
+            inspected = {}
+            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                pending = {executor.submit(inspect_contour, url): url for url in dict.fromkeys(link.source_url for link in contour_links)}
+                for future in as_completed(pending):
+                    try:
+                        inspected[pending[future]] = future.result()
+                    except Exception as exc:
+                        logging.getLogger(__name__).warning("Optional contour omitted: %s (%s: %s)", pending[future], type(exc).__name__, str(exc)[:200])
+            for link in contour_links:
+                measurement = inspected.get(link.source_url)
+                if measurement is None:
+                    continue
+                packages_by_region[link.region]["artifacts"]["contours"] = CatalogArtifact(
+                    id=f"opentopomap-{link.provider_region_id}-contours",
+                    kind="contours", source_url=link.source_url,
+                    size_bytes=measurement.download_size_bytes,
+                    install_size_bytes=measurement.install_size_bytes,
+                    checksum_sha256=None, content_type="application/zip",
+                    required=False, validation_status="VALIDATED",
+                    install_payload_path=measurement.payload_path,
+                    source_updated_at=measurement.source_updated_at,
+                    source_proof=measurement.source_proof,
+                )
+
         if not packages_by_region:
             raise ProviderCollectionError("OpenTopoMap catalog has no Garmin ZIP artifacts")
 
         fallback_release = _release_label(html)
         packages = []
         for region, value in sorted(packages_by_region.items()):
-            artifacts = (value["artifacts"]["main"],)
+            artifacts = tuple(value["artifacts"][kind] for kind in ("main", "contours") if kind in value["artifacts"])
             source_updated_at = next(
                 (
                     artifact.source_updated_at
@@ -567,7 +596,7 @@ def _opentopomap_link(
         provider_region_id=provider_region_id,
         kind=kind,
         source_url=source_url,
-        source_updated_at=generated_at,
+        source_updated_at=generated_at if kind == "main" else None,
     )
 
 
