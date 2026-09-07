@@ -358,6 +358,7 @@ class AdminSemanticsTests(unittest.TestCase):
                         "model": "fēnix 8", "variant": "47 mm",
                         "operation_count": 3, "successful_count": 1,
                         "failed_count": 2, "open_error_count": 0,
+                        "canonical_device_model_id": "garmin-fenix-8-47",
                         "last_occurred_at": "2026-09-07T19:43:00+00:00",
                     }],
                     "reviewRequired": [], "recentActivity": [], "failureReasons": [],
@@ -369,6 +370,7 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertIn("1 successful · 2 failed · Historical failures", body)
         self.assertIn("Includes resolved historical outcomes", body)
+        self.assertIn("state=resolved-errors#installations", body)
 
     def test_revision_ignores_render_time_but_detects_new_events(self):
         import re
