@@ -795,10 +795,11 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("date_trunc('day', local_occurred_at)", trend_query)
         self.assertIn("AT TIME ZONE %s", trend_query)
         self.assertNotIn("date_trunc(%s", trend_query)
-        self.assertEqual(trend_parameters, ("UTC", since, "UTC", since, "UTC"))
-        self.assertIn("e.provider = 'custom'", trend_query)
+        self.assertEqual(trend_parameters, (since, "UTC", since, "UTC", "UTC"))
+        self.assertIn("CASE WHEN c.provider_id = 'custom'", trend_query)
         self.assertIn("AS custom_count", trend_query)
         self.assertIn("AND count(*) = max(COALESCE(e.selected_map_count, 1))", trend_query)
+        self.assertIn("NOT EXISTS", trend_query)
 
     def test_installation_authorization_is_separate_from_compatibility_evidence(self):
         source = inspect.getsource(Database.update_device_support_status)
@@ -816,6 +817,8 @@ class AdminSemanticsTests(unittest.TestCase):
             statistics_row={
                 "compatibility_identity": "fēnix 8 Pro · 51 mm",
                 "calculated_status": "TESTED",
+                "successful_install_count": 1,
+                "recognized_map_capable_evidence": True,
             },
         )
         self.assertTrue(database.update_public_compatibility_review(
