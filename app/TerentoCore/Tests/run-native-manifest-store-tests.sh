@@ -14,6 +14,7 @@ swiftc \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapModels.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapArtifactPlanning.swift" \
     "$project_root/Sources/TerentoPoC/Installation/InstallationSafetyModels.swift" \
+    "$project_root/Sources/TerentoPoC/Installation/ManagedFilename.swift" \
     "$project_root/Sources/TerentoPoC/Installation/TerentoManifestStore.swift" \
     "$project_root/Tests/TerentoPoCTests/ManifestStoreConcurrencyTests.swift" \
     -o "$binary_path"
