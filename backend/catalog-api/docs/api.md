@@ -777,3 +777,6 @@ validation remains attached to the independently collected optional artifact.
 
 Artifact details are disclosed under the wide region/package column, with
 readable header widths and top-aligned cells; the count column remains numeric.
+
+Map accessibility labels use standard country display names rather than
+normalized alias tokens, preserving spaces and accented country names.

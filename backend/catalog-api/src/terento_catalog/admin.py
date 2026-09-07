@@ -2346,6 +2346,12 @@ def _map_statistics_script() -> str:
       Object.entries(countryAliases).forEach(([key, code]) => {
         if (key.length > 3 && !countryNames[code]) countryNames[code] = humanize(key.toLowerCase());
       });
+      if (typeof Intl.DisplayNames === 'function') {
+        const regionNames = new Intl.DisplayNames(['en'], {type: 'region'});
+        Object.values(countryAliases).forEach((code) => {
+          countryNames[code] = regionNames.of(code.toUpperCase()) || countryNames[code];
+        });
+      }
       const normalizeCountryToken = (value) => String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '').toUpperCase();
       const countryCode = (row) => {
         const candidates = [row.region_country, row.canonical_region_id, row.region_identity, row.region, row.region_display_name];
