@@ -107,3 +107,17 @@ is provided to CI. Never run two writable production copies. Once any new writer
 runs, including the scheduler, returning to the demo requires a freeze and reverse
 data synchronization; image or DNS rollback does not revert database writes or
 schema migrations.
+
+## Available maps presentation
+
+Home renders two provider cards in all six locales. The left-aligned row is
+capped at 860px (420px cards plus a 20px gap); below 900px it scrolls horizontally.
+OpenTopoMap contour information uses a native, initially closed disclosure.
+Only its optional add-on label and title are shown until expanded. Catalog
+counts retain the existing availability and validation rules; zero validated
+contour packages hide the add-on, and request failure retains static fallback.
+
+Change this content in `scripts/normalize-home-ia.py` and regenerate pages.
+The current stylesheet version is `20260908-provider-width-v5`; the provider
+script version is `20260908-provider-disclosure-v4`. Layout/copy/API fixtures and
+public generator parity are covered by `Tests/run-site-tests.sh`.

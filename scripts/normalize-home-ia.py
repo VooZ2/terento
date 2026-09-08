@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
 FAQ_KEEP = (0, 1, 4, 5, 6)
-PROVIDER_SCRIPT_VERSION = "20260908-home-provider-cards-contours-v1"
+PROVIDER_SCRIPT_VERSION = "20260908-provider-disclosure-v4"
 FEATURE_SCRIPT_VERSION = "20260904-home-workflow-tabs"
 EMAIL_URL = "mailto:hello@terento.app?subject=Terento%20installation%20issue"
 EMAIL_URL_HTML = EMAIL_URL.replace("@", "&#64;")
@@ -227,203 +227,184 @@ PROVIDER_CARD_COPY = {
     "en": {
         "freizeitkarte": {
             "name": "Freizeitkarte",
-            "count_template": "{count} map packages · {countries} countries/regions",
+            "count_template": "{count} map packages",
+            "summary": "For walking, cycling, and everyday navigation.",
             "benefits": [
-                "A balanced map for hiking, cycling, and everyday navigation",
-                "Routing profiles for walkers, cyclists, and drivers",
-                "Integrated contour lines for elevation context",
-                "Detailed points of interest and useful transport information",
-            ],
+                "Routing for walking and cycling",
+                "Contour lines included",
+                "Points of interest, bus stops, and train stations"
+            ]
         },
         "opentopomap": {
             "name": "OpenTopoMap",
-            "count_template": "{count} country map packages",
+            "count_template": "{count} map packages",
+            "summary": "For exploring terrain with a topographic map.",
             "benefits": [
-                "A topographic-first map for reading the terrain",
-                "Hillshade and elevation data for stronger terrain context",
-                "Optional contour lines when you want more detail",
-                "Routing support on Garmin devices",
-            ],
+                "Topographic styling for roads, paths, and terrain",
+                "Elevation data and terrain shading",
+                "Routing capability"
+            ]
         },
-        "opentopomap-contours": {
-            "name": "OpenTopoMap contour lines",
+        "contours": {
             "badge": "Optional add-on",
-            "count_template": "{count} regions · OpenTopoMap add-on",
-            "benefits": [
-                "Add elevation lines to a selected OpenTopoMap region",
-                "Install it together with the main OpenTopoMap map",
-                "See more detail when reading climbs and terrain",
-                "Requires additional storage on your Garmin",
-            ],
+            "name": "Contour lines",
+            "description": "Choose whether to include them when installing an OpenTopoMap region in Terento. The main map works without this add-on.",
+            "count_template": "Available for {count} map packages · Uses additional storage when installed."
         },
+        "previous": "Previous map provider",
+        "next": "Next map provider"
     },
     "de": {
         "freizeitkarte": {
             "name": "Freizeitkarte",
-            "count_template": "{count} Kartenpakete · {countries} Länder/Regionen",
+            "count_template": "{count} Kartenpakete",
+            "summary": "Für Spaziergänge, Radtouren und die tägliche Navigation.",
             "benefits": [
-                "Eine ausgewogene Karte für Wandern, Radfahren und die tägliche Navigation",
-                "Routenprofile für Fußgänger, Radfahrer und Autofahrer",
-                "Integrierte Höhenlinien für den Geländekontext",
-                "Detaillierte Points of Interest und nützliche Verkehrsinformationen",
-            ],
+                "Routenberechnung für Fußgänger und Radfahrer",
+                "Höhenlinien bereits enthalten",
+                "Sehenswürdigkeiten, Bushaltestellen und Bahnhöfe"
+            ]
         },
         "opentopomap": {
             "name": "OpenTopoMap",
-            "count_template": "{count} Länder-Kartenpakete",
+            "count_template": "{count} Kartenpakete",
+            "summary": "Zum Erkunden des Geländes mit einer topografischen Karte.",
             "benefits": [
-                "Eine topografische Karte zum Lesen des Geländes",
-                "Schummerung und Höhendaten für mehr Geländekontext",
-                "Optionale Höhenlinien für zusätzliche Details",
-                "Unterstützung der Routenberechnung auf Garmin-Geräten",
-            ],
+                "Topografische Darstellung von Straßen, Wegen und Gelände",
+                "Höhendaten und Geländeschummerung",
+                "Routenberechnung"
+            ]
         },
-        "opentopomap-contours": {
-            "name": "OpenTopoMap-Höhenlinien",
+        "contours": {
             "badge": "Optionale Erweiterung",
-            "count_template": "{count} Regionen · OpenTopoMap-Erweiterung",
-            "benefits": [
-                "Füge einer ausgewählten OpenTopoMap-Region Höhenlinien hinzu",
-                "Installiere sie zusammen mit der OpenTopoMap-Hauptkarte",
-                "Erkenne Anstiege und Gelände mit mehr Details",
-                "Benötigt zusätzlichen Speicher auf deiner Garmin-Uhr",
-            ],
+            "name": "Höhenlinien",
+            "description": "Wähle beim Installieren einer OpenTopoMap-Region in Terento, ob du sie einschließen möchtest. Die Hauptkarte funktioniert auch ohne diese Erweiterung.",
+            "count_template": "Für {count} Kartenpakete verfügbar · Benötigt bei Installation zusätzlichen Speicher."
         },
+        "previous": "Vorheriger Kartenanbieter",
+        "next": "Nächster Kartenanbieter"
     },
     "fr": {
         "freizeitkarte": {
             "name": "Freizeitkarte",
-            "count_template": "{count} forfaits cartographiques · {countries} pays/régions",
+            "count_template": "{count} paquets de cartes",
+            "summary": "Pour la marche, le vélo et la navigation au quotidien.",
             "benefits": [
-                "Une carte équilibrée pour la randonnée, le vélo et la navigation quotidienne",
-                "Profils de routage pour piétons, cyclistes et conducteurs",
-                "Courbes de niveau intégrées pour mieux lire le relief",
-                "Points d’intérêt détaillés et informations utiles sur les transports",
-            ],
+                "Calcul d’itinéraires à pied et à vélo",
+                "Courbes de niveau incluses",
+                "Points d’intérêt, arrêts de bus et gares"
+            ]
         },
         "opentopomap": {
             "name": "OpenTopoMap",
-            "count_template": "{count} forfaits cartographiques par pays",
+            "count_template": "{count} paquets de cartes",
+            "summary": "Pour explorer le relief avec une carte topographique.",
             "benefits": [
-                "Une carte d’abord topographique pour lire le relief",
-                "Ombrage et données d’altitude pour mieux comprendre le terrain",
-                "Courbes de niveau optionnelles pour plus de détails",
-                "Prise en charge du calcul d’itinéraires sur les appareils Garmin",
-            ],
+                "Représentation topographique des routes, chemins et du terrain",
+                "Données d’altitude et ombrage du relief",
+                "Calcul d’itinéraires"
+            ]
         },
-        "opentopomap-contours": {
-            "name": "Courbes de niveau OpenTopoMap",
+        "contours": {
             "badge": "Complément optionnel",
-            "count_template": "{count} régions · complément OpenTopoMap",
-            "benefits": [
-                "Ajoutez des courbes de niveau à une région OpenTopoMap",
-                "Installez-les avec la carte OpenTopoMap principale",
-                "Visualisez plus de détails sur les montées et le relief",
-                "Nécessite de l’espace supplémentaire sur votre Garmin",
-            ],
+            "name": "Courbes de niveau",
+            "description": "Choisissez de les inclure ou non lors de l’installation d’une région OpenTopoMap dans Terento. La carte principale fonctionne sans ce complément.",
+            "count_template": "Disponible pour {count} paquets de cartes · Utilise de l’espace supplémentaire si installé."
         },
+        "previous": "Fournisseur de cartes précédent",
+        "next": "Fournisseur de cartes suivant"
     },
     "pl": {
         "freizeitkarte": {
             "name": "Freizeitkarte",
-            "count_template": "{count} pakietów map · {countries} krajów/regionów",
+            "count_template": "Pakiety map: {count}",
+            "summary": "Do spacerów, jazdy na rowerze i codziennej nawigacji.",
             "benefits": [
-                "Uniwersalna mapa do pieszych wędrówek, jazdy na rowerze i codziennej nawigacji",
-                "Profile wyznaczania tras dla pieszych, rowerzystów i kierowców",
-                "Wbudowane poziomice ułatwiające ocenę wysokości",
-                "Szczegółowe punkty POI i przydatne informacje o transporcie",
-            ],
+                "Wyznaczanie tras pieszych i rowerowych",
+                "Poziomice zawarte w mapie",
+                "Punkty zainteresowania, przystanki autobusowe i stacje kolejowe"
+            ]
         },
         "opentopomap": {
             "name": "OpenTopoMap",
-            "count_template": "{count} pakietów map poszczególnych krajów",
+            "count_template": "Pakiety map: {count}",
+            "summary": "Do poznawania terenu z mapą topograficzną.",
             "benefits": [
-                "Mapa przede wszystkim topograficzna, ułatwiająca odczyt terenu",
-                "Cieniowanie i dane wysokościowe zapewniają lepszy kontekst terenu",
-                "Opcjonalne poziomice, gdy potrzebujesz większej szczegółowości",
-                "Obsługa wyznaczania tras na urządzeniach Garmin",
-            ],
+                "Topograficzna prezentacja dróg, ścieżek i terenu",
+                "Dane wysokościowe i cieniowanie terenu",
+                "Wyznaczanie tras"
+            ]
         },
-        "opentopomap-contours": {
-            "name": "Poziomice OpenTopoMap",
+        "contours": {
             "badge": "Opcjonalny dodatek",
-            "count_template": "{count} regionów · dodatek OpenTopoMap",
-            "benefits": [
-                "Dodaj poziomice do wybranego regionu OpenTopoMap",
-                "Zainstaluj je razem z główną mapą OpenTopoMap",
-                "Łatwiej odczytuj podejścia i ukształtowanie terenu",
-                "Wymaga dodatkowego miejsca w Garminie",
-            ],
+            "name": "Poziomice",
+            "description": "Podczas instalowania regionu OpenTopoMap w Terento zdecyduj, czy je uwzględnić. Główna mapa działa bez tego dodatku.",
+            "count_template": "Liczba obsługiwanych pakietów map: {count} · Po instalacji zajmuje dodatkowe miejsce."
         },
+        "previous": "Poprzedni dostawca map",
+        "next": "Następny dostawca map"
     },
     "cs": {
         "freizeitkarte": {
             "name": "Freizeitkarte",
-            "count_template": "{count} mapových balíčků · {countries} zemí/oblastí",
+            "count_template": "Mapové balíčky: {count}",
+            "summary": "Pro pěší výlety, cyklistiku a každodenní navigaci.",
             "benefits": [
-                "Vyvážená mapa pro pěší turistiku, cyklistiku a každodenní navigaci",
-                "Profily tras pro pěší, cyklisty a řidiče",
-                "Integrované vrstevnice pro lepší představu o převýšení",
-                "Podrobné body zájmu a užitečné informace o dopravě",
-            ],
+                "Výpočet tras pro pěší a cyklisty",
+                "Vrstevnice jsou součástí mapy",
+                "Body zájmu, autobusové zastávky a vlaková nádraží"
+            ]
         },
         "opentopomap": {
             "name": "OpenTopoMap",
-            "count_template": "{count} mapových balíčků jednotlivých zemí",
+            "count_template": "Mapové balíčky: {count}",
+            "summary": "Pro poznávání terénu s topografickou mapou.",
             "benefits": [
-                "Především topografická mapa pro čtení terénu",
-                "Stínování reliéfu a výšková data pro lepší kontext terénu",
-                "Volitelné vrstevnice, když potřebujete více detailů",
-                "Podpora výpočtu tras na zařízeních Garmin",
-            ],
+                "Topografické zobrazení silnic, cest a terénu",
+                "Výšková data a stínování terénu",
+                "Výpočet tras"
+            ]
         },
-        "opentopomap-contours": {
-            "name": "Vrstevnice OpenTopoMap",
+        "contours": {
             "badge": "Volitelný doplněk",
-            "count_template": "{count} oblastí · doplněk OpenTopoMap",
-            "benefits": [
-                "Přidejte vrstevnice k vybrané oblasti OpenTopoMap",
-                "Instalujte je spolu s hlavní mapou OpenTopoMap",
-                "Získejte více detailů pro stoupání a terén",
-                "Vyžadují další úložiště v zařízení Garmin",
-            ],
+            "name": "Vrstevnice",
+            "description": "Při instalaci oblasti OpenTopoMap v Terento zvolte, zda je chcete zahrnout. Hlavní mapa funguje i bez tohoto doplňku.",
+            "count_template": "Počet podporovaných mapových balíčků: {count} · Po instalaci zabírá další úložiště."
         },
+        "previous": "Předchozí poskytovatel map",
+        "next": "Další poskytovatel map"
     },
     "it": {
         "freizeitkarte": {
             "name": "Freizeitkarte",
-            "count_template": "{count} pacchetti di mappe · {countries} paesi/regioni",
+            "count_template": "{count} pacchetti di mappe",
+            "summary": "Per camminare, andare in bicicletta e orientarsi ogni giorno.",
             "benefits": [
-                "Una mappa equilibrata per escursionismo, ciclismo e navigazione quotidiana",
-                "Profili di percorso per pedoni, ciclisti e automobilisti",
-                "Curve di livello integrate per capire il dislivello",
-                "Punti di interesse dettagliati e informazioni utili sui trasporti",
-            ],
+                "Calcolo dei percorsi a piedi e in bicicletta",
+                "Curve di livello incluse",
+                "Punti di interesse, fermate degli autobus e stazioni ferroviarie"
+            ]
         },
         "opentopomap": {
             "name": "OpenTopoMap",
-            "count_template": "{count} pacchetti di mappe per paese",
+            "count_template": "{count} pacchetti di mappe",
+            "summary": "Per esplorare il terreno con una mappa topografica.",
             "benefits": [
-                "Una mappa pensata prima di tutto per leggere il terreno",
-                "Ombreggiatura e dati altimetrici per un migliore contesto del terreno",
-                "Curve di livello opzionali per avere più dettagli",
-                "Supporto al calcolo dei percorsi sui dispositivi Garmin",
-            ],
+                "Rappresentazione topografica di strade, sentieri e terreno",
+                "Dati altimetrici e ombreggiatura del terreno",
+                "Calcolo dei percorsi"
+            ]
         },
-        "opentopomap-contours": {
-            "name": "Curve di livello OpenTopoMap",
-            "badge": "Aggiunta opzionale",
-            "count_template": "{count} regioni · aggiunta OpenTopoMap",
-            "benefits": [
-                "Aggiungi le curve di livello alla regione OpenTopoMap scelta",
-                "Installale insieme alla mappa OpenTopoMap principale",
-                "Leggi con più dettaglio salite e terreno",
-                "Richiedono spazio aggiuntivo sul Garmin",
-            ],
+        "contours": {
+            "badge": "Componente aggiuntivo opzionale",
+            "name": "Curve di livello",
+            "description": "Scegli se includerle quando installi una regione OpenTopoMap in Terento. La mappa principale funziona anche senza questo componente aggiuntivo.",
+            "count_template": "Disponibile per {count} pacchetti di mappe · Occupa spazio aggiuntivo se installato."
         },
-    },
+        "previous": "Provider di mappe precedente",
+        "next": "Provider di mappe successivo"
+    }
 }
-
 
 def home_path(locale: str) -> Path:
     return ROOT / "site" / ("index.html" if locale == "en" else f"{locale}/index.html")
@@ -604,21 +585,29 @@ def wrap_map_feature_tabs(source: str, copy: dict[str, str], path: Path) -> str:
 
 def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
     cards = []
-    for provider_id in ("freizeitkarte", "opentopomap", "opentopomap-contours"):
+    for provider_id in ("freizeitkarte", "opentopomap"):
         provider = PROVIDER_CARD_COPY[locale][provider_id]
-        benefits = "".join(f"<li>{benefit}</li>" for benefit in provider["benefits"])
-        card_class = "provider-card provider-card--addon" if provider_id == "opentopomap-contours" else "provider-card"
-        badge = f'<p class="provider-card-badge">{provider["badge"]}</p>' if provider_id == "opentopomap-contours" else ""
+        benefits = "".join(f"<li>{html.escape(benefit)}</li>" for benefit in provider["benefits"])
+        addon = ""
+        if provider_id == "opentopomap":
+            contour = PROVIDER_CARD_COPY[locale]["contours"]
+            addon = f'''<details class="provider-addon" data-provider-addon="contours">
+                <summary class="provider-addon-toggle"><span><span class="provider-card-badge">{contour["badge"]}</span> <span class="provider-addon-title">{contour["name"]}</span></span></summary>
+                <p class="provider-addon-copy">{contour["description"]}</p>
+                <p class="provider-addon-count" data-contour-count data-count-template="{contour["count_template"]}">{contour["count_template"].replace("{count}", "157")}</p>
+              </details>'''
         cards.append(
-            f'''<article class="{card_class}" data-provider-card="{provider_id}">
+            f'''<article class="provider-card" data-provider-card="{provider_id}">
               <div class="provider-card-header">
-                <div class="provider-card-title">{badge}<h3>{provider["name"]}</h3></div>
-              <p class="provider-count" data-provider-count data-count-template="{provider["count_template"]}">{provider["count_template"].replace("{count}", "63" if provider_id == "freizeitkarte" else ("177" if provider_id == "opentopomap" else "157")).replace("{countries}", "54")}</p>
+                <h3>{provider["name"]}</h3>
+                <p class="provider-count" data-provider-count data-count-template="{provider["count_template"]}">{provider["count_template"].replace("{count}", "63" if provider_id == "freizeitkarte" else "177")}</p>
               </div>
+              <p class="provider-summary">{provider["summary"]}</p>
               <ul class="provider-benefits">{benefits}</ul>
+              {addon}
             </article>'''
         )
-    return "\n".join(cards)
+    return "\n".join(cards).replace("\n              \n", "\n")
 
 
 def workflow_title_markup(title: str) -> str:
@@ -828,8 +817,12 @@ def normalize_home(source: str, path: Path, locale: str) -> str:
     provider_section = f'''<section class="provider-section section" id="providers" aria-labelledby="providers-title">
         <div class="shell">
           <div class="section-heading provider-intro"><p class="eyebrow">{copy["provider_eyebrow"]}</p><h2 id="providers-title">{copy["provider_title"]}</h2><p class="provider-copy">{copy["provider_copy"]}</p></div>
-          <div class="provider-cards" data-provider-cards aria-label="{copy["provider_list_label"]}">
+          <div class="provider-cards" id="provider-cards" data-provider-cards role="region" tabindex="0" aria-label="{copy["provider_list_label"]}">
             {provider_cards}
+          </div>
+          <div class="provider-controls" data-provider-controls hidden>
+            <button type="button" data-provider-previous aria-controls="provider-cards">{PROVIDER_CARD_COPY[locale]["previous"]}</button>
+            <button type="button" data-provider-next aria-controls="provider-cards">{PROVIDER_CARD_COPY[locale]["next"]}</button>
           </div>
         </div>
       </section>'''
