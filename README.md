@@ -120,7 +120,8 @@ host, mirror, or repackage them.
 
 - Multiple maps from one provider can be installed in one operation;
   mixed-provider batches are not supported.
-- Optional OpenTopoMap contour packages are not supported in the current beta.
+- OpenTopoMap contour lines are an optional add-on. Choose whether to include
+  them when installing a region in Terento; the main map works without them.
 - Compatible local `.img` maps can be imported, but have no automatic provider
   update path.
 - The validated catalog remains visible, but downloads and updates for Russia

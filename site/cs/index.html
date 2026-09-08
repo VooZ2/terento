@@ -2,7 +2,7 @@
 <html lang="cs" data-language="cs">
   <head>
     <script defer src="/site-shell.js?v=20260905-in-page-language-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20260908-home-provider-cards-contours-v1">
+    <link rel="stylesheet" href="/styles.css?v=20260908-provider-width-v5">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -42,7 +42,7 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <script defer src="/language.js?v=20260905-language-selector-full-name-v1"></script>
     <script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script>
-    <script defer src="/provider-list.js?v=20260908-home-provider-cards-contours-v1"></script>
+    <script defer src="/provider-list.js?v=20260908-provider-disclosure-v4"></script>
     <script defer src="/home-features.js?v=20260904-home-workflow-tabs"></script>
     <script defer src="/localized-content.js?v=20260904-pass3-internal-link-events-v1"></script>
     <script type="application/ld+json">
@@ -201,28 +201,32 @@
       <section class="provider-section section" id="providers" aria-labelledby="providers-title">
         <div class="shell">
           <div class="section-heading provider-intro"><p class="eyebrow">Dostupné mapy</p><h2 id="providers-title">Prozkoumejte dostupné mapy.</h2><p class="provider-copy">Dnes vás Terento propojí přímo s poskytovateli Freizeitkarte a OpenTopoMap. Mapy se stahují z původního zdroje každého poskytovatele.</p></div>
-          <div class="provider-cards" data-provider-cards aria-label="Poskytovatelé map">
+          <div class="provider-cards" id="provider-cards" data-provider-cards role="region" tabindex="0" aria-label="Poskytovatelé map">
             <article class="provider-card" data-provider-card="freizeitkarte">
               <div class="provider-card-header">
-                <div class="provider-card-title"><h3>Freizeitkarte</h3></div>
-              <p class="provider-count" data-provider-count data-count-template="{count} mapových balíčků · {countries} zemí/oblastí">63 mapových balíčků · 54 zemí/oblastí</p>
+                <h3>Freizeitkarte</h3>
+                <p class="provider-count" data-provider-count data-count-template="Mapové balíčky: {count}">Mapové balíčky: 63</p>
               </div>
-              <ul class="provider-benefits"><li>Vyvážená mapa pro pěší turistiku, cyklistiku a každodenní navigaci</li><li>Profily tras pro pěší, cyklisty a řidiče</li><li>Integrované vrstevnice pro lepší představu o převýšení</li><li>Podrobné body zájmu a užitečné informace o dopravě</li></ul>
+              <p class="provider-summary">Pro pěší výlety, cyklistiku a každodenní navigaci.</p>
+              <ul class="provider-benefits"><li>Výpočet tras pro pěší a cyklisty</li><li>Vrstevnice jsou součástí mapy</li><li>Body zájmu, autobusové zastávky a vlaková nádraží</li></ul>
             </article>
 <article class="provider-card" data-provider-card="opentopomap">
               <div class="provider-card-header">
-                <div class="provider-card-title"><h3>OpenTopoMap</h3></div>
-              <p class="provider-count" data-provider-count data-count-template="{count} mapových balíčků jednotlivých zemí">177 mapových balíčků jednotlivých zemí</p>
+                <h3>OpenTopoMap</h3>
+                <p class="provider-count" data-provider-count data-count-template="Mapové balíčky: {count}">Mapové balíčky: 177</p>
               </div>
-              <ul class="provider-benefits"><li>Především topografická mapa pro čtení terénu</li><li>Stínování reliéfu a výšková data pro lepší kontext terénu</li><li>Volitelné vrstevnice, když potřebujete více detailů</li><li>Podpora výpočtu tras na zařízeních Garmin</li></ul>
+              <p class="provider-summary">Pro poznávání terénu s topografickou mapou.</p>
+              <ul class="provider-benefits"><li>Topografické zobrazení silnic, cest a terénu</li><li>Výšková data a stínování terénu</li><li>Výpočet tras</li></ul>
+              <details class="provider-addon" data-provider-addon="contours">
+                <summary class="provider-addon-toggle"><span><span class="provider-card-badge">Volitelný doplněk</span> <span class="provider-addon-title">Vrstevnice</span></span></summary>
+                <p class="provider-addon-copy">Při instalaci oblasti OpenTopoMap v Terento zvolte, zda je chcete zahrnout. Hlavní mapa funguje i bez tohoto doplňku.</p>
+                <p class="provider-addon-count" data-contour-count data-count-template="Počet podporovaných mapových balíčků: {count} · Po instalaci zabírá další úložiště.">Počet podporovaných mapových balíčků: 157 · Po instalaci zabírá další úložiště.</p>
+              </details>
             </article>
-<article class="provider-card provider-card--addon" data-provider-card="opentopomap-contours">
-              <div class="provider-card-header">
-                <div class="provider-card-title"><p class="provider-card-badge">Volitelný doplněk</p><h3>Vrstevnice OpenTopoMap</h3></div>
-              <p class="provider-count" data-provider-count data-count-template="{count} oblastí · doplněk OpenTopoMap">157 oblastí · doplněk OpenTopoMap</p>
-              </div>
-              <ul class="provider-benefits"><li>Přidejte vrstevnice k vybrané oblasti OpenTopoMap</li><li>Instalujte je spolu s hlavní mapou OpenTopoMap</li><li>Získejte více detailů pro stoupání a terén</li><li>Vyžadují další úložiště v zařízení Garmin</li></ul>
-            </article>
+          </div>
+          <div class="provider-controls" data-provider-controls hidden>
+            <button type="button" data-provider-previous aria-controls="provider-cards">Předchozí poskytovatel map</button>
+            <button type="button" data-provider-next aria-controls="provider-cards">Další poskytovatel map</button>
           </div>
         </div>
       </section>

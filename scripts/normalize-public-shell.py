@@ -10,7 +10,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20260905-in-page-language-v1"
-STYLE_VERSION = "20260908-home-provider-cards-contours-v1"
+PROVIDER_SCRIPT_VERSION = "20260908-provider-disclosure-v4"
+STYLE_VERSION = "20260908-provider-width-v5"
 IMAGE_VERSION = "20260905-app-screens-v1"
 LANGUAGE_VERSION = "20260905-language-selector-full-name-v1"
 LOCALIZED_CONTENT_VERSION = "20260904-pass3-internal-link-events-v1"
@@ -316,6 +317,7 @@ def main() -> None:
         if page == "compatibility":
             source = re.sub(r'(/compatibility/compatibility-locales\.js\?v=)[^"\s]+', rf'\g<1>{COMPATIBILITY_LOCALES_VERSION}', source)
             source = re.sub(r'(/compatibility/compatibility\.js\?v=)[^"\s]+', rf'\g<1>{COMPATIBILITY_VERSION}', source)
+        source = re.sub(r'(\/provider-list\.js\?v=)[^"\s]+', rf'\g<1>{PROVIDER_SCRIPT_VERSION}', source)
         source = normalize_h1_punctuation(source)
         source = normalize_internal_link_events(source, page)
         source = normalize_email_links(source, page)
@@ -327,6 +329,7 @@ def main() -> None:
         source = path.read_text(encoding="utf-8")
         source = re.sub(r'(/privacy-consent\.js\?v=)[^"\s]+', rf'\g<1>{UMAMI_SCRIPT_VERSION}', source)
         source = re.sub(r'(\/styles\.css\?v=)[^"\s]+', rf'\g<1>{STYLE_VERSION}', source)
+        source = re.sub(r'(\/provider-list\.js\?v=)[^"\s]+', rf'\g<1>{PROVIDER_SCRIPT_VERSION}', source)
         source = normalize_h1_punctuation(source)
         source = normalize_internal_link_events(source, page)
         source = normalize_email_links(source, page)

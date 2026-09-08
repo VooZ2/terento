@@ -102,7 +102,7 @@ for (const [name, theme] of [["light", light], ["dark", dark]]) {
   assertContrast(theme, "link-text-hover", "off-white", 4.5, `${name} text-link hover`);
   assertContrast(theme, "accent-text", "surface-muted", 4.5, `${name} step number`);
   assertContrast(theme, "eyebrow-text", "surface-muted", 4.5, `${name} How it works eyebrow`);
-  assertContrast(theme, "muted-text", "surface-muted", 4.5, `${name} muted step description`);
+  assertContrast(theme, "muted-text", "surface-muted", 4.5, `${name} muted step description and contour add-on metadata`);
   assertContrast(theme, "focus-ring", "off-white", 3, `${name} focus boundary on page`);
 }
 

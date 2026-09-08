@@ -9,12 +9,14 @@ const script = fs.readFileSync(path.join(root, 'site/provider-list.js'), 'utf8')
 
 // Run the production script without changing the public asset or its caching.
 async function present(payload, fail = false, cardID = 'freizeitkarte') {
-  const counter = { dataset: { countTemplate: cardID === 'opentopomap-contours' ? '{count} contour regions' : '{count} packages in {countries} countries' }, textContent: 'Static fallback' };
+  const counter = { dataset: { countTemplate: '{count} packages in {countries} countries' }, textContent: 'Static fallback' };
+  const contourCounter = { dataset: { countTemplate: '{count} contour regions' }, textContent: 'Contour fallback' };
+  const addon = { hidden: false, querySelector: () => contourCounter };
   const card = { dataset: { providerCard: cardID }, hidden: false,
-    querySelector: selector => { assert.equal(selector, '[data-provider-count]'); return counter; } };
+    querySelector: selector => selector === '[data-provider-count]' ? counter : cardID === 'opentopomap' ? addon : null };
   let requests = 0;
   vm.runInNewContext(script, {
-    document: { querySelectorAll: selector => { assert.equal(selector, '[data-provider-card]'); return [card]; } },
+    document: { querySelector: () => null, querySelectorAll: selector => { assert.equal(selector, '[data-provider-card]'); return [card]; } },
     fetch: async (url, options) => {
       requests++;
       assert.equal(url, 'https://api.terento.app/maps/catalog.json');
@@ -25,10 +27,49 @@ async function present(payload, fail = false, cardID = 'freizeitkarte') {
   });
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(requests, 1);
-  return { hidden: card.hidden, text: counter.textContent };
+  return { hidden: card.hidden, text: counter.textContent, ...(cardID === 'opentopomap' ? { addonHidden: addon.hidden, addonText: contourCounter.textContent } : {}) };
+}
+
+// Exercise the actual controls, keyboard handling, resize and reduced motion.
+function checkNavigation(reducedMotion) {
+  const listeners = {};
+  const button = () => ({ disabled: false, addEventListener(type, action) { this[type] = action; } });
+  const previous = button(), next = button();
+  const controls = { hidden: true, querySelector: selector => selector === '[data-provider-previous]' ? previous : next };
+  let behavior;
+  const row = { scrollWidth: 630, clientWidth: 339, scrollLeft: 0,
+    getBoundingClientRect: () => ({left: 18}),
+    addEventListener: (type, action) => { listeners[type] = action; },
+    scrollBy(options) { behavior = options.behavior; this.scrollLeft = Math.max(0, Math.min(291, this.scrollLeft + options.left)); listeners.scroll(); },
+  };
+  const cards = [0, 1].map(index => ({ hidden: false,
+    getBoundingClientRect: () => ({left: 18 + index * 325 - row.scrollLeft}),
+  }));
+  vm.runInNewContext(script, {
+    document: { querySelectorAll: () => cards, querySelector: selector => selector === '[data-provider-cards]' ? row : controls },
+    window: { matchMedia: () => ({matches: reducedMotion}), addEventListener: (type, action) => { listeners[type] = action; } },
+    fetch: async () => { throw Error('offline'); },
+  });
+  assert.equal(controls.hidden, false);
+  assert.equal(previous.disabled, true);
+  next.click();
+  assert.equal(row.scrollLeft, 291);
+  assert.equal(next.disabled, true);
+  assert.equal(behavior, reducedMotion ? 'instant' : 'smooth');
+  let prevented = false;
+  listeners.keydown({target: row, key: 'ArrowLeft', preventDefault() { prevented = true; }});
+  assert.equal(prevented, true);
+  assert.equal(row.scrollLeft, 0);
+  assert.equal(previous.disabled, true);
+  row.clientWidth = 630;
+  listeners.resize();
+  assert.equal(controls.hidden, true);
+  assert.equal(row.tabIndex, -1);
 }
 
 (async () => {
+  checkNavigation(false);
+  checkNavigation(true);
   const valid = fixture('map-catalog.valid');
   const provider = valid.providers.find(p => p.id === 'freizeitkarte');
   assert.equal(provider.status, 'ACTIVE');
@@ -66,8 +107,13 @@ async function present(payload, fail = false, cardID = 'freizeitkarte') {
       artifacts: [{ kind: 'contours', validationStatus: 'VALIDATED' }],
     }],
   }];
-  assert.deepEqual(await present(contours, false, 'opentopomap-contours'), { hidden: false, text: '1 contour regions' });
+  assert.deepEqual(await present(contours, false, 'opentopomap'), { hidden: false, text: '1 packages in 0 countries', addonHidden: false, addonText: '1 contour regions' });
   contours.providers[0].maps[0].artifacts[0].validationStatus = 'REJECTED';
-  assert.deepEqual(await present(contours, false, 'opentopomap-contours'), { hidden: true, text: 'Static fallback' });
+  assert.deepEqual(await present(contours, false, 'opentopomap'), { hidden: false, text: '1 packages in 0 countries', addonHidden: true, addonText: 'Contour fallback' });
+  assert.deepEqual(await present(contours, true, 'opentopomap'), { hidden: false, text: 'Static fallback', addonHidden: false, addonText: 'Contour fallback' });
+  contours.providers[0].maps[0].artifacts = [{kind: 'contours', validationState: 'VALIDATED'}, {kind: 'contours', validationStatus: 'VALIDATED'}];
+  assert.equal((await present(contours, false, 'opentopomap')).addonText, '1 contour regions');
+  contours.providers[0].maps[0].availability = 'WITHHELD';
+  assert.equal((await present(contours, false, 'opentopomap')).addonHidden, true);
   console.log('PASS: production provider cards consume shared fixtures, tolerate additive fields and preserve fallback behavior');
 })().catch(error => { console.error(error); process.exitCode = 1; });

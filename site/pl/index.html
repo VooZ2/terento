@@ -2,7 +2,7 @@
 <html lang="pl" data-language="pl">
   <head>
     <script defer src="/site-shell.js?v=20260905-in-page-language-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20260908-home-provider-cards-contours-v1">
+    <link rel="stylesheet" href="/styles.css?v=20260908-provider-width-v5">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -42,7 +42,7 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <script defer src="/language.js?v=20260905-language-selector-full-name-v1"></script>
     <script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script>
-    <script defer src="/provider-list.js?v=20260908-home-provider-cards-contours-v1"></script>
+    <script defer src="/provider-list.js?v=20260908-provider-disclosure-v4"></script>
     <script defer src="/home-features.js?v=20260904-home-workflow-tabs"></script>
     <script defer src="/localized-content.js?v=20260904-pass3-internal-link-events-v1"></script>
     <script type="application/ld+json">
@@ -201,28 +201,32 @@
       <section class="provider-section section" id="providers" aria-labelledby="providers-title">
         <div class="shell">
           <div class="section-heading provider-intro"><p class="eyebrow">Dostępne mapy</p><h2 id="providers-title">Poznaj dostępne mapy.</h2><p class="provider-copy">Dziś Terento łączy Cię bezpośrednio z Freizeitkarte i OpenTopoMap. Mapy są pobierane z oryginalnego źródła każdego dostawcy.</p></div>
-          <div class="provider-cards" data-provider-cards aria-label="Dostawcy map">
+          <div class="provider-cards" id="provider-cards" data-provider-cards role="region" tabindex="0" aria-label="Dostawcy map">
             <article class="provider-card" data-provider-card="freizeitkarte">
               <div class="provider-card-header">
-                <div class="provider-card-title"><h3>Freizeitkarte</h3></div>
-              <p class="provider-count" data-provider-count data-count-template="{count} pakietów map · {countries} krajów/regionów">63 pakietów map · 54 krajów/regionów</p>
+                <h3>Freizeitkarte</h3>
+                <p class="provider-count" data-provider-count data-count-template="Pakiety map: {count}">Pakiety map: 63</p>
               </div>
-              <ul class="provider-benefits"><li>Uniwersalna mapa do pieszych wędrówek, jazdy na rowerze i codziennej nawigacji</li><li>Profile wyznaczania tras dla pieszych, rowerzystów i kierowców</li><li>Wbudowane poziomice ułatwiające ocenę wysokości</li><li>Szczegółowe punkty POI i przydatne informacje o transporcie</li></ul>
+              <p class="provider-summary">Do spacerów, jazdy na rowerze i codziennej nawigacji.</p>
+              <ul class="provider-benefits"><li>Wyznaczanie tras pieszych i rowerowych</li><li>Poziomice zawarte w mapie</li><li>Punkty zainteresowania, przystanki autobusowe i stacje kolejowe</li></ul>
             </article>
 <article class="provider-card" data-provider-card="opentopomap">
               <div class="provider-card-header">
-                <div class="provider-card-title"><h3>OpenTopoMap</h3></div>
-              <p class="provider-count" data-provider-count data-count-template="{count} pakietów map poszczególnych krajów">177 pakietów map poszczególnych krajów</p>
+                <h3>OpenTopoMap</h3>
+                <p class="provider-count" data-provider-count data-count-template="Pakiety map: {count}">Pakiety map: 177</p>
               </div>
-              <ul class="provider-benefits"><li>Mapa przede wszystkim topograficzna, ułatwiająca odczyt terenu</li><li>Cieniowanie i dane wysokościowe zapewniają lepszy kontekst terenu</li><li>Opcjonalne poziomice, gdy potrzebujesz większej szczegółowości</li><li>Obsługa wyznaczania tras na urządzeniach Garmin</li></ul>
+              <p class="provider-summary">Do poznawania terenu z mapą topograficzną.</p>
+              <ul class="provider-benefits"><li>Topograficzna prezentacja dróg, ścieżek i terenu</li><li>Dane wysokościowe i cieniowanie terenu</li><li>Wyznaczanie tras</li></ul>
+              <details class="provider-addon" data-provider-addon="contours">
+                <summary class="provider-addon-toggle"><span><span class="provider-card-badge">Opcjonalny dodatek</span> <span class="provider-addon-title">Poziomice</span></span></summary>
+                <p class="provider-addon-copy">Podczas instalowania regionu OpenTopoMap w Terento zdecyduj, czy je uwzględnić. Główna mapa działa bez tego dodatku.</p>
+                <p class="provider-addon-count" data-contour-count data-count-template="Liczba obsługiwanych pakietów map: {count} · Po instalacji zajmuje dodatkowe miejsce.">Liczba obsługiwanych pakietów map: 157 · Po instalacji zajmuje dodatkowe miejsce.</p>
+              </details>
             </article>
-<article class="provider-card provider-card--addon" data-provider-card="opentopomap-contours">
-              <div class="provider-card-header">
-                <div class="provider-card-title"><p class="provider-card-badge">Opcjonalny dodatek</p><h3>Poziomice OpenTopoMap</h3></div>
-              <p class="provider-count" data-provider-count data-count-template="{count} regionów · dodatek OpenTopoMap">157 regionów · dodatek OpenTopoMap</p>
-              </div>
-              <ul class="provider-benefits"><li>Dodaj poziomice do wybranego regionu OpenTopoMap</li><li>Zainstaluj je razem z główną mapą OpenTopoMap</li><li>Łatwiej odczytuj podejścia i ukształtowanie terenu</li><li>Wymaga dodatkowego miejsca w Garminie</li></ul>
-            </article>
+          </div>
+          <div class="provider-controls" data-provider-controls hidden>
+            <button type="button" data-provider-previous aria-controls="provider-cards">Poprzedni dostawca map</button>
+            <button type="button" data-provider-next aria-controls="provider-cards">Następny dostawca map</button>
           </div>
         </div>
       </section>

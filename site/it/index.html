@@ -2,7 +2,7 @@
 <html lang="it" data-language="it">
   <head>
     <script defer src="/site-shell.js?v=20260905-in-page-language-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20260908-home-provider-cards-contours-v1">
+    <link rel="stylesheet" href="/styles.css?v=20260908-provider-width-v5">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -42,7 +42,7 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <script defer src="/language.js?v=20260905-language-selector-full-name-v1"></script>
     <script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script>
-    <script defer src="/provider-list.js?v=20260908-home-provider-cards-contours-v1"></script>
+    <script defer src="/provider-list.js?v=20260908-provider-disclosure-v4"></script>
     <script defer src="/home-features.js?v=20260904-home-workflow-tabs"></script>
     <script defer src="/localized-content.js?v=20260904-pass3-internal-link-events-v1"></script>
     <script type="application/ld+json">
@@ -201,28 +201,32 @@
       <section class="provider-section section" id="providers" aria-labelledby="providers-title">
         <div class="shell">
           <div class="section-heading provider-intro"><p class="eyebrow">Mappe disponibili</p><h2 id="providers-title">Scopri le mappe disponibili.</h2><p class="provider-copy">Oggi Terento ti collega direttamente a Freizeitkarte e OpenTopoMap. Le mappe vengono scaricate dalla fonte originale di ciascun provider.</p></div>
-          <div class="provider-cards" data-provider-cards aria-label="Provider di mappe">
+          <div class="provider-cards" id="provider-cards" data-provider-cards role="region" tabindex="0" aria-label="Provider di mappe">
             <article class="provider-card" data-provider-card="freizeitkarte">
               <div class="provider-card-header">
-                <div class="provider-card-title"><h3>Freizeitkarte</h3></div>
-              <p class="provider-count" data-provider-count data-count-template="{count} pacchetti di mappe · {countries} paesi/regioni">63 pacchetti di mappe · 54 paesi/regioni</p>
+                <h3>Freizeitkarte</h3>
+                <p class="provider-count" data-provider-count data-count-template="{count} pacchetti di mappe">63 pacchetti di mappe</p>
               </div>
-              <ul class="provider-benefits"><li>Una mappa equilibrata per escursionismo, ciclismo e navigazione quotidiana</li><li>Profili di percorso per pedoni, ciclisti e automobilisti</li><li>Curve di livello integrate per capire il dislivello</li><li>Punti di interesse dettagliati e informazioni utili sui trasporti</li></ul>
+              <p class="provider-summary">Per camminare, andare in bicicletta e orientarsi ogni giorno.</p>
+              <ul class="provider-benefits"><li>Calcolo dei percorsi a piedi e in bicicletta</li><li>Curve di livello incluse</li><li>Punti di interesse, fermate degli autobus e stazioni ferroviarie</li></ul>
             </article>
 <article class="provider-card" data-provider-card="opentopomap">
               <div class="provider-card-header">
-                <div class="provider-card-title"><h3>OpenTopoMap</h3></div>
-              <p class="provider-count" data-provider-count data-count-template="{count} pacchetti di mappe per paese">177 pacchetti di mappe per paese</p>
+                <h3>OpenTopoMap</h3>
+                <p class="provider-count" data-provider-count data-count-template="{count} pacchetti di mappe">177 pacchetti di mappe</p>
               </div>
-              <ul class="provider-benefits"><li>Una mappa pensata prima di tutto per leggere il terreno</li><li>Ombreggiatura e dati altimetrici per un migliore contesto del terreno</li><li>Curve di livello opzionali per avere più dettagli</li><li>Supporto al calcolo dei percorsi sui dispositivi Garmin</li></ul>
+              <p class="provider-summary">Per esplorare il terreno con una mappa topografica.</p>
+              <ul class="provider-benefits"><li>Rappresentazione topografica di strade, sentieri e terreno</li><li>Dati altimetrici e ombreggiatura del terreno</li><li>Calcolo dei percorsi</li></ul>
+              <details class="provider-addon" data-provider-addon="contours">
+                <summary class="provider-addon-toggle"><span><span class="provider-card-badge">Componente aggiuntivo opzionale</span> <span class="provider-addon-title">Curve di livello</span></span></summary>
+                <p class="provider-addon-copy">Scegli se includerle quando installi una regione OpenTopoMap in Terento. La mappa principale funziona anche senza questo componente aggiuntivo.</p>
+                <p class="provider-addon-count" data-contour-count data-count-template="Disponibile per {count} pacchetti di mappe · Occupa spazio aggiuntivo se installato.">Disponibile per 157 pacchetti di mappe · Occupa spazio aggiuntivo se installato.</p>
+              </details>
             </article>
-<article class="provider-card provider-card--addon" data-provider-card="opentopomap-contours">
-              <div class="provider-card-header">
-                <div class="provider-card-title"><p class="provider-card-badge">Aggiunta opzionale</p><h3>Curve di livello OpenTopoMap</h3></div>
-              <p class="provider-count" data-provider-count data-count-template="{count} regioni · aggiunta OpenTopoMap">157 regioni · aggiunta OpenTopoMap</p>
-              </div>
-              <ul class="provider-benefits"><li>Aggiungi le curve di livello alla regione OpenTopoMap scelta</li><li>Installale insieme alla mappa OpenTopoMap principale</li><li>Leggi con più dettaglio salite e terreno</li><li>Richiedono spazio aggiuntivo sul Garmin</li></ul>
-            </article>
+          </div>
+          <div class="provider-controls" data-provider-controls hidden>
+            <button type="button" data-provider-previous aria-controls="provider-cards">Provider di mappe precedente</button>
+            <button type="button" data-provider-next aria-controls="provider-cards">Provider di mappe successivo</button>
           </div>
         </div>
       </section>

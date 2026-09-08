@@ -153,7 +153,7 @@ const anchorFor = (page, className) => {
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20260908-home-provider-cards-contours-v1">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20260908-provider-width-v5">/, `${locale}: Home stylesheet cache bust`);
   assert.match(page, /<script defer src="\/home-features\.js\?v=20260904-home-workflow-tabs"><\/script>/, `${locale}: Home feature script cache bust`);
   assert.match(page, /installing-maps-1600\.png\?v=20260905-app-screens-v1/, `${locale}: installation screenshot cache bust`);
   const heroArtwork = page.match(/<figure class="app-shot app-shot--hero">[\s\S]*?<\/figure>/)?.[0];
@@ -226,16 +226,19 @@ for (const [locale, expected] of locales) {
   assert.match(providerSection, new RegExp(`<p class="eyebrow">${expected.providerEyebrow.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/p>`));
   assert.match(providerSection, new RegExp(`<h2 id="providers-title">${expected.providerTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/h2>`));
   assert.match(providerSection, new RegExp(`<p class="provider-copy">${expected.providerCopy.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/p>`));
-  assert.equal((providerSection.match(/class="provider-card(?:\s|")/g) || []).length, 3, `${locale}: expected two provider cards plus the optional contour add-on`);
-  assert.match(providerSection, /data-provider-card="freizeitkarte"/);
-  assert.match(providerSection, /data-provider-card="opentopomap"/);
-  assert.match(providerSection, /data-provider-card="opentopomap-contours"/);
-  const contourCard = providerSection.match(/<article class="provider-card provider-card--addon" data-provider-card="opentopomap-contours">[\s\S]*?<\/article>/)?.[0];
-  assert.ok(contourCard, `${locale}: contour card uses the add-on visual treatment`);
-  assert.match(contourCard, /class="provider-card-badge"/);
-  assert.match(contourCard, /OpenTopoMap/);
-  assert.equal((providerSection.match(/class="provider-benefits"/g) || []).length, 3, `${locale}: each map card has a benefits list`);
-  assert.equal((providerSection.match(/<li>/g) || []).length, 12, `${locale}: map cards have four benefits each`);
+  assert.equal((providerSection.match(/<article class="provider-card"/g) || []).length, 2, `${locale}: exactly two providers`);
+  const otm = providerSection.match(/<article class="provider-card" data-provider-card="opentopomap">[\s\S]*?<\/article>/)?.[0];
+  assert.ok(otm, `${locale}: OpenTopoMap card`);
+  assert.match(otm, /<details class="provider-addon" data-provider-addon="contours">\s*<summary class="provider-addon-toggle">/);
+  assert.doesNotMatch(otm, /<details[^>]*\bopen(?:\s|=|>)/);
+  assert.match(otm, /<summary[^>]*>[\s\S]*provider-card-badge[\s\S]*provider-addon-title[\s\S]*<\/summary>\s*<p class="provider-addon-copy">/);
+  assert.doesNotMatch(providerSection, /data-provider-card="opentopomap-contours"|type="checkbox"|role="switch"/);
+  assert.equal((providerSection.match(/class="provider-benefits"/g) || []).length, 2);
+  assert.equal((providerSection.match(/<li>/g) || []).length, 6);
+  assert.equal((providerSection.match(/class="provider-summary"/g) || []).length, 2);
+  assert.match(providerSection, /data-provider-previous aria-controls="provider-cards"/);
+  assert.match(providerSection, /data-provider-next aria-controls="provider-cards"/);
+  assert.match(page, /provider-list\.js\?v=20260908-provider-disclosure-v4/);
   assert.match(providerSection, /data-count-template="[^"]*\{count\}[^"]*"/);
   assert.match(providerSection, /63/);
   assert.match(providerSection, /177/);
@@ -315,10 +318,16 @@ assert.match(styles, /\.section-heading h2 \.workflow-title-arrow\s*\{[^}]*displ
 assert.match(styles, /\.map-feature-panel\[hidden\]\s*\{[^}]*display:\s*none/s);
 assert.match(styles, /\.provider-cards\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)/s);
 assert.match(styles, /\.provider-card\s*\{[^}]*background:\s*var\(--surface\)/s);
-assert.match(styles, /\.provider-card--addon\s*\{[^}]*border-style:\s*dashed[^}]*background:\s*var\(--surface-muted\)/s);
+assert.match(styles, /\.provider-addon\s*\{[^}]*border-top:\s*1px solid var\(--border\)/s);
+assert.match(styles, /\.provider-cards\s*\{[^}]*align-items:\s*start/s);
 assert.match(styles, /\.provider-card-badge\s*\{[^}]*text-transform:\s*uppercase/s);
 assert.match(styles, /\.provider-benefits\s*\{[^}]*border-top:\s*1px solid var\(--border\)/s);
 const localizedContent = fs.readFileSync(path.join(root, "site", "localized-content.js"), "utf8");
 assert.doesNotMatch(localizedContent, /querySelector\("\.scope-copy"\)/s, "removed Home scope copy must not be updated by JavaScript");
 
 console.log("Home copy, localized Hero, shared CTA, and CTA interaction-contract tests passed.");
+
+assert.match(englishHome, /The main map works without this add-on\./);
+assert.match(styles, /grid-auto-columns: min\(90%, 420px\)/);
+assert.match(styles, /\.provider-cards\s*\{[^}]*max-width: 860px/s);
+assert.match(styles, /overflow-x: auto/);
