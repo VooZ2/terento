@@ -104,7 +104,9 @@ extension FinishingTrace {
         }
         let first = significant.firstIndex { line in
             line.contains("event=read_failed") || line.contains("event=compare_failed") ||
-            line.contains("event=open_end") && line.contains("rc=-")
+            ["open_end", "identity_end", "target_end", "verify_result"].contains { event in
+                line.contains("event=\(event) ") && line.contains("rc=-")
+            }
         } ?? significant.firstIndex { line in
             line.contains("event=worker_deadline") || line.contains("event=worker_cancelled")
         }
@@ -115,14 +117,26 @@ extension FinishingTrace {
         if let checkpoint = entries.last(where: { $0.contains("event=read_checkpoint") }) {
             selected.append(checkpoint)
         }
-        selected += significant.suffix(5)
+        // Keep attempt context and final outcomes; never export raw logs or paths.
+        selected += significant.prefix(8)
+        selected += significant.suffix(36)
         var seen = Set<String>()
-        frozenReport = selected.filter { seen.insert($0).inserted }.joined(separator: "\n")
+        var reportLines = selected.filter { seen.insert($0).inserted }.map { line in
+            line.split(separator: " ").filter { token in
+                !["pid=", "child=", "trace=", "t="].contains { token.hasPrefix($0) }
+            }.joined(separator: " ")
+        }
+        // Drop middle context before either the first failure or final cleanup;
+        // the report budget must not cut an event or discard its ending.
+        while reportLines.joined(separator: "\n").count > 10000 && reportLines.count > 3 {
+            reportLines.remove(at: 2)
+        }
+        frozenReport = reportLines.joined(separator: "\n")
     }
 
     static var failureReport: String {
         lock.lock(); defer { lock.unlock() }
-        return String(frozenReport.prefix(2400))
+        return String(frozenReport.prefix(10000))
     }
 
     /// The file contains only our own trace writers, never libmtp stderr.
@@ -142,11 +156,11 @@ extension FinishingTrace {
         "verify_begin", "region_begin", "open_begin", "open_end", "identity_begin", "identity_end",
         "target_begin", "target_end", "read_failed", "read_error_code", "retry_close_begin",
         "retry_close_returned", "compare_failed", "verify_result", "final_close_begin",
-        "final_close_returned", "read_checkpoint"
+        "final_close_returned", "read_checkpoint", "target_matches", "target_size", "final_inventory", "installation_failure", "cleanup_result"
     ]
     private static let numericKeys: Set<String> = [
         "t", "pid", "child", "timeout", "attempt", "delay", "status", "reason", "offset", "rc",
-        "detail", "last_verified_end", "verified_bytes", "elapsed"
+        "detail", "last_verified_end", "verified_bytes", "elapsed", "matches", "expected_size", "actual_size", "folder", "zero_id", "filename_match", "succeeded"
     ]
     static func safeLine(_ line: String) -> String? {
         guard line.utf8.count < 1024 else { return nil }

@@ -453,7 +453,8 @@ extension MapInstallationCoordinator {
                 lifecycleLease: lifecycleLease
             ),
             manifestStore: manifestStore,
-            recoveryStore: recoveryStore
+            recoveryStore: recoveryStore,
+            diagnostic: { event, details in FinishingTrace.event(event, details) }
         )
     }
 }

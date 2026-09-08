@@ -2214,6 +2214,8 @@ struct ConnectScreen: View {
     }
 
     private func reportInstallationIssue(for plan: InstallationPlan?) {
+        let result = mapEngine.installationResult
+        let verification = result?.verification
         let draft = InstallationIssueReport.generate(
             identity: identity,
             maps: (plan?.installItems ?? []).map { item in
@@ -2235,7 +2237,20 @@ struct ConnectScreen: View {
             transferProgressPercent: installationIssueTransferProgressPercent,
             remoteObjectCreated: mapEngine.installationResult?.diagnostics.remoteObjectCreated ?? false,
             cleanupAttempted: mapEngine.installationResult?.diagnostics.cleanupAttempted ?? false,
-            cleanupSucceeded: mapEngine.installationResult?.diagnostics.cleanupSucceeded ?? false
+            cleanupSucceeded: mapEngine.installationResult?.diagnostics.cleanupSucceeded ?? false,
+            verification: InstallationIssueVerification(
+                originalFailure: (result?.originalFailure ?? result?.failure)?.rawValue,
+                cleanupFailure: result?.cleanupFailure?.rawValue,
+                transportClassification: result?.diagnostics.nativeFailureCode?.rawValue,
+                artifactKind: mapEngine.packageInstallationOutcomes.compactMap { $0.failedComponent }.first?.artifactKind.rawValue,
+                sourceSize: result?.diagnostics.sourceSizeBytes,
+                remoteSize: result?.diagnostics.remoteSizeBytes,
+                transferredBytes: result?.diagnostics.bytesTransferred,
+                elapsedMilliseconds: result?.diagnostics.elapsedMilliseconds,
+                sampledBytes: verification?.sampledBytes,
+                sampleCount: verification?.sampleCount,
+                matchedSampleCount: verification?.matchedSampleCount
+            )
         )
         diagnosticLogMessage = InstallationIssueReport.copyAndOpenGitHub(draft)
             ? nil

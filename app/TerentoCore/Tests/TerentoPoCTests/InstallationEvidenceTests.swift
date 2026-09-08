@@ -306,12 +306,20 @@ struct InstallationEvidenceTests {
             failureStages: ["source-validation", "preflight"],
             errorCategory: "sourceValidation",
             errorCodes: ["INSTALL_BLOCKED_SOURCE_VALIDATION_FAILED", "INSTALL_NOT_STARTED_AFTER_EARLIER_FAILURE"],
+            verification: .init(originalFailure: "INSTALL_FAILED_REMOTE_FILE_MISSING",
+                                cleanupFailure: "INSTALL_FAILED_CLEANUP",
+                                sourceSize: 1794965504, remoteSize: 1794965504,
+                                sampledBytes: 4194304, sampleCount: 7, matchedSampleCount: 1),
             diagnosticID: diagnosticID,
             timestamp: timestamp,
             appVersion: "0.8.0-beta.8",
             appBuild: "108",
             operatingSystem: "macOS 15.6"
         )
+        precondition(draft.body.contains("Original failure: INSTALL_FAILED_REMOTE_FILE_MISSING"))
+        precondition(draft.body.contains("Cleanup failure: INSTALL_FAILED_CLEANUP"))
+        precondition(draft.body.contains("Validated source bytes: 1794965504"))
+        precondition(draft.body.contains("Matched samples: 1"))
         precondition(draft.body.contains("event=read_failed"))
         precondition(draft.body.contains("verified_bytes=29229056"))
         precondition(draft.body.contains("operation=cleanup elapsed=45"))
@@ -326,6 +334,17 @@ struct InstallationEvidenceTests {
         let components = URLComponents(url: draft.url, resolvingAgainstBaseURL: false)
         let query = Dictionary(uniqueKeysWithValues: (components?.queryItems ?? []).map { ($0.name, $0.value ?? "") })
         expect(components?.path == "/VooZ2/terento/issues/new" && query["title"] == draft.title && query["diagnostic-report"] == draft.body && query["template"] == "installation-failure.yml" && query["body"] == nil, "prepared issue URL targets the YAML form's diagnostic field")
+        FinishingTrace.beginInstallation()
+        for attempt in 1...40 {
+            FinishingTrace.event("readback_failed", "worker=false attempt=\(attempt) error=remoteFileMissing")
+        }
+        FinishingTrace.freezeFailure()
+        let longDraft = InstallationIssueReport.generate(identity: unsafeIdentity, maps: [],
+            stage: "Finishing", error: nil, operationID: operationID)
+        precondition(longDraft.url.absoluteString.utf8.count <= 7000)
+        precondition(longDraft.body.contains("attempt=40"))
+        precondition(!longDraft.url.absoluteString.contains("attempt=40"))
+        FinishingTrace.beginInstallation()
         var copiedReport: String?
         expect(!InstallationIssueReport.copyAndOpenGitHub(draft, clipboard: { copiedReport = $0 }, using: { _ in false }) && copiedReport == draft.body, "GitHub open failure still leaves the sanitized report on the clipboard")
     }

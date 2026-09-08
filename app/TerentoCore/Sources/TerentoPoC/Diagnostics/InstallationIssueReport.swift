@@ -15,6 +15,21 @@ struct InstallationIssueMap: Equatable, Sendable {
     let artifactSizeBytes: UInt64?
 }
 
+/// Explicitly shareable facts only: no paths, object IDs, map hashes or raw errors.
+struct InstallationIssueVerification: Sendable {
+    var originalFailure: String? = nil
+    var cleanupFailure: String? = nil
+    var transportClassification: String? = nil
+    var artifactKind: String? = nil
+    var sourceSize: UInt64? = nil
+    var remoteSize: UInt64? = nil
+    var transferredBytes: UInt64? = nil
+    var elapsedMilliseconds: UInt64? = nil
+    var sampledBytes: UInt64? = nil
+    var sampleCount: Int? = nil
+    var matchedSampleCount: Int? = nil
+}
+
 @MainActor
 enum InstallationIssueReport {
     static func generate(
@@ -31,6 +46,7 @@ enum InstallationIssueReport {
         remoteObjectCreated: Bool = false,
         cleanupAttempted: Bool = false,
         cleanupSucceeded: Bool = false,
+        verification: InstallationIssueVerification = .init(),
         diagnosticID: UUID = UUID(),
         timestamp: Date = Date(),
         appVersion: String = TerentoTelemetryMetadata.releaseLabel,
@@ -77,6 +93,22 @@ enum InstallationIssueReport {
             referenceLines.append("- Installation ID: \(operationID.uuidString.lowercased())")
         }
 
+        let facts: [(String, String?)] = [
+            ("Original failure", verification.originalFailure),
+            ("Cleanup failure", verification.cleanupFailure),
+            ("Transport classification (mapped; native return codes are in the trace)", verification.transportClassification),
+            ("Failed component", verification.artifactKind),
+            ("Validated source bytes", verification.sourceSize.map(String.init)),
+            ("Reported remote bytes (not proof of content verification)", verification.remoteSize.map(String.init)),
+            ("Transferred bytes", verification.transferredBytes.map(String.init)),
+            ("Elapsed at failure (ms)", verification.elapsedMilliseconds.map(String.init)),
+            ("Verified sample bytes", verification.sampledBytes.map(String.init)),
+            ("Planned samples", verification.sampleCount.map(String.init)),
+            ("Matched samples", verification.matchedSampleCount.map(String.init))
+        ]
+        let verificationLines = facts.map { label, value in
+            "- \(label): \(value.map { sanitizedLine($0, fallback: "Unavailable") } ?? "Unavailable")"
+        }.joined(separator: "\n")
         let body = DiagnosticReportSanitizer.sanitize("""
         ## Summary
 
@@ -110,7 +142,13 @@ enum InstallationIssueReport {
         - Transport: MTP
         \(safeError.map { "- Detail: \($0)" } ?? "")
 
+        ## Verification details
+
+        \(verificationLines)
+
         ## Finishing diagnostics
+
+        Fixed-field diagnostic sequence; raw native return codes use rc. Swift elapsed values are seconds except installation_failure, which uses milliseconds. target_matches detail is the match count; target_size detail is the reported size, with expected bytes in offset. Missing events are unavailable evidence, not success.
 
         \(FinishingTrace.failureReport.isEmpty ? "Unavailable" : FinishingTrace.failureReport)
 
@@ -128,6 +166,15 @@ enum InstallationIssueReport {
             URLQueryItem(name: "title", value: title),
             URLQueryItem(name: "diagnostic-report", value: body)
         ]
+        // Extended diagnostics can exceed browser/server URL limits. The complete
+        // report is already copied before opening the form; never silently trim it.
+        if (components.url?.absoluteString.utf8.count ?? Int.max) > 7000 {
+            components.queryItems = [
+                URLQueryItem(name: "template", value: "installation-failure.yml"),
+                URLQueryItem(name: "title", value: title),
+                URLQueryItem(name: "diagnostic-report", value: "The complete diagnostic report has been copied to your clipboard. Replace this text by pasting it here, review it, then submit.")
+            ]
+        }
         return InstallationIssueDraft(title: title, body: body, url: components.url!)
     }
 

@@ -89,7 +89,12 @@ are outside the current public scope.
 
 ## Download and beta status
 
-The latest public release is **beta.10 (build 13)**. The macOS app is notarized
+Build 15 expands the privacy-reviewed **Report issue** diagnostics with verification
+steps, attempts, file-size checks and separate failure/cleanup outcomes. Install
+and Remove behavior is unchanged; the Forerunner 970 Australia issue remains
+under investigation. Long reports are copied for pasting into the GitHub form.
+
+The latest public release is **beta.10 (build 15)**. The macOS app is notarized
 and does not require Homebrew.
 
 **[Download Terento](https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_download)**

@@ -298,6 +298,7 @@ struct MapInstallationCoordinator: Sendable {
     private let recoveryStore: any TerentoFailedInstallRecoveryStore
     private let transactionGate: InstallationTransactionGate
     private let now: @Sendable () -> Date
+    private let diagnostic: @Sendable (String, String) -> Void
 
     init(
         preflightEngine: InstallationPreflightEngine = InstallationPreflightEngine(),
@@ -307,7 +308,8 @@ struct MapInstallationCoordinator: Sendable {
         manifestStore: any TerentoManifestStore,
         recoveryStore: any TerentoFailedInstallRecoveryStore = LocalTerentoFailedInstallRecoveryStore(),
         transactionGate: InstallationTransactionGate = .shared,
-        now: @escaping @Sendable () -> Date = { Date() }
+        now: @escaping @Sendable () -> Date = { Date() },
+        diagnostic: @escaping @Sendable (String, String) -> Void = { _, _ in }
     ) {
         self.preflightEngine = preflightEngine
         self.artifactValidator = artifactValidator
@@ -317,6 +319,7 @@ struct MapInstallationCoordinator: Sendable {
         self.recoveryStore = recoveryStore
         self.transactionGate = transactionGate
         self.now = now
+        self.diagnostic = diagnostic
     }
 
     func run(
@@ -697,12 +700,16 @@ struct MapInstallationCoordinator: Sendable {
             let afterSnapshot: DeviceSnapshot
             do {
                 let firstInventory = try deviceReader.readFileInventory()
+                recordInventory(firstInventory, targetPath: targetPath, targetFilename: targetFilename,
+                                expectedSize: artifact.installSizeBytes, attempt: 1)
                 // A freshly written, byte-verified object can be absent from a
                 // transient directory listing. Retry that read once before
                 // cleanup. A present-but-changed target is never retried into
                 // acceptance; the success path performs no extra device call.
                 if !firstInventory.contains(where: { $0.path == targetPath }) {
                     afterFiles = try deviceReader.readFileInventory()
+                    recordInventory(afterFiles, targetPath: targetPath, targetFilename: targetFilename,
+                                    expectedSize: artifact.installSizeBytes, attempt: 2)
                 } else {
                     afterFiles = firstInventory
                 }
@@ -963,6 +970,7 @@ struct MapInstallationCoordinator: Sendable {
         verification: TransferVerification? = nil,
         recoveryRecord: TerentoFailedInstallRecoveryRecord? = nil
     ) -> MapInstallationResult {
+        diagnostic("installation_failure", "elapsed=\(diagnostics.elapsedMilliseconds)")
         var cleanupFailure: InstallationFailure?
         if shouldCleanup, let remoteObjectID, remoteObjectID != 0 {
             do {
@@ -991,6 +999,7 @@ struct MapInstallationCoordinator: Sendable {
             }
         }
 
+        diagnostic("cleanup_result", "attempt=\(shouldCleanup && remoteObjectID != nil && remoteObjectID != 0 ? 1 : 0) succeeded=\(shouldCleanup && remoteObjectID != nil && remoteObjectID != 0 && cleanupFailure == nil ? 1 : 0)")
         let cleanupAttempted = shouldCleanup && remoteObjectID != nil && remoteObjectID != 0
         let finalFailure = cleanupFailure ?? failure
         if transaction.state != .failed && transaction.state != .completed {
@@ -1014,6 +1023,13 @@ struct MapInstallationCoordinator: Sendable {
             ),
             installedMap: nil
         )
+    }
+
+    private func recordInventory(_ files: [DeviceFile], targetPath: String,
+                                 targetFilename: String, expectedSize: UInt64, attempt: Int) {
+        let matches = files.filter { $0.path == targetPath }
+        let target = matches.first
+        diagnostic("final_inventory", "attempt=\(attempt) matches=\(matches.count) expected_size=\(expectedSize) actual_size=\(target?.sizeBytes ?? 0) folder=\(target?.isFolder == true ? 1 : 0) zero_id=\(target?.itemID == 0 ? 1 : 0) filename_match=\(target?.filename == targetFilename ? 1 : 0)")
     }
 
     private enum FailurePhase {
