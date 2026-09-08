@@ -2818,7 +2818,7 @@ def _github_issue_report(
             ("Cleanup attempted", _operation_report_boolean(results, "cleanup_attempted")),
             ("Cleanup succeeded", _operation_report_boolean(results, "cleanup_succeeded")),
             ("Transport", _operation_report_value(results, "transport")),
-            ("Native error", native_code),
+            ("Reported transport category (may be inferred)", native_code),
         ]),
         ("Reference", [
             ("Diagnostic ID", _markdown_issue_value(_operation_key(first))),
@@ -2830,6 +2830,14 @@ def _github_issue_report(
         rows = [f"- {label}: {value}" for label, value in fields if value]
         if rows:
             rendered_sections.append(f"## {heading}\n\n" + "\n".join(rows))
+    if result == "FAILED":
+        rendered_sections.append(
+            "## Detailed diagnostics\n\n"
+            "This administrator summary contains uploaded outcome fields, not the local Finishing trace. "
+            "The transport category may be inferred from the application failure; it is not a raw native return code. "
+            "For the detailed sequence, use Report issue in the failing app (beta.10 build 15 or later) "
+            "and review the copied report before sharing. Earlier reports cannot be expanded retroactively."
+        )
     note = _markdown_issue_value(admin_note, max_length=GITHUB_ADMIN_NOTE_MAX_LENGTH)
     if note:
         rendered_sections.append(f"## Admin note\n\n{note}")

@@ -818,3 +818,10 @@ data and its own asset delivery; no public statistics route is introduced now.
 Natural Earth boundaries use Leaflet CRS.Simple/SVGOverlay without downloading
 map tiles. CSS tokens have neutral fallbacks. JS/CSS footprint is approximately
 162 KB raw / 46 KB gzip before the small adapter; the existing SVG is reused.
+
+### Build 15 diagnostic report boundary
+
+The compatibility event schema is unchanged. Administrator GitHub exports label
+the reported transport category as potentially inferred and direct the user to
+the app's Report issue for the extended local trace. The API does not receive,
+store or reconstruct that trace. Legacy event values remain unchanged.

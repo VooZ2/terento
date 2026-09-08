@@ -1,26 +1,25 @@
 # Terento v1.0.0-beta.10
 
-Beta.10 adds OpenTopoMap contour lines, clearer Finishing diagnostics, and
-fixes for map removal and temporary disk usage. Distributed build: **13**.
+Beta.10 build 15 improves installation failure reports. Distributed build: **15**.
 Freizeitkarte and OpenTopoMap remain the enabled map providers.
 
-## What changed
+## What changed in build 15
 
-- Install and remove OpenTopoMap maps with validated contour-line packages.
-- Restore Remove availability for managed maps after reconnect and for
-  recognized incomplete custom imports, with exact ownership checks retained.
-- Remove Terento's temporary downloads and extracted map files after installation
-  and Finishing complete, including failure and cancellation paths. Original
-  custom files selected from Downloads are preserved.
-- Recheck a missing final inventory entry once after successful sampled
-  verification before reporting a missing map. The map upload is never retried.
-- Record bounded Finishing checkpoints and failure details in local diagnostics
-  and the user-reviewed Report issue draft to investigate intermittent failures.
-- Include minor presentation and diagnostic reporting corrections.
+- Expand the user-reviewed Report issue text with bounded verification events,
+  attempt counts, operation durations, target match counts and sizes.
+- Keep the first target/identity/read failure and cleanup outcome separately.
+- Include validated/transferred/reported sizes, sampled verification results,
+  failed component and mapped transport classification without raw native messages.
+- Copy the complete report for pasting when it is too large for a GitHub form URL.
+- Clarify that administrator summaries contain coarse uploaded fields, not the
+  detailed local trace; use the app's Report issue for the extended report.
+
+Install, Remove, safe-update rules, retry timing and verification coverage are
+unchanged from build 13. No new provider or device support is claimed.
 
 ## Validation and limitations
 
-The owner confirmed Custom IMG, Freizeitkarte Lithuania/Andorra and OpenTopoMap
+Build 13 hardware evidence: the owner confirmed Custom IMG, Freizeitkarte Lithuania/Andorra and OpenTopoMap
 Latvia with contours installation/removal in one session, followed by the
 requested reconnect and longer-connected checks. Mac temporary-file cleanup
 was checked separately. This is evidence for the tested fēnix 8 AMOLED, not a
@@ -46,11 +45,12 @@ ordinary production diagnostic streams.
 ## Release artifacts
 
 Developer ID signing, Apple notarization, stapling, Gatekeeper and launch checks
-passed for both packages. Apple submission `9c7d9a17-99a8-4466-8b84-666ce1be0589`
-was accepted with no issues. The complete release pipeline and live catalog
-validation passed.
+passed for both packages. Apple submission `1f7e860f-57e1-4444-8cce-d49d4f36a073` was accepted
+with no issues. The complete release pipeline and live catalog validation passed.
+Automated validation and comparison with build 13 cover this diagnostic change;
+no additional hardware installation/removal test was required or performed.
 
 ```text
-Terento-1.0.0-beta.10-macOS-arm64.dmg  bbbd2f01f36dbab56c4b63ad8810dd7934faf0f461b076319fb1a98281265052
-Terento-1.0.0-beta.10-macOS-arm64.zip  0e45a7627e2332d31e9b0a945cbf95a3f24367ec996bba47c67f390f5c24a851
+Terento-1.0.0-beta.10-macOS-arm64.dmg  fc29a91375ed558dd4f9614c54a1e551da6b236f28b5fe99cfe6445550c6f174
+Terento-1.0.0-beta.10-macOS-arm64.zip  e321edfad7a99414edcb26c2a44023851e75564f96cdf2913017d4158ba5a49b
 ```

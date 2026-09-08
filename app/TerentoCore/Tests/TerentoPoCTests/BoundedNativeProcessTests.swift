@@ -54,6 +54,33 @@ struct BoundedNativeProcessTests {
         precondition(FinishingTrace.failureReport == frozen)
         FinishingTrace.beginInstallation()
         precondition(FinishingTrace.failureReport.isEmpty)
+        // Successful cleanup must not displace a failed target/identity lookup.
+        for event in ["target_end", "identity_end", "verify_result"] {
+            FinishingTrace.beginInstallation()
+            FinishingTrace.event(event, "offset=0 rc=-21 detail=0")
+            FinishingTrace.event("operation_begin", "operation=cleanup")
+            FinishingTrace.event("worker_started", "child=1")
+            FinishingTrace.event("worker_operation_begin", "operation=cleanup")
+            FinishingTrace.event("worker_exited", "child=1 status=0")
+            FinishingTrace.event("operation_complete", "operation=cleanup")
+            FinishingTrace.freezeFailure()
+            precondition(FinishingTrace.failureReport.contains("event=\(event)"))
+            precondition(FinishingTrace.failureReport.contains("rc=-21"))
+            precondition(FinishingTrace.failureReport.contains("operation=cleanup"))
+        }
+        FinishingTrace.beginInstallation()
+        FinishingTrace.beginInstallation()
+        FinishingTrace.event("target_matches", "offset=1794965504 rc=0 detail=0")
+        FinishingTrace.event("final_inventory", "attempt=2 matches=0 expected_size=1794965504 actual_size=0 folder=0 zero_id=0 filename_match=0")
+        FinishingTrace.event("target_end", "offset=0 rc=-21 detail=0")
+        for _ in 0..<100 { FinishingTrace.event("operation_complete", "operation=cleanup elapsed=1") }
+        FinishingTrace.freezeFailure()
+        precondition(FinishingTrace.failureReport.contains("event=target_end"))
+        precondition(FinishingTrace.failureReport.contains("event=final_inventory"))
+        precondition(!FinishingTrace.failureReport.contains("pid="))
+        precondition(!FinishingTrace.failureReport.contains("trace="))
+        precondition(FinishingTrace.failureReport.count <= 10000)
+        precondition(FinishingTrace.safeLine("FINISH_TRACE native event=target_size offset=1 detail=1 path=/Users/private") == nil)
         print("PASS: strict diagnostic fields, release worker file, frozen failure and reset")
         print("PASS: stalled native child is terminated and reaped on deadline/cancellation")
     }

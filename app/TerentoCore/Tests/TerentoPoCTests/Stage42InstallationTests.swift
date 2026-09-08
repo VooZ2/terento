@@ -1,6 +1,13 @@
 import CryptoKit
 import Foundation
 
+private final class DiagnosticRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var lines: [String] = []
+    func record(_ event: String, _ details: String) { lock.lock(); defer { lock.unlock() }; lines.append(event + " " + details) }
+    var text: String { lock.lock(); defer { lock.unlock() }; return lines.joined(separator: "\n") }
+}
+
 private let gigabyte: UInt64 = 1024 * 1024 * 1024
 private let targetPath = "/GARMIN/terento_freizeitkarte_fra.img"
 
@@ -764,12 +771,16 @@ struct Stage42InstallationTests {
         for missingReads in [0, 1, 2] {
             let harness = makeHarness()
             var reader: MockDeviceReader?
+            let recorder = DiagnosticRecorder()
             let result = harness.run(configureReader: {
                 $0.missingTargetReads = missingReads
                 reader = $0
-            })
+            }, diagnostic: { recorder.record($0, $1) })
             passed += expect(
-                result.isSuccess == (missingReads < 2)
+                recorder.text.contains("final_inventory attempt=1 matches=\(missingReads == 0 ? 1 : 0)")
+                    && !recorder.text.contains("/GARMIN")
+                    && (missingReads < 2 || recorder.text.contains("cleanup_result attempt=1 succeeded=1"))
+                    && result.isSuccess == (missingReads < 2)
                     && reader?.inventoryReadCount == (missingReads == 0 ? 2 : 3)
                     && harness.transport.writeCount == 1
                     && harness.transport.deleteCount == (missingReads < 2 ? 0 : 1),
@@ -1001,7 +1012,8 @@ struct Stage42InstallationTests {
             transactionGate: InstallationTransactionGate = InstallationTransactionGate(),
             onProgress: (@Sendable (TransferProgress) -> Void)? = nil,
             onPhase: (@Sendable (InstallationProcessPhase) -> Void)? = nil,
-            configureReader: (MockDeviceReader) -> Void = { _ in }
+            configureReader: (MockDeviceReader) -> Void = { _ in },
+            diagnostic: @escaping @Sendable (String, String) -> Void = { _, _ in }
         ) -> MapInstallationResult {
             let reader = MockDeviceReader(
                 files: Self.makeAfterFiles(),
@@ -1017,7 +1029,8 @@ struct Stage42InstallationTests {
                 manifestStore: manifest,
                 recoveryStore: recovery,
                 transactionGate: transactionGate,
-                now: { Date(timeIntervalSince1970: 0) }
+                now: { Date(timeIntervalSince1970: 0) },
+                diagnostic: diagnostic
             ).run(request, onProgress: onProgress, onPhase: onPhase)
         }
 

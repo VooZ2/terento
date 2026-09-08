@@ -1879,6 +1879,8 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("[Install][Write]", title)
         self.assertIn(r"SEND\_OBJECT\_FAILED", body)
         self.assertIn("install-32", body)
+        self.assertIn("not a raw native return code", body)
+        self.assertIn("Report issue", body)
         self.assertIn("private raw value", body)
         self.assertIn("20.19", body)
         for forbidden in ("Bearer secret", "owner@example.com", "/Users/alice"):

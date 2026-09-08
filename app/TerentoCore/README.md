@@ -312,3 +312,11 @@ map catalog, transport model, bundled metadata resource, and C libmtp bridge.
 The bundled package size is a catalog snapshot from the provider directory and
 must be revalidated against the actual download before any future map transfer
 work. Neither developer write test performs map transfer.
+
+### Build 15 diagnostic reports
+
+Report issue includes a bounded fixed-field verification sequence, original
+failure and cleanup outcome, observed sizes and sample results. Native return
+codes remain distinguishable from mapped application categories. Long reports
+use clipboard paste into the GitHub form. Device calls, ownership policy, retries
+and deadlines are unchanged; raw logs are not automatically uploaded.

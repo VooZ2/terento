@@ -38,10 +38,10 @@ For a beta release, keep the app's marketing version separate from the public
 release label:
 
 ```sh
-RELEASE_TAG=v1.0.0-beta.10 \
+RELEASE_TAG=v1.0.0-beta.10-build15 \
 Packaging/release.sh \
   --version 1.0.0 \
-  --build 13 \
+  --build 15 \
   --release-version 1.0.0-beta.10 \
   --overwrite
 ```
@@ -91,7 +91,7 @@ To exercise the fresh build, tests, signing, Hardened Runtime, and runtime-path
 checks without contacting Apple or creating release artifacts:
 
 ```sh
-Packaging/release.sh --no-notarize --version 1.0.0 --build 13 \
+Packaging/release.sh --no-notarize --version 1.0.0 --build 15 \
   --release-version 1.0.0-beta.10
 ```
 
@@ -214,3 +214,12 @@ visible FAQ; Download pages render only the application and reference the
 publisher. The renderer reads release version, download, and notes URLs from
 `site/updates/macos-arm64.json` and derives FAQ JSON-LD from each page's
 visible `#faq` section.
+
+## Beta.10 build 15 diagnostic reports
+
+Use immutable tag v1.0.0-beta.10-build15 for this rebuild; retain build13's tag
+and files. The displayed label stays 1.0.0-beta.10 and CFBundleVersion advances
+to15. Fixed local diagnostics preserve first failure, attempt context, target
+counts/sizes and final cleanup. Report issue copies the complete privacy-reviewed
+report and uses a short paste-instruction URL if the encoded form exceeds7000
+bytes. No raw trace is automatically uploaded or added to the telemetry schema.

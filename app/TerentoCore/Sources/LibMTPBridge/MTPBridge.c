@@ -1831,6 +1831,11 @@ static int validate_managed_map_object(
         error_message,
         error_message_capacity
     );
+    /* Diagnostic observation only; use the already-read lookup result. */
+    TerentoFinishingTrace lookup_trace = terento_trace_start();
+    terento_trace_event(&lookup_trace, "target_matches", expected_size_bytes, result, match_count);
+    terento_trace_event(&lookup_trace, "target_size", expected_size_bytes, result, remote_size);
+    terento_trace_finish(&lookup_trace);
     if (result != 0) {
         return result;
     }
