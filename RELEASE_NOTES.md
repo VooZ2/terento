@@ -44,10 +44,13 @@ ordinary production diagnostic streams.
 
 ## Release artifacts
 
-Build 15 release validation is in progress; checksums below are pending replacement
-with the final signed and notarized artifact hashes before publication.
+Developer ID signing, Apple notarization, stapling, Gatekeeper and launch checks
+passed for both packages. Apple submission `1f7e860f-57e1-4444-8cce-d49d4f36a073` was accepted
+with no issues. The complete release pipeline and live catalog validation passed.
+Automated validation and comparison with build 13 cover this diagnostic change;
+no additional hardware installation/removal test was required or performed.
 
 ```text
-Terento-1.0.0-beta.10-macOS-arm64.dmg  bbbd2f01f36dbab56c4b63ad8810dd7934faf0f461b076319fb1a98281265052
-Terento-1.0.0-beta.10-macOS-arm64.zip  0e45a7627e2332d31e9b0a945cbf95a3f24367ec996bba47c67f390f5c24a851
+Terento-1.0.0-beta.10-macOS-arm64.dmg  fc29a91375ed558dd4f9614c54a1e551da6b236f28b5fe99cfe6445550c6f174
+Terento-1.0.0-beta.10-macOS-arm64.zip  e321edfad7a99414edcb26c2a44023851e75564f96cdf2913017d4158ba5a49b
 ```
