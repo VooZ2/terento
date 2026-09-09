@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: refresh-compatibility-snapshot
@@ -82,11 +83,20 @@ jobs:
             fi
           done < <(git diff --name-only)
 
-      - name: Commit and publish the refreshed snapshot
+      - name: Propose the refreshed snapshot through protected-branch review
         if: steps.refresh.outputs.changed == 'true'
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          branch="terento/compatibility-snapshot-${GITHUB_RUN_ID}"
+          existing="$(gh pr list --base beta --state open --search 'chore: refresh compatibility snapshot in:title' --json url --jq '.[0].url // empty')"
+          if [[ -n "$existing" ]]; then
+            printf 'Snapshot review already pending: %s\n' "$existing" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git switch -c "$branch"
           git add -- \
             site/compatibility/public-models.snapshot.json \
             site/compatibility/index.html \
@@ -103,4 +113,6 @@ jobs:
           git config user.name "Terento automation"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "chore: refresh compatibility snapshot"
-          git push origin HEAD:beta
+          git push origin "HEAD:$branch"
+          gh pr create --base beta --head "$branch" --title "chore: refresh compatibility snapshot" --body "Refresh approved public evidence and six generated compatibility pages. The public-site suite passed in this refresh run. Review and merge through normal branch protection; no evidence approval or branch-protection bypass is performed. GitHub-token PRs do not start push/PR CI automatically: an owner must run required checks before merging."
+          printf 'Snapshot PR created. Required checks, review and merge are needed before publication.\n' >> "$GITHUB_STEP_SUMMARY"

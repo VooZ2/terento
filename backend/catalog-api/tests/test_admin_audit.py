@@ -12,7 +12,7 @@ from terento_catalog.admin import (
     _admin_map_display_name, _admin_region_identity, _system_health_card,
     _overview_map_event_context, provider_detail_page, local_test_data_page,
     _admin_disclosure_script,
-    map_statistics_page,
+    map_statistics_page, _identity_parts, _dashboard_script,
 )
 from terento_catalog.admin_world_map import WORLD_MAP_COUNTRY_ALIASES
 from terento_catalog.telemetry import is_local_release_label
@@ -27,6 +27,25 @@ class Tags(HTMLParser):
 
 
 class AdminAuditTests(unittest.TestCase):
+    def test_post_audit_layout_copy_and_recovery_contract(self):
+        body = map_statistics_page({"rows": []}, [], {"username": "audit"}, "csrf").decode()
+        for text in ("Completed downloads", "Download success", "Completed map-package installs",
+                     "Package install success", "View all map activity", "installSuccessFraction",
+                     "No maps match your search", "flex-direction:column", "min-width:960px"):
+            self.assertIn(text, body)
+        self.assertNotIn("<strong data-stat='providerIssues'>", body)
+        self.assertNotIn("opted-in", body)
+        self.assertNotIn("table-layout:fixed}", body.split("@media(min-width:701px){", 1)[1].split("}", 1)[0])
+        self.assertIn("min-height:44px", body)
+        self.assertIn(".popularity-all-maps-disclosure .disclosure-body>label", body)
+        self.assertIn("installation-empty", _dashboard_script())
+
+    def test_display_cleanup_keeps_identity_and_functional_name(self):
+        identity = "fēnix 9 Pro · inReach, · 51 mm"
+        model, variant, unchanged = _identity_parts({"model": "fēnix 9 Pro · inReach,", "variant": "51 mm", "compatibility_identity": identity})
+        self.assertEqual((model, variant, unchanged), ("fēnix 9 Pro · inReach", "51 mm", identity))
+        self.assertEqual(_identity_parts({"model": "fēnix 8 51 mm", "variant": "51 mm"})[0], "fēnix 8")
+
     def test_map_statistics_has_one_dom_target_per_component(self):
         for rows in ([], [{"provider_id": "freizeitkarte", "event_type": "INSTALL_SUCCEEDED",
                            "outcome": "SUCCEEDED", "operation_count": 2}]):
@@ -37,7 +56,7 @@ class AdminAuditTests(unittest.TestCase):
                 for target in ("map-statistics-metrics", "map-statistics-coverage",
                                "provider-statistic-rows", "world-map-svg", "map-rows"):
                     self.assertEqual(ids[target], 1, target)
-                self.assertEqual(body.count("Counts map packages; one install can include multiple packages."), 1)
+                self.assertEqual(body.count("Counts map packages, not watches. One installation can include several packages. Success rates use completed outcomes (successful + failed), excluding operations still in progress. Compatibility evidence is counted separately."), 1)
 
     def test_health_disclosure_defaults_and_escaped_evidence(self):
         for state in ('HEALTHY', 'FAILED', 'WARNING', 'UNKNOWN', None):

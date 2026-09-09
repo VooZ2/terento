@@ -52,6 +52,7 @@ jobs:
         if: inputs.role == 'site'
         run: |
           set -euo pipefail
+          python scripts/update-compatibility-snapshot.py --check
           Tests/run-site-tests.sh
           Tests/run-release-documentation-tests.sh
           Tests/run-release-legal-content-tests.sh

@@ -122,17 +122,81 @@
     },
   };
 
+  const freshnessCopy = {
+  "en": {
+    "more": "More models ready for testing",
+    "snapshot": "Saved evidence",
+    "fresh": "Evidence refreshed",
+    "stale": "Could not refresh. Showing saved evidence; counts and statuses may be outdated.",
+    "retry": "Retry",
+    "clear": "Clear filters",
+    "noMatch": "No models match these filters.",
+        "recommended": "Recommended"
+  },
+  "de": {
+    "more": "Weitere Modelle zum Testen",
+    "snapshot": "Gespeicherte Nachweise",
+    "fresh": "Nachweise aktualisiert",
+    "stale": "Aktualisierung fehlgeschlagen. Gespeicherte Nachweise werden angezeigt; Zahlen und Status können veraltet sein.",
+    "retry": "Erneut versuchen",
+    "clear": "Filter zurücksetzen",
+    "noMatch": "Keine Modelle passen zu diesen Filtern.",
+        "recommended": "Empfohlen"
+  },
+  "fr": {
+    "more": "D’autres modèles prêts à être testés",
+    "snapshot": "Données enregistrées",
+    "fresh": "Données actualisées",
+    "stale": "Actualisation impossible. Les données enregistrées sont affichées ; les chiffres et statuts peuvent être obsolètes.",
+    "retry": "Réessayer",
+    "clear": "Effacer les filtres",
+    "noMatch": "Aucun modèle ne correspond à ces filtres.",
+        "recommended": "Recommandé"
+  },
+  "pl": {
+    "more": "Kolejne modele gotowe do testów",
+    "snapshot": "Zapisane dane",
+    "fresh": "Dane odświeżone",
+    "stale": "Nie udało się odświeżyć danych. Wyświetlane zapisane liczby i statusy mogą być nieaktualne.",
+    "retry": "Spróbuj ponownie",
+    "clear": "Wyczyść filtry",
+    "noMatch": "Żaden model nie pasuje do tych filtrów.",
+        "recommended": "Zalecane"
+  },
+  "cs": {
+    "more": "Další modely připravené k testování",
+    "snapshot": "Uložené údaje",
+    "fresh": "Údaje aktualizovány",
+    "stale": "Aktualizace se nezdařila. Zobrazené uložené počty a stavy mohou být zastaralé.",
+    "retry": "Zkusit znovu",
+    "clear": "Vymazat filtry",
+    "noMatch": "Žádný model neodpovídá těmto filtrům.",
+        "recommended": "Doporučeno"
+  },
+  "it": {
+    "more": "Altri modelli pronti per i test",
+    "snapshot": "Dati salvati",
+    "fresh": "Dati aggiornati",
+    "stale": "Aggiornamento non riuscito. I conteggi e gli stati salvati visualizzati potrebbero non essere aggiornati.",
+    "retry": "Riprova",
+    "clear": "Cancella filtri",
+    "noMatch": "Nessun modello corrisponde a questi filtri.",
+        "recommended": "Consigliato"
+  }
+};
+
   const successfulInstallLabel = {
     en: (count) => `${count} successful install${count === 1 ? "" : "s"}`,
-    de: (count) => `${count} erfolgreiche${count === 1 ? "" : "n"} Installation${count === 1 ? "" : "en"}`,
+    de: (count) => `${count} erfolgreiche Installation${count === 1 ? "" : "en"}`,
     fr: (count) => `${count} installation${count === 1 ? "" : "s"} réussie${count === 1 ? "" : "s"}`,
     pl: (count) => `${count} ${count === 1 ? "udana instalacja" : "udanych instalacji"}`,
     cs: (count) => `${count} ${count === 1 ? "úspěšná instalace" : "úspěšných instalací"}`,
-    it: (count) => `${count} installazione${count === 1 ? "" : "i"} riuscita${count === 1 ? "" : "e"}`,
+    it: (count) => `${count} ${count === 1 ? "installazione riuscita" : "installazioni riuscite"}`,
   };
 
   Object.entries(definitions).forEach(([language, definition]) => {
     definition.successfulInstallLabel = successfulInstallLabel[language];
+    definition.freshness = freshnessCopy[language];
   });
 
   const getLocale = (value) => definitions[String(value || "en").toLowerCase().split("-")[0]] || definitions.en;

@@ -16,6 +16,69 @@ LOCALES = ("en", "de", "fr", "pl", "cs", "it")
 STATUS_CODES = ("VERIFIED", "SUPPORTED", "TESTED", "TESTING")
 FALLBACK_IMAGE_URL = "/assets/generic-garmin-watch.png?v=20260826-1"
 
+FRESHNESS_COPY = {
+    "en": {
+        "more": "More models ready for testing",
+        "snapshot": "Saved evidence",
+        "fresh": "Evidence refreshed",
+        "stale": "Could not refresh. Showing saved evidence; counts and statuses may be outdated.",
+        "retry": "Retry",
+        "clear": "Clear filters",
+        "noMatch": "No models match these filters.",
+        "recommended": "Recommended"
+    },
+    "de": {
+        "more": "Weitere Modelle zum Testen",
+        "snapshot": "Gespeicherte Nachweise",
+        "fresh": "Nachweise aktualisiert",
+        "stale": "Aktualisierung fehlgeschlagen. Gespeicherte Nachweise werden angezeigt; Zahlen und Status können veraltet sein.",
+        "retry": "Erneut versuchen",
+        "clear": "Filter zurücksetzen",
+        "noMatch": "Keine Modelle passen zu diesen Filtern.",
+        "recommended": "Empfohlen"
+    },
+    "fr": {
+        "more": "D’autres modèles prêts à être testés",
+        "snapshot": "Données enregistrées",
+        "fresh": "Données actualisées",
+        "stale": "Actualisation impossible. Les données enregistrées sont affichées ; les chiffres et statuts peuvent être obsolètes.",
+        "retry": "Réessayer",
+        "clear": "Effacer les filtres",
+        "noMatch": "Aucun modèle ne correspond à ces filtres.",
+        "recommended": "Recommandé"
+    },
+    "pl": {
+        "more": "Kolejne modele gotowe do testów",
+        "snapshot": "Zapisane dane",
+        "fresh": "Dane odświeżone",
+        "stale": "Nie udało się odświeżyć danych. Wyświetlane zapisane liczby i statusy mogą być nieaktualne.",
+        "retry": "Spróbuj ponownie",
+        "clear": "Wyczyść filtry",
+        "noMatch": "Żaden model nie pasuje do tych filtrów.",
+        "recommended": "Zalecane"
+    },
+    "cs": {
+        "more": "Další modely připravené k testování",
+        "snapshot": "Uložené údaje",
+        "fresh": "Údaje aktualizovány",
+        "stale": "Aktualizace se nezdařila. Zobrazené uložené počty a stavy mohou být zastaralé.",
+        "retry": "Zkusit znovu",
+        "clear": "Vymazat filtry",
+        "noMatch": "Žádný model neodpovídá těmto filtrům.",
+        "recommended": "Doporučeno"
+    },
+    "it": {
+        "more": "Altri modelli pronti per i test",
+        "snapshot": "Dati salvati",
+        "fresh": "Dati aggiornati",
+        "stale": "Aggiornamento non riuscito. I conteggi e gli stati salvati visualizzati potrebbero non essere aggiornati.",
+        "retry": "Riprova",
+        "clear": "Cancella filtri",
+        "noMatch": "Nessun modello corrisponde a questi filtri.",
+        "recommended": "Consigliato"
+    }
+}
+
 COPY = {
     "en": {
         "model_one": "model with evidence",
@@ -103,7 +166,7 @@ def public_model_name(value: object) -> str:
         without_variant,
         flags=re.IGNORECASE,
     )
-    return re.sub(r"\s+", " ", without_variant).strip() or label
+    return re.sub(r"\s+", " ", without_variant).strip(" ,·|:–—-") or label
 
 
 def variant_label(row: dict) -> str:
@@ -171,7 +234,7 @@ def successful_install_label(count: int, locale: str) -> str:
         return f"{count} {'udana instalacja' if count == 1 else 'udanych instalacji'}"
     if locale == "cs":
         return f"{count} {'úspěšná instalace' if count == 1 else 'úspěšných instalací'}"
-    return f"{count} installazione{'i' if count != 1 else ''} riuscita{'e' if count != 1 else ''}"
+    return f"{count} {'installazione riuscita' if count == 1 else 'installazioni riuscite'}"
 
 
 def load_snapshot() -> dict:
@@ -251,8 +314,8 @@ def static_results(rows: list[dict], locale: str) -> tuple[int, str, str]:
   <p class="compatibility-summary-line" data-summary-content>
     <span class="compatibility-summary-item"><strong data-summary="models">{count}</strong> <span data-summary-model-label>{escape(model_label)}</span> <span class="compatibility-summary-separator" aria-hidden="true">·</span></span>
     <span class="compatibility-summary-item"><strong data-summary="successes">{successes}</strong> {escape(copy["successes"])} <span class="compatibility-summary-separator" aria-hidden="true">·</span></span>
-    <span class="compatibility-summary-item compatibility-summary-more">More models ready for testing <span class="compatibility-summary-separator" aria-hidden="true">·</span></span>
-    <span class="compatibility-summary-item compatibility-summary-updated" data-summary-updated{' hidden' if not latest_visible else ''}>{escape('Updated' if locale == 'en' else {'de': 'Aktualisiert', 'fr': 'Mis à jour', 'pl': 'Zaktualizowano', 'cs': 'Aktualizováno', 'it': 'Aggiornato'}[locale])} <time data-summary="updated" datetime="{escape(latest_raw)}">{escape(latest_visible)}</time></span>
+    <span class="compatibility-summary-item compatibility-summary-more">{escape(FRESHNESS_COPY[locale]["more"])} <span class="compatibility-summary-separator" aria-hidden="true">·</span></span>
+    <span class="compatibility-summary-item compatibility-summary-updated" data-summary-updated{' hidden' if not latest_visible else ''}>{escape(copy["latest"])} <time data-summary="updated" datetime="{escape(latest_raw)}">{escape(latest_visible)}</time></span>
   </p>
 </div>'''
     results_count = f'<p class="compatibility-results-count" id="results-count" aria-live="polite">{count} {escape(results_label)}</p>'
@@ -279,6 +342,10 @@ def snapshot_script(payload: dict) -> str:
 def render_page(source: str, locale: str, payload: dict) -> str:
     rows = normalized_rows(payload)
     summary, results_count = static_results(rows, locale)
+    extra = FRESHNESS_COPY[locale]
+    freshness = f'<p class="compatibility-freshness" role="status"><span id="compatibility-freshness">{escape(extra["snapshot"])}: {escape(format_date(payload["generatedAt"], locale))}</span> <button type="button" id="compatibility-retry" hidden>{escape(extra["retry"])}</button></p>'
+    summary = summary.rsplit("</div>", 1)[0] + freshness + "\n</div>"
+    source = re.sub(r'<button[^>]*id="compatibility-clear"[^>]*>[\s\S]*?</button>\s*', "", source)
     cards = "\n".join(card_markup(row, locale) for row in rows)
     grid = f'<div class="watch-grid" id="watch-grid" aria-live="polite" aria-busy="false">{cards}</div>'
     noscript = noscript_markup(rows, locale)
@@ -327,6 +394,8 @@ def render_page(source: str, locale: str, payload: dict) -> str:
         if marker not in source:
             raise ValueError(f"{page_path(locale)}: compatibility script insertion point not found")
         source = source.replace(marker, snapshot_script(payload) + "\n    " + marker, 1)
+    source = source.replace('<p class="compatibility-results-count"', f'<button type="button" class="compatibility-clear" id="compatibility-clear">{escape(extra["clear"])}</button>\n          <p class="compatibility-results-count"', 1)
+    source = re.sub(r'(<p class="compatibility-empty"[^>]*>)[^<]*(</p>)', lambda match: match[1] + escape(extra["noMatch"]) + match[2], source)
     return source
 
 

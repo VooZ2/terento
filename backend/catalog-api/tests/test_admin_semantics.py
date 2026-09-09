@@ -478,7 +478,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("<span>Map operation success</span><strong>75%</strong>", body)
         self.assertIn("<span>Failed map operations</span><strong>1</strong>", body)
         self.assertIn("<span>Open errors</span><strong>1</strong>", body)
-        self.assertIn("<span>Write-started attempts</span><strong>2</strong>", body)
+        self.assertIn("<span>Installation attempts</span><strong>2</strong>", body)
         self.assertIn("<span>Variants</span><strong>1</strong>", body)
         self.assertIn("<span>Success rate</span><strong>50%</strong>", body)
         self.assertIn("Map install operations over time", body)
@@ -1158,7 +1158,7 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertNotIn("class='metric'", body)
         self.assertIn('class="admin-kpi-grid installation-kpis"', body)
-        self.assertIn("<span>Write-started attempts</span><strong>3</strong>", body)
+        self.assertIn("<span>Installation attempts</span><strong>3</strong>", body)
         self.assertIn("<span>Successful</span><strong>1</strong>", body)
         self.assertIn("<span>Success rate</span><strong>33.3%</strong>", body)
         self.assertIn("Historical failures: 1", body)
@@ -1467,7 +1467,7 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertIn("<p class=\"eyebrow\">Compatibility</p>", body)
         self.assertIn('class="admin-kpi-grid installation-kpis"', body)
-        for label in ("Variants", "Write-started attempts", "Successful", "Success rate", "Open errors"):
+        for label in ("Variants", "Installation attempts", "Successful", "Success rate", "Open errors"):
             self.assertIn(f"<span>{label}</span>", body)
         self.assertIn("<span>Successful</span><strong>2</strong>", body)
         self.assertIn("<span>Success rate</span><strong>66.7%</strong>", body)
@@ -1766,7 +1766,7 @@ class AdminSemanticsTests(unittest.TestCase):
             }}, [], [], {"username": "operator"}, "csrf",
         ).decode()
         history = body.split("id='provider-health-history'", 1)[1].split("</details>", 1)[0]
-        self.assertIn("Health check history · 1 previous checks", history)
+        self.assertIn("Health check history · 1 previous check", history)
         self.assertIn("2026-08-30", history)
         self.assertNotIn("2026-08-31", history)
         self.assertNotIn("Download source URLs", body)

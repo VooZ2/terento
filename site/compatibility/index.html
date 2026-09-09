@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en" data-language="en" data-page="compatibility">
   <head>
-    <script defer src="/site-shell.js?v=20260905-in-page-language-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20260909-interface-polish-v2">
+    <script defer src="/site-shell.js?v=20260909-post-audit-v1"></script>
+    <link rel="stylesheet" href="/styles.css?v=20260909-post-audit-v1">
     <script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -64,7 +64,7 @@
       <div class="mobile-nav" id="mobile-nav" hidden>
         <div class="shell mobile-nav-inner">
           <nav class="mobile-nav-links" aria-label="Primary navigation">
-            <a href="/compatibility/" aria-current="page" data-umami-event="compatibility-link-click" data-umami-event-location="mobile-nav">Compatibility</a><a href="/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="mobile-nav">Guide</a><a href="/about/" data-umami-event="navigation-link-click" data-umami-event-location="mobile-nav">About</a>
+            <a href="/compatibility/" aria-current="page" data-umami-event="compatibility-link-click" data-umami-event-location="mobile-nav">Compatibility</a><a href="/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="mobile-nav">Guide</a><a href="/about/" data-umami-event="navigation-link-click" data-umami-event-location="mobile-nav">About</a><a href="/download/" data-umami-event="download-cta-click" data-umami-event-location="mobile-nav">Download</a>
           </nav>
           <div class="mobile-nav-language"><details class="language-menu mobile-language-menu">
             <summary class="language-trigger" aria-label="Choose language"><span class="mobile-language-label">English</span></summary>
@@ -88,11 +88,12 @@
           <div class="compatibility-summary" id="compatibility-summary" aria-live="polite" aria-busy="false">
   <p class="compatibility-summary-line compatibility-summary-loading" data-summary-loading role="status" hidden style="display:none">Loading compatibility evidence…</p>
   <p class="compatibility-summary-line" data-summary-content>
-    <span class="compatibility-summary-item"><strong data-summary="models">4</strong> <span data-summary-model-label>models with evidence</span> <span class="compatibility-summary-separator" aria-hidden="true">·</span></span>
-    <span class="compatibility-summary-item"><strong data-summary="successes">19</strong> successful installs <span class="compatibility-summary-separator" aria-hidden="true">·</span></span>
+    <span class="compatibility-summary-item"><strong data-summary="models">6</strong> <span data-summary-model-label>models with evidence</span> <span class="compatibility-summary-separator" aria-hidden="true">·</span></span>
+    <span class="compatibility-summary-item"><strong data-summary="successes">9</strong> successful installs <span class="compatibility-summary-separator" aria-hidden="true">·</span></span>
     <span class="compatibility-summary-item compatibility-summary-more">More models ready for testing <span class="compatibility-summary-separator" aria-hidden="true">·</span></span>
-    <span class="compatibility-summary-item compatibility-summary-updated" data-summary-updated>Updated <time data-summary="updated" datetime="2026-09-02T22:00:21+00:00">Sep 2, 2026</time></span>
+    <span class="compatibility-summary-item compatibility-summary-updated" data-summary-updated>Latest installation <time data-summary="updated" datetime="2026-09-07T16:43:14+00:00">Sep 7, 2026</time></span>
   </p>
+<p class="compatibility-freshness" role="status"><span id="compatibility-freshness">Saved evidence: Sep 9, 2026</span> <button type="button" id="compatibility-retry" hidden>Retry</button></p>
 </div>
 
           <details class="compatibility-how">
@@ -135,17 +136,18 @@
             </label>
           </form>
 
-            <p class="compatibility-results-count" id="results-count" aria-live="polite">4 models</p>
-          <div class="watch-grid" id="watch-grid" aria-live="polite" aria-busy="false"><article class="watch-card" aria-label="fēnix 8, 47 mm, AMOLED, Verified, 15 successful installs, Latest installation Sep 2, 2026">
+            <button type="button" class="compatibility-clear" id="compatibility-clear">Clear filters</button>
+          <p class="compatibility-results-count" id="results-count" aria-live="polite">6 models</p>
+          <div class="watch-grid" id="watch-grid" aria-live="polite" aria-busy="false"><article class="watch-card" aria-label="fēnix 8, 47 mm, AMOLED, Supported, 3 successful installs, Latest installation Aug 25, 2026">
   <div class="watch-card-image"><img class="is-ready" data-remote-src="https://api.terento.app/assets/devices/garmin/fenix-8-47-amoled.webp" src="https://api.terento.app/assets/devices/garmin/fenix-8-47-amoled.webp" alt="" loading="lazy"></div>
   <div class="watch-card-body">
     <div class="watch-card-heading">
       <p class="watch-family">fēnix</p>
-      <div class="watch-card-model-row"><h3>fēnix 8</h3><span class="status-badge status-verified" aria-label="Verified"><span>Verified</span></span></div>
+      <div class="watch-card-model-row"><h3>fēnix 8</h3><span class="status-badge status-supported" aria-label="Supported"><span>Supported</span></span></div>
       <p class="watch-variant">47 mm, AMOLED</p>
     </div>
-    <p class="watch-install-count">15 successful installs</p>
-    <p class="watch-card-meta">Latest installation Sep 2, 2026</p>
+    <p class="watch-install-count">3 successful installs</p>
+    <p class="watch-card-meta">Latest installation Aug 25, 2026</p>
   </div>
 </article>
 <article class="watch-card" aria-label="fēnix 8 Pro, 47 mm, AMOLED, Tested, 2 successful installs, Latest installation Sep 2, 2026">
@@ -158,6 +160,18 @@
     </div>
     <p class="watch-install-count">2 successful installs</p>
     <p class="watch-card-meta">Latest installation Sep 2, 2026</p>
+  </div>
+</article>
+<article class="watch-card" aria-label="Forerunner 970, Smartwatch, Tested, 1 successful install, Latest installation Sep 6, 2026">
+  <div class="watch-card-image"><img class="is-ready" data-remote-src="https://res.garmin.com/en/products/010-02969-12/g/cf-lg.jpg" src="https://res.garmin.com/en/products/010-02969-12/g/cf-lg.jpg" alt="" loading="lazy"></div>
+  <div class="watch-card-body">
+    <div class="watch-card-heading">
+      <p class="watch-family">Forerunner</p>
+      <div class="watch-card-model-row"><h3>Forerunner 970</h3><span class="status-badge status-tested" aria-label="Tested"><span>Tested</span></span></div>
+      <p class="watch-variant">Smartwatch</p>
+    </div>
+    <p class="watch-install-count">1 successful install</p>
+    <p class="watch-card-meta">Latest installation Sep 6, 2026</p>
   </div>
 </article>
 <article class="watch-card" aria-label="fēnix 8, 51 mm, AMOLED, Tested, 1 successful install, Latest installation Aug 25, 2026">
@@ -183,15 +197,29 @@
     <p class="watch-install-count">1 successful install</p>
     <p class="watch-card-meta">Latest installation Aug 27, 2026</p>
   </div>
+</article>
+<article class="watch-card" aria-label="fēnix 9 Pro · inReach, 51 mm, Tested, 1 successful install, Latest installation Sep 7, 2026">
+  <div class="watch-card-image"><img class="is-ready" data-remote-src="https://res.garmin.com/en/products/010-04337-00/g/cf-lg.jpg" src="https://res.garmin.com/en/products/010-04337-00/g/cf-lg.jpg" alt="" loading="lazy"></div>
+  <div class="watch-card-body">
+    <div class="watch-card-heading">
+      <p class="watch-family">fēnix</p>
+      <div class="watch-card-model-row"><h3>fēnix 9 Pro · inReach</h3><span class="status-badge status-tested" aria-label="Tested"><span>Tested</span></span></div>
+      <p class="watch-variant">51 mm</p>
+    </div>
+    <p class="watch-install-count">1 successful install</p>
+    <p class="watch-card-meta">Latest installation Sep 7, 2026</p>
+  </div>
 </article></div>
           <noscript class="compatibility-noscript">
   <p>Latest compatibility snapshot based on real Terento installations:</p>
-  <ul>  <li><strong>fēnix 8</strong> — 47 mm, AMOLED — Verified — 15 successful installs</li>
+  <ul>  <li><strong>fēnix 8</strong> — 47 mm, AMOLED — Supported — 3 successful installs</li>
   <li><strong>fēnix 8 Pro</strong> — 47 mm, AMOLED — Tested — 2 successful installs</li>
+  <li><strong>Forerunner 970</strong> — Smartwatch — Tested — 1 successful install</li>
   <li><strong>fēnix 8</strong> — 51 mm, AMOLED — Tested — 1 successful install</li>
-  <li><strong>fēnix 8 Pro</strong> — 51 mm, AMOLED — Tested — 1 successful install</li></ul>
+  <li><strong>fēnix 8 Pro</strong> — 51 mm, AMOLED — Tested — 1 successful install</li>
+  <li><strong>fēnix 9 Pro · inReach</strong> — 51 mm — Tested — 1 successful install</li></ul>
 </noscript>
-          <p class="compatibility-empty" id="compatibility-empty" hidden>No tried models match these filters.</p>
+          <p class="compatibility-empty" id="compatibility-empty" hidden>No models match these filters.</p>
           <p class="compatibility-error" id="compatibility-error" hidden>Compatibility results are temporarily unavailable. Please try again later.</p>
           <div class="compatibility-community-cta"><div class="compatibility-community-copy"><p class="eyebrow">Community testing</p><h2>Have another Garmin smartwatch with map support?</h2><p>Try the beta and share the result.</p><a class="text-link compatibility-guide-link" href="/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="compatibility-community-testing">First time installing third-party maps? Read the Mac guide <span aria-hidden="true">→</span></a></div><a class="download-action download-action-primary compatibility-community-link" href="/download/" data-umami-event="download-cta-click" data-umami-event-location="compatibility-community-testing">Download</a></div></div></section>
     </main>
@@ -215,9 +243,9 @@
       <div class="shell footer-note"><p>Visit statistics (Umami) do not use cookies.</p></div>
     </footer>
 
-    <script defer src="/compatibility/compatibility-data.js?v=20260827-7"></script>
-    <script defer src="/compatibility/compatibility-locales.js?v=20260904-beta-provider-scope"></script>
-    <script type="application/json" id="compatibility-snapshot">{"schemaVersion":1,"generatedAt":"2026-09-04T14:54:58.468120+00:00","models":[{"model":"fēnix 8 · 47 mm AMOLED","canonicalModel":"fenix 8","family":"fenix","familyName":"fēnix","compatibilityIdentity":"fēnix 8 · 47 mm AMOLED","variant":"47 mm, AMOLED","caseSizeMm":47,"displayType":"AMOLED","canonicalDeviceId":"garmin-fenix-8-47-amoled","attemptedInstallations":15,"successfulInstallations":15,"reconnectVerifiedInstallations":0,"failedInstallations":0,"successRate":100.0,"evidenceStatus":"VERIFIED","lastSuccessfulInstallation":"2026-09-02T11:01:47+00:00","lastEvidence":"2026-09-02T11:01:47+00:00","image":{"url":"https://api.terento.app/assets/devices/garmin/fenix-8-47-amoled.webp","origin":"controlled","status":"AVAILABLE","scope":"MODEL_SIZE"}},{"model":"fēnix 8 Pro · 47 mm, AMOLED","canonicalModel":"fenix 8 pro","family":"fenix","familyName":"fēnix","compatibilityIdentity":"fēnix 8 Pro · 47 mm","variant":"47mm","caseSizeMm":47,"displayType":null,"canonicalDeviceId":"garmin-fenix-8-pro-47-amoled","attemptedInstallations":2,"successfulInstallations":2,"reconnectVerifiedInstallations":0,"failedInstallations":0,"successRate":100.0,"evidenceStatus":"TESTED","lastSuccessfulInstallation":"2026-09-02T22:00:21+00:00","lastEvidence":"2026-09-02T22:00:21+00:00","image":{"url":"https://res.garmin.com/en/products/010-03198-00/g/cf-lg.jpg","origin":"garmin-source","status":"SOURCE"}},{"model":"fēnix 8 Pro · 51 mm, AMOLED","canonicalModel":"fenix 8 pro","family":"fenix","familyName":"fēnix","compatibilityIdentity":"fēnix 8 Pro · 51 mm","variant":"51mm","caseSizeMm":51,"displayType":null,"canonicalDeviceId":"garmin-fenix-8-pro-51-amoled","attemptedInstallations":1,"successfulInstallations":1,"reconnectVerifiedInstallations":0,"failedInstallations":0,"successRate":100.0,"evidenceStatus":"TESTED","lastSuccessfulInstallation":"2026-08-27T04:53:40+00:00","lastEvidence":"2026-08-27T04:53:40+00:00","image":{"url":"https://res.garmin.com/en/products/010-03199-00/g/cf-lg.jpg","origin":"garmin-source","status":"SOURCE"}},{"model":"fēnix 8 · 51 mm AMOLED","canonicalModel":"fenix 8","family":"fenix","familyName":"fēnix","compatibilityIdentity":"fēnix 8 · 51 mm AMOLED","variant":"51 mm, AMOLED","caseSizeMm":51,"displayType":"AMOLED","canonicalDeviceId":"garmin-fenix-8-51-amoled","attemptedInstallations":1,"successfulInstallations":1,"reconnectVerifiedInstallations":0,"failedInstallations":0,"successRate":100.0,"evidenceStatus":"TESTED","lastSuccessfulInstallation":"2026-08-25T16:04:06+00:00","lastEvidence":"2026-08-25T16:04:06+00:00","image":{"url":"https://res.garmin.com/en/products/010-02905-20/g/cf-lg.jpg","origin":"garmin-source","status":"SOURCE"}}]}</script>
-    <script defer src="/compatibility/compatibility.js?v=20260904-snapshot"></script>
+    <script defer src="/compatibility/compatibility-data.js?v=20260909-post-audit-v1"></script>
+    <script defer src="/compatibility/compatibility-locales.js?v=20260909-post-audit-v1"></script>
+    <script type="application/json" id="compatibility-snapshot">{"schemaVersion":1,"generatedAt":"2026-09-09T13:19:09.833227+00:00","models":[{"model":"fēnix 8 · 47 mm, AMOLED","canonicalModel":"fenix 8","family":"fenix","familyName":"fēnix","compatibilityIdentity":"fēnix 8 · 47 mm, AMOLED","variant":"47 mm, AMOLED","caseSizeMm":47,"displayType":"AMOLED","canonicalDeviceId":"garmin-fenix-8-47-amoled","attemptedInstallations":3,"successfulInstallations":3,"reconnectVerifiedInstallations":0,"failedInstallations":0,"successRate":100.0,"evidenceStatus":"SUPPORTED","lastSuccessfulInstallation":"2026-08-25T11:47:43+00:00","lastEvidence":"2026-08-25T11:47:43+00:00","image":{"url":"https://api.terento.app/assets/devices/garmin/fenix-8-47-amoled.webp","origin":"controlled","status":"AVAILABLE","scope":"MODEL_SIZE"}},{"model":"fēnix 8 Pro · 47 mm, AMOLED","canonicalModel":"fenix 8 pro","family":"fenix","familyName":"fēnix","compatibilityIdentity":"fēnix 8 Pro · 47 mm","variant":"47mm","caseSizeMm":47,"displayType":null,"canonicalDeviceId":"garmin-fenix-8-pro-47-amoled","attemptedInstallations":2,"successfulInstallations":2,"reconnectVerifiedInstallations":0,"failedInstallations":0,"successRate":100.0,"evidenceStatus":"TESTED","lastSuccessfulInstallation":"2026-09-02T22:00:21+00:00","lastEvidence":"2026-09-02T22:00:21+00:00","image":{"url":"https://res.garmin.com/en/products/010-03198-00/g/cf-lg.jpg","origin":"garmin-source","status":"SOURCE"}},{"model":"Forerunner 970","canonicalModel":"forerunner 970","family":"forerunner","familyName":"Forerunner","compatibilityIdentity":"Forerunner 970","variant":null,"caseSizeMm":null,"displayType":null,"canonicalDeviceId":"garmin-forerunner-970","attemptedInstallations":2,"successfulInstallations":1,"reconnectVerifiedInstallations":0,"failedInstallations":1,"successRate":50.0,"evidenceStatus":"TESTED","lastSuccessfulInstallation":"2026-09-06T06:58:15+00:00","lastEvidence":"2026-09-07T22:11:07+00:00","image":{"url":"https://res.garmin.com/en/products/010-02969-12/g/cf-lg.jpg","origin":"garmin-source","status":"SOURCE"}},{"model":"fēnix 8 Pro · 51 mm, AMOLED","canonicalModel":"fenix 8 pro","family":"fenix","familyName":"fēnix","compatibilityIdentity":"fēnix 8 Pro · 51 mm","variant":"51mm","caseSizeMm":51,"displayType":null,"canonicalDeviceId":"garmin-fenix-8-pro-51-amoled","attemptedInstallations":1,"successfulInstallations":1,"reconnectVerifiedInstallations":0,"failedInstallations":0,"successRate":100.0,"evidenceStatus":"TESTED","lastSuccessfulInstallation":"2026-08-27T04:53:40+00:00","lastEvidence":"2026-08-27T04:53:40+00:00","image":{"url":"https://res.garmin.com/en/products/010-03199-00/g/cf-lg.jpg","origin":"garmin-source","status":"SOURCE"}},{"model":"fēnix 8 · 51 mm AMOLED","canonicalModel":"fenix 8","family":"fenix","familyName":"fēnix","compatibilityIdentity":"fēnix 8 · 51 mm AMOLED","variant":"51 mm, AMOLED","caseSizeMm":51,"displayType":"AMOLED","canonicalDeviceId":"garmin-fenix-8-51-amoled","attemptedInstallations":1,"successfulInstallations":1,"reconnectVerifiedInstallations":0,"failedInstallations":0,"successRate":100.0,"evidenceStatus":"TESTED","lastSuccessfulInstallation":"2026-08-25T16:04:06+00:00","lastEvidence":"2026-08-25T16:04:06+00:00","image":{"url":"https://res.garmin.com/en/products/010-02905-20/g/cf-lg.jpg","origin":"garmin-source","status":"SOURCE"}},{"model":"fēnix 9 Pro · inReach, 51 mm","canonicalModel":"fenix 9 pro","family":"fenix","familyName":"fēnix","compatibilityIdentity":"fenix 9 Pro - inReach, 51mm","variant":"51mm","caseSizeMm":51,"displayType":null,"canonicalDeviceId":"garmin-fenix-9-pro-51-inreach","attemptedInstallations":1,"successfulInstallations":1,"reconnectVerifiedInstallations":0,"failedInstallations":0,"successRate":100.0,"evidenceStatus":"TESTED","lastSuccessfulInstallation":"2026-09-07T16:43:14+00:00","lastEvidence":"2026-09-07T16:43:14+00:00","image":{"url":"https://res.garmin.com/en/products/010-04337-00/g/cf-lg.jpg","origin":"garmin-source","status":"SOURCE"}}]}</script>
+    <script defer src="/compatibility/compatibility.js?v=20260909-post-audit-v1"></script>
   </body>
 </html>

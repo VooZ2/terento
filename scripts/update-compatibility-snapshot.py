@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
+import argparse
 import json
+import time
 import urllib.request
 from pathlib import Path
 
@@ -16,7 +18,7 @@ STATUS_CODES = {"TESTING", "TESTED", "SUPPORTED", "VERIFIED"}
 
 def fetch_payload() -> dict:
     request = urllib.request.Request(
-        API_URL,
+        API_URL + f"&refresh={time.time_ns()}",
         headers={"Accept": "application/json", "User-Agent": "Terento compatibility snapshot updater"},
     )
     with urllib.request.urlopen(request, timeout=30) as response:
@@ -58,11 +60,16 @@ def evidence_signature(payload: dict) -> str:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--check', action='store_true', help='Fail if the saved evidence differs from the live API; do not write.')
+    args = parser.parse_args()
     fresh = fetch_payload()
     current = json.loads(SNAPSHOT.read_text(encoding="utf-8")) if SNAPSHOT.exists() else None
     if current and evidence_signature(current) == evidence_signature(fresh):
         print("Compatibility snapshot unchanged; evidence data has not changed.")
         return
+    if args.check:
+        raise SystemExit("Saved compatibility evidence differs from the live API. Refresh and regenerate before publishing.")
     SNAPSHOT.write_text(json.dumps(fresh, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"Updated {SNAPSHOT.relative_to(ROOT)} with {len(fresh['models'])} evidence rows.")
 

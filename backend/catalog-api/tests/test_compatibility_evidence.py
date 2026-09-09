@@ -556,7 +556,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertIn("Installations", body)
         self.assertIn("All-time compatibility evidence from Terento users.", body)
         self.assertIn('class="admin-kpi-grid installation-kpis"', body)
-        self.assertIn("<span>Write-started attempts</span><strong>1</strong>", body)
+        self.assertIn("<span>Installation attempts</span><strong>1</strong>", body)
         self.assertIn('class="filter-bar admin-filter-bar"', body)
         self.assertIn(">51 mm<", body)
         self.assertIn("Latest activity", body)
@@ -566,7 +566,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertNotIn("ADMINISTRAVIMAS", body)
         self.assertNotIn("Georgia", body)
         self.assertNotIn("Logged in as", body)
-        self.assertIn(">Write-started attempts<", body)
+        self.assertIn(">Installation attempts<", body)
         self.assertIn("logo-sky.svg", body)
         self.assertIn("Includes resolved historical failures. Open errors shows only unresolved problems.", body)
         self.assertIn("data-admin-timestamp", body)
@@ -635,7 +635,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         body = dashboard_page(
             [row], {"username": "operator"}, "csrf", operations=[operation]
         ).decode()
-        self.assertIn("aria-label='View 1 open errors", body)
+        self.assertIn("aria-label='View 1 open error", body)
         self.assertIn("/admin/diagnostics?identity=", body)
         self.assertNotIn("Diagnostic record", body)
         self.assertNotIn("1.0.0-beta.6 (build 5)", body)

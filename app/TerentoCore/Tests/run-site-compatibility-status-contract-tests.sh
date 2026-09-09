@@ -83,7 +83,7 @@ for path in compatibility_files:
     assert '<noscript class="compatibility-noscript">' in page, f"{path}: missing no-JS snapshot"
     assert f'<strong data-summary="models">{len(snapshot_models)}</strong>' in page, f"{path}: snapshot model count is not rendered"
     assert page.count('<article class="watch-card"') == len(snapshot_models), f"{path}: snapshot card count is not rendered"
-    assert 'compatibility.js?v=20260904-snapshot' in page, f"{path}: missing cache-busted compatibility script"
+    assert 'compatibility.js?v=20260909-post-audit-v1' in page, f"{path}: missing cache-busted compatibility script"
 print("Compatibility status web tests passed (statuses, snapshot, exact variants, disclosure, shared badge contract).")
 PY
 

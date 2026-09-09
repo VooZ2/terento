@@ -145,7 +145,7 @@
     <div class="mobile-nav" id="mobile-nav" hidden>
       <div class="shell mobile-nav-inner">
         <nav class="mobile-nav-links" aria-label="${copy.primary}">
-          ${navLink("compatibility", "", "mobile-nav")}${navLink("guide", "", "mobile-nav")}${navLink("about", "", "mobile-nav")}
+          ${navLink("compatibility", "", "mobile-nav")}${navLink("guide", "", "mobile-nav")}${navLink("about", "", "mobile-nav")}${navLink("download", "", "mobile-nav")}
         </nav>
         <div class="mobile-nav-language">${languageMenu(true)}</div>
       </div>

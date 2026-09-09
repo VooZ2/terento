@@ -2413,6 +2413,13 @@ details p {
   background: var(--surface-muted);
 }
 
+.compatibility-filters label { display: flex; flex-direction: column; gap: 6px; }
+.compatibility-filters label > .sr-only { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip: auto; clip-path: none; white-space: normal; font-size: 0.8125rem; font-weight: 600; }
+.compatibility-freshness { font-size: 0.875rem; line-height: 1.5; }
+.compatibility-clear, #compatibility-retry { min-height: 40px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: inherit; cursor: pointer; }
+.compatibility-clear { margin: 12px 0; }
+@media (max-width: 700px) { .compatibility-clear, #compatibility-retry { min-height: 44px; } }
+
 .compatibility-filter-control {
   position: relative;
   display: block;
@@ -2441,14 +2448,14 @@ details p {
 
 .compatibility-filter-select::after {
   position: absolute;
-  top: 50%;
+  bottom: 15px;
   right: 15px;
   color: var(--secondary);
   content: "⌄";
   font-size: 17px;
   line-height: 1;
   pointer-events: none;
-  transform: translateY(-55%);
+  transform: none;
 }
 
 .compatibility-filters input:focus,
