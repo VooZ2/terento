@@ -7,7 +7,7 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "u
 const styles = read("site/styles.css");
 const shellSource = read("site/site-shell.js");
 const languageSource = read("site/language.js");
-const styleVersion = "20260908-provider-width-v5";
+const styleVersion = "20260909-interface-polish-v2";
 const localizedContentVersion = "20260904-pass3-internal-link-events-v1";
 const mobileLanguageNames = { en: "English", de: "Deutsch", fr: "Français", pl: "Polski", cs: "Čeština", it: "Italiano" };
 
@@ -53,6 +53,13 @@ assert.match(cssBlock(".download-details"), /border-top:\s*1px solid var\(--bord
 assert.match(cssBlock(".download-detail"), /background:\s*var\(--surface\)/);
 assert.match(cssBlock(".download-detail"), /border-radius:\s*16px/);
 assert.match(styles, /a:focus-visible,[\s\S]*?outline:\s*3px solid var\(--focus-ring\)/);
+assert.match(styles, /h1,\s*\nh2,\s*\nh3\s*\{[\s\S]*?text-wrap:\s*balance;/, "marketing headings must balance their lines");
+assert.match(styles, /\.hero-lede,\s*\n\.download-intro,\s*\n\.provider-summary,\s*\n\.provider-addon-copy\s*\{[\s\S]*?text-wrap:\s*pretty;/, "short supporting copy should avoid awkward final lines");
+assert.match(cssBlock(".download-action"), /transition-property:\s*scale, background-color/);
+assert.match(styles, /\.download-action:active\s*\{[^}]*scale:\s*0\.96/);
+assert.match(styles, /\.provider-addon > summary\.provider-addon-toggle::after,[\s\S]*?transition:\s*transform 160ms ease-out;/);
+assert.match(cssBlock(".provider-count"), /font-variant-numeric:\s*tabular-nums/);
+assert.match(cssBlock(".provider-addon-count"), /font-variant-numeric:\s*tabular-nums/);
 
 const locales = {
   en: {
@@ -190,7 +197,7 @@ assert.match(cssBlock(".language-option > span:not(.language-option-flag)"), /te
 assert.match(styles, /\.mobile-language-menu \.language-options\s*\{[^}]*grid-template-columns:\s*1fr/s);
 assert.match(styles, /\.mobile-language-menu \.language-option\s*\{[^}]*width:\s*100%[^}]*min-height:\s*44px/s);
 
-assert.match(cssBlock(".about-social-link"), /min-height:\s*36px/);
+assert.match(cssBlock(".about-social-link"), /min-height:\s*40px/);
 assert.match(cssBlock(".about-social-link"), /padding:\s*7px 11px/);
 assert.match(cssBlock(".about-social-link"), /border-radius:\s*8px/);
 assert.match(cssBlock(".about-bullet-list"), /gap:\s*12px/);
