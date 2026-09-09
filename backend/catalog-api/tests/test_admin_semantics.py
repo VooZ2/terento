@@ -478,7 +478,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("<span>Map operation success</span><strong>75%</strong>", body)
         self.assertIn("<span>Failed map operations</span><strong>1</strong>", body)
         self.assertIn("<span>Open errors</span><strong>1</strong>", body)
-        self.assertIn("<span>Write-started attempts</span><strong>2</strong>", body)
+        self.assertIn("<span>Installation attempts</span><strong>2</strong>", body)
         self.assertIn("<span>Variants</span><strong>1</strong>", body)
         self.assertIn("<span>Success rate</span><strong>50%</strong>", body)
         self.assertIn("Map install operations over time", body)
@@ -692,7 +692,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertEqual(_admin_map_display_name("Kingdom of Belgium"), "Belgium")
         self.assertEqual(_admin_map_display_name("Region Belgium - Netherlands - Luxembourg"), "Belgium – Netherlands – Luxembourg")
         self.assertEqual(_admin_event_outcome_label("UNKNOWN"), "—")
-        self.assertEqual(_admin_event_outcome_label("SUCCEEDED"), "Succeeded")
+        self.assertEqual(_admin_event_outcome_label("SUCCEEDED"), "Successful")
         self.assertEqual(
             _admin_region_identity("AND", "Principality of Andorra", "AND"),
             _admin_region_identity("ANDORRA", "Andorra", "ANDORRA"),
@@ -1158,7 +1158,7 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertNotIn("class='metric'", body)
         self.assertIn('class="admin-kpi-grid installation-kpis"', body)
-        self.assertIn("<span>Write-started attempts</span><strong>3</strong>", body)
+        self.assertIn("<span>Installation attempts</span><strong>3</strong>", body)
         self.assertIn("<span>Successful</span><strong>1</strong>", body)
         self.assertIn("<span>Success rate</span><strong>33.3%</strong>", body)
         self.assertIn("Historical failures: 1", body)
@@ -1433,7 +1433,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("#32 <svg class='admin-icon admin-icon-external'", body)
         self.assertIn("Diagnostic ID:", body)
         self.assertIn("Technical details", body)
-        self.assertIn("<option value='all' selected>All</option><option value='succeeded'>Succeeded</option><option value='failed'>Failed</option><option value='open'>Open</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity review</option><option value='with-issue'>With issue</option>", body)
+        self.assertIn("<option value='all' selected>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='open'>Open</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity review</option><option value='with-issue'>With issue</option>", body)
         self.assertEqual(body.count("action='/admin/diagnostics/resolve'"), 1)
         self.assertEqual(body.count("action='/admin/diagnostics/reopen'"), 1)
         self.assertEqual(body.count("action='/admin/diagnostics/identity'"), 1)
@@ -1467,7 +1467,7 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertIn("<p class=\"eyebrow\">Compatibility</p>", body)
         self.assertIn('class="admin-kpi-grid installation-kpis"', body)
-        for label in ("Variants", "Write-started attempts", "Successful", "Success rate", "Open errors"):
+        for label in ("Variants", "Installation attempts", "Successful", "Success rate", "Open errors"):
             self.assertIn(f"<span>{label}</span>", body)
         self.assertIn("<span>Successful</span><strong>2</strong>", body)
         self.assertIn("<span>Success rate</span><strong>66.7%</strong>", body)
@@ -1766,7 +1766,7 @@ class AdminSemanticsTests(unittest.TestCase):
             }}, [], [], {"username": "operator"}, "csrf",
         ).decode()
         history = body.split("id='provider-health-history'", 1)[1].split("</details>", 1)[0]
-        self.assertIn("Health check history · 1 previous checks", history)
+        self.assertIn("Health check history · 1 previous check", history)
         self.assertIn("2026-08-30", history)
         self.assertNotIn("2026-08-31", history)
         self.assertNotIn("Download source URLs", body)
@@ -2096,7 +2096,7 @@ class AdminSemanticsTests(unittest.TestCase):
                               "Technical details · map result 1", "Technical details · map result 2",
                               "action='/admin/diagnostics/reopen'", "&lt;script&gt;alert(1)&lt;/script&gt;"):
                     self.assertIn(value, dialog)
-                self.assertIn("Failed" if outcome == "FAILED" else "Succeeded", dialog)
+                self.assertIn("Failed" if outcome == "FAILED" else "Successful", dialog)
                 self.assertNotIn("<script>alert(1)</script>", dialog)
                 self.assertNotIn("action='/admin/diagnostics/resolve'", dialog)
 

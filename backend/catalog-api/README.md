@@ -22,6 +22,16 @@ System-health disclosures use the shared UI typography and retain padded,
 keyboard-accessible summary rows in both collapsed and expanded states. Filter
 clearing uses the page-specific clear event once per action.
 
+The September 9 post-audit contract keeps persistent labels above filters
+(including expanded map search), sentence-case health badges, and at least
+40 px desktop / 44 px mobile map controls. Wide evidence tables scroll inside
+their container instead of splitting headings. Empty time ranges and filtered
+searches explain how to recover. Map statistics count packages; compatibility
+statistics count watch-installation attempts that reached transfer. Success
+rates exclude in-progress operations. Provider health has one summary, with
+per-provider status retained as row context. Display-name cleanup must not
+change stored identities or evidence.
+
 Python 3.12 or 3.13 is required. A PostgreSQL database is required for migrations and
 the API; parser and HTTP contract tests use fakes and do not require a live
 database.

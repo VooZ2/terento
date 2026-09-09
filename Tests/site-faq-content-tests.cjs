@@ -61,7 +61,7 @@ for (const locale of locales) {
   assert.match(entries[1].markup, new RegExp(`href="${localePath(locale, guideSlug)}"`), `${home}: Guide link`);
   assert.match(entries[1].markup, /data-umami-event="guide-link-click"/);
   assert.match(entries[1].markup, /data-umami-event-location="home-faq-basecamp"/);
-  assert.match(entries[4].markup, /href="https:\/\/github\.com\/VooZ2\/terento\/issues"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/);
+  assert.match(entries[4].markup, /href="https:\/\/github\.com\/VooZ2\/terento\/issues\/new\/choose"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/);
   assert.match(entries[4].markup, /href="mailto:hello&#64;terento\.app\?subject=Terento%20installation%20issue"/);
   assert.doesNotMatch(entries[4].markup, /href="mailto:hello@terento\.app/);
   assert.match(entries[4].markup, /data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="github-issue"/);
@@ -69,7 +69,7 @@ for (const locale of locales) {
   if (locale === "en") {
     assert.match(entries[1].markup, />Read the installation guide\.</);
     assert.match(entries[4].markup, />Open an issue /);
-    assert.match(entries[4].markup, />Email the log /);
+    assert.match(entries[4].markup, />Email support /);
   }
   assert.doesNotMatch(source, /<section[^>]+id="faq"[^>]*>[\s\S]*?<section[^>]+id="faq"/i, `${home}: one FAQ section`);
   assert.doesNotMatch(source, /href="[^"']*\/faq\//i, `${home}: no standalone FAQ route`);
@@ -99,7 +99,7 @@ for (const locale of locales) {
         assert.deepEqual(faqLinks, [], `${file}: ${navClass} must not expose FAQ`);
       }
       if (navClass === "mobile-nav-links") {
-        assert.doesNotMatch(nav[1], /href="[^"]*download\//, `${file}: mobile navigation must not expose Download`);
+        assert.match(nav[1], /href="[^"]*download\//, `${file}: mobile navigation must expose Download`);
       }
     }
   }

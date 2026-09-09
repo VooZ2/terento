@@ -9,14 +9,14 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SHELL_VERSION = "20260905-in-page-language-v1"
+SHELL_VERSION = "20260909-post-audit-v1"
 PROVIDER_SCRIPT_VERSION = "20260908-provider-disclosure-v4"
-STYLE_VERSION = "20260909-interface-polish-v2"
+STYLE_VERSION = "20260909-post-audit-v1"
 IMAGE_VERSION = "20260905-app-screens-v1"
 LANGUAGE_VERSION = "20260905-language-selector-full-name-v1"
 LOCALIZED_CONTENT_VERSION = "20260904-pass3-internal-link-events-v1"
-COMPATIBILITY_LOCALES_VERSION = "20260904-beta-provider-scope"
-COMPATIBILITY_VERSION = "20260904-snapshot"
+COMPATIBILITY_LOCALES_VERSION = "20260909-post-audit-v1"
+COMPATIBILITY_VERSION = "20260909-post-audit-v1"
 UMAMI_SCRIPT_VERSION = "20260905-campaign-url-only-v1"
 PAGE_LANGUAGE_VERSION = "20260905-shared-page-language-v1"
 LOCALES = {
@@ -95,7 +95,7 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
       <div class="mobile-nav" id="mobile-nav" hidden>
         <div class="shell mobile-nav-inner">
           <nav class="mobile-nav-links" aria-label="{copy["primary"]}">
-            {nav_link("compatibility", location="mobile-nav")}{nav_link("guide", location="mobile-nav")}{nav_link("about", location="mobile-nav")}
+            {nav_link("compatibility", location="mobile-nav")}{nav_link("guide", location="mobile-nav")}{nav_link("about", location="mobile-nav")}{nav_link("download", location="mobile-nav")}
           </nav>
           <div class="mobile-nav-language"><details class="language-menu mobile-language-menu">
             <summary class="language-trigger" aria-label="{copy["language"]}"><span class="mobile-language-label">{copy["name"]}</span></summary>
@@ -314,7 +314,12 @@ def main() -> None:
             r'\1',
             source,
         )
+        if page == "download":
+            recommended = {"en": "Recommended", "de": "Empfohlen", "fr": "Recommandé", "pl": "Zalecane", "cs": "Doporučeno", "it": "Consigliato"}[locale]
+            source = re.sub(r'\s*<span class="download-recommended">[^<]*</span>', "", source)
+            source = re.sub(r'(<a class="download-action download-action-primary"[^>]*>)([^<]*)(</a>)', lambda match: match[1] + match[2] + f' <span class="download-recommended">{recommended}</span>' + match[3], source)
         if page == "compatibility":
+            source = re.sub(r'(/compatibility/compatibility-data\.js\?v=)[^"\s]+', rf'\g<1>{COMPATIBILITY_VERSION}', source)
             source = re.sub(r'(/compatibility/compatibility-locales\.js\?v=)[^"\s]+', rf'\g<1>{COMPATIBILITY_LOCALES_VERSION}', source)
             source = re.sub(r'(/compatibility/compatibility\.js\?v=)[^"\s]+', rf'\g<1>{COMPATIBILITY_VERSION}', source)
         source = re.sub(r'(\/provider-list\.js\?v=)[^"\s]+', rf'\g<1>{PROVIDER_SCRIPT_VERSION}', source)

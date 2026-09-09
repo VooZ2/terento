@@ -189,7 +189,7 @@ for path in home_files:
         and any("site-header" in ancestor for ancestor in item["ancestors"])
     ]
     assert header_downloads, f"{path}: expected header download navigation"
-    assert all("download-action" in item["class"] for item in header_downloads)
+    assert all("download-action" in item["class"] or item.get("location") == "mobile-nav" or any("mobile-nav" in ancestor for ancestor in item["ancestors"]) for item in header_downloads)
 
 for path in download_files:
     html = path.read_text(encoding="utf-8")

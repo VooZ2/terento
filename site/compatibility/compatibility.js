@@ -46,6 +46,9 @@
     summaryContent: document.querySelector("[data-summary-content]"),
     evidenceNote: document.querySelector('[data-compatibility-evidence-note]'),
     statusList: document.querySelector("#compatibility-status-list"),
+    freshness: document.querySelector("#compatibility-freshness"),
+    retry: document.querySelector("#compatibility-retry"),
+    clear: document.querySelector("#compatibility-clear"),
   };
 
   const { normalize, canonicalFamilyKey, familyOptions, filterByFamily, exactVariantLabel, publicModelName } = data;
@@ -167,6 +170,7 @@
     hydrateImages();
     const ready = state.loadState === "ready";
     elements.empty.hidden = !ready || filtered.length > 0;
+    elements.empty.textContent = locale.freshness.noMatch;
     elements.results.textContent = !ready
       ? ""
       : filtered.length === state.rows.length
@@ -240,6 +244,7 @@
     if (!snapshot) return false;
     try {
       state.rows = mergeRows(snapshot.models.map(parseStat));
+      state.generatedAt = snapshot.generatedAt;
       state.hasLoaded = true;
       populateFamilies();
       updateSummary();
@@ -255,18 +260,21 @@
   async function load({ quiet = false } = {}) {
     try {
       const refreshToken = Date.now();
-      const publicStatsResponse = await fetch(`${API_ORIGIN}/compatibility/public/models.json?limit=500&refresh=${refreshToken}`, { cache: "no-store", headers: { Accept: "application/json" } });
+      const publicStatsResponse = await fetch(`${API_ORIGIN}/compatibility/public/models.json?limit=500&refresh=${refreshToken}`, { cache: "no-store", headers: { Accept: "application/json" }, signal: typeof AbortSignal !== "undefined" && AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined });
       let stats = [];
       if (publicStatsResponse.ok) {
         const payload = await publicStatsResponse.json();
         if (!Array.isArray(payload.models)) throw new Error("invalid_compatibility_response");
         stats = payload.models.map(parseStat);
+        state.generatedAt = payload.generatedAt;
       } else if (isLocalPreview) {
         stats = previewStats.map(parseStat);
       } else {
         throw new Error(`compatibility_http_${publicStatsResponse.status}`);
       }
       state.rows = mergeRows(stats);
+      if (elements.freshness) elements.freshness.textContent = `${locale.freshness.fresh}: ${formatDate(state.generatedAt)}`;
+      if (elements.retry) elements.retry.hidden = true;
       state.hasLoaded = true;
       populateFamilies();
       updateSummary();
@@ -275,6 +283,8 @@
       render();
     } catch (error) {
       const preserveExistingResults = quiet && state.hasLoaded;
+      if (elements.freshness) elements.freshness.textContent = `${locale.freshness.stale} ${locale.freshness.snapshot}: ${formatDate(state.generatedAt)}`;
+      if (elements.retry) elements.retry.hidden = false;
       if (!preserveExistingResults) {
         setSettledState("error");
         elements.error.hidden = false;
@@ -284,6 +294,15 @@
     }
   }
 
+  elements.retry?.addEventListener("click", () => load({ quiet: state.hasLoaded }));
+  elements.clear?.addEventListener("click", () => {
+    state.search = elements.search.value = "";
+    state.status = elements.status.value = "ALL";
+    state.family = elements.family.value = "ALL";
+    state.sort = elements.sort.value = "attempts";
+    render();
+    elements.search.focus();
+  });
   elements.form.addEventListener("submit", (event) => event.preventDefault());
   elements.search.addEventListener("input", (event) => { state.search = event.target.value; render(); });
   elements.status.addEventListener("change", (event) => { state.status = event.target.value; render(); });

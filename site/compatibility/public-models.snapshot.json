@@ -1,25 +1,25 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-04T14:54:58.468120+00:00",
+  "generatedAt": "2026-09-09T13:19:09.833227+00:00",
   "models": [
     {
-      "model": "fēnix 8 · 47 mm AMOLED",
+      "model": "fēnix 8 · 47 mm, AMOLED",
       "canonicalModel": "fenix 8",
       "family": "fenix",
       "familyName": "fēnix",
-      "compatibilityIdentity": "fēnix 8 · 47 mm AMOLED",
+      "compatibilityIdentity": "fēnix 8 · 47 mm, AMOLED",
       "variant": "47 mm, AMOLED",
       "caseSizeMm": 47,
       "displayType": "AMOLED",
       "canonicalDeviceId": "garmin-fenix-8-47-amoled",
-      "attemptedInstallations": 15,
-      "successfulInstallations": 15,
+      "attemptedInstallations": 3,
+      "successfulInstallations": 3,
       "reconnectVerifiedInstallations": 0,
       "failedInstallations": 0,
       "successRate": 100.0,
-      "evidenceStatus": "VERIFIED",
-      "lastSuccessfulInstallation": "2026-09-02T11:01:47+00:00",
-      "lastEvidence": "2026-09-02T11:01:47+00:00",
+      "evidenceStatus": "SUPPORTED",
+      "lastSuccessfulInstallation": "2026-08-25T11:47:43+00:00",
+      "lastEvidence": "2026-08-25T11:47:43+00:00",
       "image": {
         "url": "https://api.terento.app/assets/devices/garmin/fenix-8-47-amoled.webp",
         "origin": "controlled",
@@ -47,6 +47,30 @@
       "lastEvidence": "2026-09-02T22:00:21+00:00",
       "image": {
         "url": "https://res.garmin.com/en/products/010-03198-00/g/cf-lg.jpg",
+        "origin": "garmin-source",
+        "status": "SOURCE"
+      }
+    },
+    {
+      "model": "Forerunner 970",
+      "canonicalModel": "forerunner 970",
+      "family": "forerunner",
+      "familyName": "Forerunner",
+      "compatibilityIdentity": "Forerunner 970",
+      "variant": null,
+      "caseSizeMm": null,
+      "displayType": null,
+      "canonicalDeviceId": "garmin-forerunner-970",
+      "attemptedInstallations": 2,
+      "successfulInstallations": 1,
+      "reconnectVerifiedInstallations": 0,
+      "failedInstallations": 1,
+      "successRate": 50.0,
+      "evidenceStatus": "TESTED",
+      "lastSuccessfulInstallation": "2026-09-06T06:58:15+00:00",
+      "lastEvidence": "2026-09-07T22:11:07+00:00",
+      "image": {
+        "url": "https://res.garmin.com/en/products/010-02969-12/g/cf-lg.jpg",
         "origin": "garmin-source",
         "status": "SOURCE"
       }
@@ -95,6 +119,30 @@
       "lastEvidence": "2026-08-25T16:04:06+00:00",
       "image": {
         "url": "https://res.garmin.com/en/products/010-02905-20/g/cf-lg.jpg",
+        "origin": "garmin-source",
+        "status": "SOURCE"
+      }
+    },
+    {
+      "model": "fēnix 9 Pro · inReach, 51 mm",
+      "canonicalModel": "fenix 9 pro",
+      "family": "fenix",
+      "familyName": "fēnix",
+      "compatibilityIdentity": "fenix 9 Pro - inReach, 51mm",
+      "variant": "51mm",
+      "caseSizeMm": 51,
+      "displayType": null,
+      "canonicalDeviceId": "garmin-fenix-9-pro-51-inreach",
+      "attemptedInstallations": 1,
+      "successfulInstallations": 1,
+      "reconnectVerifiedInstallations": 0,
+      "failedInstallations": 0,
+      "successRate": 100.0,
+      "evidenceStatus": "TESTED",
+      "lastSuccessfulInstallation": "2026-09-07T16:43:14+00:00",
+      "lastEvidence": "2026-09-07T16:43:14+00:00",
+      "image": {
+        "url": "https://res.garmin.com/en/products/010-04337-00/g/cf-lg.jpg",
         "origin": "garmin-source",
         "status": "SOURCE"
       }

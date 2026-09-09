@@ -66,7 +66,7 @@
       .replace(/\s*(?:[·•|:]\s*|[-–—]\s*)?\d{2}\s*mm(?:\s*,?\s*(?:AMOLED|Solar|microLED))?\s*$/i, "")
       .replace(/\s*(?:[·•|:]\s*|[-–—]\s*)?(?:AMOLED|Solar|microLED)\s*$/i, "")
       .replace(/\s+/g, " ")
-      .trim();
+      .replace(/[\s,·|:–—-]+$/u, "");
     return withoutVariant || label;
   };
 

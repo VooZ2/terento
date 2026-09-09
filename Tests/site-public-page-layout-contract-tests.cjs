@@ -7,7 +7,7 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "u
 const styles = read("site/styles.css");
 const shellSource = read("site/site-shell.js");
 const languageSource = read("site/language.js");
-const styleVersion = "20260909-interface-polish-v2";
+const styleVersion = "20260909-post-audit-v1";
 const localizedContentVersion = "20260904-pass3-internal-link-events-v1";
 const mobileLanguageNames = { en: "English", de: "Deutsch", fr: "Français", pl: "Polski", cs: "Čeština", it: "Italiano" };
 
@@ -184,7 +184,7 @@ for (const [locale, contract] of Object.entries(locales)) {
   assert.match(html, /class="language-option"[^>]*aria-current="page"/);
   const mobileNav = html.match(/<nav class="mobile-nav-links"[^>]*>([\s\S]*?)<\/nav>/);
   assert.ok(mobileNav, `${locale} must have a mobile navigation`);
-  assert.doesNotMatch(mobileNav[1], /href="[^"]*download\//, `${locale} mobile navigation must not expose Download`);
+  assert.match(mobileNav[1], /href="[^"]*download\//, `${locale} mobile navigation must expose Download`);
   const mobileTrigger = html.match(/<details class="language-menu mobile-language-menu">\s*<summary class="language-trigger"[^>]*><span class="mobile-language-label">([^<]+)<\/span>/);
   assert.ok(mobileTrigger, `${locale} must have a full-name mobile language trigger`);
   assert.equal(mobileTrigger[1], mobileLanguageNames[locale], `${locale} mobile language trigger must use the full language name`);
