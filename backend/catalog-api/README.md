@@ -15,6 +15,13 @@ serial numbers, manifests, accounts, private logs, or map binaries.
 
 ## Local development
 
+Admin presentation checks must inspect the rendered page, including populated
+and empty map statistics. Each component must have a unique DOM ID: duplicated
+targets can leave a second table or map empty while the first updates normally.
+System-health disclosures use the shared UI typography and retain padded,
+keyboard-accessible summary rows in both collapsed and expanded states. Filter
+clearing uses the page-specific clear event once per action.
+
 Python 3.12 or 3.13 is required. A PostgreSQL database is required for migrations and
 the API; parser and HTTP contract tests use fakes and do not require a live
 database.

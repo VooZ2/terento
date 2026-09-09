@@ -1,5 +1,6 @@
 """Regression cases from the authenticated September 7 admin audit."""
 from datetime import datetime, timezone
+from collections import Counter
 from html.parser import HTMLParser
 from contextlib import contextmanager
 from pathlib import Path
@@ -11,6 +12,7 @@ from terento_catalog.admin import (
     _admin_map_display_name, _admin_region_identity, _system_health_card,
     _overview_map_event_context, provider_detail_page, local_test_data_page,
     _admin_disclosure_script,
+    map_statistics_page,
 )
 from terento_catalog.admin_world_map import WORLD_MAP_COUNTRY_ALIASES
 from terento_catalog.telemetry import is_local_release_label
@@ -25,6 +27,18 @@ class Tags(HTMLParser):
 
 
 class AdminAuditTests(unittest.TestCase):
+    def test_map_statistics_has_one_dom_target_per_component(self):
+        for rows in ([], [{"provider_id": "freizeitkarte", "event_type": "INSTALL_SUCCEEDED",
+                           "outcome": "SUCCEEDED", "operation_count": 2}]):
+            with self.subTest(has_data=bool(rows)):
+                body = map_statistics_page({"rows": rows}, [], {"username": "audit"}, "csrf").decode()
+                ids = Counter(attrs["id"] for _, attrs in Tags(body).tags if "id" in attrs)
+                self.assertEqual({key: count for key, count in ids.items() if count > 1}, {})
+                for target in ("map-statistics-metrics", "map-statistics-coverage",
+                               "provider-statistic-rows", "world-map-svg", "map-rows"):
+                    self.assertEqual(ids[target], 1, target)
+                self.assertEqual(body.count("Counts map packages; one install can include multiple packages."), 1)
+
     def test_health_disclosure_defaults_and_escaped_evidence(self):
         for state in ('HEALTHY', 'FAILED', 'WARNING', 'UNKNOWN', None):
             with self.subTest(state=state):
