@@ -27,6 +27,18 @@ class Tags(HTMLParser):
 
 
 class AdminAuditTests(unittest.TestCase):
+    def test_control_alignment_typography_and_coverage_focus(self):
+        body = map_statistics_page({"rows": []}, [], {"username": "audit"}, "csrf").decode()
+        for rule in (".filter-bar>.filter-disclosure{align-self:flex-end}",
+                     ".filter-bar input,.filter-bar select{font-weight:400}",
+                     ".filter-bar .device-mobile-sort{display:flex;flex-direction:column;gap:6px}",
+                     "coverage-map-v1.js?v=20260909-coverage-focus"):
+            self.assertIn(rule, body)
+        result = subprocess.run([os.environ.get('TERENTO_NODE_BIN', 'node'),
+                                 str(Path(__file__).with_name('coverage-map-tests.cjs'))],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_post_audit_layout_copy_and_recovery_contract(self):
         body = map_statistics_page({"rows": []}, [], {"username": "audit"}, "csrf").decode()
         for text in ("Completed downloads", "Download success", "Completed map-package installs",

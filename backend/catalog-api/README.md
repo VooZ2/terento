@@ -1,5 +1,12 @@
 # Terento metadata service
 
+Admin filter actions align with the labelled controls' bottom edge. Mobile
+filter values use regular-weight 16px Inter and retain 44px touch targets;
+the device sort label stacks above its select. Coverage maps initially fit
+countries with completed installations (32px padding, maximum zoom 2).
+Reset returns to that coverage; an empty/unmapped set uses the world view.
+Repeated updates for the same country set preserve manual pan and zoom.
+
 This service is a metadata-only source for the Terento macOS catalog client.
 It stores map-provider metadata and a separate Garmin smartwatch device
 catalog. It does not download, host, proxy, mirror, cache, repackage, or serve
