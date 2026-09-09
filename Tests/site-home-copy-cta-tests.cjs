@@ -153,7 +153,7 @@ const anchorFor = (page, className) => {
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20260908-provider-width-v5">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20260909-interface-polish-v2">/, `${locale}: Home stylesheet cache bust`);
   assert.match(page, /<script defer src="\/home-features\.js\?v=20260904-home-workflow-tabs"><\/script>/, `${locale}: Home feature script cache bust`);
   assert.match(page, /installing-maps-1600\.png\?v=20260905-app-screens-v1/, `${locale}: installation screenshot cache bust`);
   const heroArtwork = page.match(/<figure class="app-shot app-shot--hero">[\s\S]*?<\/figure>/)?.[0];
@@ -287,6 +287,18 @@ for (const declaration of [
   assert.match(sharedTextLink[1], new RegExp(declaration.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 }
 assert.match(styles, /\.primary-nav a,\s*\.footer-nav a,\s*\.text-link\s*\{[^}]*text-decoration: none/s);
+const desktopNavLinks = styles.match(/\.primary-nav a,\s*\.footer-nav a\s*\{([^}]*)\}/s);
+assert.ok(desktopNavLinks, "missing desktop navigation hit-area block");
+assert.match(desktopNavLinks[1], /display: inline-flex/);
+assert.match(desktopNavLinks[1], /align-items: center/);
+assert.match(desktopNavLinks[1], /min-height: 40px/);
+const aboutSocialLink = styles.match(/\.about-social-link\s*\{([^}]*)\}/s);
+assert.ok(aboutSocialLink, "missing About social-link style block");
+assert.match(aboutSocialLink[1], /min-height: 40px/);
+assert.match(styles, /\.compatibility-summary-line strong\s*\{[^}]*font-variant-numeric: tabular-nums/s);
+assert.match(styles, /\.compatibility-results-count\s*\{[^}]*font-variant-numeric: tabular-nums/s);
+assert.match(styles, /\.watch-install-count\s*\{[^}]*font-variant-numeric: tabular-nums/s);
+assert.match(styles, /summary:not\(\.language-trigger\)::after\s*\{[^}]*border-right: 1\.5px solid currentColor[^}]*transition: transform 160ms ease-out/s);
 assert.match(styles, /\.text-link:hover\s*\{[^}]*color: var\(--link-text-hover\)/s);
 const heroAction = styles.match(/\.hero-download-action\s*\{([^}]*)\}/s);
 assert.ok(heroAction, "missing Hero Download CTA sizing block");

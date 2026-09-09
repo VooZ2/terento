@@ -177,6 +177,13 @@ summary:focus-visible {
   text-decoration: none;
 }
 
+.primary-nav a,
+.footer-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+}
+
 .primary-nav a:hover,
 .footer-nav a:hover,
 .text-link:hover {
@@ -444,7 +451,7 @@ button.language-option {
 
 .hero-grid {
   display: grid;
-  grid-template-columns: minmax(360px, .82fr) minmax(0, 1.18fr);
+  grid-template-columns: minmax(500px, .92fr) minmax(0, 1.08fr);
   gap: clamp(42px, 5.5vw, 80px);
   align-items: center;
 }
@@ -486,6 +493,14 @@ h3 {
   font-family: var(--font-brand);
   font-weight: 600;
   letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+
+.hero-lede,
+.download-intro,
+.provider-summary,
+.provider-addon-copy {
+  text-wrap: pretty;
 }
 
 h1 {
@@ -634,7 +649,7 @@ h1 {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-height: 36px;
+  min-height: 40px;
   padding: 7px 11px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -759,11 +774,18 @@ h1 {
   font-size: 14px;
   font-weight: 600;
   text-decoration: none;
+  transition-property: scale, background-color;
+  transition-duration: 150ms, 200ms;
+  transition-timing-function: ease-out, ease;
 }
 
 .download-action:hover,
 .download-action:focus-visible {
   background: var(--interactive-hover);
+}
+
+.download-action:active {
+  scale: 0.96;
 }
 
 .hero-download-action {
@@ -1432,6 +1454,7 @@ h1 {
   font-size: 13px;
   font-weight: 650;
   line-height: 1.5;
+  font-variant-numeric: tabular-nums;
 }
 
 .provider-summary {
@@ -1469,6 +1492,7 @@ h1 {
   content: "";
   font-size: 0;
   transform: rotate(45deg) translateY(-2px);
+  transition: transform 160ms ease-out;
 }
 
 .provider-addon[open] > summary.provider-addon-toggle::after {
@@ -1490,6 +1514,7 @@ h1 {
   margin: 8px 0 0;
   color: var(--secondary);
   font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 
 .provider-controls {
@@ -1667,16 +1692,19 @@ summary::-webkit-details-marker {
 }
 
 summary:not(.language-trigger)::after {
-  content: "+";
+  width: 8px;
+  height: 8px;
   flex: 0 0 auto;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  content: "";
   color: var(--link-text);
-  font-size: 25px;
-  font-weight: 400;
-  line-height: 1;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 160ms ease-out;
 }
 
 details[open] summary:not(.language-trigger)::after {
-  content: "−";
+  transform: rotate(-135deg) translate(-2px, -1px);
 }
 
 details p {
@@ -1914,6 +1942,10 @@ details p {
 
   .section {
     padding: 64px 0;
+  }
+
+  .about-social-link {
+    min-height: 44px;
   }
 
   .experience.section {
@@ -2286,6 +2318,7 @@ details p {
   font-size: 21px;
   font-weight: 600;
   letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
 }
 
 .compatibility-how {
@@ -2431,6 +2464,7 @@ details p {
   color: var(--secondary);
   font-size: 13px;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .watch-grid {
@@ -2576,6 +2610,7 @@ details p {
   color: var(--graphite);
   font-size: 15px;
   font-weight: 650;
+  font-variant-numeric: tabular-nums;
 }
 
 .watch-card-meta {
