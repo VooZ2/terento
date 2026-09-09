@@ -178,6 +178,37 @@ def _format_rate(value: Any) -> str:
     return f"{rate:.1f}%"
 
 
+def _count_label(value: Any, singular: str, plural: str | None = None) -> str:
+    """Render a count with consistent singular/plural copy across the admin UI."""
+    try:
+        count = int(value or 0)
+    except (TypeError, ValueError):
+        count = 0
+    noun = singular if count == 1 else (plural or f"{singular}s")
+    return f"{count} {noun}"
+
+
+def _admin_icon(name: str) -> str:
+    """Return one small, accessible SVG icon for repeated admin affordances."""
+    paths = {
+        "external": (
+            "<path d='M9.5 2.5h4v4'/><path d='m8 8 5.5-5.5'/><path "
+            "d='M12 9.5v2.75A1.75 1.75 0 0 1 10.25 14h-6.5A1.75 1.75 0 0 1 2 12.25v-6.5A1.75 1.75 0 0 1 3.75 4H6.5'/>"
+        ),
+        "arrow-right": "<path d='M2.5 8h11'/><path d='m9 3.5 4.5 4.5L9 12.5'/>",
+        "arrow-left": "<path d='M13.5 8h-11'/><path d='m7 3.5-4.5 4.5L7 12.5'/>",
+        "close": "<path d='m3.5 3.5 9 9'/><path d='m12.5 3.5-9 9'/>",
+    }
+    path = paths.get(name, "")
+    if not path:
+        return ""
+    css_name = re.sub(r"[^a-z0-9_-]", "-", name.lower())
+    return (
+        f"<svg class='admin-icon admin-icon-{css_name}' viewBox='0 0 16 16' "
+        f"fill='none' aria-hidden='true' focusable='false'>{path}</svg>"
+    )
+
+
 def _normalise_variant(value: Any) -> str:
     raw = str(value or "").strip()[:256]
     if not raw:
@@ -399,7 +430,7 @@ def _diagnostic_state_badge(value: str) -> str:
     if normalized == "RESOLVED":
         state, label = "RESOLVED", "Resolved"
     elif normalized in {"IDENTITY_PENDING", "UNRESOLVED", "PENDING"}:
-        state, label = "IDENTITY_PENDING", "Identity pending"
+        state, label = "IDENTITY_PENDING", "Identity review"
     else:
         state, label = "OPEN", "Open"
     return f"<span class='diagnostic-state diagnostic-state-{state.lower()}'>{label}</span>"
@@ -512,6 +543,8 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     map_statistics_class = " class='active'" if active == "map-statistics" else ""
     system_health_class = " class='active'" if active == "system-health" else ""
     test_data_class = " class='active'" if active == "test-data" else ""
+    tools_class = " class='active'" if active in {"test-data", "campaigns"} else ""
+    account_class = " active" if active == "account" else ""
     review = user.get("admin_review_summary") or {}
     installation_issues = int(review.get("installationIssues") or 0)
     identity_pending = int(review.get("identityPending") or 0)
@@ -520,20 +553,26 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
         installation_issues + identity_pending + ready_to_publish
     ))
     review_menu = f"""<details class="needs-review-menu">
-        <summary aria-label="Needs review: {review_total}">Needs review <span class="needs-review-count">{review_total}</span></summary>
+        <summary aria-label="Review queue: {review_total}">Review queue <span class="needs-review-count">{review_total}</span></summary>
         <div class="needs-review-popover" role="group" aria-label="Review queue">
           <a href="/admin/installations?state=open"><span>Installation issues</span><strong>{installation_issues}</strong></a>
-          <a href="/admin/installations?state=identity-pending"><span>Identity pending</span><strong>{identity_pending}</strong></a>
-          <a href="/admin/devices?review=publication"><span>Ready to publish</span><strong>{ready_to_publish}</strong></a>
+          <a href="/admin/installations?state=identity-pending"><span>Identity review</span><strong>{identity_pending}</strong></a>
+          <a href="/admin/devices?review=publication"><span>Publication review</span><strong>{ready_to_publish}</strong></a>
         </div>
       </details>""" if review_total else ""
+    tools_menu = f"""<details class="admin-tools-menu">
+        <summary{tools_class}>Tools</summary>
+        <div class="admin-tools-popover" role="group" aria-label="Admin tools">
+          <a{test_data_class} href="/admin/test-data">Test data</a>
+          <a{campaign_class} href="/admin/campaign-links">Campaign links</a>
+        </div>
+      </details>"""
     return f"""<header class="admin-topbar"><div class="admin-topbar-inner">
-      <div class="admin-header-zone admin-header-left">{_admin_brand(show_badge=False)}<span class="admin-badge">Admin area</span><a class="admin-website-link" href="https://terento.app/" target="_blank" rel="noopener noreferrer" aria-label="Open Terento website in a new tab">Website <span aria-hidden="true">↗</span></a></div>
-      <a class="admin-mobile-review" href="/admin#overview-attention-title" aria-label="Needs attention: {review_total}">Review <span class="needs-review-count">{review_total}</span></a>
+      <div class="admin-header-zone admin-header-left">{_admin_brand(show_badge=False)}<span class="admin-badge">Admin area</span><a class="admin-website-link" href="https://terento.app/" target="_blank" rel="noopener noreferrer" aria-label="Open Terento website in a new tab">Website {_admin_icon('external')}</a></div>
       <button id="admin-menu-toggle" class="secondary-button" type="button" aria-controls="admin-menu-panel" aria-expanded="false" hidden>Menu</button>
-      <div id="admin-menu-panel"><nav class="admin-section-nav" aria-label="Admin sections"><a{overview_class} href="/admin">Overview</a><a{system_health_class} href="/admin/system-health">System health</a><a{evidence_class} href="/admin/installations">Installations</a><a{devices_class} href="/admin/devices">Devices</a><a{providers_class} href="/admin/providers">Providers</a><a{map_statistics_class} href="/admin/map-statistics">Map statistics</a><a{test_data_class} href="/admin/test-data">Test data</a><a{campaign_class} href="/admin/campaign-links">Campaign links</a>{review_menu}</nav>
-      <nav class="admin-nav" aria-label="Admin navigation"><label class="timezone-control"><span class="sr-only">Time zone</span><select id="admin-timezone" aria-label="Time zone" title="Time zone"><option value="browser">Automatic (browser)</option><option value="UTC">UTC</option><option value="Europe/Vilnius">Europe/Vilnius</option><option value="Europe/London">Europe/London</option><option value="Europe/Berlin">Europe/Berlin</option><option value="America/New_York">America/New_York</option><option value="America/Los_Angeles">America/Los_Angeles</option><option value="Asia/Tokyo">Asia/Tokyo</option></select></label><a class="admin-user" href="/admin/account" aria-label="Account settings for {username}">{username}</a>
-      <form method="post" action="/admin/logout"><input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}"><button class="link-button" type="submit">Sign out</button></form><a class="admin-mobile-website" href="https://terento.app/" target="_blank" rel="noopener noreferrer">Website ↗</a></nav></div>
+      <div id="admin-menu-panel"><nav class="admin-section-nav" aria-label="Admin sections"><a{overview_class} href="/admin">Overview</a><a{system_health_class} href="/admin/system-health">System health</a><a{evidence_class} href="/admin/installations">Installations</a><a{devices_class} href="/admin/devices">Devices</a><a{providers_class} href="/admin/providers">Providers</a><a{map_statistics_class} href="/admin/map-statistics">Map statistics</a>{tools_menu}{review_menu}</nav>
+      <nav class="admin-nav" aria-label="Admin navigation"><label class="timezone-control"><span class="sr-only">Time zone</span><select id="admin-timezone" aria-label="Time zone" title="Time zone"><option value="browser">Automatic (browser)</option><option value="UTC">UTC</option><option value="Europe/Vilnius">Europe/Vilnius</option><option value="Europe/London">Europe/London</option><option value="Europe/Berlin">Europe/Berlin</option><option value="America/New_York">America/New_York</option><option value="America/Los_Angeles">America/Los_Angeles</option><option value="Asia/Tokyo">Asia/Tokyo</select></label><a class="admin-user{account_class}" href="/admin/account" aria-label="Account settings for {username}">{username}</a>
+      <form method="post" action="/admin/logout"><input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}"><button class="link-button" type="submit">Sign out</button></form><a class="admin-mobile-website" href="https://terento.app/" target="_blank" rel="noopener noreferrer">Website {_admin_icon('external')}</a></nav></div>
     </div></header>"""
 
 
@@ -732,7 +771,7 @@ def _overview_attention_item(operation: dict[str, Any]) -> str:
         f"<div><a href='{html.escape(href, quote=True)}'><strong>{html.escape(label)}</strong></a>"
         f"<span>{html.escape(_overview_operation_context(operation))}</span>"
         f"<small>{html.escape(reason)} · {_timestamp_markup(operation.get('last_occurred_at'))}</small></div>"
-        f"<a class='overview-detail-link' href='{html.escape(href, quote=True)}'>Details&nbsp;→</a></li>"
+        f"<a class='overview-detail-link' href='{html.escape(href, quote=True)}'>Details&nbsp;{_admin_icon('arrow-right')}</a></li>"
     )
 
 
@@ -740,14 +779,31 @@ def _overview_provider_attention_item(provider: dict[str, Any]) -> str:
     provider_id = str(provider.get("id") or "").strip()
     name = str(provider.get("name") or provider_id or "Provider")
     health = str(provider.get("health") or "UNKNOWN").upper()
+    health_label = {"WARNING": "Degraded", "UNKNOWN": "Evidence missing"}.get(health, health.title())
     href = f"/admin/providers/{quote(provider_id, safe='')}"
     return (
         f"<li class='overview-attention-item overview-attention-provider'>"
         f"<span class='overview-attention-dot' aria-hidden='true'>●</span>"
-        f"<div><a href='{html.escape(href, quote=True)}'><strong>{html.escape(name)} health {html.escape(health.title())}</strong></a>"
+        f"<div><a href='{html.escape(href, quote=True)}'><strong>{html.escape(name)} health {html.escape(health_label)}</strong></a>"
         f"<span>Provider health requires review</span>"
         f"<small>{_timestamp_markup(provider.get('lastHealthCheck'))}</small></div>"
-        f"<a class='overview-detail-link' href='{html.escape(href, quote=True)}'>Details&nbsp;→</a></li>"
+        f"<a class='overview-detail-link' href='{html.escape(href, quote=True)}'>Details&nbsp;{_admin_icon('arrow-right')}</a></li>"
+    )
+
+
+def _overview_system_attention_item(card: dict[str, Any]) -> str:
+    status = str(card.get("status") or "UNKNOWN").upper()
+    status_label = {
+        "WARNING": "Degraded",
+        "FAILED": "Failed",
+        "UNKNOWN": "Evidence missing",
+    }.get(status, status.title())
+    return (
+        f"<li class='overview-attention-item overview-attention-review'>"
+        f"<span aria-hidden='true'>!</span>"
+        f"<div><a href='/admin/system-health'><strong>{html.escape(str(card.get('title') or 'System check'))} · {html.escape(status_label)}</strong></a>"
+        f"<small>{html.escape(str(card.get('reason') or 'System evidence needs review.'))}</small></div>"
+        f"<a class='overview-detail-link' href='/admin/system-health'>Review&nbsp;{_admin_icon('arrow-right')}</a></li>"
     )
 
 
@@ -846,7 +902,7 @@ def _overview_review_attention_item(item: dict[str, Any]) -> str:
         f"<div><a href='{html.escape(href, quote=True)}'><strong>{html.escape(label)}</strong></a>"
         f"<span>{html.escape(context)}</span>"
         f"<small>{html.escape(review_status.title())} · {_timestamp_markup(item.get('last_evidence'))}</small></div>"
-        f"<a class='overview-detail-link' href='{html.escape(href, quote=True)}'>Review&nbsp;→</a></li>"
+        f"<a class='overview-detail-link' href='{html.escape(href, quote=True)}'>Review&nbsp;{_admin_icon('arrow-right')}</a></li>"
     )
 
 
@@ -1205,26 +1261,27 @@ def overview_page(
         provider for provider in providers
         if str(provider.get("health") or "UNKNOWN").upper() not in {"HEALTHY", ""}
     ]
-    attention_items = ""
+    attention_item_markup: list[str] = []
     compatibility_attention = [
         item for item in compatibility.get("attention", compatibility.get("recentActivity", []))
         if item.get("open_error") or item.get("identity_pending")
     ]
     model_activity = list(compatibility.get("modelActivity") or [])
     review_required = list(compatibility.get("reviewRequired") or [])
-    attention_items += "".join(_overview_attention_item(item) for item in compatibility_attention[:8])
-    attention_items += "".join(
-        _overview_review_attention_item(item) for item in review_required[:4]
-    )
-    attention_items += "".join(_overview_provider_attention_item(item) for item in attention_providers[:4])
+    attention_item_markup.extend(_overview_attention_item(item) for item in compatibility_attention)
+    attention_item_markup.extend(_overview_review_attention_item(item) for item in review_required)
+    attention_item_markup.extend(_overview_provider_attention_item(provider) for provider in attention_providers)
+    health_issue_count = 0
     if isinstance(overview.get("system"), dict):
         health_cards, _, _ = _system_health_cards(overview["system"])
-        attention_items += "".join(
-            f"<li class='overview-attention-item overview-attention-review'><span aria-hidden='true'>!</span>"
-            f"<div><a href='/admin/system-health'><strong>{html.escape(card['title'])} · {html.escape(card['status'].title())}</strong></a>"
-            f"<small>{html.escape(card['reason'])}</small></div><a class='overview-detail-link' href='/admin/system-health'>Review&nbsp;→</a></li>"
-            for card in health_cards if card["status"] != "HEALTHY"
+        health_issue_count = sum(card["status"] != "HEALTHY" for card in health_cards)
+        attention_item_markup.extend(
+            _overview_system_attention_item(card)
+            for card in health_cards
+            if card["status"] != "HEALTHY"
         )
+    attention_items = "".join(attention_item_markup[:3])
+    has_review_queue = bool(attention_item_markup)
     if not attention_items:
         attention_content = "<p class='overview-empty-state'>No issues need attention</p>"
     else:
@@ -1251,7 +1308,7 @@ def overview_page(
     compatibility_recent_content = (
         ""
         if not compatibility_recent else
-        "<div class='overview-compatibility-activity' aria-label='Recent compatibility activity'><div class='section-heading'><div><p class='section-kicker'>Latest</p><h3>Recent compatibility activity</h3></div><a class='section-link' href='/admin/installations'>View all&nbsp;→</a></div><ul class='overview-activity-list'>" +
+        "<div class='overview-compatibility-activity' aria-label='Recent compatibility activity'><div class='section-heading'><div><p class='section-kicker'>Latest</p><h3>Recent compatibility activity</h3></div><a class='section-link' href='/admin/installations'>View all&nbsp;" + _admin_icon("arrow-right") + "</a></div><ul class='overview-activity-list'>" +
         "".join(_overview_compatibility_activity_row(item) for item in compatibility_recent) +
         "</ul></div>"
     )
@@ -1262,7 +1319,7 @@ def overview_page(
     compatibility_summary = (
         f"<details class='overview-panel overview-compatibility-summary admin-disclosure' aria-labelledby='overview-compatibility-title'><summary id='overview-compatibility-title'>Compatibility evidence · details and activity</summary><div class='overview-compatibility-grid'><div><span>Write-started attempts</span><strong>{compatibility_attempts}</strong></div><div><span>Variants</span><strong>{compatibility_variants}</strong></div><div><span>Success rate</span><strong>{compatibility_rate}</strong></div></div><p class='overview-chart-note'>Evidence remains stored separately; complete provider successes reconcile missing map-event rows in this view only.</p>{compatibility_recent_content}</details>"
         if compatibility_has_data else
-        "<section class='overview-panel overview-compatibility-summary overview-compact-empty' aria-labelledby='overview-compatibility-title'><summary id='overview-compatibility-title'>Compatibility evidence · details and activity</summary><p class='overview-empty-state'>No compatibility evidence in this period.</p></section>"
+        "<section class='overview-panel overview-compatibility-summary overview-compact-empty' aria-labelledby='overview-compatibility-title'><h2 id='overview-compatibility-title'>Compatibility evidence · details and activity</h2><p class='overview-empty-state'>No compatibility evidence in this period.</p></section>"
     )
     review_section = (
         f"<div class='overview-review-block'><h3>New / review-required devices</h3>{_overview_review_required(review_required)}</div>"
@@ -1279,17 +1336,18 @@ def overview_page(
         "overview-secondary-grid overview-secondary-grid-single"
     )
     attention_section = (
-        f"<section class='overview-panel overview-attention-panel' aria-labelledby='overview-attention-title'><div class='section-heading'><div><p class='section-kicker'>All unresolved · any date</p><h2 id='overview-attention-title'>Needs attention</h2></div><a class='section-link' href='{html.escape(attention_href, quote=True)}'>View all&nbsp;→</a></div>{attention_content}</section>"
-        if attention_items else
-        f"<section class='overview-panel overview-attention-panel overview-attention-empty' aria-labelledby='overview-attention-title'><div><p class='section-kicker'>All unresolved · any date</p><h2 id='overview-attention-title'>Needs attention</h2></div>{attention_content}<a class='section-link' href='{html.escape(attention_href, quote=True)}'>View all&nbsp;→</a></section>"
+        f"<section class='overview-panel overview-attention-panel' aria-labelledby='overview-attention-title'><div class='section-heading'><div><p class='section-kicker'>All unresolved · any date</p><h2 id='overview-attention-title'>Review queue</h2></div><a class='section-link' href='{html.escape(attention_href, quote=True)}'>View all&nbsp;{_admin_icon('arrow-right')}</a></div>{attention_content}"
+        if has_review_queue else
+        f"<section class='overview-panel overview-attention-panel overview-attention-empty' aria-labelledby='overview-attention-title'><div><p class='section-kicker'>All unresolved · any date</p><h2 id='overview-attention-title'>Review queue</h2></div>{attention_content}<a class='section-link' href='{html.escape(attention_href, quote=True)}'>View all&nbsp;{_admin_icon('arrow-right')}</a>"
     )
     review = user.get("admin_review_summary") or {}
     attention_section += (
-        "<nav class='attention-shortcuts' aria-label='All attention queues'>"
+        "<nav class='attention-shortcuts' aria-label='Review queue shortcuts'>"
         f"<a href='/admin/installations?state=open'>Open errors <strong>{open_error_metric(open_errors)}</strong></a>"
         f"<a href='/admin/installations?state=identity-pending'>Identity review <strong>{int(review.get('identityPending') or 0)}</strong></a>"
         f"<a href='/admin/devices?review=publication'>Publication review <strong>{int(review.get('readyToPublish') or 0)}</strong></a>"
-        "<a href='/admin/system-health'>System health</a></nav>"
+        f"<a href='/admin/providers'>Provider health <strong>{len(attention_providers)}</strong></a>"
+        f"<a href='/admin/system-health'>System health <strong>{health_issue_count}</strong></a></nav></section>"
     )
     provider_links = "".join(
         f"<a href='/admin/providers/{quote(str(provider.get('id') or ''), safe='')}'>{html.escape(str(provider.get('name') or provider.get('id') or 'Provider'))} <span>{html.escape(str(provider.get('health') or 'UNKNOWN').title())}</span></a>"
@@ -1309,8 +1367,8 @@ def overview_page(
         </section>
         {attention_section}
         <div class='{primary_grid_class}'><section class='overview-panel overview-chart-panel' aria-labelledby='overview-trend-title'><div class='section-heading'><div><p class='section-kicker'>Map operations</p><h2 id='overview-trend-title'>Map install operations over time</h2></div></div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'), time_zone)}</section>{model_panel}</div>
-        <div class='{secondary_grid_class}'><section class='overview-panel' aria-labelledby='overview-activity-title'><div class='section-heading'><div><p class='section-kicker'>Latest</p><h2 id='overview-activity-title'>Recent map activity</h2></div><a class='section-link' href='{html.escape(map_statistics_href, quote=True)}'>View all&nbsp;→</a></div>{recent_content}</section>{reasons_section}</div>
-        <section class='overview-panel overview-provider-panel' aria-labelledby='overview-provider-title'><div><p class='section-kicker'>Availability</p><h2 id='overview-provider-title'>Providers</h2></div><div class='overview-provider-summary'><strong>{healthy} / {provider_count} healthy</strong>{provider_links}</div><a class='section-link' href='/admin/providers'>Manage&nbsp;→</a></section>
+        <div class='{secondary_grid_class}'><section class='overview-panel' aria-labelledby='overview-activity-title'><div class='section-heading'><div><p class='section-kicker'>Latest</p><h2 id='overview-activity-title'>Recent map activity</h2></div><a class='section-link' href='{html.escape(map_statistics_href, quote=True)}'>View all&nbsp;{_admin_icon('arrow-right')}</a></div>{recent_content}</section>{reasons_section}</div>
+        <section class='overview-panel overview-provider-panel' aria-labelledby='overview-provider-title'><div><p class='section-kicker'>Availability</p><h2 id='overview-provider-title'>Providers</h2></div><div class='overview-provider-summary'><strong>{healthy} / {provider_count} healthy</strong>{provider_links}</div><a class='section-link' href='/admin/providers'>Manage&nbsp;{_admin_icon('arrow-right')}</a></section>
         {compatibility_summary}
       </main>
       <script>{_overview_period_script()}</script>
@@ -1321,8 +1379,8 @@ def overview_page(
 def _health_status_badge(status: Any) -> str:
     normalized = str(status or "UNKNOWN").strip().upper()
     labels = {
-        "HEALTHY": "Healthy", "WARNING": "Warning",
-        "FAILED": "Failed", "UNKNOWN": "Unknown",
+        "HEALTHY": "Healthy", "WARNING": "Degraded",
+        "FAILED": "Failed", "UNKNOWN": "Evidence missing",
     }
     if normalized not in labels:
         normalized = "UNKNOWN"
@@ -1333,7 +1391,7 @@ def _health_run_link(observation: dict[str, Any] | None) -> str:
     url = str((observation or {}).get("source_run_url") or "").strip()
     if not url.startswith("https://github.com/VooZ2/terento/actions/runs/"):
         return ""
-    return f"<a class='section-link' href='{html.escape(url, quote=True)}' target='_blank' rel='noopener noreferrer'>GitHub Actions&nbsp;↗</a>"
+    return f"<a class='section-link' href='{html.escape(url, quote=True)}' target='_blank' rel='noopener noreferrer'>GitHub Actions&nbsp;{_admin_icon('external')}</a>"
 
 
 def _health_attention(status: Any, reason: str, action: str) -> str:
@@ -1342,8 +1400,8 @@ def _health_attention(status: Any, reason: str, action: str) -> str:
         return ""
     return (
         f"<dl class='system-health-explanation'>"
-        f"<div><dt>Reason</dt><dd>{html.escape(reason)}</dd></div>"
-        f"<div><dt>Action</dt><dd>{html.escape(action)}</dd></div>"
+        f"<div><dt>Why</dt><dd>{html.escape(reason)}</dd></div>"
+        f"<div><dt>Next action</dt><dd>{html.escape(action)}</dd></div>"
         f"</dl>"
     )
 
@@ -1357,20 +1415,22 @@ def _system_health_card(
     reason: str = "",
     action: str = "",
 ) -> dict[str, Any]:
+    normalized_status = str(status or "UNKNOWN").upper()
+    is_open = normalized_status != "HEALTHY"
     evidence_time = (
         "<p class='table-help'>Evidence recorded: "
         + _timestamp_markup(observation.get('observed_at')) + "</p>"
         if observation else ""
     )
     markup = (
-        f"<details class='system-health-card admin-disclosure'{' open' if str(status or 'UNKNOWN').upper() != 'HEALTHY' else ''}>"
-        f"<summary><h2>{html.escape(title)}</h2>{_health_status_badge(status)}</summary>"
+        f"<details class='system-health-card admin-disclosure'{ ' open' if is_open else ''}>"
+        f"<summary><h2>{html.escape(title)}</h2>{_health_status_badge(normalized_status)}</summary>"
         f"<div class='disclosure-body'><div class='system-health-description'>{description}</div>"
-        f"{_health_attention(status, reason, action)}"
+        f"{_health_attention(normalized_status, reason, action)}"
         f"{evidence_time}"
         f"{_health_run_link(observation)}</div></details>"
     )
-    return {"title": title, "status": str(status or "UNKNOWN").upper(), "html": markup, "reason": reason}
+    return {"title": title, "status": normalized_status, "html": markup, "reason": reason}
 
 
 def _system_health_cards(health: dict[str, Any]) -> tuple[list[dict[str, Any]], Any, dict[str, Any]]:
@@ -1538,7 +1598,14 @@ def _system_health_cards(health: dict[str, Any]) -> tuple[list[dict[str, Any]], 
 def system_health_page(health: dict[str, Any], user: dict[str, Any], csrf_token: str) -> bytes:
     cards, weekly, weekly_details = _system_health_cards(health)
     card_markup = "".join(card['html'] for card in cards)
-    attention_count = sum(card['status'] != 'HEALTHY' for card in cards)
+    incident_count = sum(card['status'] in {'FAILED', 'WARNING'} for card in cards)
+    missing_count = sum(card['status'] == 'UNKNOWN' for card in cards)
+    summary_parts = []
+    if incident_count:
+        summary_parts.append(f"{_count_label(incident_count, 'check')} need attention")
+    if missing_count:
+        summary_parts.append(f"{_count_label(missing_count, 'check')} need evidence")
+    health_summary = " · ".join(summary_parts) + ". Problems appear first." if summary_parts else "All checks healthy."
     suite_labels = {
         "selection": "Test-suite selection",
         "site": "Public website",
@@ -1558,7 +1625,7 @@ def system_health_page(health: dict[str, Any], user: dict[str, Any], csrf_token:
       {_admin_header(user, csrf_token, active='system-health')}
       <main class='dashboard system-health-page' id='main-content'>
         <div class='heading-row'><div><p class='eyebrow'>Operations</p><h1>System health</h1><p class='lede'>Production state and retained GitHub evidence. Tests run in GitHub Actions, not in this admin panel.</p></div></div>
-        <p class='admin-health-summary' role='status'>{str(attention_count) + ' checks need attention' if attention_count else 'All checks healthy'}. Problems appear first; healthy checks stay collapsed. Expand a check for its evidence and next action.</p><section class='system-health-grid' aria-label='System health summary'>{card_markup}</section>
+        <p class='admin-health-summary' role='status'>{health_summary} Healthy checks stay collapsed; expand a check for its evidence and next action.</p><section class='system-health-grid' aria-label='System health summary'>{card_markup}</section>
         <details class='overview-panel admin-disclosure'><summary>Quality-gate results · weekly report</summary>{_health_run_link(weekly)}<div class='table-wrap'><table class='admin-table'><thead><tr><th scope='col'>Check</th><th scope='col'>Health</th><th scope='col'>Result</th></tr></thead><tbody>{detail_rows}</tbody></table></div></details>
       </main>
     """
@@ -1621,7 +1688,7 @@ def dashboard_page(
             <label class="filter-search"> <span class="sr-only">Search models</span><input id="evidence-search" type="search" placeholder="Search models" autocomplete="off"></label>
             <label><span class="sr-only">Filter by status</span><select id="evidence-status"><option value="all">All statuses</option>{status_options}</select></label>
             <label><span class="sr-only">Sort models</span><select id="evidence-sort"><option value="attempts">Most attempts</option><option value="errors">Most errors</option><option value="latest" selected>Latest activity</option><option value="model">Model name</option></select></label>
-            <p class="results-count" id="results-count" aria-live="polite">{len(rows)} {"variant" if len(rows) == 1 else "variants"}</p>
+            <p class="results-count" id="results-count" aria-live="polite">{_count_label(len(rows), 'variant')}</p>
             <button type="button" class="secondary-button filter-clear" data-filter-clear aria-label="Clear installation filters">Clear</button>
           </form>
           <div class="table-wrap evidence-table-wrap"><table class="admin-table"><caption class="sr-only">Installations by exact device identity</caption><colgroup><col class="evidence-column-model"><col class="evidence-column-variant"><col class="evidence-column-status"><col class="evidence-column-attempts"><col class="evidence-column-successful"><col class="evidence-column-failed"><col class="evidence-column-open-errors"><col class="evidence-column-last-success"></colgroup><thead><tr><th scope="col">Model</th><th scope="col">Variant</th><th scope="col">Status</th><th scope="col">Attempts</th><th scope="col">Successful</th><th scope="col">Failed</th><th scope="col">Open errors</th><th scope="col">Last success</th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
@@ -1682,7 +1749,7 @@ def _provider_url(value: Any, *, label: str | None = None) -> str:
     escaped = html.escape(raw, quote=True)
     text = html.escape(label or raw)
     if raw.startswith(("https://", "http://")):
-        return f"<a href='{escaped}' target='_blank' rel='noopener noreferrer'>{text} <span aria-hidden='true'>↗</span></a>"
+        return f"<a href='{escaped}' target='_blank' rel='noopener noreferrer'>{text} {_admin_icon('external')}</a>"
     return text
 
 
@@ -1705,7 +1772,7 @@ def _provider_source_type_label(value: Any) -> str:
 def _provider_check_badge(value: Any) -> str:
     normalized = str(value or "UNKNOWN").strip().upper()
     if normalized == "UNKNOWN":
-        return "<span class='provider-status provider-status-unknown' title='Not evaluated'>Not evaluated</span>"
+        return "<span class='provider-status provider-status-unknown' title='Evidence missing'>Evidence missing</span>"
     return _provider_status_badge(normalized, kind="health")
 
 
@@ -1806,10 +1873,10 @@ def providers_page(
       {_admin_header(user, csrf_token, active='providers')}
       <main class='dashboard' id='main-content'>
         <div class='heading-row'><div><p class='eyebrow'>Map operations</p><h1>Providers</h1><p class='lede'>Known provider adapters, catalog state, and the latest health evidence.</p></div></div>
-        <section class='admin-summary-strip' aria-label='Provider summary'><p class='admin-summary-metrics'><strong>{len(provider_rows)} providers</strong><span> · {active} active · {healthy} healthy · {packages} packages · {issues} issues</span></p></section>
+        <section class='admin-summary-strip' aria-label='Provider summary'><p class='admin-summary-metrics'><strong>{_count_label(len(provider_rows), 'provider')}</strong><span> · {active} active · {healthy} healthy · {_count_label(packages, 'package')} · {_count_label(issues, 'issue')}</span></p></section>
         {empty}
         <section class='provider-section' aria-label='Provider list'>
-          <form class='filter-bar provider-filter-bar' id='provider-filters' role='search'><label class='filter-search'><span class='sr-only'>Search providers</span><input id='provider-search' type='search' placeholder='Search providers' autocomplete='off'></label><p class='results-count' id='provider-results-count' aria-live='polite'>{len(provider_rows)} providers</p><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear provider filters'>Clear</button></form>
+          <form class='filter-bar provider-filter-bar' id='provider-filters' role='search'><label class='filter-search'><span class='sr-only'>Search providers</span><input id='provider-search' type='search' placeholder='Search providers' autocomplete='off'></label><p class='results-count' id='provider-results-count' aria-live='polite'>{_count_label(len(provider_rows), 'provider')}</p><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear provider filters'>Clear</button></form>
           <div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Map provider status</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Activity</th><th scope='col'>Health</th><th scope='col'>Packages</th><th scope='col'>Catalog sync</th><th scope='col'>Last check</th><th scope='col'>Issues</th></tr></thead><tbody id='provider-rows'>{rows}</tbody></table></div>
         </section>
       </main>
@@ -2047,7 +2114,7 @@ def provider_detail_page(
     content = f"""
       {_admin_header(user, csrf_token, active='providers')}
       <main class='dashboard provider-detail' id='main-content'>
-        <p class='back-link'><a href='/admin/providers'>← Back to providers</a></p>
+        <p class='back-link'><a href='/admin/providers'>{_admin_icon('arrow-left')} Back to providers</a></p>
         <div class='heading-row'><div><p class='eyebrow'>Provider detail</p><h1>{html.escape(name)}</h1></div><div class='provider-heading-status'>{_provider_status_badge(status)} {_provider_status_badge(health, kind='health')}</div></div>
         <section class='provider-action-bar' data-provider-id='{html.escape(provider_id, quote=True)}' aria-label='Provider actions'>
           {_provider_action_button(provider_id, 'check', 'Check now')}
@@ -2205,6 +2272,12 @@ def map_statistics_page(
         <details class='provider-card map-statistics-linkage admin-disclosure' id='map-statistics-linkage' aria-label='Watch event linkage'><summary id='map-statistics-linkage-summary'>{html.escape(linkage_summary)}</summary><div class='disclosure-body'><p class='table-help'>Matched only when the map and watch events share the same operation ID.</p><div class='map-statistics-linkage-grid'><div><span>Map install operations</span><strong data-stat='mapInstallationCount'>{linkage_value('mapInstallationCount')}</strong></div><div><span>Linked watch events</span><strong data-stat='linkedInstallationCount'>{linkage_value('linkedInstallationCount')}</strong></div><div><span>Unlinked installs</span><strong data-stat='mapOnlyInstallationCount'>{linkage_value('mapOnlyInstallationCount')}</strong></div><div><span>Linkage coverage</span><strong data-stat='linkageRate'>{linkage_rate}</strong></div><div><span>Watch-confirmed successes</span><strong data-stat='linkedSuccessfulInstallCount'>{linkage_value('linkedSuccessfulInstallCount')}</strong></div><div><span>Watch-confirmed failures</span><strong data-stat='linkedFailedInstallCount'>{linkage_value('linkedFailedInstallCount')}</strong></div></div><p class='table-help map-statistics-scope-note'>A missing watch event is shown as unlinked, not as a failure. Map statistics and compatibility evidence remain separate aggregates.</p></div></details>
         <section class='provider-card map-statistics-provider-table' id='map-statistics-provider-table' {'hidden' if not has_event_data else ''}><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Activity by provider</h2></div></div><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Activity by provider</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Downloads</th><th scope='col'>Map-package installs</th><th scope='col'>Package install success</th><th scope='col'>Current health</th></tr></thead><tbody id='provider-statistic-rows'></tbody></table></div></section>
         <section class='map-statistics-coverage-layout' id='map-statistics-coverage' {'hidden' if not has_event_data else ''} aria-label='Installation coverage'><section class='provider-card map-statistics-world-map-card' aria-labelledby='map-statistics-world-map-title'><div class='section-heading'><div><p class='section-kicker'>Coverage</p><h2 id='map-statistics-world-map-title'>Installations by country</h2></div><p class='table-help' id='map-statistics-world-map-status'>Successful map-package installs</p></div><div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map showing successful map-package installations by country'><div class='world-map-controls' role='group' aria-label='Map navigation'><button type='button' data-map-zoom='in' aria-label='Zoom in'>+</button><button type='button' data-map-zoom='out' aria-label='Zoom out'>−</button><button type='button' data-map-zoom='reset'>Reset map</button><span id='world-map-zoom-status' role='status'>100%</span></div><div class='world-map-svg' id='world-map-svg' tabindex='0' aria-label='Map viewport. Use arrow keys to pan, plus and minus to zoom, or drag the map.'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div><p class='table-help world-map-note'>Hover or focus a country for totals. Zoom with + / −, drag or use arrow keys to pan. Region links highlight the corresponding country, not the exact map coverage. Unmapped installs remain in the totals.</p></section><section class='provider-card map-statistics-popularity' id='map-statistics-popularity'><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Popular maps</h2></div></div><div class='popularity-subsection'><h3>Top 5 maps</h3><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Popular maps</caption><thead><tr><th scope='col'>Map / region</th><th scope='col'>Provider</th><th scope='col'>Package installs</th><th scope='col'>Last activity</th></tr></thead><tbody id='map-rows'></tbody></table></div><details class='admin-disclosure popularity-all-maps-disclosure'><summary id='all-maps-summary'>Browse all maps</summary><div class='disclosure-body'><label>Search maps<input type='search' id='all-maps-search' placeholder='Map, region or provider'></label><div class='table-wrap'><table class='admin-table'><thead><tr><th>Map / region</th><th>Provider</th><th>Installs</th><th>Last activity</th></tr></thead><tbody id='all-map-rows'></tbody></table></div><div class='provider-pagination'><button type='button' id='all-maps-prev'>Previous</button><span id='all-maps-page' role='status'></span><button type='button' id='all-maps-next'>Next</button></div></div></details></div><details class='admin-disclosure popularity-regions-disclosure'><summary>Regions</summary><div class='disclosure-body'><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Top regions</caption><thead><tr><th scope='col'>Region</th><th scope='col' title='Completed map-package installs'>Installs</th><th scope='col'>Last activity</th></tr></thead><tbody id='top-region-rows'></tbody></table></div></div></details></section></section>
+        <p class='table-help map-statistics-definition-note'>Counts map packages; one install can include multiple packages.</p>
+        <section class='admin-kpi-grid map-statistics-kpis' id='map-statistics-metrics' aria-label='Map statistics summary'><article><span>Downloads</span><strong data-stat='completedDownloads'>{event_value('completedDownloads')}</strong></article><article><span>Download rate</span><strong data-stat='downloadSuccessRate'>{_format_rate(summary['downloadSuccessRate'])}</strong></article><article><span>Installs</span><strong data-stat='completedInstalls'>{event_value('completedInstalls')}</strong></article><article><span>Install rate</span><strong data-stat='installSuccessRate'>{_format_rate(summary['installSuccessRate'])}</strong></article></section>
+        <section class='map-statistics-empty' id='map-statistics-empty' {'hidden' if has_event_data else ''} aria-live='polite'><h2>No map operation data yet</h2><p>Statistics will appear after opted-in map operations are received.</p></section>
+        <section class='map-statistics-reliability' aria-label='Reliability summary'><div><span>Failed installs</span><strong data-stat='failedInstalls'>{event_value('failedInstalls')}</strong></div><div><span>Failed downloads</span><strong data-stat='failedDownloads'>{event_value('failedDownloads')}</strong></div><div><span>Provider issues</span><strong data-stat='providerIssues'>{provider_issues}</strong></div></section>
+        <section class='map-statistics-provider-health' id='map-statistics-provider-health' aria-label='Provider health'><span>Provider health</span><strong data-stat='providerHealth'>{healthy_providers} / {len(scoped_providers)} healthy</strong><em data-stat='providerHealthIssues'> · {_count_label(provider_issues, 'issue')}</em></section>
+        <section class='map-statistics-popularity-shell' id='map-statistics-popularity' {'hidden' if not has_event_data else ''} aria-labelledby='map-statistics-popularity-title'><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2 id='map-statistics-popularity-title'>Provider activity and popular maps</h2></div></div><section class='provider-card map-statistics-provider-table' id='map-statistics-provider-table'><div class='section-heading'><div><h2>Provider activity</h2></div></div><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Provider activity</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Downloads</th><th scope='col'>Installs</th><th scope='col'>Install rate</th><th scope='col'>Health</th></tr></thead><tbody id='provider-statistic-rows'></tbody></table></div></section><section class='map-statistics-coverage-layout' id='map-statistics-coverage' aria-label='Installation coverage'><section class='provider-card map-statistics-world-map-card' aria-labelledby='map-statistics-world-map-title'><div class='section-heading'><div><p class='section-kicker'>Coverage</p><h2 id='map-statistics-world-map-title'>Installs by country</h2></div><p class='table-help' id='map-statistics-world-map-status'>Completed installs</p></div><div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map of installs by country'><div class='world-map-svg' id='world-map-svg'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div><p class='table-help world-map-note'>White means no installs. Hover a country for providers.</p></section><section class='provider-card map-statistics-popularity-list'><div class='section-heading'><div><h2>Popular maps</h2></div></div><div class='popularity-subsection'><h3>Top 5</h3><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Popular maps</caption><thead><tr><th scope='col'>Map</th><th scope='col'>Source</th><th scope='col'>Count</th><th scope='col'>Last</th></tr></thead><tbody id='map-rows'></tbody></table></div><details class='admin-disclosure popularity-all-maps-disclosure'><summary id='all-maps-summary'>All maps</summary></details></div><details class='admin-disclosure popularity-regions-disclosure'><summary>Regions</summary><div class='disclosure-body'><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Top regions</caption><thead><tr><th scope='col'>Region</th><th scope='col'>Count</th><th scope='col'>Last</th></tr></thead><tbody id='top-region-rows'></tbody></table></div></div></details></section></section></section>
         <section class='provider-card map-events-card' {'hidden' if not has_event_data else ''}><details class='admin-disclosure' id='map-statistics-event-detail'><summary id='map-statistics-event-summary'>Event detail · {event_status}</summary><div class='disclosure-body' id='map-statistics-event-body'>{event_table}</div></details></section>
       </main>
       <link rel="stylesheet" href="/admin/map-assets/leaflet-1.9.4.css"><link rel="stylesheet" href="/admin/map-assets/coverage-map-v1.css"><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/leaflet-1.9.4.js"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/coverage-map-v1.js"></script><script>window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};window.terentoWorldMapSvg = {_admin_json(WORLD_MAP_SVG)};window.terentoWorldMapCountryAliases = {_admin_json(WORLD_MAP_COUNTRY_ALIASES)};{_map_statistics_script()}</script>
@@ -2457,7 +2530,7 @@ def _map_statistics_script() -> str:
         const healthyCount = scopedProviders.filter((item) => String(item.health || '').toUpperCase() === 'HEALTHY').length;
         const issueCount = scopedProviders.reduce((total, item) => total + providerIssueCount(item), 0);
         set('providerHealth', `${healthyCount} / ${scopedProviders.length} healthy`);
-        set('providerHealthIssues', ` · ${issueCount} issues`);
+        set('providerHealthIssues', ` · ${issueCount} ${issueCount === 1 ? 'issue' : 'issues'}`);
         set('providerIssues', issueCount);
         const byProvider = Object.fromEntries(scopedProviders.map((item) => [item.id, {downloads: 0, installs: 0, failedInstalls: 0}]));
         rows.forEach((row) => { const id = row.provider_id || 'unknown'; byProvider[id] ||= {downloads: 0, installs: 0, failedInstalls: 0}; if (row.event_type === 'DOWNLOAD_SUCCEEDED' && row.outcome === 'SUCCEEDED') byProvider[id].downloads += operations(row); if (row.event_type === 'INSTALL_SUCCEEDED' && row.outcome === 'SUCCEEDED') byProvider[id].installs += operations(row); if (row.event_type === 'INSTALL_FAILED' && row.outcome === 'FAILED') byProvider[id].failedInstalls += operations(row); });
@@ -2665,7 +2738,7 @@ def _github_issue_link(value: Any) -> str:
     return (
         f"<a class='github-issue' href='https://github.com/VooZ2/terento/issues/{number}' "
         f"target='_blank' rel='noreferrer' aria-label='Open GitHub issue {number}'>"
-        f"#{number} <span aria-hidden='true'>↗</span></a>"
+        f"#{number} {_admin_icon('external')}</a>"
     )
 
 
@@ -2970,10 +3043,25 @@ def _diagnostic_detail_dialog(
         if result_label == "FAILED" else ""
     )
     technical_details = f"<details class='diagnostic-technical-details diagnostic-technical-all'><summary>Technical details</summary><p class='diagnostic-id'>Diagnostic ID: <code>{html.escape(operation_key)}</code></p><div class='technical-copy-actions'><button type='button' class='secondary-button' data-copy-diagnostic-id='{html.escape(operation_key, quote=True)}'>Copy diagnostic ID</button><button type='button' class='secondary-button' data-copy-technical-report data-report='{html.escape(issue_body, quote=True)}'>Copy technical report</button><span class='copy-status' data-copy-status role='status' aria-live='polite'></span></div>{technical}</details>"
+    next_action = (
+        "<p class='diagnostic-next-action' role='status'><strong>Next action:</strong> Confirm the exact Garmin device identity before resolving this diagnostic.</p>"
+        if identity_pending else
+        "<p class='diagnostic-next-action' role='status'><strong>Next action:</strong> Review the result and choose a resolution.</p>"
+        if state == "open" else ""
+    )
+    secondary_lifecycle = (
+        f"<details class='admin-disclosure diagnostic-secondary-action'><summary>Resolve diagnostic</summary><div class='disclosure-body'>{lifecycle_action}</div></details>"
+        if identity_pending and lifecycle_action else ""
+    )
+    action_markup = (
+        f"{next_action}{identity_form}{secondary_lifecycle}{issue_form}"
+        if identity_pending else
+        f"{next_action}{lifecycle_action}{identity_form}{issue_form}"
+    )
     return f"""
       <dialog class='diagnostic-detail-dialog' id='{dialog_id}' aria-labelledby='{dialog_id}-title'>
         <div class='diagnostic-detail-inner'>
-          <div class='device-dialog-header'><div><p class='section-kicker'>Diagnostic detail</p><h2 id='{dialog_id}-title'>{html.escape(model)}{f' · {html.escape(variant)}' if variant != '—' else ''}</h2></div><button class='dialog-close' type='button' data-close-dialog aria-label='Close diagnostic detail'>×</button></div>
+          <div class='device-dialog-header'><div><p class='section-kicker'>Diagnostic detail</p><h2 id='{dialog_id}-title'>{html.escape(model)}{f' · {html.escape(variant)}' if variant != '—' else ''}</h2></div><button class='dialog-close' type='button' data-close-dialog aria-label='Close diagnostic detail'>{_admin_icon('close')}</button></div>
           <dl class='diagnostic-detail-summary'>
             <div><dt>Device</dt><dd>{html.escape(model)}</dd></div>
             <div><dt>Variant</dt><dd>{html.escape(variant)}</dd></div>
@@ -2984,7 +3072,7 @@ def _diagnostic_detail_dialog(
             {review_state}
           </dl>
           {failure_summary}
-          <div class='diagnostic-actions-grid'>{lifecycle_action}{identity_form}{issue_form}</div>
+          <div class='diagnostic-actions-grid'>{action_markup}</div>
           {technical_details}
         </div>
       </dialog>"""
@@ -3072,7 +3160,7 @@ def device_detail_page(
     back_label = "Back to Installations" if origin == "installations" else "Back to Devices"
     detail_url = _device_detail_url(device_id, origin=origin)
     public_link = (
-        "<a class='secondary-button model-public-link' href='https://terento.app/compatibility/' target='_blank' rel='noreferrer'>View public page <span aria-hidden='true'>↗</span></a>"
+        f"<a class='secondary-button model-public-link' href='https://terento.app/compatibility/' target='_blank' rel='noreferrer'>View public page {_admin_icon('external')}</a>"
         if publication.get("published") else ""
     )
     alert = (
@@ -3183,7 +3271,7 @@ def device_detail_page(
     content = f"""
       {_admin_header(user, csrf_token, active=active_header)}
       <main class='dashboard model-detail-page' id='main-content'>
-        <p class='back-link'><a href='{back_href}'>← {back_label}</a></p>
+        <p class='back-link'><a href='{back_href}'>{_admin_icon('arrow-left')} {back_label}</a></p>
         <header class='model-page-header'>{image}<div class='model-page-heading'><p class='eyebrow'>Garmin device</p><h1>{html.escape(model)}{f' · <span>{html.escape(variant)}</span>' if variant != '—' else ''}</h1><div class='model-page-badges'>{summary_badges}</div></div>{public_link}</header>
         <section class='diagnostic-model-metrics model-statistics' aria-label='Model installation statistics'><article class='attempts-metric' aria-label='Attempts. Successful history plus failures received since the device counter baseline. Resolved failures are counted once.' title='Device snapshot totals information: successful history plus failures since the counter baseline; resolved failures count once. Installations uses write-started evidence.'><span>Attempts</span><strong>{attempts}</strong></article><article><span>Successful</span><strong>{successful}</strong></article><article><span>Failed</span><strong>{failed}</strong></article><article><span>Open errors</span><strong>{open_errors}</strong></article><article class='timestamp-metric'><span>Last activity</span><strong>{last_activity}</strong></article></section>
         {alert}
@@ -3195,7 +3283,7 @@ def device_detail_page(
           <div class='provider-pagination' id='diagnostic-history-pagination' aria-live='polite'><label>Rows <select id='diagnostic-history-page-size' aria-label='Rows per installation history page'><option value='25' selected>25</option><option value='50'>50</option></select></label><button type='button' data-history-page='previous' disabled>Previous</button><span>Showing {1 if history else 0}–{min(len(history), 25)} of {len(history)} · page 1 of {max(1, (len(history) + 24) // 25)}</span><button type='button' data-history-page='next' {'disabled' if len(history) <= 25 else ''}>Next</button></div>
         </section>
         <details class='model-page-section model-administration admin-disclosure' {'open' if device.get('supportStatus') == 'NOT_EVALUATED' or not publication.get('published') else ''}><summary id='administration-title'>Administration · authorization and publication</summary><div class='administration-grid'>
-          <article><h3>Installation authorization</h3><form method='post' action='/admin/devices/authorization' class='admin-async-action' data-authorization-form data-current-authorization='{html.escape(str(device.get('supportStatus') or 'NOT_EVALUATED'), quote=True)}'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='device_id' value='{html.escape(device_id, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(detail_url, quote=True)}'><label>Status<select name='support_status'><option value='SUPPORTED'{' selected' if device.get('supportStatus') == 'SUPPORTED' else ''}>Approved</option><option value='UNSUPPORTED'{' selected' if device.get('supportStatus') == 'UNSUPPORTED' else ''}>Blocked</option><option value='NOT_EVALUATED'{' selected' if device.get('supportStatus') == 'NOT_EVALUATED' else ''}>Pending</option></select></label><label>Note <span class='optional-label'>Optional</span><textarea name='note' rows='2'></textarea></label><button type='submit'>Save authorization</button></form></article>
+          <article><h3>Installation authorization</h3><form method='post' action='/admin/devices/authorization' class='admin-async-action' data-authorization-form data-current-authorization='{html.escape(str(device.get('supportStatus') or 'NOT_EVALUATED'), quote=True)}'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='device_id' value='{html.escape(device_id, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(detail_url, quote=True)}'><label>Status<select name='support_status'><option value='SUPPORTED'{' selected' if device.get('supportStatus') == 'SUPPORTED' else ''}>Approved</option><option value='UNSUPPORTED'{' selected' if device.get('supportStatus') == 'UNSUPPORTED' else ''}>Blocked</option><option value='NOT_EVALUATED'{' selected' if device.get('supportStatus') == 'NOT_EVALUATED' else ''}>Pending review</option></select></label><label>Note <span class='optional-label'>Optional</span><textarea name='note' rows='2'></textarea></label><button type='submit'>Save authorization</button></form></article>
           <article><h3>Public compatibility</h3><p>{public_copy}</p>{public_form}</article>
         </div></details>
         <div class='model-information-columns'>
@@ -3260,7 +3348,7 @@ def diagnostics_page(
     )
     errors = sum(1 for results in active_diagnostics.values() if _operation_is_problematic(results))
     status = _row_compatibility_status(model_row) if model_row else None
-    filters = """<label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all' selected>All</option><option value='succeeded'>Succeeded</option><option value='failed'>Failed</option><option value='open'>Open</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity pending</option><option value='with-issue'>With issue</option></select></label><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button>"""
+    filters = """<label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all' selected>All</option><option value='succeeded'>Succeeded</option><option value='failed'>Failed</option><option value='open'>Open</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity review</option><option value='with-issue'>With issue</option></select></label><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button>"""
     rows_markup: list[str] = []
     dialogs: list[str] = []
     for index, (operation_key, results, resolved) in enumerate(diagnostic_groups):
@@ -3296,12 +3384,12 @@ def diagnostics_page(
     content = f"""
       {_admin_header(user, csrf_token, active='installations')}
       <main class='dashboard diagnostics-page' id='main-content'>
-        <p class='back-link'><a href='/admin/installations'>← Installations</a></p>
+        <p class='back-link'><a href='/admin/installations'>{_admin_icon('arrow-left')} Installations</a></p>
         <div class='heading-row'><div><p class='eyebrow'>Diagnostics</p><h1>{html.escape(model)}{f' · {html.escape(variant)}' if variant != '—' else ''}</h1><p class='lede'>Exact model and variant diagnostic history.</p></div></div>
         <section class='diagnostic-model-metrics' aria-label='Model diagnostic summary'><article><span>Attempts</span><strong>{attempts}</strong></article><article><span>Successful</span><strong>{successes}</strong></article><article><span>Errors</span><strong>{errors}</strong></article><article><span>Compatibility status</span><strong>{_status_badge(status.value if status else '')}</strong></article></section>
         <section class='diagnostics-detail-section' aria-labelledby='diagnostic-list-title'>
           <div class='section-heading'><div><p class='section-kicker'>Evidence history</p><h2 id='diagnostic-list-title'>Installations</h2></div><p class='table-help'>Successful normal evidence remains historical evidence, not an open problem.</p></div>
-          <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'>{filters}</form>
+          <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'>{filters}<button type='button' class='secondary-button filter-clear' data-filter-clear>Clear</button></form>
           <p class='results-count' id='diagnostic-results-count' aria-live='polite'>{len(diagnostic_groups)} records</p>
           <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table'><caption class='sr-only'>Installation and diagnostic records for exact model and variant</caption><thead><tr><th scope='col'>Date</th><th scope='col'>Region</th><th scope='col'>Result</th><th scope='col'>Stage</th><th scope='col'>Code</th><th scope='col'>Issue</th><th scope='col'>Review</th><th scope='col'>Action</th></tr></thead><tbody id='diagnostic-rows'>{rows_body}</tbody></table></div>
         </section>
@@ -3325,9 +3413,9 @@ def _admin_installation_authorization(value: Any) -> tuple[str, str, str]:
     labels = {
         "SUPPORTED": ("Approved", "approved", "APPROVED"),
         "UNSUPPORTED": ("Blocked", "blocked", "BLOCKED"),
-        "NOT_EVALUATED": ("Pending", "pending", "PENDING"),
+        "NOT_EVALUATED": ("Pending review", "pending", "PENDING"),
     }
-    return labels.get(status, ("Pending", "pending", "PENDING"))
+    return labels.get(status, ("Pending review", "pending", "PENDING"))
 
 
 def _admin_device_payload(
@@ -3496,7 +3584,7 @@ def _admin_device_row(device: dict[str, Any], index: int) -> str:
     new_badge = "<span class='new-badge'>New</span>" if catalog.get("newInLatestSync") else ""
     last_success = _timestamp_markup(stats.get("lastSuccessfulAt")) if stats.get("lastSuccessfulAt") else "—"
     detail_url = _device_detail_url(device.get("id"), origin="devices")
-    return f"""<tr data-device-index='{index}' data-device-url='{html.escape(detail_url, quote=True)}' data-search='{html.escape(search, quote=True)}' data-model='{html.escape(model.lower(), quote=True)}' data-updated='{html.escape(str(catalog.get('updatedAt') or ''), quote=True)}' data-installs='{stats['attempts']}' data-evidence='{html.escape(str(stats.get('lastSuccessfulAt') or ''), quote=True)}' data-status='{html.escape(evidence_status.lower())}' tabindex='0' role='link' aria-label='Open {html.escape(model)}{f', {html.escape(variant)}' if variant != '—' else ''}'>
+    return f"""<tr data-device-index='{index}' data-device-url='{html.escape(detail_url, quote=True)}' data-search='{html.escape(search, quote=True)}' data-model='{html.escape(model.lower(), quote=True)}' data-updated='{html.escape(str(catalog.get('updatedAt') or ''), quote=True)}' data-installs='{stats['attempts']}' data-evidence='{html.escape(str(stats.get('lastSuccessfulAt') or ''), quote=True)}' data-status='{html.escape(evidence_status.lower())}'>
       <td><a class='device-model-button' href='{html.escape(detail_url, quote=True)}'>{image}<span class='device-model-copy'><strong>{html.escape(model)}</strong>{new_badge}</span></a></td>
       <td>{html.escape(variant)}</td>
       <td>{_admin_status_badge(map_label, f'map-{map_kind}')}</td>
@@ -3550,7 +3638,7 @@ def devices_page(
       <main class="dashboard devices-page" id="main-content">
         <div class="heading-row"><div><p class="eyebrow">Catalog</p><h1>Devices</h1><p class="lede">Garmin device catalog, map capability, authorization, and compatibility evidence.</p></div></div>
         <section class="admin-summary-strip device-summary-strip" aria-label="Device catalog summary and sync">
-          <p class="device-summary-metrics"><strong>{summary['models']} devices</strong><span> · {summary['mapCapable']} map-capable · {summary['approved']} approved · {summary['successful']} successful installs</span></p>
+          <p class="device-summary-metrics"><strong>{_count_label(summary['models'], 'device')}</strong><span> · {summary['mapCapable']} map-capable · {summary['approved']} approved · {_count_label(summary['successful'], 'successful install')}</span></p>
           <p class="device-summary-sync"><strong>Last sync</strong> {completed}<span> · {sync_line}</span>{f"<span> · {html.escape(str(sync_data['status'] or '').title())}</span>" if sync_data['status'] else ''}</p>
         </section>
         <section class="evidence-section" aria-labelledby="device-list-title">
@@ -3560,10 +3648,10 @@ def devices_page(
             <label class="filter-search"><span class="sr-only">Search devices</span><input id="device-search" type="search" placeholder="Search devices" autocomplete="off"></label>
             <label><span class="sr-only">Filter by family</span><select id="device-family"><option value="all">All families</option>{family_options}</select></label>
             <label><span class="sr-only">Filter by map capability</span><select id="device-map"><option value="yes" selected>Maps: Yes</option><option value="no">Maps: No</option><option value="unknown">Maps: Unknown</option><option value="all">All maps</option></select></label>
-            <label><span class="sr-only">Filter by installation authorization</span><select id="device-support"><option value="all">All authorizations</option><option value="SUPPORTED">Approved</option><option value="UNSUPPORTED">Blocked</option><option value="NOT_EVALUATED">Pending</option></select></label>
+            <label><span class="sr-only">Filter by installation authorization</span><select id="device-support"><option value="all">All authorizations</option><option value="SUPPORTED">Approved</option><option value="UNSUPPORTED">Blocked</option><option value="NOT_EVALUATED">Pending review</option></select></label>
             <label><span class="sr-only">Filter by compatibility status</span><select id="device-status"><option value="all">All statuses</option><option value="TESTING">Testing</option><option value="TESTED">Tested</option><option value="SUPPORTED">Supported</option><option value="VERIFIED">Verified</option><option value="unavailable">Unavailable</option></select></label>
             <label class="device-mobile-sort"><span class="sr-only">Sort devices</span><select id="device-mobile-sort">{mobile_sort_options}</select></label>
-            <p class="results-count" id="device-results-count" aria-live="polite">{summary['mapCapable']} results</p>
+            <p class="results-count" id="device-results-count" aria-live="polite">{_count_label(summary['mapCapable'], 'result')}</p>
             <button type="button" class="secondary-button filter-clear" data-filter-clear aria-label="Clear device filters">Clear</button>
           </form>
           {empty}
@@ -3590,7 +3678,7 @@ def _campaign_info(control_id: str, title: str, body: str) -> str:
     return (
         f"<button class='info-control' type='button' aria-expanded='false' "
         f"aria-controls='{info_id}' aria-label='More information about {html.escape(title)}'>i</button>"
-        f"<div class='info-popover' id='{info_id}' role='status' hidden><strong>{html.escape(title)}</strong>{body}</div>"
+        f"<div class='info-popover' id='{info_id}' role='region' aria-label='{html.escape(title)} information' hidden><strong>{html.escape(title)}</strong>{body}</div>"
     )
 
 
@@ -3670,7 +3758,7 @@ def account_page(user: dict[str, Any], csrf_token: str, *, error: str | None = N
     return _layout(
         "Account",
         f"""
-        {_admin_header(user, csrf_token, active="")}
+        {_admin_header(user, csrf_token, active="account")}
         <main class="auth-card account" id="main-content"><p class="eyebrow">Admin</p><h1>Account</h1>{notice}
           <form method="post" action="/admin/account">
             <input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}">
@@ -3704,9 +3792,13 @@ def _statistics_row(
     model_cell = html.escape(model)
     if pending_count:
         model_cell += (
-            f" <span class='identity-pending-indicator' aria-label='{pending_count} identity pending'>"
-            "Identity pending</span>"
+            f" <span class='identity-pending-indicator' aria-label='{pending_count} identity review'>"
+            "Identity review</span>"
         )
+    model_cell = (
+        f"<a class='device-model-button' href='{html.escape(diagnostics_url, quote=True)}'>"
+        f"{model_cell}</a>"
+    )
     open_errors_markup = (
         f"<a class='error-count' href='{html.escape(_model_detail_url(row, state='open'), quote=True)}' aria-label='View {open_errors} open errors'>{open_errors}</a>"
         if open_errors else "0"
@@ -3722,7 +3814,7 @@ def _statistics_row(
         ("numeric", _timestamp_markup(row.get("last_success"))),
     )
     return (
-        f"<tr class='evidence-model-row' data-search='{html.escape(search_text, quote=True)}' data-status='{html.escape(status.lower(), quote=True)}' data-activity='{html.escape(activity, quote=True)}' data-attempts='{attempted}' data-errors='{open_errors}' data-identity-pending='{int(summary.get('identity_pending') or 0)}' data-failed='{str(failed > 0).lower()}' data-successful='{str(successful > 0).lower()}' data-diagnostics-url='{html.escape(diagnostics_url, quote=True)}' tabindex='0' role='link' aria-label='Open {html.escape(model)}{f', {html.escape(variant)}' if variant != '—' else ''}'>"
+        f"<tr class='evidence-model-row' data-search='{html.escape(search_text, quote=True)}' data-status='{html.escape(status.lower(), quote=True)}' data-activity='{html.escape(activity, quote=True)}' data-attempts='{attempted}' data-errors='{open_errors}' data-identity-pending='{int(summary.get('identity_pending') or 0)}' data-failed='{str(failed > 0).lower()}' data-successful='{str(successful > 0).lower()}' data-diagnostics-url='{html.escape(diagnostics_url, quote=True)}'>"
         + "".join(f"<td class='{css_class}'>{cell}</td>" if css_class else f"<td>{cell}</td>" for css_class, cell in cells)
         + f"</tr>"
     )
@@ -4200,16 +4292,6 @@ def _dashboard_script() -> str:
         refresh();
       }));
       [search, status, sort].forEach((control) => control.addEventListener('input', refresh));
-      rows.forEach((row) => {
-        const open = () => { if (row.dataset.diagnosticsUrl) window.location.href = row.dataset.diagnosticsUrl; };
-        row.addEventListener('click', (event) => {
-          if (event.target.closest('a,button,input,select,textarea')) return;
-          open();
-        });
-        row.addEventListener('keydown', (event) => {
-          if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); }
-        });
-      });
       refresh();
     })();"""
 
@@ -4435,7 +4517,7 @@ def _diagnostics_script() -> str:
       document.querySelectorAll('[data-copy-technical-report]').forEach((button) => button.addEventListener('click', () => {
         copyText(button.dataset.report, button.parentElement?.querySelector('[data-copy-status]'));
       }));
-      filter?.addEventListener('input', () => { selectedFilter = filter.value; page = 1; refresh(); });
+      ['input', 'change'].forEach((eventName) => filter?.addEventListener(eventName, () => { selectedFilter = filter.value; page = 1; refresh(); }));
       pageSize?.addEventListener('change', () => { page = 1; refresh(); });
       pagination?.querySelector('[data-history-page="previous"]')?.addEventListener('click', () => { page = Math.max(1, page - 1); refresh(); });
       pagination?.querySelector('[data-history-page="next"]')?.addEventListener('click', () => { page += 1; refresh(); });
@@ -4522,9 +4604,7 @@ def _admin_timezone_script() -> str:
         'Europe/London', 'America/New_York', 'America/Los_Angeles',
         'America/Toronto', 'Asia/Tokyo', 'Asia/Singapore', 'Australia/Sydney'
       ];
-      const supportedTimeZones = typeof Intl.supportedValuesOf === 'function'
-        ? Intl.supportedValuesOf('timeZone') : [];
-      const timeZones = ['browser', 'UTC', browserTimeZone, ...commonTimeZones, ...supportedTimeZones]
+      const timeZones = ['browser', 'UTC', browserTimeZone, ...commonTimeZones]
         .filter((value, index, values) => values.indexOf(value) === index)
         .filter((value) => value === 'browser' || isValidTimeZone(value));
       const readStoredTimeZone = () => {
@@ -4583,7 +4663,7 @@ def _admin_timezone_script() -> str:
 
 
 ADMIN_STYLES = ADMIN_BRAND_TOKENS_CSS + """
-:root{--admin-control-height:38px;--admin-control-radius:8px;--admin-control-padding-x:10px;--admin-control-font-size:13px;--admin-topbar-height:68px;--max-width:1440px}
+:root{--admin-control-height:40px;--admin-control-radius:8px;--admin-control-padding-x:10px;--admin-control-font-size:13px;--admin-topbar-height:68px;--max-width:1440px}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html{min-width:0}
@@ -4628,7 +4708,7 @@ button{cursor:pointer}
 .dashboard{width:min(calc(100% - 48px),var(--max-width));margin:0 auto;padding:40px 0 64px}
 .heading-row{display:flex;align-items:flex-end;justify-content:space-between;gap:32px;margin-bottom:28px}
 .eyebrow,.section-kicker{margin:0 0 8px;color:var(--interactive);font-size:12px;font-weight:750;letter-spacing:.14em;text-transform:uppercase}
-h1,h2{margin:0;font-family:var(--font-brand);letter-spacing:-.035em}
+h1,h2{margin:0;font-family:var(--font-ui);letter-spacing:-.015em;text-wrap:balance}
 h1{font-size:clamp(32px,3.5vw,44px);line-height:1.06}
 h2{font-size:22px;line-height:1.15}
 .lede{max-width:680px;margin:12px 0 0;color:var(--secondary);font-size:16px}
@@ -5094,7 +5174,6 @@ h1,h2,h3,h4,.administration-grid h3,.overview-kpi strong,.admin-kpi-grid article
   .diagnostic-detail-inner>.device-dialog-header,.device-dialog-inner>.device-dialog-header{position:sticky;top:-24px;z-index:2;background:var(--surface);padding:12px 0}
 }
 
-
 /* Admin audit: consistent page hierarchy, disclosures and connected diagnostics. */
 main.dashboard{padding-top:30px}
 main.dashboard>.heading-row{align-items:flex-start}
@@ -5141,6 +5220,60 @@ main.dashboard>.heading-row .lede{margin:12px 0 0}
 .world-map-tooltip{top:64px}
 @media(max-width:900px){.model-information-columns{grid-template-columns:1fr}.model-information-columns .device-information-section .model-information-list div{grid-template-columns:minmax(100px,1fr) minmax(0,3fr)}}
 @media(max-width:700px){main.dashboard{padding-top:20px}.system-health-grid{grid-template-columns:1fr}.model-information-columns .model-information-list div{grid-template-columns:1fr}.system-health-card>summary{gap:8px}}
+/* Admin UI standard: one navigation hierarchy, one control rhythm, concentric surfaces. */
+body{font-family:var(--font-ui);text-wrap:pretty}
+h1,h2,h3,h4{font-family:var(--font-ui);letter-spacing:-.015em;text-wrap:balance}
+.admin-section-nav{align-items:center;gap:4px 6px}
+.admin-section-nav details{position:relative;flex:0 0 auto}
+.admin-section-nav details>summary{display:inline-flex;align-items:center;min-height:34px;padding:7px 9px;border-radius:var(--admin-control-radius);color:var(--secondary);cursor:pointer;font-size:var(--admin-type-control-size);font-weight:650;list-style:none;white-space:nowrap}
+.admin-section-nav details>summary::-webkit-details-marker{display:none}
+.admin-section-nav details>summary::after{content:'⌄';margin-left:5px;color:var(--secondary);font-size:12px}
+.admin-section-nav details>summary:hover,.admin-section-nav details>summary.active{background:var(--surface-muted);color:var(--interactive)}
+.admin-tools-popover,.needs-review-popover{display:grid;gap:2px;position:absolute;z-index:25;top:calc(100% + 7px);left:0;right:auto;min-width:190px;padding:7px;border:1px solid var(--border);border-radius:10px;background:var(--surface);box-shadow:0 14px 34px rgba(34,42,43,.16)}
+.admin-tools-popover a,.needs-review-popover a{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 9px;color:var(--graphite);font-size:12px;font-weight:650;text-decoration:none}
+.admin-tools-popover a:hover,.admin-tools-popover a.active,.needs-review-popover a:hover{background:var(--surface-muted);color:var(--interactive)}
+.admin-tools-popover a.active{border-radius:6px}
+.needs-review-menu>summary{color:var(--interactive)!important}
+.admin-user.active{padding:6px 8px;border-radius:var(--admin-control-radius);background:var(--surface-muted);color:var(--interactive)}
+.filter-clear{align-self:center;flex:0 0 auto;min-width:58px}
+.filter-bar .filter-clear{margin-left:0}
+.system-health-card{padding:0;overflow:hidden;border-radius:16px;background:var(--surface)}
+.system-health-card>summary{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:17px 20px;color:var(--graphite);list-style-position:inside}
+.system-health-card>summary h2{min-width:0;margin:0;font-size:20px;line-height:1.3}
+.system-health-card>summary .system-health-badge{flex:0 0 auto}
+.system-health-card>.disclosure-body{margin:0;padding:0 20px 18px}
+.system-health-card .system-health-description{padding-top:0}
+.system-health-card .system-health-explanation{margin-top:14px}
+.diagnostic-next-action{grid-column:1/-1;margin:0;padding:11px 13px;border-left:3px solid var(--interactive);border-radius:6px;background:var(--surface-muted);color:var(--secondary);font-size:13px}
+.diagnostic-next-action strong{color:var(--graphite)}
+.diagnostic-secondary-action{grid-column:1/-1;padding-top:2px}
+.diagnostic-secondary-action>summary{padding:8px 0;color:var(--interactive);font-size:12px;font-weight:750}
+.admin-icon{display:inline-block;width:1em;height:1em;flex:0 0 auto;vertical-align:-.15em;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.device-table-wrap tbody tr,.evidence-model-row{cursor:default}
+.device-model-button{border-radius:6px}
+.device-model-button:focus-visible{outline:3px solid color-mix(in srgb,var(--sky) 58%,white);outline-offset:3px}
+.device-column-model{width:20%}.device-column-variant{width:16%}.device-column-attempts{width:9%}.device-column-successful{width:10%}
+.info-control{position:relative}
+.info-control::before{content:'';position:absolute;inset:-10px}
+.overview-panel,.provider-card,.campaign-card{border-radius:16px}
+.table-wrap,.filter-bar{border-radius:12px}
+button,.button-link,.copy-button,.secondary-button{transition:background-color .15s ease,border-color .15s ease,color .15s ease,transform .12s ease}
+button:active:not(:disabled),.button-link:active,.copy-button:active{transform:scale(.97)}
+@media(max-width:700px){
+  .admin-section-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;overflow:visible}
+  .admin-section-nav>a,.admin-section-nav>details{min-width:0}
+  .admin-section-nav>a{display:flex;align-items:center;min-height:44px;padding:8px 9px;white-space:normal}
+  .admin-section-nav details>summary{width:100%;min-height:44px;padding:8px 9px}
+  .admin-tools-popover,.needs-review-popover{position:static;min-width:0;margin-top:4px;grid-column:1/-1}
+  .admin-section-nav details[open]{grid-column:1/-1}
+  .filter-clear{width:100%;min-height:44px}
+  .system-health-card>summary{min-height:60px;padding:16px}
+  .system-health-card>.disclosure-body{padding:0 16px 16px}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+
 """
 
 
@@ -5216,20 +5349,31 @@ def _admin_mobile_script() -> str:
           if (narrow.matches && !header.contains(event.target)) close();
         });
         document.addEventListener('focusin', event => { if (narrow.matches && !header.contains(event.target)) close(); });
-        document.querySelector('.admin-mobile-review')?.addEventListener('click', () => close());
         panel.addEventListener('click', event => { if (event.target.closest('a')) close(); });
         narrow.addEventListener('change', adapt); adapt();
       }
       const arrange = () => {
         const kpis = document.querySelector('.overview-kpis');
         const attention = document.querySelector('.overview-attention-panel');
-        const shortcuts = document.querySelector('.attention-shortcuts');
-        if (kpis && attention && shortcuts) {
-          if (narrow.matches) kpis.before(attention, shortcuts); else kpis.after(attention, shortcuts);
+        if (kpis && attention && kpis.parentElement === attention.parentElement) {
+          if (narrow.matches) kpis.before(attention); else kpis.after(attention);
         }
       };
       narrow.addEventListener('change', arrange);
       window.addEventListener('terento-admin-content-changed', arrange); arrange();
+      document.querySelectorAll('[data-filter-clear]').forEach((button) => button.addEventListener('click', () => {
+        const form = button.closest('form');
+        if (!form) return;
+        form.querySelectorAll('input').forEach((control) => { control.value = ''; control.dispatchEvent(new Event('input', {bubbles: true})); });
+        form.querySelectorAll('select').forEach((control) => {
+          const allOption = [...control.options].find((option) => option.value === 'all');
+          control.value = allOption?.value || control.options[0]?.value || '';
+          control.dispatchEvent(new Event('change', {bubbles: true}));
+        });
+        form.querySelector('[data-installation-filter="all"], [data-history-filter="all"]')?.click();
+        form.querySelectorAll('details').forEach((details) => { details.open = false; });
+        form.querySelector('input')?.focus();
+      }));
       const forms = document.querySelectorAll('#evidence-filters, #device-filters');
       forms.forEach(form => {
         const labels = [...form.children].filter(e => e.tagName === 'LABEL' && !e.classList.contains('filter-search'));

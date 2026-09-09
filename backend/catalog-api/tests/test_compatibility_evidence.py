@@ -829,9 +829,9 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         devices, devices_body = self.request("GET", "/admin/devices", headers={"Cookie": cookie_header})
         self.assertEqual(devices.status, 200)
         self.assertIn(b">Devices<", devices_body)
-        self.assertIn(b"Needs review", devices_body)
-        self.assertIn(b'aria-label="Needs review: 3"', devices_body)
-        self.assertIn(b"Ready to publish", devices_body)
+        self.assertIn(b"Review queue", devices_body)
+        self.assertIn(b'aria-label="Review queue: 3"', devices_body)
+        self.assertIn(b"Publication review", devices_body)
         self.assertIn(b'data-device-sort="maps"', devices_body)
         self.assertIn(
             "img-src https://terento.app https://api.terento.app https://res.garmin.com data:",
