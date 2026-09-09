@@ -318,7 +318,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Old unresolved watch", body)
         self.assertIn("All unresolved · any date", body)
         self.assertNotIn("No issues need attention", body)
-        self.assertIn("All attention queues", body)
+        self.assertIn("Review queue shortcuts", body)
 
     def test_overview_query_uses_independent_unresolved_queue(self):
         from unittest.mock import MagicMock
@@ -473,7 +473,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Device transport", body)
         self.assertIn("/admin/diagnostics?identity=f%C4%93nix+8+%C2%B7+47+mm&amp;identity_scope=unresolved&amp;state=failed", body)
         self.assertIn("/admin/providers/opentopomap", body)
-        self.assertIn("OpenTopoMap health Degraded", body)
+        self.assertIn("OpenTopoMap <span>Degraded</span>", body)
         self.assertIn("<span>Map install operations</span><strong>4</strong>", body)
         self.assertIn("<span>Map operation success</span><strong>75%</strong>", body)
         self.assertIn("<span>Failed map operations</span><strong>1</strong>", body)
@@ -547,7 +547,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Device/model activity", body)
         self.assertIn("fēnix 8 · 47 mm, AMOLED", body)
         self.assertIn("New / review-required devices", body)
-        self.assertIn("Needs attention", body)
+        self.assertIn("Review queue", body)
         self.assertIn("Review required", body)
         self.assertIn("Last 24 hours", body)
         self.assertNotIn("build", body.lower())
@@ -895,11 +895,11 @@ class AdminSemanticsTests(unittest.TestCase):
                 "total": 6,
             },
         }, "csrf").decode()
-        self.assertIn('aria-label="Needs review: 6"', body)
+        self.assertIn('aria-label="Review queue: 6"', body)
         self.assertIn('class="needs-review-count">6</span>', body)
         self.assertIn("Installation issues</span><strong>1", body)
-        self.assertIn("Identity pending</span><strong>2", body)
-        self.assertIn("Ready to publish</span><strong>3", body)
+        self.assertIn("Identity review</span><strong>2", body)
+        self.assertIn("Publication review</span><strong>3", body)
         self.assertIn("needs-review-popover", body)
 
         zero_body = devices_page([], None, {
@@ -1023,7 +1023,7 @@ class AdminSemanticsTests(unittest.TestCase):
             body,
         )
         self.assertIn('target="_blank" rel="noopener noreferrer"', body)
-        self.assertIn('Website <span aria-hidden="true">↗</span>', body)
+        self.assertIn("Website <svg class='admin-icon admin-icon-external'", body)
         self.assertIn('aria-label="Account settings for operator"', body)
         self.assertNotIn('>Account</a>', body)
         self.assertIn("Auto · ${browserTimeZone}", body)
@@ -1229,7 +1229,7 @@ class AdminSemanticsTests(unittest.TestCase):
             }],
         ).decode()
         evidence_row = body.split("class='evidence-model-row'", 1)[1].split("</tr>", 1)[0]
-        self.assertIn("Identity pending", evidence_row)
+        self.assertIn("Identity review", evidence_row)
         self.assertNotIn("error-count", evidence_row)
         self.assertIn("historical-number'>0</td>", evidence_row)
 
@@ -1408,7 +1408,7 @@ class AdminSemanticsTests(unittest.TestCase):
             self.assertIn(f">{label}<", table)
         self.assertNotIn("Raw MTP model", table)
         self.assertIn("Open", body)
-        self.assertIn("Identity pending", body)
+        self.assertIn("Identity review", body)
         self.assertIn("Resolved", body)
         self.assertIn(">Details</button>", body)
         self.assertIn("aria-label='View installation details", body)
@@ -1430,10 +1430,10 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Manage linked issue", body)
         self.assertIn("Change linked issue", body)
         self.assertIn("Unlink issue", body)
-        self.assertIn("#32 <span aria-hidden='true'>↗</span>", body)
+        self.assertIn("#32 <svg class='admin-icon admin-icon-external'", body)
         self.assertIn("Diagnostic ID:", body)
         self.assertIn("Technical details", body)
-        self.assertIn("<option value='all' selected>All</option><option value='succeeded'>Succeeded</option><option value='failed'>Failed</option><option value='open'>Open</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity pending</option><option value='with-issue'>With issue</option>", body)
+        self.assertIn("<option value='all' selected>All</option><option value='succeeded'>Succeeded</option><option value='failed'>Failed</option><option value='open'>Open</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity review</option><option value='with-issue'>With issue</option>", body)
         self.assertEqual(body.count("action='/admin/diagnostics/resolve'"), 1)
         self.assertEqual(body.count("action='/admin/diagnostics/reopen'"), 1)
         self.assertEqual(body.count("action='/admin/diagnostics/identity'"), 1)
@@ -1668,7 +1668,7 @@ class AdminSemanticsTests(unittest.TestCase):
             {"username": "operator"},
             "csrf",
         ).decode()
-        self.assertIn("1 providers", body)
+        self.assertIn("1 provider", body)
         self.assertIn("0 active · 1 healthy · 177 packages · 0 issues", body)
         self.assertIn("<th scope='col'>Provider</th><th scope='col'>Activity</th><th scope='col'>Health</th><th scope='col'>Packages</th>", body)
         self.assertIn("<th scope='col'>Last check</th><th scope='col'>Issues</th>", body)
@@ -2152,8 +2152,8 @@ class SystemHealthPageTests(unittest.TestCase):
         self.assertIn("63 packages", body)
         self.assertIn("No weekly test report received yet", body)
         self.assertIn("system-health-unknown", body)
-        self.assertIn("<dt>Reason</dt>", body)
-        self.assertIn("<dt>Action</dt>", body)
+        self.assertIn("<dt>Why</dt>", body)
+        self.assertIn("<dt>Next action</dt>", body)
         self.assertIn("href=\"/admin/system-health\"", body)
 
     def test_page_reports_release_manifest_drift_and_weekly_suite_results(self):
