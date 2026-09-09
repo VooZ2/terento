@@ -43,7 +43,13 @@
         if (event.key === 'Escape') { highlight(null); container.focus(); }
       });
     });
-    const reset = () => { map.invalidateSize(); map.fitBounds(bounds); highlight(null); };
+    let coverageBounds = bounds;
+    let coverageKey = '';
+    const reset = () => {
+      map.invalidateSize();
+      map.fitBounds(coverageBounds, {padding: [32, 32], maxZoom: 2, animate: false});
+      highlight(null);
+    };
     const resize = new ResizeObserver(() => map.invalidateSize({pan: false}));
     resize.observe(container);
     map.on('zoomend', () => options.onZoom?.(map.getZoom(), map.getBoundsZoom(bounds)));
@@ -59,6 +65,17 @@
           path.style.fill = count && maximum ? `hsl(198 25% ${97 - Math.pow(count / maximum, .58) * 48}%)` : 'var(--surface, #fff)';
           path.setAttribute('aria-label', `${row?.name || options.names?.[code] || code.toUpperCase()}: ${count} completed installs`);
         });
+        const activeCodes = [...data.keys()].filter(code => paths.has(code) && data.get(code).count > 0).sort();
+        const nextKey = activeCodes.join(',');
+        if (nextKey !== coverageKey) {
+          coverageKey = nextKey;
+          coverageBounds = activeCodes.length ? L.latLngBounds([]) : bounds;
+          activeCodes.forEach(code => {
+            const box = paths.get(code).getBBox();
+            coverageBounds.extend([[height - box.y - box.height, box.x], [height - box.y, box.x + box.width]]);
+          });
+          reset();
+        }
       },
       highlight,
       zoom(action) { if (action === 'reset') reset(); else action === 'in' ? map.zoomIn() : map.zoomOut(); },
