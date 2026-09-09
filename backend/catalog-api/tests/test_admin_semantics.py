@@ -692,7 +692,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertEqual(_admin_map_display_name("Kingdom of Belgium"), "Belgium")
         self.assertEqual(_admin_map_display_name("Region Belgium - Netherlands - Luxembourg"), "Belgium – Netherlands – Luxembourg")
         self.assertEqual(_admin_event_outcome_label("UNKNOWN"), "—")
-        self.assertEqual(_admin_event_outcome_label("SUCCEEDED"), "Succeeded")
+        self.assertEqual(_admin_event_outcome_label("SUCCEEDED"), "Successful")
         self.assertEqual(
             _admin_region_identity("AND", "Principality of Andorra", "AND"),
             _admin_region_identity("ANDORRA", "Andorra", "ANDORRA"),
@@ -1433,7 +1433,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("#32 <svg class='admin-icon admin-icon-external'", body)
         self.assertIn("Diagnostic ID:", body)
         self.assertIn("Technical details", body)
-        self.assertIn("<option value='all' selected>All</option><option value='succeeded'>Succeeded</option><option value='failed'>Failed</option><option value='open'>Open</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity review</option><option value='with-issue'>With issue</option>", body)
+        self.assertIn("<option value='all' selected>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='open'>Open</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity review</option><option value='with-issue'>With issue</option>", body)
         self.assertEqual(body.count("action='/admin/diagnostics/resolve'"), 1)
         self.assertEqual(body.count("action='/admin/diagnostics/reopen'"), 1)
         self.assertEqual(body.count("action='/admin/diagnostics/identity'"), 1)
@@ -2096,7 +2096,7 @@ class AdminSemanticsTests(unittest.TestCase):
                               "Technical details · map result 1", "Technical details · map result 2",
                               "action='/admin/diagnostics/reopen'", "&lt;script&gt;alert(1)&lt;/script&gt;"):
                     self.assertIn(value, dialog)
-                self.assertIn("Failed" if outcome == "FAILED" else "Succeeded", dialog)
+                self.assertIn("Failed" if outcome == "FAILED" else "Successful", dialog)
                 self.assertNotIn("<script>alert(1)</script>", dialog)
                 self.assertNotIn("action='/admin/diagnostics/resolve'", dialog)
 

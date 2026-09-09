@@ -473,7 +473,7 @@ def _diagnostic_boolean(value: Any) -> str:
 def _diagnostic_result(value: Any) -> str:
     raw = str(value or "").strip().upper()
     labels = {
-        "SUCCEEDED": "Succeeded",
+        "SUCCEEDED": "Successful",
         "FAILED": "Failed",
         "NOT_STARTED": "Not started",
         "INCOMPLETE": "Incomplete",
@@ -927,7 +927,7 @@ def _admin_event_outcome_label(value: Any) -> str:
     normalized = str(value or "").strip().upper()
     if normalized == "UNKNOWN":
         return "—"
-    return normalized.title() if normalized else "—"
+    return "Successful" if normalized == "SUCCEEDED" else normalized.title() if normalized else "—"
 
 
 _ADMIN_REGION_DISPLAY_NAMES = {
@@ -1173,7 +1173,7 @@ def _overview_trend_chart(
         "<div class='overview-chart-wrap'>"
         f"<svg class='overview-trend-chart' viewBox='0 0 {chart_width} {chart_height}' role='img' aria-label='Map install operations over time'>"
         f"{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
-        "<div class='overview-chart-legend'><span><i class='overview-chart-success'></i>Succeeded</span><span><i class='overview-chart-failed'></i>Failed</span><span><i class='overview-chart-custom'></i>Custom .img</span></div></div>"
+        "<div class='overview-chart-legend'><span><i class='overview-chart-success'></i>Successful</span><span><i class='overview-chart-failed'></i>Failed</span><span><i class='overview-chart-custom'></i>Custom .img</span></div></div>"
     )
 
 
@@ -1740,7 +1740,7 @@ def _provider_status_badge(value: Any, *, kind: str = "status") -> str:
         "DOWN": "Down",
         "UNKNOWN": "Unknown",
         "RUNNING": "Running",
-        "SUCCEEDED": "Succeeded",
+        "SUCCEEDED": "Successful",
         "FAILED": "Failed",
     }
     css_value = re.sub(r"[^a-z0-9_-]", "-", normalized.lower()) or "unknown"
@@ -2598,7 +2598,7 @@ def _map_statistics_script() -> str:
         const date = new Date(normalizedValue);
         return Number.isNaN(date.getTime()) ? String(value) : date.toISOString().slice(0, 16).replace('T', ' ');
       };
-      const badge = (value) => `<span class="provider-status provider-status-${String(value || 'UNKNOWN').toLowerCase()}">${escapeHtml(String(value || 'Unknown').toLowerCase().replaceAll('_', ' ').replace(/^./, letter => letter.toUpperCase()))}</span>`;
+      const badge = (value) => `<span class="provider-status provider-status-${String(value || 'UNKNOWN').toLowerCase()}">${escapeHtml(String(value || 'Unknown').toUpperCase() === 'SUCCEEDED' ? 'Successful' : String(value || 'Unknown').toLowerCase().replaceAll('_', ' ').replace(/^./, letter => letter.toUpperCase()))}</span>`;
       const emptyRow = (columns) => `<tr><td colspan="${columns}" class="muted-value">No events in this period.</td></tr>`;
       const sync = async ({resetDetailPage = false} = {}) => {
         if (resetDetailPage) detailPage = 1;
@@ -3289,7 +3289,7 @@ def device_detail_page(
         {alert}
         <section class='diagnostics-detail-section model-page-section' id='installations' aria-labelledby='installation-history-title'>
           <div class='section-heading'><div><p class='section-kicker'>Operational history</p><h2 id='installation-history-title'>Installation history</h2></div><p class='table-help'>Failed results remain historical after their error is resolved.</p></div>
-          <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'><div class='quick-filter-group' role='group' aria-label='Quick history filters'><button type='button' class='quick-filter active' data-history-filter='all' aria-pressed='true'>All</button><button type='button' class='quick-filter' data-history-filter='failed' aria-pressed='false'>Failed</button><button type='button' class='quick-filter' data-history-filter='open' aria-pressed='false'>Open errors</button><button type='button' class='quick-filter' data-history-filter='succeeded' aria-pressed='false'>Succeeded</button></div><details class='admin-disclosure filter-disclosure history-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all'>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='open'>Open errors</option><option value='resolved-errors'>Resolved errors</option></select></label></div></details><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button></form>
+          <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'><div class='quick-filter-group' role='group' aria-label='Quick history filters'><button type='button' class='quick-filter active' data-history-filter='all' aria-pressed='true'>All</button><button type='button' class='quick-filter' data-history-filter='failed' aria-pressed='false'>Failed</button><button type='button' class='quick-filter' data-history-filter='open' aria-pressed='false'>Open errors</button><button type='button' class='quick-filter' data-history-filter='succeeded' aria-pressed='false'>Successful</button></div><details class='admin-disclosure filter-disclosure history-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all'>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='open'>Open errors</option><option value='resolved-errors'>Resolved errors</option></select></label></div></details><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button></form>
           <p class='results-count' id='diagnostic-results-count' aria-live='polite'>{len(history)} records</p>
           <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table model-history-table'><caption class='sr-only'>Installation history for this exact model and variant</caption><thead><tr><th scope='col'>Date</th><th scope='col'>Map</th><th scope='col'>Result</th><th scope='col'>Error</th><th scope='col'>GitHub issue</th><th scope='col'>App version</th><th scope='col'>Action</th></tr></thead><tbody id='diagnostic-rows'>{history_rows}</tbody></table></div>
           <div class='provider-pagination' id='diagnostic-history-pagination' aria-live='polite'><label>Rows <select id='diagnostic-history-page-size' aria-label='Rows per installation history page'><option value='25' selected>25</option><option value='50'>50</option></select></label><button type='button' data-history-page='previous' disabled>Previous</button><span>Showing {1 if history else 0}–{min(len(history), 25)} of {len(history)} · page 1 of {max(1, (len(history) + 24) // 25)}</span><button type='button' data-history-page='next' {'disabled' if len(history) <= 25 else ''}>Next</button></div>
@@ -3360,7 +3360,7 @@ def diagnostics_page(
     )
     errors = sum(1 for results in active_diagnostics.values() if _operation_is_problematic(results))
     status = _row_compatibility_status(model_row) if model_row else None
-    filters = """<label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all' selected>All</option><option value='succeeded'>Succeeded</option><option value='failed'>Failed</option><option value='open'>Open</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity review</option><option value='with-issue'>With issue</option></select></label><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button>"""
+    filters = """<label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all' selected>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='open'>Open</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity review</option><option value='with-issue'>With issue</option></select></label><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button>"""
     rows_markup: list[str] = []
     dialogs: list[str] = []
     for index, (operation_key, results, resolved) in enumerate(diagnostic_groups):
