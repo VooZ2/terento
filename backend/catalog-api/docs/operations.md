@@ -45,9 +45,9 @@ The provider catalog sweep runs daily at 03:00 UTC:
 COLLECTOR_SCHEDULE_UTC=03:00
 ```
 
-The scheduler runs the reviewed Freizeitkarte and OpenTopoMap adapters
-independently. A failed or partial provider run does not stop the other
-provider and does not clear the previous catalog. Each successful run retains
+The scheduler runs the reviewed Freizeitkarte, MapRando, and OpenTopoMap
+adapters independently. A failed or partial provider run does not stop the
+other providers and does not clear the previous catalog. Each successful run retains
 the provider's latest release label, deterministic metadata fingerprint, and
 whether a change from the previous successful snapshot was detected. On
 Monday, the provider phases are followed by the weekly Garmin device metadata
