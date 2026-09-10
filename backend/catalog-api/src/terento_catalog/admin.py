@@ -1668,6 +1668,8 @@ def dashboard_page(
     )
     def metric(row: dict[str, Any], summary_key: str, row_key: str) -> int:
         summary = diagnostic_summary.get(_identity_group_key(row), {})
+        if row_key in row:
+            return int(row[row_key] or 0)
         return int(summary[summary_key]) if summary_key in summary else int(row.get(row_key) or 0)
 
     attempts = sum(metric(row, "attempts", "attempted_install_count") for row in rows)
@@ -1690,7 +1692,7 @@ def dashboard_page(
     content = f"""
       {_admin_header(user, csrf_token, active='installations')}
       <main class="dashboard" id="main-content">
-        <div class="heading-row installation-heading"><div><p class="eyebrow">Compatibility</p><h1>Installations</h1><p class="lede">Each map installation counts as one attempt, including custom .img files. A session with two maps counts as two attempts. Compatibility status still uses complete verified sessions.</p></div><p class="page-meta">{latest_copy}</p></div>
+        <div class="heading-row installation-heading"><div><p class="eyebrow">Compatibility</p><h1>Installations</h1><p class="lede">Each map installation counts as one attempt, including custom .img files. A session with two maps counts as two attempts. Verified successful map installations determine compatibility status.</p></div><p class="page-meta">{latest_copy}</p></div>
         <p class='telemetry-scope-note'>User telemetry · Local tests excluded. <a href='/admin/test-data'>View test data →</a></p>
         <section class="admin-kpi-grid installation-kpis" aria-label="Installation summary">
           <article><span>Variants</span><strong>{len(rows)}</strong></article>
@@ -3301,7 +3303,7 @@ def device_detail_page(
       <main class='dashboard model-detail-page' id='main-content'>
         <p class='back-link'><a href='{back_href}'>{_admin_icon('arrow-left')} {back_label}</a></p>
         <header class='model-page-header'>{image}<div class='model-page-heading'><p class='eyebrow'>Garmin device</p><h1>{html.escape(model)}{f' · <span>{html.escape(variant)}</span>' if variant != '—' else ''}</h1><div class='model-page-badges'>{summary_badges}</div></div>{public_link}</header>
-        <section class='diagnostic-model-metrics model-statistics' aria-label='Model installation statistics'><article class='attempts-metric' aria-label='Attempts. Each map result counts once, including custom .img and resolved failures.' title='Each map installation counts separately. Compatibility status uses complete verified sessions.'><span>Attempts</span><strong>{attempts}</strong></article><article><span>Successful</span><strong>{successful}</strong></article><article><span>Failed</span><strong>{failed}</strong></article><article><span>Open errors</span><strong>{open_errors}</strong></article><article class='timestamp-metric'><span>Last activity</span><strong>{last_activity}</strong></article></section>
+        <section class='diagnostic-model-metrics model-statistics' aria-label='Model installation statistics'><article class='attempts-metric' aria-label='Attempts. Each map result counts once, including custom .img and resolved failures.' title='Each map installation counts separately. Verified successful map installations determine compatibility status.'><span>Attempts</span><strong>{attempts}</strong></article><article><span>Successful</span><strong>{successful}</strong></article><article><span>Failed</span><strong>{failed}</strong></article><article><span>Open errors</span><strong>{open_errors}</strong></article><article class='timestamp-metric'><span>Last activity</span><strong>{last_activity}</strong></article></section>
         {alert}
         <section class='diagnostics-detail-section model-page-section' id='installations' aria-labelledby='installation-history-title'>
           <div class='section-heading'><div><p class='section-kicker'>Operational history</p><h2 id='installation-history-title'>Installation history</h2></div><p class='table-help'>Failed results remain historical after their error is resolved.</p></div>
@@ -3372,7 +3374,7 @@ def diagnostics_page(
     result_summary = _diagnostic_summary_by_identity(active_events, resolved_events)
     attempts = sum(item["attempts"] for item in result_summary.values())
     successes = sum(item["successful"] for item in result_summary.values())
-    if not active_events and not resolved_events and model_row:
+    if model_row:
         attempts = int(model_row.get("attempted_install_count") or 0)
         successes = int(model_row.get("successful_install_count") or 0)
     errors = sum(1 for results in active_diagnostics.values() if _operation_is_problematic(results))
@@ -3808,9 +3810,9 @@ def _statistics_row(
 ) -> str:
     model, variant, identity = _identity_parts(row)
     summary = diagnostic_summary or {}
-    attempted = int(summary["attempts"]) if "attempts" in summary else int(row.get("attempted_install_count") or 0)
-    successful = int(summary["successful"]) if "successful" in summary else int(row.get("successful_install_count") or 0)
-    failed = int(summary["failed"]) if "failed" in summary else int(row.get("failed_install_count") or 0)
+    attempted = int(row.get("attempted_install_count", summary.get("attempts", 0)) or 0)
+    successful = int(row.get("successful_install_count", summary.get("successful", 0)) or 0)
+    failed = int(row.get("failed_install_count", summary.get("failed", 0)) or 0)
     open_errors = int(summary.get("open_errors") or 0)
     status_value = _row_compatibility_status(row)
     status = status_value.value if status_value else ""

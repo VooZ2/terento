@@ -3127,29 +3127,17 @@ class Database:
             ) AS usb ON TRUE
             LEFT JOIN LATERAL (
                 SELECT
-                    count(*) AS attempts,
-                    count(*) FILTER (WHERE o.operation_succeeded) AS successful,
-                    count(*) FILTER (
-                        WHERE o.has_failed
-                    ) AS failed,
-                    min(o.occurred_at) FILTER (WHERE o.operation_succeeded) AS first_success,
-                    max(o.occurred_at) FILTER (WHERE o.operation_succeeded) AS last_success,
-                    max(o.occurred_at) AS last_evidence
-                FROM (
-                    SELECT
-                        COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text) AS operation_key,
-                        bool_and(e.phase_outcome = 'SUCCEEDED' AND e.automatic_finishing_result = 'VERIFIED')
-                            AS operation_succeeded,
-                        bool_or(e.phase_outcome = 'FAILED') AS has_failed,
-                        min(e.occurred_at) AS occurred_at,
-                        min(e.received_at) AS received_at
-                    FROM compatibility_evidence_event AS e
-                    WHERE e.canonical_device_model_id = dm.id
-                      AND e.is_local_test IS NOT TRUE
-                      AND (COALESCE(e.write_started, TRUE)
-                           OR e.phase_outcome IN ('SUCCEEDED', 'FAILED'))
-                    GROUP BY e.event_id
-                ) AS o
+                    s.attempted_install_count AS attempts,
+                    s.successful_install_count AS successful,
+                    s.failed_install_count AS failed,
+                    (SELECT min(e.occurred_at) FROM compatibility_evidence_event e
+                     WHERE e.canonical_device_model_id = dm.id
+                       AND e.is_local_test IS NOT TRUE AND e.diagnostic_status = 'ACTIVE'
+                       AND e.phase_outcome = 'SUCCEEDED'
+                       AND e.automatic_finishing_result = 'VERIFIED') AS first_success,
+                    s.last_success, s.last_evidence
+                FROM compatibility_model_statistics AS s
+                WHERE s.canonical_device_model_id = dm.id
             ) AS evidence ON TRUE
             LEFT JOIN LATERAL (
                 SELECT s.compatibility_identity, s.review_status,

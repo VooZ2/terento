@@ -10,13 +10,22 @@ class InstallationResultCountsTests(unittest.TestCase):
         self.assertEqual(_overview_map_event_context(event), 'Custom .img')
         self.assertEqual(_overview_map_event_href(event), '/admin/installations')
 
-    def test_table_status_uses_sessions_not_package_summary(self):
+    def test_table_uses_authoritative_counts_not_bounded_diagnostics(self):
         from terento_catalog.admin import _statistics_row
         markup = _statistics_row({'model': 'Watch', 'compatibility_identity': 'Watch',
                                   'successful_install_count': 2, 'map_capable': True},
                                  {'attempts': 3, 'successful': 3, 'failed': 0})
         self.assertIn('Tested:', markup)
         self.assertNotIn('Supported:', markup)
+
+    def test_dashboard_full_history_is_not_limited_by_diagnostic_rows(self):
+        from terento_catalog.admin import dashboard_page
+        markup = dashboard_page([{'model': 'Test watch', 'compatibility_identity': 'Test watch',
+                                 'attempted_install_count': 601, 'successful_install_count': 601,
+                                 'failed_install_count': 0}], {'username': 'test'}, 'csrf',
+                                operations=self.events()).decode()
+        self.assertIn('<span>Installation attempts</span><strong>601</strong>', markup)
+        self.assertIn('<span>Successful</span><strong>601</strong>', markup)
 
     def events(self):
         return [dict(event_id=f'result-{index}', operation_id='mixed-session',
