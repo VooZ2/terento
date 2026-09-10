@@ -98,7 +98,7 @@ tekstą, sėkmingas atsakymas parodo skaičius, o HTTP / tinklo klaida nebegali
 būti pateikta kaip klaidinantis `0`. Fono atnaujinimo klaida išlaiko jau
 įkeltus rezultatus.
 
-### 1.2 Crawlable suderinamumo snapshot — P2, sprendimas patvirtintas
+### 1.2 Crawlable suderinamumo snapshot — SUPERSEDED 2026-09-10
 
 Pridėti `site/compatibility/public-models.snapshot.json`, jeigu tai lieka
 priimta architektūros kryptis.
@@ -111,19 +111,19 @@ priimta architektūros kryptis.
 - Snapshot atnaujinamas tik realiai pasikeitus evidence duomenims.
 - Negalima įrašyti išgalvotų ar nepatvirtintų modelių.
 
-**1.2 statusas: įgyvendinta.** Įtrauktas iš API sugeneruotas
-`site/compatibility/public-models.snapshot.json`, iš jo sugeneruojamas pradinis
-Compatibility HTML kortelių piešinys ir lokalizuotas `<noscript>` sąrašas.
-JavaScript pirmiausia atvaizduoja snapshot’ą, o gavęs API atsakymą jį pakeičia
-gyvais duomenimis. Snapshot atnaujinimui naudojamas atskiras validatorius,
-kuris nekeičia failo, jei evidence duomenys nepasikeitė.
+**1.2 statusas: pakeista savininko sprendimu.** Snapshot mechanizmas pašalintas,
+nes vieši skaičiai, būsenos ir modelių kortelės turi būti gaunami tiesiogiai iš
+API, o ne laikomi sugeneruotame HTML. Compatibility HTML turi tik lokalizuotą
+loading būseną; be JavaScript rodomas paaiškinimas, kad aktualiems rezultatams
+reikia JavaScript. API klaida rodoma kaip klaida su Retry, o ne pakeičiama
+įrašytu skaičių rinkiniu.
 
 ### 1.3 Scope ir gyvų skaičių taisyklė — P1
 
 Home scope sekcijoje palikti vieną ramų teiginį su nuoroda į Compatibility,
 pvz. „Confirmed from real installs — see the list“. Home neturi rodyti senstančių
-gyvų modelių ar instaliacijų skaičių; tie skaičiai priklauso Compatibility
-puslapiui arba jo snapshot’ui.
+gyvų modelių ar instaliacijų skaičių; tie skaičiai priklauso API valdomam
+Compatibility puslapiui.
 
 **1.3 statusas: įgyvendinta.** Hero jau aiškiai komunikuoja, kad suderinamumas
 patvirtinamas modelis po modelio. Home Scope sekcija turi nuorodą į

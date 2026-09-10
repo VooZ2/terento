@@ -228,35 +228,6 @@
     elements.grid.setAttribute("aria-busy", "false");
   }
 
-  function readSnapshot() {
-    const snapshotElement = document.querySelector("#compatibility-snapshot");
-    if (!snapshotElement) return null;
-    try {
-      const payload = JSON.parse(snapshotElement.textContent || "{}");
-      return payload.schemaVersion === 1 && Array.isArray(payload.models) ? payload : null;
-    } catch {
-      return null;
-    }
-  }
-
-  function initializeSnapshot() {
-    const snapshot = readSnapshot();
-    if (!snapshot) return false;
-    try {
-      state.rows = mergeRows(snapshot.models.map(parseStat));
-      state.generatedAt = snapshot.generatedAt;
-      state.hasLoaded = true;
-      populateFamilies();
-      updateSummary();
-      elements.error.hidden = true;
-      setSettledState("ready");
-      render();
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
   async function load({ quiet = false } = {}) {
     try {
       const refreshToken = Date.now();
@@ -283,7 +254,11 @@
       render();
     } catch (error) {
       const preserveExistingResults = quiet && state.hasLoaded;
-      if (elements.freshness) elements.freshness.textContent = `${locale.freshness.stale} ${locale.freshness.snapshot}: ${formatDate(state.generatedAt)}`;
+      if (elements.freshness) {
+        elements.freshness.textContent = state.hasLoaded
+          ? `${locale.freshness.stale} ${locale.freshness.lastLoaded}: ${formatDate(state.generatedAt)}`
+          : locale.freshness.unavailable;
+      }
       if (elements.retry) elements.retry.hidden = false;
       if (!preserveExistingResults) {
         setSettledState("error");
@@ -310,9 +285,8 @@
   elements.sort.addEventListener("change", (event) => { state.sort = event.target.value; render(); });
   if (elements.evidenceNote && locale.evidenceNote) elements.evidenceNote.textContent = locale.evidenceNote;
   renderStatusExplanations();
-  const hasSnapshot = initializeSnapshot();
-  if (!hasSnapshot) render();
-  load({ quiet: hasSnapshot });
+  render();
+  load();
   // Public evidence is deliberately cached at the API edge, so a quiet
   // refresh uses a cache-busting query and keeps model counts/statuses current
   // while the page remains open. Existing filters stay in the local state.

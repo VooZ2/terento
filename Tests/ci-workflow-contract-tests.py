@@ -154,34 +154,8 @@ def main() -> int:
     assert "expect 0 " not in rejection and "expect 1 " not in rejection
     assert "f7e394d" not in rejection
     verify_scoped_transport()
-    compatibility_refresh = (WORKFLOWS / "refresh-compatibility-snapshot.yml").read_text(encoding="utf-8")
-    for contract in (
-        'cron: "30 3 * * *"',
-        "workflow_dispatch:",
-        "contents: write",
-        "ref: beta",
-        "scripts/update-compatibility-snapshot.py",
-        "scripts/build-compatibility-pages.py",
-        "Tests/run-test-suite.py site",
-        "git diff --name-only",
-        'git push origin "HEAD:$branch"',
-        "pull-requests: write",
-        "gh pr create --base beta",
-        "gh pr list --base beta --state open",
-        "site/compatibility/public-models.snapshot.json",
-        "site/de/compatibility/index.html",
-        "site/fr/compatibility/index.html",
-        "site/pl/compatibility/index.html",
-        "site/cs/compatibility/index.html",
-        "site/it/compatibility/index.html",
-    ):
-        assert contract in compatibility_refresh, (
-            "refresh-compatibility-snapshot.yml is missing "
-            f"{contract!r}"
-        )
-    assert "git push origin HEAD:beta" not in compatibility_refresh
-    assert "gh pr merge" not in compatibility_refresh
-    assert "gh pr review" not in compatibility_refresh
+    assert not (WORKFLOWS / "refresh-compatibility-snapshot.yml").exists()
+    assert "update-compatibility-snapshot.py" not in publisher
     codeql = (WORKFLOWS / "codeql.yml").read_text(encoding="utf-8")
     assert "name: CodeQL (python)" in codeql
     assert "languages: python" in codeql
