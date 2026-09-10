@@ -62,8 +62,8 @@ assert sum(row['operation_count'] for row in statistics if row['event_type'] == 
 devices, _ = database.admin_device_snapshot()
 watch = next(row for row in devices if row['device_id'] == device)
 assert watch['attempted_install_count'] == 2 and watch['successful_install_count'] == 2, watch
-assert watch['compatibility_successful_install_count'] == 1, watch
-print('PASS: mixed session = two admin successes, one catalog success, one custom chart result; public session gate unchanged')
+assert watch['compatibility_successful_install_count'] == 2, watch
+print('PASS: mixed session = two shared compatibility successes, one catalog success, one custom chart result')
 
 with database.connection() as connection:
     connection.execute("UPDATE compatibility_evidence_event SET phase_outcome='FAILED', automatic_finishing_result='FAILED' WHERE operation_id=%s AND provider='custom'", (operation_id,))
@@ -89,3 +89,40 @@ statistics = database.map_statistics({'eventType': 'INSTALL_FAILED'})
 assert sum(row['operation_count'] for row in statistics) == 1, statistics
 assert database.map_statistics({'eventType': 'INSTALL_SUCCEEDED'}) == []
 print('PASS: catalog failure fallback respects outcome filters')
+
+# Future results arrive individually; neither selected_map_count nor the UI's
+# bounded diagnostic history may cap the public/admin counters.
+future_session = uuid4()
+with database.connection() as connection:
+    connection.execute("INSERT INTO compatibility_model_review (model,identity_key,review_status,public_statistics_enabled) VALUES ('CI watch','CI watch','APPROVED',true)")
+for successes in range(1, 6):
+    event_id = uuid4()
+    with database.connection() as connection:
+        for delivery in range(2):
+            connection.execute('''
+                INSERT INTO compatibility_evidence_event
+                    (event_id,operation_id,map_result_index,selected_map_count,
+                     occurred_at,model,compatibility_identity,canonical_device_model_id,
+                     usb_vendor_id,usb_product_id,transport,provider,region,map_release,
+                     terento_version,macos_version,phase_outcome,automatic_finishing_result,write_started)
+                VALUES (%s,%s,%s,5,%s,'CI watch','CI watch',%s,2334,1,'MTP',
+                        'custom','custom','custom','1.0.0','26','SUCCEEDED','VERIFIED',true)
+                ON CONFLICT (event_id) DO NOTHING
+            ''', (event_id, future_session, successes - 1, now, device))
+    public = next(row for row in database.public_compatibility_statistics(100) if row['canonical_device_model_id'] == device)
+    admin = next(row for row in database.compatibility_statistics() if row['canonical_device_model_id'] == device)
+    devices, _ = database.admin_device_snapshot()
+    watch = next(row for row in devices if row['device_id'] == device)
+    for row in (public, admin, watch):
+        assert row['successful_install_count'] == successes, row
+        assert row['attempted_install_count'] == successes + 1, row
+        assert row['failed_install_count'] == 1, row
+    assert public['calculated_status'] == ('TESTED' if successes < 3 else 'SUPPORTED' if successes < 5 else 'VERIFIED'), public
+print('PASS: future per-map results promote all models at 3/5; public/admin/watch parity and replay idempotency')
+with database.connection() as connection:
+    connection.execute("UPDATE compatibility_evidence_event SET automatic_finishing_result='NOT_REACHED' WHERE event_id=%s", (event_id,))
+public = next(row for row in database.public_compatibility_statistics(100) if row['canonical_device_model_id'] == device)
+assert public['successful_install_count'] == 4 and public['calculated_status'] == 'SUPPORTED', public
+from terento_catalog.migrate import apply_migrations
+assert apply_migrations(database) == []
+print('PASS: unverified success cannot promote compatibility; migration replay is idempotent')

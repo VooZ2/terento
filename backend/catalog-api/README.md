@@ -323,10 +323,10 @@ retained. Deployment workflow: https://github.com/VooZ2/terento/actions/runs/339
 
 ### Admin installation counting — 2026-09-10
 
-Initial counting change published in PR #147. Follow-up keeps the table status
-on the same complete-session basis as the device card, directs custom activity
-to Installations rather than catalog-only statistics, and corrects the device
-counter help text. Regression tests explicitly cover these display contracts.
+Initial counting changes published in PR #147 and #149. Migration 038 (local,
+not deployed) unifies public compatibility and admin counters and statuses on
+individual verified map results. Migration 037 is reserved for the parallel
+MapRando work; no existing migration is rewritten.
 
 Admin attempts count retained map results, not batch/session IDs: a custom IMG
 plus OTM session contributes two attempts and two successes when both verify.
@@ -339,9 +339,15 @@ Overview reconciles map events against compatibility results by session,
 provider and region. One catalog event cannot suppress a custom result or a
 different region. Map statistics remains catalog-only. Existing retained mixed
 sessions recalculate on read; no production event rewrite or backfill is needed.
-Public compatibility gates intentionally retain verified complete-session
-counts, exposed separately from admin package counts. No native telemetry or
-public status thresholds changed.
+The public API, watch cards and Installations use compatibility_model_statistics
+as the authoritative full-history source; the 500-row diagnostics display limit
+cannot truncate totals. A custom + catalog batch contributes two successes when
+both verify, even before other selected results arrive. Failed/unverified results
+never advance status. Thresholds remain 0 TESTING, 1–2 TESTED, 3–4 SUPPORTED,
+5+ VERIFIED. Local telemetry stays excluded, resolved failures stay in historical
+counts, and existing exact-model administrator publication approval is preserved.
+Native telemetry contracts, provider-only Map statistics and review actions are
+unchanged. These counts represent map installations, not unique users or watches.
 
 ### Admin custom IMG chart series — 2026-09-05 (historical implementation)
 

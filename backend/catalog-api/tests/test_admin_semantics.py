@@ -971,18 +971,18 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertEqual(audit_call[1][6], "Exact model confirmed")
         self.assertFalse(any("phase_outcome" in query for query, _ in database.calls if "UPDATE compatibility_evidence_event" in query))
 
-    def test_admin_result_counts_are_separate_from_public_session_gate(self):
+    def test_admin_result_counts_use_the_public_statistics_view(self):
         db_source = inspect.getsource(Database.admin_device_snapshot)
         migration = CURRENT_MIGRATION.read_text(encoding="utf-8")
         operation_group = "GROUP BY COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text)"
         self.assertNotIn(operation_group, db_source)
         self.assertNotIn("compatibility_device_card_failure_epoch AS epoch", db_source)
-        self.assertIn("GROUP BY e.event_id", db_source)
+        self.assertIn("FROM compatibility_model_statistics AS s", db_source)
         self.assertIn(
-            "WHERE o.has_failed",
+            "s.failed_install_count AS failed",
             db_source,
         )
-        self.assertNotIn("e.diagnostic_status = 'ACTIVE'", db_source)
+        self.assertIn("s.attempted_install_count AS attempts", db_source)
         self.assertIn("operation_stats AS (", migration)
         self.assertIn("starts_at TIMESTAMPTZ NOT NULL DEFAULT now()", migration)
         self.assertIn("WHERE e.diagnostic_status = 'ACTIVE'", migration)
@@ -1121,10 +1121,10 @@ class AdminSemanticsTests(unittest.TestCase):
             "variant": "51 mm, AMOLED",
             "compatibility_identity": identity,
             "canonical_device_model_id": "garmin-fenix-8-51-amoled",
-            "attempted_install_count": 2,
+            "attempted_install_count": 3,
             "successful_install_count": 1,
-            "failed_install_count": 1,
-            "success_rate": 50,
+            "failed_install_count": 2,
+            "success_rate": 33.3,
             "recognized_map_capable_evidence": True,
             "last_success": "2026-08-25T16:04:00+00:00",
             "last_evidence": "2026-08-25T16:05:00+00:00",
