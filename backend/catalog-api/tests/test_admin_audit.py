@@ -27,6 +27,12 @@ class Tags(HTMLParser):
 
 
 class AdminAuditTests(unittest.TestCase):
+    def test_github_actions_share_alignment_without_form_button_margin(self):
+        from terento_catalog.admin import _layout
+        markup = _layout('Test', '').decode()
+        self.assertIn('.github-actions>.secondary-button{display:inline-flex;align-items:center;justify-content:center;margin:0;align-self:stretch;text-align:center;text-decoration:none;white-space:normal}', markup)
+        self.assertIn('.github-actions>.copy-status{flex-basis:100%}', markup)
+
     def test_mobile_chart_keeps_last_bucket_and_unique_clip_ids(self):
         import re
         import xml.etree.ElementTree as ET

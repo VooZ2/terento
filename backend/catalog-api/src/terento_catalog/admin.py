@@ -5078,6 +5078,8 @@ table code,.technical-value,.provider-table-wrap code,.audit-technical-details c
 .device-detail-grid{gap:16px}
 .device-catalog-details,.model-technical-details{margin-top:16px}
 .secondary-button,.provider-pagination button,.device-pagination button{min-height:var(--admin-control-height);padding:8px 10px}
+.github-actions>.secondary-button{display:inline-flex;align-items:center;justify-content:center;margin:0;align-self:stretch;text-align:center;text-decoration:none;white-space:normal}
+.github-actions>.copy-status{flex-basis:100%}
 .provider-action-overflow>summary{min-height:var(--admin-control-height);padding:8px 12px}
 .provider-action-bar{gap:7px}
 .disclosure-body{margin-top:12px}
