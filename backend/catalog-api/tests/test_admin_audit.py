@@ -27,6 +27,16 @@ class Tags(HTMLParser):
 
 
 class AdminAuditTests(unittest.TestCase):
+    def test_identity_search_exposes_results_without_opening_select(self):
+        from terento_catalog.admin import _diagnostics_script, _diagnostic_detail_dialog
+        markup = _diagnostic_detail_dialog('Unknown', 'test', [{'phase_outcome': 'FAILED'}], resolved=False, csrf_token='test', identity_devices=[])
+        self.assertIn('data-identity-results', markup)
+        script = _diagnostics_script()
+        self.assertIn("button.type = 'button'", script)
+        self.assertIn('canonical.value = option.value;', script)
+        self.assertIn('suggestions.hidden = !query;', script)
+        self.assertIn("empty.textContent = 'No models match your search'", script)
+
     def test_github_actions_share_alignment_without_form_button_margin(self):
         from terento_catalog.admin import _layout
         markup = _layout('Test', '').decode()
