@@ -321,7 +321,24 @@ and 390 px, the mobile menu, and automatic resolution of the two active
 diagnostics linked to closed GitHub issue #94. Historical failure results were
 retained. Deployment workflow: https://github.com/VooZ2/terento/actions/runs/33925498939.
 
-### Admin custom IMG chart series — 2026-09-05
+### Admin installation counting — 2026-09-10 (local, not deployed)
+
+Admin attempts count retained map results, not batch/session IDs: a custom IMG
+plus OTM session contributes two attempts and two successes when both verify.
+The installation overview, identity table, watch counters and chart use this
+unit. Resolved failures stay in all-time attempt/failure totals; unstarted
+siblings do not become fabricated attempts. Immutable event IDs provide replay
+idempotency. Diagnostic review actions remain grouped by the original session.
+
+Overview reconciles map events against compatibility results by session,
+provider and region. One catalog event cannot suppress a custom result or a
+different region. Map statistics remains catalog-only. Existing retained mixed
+sessions recalculate on read; no production event rewrite or backfill is needed.
+Public compatibility gates intentionally retain verified complete-session
+counts, exposed separately from admin package counts. No native telemetry or
+public status thresholds changed.
+
+### Admin custom IMG chart series — 2026-09-05 (historical implementation)
 
 The Overview chart adds a separately labelled green Custom .img series from
 successful, verified, complete compatibility operations whose provider is custom.

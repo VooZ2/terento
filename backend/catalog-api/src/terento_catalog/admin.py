@@ -377,13 +377,13 @@ def _diagnostic_summary_by_identity(
     grouped: dict[str, dict[str, list[dict[str, Any]]]] = {}
     for event in events:
         identity = _identity_group_key(event)
-        key = _operation_key(event)
+        key = str(event.get("event_id") or f"{_operation_key(event)}:{event.get('map_result_index', 0)}")
         if identity and key:
             grouped.setdefault(identity, {}).setdefault(key, []).append(event)
     resolved_grouped: dict[str, dict[str, list[dict[str, Any]]]] = {}
     for event in resolved_events or []:
         identity = _identity_group_key(event)
-        key = _operation_key(event)
+        key = str(event.get("event_id") or f"{_operation_key(event)}:{event.get('map_result_index', 0)}")
         if identity and key:
             resolved_grouped.setdefault(identity, {}).setdefault(key, []).append(event)
     for identity in set(grouped) | set(resolved_grouped):
@@ -1374,8 +1374,8 @@ def overview_page(
         <div class='heading-row overview-heading'><div><p class='eyebrow'>Operations</p><h1>Overview</h1><p class='lede'>Current Terento health and activity that needs attention.</p></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin'><label><span class='sr-only'>Time period</span><select id='overview-period' name='period'>{period_options}</select></label></form></div>
         <p class='telemetry-scope-note'>User telemetry · Local tests excluded. <a href='/admin/test-data'>View test data →</a></p>
         <section class='overview-kpis' aria-label='Operational summary'>
-          <a class='overview-kpi' href='{html.escape(map_statistics_href, quote=True)}'><span>Map install operations</span><strong>{event_metric(completed_installs + failed_installs)}</strong><small>{'Install actions in this period' if has_map_data else 'No map telemetry in this period'}</small></a>
-          <a class='overview-kpi' href='{html.escape(map_statistics_href, quote=True)}'><span>Map operation success</span><strong>{success_rate}</strong><small>Successful install actions</small></a>
+          <a class='overview-kpi' href='/admin/installations'><span>Map install operations</span><strong>{event_metric(completed_installs + failed_installs)}</strong><small>{'Individual maps, including custom .img' if has_map_data else 'No map telemetry in this period'}</small></a>
+          <a class='overview-kpi' href='/admin/installations'><span>Map operation success</span><strong>{success_rate}</strong><small>Successful map results, including custom .img</small></a>
           <a class='overview-kpi overview-kpi-attention' href='{html.escape(failure_href, quote=True)}'><span>Failed map operations</span><strong>{event_metric(failed_installs)}</strong><small>{'Failed install actions in this period' if has_map_data else 'No map telemetry in this period'}</small></a>
           <a class='overview-kpi overview-kpi-attention' href='/admin/installations?state=open'><span>Open errors</span><strong>{open_error_metric(open_errors)}</strong><small>All unresolved compatibility errors</small></a>
           <a class='overview-kpi' href='/admin/providers'><span>Providers</span><strong>{healthy} / {provider_count}</strong><small>Healthy providers</small></a>
@@ -1686,7 +1686,7 @@ def dashboard_page(
     content = f"""
       {_admin_header(user, csrf_token, active='installations')}
       <main class="dashboard" id="main-content">
-        <div class="heading-row installation-heading"><div><p class="eyebrow">Compatibility</p><h1>Installations</h1><p class="lede">All-time compatibility evidence from Terento users. Each attempt is a watch installation that reached the transfer stage; it may contain several map packages.</p></div><p class="page-meta">{latest_copy}</p></div>
+        <div class="heading-row installation-heading"><div><p class="eyebrow">Compatibility</p><h1>Installations</h1><p class="lede">Each map installation counts as one attempt, including custom .img files. A session with two maps counts as two attempts. Compatibility status still uses complete verified sessions.</p></div><p class="page-meta">{latest_copy}</p></div>
         <p class='telemetry-scope-note'>User telemetry · Local tests excluded. <a href='/admin/test-data'>View test data →</a></p>
         <section class="admin-kpi-grid installation-kpis" aria-label="Installation summary">
           <article><span>Variants</span><strong>{len(rows)}</strong></article>
@@ -3162,7 +3162,7 @@ def device_detail_page(
         successful_install_count=successful,
         recognized_map_capable_evidence=device.get("mapCapable") is True,
     )
-    status_value = status.value if status else ""
+    status_value = device.get("evidenceStatus") or (status.value if status else "")
     last_activity = _timestamp_markup(stats.get("lastEvidenceAt")) if stats.get("lastEvidenceAt") else "—"
     publication = device.get("publicCompatibility") or {}
     map_label, map_kind = _admin_map_capability(device.get("mapCapable"))
@@ -3365,11 +3365,12 @@ def diagnostics_page(
     diagnostic_groups.extend((key, results, True) for key, results in resolved_groups.items())
     diagnostic_groups.sort(key=lambda item: _timestamp_iso(item[1][0].get("occurred_at")), reverse=True)
     model, variant = _display_identity(identity, model_row)
-    attempts = int(model_row.get("attempted_install_count") or 0) if model_row else len(active_groups) + len(resolved_groups)
-    successes = int(model_row.get("successful_install_count") or 0) if model_row else sum(
-        1 for results in list(active_groups.values()) + list(resolved_groups.values())
-        if _operation_result(results) == "SUCCEEDED"
-    )
+    result_summary = _diagnostic_summary_by_identity(active_events, resolved_events)
+    attempts = sum(item["attempts"] for item in result_summary.values())
+    successes = sum(item["successful"] for item in result_summary.values())
+    if not active_events and not resolved_events and model_row:
+        attempts = int(model_row.get("attempted_install_count") or 0)
+        successes = int(model_row.get("successful_install_count") or 0)
     errors = sum(1 for results in active_diagnostics.values() if _operation_is_problematic(results))
     status = _row_compatibility_status(model_row) if model_row else None
     filters = """<label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all' selected>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='open'>Open</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity review</option><option value='with-issue'>With issue</option></select></label><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button>"""
@@ -3475,7 +3476,7 @@ def _admin_device_payload(
             # evidence that the catalog classifier has not learned yet.
             map_capable = True
         evidence_status = calculate_compatibility_status(
-            successful_install_count=successful,
+            successful_install_count=int(row.get("compatibility_successful_install_count", successful) or 0),
             recognized_map_capable_evidence=map_capable is True,
         )
         authorization_label, _, authorization_code = _admin_installation_authorization(

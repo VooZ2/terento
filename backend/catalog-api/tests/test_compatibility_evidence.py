@@ -499,7 +499,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         rendered = body.decode()
         self.assertIn("fēnix 7 Pro", rendered)
         self.assertNotIn("custom-installation-indicator", rendered)
-        self.assertIn("All-time compatibility evidence from Terento users.", rendered)
+        self.assertIn("Each map installation counts as one attempt", rendered)
         self.assertNotIn("Map install operations", rendered)
 
     def test_database_binds_omitted_optional_fields_as_null(self):
@@ -554,7 +554,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         }
         body = dashboard_page([row], {"username": "gediminas"}, "csrf", public_stats_enabled=True).decode()
         self.assertIn("Installations", body)
-        self.assertIn("All-time compatibility evidence from Terento users.", body)
+        self.assertIn("Each map installation counts as one attempt", body)
         self.assertIn('class="admin-kpi-grid installation-kpis"', body)
         self.assertIn("<span>Installation attempts</span><strong>1</strong>", body)
         self.assertIn('class="filter-bar admin-filter-bar"', body)

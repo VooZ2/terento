@@ -223,10 +223,11 @@ class AdminAuditTests(unittest.TestCase):
             def connection(self): yield Connection()
         QueryDatabase('unused').map_statistics({'region':'SVN+'})
         query, parameters = calls[0]
-        # Region filtering cannot turn one result of an incomplete two-map
-        # operation into a complete install, or drop its other map region.
+        # A verified result is counted even if its sibling is missing/failed.
         complete, filtered = query.split('), compatibility_fallback AS (', 1)
-        self.assertIn("count(*) = max(COALESCE(e.selected_map_count, 1))", complete)
+        self.assertIn("e.event_id::text AS operation_key", complete)
+        self.assertIn("installed.provider_id = e.provider", complete)
+        self.assertNotIn("selected_map_count", complete)
         self.assertIn('installed.is_local_test IS NOT TRUE', complete)
         self.assertNotIn('e.region = %s', complete)
         self.assertIn('e.region = %s', filtered)
