@@ -27,6 +27,15 @@ class Tags(HTMLParser):
 
 
 class AdminAuditTests(unittest.TestCase):
+    def test_inline_filter_controls_do_not_inherit_vertical_flex_basis(self):
+        from terento_catalog.admin import ADMIN_STYLES
+        # Labels became columns: the old select flex-basis (170px) must not
+        # become a height. Reset both input and select, including tablet sizes.
+        self.assertIn('.inline-filter-row label>input,.inline-filter-row label>select{flex:none}', ADMIN_STYLES)
+        self.assertIn('.inline-filter-row label>input,.inline-filter-row label>select{width:100%;height:var(--admin-control-height)}', ADMIN_STYLES)
+        self.assertIn('.inline-filter-row{align-items:flex-end}', ADMIN_STYLES)
+        self.assertIn('@media(max-width:700px){.inline-filter-row{align-items:stretch}.inline-filter-row label{flex-basis:auto}}', ADMIN_STYLES)
+
     def test_identity_search_exposes_results_without_opening_select(self):
         from terento_catalog.admin import _diagnostics_script, _diagnostic_detail_dialog
         markup = _diagnostic_detail_dialog('Unknown', 'test', [{'phase_outcome': 'FAILED'}], resolved=False, csrf_token='test', identity_devices=[])
