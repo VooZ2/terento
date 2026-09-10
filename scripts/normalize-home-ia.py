@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
 FAQ_KEEP = (0, 1, 4, 5, 6)
-PROVIDER_SCRIPT_VERSION = "20260911-three-providers-v1"
+PROVIDER_SCRIPT_VERSION = "20260911-three-providers-v2"
 FEATURE_SCRIPT_VERSION = "20260904-home-workflow-tabs"
 EMAIL_URL = "mailto:hello@terento.app?subject=Terento%20installation%20issue"
 EMAIL_URL_HTML = EMAIL_URL.replace("@", "&#64;")

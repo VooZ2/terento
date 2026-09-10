@@ -15,7 +15,7 @@ The existing catalog-v3 projection supplies live counts. An explicit empty
 provider list displays zero available packages; MapRando has no invented
 static package count. Three compact cards fit on wide screens; the existing
 keyboard-accessible scrolling row handles narrower screens. Changed assets
-use version 20260911-three-providers-v1.
+use version 20260911-three-providers-v2.
 
 Home FAQ and Guide troubleshooting now describe beta.11's prefilled GitHub
 report. Users still review reports before posting; email guidance asks for
@@ -36,3 +36,7 @@ change. This document records tested source, not publication evidence.
 Publication acceptance additionally requires working release downloads,
 production source parity and a live Rich Results Test. VoiceOver, native
 200% zoom, forced-colors and a full performance audit are not claimed here.
+
+Production cache follow-up: the first live check found the prior CSS/JS cached
+under the v1 query. All changed asset references and deterministic contracts
+now use v2, which must first be requested after the deployment completes.
