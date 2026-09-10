@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-09T13:19:09.833227+00:00",
+  "generatedAt": "2026-09-10T08:20:45.206380+00:00",
   "models": [
     {
       "model": "fēnix 8 · 47 mm, AMOLED",
@@ -61,14 +61,14 @@
       "caseSizeMm": null,
       "displayType": null,
       "canonicalDeviceId": "garmin-forerunner-970",
-      "attemptedInstallations": 2,
+      "attemptedInstallations": 1,
       "successfulInstallations": 1,
       "reconnectVerifiedInstallations": 0,
-      "failedInstallations": 1,
-      "successRate": 50.0,
+      "failedInstallations": 0,
+      "successRate": 100.0,
       "evidenceStatus": "TESTED",
       "lastSuccessfulInstallation": "2026-09-06T06:58:15+00:00",
-      "lastEvidence": "2026-09-07T22:11:07+00:00",
+      "lastEvidence": "2026-09-06T06:58:15+00:00",
       "image": {
         "url": "https://res.garmin.com/en/products/010-02969-12/g/cf-lg.jpg",
         "origin": "garmin-source",
@@ -95,6 +95,30 @@
       "lastEvidence": "2026-08-27T04:53:40+00:00",
       "image": {
         "url": "https://res.garmin.com/en/products/010-03199-00/g/cf-lg.jpg",
+        "origin": "garmin-source",
+        "status": "SOURCE"
+      }
+    },
+    {
+      "model": "fēnix 8 · 43 mm, AMOLED",
+      "canonicalModel": "fenix 8",
+      "family": "fenix",
+      "familyName": "fēnix",
+      "compatibilityIdentity": "fēnix 8 · 43 mm",
+      "variant": "43mm",
+      "caseSizeMm": 43,
+      "displayType": null,
+      "canonicalDeviceId": "garmin-fenix-8-43-amoled",
+      "attemptedInstallations": 1,
+      "successfulInstallations": 1,
+      "reconnectVerifiedInstallations": 0,
+      "failedInstallations": 0,
+      "successRate": 100.0,
+      "evidenceStatus": "TESTED",
+      "lastSuccessfulInstallation": "2026-09-10T00:21:59+00:00",
+      "lastEvidence": "2026-09-10T00:21:59+00:00",
+      "image": {
+        "url": "https://res.garmin.com/en/products/010-02903-10/g/cf-lg.jpg",
         "origin": "garmin-source",
         "status": "SOURCE"
       }
