@@ -321,7 +321,12 @@ and 390 px, the mobile menu, and automatic resolution of the two active
 diagnostics linked to closed GitHub issue #94. Historical failure results were
 retained. Deployment workflow: https://github.com/VooZ2/terento/actions/runs/33925498939.
 
-### Admin installation counting — 2026-09-10 (local, not deployed)
+### Admin installation counting — 2026-09-10
+
+Initial counting change published in PR #147. Follow-up keeps the table status
+on the same complete-session basis as the device card, directs custom activity
+to Installations rather than catalog-only statistics, and corrects the device
+counter help text. Regression tests explicitly cover these display contracts.
 
 Admin attempts count retained map results, not batch/session IDs: a custom IMG
 plus OTM session contributes two attempts and two successes when both verify.

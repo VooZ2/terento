@@ -1041,6 +1041,8 @@ def _admin_map_display_name(*values: Any) -> str:
 
 
 def _overview_map_event_context(event: dict[str, Any]) -> str:
+    if event.get("provider_id") == "custom":
+        return "Custom .img"
     display_name = _admin_map_display_name(
         event.get("display_name")
         or event.get("map_package_name")
@@ -1059,6 +1061,8 @@ def _overview_map_event_context(event: dict[str, Any]) -> str:
 
 
 def _overview_map_event_href(event: dict[str, Any]) -> str:
+    if event.get("provider_id") == "custom":
+        return "/admin/installations"
     parameters = {
         "eventType": str(event.get("event_type") or ""),
         "provider": str(event.get("provider_id") or ""),
@@ -3297,7 +3301,7 @@ def device_detail_page(
       <main class='dashboard model-detail-page' id='main-content'>
         <p class='back-link'><a href='{back_href}'>{_admin_icon('arrow-left')} {back_label}</a></p>
         <header class='model-page-header'>{image}<div class='model-page-heading'><p class='eyebrow'>Garmin device</p><h1>{html.escape(model)}{f' · <span>{html.escape(variant)}</span>' if variant != '—' else ''}</h1><div class='model-page-badges'>{summary_badges}</div></div>{public_link}</header>
-        <section class='diagnostic-model-metrics model-statistics' aria-label='Model installation statistics'><article class='attempts-metric' aria-label='Attempts. Successful history plus failures received since the device counter baseline. Resolved failures are counted once.' title='Device snapshot totals information: successful history plus failures since the counter baseline; resolved failures count once. Installations uses write-started evidence.'><span>Attempts</span><strong>{attempts}</strong></article><article><span>Successful</span><strong>{successful}</strong></article><article><span>Failed</span><strong>{failed}</strong></article><article><span>Open errors</span><strong>{open_errors}</strong></article><article class='timestamp-metric'><span>Last activity</span><strong>{last_activity}</strong></article></section>
+        <section class='diagnostic-model-metrics model-statistics' aria-label='Model installation statistics'><article class='attempts-metric' aria-label='Attempts. Each map result counts once, including custom .img and resolved failures.' title='Each map installation counts separately. Compatibility status uses complete verified sessions.'><span>Attempts</span><strong>{attempts}</strong></article><article><span>Successful</span><strong>{successful}</strong></article><article><span>Failed</span><strong>{failed}</strong></article><article><span>Open errors</span><strong>{open_errors}</strong></article><article class='timestamp-metric'><span>Last activity</span><strong>{last_activity}</strong></article></section>
         {alert}
         <section class='diagnostics-detail-section model-page-section' id='installations' aria-labelledby='installation-history-title'>
           <div class='section-heading'><div><p class='section-kicker'>Operational history</p><h2 id='installation-history-title'>Installation history</h2></div><p class='table-help'>Failed results remain historical after their error is resolved.</p></div>
@@ -3808,7 +3812,7 @@ def _statistics_row(
     successful = int(summary["successful"]) if "successful" in summary else int(row.get("successful_install_count") or 0)
     failed = int(summary["failed"]) if "failed" in summary else int(row.get("failed_install_count") or 0)
     open_errors = int(summary.get("open_errors") or 0)
-    status_value = _row_compatibility_status({**row, "successful_install_count": successful})
+    status_value = _row_compatibility_status(row)
     status = status_value.value if status_value else ""
     search_text = " ".join((model, variant, str(row.get("family") or ""), identity)).strip()
     activity = max((_timestamp_iso(row.get(key)) for key in ("last_success", "last_failure", "last_evidence")), default="")
