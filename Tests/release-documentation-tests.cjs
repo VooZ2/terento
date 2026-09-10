@@ -126,5 +126,17 @@ const nativeDependencyBuild = read("Packaging/NativeDependencies/build.sh");
 assert.match(nativeDependencyBuild, /install_name_tool[\s\S]*-change[\s\S]*@rpath\/libusb-1\.0\.0\.dylib/);
 assert.match(nativeDependencyBuild, /Developer-machine dependency found/);
 assert.match(nativeDependencyBuild, /otool -L "\$dylib_path" \| sed '1d'/);
+assert.match(nativeDependencyBuild, /assert_required_mtp_transport_behaviors "\$libmtp_source"/);
+assert.match(nativeDependencyBuild, /12-byte split header detection/);
+assert.match(nativeDependencyBuild, /packet-aligned transfer detection/);
+assert.match(nativeDependencyBuild, /zero-length terminating write/);
+
+const nativeDependencyDocumentation = read("Packaging/NativeDependencies/README.md");
+assert.match(nativeDependencyDocumentation, /12-byte split-header detection/);
+assert.match(nativeDependencyDocumentation, /zero-length terminating USB write/);
+
+const packagingDocumentation = read("Packaging/README.md");
+assert.match(packagingDocumentation, /new major macOS release/);
+assert.match(packagingDocumentation, /future-OS result[\s\S]*pending/);
 
 console.log(`Release documentation matches ${label}.`);

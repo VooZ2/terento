@@ -182,6 +182,12 @@ This is diagnosis only; it does not fix the intermittent session failure.
 
 Before distributing a public build:
 
+- run the complete release pipeline on the newest macOS version available to
+  the project; its architecture, minimum-OS, runtime-path, code-signing,
+  Gatekeeper and launch-smoke checks are the automated compatibility baseline;
+- before a new major macOS release, record a separate preview/RC test when a
+  suitable machine is available; until then, keep that future-OS result
+  explicitly pending rather than inferring it from the current macOS run;
 - increment `CFBundleVersion` monotonically and set the public release label;
 - set the intended `TERENTO_RELEASE_CHANNEL` (`beta` or `stable`);
 - update `site/updates/macos-arm64.json` with the matching version, build,

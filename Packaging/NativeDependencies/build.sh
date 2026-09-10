@@ -120,6 +120,45 @@ extract_once() {
     fi
 }
 
+assert_source_contains() {
+    source_path="$1"
+    required_text="$2"
+    behavior="$3"
+
+    if ! grep -F "$required_text" "$source_path" >/dev/null; then
+        echo "Bundled libmtp source is missing required MTP behavior: $behavior" >&2
+        echo "Expected text in $source_path: $required_text" >&2
+        exit 1
+    fi
+}
+
+assert_required_mtp_transport_behaviors() {
+    libmtp_source="$1"
+    glue_source="$libmtp_source/src/libusb1-glue.c"
+    ptp_header="$libmtp_source/src/ptp.h"
+
+    if [ ! -f "$glue_source" ] || [ ! -f "$ptp_header" ]; then
+        echo "Bundled libmtp transport sources are incomplete" >&2
+        exit 1
+    fi
+
+    # Garmin MTP devices may return the 12-byte container header separately
+    # from its payload. Keep both the state field, automatic detection, and
+    # matching split-send path when updating the pinned libmtp dependency.
+    assert_source_contains "$ptp_header" "split_header_data;" "split header state"
+    assert_source_contains "$glue_source" "if (dtoh32(usbdata.length) > 12 && (rlen==12))" "12-byte split header detection"
+    assert_source_contains "$glue_source" "if (params->split_header_data)" "split header send path"
+
+    # Packet-aligned SendObject transfers need an explicit zero-length USB
+    # packet. Without it, some devices wait for more data and eventually time
+    # out even though every payload byte was written.
+    assert_source_contains "$glue_source" "if ((towrite % ptp_usb->outep_maxpacket) == 0)" "packet-aligned transfer detection"
+    assert_source_contains "$glue_source" 'LIBMTP_USB_DEBUG("Zero Write\n")' "zero-length terminating write"
+    assert_source_contains "$glue_source" "(unsigned char *) \"x\"," "zero-length USB write buffer"
+
+    echo "Required Garmin MTP transport source behaviors: PASS"
+}
+
 assert_arm64_and_minimum_target() {
     dylib_path="$1"
     expected_install_name="$2"
@@ -159,6 +198,7 @@ if [ ! -f "$build_marker" ]; then
     download_and_verify "$download_dir/$LIBMTP_ARCHIVE" "$LIBMTP_URL" "$LIBMTP_SHA256"
     extract_once "$download_dir/$LIBUSB_ARCHIVE" "libusb-${LIBUSB_VERSION}" bz2
     extract_once "$download_dir/$LIBMTP_ARCHIVE" "libmtp-${LIBMTP_VERSION}" gz
+    assert_required_mtp_transport_behaviors "$libmtp_source"
 
     common_cflags="-arch $architecture -mmacosx-version-min=$deployment_target"
 

@@ -34,3 +34,10 @@ Packaging/NativeDependencies/build.sh \
 
 The script does not use Homebrew libraries and fails if a produced dylib
 contains `/opt/homebrew`, `/usr/local`, or a developer `/Users/...` path.
+
+Before compiling a newly extracted libmtp source archive, the script also
+fails unless the pinned source still contains the Garmin-relevant MTP transport
+behaviors verified for Terento: automatic 12-byte split-header detection, the
+matching split-send path, and a zero-length terminating USB write for
+packet-aligned transfers. This is a source-level dependency upgrade gate, not
+a substitute for a real-device transfer test.
