@@ -4,7 +4,9 @@ The overview uses a compact mobile SVG with the same complete time series and
 three time-axis labels; desktop keeps its detailed chart. Clip IDs are unique
 between variants. Identity review uses a searchable native select with exact
 canonical IDs rather than datalist suggestions. Editing the search clears the
-selection, and assignment requires an explicit model choice. Other identity
+selection, and typing immediately shows matching model buttons below the search
+field (including accent-insensitive fenix matches). The native select remains
+available as a fallback. Assignment requires an explicit model choice. Other identity
 actions disable the picker. Backend validation and save semantics are unchanged.
 
 GitHub report actions share inline-flex alignment, zero margins and stretched
@@ -319,7 +321,35 @@ and 390 px, the mobile menu, and automatic resolution of the two active
 diagnostics linked to closed GitHub issue #94. Historical failure results were
 retained. Deployment workflow: https://github.com/VooZ2/terento/actions/runs/33925498939.
 
-### Admin custom IMG chart series — 2026-09-05
+### Admin installation counting — 2026-09-10
+
+Initial counting changes published in PR #147 and #149. Migration 038 (local,
+not deployed) unifies public compatibility and admin counters and statuses on
+individual verified map results. Migration 037 is reserved for the parallel
+MapRando work; no existing migration is rewritten.
+
+Admin attempts count retained map results, not batch/session IDs: a custom IMG
+plus OTM session contributes two attempts and two successes when both verify.
+The installation overview, identity table, watch counters and chart use this
+unit. Resolved failures stay in all-time attempt/failure totals; unstarted
+siblings do not become fabricated attempts. Immutable event IDs provide replay
+idempotency. Diagnostic review actions remain grouped by the original session.
+
+Overview reconciles map events against compatibility results by session,
+provider and region. One catalog event cannot suppress a custom result or a
+different region. Map statistics remains catalog-only. Existing retained mixed
+sessions recalculate on read; no production event rewrite or backfill is needed.
+The public API, watch cards and Installations use compatibility_model_statistics
+as the authoritative full-history source; the 500-row diagnostics display limit
+cannot truncate totals. A custom + catalog batch contributes two successes when
+both verify, even before other selected results arrive. Failed/unverified results
+never advance status. Thresholds remain 0 TESTING, 1–2 TESTED, 3–4 SUPPORTED,
+5+ VERIFIED. Local telemetry stays excluded, resolved failures stay in historical
+counts, and existing exact-model administrator publication approval is preserved.
+Native telemetry contracts, provider-only Map statistics and review actions are
+unchanged. These counts represent map installations, not unique users or watches.
+
+### Admin custom IMG chart series — 2026-09-05 (historical implementation)
 
 The Overview chart adds a separately labelled green Custom .img series from
 successful, verified, complete compatibility operations whose provider is custom.

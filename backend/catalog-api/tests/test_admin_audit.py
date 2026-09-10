@@ -27,6 +27,16 @@ class Tags(HTMLParser):
 
 
 class AdminAuditTests(unittest.TestCase):
+    def test_identity_search_exposes_results_without_opening_select(self):
+        from terento_catalog.admin import _diagnostics_script, _diagnostic_detail_dialog
+        markup = _diagnostic_detail_dialog('Unknown', 'test', [{'phase_outcome': 'FAILED'}], resolved=False, csrf_token='test', identity_devices=[])
+        self.assertIn('data-identity-results', markup)
+        script = _diagnostics_script()
+        self.assertIn("button.type = 'button'", script)
+        self.assertIn('canonical.value = option.value;', script)
+        self.assertIn('suggestions.hidden = !query;', script)
+        self.assertIn("empty.textContent = 'No models match your search'", script)
+
     def test_github_actions_share_alignment_without_form_button_margin(self):
         from terento_catalog.admin import _layout
         markup = _layout('Test', '').decode()
@@ -213,10 +223,11 @@ class AdminAuditTests(unittest.TestCase):
             def connection(self): yield Connection()
         QueryDatabase('unused').map_statistics({'region':'SVN+'})
         query, parameters = calls[0]
-        # Region filtering cannot turn one result of an incomplete two-map
-        # operation into a complete install, or drop its other map region.
+        # A verified result is counted even if its sibling is missing/failed.
         complete, filtered = query.split('), compatibility_fallback AS (', 1)
-        self.assertIn("count(*) = max(COALESCE(e.selected_map_count, 1))", complete)
+        self.assertIn("e.event_id::text AS operation_key", complete)
+        self.assertIn("installed.provider_id = e.provider", complete)
+        self.assertNotIn("selected_map_count", complete)
         self.assertIn('installed.is_local_test IS NOT TRUE', complete)
         self.assertNotIn('e.region = %s', complete)
         self.assertIn('e.region = %s', filtered)

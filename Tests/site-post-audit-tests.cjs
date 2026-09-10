@@ -4,7 +4,6 @@ const path = require('node:path');
 const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const snapshot = JSON.parse(read('site/compatibility/public-models.snapshot.json'));
 const data = require('../site/compatibility/compatibility-data.js');
 const locales = require('../site/compatibility/compatibility-locales.js');
 
@@ -15,16 +14,19 @@ for (const language of ['en', 'de', 'fr', 'pl', 'cs', 'it']) {
   const prefix = language === 'en' ? '' : language + '/';
   const copy = locales.getLocale(language);
   const page = read(`site/${prefix}compatibility/index.html`);
-  const embedded = JSON.parse(page.match(/id="compatibility-snapshot">([\s\S]*?)<\/script>/)[1]);
-  assert.deepEqual(embedded, snapshot, `${language}: exact static/API snapshot parity`);
-  assert.ok(page.includes(copy.summary.moreModels), `${language}: localized summary`);
+  assert.doesNotMatch(page, /id="compatibility-snapshot"|watch-card/, `${language}: no checked-in compatibility evidence`);
+  assert.match(page, /data-summary="models"><\/strong>/, `${language}: model count waits for the API`);
+  assert.match(page, /id="watch-grid"[^>]*aria-busy="true"><\/div>/, `${language}: result grid waits for the API`);
+  assert.doesNotMatch(page, /More models ready for testing|Weitere Modelle zum Testen|D’autres modèles prêts à être testés|Kolejne modele gotowe do testów|Další modely připravené k testování|Altri modelli pronti per i test/, `${language}: removed testing prompt`);
+  assert.doesNotMatch(page, /Evidence refreshed|Nachweise aktualisiert|Données actualisées|Dane odświeżone|Údaje aktualizovány|Dati aggiornati/, `${language}: removed refresh label`);
   assert.equal((page.match(/id="compatibility-clear"/g) || []).length, 1);
   assert.equal((page.match(/id="compatibility-freshness"/g) || []).length, 1);
+  assert.match(page, /class="compatibility-freshness"[^>]* hidden/);
   assert.ok(page.indexOf('id="compatibility-clear"') < page.indexOf('id="watch-grid"'));
   const download = read(`site/${prefix}download/index.html`);
   assert.ok(download.includes(`<span class="download-recommended">${copy.freshness.recommended}</span>`));
   for (const asset of ['compatibility', 'compatibility-data', 'compatibility-locales']) {
-    assert.ok(page.includes(`${asset}.js?v=20260909-post-audit-v1`));
+    assert.ok(page.includes(`${asset}.js?v=20260910-summary-v1`));
   }
 }
 
@@ -38,10 +40,25 @@ async function checkRefreshAndFilters() {
     });
     return nodes.get(selector);
   }
-  node('#compatibility-snapshot').textContent = JSON.stringify(snapshot);
   let offline = true;
   let requests = 0;
-  const payload = {...snapshot, models: snapshot.models.slice(0, 1)};
+  const payload = {
+    schemaVersion: 1,
+    generatedAt: '2026-09-10T17:30:23Z',
+    models: [{
+      model: 'fēnix 9 Pro · inReach, 51 mm',
+      compatibilityIdentity: 'fenix 9 Pro - inReach, 51mm',
+      variant: '51mm',
+      caseSizeMm: 51,
+      family: 'fenix',
+      familyName: 'fēnix',
+      attemptedInstallations: 2,
+      successfulInstallations: 2,
+      failedInstallations: 0,
+      evidenceStatus: 'TESTED',
+      lastSuccessfulInstallation: '2026-09-10T16:25:51Z',
+    }],
+  };
   vm.runInNewContext(read('site/compatibility/compatibility.js'), {
     TerentoCompatibilityData: data,
     TerentoCompatibilityLocale: locales.getLocale('en'),
@@ -52,17 +69,26 @@ async function checkRefreshAndFilters() {
   });
   const flush = () => new Promise(resolve => setImmediate(resolve));
   await flush();
-  assert.equal(node('[data-summary="models"]').textContent, String(snapshot.models.length));
-  assert.match(node('#compatibility-freshness').textContent, /Could not refresh/);
+  assert.equal(node('[data-summary="models"]').textContent, '');
+  assert.match(node('#compatibility-freshness').textContent, /Could not load live/);
   assert.equal(node('#compatibility-retry').hidden, false);
-  assert.ok(node('#watch-grid').innerHTML.includes('watch-card'));
+  assert.equal(node('#watch-grid').innerHTML, '');
+  assert.equal(node('#compatibility-error').hidden, false);
   offline = false;
   await node('#compatibility-retry').listeners.click();
   await flush();
   assert.equal(requests, 2);
   assert.equal(node('#compatibility-retry').hidden, true);
   assert.equal(node('[data-summary="models"]').textContent, '1');
-  assert.match(node('#compatibility-freshness').textContent, /Evidence refreshed/);
+  assert.equal(node('#compatibility-freshness').textContent, '');
+  assert.equal(node('.compatibility-freshness').hidden, true);
+  assert.equal(node('[data-summary="successes"]').textContent, '2');
+  assert.ok(node('#watch-grid').innerHTML.includes('watch-card'));
+  offline = true;
+  await node('#compatibility-retry').listeners.click();
+  await flush();
+  assert.match(node('#compatibility-freshness').textContent, /last results loaded from the API/);
+  assert.ok(node('#watch-grid').innerHTML.includes('watch-card'));
   node('#watch-search').listeners.input({target: {value: 'no-such-watch'}});
   assert.equal(node('#compatibility-empty').hidden, false);
   assert.equal(node('#watch-grid').innerHTML, '');
@@ -71,4 +97,4 @@ async function checkRefreshAndFilters() {
   assert.equal(node('#watch-search').focused, true);
   assert.ok(node('#watch-grid').innerHTML.includes('watch-card'));
 }
-checkRefreshAndFilters().then(() => console.log('PASS: six-locale snapshots, cache versions, stale recovery, retry and filter reset')).catch(error => { console.error(error); process.exitCode = 1; });
+checkRefreshAndFilters().then(() => console.log('PASS: six-locale API loading, cache versions, retry and filter reset')).catch(error => { console.error(error); process.exitCode = 1; });

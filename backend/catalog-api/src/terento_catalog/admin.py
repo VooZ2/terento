@@ -377,13 +377,13 @@ def _diagnostic_summary_by_identity(
     grouped: dict[str, dict[str, list[dict[str, Any]]]] = {}
     for event in events:
         identity = _identity_group_key(event)
-        key = _operation_key(event)
+        key = str(event.get("event_id") or f"{_operation_key(event)}:{event.get('map_result_index', 0)}")
         if identity and key:
             grouped.setdefault(identity, {}).setdefault(key, []).append(event)
     resolved_grouped: dict[str, dict[str, list[dict[str, Any]]]] = {}
     for event in resolved_events or []:
         identity = _identity_group_key(event)
-        key = _operation_key(event)
+        key = str(event.get("event_id") or f"{_operation_key(event)}:{event.get('map_result_index', 0)}")
         if identity and key:
             resolved_grouped.setdefault(identity, {}).setdefault(key, []).append(event)
     for identity in set(grouped) | set(resolved_grouped):
@@ -1041,6 +1041,8 @@ def _admin_map_display_name(*values: Any) -> str:
 
 
 def _overview_map_event_context(event: dict[str, Any]) -> str:
+    if event.get("provider_id") == "custom":
+        return "Custom .img"
     display_name = _admin_map_display_name(
         event.get("display_name")
         or event.get("map_package_name")
@@ -1059,6 +1061,8 @@ def _overview_map_event_context(event: dict[str, Any]) -> str:
 
 
 def _overview_map_event_href(event: dict[str, Any]) -> str:
+    if event.get("provider_id") == "custom":
+        return "/admin/installations"
     parameters = {
         "eventType": str(event.get("event_type") or ""),
         "provider": str(event.get("provider_id") or ""),
@@ -1374,8 +1378,8 @@ def overview_page(
         <div class='heading-row overview-heading'><div><p class='eyebrow'>Operations</p><h1>Overview</h1><p class='lede'>Current Terento health and activity that needs attention.</p></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin'><label><span class='sr-only'>Time period</span><select id='overview-period' name='period'>{period_options}</select></label></form></div>
         <p class='telemetry-scope-note'>User telemetry · Local tests excluded. <a href='/admin/test-data'>View test data →</a></p>
         <section class='overview-kpis' aria-label='Operational summary'>
-          <a class='overview-kpi' href='{html.escape(map_statistics_href, quote=True)}'><span>Map install operations</span><strong>{event_metric(completed_installs + failed_installs)}</strong><small>{'Install actions in this period' if has_map_data else 'No map telemetry in this period'}</small></a>
-          <a class='overview-kpi' href='{html.escape(map_statistics_href, quote=True)}'><span>Map operation success</span><strong>{success_rate}</strong><small>Successful install actions</small></a>
+          <a class='overview-kpi' href='/admin/installations'><span>Map install operations</span><strong>{event_metric(completed_installs + failed_installs)}</strong><small>{'Individual maps, including custom .img' if has_map_data else 'No map telemetry in this period'}</small></a>
+          <a class='overview-kpi' href='/admin/installations'><span>Map operation success</span><strong>{success_rate}</strong><small>Successful map results, including custom .img</small></a>
           <a class='overview-kpi overview-kpi-attention' href='{html.escape(failure_href, quote=True)}'><span>Failed map operations</span><strong>{event_metric(failed_installs)}</strong><small>{'Failed install actions in this period' if has_map_data else 'No map telemetry in this period'}</small></a>
           <a class='overview-kpi overview-kpi-attention' href='/admin/installations?state=open'><span>Open errors</span><strong>{open_error_metric(open_errors)}</strong><small>All unresolved compatibility errors</small></a>
           <a class='overview-kpi' href='/admin/providers'><span>Providers</span><strong>{healthy} / {provider_count}</strong><small>Healthy providers</small></a>
@@ -1664,6 +1668,8 @@ def dashboard_page(
     )
     def metric(row: dict[str, Any], summary_key: str, row_key: str) -> int:
         summary = diagnostic_summary.get(_identity_group_key(row), {})
+        if row_key in row:
+            return int(row[row_key] or 0)
         return int(summary[summary_key]) if summary_key in summary else int(row.get(row_key) or 0)
 
     attempts = sum(metric(row, "attempts", "attempted_install_count") for row in rows)
@@ -1686,7 +1692,7 @@ def dashboard_page(
     content = f"""
       {_admin_header(user, csrf_token, active='installations')}
       <main class="dashboard" id="main-content">
-        <div class="heading-row installation-heading"><div><p class="eyebrow">Compatibility</p><h1>Installations</h1><p class="lede">All-time compatibility evidence from Terento users. Each attempt is a watch installation that reached the transfer stage; it may contain several map packages.</p></div><p class="page-meta">{latest_copy}</p></div>
+        <div class="heading-row installation-heading"><div><p class="eyebrow">Compatibility</p><h1>Installations</h1><p class="lede">Each map installation counts as one attempt, including custom .img files. A session with two maps counts as two attempts. Verified successful map installations determine compatibility status.</p></div><p class="page-meta">{latest_copy}</p></div>
         <p class='telemetry-scope-note'>User telemetry · Local tests excluded. <a href='/admin/test-data'>View test data →</a></p>
         <section class="admin-kpi-grid installation-kpis" aria-label="Installation summary">
           <article><span>Variants</span><strong>{len(rows)}</strong></article>
@@ -3018,6 +3024,7 @@ def _diagnostic_detail_dialog(
         <label>Action<select name='identity_action' id='{action_id}' data-identity-action><option value='ASSIGN'>Assign canonical Garmin device</option><option value='LEAVE_UNRESOLVED'>Leave unresolved</option><option value='NOT_IDENTIFIABLE'>Mark as not identifiable</option></select></label>
         <div data-canonical-device-wrap>
           <label>Search Garmin device<input id='{search_id}' type='search' data-identity-search placeholder='Model, family, variant, size, or ID' autocomplete='off' aria-controls='{canonical_id}'></label>
+          <div class='identity-search-results' data-identity-results role='group' aria-label='Matching Garmin models' hidden></div>
           <label>Garmin model<select name='canonical_device_model_id' id='{canonical_id}' required><option value=''>Choose a Garmin model</option>{options}</select></label>
         </div>
         <p class='identity-selection' data-identity-selection>Canonical ID: <code>{html.escape(current_label)}</code></p>
@@ -3161,7 +3168,7 @@ def device_detail_page(
         successful_install_count=successful,
         recognized_map_capable_evidence=device.get("mapCapable") is True,
     )
-    status_value = status.value if status else ""
+    status_value = device.get("evidenceStatus") or (status.value if status else "")
     last_activity = _timestamp_markup(stats.get("lastEvidenceAt")) if stats.get("lastEvidenceAt") else "—"
     publication = device.get("publicCompatibility") or {}
     map_label, map_kind = _admin_map_capability(device.get("mapCapable"))
@@ -3296,7 +3303,7 @@ def device_detail_page(
       <main class='dashboard model-detail-page' id='main-content'>
         <p class='back-link'><a href='{back_href}'>{_admin_icon('arrow-left')} {back_label}</a></p>
         <header class='model-page-header'>{image}<div class='model-page-heading'><p class='eyebrow'>Garmin device</p><h1>{html.escape(model)}{f' · <span>{html.escape(variant)}</span>' if variant != '—' else ''}</h1><div class='model-page-badges'>{summary_badges}</div></div>{public_link}</header>
-        <section class='diagnostic-model-metrics model-statistics' aria-label='Model installation statistics'><article class='attempts-metric' aria-label='Attempts. Successful history plus failures received since the device counter baseline. Resolved failures are counted once.' title='Device snapshot totals information: successful history plus failures since the counter baseline; resolved failures count once. Installations uses write-started evidence.'><span>Attempts</span><strong>{attempts}</strong></article><article><span>Successful</span><strong>{successful}</strong></article><article><span>Failed</span><strong>{failed}</strong></article><article><span>Open errors</span><strong>{open_errors}</strong></article><article class='timestamp-metric'><span>Last activity</span><strong>{last_activity}</strong></article></section>
+        <section class='diagnostic-model-metrics model-statistics' aria-label='Model installation statistics'><article class='attempts-metric' aria-label='Attempts. Each map result counts once, including custom .img and resolved failures.' title='Each map installation counts separately. Verified successful map installations determine compatibility status.'><span>Attempts</span><strong>{attempts}</strong></article><article><span>Successful</span><strong>{successful}</strong></article><article><span>Failed</span><strong>{failed}</strong></article><article><span>Open errors</span><strong>{open_errors}</strong></article><article class='timestamp-metric'><span>Last activity</span><strong>{last_activity}</strong></article></section>
         {alert}
         <section class='diagnostics-detail-section model-page-section' id='installations' aria-labelledby='installation-history-title'>
           <div class='section-heading'><div><p class='section-kicker'>Operational history</p><h2 id='installation-history-title'>Installation history</h2></div><p class='table-help'>Failed results remain historical after their error is resolved.</p></div>
@@ -3364,11 +3371,12 @@ def diagnostics_page(
     diagnostic_groups.extend((key, results, True) for key, results in resolved_groups.items())
     diagnostic_groups.sort(key=lambda item: _timestamp_iso(item[1][0].get("occurred_at")), reverse=True)
     model, variant = _display_identity(identity, model_row)
-    attempts = int(model_row.get("attempted_install_count") or 0) if model_row else len(active_groups) + len(resolved_groups)
-    successes = int(model_row.get("successful_install_count") or 0) if model_row else sum(
-        1 for results in list(active_groups.values()) + list(resolved_groups.values())
-        if _operation_result(results) == "SUCCEEDED"
-    )
+    result_summary = _diagnostic_summary_by_identity(active_events, resolved_events)
+    attempts = sum(item["attempts"] for item in result_summary.values())
+    successes = sum(item["successful"] for item in result_summary.values())
+    if model_row:
+        attempts = int(model_row.get("attempted_install_count") or 0)
+        successes = int(model_row.get("successful_install_count") or 0)
     errors = sum(1 for results in active_diagnostics.values() if _operation_is_problematic(results))
     status = _row_compatibility_status(model_row) if model_row else None
     filters = """<label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all' selected>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='open'>Open</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity review</option><option value='with-issue'>With issue</option></select></label><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button>"""
@@ -3474,7 +3482,7 @@ def _admin_device_payload(
             # evidence that the catalog classifier has not learned yet.
             map_capable = True
         evidence_status = calculate_compatibility_status(
-            successful_install_count=successful,
+            successful_install_count=int(row.get("compatibility_successful_install_count", successful) or 0),
             recognized_map_capable_evidence=map_capable is True,
         )
         authorization_label, _, authorization_code = _admin_installation_authorization(
@@ -3802,11 +3810,11 @@ def _statistics_row(
 ) -> str:
     model, variant, identity = _identity_parts(row)
     summary = diagnostic_summary or {}
-    attempted = int(summary["attempts"]) if "attempts" in summary else int(row.get("attempted_install_count") or 0)
-    successful = int(summary["successful"]) if "successful" in summary else int(row.get("successful_install_count") or 0)
-    failed = int(summary["failed"]) if "failed" in summary else int(row.get("failed_install_count") or 0)
+    attempted = int(row.get("attempted_install_count", summary.get("attempts", 0)) or 0)
+    successful = int(row.get("successful_install_count", summary.get("successful", 0)) or 0)
+    failed = int(row.get("failed_install_count", summary.get("failed", 0)) or 0)
     open_errors = int(summary.get("open_errors") or 0)
-    status_value = _row_compatibility_status({**row, "successful_install_count": successful})
+    status_value = _row_compatibility_status(row)
     status = status_value.value if status_value else ""
     search_text = " ".join((model, variant, str(row.get("family") or ""), identity)).strip()
     activity = max((_timestamp_iso(row.get(key)) for key in ("last_success", "last_failure", "last_evidence")), default="")
@@ -4572,6 +4580,7 @@ def _diagnostics_script() -> str:
           const search = form?.querySelector('[data-identity-search]');
           const canonical = form?.querySelector('select[name="canonical_device_model_id"]');
           const selection = form?.querySelector('[data-identity-selection]');
+          const suggestions = form?.querySelector('[data-identity-results]');
           const choices = canonical ? [...canonical.options].filter(option => option.value).map(option => option.cloneNode(true)) : [];
           const sync = () => {
             const assign = action.value === 'ASSIGN';
@@ -4593,6 +4602,30 @@ def _diagnostics_script() -> str:
             placeholder.textContent = matches.length ? 'Choose a Garmin model' : 'No models match your search';
             canonical.replaceChildren(placeholder, ...matches.map(option => option.cloneNode(true)));
             canonical.value = '';
+            if (suggestions) {
+              suggestions.replaceChildren();
+              suggestions.hidden = !query;
+              if (query && !matches.length) {
+                const empty = document.createElement('p');
+                empty.setAttribute('role', 'status');
+                empty.textContent = 'No models match your search';
+                suggestions.append(empty);
+              }
+              if (query) matches.forEach(option => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'secondary-button';
+                button.textContent = option.textContent;
+                button.addEventListener('click', () => {
+                  canonical.value = option.value;
+                  search.value = option.textContent;
+                  suggestions.hidden = true;
+                  sync();
+                  search.focus();
+                });
+                suggestions.append(button);
+              });
+            }
             sync();
           });
           sync();
@@ -5080,6 +5113,9 @@ table code,.technical-value,.provider-table-wrap code,.audit-technical-details c
 .secondary-button,.provider-pagination button,.device-pagination button{min-height:var(--admin-control-height);padding:8px 10px}
 .github-actions>.secondary-button{display:inline-flex;align-items:center;justify-content:center;margin:0;align-self:stretch;text-align:center;text-decoration:none;white-space:normal}
 .github-actions>.copy-status{flex-basis:100%}
+.identity-search-results{display:grid;gap:4px;max-height:240px;overflow-y:auto;margin:8px 0}
+.identity-search-results[hidden]{display:none}
+.identity-search-results>button.secondary-button{display:block;width:100%;min-height:44px;margin:0;text-align:left;white-space:normal;overflow-wrap:anywhere}
 .provider-action-overflow>summary{min-height:var(--admin-control-height);padding:8px 12px}
 .provider-action-bar{gap:7px}
 .disclosure-body{margin-top:12px}

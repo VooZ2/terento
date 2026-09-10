@@ -798,10 +798,11 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("AT TIME ZONE %s", trend_query)
         self.assertNotIn("date_trunc(%s", trend_query)
         self.assertEqual(trend_parameters, (since, "UTC", since, "UTC", "UTC"))
-        self.assertIn("CASE WHEN c.provider_id = 'custom'", trend_query)
+        self.assertIn("WHEN c.provider_id = 'custom'", trend_query)
         self.assertIn("NOT EXISTS", trend_query)
         self.assertIn("AS custom_count", trend_query)
-        self.assertIn("AND count(*) = max(COALESCE(e.selected_map_count, 1))", trend_query)
+        self.assertNotIn("selected_map_count", trend_query)
+        self.assertIn("installed.provider_id = e.provider", trend_query)
 
     def test_installation_authorization_is_separate_from_compatibility_evidence(self):
         source = inspect.getsource(Database.update_device_support_status)
@@ -970,18 +971,18 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertEqual(audit_call[1][6], "Exact model confirmed")
         self.assertFalse(any("phase_outcome" in query for query, _ in database.calls if "UPDATE compatibility_evidence_event" in query))
 
-    def test_operation_level_aggregation_is_shared_by_admin_and_current_view(self):
+    def test_admin_result_counts_use_the_public_statistics_view(self):
         db_source = inspect.getsource(Database.admin_device_snapshot)
         migration = CURRENT_MIGRATION.read_text(encoding="utf-8")
         operation_group = "GROUP BY COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text)"
-        self.assertIn(operation_group, db_source)
-        self.assertIn("compatibility_device_card_failure_epoch AS epoch", db_source)
-        self.assertIn("WHERE o.operation_succeeded OR o.received_at >= epoch.starts_at", db_source)
+        self.assertNotIn(operation_group, db_source)
+        self.assertNotIn("compatibility_device_card_failure_epoch AS epoch", db_source)
+        self.assertIn("FROM compatibility_model_statistics AS s", db_source)
         self.assertIn(
-            "WHERE NOT o.operation_succeeded AND o.received_at >= epoch.starts_at",
+            "s.failed_install_count AS failed",
             db_source,
         )
-        self.assertNotIn("e.diagnostic_status = 'ACTIVE'", db_source)
+        self.assertIn("s.attempted_install_count AS attempts", db_source)
         self.assertIn("operation_stats AS (", migration)
         self.assertIn("starts_at TIMESTAMPTZ NOT NULL DEFAULT now()", migration)
         self.assertIn("WHERE e.diagnostic_status = 'ACTIVE'", migration)
@@ -1120,10 +1121,10 @@ class AdminSemanticsTests(unittest.TestCase):
             "variant": "51 mm, AMOLED",
             "compatibility_identity": identity,
             "canonical_device_model_id": "garmin-fenix-8-51-amoled",
-            "attempted_install_count": 2,
+            "attempted_install_count": 3,
             "successful_install_count": 1,
-            "failed_install_count": 1,
-            "success_rate": 50,
+            "failed_install_count": 2,
+            "success_rate": 33.3,
             "recognized_map_capable_evidence": True,
             "last_success": "2026-08-25T16:04:00+00:00",
             "last_evidence": "2026-08-25T16:05:00+00:00",
@@ -1815,7 +1816,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("SEND_OBJECT_FAILED", body)
         self.assertIn("Failure reason:", body)
         self.assertIn("data-history-filter='failed'", body)
-        self.assertIn("Device snapshot totals information", body)
+        self.assertIn("Each map installation counts separately", body)
         self.assertIn("maxlength='500'", body)
         self.assertIn("link.closest('.github-issue-controls, .github-review')", body)
         self.assertNotIn("\x08", body)
