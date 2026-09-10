@@ -88,12 +88,11 @@
           <div class="compatibility-summary" id="compatibility-summary" aria-live="polite" aria-busy="true">
   <p class="compatibility-summary-line compatibility-summary-loading" data-summary-loading role="status">Loading live compatibility evidence…</p>
   <p class="compatibility-summary-line" data-summary-content hidden style="display:none">
-    <span class="compatibility-summary-item"><strong data-summary="models"></strong> <span data-summary-model-label>models with evidence</span> <span class="compatibility-summary-separator" aria-hidden="true">·</span></span>
-    <span class="compatibility-summary-item"><strong data-summary="successes"></strong> successful installs <span class="compatibility-summary-separator" aria-hidden="true">·</span></span>
-    <span class="compatibility-summary-item compatibility-summary-more">More models ready for testing <span class="compatibility-summary-separator" aria-hidden="true">·</span></span>
+    <span class="compatibility-summary-item"><strong data-summary="models"></strong> <span data-summary-model-label>models with evidence</span><span class="compatibility-summary-separator" aria-hidden="true">&nbsp;&nbsp;</span></span>
+    <span class="compatibility-summary-item"><strong data-summary="successes"></strong> successful installs<span class="compatibility-summary-separator" aria-hidden="true">&nbsp;&nbsp;</span></span>
     <span class="compatibility-summary-item compatibility-summary-updated" data-summary-updated hidden>Latest installation <time data-summary="updated"></time></span>
   </p>
-  <p class="compatibility-freshness" role="status"><span id="compatibility-freshness">Loading live compatibility evidence…</span> <button type="button" id="compatibility-retry" hidden>Retry</button></p>
+  <p class="compatibility-freshness" role="status" hidden><span id="compatibility-freshness"></span> <button type="button" id="compatibility-retry" hidden>Retry</button></p>
 </div>
 
           <details class="compatibility-how">
@@ -164,8 +163,8 @@
       <div class="shell footer-note"><p>Visit statistics (Umami) do not use cookies.</p></div>
     </footer>
 
-    <script defer src="/compatibility/compatibility-data.js?v=20260910-live-api-v1"></script>
-    <script defer src="/compatibility/compatibility-locales.js?v=20260910-live-api-v1"></script>
-    <script defer src="/compatibility/compatibility.js?v=20260910-live-api-v1"></script>
+    <script defer src="/compatibility/compatibility-data.js?v=20260910-summary-v1"></script>
+    <script defer src="/compatibility/compatibility-locales.js?v=20260910-summary-v1"></script>
+    <script defer src="/compatibility/compatibility.js?v=20260910-summary-v1"></script>
   </body>
 </html>

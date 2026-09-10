@@ -16,7 +16,6 @@ COPY = {
         "loading": "Loading live compatibility evidence…",
         "model_many": "models with evidence",
         "successes": "successful installs",
-        "more": "More models ready for testing",
         "latest": "Latest installation",
         "retry": "Retry",
         "clear": "Clear filters",
@@ -27,7 +26,6 @@ COPY = {
         "loading": "Aktuelle Kompatibilitätsnachweise werden geladen…",
         "model_many": "Modelle mit Nachweis",
         "successes": "erfolgreiche Installationen",
-        "more": "Weitere Modelle zum Testen",
         "latest": "Letzte Installation",
         "retry": "Erneut versuchen",
         "clear": "Filter zurücksetzen",
@@ -38,7 +36,6 @@ COPY = {
         "loading": "Chargement des données de compatibilité en direct…",
         "model_many": "modèles avec preuve",
         "successes": "installations réussies",
-        "more": "D’autres modèles prêts à être testés",
         "latest": "Dernière installation",
         "retry": "Réessayer",
         "clear": "Effacer les filtres",
@@ -49,7 +46,6 @@ COPY = {
         "loading": "Ładowanie aktualnych danych o kompatybilności…",
         "model_many": "modele z potwierdzeniem",
         "successes": "udanych instalacji",
-        "more": "Kolejne modele gotowe do testów",
         "latest": "Ostatnia instalacja",
         "retry": "Spróbuj ponownie",
         "clear": "Wyczyść filtry",
@@ -60,7 +56,6 @@ COPY = {
         "loading": "Načítají se aktuální údaje o kompatibilitě…",
         "model_many": "modely s ověřením",
         "successes": "úspěšných instalací",
-        "more": "Další modely připravené k testování",
         "latest": "Poslední instalace",
         "retry": "Zkusit znovu",
         "clear": "Vymazat filtry",
@@ -71,7 +66,6 @@ COPY = {
         "loading": "Caricamento dei dati di compatibilità aggiornati…",
         "model_many": "modelli con evidenze",
         "successes": "installazioni riuscite",
-        "more": "Altri modelli pronti per i test",
         "latest": "Ultima installazione",
         "retry": "Riprova",
         "clear": "Cancella filtri",
@@ -98,12 +92,11 @@ def summary_markup(locale: str) -> str:
     return f'''<div class="compatibility-summary" id="compatibility-summary" aria-live="polite" aria-busy="true">
   <p class="compatibility-summary-line compatibility-summary-loading" data-summary-loading role="status">{escape(copy["loading"])}</p>
   <p class="compatibility-summary-line" data-summary-content hidden style="display:none">
-    <span class="compatibility-summary-item"><strong data-summary="models"></strong> <span data-summary-model-label>{escape(copy["model_many"])}</span> <span class="compatibility-summary-separator" aria-hidden="true">·</span></span>
-    <span class="compatibility-summary-item"><strong data-summary="successes"></strong> {escape(copy["successes"])} <span class="compatibility-summary-separator" aria-hidden="true">·</span></span>
-    <span class="compatibility-summary-item compatibility-summary-more">{escape(copy["more"])} <span class="compatibility-summary-separator" aria-hidden="true">·</span></span>
+    <span class="compatibility-summary-item"><strong data-summary="models"></strong> <span data-summary-model-label>{escape(copy["model_many"])}</span><span class="compatibility-summary-separator" aria-hidden="true">&nbsp;&nbsp;</span></span>
+    <span class="compatibility-summary-item"><strong data-summary="successes"></strong> {escape(copy["successes"])}<span class="compatibility-summary-separator" aria-hidden="true">&nbsp;&nbsp;</span></span>
     <span class="compatibility-summary-item compatibility-summary-updated" data-summary-updated hidden>{escape(copy["latest"])} <time data-summary="updated"></time></span>
   </p>
-  <p class="compatibility-freshness" role="status"><span id="compatibility-freshness">{escape(copy["loading"])}</span> <button type="button" id="compatibility-retry" hidden>{escape(copy["retry"])}</button></p>
+  <p class="compatibility-freshness" role="status" hidden><span id="compatibility-freshness"></span> <button type="button" id="compatibility-retry" hidden>{escape(copy["retry"])}</button></p>
 </div>'''
 
 

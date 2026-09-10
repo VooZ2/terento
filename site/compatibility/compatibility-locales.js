@@ -13,7 +13,6 @@
         modelOne: "model with evidence",
         modelMany: "models with evidence",
         successes: "successful installs",
-        moreModels: "More models ready for testing",
         updated: "Updated",
       },
       howSummary: "How compatibility works",
@@ -47,7 +46,7 @@
       metaTitle: "Kompatibilität von Garmin-Uhren — Terento",
       metaDescription: "Prüfe die Kompatibilität von Garmin-Smartwatches mit Terento anhand echter Installationen für Modell und Variante.",
       hero: "Sieh dir echte Terento-Installationsergebnisse für Drittanbieter-Karten nach genauem Garmin-Uhrenmodell und Variante an. Die Kompatibilität wächst, wenn Nutzer weitere erfolgreiche Installationen teilen.",
-      summary: { modelOne: "Modell mit Nachweis", modelMany: "Modelle mit Nachweis", successes: "erfolgreiche Installationen", moreModels: "Weitere Modelle zum Testen", updated: "Aktualisiert" },
+      summary: { modelOne: "Modell mit Nachweis", modelMany: "Modelle mit Nachweis", successes: "erfolgreiche Installationen", updated: "Aktualisiert" },
       howSummary: "So funktioniert die Kompatibilität",
       howText: "Die aktuelle Beta unterstützt Karten von Freizeitkarte und OpenTopoMap. Die öffentliche Kompatibilität basiert auf echten Installationsnachweisen für genaue Garmin-Modelle und Varianten. Jede von Nutzern geteilte erfolgreiche Installation hilft uns, die Kompatibilität verlässlicher zu bestätigen.",
       evidenceNote: "Diese Zahlen stammen aus erfolgreichen Installationen, die mit Terento geteilt wurden. Sie sind keine Garmin-Zertifizierung.",
@@ -63,7 +62,7 @@
       metaTitle: "Compatibilité des montres Garmin — Terento",
       metaDescription: "Vérifiez la compatibilité des montres Garmin avec Terento grâce aux résultats réels par modèle et variante.",
       hero: "Consultez les résultats réels d’installation de cartes tierces avec Terento pour chaque modèle et variante de montre Garmin. La compatibilité progresse à mesure que les utilisateurs partagent de nouvelles installations réussies.",
-      summary: { modelOne: "modèle avec preuve", modelMany: "modèles avec preuve", successes: "installations réussies", moreModels: "D’autres modèles prêts à être testés", updated: "Mis à jour" },
+      summary: { modelOne: "modèle avec preuve", modelMany: "modèles avec preuve", successes: "installations réussies", updated: "Mis à jour" },
       howSummary: "Comment fonctionne la compatibilité",
       howText: "La bêta actuelle prend en charge les cartes de Freizeitkarte et d’OpenTopoMap. La compatibilité publique repose sur des preuves réelles d’installation pour des modèles et variantes Garmin précis. Chaque installation réussie partagée par les utilisateurs nous aide à confirmer la compatibilité avec plus de certitude.",
       evidenceNote: "Ces chiffres proviennent d’installations réussies partagées avec Terento. Ils ne constituent pas une certification Garmin.",
@@ -79,7 +78,7 @@
       metaTitle: "Kompatybilność zegarków Garmin — Terento",
       metaDescription: "Sprawdź kompatybilność zegarków Garmin z Terento na podstawie rzeczywistych instalacji dla modelu i wariantu.",
       hero: "Zobacz rzeczywiste wyniki instalacji map innych firm przez Terento dla konkretnego modelu i wariantu zegarka Garmin. Kompatybilność rośnie wraz z kolejnymi udanymi instalacjami udostępnianymi przez użytkowników.",
-      summary: { modelOne: "model z potwierdzeniem", modelMany: "modele z potwierdzeniem", successes: "udanych instalacji", moreModels: "Kolejne modele gotowe do testów", updated: "Zaktualizowano" },
+      summary: { modelOne: "model z potwierdzeniem", modelMany: "modele z potwierdzeniem", successes: "udanych instalacji", updated: "Zaktualizowano" },
       howSummary: "Jak działa potwierdzanie kompatybilności",
       howText: "Aktualna beta obsługuje mapy Freizeitkarte i OpenTopoMap. Publiczna kompatybilność opiera się na rzeczywistych dowodach instalacji dla konkretnych modeli i wariantów Garmin. Każda udana instalacja udostępniona przez użytkownika pomaga nam potwierdzać kompatybilność z większą pewnością.",
       evidenceNote: "Te dane pochodzą z udanych instalacji udostępnionych Terento. Nie są certyfikatem firmy Garmin.",
@@ -95,7 +94,7 @@
       metaTitle: "Kompatibilita hodinek Garmin — Terento",
       metaDescription: "Ověřte kompatibilitu hodinek Garmin s Terento podle skutečných instalací pro konkrétní model a variantu.",
       hero: "Prohlédněte si skutečné výsledky instalace map třetích stran pomocí Terento pro konkrétní model a variantu hodinek Garmin. Kompatibilita roste s každou další úspěšnou instalací sdílenou uživateli.",
-      summary: { modelOne: "model s ověřením", modelMany: "modely s ověřením", successes: "úspěšných instalací", moreModels: "Další modely připravené k testování", updated: "Aktualizováno" },
+      summary: { modelOne: "model s ověřením", modelMany: "modely s ověřením", successes: "úspěšných instalací", updated: "Aktualizováno" },
       howSummary: "Jak kompatibilita funguje",
       howText: "Aktuální beta podporuje mapy Freizeitkarte a OpenTopoMap. Veřejná kompatibilita vychází ze skutečných instalačních výsledků pro konkrétní modely a varianty Garmin. Každá úspěšná instalace sdílená uživateli nám pomáhá potvrdit kompatibilitu s větší jistotou.",
       evidenceNote: "Tato čísla pocházejí z úspěšných instalací sdílených s Terento. Nejde o certifikaci Garmin.",
@@ -111,7 +110,7 @@
       metaTitle: "Compatibilità degli smartwatch Garmin — Terento",
       metaDescription: "Verifica la compatibilità degli smartwatch Garmin con Terento tramite risultati reali per modello e variante.",
       hero: "Scopri i risultati reali di installazione di mappe di terze parti con Terento per ogni modello e variante di smartwatch Garmin. La compatibilità cresce quando gli utenti condividono nuove installazioni riuscite.",
-      summary: { modelOne: "modello con evidenze", modelMany: "modelli con evidenze", successes: "installazioni riuscite", moreModels: "Altri modelli pronti per i test", updated: "Aggiornato" },
+      summary: { modelOne: "modello con evidenze", modelMany: "modelli con evidenze", successes: "installazioni riuscite", updated: "Aggiornato" },
       howSummary: "Come funziona la compatibilità",
       howText: "La beta attuale supporta le mappe di Freizeitkarte e OpenTopoMap. La compatibilità pubblica si basa su risultati reali di installazione per modelli e varianti Garmin esatti. Ogni installazione riuscita condivisa dagli utenti ci aiuta a confermare la compatibilità con maggiore sicurezza.",
       evidenceNote: "Questi dati provengono da installazioni riuscite condivise con Terento. Non sono una certificazione Garmin.",
@@ -124,9 +123,7 @@
 
   const freshnessCopy = {
   "en": {
-    "more": "More models ready for testing",
     "loading": "Loading live compatibility evidence…",
-    "fresh": "Evidence refreshed",
     "stale": "Could not refresh. Showing the last results loaded from the API; counts and statuses may be outdated.",
     "lastLoaded": "Last loaded",
     "unavailable": "Could not load live compatibility evidence.",
@@ -136,9 +133,7 @@
         "recommended": "Recommended"
   },
   "de": {
-    "more": "Weitere Modelle zum Testen",
     "loading": "Aktuelle Kompatibilitätsnachweise werden geladen…",
-    "fresh": "Nachweise aktualisiert",
     "stale": "Aktualisierung fehlgeschlagen. Die zuletzt aus der API geladenen Ergebnisse werden angezeigt; Zahlen und Status können veraltet sein.",
     "lastLoaded": "Zuletzt geladen",
     "unavailable": "Aktuelle Kompatibilitätsnachweise konnten nicht geladen werden.",
@@ -148,9 +143,7 @@
         "recommended": "Empfohlen"
   },
   "fr": {
-    "more": "D’autres modèles prêts à être testés",
     "loading": "Chargement des données de compatibilité en direct…",
-    "fresh": "Données actualisées",
     "stale": "Actualisation impossible. Les derniers résultats chargés depuis l’API sont affichés ; les chiffres et statuts peuvent être obsolètes.",
     "lastLoaded": "Dernier chargement",
     "unavailable": "Impossible de charger les données de compatibilité en direct.",
@@ -160,9 +153,7 @@
         "recommended": "Recommandé"
   },
   "pl": {
-    "more": "Kolejne modele gotowe do testów",
     "loading": "Ładowanie aktualnych danych o kompatybilności…",
-    "fresh": "Dane odświeżone",
     "stale": "Nie udało się odświeżyć danych. Wyświetlane są ostatnie wyniki pobrane z API; liczby i statusy mogą być nieaktualne.",
     "lastLoaded": "Ostatnio pobrano",
     "unavailable": "Nie udało się pobrać aktualnych danych o kompatybilności.",
@@ -172,9 +163,7 @@
         "recommended": "Zalecane"
   },
   "cs": {
-    "more": "Další modely připravené k testování",
     "loading": "Načítají se aktuální údaje o kompatibilitě…",
-    "fresh": "Údaje aktualizovány",
     "stale": "Aktualizace se nezdařila. Zobrazují se poslední výsledky načtené z API; počty a stavy mohou být zastaralé.",
     "lastLoaded": "Naposledy načteno",
     "unavailable": "Aktuální údaje o kompatibilitě se nepodařilo načíst.",
@@ -184,9 +173,7 @@
         "recommended": "Doporučeno"
   },
   "it": {
-    "more": "Altri modelli pronti per i test",
     "loading": "Caricamento dei dati di compatibilità aggiornati…",
-    "fresh": "Dati aggiornati",
     "stale": "Aggiornamento non riuscito. Sono mostrati gli ultimi risultati caricati dall’API; conteggi e stati potrebbero non essere aggiornati.",
     "lastLoaded": "Ultimo caricamento",
     "unavailable": "Impossibile caricare i dati di compatibilità aggiornati.",

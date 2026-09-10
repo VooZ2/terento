@@ -46,6 +46,7 @@
     summaryContent: document.querySelector("[data-summary-content]"),
     evidenceNote: document.querySelector('[data-compatibility-evidence-note]'),
     statusList: document.querySelector("#compatibility-status-list"),
+    freshnessLine: document.querySelector(".compatibility-freshness"),
     freshness: document.querySelector("#compatibility-freshness"),
     retry: document.querySelector("#compatibility-retry"),
     clear: document.querySelector("#compatibility-clear"),
@@ -228,6 +229,12 @@
     elements.grid.setAttribute("aria-busy", "false");
   }
 
+  function setFreshnessMessage(message) {
+    if (!elements.freshnessLine || !elements.freshness) return;
+    elements.freshness.textContent = message;
+    elements.freshnessLine.hidden = !message;
+  }
+
   async function load({ quiet = false } = {}) {
     try {
       const refreshToken = Date.now();
@@ -244,7 +251,7 @@
         throw new Error(`compatibility_http_${publicStatsResponse.status}`);
       }
       state.rows = mergeRows(stats);
-      if (elements.freshness) elements.freshness.textContent = `${locale.freshness.fresh}: ${formatDate(state.generatedAt)}`;
+      setFreshnessMessage("");
       if (elements.retry) elements.retry.hidden = true;
       state.hasLoaded = true;
       populateFamilies();
@@ -254,11 +261,9 @@
       render();
     } catch (error) {
       const preserveExistingResults = quiet && state.hasLoaded;
-      if (elements.freshness) {
-        elements.freshness.textContent = state.hasLoaded
-          ? `${locale.freshness.stale} ${locale.freshness.lastLoaded}: ${formatDate(state.generatedAt)}`
-          : locale.freshness.unavailable;
-      }
+      setFreshnessMessage(state.hasLoaded
+        ? `${locale.freshness.stale} ${locale.freshness.lastLoaded}: ${formatDate(state.generatedAt)}`
+        : locale.freshness.unavailable);
       if (elements.retry) elements.retry.hidden = false;
       if (!preserveExistingResults) {
         setSettledState("error");

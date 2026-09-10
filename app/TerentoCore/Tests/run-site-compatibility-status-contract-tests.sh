@@ -75,11 +75,14 @@ for path in compatibility_files:
     page = path.read_text()
     assert 'class="compatibility-summary-line compatibility-summary-loading"' in page, f"{path}: missing localized loading state"
     assert 'data-summary-content hidden' in page, f"{path}: API summary must wait for live evidence"
+    assert 'compatibility-summary-more' not in page, f"{path}: testing prompt must not appear in summary"
+    assert 'More models ready for testing' not in page, f"{path}: testing prompt must not appear in English summary"
+    assert 'Evidence refreshed' not in page, f"{path}: refresh label must not appear in summary"
     assert 'id="compatibility-snapshot"' not in page, f"{path}: checked-in compatibility evidence remains"
     assert '<noscript class="compatibility-noscript">' in page, f"{path}: missing no-JS API requirement"
     assert '<strong data-summary="models"></strong>' in page, f"{path}: model count is hardcoded"
     assert '<article class="watch-card"' not in page, f"{path}: model cards are hardcoded"
-    assert 'compatibility.js?v=20260910-live-api-v1' in page, f"{path}: missing cache-busted compatibility script"
+    assert 'compatibility.js?v=20260910-summary-v1' in page, f"{path}: missing cache-busted compatibility script"
 print("Compatibility status web tests passed (statuses, live API loading, exact variants, disclosure, shared badge contract).")
 PY
 
