@@ -1416,7 +1416,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Resolve diagnostic", body)
         self.assertIn("Reopen diagnostic", body)
         self.assertIn("HISTORICAL_SUPERSEDED", body)
-        self.assertIn("Search model, family, variant, case size, or canonical ID", body)
+        self.assertIn("Model, family, variant, size, or ID", body)
         self.assertIn("Canonical ID:", body)
         self.assertIn("Prepare GitHub issue", body)
         self.assertIn("Copy issue report", body)

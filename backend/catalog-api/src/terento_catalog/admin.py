@@ -1111,6 +1111,7 @@ def _overview_chart_bucket_label(
 
 def _overview_trend_chart(
     trend: list[dict[str, Any]], bucket: str, time_zone: str = "UTC",
+    *, _compact: bool = False,
 ) -> str:
     if not trend:
         return "<p class='overview-empty-state'>No map install operations in this period.</p>"
@@ -1124,7 +1125,7 @@ def _overview_trend_chart(
     # it happens to be the local maximum. Larger volumes get a little headroom
     # so bars do not touch the top gridline.
     scale_maximum = max(4, math.ceil(maximum * 1.2))
-    chart_width, chart_height = 720, 260
+    chart_width, chart_height = (360, 220) if _compact else (720, 260)
     left, top, bottom = 38, 20, 34
     plot_height = chart_height - top - bottom
     slot = (chart_width - left - 12) / max(len(values), 1)
@@ -1145,7 +1146,7 @@ def _overview_trend_chart(
         x = center - bar_width / 2
         total_height = plot_height * sum(counts) / scale_maximum
         y = top + plot_height
-        clip_id = f"overview-bar-clip-{index}"
+        clip_id = f"overview-bar-clip-{'mobile-' if _compact else ''}{index}"
         bars.append(
             f"<defs><clipPath id='{clip_id}'><rect x='{x:.1f}' "
             f"y='{y - total_height:.1f}' width='{bar_width:.1f}' "
@@ -1167,12 +1168,21 @@ def _overview_trend_chart(
             )
         bars.append("</g>")
         label_step = max(1, round((len(values) - 1) / (11 if bucket == "hour" else 5)))
-        if len(values) <= 12 or index % label_step == 0 or index == len(values) - 1:
-            labels.append(f"<text x='{center:.1f}' y='{chart_height - 8}' text-anchor='middle'>{html.escape(_overview_chart_bucket_label(item.get('bucket'), bucket, time_zone))}</text>")
+        show_label = len(values) <= 12 or index % label_step == 0 or index == len(values) - 1
+        if _compact:
+            show_label = index in {0, (len(values) - 1) // 2, len(values) - 1}
+        if show_label:
+            anchor = 'start' if _compact and index == 0 else 'end' if _compact and index == len(values) - 1 else 'middle'
+            labels.append(f"<text x='{center:.1f}' y='{chart_height - 8}' text-anchor='{anchor}'>{html.escape(_overview_chart_bucket_label(item.get('bucket'), bucket, time_zone))}</text>")
+    svg = (
+        f"<svg class='overview-trend-chart overview-trend-{'mobile' if _compact else 'desktop'}' viewBox='0 0 {chart_width} {chart_height}' role='img' aria-label='Map install operations over time'>"
+        f"{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
+    )
+    if _compact:
+        return svg
     return (
         "<div class='overview-chart-wrap'>"
-        f"<svg class='overview-trend-chart' viewBox='0 0 {chart_width} {chart_height}' role='img' aria-label='Map install operations over time'>"
-        f"{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
+        + svg + _overview_trend_chart(trend, bucket, time_zone, _compact=True) +
         "<div class='overview-chart-legend'><span><i class='overview-chart-success'></i>Successful</span><span><i class='overview-chart-failed'></i>Failed</span><span><i class='overview-chart-custom'></i>Custom .img</span></div></div>"
     )
 
@@ -2280,7 +2290,7 @@ def map_statistics_page(
         <section class='map-statistics-coverage-layout' id='map-statistics-coverage' {'hidden' if not has_event_data else ''} aria-label='Installation coverage'><section class='provider-card map-statistics-world-map-card' aria-labelledby='map-statistics-world-map-title'><div class='section-heading'><div><p class='section-kicker'>Coverage</p><h2 id='map-statistics-world-map-title'>Installations by country</h2></div><p class='table-help' id='map-statistics-world-map-status'>Successful map-package installs</p></div><div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map showing successful map-package installations by country'><div class='world-map-controls' role='group' aria-label='Map navigation'><button type='button' data-map-zoom='in' aria-label='Zoom in'>+</button><button type='button' data-map-zoom='out' aria-label='Zoom out'>−</button><button type='button' data-map-zoom='reset'>Reset map</button><span id='world-map-zoom-status' role='status'>100%</span></div><div class='world-map-svg' id='world-map-svg' tabindex='0' aria-label='Map viewport. Use arrow keys to pan, plus and minus to zoom, or drag the map.'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div><p class='table-help world-map-note'>Hover or focus a country for totals. Zoom with + / −, drag or use arrow keys to pan. Region links highlight the corresponding country, not the exact map coverage. Unmapped installs remain in the totals.</p></section><section class='provider-card map-statistics-popularity' id='map-statistics-popularity'><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Popular maps</h2></div></div><div class='popularity-subsection'><h3>Top 5 maps</h3><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Popular maps</caption><thead><tr><th scope='col'>Map / region</th><th scope='col'>Provider</th><th scope='col'>Package installs</th><th scope='col'>Last activity</th></tr></thead><tbody id='map-rows'></tbody></table></div><details class='admin-disclosure popularity-all-maps-disclosure'><summary id='all-maps-summary'>Browse all maps</summary><div class='disclosure-body'><label>Search maps<input type='search' id='all-maps-search' placeholder='Map, region or provider'></label><div class='table-wrap'><table class='admin-table'><thead><tr><th>Map / region</th><th>Provider</th><th>Installs</th><th>Last activity</th></tr></thead><tbody id='all-map-rows'></tbody></table></div><div class='provider-pagination'><button type='button' id='all-maps-prev'>Previous</button><span id='all-maps-page' role='status'></span><button type='button' id='all-maps-next'>Next</button></div></div></details></div><details class='admin-disclosure popularity-regions-disclosure'><summary>Regions</summary><div class='disclosure-body'><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Top regions</caption><thead><tr><th scope='col'>Region</th><th scope='col' title='Completed map-package installs'>Installs</th><th scope='col'>Last activity</th></tr></thead><tbody id='top-region-rows'></tbody></table></div></div></details></section></section>
         <section class='provider-card map-events-card' {'hidden' if not has_event_data else ''}><details class='admin-disclosure' id='map-statistics-event-detail'><summary id='map-statistics-event-summary'>Event detail · {event_status}</summary><div class='disclosure-body' id='map-statistics-event-body'>{event_table}</div></details></section>
       </main>
-      <link rel="stylesheet" href="/admin/map-assets/leaflet-1.9.4.css"><link rel="stylesheet" href="/admin/map-assets/coverage-map-v1.css"><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/leaflet-1.9.4.js"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/coverage-map-v1.js?v=20260909-coverage-focus"></script><script>window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};window.terentoWorldMapSvg = {_admin_json(WORLD_MAP_SVG)};window.terentoWorldMapCountryAliases = {_admin_json(WORLD_MAP_COUNTRY_ALIASES)};{_map_statistics_script()}</script>
+      <link rel="stylesheet" href="/admin/map-assets/leaflet-1.9.4.css"><link rel="stylesheet" href="/admin/map-assets/coverage-map-v1.css"><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/leaflet-1.9.4.js"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/coverage-map-v1.js?v=20260910-overview-100"></script><script>window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};window.terentoWorldMapSvg = {_admin_json(WORLD_MAP_SVG)};window.terentoWorldMapCountryAliases = {_admin_json(WORLD_MAP_COUNTRY_ALIASES)};{_map_statistics_script()}</script>
     """
     return _layout("Map statistics", content)
 
@@ -2670,7 +2680,7 @@ def _identity_device_options(devices: list[dict[str, Any]] | None, current_id: A
         if device_id == current:
             current_label = device_id
         options.append(
-            f"<option value='{html.escape(label, quote=True)}' data-device-id='{html.escape(device_id, quote=True)}'></option>"
+            f"<option value='{html.escape(device_id, quote=True)}'{' selected' if device_id == current else ''}>{html.escape(label)}</option>"
         )
     return "".join(options), current_label
 
@@ -3006,9 +3016,10 @@ def _diagnostic_detail_dialog(
         <input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'>
         <h4>Resolve identity</h4>
         <label>Action<select name='identity_action' id='{action_id}' data-identity-action><option value='ASSIGN'>Assign canonical Garmin device</option><option value='LEAVE_UNRESOLVED'>Leave unresolved</option><option value='NOT_IDENTIFIABLE'>Mark as not identifiable</option></select></label>
-        <label data-canonical-device-wrap>Search Garmin device<input id='{search_id}' list='canonical-device-options-{dialog_id}' data-identity-search placeholder='Search model, family, variant, case size, or canonical ID' autocomplete='off'></label>
-        <datalist id='canonical-device-options-{dialog_id}'>{options}</datalist>
-        <input type='hidden' name='canonical_device_model_id' id='{canonical_id}' value='{html.escape(str(first.get('canonical_device_model_id') or ''), quote=True)}'>
+        <div data-canonical-device-wrap>
+          <label>Search Garmin device<input id='{search_id}' type='search' data-identity-search placeholder='Model, family, variant, size, or ID' autocomplete='off' aria-controls='{canonical_id}'></label>
+          <label>Garmin model<select name='canonical_device_model_id' id='{canonical_id}' required><option value=''>Choose a Garmin model</option>{options}</select></label>
+        </div>
         <p class='identity-selection' data-identity-selection>Canonical ID: <code>{html.escape(current_label)}</code></p>
         <label>Reason <span class='optional-label'>Optional</span><input name='identity_reason' placeholder='Exact model confirmed by operator'></label>
         <label>Review note <span class='optional-label'>Optional</span><textarea name='identity_note' rows='3'></textarea></label>
@@ -4559,20 +4570,31 @@ def _diagnostics_script() -> str:
           const form = action.closest('form');
           const wrap = form?.querySelector('[data-canonical-device-wrap]');
           const search = form?.querySelector('[data-identity-search]');
-          const canonical = form?.querySelector('input[name="canonical_device_model_id"]');
+          const canonical = form?.querySelector('select[name="canonical_device_model_id"]');
           const selection = form?.querySelector('[data-identity-selection]');
+          const choices = canonical ? [...canonical.options].filter(option => option.value).map(option => option.cloneNode(true)) : [];
           const sync = () => {
             const assign = action.value === 'ASSIGN';
             if (wrap) wrap.hidden = !assign;
-            if (canonical) canonical.required = assign;
+            if (canonical) { canonical.required = assign; canonical.disabled = !assign; }
+            if (search) search.disabled = !assign;
             if (search && canonical && selection) {
-              const option = [...document.querySelectorAll(`#${search.getAttribute('list')} option`)].find((item) => item.value === search.value);
-              if (option) canonical.value = option.dataset.deviceId || '';
-              if (assign) selection.textContent = `Canonical ID: ${canonical.value || 'No device selected'}`;
+              selection.textContent = assign ? `Canonical ID: ${canonical.value || 'No device selected'}` : 'No model will be assigned.';
             }
           };
           action.addEventListener('change', sync);
-          search?.addEventListener('input', sync);
+          canonical?.addEventListener('change', sync);
+          search?.addEventListener('input', () => {
+            const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+            const query = normalize(search.value.trim());
+            const matches = choices.filter(option => normalize(option.textContent).includes(query));
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = matches.length ? 'Choose a Garmin model' : 'No models match your search';
+            canonical.replaceChildren(placeholder, ...matches.map(option => option.cloneNode(true)));
+            canonical.value = '';
+            sync();
+          });
           sync();
         });
       });
@@ -4999,6 +5021,13 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
 .overview-chart-panel .section-heading{margin-bottom:6px}
 .overview-chart-wrap{max-width:780px;margin:0 auto}
 .overview-trend-chart{display:block;width:100%;height:260px;max-width:760px;min-height:0;margin:0 auto}
+.overview-trend-mobile{display:none}
+@media(max-width:700px){
+  .overview-trend-desktop{display:none}
+  .overview-trend-mobile{display:block;min-width:0;width:100%;height:auto;aspect-ratio:360/220}
+  .overview-chart-wrap{width:100%;min-width:0;overflow:visible}
+  .overview-trend-mobile text{font-size:13px}
+}
 .overview-attention-empty{display:grid;grid-template-columns:minmax(0,auto) minmax(180px,1fr) auto;align-items:center;gap:18px;min-height:76px;padding:12px 16px}
 .overview-attention-empty h2,.overview-provider-panel h2{font-family:var(--font-ui);font-size:var(--admin-type-subsection-size);line-height:var(--admin-type-subsection-line);letter-spacing:0}
 .overview-attention-empty .section-kicker,.overview-provider-panel .section-kicker{margin-bottom:1px}

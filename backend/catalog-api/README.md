@@ -1,11 +1,20 @@
 # Terento metadata service
 
+The overview uses a compact mobile SVG with the same complete time series and
+three time-axis labels; desktop keeps its detailed chart. Clip IDs are unique
+between variants. Identity review uses a searchable native select with exact
+canonical IDs rather than datalist suggestions. Editing the search clears the
+selection, and assignment requires an explicit model choice. Other identity
+actions disable the picker. Backend validation and save semantics are unchanged.
+
 Admin filter actions align with the labelled controls' bottom edge. Mobile
 filter values use regular-weight 16px Inter and retain 44px touch targets;
-the device sort label stacks above its select. Coverage maps initially fit
-countries with completed installations (32px padding, maximum zoom 2).
-Reset returns to that coverage; an empty/unmapped set uses the world view.
-Repeated updates for the same country set preserve manual pan and zoom.
+the device sort label stacks above its select. Coverage maps initially show
+the world center at 168% of the world-fit scale, as requested by the owner.
+That overview is displayed as 100%; all zoom percentages use it as their baseline.
+Reset returns to that same view and 100%. The existing equirectangular SVG stays
+north-up, without rotation or perspective. Data updates, including empty or changed
+country sets, preserve manual pan and zoom rather than auto-fitting coverage.
 
 This service is a metadata-only source for the Terento macOS catalog client.
 It stores map-provider metadata and a separate Garmin smartwatch device

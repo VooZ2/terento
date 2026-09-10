@@ -27,12 +27,47 @@ class Tags(HTMLParser):
 
 
 class AdminAuditTests(unittest.TestCase):
+    def test_mobile_chart_keeps_last_bucket_and_unique_clip_ids(self):
+        import re
+        import xml.etree.ElementTree as ET
+        from terento_catalog.admin import _overview_trend_chart
+        trend = [{"bucket": f"2026-09-10T{hour:02d}:00:00Z", "custom_count": int(hour == 23)} for hour in range(24)]
+        markup = _overview_trend_chart(trend, 'hour')
+        charts = [ET.fromstring(svg) for svg in re.findall(r'<svg.*?</svg>', markup)]
+        self.assertEqual(len(charts), 2)
+        ids = [node.attrib['id'] for chart in charts for node in chart.iter() if 'id' in node.attrib]
+        self.assertEqual(len(ids), len(set(ids)))
+        for chart in charts:
+            bars = [node for node in chart.iter('rect') if node.attrib.get('class') == 'overview-chart-custom']
+            self.assertEqual(len(bars), 1)
+            self.assertIn('23:00', bars[0].attrib['aria-label'])
+            width = float(chart.attrib['viewBox'].split()[2])
+            self.assertLess(float(bars[0].attrib['x']) + float(bars[0].attrib['width']), width)
+        self.assertEqual(charts[1].attrib['viewBox'], '0 0 360 220')
+        self.assertIn('No map install operations', _overview_trend_chart([], 'hour'))
+
+    def test_identity_uses_required_native_select_with_exact_ids(self):
+        from terento_catalog.admin import _diagnostic_detail_dialog
+        markup = _diagnostic_detail_dialog('Unknown', 'preview', [{'phase_outcome': 'FAILED'}],
+            resolved=False, csrf_token='preview', identity_devices=[
+                {'device_id': 'fenix-43', 'model': 'fēnix 8', 'variant': '43 mm'},
+                {'device_id': 'fenix-51', 'model': 'fēnix 8', 'variant': '51 mm'},
+                {'device_id': 'safe-id', 'model': '<unsafe>'}])
+        tags = Tags(markup).tags
+        selects = [attrs for tag, attrs in tags if tag == 'select' and attrs.get('name') == 'canonical_device_model_id']
+        self.assertEqual(len(selects), 1)
+        self.assertIn('required', selects[0])
+        self.assertNotIn('<datalist', markup)
+        self.assertIn("value='fenix-43'", markup)
+        self.assertIn("value='fenix-51'", markup)
+        self.assertIn('&lt;unsafe&gt;', markup)
+
     def test_control_alignment_typography_and_coverage_focus(self):
         body = map_statistics_page({"rows": []}, [], {"username": "audit"}, "csrf").decode()
         for rule in (".filter-bar>.filter-disclosure{align-self:flex-end}",
                      ".filter-bar input,.filter-bar select{font-weight:400}",
                      ".filter-bar .device-mobile-sort{display:flex;flex-direction:column;gap:6px}",
-                     "coverage-map-v1.js?v=20260909-coverage-focus"):
+                     "coverage-map-v1.js?v=20260910-overview-100"):
             self.assertIn(rule, body)
         result = subprocess.run([os.environ.get('TERENTO_NODE_BIN', 'node'),
                                  str(Path(__file__).with_name('coverage-map-tests.cjs'))],
