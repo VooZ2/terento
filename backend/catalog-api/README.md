@@ -1,5 +1,12 @@
 # Terento metadata service
 
+The overview uses a compact mobile SVG with the same complete time series and
+three time-axis labels; desktop keeps its detailed chart. Clip IDs are unique
+between variants. Identity review uses a searchable native select with exact
+canonical IDs rather than datalist suggestions. Editing the search clears the
+selection, and assignment requires an explicit model choice. Other identity
+actions disable the picker. Backend validation and save semantics are unchanged.
+
 Admin filter actions align with the labelled controls' bottom edge. Mobile
 filter values use regular-weight 16px Inter and retain 44px touch targets;
 the device sort label stacks above its select. Coverage maps initially fit

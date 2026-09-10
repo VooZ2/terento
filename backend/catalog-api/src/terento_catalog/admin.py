@@ -1111,6 +1111,7 @@ def _overview_chart_bucket_label(
 
 def _overview_trend_chart(
     trend: list[dict[str, Any]], bucket: str, time_zone: str = "UTC",
+    *, _compact: bool = False,
 ) -> str:
     if not trend:
         return "<p class='overview-empty-state'>No map install operations in this period.</p>"
@@ -1124,7 +1125,7 @@ def _overview_trend_chart(
     # it happens to be the local maximum. Larger volumes get a little headroom
     # so bars do not touch the top gridline.
     scale_maximum = max(4, math.ceil(maximum * 1.2))
-    chart_width, chart_height = 720, 260
+    chart_width, chart_height = (360, 220) if _compact else (720, 260)
     left, top, bottom = 38, 20, 34
     plot_height = chart_height - top - bottom
     slot = (chart_width - left - 12) / max(len(values), 1)
@@ -1145,7 +1146,7 @@ def _overview_trend_chart(
         x = center - bar_width / 2
         total_height = plot_height * sum(counts) / scale_maximum
         y = top + plot_height
-        clip_id = f"overview-bar-clip-{index}"
+        clip_id = f"overview-bar-clip-{'mobile-' if _compact else ''}{index}"
         bars.append(
             f"<defs><clipPath id='{clip_id}'><rect x='{x:.1f}' "
             f"y='{y - total_height:.1f}' width='{bar_width:.1f}' "
@@ -1167,12 +1168,21 @@ def _overview_trend_chart(
             )
         bars.append("</g>")
         label_step = max(1, round((len(values) - 1) / (11 if bucket == "hour" else 5)))
-        if len(values) <= 12 or index % label_step == 0 or index == len(values) - 1:
-            labels.append(f"<text x='{center:.1f}' y='{chart_height - 8}' text-anchor='middle'>{html.escape(_overview_chart_bucket_label(item.get('bucket'), bucket, time_zone))}</text>")
+        show_label = len(values) <= 12 or index % label_step == 0 or index == len(values) - 1
+        if _compact:
+            show_label = index in {0, (len(values) - 1) // 2, len(values) - 1}
+        if show_label:
+            anchor = 'start' if _compact and index == 0 else 'end' if _compact and index == len(values) - 1 else 'middle'
+            labels.append(f"<text x='{center:.1f}' y='{chart_height - 8}' text-anchor='{anchor}'>{html.escape(_overview_chart_bucket_label(item.get('bucket'), bucket, time_zone))}</text>")
+    svg = (
+        f"<svg class='overview-trend-chart overview-trend-{'mobile' if _compact else 'desktop'}' viewBox='0 0 {chart_width} {chart_height}' role='img' aria-label='Map install operations over time'>"
+        f"{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
+    )
+    if _compact:
+        return svg
     return (
         "<div class='overview-chart-wrap'>"
-        f"<svg class='overview-trend-chart' viewBox='0 0 {chart_width} {chart_height}' role='img' aria-label='Map install operations over time'>"
-        f"{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
+        + svg + _overview_trend_chart(trend, bucket, time_zone, _compact=True) +
         "<div class='overview-chart-legend'><span><i class='overview-chart-success'></i>Successful</span><span><i class='overview-chart-failed'></i>Failed</span><span><i class='overview-chart-custom'></i>Custom .img</span></div></div>"
     )
 
@@ -2670,7 +2680,7 @@ def _identity_device_options(devices: list[dict[str, Any]] | None, current_id: A
         if device_id == current:
             current_label = device_id
         options.append(
-            f"<option value='{html.escape(label, quote=True)}' data-device-id='{html.escape(device_id, quote=True)}'></option>"
+            f"<option value='{html.escape(device_id, quote=True)}'{' selected' if device_id == current else ''}>{html.escape(label)}</option>"
         )
     return "".join(options), current_label
 
@@ -3006,9 +3016,10 @@ def _diagnostic_detail_dialog(
         <input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'>
         <h4>Resolve identity</h4>
         <label>Action<select name='identity_action' id='{action_id}' data-identity-action><option value='ASSIGN'>Assign canonical Garmin device</option><option value='LEAVE_UNRESOLVED'>Leave unresolved</option><option value='NOT_IDENTIFIABLE'>Mark as not identifiable</option></select></label>
-        <label data-canonical-device-wrap>Search Garmin device<input id='{search_id}' list='canonical-device-options-{dialog_id}' data-identity-search placeholder='Search model, family, variant, case size, or canonical ID' autocomplete='off'></label>
-        <datalist id='canonical-device-options-{dialog_id}'>{options}</datalist>
-        <input type='hidden' name='canonical_device_model_id' id='{canonical_id}' value='{html.escape(str(first.get('canonical_device_model_id') or ''), quote=True)}'>
+        <div data-canonical-device-wrap>
+          <label>Search Garmin device<input id='{search_id}' type='search' data-identity-search placeholder='Model, family, variant, size, or ID' autocomplete='off' aria-controls='{canonical_id}'></label>
+          <label>Garmin model<select name='canonical_device_model_id' id='{canonical_id}' required><option value=''>Choose a Garmin model</option>{options}</select></label>
+        </div>
         <p class='identity-selection' data-identity-selection>Canonical ID: <code>{html.escape(current_label)}</code></p>
         <label>Reason <span class='optional-label'>Optional</span><input name='identity_reason' placeholder='Exact model confirmed by operator'></label>
         <label>Review note <span class='optional-label'>Optional</span><textarea name='identity_note' rows='3'></textarea></label>
@@ -4559,20 +4570,31 @@ def _diagnostics_script() -> str:
           const form = action.closest('form');
           const wrap = form?.querySelector('[data-canonical-device-wrap]');
           const search = form?.querySelector('[data-identity-search]');
-          const canonical = form?.querySelector('input[name="canonical_device_model_id"]');
+          const canonical = form?.querySelector('select[name="canonical_device_model_id"]');
           const selection = form?.querySelector('[data-identity-selection]');
+          const choices = canonical ? [...canonical.options].filter(option => option.value).map(option => option.cloneNode(true)) : [];
           const sync = () => {
             const assign = action.value === 'ASSIGN';
             if (wrap) wrap.hidden = !assign;
-            if (canonical) canonical.required = assign;
+            if (canonical) { canonical.required = assign; canonical.disabled = !assign; }
+            if (search) search.disabled = !assign;
             if (search && canonical && selection) {
-              const option = [...document.querySelectorAll(`#${search.getAttribute('list')} option`)].find((item) => item.value === search.value);
-              if (option) canonical.value = option.dataset.deviceId || '';
-              if (assign) selection.textContent = `Canonical ID: ${canonical.value || 'No device selected'}`;
+              selection.textContent = assign ? `Canonical ID: ${canonical.value || 'No device selected'}` : 'No model will be assigned.';
             }
           };
           action.addEventListener('change', sync);
-          search?.addEventListener('input', sync);
+          canonical?.addEventListener('change', sync);
+          search?.addEventListener('input', () => {
+            const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+            const query = normalize(search.value.trim());
+            const matches = choices.filter(option => normalize(option.textContent).includes(query));
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = matches.length ? 'Choose a Garmin model' : 'No models match your search';
+            canonical.replaceChildren(placeholder, ...matches.map(option => option.cloneNode(true)));
+            canonical.value = '';
+            sync();
+          });
           sync();
         });
       });
@@ -4999,6 +5021,13 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
 .overview-chart-panel .section-heading{margin-bottom:6px}
 .overview-chart-wrap{max-width:780px;margin:0 auto}
 .overview-trend-chart{display:block;width:100%;height:260px;max-width:760px;min-height:0;margin:0 auto}
+.overview-trend-mobile{display:none}
+@media(max-width:700px){
+  .overview-trend-desktop{display:none}
+  .overview-trend-mobile{display:block;min-width:0;width:100%;height:auto;aspect-ratio:360/220}
+  .overview-chart-wrap{width:100%;min-width:0;overflow:visible}
+  .overview-trend-mobile text{font-size:13px}
+}
 .overview-attention-empty{display:grid;grid-template-columns:minmax(0,auto) minmax(180px,1fr) auto;align-items:center;gap:18px;min-height:76px;padding:12px 16px}
 .overview-attention-empty h2,.overview-provider-panel h2{font-family:var(--font-ui);font-size:var(--admin-type-subsection-size);line-height:var(--admin-type-subsection-line);letter-spacing:0}
 .overview-attention-empty .section-kicker,.overview-provider-panel .section-kicker{margin-bottom:1px}
