@@ -255,6 +255,8 @@ final class MapEngine: ObservableObject {
     private var customMapImportAcknowledged = false
     private var selectedInstallationPlan: InstallationPlan?
     private var mapStatisticsOperationID = UUID()
+    // Failure reports keep the operation device even after a disconnect clears inventory.
+    private var diagnosticInstallationIdentity: DeviceIdentity?
 
     var validatedArtifact: ValidatedMapArtifact? {
         guard let firstPackageID = selectedInstallationPlan?.installItems.first?.package.id else {
@@ -1112,6 +1114,7 @@ final class MapEngine: ObservableObject {
 
         installationAuthorizationGranted = true
         mapStatisticsOperationID = operationId
+        diagnosticInstallationIdentity = currentIdentity
         mapStatisticsEvents = []
         selectedInstallationPlan = plan
         selectedPreflight = nil
@@ -1776,6 +1779,10 @@ final class MapEngine: ObservableObject {
         technicalError: String? = nil
     ) {
         TerentoDiagnosticLog.recordInstallationFailure(
+            identity: diagnosticInstallationIdentity ?? currentIdentity,
+            operationID: mapStatisticsOperationID,
+            failureStage: evidenceFailureStage?.rawValue,
+            failureCode: evidenceFailure?.rawValue,
             maps: selectedInstallationPlan?.installItems.map(\.package) ?? [],
             phase: installationPhase,
             engineState: state,

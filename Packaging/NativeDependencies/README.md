@@ -41,3 +41,28 @@ behaviors verified for Terento: automatic 12-byte split-header detection, the
 matching split-send path, and a zero-length terminating USB write for
 packet-aligned transfers. This is a source-level dependency upgrade gate, not
 a substitute for a real-device transfer test.
+
+The `partial-read-diagnostics-v1` local libmtp patch preserves a failed
+`GetPartialObject` PTP response in the existing error stack. The bridge exports
+only its numeric code in `read_ptp_response`; no raw error text is shared. USB
+requests, retries and return values are unchanged. The exact-source patch is
+idempotent and rejects source drift. A patch-versioned prefix and cache marker
+force rebuilding libmtp even when an older unpatched runtime is cached.
+
+The local `usb-session-v1` patch corrects five failed-open paths in libmtp's
+USB glue so that an opened USB handle is closed before its wrapper is freed;
+a claimed interface is released before that close. Descriptor/claim failures
+do not attempt to release an unclaimed interface. These are resource-lifecycle
+fixes, not map-file cleanup operations.
+
+As a local hardware-test candidate, the same patch suppresses the inherited
+`FORCE_RESET_ON_CLOSE` quirk only on macOS for Garmin VID/PID `091e:51b8`
+(fēnix 8 AMOLED). The guard applies whenever `close_usb` would perform that
+flag-driven reset, including recovery closes; the explicit reset after a failed
+OpenSession remains. Other flags and device IDs retain upstream behavior.
+Sample coverage, transfer verification and ownership rules are unchanged.
+The cache revision is `partial-read-diagnostics-v1-usb-session-v1`.
+This candidate has not yet established a hardware fix for issue 148 and has
+been included in local build20 for owner retesting, not publicly released. The existing native profile checks
+exercise the transformed C lifecycle paths with fake USB handles and reject
+source drift; real repeated install/remove testing remains required.

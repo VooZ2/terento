@@ -28,6 +28,11 @@ same override is used by the web, native, backend, and release checks.
 
 ## Full release validation
 
+The current public target is beta.11 build 21. Public tags and release
+artifacts never use the `-local` suffix; Debug artifacts for owner testing do.
+The beta.11 release uses the same shared installation, update and removal path
+as the existing providers.
+
 Run from the repository root:
 
 ```sh
@@ -38,11 +43,11 @@ For a beta release, keep the app's marketing version separate from the public
 release label:
 
 ```sh
-RELEASE_TAG=v1.0.0-beta.10-build15 \
+RELEASE_TAG=v1.0.0-beta.11-build21 \
 Packaging/release.sh \
   --version 1.0.0 \
-  --build 15 \
-  --release-version 1.0.0-beta.10 \
+  --build 21 \
+  --release-version 1.0.0-beta.11 \
   --overwrite
 ```
 
@@ -51,8 +56,8 @@ The pipeline fails rather than silently replacing an existing artifact. Use
 The results are written to:
 
 ```text
-dist/Terento-1.0.0-beta.10-macOS-arm64.zip
-dist/Terento-1.0.0-beta.10-macOS-arm64.dmg
+dist/Terento-1.0.0-beta.11-macOS-arm64.zip
+dist/Terento-1.0.0-beta.11-macOS-arm64.dmg
 ```
 
 The command prints the final artifact size and SHA-256 checksum for both

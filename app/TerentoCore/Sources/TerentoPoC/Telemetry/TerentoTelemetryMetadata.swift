@@ -7,7 +7,7 @@ import Foundation
 /// Xcode Debug does so with the `-local` suffix and Release provides the
 /// public label. We never emit `development` as a telemetry identity.
 enum TerentoTelemetryMetadata {
-    static let fallbackLocalReleaseLabel = "1.0.0-beta.10-local"
+    static let fallbackLocalReleaseLabel = "1.0.0-beta.11-local"
 
     static let version = (Bundle.main.object(
         forInfoDictionaryKey: "CFBundleShortVersionString"

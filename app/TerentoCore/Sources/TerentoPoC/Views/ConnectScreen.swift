@@ -2252,9 +2252,9 @@ struct ConnectScreen: View {
                 matchedSampleCount: verification?.matchedSampleCount
             )
         )
-        diagnosticLogMessage = InstallationIssueReport.copyAndOpenGitHub(draft)
+        diagnosticLogMessage = InstallationIssueReport.openGitHub(draft)
             ? nil
-            : "GitHub could not be opened. The report is still copied and ready to paste."
+            : "GitHub could not be opened. Please try again."
     }
 
     private var finishContent: some View {
@@ -2799,7 +2799,7 @@ private struct InstallationFailureDialog: View {
     let onBackToDevice: () -> Void
 
     private var supportingMessage: String? {
-        [safetyMessage, reportError]
+        [safetyMessage, "Report issue copies the full report and opens GitHub. If the form is not filled in, click its report field and press ⌘A, then ⌘V. Review before submitting.", reportError]
             .compactMap { value in
                 let normalized = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 return normalized.isEmpty ? nil : normalized
@@ -3893,11 +3893,9 @@ private struct ManageMapRow: View {
     private var manageDetail: String {
         if let operation {
             switch operation.phase {
-            case .completed:
-                return "Action complete"
             case .failed:
                 return operation.message
-            case .idle, .awaitingConfirmation, .backingUp, .removing, .updating, .verifying:
+            case .idle, .awaitingConfirmation, .backingUp, .removing, .updating, .verifying, .completed:
                 break
             }
         }
@@ -4636,25 +4634,34 @@ struct MapSelectionRow: View {
                 showsDivider: !showsOptionalControl
             ) {
                 HStack(spacing: 6) {
-                    if isAvailable && item.isSelectable && selectionEnabled && showsSelectionControl {
-                        Toggle("", isOn: $isSelected)
-                            .toggleStyle(.checkbox)
-                            .tint(TerentoColors.interactive)
-                            .labelsHidden()
-                    } else if crossProviderSelectionDisabled {
-                        Toggle("", isOn: .constant(false))
-                            .toggleStyle(.checkbox)
-                            .tint(TerentoColors.interactive)
-                            .labelsHidden()
-                            .disabled(true)
-                            .help("Choose maps from one provider at a time.")
-                    } else if showsSelectionControl
-                        && item.acquisitionAvailability == .available
-                        && !isAlreadyInstalledSearchResult {
-                        Image(systemName: statusIcon)
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(statusColor)
-                            .frame(width: 18)
+                    if showsSelectionControl {
+                        ZStack {
+                            // Keep the map icon and title in the same column when
+                            // an installed or unavailable row has no checkbox.
+                            Color.clear
+                                .accessibilityHidden(true)
+
+                            if isAvailable && item.isSelectable && selectionEnabled {
+                                Toggle("", isOn: $isSelected)
+                                    .toggleStyle(.checkbox)
+                                    .tint(TerentoColors.interactive)
+                                    .labelsHidden()
+                            } else if crossProviderSelectionDisabled {
+                                Toggle("", isOn: .constant(false))
+                                    .toggleStyle(.checkbox)
+                                    .tint(TerentoColors.interactive)
+                                    .labelsHidden()
+                                    .disabled(true)
+                                    .help("Choose maps from one provider at a time.")
+                            } else if item.acquisitionAvailability == .available
+                                && !isAlreadyInstalledSearchResult {
+                                Image(systemName: statusIcon)
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundStyle(statusColor)
+                                    .frame(width: 18)
+                            }
+                        }
+                        .frame(width: 18, height: 18)
                     }
 
                     Image(systemName: "map")

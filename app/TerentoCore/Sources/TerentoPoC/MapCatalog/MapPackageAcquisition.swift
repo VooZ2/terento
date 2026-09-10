@@ -179,6 +179,8 @@ struct ReviewedProviderURLPolicy: Sendable {
         allowedHosts: ["garmin.opentopomap.org"]
     )
 
+    static let mapRando = ReviewedProviderURLPolicy(allowedHosts: ["ravenfeld.fr"])
+
     let allowedHosts: Set<String>
 
     init(allowedHosts: Set<String>) {
@@ -205,7 +207,8 @@ struct ReviewedProviderURLPolicyRegistry: Sendable {
     static let bundled = ReviewedProviderURLPolicyRegistry(
         policies: [
             "freizeitkarte": .freizeitkarte,
-            "opentopomap": .openTopoMap
+            "opentopomap": .openTopoMap,
+            "maprando": .mapRando
         ]
     )
 

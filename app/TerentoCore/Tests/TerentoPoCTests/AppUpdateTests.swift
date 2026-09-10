@@ -150,6 +150,14 @@ struct AppUpdateTests {
         expect(decoded.channel == .beta, "update channel is decoded")
         try TerentoAppUpdateService.validate(manifest: decoded)
 
+        let multilineSummary = manifest(
+            version: "1.0.0",
+            build: 2,
+            summary: "• First item\n• Second item\n• Third item"
+        )
+        try TerentoAppUpdateService.validate(manifest: multilineSummary)
+        expect(multilineSummary.summary?.contains("\n•") == true, "multiline update bullets are accepted")
+
         let legacyJSON = Data(
             """
             {
@@ -376,6 +384,7 @@ struct AppUpdateTests {
         build: Int,
         releaseLabel: String? = nil,
         minimumMacOS: String? = "13.0",
+        summary: String = "A concise test summary.",
         releaseNotesURL: URL? = URL(
             string: "https://github.com/VooZ2/terento/releases/tag/test"
         )
@@ -395,7 +404,7 @@ struct AppUpdateTests {
                 string: "https://github.com/VooZ2/terento/releases/tag/test"
             )!,
             releaseNotesURL: releaseNotesURL,
-            summary: "A concise test summary.",
+            summary: summary,
             publishedAt: "2026-08-26",
             channel: .beta,
             sha256: nil,

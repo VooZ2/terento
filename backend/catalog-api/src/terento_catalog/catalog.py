@@ -229,6 +229,21 @@ def _build_provider_neutral_catalog(
                 },
                 "artifacts": [],
             }
+            if provider_id == "maprando":
+                try:
+                    daily = datetime.strptime(release, "%Y-%m-%d")
+                except ValueError:
+                    continue
+                package["version"]["day"] = daily.day
+                # Geography is adapter metadata; database rows intentionally keep
+                # the existing schema and legacy provider projections unchanged.
+                from .maprando_geography import REGION_GEOGRAPHY
+                from .maprando import policy_identity
+                slug = str(row.get("provider_region_id") or "")
+                _, policy_codes = policy_identity(slug)
+                codes, kind = REGION_GEOGRAPHY.get(slug, (policy_codes, "subregion"))
+                package["countryCodes"] = list(codes)
+                package["regionKind"] = kind
             packages[key] = package
             provider["maps"].append(package)
 

@@ -43,6 +43,15 @@ enum MapDisplayNameNormalizer: Sendable {
         var trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         if let providerID {
             trimmed = stripProviderDecoration(trimmed, providerID: providerID)
+            // Scanned Freizeitkarte titles can be bare ISO tokens. Expand
+            // only the whole token: DEU+NORTH and regional aliases must not
+            // silently become a country-wide map.
+            if MapIdentity.normalizeProvider(providerID) == "freizeitkarte",
+               (trimmed.count == 2 || trimmed.count == 3),
+               trimmed.allSatisfy({ $0.isASCII && $0.isUppercase }),
+               let country = Locale(identifier: "en").localizedString(forRegionCode: trimmed) {
+                trimmed = country
+            }
         }
 
         if let formalName = formalNames[trimmed] {
@@ -212,6 +221,8 @@ enum MapDisplayNameNormalizer: Sendable {
             return ["freizeitkarte ", "fzk "]
         case "opentopomap":
             return ["opentopomap ", "otm "]
+        case "maprando":
+            return ["maprando ", "rando "]
         default:
             return []
         }

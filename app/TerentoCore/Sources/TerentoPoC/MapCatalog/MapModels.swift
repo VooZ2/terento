@@ -223,12 +223,19 @@ enum MapSource: Equatable, Sendable {
 /// code consume the neutral package/artifact model.
 protocol MapProviderAdapter: Sendable {
     var id: String { get }
+    /// Original provider download format; final write validation must match
+    /// the reviewed acquisition path, independently of its IMG payload.
+    var usesRawIMGDownload: Bool { get }
     func canonicalRegionIdentity(for package: MapPackage) -> CanonicalMapRegionIdentity?
     /// The identity the current client parser is expected to recover from the
     /// provider's IMG header/managed filename. This lets the catalog loader
     /// reject metadata that a released client cannot validate safely.
     func expectedIMGIdentity(for package: MapPackage) -> MapIdentity?
     func artifacts(for package: MapPackage) -> [MapArtifact]
+}
+
+extension MapProviderAdapter {
+    var usesRawIMGDownload: Bool { false }
 }
 
 struct FreizeitkarteProviderAdapter: MapProviderAdapter, Sendable {
@@ -263,6 +270,31 @@ struct OpenTopoMapProviderAdapter: MapProviderAdapter, Sendable {
     func artifacts(for package: MapPackage) -> [MapArtifact] {
         package.artifacts
     }
+}
+
+/// The French provider package token remains the identity, including variants.
+struct MapRandoProviderAdapter: MapProviderAdapter, Sendable {
+    let id = "maprando"
+    let usesRawIMGDownload = true
+
+    func canonicalRegionIdentity(for package: MapPackage) -> CanonicalMapRegionIdentity? {
+        let tokens = [package.providerRegionId, package.canonicalRegionId, package.regionId]
+            .map { MapIdentity(provider: id, region: $0)?.region ?? "" }
+        if tokens.contains(where: { $0.contains("CRIMEE") || $0.contains("CRIMEA") }) {
+            return CanonicalMapRegionIdentity(countryCode: "UA", locality: "CRIMEA")
+        }
+        if tokens.contains(where: { $0.contains("RUSSIE") || $0.contains("RUSSIA") })
+            || package.countryCodes.contains(where: { $0.uppercased() == "RU" }) {
+            return CanonicalMapRegionIdentity(countryCode: "RU")
+        }
+        return package.countryCodes.first.map { CanonicalMapRegionIdentity(countryCode: $0) }
+    }
+
+    func expectedIMGIdentity(for package: MapPackage) -> MapIdentity? {
+        MapIdentity(provider: id, region: package.providerRegionId)
+    }
+
+    func artifacts(for package: MapPackage) -> [MapArtifact] { package.artifacts }
 }
 
 /// OpenTopoMap publishes country names in its Garmin page while the catalog
@@ -314,7 +346,8 @@ struct MapProviderRegistry: Sendable {
 
     static let bundled = MapProviderRegistry(adapters: [
         FreizeitkarteProviderAdapter(),
-        OpenTopoMapProviderAdapter()
+        OpenTopoMapProviderAdapter(),
+        MapRandoProviderAdapter()
     ])
 
     init(adapters: [any MapProviderAdapter]) {

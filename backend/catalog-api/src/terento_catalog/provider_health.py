@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from .collectors.freizeitkarte.range_zip import HTTPRangeFetcher, ZipRangeError, ZipRangeInspector
-from .provider_catalog import ProviderDefinition
+from .provider_catalog import ProviderDefinition, ProviderCollectionError
 
 
 MAX_TEXT_BYTES = 128 * 1024
@@ -59,6 +59,10 @@ class DefaultProviderProbe:
         return ZipRangeInspector(HTTPRangeFetcher(timeout_seconds=15)).inspect(
             url, expected_payload_path=None
         )
+
+    def inspect_img(self, url: str):
+        from .maprando import inspect_maprando_img
+        return inspect_maprando_img(url)
 
     def inspect_magic(self, url: str) -> bytes:
         return HTTPRangeFetcher(timeout_seconds=15).fetch_range(url, 0, 3).body
@@ -176,11 +180,26 @@ def check_provider(
         else:
             download_status = "DOWN"
             errors.append("download_http")
-        if artifact.content_type and "zip" in artifact.content_type.lower():
+        raw_img = definition.id == "maprando" and urlparse(url).path.lower().endswith(".img")
+        if artifact.content_type and ("zip" in artifact.content_type.lower() or (raw_img and artifact.content_type.split(";", 1)[0].lower() in {"application/octet-stream", "application/x-garmin-img"})):
             mime_status = "HEALTHY"
         else:
             mime_status = "DEGRADED"
             errors.append("download_mime")
+        if raw_img:
+            try:
+                inspect_img = getattr(probe, "inspect_img", None)
+                if inspect_img is None:
+                    raise ValueError("IMG probe unavailable")
+                if not inspect_img(url).identity_validated:
+                    raise ValueError("MapRando source identity is unavailable")
+                magic_status = img_status = "HEALTHY"
+                zip_status = "NOT_APPLICABLE"
+            except (OSError, ValueError, ZipRangeError, ProviderCollectionError) as exc:
+                magic_status = img_status = "DEGRADED"
+                zip_status = "NOT_APPLICABLE"
+                errors.append(f"img_check:{type(exc).__name__}")
+            continue
         try:
             inspect_magic = getattr(probe, "inspect_magic", None)
             prefix = (
@@ -202,7 +221,7 @@ def check_provider(
             img_status = "HEALTHY" if measurement.install_size_bytes else "DEGRADED"
             if not measurement.install_size_bytes:
                 errors.append("img_missing")
-        except (OSError, ValueError, ZipRangeError) as exc:
+        except (OSError, ValueError, ZipRangeError, ProviderCollectionError) as exc:
             zip_status = "DEGRADED"
             img_status = "UNKNOWN"
             errors.append(f"zip_check:{type(exc).__name__}")

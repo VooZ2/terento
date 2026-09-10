@@ -12,7 +12,11 @@ struct MapIdentity: Codable, Equatable, Hashable, Sendable {
         }
 
         let normalizedProvider = Self.normalizeProvider(provider)
-        let normalizedRegion = Self.normalizeRegion(region)
+        let normalizedRegion = Self.normalizeRegion(
+            normalizedProvider == "maprando"
+                ? region.folding(options: [.diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))
+                : region
+        )
         guard !normalizedProvider.isEmpty, !normalizedRegion.isEmpty else {
             return nil
         }

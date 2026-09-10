@@ -1,5 +1,6 @@
 #include "MTPBridge.h"
 #include "FinishingTrace.h"
+#include "SampleCoverage.h"
 
 #include <libusb.h>
 #include <libmtp.h>
@@ -1408,7 +1409,45 @@ static int validate_stage42_target(
         return -1;
     }
 
-    for (size_t index = prefix_length; index < length - suffix_length; index += 1) {
+    size_t component_end = length - suffix_length;
+    const char *version_separator = strrchr(target_filename, '_');
+    /* Safe Update writes a new versioned object before removing the old one.
+       Permit only the generator's terminal YYYY-MM or YYYY-MM-DD suffix;
+       hyphens in provider/region components remain forbidden. */
+    if (version_separator != NULL
+        && memchr(version_separator, '-', (size_t)(target_filename + component_end - version_separator)) != NULL) {
+        const char *version = version_separator + 1;
+        size_t version_length = (size_t)(target_filename + component_end - version);
+        int valid = version_length == 7 || version_length == 10;
+        for (size_t index = 0; valid && index < version_length; index += 1) {
+            if (index == 4 || index == 7) {
+                valid = version[index] == '-';
+            } else {
+                valid = version[index] >= '0' && version[index] <= '9';
+            }
+        }
+        if (valid) {
+            int month = (version[5] - '0') * 10 + version[6] - '0';
+            valid = month >= 1 && month <= 12;
+            if (valid && version_length == 10) {
+                int year = (version[0] - '0') * 1000 + (version[1] - '0') * 100
+                    + (version[2] - '0') * 10 + version[3] - '0';
+                int day = (version[8] - '0') * 10 + version[9] - '0';
+                int days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+                if (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)) {
+                    days[1] = 29;
+                }
+                valid = year >= 2000 && year <= 2099 && day >= 1 && day <= days[month - 1];
+            }
+        }
+        if (!valid || version_separator <= target_filename + prefix_length) {
+            set_error(error_message, error_message_capacity, "The managed map version suffix is invalid");
+            return -1;
+        }
+        component_end = (size_t)(version_separator - target_filename);
+    }
+
+    for (size_t index = prefix_length; index < component_end; index += 1) {
         unsigned char character = (unsigned char)target_filename[index];
         if (!(islower(character) || isdigit(character) || character == '_')) {
             set_error(
@@ -1916,18 +1955,11 @@ int terento_mtp_verify_managed_map_samples(
     }
 
     uint64_t total_sample_bytes = 0;
-    for (size_t index = 0; index < sample_count; index += 1) {
-        if (sample_offsets[index] >= expected_size_bytes) {
-            set_error(error_message, error_message_capacity, "A sampled map offset is outside the validated source");
-            return -5;
-        }
-        uint64_t remaining = expected_size_bytes - sample_offsets[index];
-        uint64_t requested = remaining < sample_length ? remaining : sample_length;
-        if (UINT64_MAX - total_sample_bytes < requested) {
-            set_error(error_message, error_message_capacity, "The sampled verification size is unavailable");
-            return -6;
-        }
-        total_sample_bytes += requested;
+    TerentoSampleRegion sample_regions[TERENTO_MAX_MAP_SAMPLES];
+    if (terento_plan_sample_coverage(expected_size_bytes, sample_offsets, sample_count,
+                                    sample_length, sample_regions, &total_sample_bytes) != 0) {
+        set_error(error_message, error_message_capacity, "A sampled map offset is outside the validated source");
+        return -5;
     }
 
     FILE *source = fopen(local_path, "rb");
@@ -1943,13 +1975,12 @@ int terento_mtp_verify_managed_map_samples(
     int result = 0;
 
     for (size_t index = 0; index < sample_count; index += 1) {
-        terento_trace_event(&trace, "region_begin", sample_offsets[index], 0, index);
-        uint64_t remaining = expected_size_bytes - sample_offsets[index];
-        uint32_t region_length = remaining < sample_length ? (uint32_t)remaining : sample_length;
+        terento_trace_event(&trace, "region_begin", sample_regions[index].offset, 0, index);
+        uint32_t region_length = sample_regions[index].length;
         /* Keep the exact sampled byte coverage, but do not ask Garmin firmware
            to buffer a multi-megabyte GetPartialObject response in one call. */
         for (uint32_t consumed = 0; consumed < region_length;) {
-        uint64_t offset = sample_offsets[index] + consumed;
+        uint64_t offset = sample_regions[index].offset + consumed;
         uint32_t requested = region_length - consumed;
         if (requested > 64 * 1024) requested = 64 * 1024;
         unsigned int failed_attempts = 0;
@@ -2032,6 +2063,19 @@ int terento_mtp_verify_managed_map_samples(
                     LIBMTP_error_t *trace_error = LIBMTP_Get_Errorstack(device);
                     terento_trace_event(&trace, "read_error_code", offset,
                         trace_error == NULL ? 0 : (int)trace_error->errornumber, requested);
+                    for (; trace_error != NULL; trace_error = trace_error->next) {
+                        unsigned int ptp_response = 0;
+                        int parsed_length = 0;
+                        if (trace_error->error_text != NULL
+                            && sscanf(trace_error->error_text,
+                                "PTP Layer error %4x: Terento partial read response%n",
+                                &ptp_response, &parsed_length) == 1
+                            && parsed_length > 0 && trace_error->error_text[parsed_length] == '\0') {
+                            terento_trace_event(&trace, "read_ptp_response", offset,
+                                (int)ptp_response, requested);
+                            break;
+                        }
+                    }
                 }
                 if (raw_bytes != NULL) {
                     LIBMTP_FreeMemory(raw_bytes);

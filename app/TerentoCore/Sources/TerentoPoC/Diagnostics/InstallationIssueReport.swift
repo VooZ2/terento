@@ -7,6 +7,12 @@ struct InstallationIssueDraft: Equatable, Sendable {
     let url: URL
 }
 
+enum DiagnosticMapOperation: String, Sendable {
+    case installation = "Map installation"
+    case update = "Map update"
+    case removal = "Map removal"
+}
+
 struct InstallationIssueMap: Equatable, Sendable {
     let provider: String
     let region: String
@@ -36,6 +42,8 @@ enum InstallationIssueReport {
         identity: DeviceIdentity?,
         maps: [InstallationIssueMap],
         stage: String,
+        operation: DiagnosticMapOperation = .installation,
+        lifecycleFacts: [String] = [],
         error: String?,
         operationID: UUID?,
         failureStages: [String] = [],
@@ -61,7 +69,7 @@ enum InstallationIssueReport {
         let primaryRegion = primaryMap.map { sanitizedLine($0.region, fallback: "Map") } ?? "Map"
         let title = String(
             DiagnosticReportSanitizer.sanitize(
-                "Installation stopped during \(safeStage) — \(primaryProvider) / \(primaryRegion)"
+                "\(operation == .installation ? "Installation" : operation.rawValue) stopped during \(safeStage) — \(primaryProvider) / \(primaryRegion)"
             ).prefix(180)
         )
 
@@ -106,6 +114,10 @@ enum InstallationIssueReport {
             ("Planned samples", verification.sampleCount.map(String.init)),
             ("Matched samples", verification.matchedSampleCount.map(String.init))
         ]
+        let mapLines = reportedMaps.map { map in
+            "- \(sanitizedLine(map.provider, fallback: "Unavailable")) / \(sanitizedLine(map.package, fallback: "Unavailable")): release=\(sanitizedLine(map.release ?? "Unavailable", fallback: "Unavailable")), planned installed bytes=\(map.artifactSizeBytes.map(String.init) ?? "Unavailable")"
+        }.joined(separator: "\n")
+        let lifecycleLines = lifecycleFacts.map { "- \(sanitizedLine($0, fallback: "Unavailable"))" }.joined(separator: "\n")
         let verificationLines = facts.map { label, value in
             "- \(label): \(value.map { sanitizedLine($0, fallback: "Unavailable") } ?? "Unavailable")"
         }.joined(separator: "\n")
@@ -121,9 +133,9 @@ enum InstallationIssueReport {
 
         \(deviceLines.joined(separator: "\n"))
 
-        ## Installation
+        ## Operation
 
-        - Operation: Map installation
+        - Operation: \(operation.rawValue)
         - Provider: \(providers.isEmpty ? "Unavailable" : providers.joined(separator: ", "))
         - Region: \(regions.isEmpty ? "Unavailable" : regions.joined(separator: ", "))
         - Map version: \(releases.isEmpty ? "Unavailable" : releases.joined(separator: ", "))
@@ -132,19 +144,24 @@ enum InstallationIssueReport {
         - macOS: \(sanitizedLine(operatingSystem, fallback: "Unavailable"))
         - Timestamp: \(ISO8601DateFormatter().string(from: timestamp))
 
+        ## Map packages
+
+        \(mapLines.isEmpty ? "Unavailable" : mapLines)
+
         ## Failure details
 
-        - Write started: \(writeStarted ? "Yes" : "No")
-        - Transfer progress: \(boundedProgress)%
-        - Object created: \(remoteObjectCreated ? "Yes" : "No")
-        - Cleanup attempted: \(cleanupAttempted ? "Yes" : "No")
-        - Cleanup succeeded: \(cleanupSucceeded ? "Yes" : "No")
+        - Write started: \(operation == .installation ? (writeStarted ? "Yes" : "No") : "Unavailable")
+        - Transfer progress: \(operation == .installation ? "\(boundedProgress)%" : "Unavailable")
+        - Object created: \(operation == .installation ? (remoteObjectCreated ? "Yes" : "No") : "Unavailable")
+        - Cleanup attempted: \(operation == .installation ? (cleanupAttempted ? "Yes" : "No") : "Unavailable")
+        - Cleanup succeeded: \(operation == .installation ? (cleanupSucceeded ? "Yes" : "No") : "Unavailable")
         - Transport: MTP
         \(safeError.map { "- Detail: \($0)" } ?? "")
 
         ## Verification details
 
         \(verificationLines)
+        \(lifecycleLines)
 
         ## Finishing diagnostics
 
@@ -160,34 +177,88 @@ enum InstallationIssueReport {
         Prepared by Terento. Please review before submitting.
         """)
 
-        var components = URLComponents(string: "https://github.com/VooZ2/terento/issues/new")!
-        components.queryItems = [
-            URLQueryItem(name: "template", value: "installation-failure.yml"),
-            URLQueryItem(name: "title", value: title),
-            URLQueryItem(name: "diagnostic-report", value: body)
-        ]
-        // Extended diagnostics can exceed browser/server URL limits. The complete
-        // report is already copied before opening the form; never silently trim it.
-        if (components.url?.absoluteString.utf8.count ?? Int.max) > 7000 {
-            components.queryItems = [
-                URLQueryItem(name: "template", value: "installation-failure.yml"),
-                URLQueryItem(name: "title", value: title),
-                URLQueryItem(name: "diagnostic-report", value: "The complete diagnostic report has been copied to your clipboard. Replace this text by pasting it here, review it, then submit.")
-            ]
-        }
-        return InstallationIssueDraft(title: title, body: body, url: components.url!)
+        return draft(title: title, body: body)
     }
 
-    static func copyAndOpenGitHub(
+    static func draft(title: String, body: String) -> InstallationIssueDraft {
+        let safeTitle = String(DiagnosticReportSanitizer.sanitize(title).prefix(180))
+        let safeBody = DiagnosticReportSanitizer.sanitize(body)
+        var report = safeBody
+        if issueURL(title: safeTitle, body: report).absoluteString.utf8.count > 7000 {
+            report = compactReport(safeBody)
+        }
+        // A pathological report still has a bounded, explicitly summarized draft.
+        // Keep the full sanitized report locally; never replace the form with paste instructions.
+        if issueURL(title: safeTitle, body: report).absoluteString.utf8.count > 7000 {
+            let lines = report.components(separatedBy: "\n")
+            var retained = Set<Int>()
+            let notice = "\nCompact report: additional diagnostic lines omitted; full report retained locally."
+            let ordered = lines.indices.sorted { left, right in
+                let lp = reportPriority(lines[left]), rp = reportPriority(lines[right])
+                return lp == rp ? left < right : lp < rp
+            }
+            for index in ordered {
+                let candidate = retained.union([index]).sorted().map { lines[$0] }.joined(separator: "\n") + notice
+                if issueURL(title: safeTitle, body: candidate).absoluteString.utf8.count <= 7000 {
+                    retained.insert(index)
+                }
+            }
+            report = retained.sorted().map { lines[$0] }.joined(separator: "\n") + notice
+        }
+        return InstallationIssueDraft(title: safeTitle, body: safeBody,
+                                      url: issueURL(title: safeTitle, body: report))
+    }
+
+    private static func issueURL(title: String, body: String) -> URL {
+        var components = URLComponents(string: "https://github.com/VooZ2/terento/issues/new")!
+        components.queryItems = [
+            URLQueryItem(name: "title", value: title),
+            URLQueryItem(name: "body", value: body)
+        ]
+        return components.url!
+    }
+
+    private static func compactReport(_ body: String) -> String {
+        var lines: [String] = []
+        var traceLegendAdded = false
+        for line in body.components(separatedBy: "\n") {
+            if line.isEmpty || line.hasSuffix(": Unavailable") || line.hasPrefix("Fixed-field diagnostic sequence;") { continue }
+            if line.hasPrefix("FINISH_TRACE ") {
+                if !traceLegendAdded {
+                    lines.append("Trace: N=native event,offset,rc,detail,last_verified_end,verified_bytes; S=Swift event and fields. rc is native; elapsed seconds except installation_failure milliseconds. Remote size alone is not content verification.")
+                    traceLegendAdded = true
+                }
+                let fields = line.split(separator: " ").dropFirst()
+                if fields.first == "native" {
+                    let values = fields.dropFirst().map { String($0.split(separator: "=", maxSplits: 1).last ?? $0) }
+                    lines.append("N " + values.joined(separator: ","))
+                } else {
+                    lines.append("S " + fields.dropFirst().joined(separator: " ").replacingOccurrences(of: "event=", with: ""))
+                }
+            } else {
+                lines.append(line.replacingOccurrences(of: "Transport classification (mapped; native return codes are in the trace)", with: "Mapped transport classification")
+                    .replacingOccurrences(of: "Reported remote bytes (not proof of content verification)", with: "Reported remote bytes"))
+            }
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private static func reportPriority(_ line: String) -> Int {
+        if line.hasPrefix("Trace:") || line.contains("read_failed") || line.contains("read_ptp_response")
+            || line.contains("read_error_code") || line.contains("Original failure:")
+            || line.contains("Error code:") || line.contains("Diagnostic ID:")
+            || line.contains("Installation ID:") { return 0 }
+        if !line.hasPrefix("N ") && !line.hasPrefix("S ") { return 1 }
+        if line.contains("failed") || line.contains("failure") || line.contains("cleanup")
+            || line.contains("deadline") || line.contains("retry_close") { return 2 }
+        return 3
+    }
+
+    static func openGitHub(
         _ draft: InstallationIssueDraft,
-        clipboard: (String) -> Void = { value in
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(value, forType: .string)
-        },
         using opener: (URL) -> Bool = { NSWorkspace.shared.open($0) }
     ) -> Bool {
-        clipboard(draft.body)
-        return opener(draft.url)
+        opener(draft.url)
     }
 
     private static func sanitizedLine(_ value: String, fallback: String) -> String {

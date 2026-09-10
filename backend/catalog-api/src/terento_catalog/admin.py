@@ -719,7 +719,7 @@ def _overview_operation_label(operation: dict[str, Any]) -> tuple[str, str]:
 
 def _compatibility_source_label(value: Any) -> str:
     source = str(value or "").strip()
-    return {"custom": "Custom", "freizeitkarte": "Freizeitkarte", "opentopomap": "OpenTopoMap"}.get(source.casefold(), source)
+    return {"custom": "Custom", "freizeitkarte": "Freizeitkarte", "opentopomap": "OpenTopoMap", "maprando": "MapRando"}.get(source.casefold(), source)
 
 
 def _overview_operation_context(operation: dict[str, Any]) -> str:
@@ -1452,7 +1452,7 @@ def _system_health_cards(health: dict[str, Any]) -> tuple[list[dict[str, Any]], 
     now = datetime.now(timezone.utc)
     providers = [
         provider for provider in health.get("providers") or []
-        if str(provider.get("id") or "") in {"freizeitkarte", "opentopomap"}
+        if str(provider.get("id") or "") in {"freizeitkarte", "opentopomap", "maprando"}
     ]
     observations = {
         str(item.get("component") or ""): item
@@ -3207,7 +3207,7 @@ def device_detail_page(
         map_copy = html.escape(', '.join(map_names) or "Map not recorded")
         providers_in_operation = {str(item.get('provider') or '') for item in results}
         regions_in_operation = {str(item.get('region') or '') for item in results}
-        if len(providers_in_operation) == len(regions_in_operation) == 1 and providers_in_operation <= {'freizeitkarte', 'opentopomap'} and region:
+        if len(providers_in_operation) == len(regions_in_operation) == 1 and providers_in_operation <= {'freizeitkarte', 'opentopomap', 'maprando'} and region:
             href = '/admin/map-statistics?' + urlencode({'provider': next(iter(providers_in_operation)), 'region': region, 'period': 'all'})
             map_copy = f"<a href='{html.escape(href, quote=True)}' title='View map statistics'>{map_copy}</a>"
         if map_release:

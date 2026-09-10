@@ -271,6 +271,7 @@ struct Stage42InstallationTests {
         passed += testTargetPolicyAcceptsOpenTopoMapProvider()
         passed += testTargetPolicyAcceptsCurrentOpenTopoMapCatalogIdentity()
         passed += testArtifactValidatorAcceptsOpenTopoMapProvider()
+        passed += testRawMapRandoPassesFinalValidation()
         passed += testTargetPolicyAcceptsMapCapableBetaProfile()
         passed += testMapCapableNonLabPIDCompletesGenericLifecycle()
         passed += testMissingStableWatchIdentityBlocksBeforeMutation()
@@ -532,6 +533,58 @@ struct Stage42InstallationTests {
             return expect(true, "provider-neutral artifact validator accepts OpenTopoMap")
         } catch {
             return expect(false, "provider-neutral artifact validator accepts OpenTopoMap")
+        }
+    }
+
+    private static func testRawMapRandoPassesFinalValidation() -> Int {
+        var bytes = [UInt8](Harness.makeIMG())
+        let description = Array("MapRando Lituanie 02.09.2026".utf8)
+        bytes.replaceSubrange(0x49..<0x5D, with: Array(repeating: UInt8(32), count: 20))
+        bytes.replaceSubrange(0x65..<0x83, with: Array(repeating: UInt8(32), count: 30))
+        for (index, byte) in description.enumerated() {
+            bytes[index < 20 ? 0x49 + index : 0x65 + index - 20] = byte
+        }
+        let data = Data(bytes)
+        let package = MapPackage(
+            id: "maprando-lituanie", providerId: "maprando", regionId: "LITUANIE",
+            name: "Lithuania", version: MapVersion(year: 2026, month: 9, day: 2)!,
+            sizeBytes: UInt64(data.count),
+            sourceURL: URL(string: "https://ravenfeld.fr/MapRando/Lituanie/MapRando_Lituanie_2026_09_02.img"),
+            releaseDate: "2026-09-02", identifier: "lituanie",
+            downloadSizeBytes: UInt64(data.count), installSizeBytes: UInt64(data.count)
+        )
+        let artifact = Harness.makeArtifact(package: package, data: data, packageFormat: .rawIMG)
+        defer { try? FileManager.default.removeItem(at: artifact.localIMGURL) }
+        do {
+            _ = try MapSourceValidator().validate(fileURL: artifact.localIMGURL, expectedPackage: package)
+            try Stage42ArtifactValidator().validate(artifact: artifact, package: package)
+            let identity = betaIdentity()
+            let files = [betaGarminRoot()]
+            try Stage42TargetPolicy().validate(package: package, artifact: artifact,
+                profile: DeviceInstallProfileRegistry.local.profile(for: identity, deviceFiles: files),
+                identity: identity, deviceFiles: files)
+            // A changed local file must still fail the final hash recheck.
+            var changed = data
+            changed[changed.count - 1] ^= 1
+            try changed.write(to: artifact.localIMGURL)
+            do {
+                try Stage42ArtifactValidator().validate(artifact: artifact, package: package)
+                return expect(false, "MapRando changed content must be rejected")
+            } catch Stage42ArtifactValidationError.sourceHashMismatch {}
+
+            // Existing ZIP providers do not acquire an unreviewed raw-IMG path.
+            for provider in ["freizeitkarte", "opentopomap"] {
+                let existing = Harness.makePackage(size: UInt64(data.count), providerID: provider)
+                let raw = Harness.makeArtifact(package: existing, data: data, packageFormat: .rawIMG)
+                defer { try? FileManager.default.removeItem(at: raw.localIMGURL) }
+                do {
+                    try Stage42ArtifactValidator().validate(artifact: raw, package: existing)
+                    return expect(false, "\(provider) must retain its reviewed ZIP format")
+                } catch Stage42ArtifactValidationError.sourceFormatMismatch {}
+            }
+            return expect(true, "raw MapRando passes source and final write policies; hash and ZIP-provider guards remain")
+        } catch {
+            return expect(false, "raw MapRando final validation: \(error)")
         }
     }
 

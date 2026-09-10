@@ -40,6 +40,7 @@ struct Stage1ProviderNeutralTests {
         testContourRolloutPolicyIsOffByDefault()
         testContourRolloutAllowlistMarksOnlyReviewedPackages()
         testBundledOpenTopoMapProviderPolicy()
+        testMapRandoFixedHeaderAndIdentity()
         testOpenTopoMapIMGMetadataIsIdentified()
         testOpenTopoMapContourIMGMetadataIsIdentified()
         testOpenTopoMapLegacyIdentityAliasIsScoped()
@@ -57,7 +58,7 @@ struct Stage1ProviderNeutralTests {
         testProviderLifecycleMetadataDecodesFailClosed()
         await testDownloadFailureUsesConfirmedProviderDownState()
 
-        print("PASS: 27 Stage 1 provider-neutral core tests")
+        print("PASS: 28 Stage 1 provider-neutral core tests")
     }
 
     private static func testLegacyPackageGetsRequiredMainArtifact() {
@@ -387,6 +388,28 @@ struct Stage1ProviderNeutralTests {
         } catch {
             expect(false, "bundled OpenTopoMap adapter resolves an official Lithuania package")
         }
+    }
+
+    private static func testMapRandoFixedHeaderAndIdentity() {
+        // Observed official Lithuania and Algeria descriptions, fetched as
+        // bounded 4 KiB HTTP ranges. Binary gaps must never enter the title.
+        for (title, token, day) in [("Lituanie", "lituanie", 2), ("Algerie", "Algérie", 1), ("France Courbes IGN", "France_Courbes_IGN", 1)] {
+            var bytes = Array(repeating: UInt8(0), count: 4096)
+            write("DSKIMG", at: 0x10, to: &bytes)
+            write("GARMIN", at: 0x41, to: &bytes)
+            let header = Array(String(format: "MapRando %@ %02d.09.2026", title, day).utf8)
+            for index in 0..<50 { bytes[index < 20 ? 0x49 + index : 0x65 + index - 20] = index < header.count ? header[index] : 32 }
+            let metadata = GarminIMGMetadataParser().parse(bytes, filename: "misleading-other-map.img")
+            expect(metadata?.version == MapVersion(year: 2026, month: 9, day: day)
+                && MapIdentity(provider: metadata?.provider, region: metadata?.region) == MapIdentity(provider: "maprando", region: token),
+                "MapRando \(token) fixed header preserves exact variant and daily release independently of filename")
+            bytes[0x49] = 0
+            expect(GarminIMGMetadataParser().parse(bytes, filename: "MapRando_Lituanie_2026_09_02.img")?.provider == nil,
+                "filename alone cannot identify MapRando")
+        }
+        let policy = ReviewedProviderURLPolicyRegistry.bundled.policy(for: "maprando")
+        expect(policy != nil && (try? policy?.validate(URL(string: "https://ravenfeld.fr/MapRando/Lituanie/MapRando_Lituanie_2026_09_02.img")!)) != nil,
+            "MapRando uses reviewed direct source policy")
     }
 
     private static func testOpenTopoMapIMGMetadataIsIdentified() {

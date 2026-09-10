@@ -7,6 +7,7 @@ Python, Swift and JavaScript do not load JSON Schema validators.
 | Schema | Public payload | Body version |
 | --- | --- | --- |
 | `map-catalog.schema.json` | `GET /maps/catalog.json` | `schemaVersion: 2`, legacy `catalogVersion: 1` |
+| `map-catalog.schema.json` | `GET /maps/catalog-v3.json` | same body versions; additional reviewed providers |
 | `device-catalog.schema.json` | `GET /devices/catalog.json` | independent `catalogVersion: 2` |
 | `compatibility-event.schema.json` | `POST /compatibility/events` request body | accepted versions 1–4; current emitter uses 4 |
 | `map-event.schema.json` | `POST /map-events` request body | `schemaVersion: 1` |
@@ -17,6 +18,15 @@ numbers. Relative `$id` values identify files within this directory; `$ref`
 values resolve only to local `$defs`. No schema or fixture needs network access.
 
 ## Responses and client compatibility
+
+The beta.11 candidate requests `/maps/catalog-v3.json`. The legacy route retains
+only Freizeitkarte and OpenTopoMap because released clients reject a complete
+snapshot when it includes an unknown installable provider. The v3 route is a
+new provider projection, not a change to JSON `schemaVersion`. MapRando release
+objects additionally carry an optional integer `day`; existing provider version
+objects remain year/month only. Neither a new route nor adapter registration
+activates MapRando by itself. Production activation and hardware acceptance are
+separate gates; the local candidate does not imply endpoint deployment.
 
 Response objects permit unknown additive fields, including nested objects.
 `required` lists specify the serialized response contract. They do not impose

@@ -140,7 +140,7 @@ class CatalogService:
     def operational_report_context(self) -> dict[str, Any]:
         providers = []
         for provider in self.admin_providers().get("providers", []):
-            if provider.get("id") not in {"freizeitkarte", "opentopomap"}:
+            if provider.get("id") not in KNOWN_PROVIDER_DEFINITIONS:
                 continue
             detected_at = provider.get("latestReleaseDetectedAt")
             new_release_detected = False
@@ -164,8 +164,11 @@ class CatalogService:
             })
         return {"schemaVersion": 1, "providers": providers}
 
-    def catalog_response(self) -> tuple[bytes, str, datetime]:
+    def catalog_response(self, *, include_maprando: bool = False) -> tuple[bytes, str, datetime]:
         rows, updated_at = self.database.catalog_snapshot()
+        if not include_maprando:
+            # Distributed clients reject unknown providers; keep their endpoint stable.
+            rows = [row for row in rows if row["provider_id"] in {"freizeitkarte", "opentopomap"}]
         body = serialize_catalog(
             build_catalog(
                 rows,
@@ -175,6 +178,9 @@ class CatalogService:
             )
         )
         return body, catalog_etag(body), updated_at
+
+    def catalog_v3_response(self) -> tuple[bytes, str, datetime]:
+        return self.catalog_response(include_maprando=True)
 
     def device_catalog_response(self) -> tuple[bytes, str, datetime]:
         rows, updated_at = self.database.device_catalog_snapshot()
@@ -305,6 +311,9 @@ class CatalogService:
             adapter = FreizeitkarteProviderAdapter()
         elif provider_id == "opentopomap":
             adapter = OpenTopoMapProviderAdapter(contour_mode=self.opentopomap_contour_mode)
+        elif provider_id == "maprando":
+            from .maprando import MapRandoProviderAdapter
+            adapter = MapRandoProviderAdapter()
         else:  # pragma: no cover - guarded by the known registry
             raise LookupError("provider_adapter_not_found")
         try:
@@ -848,9 +857,9 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if request_path == "/health":
                 self._handle_health(send_body=send_body)
                 return
-            if request_path == "/maps/catalog.json":
+            if request_path in {"/maps/catalog.json", "/maps/catalog-v3.json"}:
                 self._handle_catalog(
-                    service.catalog_response,
+                    service.catalog_v3_response if request_path == "/maps/catalog-v3.json" else service.catalog_response,
                     send_body=send_body,
                     unavailable_error="catalog_unavailable",
                 )

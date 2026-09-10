@@ -11,6 +11,8 @@ LIBMTP_VERSION="1.1.23"
 LIBMTP_ARCHIVE="libmtp-${LIBMTP_VERSION}.tar.gz"
 LIBMTP_URL="https://downloads.sourceforge.net/project/libmtp/libmtp/${LIBMTP_VERSION}/${LIBMTP_ARCHIVE}"
 LIBMTP_SHA256="74a2b6e8cb4a0304e95b995496ea3ac644c29371649b892b856e22f12a0bdeed"
+LIBMTP_LOCAL_PATCH="partial-read-diagnostics-v1-usb-session-v1"
+script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 
 deployment_target="${MACOSX_DEPLOYMENT_TARGET:-13.0}"
 architecture="${CURRENT_ARCH:-arm64}"
@@ -74,10 +76,10 @@ src_dir="$output_dir/source"
 download_dir="$output_dir/downloads"
 prefix_dir="$output_dir/prefix"
 libusb_prefix="$prefix_dir/libusb"
-libmtp_prefix="$prefix_dir/libmtp"
+libmtp_prefix="$prefix_dir/libmtp-$LIBMTP_LOCAL_PATCH"
 bundle_lib_dir="$output_dir/lib"
 bundle_include_dir="$output_dir/include"
-build_marker="$output_dir/.terento-native-dependencies-${LIBUSB_VERSION}-${LIBMTP_VERSION}-${architecture}-macos-${deployment_target}"
+build_marker="$output_dir/.terento-native-dependencies-${LIBUSB_VERSION}-${LIBMTP_VERSION}-${LIBMTP_LOCAL_PATCH}-${architecture}-macos-${deployment_target}"
 
 mkdir -p "$src_dir" "$download_dir" "$prefix_dir" "$bundle_lib_dir" "$bundle_include_dir"
 
@@ -199,6 +201,8 @@ if [ ! -f "$build_marker" ]; then
     extract_once "$download_dir/$LIBUSB_ARCHIVE" "libusb-${LIBUSB_VERSION}" bz2
     extract_once "$download_dir/$LIBMTP_ARCHIVE" "libmtp-${LIBMTP_VERSION}" gz
     assert_required_mtp_transport_behaviors "$libmtp_source"
+    /usr/bin/perl "$script_dir/patch-partial-read-diagnostics.pl" "$libmtp_source/src/libmtp.c"
+    /usr/bin/perl "$script_dir/patch-usb-session-lifecycle.pl" "$libmtp_source/src/libusb1-glue.c"
 
     common_cflags="-arch $architecture -mmacosx-version-min=$deployment_target"
 

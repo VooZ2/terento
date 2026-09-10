@@ -196,6 +196,65 @@ class FakeProviderDatabase:
 
 
 class Beta8APITests(unittest.TestCase):
+    def test_maprando_directory_adapter_daily_identity_and_standalone_variant(self):
+        from terento_catalog.maprando import MapRandoProviderAdapter, ImageMeasurement, image_links, policy_identity
+        from terento_catalog.provider_catalog import ProviderCollectionError
+        root = 'https://ravenfeld.fr/MapRando/'
+        class Fetcher:
+            def fetch_text(self, url):
+                if url == root:
+                    return '<a href="France/">France/</a><a href="France_Courbes_IGN/">IGN/</a><a href="https://evil.example/X/">x</a>'
+                region = url.rstrip('/').rsplit('/', 1)[1]
+                return ''.join(f'<a href="MapRando_{region}_2026_09_{day}.img">map</a>' for day in ('01', '02')) + '<a href="BaseCamp/">BaseCamp/</a>'
+            def measure_img(self, url):
+                assert url.endswith('_2026_09_02.img')
+                return ImageMeasurement(1024)
+        snapshot = MapRandoProviderAdapter(fetcher=Fetcher()).collect()
+        self.assertEqual(snapshot.definition.default_status, 'ACTIVE')
+        self.assertEqual([p.id for p in snapshot.packages], ['maprando-france', 'maprando-france-courbes-ign'])
+        self.assertEqual([p.name for p in snapshot.packages], ['France', 'France (IGN contours)'])
+        from terento_catalog.maprando_geography import maprando_display_name
+        self.assertEqual(maprando_display_name('lituanie', 'Lituanie'), 'Lithuania')
+        self.assertEqual(maprando_display_name('californie', 'Californie'), 'California')
+        self.assertEqual(maprando_display_name('future-region', 'Future_Region'), 'Future Region')
+        self.assertTrue(all(p.release == '2026-09-02' and p.capabilities == ('main',) for p in snapshot.packages))
+        self.assertTrue(all(p.artifacts[0].install_size_bytes == 1024 for p in snapshot.packages))
+        self.assertEqual(policy_identity('russie-europe'), ('RUSSIEEUROPE', ('RU',)))
+        self.assertEqual(policy_identity('crimee'), ('CRIMEA', ('UA',)))
+        with self.assertRaises(ProviderCollectionError):
+            image_links('<a href="MapRando_France_2026_02_31.img">x</a>', root+'France/', 'France')
+
+    def test_maprando_header_title_and_daily_release_must_match(self):
+        from unittest.mock import patch
+        from terento_catalog.maprando import inspect_maprando_img
+        from terento_catalog.collectors.freizeitkarte.range_zip import RangeResponse
+        url = 'https://ravenfeld.fr/MapRando/Lituanie/MapRando_Lituanie_2026_09_02.img'
+        header = bytearray(512)
+        header[16:22], header[65:71] = b'DSKIMG', b'GARMIN'
+        title = b'MapRando Lituanie 02.09.2026'.ljust(50, b' ')
+        header[0x49:0x5D], header[0x65:0x83] = title[:20], title[20:]
+        def response():
+            return RangeResponse(206, 0, 511, 1024, bytes(header), url)
+        with patch('terento_catalog.maprando.HTTPRangeFetcher.fetch_range', side_effect=lambda *args: response()):
+            self.assertTrue(inspect_maprando_img(url).identity_validated)
+            self.assertFalse(inspect_maprando_img(url.replace('_09_02', '_09_03')).identity_validated)
+            header[0x65:0x83] = b' '.ljust(30, b' ')
+            self.assertFalse(inspect_maprando_img(url).identity_validated)
+
+    def test_maprando_beta11_activation_migration_is_metadata_only(self):
+        migration = (
+            Path(__file__).parents[1]
+            / "src"
+            / "terento_catalog"
+            / "migrations"
+            / "038_activate_maprando_beta11.sql"
+        ).read_text(encoding="utf-8")
+        self.assertIn("'maprando'", migration)
+        self.assertIn("'ACTIVE'", migration)
+        self.assertIn("ON CONFLICT (id) DO UPDATE", migration)
+        self.assertIn("INSERT INTO provider_source", migration)
+        self.assertNotIn("DELETE FROM", migration)
+
     def test_provider_api_migration_is_additive_and_has_required_contract(self):
         migration = (
             Path(__file__).parents[1]
@@ -775,10 +834,10 @@ class Beta8APITests(unittest.TestCase):
             / "terento_catalog"
             / "db.py"
         ).read_text(encoding="utf-8")
-        self.assertIn("if definition.id == \"opentopomap\":", source)
+        self.assertIn('if definition.id in {"opentopomap", "maprando"}:', source)
         self.assertIn("DELETE FROM map_artifact", source)
         self.assertIn("availability = 'RETIRED'", source)
-        self.assertIn("The current product publishes main maps only", source)
+        self.assertIn("A complete provider snapshot retires only that provider", source)
 
     def test_collection_failure_audit_keeps_provider_error_detail(self):
         source = (
@@ -814,6 +873,20 @@ class Beta8APITests(unittest.TestCase):
         self.assertEqual(result.magic_status, "HEALTHY")
         self.assertEqual(result.zip_status, "HEALTHY")
         self.assertEqual(result.img_status, "HEALTHY")
+
+        from terento_catalog.provider_catalog import MAPRANDO
+        from terento_catalog.maprando import ImageMeasurement
+        class RawProbe(Probe):
+            def inspect(self, url, *, read_body=False):
+                return HTTPProbeResult(200, url, "application/octet-stream", body=b"catalog")
+            def inspect_img(self, url):
+                return ImageMeasurement(1024)
+            def inspect_zip(self, url):
+                raise AssertionError("Raw IMG must not enter ZIP inspection")
+        raw = check_provider(MAPRANDO, download_urls=["https://ravenfeld.fr/MapRando/Lituanie/MapRando_Lituanie_2026_09_02.img"], probe=RawProbe())
+        self.assertEqual(raw.status, "HEALTHY")
+        self.assertEqual(raw.img_status, "HEALTHY")
+        self.assertEqual(raw.zip_status, "NOT_APPLICABLE")
 
         no_date = check_provider(
             OPENTOPO_MAP,

@@ -237,10 +237,27 @@ struct MapInventoryListBuilder: Sendable {
                     ?? MapDisplayNameNormalizer.normalize(comparison.catalogMap.name)
                 title = displayName
             } else if let installedMap = installedMaps.first {
-                title = providerNeutralTitle(
-                    for: installedMap,
-                    providerID: providerID
-                )
+                // Managed rows deliberately use ownership-based keys, separate
+                // from catalog identity keys. Reuse catalog wording only for
+                // presentation; never merge files or change ownership here.
+                let packages = providerComparisons.map(\.catalogMap).filter { package in
+                    if let packageID = installedMap.managedPackageID {
+                        return package.id == packageID
+                    }
+                    return MapIdentityMatcher.matches(
+                        actual: installedMap.identity,
+                        expected: package.identity,
+                        providerRegionId: package.providerRegionId,
+                        identifier: package.identifier
+                    ) && (installedMap.identifier == nil
+                        || installedMap.identifier == package.identifier)
+                }
+                if packages.count == 1, let package = packages.first {
+                    title = displayNames[package.id]
+                        ?? MapDisplayNameNormalizer.normalize(package.name, providerID: providerID)
+                } else {
+                    title = providerNeutralTitle(for: installedMap, providerID: providerID)
+                }
             } else {
                 return nil
             }

@@ -438,7 +438,11 @@ struct TerentoAppUpdateService: Sendable {
         guard !trimmed.isEmpty, trimmed.count <= maximumLength else { return false }
         return !trimmed.contains("<")
             && !trimmed.contains(">")
-            && !trimmed.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains)
+            && !trimmed.unicodeScalars.contains { scalar in
+                CharacterSet.controlCharacters.contains(scalar)
+                    && scalar != "\n"
+                    && scalar != "\r"
+            }
     }
 
     private static var currentMacOSVersion: String {

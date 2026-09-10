@@ -76,11 +76,10 @@ require_source 'secondaryAssetIcon: "GitHubMark"' 'Report issue has no canonical
 require_source 'secondaryUsesCancelShortcut: false' 'Escape incorrectly activates Report issue'
 require_source 'primaryLabel: "Back to device"' 'failure modal lacks the explicit primary recovery action'
 require_source '.keyboardShortcut(.defaultAction)' 'Back to device is not the safe default action'
-require_source 'InstallationIssueReport.copyAndOpenGitHub(draft)' 'Report issue is not connected to the reviewable GitHub flow'
+require_source 'InstallationIssueReport.openGitHub(draft)' 'Report issue is not connected to the reviewable GitHub flow'
 test -f "$github_asset" || { print -u2 'FAIL: canonical GitHub mark asset is missing'; exit 1; }
-require_issue 'URLQueryItem(name: "template", value: "installation-failure.yml")' 'GitHub issue does not target the installation failure form'
-require_issue 'URLQueryItem(name: "diagnostic-report", value: body)' 'GitHub diagnostic form field is not pre-populated'
-require_issue 'clipboard(draft.body)' 'sanitized report is not copied as the manual fallback'
+require_issue 'URLQueryItem(name: "body", value: body)' 'GitHub diagnostic form field is not pre-populated'
+require_issue 'report = compactReport(safeBody)' 'oversized reports are not compacted for automatic prefill'
 require_issue 'Prepared by Terento. Please review before submitting.' 'prepared issue does not explain review-before-submit'
 
 print 'PASS: installation progress and failure UX polish contract'
