@@ -5352,7 +5352,11 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .popularity-all-maps-disclosure input{width:100%;min-width:0;min-height:40px;margin:0}
 @media(max-width:700px){.popularity-all-maps-disclosure input{min-height:44px}}
 .filter-bar label>.sr-only,.inline-filter-row label>.sr-only{position:static;width:auto;height:auto;margin:0;overflow:visible;clip:auto;clip-path:none;white-space:normal;font-size:12px;font-weight:650;color:var(--secondary)}
-.filter-bar label>input,.filter-bar label>select{flex:none}
+.filter-bar label>input,.filter-bar label>select,.inline-filter-row label>input,.inline-filter-row label>select{flex:none}
+.inline-filter-row{align-items:flex-end}
+.inline-filter-row label{min-width:0}
+.inline-filter-row label>input,.inline-filter-row label>select{width:100%;height:var(--admin-control-height)}
+@media(max-width:700px){.inline-filter-row{align-items:stretch}.inline-filter-row label{flex-basis:auto}}
 .filter-bar>.filter-disclosure{align-self:flex-end}
 .filter-bar>.filter-clear{align-self:flex-end}
 .filter-bar>.results-count{align-self:flex-end;min-height:var(--admin-control-height);display:flex;align-items:center;white-space:normal}
