@@ -4,7 +4,9 @@ The overview uses a compact mobile SVG with the same complete time series and
 three time-axis labels; desktop keeps its detailed chart. Clip IDs are unique
 between variants. Identity review uses a searchable native select with exact
 canonical IDs rather than datalist suggestions. Editing the search clears the
-selection, and assignment requires an explicit model choice. Other identity
+selection, and typing immediately shows matching model buttons below the search
+field (including accent-insensitive fenix matches). The native select remains
+available as a fallback. Assignment requires an explicit model choice. Other identity
 actions disable the picker. Backend validation and save semantics are unchanged.
 
 GitHub report actions share inline-flex alignment, zero margins and stretched
