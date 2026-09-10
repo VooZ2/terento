@@ -3018,6 +3018,7 @@ def _diagnostic_detail_dialog(
         <label>Action<select name='identity_action' id='{action_id}' data-identity-action><option value='ASSIGN'>Assign canonical Garmin device</option><option value='LEAVE_UNRESOLVED'>Leave unresolved</option><option value='NOT_IDENTIFIABLE'>Mark as not identifiable</option></select></label>
         <div data-canonical-device-wrap>
           <label>Search Garmin device<input id='{search_id}' type='search' data-identity-search placeholder='Model, family, variant, size, or ID' autocomplete='off' aria-controls='{canonical_id}'></label>
+          <div class='identity-search-results' data-identity-results role='group' aria-label='Matching Garmin models' hidden></div>
           <label>Garmin model<select name='canonical_device_model_id' id='{canonical_id}' required><option value=''>Choose a Garmin model</option>{options}</select></label>
         </div>
         <p class='identity-selection' data-identity-selection>Canonical ID: <code>{html.escape(current_label)}</code></p>
@@ -4572,6 +4573,7 @@ def _diagnostics_script() -> str:
           const search = form?.querySelector('[data-identity-search]');
           const canonical = form?.querySelector('select[name="canonical_device_model_id"]');
           const selection = form?.querySelector('[data-identity-selection]');
+          const suggestions = form?.querySelector('[data-identity-results]');
           const choices = canonical ? [...canonical.options].filter(option => option.value).map(option => option.cloneNode(true)) : [];
           const sync = () => {
             const assign = action.value === 'ASSIGN';
@@ -4593,6 +4595,30 @@ def _diagnostics_script() -> str:
             placeholder.textContent = matches.length ? 'Choose a Garmin model' : 'No models match your search';
             canonical.replaceChildren(placeholder, ...matches.map(option => option.cloneNode(true)));
             canonical.value = '';
+            if (suggestions) {
+              suggestions.replaceChildren();
+              suggestions.hidden = !query;
+              if (query && !matches.length) {
+                const empty = document.createElement('p');
+                empty.setAttribute('role', 'status');
+                empty.textContent = 'No models match your search';
+                suggestions.append(empty);
+              }
+              if (query) matches.forEach(option => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'secondary-button';
+                button.textContent = option.textContent;
+                button.addEventListener('click', () => {
+                  canonical.value = option.value;
+                  search.value = option.textContent;
+                  suggestions.hidden = true;
+                  sync();
+                  search.focus();
+                });
+                suggestions.append(button);
+              });
+            }
             sync();
           });
           sync();
@@ -5080,6 +5106,9 @@ table code,.technical-value,.provider-table-wrap code,.audit-technical-details c
 .secondary-button,.provider-pagination button,.device-pagination button{min-height:var(--admin-control-height);padding:8px 10px}
 .github-actions>.secondary-button{display:inline-flex;align-items:center;justify-content:center;margin:0;align-self:stretch;text-align:center;text-decoration:none;white-space:normal}
 .github-actions>.copy-status{flex-basis:100%}
+.identity-search-results{display:grid;gap:4px;max-height:240px;overflow-y:auto;margin:8px 0}
+.identity-search-results[hidden]{display:none}
+.identity-search-results>button.secondary-button{display:block;width:100%;min-height:44px;margin:0;text-align:left;white-space:normal;overflow-wrap:anywhere}
 .provider-action-overflow>summary{min-height:var(--admin-control-height);padding:8px 12px}
 .provider-action-bar{gap:7px}
 .disclosure-body{margin-top:12px}
