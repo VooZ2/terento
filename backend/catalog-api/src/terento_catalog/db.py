@@ -577,7 +577,7 @@ class Database:
         """Return bounded operational aggregates for the authenticated Overview.
 
         This deliberately uses the existing compatibility evidence table and
-        groups rows by the persisted operation identity before counting. It
+        counts each retained map result independently of its batch identity. It
         does not create telemetry, alter the public API, or pretend that the
         compatibility and map-operation success rates are interchangeable.
         """
@@ -610,12 +610,12 @@ class Database:
                         WHERE e.error_category IS NOT NULL AND btrim(e.error_category) <> ''
                     ) AS error_category,
                     max(e.occurred_at) AS last_occurred_at,
-                    bool_or(COALESCE(e.write_started, TRUE)) AS write_started,
+                    bool_or(COALESCE(e.write_started, TRUE) OR
+                        e.phase_outcome IN ('SUCCEEDED', 'FAILED')) AS write_started,
                     bool_and(
                         e.phase_outcome = 'SUCCEEDED'
                         AND e.automatic_finishing_result = 'VERIFIED'
                     )
-                    AND count(*) = max(COALESCE(e.selected_map_count, 1))
                         AS operation_succeeded,
                     bool_or(e.phase_outcome = 'FAILED') AS has_failed,
                     bool_or(e.phase_outcome = 'NOT_STARTED') AS has_not_started,
@@ -634,7 +634,7 @@ class Database:
                     ) AS open_error
                 FROM compatibility_evidence_event AS e
                 WHERE e.is_local_test IS NOT TRUE
-                GROUP BY COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text)
+                GROUP BY e.event_id
             )
         """
         scoped = f"{operation_cte}, scoped_operations AS (\n                SELECT *\n                FROM operation_rows\n                WHERE last_occurred_at >= %s\n            )"
@@ -807,10 +807,10 @@ class Database:
         """Return map-operation aggregates for the authenticated Overview.
 
         The native map-event stream and compatibility evidence share the same
-        random operation ID when both are available. A successful compatibility
-        operation is used as a display-only fallback when its map event was not
-        uploaded, while custom IMG evidence remains a separately labelled chart
-        series and is excluded from provider KPI totals.
+        random operation ID when both are available. Match provider and region
+        within that session before suppressing a compatibility result. Custom
+        IMG results count in Overview totals and their own success chart series,
+        but never in the catalog-only Map statistics page. No records are changed.
         """
         # Keep the date_trunc field as a trusted SQL literal. PostgreSQL can
         # resolve a bound value here in some driver/server combinations, but
@@ -859,28 +859,24 @@ class Database:
         compatibility_fallback_cte = """
             WITH compatibility_fallback AS (
                 SELECT
-                    COALESCE(e.operation_id::text, 'compatibility:' || e.event_id::text)
-                        AS operation_key,
+                    e.event_id::text AS operation_key,
                     e.operation_id,
-                    min(e.provider) AS provider_id,
-                    CASE WHEN count(DISTINCT e.region) = 1 THEN min(e.region) END AS region,
-                    max(e.occurred_at) AS occurred_at
+                    e.provider AS provider_id,
+                    e.region,
+                    e.occurred_at,
+                    e.phase_outcome AS outcome
                 FROM compatibility_evidence_event AS e
                 WHERE e.is_local_test IS NOT TRUE
-                GROUP BY
-                    COALESCE(e.operation_id::text, 'compatibility:' || e.event_id::text),
-                    e.operation_id,
-                    CASE WHEN e.operation_id IS NULL THEN e.event_id END
-                HAVING max(e.occurred_at) >= %s
-                   AND bool_and(
+                   AND e.occurred_at >= %s
+                   AND (e.phase_outcome = 'FAILED' OR (
                        e.phase_outcome = 'SUCCEEDED'
-                       AND e.automatic_finishing_result = 'VERIFIED'
-                   )
-                   AND count(*) = max(COALESCE(e.selected_map_count, 1))
+                       AND e.automatic_finishing_result = 'VERIFIED'))
                    AND NOT EXISTS (
                        SELECT 1
                        FROM map_download_event AS installed
                        WHERE installed.operation_id = e.operation_id
+                         AND installed.provider_id = e.provider
+                         AND installed.region IS NOT DISTINCT FROM e.region
                          AND installed.is_local_test IS NOT TRUE
                          AND installed.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
                    )
@@ -893,19 +889,19 @@ class Database:
                 SELECT
                     count(*) + (
                         SELECT count(*) FROM compatibility_fallback
-                        WHERE provider_id <> 'custom'
                     ) AS event_count,
-                    count(DISTINCT e.operation_id) FILTER (
+                    count(*) FILTER (
                         WHERE e.event_type = 'INSTALL_SUCCEEDED'
                           AND e.outcome = 'SUCCEEDED'
                     ) + (
                         SELECT count(*) FROM compatibility_fallback
-                        WHERE provider_id <> 'custom'
+                        WHERE outcome = 'SUCCEEDED'
                     ) AS completed_install_count,
-                    count(DISTINCT e.operation_id) FILTER (
+                    count(*) FILTER (
                         WHERE e.event_type = 'INSTALL_FAILED'
                           AND e.outcome = 'FAILED'
-                    ) AS failed_install_count
+                    ) + (SELECT count(*) FROM compatibility_fallback
+                         WHERE outcome = 'FAILED') AS failed_install_count
                 {event_scope}
                 """,
                 (since, since),
@@ -935,13 +931,13 @@ class Database:
                     c.region AS map_package_name,
                     COALESCE(c.region, 'Multiple map regions') AS display_name,
                     c.region AS region,
-                    'INSTALL_SUCCEEDED' AS event_type,
-                    'SUCCEEDED' AS outcome,
+                    CASE WHEN c.outcome = 'FAILED' THEN 'INSTALL_FAILED'
+                         ELSE 'INSTALL_SUCCEEDED' END AS event_type,
+                    c.outcome,
                     NULL AS app_build,
                     c.occurred_at
                 FROM compatibility_fallback AS c
                 LEFT JOIN map_provider AS p ON p.id = c.provider_id
-                WHERE c.provider_id <> 'custom'
                 ORDER BY occurred_at DESC
                 LIMIT %s
                 """,
@@ -955,7 +951,7 @@ class Database:
                 f"""
                 {compatibility_fallback_cte}, localized_events AS (
                     SELECT
-                        e.operation_id::text AS operation_key,
+                        e.event_id::text AS operation_key,
                         e.event_type,
                         e.outcome,
                         timezone(%s, e.occurred_at) AS local_occurred_at
@@ -965,11 +961,12 @@ class Database:
                     UNION ALL
                     SELECT
                         c.operation_key,
-                        CASE WHEN c.provider_id = 'custom'
+                        CASE WHEN c.outcome = 'FAILED' THEN 'INSTALL_FAILED'
+                            WHEN c.provider_id = 'custom'
                             THEN 'CUSTOM_SUCCEEDED'
                             ELSE 'INSTALL_SUCCEEDED'
                         END AS event_type,
-                        'SUCCEEDED' AS outcome,
+                        c.outcome,
                         timezone(%s, c.occurred_at) AS local_occurred_at
                     FROM compatibility_fallback AS c
                 )
@@ -2596,8 +2593,8 @@ class Database:
         """Build the provider-only compatibility fallback filter.
 
         Compatibility evidence has no package ID by design. A package filter
-        therefore cannot safely claim a match, and only complete successful
-        install operations can be projected into map statistics.
+        therefore cannot safely claim a match. Only final failed or verified
+        successful map results can be projected into map statistics.
         """
         clauses = [
             f"{alias}.is_local_test IS NOT TRUE",
@@ -2612,8 +2609,12 @@ class Database:
         if filters.get("region"):
             clauses.append(f"{alias}.region = %s")
             values.append(filters["region"])
-        if filters.get("eventType") and filters["eventType"] != "INSTALL_SUCCEEDED":
-            clauses.append("1 = 0")
+        if filters.get("eventType"):
+            if filters["eventType"] in {"INSTALL_SUCCEEDED", "INSTALL_FAILED"}:
+                clauses.append(f"{alias}.phase_outcome = %s")
+                values.append("FAILED" if filters["eventType"] == "INSTALL_FAILED" else "SUCCEEDED")
+            else:
+                clauses.append("1 = 0")
         for key, operator in (("dateFrom", ">="), ("dateTo", "<=")):
             if filters.get(key):
                 clauses.append(f"{alias}.occurred_at {operator} %s")
@@ -2632,39 +2633,33 @@ class Database:
         query = f"""
             WITH complete_compatibility_operations AS (
                 SELECT
-                    COALESCE(e.operation_id::text, 'compatibility:' || e.event_id::text)
-                        AS operation_key,
-                    e.operation_id
+                    e.event_id::text AS operation_key,
+                    e.operation_id, e.event_id
                 FROM compatibility_evidence_event AS e
                 WHERE e.is_local_test IS NOT TRUE
-                GROUP BY
-                    COALESCE(e.operation_id::text, 'compatibility:' || e.event_id::text),
-                    e.operation_id,
-                    CASE WHEN e.operation_id IS NULL THEN e.event_id END
-                HAVING bool_and(
+                AND (e.phase_outcome = 'FAILED' OR (
                     e.phase_outcome = 'SUCCEEDED'
-                    AND e.automatic_finishing_result = 'VERIFIED'
-                )
-                AND count(*) = max(COALESCE(e.selected_map_count, 1))
+                    AND e.automatic_finishing_result = 'VERIFIED'))
                 AND NOT EXISTS (
                     SELECT 1
                     FROM map_download_event AS installed
                     WHERE installed.operation_id = e.operation_id
+                      AND installed.provider_id = e.provider
+                      AND installed.region IS NOT DISTINCT FROM e.region
                       AND installed.is_local_test IS NOT TRUE
                       AND installed.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
                 )
             ), compatibility_fallback AS (
-                -- Validate the complete operation before applying region/date
-                -- filters. Preserve each provider/region rather than min(region).
+                -- Each retained map result counts independently of its siblings.
                 SELECT c.operation_key, e.provider AS provider_id, e.region,
+                       e.phase_outcome AS outcome,
                        min(e.occurred_at) AS first_occurred_at,
                        max(e.occurred_at) AS last_occurred_at
                 FROM complete_compatibility_operations AS c
                 JOIN compatibility_evidence_event AS e
-                  ON COALESCE(e.operation_id::text, 'compatibility:' || e.event_id::text)
-                     = c.operation_key
+                  ON e.event_id = c.event_id
                 WHERE {' AND '.join(compatibility_clauses)}
-                GROUP BY c.operation_key, e.provider, e.region
+                GROUP BY c.operation_key, e.provider, e.region, e.phase_outcome
             ), event_rows AS (
                 SELECT
                     COALESCE(e.operation_id::text, e.event_id::text) AS operation_key,
@@ -2692,8 +2687,9 @@ class Database:
                     COALESCE(c.region, mp.region) AS region,
                     mp.canonical_region_id,
                     mp.country AS region_country,
-                    'INSTALL_SUCCEEDED' AS event_type,
-                    'SUCCEEDED' AS outcome,
+                    CASE WHEN c.outcome = 'FAILED' THEN 'INSTALL_FAILED'
+                         ELSE 'INSTALL_SUCCEEDED' END AS event_type,
+                    c.outcome,
                     c.last_occurred_at AS occurred_at
                 FROM compatibility_fallback AS c
                 LEFT JOIN map_provider AS p ON p.id = c.provider_id
@@ -3089,6 +3085,7 @@ class Database:
                 COALESCE(usb.identities, '[]'::jsonb) AS usb_identities,
                 COALESCE(evidence.attempts, 0) AS attempted_install_count,
                 COALESCE(evidence.successful, 0) AS successful_install_count,
+                COALESCE(public_review.successful_install_count, 0) AS compatibility_successful_install_count,
                 COALESCE(evidence.failed, 0) AS failed_install_count,
                 evidence.first_success,
                 evidence.last_success,
@@ -3130,34 +3127,33 @@ class Database:
             ) AS usb ON TRUE
             LEFT JOIN LATERAL (
                 SELECT
-                    count(*) FILTER (
-                        WHERE o.operation_succeeded OR o.received_at >= epoch.starts_at
-                    ) AS attempts,
+                    count(*) AS attempts,
                     count(*) FILTER (WHERE o.operation_succeeded) AS successful,
                     count(*) FILTER (
-                        WHERE NOT o.operation_succeeded AND o.received_at >= epoch.starts_at
+                        WHERE o.has_failed
                     ) AS failed,
                     min(o.occurred_at) FILTER (WHERE o.operation_succeeded) AS first_success,
                     max(o.occurred_at) FILTER (WHERE o.operation_succeeded) AS last_success,
-                    max(o.occurred_at) FILTER (
-                        WHERE o.operation_succeeded OR o.received_at >= epoch.starts_at
-                    ) AS last_evidence
+                    max(o.occurred_at) AS last_evidence
                 FROM (
                     SELECT
                         COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text) AS operation_key,
                         bool_and(e.phase_outcome = 'SUCCEEDED' AND e.automatic_finishing_result = 'VERIFIED')
-                            AND count(*) = max(COALESCE(e.selected_map_count, 1)) AS operation_succeeded,
+                            AS operation_succeeded,
+                        bool_or(e.phase_outcome = 'FAILED') AS has_failed,
                         min(e.occurred_at) AS occurred_at,
                         min(e.received_at) AS received_at
                     FROM compatibility_evidence_event AS e
                     WHERE e.canonical_device_model_id = dm.id
                       AND e.is_local_test IS NOT TRUE
-                    GROUP BY COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text)
+                      AND (COALESCE(e.write_started, TRUE)
+                           OR e.phase_outcome IN ('SUCCEEDED', 'FAILED'))
+                    GROUP BY e.event_id
                 ) AS o
-                CROSS JOIN compatibility_device_card_failure_epoch AS epoch
             ) AS evidence ON TRUE
             LEFT JOIN LATERAL (
                 SELECT s.compatibility_identity, s.review_status,
+                       s.successful_install_count,
                        s.public_statistics_enabled, s.public_display_name,
                        s.last_evidence
                 FROM compatibility_model_statistics AS s

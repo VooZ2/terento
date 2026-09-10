@@ -25,3 +25,67 @@ assert database.admin_overview_map_snapshot(now, time_zone='Europe/Vilnius') is 
 assert database.provider_detail('opentopomap') is not None
 assert [row['source_url'] for row in database.provider_download_urls('opentopomap')] == [main.source_url]
 print('PASS: PostgreSQL snapshot update, source proof, main compatibility fields and Overview SQL')
+
+# Synthetic results only in the explicitly guarded disposable CI database.
+# Reproduce the retained mixed custom + catalog session without production data.
+from uuid import uuid4
+from datetime import timedelta
+operation_id = uuid4()
+with database.connection() as connection:
+    device = connection.execute('SELECT id FROM device_model ORDER BY id LIMIT 1').fetchone()['id']
+    for index, provider in enumerate(('custom', 'opentopomap')):
+        connection.execute('''
+            INSERT INTO compatibility_evidence_event
+                (event_id, operation_id, map_result_index, selected_map_count,
+                 occurred_at, model, compatibility_identity, canonical_device_model_id,
+                 usb_vendor_id, usb_product_id, transport, provider, region,
+                 map_release, terento_version, macos_version, phase_outcome,
+                 automatic_finishing_result, write_started)
+            VALUES (%s,%s,%s,2,%s,'CI watch','CI watch',%s,2334,1,'MTP',%s,%s,
+                    '2026-05','1.0.0','26','SUCCEEDED','VERIFIED',true)
+        ''', (uuid4(), operation_id, index, now, device, provider,
+              'custom' if provider == 'custom' else 'ANDORRA'))
+    connection.execute('''
+        INSERT INTO map_download_event
+            (event_id,operation_id,provider_id,map_package_id,region,event_type,outcome,occurred_at)
+        VALUES (%s,%s,'opentopomap','opentopomap-andorra','ANDORRA',
+                'INSTALL_SUCCEEDED','SUCCEEDED',%s)
+    ''', (uuid4(), operation_id, now))
+since = now - timedelta(seconds=1)
+overview = database.admin_overview_map_snapshot(since, time_zone='Europe/Vilnius')
+assert overview['completedInstallCount'] == 2, overview
+assert sum(row['success_count'] for row in overview['trend']) == 1
+assert sum(row['custom_count'] for row in overview['trend']) == 1
+assert database.admin_overview_snapshot(since)['successfulInstallCount'] == 2
+statistics = database.map_statistics({})
+assert sum(row['operation_count'] for row in statistics if row['event_type'] == 'INSTALL_SUCCEEDED') == 1
+devices, _ = database.admin_device_snapshot()
+watch = next(row for row in devices if row['device_id'] == device)
+assert watch['attempted_install_count'] == 2 and watch['successful_install_count'] == 2, watch
+assert watch['compatibility_successful_install_count'] == 1, watch
+print('PASS: mixed session = two admin successes, one catalog success, one custom chart result; public session gate unchanged')
+
+with database.connection() as connection:
+    connection.execute("UPDATE compatibility_evidence_event SET phase_outcome='FAILED', automatic_finishing_result='FAILED' WHERE operation_id=%s AND provider='custom'", (operation_id,))
+overview = database.admin_overview_map_snapshot(since)
+assert (overview['completedInstallCount'], overview['failedInstallCount']) == (1, 1)
+assert sum(row['failed_count'] for row in overview['trend']) == 1
+assert sum(row['custom_count'] for row in overview['trend']) == 0
+devices, _ = database.admin_device_snapshot()
+watch = next(row for row in devices if row['device_id'] == device)
+assert (watch['attempted_install_count'], watch['successful_install_count'], watch['failed_install_count']) == (2, 1, 1)
+with database.connection() as connection:
+    connection.execute("UPDATE compatibility_evidence_event SET is_local_test=true WHERE operation_id=%s AND provider='custom'", (operation_id,))
+    connection.execute("UPDATE map_download_event SET is_local_test=true WHERE operation_id=%s", (operation_id,))
+    connection.execute("UPDATE compatibility_evidence_event SET selected_map_count=3 WHERE operation_id=%s", (operation_id,))
+overview = database.admin_overview_map_snapshot(since)
+assert (overview['completedInstallCount'], overview['failedInstallCount']) == (1, 0)
+statistics = database.map_statistics({})
+assert sum(row['operation_count'] for row in statistics if row['event_type'] == 'INSTALL_SUCCEEDED') == 1
+print('PASS: partial failure, local exclusion and missing sibling retain independent result counts')
+with database.connection() as connection:
+    connection.execute("UPDATE compatibility_evidence_event SET phase_outcome='FAILED', automatic_finishing_result='FAILED' WHERE operation_id=%s AND provider='opentopomap'", (operation_id,))
+statistics = database.map_statistics({'eventType': 'INSTALL_FAILED'})
+assert sum(row['operation_count'] for row in statistics) == 1, statistics
+assert database.map_statistics({'eventType': 'INSTALL_SUCCEEDED'}) == []
+print('PASS: catalog failure fallback respects outcome filters')
