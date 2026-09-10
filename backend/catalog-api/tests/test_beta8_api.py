@@ -247,7 +247,7 @@ class Beta8APITests(unittest.TestCase):
             / "src"
             / "terento_catalog"
             / "migrations"
-            / "038_activate_maprando_beta11.sql"
+            / "039_activate_maprando_beta11.sql"
         ).read_text(encoding="utf-8")
         self.assertIn("'maprando'", migration)
         self.assertIn("'ACTIVE'", migration)

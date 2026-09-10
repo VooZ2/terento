@@ -279,7 +279,8 @@ struct MapRandoProviderAdapter: MapProviderAdapter, Sendable {
 
     func canonicalRegionIdentity(for package: MapPackage) -> CanonicalMapRegionIdentity? {
         let tokens = [package.providerRegionId, package.canonicalRegionId, package.regionId]
-            .map { MapIdentity(provider: id, region: $0)?.region ?? "" }
+            .compactMap { $0 }
+            .compactMap { MapIdentity(provider: id, region: $0)?.region }
         if tokens.contains(where: { $0.contains("CRIMEE") || $0.contains("CRIMEA") }) {
             return CanonicalMapRegionIdentity(countryCode: "UA", locality: "CRIMEA")
         }

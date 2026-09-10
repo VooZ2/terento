@@ -439,7 +439,7 @@ model-specific and evidence-based.
 
 Migration `037_maprando_compatibility_evidence.sql` adds MapRando to the
 privacy-safe compatibility evidence provider constraint. Migration
-`038_activate_maprando_beta11.sql` makes the provider ACTIVE and registers its
+`039_activate_maprando_beta11.sql` makes the provider ACTIVE and registers its
 original source links. Neither migration grants a general device-compatibility
 claim. Existing map-event validation already accepts registered provider IDs.
 Admin filters, operation links and health support MapRando;
