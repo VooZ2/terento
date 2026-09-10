@@ -17,14 +17,16 @@ for (const language of ['en', 'de', 'fr', 'pl', 'cs', 'it']) {
   assert.doesNotMatch(page, /id="compatibility-snapshot"|watch-card/, `${language}: no checked-in compatibility evidence`);
   assert.match(page, /data-summary="models"><\/strong>/, `${language}: model count waits for the API`);
   assert.match(page, /id="watch-grid"[^>]*aria-busy="true"><\/div>/, `${language}: result grid waits for the API`);
-  assert.ok(page.includes(copy.summary.moreModels), `${language}: localized summary`);
+  assert.doesNotMatch(page, /More models ready for testing|Weitere Modelle zum Testen|D’autres modèles prêts à être testés|Kolejne modele gotowe do testów|Další modely připravené k testování|Altri modelli pronti per i test/, `${language}: removed testing prompt`);
+  assert.doesNotMatch(page, /Evidence refreshed|Nachweise aktualisiert|Données actualisées|Dane odświeżone|Údaje aktualizovány|Dati aggiornati/, `${language}: removed refresh label`);
   assert.equal((page.match(/id="compatibility-clear"/g) || []).length, 1);
   assert.equal((page.match(/id="compatibility-freshness"/g) || []).length, 1);
+  assert.match(page, /class="compatibility-freshness"[^>]* hidden/);
   assert.ok(page.indexOf('id="compatibility-clear"') < page.indexOf('id="watch-grid"'));
   const download = read(`site/${prefix}download/index.html`);
   assert.ok(download.includes(`<span class="download-recommended">${copy.freshness.recommended}</span>`));
   for (const asset of ['compatibility', 'compatibility-data', 'compatibility-locales']) {
-    assert.ok(page.includes(`${asset}.js?v=20260910-live-api-v1`));
+    assert.ok(page.includes(`${asset}.js?v=20260910-summary-v1`));
   }
 }
 
@@ -78,7 +80,8 @@ async function checkRefreshAndFilters() {
   assert.equal(requests, 2);
   assert.equal(node('#compatibility-retry').hidden, true);
   assert.equal(node('[data-summary="models"]').textContent, '1');
-  assert.match(node('#compatibility-freshness').textContent, /Evidence refreshed/);
+  assert.equal(node('#compatibility-freshness').textContent, '');
+  assert.equal(node('.compatibility-freshness').hidden, true);
   assert.equal(node('[data-summary="successes"]').textContent, '2');
   assert.ok(node('#watch-grid').innerHTML.includes('watch-card'));
   offline = true;
