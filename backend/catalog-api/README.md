@@ -11,7 +11,9 @@ Admin filter actions align with the labelled controls' bottom edge. Mobile
 filter values use regular-weight 16px Inter and retain 44px touch targets;
 the device sort label stacks above its select. Coverage maps initially show
 the world center at 168% of the world-fit scale, as requested by the owner.
-Reset returns to that same view. Data updates, including empty or changed
+That overview is displayed as 100%; all zoom percentages use it as their baseline.
+Reset returns to that same view and 100%. The existing equirectangular SVG stays
+north-up, without rotation or perspective. Data updates, including empty or changed
 country sets, preserve manual pan and zoom rather than auto-fitting coverage.
 
 This service is a metadata-only source for the Terento macOS catalog client.

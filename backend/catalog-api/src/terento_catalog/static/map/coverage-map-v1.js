@@ -43,15 +43,17 @@
         if (event.key === 'Escape') { highlight(null); container.focus(); }
       });
     });
+    // The owner-selected overview is the UI's 100%, not the full-world fit.
+    const initialZoom = () => map.getBoundsZoom(bounds) + .75;
     const reset = () => {
       map.invalidateSize();
       // Three quarter-zoom steps above the world fit: 2^0.75 = 168%.
-      map.setView(bounds.getCenter(), map.getBoundsZoom(bounds) + .75, {animate: false});
+      map.setView(bounds.getCenter(), initialZoom(), {animate: false});
       highlight(null);
     };
     const resize = new ResizeObserver(() => map.invalidateSize({pan: false}));
     resize.observe(container);
-    map.on('zoomend', () => options.onZoom?.(map.getZoom(), map.getBoundsZoom(bounds)));
+    map.on('zoomend', () => options.onZoom?.(map.getZoom(), initialZoom()));
     reset();
     return {
       codes: new Set(paths.keys()),
