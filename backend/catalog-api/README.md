@@ -453,7 +453,8 @@ projection and byte-identical legacy endpoint output. A live PostgreSQL
 migration integration check and beta device install/remove/update remain pending.
 The review found no proven unused transport/catalog lines safe to remove;
 legacy compatibility branches and the OTM package-count guard remain in use.
-# Admin filter sizing — 2026-09-11
+
+## Admin filter sizing — 2026-09-11
 
 Provider source and package filters share the admin control-height token (40px
 desktop, 44px mobile). Inputs and native selects inside column labels do not
