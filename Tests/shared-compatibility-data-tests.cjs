@@ -103,6 +103,7 @@ const siteStyles = fs.readFileSync(
   "utf8"
 );
 assert.match(compatibilitySource, /\/compatibility\/public\/models\.json/);
+assert.doesNotMatch(compatibilitySource, /compatibility-snapshot|initializeSnapshot|readSnapshot/);
 assert.match(compatibilitySource, /generic-garmin-watch\.png/);
 assert.doesNotMatch(compatibilitySource, /watch-image-placeholder/);
 assert.doesNotMatch(compatibilitySource, /\/devices\/catalog\.json/);
@@ -132,6 +133,8 @@ assert.doesNotMatch(compatibilityPage, /Garmin models with evidence/);
 assert.doesNotMatch(compatibilityPage, /class="section-heading compatibility-heading"/);
 assert.doesNotMatch(compatibilityPage, /aria-labelledby="directory-title"/);
 assert.match(compatibilityPage, /data-summary-model-label>models with evidence/);
+assert.match(compatibilityPage, /data-summary="models"><\/strong>/);
+assert.doesNotMatch(compatibilityPage, /id="compatibility-snapshot"|class="watch-card"/);
 assert.match(compatibilityPage, /More models ready for testing/);
 assert.match(compatibilityPage, /Public compatibility is based on real installation evidence for exact Garmin models and variants\. Each successful installation shared by users helps us confirm compatibility with greater confidence\./);
 assert.match(compatibilityPage, /These counts come from successful installations shared with Terento\. They are not Garmin certification\./);

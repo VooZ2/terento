@@ -4,23 +4,22 @@ The public interface and admin presentation use the existing Terento tokens;
 no native application release, evidence approval, device operation, or data
 collection behavior changes in this patch.
 
-Public compatibility pages embed the approved API snapshot in all six locales.
-`scripts/update-compatibility-snapshot.py --check` compares semantic evidence
-(not the response generation timestamp) against the live API without writing.
-The site publication preflight requires parity. A saved snapshot is explicitly
-dated; failed browser refreshes preserve it with a warning and Retry action.
-The latest installation date is separately named, not presented as refresh time.
+Public compatibility counts, statuses, dates and model cards come directly from
+the live public compatibility API. The six localized HTML files contain only a
+loading shell and no checked-in evidence rows or numeric snapshot. A failed
+initial request shows the localized unavailable state and Retry action. If a
+later background refresh fails, the page keeps only the last results loaded
+from the API and labels them as potentially outdated.
 
-The scheduled refresh proposes a PR rather than writing to protected beta.
-An existing pending snapshot PR prevents duplicates. Review, required checks,
-and merge remain necessary; GitHub-token PR creation does not automatically
-trigger push/PR workflows. Owners must run required checks before merging.
-The owner approved the additional `pull-requests: write` permission for this
-workflow; no branch protection is bypassed.
+Site publication validates deterministic HTML, JavaScript and release
+contracts without comparing a changing live API response to the commit. Live
+evidence can therefore change independently without blocking an unrelated site
+deployment. The obsolete scheduled snapshot-refresh workflow and its write and
+pull-request permissions have been removed.
 
-Public regression coverage includes six-locale snapshot equality, translated
-summaries/DMG recommendation, shared asset versions, offline refresh recovery,
-Retry, and Clear filters. Home and Guide describe the existing app Report issue
+Public regression coverage includes six-locale API-only loading shells,
+translated summaries/DMG recommendation, shared asset versions, initial API
+failure, background-refresh recovery, Retry, and Clear filters. Home and Guide describe the existing app Report issue
 action (copy report, open GitHub, review before public posting), not a log export
 command that does not exist. Mail links remain optional support contact.
 
