@@ -7,6 +7,8 @@ canonical IDs rather than datalist suggestions. Editing the search clears the
 selection, and assignment requires an explicit model choice. Other identity
 actions disable the picker. Backend validation and save semantics are unchanged.
 
+GitHub report actions share inline-flex alignment, zero margins and stretched
+row heights for both the link and button; copy feedback occupies its own row.
 Admin filter actions align with the labelled controls' bottom edge. Mobile
 filter values use regular-weight 16px Inter and retain 44px touch targets;
 the device sort label stacks above its select. Coverage maps initially show
