@@ -4,6 +4,20 @@ from terento_catalog.admin import _diagnostic_summary_by_identity, _group_operat
 
 
 class InstallationResultCountsTests(unittest.TestCase):
+    def test_custom_activity_does_not_link_to_catalog_statistics(self):
+        from terento_catalog.admin import _overview_map_event_context, _overview_map_event_href
+        event = {'provider_id': 'custom', 'region': 'custom'}
+        self.assertEqual(_overview_map_event_context(event), 'Custom .img')
+        self.assertEqual(_overview_map_event_href(event), '/admin/installations')
+
+    def test_table_status_uses_sessions_not_package_summary(self):
+        from terento_catalog.admin import _statistics_row
+        markup = _statistics_row({'model': 'Watch', 'compatibility_identity': 'Watch',
+                                  'successful_install_count': 2, 'map_capable': True},
+                                 {'attempts': 3, 'successful': 3, 'failed': 0})
+        self.assertIn('Tested:', markup)
+        self.assertNotIn('Supported:', markup)
+
     def events(self):
         return [dict(event_id=f'result-{index}', operation_id='mixed-session',
                      compatibility_identity='Test watch', map_result_index=index,

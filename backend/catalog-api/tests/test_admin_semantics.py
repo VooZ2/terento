@@ -1816,7 +1816,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("SEND_OBJECT_FAILED", body)
         self.assertIn("Failure reason:", body)
         self.assertIn("data-history-filter='failed'", body)
-        self.assertIn("Device snapshot totals information", body)
+        self.assertIn("Each map installation counts separately", body)
         self.assertIn("maxlength='500'", body)
         self.assertIn("link.closest('.github-issue-controls, .github-review')", body)
         self.assertNotIn("\x08", body)
