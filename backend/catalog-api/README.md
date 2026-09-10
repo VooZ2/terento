@@ -9,10 +9,10 @@ actions disable the picker. Backend validation and save semantics are unchanged.
 
 Admin filter actions align with the labelled controls' bottom edge. Mobile
 filter values use regular-weight 16px Inter and retain 44px touch targets;
-the device sort label stacks above its select. Coverage maps initially fit
-countries with completed installations (32px padding, maximum zoom 2).
-Reset returns to that coverage; an empty/unmapped set uses the world view.
-Repeated updates for the same country set preserve manual pan and zoom.
+the device sort label stacks above its select. Coverage maps initially show
+the world center at 168% of the world-fit scale, as requested by the owner.
+Reset returns to that same view. Data updates, including empty or changed
+country sets, preserve manual pan and zoom rather than auto-fitting coverage.
 
 This service is a metadata-only source for the Terento macOS catalog client.
 It stores map-provider metadata and a separate Garmin smartwatch device

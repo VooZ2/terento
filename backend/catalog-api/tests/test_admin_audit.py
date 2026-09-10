@@ -67,7 +67,7 @@ class AdminAuditTests(unittest.TestCase):
         for rule in (".filter-bar>.filter-disclosure{align-self:flex-end}",
                      ".filter-bar input,.filter-bar select{font-weight:400}",
                      ".filter-bar .device-mobile-sort{display:flex;flex-direction:column;gap:6px}",
-                     "coverage-map-v1.js?v=20260909-coverage-focus"):
+                     "coverage-map-v1.js?v=20260910-default-168"):
             self.assertIn(rule, body)
         result = subprocess.run([os.environ.get('TERENTO_NODE_BIN', 'node'),
                                  str(Path(__file__).with_name('coverage-map-tests.cjs'))],
