@@ -10,12 +10,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20260909-post-audit-v1"
-PROVIDER_SCRIPT_VERSION = "20260911-three-providers-v1"
-STYLE_VERSION = "20260911-three-providers-v1"
+PROVIDER_SCRIPT_VERSION = "20260911-three-providers-v2"
+STYLE_VERSION = "20260911-three-providers-v2"
 IMAGE_VERSION = "20260905-app-screens-v1"
 LANGUAGE_VERSION = "20260905-language-selector-full-name-v1"
-LOCALIZED_CONTENT_VERSION = "20260911-three-providers-v1"
-COMPATIBILITY_LOCALES_VERSION = "20260911-three-providers-v1"
+LOCALIZED_CONTENT_VERSION = "20260911-three-providers-v2"
+COMPATIBILITY_LOCALES_VERSION = "20260911-three-providers-v2"
 COMPATIBILITY_VERSION = "20260910-summary-v1"
 UMAMI_SCRIPT_VERSION = "20260905-campaign-url-only-v1"
 PAGE_LANGUAGE_VERSION = "20260905-shared-page-language-v1"
