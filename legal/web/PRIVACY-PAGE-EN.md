@@ -17,7 +17,7 @@ Reports exclude Garmin Unit IDs, serial-number values, account details, local pa
 
 ## Website and app connections
 
-Website, API, catalog and app-update requests may expose your IP address and request metadata to hosting and security providers. Catalog maps download directly from Freizeitkarte or OpenTopoMap, whose privacy practices apply to those connections. The app’s launch update check retrieves release metadata, not an app download.
+Website, API, catalog and app-update requests may expose your IP address and request metadata to hosting and security providers. Catalog maps download directly from Freizeitkarte, OpenTopoMap or MapRando, whose privacy practices apply to those connections. The app’s launch update check retrieves release metadata, not an app download.
 
 These connections serve content, provide requested app functions and protect against abuse. Security processing relies on legitimate interests under GDPR Article 6(1)(f).
 

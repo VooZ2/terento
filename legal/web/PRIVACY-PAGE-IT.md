@@ -17,7 +17,7 @@ I rapporti escludono Garmin Unit IDs, valori dei numeri di serie, account, perco
 
 ## Connessioni del sito e dell’app
 
-Le richieste al sito, API, catalogo e aggiornamenti possono comunicare IP e metadati ai fornitori di hosting e sicurezza. Le mappe si scaricano direttamente da Freizeitkarte o OpenTopoMap; a queste connessioni si applicano le loro regole privacy. Il controllo all’avvio recupera informazioni sulla versione, non l’app.
+Le richieste al sito, API, catalogo e aggiornamenti possono comunicare IP e metadati ai fornitori di hosting e sicurezza. Le mappe si scaricano direttamente da Freizeitkarte, OpenTopoMap o MapRando; a queste connessioni si applicano le loro regole privacy. Il controllo all’avvio recupera informazioni sulla versione, non l’app.
 
 Le connessioni forniscono contenuti e funzioni richieste e proteggono dagli abusi. Il trattamento per sicurezza si basa sul legittimo interesse ai sensi dell’art. 6(1)(f) GDPR.
 

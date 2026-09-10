@@ -1405,9 +1405,9 @@ h1 {
 }
 
 .provider-cards {
-  max-width: 860px;
+  max-width: 1300px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: start;
   gap: 20px;
   margin-top: 28px;
@@ -1518,7 +1518,7 @@ h1 {
 }
 
 .provider-controls {
-  max-width: 860px;
+  max-width: 1300px;
   display: flex;
   justify-content: flex-end;
   flex-wrap: wrap;
@@ -1554,7 +1554,7 @@ h1 {
   outline-offset: 3px;
 }
 
-@media (max-width: 899px) {
+@media (max-width: 1199px) {
   .provider-cards {
     grid-template-columns: none;
     grid-auto-flow: column;

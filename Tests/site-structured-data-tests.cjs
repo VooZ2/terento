@@ -123,7 +123,7 @@ for (const locale of locales) {
   assert.doesNotMatch(faq.mainEntity[3].acceptedAnswer.text, /beta|bêta|betę|betu/i, `${home}: update schema answer avoids beta-specific wording`);
   assert.match(faq.mainEntity[2].acceptedAnswer.text, /\.img|compatible|kompatib|zgodn|kompatibil|support/i, `${home}: own-map schema answer explains compatible local import`);
   assert.match(faq.mainEntity[3].name, /update|aktual|mise à jour|à jour|nowsz|novější|più recent|aggiorn/i, `${home}: update FAQ question`);
-  assert.match(homeData.source, /data-provider-card="freizeitkarte"[\s\S]*Freizeitkarte[\s\S]*data-provider-card="opentopomap"[\s\S]*OpenTopoMap/, `${home}: provider cards name current providers`);
+  assert.match(homeData.source, /data-provider-card="freizeitkarte"[\s\S]*Freizeitkarte[\s\S]*data-provider-card="opentopomap"[\s\S]*OpenTopoMap[\s\S]*data-provider-card="maprando"[\s\S]*MapRando/, `${home}: provider cards name current providers`);
   assert.doesNotMatch(homeData.source, /back up|backup|sauvegarder|zálohovat|wykonać kopię|eseguire il backup/i, `${home}: no backup promise in source`);
 
   const download = downloadFile(locale);

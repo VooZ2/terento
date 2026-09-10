@@ -2,7 +2,7 @@
 <html lang="en" data-language="en">
   <head>
     <script defer src="/site-shell.js?v=20260909-post-audit-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20260909-post-audit-v1">
+    <link rel="stylesheet" href="/styles.css?v=20260911-three-providers-v1">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -42,7 +42,7 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <script defer src="/language.js?v=20260905-language-selector-full-name-v1"></script>
     <script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script>
-    <script defer src="/provider-list.js?v=20260908-provider-disclosure-v4"></script>
+    <script defer src="/provider-list.js?v=20260911-three-providers-v1"></script>
     <script defer src="/home-features.js?v=20260904-home-workflow-tabs"></script>
     <script type="application/ld+json">
       {
@@ -134,7 +134,7 @@
                 "name": "What should I do if installation fails?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "On the failed installation screen, choose “Report issue”. Terento copies a diagnostic report and opens GitHub. Review the report before posting: GitHub issues are public. If you prefer email, paste the report into your message to support."
+                  "text": "On the failed installation screen, choose “Report issue”. Terento opens GitHub with the report already filled in. Review it before posting: GitHub issues are public. For help by email, include your watch model, map region and what happened."
                 }
               }
             ]
@@ -278,7 +278,7 @@
       </section>
       <section class="provider-section section" id="providers" aria-labelledby="providers-title">
         <div class="shell">
-          <div class="section-heading provider-intro"><p class="eyebrow">Available maps</p><h2 id="providers-title">Explore available maps.</h2><p class="provider-copy">Today, Terento connects you directly to Freizeitkarte and OpenTopoMap. Maps are downloaded from each provider's original source.</p></div>
+          <div class="section-heading provider-intro"><p class="eyebrow">Available maps</p><h2 id="providers-title">Explore available maps.</h2><p class="provider-copy">Choose maps from three providers. Maps are downloaded from each provider's original source.</p></div>
           <div class="provider-cards" id="provider-cards" data-provider-cards role="region" tabindex="0" aria-label="Map providers">
             <article class="provider-card" data-provider-card="freizeitkarte">
               <div class="provider-card-header">
@@ -300,6 +300,14 @@
                 <p class="provider-addon-copy">Choose whether to include them when installing an OpenTopoMap region in Terento. The main map works without this add-on.</p>
                 <p class="provider-addon-count" data-contour-count data-count-template="Available for {count} map packages · Uses additional storage when installed.">Available for 157 map packages · Uses additional storage when installed.</p>
               </details>
+            </article>
+<article class="provider-card" data-provider-card="maprando">
+              <div class="provider-card-header">
+                <h3>MapRando</h3>
+                <p class="provider-count" data-provider-count data-count-template="{count} map packages" hidden></p>
+              </div>
+              <p class="provider-summary">For hiking and exploring smaller trails.</p>
+              <ul class="provider-benefits"><li>Hiking-focused map styling</li><li>Small paths and trails</li><li>Regular OpenStreetMap data updates</li></ul>
             </article>
           </div>
           <div class="provider-controls" data-provider-controls hidden>
@@ -333,7 +341,7 @@
             </details>
             <details>
               <summary>What should I do if installation fails?</summary>
-              <p>On the failed installation screen, choose “Report issue”. Terento copies a diagnostic report and opens GitHub. Review the report before posting: GitHub issues are public. If you prefer email, paste the report into your message to support.</p>
+              <p>On the failed installation screen, choose “Report issue”. Terento opens GitHub with the report already filled in. Review it before posting: GitHub issues are public. For help by email, include your watch model, map region and what happened.</p>
               <div class="faq-support-actions">
                 <a class="text-link" href="https://github.com/VooZ2/terento/issues/new/choose" target="_blank" rel="noopener noreferrer" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="github-issue">Open an issue <span aria-hidden="true">→</span></a>
                 <a class="text-link" href="mailto:hello&#64;terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email">Email support <span aria-hidden="true">→</span></a>

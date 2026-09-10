@@ -7,8 +7,8 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "u
 const styles = read("site/styles.css");
 const shellSource = read("site/site-shell.js");
 const languageSource = read("site/language.js");
-const styleVersion = "20260909-post-audit-v1";
-const localizedContentVersion = "20260904-pass3-internal-link-events-v1";
+const styleVersion = "20260911-three-providers-v1";
+const localizedContentVersion = "20260911-three-providers-v1";
 const mobileLanguageNames = { en: "English", de: "Deutsch", fr: "Français", pl: "Polski", cs: "Čeština", it: "Italiano" };
 
 const cssBlock = (selector) => {

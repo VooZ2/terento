@@ -17,7 +17,7 @@ Berichte enthalten keine Garmin Unit IDs, Seriennummernwerte, Kontodaten, lokale
 
 ## Verbindungen von Website und App
 
-Bei Website-, API-, Katalog- und Update-Anfragen können Hosting- und Sicherheitsanbieter deine IP-Adresse und Anfrage-Metadaten erhalten. Katalogkarten werden direkt von Freizeitkarte oder OpenTopoMap geladen; deren Datenschutzregeln gelten für diese Verbindungen. Die Update-Prüfung beim App-Start lädt Veröffentlichungsdaten, nicht die App selbst.
+Bei Website-, API-, Katalog- und Update-Anfragen können Hosting- und Sicherheitsanbieter deine IP-Adresse und Anfrage-Metadaten erhalten. Katalogkarten werden direkt von Freizeitkarte, OpenTopoMap oder MapRando geladen; deren Datenschutzregeln gelten für diese Verbindungen. Die Update-Prüfung beim App-Start lädt Veröffentlichungsdaten, nicht die App selbst.
 
 Diese Verbindungen liefern Inhalte, ermöglichen angeforderte Funktionen und schützen vor Missbrauch. Die Sicherheitsverarbeitung beruht auf berechtigten Interessen nach Art. 6 Abs. 1 lit. f DSGVO.
 

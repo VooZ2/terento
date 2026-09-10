@@ -38,8 +38,8 @@
     updateControls();
   }
 
-  const API_URL = 'https://api.terento.app/maps/catalog.json';
-  const PUBLIC_PROVIDER_IDS = new Set(["freizeitkarte", "opentopomap"]);
+  const API_URL = 'https://api.terento.app/maps/catalog-v3.json';
+  const PUBLIC_PROVIDER_IDS = new Set(["freizeitkarte", "opentopomap", "maprando"]);
   const render = (providers) => {
     const activeProviders = new Map(providers
       .filter((provider) => PUBLIC_PROVIDER_IDS.has(String(provider?.id || '').trim().toLowerCase()))
@@ -52,7 +52,8 @@
       const maps = Array.isArray(provider.maps)
         ? provider.maps.filter((map) => String(map?.availability || '').toUpperCase() === 'AVAILABLE') : [];
       const countElement = card.querySelector('[data-provider-count]');
-      if (maps.length && countElement) {
+      if (Array.isArray(provider.maps) && countElement) {
+        countElement.hidden = false;
         const countries = new Set(maps.map((map) => String(map?.country || '').trim()).filter(Boolean));
         countElement.textContent = countElement.dataset.countTemplate
           .replace('{count}', String(maps.length)).replace('{countries}', String(countries.size));

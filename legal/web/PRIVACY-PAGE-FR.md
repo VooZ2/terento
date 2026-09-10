@@ -17,7 +17,7 @@ Les rapports excluent les Garmin Unit IDs, valeurs de numéros de série, compte
 
 ## Connexions du site et de l’application
 
-Les requêtes au site, à l’API, au catalogue et aux mises à jour peuvent communiquer votre adresse IP et des métadonnées aux hébergeurs et services de sécurité. Les cartes du catalogue sont téléchargées directement depuis Freizeitkarte ou OpenTopoMap ; leurs règles de confidentialité s’appliquent à ces connexions. La vérification au démarrage récupère des informations de version, pas l’application.
+Les requêtes au site, à l’API, au catalogue et aux mises à jour peuvent communiquer votre adresse IP et des métadonnées aux hébergeurs et services de sécurité. Les cartes du catalogue sont téléchargées directement depuis Freizeitkarte, OpenTopoMap ou MapRando ; leurs règles de confidentialité s’appliquent à ces connexions. La vérification au démarrage récupère des informations de version, pas l’application.
 
 Ces connexions fournissent le contenu et les fonctions demandées et protègent contre les abus. Le traitement de sécurité repose sur l’intérêt légitime selon l’article 6(1)(f) du RGPD.
 
