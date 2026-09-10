@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
 FAQ_KEEP = (0, 1, 4, 5, 6)
-PROVIDER_SCRIPT_VERSION = "20260908-provider-disclosure-v4"
+PROVIDER_SCRIPT_VERSION = "20260911-three-providers-v1"
 FEATURE_SCRIPT_VERSION = "20260904-home-workflow-tabs"
 EMAIL_URL = "mailto:hello@terento.app?subject=Terento%20installation%20issue"
 EMAIL_URL_HTML = EMAIL_URL.replace("@", "&#64;")
@@ -39,10 +39,10 @@ HOME_COPY = {
         "basecamp_answer": "Yes. Terento is designed to make third-party map management on macOS simple and fast — from choosing a map to installing, updating, and managing it on your Garmin watch. <a href=\"/guides/install-garmin-maps-mac/\" data-umami-event=\"guide-link-click\" data-umami-event-location=\"home-faq-basecamp\">Read the installation guide.</a>",
         "safety_answer": "Yes. Add a compatible .img map from your Mac and install it on your connected Garmin watch.",
         "update_answer": "Yes. Terento shows when newer releases are available and helps you update Terento-managed third-party maps.",
-        "failure_answer": "On the failed installation screen, choose “Report issue”. Terento copies a diagnostic report and opens GitHub. Review the report before posting: GitHub issues are public. If you prefer email, paste the report into your message to support.",
+        "failure_answer": "On the failed installation screen, choose “Report issue”. Terento opens GitHub with the report already filled in. Review it before posting: GitHub issues are public. For help by email, include your watch model, map region and what happened.",
         "provider_eyebrow": "Available maps",
         "provider_title": "Explore available maps.",
-        "provider_copy": "Today, Terento connects you directly to Freizeitkarte and OpenTopoMap. Maps are downloaded from each provider's original source.",
+        "provider_copy": "Choose maps from three providers. Maps are downloaded from each provider's original source.",
         "download_label": "Download",
         "faq_eyebrow": "Have questions?",
         "faq_questions": ["Which Garmin watches work with Terento?", "Can I install third-party maps on a Garmin watch from a Mac without BaseCamp?", "Can I add my own .img map?", "Can I update maps later?", "What should I do if installation fails?"],
@@ -73,10 +73,10 @@ HOME_COPY = {
         "basecamp_answer": "Ja. Terento wurde entwickelt, um die Verwaltung von Drittanbieter-Karten auf macOS einfach und schnell zu machen — von der Kartenauswahl bis zur Installation, Aktualisierung und Verwaltung auf deiner Garmin-Uhr. <a href=\"/de/guides/install-garmin-maps-mac/\" data-umami-event=\"guide-link-click\" data-umami-event-location=\"home-faq-basecamp\">Lies die Installationsanleitung.</a>",
         "safety_answer": "Ja. Füge eine kompatible .img-Karte von deinem Mac hinzu und installiere sie auf deiner verbundenen Garmin-Uhr.",
         "update_answer": "Ja. Terento zeigt, wenn neuere Veröffentlichungen verfügbar sind, und hilft dir, von Terento verwaltete Drittanbieter-Karten zu aktualisieren.",
-        "failure_answer": "Wähle nach einer fehlgeschlagenen Installation „Report issue“. Terento kopiert einen Diagnosebericht und öffnet GitHub. Prüfe den Bericht vor dem Veröffentlichen: GitHub-Issues sind öffentlich. Für Hilfe per E-Mail füge den Bericht in deine Nachricht an den Support ein.",
+        "failure_answer": "Wähle nach einer fehlgeschlagenen Installation „Report issue“. Terento öffnet GitHub mit einem bereits ausgefüllten Bericht. Prüfe ihn vor dem Veröffentlichen: GitHub-Issues sind öffentlich. Für Hilfe per E-Mail nenne dein Uhrenmodell, die Kartenregion und den Fehler.",
         "provider_eyebrow": "Verfügbare Karten",
         "provider_title": "Verfügbare Karten entdecken.",
-        "provider_copy": "Heute verbindet Terento dich direkt mit Freizeitkarte und OpenTopoMap. Karten werden von der Originalquelle des jeweiligen Anbieters geladen.",
+        "provider_copy": "Wähle Karten von drei Anbietern. Karten werden von der Originalquelle des jeweiligen Anbieters geladen.",
         "download_label": "Herunterladen",
         "faq_eyebrow": "Hast du Fragen?",
         "faq_questions": ["Welche Garmin-Uhren funktionieren mit Terento?", "Kann ich Drittanbieter-Karten von einem Mac ohne BaseCamp auf einer Garmin-Uhr installieren?", "Kann ich meine eigene .img-Karte hinzufügen?", "Kann ich Karten später aktualisieren?", "Was soll ich tun, wenn die Installation fehlschlägt?"],
@@ -107,10 +107,10 @@ HOME_COPY = {
         "basecamp_answer": "Oui. Terento est conçu pour rendre la gestion des cartes tierces sur macOS simple et rapide — du choix de la carte à son installation, sa mise à jour et sa gestion sur votre montre Garmin. <a href=\"/fr/guides/install-garmin-maps-mac/\" data-umami-event=\"guide-link-click\" data-umami-event-location=\"home-faq-basecamp\">Lisez le guide d’installation.</a>",
         "safety_answer": "Oui. Ajoutez une carte .img compatible depuis votre Mac et installez-la sur votre montre Garmin connectée.",
         "update_answer": "Oui. Terento vous indique lorsqu’une version plus récente est disponible et vous aide à mettre à jour les cartes tierces gérées par Terento.",
-        "failure_answer": "Sur l’écran d’échec de l’installation, choisissez « Report issue ». Terento copie un rapport de diagnostic et ouvre GitHub. Vérifiez le rapport avant de le publier : les issues GitHub sont publiques. Pour une aide par e-mail, collez le rapport dans votre message au support.",
+        "failure_answer": "Sur l’écran d’échec de l’installation, choisissez « Report issue ». Terento ouvre GitHub avec le rapport déjà rempli. Vérifiez-le avant de le publier : les issues GitHub sont publiques. Pour une aide par e-mail, indiquez le modèle de votre montre, la région de la carte et ce qui s’est passé.",
         "provider_eyebrow": "Cartes disponibles",
         "provider_title": "Découvrez les cartes disponibles.",
-        "provider_copy": "Aujourd’hui, Terento vous connecte directement à Freizeitkarte et OpenTopoMap. Les cartes sont téléchargées depuis la source d’origine de chaque fournisseur.",
+        "provider_copy": "Choisissez des cartes de trois fournisseurs. Les cartes sont téléchargées depuis la source d’origine de chaque fournisseur.",
         "download_label": "Télécharger",
         "faq_eyebrow": "Vous avez des questions ?",
         "faq_questions": ["Quelles montres Garmin fonctionnent avec Terento ?", "Puis-je installer des cartes tierces sur une montre Garmin depuis un Mac sans BaseCamp ?", "Puis-je ajouter ma propre carte .img ?", "Puis-je mettre les cartes à jour plus tard ?", "Que dois-je faire si l’installation échoue ?"],
@@ -141,10 +141,10 @@ HOME_COPY = {
         "basecamp_answer": "Tak. Terento powstało po to, by instalowanie i zarządzanie mapami innych firm na macOS było proste i szybkie — od wyboru mapy po instalację, aktualizację i zarządzanie nią na zegarku Garmin. <a href=\"/pl/guides/install-garmin-maps-mac/\" data-umami-event=\"guide-link-click\" data-umami-event-location=\"home-faq-basecamp\">Przeczytaj instrukcję instalacji.</a>",
         "safety_answer": "Tak. Dodaj zgodną mapę .img z Maca i zainstaluj ją na podłączonym zegarku Garmin.",
         "update_answer": "Tak. Terento pokazuje, gdy dostępne są nowsze wydania, i pomaga aktualizować mapy innych firm zarządzane przez Terento.",
-        "failure_answer": "Na ekranie nieudanej instalacji wybierz „Report issue”. Terento kopiuje raport diagnostyczny i otwiera GitHub. Sprawdź raport przed publikacją: zgłoszenia na GitHubie są publiczne. Jeśli wolisz e-mail, wklej raport do wiadomości do pomocy technicznej.",
+        "failure_answer": "Na ekranie nieudanej instalacji wybierz „Report issue”. Terento otwiera GitHuba z już wypełnionym raportem. Sprawdź go przed publikacją: zgłoszenia na GitHubie są publiczne. Jeśli potrzebujesz pomocy e-mailem, podaj model zegarka, region mapy i opisz, co się stało.",
         "provider_eyebrow": "Dostępne mapy",
         "provider_title": "Poznaj dostępne mapy.",
-        "provider_copy": "Dziś Terento łączy Cię bezpośrednio z Freizeitkarte i OpenTopoMap. Mapy są pobierane z oryginalnego źródła każdego dostawcy.",
+        "provider_copy": "Wybieraj mapy od trzech dostawców. Mapy są pobierane z oryginalnego źródła każdego dostawcy.",
         "download_label": "Pobierz",
         "faq_eyebrow": "Masz pytania?",
         "faq_questions": ["Jakie zegarki Garmin działają z Terento?", "Czy mogę instalować mapy innych firm na zegarku Garmin z Maca bez BaseCamp?", "Czy mogę dodać własną mapę .img?", "Czy mogę później aktualizować mapy?", "Co zrobić, jeśli instalacja się nie powiedzie?"],
@@ -175,10 +175,10 @@ HOME_COPY = {
         "basecamp_answer": "Ano. Terento je navrženo tak, aby správa map třetích stran v macOS byla jednoduchá a rychlá — od výběru mapy po instalaci, aktualizaci a správu v hodinkách Garmin. <a href=\"/cs/guides/install-garmin-maps-mac/\" data-umami-event=\"guide-link-click\" data-umami-event-location=\"home-faq-basecamp\">Přečtěte si instalační příručku.</a>",
         "safety_answer": "Ano. Přidejte kompatibilní mapu .img z Macu a nainstalujte ji do připojených hodinek Garmin.",
         "update_answer": "Ano. Terento ukáže, když jsou k dispozici novější vydání, a pomůže vám aktualizovat mapy třetích stran spravované aplikací Terento.",
-        "failure_answer": "Na obrazovce neúspěšné instalace zvolte „Report issue“. Terento zkopíruje diagnostickou zprávu a otevře GitHub. Před zveřejněním zprávu zkontrolujte: hlášení na GitHubu jsou veřejná. Pokud dáváte přednost e-mailu, vložte zprávu do e-mailu podpoře.",
+        "failure_answer": "Na obrazovce neúspěšné instalace zvolte „Report issue“. Terento otevře GitHub s již vyplněnou zprávou. Před zveřejněním ji zkontrolujte: hlášení na GitHubu jsou veřejná. Pro pomoc e-mailem uveďte model hodinek, oblast mapy a popis problému.",
         "provider_eyebrow": "Dostupné mapy",
         "provider_title": "Prozkoumejte dostupné mapy.",
-        "provider_copy": "Dnes vás Terento propojí přímo s poskytovateli Freizeitkarte a OpenTopoMap. Mapy se stahují z původního zdroje každého poskytovatele.",
+        "provider_copy": "Vyberte si mapy od tří poskytovatelů. Mapy se stahují z původního zdroje každého poskytovatele.",
         "download_label": "Stáhnout",
         "faq_eyebrow": "Máte otázky?",
         "faq_questions": ["Které hodinky Garmin fungují s Terento?", "Mohu instalovat mapy třetích stran do hodinek Garmin z Macu bez BaseCamp?", "Mohu přidat vlastní mapu .img?", "Mohu mapy aktualizovat později?", "Co mám dělat, když instalace selže?"],
@@ -209,10 +209,10 @@ HOME_COPY = {
         "basecamp_answer": "Sì. Terento è progettato per rendere semplice e veloce la gestione delle mappe di terze parti su macOS — dalla scelta della mappa all’installazione, all’aggiornamento e alla gestione sul tuo smartwatch Garmin. <a href=\"/it/guides/install-garmin-maps-mac/\" data-umami-event=\"guide-link-click\" data-umami-event-location=\"home-faq-basecamp\">Leggi la guida all’installazione.</a>",
         "safety_answer": "Sì. Aggiungi una mappa .img compatibile dal tuo Mac e installala sul tuo smartwatch Garmin collegato.",
         "update_answer": "Sì. Terento mostra quando sono disponibili versioni più recenti e ti aiuta ad aggiornare le mappe di terze parti gestite da Terento.",
-        "failure_answer": "Nella schermata di installazione non riuscita, scegli “Report issue”. Terento copia un rapporto diagnostico e apre GitHub. Controlla il rapporto prima di pubblicarlo: le issue su GitHub sono pubbliche. Se preferisci l’e-mail, incolla il rapporto nel messaggio all’assistenza.",
+        "failure_answer": "Nella schermata di installazione non riuscita, scegli “Report issue”. Terento apre GitHub con il rapporto già compilato. Controllalo prima di pubblicarlo: le issue su GitHub sono pubbliche. Per assistenza via e-mail, indica il modello dell’orologio, la regione della mappa e cosa è successo.",
         "provider_eyebrow": "Mappe disponibili",
         "provider_title": "Scopri le mappe disponibili.",
-        "provider_copy": "Oggi Terento ti collega direttamente a Freizeitkarte e OpenTopoMap. Le mappe vengono scaricate dalla fonte originale di ciascun provider.",
+        "provider_copy": "Scegli mappe di tre provider. Le mappe vengono scaricate dalla fonte originale di ciascun provider.",
         "download_label": "Scarica",
         "faq_eyebrow": "Hai domande?",
         "faq_questions": ["Quali smartwatch Garmin funzionano con Terento?", "Posso installare mappe di terze parti su uno smartwatch Garmin da un Mac senza BaseCamp?", "Posso aggiungere la mia mappa .img?", "Posso aggiornare le mappe in un secondo momento?", "Cosa devo fare se l’installazione non riesce?"],
@@ -245,6 +245,16 @@ PROVIDER_CARD_COPY = {
                 "Routing capability"
             ]
         },
+        "maprando": {
+            "name": "MapRando",
+            "count_template": "{count} map packages",
+            "summary": "For hiking and exploring smaller trails.",
+            "benefits": [
+                "Hiking-focused map styling",
+                "Small paths and trails",
+                "Regular OpenStreetMap data updates"
+            ]
+        },
         "contours": {
             "badge": "Optional add-on",
             "name": "Contour lines",
@@ -273,6 +283,16 @@ PROVIDER_CARD_COPY = {
                 "Topografische Darstellung von Straßen, Wegen und Gelände",
                 "Höhendaten und Geländeschummerung",
                 "Routenberechnung"
+            ]
+        },
+        "maprando": {
+            "name": "MapRando",
+            "count_template": "{count} Kartenpakete",
+            "summary": "Zum Wandern und Entdecken kleinerer Wege.",
+            "benefits": [
+                "Aufs Wandern abgestimmte Kartendarstellung",
+                "Kleine Wege und Pfade",
+                "Regelmäßige Aktualisierung der OpenStreetMap-Daten"
             ]
         },
         "contours": {
@@ -305,6 +325,16 @@ PROVIDER_CARD_COPY = {
                 "Calcul d’itinéraires"
             ]
         },
+        "maprando": {
+            "name": "MapRando",
+            "count_template": "{count} paquets de cartes",
+            "summary": "Pour la randonnée et la découverte de petits sentiers.",
+            "benefits": [
+                "Un style cartographique adapté à la randonnée",
+                "Petits chemins et sentiers",
+                "Actualisations régulières des données OpenStreetMap"
+            ]
+        },
         "contours": {
             "badge": "Complément optionnel",
             "name": "Courbes de niveau",
@@ -333,6 +363,16 @@ PROVIDER_CARD_COPY = {
                 "Topograficzna prezentacja dróg, ścieżek i terenu",
                 "Dane wysokościowe i cieniowanie terenu",
                 "Wyznaczanie tras"
+            ]
+        },
+        "maprando": {
+            "name": "MapRando",
+            "count_template": "Pakiety map: {count}",
+            "summary": "Do pieszych wędrówek i odkrywania mniejszych ścieżek.",
+            "benefits": [
+                "Wygląd mapy dostosowany do pieszych wędrówek",
+                "Małe drogi i ścieżki",
+                "Regularne aktualizacje danych OpenStreetMap"
             ]
         },
         "contours": {
@@ -365,6 +405,16 @@ PROVIDER_CARD_COPY = {
                 "Výpočet tras"
             ]
         },
+        "maprando": {
+            "name": "MapRando",
+            "count_template": "Mapové balíčky: {count}",
+            "summary": "Pro pěší turistiku a objevování menších stezek.",
+            "benefits": [
+                "Vzhled mapy přizpůsobený pěší turistice",
+                "Drobné cesty a stezky",
+                "Pravidelné aktualizace dat OpenStreetMap"
+            ]
+        },
         "contours": {
             "badge": "Volitelný doplněk",
             "name": "Vrstevnice",
@@ -393,6 +443,16 @@ PROVIDER_CARD_COPY = {
                 "Rappresentazione topografica di strade, sentieri e terreno",
                 "Dati altimetrici e ombreggiatura del terreno",
                 "Calcolo dei percorsi"
+            ]
+        },
+        "maprando": {
+            "name": "MapRando",
+            "count_template": "{count} pacchetti di mappe",
+            "summary": "Per le escursioni e la scoperta dei sentieri minori.",
+            "benefits": [
+                "Stile cartografico pensato per le escursioni",
+                "Piccoli percorsi e sentieri",
+                "Aggiornamenti regolari dei dati OpenStreetMap"
             ]
         },
         "contours": {
@@ -585,8 +645,11 @@ def wrap_map_feature_tabs(source: str, copy: dict[str, str], path: Path) -> str:
 
 def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
     cards = []
-    for provider_id in ("freizeitkarte", "opentopomap"):
+    for provider_id in ("freizeitkarte", "opentopomap", "maprando"):
         provider = PROVIDER_CARD_COPY[locale][provider_id]
+        fallback_count = {"freizeitkarte": "63", "opentopomap": "177"}.get(provider_id)
+        count_markup = provider["count_template"].replace("{count}", fallback_count) if fallback_count else ""
+        count_hidden = "" if fallback_count else " hidden"
         benefits = "".join(f"<li>{html.escape(benefit)}</li>" for benefit in provider["benefits"])
         addon = ""
         if provider_id == "opentopomap":
@@ -600,7 +663,7 @@ def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
             f'''<article class="provider-card" data-provider-card="{provider_id}">
               <div class="provider-card-header">
                 <h3>{provider["name"]}</h3>
-                <p class="provider-count" data-provider-count data-count-template="{provider["count_template"]}">{provider["count_template"].replace("{count}", "63" if provider_id == "freizeitkarte" else "177")}</p>
+                <p class="provider-count" data-provider-count data-count-template="{provider["count_template"]}"{count_hidden}>{count_markup}</p>
               </div>
               <p class="provider-summary">{provider["summary"]}</p>
               <ul class="provider-benefits">{benefits}</ul>

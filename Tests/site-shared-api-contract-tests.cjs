@@ -19,7 +19,7 @@ async function present(payload, fail = false, cardID = 'freizeitkarte') {
     document: { querySelector: () => null, querySelectorAll: selector => { assert.equal(selector, '[data-provider-card]'); return [card]; } },
     fetch: async (url, options) => {
       requests++;
-      assert.equal(url, 'https://api.terento.app/maps/catalog.json');
+      assert.equal(url, 'https://api.terento.app/maps/catalog-v3.json');
       assert.equal(options.headers.Accept, 'application/json');
       if (fail) throw Error('offline');
       return { ok: true, json: async () => payload };
@@ -98,6 +98,12 @@ function checkNavigation(reducedMotion) {
   const missingProviderID = structuredClone(available);
   delete missingProviderID.providers[0].id;
   assert.equal((await present(missingProviderID)).hidden, true);
+  const maprando = { providers: [{ id: 'maprando', status: 'ACTIVE', maps: [] }] };
+  assert.deepEqual(await present(maprando, false, 'maprando'), { hidden: false, text: '0 packages in 0 countries' });
+  maprando.providers[0].maps = [{ availability: 'AVAILABLE', country: 'LT' }, { availability: 'UNAVAILABLE', country: 'NZ' }];
+  assert.deepEqual(await present(maprando, false, 'maprando'), { hidden: false, text: '1 packages in 1 countries' });
+  maprando.providers[0].status = 'PAUSED';
+  assert.equal((await present(maprando, false, 'maprando')).hidden, true);
   const contours = structuredClone(valid);
   contours.providers = [{
     id: 'opentopomap',

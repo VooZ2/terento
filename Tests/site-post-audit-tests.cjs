@@ -26,7 +26,7 @@ for (const language of ['en', 'de', 'fr', 'pl', 'cs', 'it']) {
   const download = read(`site/${prefix}download/index.html`);
   assert.ok(download.includes(`<span class="download-recommended">${copy.freshness.recommended}</span>`));
   for (const asset of ['compatibility', 'compatibility-data', 'compatibility-locales']) {
-    assert.ok(page.includes(`${asset}.js?v=20260910-summary-v1`));
+    assert.ok(page.includes(`${asset}.js?v=${asset === "compatibility-locales" ? "20260911-three-providers-v1" : "20260910-summary-v1"}`));
   }
 }
 

@@ -2,7 +2,7 @@
 <html lang="pl" data-language="pl">
   <head>
     <script defer src="/site-shell.js?v=20260909-post-audit-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20260909-post-audit-v1">
+    <link rel="stylesheet" href="/styles.css?v=20260911-three-providers-v1">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -42,9 +42,9 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <script defer src="/language.js?v=20260905-language-selector-full-name-v1"></script>
     <script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script>
-    <script defer src="/provider-list.js?v=20260908-provider-disclosure-v4"></script>
+    <script defer src="/provider-list.js?v=20260911-three-providers-v1"></script>
     <script defer src="/home-features.js?v=20260904-home-workflow-tabs"></script>
-    <script defer src="/localized-content.js?v=20260904-pass3-internal-link-events-v1"></script>
+    <script defer src="/localized-content.js?v=20260911-three-providers-v1"></script>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -135,7 +135,7 @@
                 "name": "Co zrobić, jeśli instalacja się nie powiedzie?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Na ekranie nieudanej instalacji wybierz „Report issue”. Terento kopiuje raport diagnostyczny i otwiera GitHub. Sprawdź raport przed publikacją: zgłoszenia na GitHubie są publiczne. Jeśli wolisz e-mail, wklej raport do wiadomości do pomocy technicznej."
+                  "text": "Na ekranie nieudanej instalacji wybierz „Report issue”. Terento otwiera GitHuba z już wypełnionym raportem. Sprawdź go przed publikacją: zgłoszenia na GitHubie są publiczne. Jeśli potrzebujesz pomocy e-mailem, podaj model zegarka, region mapy i opisz, co się stało."
                 }
               }
             ]
@@ -200,7 +200,7 @@
       </section>
       <section class="provider-section section" id="providers" aria-labelledby="providers-title">
         <div class="shell">
-          <div class="section-heading provider-intro"><p class="eyebrow">Dostępne mapy</p><h2 id="providers-title">Poznaj dostępne mapy.</h2><p class="provider-copy">Dziś Terento łączy Cię bezpośrednio z Freizeitkarte i OpenTopoMap. Mapy są pobierane z oryginalnego źródła każdego dostawcy.</p></div>
+          <div class="section-heading provider-intro"><p class="eyebrow">Dostępne mapy</p><h2 id="providers-title">Poznaj dostępne mapy.</h2><p class="provider-copy">Wybieraj mapy od trzech dostawców. Mapy są pobierane z oryginalnego źródła każdego dostawcy.</p></div>
           <div class="provider-cards" id="provider-cards" data-provider-cards role="region" tabindex="0" aria-label="Dostawcy map">
             <article class="provider-card" data-provider-card="freizeitkarte">
               <div class="provider-card-header">
@@ -223,6 +223,14 @@
                 <p class="provider-addon-count" data-contour-count data-count-template="Liczba obsługiwanych pakietów map: {count} · Po instalacji zajmuje dodatkowe miejsce.">Liczba obsługiwanych pakietów map: 157 · Po instalacji zajmuje dodatkowe miejsce.</p>
               </details>
             </article>
+<article class="provider-card" data-provider-card="maprando">
+              <div class="provider-card-header">
+                <h3>MapRando</h3>
+                <p class="provider-count" data-provider-count data-count-template="Pakiety map: {count}" hidden></p>
+              </div>
+              <p class="provider-summary">Do pieszych wędrówek i odkrywania mniejszych ścieżek.</p>
+              <ul class="provider-benefits"><li>Wygląd mapy dostosowany do pieszych wędrówek</li><li>Małe drogi i ścieżki</li><li>Regularne aktualizacje danych OpenStreetMap</li></ul>
+            </article>
           </div>
           <div class="provider-controls" data-provider-controls hidden>
             <button type="button" data-provider-previous aria-controls="provider-cards">Poprzedni dostawca map</button>
@@ -235,7 +243,7 @@
             <details><summary>Czy mogę instalować mapy innych firm na zegarku Garmin z Maca bez BaseCamp?</summary><p>Tak. Terento powstało po to, by instalowanie i zarządzanie mapami innych firm na macOS było proste i szybkie — od wyboru mapy po instalację, aktualizację i zarządzanie nią na zegarku Garmin. <a href="/pl/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="home-faq-basecamp">Przeczytaj instrukcję instalacji.</a></p></details>
             <details><summary>Czy mogę dodać własną mapę .img?</summary><p>Tak. Dodaj zgodną mapę .img z Maca i zainstaluj ją na podłączonym zegarku Garmin.</p></details>
             <details><summary>Czy mogę później aktualizować mapy?</summary><p>Tak. Terento pokazuje, gdy dostępne są nowsze wydania, i pomaga aktualizować mapy innych firm zarządzane przez Terento.</p></details>
-            <details><summary>Co zrobić, jeśli instalacja się nie powiedzie?</summary><p>Na ekranie nieudanej instalacji wybierz „Report issue”. Terento kopiuje raport diagnostyczny i otwiera GitHub. Sprawdź raport przed publikacją: zgłoszenia na GitHubie są publiczne. Jeśli wolisz e-mail, wklej raport do wiadomości do pomocy technicznej.</p><div class="faq-support-actions"><a class="text-link" href="https://github.com/VooZ2/terento/issues/new/choose" target="_blank" rel="noopener noreferrer" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="github-issue">Otwórz zgłoszenie <span aria-hidden="true">→</span></a><a class="text-link" href="mailto:hello&#64;terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email">Napisz do pomocy <span aria-hidden="true">→</span></a></div></details>
+            <details><summary>Co zrobić, jeśli instalacja się nie powiedzie?</summary><p>Na ekranie nieudanej instalacji wybierz „Report issue”. Terento otwiera GitHuba z już wypełnionym raportem. Sprawdź go przed publikacją: zgłoszenia na GitHubie są publiczne. Jeśli potrzebujesz pomocy e-mailem, podaj model zegarka, region mapy i opisz, co się stało.</p><div class="faq-support-actions"><a class="text-link" href="https://github.com/VooZ2/terento/issues/new/choose" target="_blank" rel="noopener noreferrer" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="github-issue">Otwórz zgłoszenie <span aria-hidden="true">→</span></a><a class="text-link" href="mailto:hello&#64;terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email">Napisz do pomocy <span aria-hidden="true">→</span></a></div></details>
             </div></div></section>
 
       <section class="final-cta" aria-labelledby="final-cta-title"><div class="shell final-cta-inner"><div class="final-cta-copy"><p class="eyebrow">Zacznij już dziś</p><h2 id="final-cta-title">Gotowy na prostszy sposób instalowania map?</h2><p>Pobierz Terento i zarządzaj mapami innych firm z Maca.</p></div><a class="download-action" href="/pl/download/" data-umami-event="download-cta-click" data-umami-event-location="home-final-cta">Pobierz</a></div></section>

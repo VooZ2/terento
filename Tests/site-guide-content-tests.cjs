@@ -72,7 +72,7 @@ for (const locale of locales) {
   assert.match(source, /1–2 minutes?|1–2 Minuten|1 à 2 minutes|1–2 minuty|1–2 minuti/);
   assert.match(source, /Choose from the catalog|Aus dem Katalog wählen|Choisir dans le catalogue|Wybierz z katalogu|Vybrat z katalogu|Scegli dal catalogo/);
   assert.match(source, /\.img/ , locale + ": local map import guidance");
-  assert.match(source, /Freizeitkarte|OpenTopoMap/ , locale + ": active provider catalog guidance");
+  assert.match(source, /three map providers|drei Kartenanbieter|trois fournisseurs de cartes|trzech dostawców map|tří poskytovatelů map|tre provider di mappe/ , locale + ": active provider catalog guidance");
   assert.doesNotMatch(source, /free storage|freier Speicher|espace libre|wolnego miejsca|volného místa|spazio libero|Not enough storage|Nicht genügend Speicher|Espace de stockage insuffisant|Za mało miejsca|Nedostatek úložiště|Spazio insufficiente/i, locale + ": no storage copy");
   assert.match(source, /install-maps-1280\.avif[^\n]*width="1555" height="1012"/);
   assert.match(source, /maps-done-1600\.avif\?v=20260905-app-screens-v1[^\n]*width="2198" height="1335"/);

@@ -51,9 +51,11 @@ for (const locale of locales) {
   });
   assert.match(entries[1].answer, /simple|einfach|simple|proste|jednoduch|semplice/i, `${home}: BaseCamp answer explains simple map management`);
   assert.match(entries[2].answer, /\.img|compatible|kompatib|zgodn|kompatibil|support/i, `${home}: own-map answer explains compatible local import`);
+  assert.match(entries[4].answer, /already filled in|bereits ausgefüllten|déjà rempli|już wypełnionym|již vyplněnou|già compilato/, `${home}: beta.11 report is prefilled`);
+  assert.doesNotMatch(entries[4].answer, /copies a diagnostic|kopiert einen Diagnosebericht|copie un rapport|kopiuje raport|zkopíruje|copia un rapporto/, `${home}: no obsolete clipboard instruction`);
   assert.match(entries[3].question, /update|aktual|mise à jour|à jour|nowsz|novější|più recent|aggiorn/i, `${home}: update FAQ question`);
   assert.match(entries[3].answer, /newer|neuere|plus récente|nowsz|novější|più recent/i, `${home}: update FAQ answer`);
-  assert.match(source, /class="provider-section section"[^>]*id="providers"[\s\S]*Freizeitkarte[\s\S]*OpenTopoMap/i, `${home}: provider directory names current providers`);
+  assert.match(source, /class="provider-section section"[^>]*id="providers"[\s\S]*Freizeitkarte[\s\S]*OpenTopoMap[\s\S]*MapRando/i, `${home}: provider directory names current providers`);
   assert.match(source, /data-provider-card="freizeitkarte"[\s\S]*data-provider-card="opentopomap"/, `${home}: provider cards are data-driven`);
   assert.doesNotMatch(entries[3].answer, /beta|bêta|betę|betu/i, `${home}: update FAQ avoids beta-specific wording`);
   assert.doesNotMatch(source, /back up|backup|sauvegarder|zálohovat|wykonać kopię|zálohovat|eseguire il backup/i, `${home}: removed backup promise`);

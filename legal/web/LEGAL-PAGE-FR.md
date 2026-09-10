@@ -18,7 +18,7 @@ La licence du logiciel n’accorde pas de droits sur la marque Terento. Une vers
 
 ## Licences des cartes
 
-Les cartes proviennent de [Freizeitkarte](https://www.freizeitkarte-osm.de/) et d’[OpenTopoMap](https://garmin.opentopomap.org/). Elles restent soumises aux licences de leurs fournisseurs et à l’[attribution OpenStreetMap](https://www.openstreetmap.org/copyright). Vos cartes importées restent soumises à leurs propres conditions.
+Les cartes proviennent de [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/) et d’[OpenTopoMap](https://garmin.opentopomap.org/). Elles restent soumises aux licences de leurs fournisseurs et à l’[attribution OpenStreetMap](https://www.openstreetmap.org/copyright). Vos cartes importées restent soumises à leurs propres conditions.
 
 Terento ne crée pas ces cartes, ne change pas leurs licences et ne les héberge, copie en miroir ou redistribue pas sur ses serveurs. Les cartes du catalogue sont téléchargées depuis le fournisseur d’origine vers votre Mac, puis votre montre.
 

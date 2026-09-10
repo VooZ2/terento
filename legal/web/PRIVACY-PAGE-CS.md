@@ -17,7 +17,7 @@ Zprávy neobsahují Garmin Unit IDs, hodnoty sériových čísel, účty, místn
 
 ## Připojení webu a aplikace
 
-Požadavky na web, API, katalog a aktualizace mohou poskytovatelům hostingu a zabezpečení zpřístupnit IP adresu a metadata. Mapy se stahují přímo od Freizeitkarte či OpenTopoMap; pro tato připojení platí jejich pravidla soukromí. Kontrola při spuštění načítá informace o vydání, nikoli aplikaci.
+Požadavky na web, API, katalog a aktualizace mohou poskytovatelům hostingu a zabezpečení zpřístupnit IP adresu a metadata. Mapy se stahují přímo od Freizeitkarte, OpenTopoMap či MapRando; pro tato připojení platí jejich pravidla soukromí. Kontrola při spuštění načítá informace o vydání, nikoli aplikaci.
 
 Připojení poskytují obsah, požadované funkce a ochranu před zneužitím. Bezpečnostní zpracování se opírá o oprávněné zájmy podle čl. 6 odst. 1 písm. f GDPR.
 

@@ -35,11 +35,11 @@ for locale in locales:
 
 for path in public_pages:
     page = path.read_text()
-    assert "Freizeitkarte" in page and "OpenTopoMap" in page, f"{path}: public provider scope is incomplete"
+    assert all(name in page for name in ("Freizeitkarte", "OpenTopoMap", "MapRando")) or any(copy in page for copy in ("three providers", "three map providers", "drei Anbietern", "drei Kartenanbieter", "trois fournisseurs", "trzech dostawców", "tří poskytovatelů", "tre provider")), f"{path}: three-provider scope is incomplete"
     assert "Pre-MVP" not in page and "pre-MVP" not in page and "pre-release" not in page, f"{path}: stale pre-MVP wording"
 
 provider_script = (root / "site/provider-list.js").read_text()
-assert 'const PUBLIC_PROVIDER_IDS = new Set(["freizeitkarte", "opentopomap"]);' in provider_script
+assert 'const PUBLIC_PROVIDER_IDS = new Set(["freizeitkarte", "opentopomap", "maprando"]);' in provider_script
 
 required_statuses = ("TESTING", "TESTED", "SUPPORTED", "VERIFIED")
 for status in required_statuses:

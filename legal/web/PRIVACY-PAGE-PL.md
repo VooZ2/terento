@@ -17,7 +17,7 @@ Raporty nie zawierają Garmin Unit IDs, wartości numerów seryjnych, kont, loka
 
 ## Połączenia witryny i aplikacji
 
-Żądania do witryny, API, katalogu i aktualizacji mogą ujawniać adres IP i metadane dostawcom hostingu i zabezpieczeń. Mapy są pobierane bezpośrednio z Freizeitkarte lub OpenTopoMap; do tych połączeń mają zastosowanie ich zasady prywatności. Kontrola aktualizacji przy uruchomieniu pobiera informacje o wydaniu, nie aplikację.
+Żądania do witryny, API, katalogu i aktualizacji mogą ujawniać adres IP i metadane dostawcom hostingu i zabezpieczeń. Mapy są pobierane bezpośrednio z Freizeitkarte, OpenTopoMap lub MapRando; do tych połączeń mają zastosowanie ich zasady prywatności. Kontrola aktualizacji przy uruchomieniu pobiera informacje o wydaniu, nie aplikację.
 
 Połączenia dostarczają treści i żądane funkcje oraz chronią przed nadużyciami. Przetwarzanie dla bezpieczeństwa opiera się na uzasadnionym interesie zgodnie z art. 6 ust. 1 lit. f RODO.
 

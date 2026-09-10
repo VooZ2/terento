@@ -18,7 +18,7 @@ Die Softwarelizenz gewährt keine Markenrechte an Terento. Veränderte Versionen
 
 ## Kartenlizenzen
 
-Karten stammen von [Freizeitkarte](https://www.freizeitkarte-osm.de/) und [OpenTopoMap](https://garmin.opentopomap.org/). Es gelten die jeweiligen Lizenzen und die [OpenStreetMap-Namensnennung](https://www.openstreetmap.org/copyright). Für selbst importierte Karten gelten deren jeweilige Bedingungen.
+Karten stammen von [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/) und [OpenTopoMap](https://garmin.opentopomap.org/). Es gelten die jeweiligen Lizenzen und die [OpenStreetMap-Namensnennung](https://www.openstreetmap.org/copyright). Für selbst importierte Karten gelten deren jeweilige Bedingungen.
 
 Terento erstellt oder lizenziert diese Karten nicht neu und hostet, spiegelt oder verteilt ihre Dateien nicht auf eigenen Servern. Katalogkarten werden vom ursprünglichen Anbieter auf deinen Mac und anschließend auf deine Uhr übertragen.
 
