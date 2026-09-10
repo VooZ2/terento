@@ -261,6 +261,8 @@ struct InstallationEvidenceTests {
         let report = DiagnosticReportSanitizer.sanitize("User /Users/alice/private Unit ID: 123 Serial Number=ABC token: secret Authorization: Bearer-private")
         expect(!report.contains("alice"), "diagnostic report removes usernames and local paths")
         expect(!report.contains("123") && !report.contains("ABC") && !report.contains("secret") && !report.contains("Bearer-private"), "diagnostic report removes identifiers and secrets")
+        let reflectedPath = DiagnosticReportSanitizer.sanitize("failure(path: \"/private/tmp/private-map.img\")")
+        expect(!reflectedPath.contains("/private/tmp") && !reflectedPath.contains("private-map.img"), "reflected error paths are redacted inside quotes")
         let backendPayload = DiagnosticReportSanitizer.sanitize("{\"serial\":\"ABC\",\"detail\":\"safe status\"}")
         expect(!backendPayload.contains("ABC") && backendPayload.contains("safe status"), "JSON backend payload redacts restricted identifiers")
         let signedURL = DiagnosticReportSanitizer.sanitize("https://example.test/map?token=secret-value&region=LTU")
@@ -316,6 +318,7 @@ struct InstallationEvidenceTests {
             appBuild: "108",
             operatingSystem: "macOS 15.6"
         )
+        precondition(draft.body.contains("LTU: release=2026-08-30, planned installed bytes=276800000"))
         precondition(draft.body.contains("Original failure: INSTALL_FAILED_REMOTE_FILE_MISSING"))
         precondition(draft.body.contains("Cleanup failure: INSTALL_FAILED_CLEANUP"))
         precondition(draft.body.contains("Validated source bytes: 1794965504"))
@@ -331,9 +334,19 @@ struct InstallationEvidenceTests {
         expect(draft.body.lowercased().contains(operationID.uuidString.lowercased()) && draft.body.lowercased().contains(diagnosticID.uuidString.lowercased()), "prepared issue includes diagnostic and installation references")
         expect(!draft.body.contains("alice") && !draft.body.contains("private-token") && !draft.body.contains("SERIAL-PRIVATE") && !draft.body.contains("/Users/"), "prepared issue excludes local paths, tokens, and device identifiers")
 
+        let removalDraft = InstallationIssueReport.generate(identity: unsafeIdentity, maps: [],
+            stage: "DELETE_FAILED_OPERATION", operation: .removal,
+            lifecycleFacts: ["Ownership route: Terento-owned", "Local path: /Users/alice/private"],
+            error: nil, operationID: nil, appVersion: "0.8.0-beta.11-local")
+        expect(removalDraft.body.contains("Operation: Map removal")
+            && removalDraft.body.contains("Ownership route: Terento-owned")
+            && removalDraft.body.contains("0.8.0-beta.11-local")
+            && !removalDraft.body.contains("/Users/alice"),
+            "lifecycle reports retain operation/build identity and sanitize facts")
+
         let components = URLComponents(url: draft.url, resolvingAgainstBaseURL: false)
         let query = Dictionary(uniqueKeysWithValues: (components?.queryItems ?? []).map { ($0.name, $0.value ?? "") })
-        expect(components?.path == "/VooZ2/terento/issues/new" && query["title"] == draft.title && query["diagnostic-report"] == draft.body && query["template"] == "installation-failure.yml" && query["body"] == nil, "prepared issue URL targets the YAML form's diagnostic field")
+        expect(components?.path == "/VooZ2/terento/issues/new" && query["title"] == draft.title && query["body"] == draft.body && query["template"] == nil && query["diagnostic-report"] == nil, "prepared issue URL fills a standard issue without template publication or required checkbox")
         FinishingTrace.beginInstallation()
         for attempt in 1...40 {
             FinishingTrace.event("readback_failed", "worker=false attempt=\(attempt) error=remoteFileMissing")
@@ -343,10 +356,24 @@ struct InstallationEvidenceTests {
             stage: "Finishing", error: nil, operationID: operationID)
         precondition(longDraft.url.absoluteString.utf8.count <= 7000)
         precondition(longDraft.body.contains("attempt=40"))
-        precondition(!longDraft.url.absoluteString.contains("attempt=40"))
+        precondition(!longDraft.url.absoluteString.contains("clipboard"))
         FinishingTrace.beginInstallation()
-        var copiedReport: String?
-        expect(!InstallationIssueReport.copyAndOpenGitHub(draft, clipboard: { copiedReport = $0 }, using: { _ in false }) && copiedReport == draft.body, "GitHub open failure still leaves the sanitized report on the clipboard")
+        expect(!InstallationIssueReport.openGitHub(draft, using: { _ in false }), "GitHub open failures are returned without requiring clipboard access")
+        let fixtureURL = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/issue148-failure-report.md")
+        let fixture = try! String(contentsOf: fixtureURL, encoding: .utf8)
+        let actualDraft = InstallationIssueReport.draft(title: "Installation stopped during Finishing — MapRando / Lithuania", body: fixture)
+        let actualQuery = URLComponents(url: actualDraft.url, resolvingAgainstBaseURL: false)!.queryItems!
+        let filled = actualQuery.first { $0.name == "body" }!.value!
+        expect(actualDraft.url.absoluteString.utf8.count <= 7000 && !filled.contains("omitted"), "actual issue148 report fits with its entire compact trace")
+        expect(filled.contains("read_ptp_response,1572864,767,65536,1572864,1572864")
+            && filled.contains("cleanup_result attempt=1 succeeded=0")
+            && filled.contains("Firmware: 2331") && filled.contains("Elapsed at failure (ms): 273621"),
+            "automatic prefill preserves first failure, raw PTP response, byte position, environment and cleanup outcome")
+        let oversized = InstallationIssueReport.draft(title: "Failure", body: fixture + String(repeating: "\nFINISH_TRACE swift event=readback_failed attempt=40 error=operationFailed", count: 500))
+        let oversizedBody = URLComponents(url: oversized.url, resolvingAgainstBaseURL: false)!.queryItems!.first { $0.name == "body" }!.value!
+        expect(oversized.url.absoluteString.utf8.count <= 7000 && oversizedBody.contains("omitted")
+            && oversizedBody.contains("read_ptp_response,1572864,767"), "pathological reports explicitly summarize excess lines while retaining first native failure")
     }
 
     @MainActor

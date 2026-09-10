@@ -11,6 +11,8 @@ LIBMTP_VERSION="1.1.23"
 LIBMTP_ARCHIVE="libmtp-${LIBMTP_VERSION}.tar.gz"
 LIBMTP_URL="https://downloads.sourceforge.net/project/libmtp/libmtp/${LIBMTP_VERSION}/${LIBMTP_ARCHIVE}"
 LIBMTP_SHA256="74a2b6e8cb4a0304e95b995496ea3ac644c29371649b892b856e22f12a0bdeed"
+LIBMTP_LOCAL_PATCH="partial-read-diagnostics-v1-usb-session-v1"
+script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 
 deployment_target="${MACOSX_DEPLOYMENT_TARGET:-13.0}"
 architecture="${CURRENT_ARCH:-arm64}"
@@ -74,10 +76,10 @@ src_dir="$output_dir/source"
 download_dir="$output_dir/downloads"
 prefix_dir="$output_dir/prefix"
 libusb_prefix="$prefix_dir/libusb"
-libmtp_prefix="$prefix_dir/libmtp"
+libmtp_prefix="$prefix_dir/libmtp-$LIBMTP_LOCAL_PATCH"
 bundle_lib_dir="$output_dir/lib"
 bundle_include_dir="$output_dir/include"
-build_marker="$output_dir/.terento-native-dependencies-${LIBUSB_VERSION}-${LIBMTP_VERSION}-${architecture}-macos-${deployment_target}"
+build_marker="$output_dir/.terento-native-dependencies-${LIBUSB_VERSION}-${LIBMTP_VERSION}-${LIBMTP_LOCAL_PATCH}-${architecture}-macos-${deployment_target}"
 
 mkdir -p "$src_dir" "$download_dir" "$prefix_dir" "$bundle_lib_dir" "$bundle_include_dir"
 
@@ -120,6 +122,45 @@ extract_once() {
     fi
 }
 
+assert_source_contains() {
+    source_path="$1"
+    required_text="$2"
+    behavior="$3"
+
+    if ! grep -F "$required_text" "$source_path" >/dev/null; then
+        echo "Bundled libmtp source is missing required MTP behavior: $behavior" >&2
+        echo "Expected text in $source_path: $required_text" >&2
+        exit 1
+    fi
+}
+
+assert_required_mtp_transport_behaviors() {
+    libmtp_source="$1"
+    glue_source="$libmtp_source/src/libusb1-glue.c"
+    ptp_header="$libmtp_source/src/ptp.h"
+
+    if [ ! -f "$glue_source" ] || [ ! -f "$ptp_header" ]; then
+        echo "Bundled libmtp transport sources are incomplete" >&2
+        exit 1
+    fi
+
+    # Garmin MTP devices may return the 12-byte container header separately
+    # from its payload. Keep both the state field, automatic detection, and
+    # matching split-send path when updating the pinned libmtp dependency.
+    assert_source_contains "$ptp_header" "split_header_data;" "split header state"
+    assert_source_contains "$glue_source" "if (dtoh32(usbdata.length) > 12 && (rlen==12))" "12-byte split header detection"
+    assert_source_contains "$glue_source" "if (params->split_header_data)" "split header send path"
+
+    # Packet-aligned SendObject transfers need an explicit zero-length USB
+    # packet. Without it, some devices wait for more data and eventually time
+    # out even though every payload byte was written.
+    assert_source_contains "$glue_source" "if ((towrite % ptp_usb->outep_maxpacket) == 0)" "packet-aligned transfer detection"
+    assert_source_contains "$glue_source" 'LIBMTP_USB_DEBUG("Zero Write\n")' "zero-length terminating write"
+    assert_source_contains "$glue_source" "(unsigned char *) \"x\"," "zero-length USB write buffer"
+
+    echo "Required Garmin MTP transport source behaviors: PASS"
+}
+
 assert_arm64_and_minimum_target() {
     dylib_path="$1"
     expected_install_name="$2"
@@ -159,6 +200,9 @@ if [ ! -f "$build_marker" ]; then
     download_and_verify "$download_dir/$LIBMTP_ARCHIVE" "$LIBMTP_URL" "$LIBMTP_SHA256"
     extract_once "$download_dir/$LIBUSB_ARCHIVE" "libusb-${LIBUSB_VERSION}" bz2
     extract_once "$download_dir/$LIBMTP_ARCHIVE" "libmtp-${LIBMTP_VERSION}" gz
+    assert_required_mtp_transport_behaviors "$libmtp_source"
+    /usr/bin/perl "$script_dir/patch-partial-read-diagnostics.pl" "$libmtp_source/src/libmtp.c"
+    /usr/bin/perl "$script_dir/patch-usb-session-lifecycle.pl" "$libmtp_source/src/libusb1-glue.c"
 
     common_cflags="-arch $architecture -mmacosx-version-min=$deployment_target"
 

@@ -90,6 +90,31 @@ class SharedContractTests(unittest.TestCase):
         validator('map-catalog').validate(document)
         self.assertEqual(document['providers'][0]['maps'][0]['availability'], 'AVAILABLE')
 
+    def test_daily_maprando_projection_keeps_legacy_clients_unchanged(self):
+        from terento_catalog.http_api import CatalogService
+        database = FakeDatabase()
+        rows, timestamp = database.catalog_snapshot()
+        legacy_rows = copy.deepcopy(rows)
+        daily = dict(rows[0], provider_id='maprando', provider_name='MapRando',
+                     package_id='maprando-lituanie', package_region='LITUANIE',
+                     package_name='MapRando Lituanie', package_country=None,
+                     provider_region_id='lituanie', release='2026-09-02',
+                     artifact_id='maprando-lituanie-main', artifact_kind='main',
+                     artifact_source_url='https://ravenfeld.fr/MapRando/Lituanie/MapRando_Lituanie_2026_09_02.img',
+                     artifact_size_bytes=182239232, artifact_install_size_bytes=182239232)
+        service = CatalogService(database)
+        original = service.catalog_response()[0]
+        # The legacy endpoint must be byte-for-byte equal for an unchanged timestamp.
+        database.catalog_snapshot = lambda: (legacy_rows + [daily], timestamp)
+        self.assertEqual(service.catalog_response()[0], original)
+        document = json.loads(service.catalog_v3_response()[0])
+        validator('map-catalog').validate(document)
+        maps = next(p['maps'] for p in document['providers'] if p['id'] == 'maprando')
+        self.assertEqual(maps[0]['version'], {'year': 2026, 'month': 9, 'day': 2})
+        self.assertEqual(maps[0]['release'], '2026-09-02')
+        self.assertEqual(maps[0]['countryCodes'], ['LT'])
+        self.assertEqual(maps[0]['regionKind'], 'country')
+
     def test_events_match_current_allowlists_and_acceptance(self):
         self.assertEqual(set(validator('compatibility-event').schema['properties']), ALLOWED_KEYS)
         self.assertEqual(set(validator('map-event').schema['properties']), ALLOWED_EVENT_KEYS)
@@ -111,6 +136,7 @@ class SharedContractTests(unittest.TestCase):
             validator('compatibility-event').validate(value)
             validate_event(json.dumps(value).encode())
         for changes in (
+            {'provider': 'MAPRANDO', 'region': 'LITUANIE', 'mapRelease': '2026-09-02'},
             {'provider': 'CUSTOM', 'region': 'custom', 'mapRelease': 'custom'},
             {'phaseOutcome': 'FAILED', 'automaticFinishingResult': 'FAILED', 'failureStage': 'write', 'failureCode': 'INSTALL_FAILED_WRITE'},
             {'phaseOutcome': 'NOT_STARTED', 'automaticFinishingResult': 'NOT_REACHED', 'writeStarted': False, 'remoteObjectCreated': False, 'failureStage': 'preflight', 'failureCode': 'INSTALL_NOT_STARTED_AFTER_EARLIER_FAILURE'},

@@ -102,7 +102,19 @@ private struct TerentoWindowConfigurator: NSViewRepresentable {
             )
 
             let migrationKey = "Terento.windowGeometry.v2"
-            guard !UserDefaults.standard.bool(forKey: migrationKey) else {
+            if UserDefaults.standard.bool(forKey: migrationKey) {
+                // Give existing installations the taller catalog once, keeping
+                // the user's width and any already-taller window intact.
+                let catalogHeightKey = "Terento.windowGeometry.catalogHeight.v3"
+                guard !UserDefaults.standard.bool(forKey: catalogHeightKey) else { return }
+                let contentSize = window.contentRect(forFrameRect: window.frame).size
+                if contentSize.height < TerentoWindowPresentation.defaultHeight {
+                    window.setContentSize(NSSize(
+                        width: contentSize.width,
+                        height: TerentoWindowPresentation.defaultHeight
+                    ))
+                }
+                UserDefaults.standard.set(true, forKey: catalogHeightKey)
                 return
             }
 
@@ -114,6 +126,7 @@ private struct TerentoWindowConfigurator: NSViewRepresentable {
             )
             window.center()
             UserDefaults.standard.set(true, forKey: migrationKey)
+            UserDefaults.standard.set(true, forKey: "Terento.windowGeometry.catalogHeight.v3")
         }
         return view
     }

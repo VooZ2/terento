@@ -120,6 +120,8 @@ struct GarminIMGMetadataParser: Sendable {
             return nil
         }
 
+        if let metadata = mapRandoMetadata(bytes) { return metadata }
+
         let description = text(bytes, offset: 0x49, length: 20)
         let headerDetail = text(bytes, offset: 0x65, length: 31)
         let strings = printableStrings(bytes)
@@ -195,6 +197,27 @@ struct GarminIMGMetadataParser: Sendable {
             identifier: nil,
             productId: nil,
             familyId: nil
+        )
+    }
+
+    private func mapRandoMetadata(_ bytes: [UInt8]) -> GarminIMGMetadata? {
+        // mkgmap splits its 50-byte description at byte 20 across a binary
+        // gap. Join bytes before decoding so split UTF-8 characters survive.
+        let joined = Array(bytes[0x49..<0x5D]) + Array(bytes[0x65..<0x83])
+        let header = (String(bytes: joined, encoding: .utf8)
+            ?? String(bytes: joined, encoding: .isoLatin1))?
+            .trimmingCharacters(in: .whitespacesAndNewlines.union(.controlCharacters))
+        guard let header, header.hasPrefix("MapRando "),
+              let regex = try? NSRegularExpression(pattern: #"^MapRando (.+) (\d{2}\.\d{2}\.20\d{2})$"#),
+              let match = regex.firstMatch(in: header, range: NSRange(header.startIndex..., in: header)),
+              let regionRange = Range(match.range(at: 1), in: header),
+              let dateRange = Range(match.range(at: 2), in: header),
+              let version = MapRandoVersionParser().parse(String(header[dateRange])) else { return nil }
+        let region = String(header[regionRange])
+        return GarminIMGMetadata(
+            name: "MapRando \(region)", provider: "MapRando", region: region,
+            family: "MapRando", rawVersion: version.description, version: version,
+            identifier: nil, productId: nil, familyId: nil
         )
     }
 

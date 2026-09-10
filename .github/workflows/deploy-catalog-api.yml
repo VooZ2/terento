@@ -41,7 +41,7 @@ jobs:
           set -euo pipefail
           if [ "$EVENT_NAME" != push ] || ! git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
             echo 'required=true' >> "$GITHUB_OUTPUT"
-          elif git diff --name-only "$BEFORE_SHA" HEAD | grep -Eq '^(contracts/|backend/catalog-api/src/terento_catalog/(catalog\.py|db\.py|http_api\.py|config\.py|provider_catalog\.py|contour_source\.py|collect\.py|collectors/|migrations/)|Packaging/validate-live-map-catalog\.sh|app/TerentoCore/)'; then
+          elif git diff --name-only "$BEFORE_SHA" HEAD | grep -Eq '^(contracts/|backend/catalog-api/src/terento_catalog/(catalog\.py|db\.py|http_api\.py|config\.py|provider_catalog\.py|maprando\.py|maprando_geography\.py|contour_source\.py|collect\.py|collectors/|migrations/)|Packaging/validate-live-map-catalog\.sh|app/TerentoCore/)'; then
             echo 'required=true' >> "$GITHUB_OUTPUT"
           else
             echo 'required=false' >> "$GITHUB_OUTPUT"

@@ -112,7 +112,7 @@ extension FinishingTrace {
         }
         var selected: [String] = []
         if let first {
-            selected += significant[first...min(significant.count - 1, first + 1)]
+            selected += significant[first...min(significant.count - 1, first + 5)]
         }
         if let checkpoint = entries.last(where: { $0.contains("event=read_checkpoint") }) {
             selected.append(checkpoint)
@@ -150,11 +150,11 @@ extension FinishingTrace {
     }
 
     private static let allowedEvents: Set<String> = [
-        "installation_begin", "operation_begin", "operation_worker_failed", "operation_failed",
+        "installation_begin", "source_validation", "operation_begin", "operation_worker_failed", "operation_failed",
         "operation_complete", "worker_operation_begin", "worker_operation_failed", "worker_started",
         "worker_exited", "worker_deadline", "worker_cancelled", "readback_attempt", "readback_failed",
         "verify_begin", "region_begin", "open_begin", "open_end", "identity_begin", "identity_end",
-        "target_begin", "target_end", "read_failed", "read_error_code", "retry_close_begin",
+        "target_begin", "target_end", "read_failed", "read_error_code", "read_ptp_response", "retry_close_begin",
         "retry_close_returned", "compare_failed", "verify_result", "final_close_begin",
         "final_close_returned", "read_checkpoint", "target_matches", "target_size", "final_inventory", "installation_failure", "cleanup_result"
     ]
@@ -177,6 +177,9 @@ extension FinishingTrace {
                       let number = Double(value), number.isFinite else { return nil }
             } else if key == "operation" {
                 guard ["samples", "cleanup", "inventory", "snapshot"].contains(value) else { return nil }
+            } else if key == "validation" {
+                guard ["notExactValidatedArtifact", "sourceUnavailable", "sourceSizeMismatch",
+                       "sourceHashMismatch", "sourceFormatMismatch", "unknown"].contains(value) else { return nil }
             } else if key == "worker" { guard ["true", "false"].contains(value) else { return nil } }
             else if key == "trace" { guard UUID(uuidString: value) != nil else { return nil } }
             else if key == "error" {

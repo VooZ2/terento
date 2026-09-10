@@ -12,9 +12,9 @@ unchanged. Hardware developer tools require separate explicit authorization.
 Shared public API schemas and fixtures are documented in
 [contracts/README.md](../../contracts/README.md).
 
-The current local beta.11 RC worktree includes the internal, Debug-only
-OpenTopoMap contour path for the reviewed Phase 3 allowlist. Public catalog
-activation remains off. Contour IMG headers may omit a release date; the
+The current beta.11 release includes the internal, Debug-only
+OpenTopoMap contour path for the reviewed Phase 3 allowlist. MapRando is active
+in the additive v3 catalog projection. Contour IMG headers may omit a release date; the
 validated catalog release is used only after exact provider/region/path/size
 checks. Managed main and contour components share a safe lifecycle row and are
 removed one exact MTP object at a time. Recognized third-party IMG files can

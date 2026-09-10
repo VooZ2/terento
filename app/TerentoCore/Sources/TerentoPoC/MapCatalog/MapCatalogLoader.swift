@@ -36,7 +36,7 @@ struct MapContourRolloutPolicy: Sendable, Equatable {
         let environment = ProcessInfo.processInfo.environment
         let mode = Mode(rawValue: environment[
             "TERENTO_OPENTOPO_MAP_CONTOUR_MODE"
-        ]?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? "off") ?? .off
+        ]?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? "publicValidated") ?? .publicValidated
         let allowlist = Set(
             (environment["TERENTO_OPENTOPO_MAP_CONTOUR_ALLOWLIST"] ?? "")
                 .split(separator: ",")
@@ -145,9 +145,16 @@ struct MapCatalogLoadResult: Sendable {
 }
 
 struct MapCatalogLoader: Sendable {
-    static let defaultEndpoint = URLComponents(
-        string: "https://api.terento.app/maps/catalog.json"
-    )?.url
+    static let defaultEndpoint: URL? = {
+        #if DEBUG
+        // A local hardware candidate can pin its reviewed metadata snapshot
+        // while the new API/provider is still paused. Public builds ignore it.
+        if Bundle.main.object(forInfoDictionaryKey: "TerentoUseBundledMapCatalog") as? Bool == true {
+            return nil
+        }
+        #endif
+        return URLComponents(string: "https://api.terento.app/maps/catalog-v3.json")?.url
+    }()
 
     let endpoint: URL?
     let contourRolloutPolicy: MapContourRolloutPolicy
@@ -192,11 +199,6 @@ struct MapCatalogLoader: Sendable {
                 source: .bundledFallback
             )
         }
-    }
-
-    /// Kept for synchronous PoC callers and local fixture checks.
-    func loadFreizeitkarte() throws -> MapCatalog {
-        try loadBundled()
     }
 
     func loadBundled() throws -> MapCatalog {

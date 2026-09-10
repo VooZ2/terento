@@ -24,7 +24,10 @@ struct BoundedNativeProcessTests {
                                     arguments: [], input: Data(), timeout: 1)
         let native = "FINISH_TRACE native t=1.25 pid=12 event=read_failed offset=182108160 rc=-1 detail=0 last_verified_end=182108160 verified_bytes=29229056"
         precondition(FinishingTrace.safeLine(native) == native)
+        let sourceFailure = "FINISH_TRACE swift event=source_validation validation=sourceFormatMismatch"
+        precondition(FinishingTrace.safeLine(sourceFailure) == sourceFailure)
         for unsafe in [native + " path=/Users/private/map.img", native + " serial=1234",
+                       "FINISH_TRACE swift event=source_validation validation=/Users/private/map.img",
                        "FINISH_TRACE swift event=operation_failed error=secret",
                        "FINISH_TRACE native event=read_failed rc=nan",
                        "LIBMTP raw device serial 1234"] {
@@ -81,6 +84,14 @@ struct BoundedNativeProcessTests {
         precondition(!FinishingTrace.failureReport.contains("trace="))
         precondition(FinishingTrace.failureReport.count <= 10000)
         precondition(FinishingTrace.safeLine("FINISH_TRACE native event=target_size offset=1 detail=1 path=/Users/private") == nil)
+        FinishingTrace.beginInstallation()
+        FinishingTrace.event("read_failed", "offset=57551562 rc=-1 detail=0")
+        FinishingTrace.event("read_error_code", "offset=57551562 rc=2 detail=65536")
+        FinishingTrace.event("read_ptp_response", "offset=57551562 rc=8194 detail=65536")
+        for _ in 0..<100 { FinishingTrace.event("operation_complete", "operation=cleanup elapsed=1") }
+        FinishingTrace.freezeFailure()
+        precondition(FinishingTrace.failureReport.contains("event=read_ptp_response offset=57551562 rc=8194"))
+        precondition(FinishingTrace.safeLine("FINISH_TRACE native event=read_ptp_response rc=8194 serial=123") == nil)
         print("PASS: strict diagnostic fields, release worker file, frozen failure and reset")
         print("PASS: stalled native child is terminated and reaped on deadline/cancellation")
     }

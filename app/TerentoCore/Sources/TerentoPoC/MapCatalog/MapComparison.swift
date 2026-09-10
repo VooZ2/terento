@@ -86,7 +86,10 @@ struct MapComparisonEngine: Sendable {
         }
 
         let status: MapStatus
-        if installedVersion < catalogMap.version {
+        if (installedVersion.day == nil) != (catalogMap.version.day == nil) {
+            // Missing daily precision cannot safely establish release order.
+            status = .unknown
+        } else if installedVersion < catalogMap.version {
             status = .updateAvailable
         } else if installedVersion == catalogMap.version {
             status = .upToDate

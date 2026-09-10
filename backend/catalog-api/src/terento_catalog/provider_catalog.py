@@ -119,8 +119,18 @@ OPENTOPO_MAP = ProviderDefinition(
     default_status="PAUSED",
 )
 
+MAPRANDO = ProviderDefinition(
+    id="maprando", name="MapRando", adapter_id="maprando",
+    website="https://ravenfeld.gitlab.io/open-garmin-map/",
+    catalog_url="https://ravenfeld.fr/MapRando/",
+    license="Map data © OpenStreetMap contributors (ODbL); MapRando map generation by Alexis Lecanu; see the provider source for terms.",
+    attribution="Map data © OpenStreetMap contributors; MapRando by Alexis Lecanu",
+    license_url="https://gitlab.com/ravenfeld/garmincustommap",
+    default_status="ACTIVE",
+)
+
 KNOWN_PROVIDER_DEFINITIONS: dict[str, ProviderDefinition] = {
-    item.id: item for item in (FREIZEITKARTE, OPENTOPO_MAP)
+    item.id: item for item in (FREIZEITKARTE, OPENTOPO_MAP, MAPRANDO)
 }
 
 # Main package membership stays independent of optional contour availability.

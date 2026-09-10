@@ -2050,10 +2050,10 @@ class Database:
                         (definition.id, artifact.source_url),
                     )
 
-            if definition.id == "opentopomap":
-                # The current product publishes main maps only. A complete replacement
-                # snapshot must hide any contours or packages left by an
-                # earlier collector run without touching map binaries.
+            if definition.id in {"opentopomap", "maprando"}:
+                # A complete provider snapshot retires only that provider's stale
+                # package/artifact metadata. It never touches map binaries or
+                # another provider's records.
                 package_ids = [package.id for package in snapshot.packages]
                 artifact_ids = [
                     artifact.id

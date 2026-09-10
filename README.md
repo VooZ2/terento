@@ -6,8 +6,11 @@
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
 
 Terento is a free, open-source native macOS app for installing and managing
-third-party maps on map-capable Garmin smartwatches. Choose from Freizeitkarte
-and OpenTopoMap, or import your own compatible `.img` map.
+third-party maps on map-capable Garmin smartwatches. Choose from
+[Freizeitkarte](https://www.freizeitkarte-osm.de/),
+[OpenTopoMap](https://garmin.opentopomap.org/), or
+[MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), or import your own
+compatible `.img` map.
 
 **Connect → Install → Done**
 
@@ -89,12 +92,11 @@ are outside the current public scope.
 
 ## Download and beta status
 
-Build 15 expands the privacy-reviewed **Report issue** diagnostics with verification
-steps, attempts, file-size checks and separate failure/cleanup outcomes. Install
-and Remove behavior is unchanged; the Forerunner 970 Australia issue remains
-under investigation. Long reports are copied for pasting into the GitHub form.
+Beta.11 adds MapRando as a third catalog provider, improves repeated-session
+recovery, and opens GitHub issue reports with a compact prefilled diagnostic
+body. Install and Remove behavior remains unchanged.
 
-The latest public release is **beta.10 (build 15)**. The macOS app is notarized
+The latest public release is **beta.11 (build 21)**. The macOS app is notarized
 and does not require Homebrew.
 
 **[Download Terento](https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_download)**
@@ -113,13 +115,17 @@ stops and keeps the working map. Bugs are still possible during the beta.
 ## Maps
 
 The current catalog includes main-map packages from
-[Freizeitkarte](https://www.freizeitkarte-osm.de/) and
-[OpenTopoMap](https://garmin.opentopomap.org/), based on OpenStreetMap data.
+[Freizeitkarte](https://www.freizeitkarte-osm.de/),
+[OpenTopoMap](https://garmin.opentopomap.org/), and
+[MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), based on OpenStreetMap
+data.
 Maps download from each provider's original infrastructure; Terento does not
 host, mirror, or repackage them.
 
 - Multiple maps from one provider can be installed in one operation;
   mixed-provider batches are not supported.
+- MapRando publishes direct daily Garmin IMG packages; Terento downloads them
+  from the provider's original source and does not host or repackage binaries.
 - OpenTopoMap contour lines are an optional add-on. Choose whether to include
   them when installing a region in Terento; the main map works without them.
 - Compatible local `.img` maps can be imported, but have no automatic provider

@@ -15,8 +15,34 @@ struct MapInventoryListTests {
         testManifestRecordRestoresManagedOwnership()
         testOpenTopoMapLegacyAliasRestoresManagedOwnership()
         testRemovedMapIsAbsentAfterFreshScan()
+        testManagedMapRandoUsesCatalogTitle()
 
-        print("PASS: 6 unified map inventory and ownership tests")
+        print("PASS: 7 unified map inventory and ownership tests")
+    }
+
+    private static func testManagedMapRandoUsesCatalogTitle() {
+        for (region, title) in [("Lituanie", "Lithuania"), ("Algérie", "Algeria"), ("France Courbes IGN", "France (IGN contours)")] {
+            let packageID = "maprando-\(region)"
+            let map = makeInstalledMap(
+                name: "MapRando \(region)", provider: "MapRando", region: region,
+                path: "/GARMIN/terento_maprando_test.img",
+                managementState: .managedByTerento, managedPackageID: packageID
+            )
+            let package = MapPackage(
+                id: packageID, providerId: "maprando", regionId: region,
+                name: title, version: MapVersion(year: 2026, month: 9, day: 2)!,
+                sizeBytes: 300, sourceURL: nil, releaseDate: nil, identifier: nil
+            )
+            let comparison = MapComparison(providerName: "MapRando", regionName: title,
+                catalogMap: package, installedMap: map, status: .upToDate)
+            let inventory = MapInventoryListBuilder().build(
+                scan: makeScan(installedMaps: [map]), comparisons: [comparison])
+            let installed = inventory.allEntries.filter(\.isInstalled)
+            expect(installed.count == 1 && installed.first?.title == title
+                && installed.first?.installedMaps == [map]
+                && installed.first?.managementState == .managedByTerento,
+                "managed MapRando \(region) uses English catalog title without changing owned files")
+        }
     }
 
     private static func testFreizeitkarteRegionsAppearInOneList() {
@@ -27,7 +53,7 @@ struct MapInventoryListTests {
             path: "/GARMIN/freizeitkarte-germany.img"
         )
         let france = makeInstalledMap(
-            name: "Freizeitkarte France",
+            name: "Freizeitkarte FRA",
             provider: "Freizeitkarte",
             region: "FRA",
             path: "/GARMIN/freizeitkarte-france.img"
@@ -54,6 +80,18 @@ struct MapInventoryListTests {
                 && titles.contains("Germany")
                 && list.otherMaps.isEmpty,
             "provider inventory regions use neutral country titles"
+        )
+
+        let offlineList = MapInventoryListBuilder().build(
+            scan: scan, comparisons: [], selectedCatalogPackageID: nil
+        )
+        expect(
+            offlineList.freizeitkarte.map(\.title).contains("France")
+                && MapDisplayNameNormalizer.normalize("Freizeitkarte LTU", providerID: "freizeitkarte") == "Lithuania"
+                && MapDisplayNameNormalizer.normalize("Freizeitkarte DEU+NORTH", providerID: "freizeitkarte") == "DEU+NORTH"
+                && MapDisplayNameNormalizer.normalize("MapRando Lithuania", providerID: "maprando") == "Lithuania"
+                && MapDisplayNameNormalizer.normalize("MapRando France (IGN contours)", providerID: "maprando") == "France (IGN contours)",
+            "offline titles expand exact country codes and preserve concrete map variants"
         )
     }
 
@@ -259,7 +297,9 @@ struct MapInventoryListTests {
         region: String?,
         path: String,
         rawVersion: String? = "Release 26.05",
-        size: UInt64 = 300
+        size: UInt64 = 300,
+        managementState: MapManagementState = .detectedNotManaged,
+        managedPackageID: String? = nil
     ) -> InstalledMap {
         InstalledMap(
             name: name,
@@ -278,7 +318,8 @@ struct MapInventoryListTests {
                 sizeBytes: size
             ),
             metadataStatus: .parsed,
-            managementState: .detectedNotManaged
+            managementState: managementState,
+            managedPackageID: managedPackageID
         )
     }
 

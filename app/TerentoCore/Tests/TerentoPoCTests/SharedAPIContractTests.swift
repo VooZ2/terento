@@ -27,6 +27,11 @@ struct SharedAPIContractTests {
         mapObject["providers"] = providers
         let additive = try mapDecoder.decode(JSONSerialization.data(withJSONObject: mapObject))
         precondition(additive == catalog)
+        maps[0]["version"] = ["year": 2026, "month": 9, "day": 2]
+        providers[0]["maps"] = maps
+        mapObject["providers"] = providers
+        let dailyCatalog = try mapDecoder.decode(JSONSerialization.data(withJSONObject: mapObject))
+        precondition(dailyCatalog.packages[0].version == MapVersion(year: 2026, month: 9, day: 2))
         // Public schema requires this field, but the existing native decoder ignores it.
         let legacy = try mapDecoder.decode(SharedContractFixtures.data("map-catalog.invalid-missing-schema-version"))
         precondition(legacy == catalog)

@@ -5,6 +5,7 @@ struct DiagnosticsView: View {
     @ObservedObject var mapStatisticsController: MapStatisticsEventController
     @State private var isSending = false
     @State private var actionMessage: String?
+    @State private var failureReportMessage: String?
 
     private var pendingCompatibilityCount: Int {
         evidenceController.store.pendingUploads().count
@@ -74,6 +75,24 @@ struct DiagnosticsView: View {
                             .foregroundStyle(TerentoColors.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                             .padding(.top, 4)
+                    }
+
+                    diagnosticsSection(title: "Failure report") {
+                        Text("After an installation, update, or removal fails, Terento saves a report on this Mac. Report latest failure copies the full report and opens GitHub. If the report field is not filled in, click it and press ⌘A, then ⌘V. Review before submitting. GitHub issues are public.")
+                            .font(.terentoUI(size: 13, weight: .regular))
+                            .foregroundStyle(TerentoColors.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                        DiagnosticsActionButton(title: "Report latest failure") {
+                            failureReportMessage = TerentoDiagnosticLog.reportLatestFailure()
+                                ? "The report is copied. Paste it into the GitHub form and review it before submitting."
+                                : "No saved report is available, or GitHub could not be opened. If copied, the report is still ready to paste."
+                        }
+                        if let failureReportMessage {
+                            Text(failureReportMessage)
+                                .font(.terentoUI(size: 13, weight: .regular))
+                                .foregroundStyle(TerentoColors.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
 
                     diagnosticsSection(title: "Delivery") {

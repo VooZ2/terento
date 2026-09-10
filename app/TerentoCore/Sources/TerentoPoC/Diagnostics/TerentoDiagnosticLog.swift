@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import Darwin
 
 /// Small, user-retrievable diagnostics for beta failures. The log is local to
 /// the Mac and contains operation state, not map binaries or credentials.
@@ -17,6 +18,39 @@ enum TerentoDiagnosticLog {
             .appendingPathComponent("log.txt")
     }()
 
+    /// Separate from the detailed local log: only the reviewed, sanitized issue
+    /// body is suitable for a public GitHub report. Never attach log.txt wholesale.
+    static var failureReportURL: URL {
+        fileURL.deletingLastPathComponent().appendingPathComponent("failure-report.md")
+    }
+
+    static func saveFailureReport(_ draft: InstallationIssueDraft) {
+        do {
+            try FileManager.default.createDirectory(at: failureReportURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let temporary = failureReportURL.deletingLastPathComponent().appendingPathComponent(UUID().uuidString + ".tmp")
+            defer { try? FileManager.default.removeItem(at: temporary) }
+            let content = "# \(draft.title)\n\n\(draft.body)"
+            guard FileManager.default.createFile(atPath: temporary.path,
+                contents: Data(content.utf8), attributes: [.posixPermissions: NSNumber(value: 0o600)]) else { return }
+            // Rename a private file atomically; never follow an existing report symlink.
+            _ = rename(temporary.path, failureReportURL.path)
+        } catch {
+            // A diagnostic write cannot change the operation outcome.
+        }
+    }
+
+    static func reportLatestFailure() -> Bool {
+        guard let body = try? String(contentsOf: failureReportURL, encoding: .utf8) else { return false }
+        let title = body.components(separatedBy: "\n").first.map {
+            String($0.replacingOccurrences(of: "# ", with: "").prefix(180))
+        } ?? "Map operation failed"
+        let draft = InstallationIssueReport.draft(
+            title: DiagnosticReportSanitizer.sanitize(title),
+            body: DiagnosticReportSanitizer.sanitize(body)
+        )
+        return InstallationIssueReport.openGitHub(draft)
+    }
+
     static func recordInstallationStarted(maps: [MapPackage]) {
         FinishingTrace.beginInstallation()
         let mapLines = maps.map { map in
@@ -33,6 +67,10 @@ enum TerentoDiagnosticLog {
     }
 
     static func recordInstallationFailure(
+        identity: DeviceIdentity?,
+        operationID: UUID?,
+        failureStage: String?,
+        failureCode: String?,
         maps: [MapPackage],
         phase: InstallationProcessPhase,
         engineState: MapEngineState,
@@ -103,6 +141,34 @@ enum TerentoDiagnosticLog {
         lines.append("Finishing diagnostics (full local trace: finishing.log):\n\(FinishingTrace.failureReport)")
         lines.append("Selected map IDs: \(maps.map(\.id).joined(separator: ", "))")
         append(lines.joined(separator: "\n"))
+        saveFailureReport(InstallationIssueReport.generate(
+            identity: identity,
+            maps: maps.map { InstallationIssueMap(provider: $0.sourceKind == .custom ? "custom" : $0.providerId,
+                region: $0.sourceKind == .custom ? "custom" : $0.name,
+                package: $0.sourceKind == .custom ? "custom-map" : $0.id,
+                release: $0.sourceKind == .custom ? "custom" : $0.displayVersionLabel,
+                artifactSizeBytes: $0.installSizeBytes) },
+            stage: failureStage ?? phase.rawValue,
+            lifecycleFacts: [technicalError.map { "Technical detail: \($0)" },
+                acquisitionError.map { "Acquisition detail: \($0)" }].compactMap { $0 },
+            error: message,
+            operationID: operationID,
+            errorCodes: [failureCode, result?.failure?.rawValue].compactMap { $0 },
+            writeStarted: result?.diagnostics.writeStarted ?? false,
+            remoteObjectCreated: result?.diagnostics.remoteObjectCreated ?? false,
+            cleanupAttempted: result?.diagnostics.cleanupAttempted ?? false,
+            cleanupSucceeded: result?.diagnostics.cleanupSucceeded ?? false,
+            verification: .init(originalFailure: (result?.originalFailure ?? result?.failure)?.rawValue,
+                cleanupFailure: result?.cleanupFailure?.rawValue,
+                transportClassification: result?.diagnostics.nativeFailureCode?.rawValue,
+                sourceSize: result?.diagnostics.sourceSizeBytes,
+                remoteSize: result?.diagnostics.remoteSizeBytes,
+                transferredBytes: result?.diagnostics.bytesTransferred,
+                elapsedMilliseconds: result?.diagnostics.elapsedMilliseconds,
+                sampledBytes: result?.verification?.sampledBytes,
+                sampleCount: result?.verification?.sampleCount,
+                matchedSampleCount: result?.verification?.matchedSampleCount)
+        ))
     }
 
     static func recordCompatibilityReportDeliveryFailure(

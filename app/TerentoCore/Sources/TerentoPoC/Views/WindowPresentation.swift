@@ -25,7 +25,7 @@ enum TerentoPageLayout: Sendable {
 /// default and the smallest usable layout.
 enum TerentoWindowPresentation: Sendable {
     static let defaultWidth: CGFloat = 1_100
-    static let defaultHeight: CGFloat = 700
+    static let defaultHeight: CGFloat = 760
     static let minimumWidth: CGFloat = 920
     static let minimumHeight: CGFloat = 600
 

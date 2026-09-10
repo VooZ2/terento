@@ -99,11 +99,12 @@ struct MapInstallationResult: Equatable, Sendable {
     }
 }
 
-enum Stage42ArtifactValidationError: LocalizedError, Equatable, Sendable {
+enum Stage42ArtifactValidationError: String, LocalizedError, Equatable, Sendable {
     case notExactValidatedArtifact
     case sourceUnavailable
     case sourceSizeMismatch
     case sourceHashMismatch
+    case sourceFormatMismatch
 
     var errorDescription: String? {
         switch self {
@@ -115,6 +116,8 @@ enum Stage42ArtifactValidationError: LocalizedError, Equatable, Sendable {
             return "The local map IMG size changed after validation."
         case .sourceHashMismatch:
             return "The local map IMG contents changed after validation."
+        case .sourceFormatMismatch:
+            return "The downloaded package format does not match the reviewed provider format."
         }
     }
 }
@@ -151,7 +154,7 @@ struct Stage42ArtifactValidator: MapInstallationArtifactValidator, Sendable {
         guard !package.id.isEmpty,
               package.sourceKind == .provider,
               !packageProvider.isEmpty,
-              providerRegistry.adapter(for: packageProvider) != nil,
+              let adapter = providerRegistry.adapter(for: packageProvider),
               !package.regionId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               artifact.catalogPackageID == package.id,
               artifactArtifactIDMatches(artifact, package: package),
@@ -169,9 +172,11 @@ struct Stage42ArtifactValidator: MapInstallationArtifactValidator, Sendable {
               TerentoManagedFilenameGenerator().isValid(artifact.targetFilename),
               artifact.installSizeBytes > 0,
               !artifact.sha256.isEmpty,
-              artifact.downloadSizeMatchesCatalog,
-              artifact.packageFormat == .zip else {
+              artifact.downloadSizeMatchesCatalog else {
             throw Stage42ArtifactValidationError.notExactValidatedArtifact
+        }
+        guard artifact.packageFormat == (adapter.usesRawIMGDownload ? .rawIMG : .zip) else {
+            throw Stage42ArtifactValidationError.sourceFormatMismatch
         }
 
         let fileManager = FileManager.default
@@ -409,6 +414,9 @@ struct MapInstallationCoordinator: Sendable {
         do {
             try artifactValidator.validate(artifact: artifact, package: request.selectedMap)
         } catch {
+            // Export only a reviewed reason, never a localized error containing a path.
+            let reason = (error as? Stage42ArtifactValidationError)?.rawValue ?? "unknown"
+            diagnostic("source_validation", "validation=\(reason)")
             return blocked(
                 status: .blockedSourceArtifact,
                 failure: .sourceArtifactInvalid,

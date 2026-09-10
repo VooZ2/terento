@@ -72,3 +72,97 @@ print "PASS: production map operations do not use the lab PID lock"
 print "PASS: Write Test remains locked to PID 0x51b8"
 print "PASS: read-back and manual delete re-resolve session-local MTP handles"
 print "PASS: sampled Install verification reuses one read-only MTP session"
+
+# Execute the actual C filename guard without loading libmtp or touching USB.
+# Existing Swift lifecycle fakes cannot catch a stricter native boundary.
+python3 - "$bridge" <<'PYTEST'
+import pathlib, subprocess, sys, tempfile
+source = pathlib.Path(sys.argv[1]).read_text()
+start = source.index("static int validate_stage42_target(")
+end = source.index("static int validate_external_map_target(", start)
+function = source[start:end]
+program = r"""
+#include <assert.h>
+#include <ctype.h>
+#include <stddef.h>
+#include <string.h>
+static void set_error(char *message, size_t capacity, const char *detail) {
+    (void)message; (void)capacity; (void)detail;
+}
+""" + function + r"""
+int main(void) {
+    const char *valid[] = {
+        "terento_freizeitkarte_ltu.img",
+        "terento_opentopomap_ltu_contours.img",
+        "terento_freizeitkarte_ltu_2026-09.img",
+        "terento_maprando_lituanie_2026-09-02.img",
+        "terento_maprando_lituanie_2028-02-29.img"
+    };
+    const char *invalid[] = {
+        "terento_maprando_lituanie_2026-02-29.img",
+        "terento_maprando_lituanie_2026-13-01.img",
+        "terento_maprando_lituanie_2026-09-00.img",
+        "terento_maprando_lituanie_2026-09-02_extra.img",
+        "terento_maprando_lituanie_2026-09-02.img.extra",
+        "terento_map-rando_lituanie_2026-09-02.img",
+        "terento_maprando_lituanie_2026-9-2.img",
+        "terento_maprando_lituanie_2026-09--02.img",
+        "terento_2026-09-02.img",
+        "../terento_maprando_lituanie_2026-09-02.img",
+        "terento_maprando/../lituanie.img", "gmappmap.img"
+    };
+    for (size_t i = 0; i < sizeof(valid) / sizeof(valid[0]); i++)
+        assert(validate_stage42_target(valid[i], NULL, 0) == 0);
+    for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); i++)
+        assert(validate_stage42_target(invalid[i], NULL, 0) != 0);
+    assert(validate_stage42_target(NULL, NULL, 0) != 0);
+    return 0;
+}
+"""
+with tempfile.TemporaryDirectory(prefix="terento-native-target-") as directory:
+    c = pathlib.Path(directory) / "target.c"
+    binary = pathlib.Path(directory) / "target"
+    c.write_text(program)
+    subprocess.run(["cc", "-std=c11", "-Wall", "-Wextra", "-Werror", str(c), "-o", str(binary)], check=True)
+    subprocess.run([str(binary)], check=True)
+print("PASS: native managed targets accept exact monthly/daily update suffixes and reject invalid dates/paths")
+PYTEST
+
+# Exercise the exact production coverage planner without libmtp or USB.
+coverage_build_dir="$(mktemp -d "${TMPDIR:-/tmp}/terento-sample-coverage.XXXXXX")"
+trap 'rm -rf "$coverage_build_dir"' EXIT
+cc -std=c11 -Wall -Wextra -Werror \
+    -I "$project_root/Sources/LibMTPBridge" \
+    "$project_root/Tests/TerentoPoCTests/SampleCoverageTests.c" \
+    -o "$coverage_build_dir/coverage"
+"$coverage_build_dir/coverage"
+
+# Check the pinned native diagnostic patch without compiling or opening USB.
+python3 - "$project_root/../../Packaging/NativeDependencies/patch-partial-read-diagnostics.pl" <<'PYPATCH'
+import pathlib, subprocess, sys, tempfile
+patch = sys.argv[1]
+source = '''    ret = ptp_android_getpartialobject64(params, id, offset, maxbytes, data, size);
+  }
+  if (ret == PTP_RC_OK)
+      return 0;
+  return -1;
+'''
+with tempfile.TemporaryDirectory(prefix="terento-ptp-patch-") as directory:
+    path = pathlib.Path(directory) / "libmtp.c"
+    path.write_text("/* before */\n" + source + "/* after */\n")
+    subprocess.run(["/usr/bin/perl", patch, str(path)], check=True)
+    expected = path.read_text()
+    assert expected == ("/* before */\n" + source.replace(
+        "  return -1;", '  add_ptp_error_to_errorstack(device, ret, "Terento partial read response");\n  return -1;') + "/* after */\n")
+    subprocess.run(["/usr/bin/perl", patch, str(path)], check=True)
+    assert path.read_text() == expected
+    for invalid in (source + source, source.replace("maxbytes, data, size", "other, data, size")):
+        path.write_text(invalid)
+        result = subprocess.run(["/usr/bin/perl", patch, str(path)], capture_output=True)
+        assert result.returncode != 0 and path.read_text() == invalid
+print("PASS: PTP diagnostics patch changes only failed response, is idempotent and rejects source drift")
+PYPATCH
+
+# Exercise the pinned session patch and generated cleanup against fake USB.
+python3 "$project_root/Tests/TerentoPoCTests/USBLifecyclePatchTests.py" \
+    "$project_root/../../Packaging/NativeDependencies/patch-usb-session-lifecycle.pl"

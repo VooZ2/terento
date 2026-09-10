@@ -18,13 +18,15 @@ from .provider_catalog import (
     snapshot_from_freizeitkarte_records,
 )
 
+from .maprando import MapRandoProviderAdapter
+
 LOGGER = logging.getLogger(__name__)
 
 
 def official_provider_adapters() -> tuple[ProviderAdapter, ...]:
     """Return every reviewed provider that the current release supports."""
 
-    return (FreizeitkarteProviderAdapter(), OpenTopoMapProviderAdapter())
+    return (FreizeitkarteProviderAdapter(), OpenTopoMapProviderAdapter(), MapRandoProviderAdapter())
 
 
 def snapshot_release_evidence(snapshot: ProviderSnapshot) -> tuple[str, str]:

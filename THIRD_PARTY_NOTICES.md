@@ -66,6 +66,8 @@ libraries in `Terento.app/Contents/Frameworks`.
 - Distribution: bundled in the production `Terento.app` under `Contents/Frameworks`; SwiftPM development builds may still use a local Homebrew prefix.
 - Build: pinned upstream source archive and checksum are recorded in `Packaging/NativeDependencies/build.sh`.
 - Compatibility: Terento code is GPL-3.0-or-later; the dynamically linked libmtp remains under LGPL-2.1-or-later. Terento does not relicense libmtp.
+- Local modification: `Packaging/NativeDependencies/patch-partial-read-diagnostics.pl` adds the otherwise discarded partial-read PTP response to libmtp's existing error stack. The patch changes diagnostics only, retains LGPL-2.1-or-later for the modified library, and is distributed as source alongside the pinned upstream source reference.
+- Local modification (local candidate): `Packaging/NativeDependencies/patch-usb-session-lifecycle.pl` closes USB handles on failed initialization/session paths and suppresses the inherited reset-on-close quirk on macOS only for Garmin VID/PID `091e:51b8`. Explicit failed-session recovery resets remain. The modified library retains LGPL-2.1-or-later; this patch is supplied as source alongside the pinned upstream reference. Hardware acceptance remains pending.
 
 ### libusb
 

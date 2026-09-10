@@ -27,6 +27,7 @@ struct Stage41AcquisitionTests {
         await testRenamedIMGIsIdentifiedByContent()
         await testCompositeRegionIdentityPasses()
         await testSplitReleaseHeaderPasses()
+        await testMapRandoDirectIMGAndDailyReleaseValidation()
         await testOpenTopoMapAcquisitionUsesOfficialURLAndIdentity()
         await testOpenTopoMapCurrentRemoteSlugIdentityPasses()
         await testOptionalContoursAcquireTheExactArtifactSource()
@@ -50,7 +51,7 @@ struct Stage41AcquisitionTests {
         await testWithheldAcquisitionFailsBeforeWorkspaceAndHTTP()
         testNoDeviceWriteDependency()
 
-        print("PASS: 33 Stage 4.1 acquisition tests")
+        print("PASS: 34 Stage 4.1 acquisition tests")
     }
 
     private static func testCatalogResolvesFrance() {
@@ -397,6 +398,31 @@ struct Stage41AcquisitionTests {
                 false,
                 "Andorra IMG with a split Release header passes identity and version validation"
             )
+        }
+    }
+
+    private static func testMapRandoDirectIMGAndDailyReleaseValidation() async {
+        var image = Data(repeating: 0, count: 8192)
+        write("DSKIMG", at: 0x10, length: 7, into: &image)
+        write("GARMIN", at: 0x41, length: 7, into: &image)
+        write("MapRando Lituanie 02", at: 0x49, length: 20, into: &image)
+        write(".09.2026                      ", at: 0x65, length: 30, into: &image)
+        for day in [2, 3] {
+            let package = MapPackage(id: "maprando-lituanie", providerId: "maprando",
+                regionId: "LITUANIE", name: "Lituanie", version: MapVersion(year: 2026, month: 9, day: day)!,
+                sizeBytes: UInt64(image.count), sourceURL: URL(string: "https://ravenfeld.fr/MapRando/Lituanie/MapRando_Lituanie_2026_09_02.img"),
+                releaseDate: "2026-09-02", identifier: "lituanie", providerRegionId: "lituanie", canonicalRegionId: "LITUANIE")
+            do {
+                let source = try temporaryFile(data: image)
+                defer { try? FileManager.default.removeItem(at: source) }
+                let artifact = try await acquire(package: package, source: source, extractor: FixtureArchiveExtractor(images: []))
+                expect(day == 2 && artifact.version == package.version && artifact.targetFilename == "terento_maprando_lituanie.img",
+                    "MapRando direct IMG uses shared validation and target generation")
+            } catch MapAcquisitionError.sourceVersionMismatch {
+                expect(day == 3, "a different same-month MapRando release is rejected before transfer")
+            } catch {
+                expect(false, "MapRando acquisition failed: \(error)")
+            }
         }
     }
 

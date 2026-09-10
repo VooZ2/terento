@@ -27,6 +27,7 @@ final class DeviceEngine: ObservableObject {
     private var compatibilityStatusTask: Task<Void, Never>?
     private var postEjectPresenceTask: Task<Void, Never>?
     private var presenceMonitoringEnabled = true
+    private var lastDetectionUSBPresence = false
 
     init(
         transport: any DeviceSnapshotReader = MTPTransport(),
@@ -108,6 +109,7 @@ final class DeviceEngine: ObservableObject {
         errorMessage = nil
         userErrorMessage = nil
         readingAttempt = 0
+        lastDetectionUSBPresence = false
         readingMessage = "Waiting for your Garmin…"
 
         readingStatusTask = Task { [weak self] in
@@ -125,7 +127,9 @@ final class DeviceEngine: ObservableObject {
             self.activeNativeReadTask?.cancel()
             self.stateManager.fail()
             self.state = self.stateManager.state
-            self.userErrorMessage = "We couldn't connect to your Garmin within 2 minutes. Reconnect it and try again."
+            self.userErrorMessage = UserFacingErrorMessage.forConnectionTimeout(
+                garminUSBPresent: self.lastDetectionUSBPresence
+            )
             self.readingMessage = "Connection timed out after 2 minutes."
             self.appendLog("Connection check timed out after 2 minutes")
         }
@@ -346,6 +350,7 @@ final class DeviceEngine: ObservableObject {
                     transport: transport
                 )
                 guard !Task.isCancelled else { return false }
+                lastDetectionUSBPresence = isPresent
 
                 if isPresent {
                     if observedAbsence {
@@ -368,6 +373,8 @@ final class DeviceEngine: ObservableObject {
                 readingMessage = "Waiting for your Garmin…"
             } catch {
                 guard !Task.isCancelled else { return false }
+
+                lastDetectionUSBPresence = false
 
                 // USB enumeration and the shared operation gate can both be
                 // transient while macOS is completing disconnect/reconnect.

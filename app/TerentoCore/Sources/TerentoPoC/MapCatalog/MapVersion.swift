@@ -3,18 +3,44 @@ import Foundation
 struct MapVersion: Codable, Comparable, Equatable, Hashable, Sendable, CustomStringConvertible {
     let year: Int
     let month: Int
+    /// Absent for legacy/monthly providers; MapRando publishes daily releases.
+    let day: Int?
 
-    init?(year: Int, month: Int) {
+    init?(year: Int, month: Int, day: Int? = nil) {
         guard year >= 0, (1...12).contains(month) else {
             return nil
         }
 
+        if let day {
+            let leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
+            let lengths = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+            guard (1...lengths[month - 1]).contains(day) else { return nil }
+        }
+        self.day = day
         self.year = year
         self.month = month
     }
 
+    private enum CodingKeys: String, CodingKey { case year, month, day }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        let year = try values.decode(Int.self, forKey: .year)
+        let month = try values.decode(Int.self, forKey: .month)
+        let day = try values.decodeIfPresent(Int.self, forKey: .day)
+        guard let version = MapVersion(year: year, month: month, day: day) else {
+            throw DecodingError.dataCorruptedError(forKey: .day, in: values,
+                debugDescription: "Invalid map release date")
+        }
+        self = version
+    }
+
     init?(rawValue: String) {
         let value = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let daily = MapRandoVersionParser().parseISO(value) {
+            self = daily
+            return
+        }
         let patterns = [
             #"^(\d{4})[-/.](0?[1-9]|1[0-2])$"#,
             #"^(\d{2})[-/.](0?[1-9]|1[0-2])$"#
@@ -44,14 +70,16 @@ struct MapVersion: Codable, Comparable, Equatable, Hashable, Sendable, CustomStr
     }
 
     var description: String {
-        String(format: "%04d-%02d", year, month)
+        if let day { return String(format: "%04d-%02d-%02d", year, month, day) }
+        return String(format: "%04d-%02d", year, month)
     }
 
     static func < (lhs: MapVersion, rhs: MapVersion) -> Bool {
         if lhs.year != rhs.year {
             return lhs.year < rhs.year
         }
-        return lhs.month < rhs.month
+        if lhs.month != rhs.month { return lhs.month < rhs.month }
+        return (lhs.day ?? 0) < (rhs.day ?? 0)
     }
 
 }
@@ -196,6 +224,10 @@ struct MapVersionNormalizer: Sendable {
             return version
         }
 
+        if MapIdentity.normalizeProvider(provider ?? "") == "maprando" {
+            return rawValue.flatMap { MapRandoVersionParser().parse($0) }
+        }
+
         if let rawValue, let version = MapVersion(rawValue: rawValue) {
             return version
         }
@@ -206,5 +238,29 @@ struct MapVersionNormalizer: Sendable {
         // version comparison.
         _ = fullText
         return nil
+    }
+}
+
+/// Provider releases are read from the complete fixed IMG description, never
+/// from a renamed device filename or an unrelated embedded date fragment.
+struct MapRandoVersionParser: Sendable {
+    func parseISO(_ value: String) -> MapVersion? {
+        parse(value, pattern: #"^(20\d{2})-(\d{2})-(\d{2})$"#, reversed: false)
+    }
+
+    func parse(_ value: String) -> MapVersion? {
+        parse(value, pattern: #"^(\d{2})\.(\d{2})\.(20\d{2})$"#, reversed: true)
+            ?? parseISO(value)
+    }
+
+    private func parse(_ value: String, pattern: String, reversed: Bool) -> MapVersion? {
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: value, range: NSRange(value.startIndex..., in: value)) else { return nil }
+        let numbers = (1...3).compactMap { index -> Int? in
+            guard let range = Range(match.range(at: index), in: value) else { return nil }
+            return Int(value[range])
+        }
+        guard numbers.count == 3 else { return nil }
+        return MapVersion(year: numbers[reversed ? 2 : 0], month: numbers[1], day: numbers[reversed ? 0 : 2])
     }
 }

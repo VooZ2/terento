@@ -9,6 +9,7 @@ protocol DeviceFileReader: Sendable {
 @main
 struct MapVersionComparisonTests {
     static func main() {
+        testDailyReleasePrecisionAndLegacyCoding()
         testFreizeitkarteReleaseIsNormalizedToYearAndMonth()
         testSameVersionIsUpToDate()
         testLaterCatalogVersionMakesUpdateAvailable()
@@ -19,7 +20,23 @@ struct MapVersionComparisonTests {
         testOtherInstalledRegionStillMeansInstallAvailable()
         testKnownDifferentRegionCannotMatchByIdentifier()
 
-        print("PASS: 9 Stage 2 map comparison tests")
+        print("PASS: 10 Stage 2 map comparison tests")
+    }
+
+    private static func testDailyReleasePrecisionAndLegacyCoding() {
+        let old = MapVersion(rawValue: "2026-09-01")!
+        let current = MapRandoVersionParser().parse("02.09.2026")!
+        expect(old < current && current.description == "2026-09-02", "daily releases preserve same-month update ordering")
+        expect(MapVersion(rawValue: "2026-02-29") == nil && MapVersion(rawValue: "2028-02-29") != nil, "daily releases validate calendar dates")
+        let monthly = try! JSONDecoder().decode(MapVersion.self, from: Data(#"{"year":2026,"month":9}"#.utf8))
+        expect(monthly.day == nil && monthly.description == "2026-09", "old manifest month precision is preserved")
+        let encoded = try! JSONSerialization.jsonObject(with: JSONEncoder().encode(monthly)) as! [String: Int]
+        expect(encoded["day"] == nil, "legacy monthly encoding does not acquire a day")
+        let daily = try! JSONDecoder().decode(MapVersion.self, from: JSONEncoder().encode(current))
+        expect(daily == current, "daily manifest versions round-trip")
+        let filename = try! TerentoManagedFilenameGenerator().versionedFilename(providerId: "maprando", regionId: "LITUANIE", version: current)
+        expect(!TerentoManagedFilenameGenerator().isValid("terento_maprando_lituanie_2026-02-30.img"), "invalid daily date cannot be an owned update filename")
+        expect(TerentoManagedFilenameGenerator().matchesIdentity(filename, providerId: "maprando", regionId: "LITUANIE", version: current), "daily update filename remains within owned filename grammar")
     }
 
     private static func testFreizeitkarteReleaseIsNormalizedToYearAndMonth() {

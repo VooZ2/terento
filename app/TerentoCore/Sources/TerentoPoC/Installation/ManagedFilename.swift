@@ -129,13 +129,17 @@ struct TerentoManagedFilenameGenerator: Sendable {
               let expression = try? NSRegularExpression(
                 // Components are normalized to lowercase ASCII and may
                 // contain internal separators after normalization.
-                pattern: #"^terento_[a-z0-9]+(?:_[a-z0-9]+)*_[a-z0-9]+(?:_[a-z0-9]+)*(?:_[0-9]{4}-[0-9]{2})?\.img$"#
+                pattern: #"^terento_[a-z0-9]+(?:_[a-z0-9]+)*_[a-z0-9]+(?:_[a-z0-9]+)*(?:_[0-9]{4}-[0-9]{2}(?:-[0-9]{2})?)?\.img$"#
               ) else {
             return false
         }
 
         let range = NSRange(filename.startIndex..<filename.endIndex, in: filename)
-        return expression.firstMatch(in: filename, range: range) != nil
+        guard expression.firstMatch(in: filename, range: range) != nil else { return false }
+        if let dailyRange = filename.range(of: #"[0-9]{4}-[0-9]{2}-[0-9]{2}(?=\.img$)"#, options: .regularExpression) {
+            return MapVersion(rawValue: String(filename[dailyRange])) != nil
+        }
+        return true
     }
 
     /// Returns the artifact kind encoded by a valid Terento-managed filename.

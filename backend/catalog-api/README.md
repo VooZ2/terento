@@ -384,3 +384,72 @@ legacy renderers and their exclusive CSS have been removed; regression tests
 exercise the current page for technical details, linked issues, resolved
 outcomes, multiple map results and reopen actions. API routes, evidence,
 authentication, storage and lifecycle behavior are unchanged.
+
+### MapRando beta.11 provider (2026-09-10)
+
+MapRando is the third registered adapter and is **ACTIVE in beta.11**.
+The scheduler and provider admin use the same metadata collection, last-success,
+health, status, and per-provider failure isolation as the existing adapters.
+This working-tree implementation has not been deployed or hardware-validated.
+
+`/maps/catalog.json` preserves the Freizeitkarte/OpenTopoMap projection for
+already-distributed native clients, which reject an unknown provider.
+`/maps/catalog-v3.json` is additive and retains `schemaVersion: 2`; it includes
+MapRando with a daily `version.day`, full `release` and release metadata. The
+old endpoint remains limited to Freizeitkarte/OpenTopoMap for older clients;
+the beta.11 app reads the v3 projection.
+Neither endpoint changes existing provider versions or contour publication policy.
+
+Source evidence: the [official MapRando page](https://ravenfeld.gitlab.io/open-garmin-map/)
+links to the [original directory](https://ravenfeld.fr/MapRando/) and documents
+`MapRando_<region>_YYYY_MM_DD.img` and direct installation. Collection walks every
+immediate region directory, skips BaseCamp-only content, and takes its latest
+dated direct IMG. There is no membership allowlist. Identity collisions,
+ambiguous latest files and malformed calendar dates fail the snapshot.
+Only bounded HTML and a 512-byte HTTP range per IMG are read; binaries are never
+stored, mirrored or proxied. HTTP range inspection rejects a changed final host.
+
+IMG validation checks the unencrypted DSKIMG/GARMIN header and joins its two
+fixed description fields before matching the full MapRando region and calendar
+date to the filename. Accent folding is confined to MapRando identity. A
+truncated or mismatched description retains the package as `UNAVAILABLE`, with
+an unavailable artifact, rather than making an unsafe match. Native acquisition
+still validates the entire downloaded file. Original source sizes are both
+download and installation sizes. No provider checksum is invented.
+
+A complete metadata-only inspection on 2026-09-10 found **160** direct IMG
+packages: **158** matching headers and **2 unavailable**. Haiti/Dominican
+Republic has a truncated fixed description; New Zealand's filename date is
+2026-09-02 but the header says 01.09.2026. These remain visible but blocked.
+`France_Courbes_IGN` is a standalone alternative package, never an OTM-style
+optional overlay. Geographic metadata derives from the reviewed provider
+`country.txt` extract paths and explicit directory country/subregion names in
+`maprando_geography.py`; it does not constrain future catalog membership.
+Unmapped future packages retain empty country codes and a subregion shape.
+Russia and Crimea identities remain explicit in the adapter's policy mapper.
+Geography is projected for MapRando at serialization without changing the
+existing database schema or either existing provider's output; the existing
+package `country` stores an ISO code for single-country admin aggregation.
+
+The source page provides a download/install path; this is not a grant to
+redistribute source code, rendering assets, elevation data or map binaries.
+Attribution is retained and no such assets are bundled. The API exposes the
+provider as ACTIVE for the beta.11 catalog while compatibility claims remain
+model-specific and evidence-based.
+
+Migration `037_maprando_compatibility_evidence.sql` adds MapRando to the
+privacy-safe compatibility evidence provider constraint. Migration
+`039_activate_maprando_beta11.sql` makes the provider ACTIVE and registers its
+original source links. Neither migration grants a general device-compatibility
+claim. Existing map-event validation already accepts registered provider IDs.
+Admin filters, operation links and health support MapRando;
+raw IMG health uses header/title validation and marks ZIP inspection inapplicable.
+A complete successful MapRando snapshot retires only its own disappeared package
+metadata, preserving installed manifests and all existing-provider records.
+
+Validation uses the existing backend unit/contract suite with narrow additions
+for daily dates, strict source identity, standalone variants, geographic
+projection and byte-identical legacy endpoint output. A live PostgreSQL
+migration integration check and beta device install/remove/update remain pending.
+The review found no proven unused transport/catalog lines safe to remove;
+legacy compatibility branches and the OTM package-count guard remain in use.

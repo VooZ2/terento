@@ -8,7 +8,7 @@ enum DiagnosticReportSanitizer {
             (#"(?i)\"(unit[ _-]?id|serial(?: number)?|password|token|credential)\"\s*:\s*\"[^\"]*\""#, "\"$1\":\"[REDACTED]\""),
             (#"(?i)(unit[ _-]?id|serial(?: number)?|password|token|credential|authorization|account|username|user name)\s*[:=]\s*[^\s&]+"#, "$1: [REDACTED]"),
             (#"/Users/\S+"#, "[LOCAL PATH REDACTED]"),
-            (#"(?i)(?:^|\s)/(?:private|var|tmp|Volumes|home)/\S+"#, " [LOCAL PATH REDACTED]"),
+            (#"(?i)(?:^|[\s"'(=])/(?:private|var|tmp|Volumes|home)/[^\s"')]+"#, " [LOCAL PATH REDACTED]"),
             (#"(?i)[A-Z]:\\\\Users\\\\[^\\\s]+"#, "[LOCAL PATH REDACTED]"),
             (#"(?i)file://\S+"#, "[LOCAL FILE REDACTED]"),
             (#"(?i)bearer\s+[A-Za-z0-9._~+/-]+=*"#, "Bearer [REDACTED]"),

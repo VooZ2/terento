@@ -593,6 +593,7 @@ final class MapLifecycleViewModel: ObservableObject {
 
         guard let operationToken = operationController.begin() else { return }
         let operationEpoch = lifecycleEpoch
+        FinishingTrace.beginInstallation()
         inFlightOperationCount += 1
         let relay = MapLifecycleProgressRelay(
             viewModel: self,
@@ -720,6 +721,23 @@ final class MapLifecycleViewModel: ObservableObject {
             }
 
             guard let result else { return }
+            if !result.isSuccess {
+                FinishingTrace.freezeFailure()
+                TerentoDiagnosticLog.saveFailureReport(InstallationIssueReport.generate(
+                    identity: context.identity,
+                    maps: [InstallationIssueMap(provider: mapIdentity.provider,
+                        region: mapIdentity.provider == "custom" ? "custom" : mapIdentity.region,
+                        package: mapIdentity.provider == "custom" ? "custom-map" : mapIdentity.region,
+                        release: mapIdentity.provider == "custom" ? "custom" : context.item.version?.description,
+                        artifactSizeBytes: installedMaps.reduce(0) { $0 + $1.sourceFile.sizeBytes })],
+                    stage: result.status.rawValue,
+                    operation: .removal,
+                    lifecycleFacts: ["Planned components: \(installedMaps.count)",
+                        "Ownership route: \(isExternalRemoval ? "confirmed third-party removal" : "Terento-owned")"],
+                    error: result.message, operationID: nil,
+                    errorCodes: [result.status.rawValue]
+                ))
+            }
 
             guard let self else { return }
             let isCurrent = operationController.isCurrent(operationToken)
@@ -799,6 +817,7 @@ final class MapLifecycleViewModel: ObservableObject {
         let operationController = self.operationController
         guard let operationToken = operationController.begin() else { return }
         let operationEpoch = lifecycleEpoch
+        FinishingTrace.beginInstallation()
         let relay = MapLifecycleProgressRelay(
             viewModel: self,
             itemID: itemID,
@@ -861,6 +880,27 @@ final class MapLifecycleViewModel: ObservableObject {
                 )
             }
 
+            if !result.isSuccess {
+                FinishingTrace.freezeFailure()
+                TerentoDiagnosticLog.saveFailureReport(InstallationIssueReport.generate(
+                    identity: context.identity,
+                    maps: [InstallationIssueMap(provider: mapIdentity.provider, region: mapIdentity.region,
+                        package: selectedMap.id, release: selectedMap.displayVersionLabel,
+                        artifactSizeBytes: result.storagePlan?.selectedMapBytes)],
+                    stage: result.status.rawValue,
+                    operation: .update,
+                    lifecycleFacts: ["Previous version: \(version.description)",
+                        "Transaction state: \(result.state.rawValue)",
+                        "Old map preserved (transaction result): \(result.oldMapPreserved)",
+                        "Backup result: \(result.backup?.status.rawValue ?? "Unavailable")",
+                        "New object reported: \(result.newObject != nil)",
+                        "Final inventory object count: \(result.finalObjects.count)",
+                        "Available device bytes: \(result.storagePlan.map { String($0.currentFreeSpace) } ?? "Unavailable")",
+                        "Required temporary bytes: \(result.storagePlan.map { String($0.requiredTemporarySpace) } ?? "Unavailable")"],
+                    error: result.message, operationID: nil,
+                    errorCodes: [result.status.rawValue]
+                ))
+            }
             guard let self else { return }
             let isCurrent = operationController.isCurrent(operationToken)
             operationController.finish(operationToken)
