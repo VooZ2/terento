@@ -33,12 +33,18 @@ for mode in debug release; do
     [[ "$mode" == debug ]] && flags=(-D DEBUG)
     swiftc "${flags[@]}" "$project_root/Sources/TerentoPoC/MTPTransport/BoundedNativeProcess.swift" \
       "$project_root/Tests/TerentoPoCTests/BoundedNativeProcessTests.swift" -o "$build/swift-$mode"
-    TERENTO_FINISHING_TRACE=1 "$build/swift-$mode" 2> "$build/swift-$mode.log"
+    if ! TERENTO_FINISHING_TRACE=1 "$build/swift-$mode" 2> "$build/swift-$mode.log"; then
+        cat "$build/swift-$mode.log" >&2
+        exit 1
+    fi
 done
 [[ ! -s "$build/swift-release.log" ]]
 grep -q 'event=worker_deadline' "$build/swift-debug.log"
 grep -q 'event=worker_cancelled' "$build/swift-debug.log"
 grep -q 'event=worker_exited' "$build/swift-debug.log"
-TERENTO_FINISHING_TRACE=0 "$build/swift-debug" 2> "$build/swift-off.log"
+if ! TERENTO_FINISHING_TRACE=0 "$build/swift-debug" 2> "$build/swift-off.log"; then
+    cat "$build/swift-off.log" >&2
+    exit 1
+fi
 [[ ! -s "$build/swift-off.log" ]]
 print 'PASS: normal-build private native trace and strict Swift diagnostics pass; Debug stderr remains opt-in; checkpoints throttled; exact failure counters retained; deadline/cancellation still reap workers'

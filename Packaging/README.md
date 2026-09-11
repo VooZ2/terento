@@ -28,7 +28,7 @@ same override is used by the web, native, backend, and release checks.
 
 ## Full release validation
 
-The current public target is beta.11 build 21. Public tags and release
+The current public target is beta.11 build 22. Public tags and release
 artifacts never use the `-local` suffix; Debug artifacts for owner testing do.
 The beta.11 release uses the same shared installation, update and removal path
 as the existing providers.
@@ -43,10 +43,10 @@ For a beta release, keep the app's marketing version separate from the public
 release label:
 
 ```sh
-RELEASE_TAG=v1.0.0-beta.11-build21 \
+RELEASE_TAG=v1.0.0-beta.11-build22 \
 Packaging/release.sh \
   --version 1.0.0 \
-  --build 21 \
+  --build 22 \
   --release-version 1.0.0-beta.11 \
   --overwrite
 ```
@@ -234,3 +234,17 @@ to15. Fixed local diagnostics preserve first failure, attempt context, target
 counts/sizes and final cleanup. Report issue copies the complete privacy-reviewed
 report and uses a short paste-instruction URL if the encoded form exceeds7000
 bytes. No raw trace is automatically uploaded or added to the telemetry schema.
+
+## Build 22 Finishing deadline correction
+
+Sample verification uses a 120-second inactivity limit renewed only by strictly
+increasing validated-byte progress from the private worker sidecar, with a
+600-second absolute limit per sample worker. Missing, malformed, repeated,
+regressing or inconsistent progress cannot extend the wait. Opening and final
+release are covered by these limits; successful progress never substitutes for
+the final verified result. Cancellation still kills and reaps the owned child
+before the lifecycle lease is released.
+
+Connection discovery retains its separate 120-second limit. Cleanup, inventory
+and snapshot workers retain their 45-second limits. Sample coverage, native
+USB calls, retry policy, map writes and ownership rules are unchanged.

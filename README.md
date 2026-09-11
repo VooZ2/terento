@@ -96,7 +96,7 @@ Beta.11 adds MapRando as a third catalog provider, improves repeated-session
 recovery, and opens GitHub issue reports with a compact prefilled diagnostic
 body. Install and Remove behavior remains unchanged.
 
-The latest public release is **beta.11 (build 21)**. The macOS app is notarized
+The latest public release is **beta.11 (build 22)**. The macOS app is notarized
 and does not require Homebrew.
 
 **[Download Terento](https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_download)**
