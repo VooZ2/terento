@@ -181,6 +181,23 @@ class GithubDownloadTests(unittest.TestCase):
         self.assertEqual(result["hasData"], False)
         self.assertEqual(result["trend"], [])
 
+    def test_database_snapshot_aggregates_long_periods_in_local_days(self):
+        now = datetime(2026, 9, 11, 20, 13, tzinfo=timezone.utc)
+        database = SnapshotDatabase(
+            {"dmg_total": 15, "zip_total": 9, "observed_at": now},
+            [
+                {"bucket": datetime(2026, 9, 10, 21, tzinfo=timezone.utc), "dmg_count": 2, "zip_count": 1},
+                {"bucket": datetime(2026, 9, 11, 20, tzinfo=timezone.utc), "dmg_count": 3, "zip_count": 4},
+            ],
+        )
+        result = database.github_downloads_snapshot(
+            now=now, time_zone="Europe/Vilnius", period="7d",
+        )
+        self.assertEqual(result["bucket"], "day")
+        self.assertEqual(len(result["trend"]), 8)
+        self.assertEqual(sum(item["dmg_count"] for item in result["trend"]), 5)
+        self.assertEqual(sum(item["zip_count"] for item in result["trend"]), 5)
+
     def test_record_snapshot_upserts_a_utc_hour_and_serializes_counts(self):
         database = WriteDatabase()
         self.assertTrue(database.record_github_download_snapshot(

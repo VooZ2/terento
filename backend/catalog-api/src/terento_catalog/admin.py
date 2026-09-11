@@ -1265,11 +1265,23 @@ def _overview_trend_chart(
 
 
 def _overview_downloads_chart(
-    downloads: dict[str, Any], time_zone: str = "UTC", *, _compact: bool = False,
+    downloads: dict[str, Any], time_zone: str = "UTC", *, period: str = "24h",
+    _compact: bool = False,
 ) -> str:
     trend = [item for item in downloads.get("trend") or [] if isinstance(item, dict)]
     if not trend:
         return "<p class='overview-empty-state'>No GitHub download data yet.</p>"
+    chart_bucket = str(downloads.get("bucket") or {
+        "24h": "hour", "7d": "day", "30d": "day", "all": "month",
+    }.get(period, "hour"))
+    if chart_bucket not in {"hour", "day", "week", "month"}:
+        chart_bucket = "hour"
+    period_label = {
+        "24h": "the last 24 hours",
+        "7d": "the last 7 days",
+        "30d": "the last 30 days",
+        "all": "all time",
+    }.get(period, "the selected period")
     values = []
     for item in trend:
         counts = []
@@ -1314,7 +1326,7 @@ def _overview_downloads_chart(
             y = top + plot_height - height
             title = (
                 f"{label}: {count} · "
-                f"{_overview_chart_bucket_label(item.get('bucket'), 'hour', time_zone)} · {time_zone}"
+                f"{_overview_chart_bucket_label(item.get('bucket'), chart_bucket, time_zone)} · {time_zone}"
             )
             bars.append(
                 f"<rect class='{css_class}' x='{x:.1f}' y='{y:.2f}' width='{bar_width:.1f}' "
@@ -1334,12 +1346,12 @@ def _overview_downloads_chart(
             )
             labels.append(
                 f"<text x='{center:.1f}' y='{chart_height - 8}' text-anchor='{anchor}'>"
-                f"{html.escape(_overview_chart_bucket_label(item.get('bucket'), 'hour', time_zone))}</text>"
+                f"{html.escape(_overview_chart_bucket_label(item.get('bucket'), chart_bucket, time_zone))}</text>"
             )
     svg = (
         f"<svg class='overview-trend-chart overview-trend-{'mobile' if _compact else 'desktop'}' "
         f"viewBox='0 0 {chart_width} {chart_height}' role='img' "
-        f"aria-label='GitHub downloads over the last 24 hours'>"
+        f"aria-label='GitHub downloads over {period_label}'>"
         f"{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
     )
     if _compact:
@@ -1347,7 +1359,7 @@ def _overview_downloads_chart(
     return (
         "<div class='overview-chart-wrap'>"
         + svg
-        + _overview_downloads_chart(downloads, time_zone, _compact=True)
+        + _overview_downloads_chart(downloads, time_zone, period=period, _compact=True)
         + "<div class='overview-chart-legend'>"
         "<span><i class='overview-chart-download-dmg'></i>.dmg</span>"
         "<span><i class='overview-chart-download-zip'></i>.zip</span>"
@@ -1518,6 +1530,22 @@ def overview_page(
         except (TypeError, ValueError):
             return "—"
 
+    def map_total(key: str) -> str:
+        if key not in data or data.get(key) is None:
+            return "—"
+        try:
+            return str(max(0, int(data[key])))
+        except (TypeError, ValueError):
+            return "—"
+
+    map_totals = (
+        "<div class='overview-map-totals' aria-label='All-time map install totals'>"
+        f"<div class='overview-map-total' aria-label='All-time successful installs: {map_total('allTimeSuccessCount')}'><strong>{map_total('allTimeSuccessCount')}</strong><small>Successful</small></div>"
+        f"<div class='overview-map-total' aria-label='All-time failed installs: {map_total('allTimeFailedCount')}'><strong>{map_total('allTimeFailedCount')}</strong><small>Failed</small></div>"
+        f"<div class='overview-map-total' aria-label='All-time custom .img installs: {map_total('allTimeCustomCount')}'><strong>{map_total('allTimeCustomCount')}</strong><small>Custom</small></div>"
+        "</div>"
+    )
+
     downloads_section = (
         "<section class='overview-panel overview-download-panel' aria-labelledby='overview-downloads-title'>"
         "<div class='section-heading overview-download-heading'><div><p class='section-kicker'>GitHub releases</p>"
@@ -1526,7 +1554,7 @@ def overview_page(
         f"<div class='overview-download-total' aria-label='.dmg downloads total: {download_total('dmgTotal')}'><strong>{download_total('dmgTotal')}</strong><small>.dmg</small></div>"
         f"<div class='overview-download-total' aria-label='.zip downloads total: {download_total('zipTotal')}'><strong>{download_total('zipTotal')}</strong><small>.zip</small></div>"
         "</div></div>"
-        f"{_overview_downloads_chart(downloads, time_zone)}"
+        f"{_overview_downloads_chart(downloads, time_zone, period=period)}"
         "</section>"
     )
     secondary_grid_class = (
@@ -1561,7 +1589,7 @@ def overview_page(
           <a class='overview-kpi' href='/admin/providers'><span>Providers</span><strong>{healthy} / {provider_count}</strong></a>
         </section>
         {attention_section}
-        <div class='overview-primary-grid'><section class='overview-panel overview-chart-panel' aria-labelledby='overview-trend-title'><div class='section-heading'><div><p class='section-kicker'>Map operations</p><h2 id='overview-trend-title'>Map install operations over time</h2></div></div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'), time_zone)}</section>{downloads_section}</div>
+        <div class='overview-primary-grid'><section class='overview-panel overview-chart-panel' aria-labelledby='overview-trend-title'><div class='section-heading overview-map-heading'><div><p class='section-kicker'>Map operations</p><h2 id='overview-trend-title'>Map install operations over time</h2></div>{map_totals}</div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'), time_zone)}</section>{downloads_section}</div>
         <div class='{secondary_grid_class}'><section class='overview-panel' aria-labelledby='overview-activity-title'><div class='section-heading'><div><p class='section-kicker'>Latest</p><h2 id='overview-activity-title'>Recent map activity</h2></div><a class='section-link' href='{html.escape(map_statistics_href, quote=True)}'>View all&nbsp;{_admin_icon('arrow-right')}</a></div>{recent_content}</section>{model_panel}</div>
         {compatibility_summary}
       </main>
@@ -5297,11 +5325,11 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
 .overview-chart-wrap{max-width:780px;margin:0 auto}
 .overview-download-panel{padding-top:16px;padding-bottom:16px}
 .overview-download-panel .section-heading{margin-bottom:6px}
-.overview-download-heading{align-items:flex-start;flex-wrap:wrap}
-.overview-download-totals{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-inline-start:auto}
-.overview-download-total{display:inline-flex;align-items:baseline;gap:4px;min-width:0;padding:5px 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface-muted);font-size:var(--admin-type-label-size);line-height:var(--admin-type-label-line)}
-.overview-download-total strong{color:var(--graphite);font-size:16px;font-variant-numeric:tabular-nums}
-.overview-download-total small{color:var(--secondary);font-size:var(--admin-type-support-size)}
+.overview-map-heading,.overview-download-heading{align-items:flex-start;flex-wrap:wrap}
+.overview-map-totals,.overview-download-totals{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-inline-start:auto}
+.overview-map-total,.overview-download-total{display:inline-flex;align-items:baseline;gap:4px;min-width:0;padding:5px 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface-muted);font-size:var(--admin-type-label-size);line-height:var(--admin-type-label-line)}
+.overview-map-total strong,.overview-download-total strong{color:var(--graphite);font-size:16px;font-variant-numeric:tabular-nums}
+.overview-map-total small,.overview-download-total small{color:var(--secondary);font-size:var(--admin-type-support-size)}
 .overview-chart-download-dmg{fill:var(--interactive);background:var(--interactive)}
 .overview-chart-download-zip{fill:var(--status-success-text);background:var(--status-success-text)}
 .overview-trend-chart{display:block;width:100%;height:260px;max-width:760px;min-height:0;margin:0 auto}
@@ -5311,9 +5339,9 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
   .overview-trend-mobile{display:block;min-width:0;width:100%;height:auto;aspect-ratio:360/220}
   .overview-chart-wrap{width:100%;min-width:0;overflow:visible}
   .overview-trend-mobile text{font-size:13px}
-  .overview-download-totals{justify-content:flex-start;margin-inline-start:0}
+  .overview-map-totals,.overview-download-totals{justify-content:flex-start;margin-inline-start:0}
 }
-@media(max-width:560px){.overview-download-totals{flex-basis:100%}}
+@media(max-width:560px){.overview-map-totals,.overview-download-totals{flex-basis:100%}}
 .overview-attention-empty{display:grid;grid-template-columns:minmax(0,auto) minmax(180px,1fr) auto;align-items:center;gap:18px;min-height:76px;padding:12px 16px}
 .overview-attention-empty h2,.overview-provider-panel h2{font-family:var(--font-ui);font-size:var(--admin-type-subsection-size);line-height:var(--admin-type-subsection-line);letter-spacing:0}
 .overview-attention-empty .section-kicker,.overview-provider-panel .section-kicker{margin-bottom:1px}

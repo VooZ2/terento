@@ -41,7 +41,7 @@ class FakeProviderDatabase:
         self.run_overrides: dict[str, list[dict]] = {}
         self.map_statistic_filters: list[dict] = []
         self.overview_map_requests: list[tuple[datetime, str, str]] = []
-        self.overview_download_requests: list[str] = []
+        self.overview_download_requests: list[tuple[str, str]] = []
         self.local_purge_calls: list[dict] = []
 
     def admin_user_count(self) -> int:
@@ -93,13 +93,14 @@ class FakeProviderDatabase:
             "bucket": "hour",
         }
 
-    def github_downloads_snapshot(self, *, time_zone="UTC"):
-        self.overview_download_requests.append(time_zone)
+    def github_downloads_snapshot(self, *, time_zone="UTC", period="24h"):
+        self.overview_download_requests.append((period, time_zone))
         return {
             "hasData": True,
             "dmgTotal": 23,
             "zipTotal": 11,
             "lastObservedAt": datetime(2026, 9, 11, 20, tzinfo=UTC),
+            "bucket": "hour",
             "trend": [{
                 "bucket": datetime(2026, 9, 11, 20, tzinfo=UTC),
                 "dmg_count": 1,
@@ -1062,7 +1063,7 @@ class Beta8APITests(unittest.TestCase):
             self.assertEqual(response.status, 200)
             self.assertEqual(database.overview_map_requests[-1][1], "30d")
             self.assertEqual(database.overview_map_requests[-1][2], "Europe/Vilnius")
-            self.assertEqual(database.overview_download_requests[-1], "Europe/Vilnius")
+            self.assertEqual(database.overview_download_requests[-1], ("30d", "Europe/Vilnius"))
             self.assertIn("value='30d' selected", body.decode())
             self.assertIn("overview-download-total' aria-label='.dmg downloads total: 23'><strong>23</strong><small>.dmg", body.decode())
 
@@ -1072,6 +1073,7 @@ class Beta8APITests(unittest.TestCase):
             self.assertEqual(response.status, 200)
             self.assertEqual(database.overview_map_requests[-1][1], "all")
             self.assertIn("value='all' selected", body.decode())
+            self.assertEqual(database.overview_download_requests[-1], ("all", "UTC"))
             self.assertLess(
                 database.overview_map_requests[-1][0],
                 database.overview_map_requests[-2][0],

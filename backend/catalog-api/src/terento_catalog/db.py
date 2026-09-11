@@ -290,21 +290,40 @@ class Database:
         *,
         time_zone: str = "UTC",
         now: datetime | None = None,
+        period: str = "24h",
     ) -> dict[str, Any]:
-        """Return current totals and display-only hourly deltas for 24 hours."""
-        del time_zone  # Labels are localized by the admin chart renderer.
+        """Return current totals and period-aware display-only deltas."""
+        periods = {
+            "24h": timedelta(hours=24),
+            "7d": timedelta(days=7),
+            "30d": timedelta(days=30),
+            "all": None,
+        }
+        if period not in periods:
+            period = "24h"
+        bucket = {
+            "24h": "hour",
+            "7d": "day",
+            "30d": "day",
+            "all": "month",
+        }[period]
         now = now or datetime.now(timezone.utc)
         if now.tzinfo is None:
             now = now.replace(tzinfo=timezone.utc)
         now = now.astimezone(timezone.utc)
-        end = now.replace(minute=0, second=0, microsecond=0)
-        # Match the map-operation chart's rolling 24-hour window: include
-        # the current hour bucket and the bucket at the same hour yesterday.
-        # This keeps the visible range aligned when the hour changes instead
-        # of anchoring the chart to the calendar day.
-        start = (now - timedelta(hours=24)).replace(
-            minute=0, second=0, microsecond=0,
+        duration = periods[period]
+        start = (
+            datetime(1970, 1, 1, tzinfo=timezone.utc)
+            if duration is None
+            else now - duration
         )
+        end = now.replace(minute=0, second=0, microsecond=0)
+        if period == "24h":
+            # Match the map-operation chart's rolling 24-hour window: include
+            # the current hour bucket and the bucket at the same hour yesterday.
+            # This keeps the visible range aligned when the hour changes instead
+            # of anchoring the chart to the calendar day.
+            start = start.replace(minute=0, second=0, microsecond=0)
         with self.connection() as connection:
             latest = connection.execute(
                 """
@@ -321,6 +340,7 @@ class Database:
                     "zipTotal": None,
                     "lastObservedAt": None,
                     "trend": [],
+                    "bucket": bucket,
                 }
             trend = connection.execute(
                 """
@@ -344,26 +364,57 @@ class Database:
                 """,
                 (start,),
             ).fetchall()
-        indexed = {
-            row["bucket"]: dict(row)
-            for row in trend
-            if isinstance(row.get("bucket"), datetime)
-        }
-        filled = []
-        current = start
-        while current <= end:
-            filled.append(indexed.get(current, {
-                "bucket": current,
-                "dmg_count": 0,
-                "zip_count": 0,
-            }))
-            current += timedelta(hours=1)
+        raw_trend = [dict(row) for row in trend if isinstance(row.get("bucket"), datetime)]
+        if bucket == "hour":
+            indexed = {row["bucket"]: row for row in raw_trend}
+            filled = []
+            current = start
+            while current <= end:
+                filled.append(indexed.get(current, {
+                    "bucket": current,
+                    "dmg_count": 0,
+                    "zip_count": 0,
+                }))
+                current += timedelta(hours=1)
+        else:
+            aggregated: dict[datetime, dict[str, Any]] = {}
+            for row in raw_trend:
+                row_bucket = _overview_bucket_floor(
+                    row["bucket"], bucket, time_zone=time_zone,
+                )
+                target = aggregated.setdefault(row_bucket, {
+                    "bucket": row_bucket,
+                    "dmg_count": 0,
+                    "zip_count": 0,
+                })
+                target["dmg_count"] += max(0, int(row.get("dmg_count") or 0))
+                target["zip_count"] += max(0, int(row.get("zip_count") or 0))
+            if aggregated:
+                current = (
+                    min(aggregated)
+                    if period == "all"
+                    else _overview_bucket_floor(start, bucket, time_zone=time_zone)
+                )
+                end_bucket = _overview_bucket_floor(now, bucket, time_zone=time_zone)
+                filled = []
+                while current <= end_bucket:
+                    filled.append(aggregated.get(current, {
+                        "bucket": current,
+                        "dmg_count": 0,
+                        "zip_count": 0,
+                    }))
+                    current = _next_overview_bucket(
+                        current, bucket, time_zone=time_zone,
+                    )
+            else:
+                filled = []
         return {
             "hasData": True,
             "dmgTotal": int(latest["dmg_total"]),
             "zipTotal": int(latest["zip_total"]),
             "lastObservedAt": latest["observed_at"],
             "trend": filled,
+            "bucket": bucket,
         }
 
     def insert_compatibility_event(self, event: dict[str, Any]) -> bool:
@@ -1019,6 +1070,7 @@ class Database:
                    )
             )
         """
+        all_time_since = datetime(1970, 1, 1, tzinfo=timezone.utc)
         with self.connection() as connection:
             summary = connection.execute(
                 f"""
@@ -1042,6 +1094,34 @@ class Database:
                 {event_scope}
                 """,
                 (since, since),
+            ).fetchone() or {}
+            all_time_summary = connection.execute(
+                f"""
+                {compatibility_fallback_cte}
+                SELECT
+                    count(*) FILTER (
+                        WHERE e.event_type = 'INSTALL_SUCCEEDED'
+                          AND e.outcome = 'SUCCEEDED'
+                    ) + (
+                        SELECT count(*) FROM compatibility_fallback
+                        WHERE outcome = 'SUCCEEDED'
+                          AND provider_id IS DISTINCT FROM 'custom'
+                    ) AS all_time_success_count,
+                    count(*) FILTER (
+                        WHERE e.event_type = 'INSTALL_FAILED'
+                          AND e.outcome = 'FAILED'
+                    ) + (
+                        SELECT count(*) FROM compatibility_fallback
+                        WHERE outcome = 'FAILED'
+                    ) AS all_time_failed_count,
+                    (
+                        SELECT count(*) FROM compatibility_fallback
+                        WHERE outcome = 'SUCCEEDED'
+                          AND provider_id = 'custom'
+                    ) AS all_time_custom_count
+                {event_scope}
+                """,
+                (all_time_since, all_time_since),
             ).fetchone() or {}
             recent = list(connection.execute(
                 f"""
@@ -1146,6 +1226,9 @@ class Database:
             "completedInstallCount": completed,
             "failedInstallCount": failed,
             "installSuccessRate": completed / (completed + failed) * 100 if completed + failed else None,
+            "allTimeSuccessCount": int(all_time_summary.get("all_time_success_count") or 0),
+            "allTimeFailedCount": int(all_time_summary.get("all_time_failed_count") or 0),
+            "allTimeCustomCount": int(all_time_summary.get("all_time_custom_count") or 0),
             "hasData": int(summary.get("event_count") or 0) > 0,
             "recentActivity": [dict(row) for row in recent],
             "attention": [dict(row) for row in attention],

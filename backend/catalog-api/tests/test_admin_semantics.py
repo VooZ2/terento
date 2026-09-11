@@ -846,11 +846,26 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn(".dmg</span>", body)
         self.assertIn(".zip</span>", body)
 
+    def test_download_chart_uses_selected_period_bucket_and_label(self):
+        body = _overview_downloads_chart({
+            "hasData": True,
+            "bucket": "day",
+            "trend": [
+                {"bucket": "2026-09-10T00:00:00Z", "dmg_count": 2, "zip_count": 1},
+            ],
+        }, "UTC", period="7d")
+        self.assertIn("GitHub downloads over the last 7 days", body)
+        self.assertIn(".dmg downloads: 2 · 10 Sep · UTC", body)
+        self.assertNotIn("10:00", body)
+
     def test_overview_renders_github_download_totals(self):
         body = overview_page(
             {
                 "period": "24h",
-                "data": {"hasData": False, "recentActivity": [], "attention": [], "trend": [], "bucket": "hour"},
+                "data": {
+                    "hasData": False, "recentActivity": [], "attention": [], "trend": [], "bucket": "hour",
+                    "allTimeSuccessCount": 16, "allTimeFailedCount": 4, "allTimeCustomCount": 2,
+                },
                 "compatibility": {"hasData": False, "recentActivity": [], "failureReasons": []},
                 "downloads": {
                     "hasData": True, "dmgTotal": 23, "zipTotal": 11,
@@ -865,6 +880,10 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("overview-download-total' aria-label='.dmg downloads total: 23'><strong>23</strong><small>.dmg", body)
         self.assertIn("overview-download-total' aria-label='.zip downloads total: 11'><strong>11</strong><small>.zip", body)
         self.assertIn("overview-download-totals", body)
+        self.assertIn("overview-map-heading", body)
+        self.assertIn("overview-map-total' aria-label='All-time successful installs: 16'><strong>16</strong><small>Successful", body)
+        self.assertIn("overview-map-total' aria-label='All-time failed installs: 4'><strong>4</strong><small>Failed", body)
+        self.assertIn("overview-map-total' aria-label='All-time custom .img installs: 2'><strong>2</strong><small>Custom", body)
         self.assertNotIn("Total downloads:</span>", body)
         heading_index = body.index("overview-download-heading")
         self.assertLess(

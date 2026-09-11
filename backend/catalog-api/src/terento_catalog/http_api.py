@@ -488,7 +488,9 @@ class CatalogService:
             else datetime(1970, 1, 1, tzinfo=timezone.utc)
         )
         downloads_getter = getattr(self.database, "github_downloads_snapshot", None)
-        downloads = downloads_getter(time_zone=time_zone) if callable(downloads_getter) else {
+        downloads = downloads_getter(
+            time_zone=time_zone, period=period,
+        ) if callable(downloads_getter) else {
             "hasData": False,
             "dmgTotal": None,
             "zipTotal": None,
