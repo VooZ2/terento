@@ -108,6 +108,12 @@ synthetic `INSTALL_FAILED` map event. Existing explicit map events are kept;
 verified-success fallback projection is unchanged. A legacy `NULL
 write_started` value retains the established attempted-write behavior.
 
+The Overview also exposes `Downloads over time`, a display-only chart of the
+last 24 hourly changes in public GitHub release asset downloads. `.dmg` and
+`.zip` are separate series, while the two total fields use the newest
+cumulative values across all public releases and tags. The scheduler refreshes
+this data hourly; a failed GitHub read does not erase the last stored snapshot.
+
 The first administrator can
 be created only once through `/admin/setup` with the environment-provided
 bootstrap secret. Passwords use salted PBKDF2-SHA256;

@@ -61,6 +61,15 @@ state in `scheduler_heartbeat`. `/admin/system-health` treats overdue or stale
 heartbeats as a warning. Failure to write observability does not stop the next
 scheduled collection attempt.
 
+The same scheduler process performs a bounded GitHub Releases API read at
+startup and then at every UTC hour. It follows all public release pages for
+`VooZ2/terento` and aggregates only the current `download_count` values of
+`.dmg` and `.zip` assets. It stores one cumulative snapshot per hour in
+`github_download_snapshot`; a failed read leaves the previous snapshot intact.
+The Overview chart derives the last 24 hourly deltas from those snapshots while
+its two total fields use the newest cumulative values. No GitHub token, release
+metadata, or binary is stored.
+
 ## CI, deployment, and weekly email health
 
 GitHub Actions remains the test executor. The API stores only bounded results

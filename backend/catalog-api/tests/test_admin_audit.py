@@ -27,6 +27,32 @@ class Tags(HTMLParser):
 
 
 class AdminAuditTests(unittest.TestCase):
+    def test_overview_kpis_match_installation_card_density(self):
+        from terento_catalog.admin import ADMIN_STYLES
+
+        self.assertIn(
+            '.overview-kpi{display:flex;min-height:84px;flex-direction:column;justify-content:flex-start;padding:14px 16px;',
+            ADMIN_STYLES,
+        )
+        self.assertIn(
+            '.overview-kpi{min-height:80px;padding:12px}',
+            ADMIN_STYLES,
+        )
+
+    def test_overview_model_activity_matches_chart_height_and_scrolls(self):
+        from terento_catalog.admin import ADMIN_STYLES
+
+        self.assertIn('.overview-primary-grid{align-items:stretch}', ADMIN_STYLES)
+        self.assertIn('.overview-primary-grid>.overview-panel{min-height:0}', ADMIN_STYLES)
+        self.assertIn(
+            '.overview-primary-grid .overview-model-panel{display:flex;min-height:0;flex-direction:column}',
+            ADMIN_STYLES,
+        )
+        self.assertIn(
+            '.overview-primary-grid .overview-model-list{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}',
+            ADMIN_STYLES,
+        )
+
     def test_inline_filter_controls_do_not_inherit_vertical_flex_basis(self):
         from terento_catalog.admin import ADMIN_STYLES
         # Labels became columns: the old select flex-basis (170px) must not

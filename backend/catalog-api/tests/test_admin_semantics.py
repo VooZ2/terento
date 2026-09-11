@@ -38,6 +38,7 @@ from terento_catalog.admin import (
     _normalise_variant,
     _overview_period_script,
     _overview_chart_bucket_label,
+    _overview_downloads_chart,
     _map_statistics_script,
     _provider_detail_script,
     format_timestamp,
@@ -818,6 +819,42 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertRegex(body, r"class='overview-chart-custom'[^>]*height='154.50'")
         self.assertIn("</i>Custom .img</span>", body)
         self.assertNotIn("Custom .img: successful manual installations.", body)
+
+    def test_download_chart_has_two_hourly_series_and_accessible_values(self):
+        body = _overview_downloads_chart({
+            "hasData": True,
+            "trend": [
+                {"bucket": "2026-09-11T19:00:00Z", "dmg_count": 2, "zip_count": 1},
+                {"bucket": "2026-09-11T20:00:00Z", "dmg_count": 0, "zip_count": 3},
+            ],
+        }, "Europe/Vilnius")
+        self.assertIn("overview-chart-download-dmg", body)
+        self.assertIn("overview-chart-download-zip", body)
+        self.assertIn(".dmg downloads: 2 · 22:00 · Europe/Vilnius", body)
+        self.assertIn(".zip downloads: 3 · 23:00 · Europe/Vilnius", body)
+        self.assertIn("viewBox='0 0 720 260'", body)
+        self.assertIn("viewBox='0 0 360 220'", body)
+        self.assertIn(".dmg</span>", body)
+        self.assertIn(".zip</span>", body)
+
+    def test_overview_renders_github_download_totals(self):
+        body = overview_page(
+            {
+                "period": "24h",
+                "data": {"hasData": False, "recentActivity": [], "attention": [], "trend": [], "bucket": "hour"},
+                "compatibility": {"hasData": False, "recentActivity": [], "failureReasons": []},
+                "downloads": {
+                    "hasData": True, "dmgTotal": 23, "zipTotal": 11,
+                    "trend": [{"bucket": "2026-09-11T20:00:00Z", "dmg_count": 1, "zip_count": 2}],
+                },
+                "providers": [],
+            },
+            {"username": "operator"}, "csrf",
+        ).decode()
+        self.assertIn("Downloads over time", body)
+        self.assertIn("Total downloads:</span><strong>23</strong><small>.dmg", body)
+        self.assertIn("Total downloads:</span><strong>11</strong><small>.zip", body)
+        self.assertIn("overview-download-totals", body)
 
     def test_chart_segments_join_without_individual_rounding(self):
         import xml.etree.ElementTree as ET

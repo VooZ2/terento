@@ -217,6 +217,13 @@ admin `/collect` action may run one known adapter on demand and records a
 collection run; health checks perform only bounded source probes. Neither path
 downloads, stores, proxies, mirrors, or serves a provider map binary.
 
+The scheduler also reads the public `VooZ2/terento` GitHub Releases API at
+startup and once per UTC hour. It follows all release pages and aggregates only
+`.dmg` and `.zip` asset download counts. Migration 042 stores one cumulative
+hourly snapshot; the authenticated Overview renders the last 24 hourly deltas
+and all-time totals for each extension. GitHub failures leave the previous
+snapshot intact, and no GitHub token, release metadata, or binary is stored.
+
 The reviewed OpenTopoMap adapter derives stable package identity from the
 official `otm-<region>.zip` filename and reads each country row's generated-at
 timestamp. It accepts all current official Garmin region shapes, excludes

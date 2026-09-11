@@ -248,6 +248,118 @@ class Database:
                 (status, next_run_at, started_at, completed_at, error_summary),
             )
 
+    def record_github_download_snapshot(
+        self,
+        *,
+        dmg_total: int,
+        zip_total: int,
+        release_count: int,
+        observed_at: datetime | None = None,
+    ) -> bool:
+        """Store one cumulative GitHub release download observation per hour."""
+        observed_at = observed_at or datetime.now(timezone.utc)
+        if observed_at.tzinfo is None:
+            observed_at = observed_at.replace(tzinfo=timezone.utc)
+        observed_at = observed_at.astimezone(timezone.utc)
+        hour_start = observed_at.replace(minute=0, second=0, microsecond=0)
+        with self.connection() as connection:
+            # Keep concurrent scheduler replicas from making redundant reads
+            # and writes while allowing the next cycle to retry immediately.
+            acquired = connection.execute(
+                "SELECT pg_try_advisory_xact_lock(734820196) AS acquired"
+            ).fetchone()["acquired"]
+            if not acquired:
+                return False
+            connection.execute(
+                """
+                INSERT INTO github_download_snapshot (
+                    hour_start, observed_at, dmg_total, zip_total, release_count
+                ) VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (hour_start) DO UPDATE SET
+                    observed_at = EXCLUDED.observed_at,
+                    dmg_total = EXCLUDED.dmg_total,
+                    zip_total = EXCLUDED.zip_total,
+                    release_count = EXCLUDED.release_count
+                """,
+                (hour_start, observed_at, int(dmg_total), int(zip_total), int(release_count)),
+            )
+        return True
+
+    def github_downloads_snapshot(
+        self,
+        *,
+        time_zone: str = "UTC",
+        now: datetime | None = None,
+    ) -> dict[str, Any]:
+        """Return current totals and display-only hourly deltas for 24 hours."""
+        del time_zone  # Labels are localized by the admin chart renderer.
+        now = now or datetime.now(timezone.utc)
+        if now.tzinfo is None:
+            now = now.replace(tzinfo=timezone.utc)
+        now = now.astimezone(timezone.utc)
+        end = now.replace(minute=0, second=0, microsecond=0)
+        start = end - timedelta(hours=23)
+        with self.connection() as connection:
+            latest = connection.execute(
+                """
+                SELECT dmg_total, zip_total, observed_at
+                FROM github_download_snapshot
+                ORDER BY hour_start DESC
+                LIMIT 1
+                """
+            ).fetchone()
+            if latest is None:
+                return {
+                    "hasData": False,
+                    "dmgTotal": None,
+                    "zipTotal": None,
+                    "lastObservedAt": None,
+                    "trend": [],
+                }
+            trend = connection.execute(
+                """
+                WITH snapshots AS (
+                    SELECT hour_start, observed_at, dmg_total, zip_total,
+                           lag(dmg_total) OVER (ORDER BY hour_start) AS previous_dmg_total,
+                           lag(zip_total) OVER (ORDER BY hour_start) AS previous_zip_total
+                    FROM github_download_snapshot
+                )
+                SELECT hour_start AS bucket,
+                       greatest(
+                           dmg_total - coalesce(previous_dmg_total, dmg_total), 0
+                       ) AS dmg_count,
+                       greatest(
+                           zip_total - coalesce(previous_zip_total, zip_total), 0
+                       ) AS zip_count,
+                       observed_at
+                FROM snapshots
+                WHERE hour_start >= %s
+                ORDER BY hour_start
+                """,
+                (start,),
+            ).fetchall()
+        indexed = {
+            row["bucket"]: dict(row)
+            for row in trend
+            if isinstance(row.get("bucket"), datetime)
+        }
+        filled = []
+        current = start
+        while current <= end:
+            filled.append(indexed.get(current, {
+                "bucket": current,
+                "dmg_count": 0,
+                "zip_count": 0,
+            }))
+            current += timedelta(hours=1)
+        return {
+            "hasData": True,
+            "dmgTotal": int(latest["dmg_total"]),
+            "zipTotal": int(latest["zip_total"]),
+            "lastObservedAt": latest["observed_at"],
+            "trend": filled,
+        }
+
     def insert_compatibility_event(self, event: dict[str, Any]) -> bool:
         query = """
             INSERT INTO compatibility_evidence_event (
