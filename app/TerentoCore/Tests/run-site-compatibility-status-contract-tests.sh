@@ -82,7 +82,7 @@ for path in compatibility_files:
     assert '<noscript class="compatibility-noscript">' in page, f"{path}: missing no-JS API requirement"
     assert '<strong data-summary="models"></strong>' in page, f"{path}: model count is hardcoded"
     assert '<article class="watch-card"' not in page, f"{path}: model cards are hardcoded"
-    assert 'compatibility.js?v=20260910-summary-v1' in page, f"{path}: missing cache-busted compatibility script"
+    assert 'compatibility.js?v=20260912-compatibility-sort-v1' in page, f"{path}: missing cache-busted compatibility script"
 print("Compatibility status web tests passed (statuses, live API loading, exact variants, disclosure, shared badge contract).")
 PY
 
