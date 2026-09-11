@@ -25,6 +25,7 @@ from .admin import (
     dashboard_page,
     device_detail_page,
     diagnostics_page,
+    github_issue_queue_page,
     devices_page,
     map_statistics_page,
     local_test_data_page,
@@ -33,6 +34,7 @@ from .admin import (
     providers_page,
     _admin_device_payload,
     _admin_map_display_name,
+    _admin_region_display_name,
     _admin_region_identity,
     _normalise_github_issue_reference,
     hash_password,
@@ -410,7 +412,12 @@ class CatalogService:
                     row.get("region"),
                     row.get("map_package_id"),
                 ),
-                "region_display_name": _admin_map_display_name(row.get("region")),
+                "region_display_name": _admin_region_display_name(
+                    row.get("canonical_region_id"),
+                    row.get("region_country"),
+                    row.get("region"),
+                    row.get("map_package_name"),
+                ),
                 "region_identity": _admin_region_identity(
                     row.get("canonical_region_id"),
                     row.get("region_country"),
@@ -435,7 +442,12 @@ class CatalogService:
                     row.get("region"),
                     row.get("map_package_id"),
                 ),
-                "region_display_name": _admin_map_display_name(row.get("region")),
+                "region_display_name": _admin_region_display_name(
+                    row.get("canonical_region_id"),
+                    row.get("region_country"),
+                    row.get("region"),
+                    row.get("map_package_name"),
+                ),
                 "region_identity": _admin_region_identity(
                     row.get("canonical_region_id"),
                     row.get("region_country"),
@@ -475,6 +487,14 @@ class CatalogService:
             if duration is not None
             else datetime(1970, 1, 1, tzinfo=timezone.utc)
         )
+        downloads_getter = getattr(self.database, "github_downloads_snapshot", None)
+        downloads = downloads_getter(time_zone=time_zone) if callable(downloads_getter) else {
+            "hasData": False,
+            "dmgTotal": None,
+            "zipTotal": None,
+            "lastObservedAt": None,
+            "trend": [],
+        }
         return {
             "schemaVersion": 1,
             "period": period,
@@ -487,6 +507,7 @@ class CatalogService:
                 since, period=period, time_zone=time_zone,
             ),
             "compatibility": self.database.admin_overview_snapshot(since),
+            "downloads": downloads,
             "providers": self.admin_providers().get("providers", []),
             "system": self.operational_health(),
         }
@@ -563,6 +584,19 @@ class CatalogService:
         return self.database.update_diagnostic_issue(
             operation_key,
             linked_github_issue=linked_github_issue,
+            admin_user_id=admin_user_id,
+        )
+
+    def update_diagnostic_workflow(
+        self,
+        operation_key: str,
+        *,
+        workflow_status: str,
+        admin_user_id: int | None,
+    ) -> int:
+        return self.database.update_diagnostic_workflow(
+            operation_key,
+            workflow_status=workflow_status,
             admin_user_id=admin_user_id,
         )
 
@@ -1098,10 +1132,32 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 LOGGER.exception("admin review summary failed")
                 session = {**session, "admin_review_summary": {
                     "installationIssues": 0,
+                    "githubIssuesInProgress": 0,
                     "identityPending": 0,
                     "readyToPublish": 0,
                     "total": 0,
                 }}
+            if request_path in {"/admin/review/github-issues", "/admin/review/github-issues/"}:
+                try:
+                    payload = service.admin_devices()
+                    body = github_issue_queue_page(
+                        service.compatibility_operation_details(),
+                        payload.get("devices", []),
+                        session,
+                        csrf_token,
+                    )
+                except Exception:
+                    LOGGER.exception("GitHub issue review queue failed")
+                    self._send_json(
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                        {"error": "github_issue_queue_unavailable"},
+                        send_body=send_body,
+                        cache_control="no-store",
+                        noindex=True,
+                    )
+                    return
+                self._send_admin_html(body, send_body=send_body)
+                return
             if request_path in {"/admin/test-data", "/admin/test-data/"}:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
                 try:
@@ -1669,6 +1725,21 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     return
                 self._redirect(self._safe_admin_return(form.get("return_to"), "/admin"), send_body=True)
                 return
+            if request_path == "/admin/diagnostics/workflow":
+                try:
+                    changed = service.update_diagnostic_workflow(
+                        form.get("operation_key", "").strip(),
+                        workflow_status=form.get("diagnostic_workflow_status", "").strip(),
+                        admin_user_id=int(session["id"]),
+                    )
+                    if not changed:
+                        self._send_json(HTTPStatus.NOT_FOUND, {"error": "diagnostic_not_found"}, send_body=True, cache_control="no-store")
+                        return
+                except ValueError:
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_diagnostic_workflow"}, send_body=True, cache_control="no-store")
+                    return
+                self._redirect(self._safe_admin_return(form.get("return_to"), "/admin"), send_body=True)
+                return
             if request_path == "/admin/diagnostics/identity":
                 try:
                     identity_action = form.get("identity_action", "").strip().upper()
@@ -1703,6 +1774,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             target = (value or "").strip()
             if (
                 target.startswith("/admin/diagnostics")
+                or target.startswith("/admin/review/github-issues")
                 or re.fullmatch(
                     r"/admin/devices/[A-Za-z0-9._~-]+(?:\?[^#\s]*)?(?:#[-A-Za-z0-9._~]+)?",
                     target,

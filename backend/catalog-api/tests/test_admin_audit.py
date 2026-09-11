@@ -9,7 +9,7 @@ import subprocess
 import unittest
 
 from terento_catalog.admin import (
-    _admin_map_display_name, _admin_region_identity, _system_health_card,
+    _admin_map_display_name, _admin_region_display_name, _admin_region_identity, _system_health_card,
     _overview_map_event_context, provider_detail_page, local_test_data_page,
     _admin_disclosure_script,
     map_statistics_page, _identity_parts, _dashboard_script,
@@ -27,6 +27,32 @@ class Tags(HTMLParser):
 
 
 class AdminAuditTests(unittest.TestCase):
+    def test_overview_kpis_match_installation_card_density(self):
+        from terento_catalog.admin import ADMIN_STYLES
+
+        self.assertIn(
+            '.overview-kpi{display:flex;min-height:84px;flex-direction:column;justify-content:flex-start;padding:14px 16px;',
+            ADMIN_STYLES,
+        )
+        self.assertIn(
+            '.overview-kpi{min-height:80px;padding:12px}',
+            ADMIN_STYLES,
+        )
+
+    def test_overview_model_activity_matches_chart_height_and_scrolls(self):
+        from terento_catalog.admin import ADMIN_STYLES
+
+        self.assertIn('.overview-primary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}', ADMIN_STYLES)
+        self.assertIn('.overview-primary-grid,.overview-secondary-grid{align-items:stretch}', ADMIN_STYLES)
+        self.assertIn(
+            '.overview-secondary-grid>.overview-panel{display:flex;min-height:0;max-height:320px;flex-direction:column;overflow:hidden}',
+            ADMIN_STYLES,
+        )
+        self.assertIn(
+            '.overview-secondary-grid .overview-activity-list,.overview-secondary-grid .overview-model-list{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}',
+            ADMIN_STYLES,
+        )
+
     def test_inline_filter_controls_do_not_inherit_vertical_flex_basis(self):
         from terento_catalog.admin import ADMIN_STYLES
         # Labels became columns: the old select flex-basis (170px) must not
@@ -92,7 +118,7 @@ class AdminAuditTests(unittest.TestCase):
         for rule in (".filter-bar>.filter-disclosure{align-self:flex-end}",
                      ".filter-bar input,.filter-bar select{font-weight:400}",
                      ".filter-bar .device-mobile-sort{display:flex;flex-direction:column;gap:6px}",
-                     "coverage-map-v1.js?v=20260910-overview-100"):
+                     "coverage-map-v1.js?v=20260911-osm-boundaries-1"):
             self.assertIn(rule, body)
         result = subprocess.run([os.environ.get('TERENTO_NODE_BIN', 'node'),
                                  str(Path(__file__).with_name('coverage-map-tests.cjs'))],
@@ -102,10 +128,11 @@ class AdminAuditTests(unittest.TestCase):
     def test_post_audit_layout_copy_and_recovery_contract(self):
         body = map_statistics_page({"rows": []}, [], {"username": "audit"}, "csrf").decode()
         for text in ("Completed downloads", "Download success", "Completed map-package installs",
-                     "Package install success", "View all map activity", "installSuccessFraction",
+                     "Package install success", "View all map activity",
                      "No maps match your search", "flex-direction:column", "min-width:960px"):
             self.assertIn(text, body)
         self.assertNotIn("<strong data-stat='providerIssues'>", body)
+        self.assertNotIn("installSuccessFraction", body)
         self.assertNotIn("opted-in", body)
         self.assertNotIn("table-layout:fixed}", body.split("@media(min-width:701px){", 1)[1].split("}", 1)[0])
         self.assertIn("min-height:44px", body)
@@ -158,6 +185,27 @@ class AdminAuditTests(unittest.TestCase):
                 self.assertEqual(_admin_map_display_name(code),name)
                 self.assertEqual(_admin_region_identity(None,None,code),name.upper())
                 self.assertEqual(WORLD_MAP_COUNTRY_ALIASES[code.rstrip('+')],country)
+        self.assertEqual(_admin_map_display_name('Suisse'), 'Switzerland')
+        self.assertEqual(_admin_region_identity(None, 'CH', 'Suisse'), 'SWITZERLAND')
+        self.assertEqual(_admin_map_display_name('CZECHREPUBLIC'), 'Czechia')
+        self.assertEqual(_admin_map_display_name('CAROLINEDUNORD'), 'North Carolina')
+        self.assertEqual(_admin_region_identity('CZECHREPUBLIC', 'CZ', 'CZECHREPUBLIC'), 'CZECHIA')
+        self.assertEqual(
+            _admin_region_display_name('CAROLINEDUNORD', 'US', 'CAROLINEDUNORD', 'North Carolina'),
+            'North Carolina – United States',
+        )
+        self.assertEqual(
+            _admin_region_display_name('CZECHREPUBLIC', 'CZ', 'CZECHREPUBLIC', 'Czechia'),
+            'Czechia',
+        )
+        self.assertEqual(
+            _overview_map_event_context({
+                'display_name': 'Switzerland',
+                'region': 'Suisse',
+                'provider_name': 'MapRando',
+            }),
+            'Switzerland · MapRando',
+        )
         self.assertEqual(_admin_region_identity(None,'PT','AZORES'),'AZORES')
         self.assertEqual(_admin_region_identity(None,'PT','MADEIRA'),'MADEIRA')
         self.assertNotEqual(_admin_region_identity(None,'PT','AZORES'),_admin_region_identity(None,'PT','MADEIRA'))
@@ -166,11 +214,26 @@ class AdminAuditTests(unittest.TestCase):
 
     def test_overview_fallback_keeps_region_readable(self):
         self.assertEqual(_overview_map_event_context({'region':'SVN+','provider_name':'Freizeitkarte'}),'Slovenia · Freizeitkarte')
+        self.assertEqual(
+            _overview_map_event_context({
+                'display_name': 'North Carolina',
+                'map_package_name': 'North Carolina',
+                'region': 'CAROLINEDUNORD',
+                'region_country': 'US',
+                'provider_name': 'MapRando',
+            }),
+            'North Carolina – United States · MapRando',
+        )
 
     def test_local_dashboard_shows_flag_and_latest_result_without_raw_logs(self):
         body=local_test_data_page({'activity':[{'stream':'Map usage','release_label':'1.0.0-beta.10-local','outcome':'FAILED','event_count':2,'last_occurred_at':'2026-09-07T16:43:00Z'}]}, {'username':'audit'},'csrf').decode()
         for text in ('is_local_test=true','is_local_test=false','FAILED','Distinct operations','Latest local activity'):
             self.assertIn(text,body)
+
+    def test_local_activity_caption_keeps_a_readable_mobile_width(self):
+        body=local_test_data_page({'activity':[]}, {'username':'audit'},'csrf').decode()
+        self.assertIn('<caption class="test-data-activity-caption">Latest local activity',body)
+        self.assertIn('.test-data-activity-caption{display:block;width:100%;max-width:100%;box-sizing:border-box;white-space:normal;overflow-wrap:anywhere;',body)
 
     def test_build_guard_separates_debug_and_public_release(self):
         guard=Path(__file__).resolve().parents[3]/'Packaging'/'verify-release-label.sh'
@@ -203,16 +266,21 @@ class AdminAuditTests(unittest.TestCase):
         self.assertIn('&lt;unsafe&gt;: 2026-05 → 2026-08', markup)
         self.assertNotIn('<unsafe>', markup)
 
-    def test_natural_earth_svg_has_unique_country_ids_and_no_external_resources(self):
+    def test_openstreetmap_svg_has_unique_country_ids_and_no_external_resources(self):
         import xml.etree.ElementTree as ET
         from terento_catalog.admin_world_map import WORLD_MAP_SVG
         root = ET.fromstring(WORLD_MAP_SVG)
         paths = root.findall('{http://www.w3.org/2000/svg}path')
         ids = [node.attrib['id'] for node in paths]
         self.assertEqual(len(ids),len(set(ids)))
-        self.assertGreater(len(ids),220)
+        self.assertGreater(len(ids),200)
         self.assertIn('si',ids)
         self.assertIn('pl',ids)
+        self.assertIn('ua',ids)
+        self.assertIn('ru',ids)
+        self.assertLess(ids.index('ru'), ids.index('ua'))
+        self.assertIn('OpenStreetMap', WORLD_MAP_SVG)
+        self.assertIn('ODbL', WORLD_MAP_SVG)
         self.assertNotIn('<script',WORLD_MAP_SVG)
         self.assertNotIn('href=',WORLD_MAP_SVG)
 
@@ -241,6 +309,12 @@ class AdminAuditTests(unittest.TestCase):
         self.assertNotIn('e.region = %s', complete)
         self.assertIn('e.region = %s', filtered)
         self.assertIn('GROUP BY c.operation_key, e.provider, e.region', filtered)
+        self.assertIn(
+            "e.phase_outcome = 'SUCCEEDED'\n                    OR e.write_started IS NOT FALSE",
+            complete,
+        )
+        self.assertNotIn("e.phase_outcome = 'NOT_STARTED'", complete)
+        self.assertIn("event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')", complete)
         self.assertEqual(tuple(parameters), ('SVN+', 'SVN+'))
 
 if __name__=='__main__': unittest.main()

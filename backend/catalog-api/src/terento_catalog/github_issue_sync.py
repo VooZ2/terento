@@ -69,15 +69,18 @@ def apply_closed_issue(connection, number: int, reason: str | None) -> int:
                 UPDATE compatibility_evidence_event
                 SET diagnostic_status = 'RESOLVED', resolution_code = %s,
                     resolution_reason = %s, resolution_note = %s,
+                    diagnostic_workflow_status = 'OPEN',
                     resolved_at = now(), resolved_by = NULL
                 WHERE event_id = %s
             """, (code, code, note, row["event_id"]))
             connection.execute("""
                 INSERT INTO compatibility_diagnostic_lifecycle_audit
                     (event_id, previous_status, new_status, resolution_reason,
-                     resolution_note, linked_github_issue, changed_by)
-                VALUES (%s, 'ACTIVE', 'RESOLVED', %s, %s, %s, NULL)
-            """, (row["event_id"], code, note, reference))
+                     resolution_note, changed_by, previous_workflow_status,
+                     new_workflow_status, linked_github_issue)
+                VALUES (%s, 'ACTIVE', 'RESOLVED', %s, %s, NULL, %s, 'OPEN', %s)
+            """, (row["event_id"], code, note,
+                   row.get("diagnostic_workflow_status") or "IN_PROGRESS", reference))
             changed += 1
     return changed
 

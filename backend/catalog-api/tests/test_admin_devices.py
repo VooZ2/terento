@@ -343,7 +343,7 @@ class AdminDevicesTests(unittest.TestCase):
             "Maps: Unknown", "Approved", "Blocked", "Pending", "Last success",
             "admin-timezone",
             "Automatic (browser)", "data-admin-timestamp", "TerentoAdminTime",
-            "selected time zone", "admin-summary-strip device-summary-strip", "position:sticky",
+            "admin-summary-strip device-summary-strip", "position:sticky",
             "--admin-control-height", "--admin-focus-ring", "--admin-placeholder",
             "table-layout:fixed", "overflow-y:visible",
             "data-device-sort=\"model\"", "data-device-sort=\"variant\"", "data-device-sort=\"maps\"",

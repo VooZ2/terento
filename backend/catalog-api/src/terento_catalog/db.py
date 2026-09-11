@@ -21,6 +21,9 @@ from .github_issue_sync import sync_health
 from .telemetry import is_local_release_label
 
 
+OVERVIEW_MODEL_ACTIVITY_LIMIT = 5
+
+
 def _overview_time_zone(value: str) -> ZoneInfo:
     try:
         return ZoneInfo(value)
@@ -245,6 +248,124 @@ class Database:
                 (status, next_run_at, started_at, completed_at, error_summary),
             )
 
+    def record_github_download_snapshot(
+        self,
+        *,
+        dmg_total: int,
+        zip_total: int,
+        release_count: int,
+        observed_at: datetime | None = None,
+    ) -> bool:
+        """Store one cumulative GitHub release download observation per hour."""
+        observed_at = observed_at or datetime.now(timezone.utc)
+        if observed_at.tzinfo is None:
+            observed_at = observed_at.replace(tzinfo=timezone.utc)
+        observed_at = observed_at.astimezone(timezone.utc)
+        hour_start = observed_at.replace(minute=0, second=0, microsecond=0)
+        with self.connection() as connection:
+            # Keep concurrent scheduler replicas from making redundant reads
+            # and writes while allowing the next cycle to retry immediately.
+            acquired = connection.execute(
+                "SELECT pg_try_advisory_xact_lock(734820196) AS acquired"
+            ).fetchone()["acquired"]
+            if not acquired:
+                return False
+            connection.execute(
+                """
+                INSERT INTO github_download_snapshot (
+                    hour_start, observed_at, dmg_total, zip_total, release_count
+                ) VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (hour_start) DO UPDATE SET
+                    observed_at = EXCLUDED.observed_at,
+                    dmg_total = EXCLUDED.dmg_total,
+                    zip_total = EXCLUDED.zip_total,
+                    release_count = EXCLUDED.release_count
+                """,
+                (hour_start, observed_at, int(dmg_total), int(zip_total), int(release_count)),
+            )
+        return True
+
+    def github_downloads_snapshot(
+        self,
+        *,
+        time_zone: str = "UTC",
+        now: datetime | None = None,
+    ) -> dict[str, Any]:
+        """Return current totals and display-only hourly deltas for 24 hours."""
+        del time_zone  # Labels are localized by the admin chart renderer.
+        now = now or datetime.now(timezone.utc)
+        if now.tzinfo is None:
+            now = now.replace(tzinfo=timezone.utc)
+        now = now.astimezone(timezone.utc)
+        end = now.replace(minute=0, second=0, microsecond=0)
+        # Match the map-operation chart's rolling 24-hour window: include
+        # the current hour bucket and the bucket at the same hour yesterday.
+        # This keeps the visible range aligned when the hour changes instead
+        # of anchoring the chart to the calendar day.
+        start = (now - timedelta(hours=24)).replace(
+            minute=0, second=0, microsecond=0,
+        )
+        with self.connection() as connection:
+            latest = connection.execute(
+                """
+                SELECT dmg_total, zip_total, observed_at
+                FROM github_download_snapshot
+                ORDER BY hour_start DESC
+                LIMIT 1
+                """
+            ).fetchone()
+            if latest is None:
+                return {
+                    "hasData": False,
+                    "dmgTotal": None,
+                    "zipTotal": None,
+                    "lastObservedAt": None,
+                    "trend": [],
+                }
+            trend = connection.execute(
+                """
+                WITH snapshots AS (
+                    SELECT hour_start, observed_at, dmg_total, zip_total,
+                           lag(dmg_total) OVER (ORDER BY hour_start) AS previous_dmg_total,
+                           lag(zip_total) OVER (ORDER BY hour_start) AS previous_zip_total
+                    FROM github_download_snapshot
+                )
+                SELECT hour_start AS bucket,
+                       greatest(
+                           dmg_total - coalesce(previous_dmg_total, dmg_total), 0
+                       ) AS dmg_count,
+                       greatest(
+                           zip_total - coalesce(previous_zip_total, zip_total), 0
+                       ) AS zip_count,
+                       observed_at
+                FROM snapshots
+                WHERE hour_start >= %s
+                ORDER BY hour_start
+                """,
+                (start,),
+            ).fetchall()
+        indexed = {
+            row["bucket"]: dict(row)
+            for row in trend
+            if isinstance(row.get("bucket"), datetime)
+        }
+        filled = []
+        current = start
+        while current <= end:
+            filled.append(indexed.get(current, {
+                "bucket": current,
+                "dmg_count": 0,
+                "zip_count": 0,
+            }))
+            current += timedelta(hours=1)
+        return {
+            "hasData": True,
+            "dmgTotal": int(latest["dmg_total"]),
+            "zipTotal": int(latest["zip_total"]),
+            "lastObservedAt": latest["observed_at"],
+            "trend": filled,
+        }
+
     def insert_compatibility_event(self, event: dict[str, Any]) -> bool:
         query = """
             INSERT INTO compatibility_evidence_event (
@@ -399,7 +520,8 @@ class Database:
                 COALESCE(cleanup_attempted, false) AS cleanup_attempted,
                 cleanup_succeeded, transfer_progress_bucket, error_category, transport,
                 raw_mtp_model, identity_resolution_code,
-                diagnostic_status, resolution_code, resolution_reason,
+                diagnostic_status, diagnostic_workflow_status,
+                resolution_code, resolution_reason,
                 resolution_note, resolved_at, resolved_by, linked_github_issue,
                 admin_user.username AS resolved_by_username,
                 identity_resolution_state, canonical_device_model_id
@@ -530,6 +652,8 @@ class Database:
                 SELECT
                     COALESCE(operation_id::text, 'legacy:' || event_id::text) AS operation_key,
                     bool_or(phase_outcome = 'FAILED') AS has_failure,
+                    bool_or(NULLIF(btrim(linked_github_issue), '') IS NOT NULL)
+                        AS has_github_issue,
                     bool_or(
                         canonical_device_model_id IS NULL
                         AND COALESCE(identity_resolution_state, 'UNRESOLVED')
@@ -553,7 +677,9 @@ class Database:
                   )
             )
             SELECT
-                count(*) FILTER (WHERE has_failure) AS installation_issues,
+                count(*) FILTER (WHERE has_failure AND NOT has_github_issue)
+                    AS installation_issues,
+                count(*) FILTER (WHERE has_github_issue) AS github_issues_in_progress,
                 count(*) FILTER (WHERE identity_pending) AS identity_pending,
                 (SELECT ready_to_publish FROM publication_reviews) AS ready_to_publish
             FROM operation_reviews
@@ -562,6 +688,7 @@ class Database:
             row = connection.execute(query).fetchone()
         summary = {
             "installationIssues": int((row or {}).get("installation_issues") or 0),
+            "githubIssuesInProgress": int((row or {}).get("github_issues_in_progress") or 0),
             "identityPending": int((row or {}).get("identity_pending") or 0),
             "readyToPublish": int((row or {}).get("ready_to_publish") or 0),
         }
@@ -609,6 +736,10 @@ class Database:
                     min(e.error_category) FILTER (
                         WHERE e.error_category IS NOT NULL AND btrim(e.error_category) <> ''
                     ) AS error_category,
+                    min(e.linked_github_issue) FILTER (
+                        WHERE e.linked_github_issue IS NOT NULL AND btrim(e.linked_github_issue) <> ''
+                    ) AS linked_github_issue,
+                    min(e.diagnostic_workflow_status) AS diagnostic_workflow_status,
                     max(e.occurred_at) AS last_occurred_at,
                     bool_or(COALESCE(e.write_started, TRUE) OR
                         e.phase_outcome IN ('SUCCEEDED', 'FAILED')) AS write_started,
@@ -619,6 +750,9 @@ class Database:
                         AS operation_succeeded,
                     bool_or(e.phase_outcome = 'FAILED') AS has_failed,
                     bool_or(e.phase_outcome = 'NOT_STARTED') AS has_not_started,
+                    bool_or(e.diagnostic_status = 'ACTIVE' AND
+                        e.linked_github_issue IS NOT NULL AND
+                        btrim(e.linked_github_issue) <> '') AS has_github_issue,
                     bool_or(e.diagnostic_status = 'ACTIVE' AND
                         e.canonical_device_model_id IS NULL AND
                         COALESCE(e.identity_resolution_state, 'UNRESOLVED')
@@ -643,7 +777,7 @@ class Database:
                 f"""{operation_cte}
                 SELECT *, count(*) FILTER (WHERE open_error) OVER () AS total_open_errors,
                     count(*) FILTER (WHERE identity_pending) OVER () AS total_identity_pending
-                FROM operation_rows WHERE open_error OR identity_pending
+                FROM operation_rows WHERE open_error OR identity_pending OR has_github_issue
                 ORDER BY open_error DESC, last_occurred_at DESC, operation_key
                 LIMIT %s
                 """, (recent_limit,),
@@ -678,7 +812,8 @@ class Database:
                     compatibility_identity, model, variant, provider, region,
                     release_label, app_build, failure_stage, failure_code,
                     error_category, last_occurred_at, operation_succeeded,
-                    has_failed, has_not_started, open_error
+                    has_failed, has_not_started, open_error,
+                    linked_github_issue, diagnostic_workflow_status, has_github_issue
                 FROM scoped_operations
                 ORDER BY last_occurred_at DESC, operation_key
                 LIMIT %s
@@ -706,33 +841,27 @@ class Database:
                         NULLIF(model, ''),
                         'unknown-device'
                     ) AS model_key,
-                    min(canonical_device_model_id::text) AS canonical_device_model_id,
-                    min(compatibility_identity) AS compatibility_identity,
-                    min(model) AS model,
-                    min(variant) FILTER (
-                        WHERE variant IS NOT NULL AND btrim(variant) <> ''
-                    ) AS variant,
-                    count(*) AS operation_count,
-                    count(*) FILTER (
-                        WHERE operation_succeeded
-                    ) AS successful_count,
-                    count(*) FILTER (
-                        WHERE has_failed
-                    ) AS failed_count,
-                    count(*) FILTER (WHERE open_error) AS open_error_count,
-                    max(last_occurred_at) AS last_occurred_at
+                    operation_key,
+                    canonical_device_model_id::text AS canonical_device_model_id,
+                    compatibility_identity,
+                    model,
+                    variant,
+                    1 AS operation_count,
+                    CASE WHEN operation_succeeded THEN 1 ELSE 0 END
+                        AS successful_count,
+                    CASE WHEN has_failed THEN 1 ELSE 0 END AS failed_count,
+                    CASE WHEN open_error THEN 1 ELSE 0 END AS open_error_count,
+                    last_occurred_at
                 FROM scoped_operations
                 WHERE COALESCE(
                     canonical_device_model_id::text,
                     NULLIF(compatibility_identity, ''),
                     NULLIF(model, '')
                 ) IS NOT NULL
-                GROUP BY 1
-                ORDER BY open_error_count DESC, failed_count DESC,
-                         operation_count DESC, last_occurred_at DESC, model_key
-                LIMIT 8
+                ORDER BY last_occurred_at DESC, operation_key
+                LIMIT %s
                 """,
-                (since,),
+                (since, OVERVIEW_MODEL_ACTIVITY_LIMIT),
             ).fetchall())
             review_required = list(connection.execute(
                 """
@@ -871,6 +1000,14 @@ class Database:
                    AND (e.phase_outcome = 'FAILED' OR (
                        e.phase_outcome = 'SUCCEEDED'
                        AND e.automatic_finishing_result = 'VERIFIED'))
+                   -- A download failure before any device write is not an
+                   -- installation failure. Keep NULL write_started as the
+                   -- legacy attempted-write value, and leave verified
+                   -- success fallback unchanged even if its field is false.
+                   AND (
+                       e.phase_outcome = 'SUCCEEDED'
+                       OR e.write_started IS NOT FALSE
+                   )
                    AND NOT EXISTS (
                        SELECT 1
                        FROM map_download_event AS installed
@@ -917,6 +1054,7 @@ class Database:
                     COALESCE(mp.name, e.map_package_id) AS map_package_name,
                     COALESCE(mp.name, e.region, e.map_package_id) AS display_name,
                     COALESCE(e.region, mp.region) AS region,
+                    mp.country AS region_country,
                     e.event_type,
                     e.outcome,
                     e.app_build,
@@ -931,6 +1069,7 @@ class Database:
                     c.region AS map_package_name,
                     COALESCE(c.region, 'Multiple map regions') AS display_name,
                     c.region AS region,
+                    NULL AS region_country,
                     CASE WHEN c.outcome = 'FAILED' THEN 'INSTALL_FAILED'
                          ELSE 'INSTALL_SUCCEEDED' END AS event_type,
                     c.outcome,
@@ -1278,7 +1417,8 @@ class Database:
         with self.connection() as connection:
             rows = connection.execute(
                 """
-                SELECT event_id, diagnostic_status
+                SELECT event_id, diagnostic_status, diagnostic_workflow_status,
+                       linked_github_issue
                 FROM compatibility_evidence_event
                 WHERE COALESCE(operation_id::text, 'legacy:' || event_id::text) = %s
                 FOR UPDATE
@@ -1289,6 +1429,15 @@ class Database:
                 previous = str(row["diagnostic_status"])
                 if previous == status:
                     continue
+                previous_workflow = str(row.get("diagnostic_workflow_status") or "OPEN")
+                existing_issue = str(row.get("linked_github_issue") or "").strip() or None
+                next_workflow = (
+                    "IN_PROGRESS"
+                    if status == "ACTIVE" and (linked_issue or existing_issue)
+                    else "OPEN"
+                    if status == "ACTIVE"
+                    else "OPEN"
+                )
                 if status == "RESOLVED":
                     connection.execute(
                         """
@@ -1298,33 +1447,38 @@ class Database:
                             resolution_reason = %s,
                             resolution_note = %s,
                             linked_github_issue = COALESCE(%s, linked_github_issue),
+                            diagnostic_workflow_status = %s,
                             resolved_at = now(),
                             resolved_by = %s
                         WHERE event_id = %s
                         """,
-                        (resolution_reason, resolution_reason, note, linked_issue, admin_user_id, row["event_id"]),
+                        (resolution_reason, resolution_reason, note, linked_issue,
+                         next_workflow, admin_user_id, row["event_id"]),
                     )
                 else:
                     connection.execute(
                         """
                         UPDATE compatibility_evidence_event
                         SET diagnostic_status = 'ACTIVE',
+                            diagnostic_workflow_status = %s,
                             resolved_at = NULL,
                             resolved_by = NULL
                         WHERE event_id = %s
                         """,
-                        (row["event_id"],),
+                        (next_workflow, row["event_id"]),
                     )
                 connection.execute(
                     """
                     INSERT INTO compatibility_diagnostic_lifecycle_audit (
                         event_id, previous_status, new_status,
                         resolution_reason, resolution_note,
-                        linked_github_issue, changed_by
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        linked_github_issue, changed_by,
+                        previous_workflow_status, new_workflow_status
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (row["event_id"], previous, status,
-                     resolution_reason, note, linked_issue, admin_user_id),
+                     resolution_reason, note, linked_issue, admin_user_id,
+                     previous_workflow, next_workflow),
                 )
             return len(rows)
 
@@ -1350,7 +1504,8 @@ class Database:
         with self.connection() as connection:
             rows = connection.execute(
                 """
-                SELECT event_id
+                SELECT event_id, diagnostic_status, diagnostic_workflow_status,
+                       linked_github_issue
                 FROM compatibility_evidence_event
                 WHERE COALESCE(operation_id::text, 'legacy:' || event_id::text) = %s
                 FOR UPDATE
@@ -1358,13 +1513,93 @@ class Database:
                 (operation_key,),
             ).fetchall()
             for row in rows:
+                previous_workflow = str(row.get("diagnostic_workflow_status") or "OPEN")
+                current_issue = str(row.get("linked_github_issue") or "").strip() or None
+                next_workflow = (
+                    "IN_PROGRESS"
+                    if linked_github_issue and str(row.get("diagnostic_status")) == "ACTIVE"
+                    else "OPEN"
+                    if not linked_github_issue and previous_workflow in {"IN_PROGRESS", "UNDER_REVIEW"}
+                    else previous_workflow
+                )
                 connection.execute(
                     """
                     UPDATE compatibility_evidence_event
-                    SET linked_github_issue = %s
+                    SET linked_github_issue = %s,
+                        diagnostic_workflow_status = %s
                     WHERE event_id = %s
                     """,
-                    (linked_github_issue, row["event_id"]),
+                    (linked_github_issue, next_workflow, row["event_id"]),
+                )
+                if previous_workflow != next_workflow:
+                    connection.execute(
+                        """
+                        INSERT INTO compatibility_diagnostic_lifecycle_audit (
+                            event_id, previous_status, new_status,
+                            linked_github_issue, changed_by,
+                            previous_workflow_status, new_workflow_status
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        """,
+                        (row["event_id"], row.get("diagnostic_status") or "ACTIVE",
+                         row.get("diagnostic_status") or "ACTIVE", linked_github_issue,
+                         admin_user_id, previous_workflow, next_workflow),
+                    )
+            return len(rows)
+
+    def update_diagnostic_workflow(
+        self,
+        operation_key: str,
+        *,
+        workflow_status: str,
+        admin_user_id: int | None = None,
+    ) -> int:
+        """Move an active diagnostic through its non-terminal review states."""
+        allowed_statuses = {"OPEN", "IN_PROGRESS", "UNDER_REVIEW"}
+        status = workflow_status.strip().upper()
+        if status not in allowed_statuses:
+            raise ValueError("unsupported diagnostic workflow status")
+        operation_key = operation_key.strip()
+        if not operation_key or len(operation_key) > 160:
+            raise ValueError("invalid diagnostic record")
+        with self.connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT event_id, diagnostic_status, diagnostic_workflow_status,
+                       linked_github_issue
+                FROM compatibility_evidence_event
+                WHERE COALESCE(operation_id::text, 'legacy:' || event_id::text) = %s
+                FOR UPDATE
+                """,
+                (operation_key,),
+            ).fetchall()
+            for row in rows:
+                if str(row.get("diagnostic_status") or "ACTIVE") != "ACTIVE":
+                    continue
+                issue = str(row.get("linked_github_issue") or "").strip() or None
+                if status == "OPEN" and issue:
+                    raise ValueError("a linked GitHub issue must remain in progress or under review")
+                previous = str(row.get("diagnostic_workflow_status") or "OPEN")
+                if previous == status:
+                    continue
+                connection.execute(
+                    """
+                    UPDATE compatibility_evidence_event
+                    SET diagnostic_workflow_status = %s
+                    WHERE event_id = %s
+                    """,
+                    (status, row["event_id"]),
+                )
+                diagnostic_status = str(row.get("diagnostic_status") or "ACTIVE")
+                connection.execute(
+                    """
+                    INSERT INTO compatibility_diagnostic_lifecycle_audit (
+                        event_id, previous_status, new_status,
+                        linked_github_issue, changed_by,
+                        previous_workflow_status, new_workflow_status
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (row["event_id"], diagnostic_status, diagnostic_status, issue,
+                     admin_user_id, previous, status),
                 )
             return len(rows)
 
@@ -2640,6 +2875,13 @@ class Database:
                 AND (e.phase_outcome = 'FAILED' OR (
                     e.phase_outcome = 'SUCCEEDED'
                     AND e.automatic_finishing_result = 'VERIFIED'))
+                -- Explicit false means the install was never attempted.
+                -- NULL retains the established legacy attempted-write
+                -- semantics; verified success remains eligible regardless.
+                AND (
+                    e.phase_outcome = 'SUCCEEDED'
+                    OR e.write_started IS NOT FALSE
+                )
                 AND NOT EXISTS (
                     SELECT 1
                     FROM map_download_event AS installed

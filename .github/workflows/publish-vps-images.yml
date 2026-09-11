@@ -77,7 +77,18 @@ jobs:
           trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
           printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
           docker push "$image:sha-$GITHUB_SHA"
-          docker pull "$image:sha-$GITHUB_SHA"
+          pull_succeeded=false
+          for attempt in 1 2 3 4 5; do
+            if docker pull "$image:sha-$GITHUB_SHA"; then
+              pull_succeeded=true
+              break
+            fi
+            if [ "$attempt" -lt 5 ]; then
+              printf 'GHCR pull attempt %s/5 failed after push; retrying\n' "$attempt" >&2
+              sleep $((attempt * 2))
+            fi
+          done
+          [[ "$pull_succeeded" == true ]]
           reference="$(docker image inspect --format '{{index .RepoDigests 0}}' "$image:sha-$GITHUB_SHA")"
           [[ "$reference" == "$image"@sha256:* ]]
           digest="${reference#*@}"

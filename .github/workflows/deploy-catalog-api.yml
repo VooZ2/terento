@@ -88,12 +88,34 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          health="$(curl --fail --silent --show-error --connect-timeout 5 --max-time 10 https://api.terento.app/health)"
-          maps="$(curl --fail --silent --show-error --connect-timeout 5 --max-time 15 https://api.terento.app/maps/catalog.json)"
-          devices="$(curl --fail --silent --show-error --connect-timeout 5 --max-time 15 https://api.terento.app/devices/catalog.json)"
+
+          retry_curl() {
+            local label="$1"
+            shift
+            local attempt response
+            for attempt in 1 2 3; do
+              if response="$(curl "$@")"; then
+                printf '%s' "$response"
+                return 0
+              fi
+              if [ "$attempt" -lt 3 ]; then
+                printf '%s request attempt %s/3 failed; retrying\n' "$label" "$attempt" >&2
+                sleep $((attempt * 2))
+              fi
+            done
+            printf '%s request failed after 3 attempts\n' "$label" >&2
+            return 1
+          }
+
+          health="$(retry_curl health --fail --silent --show-error --compressed --connect-timeout 5 --max-time 20 \
+            --retry 1 --retry-delay 2 --retry-max-time 10 https://api.terento.app/health)"
+          maps="$(retry_curl map-catalog --fail --silent --show-error --compressed --connect-timeout 5 --max-time 60 \
+            --retry 1 --retry-delay 2 --retry-max-time 15 https://api.terento.app/maps/catalog.json)"
+          devices="$(retry_curl device-catalog --fail --silent --show-error --compressed --connect-timeout 5 --max-time 30 \
+            --retry 1 --retry-delay 2 --retry-max-time 15 https://api.terento.app/devices/catalog.json)"
           python3 scripts/infra/check-admin-boundary.py
           deletion_body_file="$RUNNER_TEMP/terento-compatibility-delete-contract.json"
-          deletion_status="$(curl --silent --show-error --connect-timeout 5 --max-time 10 \
+          deletion_status="$(retry_curl compatibility-delete-contract --silent --show-error --connect-timeout 5 --max-time 20 \
             -H 'Content-Type: application/json' --data '{}' -X DELETE \
             -o "$deletion_body_file" -w '%{http_code}' \
             https://api.terento.app/compatibility/events)"
@@ -109,11 +131,14 @@ jobs:
             exit 1
           fi
 
-          compatibility_script="$(curl --fail --silent --show-error --connect-timeout 5 --max-time 10 https://terento.app/compatibility/compatibility.js)"
+          compatibility_script="$(retry_curl compatibility-script --fail --silent --show-error --connect-timeout 5 --max-time 20 \
+            --retry 1 --retry-delay 2 --retry-max-time 10 https://terento.app/compatibility/compatibility.js)"
           grep -Fq 'https://api.terento.app' <<<"$compatibility_script"
-          operations_status="$(curl --silent --show-error --connect-timeout 5 --max-time 10 -o /dev/null -w '%{http_code}' -X POST https://api.terento.app/internal/operations/observations)"
+          operations_status="$(retry_curl operations-unauthorized --silent --show-error --connect-timeout 5 --max-time 20 \
+            -o /dev/null -w '%{http_code}' -X POST https://api.terento.app/internal/operations/observations)"
           test "$operations_status" = "401"
-          curl --fail --silent --show-error --connect-timeout 5 --max-time 10 \
+          retry_curl operations-report-context --fail --silent --show-error --connect-timeout 5 --max-time 30 \
+            --retry 1 --retry-delay 2 --retry-max-time 15 \
             -H "Authorization: Bearer $OPERATIONS_INGEST_SECRET" \
             https://api.terento.app/internal/operations/report-context \
             | jq -e '.schemaVersion == 1 and (.providers | type == "array")' >/dev/null
@@ -134,11 +159,22 @@ jobs:
               summary:"Catalog API deployment and public health verification passed.",
               details:{migration:"success", database:"success", api_health:"success", catalog_contract:"success"}}' \
             > "$RUNNER_TEMP/terento-api-deployment.json"
-          curl --fail --silent --show-error --connect-timeout 5 --max-time 15 \
-            -H "Authorization: Bearer $OPERATIONS_INGEST_SECRET" \
-            -H "Content-Type: application/json" \
-            --data-binary "@$RUNNER_TEMP/terento-api-deployment.json" \
-            https://api.terento.app/internal/operations/observations
+          observation_posted=false
+          for attempt in 1 2 3; do
+            if curl --fail --silent --show-error --connect-timeout 5 --max-time 30 \
+              -H "Authorization: Bearer $OPERATIONS_INGEST_SECRET" \
+              -H "Content-Type: application/json" \
+              --data-binary "@$RUNNER_TEMP/terento-api-deployment.json" \
+              https://api.terento.app/internal/operations/observations; then
+              observation_posted=true
+              break
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              printf 'catalog API observation attempt %s/3 failed; retrying\n' "$attempt" >&2
+              sleep $((attempt * 2))
+            fi
+          done
+          test "$observation_posted" = true
 
   verify-release-client-contract:
     name: Verify deployed catalog with release client

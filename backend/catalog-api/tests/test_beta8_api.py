@@ -41,6 +41,7 @@ class FakeProviderDatabase:
         self.run_overrides: dict[str, list[dict]] = {}
         self.map_statistic_filters: list[dict] = []
         self.overview_map_requests: list[tuple[datetime, str, str]] = []
+        self.overview_download_requests: list[str] = []
         self.local_purge_calls: list[dict] = []
 
     def admin_user_count(self) -> int:
@@ -90,6 +91,20 @@ class FakeProviderDatabase:
             "attention": [],
             "trend": [],
             "bucket": "hour",
+        }
+
+    def github_downloads_snapshot(self, *, time_zone="UTC"):
+        self.overview_download_requests.append(time_zone)
+        return {
+            "hasData": True,
+            "dmgTotal": 23,
+            "zipTotal": 11,
+            "lastObservedAt": datetime(2026, 9, 11, 20, tzinfo=UTC),
+            "trend": [{
+                "bucket": datetime(2026, 9, 11, 20, tzinfo=UTC),
+                "dmg_count": 1,
+                "zip_count": 2,
+            }],
         }
 
     def admin_session(self, token: str):
@@ -1047,7 +1062,9 @@ class Beta8APITests(unittest.TestCase):
             self.assertEqual(response.status, 200)
             self.assertEqual(database.overview_map_requests[-1][1], "30d")
             self.assertEqual(database.overview_map_requests[-1][2], "Europe/Vilnius")
+            self.assertEqual(database.overview_download_requests[-1], "Europe/Vilnius")
             self.assertIn("value='30d' selected", body.decode())
+            self.assertIn("Total downloads:</span><strong>23</strong><small>.dmg", body.decode())
 
             response, body = self._request(
                 server, "GET", "/admin?period=all", headers={"Cookie": cookie},

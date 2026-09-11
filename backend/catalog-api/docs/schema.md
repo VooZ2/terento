@@ -139,6 +139,23 @@ identifier, raw JSON, local path, manifest, serial, Unit ID, or log field.
 `event_id` is the primary idempotency key; a secondary unique operation/event
 type/package key prevents accidental duplicates.
 
+## `github_download_snapshot`
+
+One cumulative observation of public GitHub release asset downloads for a UTC
+hour. The scheduler upserts the current hour so retries do not create duplicate
+rows. The table stores aggregate counters only; it does not retain release
+metadata, asset names, response bodies, or binaries. The Overview derives
+hourly `.dmg` and `.zip` deltas with a window function and uses the newest row
+for all-time totals.
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| `hour_start` | `timestamptz` | UTC start of the observed hour and primary key |
+| `observed_at` | `timestamptz` | Time the GitHub totals were read |
+| `dmg_total` | `bigint` | Current sum of `.dmg` asset download counts |
+| `zip_total` | `bigint` | Current sum of `.zip` asset download counts |
+| `release_count` | `integer` | Number of public releases observed in the paginated read |
+
 ## `admin_audit_log`
 
 Append-only audit records for provider health checks, collections, lifecycle

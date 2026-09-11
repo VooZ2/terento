@@ -1,5 +1,5 @@
 /* Reusable country coverage renderer. No network, authentication or telemetry.
- * Input: trusted Natural Earth SVG and aggregated {code, count, name} rows.
+ * Input: trusted OpenStreetMap-derived SVG and aggregated {code, count, name} rows.
  * Hosts own data policy, fetching, provider details and surrounding UI.
  */
 (function (global) {
@@ -16,7 +16,7 @@
     });
     L.svgOverlay(svg, bounds, {interactive: true}).addTo(map);
     map.attributionControl.setPrefix(false);
-    map.attributionControl.addAttribution('Boundaries: Natural Earth (public domain) · Leaflet');
+    map.attributionControl.addAttribution('Boundaries: <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a> (ODbL) · Leaflet');
     const paths = new Map([...svg.querySelectorAll('path[id]')].map(path => [path.id, path]));
     let data = new Map();
     const notify = code => options.onCountry?.(code ? data.get(code) : null, code);

@@ -74,8 +74,9 @@ per-event deletion token. Uploaded compatibility events are immutable through
 the public API; `DELETE /compatibility/events` returns `405 Method Not Allowed`.
 The authenticated `/admin` pages are a read-only projection of the same
 persisted compatibility columns and remain schema-version agnostic: v4 uses
-the existing model, variant, firmware, operation, outcome, and failure fields,
-so no separate admin database migration or UI contract break is required.
+the existing model, variant, firmware, operation, outcome, and failure fields.
+Admin workflow metadata is extended separately by migration 040 and is not
+part of the public or native event contract.
 
 Compatibility events older than 24 months are pruned from the active database
 by the service health cycle.
@@ -96,6 +97,22 @@ are collapsed into stable canonical groups such as `source_validation`; only
 events without a classifiable category, stage, or code remain `unknown`. If the selected domain has no
 data, event-derived values use an em dash rather than zero. No new client
 telemetry, public statistics, or map-event payload is created by this page.
+The `Device/model activity` panel shows the five most recent identified
+compatibility operations as individual rows; it is not a grouped model-count
+summary. The full installations history remains available on the
+`/admin/installations` route.
+
+When a compatibility failure has `write_started = false`, the read model treats
+it as a pre-install download/acquisition failure and does not project a
+synthetic `INSTALL_FAILED` map event. Existing explicit map events are kept;
+verified-success fallback projection is unchanged. A legacy `NULL
+write_started` value retains the established attempted-write behavior.
+
+The Overview also exposes `Downloads over time`, a display-only chart of the
+last 24 hourly changes in public GitHub release asset downloads. `.dmg` and
+`.zip` are separate series, while the two total fields use the newest
+cumulative values across all public releases and tags. The scheduler refreshes
+this data hourly; a failed GitHub read does not erase the last stored snapshot.
 
 The first administrator can
 be created only once through `/admin/setup` with the environment-provided
@@ -141,13 +158,24 @@ prevents a pending record from being redirected to a canonical device that
 happens to use the same textual identity and limits the drill-down to
 uncanonicalized operations. Assigning a canonical Garmin device redirects to
 that exact device history after the audited identity update. The list uses the compact columns Date, Region, Result,
-Stage, Code, Issue, and State, and defaults to Open. A Review action opens the
+Stage, Code, Issue, and State, and defaults to active diagnostic history. A
+linked issue is shown as `In progress` or `Under review`, rather than `Open`. A Review action opens the
 detail dialog with the separate evidence/lifecycle summary, Resolve/Reopen,
 auditable identity selector, GitHub issue link/create actions, and collapsed
 technical fields. Successful normal evidence remains historical evidence and
 does not appear as an open problem. Identity-pending success is a separate
 state from Failed. This is an additive admin-only route and does not alter any
 native, public, or existing device API contract.
+
+## `GET https://api.terento.app/admin/review/github-issues`
+
+Returns the authenticated active GitHub issue queue. Each linked issue is
+listed once per installation operation with its device, map/region, result,
+workflow state, and last activity. Linking an active diagnostic automatically
+sets its workflow to `IN_PROGRESS`; the detail dialog also allows
+`UNDER_REVIEW`. The diagnostic remains active and the issue remains in this
+queue until the read-only GitHub synchronizer observes the issue as closed;
+closure then moves the diagnostic to resolved history.
 
 The device detail history keeps the exact model/variant scope, supports All,
 Successful, Failed, Open errors, and Resolved errors filters, and uses a
@@ -213,20 +241,25 @@ disables public statistics. Every change is audited. This action does not
 change evidence events, calculated status, installation counts, installation
 authorization, or any existing public/native/device API field.
 
-The shared authenticated admin navigation shows `Needs review` only when an
+The shared authenticated admin navigation shows `Review queue` only when an
 actionable queue is non-empty. Its count is split into distinct active failed
-installation operations, unresolved-identity operations, and exact eligible
-models awaiting first public publication. The popover links failures and
-identity work to Installation evidence and publication work to Devices.
+installation operations without linked issues, active GitHub issue operations,
+unresolved-identity operations, and exact eligible models awaiting first
+public publication. The popover links GitHub work to the dedicated issue queue,
+failures and identity work to Installation evidence, and publication work to
+Devices.
 Resolved diagnostics, `NOT_IDENTIFIABLE` identities, rejected publication
 reviews, and already-published models are excluded. The summary is private,
 no-store, and does not add fields to any public or native API response.
 
 `POST /admin/diagnostics/resolve` and `/admin/diagnostics/reopen` change only
-the retained diagnostic lifecycle, while `POST /admin/diagnostics/identity`
+the retained diagnostic lifecycle, while `POST /admin/diagnostics/workflow`
+changes only the non-terminal `IN_PROGRESS`/`UNDER_REVIEW` workflow state and
+rejects `OPEN` when a GitHub issue is linked. `POST /admin/diagnostics/identity`
 assigns or leaves an exact canonical Garmin record and writes an identity audit
 entry. `POST /admin/diagnostics/issue` links, changes, or removes a GitHub issue
-reference without changing evidence outcome or lifecycle. The create-issue
+reference without changing evidence outcome or diagnostic lifecycle; linking an
+active row also initializes its workflow state. The create-issue
 flow opens a sanitized prefilled GitHub form; it does not create an issue for
 every error or auto-close an issue when a diagnostic is resolved. Neither
 action deletes evidence or changes the original install outcome. Admin counts
@@ -557,6 +590,12 @@ and `mapOnlyInstallationCount` describe map operations that emitted an install
 event, while `linkedSuccessfulInstallCount` and `linkedFailedInstallCount`
 use the linked watch evidence outcome. A missing watch event is coverage data,
 not an inferred installation failure. This field is private admin data and
+does not change either stored event stream. For compatibility fallback rows, a
+failed evidence event is projected as `INSTALL_FAILED` only when `write_started`
+is true or legacy `NULL`; explicit `false` means that writing never started and
+therefore produces no synthetic install failure. A verified compatibility
+success remains eligible for its `INSTALL_SUCCEEDED` fallback. An existing
+explicit `map_download_event` `INSTALL_FAILED` is never removed or duplicated.
 does not recalculate or merge the existing compatibility and map-operation
 aggregates.
 The linkage summary contains `mapOperationCount`, `linkedOperationCount`,
@@ -596,6 +635,12 @@ rather than silently presented zeros. Unauthenticated requests redirect to
 `/admin/login`. Linkage is possible only when the app's map-statistics and
 compatibility-evidence choices are both enabled for the same installation
 operation.
+
+This projection rule applies to Overview, Map statistics, the event trend, and
+provider aggregates. A pre-install failure can still remain in compatibility
+diagnostics and in the separate `DOWNLOAD_FAILED` map activity stream; it is
+excluded from map install attempts, failed installs, and install success-rate
+denominators.
 
 ## `GET /devices/catalog.json`
 
@@ -739,7 +784,7 @@ Post-deploy verification caught missing form bindings in the preserved Clear han
 
 ## Admin refinement and contour activation — 2026-09-07
 
-Overview includes integer quantity ticks and up to 20 exact local event timestamps per series/bucket. Collection snapshot transactions retain changed map releases and regions in provider history from this version forward; previous per-map changes cannot be reconstructed from old summary-only runs. Healthy disclosure summaries use centered CSS chevrons; device information columns are 1:1. Health checks use aligned label/status rows. Map diagnostics stay collapsed, popularity explicitly says Top 5, and country geometry uses local Natural Earth 50m data.
+Overview includes integer quantity ticks and up to 20 exact local event timestamps per series/bucket. Collection snapshot transactions retain changed map releases and regions in provider history from this version forward; previous per-map changes cannot be reconstructed from old summary-only runs. Healthy disclosure summaries use centered CSS chevrons; device information columns are 1:1. Health checks use aligned label/status rows. Map diagnostics stay collapsed, popularity explicitly says Top 5, and country geometry uses a local OpenStreetMap-derived ODbL SVG.
 
 CI selects test-file suites by their scope; packaging selects app/release and relevant native tests, not unrelated site tests. Live native catalog validation remains required for public catalog/read-model/configuration changes, while admin-only rendering changes skip it. Unknown paths still select all suites.
 
@@ -797,9 +842,9 @@ legend and navigation primitives. OpenFreeMap's MapLibre integration
 (https://openfreemap.org/quick_start/) offers a modern vector basemap; it adds
 external tile requests and WebGL. OpenTopoMap tiles are a possible optional
 terrain background, subject to current service terms and visible attribution
-(https://wiki.opentopomap.org/about). Leaflet with the existing Natural Earth
-country data is the preferred future replacement. No new mapping dependency or
-external tile service is added by this selection/interaction fix.
+(https://wiki.opentopomap.org/about). Leaflet with the local OpenStreetMap-derived
+country data is the current choice. No new mapping dependency or external tile
+service is added by this selection/interaction fix.
 
 ### Leaflet coverage component
 
@@ -815,8 +860,10 @@ no fetches and knows no admin routes, cookies, telemetry IDs or provider query
 schema. Admin aggregates its existing data and owns provider tooltip details.
 A future public page can reuse the renderer with separately approved aggregate
 data and its own asset delivery; no public statistics route is introduced now.
-Natural Earth boundaries use Leaflet CRS.Simple/SVGOverlay without downloading
-map tiles. CSS tokens have neutral fallbacks. JS/CSS footprint is approximately
+OpenStreetMap-derived boundaries use Leaflet CRS.Simple/SVGOverlay without
+downloading map tiles. The generated snapshot keeps the Ukraine relation above
+the overlapping Russia relation for the Crimea area, matching the selected
+product presentation. CSS tokens have neutral fallbacks. JS/CSS footprint is approximately
 162 KB raw / 46 KB gzip before the small adapter; the existing SVG is reused.
 
 ### Build 15 diagnostic report boundary
