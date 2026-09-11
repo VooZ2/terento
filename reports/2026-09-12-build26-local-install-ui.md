@@ -53,6 +53,8 @@ paths verified. Prepared only; active build25 was neither stopped nor replaced.
 ## Follow-up after France PASS — 2026-09-12
 
 Owner reported France install PASS. Build26 was then launched and the old build25
-process was closed. Build26 currently shows Waiting for your Garmin, with Install
-and Manage maps disabled during discovery. Live search/provider/scroll validation
-remains pending a ready device/catalog. No install/remove action was performed.
+process was closed. Build26 subsequently connected automatically, enabled Eject,
+and loaded397 available maps. Opening the provider menu displayed all three
+providers. The next action was interrupted by concurrent owner interaction;
+no reliable search/scroll/filter latency acceptance is claimed. Those checks
+remain pending. No install/remove action was performed.
