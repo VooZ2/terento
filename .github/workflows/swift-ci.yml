@@ -336,7 +336,7 @@ jobs:
                 native:$native, release:$release, shared_ci:$sharedCi, live_catalog:$liveCatalog}}' \
             > "$RUNNER_TEMP/terento-operational-report.json"
           context_file="$RUNNER_TEMP/terento-catalog-report-context.json"
-          if ! curl --fail --silent --show-error --connect-timeout 5 --max-time 15 \
+          if ! python3 scripts/ci_http.py report-context --fail --silent --show-error --connect-timeout 5 --max-time 15 \
             -H "Authorization: Bearer $OPERATIONS_INGEST_SECRET" \
             https://api.terento.app/internal/operations/report-context \
             > "$context_file"; then
@@ -384,7 +384,7 @@ jobs:
             mv "$RUNNER_TEMP/terento-operational-report-with-email.json" \
               "$RUNNER_TEMP/terento-operational-report.json"
           fi
-          curl --fail --silent --show-error --connect-timeout 5 --max-time 15 \
+          python3 scripts/ci_http.py --observation consolidated-report --fail --silent --show-error --connect-timeout 5 --max-time 15 \
             -H "Authorization: Bearer $OPERATIONS_INGEST_SECRET" \
             -H "Content-Type: application/json" \
             --data-binary "@$RUNNER_TEMP/terento-operational-report.json" \

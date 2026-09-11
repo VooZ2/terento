@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Check the public admin gate without granting deployment CI admin access."""
 import os
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -30,10 +31,20 @@ if __name__ == '__main__':
     required = os.environ.get('TERENTO_ADMIN_ACCESS_REQUIRED', 'false') == 'true'
     opener = urllib.request.build_opener(NoRedirect)
     for path in ('/admin/login', '/admin/campaign-links'):
-        try:
-            response = opener.open(urllib.request.Request('https://api.terento.app' + path, headers={'User-Agent': 'Terento-Deployment-Check/1.0'}), timeout=10)
-        except urllib.error.HTTPError as e:
-            response = e
+        for attempt in range(3):
+            try:
+                response = opener.open(urllib.request.Request('https://api.terento.app' + path, headers={'User-Agent': 'Terento-Deployment-Check/1.0'}), timeout=10)
+            except urllib.error.HTTPError as e:
+                response = e
+            except (TimeoutError, urllib.error.URLError):
+                if attempt == 2:
+                    raise
+                time.sleep(2 * (attempt + 1))
+                continue
+            if response.code not in (408, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524, 525, 526) or attempt == 2:
+                break
+            response.close()
+            time.sleep(2 * (attempt + 1))
         with response:
             verify_response(path, response.code, response.headers, response.read(2*1024*1024), required)
     print('Public admin boundary PASS (Access required=%s)' % required)

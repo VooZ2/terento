@@ -10,6 +10,7 @@ on:
       - ".github/workflows/deploy-site.yml"
       - ".github/workflows/publish-vps-images.yml"
       - "scripts/infra/deploy-vps-image.sh"
+      - "scripts/ci_http.py"
     tags:
       - "v*"
   workflow_dispatch:
@@ -53,7 +54,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error --connect-timeout 5 --max-time 15 \
+          python3 scripts/ci_http.py update-manifest --fail --silent --show-error --connect-timeout 5 --max-time 15 \
             https://terento.app/updates/macos-arm64.json \
             | jq -e '.architecture == "arm64"' >/dev/null
 
@@ -77,19 +78,8 @@ jobs:
               summary:"Website deployment and live update-manifest verification passed.",
               details:{site_container:"success", live_manifest:"success"}}' \
             > "$RUNNER_TEMP/terento-site-deployment.json"
-          observation_posted=false
-          for attempt in 1 2 3; do
-            if curl --fail --silent --show-error --connect-timeout 5 --max-time 30 \
-              -H "Authorization: Bearer $OPERATIONS_INGEST_SECRET" \
-              -H "Content-Type: application/json" \
-              --data-binary "@$RUNNER_TEMP/terento-site-deployment.json" \
-              https://api.terento.app/internal/operations/observations; then
-              observation_posted=true
-              break
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              printf 'website observation attempt %s/3 failed; retrying\n' "$attempt" >&2
-              sleep $((attempt * 2))
-            fi
-          done
-          test "$observation_posted" = true
+          python3 scripts/ci_http.py --observation deployment-observation --fail --silent --show-error --connect-timeout 5 --max-time 30 \
+            -H "Authorization: Bearer $OPERATIONS_INGEST_SECRET" \
+            -H "Content-Type: application/json" \
+            --data-binary "@$RUNNER_TEMP/terento-site-deployment.json" \
+            https://api.terento.app/internal/operations/observations
