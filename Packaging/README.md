@@ -262,3 +262,13 @@ verification-required classification instead of asserting physical disconnect.
 See NativeDependencies/README.md for the gated native context shutdown and
 failed-session abort. Full-file verification and reduced sample coverage are
 not used. Hardware evidence is required before public promotion.
+
+## Beta.11 build 27
+
+Promotes the build25 USB recovery and verification candidate plus build26 UI
+presentation caching after owner-reported Andorra and France installation PASS.
+Both C and Swift Release compilation conditions explicitly retain
+TERENTO_BUNDLED_MTP exactly once, matching the local Debug context cleanup path.
+The release contract guards against duplicate settings overriding the flag.
+See reports/2026-09-12-beta11-build27-release.md for the publication receipt
+and the distinction between owner hardware evidence and automated checks.

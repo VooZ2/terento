@@ -10,6 +10,9 @@
 
 ## Fixed
 
+- Build 27 improves Garmin connection recovery after map operations and addresses sampled verification failures observed on fēnix 8. The owner completed MapRando Andorra and France installations with the local candidate.
+- Install maps reuses catalog presentation data to reduce repeated work during search, scrolling, and provider filtering.
+
 - Build 22 fixes Finishing stopping after two minutes while map verification was still progressing. Verification now allows continued progress, with a timeout for inactivity and a bounded overall duration.
 
 - MapRando map packages now pass the correct raw IMG validation path before installation.

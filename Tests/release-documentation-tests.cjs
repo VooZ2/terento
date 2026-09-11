@@ -140,3 +140,12 @@ assert.match(packagingDocumentation, /new major macOS release/);
 assert.match(packagingDocumentation, /future-OS result[\s\S]*pending/);
 
 console.log(`Release documentation matches ${label}.`);
+
+for (const name of ["Debug", "Release"]) {
+  const body = configurationBody(name);
+  for (const setting of ["GCC_PREPROCESSOR_DEFINITIONS", "SWIFT_ACTIVE_COMPILATION_CONDITIONS"]) {
+    const matches = [...body.matchAll(new RegExp(`\\b${setting} = ([^;]+);`, "g"))];
+    assert.equal(matches.length, 1, `${name} must define ${setting} exactly once`);
+    assert.ok(matches[0][1].includes("TERENTO_BUNDLED_MTP"), `${name} must enable bundled USB context cleanup in ${setting}`);
+  }
+}
