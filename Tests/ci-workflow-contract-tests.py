@@ -63,6 +63,8 @@ def verify_scoped_transport() -> None:
 def verify_http_transport():
     """Exercise real retry policy with synthetic curl results; no sleeps/network."""
     import importlib.util
+    import contextlib
+    import io
     from types import SimpleNamespace
     spec = importlib.util.spec_from_file_location("ci_http", REPO_ROOT / "scripts/ci_http.py")
     http = importlib.util.module_from_spec(spec)
@@ -77,7 +79,8 @@ def verify_http_transport():
             Path(command[command.index("--output") + 1]).write_bytes(body)
             assert "--compressed" in command
             return SimpleNamespace(returncode=code, stdout=status.encode())
-        result = http.request("synthetic", list(arguments), run=run, sleep=delays.append)
+        with contextlib.redirect_stderr(io.StringIO()):
+            result = http.request("synthetic", list(arguments), run=run, sleep=delays.append)
         assert result[0] == expected, result
         assert not pending, pending
         assert delays == [2, 4][:len(calls)-1]
@@ -110,7 +113,8 @@ def verify_http_transport():
     for transport_code, expected in ((75, 0), (1, 1), (0, 0)):
         with patch.object(sys, 'argv', ['ci_http.py', '--observation', 'report']), \
              patch.object(http, 'request', return_value=(transport_code, b'')), \
-             patch.dict(os.environ, {'GITHUB_STEP_SUMMARY': ''}):
+             patch.dict(os.environ, {'GITHUB_STEP_SUMMARY': ''}), \
+             contextlib.redirect_stderr(io.StringIO()):
             assert http.main() == expected
 
 

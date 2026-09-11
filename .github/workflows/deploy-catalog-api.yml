@@ -123,7 +123,6 @@ jobs:
             -o /dev/null -w '%{http_code}' -X POST https://api.terento.app/internal/operations/observations)"
           test "$operations_status" = "401"
           retry_curl operations-report-context --fail --silent --show-error --connect-timeout 5 --max-time 30 \
-            \
             -H "Authorization: Bearer $OPERATIONS_INGEST_SECRET" \
             https://api.terento.app/internal/operations/report-context \
             | jq -e '.schemaVersion == 1 and (.providers | type == "array")' >/dev/null
