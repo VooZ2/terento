@@ -861,9 +861,16 @@ class AdminSemanticsTests(unittest.TestCase):
             {"username": "operator"}, "csrf",
         ).decode()
         self.assertIn("Downloads over time", body)
-        self.assertIn("Total downloads:</span><strong>23</strong><small>.dmg", body)
-        self.assertIn("Total downloads:</span><strong>11</strong><small>.zip", body)
+        self.assertIn("overview-download-heading", body)
+        self.assertIn("overview-download-total' aria-label='.dmg downloads total: 23'><strong>23</strong><small>.dmg", body)
+        self.assertIn("overview-download-total' aria-label='.zip downloads total: 11'><strong>11</strong><small>.zip", body)
         self.assertIn("overview-download-totals", body)
+        self.assertNotIn("Total downloads:</span>", body)
+        heading_index = body.index("overview-download-heading")
+        self.assertLess(
+            body.index("overview-download-totals", heading_index),
+            body.index("overview-chart-wrap", heading_index),
+        )
 
     def test_chart_segments_join_without_individual_rounding(self):
         import xml.etree.ElementTree as ET
