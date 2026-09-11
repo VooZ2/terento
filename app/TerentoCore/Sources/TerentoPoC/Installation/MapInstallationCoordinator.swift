@@ -1062,11 +1062,11 @@ struct MapInstallationCoordinator: Sendable {
             case .liveIdentityMismatch:
                 return .unknownInstallTarget
             case .operationFailed(_, _):
-                return phase == .write ? .writeFailed : .deviceDisconnected
+                return phase == .write ? .writeFailed : .verificationRequired
             }
         }
 
-        return phase == .write ? .writeFailed : .deviceDisconnected
+        return phase == .write ? .writeFailed : .verificationRequired
     }
 
     private static func nativeFailureCode(

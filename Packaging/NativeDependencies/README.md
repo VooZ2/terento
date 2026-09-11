@@ -66,3 +66,21 @@ This candidate has not yet established a hardware fix for issue 148 and has
 been included in local build20 for owner retesting, not publicly released. The existing native profile checks
 exercise the transformed C lifecycle paths with fake USB handles and reject
 source drift; real repeated install/remove testing remains required.
+
+## Build23-local recovery candidate
+
+The additional `patch-usb-recovery.py` runs against checksum-verified pristine
+upstream files after the existing lifecycle patch. Cache revision `recovery-v1`
+forces a newly linked library and exports two explicit Terento extension symbols.
+Bundled Xcode builds define `TERENTO_BUNDLED_MTP`; legacy Homebrew SwiftPM tests
+do not claim this runtime behavior. The operation gate ends the exact idle
+libmtp context before releasing its native lock. All bridge device objects must
+have been released before that boundary. Failed sampled reads abort host USB
+resources before ordinary object destruction, without CloseSession or endpoint
+recovery I/O. On macOS091e:51b8, failed OpenSession returns without automatic
+reset; healthy close and other devices retain their policy. No verification
+coverage, map mutation rules, or native dependency versions changed.
+
+This is a local hardware-test candidate, not a public release or proven fix for
+the initiating USB transaction error. Context reinitialization, resource abort,
+platform/product scope and gate ordering have synthetic regression coverage.

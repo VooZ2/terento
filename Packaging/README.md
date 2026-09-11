@@ -248,3 +248,17 @@ before the lifecycle lease is released.
 Connection discovery retains its separate 120-second limit. Cleanup, inventory
 and snapshot workers retain their 45-second limits. Sample coverage, native
 USB calls, retry policy, map writes and ownership rules are unchanged.
+
+## Build23-local USB recovery candidate
+
+Build with Debug and the explicit `CURRENT_PROJECT_VERSION=23` override to
+produce `1.0.0-beta.11-local` build23; checked-in public numbering and metadata
+remain22. Parent owns at most one metadata-only retry;
+workers/native sample reads do not nest retries. Transport errors request
+reconnect rather than repeat; both parent attempts share a600s absolute budget,
+with120s advancing-byte inactivity retained. Cleanup remains a separate45s exact
+target safety operation. Generic verification errors use the existing
+verification-required classification instead of asserting physical disconnect.
+See NativeDependencies/README.md for the gated native context shutdown and
+failed-session abort. Full-file verification and reduced sample coverage are
+not used. Hardware evidence is required before public promotion.

@@ -163,6 +163,7 @@ private final class MockTransport: MapInstallationTransport, @unchecked Sendable
 
     let remoteData: Data
     var readBackMode: ReadBackMode = .success
+    var readError: InstallationTransportError?
     var writeError: InstallationTransportError?
     var writeCount = 0
     var readBackCount = 0
@@ -202,6 +203,7 @@ private final class MockTransport: MapInstallationTransport, @unchecked Sendable
         progress: @escaping @Sendable (TransferProgress) -> Void
     ) throws -> MTPReadBackMapObject {
         readBackCount += 1
+        if let readError { throw readError }
         if readBackMode == .missing {
             throw InstallationTransportError.remoteFileMissing
         }
@@ -279,6 +281,7 @@ struct Stage42InstallationTests {
         passed += testCoordinatorUsesBusyTransactionGate()
         passed += testNonValidatedArtifactBlocksWrite()
         passed += testConfirmationIsRequiredBeforeWrite()
+        passed += testReadFailureDoesNotClaimDisconnect()
         passed += testWriteFailureIsNotSuccess()
         passed += testDisconnectDuringWriteFails()
         passed += testPartialObjectIsCleanedAfterWriteDisconnect()
@@ -760,6 +763,18 @@ struct Stage42InstallationTests {
             && result.transaction.state == .validating,
             "missing explicit confirmation performs no device write"
         )
+    }
+
+    private static func testReadFailureDoesNotClaimDisconnect() -> Int {
+        let harness = makeHarness()
+        harness.transport.readError = .operationFailed("USB read failed", createdItemID: nil)
+        harness.transport.deleteError = .operationFailed("device unavailable", createdItemID: nil)
+        let result = harness.run()
+        return expect(result.failure == .cleanupFailed
+            && result.originalFailure == .verificationRequired
+            && result.cleanupFailure == .cleanupFailed
+            && harness.transport.readBackCount == 1,
+            "read I/O preserves verification failure separately from cleanup, without claiming cable removal")
     }
 
     private static func testWriteFailureIsNotSuccess() -> Int {
