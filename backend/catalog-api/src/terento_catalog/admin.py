@@ -1520,13 +1520,14 @@ def overview_page(
 
     downloads_section = (
         "<section class='overview-panel overview-download-panel' aria-labelledby='overview-downloads-title'>"
-        "<div class='section-heading'><div><p class='section-kicker'>GitHub releases</p>"
-        "<h2 id='overview-downloads-title'>Downloads over time</h2></div></div>"
-        f"{_overview_downloads_chart(downloads, time_zone)}"
+        "<div class='section-heading overview-download-heading'><div><p class='section-kicker'>GitHub releases</p>"
+        "<h2 id='overview-downloads-title'>Downloads over time</h2></div>"
         "<div class='overview-download-totals' aria-label='Total GitHub downloads'>"
-        f"<div class='overview-download-total'><span>Total downloads:</span><strong>{download_total('dmgTotal')}</strong><small>.dmg</small></div>"
-        f"<div class='overview-download-total'><span>Total downloads:</span><strong>{download_total('zipTotal')}</strong><small>.zip</small></div>"
-        "</div></section>"
+        f"<div class='overview-download-total' aria-label='.dmg downloads total: {download_total('dmgTotal')}'><strong>{download_total('dmgTotal')}</strong><small>.dmg</small></div>"
+        f"<div class='overview-download-total' aria-label='.zip downloads total: {download_total('zipTotal')}'><strong>{download_total('zipTotal')}</strong><small>.zip</small></div>"
+        "</div></div>"
+        f"{_overview_downloads_chart(downloads, time_zone)}"
+        "</section>"
     )
     secondary_grid_class = (
         "overview-secondary-grid"
@@ -5296,10 +5297,10 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
 .overview-chart-wrap{max-width:780px;margin:0 auto}
 .overview-download-panel{padding-top:16px;padding-bottom:16px}
 .overview-download-panel .section-heading{margin-bottom:6px}
-.overview-download-totals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-width:780px;margin:10px auto 0}
-.overview-download-total{display:flex;align-items:baseline;gap:6px;min-width:0;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-muted);font-size:var(--admin-type-label-size);line-height:var(--admin-type-label-line)}
-.overview-download-total span{color:var(--secondary)}
-.overview-download-total strong{color:var(--graphite);font-size:20px;font-variant-numeric:tabular-nums}
+.overview-download-heading{align-items:flex-start;flex-wrap:wrap}
+.overview-download-totals{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-inline-start:auto}
+.overview-download-total{display:inline-flex;align-items:baseline;gap:4px;min-width:0;padding:5px 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface-muted);font-size:var(--admin-type-label-size);line-height:var(--admin-type-label-line)}
+.overview-download-total strong{color:var(--graphite);font-size:16px;font-variant-numeric:tabular-nums}
 .overview-download-total small{color:var(--secondary);font-size:var(--admin-type-support-size)}
 .overview-chart-download-dmg{fill:var(--interactive);background:var(--interactive)}
 .overview-chart-download-zip{fill:var(--status-success-text);background:var(--status-success-text)}
@@ -5310,8 +5311,9 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
   .overview-trend-mobile{display:block;min-width:0;width:100%;height:auto;aspect-ratio:360/220}
   .overview-chart-wrap{width:100%;min-width:0;overflow:visible}
   .overview-trend-mobile text{font-size:13px}
-  .overview-download-totals{grid-template-columns:1fr}
+  .overview-download-totals{justify-content:flex-start;margin-inline-start:0}
 }
+@media(max-width:560px){.overview-download-totals{flex-basis:100%}}
 .overview-attention-empty{display:grid;grid-template-columns:minmax(0,auto) minmax(180px,1fr) auto;align-items:center;gap:18px;min-height:76px;padding:12px 16px}
 .overview-attention-empty h2,.overview-provider-panel h2{font-family:var(--font-ui);font-size:var(--admin-type-subsection-size);line-height:var(--admin-type-subsection-line);letter-spacing:0}
 .overview-attention-empty .section-kicker,.overview-provider-panel .section-kicker{margin-bottom:1px}
