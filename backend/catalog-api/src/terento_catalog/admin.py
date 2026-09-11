@@ -827,22 +827,6 @@ def _overview_system_attention_item(card: dict[str, Any]) -> str:
     )
 
 
-def _overview_failure_reasons(reasons: list[dict[str, Any]]) -> str:
-    if not reasons:
-        return "<p class='empty'>No normalized failure categories are available for this period.</p>"
-    maximum = max(int(item.get("count") or 0) for item in reasons) or 1
-    rows: list[str] = []
-    for item in reasons:
-        count = int(item.get("count") or 0)
-        width = max(4, round(count / maximum * 100))
-        label = _overview_failure_reason_label(item.get("reason"))
-        rows.append(
-            f"<li><span>{html.escape(label)}</span><strong>{count}</strong>"
-            f"<span class='overview-bar' role='img' aria-label='{html.escape(label)}: {count}'><i style='width:{width}%'></i></span></li>"
-        )
-    return "<ul class='overview-reason-list'>" + "".join(rows) + "</ul>"
-
-
 def _overview_model_activity_item(item: dict[str, Any]) -> str:
     model = str(item.get("model") or item.get("compatibility_identity") or "Unknown device").strip()
     variant = _normalise_variant(item.get("variant"))
@@ -1503,7 +1487,6 @@ def overview_page(
         "/admin/devices" if review_required else
         "/admin/providers" if attention_providers else map_statistics_href
     )
-    failure_reasons = list(compatibility.get("failureReasons") or [])
     compatibility_recent = list(compatibility.get("recentActivity") or [])
     compatibility_recent_content = (
         ""
@@ -1511,10 +1494,6 @@ def overview_page(
         "<div class='overview-compatibility-activity' aria-label='Recent compatibility activity'><div class='section-heading'><div><p class='section-kicker'>Latest</p><h3>Recent compatibility activity</h3></div><a class='section-link' href='/admin/installations'>View all&nbsp;" + _admin_icon("arrow-right") + "</a></div><ul class='overview-activity-list'>" +
         "".join(_overview_compatibility_activity_row(item) for item in compatibility_recent) +
         "</ul></div>"
-    )
-    reasons_section = (
-        f"<section class='overview-panel' aria-labelledby='overview-reasons-title'><div class='section-heading'><div><p class='section-kicker'>Compatibility evidence</p><h2 id='overview-reasons-title'>Failures by reason</h2></div><span class='overview-info' title='Compatibility evidence only.' aria-label='Compatibility evidence only.'>i</span></div>{_overview_failure_reasons(failure_reasons)}<p class='overview-chart-note'>Compatibility evidence only. Map-operation failure counts are shown above.</p></section>"
-        if failure_reasons else ""
     )
     compatibility_summary = (
         f"<details class='overview-panel overview-compatibility-summary admin-disclosure' aria-labelledby='overview-compatibility-title'><summary id='overview-compatibility-title'>Compatibility evidence · details and activity</summary><div class='overview-compatibility-grid'><div><span>Installation attempts</span><strong>{compatibility_attempts}</strong></div><div><span>Variants</span><strong>{compatibility_variants}</strong></div><div><span>Success rate</span><strong>{compatibility_rate}</strong></div></div><p class='overview-chart-note'>Evidence remains stored separately; complete provider successes reconcile missing map-event rows in this view only.</p>{compatibility_recent_content}</details>"
@@ -1549,10 +1528,9 @@ def overview_page(
         f"<div class='overview-download-total'><span>Total downloads:</span><strong>{download_total('zipTotal')}</strong><small>.zip</small></div>"
         "</div></section>"
     )
-    primary_grid_class = "overview-primary-grid" if model_panel else "overview-primary-grid overview-primary-grid-single"
     secondary_grid_class = (
         "overview-secondary-grid"
-        if reasons_section else
+        if model_panel else
         "overview-secondary-grid overview-secondary-grid-single"
     )
     attention_section = (
@@ -1582,9 +1560,8 @@ def overview_page(
           <a class='overview-kpi' href='/admin/providers'><span>Providers</span><strong>{healthy} / {provider_count}</strong></a>
         </section>
         {attention_section}
-        <div class='{primary_grid_class}'><section class='overview-panel overview-chart-panel' aria-labelledby='overview-trend-title'><div class='section-heading'><div><p class='section-kicker'>Map operations</p><h2 id='overview-trend-title'>Map install operations over time</h2></div></div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'), time_zone)}</section>{model_panel}</div>
-        {downloads_section}
-        <div class='{secondary_grid_class}'><section class='overview-panel' aria-labelledby='overview-activity-title'><div class='section-heading'><div><p class='section-kicker'>Latest</p><h2 id='overview-activity-title'>Recent map activity</h2></div><a class='section-link' href='{html.escape(map_statistics_href, quote=True)}'>View all&nbsp;{_admin_icon('arrow-right')}</a></div>{recent_content}</section>{reasons_section}</div>
+        <div class='overview-primary-grid'><section class='overview-panel overview-chart-panel' aria-labelledby='overview-trend-title'><div class='section-heading'><div><p class='section-kicker'>Map operations</p><h2 id='overview-trend-title'>Map install operations over time</h2></div></div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'), time_zone)}</section>{downloads_section}</div>
+        <div class='{secondary_grid_class}'><section class='overview-panel' aria-labelledby='overview-activity-title'><div class='section-heading'><div><p class='section-kicker'>Latest</p><h2 id='overview-activity-title'>Recent map activity</h2></div><a class='section-link' href='{html.escape(map_statistics_href, quote=True)}'>View all&nbsp;{_admin_icon('arrow-right')}</a></div>{recent_content}</section>{model_panel}</div>
         {compatibility_summary}
       </main>
       <script>{_overview_period_script()}</script>
@@ -5262,7 +5239,7 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 @media(max-width:400px){.overview-kpis{grid-template-columns:1fr}}
 @media(max-width:700px){.overview-compatibility-grid{grid-template-columns:1fr}.provider-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:480px){.overview-compatibility-grid{grid-template-columns:1fr}}
-.overview-primary-grid,.overview-secondary-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,1fr);gap:12px}.overview-primary-grid .overview-panel,.overview-secondary-grid .overview-panel{min-width:0}.overview-model-list,.overview-review-list{list-style:none;margin:0;padding:0}.overview-model-item,.overview-review-item{display:grid;grid-template-columns:minmax(0,1fr) max-content;gap:8px;align-items:start;padding:9px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-model-item:first-child,.overview-review-item:first-child{border-top:0;padding-top:3px}.overview-model-item a,.overview-review-item a{display:grid;min-width:0;color:inherit;text-decoration:none}.overview-model-item a:hover strong,.overview-review-item a:hover strong{text-decoration:underline;text-underline-offset:3px}.overview-model-item strong,.overview-review-item strong{font-size:13px;overflow:hidden;text-overflow:ellipsis}.overview-model-item a span,.overview-review-item a span{color:var(--secondary);font-size:11px}.overview-model-item time{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-model-failed strong{color:var(--danger)}.overview-review-block{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}.overview-review-block h3{margin:0 0 5px;color:var(--secondary);font-size:12px}.overview-activity-item{grid-template-columns:minmax(0,1fr) max-content}.overview-activity-item time{grid-column:2;grid-row:1 / span 2}.overview-activity-item .overview-activity-label{grid-column:1}.overview-activity-item a span:not(.overview-activity-label){grid-column:1}.overview-compact-empty{padding-bottom:14px}.inline-filter-row{justify-content:flex-start}.inline-filter-row label{flex:0 1 260px}.inline-filter-row select{flex:0 0 170px}
+.overview-primary-grid,.overview-secondary-grid{display:grid;gap:12px}.overview-primary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.overview-secondary-grid{grid-template-columns:minmax(0,1.35fr) minmax(320px,1fr)}.overview-primary-grid .overview-panel,.overview-secondary-grid .overview-panel{min-width:0}.overview-model-list,.overview-review-list{list-style:none;margin:0;padding:0}.overview-model-item,.overview-review-item{display:grid;grid-template-columns:minmax(0,1fr) max-content;gap:8px;align-items:start;padding:9px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-model-item:first-child,.overview-review-item:first-child{border-top:0;padding-top:3px}.overview-model-item a,.overview-review-item a{display:grid;min-width:0;color:inherit;text-decoration:none}.overview-model-item a:hover strong,.overview-review-item a:hover strong{text-decoration:underline;text-underline-offset:3px}.overview-model-item strong,.overview-review-item strong{font-size:13px;overflow:hidden;text-overflow:ellipsis}.overview-model-item a span,.overview-review-item a span{color:var(--secondary);font-size:11px}.overview-model-item time{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-model-failed strong{color:var(--danger)}.overview-review-block{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}.overview-review-block h3{margin:0 0 5px;color:var(--secondary);font-size:12px}.overview-activity-item{grid-template-columns:minmax(0,1fr) max-content}.overview-activity-item time{grid-column:2;grid-row:1 / span 2}.overview-activity-item .overview-activity-label{grid-column:1}.overview-activity-item a span:not(.overview-activity-label){grid-column:1}.overview-compact-empty{padding-bottom:14px}.inline-filter-row{justify-content:flex-start}.inline-filter-row label{flex:0 1 260px}.inline-filter-row select{flex:0 0 170px}
 .system-health-page{padding-top:30px}.system-health-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.system-health-card{min-height:150px;padding:18px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}.system-health-card .section-heading{align-items:center;margin-bottom:14px}.system-health-card h2{font-size:16px}.system-health-description p{margin:0 0 10px;color:var(--secondary);font-size:12px;line-height:1.55}.system-health-explanation{margin:12px 0;font-size:11px}.system-health-explanation div{display:grid;grid-template-columns:48px 1fr;gap:7px;padding:5px 0;border-top:1px solid var(--border)}.system-health-explanation dt{font-weight:750;color:var(--graphite)}.system-health-explanation dd{margin:0;color:var(--secondary)}.system-health-badge{display:inline-flex;padding:4px 8px;border:1px solid;border-radius:999px;font-size:11px;font-weight:750}.system-health-healthy{border-color:var(--status-success-border);background:var(--status-success-surface);color:var(--status-success-text)}.system-health-warning{border-color:var(--status-tested-border);background:var(--status-tested-surface);color:var(--status-tested-text)}.system-health-failed{border-color:var(--status-error-border);background:var(--status-error-surface);color:var(--status-error-text)}.system-health-unknown{border-color:var(--status-neutral-border);background:var(--status-neutral-surface);color:var(--status-neutral-text)}
 @media(max-width:1100px){.system-health-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.system-health-grid{grid-template-columns:1fr}.system-health-card{min-height:0}}
@@ -5270,7 +5247,6 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 @media(max-width:900px){.overview-primary-grid,.overview-secondary-grid{grid-template-columns:1fr}}
 @media(max-width:760px){.overview-activity-item{grid-template-columns:1fr max-content}.overview-activity-item time{grid-column:2;grid-row:1 / span 2}.overview-activity-item a{grid-column:1;grid-row:1 / span 2}.overview-activity-item a span:not(.overview-activity-label){white-space:normal}}
 @media(max-width:480px){.inline-filter-row label,.inline-filter-row select{flex-basis:auto}}
-.overview-primary-grid-single{grid-template-columns:minmax(0,1fr)}
 .overview-attention-review .overview-attention-dot{color:var(--warning,var(--stone))}
 .provider-action-bar{padding:0 0 4px;background:transparent;border:0;border-radius:0}
 .map-statistics-definition-note{margin:10px 0 0}
@@ -5417,7 +5393,7 @@ h1,h2,h3,h4,.administration-grid h3,.overview-kpi strong,.admin-kpi-grid article
 .diagnostic-action-form button[type='submit']:hover{background:var(--interactive-hover)}
 .diagnostic-action-form button.secondary-button,.model-administration button.secondary-button{background:var(--surface);color:var(--interactive);border:1px solid var(--border)}
 .timestamp-metric strong{font-size:var(--admin-type-subsection-size)!important;line-height:var(--admin-type-subsection-line)!important}
-.overview-secondary-grid{align-items:start}.overview-primary-grid{align-items:stretch}.overview-primary-grid>.overview-panel{min-height:0}.overview-primary-grid .overview-model-panel{display:flex;min-height:0;flex-direction:column}.overview-primary-grid .overview-model-list{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.overview-primary-grid,.overview-secondary-grid{align-items:stretch}.overview-primary-grid>.overview-panel,.overview-secondary-grid>.overview-panel{min-height:0}.overview-secondary-grid>.overview-panel{display:flex;min-height:0;max-height:320px;flex-direction:column;overflow:hidden}.overview-secondary-grid .overview-activity-list,.overview-secondary-grid .overview-model-list{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
 .overview-compatibility-summary>summary,.model-administration>summary,.device-information-section>summary{margin-bottom:12px}
 .model-administration,.device-information-section{padding:16px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
 .attention-shortcuts{display:flex;flex-wrap:wrap;gap:8px 18px;margin:12px 0 20px;font-size:13px}

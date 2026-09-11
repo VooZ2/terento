@@ -152,7 +152,7 @@ class GithubDownloadTests(unittest.TestCase):
         self.assertEqual(database.values["release_count"], 4)
         self.assertEqual(database.values["observed_at"], observed_at)
 
-    def test_database_snapshot_fills_last_24_utc_hours_and_uses_deltas(self):
+    def test_database_snapshot_fills_rolling_24_hour_window_and_uses_deltas(self):
         now = datetime(2026, 9, 11, 20, 13, tzinfo=timezone.utc)
         start = datetime(2026, 9, 10, 21, tzinfo=timezone.utc)
         database = SnapshotDatabase(
@@ -165,8 +165,9 @@ class GithubDownloadTests(unittest.TestCase):
         result = database.github_downloads_snapshot(now=now)
         self.assertTrue(result["hasData"])
         self.assertEqual((result["dmgTotal"], result["zipTotal"]), (15, 9))
-        self.assertEqual(len(result["trend"]), 24)
-        self.assertEqual(result["trend"][0]["dmg_count"], 2)
+        self.assertEqual(len(result["trend"]), 25)
+        self.assertEqual(result["trend"][0]["bucket"], datetime(2026, 9, 10, 20, tzinfo=timezone.utc))
+        self.assertEqual(result["trend"][1]["dmg_count"], 2)
         self.assertEqual(result["trend"][-1]["zip_count"], 4)
         query = database.connection_instance.queries[1][0]
         self.assertIn("lag(dmg_total)", query)

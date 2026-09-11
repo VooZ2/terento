@@ -298,7 +298,13 @@ class Database:
             now = now.replace(tzinfo=timezone.utc)
         now = now.astimezone(timezone.utc)
         end = now.replace(minute=0, second=0, microsecond=0)
-        start = end - timedelta(hours=23)
+        # Match the map-operation chart's rolling 24-hour window: include
+        # the current hour bucket and the bucket at the same hour yesterday.
+        # This keeps the visible range aligned when the hour changes instead
+        # of anchoring the chart to the calendar day.
+        start = (now - timedelta(hours=24)).replace(
+            minute=0, second=0, microsecond=0,
+        )
         with self.connection() as connection:
             latest = connection.execute(
                 """

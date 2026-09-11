@@ -77,6 +77,7 @@ IDENTITY_STATE_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "02
 PUBLIC_REVIEW_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "023_public_compatibility_review_audit.sql"
 WORKFLOW_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "040_diagnostic_issue_workflow.sql"
 AUTHORIZED_TEST_CLEANUP_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "041_remove_authorized_test_install.sql"
+FOLLOWUP_TEST_CLEANUP_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "043_remove_authorized_test_install_2.sql"
 
 
 class RecordingResult:
@@ -538,6 +539,9 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("overview-chart-panel", body)
         self.assertIn("Recent map activity", body)
         self.assertIn("Compatibility evidence", body)
+        self.assertIn("Downloads over time", body)
+        self.assertIn("overview-download-panel", body)
+        self.assertNotIn("Failures by reason", body)
         self.assertNotIn("Pending metric definition", body)
         self.assertNotIn("<span>Evidence success</span>", body)
 
@@ -601,6 +605,10 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Review queue", body)
         self.assertIn("Review required", body)
         self.assertIn("Last 24 hours", body)
+        self.assertIn("<div class='overview-primary-grid'>", body)
+        self.assertIn("<div class='overview-secondary-grid'>", body)
+        self.assertIn("overview-model-panel", body)
+        self.assertNotIn("Failures by reason", body)
         self.assertNotIn("build", body.lower())
 
     def test_overview_hides_unlinked_model_activity_panel(self):
@@ -614,8 +622,9 @@ class AdminSemanticsTests(unittest.TestCase):
             {"username": "operator"}, "csrf",
         ).decode()
         self.assertNotIn("overview-model-title", body)
-        self.assertIn("overview-primary-grid-single", body)
+        self.assertIn("<div class='overview-primary-grid'>", body)
         self.assertIn("overview-secondary-grid-single", body)
+        self.assertNotIn("class='overview-primary-grid overview-primary-grid-single'", body)
 
     def test_overview_period_control_updates_without_hard_reload(self):
         body = overview_page(
@@ -2335,6 +2344,21 @@ class AdminSemanticsTests(unittest.TestCase):
         for identifier in (
             "10126c60-7129-49fc-8149-91b03f419960",
             "67dd09c7-f14f-4a22-8514-894eded0c050",
+        ):
+            self.assertIn(identifier, migration)
+        self.assertIn("DELETE FROM map_download_event", migration)
+        self.assertIn("DELETE FROM compatibility_evidence_event", migration)
+        self.assertIn("event_id IN", migration)
+        self.assertIn("operation_id IN", migration)
+        self.assertNotIn("compatibility_evidence_confirmation", migration)
+        self.assertNotIn("is_local_test IS TRUE", migration)
+        self.assertNotIn("DELETE FROM map_provider", migration)
+
+    def test_followup_authorized_test_cleanup_migration_is_exact(self):
+        migration = FOLLOWUP_TEST_CLEANUP_MIGRATION.read_text(encoding="utf-8")
+        for identifier in (
+            "a493ae4e-6106-4a38-927a-e02ba0e742a0",
+            "bcec90c2-bc3b-4f39-a6df-2a077658b512",
         ):
             self.assertIn(identifier, migration)
         self.assertIn("DELETE FROM map_download_event", migration)
