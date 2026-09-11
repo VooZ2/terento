@@ -75,6 +75,7 @@ CURRENT_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "025_devic
 IDENTITY_STATE_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "022_canonical_identity_state_consistency.sql"
 PUBLIC_REVIEW_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "023_public_compatibility_review_audit.sql"
 WORKFLOW_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "040_diagnostic_issue_workflow.sql"
+AUTHORIZED_TEST_CLEANUP_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "041_remove_authorized_test_install.sql"
 
 
 class RecordingResult:
@@ -2291,6 +2292,21 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("WHERE diagnostic_status = 'ACTIVE'", migration)
         self.assertIn("linked_github_issue IS NOT NULL", migration)
         self.assertNotIn("DELETE FROM", migration)
+
+    def test_authorized_test_cleanup_migration_is_exact_and_dependency_safe(self):
+        migration = AUTHORIZED_TEST_CLEANUP_MIGRATION.read_text(encoding="utf-8")
+        for identifier in (
+            "10126c60-7129-49fc-8149-91b03f419960",
+            "67dd09c7-f14f-4a22-8514-894eded0c050",
+        ):
+            self.assertIn(identifier, migration)
+        self.assertIn("DELETE FROM map_download_event", migration)
+        self.assertIn("DELETE FROM compatibility_evidence_event", migration)
+        self.assertIn("event_id IN", migration)
+        self.assertIn("operation_id IN", migration)
+        self.assertNotIn("compatibility_evidence_confirmation", migration)
+        self.assertNotIn("is_local_test IS TRUE", migration)
+        self.assertNotIn("DELETE FROM map_provider", migration)
 
     def test_historical_diagnostics_keep_the_same_summary_and_separate_group_metadata(self):
         result = {
