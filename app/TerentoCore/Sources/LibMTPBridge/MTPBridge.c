@@ -1993,6 +1993,15 @@ int terento_mtp_verify_managed_map_samples(
     LIBMTP_mtpdevice_t *device = NULL;
     int result = 0;
 
+    int short_packet_reads = 0;
+#if defined(__APPLE__)
+    /* Local workaround for the reproduced macOS fenix 8 read failure.
+       Preserve every planned byte and the normal policy on other devices. */
+    short_packet_reads = profile->vendor_id == 0x091e && profile->product_id == 0x51b8;
+#endif
+    terento_trace_event(&trace, "read_chunk_limit", 0, short_packet_reads,
+                        terento_sample_read_request(64 * 1024, short_packet_reads));
+
     for (size_t index = 0; index < sample_count; index += 1) {
         terento_trace_event(&trace, "region_begin", sample_regions[index].offset, 0, index);
         uint32_t region_length = sample_regions[index].length;
@@ -2000,8 +2009,8 @@ int terento_mtp_verify_managed_map_samples(
            to buffer a multi-megabyte GetPartialObject response in one call. */
         for (uint32_t consumed = 0; consumed < region_length;) {
             uint64_t offset = sample_regions[index].offset + consumed;
-            uint32_t requested = region_length - consumed;
-            if (requested > 64 * 1024) requested = 64 * 1024;
+            uint32_t requested = terento_sample_read_request(
+                region_length - consumed, short_packet_reads);
             if (device == NULL) {
                 uint16_t vendor_id = 0;
                 uint16_t product_id = 0;

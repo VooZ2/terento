@@ -182,7 +182,7 @@ extension FinishingTrace {
         "operation_complete", "worker_operation_begin", "worker_operation_failed", "worker_started",
         "worker_exited", "worker_deadline", "worker_cancelled", "readback_attempt", "readback_failed",
         "verify_begin", "region_begin", "open_begin", "open_end", "identity_begin", "identity_end",
-        "abort_close_begin", "abort_close_returned", "target_begin", "target_end", "read_failed", "read_error_code", "read_ptp_response", "retry_close_begin",
+        "read_chunk_limit", "abort_close_begin", "abort_close_returned", "target_begin", "target_end", "read_failed", "read_error_code", "read_ptp_response", "retry_close_begin",
         "retry_close_returned", "compare_failed", "verify_result", "final_close_begin",
         "final_close_returned", "read_checkpoint", "target_matches", "target_size", "final_inventory", "installation_failure", "cleanup_result"
     ]
