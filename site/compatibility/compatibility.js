@@ -162,9 +162,8 @@
       .filter((row) => !query || normalize(`${row.model} ${row.variants.join(" ")} ${row.familyName}`).includes(query))
       .sort((a, b) => {
         if (state.sort === "name") return a.model.localeCompare(b.model);
-        if (state.sort === "successes") return b.successful - a.successful || b.attempted - a.attempted || a.model.localeCompare(b.model);
         if (state.sort === "status") return (statusOrder[a.status] ?? Number.MAX_SAFE_INTEGER) - (statusOrder[b.status] ?? Number.MAX_SAFE_INTEGER) || a.model.localeCompare(b.model);
-        return b.attempted - a.attempted || b.successful - a.successful || a.model.localeCompare(b.model);
+        return b.successful - a.successful || a.model.localeCompare(b.model) || a.compatibilityIdentity.localeCompare(b.compatibilityIdentity);
       });
 
     elements.grid.innerHTML = filtered.map(createCard).join("");

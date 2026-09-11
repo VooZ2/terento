@@ -102,6 +102,7 @@ def summary_markup(locale: str) -> str:
 
 def render_page(source: str, locale: str) -> str:
     copy = COPY[locale]
+    source = re.sub(r'\s*<option value="successes">[^<]*</option>', "", source)
     source = re.sub(
         r'<button[^>]*id="compatibility-clear"[^>]*>[\s\S]*?</button>\s*',
         "",

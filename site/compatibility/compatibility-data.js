@@ -46,6 +46,7 @@
 
   const exactVariantLabel = (row, fallbackVariants = []) => {
     const rawVariant = String(row.variant || "").trim();
+    if (/\bHistorical\s*$/i.test(String(row.model || ""))) return "Historical";
     const source = `${rawVariant} ${String(row.model || "")}`;
     const parsed = variantParts(source);
     const sizeValue = Number(row.caseSizeMm ?? row.case_size_mm);
@@ -63,8 +64,10 @@
   const publicModelName = (value) => {
     const label = String(value || "").trim().normalize("NFC").replace(/^Garmin\s+/i, "");
     const withoutVariant = label
+      .replace(/\s*[·•|:]?\s*Historical\s*$/i, "")
       .replace(/\s*(?:[·•|:]\s*|[-–—]\s*)?\d{2}\s*mm(?:\s*,?\s*(?:AMOLED|Solar|microLED))?\s*$/i, "")
       .replace(/\s*(?:[·•|:]\s*|[-–—]\s*)?(?:AMOLED|Solar|microLED)\s*$/i, "")
+      .replace(/[·•]/g, " ")
       .replace(/\s+/g, " ")
       .replace(/[\s,·|:–—-]+$/u, "");
     return withoutVariant || label;

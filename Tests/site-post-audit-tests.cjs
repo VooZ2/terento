@@ -7,7 +7,7 @@ const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const data = require('../site/compatibility/compatibility-data.js');
 const locales = require('../site/compatibility/compatibility-locales.js');
 
-assert.equal(data.publicModelName('fēnix 9 Pro · inReach, 51 mm'), 'fēnix 9 Pro · inReach');
+assert.equal(data.publicModelName('fēnix 9 Pro · inReach, 51 mm'), 'fēnix 9 Pro inReach');
 assert.equal(locales.getLocale('it').successfulInstallLabel(2), '2 installazioni riuscite');
 assert.equal(locales.getLocale('de').successfulInstallLabel(2), '2 erfolgreiche Installationen');
 for (const language of ['en', 'de', 'fr', 'pl', 'cs', 'it']) {
@@ -23,10 +23,12 @@ for (const language of ['en', 'de', 'fr', 'pl', 'cs', 'it']) {
   assert.equal((page.match(/id="compatibility-freshness"/g) || []).length, 1);
   assert.match(page, /class="compatibility-freshness"[^>]* hidden/);
   assert.ok(page.indexOf('id="compatibility-clear"') < page.indexOf('id="watch-grid"'));
+  assert.doesNotMatch(page, /<option value="successes">/);
+  assert.equal(copy.filters.successes, undefined);
   const download = read(`site/${prefix}download/index.html`);
   assert.ok(download.includes(`<span class="download-recommended">${copy.freshness.recommended}</span>`));
   for (const asset of ['compatibility', 'compatibility-data', 'compatibility-locales']) {
-    assert.ok(page.includes(`${asset}.js?v=${asset === "compatibility-locales" ? "20260911-three-providers-v2" : "20260910-summary-v1"}`));
+    assert.ok(page.includes(`${asset}.js?v=20260912-compatibility-sort-v1`));
   }
 }
 
@@ -84,6 +86,24 @@ async function checkRefreshAndFilters() {
   assert.equal(node('.compatibility-freshness').hidden, true);
   assert.equal(node('[data-summary="successes"]').textContent, '2');
   assert.ok(node('#watch-grid').innerHTML.includes('watch-card'));
+  payload.models.push(
+    {model: 'Forerunner 965 · Historical', attemptedInstallations: 20, successfulInstallations: 1, evidenceStatus: 'TESTED', family: 'forerunner'},
+    {model: 'fēnix 8', attemptedInstallations: 4, successfulInstallations: 4, evidenceStatus: 'SUPPORTED', family: 'fenix'},
+    {model: 'fēnix 8 Pro', attemptedInstallations: 3, successfulInstallations: 3, evidenceStatus: 'SUPPORTED', family: 'fenix'},
+  );
+  await node('#compatibility-retry').listeners.click();
+  const headings = () => [...node('#watch-grid').innerHTML.matchAll(/<h3>(.*?)<\/h3>/g)].map(match => match[1]);
+  const expected = ['fēnix 8', 'fēnix 8 Pro', 'fēnix 9 Pro inReach', 'Forerunner 965'];
+  assert.deepEqual(headings(), expected);
+  assert.match(node('#watch-grid').innerHTML, /<p class="watch-variant">Historical<\/p>/);
+  node('#sort-filter').listeners.change({target: {value: 'name'}});
+  assert.deepEqual(headings(), [...payload.models].sort((a, b) => a.model.localeCompare(b.model)).map(row => data.publicModelName(row.model)));
+  node('#sort-filter').listeners.change({target: {value: 'attempts'}});
+  assert.deepEqual(headings(), expected);
+  node('#family-filter').listeners.change({target: {value: 'fenix'}});
+  assert.deepEqual(headings(), expected.slice(0, 3));
+  node('#compatibility-clear').listeners.click();
+  assert.deepEqual(headings(), expected);
   offline = true;
   await node('#compatibility-retry').listeners.click();
   await flush();
