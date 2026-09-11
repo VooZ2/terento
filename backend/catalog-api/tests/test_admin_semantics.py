@@ -2300,11 +2300,11 @@ class AdminSemanticsTests(unittest.TestCase):
             "67dd09c7-f14f-4a22-8514-894eded0c050",
         ):
             self.assertIn(identifier, migration)
-        self.assertIn("DELETE FROM compatibility_evidence_confirmation", migration)
         self.assertIn("DELETE FROM map_download_event", migration)
         self.assertIn("DELETE FROM compatibility_evidence_event", migration)
         self.assertIn("event_id IN", migration)
         self.assertIn("operation_id IN", migration)
+        self.assertNotIn("compatibility_evidence_confirmation", migration)
         self.assertNotIn("is_local_test IS TRUE", migration)
         self.assertNotIn("DELETE FROM map_provider", migration)
 
