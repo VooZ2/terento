@@ -139,6 +139,9 @@ def main() -> int:
     assert "digest: ${{ steps.image.outputs.digest }}" in publisher
     assert "value: ${{ jobs.publish.outputs.digest }}" in publisher
     assert "git merge-base --is-ancestor" in publisher
+    assert "pull_succeeded=false" in publisher
+    assert "GHCR pull attempt" in publisher
+    assert 'sleep $((attempt * 2))' in publisher
     assert "VPS_SSH_KEY" not in publisher and "environment:" not in publisher
     assert "secrets." not in publisher.replace("secrets.GITHUB_TOKEN", "TOKEN")
     for gate in ("Tests/run-site-tests.sh", "Tests/run-release-documentation-tests.sh",
