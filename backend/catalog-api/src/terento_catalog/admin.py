@@ -1280,6 +1280,97 @@ def _overview_trend_chart(
     )
 
 
+def _overview_downloads_chart(
+    downloads: dict[str, Any], time_zone: str = "UTC", *, _compact: bool = False,
+) -> str:
+    trend = [item for item in downloads.get("trend") or [] if isinstance(item, dict)]
+    if not trend:
+        return "<p class='overview-empty-state'>No GitHub download data yet.</p>"
+    values = []
+    for item in trend:
+        counts = []
+        for key in ("dmg_count", "zip_count"):
+            try:
+                counts.append(max(0, int(item.get(key) or 0)))
+            except (TypeError, ValueError):
+                counts.append(0)
+        values.append(tuple(counts))
+    maximum = max((max(series) for series in values), default=1) or 1
+    scale_maximum = max(4, math.ceil(maximum * 1.2))
+    chart_width, chart_height = (360, 220) if _compact else (720, 260)
+    left, top, bottom = 38, 20, 34
+    plot_height = chart_height - top - bottom
+    slot = (chart_width - left - 12) / max(len(values), 1)
+    tick_step = max(1, (scale_maximum + 3) // 4)
+    grid = []
+    for amount in sorted(set(range(0, scale_maximum + 1, tick_step)) | {scale_maximum}):
+        tick_y = top + plot_height * (1 - amount / scale_maximum)
+        grid.append(
+            f"<line class='overview-chart-grid' x1='{left}' x2='{chart_width-12}' "
+            f"y1='{tick_y:.1f}' y2='{tick_y:.1f}'/>"
+            f"<text class='overview-chart-axis-label' x='{left-8}' y='{tick_y+4:.1f}' "
+            f"text-anchor='end'>{amount}</text>"
+        )
+    bars: list[str] = []
+    labels: list[str] = []
+    series = (
+        (".dmg downloads", "overview-chart-download-dmg"),
+        (".zip downloads", "overview-chart-download-zip"),
+    )
+    for index, (counts, item) in enumerate(zip(values, trend)):
+        center = left + (index + 0.5) * slot
+        bar_width = min(12, max(4, slot * 0.28))
+        gap = min(3, max(1, slot * 0.06))
+        group_width = bar_width * 2 + gap
+        for series_index, ((label, css_class), count) in enumerate(zip(series, counts)):
+            if count == 0:
+                continue
+            height = plot_height * count / scale_maximum
+            x = center - group_width / 2 + series_index * (bar_width + gap)
+            y = top + plot_height - height
+            title = (
+                f"{label}: {count} · "
+                f"{_overview_chart_bucket_label(item.get('bucket'), 'hour', time_zone)} · {time_zone}"
+            )
+            bars.append(
+                f"<rect class='{css_class}' x='{x:.1f}' y='{y:.2f}' width='{bar_width:.1f}' "
+                f"height='{height:.2f}' tabindex='0' role='img' "
+                f"aria-label='{html.escape(title, quote=True)}'>"
+                f"<title>{html.escape(title)}</title></rect>"
+            )
+        label_step = max(1, round((len(values) - 1) / 11))
+        show_label = len(values) <= 12 or index % label_step == 0 or index == len(values) - 1
+        if _compact:
+            show_label = index in {0, (len(values) - 1) // 2, len(values) - 1}
+        if show_label:
+            anchor = (
+                'start' if _compact and index == 0
+                else 'end' if _compact and index == len(values) - 1
+                else 'middle'
+            )
+            labels.append(
+                f"<text x='{center:.1f}' y='{chart_height - 8}' text-anchor='{anchor}'>"
+                f"{html.escape(_overview_chart_bucket_label(item.get('bucket'), 'hour', time_zone))}</text>"
+            )
+    svg = (
+        f"<svg class='overview-trend-chart overview-trend-{'mobile' if _compact else 'desktop'}' "
+        f"viewBox='0 0 {chart_width} {chart_height}' role='img' "
+        f"aria-label='GitHub downloads over the last 24 hours'>"
+        f"{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
+    )
+    if _compact:
+        return svg
+    return (
+        "<div class='overview-chart-wrap'>"
+        + svg
+        + _overview_downloads_chart(downloads, time_zone, _compact=True)
+        + "<div class='overview-chart-legend'>"
+        "<span><i class='overview-chart-download-dmg'></i>.dmg</span>"
+        "<span><i class='overview-chart-download-zip'></i>.zip</span>"
+        "</div></div>"
+    )
+
+
 def _overview_period_script() -> str:
     return r"""(() => {
       let loadingKey = '';
@@ -1346,6 +1437,7 @@ def overview_page(
 ) -> bytes:
     data = overview.get("data") if isinstance(overview.get("data"), dict) else {}
     compatibility = overview.get("compatibility") if isinstance(overview.get("compatibility"), dict) else {}
+    downloads = overview.get("downloads") if isinstance(overview.get("downloads"), dict) else {}
     providers = list(overview.get("providers") or [])
     period = str(overview.get("period") or "24h")
     time_zone = str(overview.get("timeZone") or "UTC")
@@ -1437,6 +1529,26 @@ def overview_page(
         f"<section class='overview-panel overview-model-panel' aria-labelledby='overview-model-title'><div class='section-heading'><div><p class='section-kicker'>Compatibility evidence</p><h2 id='overview-model-title'>Device/model activity</h2></div></div>{_overview_model_activity(model_activity)}{review_section}</section>"
         if model_activity or review_required else ""
     )
+    download_has_data = bool(downloads.get("hasData"))
+
+    def download_total(key: str) -> str:
+        if not download_has_data or downloads.get(key) is None:
+            return "—"
+        try:
+            return str(max(0, int(downloads[key])))
+        except (TypeError, ValueError):
+            return "—"
+
+    downloads_section = (
+        "<section class='overview-panel overview-download-panel' aria-labelledby='overview-downloads-title'>"
+        "<div class='section-heading'><div><p class='section-kicker'>GitHub releases</p>"
+        "<h2 id='overview-downloads-title'>Downloads over time</h2></div></div>"
+        f"{_overview_downloads_chart(downloads, time_zone)}"
+        "<div class='overview-download-totals' aria-label='Total GitHub downloads'>"
+        f"<div class='overview-download-total'><span>Total downloads:</span><strong>{download_total('dmgTotal')}</strong><small>.dmg</small></div>"
+        f"<div class='overview-download-total'><span>Total downloads:</span><strong>{download_total('zipTotal')}</strong><small>.zip</small></div>"
+        "</div></section>"
+    )
     primary_grid_class = "overview-primary-grid" if model_panel else "overview-primary-grid overview-primary-grid-single"
     secondary_grid_class = (
         "overview-secondary-grid"
@@ -1471,6 +1583,7 @@ def overview_page(
         </section>
         {attention_section}
         <div class='{primary_grid_class}'><section class='overview-panel overview-chart-panel' aria-labelledby='overview-trend-title'><div class='section-heading'><div><p class='section-kicker'>Map operations</p><h2 id='overview-trend-title'>Map install operations over time</h2></div></div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'), time_zone)}</section>{model_panel}</div>
+        {downloads_section}
         <div class='{secondary_grid_class}'><section class='overview-panel' aria-labelledby='overview-activity-title'><div class='section-heading'><div><p class='section-kicker'>Latest</p><h2 id='overview-activity-title'>Recent map activity</h2></div><a class='section-link' href='{html.escape(map_statistics_href, quote=True)}'>View all&nbsp;{_admin_icon('arrow-right')}</a></div>{recent_content}</section>{reasons_section}</div>
         {compatibility_summary}
       </main>
@@ -5138,14 +5251,14 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 @media(max-width:900px){.map-statistics-coverage-layout{grid-template-columns:1fr}.map-statistics-world-map{min-height:0}.map-statistics-world-map-card .section-heading .table-help{text-align:left}}
 @media(max-width:560px){.provider-card{padding:18px 16px}.provider-metrics,.map-statistics-metrics,.map-statistics-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.provider-metrics article{padding:12px}.provider-information-list div{grid-template-columns:1fr;gap:3px}.provider-information-list dd{text-align:left}.provider-action-bar{align-items:stretch;flex-direction:column}.provider-action-bar button,.button-link{width:100%}.provider-action-bar .admin-action-status{flex-basis:auto}.map-statistics-filter-bar label,.map-statistics-filter-bar input,.map-statistics-filter-bar select{width:100%;min-width:0}.map-statistics-filter-bar .results-count{width:100%;margin-left:4px}}
 @media(max-height:760px){.device-dialog-inner{max-height:calc(100vh - 32px);overflow:auto}.device-dialog-header{position:sticky;top:-1px;z-index:2;padding-bottom:10px;background:var(--surface)}}
-.overview-page{padding-top:30px}.overview-heading{align-items:flex-end;margin-bottom:20px}.overview-period-form{margin:0}.overview-period-form select{min-width:154px}.overview-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:14px}.overview-kpi{display:flex;min-height:112px;flex-direction:column;justify-content:space-between;padding:15px 16px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:inherit;text-decoration:none;transition:border-color .15s ease,transform .15s ease}.overview-kpi:hover{border-color:color-mix(in srgb,var(--sky) 52%,var(--border));transform:translateY(-1px)}.overview-kpi span{color:var(--secondary);font-size:12px;font-weight:700}.overview-kpi strong{display:block;margin-top:8px;font-family:var(--font-brand);font-size:30px;line-height:1;font-variant-numeric:tabular-nums}.overview-kpi small{margin-top:8px;color:var(--secondary);font-size:11px;line-height:1.35}.overview-kpi-attention strong{color:var(--danger)}.overview-kpi-pending{background:var(--surface-muted)}.overview-kpi-pending strong{color:var(--secondary)}.overview-panel{margin-top:12px;padding:18px 20px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}.overview-panel .section-heading{margin-bottom:10px}.overview-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}.overview-columns .overview-panel{min-width:0}.overview-empty-state{margin:0;padding:12px 0;color:var(--secondary);font-weight:650}.overview-attention-list,.overview-activity-list,.overview-reason-list{list-style:none;margin:0;padding:0}.overview-attention-item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:10px;padding:10px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-attention-item:first-child{border-top:0;padding-top:3px}.overview-attention-dot{font-size:13px;line-height:1.5;color:var(--danger)}.overview-attention-provider .overview-attention-dot{color:var(--warning,var(--stone))}.overview-attention-item div{display:grid;gap:2px;min-width:0}.overview-attention-item a{color:var(--graphite);text-decoration:none}.overview-attention-item a:hover{text-decoration:underline;text-underline-offset:3px}.overview-attention-item strong{font-size:14px}.overview-attention-item span{color:var(--secondary);font-size:12px;overflow:hidden;text-overflow:ellipsis}.overview-attention-item small{color:var(--secondary);font-size:11px}.overview-detail-link,.section-link{color:var(--interactive);font-size:12px;font-weight:700;white-space:nowrap;text-decoration:none}.overview-detail-link:hover,.section-link:hover{text-decoration:underline;text-underline-offset:3px}.overview-activity-item{display:grid;grid-template-columns:126px minmax(0,1fr) max-content;align-items:center;gap:10px;padding:8px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-activity-item:first-child{border-top:0;padding-top:3px}.overview-activity-item time{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-activity-item a{display:grid;min-width:0;color:inherit;text-decoration:none}.overview-activity-item a:hover .overview-activity-label{text-decoration:underline;text-underline-offset:3px}.overview-activity-label{font-size:13px;font-weight:750}.overview-activity-item a span:not(.overview-activity-label){overflow:hidden;text-overflow:ellipsis;color:var(--secondary);font-size:12px;white-space:nowrap}.overview-activity-item a small{color:var(--danger);font-size:11px}.overview-activity-provider{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-activity-failed .overview-activity-label,.overview-activity-not-started .overview-activity-label{color:var(--danger)}.overview-reason-list{display:grid;gap:11px}.overview-reason-list li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center}.overview-reason-list li>span:first-child{font-size:13px}.overview-reason-list strong{font-variant-numeric:tabular-nums}.overview-bar{grid-column:1/-1;height:7px;overflow:hidden;border-radius:999px;background:var(--surface-muted)}.overview-bar i{display:block;height:100%;border-radius:inherit;background:var(--interactive)}.overview-chart-note,.overview-semantic-note{margin:12px 0 0;color:var(--secondary);font-size:11px}.overview-provider-summary{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.overview-provider-summary strong{margin-right:3px;font-variant-numeric:tabular-nums}.overview-provider-summary a{display:inline-flex;gap:5px;align-items:center;padding:5px 8px;border:1px solid var(--border);border-radius:999px;color:var(--graphite);font-size:12px;text-decoration:none}.overview-provider-summary a:hover{border-color:var(--sky);color:var(--interactive)}.overview-provider-summary a span{color:var(--secondary);font-size:11px}.overview-semantic-note{max-width:780px;margin-top:14px}.admin-section-nav{flex-wrap:wrap}
+.overview-page{padding-top:30px}.overview-heading{align-items:flex-end;margin-bottom:20px}.overview-period-form{margin:0}.overview-period-form select{min-width:154px}.overview-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:14px}.overview-kpi{display:flex;min-height:84px;flex-direction:column;justify-content:flex-start;padding:14px 16px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:inherit;text-decoration:none;transition:border-color .15s ease,transform .15s ease}.overview-kpi:hover{border-color:color-mix(in srgb,var(--sky) 52%,var(--border));transform:translateY(-1px)}.overview-kpi span{color:var(--secondary);font-size:12px;font-weight:700}.overview-kpi strong{display:block;margin-top:6px;font-family:var(--font-brand);font-size:30px;line-height:1;font-variant-numeric:tabular-nums}.overview-kpi small{margin-top:8px;color:var(--secondary);font-size:11px;line-height:1.35}.overview-kpi-attention strong{color:var(--danger)}.overview-kpi-pending{background:var(--surface-muted)}.overview-kpi-pending strong{color:var(--secondary)}.overview-panel{margin-top:12px;padding:18px 20px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}.overview-panel .section-heading{margin-bottom:10px}.overview-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}.overview-columns .overview-panel{min-width:0}.overview-empty-state{margin:0;padding:12px 0;color:var(--secondary);font-weight:650}.overview-attention-list,.overview-activity-list,.overview-reason-list{list-style:none;margin:0;padding:0}.overview-attention-item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:10px;padding:10px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-attention-item:first-child{border-top:0;padding-top:3px}.overview-attention-dot{font-size:13px;line-height:1.5;color:var(--danger)}.overview-attention-provider .overview-attention-dot{color:var(--warning,var(--stone))}.overview-attention-item div{display:grid;gap:2px;min-width:0}.overview-attention-item a{color:var(--graphite);text-decoration:none}.overview-attention-item a:hover{text-decoration:underline;text-underline-offset:3px}.overview-attention-item strong{font-size:14px}.overview-attention-item span{color:var(--secondary);font-size:12px;overflow:hidden;text-overflow:ellipsis}.overview-attention-item small{color:var(--secondary);font-size:11px}.overview-detail-link,.section-link{color:var(--interactive);font-size:12px;font-weight:700;white-space:nowrap;text-decoration:none}.overview-detail-link:hover,.section-link:hover{text-decoration:underline;text-underline-offset:3px}.overview-activity-item{display:grid;grid-template-columns:126px minmax(0,1fr) max-content;align-items:center;gap:10px;padding:8px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-activity-item:first-child{border-top:0;padding-top:3px}.overview-activity-item time{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-activity-item a{display:grid;min-width:0;color:inherit;text-decoration:none}.overview-activity-item a:hover .overview-activity-label{text-decoration:underline;text-underline-offset:3px}.overview-activity-label{font-size:13px;font-weight:750}.overview-activity-item a span:not(.overview-activity-label){overflow:hidden;text-overflow:ellipsis;color:var(--secondary);font-size:12px;white-space:nowrap}.overview-activity-item a small{color:var(--danger);font-size:11px}.overview-activity-provider{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-activity-failed .overview-activity-label,.overview-activity-not-started .overview-activity-label{color:var(--danger)}.overview-reason-list{display:grid;gap:11px}.overview-reason-list li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center}.overview-reason-list li>span:first-child{font-size:13px}.overview-reason-list strong{font-variant-numeric:tabular-nums}.overview-bar{grid-column:1/-1;height:7px;overflow:hidden;border-radius:999px;background:var(--surface-muted)}.overview-bar i{display:block;height:100%;border-radius:inherit;background:var(--interactive)}.overview-chart-note,.overview-semantic-note{margin:12px 0 0;color:var(--secondary);font-size:11px}.overview-provider-summary{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.overview-provider-summary strong{margin-right:3px;font-variant-numeric:tabular-nums}.overview-provider-summary a{display:inline-flex;gap:5px;align-items:center;padding:5px 8px;border:1px solid var(--border);border-radius:999px;color:var(--graphite);font-size:12px;text-decoration:none}.overview-provider-summary a:hover{border-color:var(--sky);color:var(--interactive)}.overview-provider-summary a span{color:var(--secondary);font-size:11px}.overview-semantic-note{max-width:780px;margin-top:14px}.admin-section-nav{flex-wrap:wrap}
 .quick-filter-group{display:flex;align-items:center;gap:4px;flex:0 0 auto;flex-wrap:wrap}.quick-filter{min-height:var(--admin-control-height);padding:8px 10px;border:1px solid transparent;border-radius:var(--admin-control-radius);background:transparent;color:var(--secondary);font-weight:650}.quick-filter:hover{border-color:var(--border);color:var(--interactive)}.quick-filter.active{border-color:color-mix(in srgb,var(--sky) 45%,var(--border));background:var(--surface);color:var(--interactive);box-shadow:0 1px 1px rgba(34,42,43,.05)}
 .map-statistics-coverage-layout{display:grid;grid-template-columns:minmax(0,3fr) minmax(280px,1fr);gap:12px;margin-top:20px}.map-statistics-coverage-layout>.provider-card{min-width:0;margin-top:0}.map-statistics-popularity{grid-template-columns:minmax(0,1fr)}.map-statistics-popularity .provider-card{margin-top:0}.table-secondary{display:block;margin-top:3px;color:var(--secondary);font-size:11px;font-weight:500}
 .map-statistics-world-map{position:relative;min-height:300px;padding:8px 0 0;overflow:hidden;border:1px solid var(--border);border-radius:10px;background:var(--surface-muted)}.world-map-svg{width:100%;padding:0 8px}.world-map-svg svg{display:block;width:100%;height:auto;overflow:visible}.world-map-country{stroke:color-mix(in srgb,var(--interactive) 42%,var(--border));stroke-width:.65;vector-effect:non-scaling-stroke;cursor:help;outline:none;transition:filter .12s ease,stroke-width .12s ease}.world-map-country:hover,.world-map-country:focus{filter:brightness(.86);stroke:var(--interactive);stroke-width:1.5}.world-map-tooltip{position:absolute;z-index:2;top:12px;right:12px;min-width:170px;max-width:240px;padding:10px 12px;border:1px solid color-mix(in srgb,var(--interactive) 28%,var(--border));border-radius:9px;background:color-mix(in srgb,var(--surface) 94%,transparent);box-shadow:0 8px 24px rgba(34,42,43,.14);font-size:12px;pointer-events:none}.world-map-tooltip strong,.world-map-tooltip-total,.world-map-tooltip-empty{display:block}.world-map-tooltip-total{margin-top:2px;color:var(--secondary)}.world-map-tooltip-empty{margin-top:5px;color:var(--secondary);font-style:italic}.world-map-provider-line{display:flex;justify-content:space-between;gap:16px;margin-top:7px;padding-top:6px;border-top:1px solid var(--border)}.world-map-provider-line+ .world-map-provider-line{margin-top:5px;padding-top:5px}.world-map-provider-line span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.world-map-provider-line strong{font-variant-numeric:tabular-nums}.world-map-legend{display:flex;align-items:center;gap:8px;margin:8px 2px 0;color:var(--secondary);font-size:11px;font-variant-numeric:tabular-nums}.world-map-legend-gradient{display:block;flex:1;height:8px;border-radius:99px;background:linear-gradient(90deg,var(--surface),hsl(198 25% 49%));border:1px solid var(--border)}.world-map-note{margin:8px 2px 0}.map-statistics-world-map-card .section-heading{align-items:flex-start}.map-statistics-world-map-card .section-heading .table-help{padding-top:3px;text-align:right}
 .overview-columns{grid-template-columns:minmax(0,2fr) minmax(280px,1fr)}.overview-chart-wrap{overflow-x:auto}.overview-trend-chart{display:block;width:100%;min-width:520px;height:auto;min-height:180px}.overview-trend-chart text{fill:var(--secondary);font:500 11px var(--font-ui)}.overview-chart-success{fill:var(--interactive);background:var(--interactive)}.overview-chart-failed{fill:var(--danger);background:var(--danger)}.overview-chart-custom{fill:var(--status-success-text);background:var(--status-success-text)}.overview-chart-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:7px;color:var(--secondary);font-size:11px}.overview-chart-note{font-size:12px;color:var(--secondary);margin:10px 0 0}.overview-chart-legend span{display:inline-flex;align-items:center;gap:5px}.overview-chart-legend i{display:inline-block;width:9px;height:9px;border-radius:2px}.overview-info{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border:1px solid var(--border);border-radius:50%;color:var(--secondary);font-size:11px;font-weight:750;cursor:help}.overview-compatibility-summary{margin-top:12px}.overview-compatibility-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.overview-compatibility-grid div{padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-muted)}.overview-compatibility-grid span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.overview-compatibility-grid strong{display:block;margin-top:5px;font:700 20px var(--font-brand);font-variant-numeric:tabular-nums}.provider-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}.map-statistics-provider-table{display:block}.map-statistics-linkage>summary{padding:0;color:var(--interactive);font-size:13px;font-weight:750;list-style:none}.map-statistics-linkage>summary::-webkit-details-marker{display:none}.map-statistics-linkage>summary:before{content:'›';display:inline-block;width:16px;transition:transform .15s ease}.map-statistics-linkage[open]>summary:before{transform:rotate(90deg)}.provider-empty-disclosure{padding:16px 20px}.provider-empty-disclosure>details>summary{list-style:none}.provider-empty-disclosure>details>summary::-webkit-details-marker{display:none}.diagnostic-failure-summary{margin:14px 0 0;padding:11px 13px;border-left:3px solid var(--danger);border-radius:6px;background:var(--error-surface);color:var(--danger);font-size:13px}.diagnostic-failure-summary strong{font-weight:750}.model-statistics article>.info-control{display:inline-flex;margin-top:6px;vertical-align:middle}.history-more-filters{min-width:130px}.history-more-filters .disclosure-body{min-width:170px}.map-statistics-popularity .popularity-all-maps-disclosure{margin-top:12px}.map-statistics-popularity .popularity-regions-disclosure{margin-top:12px}
 @media(max-width:1100px){.overview-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.overview-heading{align-items:flex-start;flex-direction:column;gap:12px}.overview-period-form,.overview-period-form select{width:100%}.overview-columns{grid-template-columns:1fr}.overview-kpi strong{font-size:26px}.overview-activity-item{grid-template-columns:1fr max-content;gap:3px 8px}.overview-activity-item time{grid-column:1/-1}.overview-activity-provider{grid-column:2;grid-row:2}.overview-activity-item a{grid-column:1;grid-row:2}}
-@media(max-width:560px){.overview-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.overview-panel{padding:16px}.overview-attention-item{grid-template-columns:auto minmax(0,1fr)}.overview-detail-link{grid-column:2}.overview-kpi{min-height:100px;padding:13px}.overview-kpi strong{font-size:24px}}
+@media(max-width:560px){.overview-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.overview-panel{padding:16px}.overview-attention-item{grid-template-columns:auto minmax(0,1fr)}.overview-detail-link{grid-column:2}.overview-kpi{min-height:80px;padding:12px}.overview-kpi strong{font-size:24px}}
 @media(max-width:400px){.overview-kpis{grid-template-columns:1fr}}
 @media(max-width:700px){.overview-compatibility-grid{grid-template-columns:1fr}.provider-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:480px){.overview-compatibility-grid{grid-template-columns:1fr}}
@@ -5205,6 +5318,15 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
 .overview-chart-panel{padding-top:16px;padding-bottom:16px}
 .overview-chart-panel .section-heading{margin-bottom:6px}
 .overview-chart-wrap{max-width:780px;margin:0 auto}
+.overview-download-panel{padding-top:16px;padding-bottom:16px}
+.overview-download-panel .section-heading{margin-bottom:6px}
+.overview-download-totals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-width:780px;margin:10px auto 0}
+.overview-download-total{display:flex;align-items:baseline;gap:6px;min-width:0;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-muted);font-size:var(--admin-type-label-size);line-height:var(--admin-type-label-line)}
+.overview-download-total span{color:var(--secondary)}
+.overview-download-total strong{color:var(--graphite);font-size:20px;font-variant-numeric:tabular-nums}
+.overview-download-total small{color:var(--secondary);font-size:var(--admin-type-support-size)}
+.overview-chart-download-dmg{fill:var(--interactive);background:var(--interactive)}
+.overview-chart-download-zip{fill:var(--status-success-text);background:var(--status-success-text)}
 .overview-trend-chart{display:block;width:100%;height:260px;max-width:760px;min-height:0;margin:0 auto}
 .overview-trend-mobile{display:none}
 @media(max-width:700px){
@@ -5212,6 +5334,7 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
   .overview-trend-mobile{display:block;min-width:0;width:100%;height:auto;aspect-ratio:360/220}
   .overview-chart-wrap{width:100%;min-width:0;overflow:visible}
   .overview-trend-mobile text{font-size:13px}
+  .overview-download-totals{grid-template-columns:1fr}
 }
 .overview-attention-empty{display:grid;grid-template-columns:minmax(0,auto) minmax(180px,1fr) auto;align-items:center;gap:18px;min-height:76px;padding:12px 16px}
 .overview-attention-empty h2,.overview-provider-panel h2{font-family:var(--font-ui);font-size:var(--admin-type-subsection-size);line-height:var(--admin-type-subsection-line);letter-spacing:0}
@@ -5294,7 +5417,7 @@ h1,h2,h3,h4,.administration-grid h3,.overview-kpi strong,.admin-kpi-grid article
 .diagnostic-action-form button[type='submit']:hover{background:var(--interactive-hover)}
 .diagnostic-action-form button.secondary-button,.model-administration button.secondary-button{background:var(--surface);color:var(--interactive);border:1px solid var(--border)}
 .timestamp-metric strong{font-size:var(--admin-type-subsection-size)!important;line-height:var(--admin-type-subsection-line)!important}
-.overview-secondary-grid,.overview-primary-grid{align-items:start}
+.overview-secondary-grid{align-items:start}.overview-primary-grid{align-items:stretch}.overview-primary-grid>.overview-panel{min-height:0}.overview-primary-grid .overview-model-panel{display:flex;min-height:0;flex-direction:column}.overview-primary-grid .overview-model-list{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
 .overview-compatibility-summary>summary,.model-administration>summary,.device-information-section>summary{margin-bottom:12px}
 .model-administration,.device-information-section{padding:16px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
 .attention-shortcuts{display:flex;flex-wrap:wrap;gap:8px 18px;margin:12px 0 20px;font-size:13px}

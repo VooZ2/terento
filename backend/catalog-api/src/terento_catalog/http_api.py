@@ -487,6 +487,14 @@ class CatalogService:
             if duration is not None
             else datetime(1970, 1, 1, tzinfo=timezone.utc)
         )
+        downloads_getter = getattr(self.database, "github_downloads_snapshot", None)
+        downloads = downloads_getter(time_zone=time_zone) if callable(downloads_getter) else {
+            "hasData": False,
+            "dmgTotal": None,
+            "zipTotal": None,
+            "lastObservedAt": None,
+            "trend": [],
+        }
         return {
             "schemaVersion": 1,
             "period": period,
@@ -499,6 +507,7 @@ class CatalogService:
                 since, period=period, time_zone=time_zone,
             ),
             "compatibility": self.database.admin_overview_snapshot(since),
+            "downloads": downloads,
             "providers": self.admin_providers().get("providers", []),
             "system": self.operational_health(),
         }

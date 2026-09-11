@@ -3,11 +3,13 @@ from __future__ import annotations
 import logging
 import time
 from datetime import datetime, timedelta, timezone
+from threading import Event, Thread
 
 from .collect import collect_all_providers, official_provider_adapters
 from .collect_devices import collect_devices_once
 from .config import Settings
 from .db import Database
+from .github_downloads import collect_once as collect_github_downloads_once
 
 LOGGER = logging.getLogger(__name__)
 WEEKDAYS = {
@@ -95,6 +97,35 @@ def run_daily(database: Database, schedule_utc: str) -> None:
     run_schedule(database, schedule_utc)
 
 
+def _next_hour_boundary(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    value = value.astimezone(timezone.utc)
+    return value.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+
+
+def run_github_download_schedule(
+    database: Database,
+    stop: Event,
+    *,
+    collect=collect_github_downloads_once,
+) -> None:
+    """Collect immediately, then refresh the GitHub totals at each UTC hour."""
+    while not stop.is_set():
+        try:
+            result = collect(database)
+            LOGGER.info(
+                "GitHub download collection stored=%s dmg=%s zip=%s releases=%s",
+                result.get("stored"), result.get("dmg_total"),
+                result.get("zip_total"), result.get("release_count"),
+            )
+        except Exception:
+            LOGGER.exception("scheduled GitHub download collection failed; next cycle will retry")
+        target = _next_hour_boundary(datetime.now(timezone.utc))
+        LOGGER.info("next GitHub download collection at %s", target.isoformat())
+        stop.wait(max(1, (target - datetime.now(timezone.utc)).total_seconds()))
+
+
 def _record_heartbeat(database: Database, **values: object) -> None:
     try:
         database.record_scheduler_heartbeat(**values)
@@ -128,13 +159,23 @@ def _parse_schedule(value: str) -> tuple[int | None, int, int]:
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     settings = Settings.from_env()
-    run_schedule(
-        Database(
-            settings.database_url,
-            connect_timeout_seconds=settings.database_connect_timeout_seconds,
-        ),
-        settings.collector_schedule_utc,
+    database = Database(
+        settings.database_url,
+        connect_timeout_seconds=settings.database_connect_timeout_seconds,
     )
+    stop = Event()
+    download_worker = Thread(
+        target=run_github_download_schedule,
+        args=(database, stop),
+        daemon=True,
+        name="github-download-collector",
+    )
+    download_worker.start()
+    try:
+        run_schedule(database, settings.collector_schedule_utc)
+    finally:
+        stop.set()
+        download_worker.join(timeout=12)
 
 
 if __name__ == "__main__":

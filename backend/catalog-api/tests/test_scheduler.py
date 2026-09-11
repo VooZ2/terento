@@ -2,12 +2,18 @@ from __future__ import annotations
 
 import unittest
 from datetime import datetime, timezone
+from threading import Event
 from types import SimpleNamespace
 from unittest.mock import patch
 
 from terento_catalog.collect import collect_all_providers, snapshot_release_evidence
 from terento_catalog.config import Settings
-from terento_catalog.scheduler import _parse_schedule, run_collection_cycle
+from terento_catalog.scheduler import (
+    _next_hour_boundary,
+    _parse_schedule,
+    run_collection_cycle,
+    run_github_download_schedule,
+)
 
 
 class FakeSchedulerDatabase:
@@ -32,6 +38,29 @@ class SchedulerTests(unittest.TestCase):
 
     def test_legacy_time_only_schedule_remains_daily(self) -> None:
         self.assertEqual(_parse_schedule("03:00"), (None, 3, 0))
+
+    def test_github_download_schedule_aligns_to_the_next_utc_hour(self) -> None:
+        self.assertEqual(
+            _next_hour_boundary(datetime(2026, 9, 11, 20, 59, 45, tzinfo=timezone.utc)),
+            datetime(2026, 9, 11, 21, tzinfo=timezone.utc),
+        )
+        self.assertEqual(
+            _next_hour_boundary(datetime(2026, 9, 11, 20, 59, 45)),
+            datetime(2026, 9, 11, 21, tzinfo=timezone.utc),
+        )
+
+    def test_github_download_schedule_collects_and_can_be_stopped(self) -> None:
+        database = FakeSchedulerDatabase()
+        stop = Event()
+        calls = []
+
+        def collect(value):
+            calls.append(value)
+            stop.set()
+            return {"stored": True, "dmg_total": 4, "zip_total": 2, "release_count": 1}
+
+        run_github_download_schedule(database, stop, collect=collect)
+        self.assertEqual(calls, [database])
 
     def test_invalid_weekday_is_rejected(self) -> None:
         with self.assertRaisesRegex(RuntimeError, "MON-SUN"):
