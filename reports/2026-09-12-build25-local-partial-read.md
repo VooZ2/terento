@@ -64,7 +64,7 @@ Both SHA256:effad0b6bd988f70fdefee85829d172ed2b774df9d1709add5dc4c8849ff084b.
 Logs:/private/tmp/terento-probe-64k-fresh.log and terento-probe-short-fresh.log.
 The successful baseline after replug means this does NOT prove the candidate
 fixes post-upload failures. Exact readback and tiny-tail handling are observed;
-full installation/Finishing remains an owner hardware gate. Andorra suffices.
+full installation/Finishing required the subsequent owner hardware gate below.
 
 ## Automated evidence
 
@@ -82,4 +82,15 @@ SHA256:2ee2e98c76bd228bb40f8af03fe7fb7d46408d4f9b1adbd6254d61d1f34a9bf3
 Extracted app label/build verified; codesign --deep --strict PASS; executable
 and bundled libraries arm64; no Homebrew runtime paths. Local ad-hoc signed,
 not notarized. Runtime sampled-read sizing/diagnostics changed; resources and
-public release/deployment settings unchanged. Full install gate remains pending.
+public release/deployment settings unchanged. See the subsequent owner installation result below.
+
+## Owner installation result — 2026-09-12
+
+Owner subsequently reported MapRando Andorra PASS and France installation PASS
+on build25-local, on the same fēnix 8 47 mm AMOLED / firmware23.31 test setup.
+France is the previously failing france-courbes-ign package (2,962,751,488 bytes).
+These are owner-reported completed installations, not independently observed
+step-by-step runs. No on-watch visibility/usability or safe-update lifecycle
+result is inferred. The local installation retest gate is PASS for these two
+reported cases; broad device compatibility and public release remain separate.
+Build26 carries the same install/remove/USB implementation, with a UI-only fix.

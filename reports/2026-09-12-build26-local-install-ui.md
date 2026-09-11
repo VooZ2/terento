@@ -36,12 +36,12 @@ No architecture ADR is needed for this UI-only projection lifetime correction.
 
 PASS: Xcode Debug arm64 build26;36 existing map-selection tests; provider/search
 control contract; git diff --check. No claim of a measured post-fix interaction
-latency or live GUI acceptance: owner is still running France on build25, and
-explicitly said not to restart. Build26 prepared separately, not launched.
+latency or live GUI acceptance. Initially prepared separately without restarting
+the ongoing build25 France test; see the subsequent status below.
 Public22 and /Applications unchanged.
 
 Owner-reported build25 MapRando Andorra installation PASS was received before
-this task. France installation remains in progress; do not infer its result.
+this task. Owner subsequently reported France installation PASS on build25.
 
 ## Local artifact
 
@@ -49,3 +49,10 @@ ZIP:dist/Terento-1.0.0-beta.11-local-build26-macOS-arm64.zip
 SHA256:5578a5e4172902b7e5bb98a7065b1da58e3886a27c1a5869ab8e6713158ca94f
 Extracted bundle signature, local label/build26, arm64 and no Homebrew runtime
 paths verified. Prepared only; active build25 was neither stopped nor replaced.
+
+## Follow-up after France PASS — 2026-09-12
+
+Owner reported France install PASS. Build26 was then launched and the old build25
+process was closed. Build26 currently shows Waiting for your Garmin, with Install
+and Manage maps disabled during discovery. Live search/provider/scroll validation
+remains pending a ready device/catalog. No install/remove action was performed.
