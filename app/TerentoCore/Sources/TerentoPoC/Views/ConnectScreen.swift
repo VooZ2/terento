@@ -44,6 +44,13 @@ struct ConnectScreen: View {
     @State private var customMapImportExpanded = false
     @State private var customMapImportDidContinue = false
     @State private var updatePrompt: TerentoAppUpdateManifest?
+    // UI snapshots: rebuilding catalog/preflight rows during View.body blocks
+    // scrolling and every keystroke. Refresh only when their inputs change.
+    @State private var mapSelectionItems: [MapSelectionItem] = []
+    @State private var providerMapSelectionItems: [MapSelectionItem] = []
+    @State private var availableSelectionItems: [MapSelectionItem] = []
+    @State private var filteredAvailableSelectionItems: [MapSelectionItem] = []
+    @State private var displayedInstallationPlan: InstallationPlan?
     @State private var mapSearchText = ""
     @State private var selectedMapProviderID = ""
     @State private var isShowingCustomMapImporter = false
@@ -83,19 +90,6 @@ struct ConnectScreen: View {
         deviceEngine.hasConnectedDevice && mapSupport.showsTerentoCompatibility
     }
 
-    private var mapSelectionItems: [MapSelectionItem] {
-        mapEngine.mapSelectionItems
-    }
-
-    private var providerMapSelectionItems: [MapSelectionItem] {
-        mapSelectionItems.filter { item in
-            guard item.package.sourceKind == .provider else { return false }
-            guard !selectedMapProviderID.isEmpty else { return true }
-            return MapIdentity.normalizeProvider(item.package.providerId)
-                == MapIdentity.normalizeProvider(selectedMapProviderID)
-        }
-    }
-
     private var mapProviderOptions: [MapProvider] {
         mapEngine.availableMapProviders
     }
@@ -104,15 +98,33 @@ struct ConnectScreen: View {
         mapSelectionItems.filter { $0.package.sourceKind == .custom }
     }
 
-    private var availableSelectionItems: [MapSelectionItem] {
-        MapSelectionPresentationModel.available(providerMapSelectionItems, query: "")
+    private func refreshMapSelectionPresentation() {
+        mapSelectionItems = mapEngine.mapSelectionItems
+        refreshProviderPresentation()
+        refreshDisplayedInstallationPlan()
     }
 
-    private var filteredAvailableSelectionItems: [MapSelectionItem] {
-        MapSelectionPresentationModel.available(
-            providerMapSelectionItems,
-            query: mapSearchText
-        )
+    private func refreshProviderPresentation() {
+        let providerID = MapIdentity.normalizeProvider(selectedMapProviderID)
+        providerMapSelectionItems = mapSelectionItems.filter { item in
+            item.package.sourceKind == .provider
+                && (selectedMapProviderID.isEmpty
+                    || MapIdentity.normalizeProvider(item.package.providerId) == providerID)
+        }
+        availableSelectionItems = MapSelectionPresentationModel.available(
+            providerMapSelectionItems, query: "")
+        refreshSearchPresentation()
+    }
+
+    private func refreshSearchPresentation() {
+        filteredAvailableSelectionItems = mapSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? availableSelectionItems
+            : MapSelectionPresentationModel.available(providerMapSelectionItems, query: mapSearchText)
+    }
+
+    private func refreshDisplayedInstallationPlan() {
+        // Display only. Continue still requests a fresh authoritative plan.
+        displayedInstallationPlan = currentInstallationPlan
     }
 
     private func isMapSelectionEnabled(_ item: MapSelectionItem) -> Bool {
@@ -254,6 +266,15 @@ struct ConnectScreen: View {
             guard let candidateID else { return }
             customMapImportExpanded = true
             selectedMapIDs.insert(candidateID)
+        }
+        .onAppear { refreshMapSelectionPresentation() }
+        .onChange(of: mapEngine.result) { _ in refreshMapSelectionPresentation() }
+        .onChange(of: selectedMapProviderID) { _ in refreshProviderPresentation() }
+        .onChange(of: mapSearchText) { _ in refreshSearchPresentation() }
+        .onChange(of: selectedMapIDs) { _ in refreshDisplayedInstallationPlan() }
+        .onChange(of: selectedOptionalArtifactIDs) { _ in refreshDisplayedInstallationPlan() }
+        .onChange(of: mapEngine.customMapImportReadyForInstallation) { _ in
+            refreshDisplayedInstallationPlan()
         }
         .onChange(of: mapSelectionItems) { items in
             selectedMapIDs = MapSelectionPresentationModel.validSelectionIDs(
@@ -1273,7 +1294,7 @@ struct ConnectScreen: View {
                         .accessibilityHidden(true)
                 }
             } storageRegion: {
-                if let plan = currentInstallationPlan {
+                if let plan = displayedInstallationPlan {
                     MapSelectionStorageSummary(
                         plan: plan,
                         totalCapacity: snapshot?.totalCapacity ?? 0,
@@ -1300,7 +1321,7 @@ struct ConnectScreen: View {
                     selectedInstallationPlan = plan
                     localInstallStep = .install
                 }
-                .disabled(!(currentInstallationPlan?.canContinue ?? false))
+                .disabled(!(displayedInstallationPlan?.canContinue ?? false))
             }
         }
         .fileImporter(
