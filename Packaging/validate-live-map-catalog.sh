@@ -17,7 +17,7 @@ cleanup() {
 trap cleanup EXIT
 
 for catalog_url in "${catalog_urls[@]}"; do
-/usr/bin/curl \
+/usr/bin/python3 "$repo_root/scripts/ci_http.py" live-catalog \
     --fail \
     --silent \
     --show-error \

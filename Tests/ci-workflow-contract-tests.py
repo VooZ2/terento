@@ -59,6 +59,65 @@ def verify_scoped_transport() -> None:
         assert not list(root.glob("rukas-ssh.*"))
 
 
+
+def verify_http_transport():
+    """Exercise real retry policy with synthetic curl results; no sleeps/network."""
+    import importlib.util
+    import contextlib
+    import io
+    from types import SimpleNamespace
+    spec = importlib.util.spec_from_file_location("ci_http", REPO_ROOT / "scripts/ci_http.py")
+    http = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(http)
+
+    def exercise(sequence, arguments=("--fail",), expected=0):
+        pending = list(sequence)
+        calls, delays = [], []
+        def run(command, **kwargs):
+            calls.append(command)
+            code, status, body = pending.pop(0)
+            Path(command[command.index("--output") + 1]).write_bytes(body)
+            assert "--compressed" in command
+            return SimpleNamespace(returncode=code, stdout=status.encode())
+        with contextlib.redirect_stderr(io.StringIO()):
+            result = http.request("synthetic", list(arguments), run=run, sleep=delays.append)
+        assert result[0] == expected, result
+        assert not pending, pending
+        assert delays == [2, 4][:len(calls)-1]
+        return result[1]
+
+    assert exercise([(28, "200", b"partial"), (0, "200", b"complete")]) == b"complete"
+    for status in ("502", "503", "504", "525"):
+        assert exercise([(0, status, b"edge"), (0, "200", b"ok")]) == b"ok"
+    exercise([(28, "000", b"")] * 3, expected=75)
+    exercise([(0, "503", b"")] * 3, expected=75)
+    exercise([(0, "401", b"unauthorized")], expected=1)
+    exercise([(60, "000", b"")], expected=1)
+    assert exercise([(0, "401", b"")], ("-w", "%{http_code}")) == b"401"
+    # A security mismatch (unexpected 200) reaches the caller immediately.
+    assert exercise([(0, "200", b"")], ("-w", "%{http_code}")) == b"200"
+    # Malformed JSON is never repaired or retried by transport.
+    body = exercise([(0, "200", b"broken JSON")])
+    try:
+        json.loads(body)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("invalid JSON accepted")
+    for body, accepted in ((b'{ "status": "ok" }', True), (b'{"status":"down"}', False)):
+        result = subprocess.run(["jq", "-e", '.status == "ok"'], input=body, capture_output=True)
+        assert (result.returncode == 0) == accepted
+    from unittest.mock import patch
+    import sys
+    # Only exhausted transport errors may become delivery warnings.
+    for transport_code, expected in ((75, 0), (1, 1), (0, 0)):
+        with patch.object(sys, 'argv', ['ci_http.py', '--observation', 'report']), \
+             patch.object(http, 'request', return_value=(transport_code, b'')), \
+             patch.dict(os.environ, {'GITHUB_STEP_SUMMARY': ''}), \
+             contextlib.redirect_stderr(io.StringIO()):
+            assert http.main() == expected
+
+
 def main() -> int:
     workflow_files = sorted(WORKFLOWS.glob("*.yml")) + sorted(WORKFLOWS.glob("*.yaml"))
     assert workflow_files, "no GitHub workflows found"
@@ -126,17 +185,17 @@ def main() -> int:
     assert "https://api.terento.app/internal/operations/report-context" in deploy_api
     assert "retry_curl()" in deploy_api
     assert "map-catalog" in deploy_api
-    assert "request failed after 3 attempts" in deploy_api
+    assert "python3 scripts/ci_http.py" in deploy_api
     assert "map-catalog --fail --silent --show-error --compressed" in deploy_api
     assert "--max-time 60" in deploy_api
-    assert "--retry 1" in deploy_api
+    assert "--retry 1" not in deploy_api
     assert "verify-release-client-contract:" in deploy_api
     assert "Packaging/validate-live-map-catalog.sh" in deploy_api
     assert "TERENTO_ADMIN_ACCESS_REQUIRED: 'true'" in deploy_api
     deploy_site = (WORKFLOWS / "deploy-site.yml").read_text(encoding="utf-8")
     assert "Retain website deployment health" in deploy_site
-    assert "website observation attempt" in deploy_site
-    assert "catalog API observation attempt" in deploy_api
+    assert "--observation deployment-observation" in deploy_site
+    assert "--observation deployment-observation" in deploy_api
     publisher = (WORKFLOWS / "publish-vps-images.yml").read_text(encoding="utf-8")
     assert "workflow_call:" in publisher
     assert "digest: ${{ steps.image.outputs.digest }}" in publisher
@@ -164,6 +223,7 @@ def main() -> int:
     assert "expect 64 id" in rejection
     assert "expect 0 " not in rejection and "expect 1 " not in rejection
     assert "f7e394d" not in rejection
+    verify_http_transport()
     verify_scoped_transport()
     assert not (WORKFLOWS / "refresh-compatibility-snapshot.yml").exists()
     assert "update-compatibility-snapshot.py" not in publisher
