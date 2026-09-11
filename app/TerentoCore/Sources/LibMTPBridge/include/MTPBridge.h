@@ -4,6 +4,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* Only after all native objects are released, under the operation gate. */
+void terento_mtp_end_operation(void);
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -37,7 +37,16 @@ enum MTPOperationGateError: LocalizedError, Equatable, Sendable {
 /// bridge has been entered, cancellation cannot interrupt libmtp safely; the
 /// caller remains busy until that call returns and the resource is released.
 final class MTPOperationGate: @unchecked Sendable {
+#if TERENTO_BUNDLED_MTP
+    static let shared = MTPOperationGate(nativeCleanup: { terento_mtp_end_operation() })
+#else
     static let shared = MTPOperationGate()
+#endif
+    private let nativeCleanup: @Sendable () -> Void
+
+    init(nativeCleanup: @escaping @Sendable () -> Void = {}) {
+        self.nativeCleanup = nativeCleanup
+    }
 
     private let condition = NSCondition()
     private var activeNativeOperation: UUID?
@@ -166,6 +175,9 @@ final class MTPOperationGate: @unchecked Sendable {
         }
 
         defer {
+            // The native lease remains held while libusb's event context stops.
+            // No parent/worker handoff or queued operation can race this cleanup.
+            nativeCleanup()
             condition.lock()
             if activeNativeOperation == operationID {
                 activeNativeOperation = nil

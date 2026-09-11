@@ -31,7 +31,6 @@ private func terentoMTPProgressCallback(
 struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
     private static let errorCapacity = 2048
     private static let targetDirectory = "/GARMIN"
-    private static let readBackRetryDelays: [TimeInterval] = [0, 1.0, 2.0]
     private let operationGate: MTPOperationGate
     private let lifecycleLease: MTPOperationLease?
     private let operationProfile: DeviceMapOperationProfile?
@@ -152,12 +151,20 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
         progress: @escaping @Sendable (TransferProgress) -> Void
     ) throws -> MTPReadBackMapObject {
         var lastError: Error?
-        for (attempt, delay) in Self.readBackRetryDelays.enumerated() {
+        let verificationDeadline = ProcessInfo.processInfo.systemUptime + 600
+        // Only the parent may retry a completed metadata lookup. Transport failures
+        // require reconnect, never another nested reset/open sequence.
+        let retryDelays: [TimeInterval] = MTPFinishingWorker.isWorker ? [0] : [0, 1.0]
+        for (attempt, delay) in retryDelays.enumerated() {
             FinishingTrace.event("readback_attempt", "worker=\(MTPFinishingWorker.isWorker) attempt=\(attempt + 1) delay=\(delay)")
             if attempt > 0 {
                 Thread.sleep(forTimeInterval: delay)
             }
 
+            let remaining = verificationDeadline - ProcessInfo.processInfo.systemUptime
+            guard remaining > 0 else {
+                throw InstallationTransportError.operationFailed("Map verification exceeded its total time budget.", createdItemID: nil)
+            }
             do {
                 return try operationGate.withOperation(
                     kind: .install,
@@ -171,13 +178,14 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
                         expectedSizeBytes: expectedSizeBytes,
                         sampleOffsets: sampleOffsets,
                         sampleLength: sampleLength,
+                        remainingTime: remaining,
                         progress: progress
                     )
                 }
             } catch {
                 FinishingTrace.event("readback_failed", "worker=\(MTPFinishingWorker.isWorker) attempt=\(attempt + 1) error=\(Self.traceError(error))")
                 lastError = error
-                guard Self.shouldRetryReadBack(error), attempt < Self.readBackRetryDelays.count - 1 else {
+                guard Self.shouldRetryReadBack(error), attempt < retryDelays.count - 1 else {
                     throw error
                 }
             }
@@ -205,9 +213,9 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
     private static func shouldRetryReadBack(_ error: Error) -> Bool {
         guard let error = error as? InstallationTransportError else { return false }
         switch error {
-        case .deviceDisconnected, .remoteFileMissing, .objectIdentityMismatch, .operationFailed:
+        case .remoteFileMissing, .objectIdentityMismatch:
             return true
-        case .targetAlreadyExists, .unsupportedDevice, .liveIdentityMismatch:
+        case .deviceDisconnected, .operationFailed, .targetAlreadyExists, .unsupportedDevice, .liveIdentityMismatch:
             return false
         }
     }
@@ -220,6 +228,7 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
         expectedSizeBytes: UInt64,
         sampleOffsets: [UInt64],
         sampleLength: UInt32,
+        remainingTime: TimeInterval,
         progress: @escaping @Sendable (TransferProgress) -> Void
     ) throws -> MTPReadBackMapObject {
         guard let operationProfile else {
@@ -230,7 +239,7 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
                 operation: .samples, profile: operationProfile, sourceURL: sourceURL,
                 filename: targetFilename, itemID: expectedItemID, size: expectedSizeBytes,
                 offsets: sampleOffsets, length: sampleLength
-            ), progress: progress)
+            ), progress: progress, sampleTimeout: remainingTime)
             guard let object = response.object, object.targetPath == targetPath else {
                 throw InstallationTransportError.objectIdentityMismatch
             }
@@ -481,7 +490,7 @@ enum MTPFinishingWorker {
     }
     static var isWorker: Bool { CommandLine.arguments.dropFirst().first == "--terento-finishing-worker" }
 
-    static func perform(_ request: Request, progress: (@Sendable (TransferProgress) -> Void)? = nil) throws -> Response {
+    static func perform(_ request: Request, progress: (@Sendable (TransferProgress) -> Void)? = nil, sampleTimeout: TimeInterval = 600) throws -> Response {
         guard let executable = Bundle.main.executableURL else {
             throw InstallationTransportError.operationFailed("Native verification is unavailable.", createdItemID: nil)
         }
@@ -502,7 +511,7 @@ enum MTPFinishingWorker {
             try BoundedNativeProcess.run(executable: executable,
                 arguments: ["--terento-finishing-worker", output.path],
                 input: JSONEncoder().encode(request),
-                timeout: request.operation == .samples ? 600 : 45,
+                timeout: request.operation == .samples ? min(600, sampleTimeout) : 45,
                 inactivityTimeout: request.operation == .samples ? 120 : nil,
                 verifiedProgress: { verifiedBytes },
                 diagnosticFile: traceURL,

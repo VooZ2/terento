@@ -62,7 +62,7 @@ if grep -A5 '^        \*matched_samples += 1;' "$bridge" \
 fi
 
 if ! grep -A6 '^        \*matched_samples += 1;' "$bridge" \
-    | grep -q 'Keep the read-only verification session open'; then
+    | grep -q 'Healthy reads retain one session across every sample'; then
     print -u2 "FAIL: sampled Install verification does not document its low-churn session boundary"
     exit 1
 fi
@@ -166,3 +166,9 @@ PYPATCH
 # Exercise the pinned session patch and generated cleanup against fake USB.
 python3 "$project_root/Tests/TerentoPoCTests/USBLifecyclePatchTests.py" \
     "$project_root/../../Packaging/NativeDependencies/patch-usb-session-lifecycle.pl"
+
+python3 "$project_root/Tests/TerentoPoCTests/USBRecoveryPatchTests.py" \
+    "$project_root/../../Packaging/NativeDependencies/patch-usb-recovery.py"
+
+python3 "$project_root/Tests/TerentoPoCTests/USBDeviceReferenceTests.py" \
+    "$project_root/../../Packaging/NativeDependencies/patch-usb-device-references.py"

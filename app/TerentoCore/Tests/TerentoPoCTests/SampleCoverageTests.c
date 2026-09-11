@@ -7,6 +7,7 @@
    algorithm. The output emulates production's bounded 64 KiB read requests. */
 static void check_bytes(uint64_t size, const uint64_t *offsets, size_t count,
                         uint32_t length, uint64_t expected_total) {
+  for (int short_packet = 0; short_packet <= 1; short_packet++) {
     unsigned char *requested = calloc((size_t)size, 1);
     unsigned char *read = calloc((size_t)size, 1);
     assert(requested && read);
@@ -19,8 +20,9 @@ static void check_bytes(uint64_t size, const uint64_t *offsets, size_t count,
     assert(terento_plan_sample_coverage(size, offsets, count, length, regions, &total) == 0);
     for (size_t i = 0; i < count; i++) {
         for (uint32_t consumed = 0; consumed < regions[i].length;) {
-            uint32_t chunk = regions[i].length - consumed;
-            if (chunk > 65536) chunk = 65536;
+            uint32_t chunk = terento_sample_read_request(regions[i].length - consumed, short_packet);
+            assert(chunk > 0 && chunk <= 65536);
+            if (short_packet) assert(chunk % 2 == 1);
             uint64_t start = regions[i].offset + consumed;
             assert(start < size && chunk <= size - start);
             for (uint64_t j = start; j < start + chunk; j++) {
@@ -40,9 +42,17 @@ static void check_bytes(uint64_t size, const uint64_t *offsets, size_t count,
     if (expected_total != UINT64_MAX) assert(total == expected_total);
     free(requested);
     free(read);
+  }
 }
 
 int main(void) {
+    assert(terento_sample_read_request(0, 1) == 0);
+    for (uint32_t remaining = 1; remaining <= 131073; remaining++) {
+        uint32_t n = terento_sample_read_request(remaining, 1);
+        assert(n > 0 && n <= remaining && n <= 65536 && n % 2 == 1);
+        uint32_t ordinary = remaining > 65536 ? 65536 : remaining;
+        assert(terento_sample_read_request(remaining, 0) == ordinary);
+    }
     uint64_t single[] = {0};
     check_bytes(1, single, 1, 4194304, 1);
     check_bytes(4096, single, 1, 4194304, 4096);
