@@ -29,18 +29,18 @@ struct BoundedNativeProcessTests {
         }
         var advancingBytes: UInt64 = 0
         try BoundedNativeProcess.run(executable: URL(fileURLWithPath: "/bin/sleep"),
-            arguments: ["0.4"], input: Data(), timeout: 2, inactivityTimeout: 0.2,
+            arguments: ["3"], input: Data(), timeout: 10, inactivityTimeout: 2,
             verifiedProgress: { advancingBytes }, onPoll: { advancingBytes += 1 })
         for advancing in [false, true] {
             let start = ProcessInfo.processInfo.systemUptime
             do {
                 try BoundedNativeProcess.run(executable: URL(fileURLWithPath: "/bin/sleep"),
-                    arguments: ["30"], input: Data(), timeout: advancing ? 0.3 : 2,
-                    inactivityTimeout: 0.15, verifiedProgress: { advancingBytes },
+                    arguments: ["30"], input: Data(), timeout: advancing ? 2 : 5,
+                    inactivityTimeout: 1, verifiedProgress: { advancingBytes },
                     onPoll: { if advancing { advancingBytes += 1 } })
                 fatalError("deadline must reap child despite stalled or endless progress")
             } catch NativeProcessFailure.deadlineOrCancellation {
-                precondition(ProcessInfo.processInfo.systemUptime - start < 2)
+                precondition(ProcessInfo.processInfo.systemUptime - start < 10)
             }
         }
 

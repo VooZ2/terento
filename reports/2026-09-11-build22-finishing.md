@@ -44,3 +44,14 @@ ZIP:5743971 bytes, SHA2569b5c7d355c37411988825a7be5781fc7779e97ba7844af1a4522a3c
 Release metadata now contains the actual DMG hash. The suite was rerun with
 the existing supported Python3.12 environment after an environment-only failure.
 No native source changed after these checks. Publication/CI still pending.
+
+## CI subprocess scheduling tolerance
+
+The identical native test code passed on the first PR head but the later CI
+run exited133 inside the bounded-worker runner, whose redirected stderr was
+removed before upload. Exact assertion evidence was therefore unavailable.
+The newly added subsecond progress tests were vulnerable to runner scheduling
+delays: increase their real-process inactivity windows to1–2 seconds and keep
+exact boundary testing deterministic through the injected clock model. The
+runner now prints captured stderr on failure. Production code/artifacts are
+unchanged; recheck the bounded runner and final PR CI before publication.
