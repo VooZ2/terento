@@ -1,5 +1,10 @@
 # Build23-local USB recovery candidate
 
+**Superseded / hardware gate FAILED on 2026-09-12:** a real launch reproduced
+false disconnect after discovery. Build24-local corrects leaked native device
+references; see `2026-09-12-build24-local-device-references.md`. The automated
+results below are historical and did not cover this native lifetime failure.
+
 Owner authorized local testing with a strict-local semantic label. Worktree:
 /private/tmp/terento-usb-recovery-build23; branch terento/usb-recovery-build23-local.
 Base:0635cd75108133b35ae0aab05a35c1ba016dff27 (public22 source).

@@ -169,3 +169,6 @@ python3 "$project_root/Tests/TerentoPoCTests/USBLifecyclePatchTests.py" \
 
 python3 "$project_root/Tests/TerentoPoCTests/USBRecoveryPatchTests.py" \
     "$project_root/../../Packaging/NativeDependencies/patch-usb-recovery.py"
+
+python3 "$project_root/Tests/TerentoPoCTests/USBDeviceReferenceTests.py" \
+    "$project_root/../../Packaging/NativeDependencies/patch-usb-device-references.py"

@@ -71,6 +71,8 @@ libraries in `Terento.app/Contents/Frameworks`.
 
 - Local build23 candidate: `Packaging/NativeDependencies/patch-usb-recovery.py` adds explicit shutdown of libmtp's own idle libusb context under Terento's operation gate, host-only abort of a failed read session, and suppresses automatic failed-OpenSession reset only on macOS Garmin `091e:51b8`. The two additional library entry points are used only by bundled app builds. LGPL-2.1-or-later and the upstream notices remain; patch source is included with this test package. Hardware acceptance is pending. This supersedes the preceding candidate's retained explicit reset for that exact device.
 
+- Local build24 correction: `Packaging/NativeDependencies/patch-usb-device-references.py` balances enumeration, retained MTP-list and open-handle references before context shutdown. It also releases lists on specific-device and allocation-failure exits. This fixes build23-local's reproducible library reinitialization failure. LGPL-2.1-or-later remains; patch source accompanies the local package. Read-only connection/inventory evidence does not establish installation acceptance.
+
 ### libusb
 
 - Version: 1.0.30
