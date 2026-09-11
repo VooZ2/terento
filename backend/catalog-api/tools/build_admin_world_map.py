@@ -1,6 +1,7 @@
-"""Generate local country SVG from Natural Earth 50m GeoJSON (public domain).
-Usage: python tools/build_admin_world_map.py /path/to/ne_50m_admin_0_countries.geojson
-Source: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+"""Generate the local country SVG from an OpenStreetMap GeoJSON export.
+Usage: python tools/build_admin_world_map.py /path/to/osm-countries.geojson
+Source: https://github.com/Zaczero/osm-countries-geojson
+Data license: Open Database License (ODbL); attribution is required.
 No runtime map service or dependency. Country boundaries are cartographic data.
 """
 import hashlib
@@ -38,11 +39,19 @@ def simplify(points, tolerance=0.15):
 paths = {}
 aliases = {}
 for feature in data['features']:
-    prop = feature['properties']
-    code = str(prop.get('ISO_A2_EH') or prop.get('ISO_A2')).lower()
+    properties = feature.get('properties') or {}
+    # The selected OSM export keeps the original OSM tags under `tags`, while
+    # accepting flat properties here keeps the generator useful for other
+    # GeoJSON exports without adding a runtime dependency.
+    prop = properties.get('tags') if isinstance(properties.get('tags'), dict) else properties
+    code = str(prop.get('ISO3166-1:alpha2') or prop.get('ISO3166-1') or prop.get('ISO_A2_EH') or prop.get('ISO_A2') or '').lower()
     if not re.fullmatch('[a-z]{2}', code) or code == 'aq':
         continue
-    for key in ('ISO_A2', 'ISO_A3', 'ISO_A2_EH', 'ISO_A3_EH', 'NAME', 'NAME_LONG', 'ADMIN'):
+    for key in ('ISO3166-1:alpha2', 'ISO3166-1:alpha3', 'ISO3166-1',
+                'ISO_A2', 'ISO_A3', 'ISO_A2_EH', 'ISO_A3_EH',
+                'name', 'name:en', 'int_name', 'official_name',
+                'alt_name:en', 'alt_short_name:en',
+                'NAME', 'NAME_LONG', 'ADMIN'):
         name = re.sub('[^A-Za-z0-9]', '', str(prop.get(key) or '')).upper()
         if name and name != '99': aliases[name] = code
     geometry = feature['geometry']
@@ -58,8 +67,11 @@ for feature in data['features']:
             if len(points) < 3: continue
             commands.append('M' + 'L'.join(f'{x:g},{y:g}' for x,y in points) + 'Z')
     paths.setdefault(code, []).extend(commands)
-assert len(paths)>220
-svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 365"><title>World installation coverage</title><desc>Natural Earth 50m country boundaries, public domain. Equirectangular projection.</desc>'+''.join(f'<path id="{code}" fill-rule="evenodd" d="{"".join(commands)}"/>' for code,commands in sorted(paths.items()))+'</svg>'
-metadata = '# Natural Earth 50m countries, public domain.\n# Input SHA256: '+hashlib.sha256(source.read_bytes()).hexdigest()+'\n# Rebuild with tools/build_admin_world_map.py.\n'
+assert len(paths)>200
+# OSM can contain overlapping admin_level=2 relations for disputed areas.
+# Stable code ordering keeps the selected product worldview deterministic; UA
+# follows RU, so Ukraine's OSM relation is the visible top layer over Crimea.
+svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 365"><title>World installation coverage</title><desc>OpenStreetMap country boundaries, ODbL. Equirectangular projection.</desc>'+''.join(f'<path id="{code}" fill-rule="evenodd" d="{"".join(commands)}"/>' for code,commands in sorted(paths.items()))+'</svg>'
+metadata = '# OpenStreetMap country boundaries via osm-countries-geojson, ODbL.\n# Source: https://github.com/Zaczero/osm-countries-geojson\n# Input SHA256: '+hashlib.sha256(source.read_bytes()).hexdigest()+'\n# Rebuild with tools/build_admin_world_map.py.\n'
 target.write_text(metadata+existing+'WORLD_MAP_COUNTRY_ALIASES.update('+repr(aliases)+')\n\nWORLD_MAP_SVG = '+repr(svg)+'\n')
 print(len(paths), 'country shapes;', len(svg), 'SVG bytes')

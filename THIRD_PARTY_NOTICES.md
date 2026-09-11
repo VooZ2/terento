@@ -99,18 +99,6 @@ libraries in `Terento.app/Contents/Frameworks`.
 - Distribution: installed in the catalog API Docker image; the dependency's
   own license and notice requirements remain applicable
 
-## Simple World Map
-
-- Version/source: `flekschas/simple-world-map`, commit
-  `d3c4ebb2d0b7fc90a89d2c1e8da0d579fea3871c`
-- Upstream: <https://github.com/flekschas/simple-world-map>
-- File: `backend/catalog-api/src/terento_catalog/admin_world_map.py`
-- License: Creative Commons Attribution-ShareAlike 3.0 Unported
-- Use: local country geometry for the private Umami-style Admin map-statistics
-  coverage view
-- Attribution: the upstream SVG retains its author/editor/license metadata;
-  the map is not used as a public marketing asset
-
 ## JSON Schema test validation
 
 - Dependency: jsonschema 4.26.0, pinned in the backend `test` optional group
@@ -128,11 +116,20 @@ libraries in `Terento.app/Contents/Frameworks`.
   (<https://github.com/python-jsonschema/referencing>) and rpds-py
   (<https://github.com/crate-py/rpds>). Their own notices remain applicable.
 
-## Natural Earth country geometry
+## OpenStreetMap country geometry
 
-- Source: https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_50m_admin_0_countries.geojson (50m Admin 0 countries; exact input SHA-256 recorded in generated module).
-- License: public domain, https://www.naturalearthdata.com/about/terms-of-use/. Redistribution and modification permitted; no required attribution.
-- Use: local SVG country boundaries in private admin statistics, replacing the stylized map. No runtime dependency or tile service. Reproduction: backend/catalog-api/tools/build_admin_world_map.py.
+- Source: <https://github.com/Zaczero/osm-countries-geojson>; generated country
+  export: <https://osm-countries-geojson.monicz.dev/osm-countries-0-001.geojson>
+- Snapshot: 2026-09-11; exact input SHA-256 is recorded in
+  `backend/catalog-api/src/terento_catalog/admin_world_map.py`.
+- License: Open Data Commons Open Database License (ODbL), with attribution to
+  © OpenStreetMap contributors.
+- Use: local, simplified SVG country boundaries in private admin statistics;
+  no runtime dependency, external tile service, or OSM request is used.
+- Reproduction: `backend/catalog-api/tools/build_admin_world_map.py`.
+- Presentation policy: OpenStreetMap's overlapping disputed country relations
+  are rendered deterministically with Ukraine above Russia for Crimea. This is a
+  display policy only; catalog and event identities remain unchanged.
 
 ## Leaflet 1.9.4
 
