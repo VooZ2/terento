@@ -14,6 +14,23 @@ IDENTITY_CORRECTION_MIGRATION = MIGRATION.parent / "013_canonical_four_status_co
 
 
 class CompatibilityAggregationMigrationTests(unittest.TestCase):
+    def test_map_projections_exclude_explicit_prewrite_failure_fallbacks(self) -> None:
+        db_source = (
+            Path(__file__).resolve().parents[1]
+            / "src"
+            / "terento_catalog"
+            / "db.py"
+        ).read_text(encoding="utf-8")
+        # The two map read models share this boundary. It excludes only an
+        # explicit false value: NULL keeps the established legacy semantics,
+        # and verified success remains eligible for fallback projection.
+        self.assertGreaterEqual(db_source.count("e.write_started IS NOT FALSE"), 2)
+        self.assertIn(
+            "e.phase_outcome = 'SUCCEEDED'\n                       OR e.write_started IS NOT FALSE",
+            db_source,
+        )
+        self.assertIn("event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')", db_source)
+
     def test_identity_correction_allows_fresh_database_but_rejects_partial_history(self) -> None:
         sql = IDENTITY_CORRECTION_MIGRATION.read_text(encoding="utf-8")
         self.assertIn(
