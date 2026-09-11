@@ -1064,7 +1064,7 @@ class Beta8APITests(unittest.TestCase):
             self.assertEqual(database.overview_map_requests[-1][2], "Europe/Vilnius")
             self.assertEqual(database.overview_download_requests[-1], "Europe/Vilnius")
             self.assertIn("value='30d' selected", body.decode())
-            self.assertIn("Total downloads:</span><strong>23</strong><small>.dmg", body.decode())
+            self.assertIn("overview-download-total' aria-label='.dmg downloads total: 23'><strong>23</strong><small>.dmg", body.decode())
 
             response, body = self._request(
                 server, "GET", "/admin?period=all", headers={"Cookie": cookie},
