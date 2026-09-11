@@ -124,6 +124,11 @@ def main() -> int:
     assert "needs: tests" in deploy_api, "catalog deploy must wait for backend tests"
     assert "Retain API deployment health" in deploy_api
     assert "https://api.terento.app/internal/operations/report-context" in deploy_api
+    assert "retry_curl()" in deploy_api
+    assert "map-catalog" in deploy_api
+    assert "request failed after 3 attempts" in deploy_api
+    assert "--max-time 60" in deploy_api
+    assert "--retry 1" in deploy_api
     assert "verify-release-client-contract:" in deploy_api
     assert "Packaging/validate-live-map-catalog.sh" in deploy_api
     assert "TERENTO_ADMIN_ACCESS_REQUIRED: 'true'" in deploy_api
