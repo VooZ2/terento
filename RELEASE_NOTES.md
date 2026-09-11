@@ -1,6 +1,6 @@
 # Terento v1.0.0-beta.11
 
-<!-- Public DMG SHA-256: a2d49a1d49939298205434e64722102bd8f5026328b5e6a55e65b2bb7d18094a -->
+<!-- Public DMG SHA-256: 4f96a8e60f4ecb68cb9a5ea1ebd4490b0b65564d1659b607f1c44e60ffcd01dc -->
 
 ## What's new?
 
@@ -9,6 +9,8 @@
 - GitHub issue reports open with the reviewed diagnostic title and body already filled in.
 
 ## Fixed
+
+- Build 22 fixes Finishing stopping after two minutes while map verification was still progressing. Verification now allows continued progress, with a timeout for inactivity and a bounded overall duration.
 
 - MapRando map packages now pass the correct raw IMG validation path before installation.
 

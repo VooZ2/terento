@@ -1,6 +1,6 @@
 # beta.11 build 22 — Finishing deadline correction
 
-Status: local release preparation, not published at this checkpoint.
+Status: signed/notarized build22 artifacts ready; publication pending at this checkpoint.
 
 Issue157's first report is an unstarted batch item
 (INSTALL_NOT_STARTED_AFTER_EARLIER_FAILURE), not proof of a download failure.
@@ -23,7 +23,7 @@ cleanup/update/delete sequencing and dependencies remain unchanged.
 Validation: deterministic simulated180-second progressing verification,
 inactivity, late/repeated/regressing progress, absolute ceiling and unchanged
 fixed deadlines; real subprocess completion/timeout/reaping checks. Existing
-Debug and Release bounded-worker runner passes. Full release checks pending.
+Debug and Release bounded-worker runner passes. Full release checks PASS (67/67 runners); live provider catalog PASS.
 
 User explicitly requested immediate build22 publication after checks. No new
 hardware installation or device mutation was performed during this task; this
@@ -33,3 +33,14 @@ working tree's unrelated backend changes are excluded by an isolated worktree.
 Canonical architecture, plan and state documents were reviewed and updated
 locally; Packaging/README.md records the distributed behavior. Website/update
 metadata, release notes and build ordering are synchronized for publication.
+
+## Final local artifact evidence
+
+The canonical release pipeline PASS: fresh arm64 Release build22, Developer ID
+signatures, bundled libraries with no Homebrew runtime paths, Apple notarization
+and stapling, Gatekeeper and launch smoke for extracted ZIP and mounted DMG.
+DMG:6290471 bytes, SHA2564f96a8e60f4ecb68cb9a5ea1ebd4490b0b65564d1659b607f1c44e60ffcd01dc.
+ZIP:5743971 bytes, SHA2569b5c7d355c37411988825a7be5781fc7779e97ba7844af1a4522a3cc0c5e6550.
+Release metadata now contains the actual DMG hash. The suite was rerun with
+the existing supported Python3.12 environment after an environment-only failure.
+No native source changed after these checks. Publication/CI still pending.
