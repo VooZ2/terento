@@ -1,6 +1,6 @@
 # Terento v1.0.0-beta.11
 
-<!-- Public DMG SHA-256: 4f96a8e60f4ecb68cb9a5ea1ebd4490b0b65564d1659b607f1c44e60ffcd01dc -->
+<!-- Public DMG SHA-256: ffa62491b55355ff5843f4a8780856cc0ba0506a69e99813453529c51d6a5ee5 -->
 
 ## What's new?
 
