@@ -494,22 +494,32 @@ enum MTPFinishingWorker {
         FinishingTrace.event("operation_begin", "operation=\(request.operation.rawValue) trace=\(directory.lastPathComponent)")
         let progressURL = directory.appendingPathComponent("progress.json")
         var lastProgress: [UInt64] = []
+        var verifiedBytes: UInt64?
+        var progressTotal: UInt64?
         let traceURL = directory.appendingPathComponent("finishing.trace")
         do {
             defer { FinishingTrace.captureWorker(traceURL) }
             try BoundedNativeProcess.run(executable: executable,
                 arguments: ["--terento-finishing-worker", output.path],
                 input: JSONEncoder().encode(request),
-                timeout: request.operation == .samples ? 120 : 45,
+                timeout: request.operation == .samples ? 600 : 45,
+                inactivityTimeout: request.operation == .samples ? 120 : nil,
+                verifiedProgress: { verifiedBytes },
                 diagnosticFile: traceURL,
                 onPoll: {
-                    guard let progress,
+                    guard request.operation == .samples,
                           let data = try? Data(contentsOf: progressURL),
                           let values = try? JSONDecoder().decode([UInt64].self, from: data),
                           values.count == 2, values[1] > 0, values[0] <= values[1],
+                          let length = request.length, let offsets = request.offsets,
+                          values[1] <= UInt64(length) * UInt64(offsets.count),
+                          progressTotal == nil || progressTotal == values[1],
+                          values[0] > (verifiedBytes ?? 0),
                           values != lastProgress else { return }
+                    progressTotal = values[1]
+                    verifiedBytes = values[0]
                     lastProgress = values
-                    progress(TransferProgress(bytesTransferred: values[0], totalBytes: values[1]))
+                    progress?(TransferProgress(bytesTransferred: values[0], totalBytes: values[1]))
                 },
                 // Cleanup is a separate bounded safety operation even if the
                 // enclosing install was cancelled. Never cancel it immediately.

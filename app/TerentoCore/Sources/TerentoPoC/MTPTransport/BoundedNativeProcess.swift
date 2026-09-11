@@ -6,7 +6,7 @@ import Darwin
 enum BoundedNativeProcess {
     static func run(
         executable: URL, arguments: [String], input: Data,
-        timeout: TimeInterval, diagnosticFile: URL? = nil, onPoll: () -> Void = {}, cancelled: () -> Bool = { Task<Never, Never>.isCancelled }
+        timeout: TimeInterval, inactivityTimeout: TimeInterval? = nil, verifiedProgress: () -> UInt64? = { nil }, diagnosticFile: URL? = nil, onPoll: () -> Void = {}, cancelled: () -> Bool = { Task<Never, Never>.isCancelled }
     ) throws {
         let process = Process()
         process.executableURL = executable
@@ -33,11 +33,14 @@ enum BoundedNativeProcess {
         }
         try stdin.fileHandleForWriting.write(contentsOf: input)
         try stdin.fileHandleForWriting.close()
-        let deadline = ProcessInfo.processInfo.systemUptime + timeout
+        var deadline = NativeProcessDeadline(start: ProcessInfo.processInfo.systemUptime,
+                                             timeout: timeout, inactivityTimeout: inactivityTimeout)
         while exited.wait(timeout: .now() + 0.05) == .timedOut {
             onPoll()
             let cancellationRequested = cancelled()
-            if cancellationRequested || ProcessInfo.processInfo.systemUptime >= deadline {
+            let now = ProcessInfo.processInfo.systemUptime
+            let expired = deadline.isExpired(at: now, verifiedBytes: verifiedProgress())
+            if cancellationRequested || expired {
                 FinishingTrace.event(cancellationRequested ? "worker_cancelled" : "worker_deadline",
                                      "child=\(process.processIdentifier)")
                 // Only our own child is killed. No other MTP client or app is touched.
@@ -48,6 +51,31 @@ enum BoundedNativeProcess {
         }
         FinishingTrace.event("worker_exited", "child=\(process.processIdentifier) status=\(process.terminationStatus) reason=\(process.terminationReason.rawValue)")
         guard process.terminationStatus == 0 else { throw NativeProcessFailure.failed }
+    }
+}
+
+/// Only new verified bytes renew the inactivity budget; the absolute ceiling
+/// always wins, including when progress arrives after a deadline has expired.
+struct NativeProcessDeadline {
+    let absoluteDeadline: TimeInterval
+    let inactivityTimeout: TimeInterval?
+    private(set) var lastProgressAt: TimeInterval
+    private(set) var maximumVerifiedBytes: UInt64 = 0
+
+    init(start: TimeInterval, timeout: TimeInterval, inactivityTimeout: TimeInterval?) {
+        absoluteDeadline = start + timeout
+        self.inactivityTimeout = inactivityTimeout
+        lastProgressAt = start
+    }
+
+    mutating func isExpired(at now: TimeInterval, verifiedBytes: UInt64?) -> Bool {
+        if now >= absoluteDeadline { return true }
+        if let inactivityTimeout, now - lastProgressAt >= inactivityTimeout { return true }
+        if let verifiedBytes, verifiedBytes > maximumVerifiedBytes {
+            maximumVerifiedBytes = verifiedBytes
+            lastProgressAt = now
+        }
+        return false
     }
 }
 

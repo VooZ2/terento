@@ -3,6 +3,47 @@ import Foundation
 @main
 struct BoundedNativeProcessTests {
     static func main() throws {
+        // Deterministic model of the real >120s verification, without USB writes.
+        var progressing = NativeProcessDeadline(start: 0, timeout: 600, inactivityTimeout: 120)
+        for second in 1...180 {
+            precondition(!progressing.isExpired(at: Double(second), verifiedBytes: UInt64(second)))
+        }
+        precondition(!progressing.isExpired(at: 299, verifiedBytes: 180))
+        precondition(progressing.isExpired(at: 300, verifiedBytes: 180))
+        for value: UInt64? in [nil, 0] {
+            var stalled = NativeProcessDeadline(start: 0, timeout: 600, inactivityTimeout: 120)
+            precondition(stalled.isExpired(at: 120, verifiedBytes: value))
+        }
+        var backwards = NativeProcessDeadline(start: 0, timeout: 600, inactivityTimeout: 120)
+        precondition(!backwards.isExpired(at: 10, verifiedBytes: 100))
+        precondition(!backwards.isExpired(at: 100, verifiedBytes: 99))
+        precondition(backwards.isExpired(at: 130, verifiedBytes: 101))
+        var ceiling = NativeProcessDeadline(start: 0, timeout: 600, inactivityTimeout: 120)
+        for second in 1..<600 {
+            precondition(!ceiling.isExpired(at: Double(second), verifiedBytes: UInt64(second)))
+        }
+        precondition(ceiling.isExpired(at: 600, verifiedBytes: 600))
+        for limit: Double in [45, 120] {
+            var fixed = NativeProcessDeadline(start: 0, timeout: limit, inactivityTimeout: nil)
+            precondition(fixed.isExpired(at: limit, verifiedBytes: 100))
+        }
+        var advancingBytes: UInt64 = 0
+        try BoundedNativeProcess.run(executable: URL(fileURLWithPath: "/bin/sleep"),
+            arguments: ["0.4"], input: Data(), timeout: 2, inactivityTimeout: 0.2,
+            verifiedProgress: { advancingBytes }, onPoll: { advancingBytes += 1 })
+        for advancing in [false, true] {
+            let start = ProcessInfo.processInfo.systemUptime
+            do {
+                try BoundedNativeProcess.run(executable: URL(fileURLWithPath: "/bin/sleep"),
+                    arguments: ["30"], input: Data(), timeout: advancing ? 0.3 : 2,
+                    inactivityTimeout: 0.15, verifiedProgress: { advancingBytes },
+                    onPoll: { if advancing { advancingBytes += 1 } })
+                fatalError("deadline must reap child despite stalled or endless progress")
+            } catch NativeProcessFailure.deadlineOrCancellation {
+                precondition(ProcessInfo.processInfo.systemUptime - start < 2)
+            }
+        }
+
         try BoundedNativeProcess.run(executable: URL(fileURLWithPath: "/usr/bin/true"),
                                     arguments: [], input: Data(), timeout: 1)
         var polls = 0
