@@ -42,14 +42,14 @@ class AdminAuditTests(unittest.TestCase):
     def test_overview_model_activity_matches_chart_height_and_scrolls(self):
         from terento_catalog.admin import ADMIN_STYLES
 
-        self.assertIn('.overview-primary-grid{align-items:stretch}', ADMIN_STYLES)
-        self.assertIn('.overview-primary-grid>.overview-panel{min-height:0}', ADMIN_STYLES)
+        self.assertIn('.overview-primary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}', ADMIN_STYLES)
+        self.assertIn('.overview-primary-grid,.overview-secondary-grid{align-items:stretch}', ADMIN_STYLES)
         self.assertIn(
-            '.overview-primary-grid .overview-model-panel{display:flex;min-height:0;flex-direction:column}',
+            '.overview-secondary-grid>.overview-panel{display:flex;min-height:0;max-height:320px;flex-direction:column;overflow:hidden}',
             ADMIN_STYLES,
         )
         self.assertIn(
-            '.overview-primary-grid .overview-model-list{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}',
+            '.overview-secondary-grid .overview-activity-list,.overview-secondary-grid .overview-model-list{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}',
             ADMIN_STYLES,
         )
 
