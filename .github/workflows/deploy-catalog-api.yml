@@ -159,11 +159,22 @@ jobs:
               summary:"Catalog API deployment and public health verification passed.",
               details:{migration:"success", database:"success", api_health:"success", catalog_contract:"success"}}' \
             > "$RUNNER_TEMP/terento-api-deployment.json"
-          curl --fail --silent --show-error --connect-timeout 5 --max-time 15 \
-            -H "Authorization: Bearer $OPERATIONS_INGEST_SECRET" \
-            -H "Content-Type: application/json" \
-            --data-binary "@$RUNNER_TEMP/terento-api-deployment.json" \
-            https://api.terento.app/internal/operations/observations
+          observation_posted=false
+          for attempt in 1 2 3; do
+            if curl --fail --silent --show-error --connect-timeout 5 --max-time 30 \
+              -H "Authorization: Bearer $OPERATIONS_INGEST_SECRET" \
+              -H "Content-Type: application/json" \
+              --data-binary "@$RUNNER_TEMP/terento-api-deployment.json" \
+              https://api.terento.app/internal/operations/observations; then
+              observation_posted=true
+              break
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              printf 'catalog API observation attempt %s/3 failed; retrying\n' "$attempt" >&2
+              sleep $((attempt * 2))
+            fi
+          done
+          test "$observation_posted" = true
 
   verify-release-client-contract:
     name: Verify deployed catalog with release client

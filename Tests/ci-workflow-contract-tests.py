@@ -135,6 +135,8 @@ def main() -> int:
     assert "TERENTO_ADMIN_ACCESS_REQUIRED: 'true'" in deploy_api
     deploy_site = (WORKFLOWS / "deploy-site.yml").read_text(encoding="utf-8")
     assert "Retain website deployment health" in deploy_site
+    assert "website observation attempt" in deploy_site
+    assert "catalog API observation attempt" in deploy_api
     publisher = (WORKFLOWS / "publish-vps-images.yml").read_text(encoding="utf-8")
     assert "workflow_call:" in publisher
     assert "digest: ${{ steps.image.outputs.digest }}" in publisher
