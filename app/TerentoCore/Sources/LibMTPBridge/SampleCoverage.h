@@ -10,6 +10,16 @@ typedef struct {
     uint32_t length;
 } TerentoSampleRegion;
 
+/* Garmin's split data phase can end at an exact USB packet boundary.
+ * An odd payload length ends in a short packet for USB bulk packet sizes,
+ * avoiding libmtp's separate zero-length terminator read. The next request
+ * still reads the remaining byte; sample coverage is never shortened. */
+static uint32_t terento_sample_read_request(uint32_t remaining, int short_packet) {
+    uint32_t requested = remaining > 64 * 1024 ? 64 * 1024 : remaining;
+    if (short_packet && requested > 0 && (requested % 2) == 0) requested--;
+    return requested;
+}
+
 /* Keep every requested byte, reading overlaps only once. Each output entry
    still represents one original sample; length zero means earlier entries
    cover it completely. Callers must verify entries in this sorted order. */

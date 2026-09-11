@@ -24,6 +24,7 @@ private final class OperationCounter: @unchecked Sendable {
 @main
 struct MTPOperationConcurrencyTests {
     static func main() async throws {
+        try testCleanupRetainsGateAndRunsAfterFailure()
         try testIdlePresenceIsAllowed()
         try testLifecyclePausesPresence()
         try await testAsyncLifecycleWaitsForPreviousOperation()
@@ -34,7 +35,28 @@ struct MTPOperationConcurrencyTests {
         try testDisconnectInvalidatesMutationLease()
         try testStaleLifecycleCompletionIsRejected()
 
-        print("PASS: 9 MTP operation concurrency and disconnect tests")
+        print("PASS: 10 MTP operation concurrency and disconnect tests")
+    }
+
+    private static func testCleanupRetainsGateAndRunsAfterFailure() throws {
+        let cleanupStarted = DispatchSemaphore(value: 0)
+        let allowCleanup = DispatchSemaphore(value: 0)
+        let done = DispatchSemaphore(value: 0)
+        let gate = MTPOperationGate(nativeCleanup: {
+            cleanupStarted.signal()
+            allowCleanup.wait()
+        })
+        DispatchQueue.global().async {
+            do {
+                try gate.withOperation(kind: .inventory) { throw Failure("native failure") }
+            } catch {}
+            done.signal()
+        }
+        guard cleanupStarted.wait(timeout: .now() + 2) == .success else { throw Failure("failed operation skipped native cleanup") }
+        guard gate.isNativeOperationActive && !gate.canEject else { throw Failure("gate released before native context stopped") }
+        allowCleanup.signal()
+        guard done.wait(timeout: .now() + 2) == .success && !gate.isBusy else { throw Failure("cleanup completion did not release gate") }
+        print("PASS: failing native operation retains gate until context shutdown completes")
     }
 
     private static func testIdlePresenceIsAllowed() throws {

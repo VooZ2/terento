@@ -15,6 +15,26 @@
 #include <time.h>
 #include <unistd.h>
 
+#if defined(TERENTO_BUNDLED_MTP)
+extern void LIBMTP_Terento_End_Operation(void);
+extern void LIBMTP_Terento_Abort_Device(void *usbinfo);
+#endif
+
+void terento_mtp_end_operation(void) {
+#if defined(TERENTO_BUNDLED_MTP)
+    LIBMTP_Terento_End_Operation();
+#endif
+}
+
+static void abort_failed_device(LIBMTP_mtpdevice_t *device) {
+#if defined(TERENTO_BUNDLED_MTP)
+    LIBMTP_Terento_Abort_Device(device->usbinfo);
+#else
+    /* Legacy Homebrew harness lacks local extensions; never use for delivery. */
+    (void)device; /* ordinary upstream close in the legacy development harness */
+#endif
+}
+
 #define GARMIN_VENDOR_ID 0x091e
 #define TERENTO_WRITE_TEST_PRODUCT_ID 0x51b8
 #define TERENTO_WRITE_TEST_FILENAME "terento-write-test.txt"
@@ -1970,9 +1990,17 @@ int terento_mtp_verify_managed_map_samples(
 
     TerentoFinishingTrace trace = terento_trace_start();
     terento_trace_event(&trace, "verify_begin", 0, 0, sample_count);
-    const unsigned int maximum_sample_attempts = 3;
     LIBMTP_mtpdevice_t *device = NULL;
     int result = 0;
+
+    int short_packet_reads = 0;
+#if defined(__APPLE__)
+    /* Local workaround for the reproduced macOS fenix 8 read failure.
+       Preserve every planned byte and the normal policy on other devices. */
+    short_packet_reads = profile->vendor_id == 0x091e && profile->product_id == 0x51b8;
+#endif
+    terento_trace_event(&trace, "read_chunk_limit", 0, short_packet_reads,
+                        terento_sample_read_request(64 * 1024, short_packet_reads));
 
     for (size_t index = 0; index < sample_count; index += 1) {
         terento_trace_event(&trace, "region_begin", sample_regions[index].offset, 0, index);
@@ -1980,17 +2008,13 @@ int terento_mtp_verify_managed_map_samples(
         /* Keep the exact sampled byte coverage, but do not ask Garmin firmware
            to buffer a multi-megabyte GetPartialObject response in one call. */
         for (uint32_t consumed = 0; consumed < region_length;) {
-        uint64_t offset = sample_regions[index].offset + consumed;
-        uint32_t requested = region_length - consumed;
-        if (requested > 64 * 1024) requested = 64 * 1024;
-        unsigned int failed_attempts = 0;
-        int sample_verified = 0;
-
-        while (!sample_verified) {
+            uint64_t offset = sample_regions[index].offset + consumed;
+            uint32_t requested = terento_sample_read_request(
+                region_length - consumed, short_packet_reads);
             if (device == NULL) {
                 uint16_t vendor_id = 0;
                 uint16_t product_id = 0;
-                terento_trace_event(&trace, "open_begin", offset, 0, failed_attempts);
+                terento_trace_event(&trace, "open_begin", offset, 0, 0);
                 device = open_single_garmin_device(
                     &vendor_id,
                     &product_id,
@@ -1998,7 +2022,7 @@ int terento_mtp_verify_managed_map_samples(
                     error_message_capacity,
                     1
                 );
-                terento_trace_event(&trace, "open_end", offset, device == NULL ? -8 : 0, failed_attempts);
+                terento_trace_event(&trace, "open_end", offset, device == NULL ? -8 : 0, 0);
                 if (device == NULL) {
                     result = -8;
                     goto sample_cleanup;
@@ -2080,18 +2104,12 @@ int terento_mtp_verify_managed_map_samples(
                 if (raw_bytes != NULL) {
                     LIBMTP_FreeMemory(raw_bytes);
                 }
-                failed_attempts += 1;
-                if (failed_attempts >= maximum_sample_attempts) {
-                    set_device_error(error_message, error_message_capacity, device, "The sampled map verification failed repeatedly");
-                    result = -9;
-                    goto sample_cleanup;
-                }
-                terento_trace_event(&trace, "retry_close_begin", offset, 0, failed_attempts);
-                LIBMTP_Release_Device(device);
-                terento_trace_event(&trace, "retry_close_returned", offset, 0, failed_attempts);
-                device = NULL;
-                usleep(250000);
-                continue;
+                set_device_error(error_message, error_message_capacity, device, "The sampled map could not be read. Reconnect the watch before retrying.");
+                terento_trace_event(&trace, "abort_close_begin", offset, read_result, 0);
+                abort_failed_device(device);
+                terento_trace_event(&trace, "abort_close_returned", offset, read_result, 0);
+                result = -9;
+                goto sample_cleanup;
             }
 
             unsigned char *source_bytes = malloc(requested);
@@ -2113,27 +2131,14 @@ int terento_mtp_verify_managed_map_samples(
 
             if (!matches) {
                 terento_trace_event(&trace, "compare_failed", offset, seek_result, source_length);
-                failed_attempts += 1;
-                if (failed_attempts >= maximum_sample_attempts) {
-                    set_error(error_message, error_message_capacity, "A sampled map region did not match the validated source");
-                    result = -11;
-                    goto sample_cleanup;
-                }
-                /* A stale read-only object cache is recoverable. Reopen the
-                   session and resolve the exact managed target before the
-                   same sample is compared again. */
-                terento_trace_event(&trace, "retry_close_begin", offset, 0, failed_attempts);
-                LIBMTP_Release_Device(device);
-                terento_trace_event(&trace, "retry_close_returned", offset, 0, failed_attempts);
-                device = NULL;
-                usleep(250000);
-                continue;
+                set_error(error_message, error_message_capacity, "A sampled map region did not match the validated source");
+                result = -11;
+                goto sample_cleanup;
             }
 
             *sampled_bytes += requested;
             terento_trace_verified(&trace, offset + requested, *sampled_bytes);
             consumed += requested;
-            sample_verified = 1;
             if (progress_callback != NULL
                 && progress_callback(*sampled_bytes, total_sample_bytes, progress_context) != 0) {
                 set_error(error_message, error_message_capacity, "The sampled map verification was cancelled");
@@ -2141,12 +2146,9 @@ int terento_mtp_verify_managed_map_samples(
                 goto sample_cleanup;
             }
         }
-        }
         *matched_samples += 1;
-        /* Keep the read-only verification session open across all sampled
-           regions. This is the same low-churn pattern used by the fast safe
-           delete path; a failed read still releases and reopens the session
-           through the retry branch above. */
+        /* Healthy reads retain one session across every sample. A transport
+           failure exits; only the parent owns any recoverable retry. */
     }
 
 sample_cleanup:
