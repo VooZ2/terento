@@ -27,7 +27,10 @@ from .device_catalog import _official_source_image_url
 from .failure_reasons import failure_reason_label, normalize_failure_reason
 from .map_capability import classify_map_capable
 from .admin_world_map import WORLD_MAP_COUNTRY_ALIASES, WORLD_MAP_SVG
-from .maprando_geography import REGION_DISPLAY_NAMES as MAPRANDO_REGION_DISPLAY_NAMES
+from .maprando_geography import (
+    REGION_DISPLAY_NAMES as MAPRANDO_REGION_DISPLAY_NAMES,
+    REGION_GEOGRAPHY,
+)
 from .operational_health import provider_catalog_health
 
 
@@ -1016,32 +1019,106 @@ _ADMIN_REGION_IDENTITY_ALIASES = {
 }
 
 
+def _admin_region_token(value: Any) -> str:
+    return re.sub(r"[^A-Za-z0-9]+", "", str(value or "")).upper()
+
+
+def _admin_country_alias_data() -> tuple[dict[str, str], dict[str, str]]:
+    """Build country aliases without collapsing provider subregions.
+
+    The world-map alias table knows many country spellings, while MapRando's
+    reviewed geography table identifies which provider slugs are whole-country
+    regions. Combine only those sources; broad map aliases such as Balearics
+    must remain region-specific in the Regions statistics.
+    """
+    identities_by_country: dict[str, str] = {}
+    displays_by_identity: dict[str, str] = {}
+
+    # Preserve established admin identities where the existing display table
+    # already names an ISO-2/ISO-3 country code.
+    for alias, display in _ADMIN_REGION_DISPLAY_NAMES.items():
+        token = _admin_region_token(alias)
+        map_country = WORLD_MAP_COUNTRY_ALIASES.get(token)
+        if len(token) not in {2, 3} or not map_country:
+            continue
+        country_code = _admin_region_token(map_country)
+        identity = _admin_region_token(display)
+        if country_code and identity and identity != "UNKNOWN":
+            identities_by_country.setdefault(country_code, identity)
+            displays_by_identity.setdefault(identity, display)
+
+    # MapRando supplies the provider-native spellings (for example
+    # BELGIQUE) and explicitly marks whole-country regions. Its display name
+    # also gives the preferred human-readable label for other providers' IDs.
+    for slug, (country_codes, region_kind) in REGION_GEOGRAPHY.items():
+        if region_kind != "country" or len(country_codes) != 1:
+            continue
+        country_code = _admin_region_token(country_codes[0])
+        display = str(MAPRANDO_REGION_DISPLAY_NAMES.get(slug) or "").strip()
+        if not country_code or not display:
+            continue
+        identity = identities_by_country.setdefault(
+            country_code, _admin_region_token(display),
+        )
+        displays_by_identity.setdefault(identity, display)
+
+    aliases: dict[str, str] = {}
+
+    # Add reviewed MapRando country slugs and their English labels.
+    for slug, (country_codes, region_kind) in REGION_GEOGRAPHY.items():
+        if region_kind != "country" or len(country_codes) != 1:
+            continue
+        country_code = _admin_region_token(country_codes[0])
+        identity = identities_by_country.get(country_code)
+        if not identity:
+            continue
+        display = str(MAPRANDO_REGION_DISPLAY_NAMES.get(slug) or "").strip()
+        for alias in (slug, display, country_code):
+            token = _admin_region_token(alias)
+            if token:
+                aliases.setdefault(token, identity)
+
+    # Add ISO-3 aliases (BEL, CHE, CZE, …) and only the short country aliases
+    # from the world-map table. Do not import its region-to-country aliases.
+    for alias, map_country in WORLD_MAP_COUNTRY_ALIASES.items():
+        token = _admin_region_token(alias)
+        if len(token) not in {2, 3}:
+            continue
+        identity = identities_by_country.get(_admin_region_token(map_country))
+        if identity:
+            aliases.setdefault(token, identity)
+
+    for token, identity in aliases.items():
+        _ADMIN_REGION_IDENTITY_ALIASES.setdefault(token, identity)
+        display = displays_by_identity.get(identity)
+        if display:
+            _ADMIN_REGION_DISPLAY_NAMES.setdefault(token, display)
+    return aliases, displays_by_identity
+
+
+_ADMIN_COUNTRY_IDENTITY_ALIASES, _ADMIN_COUNTRY_DISPLAY_NAMES = _admin_country_alias_data()
+
+
 def _admin_region_identity(
     canonical_region_id: Any, country: Any = None, region: Any = None,
 ) -> str:
     """Return one cross-provider admin geography key from existing metadata."""
-    canonical_token = re.sub(
-        r"[^A-Za-z0-9]+", "", str(canonical_region_id or "")
-    ).upper()
+    canonical_token = _admin_region_token(canonical_region_id)
     if canonical_token:
         return _ADMIN_REGION_IDENTITY_ALIASES.get(
             canonical_token, canonical_token,
         )
     # A country is a fallback, not a region identity: Azores and Madeira
     # must never collapse into whichever Portuguese region appears first.
-    region_token = re.sub(r"[^A-Za-z0-9]+", "", str(region or "")).upper()
+    region_token = _admin_region_token(region)
     if region_token:
         return _ADMIN_REGION_IDENTITY_ALIASES.get(region_token, region_token)
-    country_identity = re.sub(
-        r"[^A-Za-z0-9]+", "", _admin_map_display_name(country)
-    ).upper() if country else ""
+    country_identity = _admin_region_token(_admin_map_display_name(country)) if country else ""
     if country_identity and country_identity != "UNKNOWN":
         return _ADMIN_REGION_IDENTITY_ALIASES.get(
             country_identity, country_identity,
         )
-    region_identity = re.sub(
-        r"[^A-Za-z0-9]+", "", str(region or "")
-    ).upper()
+    region_identity = _admin_region_token(region)
     return _ADMIN_REGION_IDENTITY_ALIASES.get(
         region_identity, region_identity or "UNKNOWN",
     )

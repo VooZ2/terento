@@ -631,6 +631,9 @@ contain multiple packages. Overview and Map statistics therefore do not imply
 identical totals. The Regions disclosure groups equivalent provider labels by
 `region_identity`, sums their package-operation counts, and keeps the newest
 activity timestamp; Popular maps remains grouped by provider package.
+At country level, `region_identity` normalizes ISO-2/ISO-3, English, and
+provider-local country aliases into one stable country grouping, while reviewed
+subregions and multi-country packages remain separate.
 Compatibility Installations remain an all-time evidence
 view. Missing or unknown values use an explicit neutral state or em dash,
 rather than silently presented zeros. Unauthenticated requests redirect to

@@ -212,6 +212,37 @@ class AdminAuditTests(unittest.TestCase):
         self.assertEqual(_admin_region_identity(None,None,'POL+'),_admin_region_identity(None,'PL','POLAND'))
         self.assertEqual(_admin_region_identity('USA-CALIFORNIA','US','CALIFORNIA'),'USACALIFORNIA')
 
+    def test_country_aliases_merge_providers_without_collapsing_subregions(self):
+        country_aliases = {
+            'BELGIUM': ('BE', 'BEL', 'BELGIUM', 'BELGIQUE'),
+            'AUSTRIA': ('AT', 'AUT', 'AUSTRIA', 'AUTRICHE'),
+            'DENMARK': ('DK', 'DNK', 'DENMARK', 'DANEMARK'),
+            'ESTONIA': ('EE', 'EST', 'ESTONIA', 'ESTONIE'),
+            'FINLAND': ('FI', 'FIN', 'FINLAND', 'FINLANDE'),
+            'GREECE': ('GR', 'GRC', 'GREECE', 'GRECE'),
+        }
+        for expected, aliases in country_aliases.items():
+            with self.subTest(expected=expected):
+                identities = {
+                    _admin_region_identity(alias, aliases[0], alias)
+                    for alias in aliases
+                }
+                self.assertEqual(identities, {expected})
+
+        self.assertEqual(_admin_map_display_name('BE'), 'Belgium')
+        self.assertEqual(
+            _admin_region_display_name('BELGIQUE', 'BE', 'BELGIQUE', 'Belgium'),
+            'Belgium',
+        )
+        self.assertNotEqual(
+            _admin_region_identity('BALEARICS', 'ES', 'BALEARICS'),
+            _admin_region_identity('ESP', 'ES', 'ESP'),
+        )
+        self.assertNotEqual(
+            _admin_region_identity('CAROLINEDUNORD', 'US', 'CAROLINEDUNORD'),
+            _admin_region_identity('USA', 'US', 'USA'),
+        )
+
     def test_overview_fallback_keeps_region_readable(self):
         self.assertEqual(_overview_map_event_context({'region':'SVN+','provider_name':'Freizeitkarte'}),'Slovenia · Freizeitkarte')
         self.assertEqual(
