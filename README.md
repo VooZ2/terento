@@ -10,7 +10,7 @@ third-party maps on map-capable Garmin smartwatches. Choose from
 [Freizeitkarte](https://www.freizeitkarte-osm.de/),
 [OpenTopoMap](https://garmin.opentopomap.org/),
 [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), and
-[BBBike](https://data.bbbike.org/osm/region/), or import your own
+[BBBike](https://garmin.bbbike.org), or import your own
 compatible `.img` map.
 
 **Connect → Install → Done**
@@ -119,7 +119,7 @@ The current catalog includes main-map packages from
 [Freizeitkarte](https://www.freizeitkarte-osm.de/),
 [OpenTopoMap](https://garmin.opentopomap.org/),
 [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), and
-[BBBike](https://data.bbbike.org/osm/region/), based on OpenStreetMap data.
+[BBBike](https://garmin.bbbike.org), based on OpenStreetMap data.
 BBBike is the fourth provider, with two independent map types: BBBike and BBBike (Ontrail).
 Only the ready Garmin latin1 regional packages are included.
 Maps download from each provider's original infrastructure; Terento does not
