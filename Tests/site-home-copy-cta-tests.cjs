@@ -155,14 +155,14 @@ for (const [locale, expected] of locales) {
   const page = pageFor(locale);
   assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20260912-map-cards-v1">/, `${locale}: Home stylesheet cache bust`);
   assert.match(page, /<script defer src="\/home-features\.js\?v=20260904-home-workflow-tabs"><\/script>/, `${locale}: Home feature script cache bust`);
-  assert.match(page, /installing-maps-1600\.png\?v=20260905-app-screens-v1/, `${locale}: installation screenshot cache bust`);
+  assert.match(page, /installing-maps-1600\.png\?v=20260912-app-screens-v2/, `${locale}: installation screenshot cache bust`);
   const heroArtwork = page.match(/<figure class="app-shot app-shot--hero">[\s\S]*?<\/figure>/)?.[0];
   assert.ok(heroArtwork, `${locale}: hero screenshot exists`);
   assert.doesNotMatch(heroArtwork, /your-garmin/);
   for (const format of ["avif", "webp", "png"]) {
-    assert.ok(heroArtwork.includes(`installing-maps-1600.${format}?v=20260905-app-screens-v1`));
+    assert.ok(heroArtwork.includes(`installing-maps-1600.${format}?v=20260912-app-screens-v2`));
   }
-  assert.match(heroArtwork, /width="2198" height="1335"/);
+  assert.match(heroArtwork, /width="2358" height="1575"/);
   assert.match(heroArtwork, /alt="[^"]+" fetchpriority="high"/);
   const h1 = page.match(/<h1 id="hero-title">([^<]+)<\/h1>/);
   assert.ok(h1, `${locale}: missing hero H1`);
@@ -219,6 +219,13 @@ for (const [locale, expected] of locales) {
   assert.equal((installShowcase.match(/<figure class="app-shot app-shot--feature">/g) || []).length, 1);
   assert.equal((manageShowcase.match(/<figure class="app-shot app-shot--feature">/g) || []).length, 1);
   assert.doesNotMatch(installShowcase, /ready-to-install|installing-maps/);
+  for (const [showcase, stem] of [[installShowcase, "install-maps"], [manageShowcase, "manage-maps"]]) {
+    assert.match(showcase, /width="2358" height="1575"/);
+    for (const url of showcase.match(/\/assets\/app\/optimized\/[^"\s,]+/g) || []) {
+      assert.ok(url.startsWith(`/assets/app/optimized/${stem}-`));
+      assert.ok(url.endsWith("?v=20260912-app-screens-v2"), `${locale}: screenshot cache version`);
+    }
+  }
   assert.match(installShowcase, /class="shell product-showcase-panel"><div class="product-showcase-grid">/);
   assert.match(manageShowcase, /class="shell product-showcase-panel"><div class="product-showcase-grid">/);
   const providerSection = page.match(/<section class="provider-section section"[\s\S]*?<\/section>/)?.[0];

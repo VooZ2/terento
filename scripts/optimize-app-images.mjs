@@ -13,6 +13,7 @@ const widths = [640, 960, 1280, 1600];
 const sourceNames = [
   "your-garmin.png",
   "install-maps.png",
+  "map-selected.png",
   "ready-to-install.png",
   "installing-maps.png",
   "manage-maps.png",
@@ -22,7 +23,9 @@ const sourceNames = [
 
 await fs.mkdir(optimizedDir, { recursive: true });
 
-for (const sourceName of sourceNames) {
+const requested = process.argv.slice(2);
+if (requested.some((name) => !sourceNames.includes(name))) throw new Error("Unknown screenshot master");
+for (const sourceName of sourceNames.filter((name) => !requested.length || requested.includes(name))) {
   const sourcePath = path.join(mastersDir, sourceName);
   const metadata = await sharp(sourcePath).metadata();
   const sourceWidth = metadata.width;
@@ -43,6 +46,7 @@ for (const sourceName of sourceNames) {
   }
 }
 
+if (!requested.length) {
 const socialMaster = path.join(mastersDir, "your-garmin.png");
 const socialScreenshot = await sharp(socialMaster)
   .resize({ width: 650, height: 412, fit: "inside", withoutEnlargement: true })
@@ -76,4 +80,6 @@ await sharp(socialBackdrop)
   .png({ compressionLevel: 9, adaptiveFiltering: true })
   .toFile(path.join(projectRoot, "site", "og.png"));
 
-console.log(`Optimized ${sourceNames.length} screenshots at ${widths.length} responsive widths and generated site/og.png`);
+}
+
+console.log(`Optimized ${requested.length || sourceNames.length} screenshots at ${widths.length} responsive widths${requested.length ? "" : " and generated site/og.png"}`);
