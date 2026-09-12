@@ -631,14 +631,19 @@ totals. These pagination parameters are private admin presentation controls.
 ## `GET /admin/map-statistics`
 
 The coverage map starts and resets at a padded full-world fit (100%). Resizing
-refits an untouched overview while preserving manual pan/zoom. Coverage fills one row with popularity below at every width. The map viewport
-follows its 900:365 source proportions without a fixed minimum height. Controls
-overlay the desktop top-left corner; mobile uses a compact edge toolbar so 44px
-buttons do not obscure the map. Continuous world-fit zoom uses 12px total
-padding. The map card scrolls normally instead of sticking over the table. Popularity tables
-wrap full names, package identifiers and timestamps inside fixed-width columns.
-Top maps and Browse all maps omit the redundant Provider column; the package
-identifier remains below the map name and provider search remains available.
+refits an untouched overview while preserving manual pan/zoom. Above 1100px,
+coverage and popularity share a 3:1 row with a minimum 300px sidebar. The sidebar
+matches the map card height and scrolls independently; narrower screens stack
+the cards with the shared spacing. The map viewport follows its 900:365 source
+proportions without a fixed minimum height. Zoom/reset controls overlay the
+desktop top-left corner; mobile uses a compact edge toolbar so 44px controls do
+not cover small countries. World-fit zoom uses continuous precision with 12px
+total fit padding. Popularity uses compact rows with full names, package
+identifiers, counts and timestamps; the redundant Provider column is omitted.
+Regions is available above Top 5 maps. Map and region buttons highlight and
+focus the corresponding country; focus is immediate so reset cannot race an
+unfinished navigation animation. Browse-all pagination and provider search
+remain available. The scrollable sidebar has a keyboard focus indicator.
 
 Authenticated, no-store/noindex HTML dashboard for the same aggregate read
 model. It supports Last 24 hours, Last 7 days, Last 30 days, and All time
