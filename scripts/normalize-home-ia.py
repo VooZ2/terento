@@ -743,6 +743,8 @@ for _locale, (_base_summary, _trail_summary, _base_benefits, _trail_benefits) in
             "benefits": _benefits,
         }
 
+MAPRANDO_LANGUAGE_NOTES = {'en': 'Some map labels are in French.', 'de': 'Einige Kartenbeschriftungen sind auf Französisch.', 'fr': 'Certains libellés de la carte sont en français.', 'pl': 'Niektóre opisy na mapie są po francusku.', 'cs': 'Některé popisky mapy jsou ve francouzštině.', 'it': 'Alcune etichette della mappa sono in francese.'}
+
 def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
     cards = []
     for provider_id in ("freizeitkarte", "opentopomap", "maprando", "bbbike", "bbbike-ontrail"):
@@ -752,6 +754,8 @@ def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
         count_hidden = "" if fallback_count else " hidden"
         benefits = "".join(f"<li>{html.escape(benefit)}</li>" for benefit in provider["benefits"])
         addon = ""
+        if provider_id == "maprando":
+            addon = f'<p class="provider-language-note"><span aria-hidden="true">ⓘ</span><span>{html.escape(MAPRANDO_LANGUAGE_NOTES[locale])}</span></p>'
         if provider_id == "opentopomap":
             contour = PROVIDER_CARD_COPY[locale]["contours"]
             addon = f'''<details class="provider-addon" data-provider-addon="contours">
