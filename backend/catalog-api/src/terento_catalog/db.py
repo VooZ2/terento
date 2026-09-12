@@ -1062,9 +1062,26 @@ class Database:
                    AND NOT EXISTS (
                        SELECT 1
                        FROM map_download_event AS installed
+                       LEFT JOIN map_package AS installed_package
+                         ON installed_package.id = installed.map_package_id
                        WHERE installed.operation_id = e.operation_id
                          AND installed.provider_id = e.provider
-                         AND installed.region IS NOT DISTINCT FROM e.region
+                         AND (
+                             installed.region IS NOT DISTINCT FROM e.region
+                             OR (
+                                 installed_package.provider_id = installed.provider_id
+                                 AND e.region IN (
+                                     installed_package.provider_region_id,
+                                     installed_package.canonical_region_id,
+                                     installed_package.region
+                                 )
+                                 AND installed.region IN (
+                                     installed_package.provider_region_id,
+                                     installed_package.canonical_region_id,
+                                     installed_package.region
+                                 )
+                             )
+                         )
                          AND installed.is_local_test IS NOT TRUE
                          AND installed.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
                    )
@@ -2977,9 +2994,26 @@ class Database:
                 AND NOT EXISTS (
                     SELECT 1
                     FROM map_download_event AS installed
+                    LEFT JOIN map_package AS installed_package
+                      ON installed_package.id = installed.map_package_id
                     WHERE installed.operation_id = e.operation_id
                       AND installed.provider_id = e.provider
-                      AND installed.region IS NOT DISTINCT FROM e.region
+                      AND (
+                          installed.region IS NOT DISTINCT FROM e.region
+                          OR (
+                              installed_package.provider_id = installed.provider_id
+                              AND e.region IN (
+                                  installed_package.provider_region_id,
+                                  installed_package.canonical_region_id,
+                                  installed_package.region
+                              )
+                              AND installed.region IN (
+                                  installed_package.provider_region_id,
+                                  installed_package.canonical_region_id,
+                                  installed_package.region
+                              )
+                          )
+                      )
                       AND installed.is_local_test IS NOT TRUE
                       AND installed.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
                 )
