@@ -250,7 +250,9 @@ outer margins. Provider, model, system-health and map-statistics card groups use
 the same spacing, while headings and internal control spacing retain their roles.
 Mobile Devices filters retain a 12px gap before empty or populated result cards.
 
-The Overview review panel retains its heading and queue shortcuts when empty,
+The Overview review panel uses the same heading style and header layout in
+empty and populated states. Queue shortcuts occupy a separate row below the
+header and any issue list. The panel retains its heading and shortcuts when empty,
 without an additional “No issues need attention” sentence.
 
 The shared authenticated admin navigation shows `Review queue` only when an
@@ -629,8 +631,11 @@ totals. These pagination parameters are private admin presentation controls.
 ## `GET /admin/map-statistics`
 
 The coverage map starts and resets at a padded full-world fit (100%). Resizing
-refits an untouched overview while preserving manual pan/zoom. Coverage and
-popularity share equal desktop columns and stack below 1200px. Popularity tables
+refits an untouched overview while preserving manual pan/zoom. Coverage fills one row with popularity below at every width. The map viewport
+follows its 900:365 source proportions without a fixed minimum height. Controls
+overlay the desktop top-left corner; mobile uses a compact edge toolbar so 44px
+buttons do not obscure the map. Continuous world-fit zoom uses 12px total
+padding. The map card scrolls normally instead of sticking over the table. Popularity tables
 wrap full names, package identifiers and timestamps inside fixed-width columns.
 Top maps and Browse all maps omit the redundant Provider column; the package
 identifier remains below the map name and provider search remains available.

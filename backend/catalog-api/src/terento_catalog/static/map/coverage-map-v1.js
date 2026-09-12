@@ -10,7 +10,7 @@
     const [, , width, height] = svg.getAttribute('viewBox').split(/\s+/).map(Number);
     const bounds = L.latLngBounds([0, 0], [height, width]);
     const map = L.map(container, {
-      crs: L.CRS.Simple, minZoom: -4, maxZoom: 4, zoomSnap: .25,
+      crs: L.CRS.Simple, minZoom: -4, maxZoom: 4, zoomSnap: 0,
       scrollWheelZoom: true, attributionControl: true, zoomControl: false,
       maxBounds: bounds.pad(.3), maxBoundsViscosity: .8
     });
@@ -44,7 +44,7 @@
       });
     });
     // 100% fits the complete world with a small inset at every viewport size.
-    const initialZoom = () => map.getBoundsZoom(bounds, false, [24, 24]);
+    const initialZoom = () => map.getBoundsZoom(bounds, false, [12, 12]);
     let overviewZoom;
     const reset = () => {
       map.invalidateSize();

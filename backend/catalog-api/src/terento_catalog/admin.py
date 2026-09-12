@@ -1646,9 +1646,7 @@ def overview_page(
         "overview-secondary-grid overview-secondary-grid-single"
     )
     attention_section = (
-        f"<section class='overview-panel overview-attention-panel' aria-labelledby='overview-attention-title'><div class='section-heading'><div><p class='section-kicker'>All unresolved · any date</p><h2 id='overview-attention-title'>Review queue</h2></div><a class='section-link' href='{html.escape(attention_href, quote=True)}'>View all&nbsp;{_admin_icon('arrow-right')}</a></div>{attention_content}"
-        if has_review_queue else
-        f"<section class='overview-panel overview-attention-panel overview-attention-empty' aria-labelledby='overview-attention-title'><div><p class='section-kicker'>All unresolved · any date</p><h2 id='overview-attention-title'>Review queue</h2></div>{attention_content}<a class='section-link' href='{html.escape(attention_href, quote=True)}'>View all&nbsp;{_admin_icon('arrow-right')}</a>"
+        f"<section class='overview-panel overview-attention-panel{' overview-attention-empty' if not has_review_queue else ''}' aria-labelledby='overview-attention-title'><div class='section-heading'><div><p class='section-kicker'>All unresolved · any date</p><h2 id='overview-attention-title'>Review queue</h2></div><a class='section-link' href='{html.escape(attention_href, quote=True)}'>View all&nbsp;{_admin_icon('arrow-right')}</a></div>{attention_content}"
     )
     review = user.get("admin_review_summary") or {}
     attention_section += (
@@ -2556,7 +2554,7 @@ def map_statistics_page(
         <section class='map-statistics-coverage-layout' id='map-statistics-coverage' {'hidden' if not has_event_data else ''} aria-label='Installation coverage'><section class='provider-card map-statistics-world-map-card' aria-labelledby='map-statistics-world-map-title'><div class='section-heading'><div><p class='section-kicker'>Coverage</p><h2 id='map-statistics-world-map-title'>Installations by country</h2></div><p class='table-help' id='map-statistics-world-map-status'>Successful map-package installs</p></div><div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map showing successful map-package installations by country'><div class='world-map-controls' role='group' aria-label='Map navigation'><button type='button' data-map-zoom='in' aria-label='Zoom in'>+</button><button type='button' data-map-zoom='out' aria-label='Zoom out'>−</button><button type='button' data-map-zoom='reset'>Reset map</button><span id='world-map-zoom-status' role='status'>100%</span></div><div class='world-map-svg' id='world-map-svg' tabindex='0' aria-label='Map viewport. Use arrow keys to pan, plus and minus to zoom, or drag the map.'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div></section><section class='provider-card map-statistics-popularity' id='map-statistics-popularity'><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Popular maps</h2></div></div><div class='popularity-subsection' id='top-maps-section'><h3>Top 5 maps</h3><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Popular maps</caption><thead><tr><th scope='col'>Map / region</th><th scope='col'>Package installs</th><th scope='col'>Last activity</th></tr></thead><tbody id='map-rows'></tbody></table></div><details class='admin-disclosure popularity-all-maps-disclosure'><summary id='all-maps-summary'>Browse all maps</summary><div class='disclosure-body'><label>Search maps<input type='search' id='all-maps-search' placeholder='Map, region or provider'></label><div class='table-wrap'><table class='admin-table'><thead><tr><th>Map / region</th><th>Installs</th><th>Last activity</th></tr></thead><tbody id='all-map-rows'></tbody></table></div><div class='provider-pagination'><button type='button' id='all-maps-prev'>Previous</button><span id='all-maps-page' role='status'></span><button type='button' id='all-maps-next'>Next</button></div></div></details></div><details class='admin-disclosure popularity-regions-disclosure'><summary>Regions</summary><div class='disclosure-body'><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Top regions</caption><thead><tr><th scope='col'>Region</th><th scope='col' title='Completed map-package installs'>Installs</th><th scope='col'>Last activity</th></tr></thead><tbody id='top-region-rows'></tbody></table></div></div></details></section></section>
         <section class='provider-card map-events-card' {'hidden' if not has_event_data else ''}><details class='admin-disclosure' id='map-statistics-event-detail'><summary id='map-statistics-event-summary'>Event detail · {event_status}</summary><div class='disclosure-body' id='map-statistics-event-body'>{event_table}</div></details></section>
       </main>
-      <link rel="stylesheet" href="/admin/map-assets/leaflet-1.9.4.css"><link rel="stylesheet" href="/admin/map-assets/coverage-map-v1.css"><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/leaflet-1.9.4.js"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/coverage-map-v1.js?v=20260913-world-fit-1"></script><script>window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};window.terentoWorldMapSvg = {_admin_json(WORLD_MAP_SVG)};window.terentoWorldMapCountryAliases = {_admin_json(WORLD_MAP_COUNTRY_ALIASES)};{_map_statistics_script()}</script>
+      <link rel="stylesheet" href="/admin/map-assets/leaflet-1.9.4.css"><link rel="stylesheet" href="/admin/map-assets/coverage-map-v1.css"><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/leaflet-1.9.4.js"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/coverage-map-v1.js?v=20260913-full-width-2"></script><script>window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};window.terentoWorldMapSvg = {_admin_json(WORLD_MAP_SVG)};window.terentoWorldMapCountryAliases = {_admin_json(WORLD_MAP_COUNTRY_ALIASES)};{_map_statistics_script()}</script>
     """
     return _layout("Map statistics", content)
 
@@ -5425,10 +5423,8 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
   .overview-map-totals,.overview-download-totals{justify-content:flex-start;margin-inline-start:0}
 }
 @media(max-width:560px){.overview-map-totals,.overview-download-totals{flex-basis:100%}}
-.overview-attention-empty{display:grid;grid-template-columns:minmax(0,auto) minmax(180px,1fr) auto;align-items:center;gap:18px;min-height:76px;padding:12px 16px}
-.overview-attention-empty h2,.overview-provider-panel h2{font-family:var(--font-ui);font-size:var(--admin-type-subsection-size);line-height:var(--admin-type-subsection-line);letter-spacing:0}
-.overview-attention-empty .section-kicker,.overview-provider-panel .section-kicker{margin-bottom:1px}
-.overview-attention-empty .overview-empty-state{padding:0;font-size:var(--admin-type-helper-size);line-height:var(--admin-type-helper-line);font-weight:500}
+.overview-provider-panel h2{font-family:var(--font-ui);font-size:var(--admin-type-subsection-size);line-height:var(--admin-type-subsection-line);letter-spacing:0}
+.overview-provider-panel .section-kicker{margin-bottom:1px}
 .overview-provider-panel{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:18px;min-height:76px;padding:12px 16px}
 .overview-provider-panel .overview-provider-summary{justify-content:flex-start}
 .device-information-section .model-information-list{max-width:780px}
@@ -5489,7 +5485,7 @@ table code,.technical-value,.provider-table-wrap code,.audit-technical-details c
   .campaign-card{padding:18px}
   .table-help,.results-count,.page-meta{line-height:16px}
   .overview-compact-empty{align-items:flex-start;flex-direction:column;gap:4px}
-  .overview-attention-empty,.overview-provider-panel{grid-template-columns:1fr;align-items:flex-start;gap:7px}
+  .overview-provider-panel{grid-template-columns:1fr;align-items:flex-start;gap:7px}
   .overview-provider-panel .overview-provider-summary{gap:7px}
   .device-information-section .model-information-list div{grid-template-columns:1fr;gap:2px}
 }
@@ -5657,13 +5653,11 @@ main.dashboard>.heading-row .lede{margin:12px 0 0}
 .world-map-country.is-region-highlight{fill:var(--interactive)!important;stroke:var(--graphite);stroke-width:2}
 .region-map-link{display:inline;padding:0;border:0;border-radius:0;background:none;color:var(--interactive);text-align:left;text-decoration:underline;text-underline-offset:3px;white-space:normal;font:inherit;cursor:pointer}
 .region-map-link:hover{background:none;color:var(--graphite)}
-.map-statistics-coverage-layout{align-items:start;grid-template-columns:repeat(2,minmax(0,1fr))}
+.map-statistics-coverage-layout{align-items:start;grid-template-columns:minmax(0,1fr)}
 .system-health-card[open]{grid-column:1/-1}
 .test-data-activity-caption{display:block;width:100%;max-width:100%;box-sizing:border-box;white-space:normal;overflow-wrap:anywhere;text-align:left;padding:12px;font-size:13px;font-weight:650}
 .telemetry-scope-note{margin:0 0 16px;color:var(--secondary);font-size:12px}.telemetry-scope-note a{color:var(--interactive)}
 [id]{scroll-margin-top:calc(var(--admin-topbar-height,100px) + 16px)}
-@media(min-width:1001px){.map-statistics-world-map-card{position:sticky;top:calc(var(--admin-topbar-height,100px) + 16px)}}
-@media(max-width:1200px){.map-statistics-coverage-layout{grid-template-columns:1fr}}
 .world-map-tooltip{top:64px}
 @media(max-width:900px){.model-information-columns{grid-template-columns:1fr}.model-information-columns .device-information-section .model-information-list div{grid-template-columns:minmax(100px,1fr) minmax(0,3fr)}}
 @media(max-width:700px){main.dashboard{padding-top:20px}.system-health-grid{grid-template-columns:1fr}.model-information-columns .model-information-list div{grid-template-columns:1fr}.system-health-card>summary{gap:8px}}
@@ -5736,7 +5730,11 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .map-statistics-popularity .table-wrap th:first-child{width:50%}
 .map-statistics-popularity .table-secondary,.map-statistics-popularity code{white-space:normal;overflow-wrap:anywhere}
 .map-statistics-world-map-card .section-heading{flex-wrap:wrap}
-.map-statistics-world-map-card .world-map-svg{height:clamp(260px,30vw,420px);min-height:0}
+.map-statistics-world-map-card .map-statistics-world-map{padding:0;min-height:0}
+.map-statistics-world-map-card .world-map-svg{height:auto;min-height:0;aspect-ratio:900 / 365}
+.map-statistics-world-map-card .world-map-controls{position:absolute;z-index:3;top:8px;left:8px;padding:0;gap:6px}
+.map-statistics-world-map-card .world-map-controls span{padding:4px 6px;border-radius:var(--admin-control-radius);background:var(--surface)}
+@media(max-width:700px){.map-statistics-world-map-card .world-map-controls{position:static;padding:8px;gap:4px}.map-statistics-world-map-card .world-map-controls button{padding:6px 8px;white-space:nowrap}.map-statistics-world-map-card .world-map-controls span{padding:4px}}
 .map-statistics-popularity .table-wrap th{white-space:normal;overflow-wrap:normal}
 @media(max-width:700px){.world-map-controls button{min-width:44px;min-height:44px}}
 @media(max-width:700px){
