@@ -767,6 +767,8 @@ class AdminSemanticsTests(unittest.TestCase):
         )
         statistics_script = _map_statistics_script()
         self.assertIn("row.region_identity || row.canonical_region_id", statistics_script)
+        self.assertIn("const mapKey = row.map_package_id || row.region_identity || row.canonical_region_id", statistics_script)
+        self.assertNotIn("row.map_package_id || 'unknown'}\\u0000${row.region || '—'}", statistics_script)
         self.assertIn("const key = item.regionIdentity || item.region", statistics_script)
         self.assertIn("const installRows = rows.filter((row) => row.event_type === 'INSTALL_SUCCEEDED'", statistics_script)
         self.assertIn("renderWorldMap(installRows)", statistics_script)
@@ -779,6 +781,19 @@ class AdminSemanticsTests(unittest.TestCase):
         statistics_query = inspect.getsource(Database.map_statistics)
         self.assertIn("mp.canonical_region_id", statistics_query)
         self.assertIn("mp.country AS region_country", statistics_query)
+
+    def test_map_statistics_fallback_matches_provider_region_aliases_to_explicit_events(self):
+        map_statistics_source = inspect.getsource(Database.map_statistics)
+        overview_source = inspect.getsource(Database.admin_overview_map_snapshot)
+        for source in (map_statistics_source, overview_source):
+            with self.subTest(source=source.split("def ", 1)[0][-30:]):
+                self.assertIn("LEFT JOIN map_package AS installed_package", source)
+                self.assertIn("installed_package.provider_region_id", source)
+                self.assertIn("installed_package.canonical_region_id", source)
+                self.assertIn("installed_package.region", source)
+                self.assertIn("e.region IN (", source)
+                self.assertIn("installed.region IN (", source)
+                self.assertIn("installed.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')", source)
 
         body = map_statistics_page(
             {"rows": []}, [], {"username": "operator"}, "csrf",

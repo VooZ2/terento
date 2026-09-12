@@ -27,6 +27,14 @@ EXPECTED_MISSING_MAP_MODELS = {
     "garmin-tactix-delta", "garmin-tactix-7",
 }
 
+EXPECTED_FENIX_7_PRO_MODELS = {
+    "garmin-fenix-7-pro",
+    "garmin-fenix-7-pro-solar-no-wifi",
+    "garmin-fenix-7s-pro",
+    "garmin-fenix-7x-pro",
+    "garmin-fenix-7x-pro-solar-no-wifi",
+}
+
 
 class HistoricalDeviceRegistryTests(unittest.TestCase):
     def test_fenix_7_is_resolved_without_requiring_retail_catalog_membership(self):
@@ -47,16 +55,32 @@ class HistoricalDeviceRegistryTests(unittest.TestCase):
         self.assertIsNotNone(spec)
         self.assertEqual(spec.id, "garmin-fenix-7s-42")
 
-    def test_fenix_7_pro_does_not_match_historical_fenix_7_record(self):
+    def test_fenix_7_pro_resolves_to_its_own_historical_record(self):
         spec = historical_device_for_event({
             "model": "fēnix 7 Pro",
             "compatibilityIdentity": "fēnix 7 Pro",
             "caseSizeMm": 47,
         })
-        self.assertIsNone(spec)
+        self.assertIsNotNone(spec)
+        self.assertEqual(spec.id, "garmin-fenix-7-pro")
+
+    def test_fenix_7_pro_solar_no_wifi_keeps_a_distinct_identity(self):
+        spec = historical_device_for_event({
+            "model": "fēnix 7 Pro - Solar Edition (no Wi-Fi)",
+        })
+        self.assertIsNotNone(spec)
+        self.assertEqual(spec.id, "garmin-fenix-7-pro-solar-no-wifi")
+
+    def test_fenix_7_pro_registry_contains_all_reviewed_connect_iq_identities(self):
+        specs = {spec.id: spec for spec in all_historical_device_specs()}
+        self.assertTrue(EXPECTED_FENIX_7_PRO_MODELS <= specs.keys())
+        for device_id in EXPECTED_FENIX_7_PRO_MODELS:
+            spec = specs[device_id]
+            self.assertTrue(classify_map_capable(spec.canonical_model))
+            self.assertEqual(spec.source_url, "https://developer.garmin.com/connect-iq/compatible-devices/")
 
     def test_registry_contains_reviewed_source_and_no_write_authorization(self):
-        self.assertEqual(len(HISTORICAL_DEVICE_REGISTRY), 22)
+        self.assertEqual(len(HISTORICAL_DEVICE_REGISTRY), 27)
         self.assertTrue(all(spec.source_url.startswith("https://") for spec in HISTORICAL_DEVICE_REGISTRY))
         self.assertFalse(hasattr(historical_device_spec("garmin-fenix-7-47"), "write_profile"))
 
@@ -92,6 +116,13 @@ class HistoricalDeviceRegistryTests(unittest.TestCase):
         self.assertIn("map_capable, support_status", sql)
         self.assertIn("'HISTORICAL_REVIEWED', FALSE", sql)
         self.assertIn("never authorize a device write", sql)
+
+    def test_fenix_7_pro_migration_seeds_all_reviewed_identities(self):
+        sql = (EXPANDED_MIGRATION.parent / "045_historical_fenix_7_pro_registry.sql").read_text(encoding="utf-8")
+        for device_id in EXPECTED_FENIX_7_PRO_MODELS:
+            self.assertIn(device_id, sql)
+        self.assertIn("HISTORICAL_REVIEWED", sql)
+        self.assertIn("collector_managed", sql)
 
 
 if __name__ == "__main__":
