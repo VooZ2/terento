@@ -99,7 +99,8 @@ runners use the same override and do not depend on a machine-specific path.
 
 Shared API contracts and fixtures live in [contracts/](contracts/README.md).
 Read the fixtures directly; do not copy them into individual language packages.
-Contract changes select all suites.
+Schema and fixture changes select all suites; prose-only contract documentation
+uses the documentation checks. See [CI policy](Tests/README.md).
 
 Hardware tests require an explicitly authorised personal Garmin device. They are not a substitute for automated tests and should not be run against a device containing irreplaceable data.
 

@@ -1,3 +1,7 @@
+> Historical source-validation evidence. Provider activation and package counts
+> below describe the dated checkpoint, not current availability. See the
+> [current API contract](../backend/catalog-api/docs/api.md).
+
 # BBBike backend local contract evidence — 2026-09-12
 
 Local isolated working tree `/private/tmp/terento-bbbike-integration`; this

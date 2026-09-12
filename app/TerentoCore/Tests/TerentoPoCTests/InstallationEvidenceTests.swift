@@ -3,16 +3,19 @@ import Foundation
 private actor UploadRecorder: InstallationEvidenceUploading {
     let shouldFail: Bool
     var failuresRemaining: Int
+    let successfulUploadDelay: UInt64
     private(set) var uploaded: [UUID] = []
-    init(shouldFail: Bool = false, failuresRemaining: Int = 0) {
+    init(shouldFail: Bool = false, failuresRemaining: Int = 0, successfulUploadDelay: UInt64 = 0) {
         self.shouldFail = shouldFail
         self.failuresRemaining = failuresRemaining
+        self.successfulUploadDelay = successfulUploadDelay
     }
     func upload(_ event: InstallationEvidenceEvent) async throws {
         if shouldFail || failuresRemaining > 0 {
             if failuresRemaining > 0 { failuresRemaining -= 1 }
             throw URLError(.cannotConnectToHost)
         }
+        if successfulUploadDelay > 0 { try await Task.sleep(nanoseconds: successfulUploadDelay) }
         uploaded.append(event.id)
     }
     func count() -> Int { uploaded.count }
@@ -520,14 +523,18 @@ struct InstallationEvidenceTests {
         expect(failing.store.pendingUploads().isEmpty, "withdrawing consent clears queued reports")
 
         let manualRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        let manualUploader = UploadRecorder(failuresRemaining: 1)
+        // Deliberately completes after the old 180 ms assertion window. Completion,
+        // not machine speed or a guessed sleep, determines test success.
+        let manualUploader = UploadRecorder(failuresRemaining: 1, successfulUploadDelay: 300_000_000)
         let manual = InstallationEvidenceController(
             store: LocalInstallationEvidenceStore(rootURL: manualRoot),
             uploader: manualUploader, automaticRetryDelays: [50_000_000, 50_000_000])
         manual.record(makeEvent())
         await manual.flushPendingUploads()
         expect(manual.store.pendingUploads().count == 1, "manual send failure retains its event")
-        try await Task.sleep(nanoseconds: 180_000_000)
+        let manualRetry = manual.scheduledUploadForTesting()
+        expect(manualRetry != nil, "manual failure schedules an automatic retry")
+        await manualRetry?.value
         expect(manual.store.pendingUploads().isEmpty, "manual send preserves automatic retry")
         expect(manual.uploadStatus == .uploaded, "manual retry success updates Diagnostics status")
 
@@ -540,11 +547,29 @@ struct InstallationEvidenceTests {
         )
         retrying.decideConsent(.accepted)
         retrying.record(makeEvent())
-        try await Task.sleep(nanoseconds: 100_000_000)
+        let automaticRetry = retrying.scheduledUploadForTesting()
+        expect(automaticRetry != nil, "record schedules an automatic upload")
+        await automaticRetry?.value
         expect(retrying.store.pendingUploads().isEmpty, "transient upload failure is retried automatically")
         expect(retrying.uploadStatus == .uploaded, "Diagnostics observes successful retry completion")
         let retriedUploadCount = await retryUploader.count()
         expect(retriedUploadCount == 1, "retried evidence is marked uploaded after success")
+        await retrying.flushPendingUploads()
+        let afterRepeatedFlush = await retryUploader.count()
+        expect(afterRepeatedFlush == 1, "a completed event is not uploaded by another flush")
+
+        let cancelledUploader = UploadRecorder()
+        let cancelled = InstallationEvidenceController(
+            store: LocalInstallationEvidenceStore(rootURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)),
+            uploader: cancelledUploader, automaticRetryDelays: [50_000_000])
+        cancelled.record(makeEvent())
+        let cancelledTask = cancelled.scheduledUploadForTesting()
+        expect(cancelledTask != nil, "opt-out scenario starts with scheduled work")
+        cancelled.decideConsent(.declined)
+        await cancelledTask?.value
+        let cancelledCount = await cancelledUploader.count()
+        expect(cancelledCount == 0 && cancelled.store.pendingUploads().isEmpty,
+               "opt-out cancels scheduled delivery and clears queued events")
 
     }
 

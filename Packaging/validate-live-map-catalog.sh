@@ -60,5 +60,5 @@ PY
 TERENTO_CATALOG_CONTRACT_PATH="$catalog_path" \
     "$repo_root/app/TerentoCore/Tests/run-native-provider-neutral-tests.sh"
 
-print "PASS: the release client accepts every entry in $catalog_url"
+print "PASS: the checkout source client accepts every entry in $catalog_url"
 done

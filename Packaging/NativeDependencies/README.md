@@ -55,19 +55,19 @@ a claimed interface is released before that close. Descriptor/claim failures
 do not attempt to release an unclaimed interface. These are resource-lifecycle
 fixes, not map-file cleanup operations.
 
-As a local hardware-test candidate, the same patch suppresses the inherited
+The bundled patch suppresses the inherited
 `FORCE_RESET_ON_CLOSE` quirk only on macOS for Garmin VID/PID `091e:51b8`
 (fēnix 8 AMOLED). The guard applies whenever `close_usb` would perform that
 flag-driven reset, including recovery closes; the explicit reset after a failed
 OpenSession remains. Other flags and device IDs retain upstream behavior.
 Sample coverage, transfer verification and ownership rules are unchanged.
 The cache revision is `partial-read-diagnostics-v1-usb-session-v1`.
-This candidate has not yet established a hardware fix for issue 148 and has
-been included in local build20 for owner retesting, not publicly released. The existing native profile checks
-exercise the transformed C lifecycle paths with fake USB handles and reject
-source drift; real repeated install/remove testing remains required.
+These changes are bundled in the public app, but they do not establish a fix
+for the initiating USB transaction error. Synthetic profile checks exercise
+transformed C lifecycle paths and source-drift rejection. Real hardware
+reliability remains a separate gate.
 
-## Build23-local recovery candidate
+## Bundled recovery behavior
 
 The additional `patch-usb-recovery.py` runs against checksum-verified pristine
 upstream files after the existing lifecycle patch. Cache revision `recovery-v1`
@@ -81,6 +81,6 @@ recovery I/O. On macOS091e:51b8, failed OpenSession returns without automatic
 reset; healthy close and other devices retain their policy. No verification
 coverage, map mutation rules, or native dependency versions changed.
 
-This is a local hardware-test candidate, not a public release or proven fix for
+The bundled recovery behavior is public; it is not a proven fix for
 the initiating USB transaction error. Context reinitialization, resource abort,
 platform/product scope and gate ordering have synthetic regression coverage.

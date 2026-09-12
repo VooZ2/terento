@@ -301,12 +301,11 @@ After normal migration-before-start deployment, closed explicitly linked
 Ten oldest due issues are checked per cycle; rate limits or a larger backlog can
 delay completion. System health reports errors and overdue checks. No GitHub token
 or webhook is required. This is one-way closure synchronization; relink/remove a
-closed reference before investigating a manually reopened new problem. See
-`internal/adr/0019-admin-github-issue-resolution-sync.md` for audit and safety rules.
+closed reference before investigating a manually reopened new problem. See [API operations](docs/api.md) for review actions and synchronization rules.
 
 Overview attention is independent of the statistics date filter. Visible admin
 pages check every minute and offer Refresh when data changes, protecting unsaved
-form edits. These changes are production-verified in release `932d757` (deployment run `33925498939`).
+form edits.
 
 At phone widths (up to 700 px), admin navigation collapses into Menu with a review
 shortcut, Overview attention precedes statistics, and the existing tables become
@@ -314,26 +313,16 @@ labelled records. Search remains visible; secondary device/installation filters
 and the full device sorter are under Filters and sorting. Primary controls and
 form typography are sized for touch. Diagnostic dialogs keep their close header
 visible during content scrolling. These presentation changes reuse existing
-endpoints and permissions. Local evidence is recorded in
-`internal/audits/2026-09-05-admin-mobile-audit.md`; production rollout completed in release `932d757`.
+endpoints and permissions.
 
 Desktop admin tables fit their cards and wrap long values. Provider source
 details show complete URLs; campaign output wraps. Installation history uses
-page scrolling and diagnostic dialogs keep their close header visible. The
-local ten-page audit and long-content evidence are recorded in
-`internal/audits/2026-09-05-admin-desktop-fit-audit.md`; rollout completed in release `932d757`.
+page scrolling and diagnostic dialogs keep their close header visible.
 
-Production validation on 2026-09-05 covered all ten admin page types at 1280 px
-and 390 px, the mobile menu, and automatic resolution of the two active
-diagnostics linked to closed GitHub issue #94. Historical failure results were
-retained. Deployment workflow: https://github.com/VooZ2/terento/actions/runs/33925498939.
+### Admin installation counting
 
-### Admin installation counting — 2026-09-10
-
-Initial counting changes published in PR #147 and #149. Migration 038 (local,
-not deployed) unifies public compatibility and admin counters and statuses on
-individual verified map results. Migration 037 is reserved for the parallel
-MapRando work; no existing migration is rewritten.
+Migration 038 and the current statistics projections count individual verified
+map results. Migration ordering and repeatability are tested against PostgreSQL.
 
 Admin attempts count retained map results, not batch/session IDs: a custom IMG
 plus OTM session contributes two attempts and two successes when both verify.
@@ -356,33 +345,12 @@ counts, and existing exact-model administrator publication approval is preserved
 Native telemetry contracts, provider-only Map statistics and review actions are
 unchanged. These counts represent map installations, not unique users or watches.
 
-### Admin custom IMG chart series — 2026-09-05 (historical implementation)
+### Admin custom IMG chart series
 
-The Overview chart adds a separately labelled green Custom .img series from
-successful, verified, complete compatibility operations whose provider is custom.
-Grouped operation IDs (legacy event IDs when absent) prevent multi-map double
-counting; bucket placement uses completion time and the selected time zone.
-This is a read-only admin aggregation: custom imports remain excluded from
-provider map telemetry, KPI success rates and the public catalog. No filenames
-or paths are collected. HTML legend swatches now use background colors, matching
-the SVG fills. Deployed as `ee9d25e`; workflow 33926631093 passed all jobs, including
-237 backend tests and release-client catalog validation. Live Overview shows
-one Custom .img installation in both 24h (00:00 Europe/Vilnius bucket) and
-all-time views. The legend fits at 390 px without horizontal overflow.
-
-Admin chart follow-up: event types remain stacked in one continuous bar per
-time bucket. Segments have square joins; only the complete column silhouette
-has rounded corners through one shared clip path. Each segment has its own
-hover title and accessible label with event type, count and time. Data
-aggregation is unchanged. Deployed as `4f47d35`, workflow `33927056958` PASS, including 238 tests
-and release-client validation. Live segments share one x position and square
-internal joins; individual titles show type, count and local time.
-
-Admin model rows no longer show the Custom installation badge. Manual IMG
-imports remain visible in the chart and installation history. Presentation-only
-change; evidence and counters are unchanged. Deployed as `40272ed`; workflow `33927386387` passed all jobs and 238
-backend tests. Live Installations has zero custom badges, and the existing
-custom installation history entry remains visible.
+Custom imports appear in the installation chart and history through compatibility
+results, never provider map telemetry. Charts count individual map outcomes;
+local-test rows remain excluded. Segments retain accessible labels and per-type
+hover details. Historical batch-counting descriptions no longer define this API.
 
 ### Diagnostic presentation cleanup
 
@@ -392,9 +360,9 @@ exercise the current page for technical details, linked issues, resolved
 outcomes, multiple map results and reopen actions. API routes, evidence,
 authentication, storage and lifecycle behavior are unchanged.
 
-### MapRando beta.11 provider (2026-09-10)
+### MapRando provider
 
-MapRando is the third registered adapter and is **ACTIVE in beta.11**.
+MapRando is the third registered adapter and is **ACTIVE**.
 The scheduler and provider admin use the same metadata collection, last-success,
 health, status, and per-provider failure isolation as the existing adapters.
 This working-tree implementation has not been deployed or hardware-validated.
@@ -456,14 +424,15 @@ metadata, preserving installed manifests and all existing-provider records.
 
 Validation uses the existing backend unit/contract suite with narrow additions
 for daily dates, strict source identity, standalone variants, geographic
-projection and byte-identical legacy endpoint output. A live PostgreSQL
-migration integration check and beta device install/remove/update remain pending.
+projection and byte-identical legacy endpoint output. PostgreSQL migration integration runs in CI. Owner-reported real installs and
+removals exist; a real update to a newer map release remains untested.
 The review found no proven unused transport/catalog lines safe to remove;
 legacy compatibility branches and the OTM package-count guard remain in use.
 
-## Admin filter sizing — 2026-09-11
+## BBBike provider
 
-Provider source and package filters share the admin control-height token (40px
-desktop, 44px mobile). Inputs and native selects inside column labels do not
-grow along the label's vertical flex axis. Search, status and page-size controls
-remain aligned; filtering and pagination semantics are unchanged.
+BBBike is active in the v4 projection with BBBike and BBBike (Ontrail) as distinct
+map types under one provider. Lifecycle IDs include type; geographic IDs remain
+shared for statistics. Same-region opposite types conflict. See the
+[API contract](docs/api.md) and [historical source review](../../history/2026-09-12-bbbike-local-contract.md).
+Provider package counts are live metadata, not hardcoded compatibility claims.

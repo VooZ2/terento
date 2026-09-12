@@ -142,3 +142,14 @@ libraries in `Terento.app/Contents/Frameworks`.
 - Use: admin country-statistics navigation (pan, zoom, keyboard and SVG overlay), with a reusable presentation component for a future separately approved public statistics page.
 - Bundled files: original minified JS and CSS in `backend/catalog-api/src/terento_catalog/static/map/`; full notice in `LEAFLET-LICENSE.txt` alongside them.
 - No runtime npm dependencies, remote tiles or CDN calls. No native application linking or source-disclosure requirement is introduced by Leaflet.
+
+## GitHub Actions upload-artifact (CI only)
+
+- Version: 4.6.2, pinned commit `ea165f8d65b6e75b540449e92b4886f43607fa02`.
+- Upstream: https://github.com/actions/upload-artifact
+- License: MIT; copyright GitHub, Inc. and contributors.
+- Purpose: retain first-attempt CI test output for failure diagnosis.
+- Distribution: executed by GitHub Actions; no action source or binary is bundled
+  with Terento or redistributed by the site. MIT permits redistribution with the
+  copyright and permission notice retained if a future copy is distributed.
+- No application linking or source-availability obligation is introduced.

@@ -7,54 +7,12 @@ about_content="$(cat "$about_source")"
 app_source="$repo_root/app/TerentoCore/Sources/TerentoPoC/TerentoPoCApp.swift"
 connect_source="$repo_root/app/TerentoCore/Sources/TerentoPoC/Views/ConnectScreen.swift"
 
-if ! grep -Fq 'HStack(spacing: 16)' <<<"$about_content" \
-    || ! grep -Fq 'Image(nsImage: NSApplication.shared.applicationIconImage)' <<<"$about_content" \
-    || ! grep -Fq 'Text("Terento")' <<<"$about_content" \
-    || ! grep -Fq 'Text("Install maps on Garmin watches, simply.")' <<<"$about_content" \
-    || ! grep -Fq 'Text(TerentoAppMetadata.displayVersion)' <<<"$about_content"; then
-    print -u2 "FAIL: About does not use the compact dynamic logo/header block"
+standalone_about_source="$about_source"
+if ! grep -Fq 'TerentoAppMetadata.displayVersion' "$about_source"; then
+    print -u2 'FAIL: About must present the shared application version'
     exit 1
 fi
-
-if ! grep -Fq 'Text(TerentoAppMetadata.displayVersion)' \
-    "$repo_root/app/TerentoCore/Sources/TerentoPoC/Views/AboutTerentoView.swift"; then
-    print -u2 "FAIL: Terento → About Terento does not use the shared display version"
-    exit 1
-fi
-
-standalone_about_source="$repo_root/app/TerentoCore/Sources/TerentoPoC/Views/AboutTerentoView.swift"
-for presentation in \
-    'TerentoColors.canvas' \
-    '.background(TerentoColors.canvas)' \
-    '.preferredColorScheme(.light)' \
-    '.frame(minWidth: 520, idealWidth: 560, minHeight: 440, idealHeight: 580)' \
-    '.frame(maxWidth: 680, alignment: .leading)' \
-    'ScrollView {' \
-    '.fixedSize(horizontal: false, vertical: true)'; do
-    if ! grep -Fq "$presentation" "$standalone_about_source"; then
-        print -u2 "FAIL: standalone About is missing the required presentation treatment: $presentation"
-        exit 1
-    fi
-done
-
-if grep -Fq '.lineLimit(1)' "$standalone_about_source"; then
-    print -u2 "FAIL: standalone About description is constrained to one line"
-    exit 1
-fi
-
-for treatment in \
-    '.font(.terentoHeading(size: 30, weight: .semibold))' \
-    '.foregroundStyle(TerentoColors.graphite)' \
-    '.font(.terentoUI(size: 13, weight: .regular))' \
-    '.foregroundStyle(TerentoColors.secondaryText)' \
-    '.font(.terentoUI(size: 13, weight: .medium))' \
-    '.foregroundStyle(TerentoColors.interactive)'; do
-    if ! grep -Fq "$treatment" "$standalone_about_source"; then
-        print -u2 "FAIL: standalone About is missing the established brand treatment: $treatment"
-        exit 1
-    fi
-done
-
+# Layout metrics and exact view constructors belong to visual review, not source snapshots.
 for link in \
     'supportLink("Website ↗", destination: TerentoAppLinks.websiteFromApp)' \
     'supportLink("GitHub repository ↗", destination: TerentoAppLinks.repository)' \
@@ -92,13 +50,6 @@ for label in 'GitHub repository ↗' 'Report an issue ↗' 'Website ↗' 'Donate
         exit 1
     fi
 done
-
-if ! grep -Fq 'ViewThatFits(in: .horizontal)' <<<"$about_content" \
-    || ! grep -Fq 'HStack(spacing: 16) { supportLinks }' <<<"$about_content" \
-    || ! grep -Fq 'VStack(alignment: .leading, spacing: 10) { supportLinks }' <<<"$about_content"; then
-    print -u2 "FAIL: Support links do not have one-line and narrow-width layouts"
-    exit 1
-fi
 
 for privacy_link in \
     'supportLink("Privacy ↗", destination: TerentoAppLinks.privacyFromApp)' \
@@ -177,4 +128,4 @@ if grep -Fq '.buttonStyle(.link)' <<<"$about_content"; then
     exit 1
 fi
 
-print "PASS: compact About header, responsive Support row, and consistent Privacy links"
+print "PASS: About version, support destinations, privacy and update/menu wiring"

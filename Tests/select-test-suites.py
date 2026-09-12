@@ -22,6 +22,16 @@ def select_suites(paths: list[str]) -> list[str]:
         if not text:
             continue
 
+        if text.endswith(".md") and "fixtures" not in {part.lower() for part in path.parts}:
+            if text in {"README.md", "RELEASE_NOTES.md", "THIRD_PARTY_NOTICES.md",
+                        "Packaging/README.md", "Packaging/NativeDependencies/README.md"}:
+                selected.add("release")
+            if text.startswith("legal/"):
+                selected.update(("site", "release"))
+            if text.startswith("brand/"):
+                selected.add("shared")
+            continue
+
         if text.startswith("Tests/"):
             stem = path.name.removeprefix("run-")
             if stem.startswith(("ci-", "select-test-suites")):

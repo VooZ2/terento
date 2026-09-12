@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   publish:
-    if: github.repository == 'VooZ2/terento' && (github.ref == 'refs/heads/beta' || startsWith(github.ref, 'refs/tags/v'))
+    if: github.repository == 'VooZ2/terento' && github.ref == 'refs/heads/beta'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -36,12 +36,7 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$ROLE" == site || "$ROLE" == api ]]
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            [[ "$ROLE" == site ]]
-            git merge-base --is-ancestor "$GITHUB_SHA" origin/beta
-          else
-            [[ "$GITHUB_REF" == refs/heads/beta ]]
-          fi
+          [[ "$GITHUB_REF" == refs/heads/beta ]]
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: '3.12'

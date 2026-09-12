@@ -6,7 +6,8 @@ A restricted host Caddy service terminates origin TLS and forwards site traffic 
 the unprivileged Caddy container on loopback. API traffic uses its separate route.
 
 `.github/workflows/deploy-site.yml` publishes the tracked `site/` tree after a
-push to `beta` or a `v*` tag. The reusable `publish-vps-images.yml` workflow runs
+relevant push to `beta` (or an explicit beta dispatch). Tags do not deploy the
+site a second time. The reusable `publish-vps-images.yml` workflow runs
 site/release/legal checks and builds the pinned Caddy image on GitHub Actions. It
 publishes the image to GHCR and returns its immutable digest. The site deploy job
 then sends only that digest and the matching source revision to the VPS. The
@@ -37,20 +38,6 @@ The public-shell normalizer also synchronizes the stylesheet cache version on
 standalone pages (404 and legacy redirect). The shared brand contract checks
 every HTML page, including these pages, before deployment.
 
-The September 2026 legal-notice rollout also synchronizes the previously
-published `970a16a` public-site polish into `beta`. Production had received
-that site revision through a separate deployment. Retain its shared menu,
-language-label and layout behavior when deploying the legal-notice update.
-
-## 2026-09-05 About, Home and Download refresh
-
-About now leads with product value and a short maker story. Home uses the
-Installing maps screenshot. Download pairs a compact Your Garmin preview with
-Free, Notarized and Apple Silicon badges sharing the Guide CSS rule. All six
-locales use stylesheet version `20260905-shared-badges-v1`. App release files
-and hardware compatibility claims are unchanged. Full public-site and release
-preflight checks must pass before the workflow publishes this source.
-
 ### In-page language switching
 
 Legal and Privacy language choices use native buttons so analytics tracking
@@ -76,12 +63,10 @@ Test the boundary rules with `python3 Tests/admin-access-boundary-tests.py`.
 
 ### Production release and migration boundaries
 
-The `rukas-api` environment permits only branch `beta`; `rukas-site` permits
-branch `beta` and `v*` tags. The publisher requires a tagged site revision to be an ancestor of `beta`.
-API release dispatch remains beta-only. The access-check workflow performs command
-rejection checks only and cannot replay an older deployment. The temporary
-`terento/vps-image-publish` environment policies have been removed. Workflows
-paused for the cutover have been re-enabled.
+Both deployment workflows and the scoped request script accept only `beta`.
+A release tag records app provenance and triggers release CI, not a second site
+publication. GitHub environment restrictions can be stricter, never broader,
+than these workflow gates.
 
 API publication depends on the backend/PostgreSQL quality workflow. The installed
 root-owned handler owns schema migration and internal checks. Public Access/API
@@ -90,15 +75,9 @@ Both server `verify-public` markers must remain present during production releas
 so the handler checks public routes as well as loopback. Public checks establish
 this host's serving readiness only after DNS actually routes traffic here.
 
-The personal-VPS cutover and scoped workflow merge have occurred. Site deployment
-run `33996930727` and API deployment run `33996929154`, including its native
-release-client check, passed. At this documentation update, final migrated-owner
-login confirmation and independent demo recovery access remain pending acceptance
-items; successful CI does not establish either. The old demo authorized public key
-and local CI private key are retained until those checks pass. Removing the old
-repository secrets does not revoke that server key. After verifying independent
-owner/console rollback access, revoke only the exact demo CI authorized-key entry
-and retire its local private key; preserve unrelated accounts and keys.
+Host migration acceptance and old-key retirement are operator tasks, separate
+from CI. Passing HTTP checks does not prove independent console recovery or
+owner login. Do not revoke unrelated keys or infer those gates from a deployment.
 
 Root provisioning preserves operations-ingest secret continuity; CI no longer
 uploads or edits server environment files. Future rotation must update root
@@ -108,16 +87,33 @@ runs, including the scheduler, returning to the demo requires a freeze and rever
 data synchronization; image or DNS rollback does not revert database writes or
 schema migrations.
 
-## Available maps presentation
+## Public content and verification
 
-Home renders two provider cards in all six locales. The left-aligned row is
-capped at 860px (420px cards plus a 20px gap); below 900px it scrolls horizontally.
-OpenTopoMap contour information uses a native, initially closed disclosure.
-Only its optional add-on label and title are shown until expanded. Catalog
-counts retain the existing availability and validation rules; zero validated
-contour packages hide the add-on, and request failure retains static fallback.
+Home renders five map choices across six locales: Freizeitkarte, OpenTopoMap,
+MapRando, BBBike and BBBike (Ontrail). Counts come from the live validated
+catalog; they are not compatibility evidence. The row scrolls when needed.
+OpenTopoMap contour information remains an optional disclosure.
 
-Change this content in `scripts/normalize-home-ia.py` and regenerate pages.
-The current stylesheet version is `20260908-provider-width-v5`; the provider
-script version is `20260908-provider-disclosure-v4`. Layout/copy/API fixtures and
-public generator parity are covered by `Tests/run-site-tests.sh`.
+Change generated content in its source generator, then regenerate. Public asset
+versions are maintained in `scripts/normalize-public-shell.py`; do not copy dated
+version strings into this document. `Tests/run-site-tests.sh` covers all-locale
+content, layout contracts, structured JSON-LD and generator parity. Release and
+legal checks also pass before publication. No production app artifact is rebuilt
+by a site deployment.
+
+After deployment, compare the live update manifest's version, label, build,
+channel, minimum macOS, official URLs and checksum against the tested input.
+Transport retries discard partial responses. The fixed SSH request retries only
+connection-establishment timeouts; an established-session failure has unknown
+remote outcome and is not automatically replayed. Observation delivery is
+reported separately; transient reporting failure cannot invalidate passed tests.
+
+Public compatibility pages use a loading shell and the live API, not checked-in
+model evidence rows. Initial failure shows Retry; a failed background refresh
+labels the last loaded results potentially outdated. API data may change without
+requiring a site deployment.
+
+Production content acceptance also requires live HTML/asset and localized Guide
+validation plus a recorded Google Rich Results Test for relevant structured-data
+changes. Search Console Validate fix is a separate owner action. Test/lab hosts
+must stay excluded from indexing; robots.txt alone is not access control.

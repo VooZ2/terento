@@ -24,10 +24,15 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: quality-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   changes:
     name: Select required test suites
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       suites: ${{ steps.selection.outputs.suites }}
     steps:
@@ -61,6 +66,7 @@ jobs:
     needs: changes
     if: contains(fromJSON(needs.changes.outputs.suites), 'site')
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
@@ -77,6 +83,15 @@ jobs:
       - name: Build public-site container
         run: docker build --pull=false -f site-deploy/Dockerfile -t terento-site:ci .
 
+      - name: Retain first-attempt test output
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: test-output-${{ github.job }}-${{ github.run_attempt }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
   backend-tests:
     name: Backend API tests
     needs: changes
@@ -88,6 +103,7 @@ jobs:
     needs: changes
     if: contains(fromJSON(needs.changes.outputs.suites), 'app')
     runs-on: macos-15
+    timeout-minutes: 20
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
@@ -136,11 +152,21 @@ jobs:
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Contents/Info.plist")" = "app.terento.mac"
           test "$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$app/Contents/Info.plist")" = "13.0"
 
+      - name: Retain first-attempt test output
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: test-output-${{ github.job }}-${{ github.run_attempt }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
   native-tests:
     name: Native safety tests
     needs: changes
     if: contains(fromJSON(needs.changes.outputs.suites), 'native')
     runs-on: macos-15
+    timeout-minutes: 20
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
@@ -162,11 +188,21 @@ jobs:
           export CLANG_MODULE_CACHE_PATH="$RUNNER_TEMP/terento-native-clang-module-cache"
           Tests/run-native-tests.sh
 
+      - name: Retain first-attempt test output
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: test-output-${{ github.job }}-${{ github.run_attempt }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
   release-tests:
     name: Release contract tests
     needs: changes
     if: contains(fromJSON(needs.changes.outputs.suites), 'release')
     runs-on: macos-15
+    timeout-minutes: 10
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
@@ -177,11 +213,21 @@ jobs:
       - name: Run release contract suite
         run: Tests/run-release-tests.sh
 
+      - name: Retain first-attempt test output
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: test-output-${{ github.job }}-${{ github.run_attempt }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
   shared-ci-tests:
     name: Shared and CI contract tests
     needs: changes
     if: contains(fromJSON(needs.changes.outputs.suites), 'shared') || contains(fromJSON(needs.changes.outputs.suites), 'ci')
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
@@ -189,17 +235,31 @@ jobs:
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: "3.12"
+      - name: Set up Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: "22"
       - name: Run shared and CI contracts
         run: |
           set -euo pipefail
           Tests/run-shared-tests.sh
           Tests/run-test-suite.py ci
 
+      - name: Retain first-attempt test output
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: test-output-${{ github.job }}-${{ github.run_attempt }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
   live-catalog-contract:
-    name: Live catalog release contract
+    name: Candidate source catalog contract
     needs: changes
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
     runs-on: macos-15
+    timeout-minutes: 15
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
@@ -219,9 +279,14 @@ jobs:
       - shared-ci-tests
       - live-catalog-contract
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
+      - name: Check out quality gate
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
       - name: Enforce selected quality gates
         env:
+          SELECTED_SUITES: ${{ needs.changes.outputs.suites }}
+          LIVE_REQUIRED: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') }}
           CHANGES_RESULT: ${{ needs.changes.result }}
           SITE_RESULT: ${{ needs.site-tests.result }}
           BACKEND_RESULT: ${{ needs.backend-tests.result }}
@@ -256,7 +321,7 @@ jobs:
               *) echo "A required quality gate ended as $result" >&2; exit 1 ;;
             esac
           done
-          echo "All selected quality gates passed."
+          python3 scripts/check-ci-results.py
 
   publish-operational-report:
     name: Publish weekly or release health report
@@ -276,6 +341,7 @@ jobs:
       - live-catalog-contract
       - build-and-test
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     env:
       OPERATIONS_INGEST_SECRET: ${{ secrets.TERENTO_OPERATIONS_INGEST_SECRET }}
       SMTP_USERNAME: ${{ secrets.SMTP2GO_USERNAME }}

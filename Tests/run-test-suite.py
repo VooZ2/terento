@@ -45,22 +45,29 @@ def main() -> int:
     environment.setdefault("SWIFT_MODULECACHE_PATH", str(module_cache))
     print(f"Terento test plan: {', '.join(selected)} ({total} runners)", flush=True)
 
+    log_root = Path(os.environ.get("TERENTO_TEST_LOG_DIR", str(REPO_ROOT / "test-results")))
+    log_root.mkdir(parents=True, exist_ok=True)
     for suite in selected:
         suite_started = time.monotonic()
         print(f"\n[{suite}] {len(suites[suite])} runners", flush=True)
         for runner_text in suites[suite]:
             runner = REPO_ROOT / runner_text
             print(f"  RUN  {runner_text}", flush=True)
-            result = subprocess.run(
-                [str(runner)], cwd=REPO_ROOT, env=environment, check=False,
-            )
-            if result.returncode:
+            log_path = log_root / (runner.stem + ".log")
+            with log_path.open("w") as output:
+                process = subprocess.Popen([str(runner)], cwd=REPO_ROOT, env=environment,
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace")
+                for line in process.stdout:
+                    output.write(line)
+                    print(line, end="", flush=True)
+                code = process.wait()
+            if code:
                 print(
-                    f"  FAIL {runner_text} (exit {result.returncode})",
+                    f"  FAIL {runner_text} (exit {code})",
                     file=sys.stderr,
                     flush=True,
                 )
-                return result.returncode
+                return code
             completed += 1
             print(f"  PASS {runner_text}", flush=True)
         print(

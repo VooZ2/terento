@@ -1,3 +1,7 @@
+> Historical source-validation evidence. Provider activation and package counts
+> below describe the dated checkpoint, not current availability. See the
+> [current API contract](../backend/catalog-api/docs/api.md).
+
 # OpenTopoMap contour shadow audit — 2026-09-06
 
 Command:

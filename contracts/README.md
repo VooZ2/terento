@@ -7,7 +7,8 @@ Python, Swift and JavaScript do not load JSON Schema validators.
 | Schema | Public payload | Body version |
 | --- | --- | --- |
 | `map-catalog.schema.json` | `GET /maps/catalog.json` | `schemaVersion: 2`, legacy `catalogVersion: 1` |
-| `map-catalog.schema.json` | `GET /maps/catalog-v3.json` | same body versions; additional reviewed providers |
+| `map-catalog.schema.json` | `GET /maps/catalog-v3.json` | same body versions; Freizeitkarte, OpenTopoMap, MapRando |
+| `map-catalog.schema.json` | `GET /maps/catalog-v4.json` | same body versions; adds BBBike and its two map types |
 | `device-catalog.schema.json` | `GET /devices/catalog.json` | independent `catalogVersion: 2` |
 | `compatibility-event.schema.json` | `POST /compatibility/events` request body | accepted versions 1–4; current emitter uses 4 |
 | `map-event.schema.json` | `POST /map-events` request body | `schemaVersion: 1` |
@@ -19,14 +20,19 @@ values resolve only to local `$defs`. No schema or fixture needs network access.
 
 ## Responses and client compatibility
 
-The beta.11 candidate requests `/maps/catalog-v3.json`. The legacy route retains
-only Freizeitkarte and OpenTopoMap because released clients reject a complete
-snapshot when it includes an unknown installable provider. The v3 route is a
-new provider projection, not a change to JSON `schemaVersion`. MapRando release
-objects additionally carry an optional integer `day`; existing provider version
-objects remain year/month only. Neither a new route nor adapter registration
-activates MapRando by itself. Production activation and hardware acceptance are
-separate gates; the local candidate does not imply endpoint deployment.
+The current beta.12 client requests `/maps/catalog-v4.json`. The legacy route
+retains Freizeitkarte and OpenTopoMap; v3 additionally exposes MapRando.
+Older clients can reject a complete snapshot containing an unknown installable
+provider, so these projections must remain separate. v4 additionally exposes
+BBBike with `bbbike-latin1` and `ontrail-latin1` map types. Catalog body versions
+remain unchanged. Source activation and exact-model evidence are separate.
+MapRando/BBBike versions may include an optional day; legacy provider versions
+retain their existing meanings.
+
+`released-catalog-clients.json` pins a published source revision for each route.
+Daily and deployment checks run those exact native decoders, independently of
+the current beta checkout. This is source-client compatibility evidence, not
+an execution of a downloaded notarized app or a real Garmin transfer.
 
 Response objects permit unknown additive fields, including nested objects.
 `required` lists specify the serialized response contract. They do not impose
@@ -90,8 +96,8 @@ not new allowed data uses.
 3. Update the schema, descriptions and its explicit `required` list. Event fields
    require privacy review and the existing server allowlist to agree first.
 4. Update shared fixtures and Python/Swift/website expectations as applicable.
-   Run backend, native, app, site and shared/CI suites. Changes under `contracts/`
-   select every suite, including release checks.
+   Run backend, native, app, site and shared/CI suites. Schema/fixture changes under `contracts/` select every suite, including release
+   checks; prose-only Markdown changes use the documentation/CI checks.
 5. Review canonical architecture/state and public documentation in the same
    change. Keep local-only `internal/` documentation out of public commits.
 

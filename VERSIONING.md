@@ -6,8 +6,10 @@ Terento uses semantic-style beta versions:
 MAJOR.MINOR.PATCH-beta.N
 ```
 
-Git tags use the same version with a leading `v`, for example
-`v0.1.0-beta.1`.
+Current public Git tags combine the semantic release label with the distributed
+build: `v<release-label>-build<CFBundleVersion>`, for example
+`v1.0.0-beta.12-build28`. Older tags without a build suffix remain immutable
+historical identities; do not rename or overwrite them.
 
 - **MAJOR** is reserved for intentionally incompatible public changes after
   stable maturity.
@@ -27,8 +29,8 @@ must not be described as passed, and a genuinely new capability line may start
 the next base version.
 
 Published tags are immutable: never reuse, overwrite, or force-push a tag.
-The annotated Git tag is the canonical public release version. Package
-metadata that carries the release identity must mirror that version; API
+The release tag is the immutable source identity. The manifest releaseTag,
+semantic releaseLabel and numeric build must match their corresponding fields; API
 schema and catalog contract versions are separate compatibility versions and
 are not release versions.
 

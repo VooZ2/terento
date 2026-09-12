@@ -1,0 +1,17 @@
+[
+  {
+    "tag": "v1.0.0-beta.10-build15",
+    "commit": "b3d01220e5505c0a575ff8bac6a4f2ad92f7fe4b",
+    "route": "catalog.json"
+  },
+  {
+    "tag": "v1.0.0-beta.11-build27",
+    "commit": "aa81f6770b22c892182767e398fd326622c813df",
+    "route": "catalog-v3.json"
+  },
+  {
+    "tag": "v1.0.0-beta.12-build28",
+    "commit": "f2de8eda3e8ab36724aaeae85ba23fceef5c9d86",
+    "route": "catalog-v4.json"
+  }
+]
