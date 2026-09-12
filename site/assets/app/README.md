@@ -1,6 +1,6 @@
 # Website application screenshots
 
-## September 12, 2026 refresh (local, not published)
+## September 12, 2026 refresh (published)
 
 The seven owner-supplied prepared PNGs replace the corresponding screenshot
 masters without pixel edits or resizing. Each new master is 2358 × 1575 pixels
@@ -35,6 +35,11 @@ Browser checks: Home (including both tabs) and Guide images load at 1440px and
 The six supplied prepared masters match byte for byte. The additional Your Garmin
 source was cropped at (31, 94) to 2358 × 1575 and given the same 48px alpha mask;
 retained RGB pixels match the original crop exactly.
+
+Published by PR #181, commit `3afb88bc745400e795df974f0e115e1bc6dc2c1b`,
+through deployment run 34714851653 (successful second attempt after an SSH timeout).
+Post-deploy validation matched image markup and JSON-LD across 18 public pages
+and SHA-256 hashes for all 52 referenced screenshot files.
 
 This asset task does not change native behavior, release metadata, provider
 support claims, or hardware evidence.

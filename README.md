@@ -5,8 +5,12 @@
 [![Swift CI](https://github.com/VooZ2/terento/actions/workflows/swift-ci.yml/badge.svg?branch=beta)](https://github.com/VooZ2/terento/actions/workflows/swift-ci.yml)
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
 
-Terento is a free, open-source native macOS app for installing and managing
-third-party maps on map-capable Garmin smartwatches. Choose from
+Get your Garmin ready for your next hike or ride. Connect your watch, choose a
+map, and let Terento handle the download, installation, and transfer checks
+from your Mac.
+
+Terento is **free and open source**, built for Apple Silicon Macs and Garmin
+smartwatches with map support. Choose from
 [Freizeitkarte](https://www.freizeitkarte-osm.de/),
 [OpenTopoMap](https://garmin.opentopomap.org/),
 [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), and
@@ -17,7 +21,7 @@ compatible `.img` map.
 
 **[Download for Mac](https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_top_download)**
 · [Check compatibility](https://terento.app/compatibility/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_top_compatibility)
-· [Mac installation guide](https://terento.app/guides/install-garmin-maps-mac?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_top_guide)
+· [Mac installation guide](https://terento.app/guides/install-garmin-maps-mac/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_top_guide)
 
 **Public beta · macOS 13+ · Apple Silicon**
 
@@ -27,14 +31,16 @@ compatible `.img` map.
        width="100%">
 </p>
 
-## What it does
+## Get the maps you need, with less setup
 
-- Recognizes your connected Garmin smartwatch and shows available storage.
-- Lets you choose map regions from the catalog or import a compatible map from your Mac.
-- Downloads catalog maps directly from their original provider.
-- Checks storage, installs the map, and verifies the transfer.
-- Shows available updates and lets you update or remove Terento-managed maps.
-- Keeps original Garmin maps and unknown files protected.
+- **Find your destination.** Search countries and regions, filter by continent
+  or provider, or import a compatible map from your Mac.
+- **Install with confidence.** Terento checks available space, downloads from
+  the original provider, and verifies the transfer to your watch.
+- **Keep your maps organised.** See installed maps by provider, find available
+  updates, and remove maps you no longer need.
+- **Protect what is already there.** Original Garmin maps and unknown files
+  remain protected. Updates replace only Terento-managed maps.
 
 Removing a recognized third-party map that Terento did not install requires
 separate confirmation.
@@ -49,14 +55,14 @@ separate confirmation.
    that the map is available on it.
 
 <p align="center">
-  <img src="site/assets/app/masters/install-maps.png"
-       alt="Terento map catalog with provider filters, region search, and an option to import a map from Mac"
+  <img src="site/assets/app/masters/map-selected.png"
+       alt="Terento showing a search for Lithuania, a selected BBBike map, and projected storage before installation"
        width="100%">
 </p>
 
 <p align="center">
   <img src="site/assets/app/masters/maps-done.png"
-       alt="Terento confirming that an OpenTopoMap Luxembourg map is installed and verified"
+       alt="Terento confirming that the BBBike Lithuania map is installed and verified"
        width="100%">
 </p>
 
@@ -112,6 +118,7 @@ one real update to a newer map release for each enabled provider.
 During an update, Terento verifies the replacement before removing the
 previous Terento-owned version. If there is not enough space for both, it
 stops and keeps the working map. Bugs are still possible during the beta.
+Some watches may need to be reconnected if detection or map listing stalls.
 
 ## Maps
 
@@ -120,8 +127,9 @@ The current catalog includes main-map packages from
 [OpenTopoMap](https://garmin.opentopomap.org/),
 [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), and
 [BBBike](https://garmin.bbbike.org), based on OpenStreetMap data.
-BBBike is the fourth provider, with two independent map types: BBBike and BBBike (Ontrail).
-Only the ready Garmin latin1 regional packages are included.
+BBBike offers two map choices: BBBike and the smaller BBBike (Ontrail)
+packages for hiking and cycling. The catalog includes its ready-made Garmin
+regional packages in latin1 format.
 Maps download from each provider's original infrastructure; Terento does not
 host, mirror, or repackage them.
 
@@ -165,7 +173,7 @@ feel simple. I'm keeping it free and open source so it can help the community.
 
 Donations are optional and do not unlock features, maps, or provider access.
 
-## Feedback and help
+## Help make the beta better
 
 If installation fails, Terento offers to open a GitHub issue with the
 diagnostic information needed to investigate. You can also
@@ -176,7 +184,7 @@ and what happened. A report that a map installed and works on your watch is
 useful too.
 
 For connection or map-visibility problems, see the
-[Mac installation guide](https://terento.app/guides/install-garmin-maps-mac?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_help_guide).
+[Mac installation guide](https://terento.app/guides/install-garmin-maps-mac/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_help_guide).
 
 ## Contributing
 
