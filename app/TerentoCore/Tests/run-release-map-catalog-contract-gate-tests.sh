@@ -9,6 +9,7 @@ deploy_workflow="$repo_root/.github/workflows/deploy-catalog-api.yml"
 monitor_workflow="$repo_root/.github/workflows/map-catalog-contract.yml"
 
 [[ -x "$live_gate" ]]
+[[ -x "$repo_root/Packaging/validate-released-map-catalog.sh" ]]
 grep -Fq 'https://api.terento.app/maps/catalog-v4.json' "$live_gate"
 grep -Fq 'v3 catalog must not expose providers unknown to beta.11 clients' "$live_gate"
 if ! grep -Fq 'node_bin="${TERENTO_NODE_BIN:-}"' "$release_script" \
@@ -23,10 +24,10 @@ grep -Fq 'startsWith(github.ref, '\''refs/tags/v'\'')' "$swift_ci"
 grep -Fq 'verify-release-client-contract:' "$deploy_workflow"
 grep -Fq 'needs: [deploy, catalog-contract-scope]' "$deploy_workflow"
 grep -Fq "needs.catalog-contract-scope.outputs.required == 'true'" "$deploy_workflow"
-grep -Fq 'Packaging/validate-live-map-catalog.sh' "$deploy_workflow"
+grep -Fq 'Packaging/validate-released-map-catalog.sh' "$deploy_workflow"
 grep -Fq 'schedule:' "$monitor_workflow"
 grep -Fq 'workflow_dispatch:' "$monitor_workflow"
-grep -Fq 'Packaging/validate-live-map-catalog.sh' "$monitor_workflow"
+grep -Fq 'Packaging/validate-released-map-catalog.sh' "$monitor_workflow"
 
 python3 - "$release_script" <<'PY'
 from pathlib import Path

@@ -10,6 +10,7 @@ jobs:
   quality:
     name: Backend regression and integration
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     services:
       postgres:
         image: postgres:16-alpine
@@ -50,3 +51,11 @@ jobs:
           python -c 'from terento_catalog.config import Settings; from terento_catalog.db import Database; settings = Settings.from_env(); assert Database(settings.database_url).health()'
       - name: Build catalog API container
         run: docker build --pull=false -t terento-catalog-api:ci backend/catalog-api
+      - name: Retain first-attempt test output
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: test-output-${{ github.job }}-${{ github.run_attempt }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 14

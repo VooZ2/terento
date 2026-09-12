@@ -42,7 +42,7 @@ jobs:
           set -euo pipefail
           if [ "$EVENT_NAME" != push ] || ! git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
             echo 'required=true' >> "$GITHUB_OUTPUT"
-          elif git diff --name-only "$BEFORE_SHA" HEAD | grep -Eq '^(contracts/|backend/catalog-api/src/terento_catalog/(catalog\.py|db\.py|http_api\.py|config\.py|provider_catalog\.py|maprando\.py|maprando_geography\.py|bbbike\.py|bbbike_geography\.py|bbbike_snapshot\.py|contour_source\.py|collect\.py|collectors/|migrations/)|Packaging/validate-live-map-catalog\.sh|app/TerentoCore/)'; then
+          elif git diff --name-only "$BEFORE_SHA" HEAD | grep -Eq '^(contracts/|backend/catalog-api/src/terento_catalog/(catalog\.py|db\.py|http_api\.py|config\.py|provider_catalog\.py|maprando\.py|maprando_geography\.py|bbbike\.py|bbbike_geography\.py|bbbike_snapshot\.py|contour_source\.py|collect\.py|collectors/|migrations/)|Packaging/validate-(live|released)-map-catalog\.sh|app/TerentoCore/)'; then
             echo 'required=true' >> "$GITHUB_OUTPUT"
           else
             echo 'required=false' >> "$GITHUB_OUTPUT"
@@ -150,13 +150,14 @@ jobs:
             https://api.terento.app/internal/operations/observations
 
   verify-release-client-contract:
-    name: Verify deployed catalog with release client
+    name: Verify deployed catalog with published client sources
     needs: [deploy, catalog-contract-scope]
     if: needs.catalog-contract-scope.outputs.required == 'true'
     runs-on: macos-15
+    timeout-minutes: 20
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
 
       - name: Validate deployed catalog against the native client
-        run: /bin/zsh Packaging/validate-live-map-catalog.sh
+        run: /bin/zsh Packaging/validate-released-map-catalog.sh

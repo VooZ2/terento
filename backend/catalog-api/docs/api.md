@@ -72,7 +72,7 @@ one operation each.
 Schema version 4 keeps the structured diagnostics contract while removing the
 per-event deletion token. Uploaded compatibility events are immutable through
 the public API; `DELETE /compatibility/events` returns `405 Method Not Allowed`.
-The authenticated `/admin` pages are a read-only projection of the same
+The authenticated `/admin` GET views project the same
 persisted compatibility columns and remain schema-version agnostic: v4 uses
 the existing model, variant, firmware, operation, outcome, and failure fields.
 Admin workflow metadata is extended separately by migration 040 and is not
@@ -784,24 +784,11 @@ last successful collection, last detected release change, and an actionable
 reason. It contains no credentials, user/device identifiers, raw logs, or map
 binaries and is returned with `Cache-Control: no-store`.
 
-## Admin audit update — 2026-09-07
+## Optional contour metadata and admin projections
 
-Provider summaries expose `packageReleases` and the newest non-retired package release; individual regions retain their own release. Healthy system cards collapse by default and link to collection history and packages. Installation coverage normalizes provider country aliases, supports zoom/pan and region highlighting, and explicitly reports unmapped installations. Compatibility fallback validates the complete operation before filtering and preserves each provider/region. Local test activity remains isolated by `is_local_test=true` and is visible only in Test data; public beta events remain in user statistics. The local release-label guard requires Debug labels ending in `-local` and rejects those labels for public Release builds. No native application artifact is released by this API deployment.
-
-Post-deploy verification caught missing form bindings in the preserved Clear handlers. These handlers now resolve their own form directly so provider actions, map rendering and diagnostic controls initialize reliably.
-
-## Admin refinement and contour activation — 2026-09-07
-
-Overview includes integer quantity ticks and up to 20 exact local event timestamps per series/bucket. Collection snapshot transactions retain changed map releases and regions in provider history from this version forward; previous per-map changes cannot be reconstructed from old summary-only runs. Healthy disclosure summaries use centered CSS chevrons; device information columns are 1:1. Health checks use aligned label/status rows. Map diagnostics stay collapsed, popularity explicitly says Top 5, and country geometry uses a local OpenStreetMap-derived ODbL SVG.
-
-CI selects test-file suites by their scope; packaging selects app/release and relevant native tests, not unrelated site tests. Live native catalog validation remains required for public catalog/read-model/configuration changes, while admin-only rendering changes skip it. Unknown paths still select all suites.
-
-On 2026-09-07 the owner-authorized root console on rukas was used to set
-`OPENTOPO_MAP_CONTOUR_MODE=public` in the shared API/scheduler environment and
-recreate both containers with their existing images. Both processes report
-public and API health passes. Deployment `c352a6177fe730f608d516ab0d9f571ee379688e` applied the collector
-and migration 036. Production collection run 13 succeeded with 177 main packages
-and 157 validated contour attachments from 156 sources (334 artifacts).
+OpenTopoMap source-validated contours are enabled by the public rollout policy.
+Live collection counts vary and are not an API invariant. Main-map availability
+must not depend on an optional contour download.
 
 The collector independently inspects optional official contour sources using
 bounded HTTP ranges (8 MiB total, 4 MiB per request), exact root IMG path,
@@ -814,15 +801,9 @@ including when database rows arrive contours first. No map binaries are stored,
 mirrored or served. No native Install/Remove code is changed. No application
 release, website announcement or issue closure is included.
 
-Local candidate evidence: 270 backend tests PASS; bounded live source collection
-retains 177 main packages and 157 validated contour attachments; the combined
-candidate plus current FZK metadata passes 24 beta.9 provider-neutral tests.
-Optional artifact `version` is the independent HTTP source year/month for the
-legacy decoder; `sourceProof.revision` remains the actual metadata identity,
-not a main-map release or payload checksum. PostgreSQL integration passed in CI, including source-proof round trips,
-Overview queries and exclusion of optional contours from provider availability
-probes. The published catalog passed the same 24 beta.9 checks. Main URL,
-download size, install size and version fields match the pre-deployment catalog.
+Optional artifact `version` is its independent HTTP source year/month;
+`sourceProof.revision` is metadata identity, not a payload checksum. PostgreSQL
+integration validates source-proof round trips and legacy main-field projections.
 
 Provider-wide availability probes sample active required main artifacts only.
 Optional contour failure cannot mark the whole provider unavailable; contour
@@ -835,7 +816,7 @@ Map accessibility labels use standard country display names rather than
 normalized alias tokens, preserving spaces and accented country names.
 
 
-### Admin feedback, 2026-09-08
+### Coverage interaction
 
 Map dragging suppresses native browser selection, including WebKit selection;
 Reset clears stale selection and region emphasis. Top 5 remains a stable summary;
@@ -874,16 +855,17 @@ the overlapping Russia relation for the Crimea area, matching the selected
 product presentation. CSS tokens have neutral fallbacks. JS/CSS footprint is approximately
 162 KB raw / 46 KB gzip before the small adapter; the existing SVG is reused.
 
-### Build 15 diagnostic report boundary
+### Diagnostic report boundary
 
 The compatibility event schema is unchanged. Administrator GitHub exports label
 the reported transport category as potentially inferred and direct the user to
 the app's Report issue for the extended local trace. The API does not receive,
 store or reconstruct that trace. Legacy event values remain unchanged.
 
-### BBBike local candidate (2026-09-12)
+### BBBike v4 projection
 
-`/maps/catalog-v4.json` adds the registered, initially PAUSED `bbbike` provider.
+`/maps/catalog-v4.json` adds the active `bbbike` provider. Registration migrations initially pause a
+provider; activation is a separately reviewed operation.
 `/maps/catalog.json` remains exactly the reviewed FZK/OTM provider set and v3
 remains exactly FZK/OTM/MapRando. The additive catalog body retains schemaVersion2.
 Provider registration is not a public compatibility claim or activation.

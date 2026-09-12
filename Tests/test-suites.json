@@ -36,7 +36,8 @@
     "app/TerentoCore/Tests/run-app-map-lifecycle-viewmodel-tests.sh",
     "app/TerentoCore/Tests/run-app-custom-map-import-presentation-tests.sh",
     "app/TerentoCore/Tests/run-app-navigation-tests.sh",
-    "app/TerentoCore/Tests/run-app-user-facing-error-message-tests.sh"
+    "app/TerentoCore/Tests/run-app-user-facing-error-message-tests.sh",
+    "app/TerentoCore/Tests/run-app-map-selection-wiring-tests.sh"
   ],
   "native": [
     "app/TerentoCore/Tests/run-native-compatibility-status-client-tests.sh",
@@ -80,6 +81,7 @@
   ],
   "ci": [
     "Tests/run-ci-test-selection-tests.sh",
-    "Tests/run-ci-workflow-contract-tests.sh"
+    "Tests/run-ci-workflow-contract-tests.sh",
+    "Tests/run-ci-documentation-tests.sh"
   ]
 }

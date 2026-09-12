@@ -65,8 +65,7 @@ module/executable names; renaming them is deferred. The historical native logger
 subsystem string is also retained to preserve diagnostic identity.
 
 Build from the repository root with `swift build --package-path app/TerentoCore`.
-The move changes paths, not runtime behavior, bundled resource contents, device
-ownership rules or release output.
+The retained module names do not change runtime behavior or release identity.
 
 ## CI and contract boundary
 
@@ -77,10 +76,12 @@ build. Both the selected backend job and `deploy-catalog-api.yml` call that same
 workflow. The deployment-time rerun is intentional; it needs no deployment
 secrets. Deployment credentials and subsequent rollout steps remain unchanged.
 
-The redundant standalone backend CI workflow has been removed. Ruleset review
-confirmed that `build-and-test` is the required check. Changes under `contracts/`
-select every existing suite. No new suite category or runtime schema validator
-is introduced; the fixtures stay in one repository-level directory.
+`build-and-test` remains the required aggregate. Documentation-only changes use
+shared/CI checks plus specific release/legal checks when relevant. Schema and
+fixture changes still select all suites. See [CI policy](Tests/README.md).
+
+The [historical evidence index](history/README.md) preserves links to superseded
+candidate receipts. It is not current product documentation.
 
 ## Release state and provenance
 
@@ -94,6 +95,5 @@ metadata. Keep that identity aligned across Xcode settings, release notes,
 the Git tag, the update manifest, and artifact names; do not duplicate a
 version number in this repository map.
 
-Changes to application code, tests, website/legal content, and packaging must
-be reviewed and committed as separate logical changes; this repository-map
-update does not change those boundaries or publish them.
+Keep implementation, tests, current documentation and validation evidence
+aligned in each logical change. Local or uncommitted output is not publication.

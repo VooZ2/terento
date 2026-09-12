@@ -17,6 +17,8 @@ def apply_migrations(database: Database, directory: Path | None = None) -> list[
     if not files:
         raise RuntimeError(f"no SQL migrations found in {migration_path}")
 
+    validate_migration_versions(files)
+
     with database.connection() as connection:
         connection.execute(
             """
@@ -45,6 +47,17 @@ def apply_migrations(database: Database, directory: Path | None = None) -> list[
             )
             installed.append(version)
     return installed
+
+
+def validate_migration_versions(files: list[Path]) -> None:
+    seen: dict[str, Path] = {}
+    for file in files:
+        version = _migration_version(file)
+        # Numeric aliases such as 044 and 44 are also ambiguous.
+        key = str(int(version))
+        if key in seen:
+            raise RuntimeError(f"duplicate migration version {version}: {seen[key].name}, {file.name}")
+        seen[key] = file
 
 
 def _migration_version(path: Path) -> str:

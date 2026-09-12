@@ -9,6 +9,7 @@ from terento_catalog.http_api import make_handler
 class AdminMapAssetsTests(unittest.TestCase):
     def test_assets_require_session_and_have_explicit_allowlist(self):
         service = SimpleNamespace(admin_is_configured=lambda: True,
+            admin_review_summary=lambda: {},
             admin_session=lambda token: {'id': 1} if token == 'valid' else None,
             csrf_valid=lambda session, token: token == 'valid')
         server = ThreadingHTTPServer(('127.0.0.1', 0), make_handler(service))

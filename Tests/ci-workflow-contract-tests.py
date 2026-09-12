@@ -36,8 +36,7 @@ def verify_scoped_transport() -> None:
                    GITHUB_SHA="a"*40, VPS_IMAGE_DIGEST="sha256:"+"b"*64,
                    VPS_SSH_KEY="synthetic-test-key", RUNNER_TEMP=temporary,
                    SSH_RECORD=str(record))
-        for role, ref in (("api", "refs/heads/beta"), ("site", "refs/heads/beta"),
-                          ("site", "refs/tags/v0.1.0")):
+        for role, ref in (("api", "refs/heads/beta"), ("site", "refs/heads/beta")):
             result = subprocess.run(["bash", str(script), role], env=dict(env, GITHUB_REF=ref), capture_output=True)
             assert result.returncode == 0, result.stderr.decode()
             args = json.loads(record.read_text())
@@ -46,8 +45,30 @@ def verify_scoped_transport() -> None:
             key = Path(args[args.index("-i")+1])
             assert not key.parent.exists(), "temporary credentials must be removed"
             record.unlink()
+        # Exercise the real retry boundary with a local spy; no connection or delay.
+        spy.write_text(spy.read_text() +
+            "scenario=os.environ.get('SSH_SCENARIO', '')\n" +
+            "counter=pathlib.Path(os.environ.get('SSH_COUNTER', '/dev/null'))\n" +
+            "attempt=int(counter.read_text())+1 if counter.exists() else 1\n" +
+            "counter.write_text(str(attempt))\n" +
+            "if scenario=='timeout' or (scenario=='recover' and attempt<3):\n" +
+            " print('ssh: connect to host example port 22: Connection timed out',file=sys.stderr); sys.exit(255)\n" +
+            "if scenario in {'lost','auth'}:\n" +
+            " print('Connection closed by remote host' if scenario=='lost' else 'Permission denied (publickey)',file=sys.stderr); sys.exit(255)\n")
+        sleeper = root / "sleep"
+        sleeper.write_text("#!/bin/sh\nexit 0\n")
+        sleeper.chmod(0o700)
+        counter = root / "attempts"
+        for scenario, expected_code, attempts in (("recover", 0, 3), ("timeout", 255, 3), ("lost", 255, 1), ("auth", 255, 1)):
+            counter.unlink(missing_ok=True)
+            result = subprocess.run(["bash", str(script), "site"],
+                env=dict(env, SSH_SCENARIO=scenario, SSH_COUNTER=str(counter)), capture_output=True)
+            assert result.returncode == expected_code, result.stderr.decode()
+            assert int(counter.read_text()) == attempts
+            record.unlink(missing_ok=True)
         rejected = [(["root"], {}), (["site", "extra"], {}),
                     (["api"], {"GITHUB_REF": "refs/tags/v0.1.0"}),
+                    (["site"], {"GITHUB_REF": "refs/tags/v0.1.0"}),
                     (["site"], {"GITHUB_REF": "refs/heads/unreviewed"}),
                     (["site"], {"GITHUB_REPOSITORY": "someone/terento"}),
                     (["api"], {"VPS_IMAGE_DIGEST": "sha256:"+"b"*64+"; id"}),
@@ -118,6 +139,53 @@ def verify_http_transport():
             assert http.main() == expected
 
 
+
+def verify_quality_results():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("ci_results", REPO_ROOT / "scripts/check-ci-results.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    results = {key: "skipped" for key in module.SUITES.values()}
+    results.update(CHANGES_RESULT="success", SHARED_RESULT="success", LIVE_RESULT="skipped")
+    module.validate(["shared", "ci"], results)
+    for selected, actual, live in [
+        (["app", "ci"], results, False),
+        (["ci"], dict(results, CHANGES_RESULT="failure"), False),
+        (["ci"], dict(results, NATIVE_RESULT="failure"), False),
+        (["ci"], results, True),
+        (["unknown"], results, False),
+    ]:
+        try:
+            module.validate(selected, actual, live)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("incomplete selected quality gate accepted")
+    module.validate(["app", "ci"], dict(results, APP_RESULT="success", LIVE_RESULT="success"), True)
+
+def verify_live_manifest():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("live_manifest", REPO_ROOT / "scripts/check-live-release-manifest.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    expected = json.loads((REPO_ROOT / "site/updates/macos-arm64.json").read_text())
+    module.validate(expected, dict(expected))
+    for field in module.FIELDS:
+        for actual in ({k:v for k,v in expected.items() if k != field}, dict(expected, **{field: None})):
+            try:
+                module.validate(expected, actual)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError(f"live manifest accepted invalid {field}")
+    stale = dict(expected, build=expected['build'] - 1)
+    try:
+        module.validate(expected, stale)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("old live build accepted")
+
 def main() -> int:
     workflow_files = sorted(WORKFLOWS.glob("*.yml")) + sorted(WORKFLOWS.glob("*.yaml"))
     assert workflow_files, "no GitHub workflows found"
@@ -137,21 +205,12 @@ def main() -> int:
 
     swift = (WORKFLOWS / "swift-ci.yml").read_text(encoding="utf-8")
     for contract in (
-        'cron: "30 6 * * 1"',
         "send_health_report:",
         "github.event_name == 'workflow_dispatch' && inputs.send_health_report",
-        "Select required test suites",
-        "Site tests",
-        "Backend API tests",
-        "macOS app tests",
-        "Native safety tests",
-        "Release contract tests",
-        "Shared and CI contract tests",
         "name: build-and-test",
         "Tests/select-test-suites.py --json --stdin",
         "xcodebuild \\",
         "docker build --pull=false -f site-deploy/Dockerfile",
-        "Publish weekly or release health report",
         "scripts/send-weekly-health-report.py",
         "TERENTO_OPERATIONS_INGEST_SECRET",
         "SMTP2GO_USERNAME",
@@ -190,7 +249,7 @@ def main() -> int:
     assert "--max-time 60" in deploy_api
     assert "--retry 1" not in deploy_api
     assert "verify-release-client-contract:" in deploy_api
-    assert "Packaging/validate-live-map-catalog.sh" in deploy_api
+    assert "Packaging/validate-released-map-catalog.sh" in deploy_api
     assert "TERENTO_ADMIN_ACCESS_REQUIRED: 'true'" in deploy_api
     deploy_site = (WORKFLOWS / "deploy-site.yml").read_text(encoding="utf-8")
     assert "Retain website deployment health" in deploy_site
@@ -200,7 +259,7 @@ def main() -> int:
     assert "workflow_call:" in publisher
     assert "digest: ${{ steps.image.outputs.digest }}" in publisher
     assert "value: ${{ jobs.publish.outputs.digest }}" in publisher
-    assert "git merge-base --is-ancestor" in publisher
+    assert "refs/tags/" not in publisher
     assert "pull_succeeded=false" in publisher
     assert "GHCR pull attempt" in publisher
     assert 'sleep $((attempt * 2))' in publisher
@@ -223,6 +282,18 @@ def main() -> int:
     assert "expect 64 id" in rejection
     assert "expect 0 " not in rejection and "expect 1 " not in rejection
     assert "f7e394d" not in rejection
+    assert "cancel-in-progress: ${{ github.event_name == 'pull_request' }}" in swift
+    assert "tags:" not in deploy_site, "a tag must not duplicate the beta site deployment"
+    assert "scripts/check-live-release-manifest.py" in deploy_site
+    assert "git diff --quiet" in deploy_site
+    assert "steps.current.outputs.deploy == 'true'" in deploy_site
+    assert '"!site/**/*.md"' in deploy_site
+    assert "actions/upload-artifact@" in swift
+    assert "actions/upload-artifact@" in reusable
+    assert "schedule:" in swift
+    assert "github.event_name == 'schedule' || startsWith(github.ref" not in swift
+    verify_quality_results()
+    verify_live_manifest()
     verify_http_transport()
     verify_scoped_transport()
     assert not (WORKFLOWS / "refresh-compatibility-snapshot.yml").exists()

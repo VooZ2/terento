@@ -70,3 +70,6 @@ venv/
 .coverage
 coverage.xml
 DerivedData/
+
+# First-attempt test output, uploaded by CI.
+test-results/

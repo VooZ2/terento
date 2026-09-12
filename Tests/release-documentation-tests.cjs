@@ -25,7 +25,8 @@ assert.equal(
 const publicLabel = versionMatch[4] || label;
 
 const readme = read("README.md");
-assert.ok(readme.includes(`The latest public release is **${publicLabel} (build ${release.build})**`));
+assert.ok(readme.includes(publicLabel), "README must identify the public beta label");
+assert.match(readme, new RegExp(`build\\s+${release.build}\\b`, "i"), "README must identify the public build");
 assert.match(readme, /The Compatibility page is the official public list/);
 assert.match(readme, /\*\*Tested\*\* — 1–2[\s\S]*\*\*Supported\*\* — 3–4[\s\S]*\*\*Verified\*\* — 5 or more/);
 

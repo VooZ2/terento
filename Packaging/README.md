@@ -1,6 +1,6 @@
 # Terento macOS release packaging
 
-`Packaging/release.sh` is the repeatable Stage 6.5 release entry point. It
+`Packaging/release.sh` is the repeatable release entry point. It
 builds a fresh arm64 Release app, runs the SwiftPM regression suite, verifies
 the bundled libmtp/libusb libraries, signs nested code inside-out with
 Developer ID, submits a temporary ZIP to Apple, staples the accepted app, and
@@ -28,37 +28,22 @@ same override is used by the web, native, backend, and release checks.
 
 ## Full release validation
 
-The staged public target is beta.12 build 28; it is not published until the release gate passes. Public tags and release
-artifacts never use the `-local` suffix; Debug artifacts for owner testing do.
-The beta.12 release uses the same shared installation, update and removal path
-as the existing providers.
+The current published build is identified by `site/updates/macos-arm64.json`
+and `RELEASE_NOTES.md`. Packaging a new artifact does not publish it. Public
+labels never use `-local`; local device-test candidates do.
 
-Run from the repository root:
-
-```sh
-Packaging/release.sh --version 1.0.0 --build 9
-```
-
-For a beta release, keep the app's marketing version separate from the public
-release label:
+Run from the repository root with explicitly selected new release values:
 
 ```sh
-RELEASE_TAG=v1.0.0-beta.12-build28 \
-Packaging/release.sh \
-  --version 1.0.0 \
-  --build 28 \
-  --release-version 1.0.0-beta.12 \
-  --overwrite
+RELEASE_TAG="v${release_label}-build${build_number}" Packaging/release.sh \
+  --version "$marketing_version" --build "$build_number" \
+  --release-version "$release_label"
 ```
 
-The pipeline fails rather than silently replacing an existing artifact. Use
-`--overwrite` only when the exact output is intentionally being regenerated.
-The results are written to:
-
-```text
-dist/Terento-1.0.0-beta.12-macOS-arm64.zip
-dist/Terento-1.0.0-beta.12-macOS-arm64.dmg
-```
+Set these variables to the reviewed release plan; do not reuse a distributed
+build number. The command fails if output already exists. `--overwrite` is
+only for intentionally regenerating an undistributed local output. Results are
+`dist/Terento-<release-label>-macOS-arm64.zip` and `.dmg`.
 
 The command prints the final artifact size and SHA-256 checksum for both
 packages. Packaging explicitly excludes macOS resource forks, extended
@@ -83,8 +68,8 @@ xcrun swift Packaging/generate-app-icon.swift
 
 The Xcode asset catalog contains the 1x/2x macOS renditions from 16 pt through
 512 pt. The native Help menu and the `About Terento` window are part of the
-SwiftUI app shell. Documentation currently points to the public repository
-README because the website does not yet have a dedicated documentation route.
+SwiftUI app shell. User documentation is available in the public
+[installation guide](https://terento.app/guides/install-garmin-maps-mac/).
 
 The release entry point invokes `Tests/run-all-tests.sh`. Its checked-in suite
 manifest assigns every leaf runner to one functional area, and the inventory
@@ -96,8 +81,8 @@ To exercise the fresh build, tests, signing, Hardened Runtime, and runtime-path
 checks without contacting Apple or creating release artifacts:
 
 ```sh
-Packaging/release.sh --no-notarize --version 1.0.0 --build 15 \
-  --release-version 1.0.0-beta.10
+Packaging/release.sh --no-notarize --version "$marketing_version" \
+  --build "$build_number" --release-version "$release_label"
 ```
 
 This mode explicitly reports `NOT NOTARIZED` and must not be treated as a
@@ -119,14 +104,6 @@ use a semantic `TerentoReleaseLabel` ending in `-local` (for example
 `1.0.0-beta.10-local`). Use the Debug test-build path; its Xcode guard now
 rejects a missing or public label even when build settings are overridden.
 Do not use a public-labelled Release artifact for local installation tests.
-
-Owner-authorised exception (2026-09-07): the beta.10 build13 candidate is a
-local Release build labelled `1.0.0-beta.10`, explicitly requested to use ordinary
-production statistics during owner testing. It is generated with Xcode command
-line overrides; canonical published release settings/site metadata remain beta.10
-until acceptance. This exception does not weaken the Debug guard or change the
-usual local-build policy. See the private candidate receipt under
-`dist/beta.10-review-r2/`; the candidate is ad-hoc signed and unpublished.
 
 Both privacy-minimised diagnostic streams carry this release label. The API
 derives and stores `is_local_test=true`; the caller cannot override the
@@ -165,7 +142,7 @@ diagnostic and map-statistics events are classified as purgeable test data.
 
 ## Local Finishing diagnostic build
 
-For the r4 diagnostic test package, use `local-finishing-diagnostics.command`
+For an explicitly authorized Debug diagnostic package, use `local-finishing-diagnostics.command`
 beside the Debug `Terento.app`. It enables the same contour allowlist plus
 `TERENTO_FINISHING_TRACE=1`. This flag controls the extra Debug stderr mirror.
 Normal builds now independently collect fixed-field Finishing events in
@@ -209,9 +186,9 @@ Before distributing a public build:
 - validate the manifest after publication and confirm its download and notes
   URLs remain official Terento destinations.
 
-If an existing GitHub release is immutable, keep the in-app release label and
-bundle build unchanged while using a unique build-specific `releaseTag` (for
-example `v1.0.0-beta.10`) for the new release and its asset URLs.
+Every distributed rebuild must receive a new monotonically increasing build
+and a new build-specific tag, even if its semantic beta label is unchanged.
+Never reuse an existing public tag or overwrite a distributed artifact.
 
 The app performs only a background metadata check and a user-confirmed
 `NSWorkspace` hand-off. It does not download, mount, or replace the app in the
@@ -226,16 +203,7 @@ publisher. The renderer reads release version, download, and notes URLs from
 `site/updates/macos-arm64.json` and derives FAQ JSON-LD from each page's
 visible `#faq` section.
 
-## Beta.10 build 15 diagnostic reports
-
-Use immutable tag v1.0.0-beta.10-build15 for this rebuild; retain build13's tag
-and files. The displayed label stays 1.0.0-beta.10 and CFBundleVersion advances
-to15. Fixed local diagnostics preserve first failure, attempt context, target
-counts/sizes and final cleanup. Report issue copies the complete privacy-reviewed
-report and uses a short paste-instruction URL if the encoded form exceeds7000
-bytes. No raw trace is automatically uploaded or added to the telemetry schema.
-
-## Build 22 Finishing deadline correction
+## Sampled-read worker bounds
 
 Sample verification uses a 120-second inactivity limit renewed only by strictly
 increasing validated-byte progress from the private worker sidecar, with a
@@ -249,48 +217,21 @@ Connection discovery retains its separate 120-second limit. Cleanup, inventory
 and snapshot workers retain their 45-second limits. Sample coverage, native
 USB calls, retry policy, map writes and ownership rules are unchanged.
 
-## Build23-local USB recovery candidate
+## Release evidence and publication
 
-Build with Debug and the explicit `CURRENT_PROJECT_VERSION=23` override to
-produce `1.0.0-beta.11-local` build23; checked-in public numbering and metadata
-remain22. Parent owns at most one metadata-only retry;
-workers/native sample reads do not nest retries. Transport errors request
-reconnect rather than repeat; both parent attempts share a600s absolute budget,
-with120s advancing-byte inactivity retained. Cleanup remains a separate45s exact
-target safety operation. Generic verification errors use the existing
-verification-required classification instead of asserting physical disconnect.
-See NativeDependencies/README.md for the gated native context shutdown and
-failed-session abort. Full-file verification and reduced sample coverage are
-not used. Hardware evidence is required before public promotion.
+Historical local candidate commands are retained in Git history, not active
+instructions; see [historical evidence](../history/README.md). The public beta
+includes all four reviewed providers. Never replace a packaged catalog or
+change activation flags manually as a normal release step.
 
-## Beta.11 build 27
+Merge the tested release source into beta before creating its immutable tag.
+The beta push is the single site deployment trigger; a tag records app provenance
+and runs release CI, without redeploying an older site tree. Attach the verified
+artifacts to the intended GitHub prerelease and verify the final live manifest,
+download URLs and checksums. The published source-client catalog matrix must
+retain prior route contracts and gain the new release source when appropriate.
 
-Promotes the build25 USB recovery and verification candidate plus build26 UI
-presentation caching after owner-reported Andorra and France installation PASS.
-Both C and Swift Release compilation conditions explicitly retain
-TERENTO_BUNDLED_MTP exactly once, matching the local Debug context cleanup path.
-The release contract guards against duplicate settings overriding the flag.
-See reports/2026-09-12-beta11-build27-release.md for the publication receipt
-and the distinction between owner hardware evidence and automated checks.
-
-## BBBike local integration candidate
-
-The BBBike candidate uses an optimized Debug build with the actual release label
-`1.0.0-beta.12-local` and build31. Both `BBBike` and `BBBike (Ontrail)` are
-independent map types of one source provider. Public release settings and the
-bundled release catalog remain unchanged until hardware review.
-
-For this local candidate only, copy the reviewed DB v4 metadata projection into
-`Terento.app/Contents/Resources/catalog.json`, set BBBike ACTIVE in that local
-copy, and set the Debug-only `TerentoUseBundledMapCatalog` Info.plist key to true.
-All 760 BBBike package IDs and source proofs must match the PAUSED receiving API
-before hardware tests. Record the exact source, catalog and ZIP hashes; re-sign
-after applying the local resources, then unzip and validate the actual delivered
-bundle. The override does not exist in the Release runtime path.
-
-Acceptance covers the full metadata catalog, both genuine small source archives
-through the final installation validator, the shared regression suites, Debug
-and Release compilation, and exact bundle/runtime validation. Real Garmin
-installation, reconnection, on-device usefulness and a genuine newer-release
-update remain separate evidence. Do not publish either map type before its
-applicable evidence gate passes.
+A local PASS is not publication evidence. The release receipt must distinguish
+compilation/tests, signing/notarization, exact-model owner hardware results,
+GitHub asset publication and live website verification. A waived real newer-map
+update remains untested and must remain in Known issues.

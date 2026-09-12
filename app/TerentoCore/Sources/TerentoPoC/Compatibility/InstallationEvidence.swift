@@ -547,6 +547,11 @@ final class InstallationEvidenceController: ObservableObject {
     private let uploader: any InstallationEvidenceUploading
     private let automaticRetryDelays: [UInt64]
     private var uploadTask: Task<Void, Never>?
+    #if TERENTO_TESTING
+    /// Observe completion of the real scheduled task, without cancelling or flushing it.
+    /// Excluded from application builds; tests must never substitute a manual upload.
+    func scheduledUploadForTesting() -> Task<Void, Never>? { uploadTask }
+    #endif
     private var uploadTaskGeneration: UUID?
     private var activeUploadTask: Task<UploadAttemptResult, Never>?
     private var activeUploadTaskGeneration: UUID?

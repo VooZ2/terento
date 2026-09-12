@@ -2,7 +2,9 @@
 
 These are the repository-wide instructions for Codex and contributors. Keep
 changes narrow, evidence-based, and consistent with the canonical documents
-under `internal/` and the current release state.
+in the public component READMEs and the current release state. Private
+operator documentation under ignored `internal/` may supplement these rules
+but is not a prerequisite for external contributors.
 
 ## Mandatory reading for user-facing work
 
@@ -45,8 +47,7 @@ Use this order when sources disagree:
   never the only status signal.
 - Public claims must match functionality available in the current release.
   Beta limitations must remain truthful.
-- `internal/DEVICE_COMPATIBILITY.md` is the single source for the official
-  exact-model compatibility criteria: `TESTING` (0), `TESTED` (1–2),
+- The official exact-model compatibility criteria are: `TESTING` (0), `TESTED` (1–2),
   `SUPPORTED` (3–4), and `VERIFIED` (5+). The current administrator-approved
   public rows come from `/admin` through the compatibility API; public pages,
   app/API copy, release notes, and reviews must not introduce another list or

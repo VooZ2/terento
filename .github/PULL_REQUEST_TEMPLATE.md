@@ -8,6 +8,10 @@
 - [ ] I documented the commands and results below.
 - [ ] I did not claim hardware validation that was not performed.
 
+If a previous check failed, identify the failing assertion/step, evidenced cause,
+whether runtime or the test changed, and why the required behavior is still
+covered. A successful retry alone does not establish a fix.
+
 Commands and results:
 
     <!-- Add commands and concise results here. -->

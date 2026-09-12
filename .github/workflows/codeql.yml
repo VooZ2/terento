@@ -5,10 +5,20 @@ on:
     branches:
       - beta
       - main
+    paths:
+      - "**/*.py"
+      - "**/pyproject.toml"
+      - "**/requirements*.txt"
+      - ".github/workflows/codeql.yml"
   pull_request:
     branches:
       - beta
       - main
+    paths:
+      - "**/*.py"
+      - "**/pyproject.toml"
+      - "**/requirements*.txt"
+      - ".github/workflows/codeql.yml"
   schedule:
     - cron: "15 5 * * 3"
   workflow_dispatch:
@@ -16,6 +26,10 @@ on:
 permissions:
   contents: read
   security-events: write
+
+concurrency:
+  group: codeql-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   analyze:

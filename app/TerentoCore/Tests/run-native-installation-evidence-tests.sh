@@ -4,7 +4,7 @@ set -euo pipefail
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
 build_dir="$(mktemp -d "${TMPDIR:-/tmp}/terento-installation-evidence-tests.XXXXXX")"
 
-swiftc -parse-as-library -module-name TerentoInstallationEvidenceTests \
+swiftc -D TERENTO_TESTING -parse-as-library -module-name TerentoInstallationEvidenceTests \
   "$project_root/Sources/TerentoPoC/Telemetry/TerentoTelemetryMetadata.swift" \
   "$project_root/Sources/TerentoPoC/Models/MTPModels.swift" \
   "$project_root/Sources/TerentoPoC/Compatibility/DeviceIdentity.swift" \
@@ -19,4 +19,9 @@ swiftc -parse-as-library -module-name TerentoInstallationEvidenceTests \
   "$project_root/Tests/TerentoPoCTests/InstallationEvidenceTests.swift" \
   -o "$build_dir/tests"
 
-"$build_dir/tests"
+
+python3 - "$build_dir/tests" <<'PYTEST'
+import subprocess, sys
+# A hung retry remains a failing test; never retry a failed assertion.
+subprocess.run([sys.argv[1]], check=True, timeout=30)
+PYTEST

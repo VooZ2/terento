@@ -1,352 +1,117 @@
 # Terento native core
 
-`app/TerentoCore/` is the production SwiftPM source module and native regression
-harness consumed by the root `Terento.xcodeproj` macOS target. It contains the
-libmtp bridge, map/device logic, resources and developer tools. The existing
-`TerentoPoC`, `TerentoWriteTest` and `TerentoInterruptionTest` names are retained;
-a symbol/module rename is deferred. Build with
-`swift build --package-path app/TerentoCore` from the repository root.
+This is the production SwiftPM module and native regression harness consumed by
+`Terento.xcodeproj`. `app/Terento/` owns the macOS shell and packaging resources.
+The retained `TerentoPoC`, `TerentoWriteTest` and `TerentoInterruptionTest` target
+names are implementation identities, not a claim that the product is a prototype.
 
-The app's guarded installation/update/removal paths and ownership rules are
-unchanged. Hardware developer tools require separate explicit authorization.
-Shared public API schemas and fixtures are documented in
-[contracts/README.md](../../contracts/README.md).
+Current release identity and beta limitations are in
+[release notes](../../RELEASE_NOTES.md). Terento supports macOS 13+ on Apple
+Silicon. Production builds bundle source-built arm64 libmtp/libusb; users do
+not need Homebrew. See [packaging](../../Packaging/README.md) and
+[third-party notices](../../THIRD_PARTY_NOTICES.md).
 
-The current beta.11 release includes the internal, Debug-only
-OpenTopoMap contour path for the reviewed Phase 3 allowlist. MapRando is active
-in the additive v3 catalog projection. Contour IMG headers may omit a release date; the
-validated catalog release is used only after exact provider/region/path/size
-checks. Managed main and contour components share a safe lifecycle row and are
-removed one exact MTP object at a time. Recognized third-party IMG files can
-also be removed after exact live-object validation; unknown and Garmin-owned
-files remain read-only. The physical RC gate is still pending a connected MTP
-watch.
+## Current functionality
 
-## Catalog interface
+The app connects a map-capable Garmin smartwatch, resolves provider metadata,
+downloads to the Mac, validates the source package and Garmin image, checks
+storage, installs, verifies the transfer, and records local ownership.
 
-The working-tree UI keeps the existing select → review → install flow in a
-stable 1180×820 pt default window (920×600 pt minimum). The catalog has local
-country/region search, geography and provider menus, a filtered result count,
-and a separate collapsed import-from-Mac section. The catalog stays visible;
-its result count sits below the controls and its viewport has a persistent12pt
-top gap matching the import separation. Filters reuse an immutable
-presentation index; they never request a device scan or installation preflight.
-Selected maps remain selected across filters, and the existing one-provider
-batch restriction remains enforced. Recognized installed matches remain
-non-selectable search results; their lifecycle actions stay in Manage maps.
+Freizeitkarte, OpenTopoMap, MapRando and BBBike use the shared lifecycle.
+BBBike and BBBike (Ontrail) are separate map types from one provider; opposite
+same-region types conflict and cannot be installed together. OpenTopoMap
+contours are optional source-validated components, not a Debug-only feature.
+Compatible local IMG imports have no automatic provider update path.
 
-The toolbar supports four-provider test catalogs without activating BBBike or
-changing provider licensing/acquisition policy. Search uses catalog geography
-and reviewed aliases, not provider names, style annotations, filenames or a
-city/POI lookup service. Official administrative regions remain catalog entries.
+Install Maps provides geographic and provider/type filtering, local search,
+retained selections and one-provider batches. Filtering uses a cached
+presentation index and does not rescan the device. Manage Maps exposes current
+owned-map lifecycle actions and exact recognized external-map removal with
+separate confirmation. About is opened through `Terento → About Terento`;
+Diagnostics contains sharing settings. The sidebar remains Device, Install
+maps, Manage maps. UI layout and exact copy are reviewed visually; tests should
+protect actions, state transitions, accessibility and data contracts.
 
-Ready keeps Storage directly above the action row; its short body can scroll
-independently when needed. Manage maps has local search/provider filters over
-the exact scanned inventory, with no geographic guesses for custom files.
-About and Diagnostics share centered opening behavior and retain manual
-positions while already visible. These are presentation changes only.
+## Safety and verification
 
-About, privacy/legal links, update status and diagnostics access are consolidated
-in `Terento → About Terento`. The sidebar contains only Device, Install maps and
-Manage maps. Update-controller behavior and all device operations are unchanged.
-See [UI validation receipt](../../reports/2026-09-12-catalog-ui-polish.md) for
-local validation and outstanding visual acceptance; this is not a release notice.
+Ownership requires BOTH an approved managed filename and the exact file in the
+local device manifest. Unknown files, Garmin maps, GMA/UNL and protected system
+files remain read-only. Recognized external maps require a separate exact-target
+confirmation and live recheck; recognition never confers ownership.
 
-## Scope
+A safe update downloads and validates the replacement, checks space for both
+versions, uploads and verifies the replacement, then removes the old owned
+version. Insufficient space stops the update. Interrupted transfers must not
+remove a known-good version. Recovery records retain exact created-object
+identity; cleanup never expands into heuristic deletion.
 
-The connectivity baseline provides:
+Remote transfer verification uses the implemented bounded sampled-read policy;
+it is not a claim of a whole remote-file SHA-256. Sample workers have a
+120-second advancing-byte inactivity limit and a 600-second absolute limit.
+Only strictly increasing validated progress renews inactivity. Cancellation
+reaps the owned child before releasing its lifecycle lease. These limits do
+not impose a universal timeout on every synchronous native inventory call.
+Connection/inventory and readback failures may still require physical reconnect.
 
-1. detects one Garmin USB MTP device;
-2. reads manufacturer, model, VID, PID, and device version;
-3. reads storage IDs, capacities, free space, and descriptions;
-4. creates a stable in-memory device identity;
-5. evaluates that identity against a local exact-device registry;
-6. loads a bundled provider-neutral metadata catalog;
-7. enumerates existing device files under the Garmin map locations;
-8. reads bounded prefixes of existing `.img` files;
-9. validates the Garmin IMG header signatures and parses conservative metadata when available;
-10. compares installed map versions with the local catalog;
-11. evaluates whether a selected map package fits the reported free space;
-12. displays a user-facing map comparison result;
-13. releases the MTP device cleanly;
-14. provides a separately invoked, fixed-payload write/read-back/hash/cleanup
-    test for the validated fēnix 8 device.
+Installation/removal evidence is model-specific. A real update to a newer map
+release remains untested; neither automated tests nor reconnect recovery closes
+that hardware gate. See [historical evidence](../../history/README.md).
 
-The Swift layers are intentionally separated:
+## Catalog and privacy contracts
 
-```text
-SwiftUI
-  └── DeviceEngine
-        ├── CompatibilityEngine
-        │     └── DeviceRegistry (local, in-memory)
-        └── MTPTransport
-              └── C libmtp bridge
-```
+The current app uses `/maps/catalog-v4.json`. Legacy v2 and v3 routes retain
+provider sets understood by older clients. The full bundled fallback is a
+native decoder projection; it must not be silently rewritten into an API schema.
+See [shared contracts](../../contracts/README.md).
 
-The local registry contains exact Garmin smartwatch identities and safe
-capability profiles only. Public compatibility status comes from the canonical
-API: `TESTING` is zero successful shared installations, `TESTED` is 1–2,
-`SUPPORTED` is 3–4, and `VERIFIED` is 5 or more for the exact model and
-variant. Reconnect, map visibility, physical-device count, firmware variation,
-and operator review do not promote a status. Exact model names and firmware
-values belong in internal compatibility records, not this public module overview.
+Maps come directly from provider infrastructure. Catalog visibility is separate
+from acquisition: canonical Russia and Crimea packages are withheld before
+workspace creation or HTTP acquisition. Existing device files remain protected.
 
-The metadata-only catalog records downloadable Freizeitkarte and OpenTopoMap
-packages. The bundled fallback contains all 63 official Freizeitkarte
-packages plus all 177 official OpenTopoMap Garmin rows. It records provider
-attribution, source and license URLs, release, and provider-listed package
-sizes; 176 OTM contour artifacts are optional and the one empty contour source
-is omitted from installable artifacts. The loader tries
-`https://api.terento.app/maps/catalog.json` first and falls back to
-`Resources/Maps/catalog.json`. If the live catalog is temporarily missing a
-bundled provider, the loader supplements it with the missing local metadata;
-if the live catalog contains a paused, retired, or down provider, that remote
-state remains authoritative and bundled packages cannot re-enable it. Neither
-path downloads a map binary. Catalog timestamps accept ISO 8601 values with or
-without fractional seconds so decoding remains consistent across supported
-macOS releases.
+Manifests and device identifiers stay on the Mac. Compatibility and map-use
+reports are privacy-minimised and enabled by default; either stream can be
+turned off in Diagnostics. Custom maps contribute compatibility evidence only.
+Strict `-local` labels keep local-test events outside public aggregates.
+Report issue opens a user-reviewed GitHub draft; raw logs are not automatically
+uploaded. App updates use metadata checks and an explicit official-download
+handoff, never silent application replacement.
 
-Map scanning is deliberately content-first. Known Garmin-owned images are
-excluded before their prefix is read. Remaining `.img` candidates are read
-through one small, read-only header prefix. The filename is not sufficient to
-prove identity, but is retained as a bounded fallback for a recognized OTM
-header when the fixed header truncates a long country name. This means a
-`gmapsupp.img` file or a BaseCamp-renamed Freizeitkarte image can still be
-recognized from its IMG metadata. Recognized Freizeitkarte and OpenTopoMap
-images can be grouped by provider; unsupported or unrecognized images remain
-read-only after inspection, without any write, rename, overwrite, or delete
-operation. The header parser recognizes the fixed `DSKIMG`/`GARMIN` signatures,
-provider region identity, Freizeitkarte release labels such as `Release 26.05`,
-and OpenTopoMap generated dates such as `2026-05-24`. The OTM provider parser
-joins the two bounded fixed-header fields before parsing, so it accepts both
-the compact `0YY-MM-DD` form (`026-05-24`) and dates split at the field
-boundary (`202` + `6-05-24`, or `20` + `26-08-26`). All 177 current OTM main
-ZIP sources passed a read-only IMG-header audit; identity and release checks
-remain strict.
+## Build and automated validation
 
-The prefix is currently limited to 4 KiB. This is enough for the fixed header
-metadata observed on the fēnix 8 test device and avoids downloading complete
-map images just to identify them. `Release 26.05` is retained as raw metadata
-and normalized to the comparable version `2026-05` by the Freizeitkarte
-parser; OpenTopoMap generated dates use its own parser, including compact
-`0YY-MM-DD` and full dates split across the two fixed header fields. A missing
-or conflicting release remains a fail-closed acquisition error.
+Use Xcode with Swift 6 and macOS 13+ SDK support. The development SwiftPM bridge
+uses libmtp/libusb from Homebrew or `LIBMTP_PREFIX`; distribution uses bundled
+libraries. Node.js 22 is required for cross-component checks; backend tests use
+Python 3.12/3.13 and the declared test dependencies.
 
-The beta.10 Install maps flow presents an alphabetical provider dropdown
-without selecting a default provider. A batch may contain one or more maps
-from the selected provider only; rows from other providers become inactive and
-the planner rejects a defensive mixed-provider selection. Mixed-provider
-batch installation remains deferred. OpenTopoMap's validated optional contour artifacts can be selected and installed
-with their main map in beta.10.
-Map rows use the country/region as the title, normalize legacy provider-
-decorated names such as `Lithuania · Otm Lithuania`, and show provider plus
-normalized release on the second line. Same-provider regional variants use a
-parenthesized qualifier only when needed.
-The owner has confirmed one-map and same-provider two-map OTM installation,
-watch use, reconnect persistence, Manage maps discovery, one-map Remove, and
-the one-provider selection lock on the tested fēnix 8. An earlier two-map OTM
-release-candidate run verified and recorded the first map but exposed an
-affected-firmware MTP stall when the next device session was opened
-immediately. The batch transition now uses a provider-neutral five-second
-device-settle boundary before reopening MTP. The exact two-map OTM scenario
-passed on real hardware in build 8; the equivalent two-map Freizeitkarte
-scenario also passed. Broader device evidence remains a separate release
-claim.
-
-The beta.10 app presentation keeps only `Update` and `Remove` in normal
-Manage maps rows. `Update` appears only from the canonical provider-neutral
-lifecycle comparison and reuses the existing safe-update transaction; Backup
-and ownership-recovery tooling remain implemented for internal validation but
-are not exposed through a production overflow menu. The active installation
-page measures the real window viewport, keeps a 28-point bottom breathing
-space when content fits, sizes one- to three-map lists to their visible rows,
-and retains native scrolling for four or more maps or reduced window height.
-
-Map-usage diagnostics are an independent default-on stream alongside
-compatibility diagnostics. Provider maps enqueue idempotent download/install
-lifecycle events without Garmin identifiers, serials, local paths, manifests,
-binary content, or diagnostic logs. Both streams can be turned off only from
-the production app's `Terento → Diagnostics` window; the installation review
-contains no sharing choice. Delivery is best-effort through local retry queues,
-the window shows pending counts and offers `Send diagnostics` when needed, and
-delivery never blocks installation. Custom `.img` installations are reported
-only as compatibility diagnostics. Server-side raw map events are retained for
-no longer than 24 months before pruning.
-
-SwiftPM and the production Xcode target compile the shared application sources,
-including guarded map installation and default-on privacy-minimised diagnostics.
-Launching the developer executable must not be treated as a read-only device
-test. The separate
-`TerentoWriteTest` command is deliberately narrower: it accepts only
-`terento-write-test.txt`, advertises it as a generic MTP object, targets only
-`/GARMIN/terento-write-test.txt` on the validated fēnix 8 profile, refuses an
-existing target, reads the object back, checks size and SHA-256, and removes only
-the exact object it created. It does not write maps or touch any existing Garmin
-or user-managed file.
-
-The separate `TerentoInterruptionTest` command uses only a generated
-`terento-interrupt-test.bin` payload and a distinct `/GARMIN` test filename. In
-`controlled` mode it cancels at 50%. In `physical` mode it pauses at 50%, asks
-the operator to disconnect the watch, and then verifies cleanup after reconnect.
-It never accepts an IMG/map source and refuses to remove an object unless the
-exact object identity returned by the same transfer matches.
-
-The beta.11 production lifecycle path forwards native MTP read progress through
-the local read-back adapter. Backup reports measured byte progress; manual
-Remove validates a managed map from the fresh exact inventory without copying
-the complete `.img`, and validates a recognized external map with only its
-bounded IMG header. Remove still reports determinate progress through exact
-verification, deletion, and bounded post-delete rescans. This source change
-does not add hardware evidence for those operations.
-
-## Dependencies
-
-- macOS 13 or newer
-- Swift 6 or newer
-- Xcode with SwiftUI support for the native windowed app
-- Homebrew `libmtp` 1.1.23
-- Homebrew `libusb` 1.0.30, used by libmtp
-
-The SwiftPM development build links to locally supplied library prefixes,
-including Homebrew. Production Xcode builds use the pinned source-built and
-bundled libraries described in `Packaging/NativeDependencies/README.md`.
-
-## Build
-
-From this directory:
+From the repository root:
 
 ```sh
-export LIBMTP_PREFIX=/opt/homebrew/opt/libmtp
-export CLANG_MODULE_CACHE_PATH=/tmp/terento-native-poc-module-cache
-swift build
+swift build --package-path app/TerentoCore
+Tests/run-app-tests.sh
+Tests/run-native-tests.sh
 ```
 
-To run the native window:
+The app suite owns UI wiring contracts. The native suite owns device safety,
+provider acquisition/identity, manifests and lifecycle behavior. The diagnostics
+runner compiles a `TERENTO_TESTING`-only task observer so tests await the real
+automatic upload rather than sleeping for a guessed 180 ms. The observer is
+absent from app builds; no production retry policy is changed.
 
-```sh
-swift run TerentoPoC
-```
+Filter timings are always reported. For a controlled-machine performance gate,
+set `TERENTO_ENFORCE_FILTER_BENCHMARK=1` when running the native map-selection
+runner; the p95 threshold remains 16 ms. Functional and fixture checks always run.
+See [test and CI policy](../../Tests/README.md) for selection and failure evidence.
 
-To verify the current provider-neutral foundation and its related
-regression boundaries:
+## Developer hardware tools
 
-```sh
-../../Tests/run-app-tests.sh
-../../Tests/run-native-tests.sh
-```
+`run-write-test.sh` and `run-interruption-test.sh` are developer-only tools.
+They require explicit authorization for the exact device operation; never run
+them as ordinary CI or infer general map compatibility from them. Read each
+script's guard and target description before use. A failed exact-target check
+must stop, not trigger broader cleanup.
 
-Release preparation additionally validates the exact production catalog with
-the current client decoder, provider adapters, source policies, and complete
-Freizeitkarte/OpenTopoMap identity matrix:
-
-```sh
-/bin/zsh ../../Packaging/validate-live-map-catalog.sh
-```
-
-`Packaging/release.sh` runs this live check automatically before signing or
-notarization. If one remote package is incompatible with the current client,
-runtime catalog loading fails closed to the bundled last-known-good snapshot.
-
-These checks validate the provider-neutral catalog and acquisition seams,
-custom `.img` staging/validation, compact custom-import presentation and
-confirmation, generic provider/custom inventory grouping, optional artifact
-storage planning, model-admission safety, and the Freizeitkarte/OpenTopoMap
-source paths. The common multi-map lifecycle resolves MTP object IDs again by
-exact managed filename and validated size after a write, because some Garmin
-firmware re-enumerates handles between sessions. It also applies one bounded,
-provider-neutral settle window between successful batch items so firmware can
-commit/index the completed IMG before Terento opens the next MTP inventory.
-The owner has separately confirmed same-provider multi-map OpenTopoMap and
-Freizeitkarte installation, Manage maps and watch visibility, reconnect
-persistence, and isolated one-map removal on real fēnix 8 hardware. These
-native tests do not turn that result into a broader device-support claim or
-exercise the separate web/admin UI. The focused legacy-named checks also cover
-the independent statistics consent/queue contract, measured installation
-viewport, and production `Update`/`Remove` action matrix. The metadata API
-contract is covered by backend tests; these native tests do not exercise it.
-The external-map safety tests cover only the local one-file Remove boundary;
-they are not hardware evidence.
-
-To run the explicit developer-only Write Test after connecting the validated
-Garmin fēnix 8 and closing other Garmin/MTP applications:
-
-```sh
-./run-write-test.sh ~/Downloads/terento-write-test.txt
-```
-
-The command stops before writing when the source file name/content is not the
-Terento test payload, the target already exists, the device is not the
-validated fēnix 8, or the `/GARMIN` target cannot be identified exactly. It
-must be started manually; the normal app never invokes it.
-
-To run the controlled interruption test first:
-
-```sh
-./run-interruption-test.sh controlled
-```
-
-This keeps the watch connected and cancels the generated transfer at 50%.
-After it reports cancellation, press Return so it can inspect and, only when
-safe, remove the exact temporary object.
-
-To run the physical interruption test:
-
-```sh
-./run-interruption-test.sh physical
-```
-
-At the 50% pause, disconnect only the Garmin watch, then press Return. Reconnect
-the same watch when the command asks. The test then checks whether no temporary
-object remained or removes only the exact object identity created by that run.
-Do not use a map file, and do not continue if the command reports `MANUAL
-REVIEW` or an existing interruption-test target.
-
-Alternatively, open this directory as a Swift package in Xcode and run the
-`TerentoPoC` macOS executable target.
-
-## Hardware test procedure
-
-Use the Garmin fēnix 8 AMOLED 47mm test watch. Close Garmin Express, OpenMTP,
-MacDroid, and other MTP clients first.
-
-1. Launch with no watch connected. The window should ask you to connect the
-   device.
-2. Connect the watch and press “Connect device”.
-3. Confirm model, firmware, and storage capacity/free-space values.
-4. Disconnect the watch and confirm no crash or write activity.
-5. Reconnect and press “Read device” again.
-6. Confirm a second successful read.
-
-The developer-details toggle shows local diagnostic messages, VID/PID, stages,
-errors, timing, identity fields, map identity/version evidence, catalog source,
-and compatibility evidence. Normal UI does not expose USB IDs, MTP terminology,
-or protocol details. The shared application sources include metadata catalogs,
-public compatibility lookup, app update metadata, provider downloads and
-privacy-minimised diagnostic submission. The directory move adds no new network
-path or account requirement. The compatibility lookup
-uses the exact model/size/display identity, refreshes from the public aggregate
-API after discovery, and falls back only to a recent exact-identity cache. It
-never changes device write authorization. The separately reviewed Garmin
-`091e:51b8` identity resolves to the exact fēnix 8 47 mm AMOLED catalog row;
-other size-only identities remain variant-unknown and cannot inherit its
-status or cached result.
-
-## Known limitation
-
-The native SwiftUI target builds successfully with the selected full Xcode
-toolchain on arm64. Physical-device rendering still requires an explicitly
-connected Garmin and remains a separate hardware check. The source remains intentionally separated into the
-SwiftUI app, device engine, compatibility engine, local device registry,
-map catalog, transport model, bundled metadata resource, and C libmtp bridge.
-
-The bundled package size is a catalog snapshot from the provider directory and
-must be revalidated against the actual download before any future map transfer
-work. Neither developer write test performs map transfer.
-
-### Build 15 diagnostic reports
-
-Report issue includes a bounded fixed-field verification sequence, original
-failure and cleanup outcome, observed sizes and sample results. Native return
-codes remain distinguishable from mapped application categories. Long reports
-use clipboard paste into the GitHub form. Device calls, ownership policy, retries
-and deadlines are unchanged; raw logs are not automatically uploaded.
+For an authorized connection check, close other MTP clients, launch Terento,
+connect the watch, inspect exact model/variant/firmware and storage, then check
+disconnect/reconnect behavior. Automatic connection is the current app flow;
+old “Read device” prototype instructions are not current UI. On-watch map
+visibility/usability and real update acceptance require independent owner tests.

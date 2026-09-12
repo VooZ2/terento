@@ -12,9 +12,10 @@ architecture, safety, documentation, and delivery.
 - The current beta release is maintained through the repository release
   manifest, release notes, and the official compatibility list. Do not use an
   old beta branch, draft PR, or local artifact as the current status source.
-- Provider scope is Freizeitkarte plus OpenTopoMap through the shared
-  provider-neutral path. Optional OpenTopoMap contour installation remains
-  deferred.
+- Active providers are Freizeitkarte, OpenTopoMap, MapRando and BBBike through
+  the shared lifecycle. BBBike and BBBike (Ontrail) are two map types of one
+  provider. Source-validated OpenTopoMap contours are an optional public add-on.
+  Registration and successful tests do not grant broad device compatibility.
 - Do not change app runtime code, resources, screenshots, Xcode packaging,
   release metadata, or version numbers as incidental cleanup. Functional
   changes require their own reviewed scope and test evidence.
