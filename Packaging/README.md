@@ -9,6 +9,8 @@ tests.
 
 ## Preconditions
 
+- a clean checkout of a GitHub-verified signed release commit already merged
+  into beta, plus authenticated `gh` for the read-only source preflight;
 - macOS and Xcode with the `Terento.xcodeproj` toolchain available;
 - Node.js for the JavaScript-backed native/web regression contracts;
 - Python 3.12 or 3.13 for backend and shared JSON contract checks; the backend
@@ -224,7 +226,10 @@ instructions; see [historical evidence](../history/README.md). The public beta
 includes all four reviewed providers. Never replace a packaged catalog or
 change activation flags manually as a normal release step.
 
-Merge the tested release source into beta before creating its immutable tag.
+Merge the tested release source into beta, then package from the exact
+GitHub-verified merge commit. Create a lightweight tag at that packaged SHA;
+verify its remote target and signature before publishing the draft release.
+See [the signature policy](../VERSIONING.md#verified-release-source).
 The beta push is the single site deployment trigger; a tag records app provenance
 and runs release CI, without redeploying an older site tree. Attach the verified
 artifacts to the intended GitHub prerelease and verify the final live manifest,
