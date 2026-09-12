@@ -118,7 +118,7 @@ class HistoricalDeviceRegistryTests(unittest.TestCase):
         self.assertIn("never authorize a device write", sql)
 
     def test_fenix_7_pro_migration_seeds_all_reviewed_identities(self):
-        sql = (EXPANDED_MIGRATION.parent / "044_historical_fenix_7_pro_registry.sql").read_text(encoding="utf-8")
+        sql = (EXPANDED_MIGRATION.parent / "045_historical_fenix_7_pro_registry.sql").read_text(encoding="utf-8")
         for device_id in EXPECTED_FENIX_7_PRO_MODELS:
             self.assertIn(device_id, sql)
         self.assertIn("HISTORICAL_REVIEWED", sql)
