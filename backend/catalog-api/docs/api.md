@@ -877,3 +877,41 @@ The compatibility event schema is unchanged. Administrator GitHub exports label
 the reported transport category as potentially inferred and direct the user to
 the app's Report issue for the extended local trace. The API does not receive,
 store or reconstruct that trace. Legacy event values remain unchanged.
+
+### BBBike local candidate (2026-09-12)
+
+`/maps/catalog-v4.json` adds the registered, initially PAUSED `bbbike` provider.
+`/maps/catalog.json` remains exactly the reviewed FZK/OTM provider set and v3
+remains exactly FZK/OTM/MapRando. The additive catalog body retains schemaVersion2.
+Provider registration is not a public compatibility claim or activation.
+
+BBBike packages expose `mapType` (`bbbike-latin1` or `ontrail-latin1`) and
+`geographicRegionId`. `region` and `canonicalRegionId` are the existing native
+lifecycle identity slot and include source path plus type; for example
+`EUROPE-LITHUANIA-BBBIKE-LATIN1`. `providerRegionId` is `europe/lithuania`, and
+both variants share geographic identity `LITHUANIA`. The package name is the
+reviewed geographic display name. Two types remain one statistics provider.
+
+Main artifacts include bounded original-source `sourceProof`: source URL,
+strong ETag, Last-Modified, exact ZIP/IMG lengths, payload path, README source
+region/style/generated timestamp, payload MD5, a source revision, and the
+header-identity validation marker. MD5 is the provider's payload-integrity
+value, not a Terento cryptographic trust assertion. Native acquisition must
+validate the whole downloaded payload independently. Calendar versions use
+README day; same-day republishes do not invent a new version ordering.
+
+Unavailable BBBike entries may have unknown ZIP bytes represented as0, unknown
+install size, unavailable artifact validation and no source proof. They are
+catalog metadata only and cannot be acquired. Ready-region pages for Cambodia, Jordan and Luxembourg point to the provider's
+separate example namespace. Exactly those six URLs (three regions × two types)
+are reviewed aliases: source README/IMG identity, complete country input-PBF
+bounds and ready-region polygon bounds were checked for both styles. No other
+example URLs are accepted. Other types and the Russia subtree are outside
+this adapter's catalog scope.
+
+Both telemetry streams accept `bbbike`; the existing strict `-local` label
+classification, deduplication, privacy schema and local purge boundary remain.
+Map statistics resolve the stored package to its geographic identity and expose
+`map_type`; diagnostics fallback without a variant identity does not guess a
+package or type. Candidate package IDs must be seeded in the receiving DB before
+owner testing, because unknown map IDs cannot link to package geography.
