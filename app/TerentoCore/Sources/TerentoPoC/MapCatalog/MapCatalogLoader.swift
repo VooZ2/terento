@@ -554,7 +554,10 @@ private struct MapCatalogDocument: Decodable {
                 if nameOrder != .orderedSame {
                     return nameOrder == .orderedAscending
                 }
-                return $0.id < $1.id
+                if $0.id != $1.id { return $0.id < $1.id }
+                // Distinct providers can share both geographic name and region ID.
+                // Complete the order before dictionary iteration reaches the UI.
+                return ($0.providerId ?? "") < ($1.providerId ?? "")
             },
             packages: packages.sorted {
                 let providerOrder = MapIdentity.normalizeProvider($0.providerId)

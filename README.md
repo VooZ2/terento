@@ -93,7 +93,7 @@ are outside the current public scope.
 ## Download and beta status
 
 **Release preparation — not published:** beta.12 build28 is the public release candidate in this
-working tree. A separate build32-local may be used for local hardware testing;
+working tree. A separate build33-local may be used for local hardware testing;
 it is not the public build number. The update-manifest checksum is temporarily
 zero until the signed public build28 artifact is verified. The currently published build remains beta.11 build27.
 

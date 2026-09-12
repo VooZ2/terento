@@ -60,6 +60,17 @@ struct SharedAPIContractTests {
         let fallback = try await MapCatalogLoader(endpoint: nil).loadRemoteThenFallback()
         precondition(fallback.source == .bundledFallback && fallback.catalog == bundled)
         precondition(!bundled.packages.isEmpty)
+        let collisions = Dictionary(grouping: bundled.regions, by: { $0.name.lowercased() + ":" + $0.id })
+            .values.filter { $0.count > 1 }
+        precondition(!collisions.isEmpty, "The bundled fixture must exercise same-name/same-ID provider regions")
+        for regions in collisions {
+            let providerIDs = regions.map { $0.providerId ?? "" }
+            precondition(providerIDs == providerIDs.sorted(), "Provider-scoped region ties have a deterministic order")
+        }
+        for _ in 0..<12 {
+            let decodedAgain = try MapCatalogLoader(endpoint: nil).loadBundled()
+            precondition(decodedAgain == bundled, "Repeated full fallback decoding preserves exact catalog equality")
+        }
         print("PASS: shared catalogs decode, additive fields are ignored, invalid boundaries and bundled fallback are preserved")
     }
 
