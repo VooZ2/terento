@@ -62,6 +62,21 @@ private struct PrefixReader: DeviceFileReader {
             providers: catalog.providers, regions: catalog.regions, packages: [unavailable])
         check(MapCatalogClientCompatibilityValidator().isCompatible(disabledCatalog) && !unavailable.hasUsableMainArtifact,
             "metadata-only unavailable source does not poison valid catalog or become installable")
+        let oldCatalogURL = defaultFixture.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Sources/TerentoPoC/Resources/Maps/catalog.json")
+        let oldCatalog = try MapCatalogDocumentDecoder().decode(Data(contentsOf: oldCatalogURL))
+        let oldProviders = oldCatalog.providers.filter { $0.id != "bbbike" }
+        let oldPackages = oldCatalog.packages.filter { $0.providerId != "bbbike" }.map { package in
+            guard package.providerId == "maprando" else { return package }
+            return package.withArtifacts(package.artifacts.map { $0.kind == .main ? $0.withValidationState(.unavailable) : $0 })
+        }
+        let mixed = MapCatalog(catalogVersion: 1, updatedAt: catalog.updatedAt,
+            providers: oldProviders + catalog.providers, regions: oldCatalog.regions + catalog.regions,
+            packages: oldPackages + catalog.packages.map { $0.id == unavailable.id ? unavailable : $0 })
+        check(MapCatalogClientCompatibilityValidator().isCompatible(mixed),
+            "mixed catalog preserves unavailable BBBike and existing MapRando membership")
+        check(oldPackages.filter { $0.providerId == "maprando" }.allSatisfy(\.hasUsableMainArtifact),
+            "new provider does not change legacy unavailable-source client contract")
         do {
             _ = try await MapPackageAcquirer(downloadClient: LocalDownload(source: fixture), workspaceFactory: {
                 fatalError("unavailable source allocated workspace")

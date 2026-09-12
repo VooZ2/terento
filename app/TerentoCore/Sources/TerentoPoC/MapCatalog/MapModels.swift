@@ -871,7 +871,12 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
     }
 
     var hasUsableMainArtifact: Bool {
-        guard let mainArtifact, mainArtifact.validationState != .unavailable, mainArtifact.validationState != .failed else { return false }
+        guard let mainArtifact else { return false }
+        // Existing providers retain their reviewed catalog contract, including
+        // source-unavailable MapRando rows. BBBike unavailable source metadata is
+        // visible but never a usable install artifact.
+        if MapIdentity.normalizeProvider(providerId) == "bbbike",
+           mainArtifact.validationState == .unavailable || mainArtifact.validationState == .failed { return false }
         return mainArtifact.sourceURL != nil || mainArtifact.localURL != nil
     }
 
