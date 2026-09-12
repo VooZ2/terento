@@ -21,16 +21,24 @@ struct MapInventoryListPresentationIndex: Sendable {
         for group in inventory.providerGroups where !group.items.isEmpty {
             let providerID = MapIdentity.normalizeProvider(group.providerId)
             guard !providerID.isEmpty else { continue }
-            options[providerID] = group.title
-            for item in group.items { providers[item.id] = providerID }
+            for item in group.items {
+                let filterID = MapProviderDisplay.filterID(providerID: providerID, regionID: item.region)
+                providers[item.id] = filterID
+                options[filterID] = MapProviderDisplay.title(providerID: providerID,
+                    regionID: item.region, fallback: group.title)
+            }
         }
         for item in inventory.otherMaps where item.sourceKind == .provider
             && item.classification == .externalRecognized {
             guard let name = item.provider, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
             let providerID = MapIdentity.normalizeProvider(name)
             guard !providerID.isEmpty else { continue }
-            providers[item.id] = providerID
-            if options[providerID] == nil { options[providerID] = name }
+            let filterID = MapProviderDisplay.filterID(providerID: providerID, regionID: item.region)
+            providers[item.id] = filterID
+            if options[filterID] == nil {
+                options[filterID] = MapProviderDisplay.title(providerID: providerID,
+                    regionID: item.region, fallback: name)
+            }
         }
         for item in inventory.providerGroups.flatMap(\.items) + inventory.otherMaps {
             search[item.id] = Self.searchText(item)

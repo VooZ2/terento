@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20260909-post-audit-v1"
-PROVIDER_SCRIPT_VERSION = "20260911-three-providers-v2"
+PROVIDER_SCRIPT_VERSION = "20260912-bbbike-types-v1"
 STYLE_VERSION = "20260911-three-providers-v2"
 IMAGE_VERSION = "20260905-app-screens-v1"
 LANGUAGE_VERSION = "20260905-language-selector-full-name-v1"

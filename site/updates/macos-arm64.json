@@ -4,15 +4,15 @@
   "platform": "macOS",
   "architecture": "arm64",
   "version": "1.0.0",
-  "build": 27,
-  "releaseLabel": "1.0.0-beta.11",
-  "releaseTag": "v1.0.0-beta.11-build27",
-  "downloadURL": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.11-build27/Terento-1.0.0-beta.11-macOS-arm64.dmg",
-  "releaseURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.11-build27",
-  "releaseNotesURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.11-build27",
-  "summary": "• Improved Garmin connection recovery and map verification\n• Reduced repeated processing in Install maps search and provider filters",
+  "build": 28,
+  "releaseLabel": "1.0.0-beta.12",
+  "releaseTag": "v1.0.0-beta.12-build28",
+  "downloadURL": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.12-build28/Terento-1.0.0-beta.12-macOS-arm64.dmg",
+  "releaseURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.12-build28",
+  "releaseNotesURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.12-build28",
+  "summary": "\u2022 Added BBBike and BBBike (Ontrail) maps.\n\u2022 Improved Install Maps performance and filtering.\n\u2022 Added filters to Manage Maps.",
   "channel": "beta",
   "minimumMacOS": "13.0",
   "publishedAt": "2026-09-12",
-  "sha256": "ffa62491b55355ff5843f4a8780856cc0ba0506a69e99813453529c51d6a5ee5"
+  "sha256": "ccf5cd707c2d27d48b523c44c7c93a3045a126d22c3f9dd2458dbb00430b8304"
 }

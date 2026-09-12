@@ -179,6 +179,8 @@ struct ReviewedProviderURLPolicy: Sendable {
         allowedHosts: ["garmin.opentopomap.org"]
     )
 
+    static let bbbike = ReviewedProviderURLPolicy(allowedHosts: ["data.bbbike.org"])
+
     static let mapRando = ReviewedProviderURLPolicy(allowedHosts: ["ravenfeld.fr"])
 
     let allowedHosts: Set<String>
@@ -197,6 +199,22 @@ struct ReviewedProviderURLPolicy: Sendable {
               components.port == nil || components.port == 443 else {
             throw MapAcquisitionError.untrustedSourceURL(url.absoluteString)
         }
+        if host == "data.bbbike.org" {
+            let pathParts = url.path.lowercased().split(separator: "/")
+            guard !pathParts.contains("russia"), !pathParts.contains("crimea") else {
+                throw MapAcquisitionError.untrustedSourceURL(url.absoluteString)
+            }
+            let isExactExample = BBBikeProviderAdapter.exampleRegions.contains { region in
+                BBBikeMapType.allCases.contains { type in
+                    BBBikeProviderAdapter.isReviewedSourcePath(url.path, sourceRegion: region, type: type.rawValue)
+                }
+            }
+            guard components.query == nil, components.fragment == nil,
+                  (isExactExample || url.path.range(of: #"^/osm/garmin/region/[a-z0-9/-]+/[a-z0-9-]+\.osm\.garmin-(?:bbbike|ontrail)-latin1\.zip$"#, options: .regularExpression) != nil),
+                  !url.absoluteString.contains("%"), !url.path.contains("..") else {
+                throw MapAcquisitionError.untrustedSourceURL(url.absoluteString)
+            }
+        }
     }
 }
 
@@ -208,7 +226,8 @@ struct ReviewedProviderURLPolicyRegistry: Sendable {
         policies: [
             "freizeitkarte": .freizeitkarte,
             "opentopomap": .openTopoMap,
-            "maprando": .mapRando
+            "maprando": .mapRando,
+            "bbbike": .bbbike
         ]
     )
 
@@ -388,6 +407,9 @@ private final class ReviewedProviderRedirectDelegate: NSObject, URLSessionTaskDe
 
         do {
             try policy.validate(url)
+            guard !policy.allowedHosts.contains("data.bbbike.org") else {
+                throw MapAcquisitionError.untrustedSourceURL(url.absoluteString)
+            }
             completionHandler(request)
         } catch {
             lock.lock()
@@ -471,7 +493,8 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
         return try await download(
             from: sourceURL,
             policy: policy,
-            onProgress: onProgress
+            onProgress: onProgress,
+            sourceProof: package.mainArtifact?.sourceProof
         )
     }
 
@@ -492,13 +515,18 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
     private func download(
         from url: URL,
         policy sourcePolicy: ReviewedProviderURLPolicy,
-        onProgress: (@Sendable (MapDownloadProgress) -> Void)?
+        onProgress: (@Sendable (MapDownloadProgress) -> Void)?,
+        sourceProof: BBBikeSourceProof? = nil
     ) async throws -> MapPackageDownloadResponse {
         try sourcePolicy.validate(url)
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.cachePolicy = .reloadIgnoringLocalCacheData
         request.timeoutInterval = 120
+        if let sourceProof {
+            request.setValue(sourceProof.etag, forHTTPHeaderField: "If-Match")
+            request.setValue("identity", forHTTPHeaderField: "Accept-Encoding")
+        }
         let redirectDelegate = ReviewedProviderRedirectDelegate(policy: sourcePolicy)
         let session = URLSession(
             configuration: .ephemeral,
@@ -519,6 +547,15 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
                 try sourcePolicy.validate(finalURL)
             }
 
+            if let sourceProof {
+                guard httpResponse.statusCode == 200,
+                      httpResponse.url == sourceProof.sourceURL,
+                      httpResponse.value(forHTTPHeaderField: "ETag") == sourceProof.etag,
+                      httpResponse.value(forHTTPHeaderField: "Last-Modified") == sourceProof.lastModified,
+                      httpResponse.expectedContentLength == Int64(sourceProof.downloadSizeBytes) else {
+                    throw MapAcquisitionError.invalidPackage("The BBBike source changed. Refresh the catalog.")
+                }
+            }
             let temporaryURL = FileManager.default.temporaryDirectory
                 .appendingPathComponent("terento-map-download-\(UUID().uuidString)")
             guard FileManager.default.createFile(atPath: temporaryURL.path, contents: nil) else {
@@ -544,6 +581,9 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
             buffer.reserveCapacity(64 * 1024)
 
             for try await byte in bytes {
+                if let sourceProof, downloadedBytes + UInt64(buffer.count) >= sourceProof.downloadSizeBytes {
+                    throw MapAcquisitionError.invalidPackage("The BBBike source exceeded its reviewed size.")
+                }
                 buffer.append(byte)
                 if buffer.count >= 64 * 1024 {
                     try handle.write(contentsOf: buffer)
@@ -1185,6 +1225,10 @@ struct MapPackageAcquirer: Sendable {
             throw MapAcquisitionError.acquisitionWithheld(error.availability)
         }
 
+        if MapIdentity.normalizeProvider(acquisitionPackage.providerId) == "bbbike",
+           BBBikeProviderAdapter().expectedIMGIdentity(for: acquisitionPackage) == nil {
+            throw MapAcquisitionError.invalidPackage("The BBBike source proof is incomplete. Refresh the catalog.")
+        }
         let acquisitionWorkspace: MapAcquisitionWorkspace
         do {
             if let suppliedWorkspace = requestedWorkspace {
@@ -1296,12 +1340,20 @@ struct MapPackageAcquirer: Sendable {
         }
 
         let format = try MapPackageFormat.detect(fileURL: workspace.downloadURL)
+        if MapIdentity.normalizeProvider(package.providerId) == "bbbike",
+           (format != .zip || downloadSize != package.expectedDownloadSizeBytes) {
+            throw MapAcquisitionError.invalidPackage("The BBBike package changed. Refresh the catalog.")
+        }
         let imgURL: URL
         switch format {
         case .rawIMG:
             imgURL = workspace.downloadURL
         case .zip:
             state(.extracting, onStateChange)
+            if let proof = package.mainArtifact?.sourceProof, MapIdentity.normalizeProvider(package.providerId) == "bbbike" {
+                try BBBikeArchiveSafety.validate(archiveURL: workspace.downloadURL,
+                    expectedPayloadPath: proof.payloadPath, expectedIMGBytes: proof.installSizeBytes)
+            }
             try archiveExtractor.extract(
                 archiveURL: workspace.downloadURL,
                 to: workspace.extractionURL
@@ -1315,7 +1367,14 @@ struct MapPackageAcquirer: Sendable {
         }
 
         state(.validatingIdentity, onStateChange)
-        let metadata = try metadata(for: imgURL)
+        let metadata: GarminIMGMetadata
+        if MapIdentity.normalizeProvider(package.providerId) == "bbbike",
+           let context = BBBikeMapMetadata(package: package),
+           let value = BBBikeIMGMetadata.metadata(try MapPackageFormat.readPrefix(from: imgURL, maxLength: GarminIMGMetadataParser.prefixLength), context: context, version: package.version) {
+            metadata = value
+        } else {
+            metadata = try self.metadata(for: imgURL)
+        }
         guard let expectedIdentity = package.identity else {
             throw MapAcquisitionError.invalidPackage(
                 "The catalog package does not contain a valid provider and region identity."
@@ -1431,6 +1490,13 @@ struct MapPackageAcquirer: Sendable {
             throw MapAcquisitionError.noIMGFound
         }
 
+        if MapIdentity.normalizeProvider(expectedPackage.providerId) == "bbbike" {
+            guard candidates.count == 1, let proof = expectedPackage.mainArtifact?.sourceProof,
+                  candidates[0].url.standardizedFileURL == extractionDirectory.appendingPathComponent(proof.payloadPath).standardizedFileURL else {
+                throw MapAcquisitionError.ambiguousIMG
+            }
+            return candidates[0].url
+        }
         let matching = candidates.filter { metadata in
             guard let expectedIdentity = expectedPackage.identity,
                   let actualIdentity = metadataIdentity(metadata.metadata) else {

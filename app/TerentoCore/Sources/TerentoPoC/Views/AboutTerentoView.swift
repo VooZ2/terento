@@ -17,6 +17,8 @@ enum TerentoAppMetadata {
 struct AboutTerentoView: View {
     @ObservedObject var appUpdateController: AppUpdateController
     @Environment(\.openWindow) private var openWindow
+    // The bundled, reviewed catalog is local and read once for notices.
+    private static let mapSources = (try? MapCatalogLoader().loadBundled().sortedProviders) ?? []
 
     var body: some View {
         ScrollView {
@@ -60,6 +62,29 @@ struct AboutTerentoView: View {
                         VStack(alignment: .leading, spacing: 10) { supportLinks }
                     }
                 }
+
+                DisclosureGroup("Map sources and licenses") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(Self.mapSources) { provider in
+                            VStack(alignment: .leading, spacing: 4) {
+                                if let url = provider.licenseURL {
+                                    supportLink(provider.name + " ↗", destination: url)
+                                } else {
+                                    Text(provider.name)
+                                }
+                                if let attribution = provider.attribution {
+                                    Text(attribution).font(.terentoUI(size: 12, weight: .regular))
+                                }
+                                if let information = provider.licenseInformation {
+                                    Text(information).font(.terentoUI(size: 12, weight: .regular))
+                                }
+                            }
+                        }
+                    }
+                    .padding(.top, 8)
+                }
+                .font(.terentoUI(size: 13, weight: .medium))
+                .foregroundStyle(TerentoColors.secondaryText)
 
                 section(title: "Privacy") {
                     Text("Terento sends privacy-minimised diagnostics by default to help improve the app and its services. Device state, maps, manifests, Unit IDs, serial numbers, and local paths stay on this Mac.")

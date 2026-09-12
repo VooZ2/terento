@@ -27,6 +27,14 @@ enum MapSelectionPresentationModel: Sendable {
         guard item.isSelectable else { return false }
         guard item.package.sourceKind == .provider else { return true }
 
+        if !selectedIDs.contains(item.id), MapIdentity.normalizeProvider(item.package.providerId) == "bbbike",
+           items.contains(where: { other in
+               other.id != item.id && MapIdentity.normalizeProvider(other.package.providerId) == "bbbike"
+                   && other.package.providerRegionId == item.package.providerRegionId
+                   && other.package.mapType != item.package.mapType
+                   && (selectedIDs.contains(other.id) || other.comparison.installedMap != nil)
+           }) { return false }
+
         let selectedProviderIDs = Set(
             items
                 .filter { selectedIDs.contains($0.id) && $0.package.sourceKind == .provider }
@@ -309,7 +317,7 @@ struct MapCatalogPresentationIndex: Sendable {
     init(items: [MapSelectionItem]) {
         rows = items.filter { $0.package.sourceKind == .provider }.map { item in
             let geography = CatalogGeography.resolve(item)
-            return Row(item: item, provider: MapIdentity.normalizeProvider(item.package.providerId),
+            return Row(item: item, provider: MapProviderDisplay.filterID(providerID: item.package.providerId, regionID: item.package.canonicalRegionId),
                        text: CatalogGeography.fold(geography.terms.joined(separator: " ")),
                        groups: geography.groups)
         }.sorted { lhs, rhs in
@@ -346,7 +354,7 @@ private enum CatalogGeography {
         .centralAmericaCaribbean: "AI AG AW BS BB BZ BQ VG KY CR CU CW DM DO SV GD GP GT HT HN JM MQ MS NI PA PR BL KN LC MF VC SX TT TC VI",
         .southAmerica: "AR BO BR CL CO EC FK GF GY PY PE SR UY VE",
         .oceania: "AS AU CX CC CK FJ PF GU KI MH FM NR NC NZ NU NF MP PW PG PN WS SB TK TO TV UM VU WF",
-        .antarctica: "AQ BV GS HM"
+        .antarctica: "AQ BV GS HM TF"
     ]
     private static let groupsByCode: [String: Set<MapGeographyGroup>] = {
         var result: [String: Set<MapGeographyGroup>] = [:]
@@ -414,6 +422,9 @@ private enum CatalogGeography {
         "frenchguiana": [.southAmerica], "guyane": [.southAmerica],
         "newcaledonia": [.oceania], "nouvellecaledonie": [.oceania], "hawaii": [.oceania],
         "frenchpolynesia": [.oceania], "polynesiefrancaise": [.oceania],
+        // Reviewed multi-territory geography; these filters do not invent country membership.
+        "americanoceania": [.oceania],
+        "frenchsouthernandantarcticlands": [.africa, .antarctica],
         "russiaasianpart": [.asia], "russiaeuropeanpart": [.europe],
         "russiacentral": [.europe], "russiakaliningrad": [.europe], "kaliningrad": [.europe],
         "russianorthwest": [.europe], "russiasouth": [.europe], "russiavolga": [.europe]

@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
 FAQ_KEEP = (0, 1, 4, 5, 6)
-PROVIDER_SCRIPT_VERSION = "20260911-three-providers-v2"
+PROVIDER_SCRIPT_VERSION = "20260912-bbbike-types-v1"
 FEATURE_SCRIPT_VERSION = "20260904-home-workflow-tabs"
 EMAIL_URL = "mailto:hello@terento.app?subject=Terento%20installation%20issue"
 EMAIL_URL_HTML = EMAIL_URL.replace("@", "&#64;")
@@ -42,7 +42,7 @@ HOME_COPY = {
         "failure_answer": "On the failed installation screen, choose “Report issue”. Terento opens GitHub with the report already filled in. Review it before posting: GitHub issues are public. For help by email, include your watch model, map region and what happened.",
         "provider_eyebrow": "Available maps",
         "provider_title": "Explore available maps.",
-        "provider_copy": "Choose maps from three providers. Maps are downloaded from each provider's original source.",
+        "provider_copy": "Choose maps from available providers. Maps are downloaded from each provider's original source.",
         "download_label": "Download",
         "faq_eyebrow": "Have questions?",
         "faq_questions": ["Which Garmin watches work with Terento?", "Can I install third-party maps on a Garmin watch from a Mac without BaseCamp?", "Can I add my own .img map?", "Can I update maps later?", "What should I do if installation fails?"],
@@ -76,7 +76,7 @@ HOME_COPY = {
         "failure_answer": "Wähle nach einer fehlgeschlagenen Installation „Report issue“. Terento öffnet GitHub mit einem bereits ausgefüllten Bericht. Prüfe ihn vor dem Veröffentlichen: GitHub-Issues sind öffentlich. Für Hilfe per E-Mail nenne dein Uhrenmodell, die Kartenregion und den Fehler.",
         "provider_eyebrow": "Verfügbare Karten",
         "provider_title": "Verfügbare Karten entdecken.",
-        "provider_copy": "Wähle Karten von drei Anbietern. Karten werden von der Originalquelle des jeweiligen Anbieters geladen.",
+        "provider_copy": "Wähle Karten der verfügbaren Anbieter. Karten werden von der Originalquelle des jeweiligen Anbieters geladen.",
         "download_label": "Herunterladen",
         "faq_eyebrow": "Hast du Fragen?",
         "faq_questions": ["Welche Garmin-Uhren funktionieren mit Terento?", "Kann ich Drittanbieter-Karten von einem Mac ohne BaseCamp auf einer Garmin-Uhr installieren?", "Kann ich meine eigene .img-Karte hinzufügen?", "Kann ich Karten später aktualisieren?", "Was soll ich tun, wenn die Installation fehlschlägt?"],
@@ -110,7 +110,7 @@ HOME_COPY = {
         "failure_answer": "Sur l’écran d’échec de l’installation, choisissez « Report issue ». Terento ouvre GitHub avec le rapport déjà rempli. Vérifiez-le avant de le publier : les issues GitHub sont publiques. Pour une aide par e-mail, indiquez le modèle de votre montre, la région de la carte et ce qui s’est passé.",
         "provider_eyebrow": "Cartes disponibles",
         "provider_title": "Découvrez les cartes disponibles.",
-        "provider_copy": "Choisissez des cartes de trois fournisseurs. Les cartes sont téléchargées depuis la source d’origine de chaque fournisseur.",
+        "provider_copy": "Choisissez parmi les fournisseurs disponibles. Les cartes sont téléchargées depuis la source d’origine de chaque fournisseur.",
         "download_label": "Télécharger",
         "faq_eyebrow": "Vous avez des questions ?",
         "faq_questions": ["Quelles montres Garmin fonctionnent avec Terento ?", "Puis-je installer des cartes tierces sur une montre Garmin depuis un Mac sans BaseCamp ?", "Puis-je ajouter ma propre carte .img ?", "Puis-je mettre les cartes à jour plus tard ?", "Que dois-je faire si l’installation échoue ?"],
@@ -144,7 +144,7 @@ HOME_COPY = {
         "failure_answer": "Na ekranie nieudanej instalacji wybierz „Report issue”. Terento otwiera GitHuba z już wypełnionym raportem. Sprawdź go przed publikacją: zgłoszenia na GitHubie są publiczne. Jeśli potrzebujesz pomocy e-mailem, podaj model zegarka, region mapy i opisz, co się stało.",
         "provider_eyebrow": "Dostępne mapy",
         "provider_title": "Poznaj dostępne mapy.",
-        "provider_copy": "Wybieraj mapy od trzech dostawców. Mapy są pobierane z oryginalnego źródła każdego dostawcy.",
+        "provider_copy": "Wybieraj mapy od dostępnych dostawców. Mapy są pobierane z oryginalnego źródła każdego dostawcy.",
         "download_label": "Pobierz",
         "faq_eyebrow": "Masz pytania?",
         "faq_questions": ["Jakie zegarki Garmin działają z Terento?", "Czy mogę instalować mapy innych firm na zegarku Garmin z Maca bez BaseCamp?", "Czy mogę dodać własną mapę .img?", "Czy mogę później aktualizować mapy?", "Co zrobić, jeśli instalacja się nie powiedzie?"],
@@ -178,7 +178,7 @@ HOME_COPY = {
         "failure_answer": "Na obrazovce neúspěšné instalace zvolte „Report issue“. Terento otevře GitHub s již vyplněnou zprávou. Před zveřejněním ji zkontrolujte: hlášení na GitHubu jsou veřejná. Pro pomoc e-mailem uveďte model hodinek, oblast mapy a popis problému.",
         "provider_eyebrow": "Dostupné mapy",
         "provider_title": "Prozkoumejte dostupné mapy.",
-        "provider_copy": "Vyberte si mapy od tří poskytovatelů. Mapy se stahují z původního zdroje každého poskytovatele.",
+        "provider_copy": "Vyberte si mapy od dostupných poskytovatelů. Mapy se stahují z původního zdroje každého poskytovatele.",
         "download_label": "Stáhnout",
         "faq_eyebrow": "Máte otázky?",
         "faq_questions": ["Které hodinky Garmin fungují s Terento?", "Mohu instalovat mapy třetích stran do hodinek Garmin z Macu bez BaseCamp?", "Mohu přidat vlastní mapu .img?", "Mohu mapy aktualizovat později?", "Co mám dělat, když instalace selže?"],
@@ -212,7 +212,7 @@ HOME_COPY = {
         "failure_answer": "Nella schermata di installazione non riuscita, scegli “Report issue”. Terento apre GitHub con il rapporto già compilato. Controllalo prima di pubblicarlo: le issue su GitHub sono pubbliche. Per assistenza via e-mail, indica il modello dell’orologio, la regione della mappa e cosa è successo.",
         "provider_eyebrow": "Mappe disponibili",
         "provider_title": "Scopri le mappe disponibili.",
-        "provider_copy": "Scegli mappe di tre provider. Le mappe vengono scaricate dalla fonte originale di ciascun provider.",
+        "provider_copy": "Scegli mappe dei provider disponibili. Le mappe vengono scaricate dalla fonte originale di ciascun provider.",
         "download_label": "Scarica",
         "faq_eyebrow": "Hai domande?",
         "faq_questions": ["Quali smartwatch Garmin funzionano con Terento?", "Posso installare mappe di terze parti su uno smartwatch Garmin da un Mac senza BaseCamp?", "Posso aggiungere la mia mappa .img?", "Posso aggiornare le mappe in un secondo momento?", "Cosa devo fare se l’installazione non riesce?"],
@@ -643,9 +643,109 @@ def wrap_map_feature_tabs(source: str, copy: dict[str, str], path: Path) -> str:
     return source[: match.start()] + replacement + source[match.end() :]
 
 
+
+BBBIKE_CARD_COPY = {
+    "en": [
+        "Alternative maps for outdoor activities.",
+        "Smaller maps for hiking and cycling.",
+        [
+            "OpenStreetMap data",
+            "Independent map style",
+            "Regional map packages"
+        ],
+        [
+            "Smaller map files",
+            "Roads and smaller paths",
+            "An alternative to the BBBike style"
+        ]
+    ],
+    "de": [
+        "Alternative Karten für Outdoor-Aktivitäten.",
+        "Kleinere Karten zum Wandern und Radfahren.",
+        [
+            "OpenStreetMap-Daten",
+            "Eigenständiger Kartenstil",
+            "Regionale Kartenpakete"
+        ],
+        [
+            "Kleinere Kartendateien",
+            "Straßen und kleinere Wege",
+            "Eine Alternative zum BBBike-Stil"
+        ]
+    ],
+    "fr": [
+        "Des cartes alternatives pour les activités de plein air.",
+        "Des cartes plus légères pour la randonnée et le vélo.",
+        [
+            "Données OpenStreetMap",
+            "Style cartographique distinct",
+            "Cartes par région"
+        ],
+        [
+            "Fichiers cartographiques plus petits",
+            "Routes et petits chemins",
+            "Une alternative au style BBBike"
+        ]
+    ],
+    "pl": [
+        "Alternatywne mapy do aktywności w terenie.",
+        "Mniejsze mapy do pieszych i rowerowych wycieczek.",
+        [
+            "Dane OpenStreetMap",
+            "Odrębny styl mapy",
+            "Pakiety map regionów"
+        ],
+        [
+            "Mniejsze pliki map",
+            "Drogi i mniejsze ścieżki",
+            "Alternatywa dla stylu BBBike"
+        ]
+    ],
+    "cs": [
+        "Alternativní mapy pro venkovní aktivity.",
+        "Menší mapy pro pěší turistiku a cyklistiku.",
+        [
+            "Data OpenStreetMap",
+            "Samostatný mapový styl",
+            "Regionální mapové balíčky"
+        ],
+        [
+            "Menší mapové soubory",
+            "Silnice a menší cesty",
+            "Alternativa ke stylu BBBike"
+        ]
+    ],
+    "it": [
+        "Mappe alternative per le attività all’aperto.",
+        "Mappe più leggere per escursioni e ciclismo.",
+        [
+            "Dati OpenStreetMap",
+            "Stile cartografico indipendente",
+            "Pacchetti di mappe regionali"
+        ],
+        [
+            "File delle mappe più piccoli",
+            "Strade e sentieri minori",
+            "Un’alternativa allo stile BBBike"
+        ]
+    ]
+}
+
+for _locale, (_base_summary, _trail_summary, _base_benefits, _trail_benefits) in BBBIKE_CARD_COPY.items():
+    for _key, _name, _summary, _benefits in (
+        ("bbbike", "BBBike", _base_summary, _base_benefits),
+        ("bbbike-ontrail", "BBBike (Ontrail)", _trail_summary, _trail_benefits),
+    ):
+        PROVIDER_CARD_COPY[_locale][_key] = {
+            "name": _name,
+            "count_template": PROVIDER_CARD_COPY[_locale]["maprando"]["count_template"],
+            "summary": _summary,
+            "benefits": _benefits,
+        }
+
 def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
     cards = []
-    for provider_id in ("freizeitkarte", "opentopomap", "maprando"):
+    for provider_id in ("freizeitkarte", "opentopomap", "maprando", "bbbike", "bbbike-ontrail"):
         provider = PROVIDER_CARD_COPY[locale][provider_id]
         fallback_count = {"freizeitkarte": "63", "opentopomap": "177"}.get(provider_id)
         count_markup = provider["count_template"].replace("{count}", fallback_count) if fallback_count else ""
@@ -659,8 +759,13 @@ def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
                 <p class="provider-addon-copy">{contour["description"]}</p>
                 <p class="provider-addon-count" data-contour-count data-count-template="{contour["count_template"]}">{contour["count_template"].replace("{count}", "157")}</p>
               </details>'''
+        catalog_provider_id = "bbbike" if provider_id.startswith("bbbike") else provider_id
+        type_attributes = ""
+        if provider_id.startswith("bbbike"):
+            map_type = "ontrail-latin1" if provider_id == "bbbike-ontrail" else "bbbike-latin1"
+            type_attributes = f' data-provider-type="{map_type}" hidden'
         cards.append(
-            f'''<article class="provider-card" data-provider-card="{provider_id}">
+            f'''<article class="provider-card" data-provider-card="{catalog_provider_id}"{type_attributes}>
               <div class="provider-card-header">
                 <h3>{provider["name"]}</h3>
                 <p class="provider-count" data-provider-count data-count-template="{provider["count_template"]}"{count_hidden}>{count_markup}</p>

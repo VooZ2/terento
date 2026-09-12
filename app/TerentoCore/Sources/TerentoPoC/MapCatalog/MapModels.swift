@@ -88,6 +88,7 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
     let downloadSizeBytes: UInt64?
     let checksum: String?
     let validationState: MapArtifactValidationState
+    let sourceProof: BBBikeSourceProof?
 
     init(
         id: String,
@@ -104,7 +105,8 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
         sizeBytes: UInt64? = nil,
         downloadSizeBytes: UInt64? = nil,
         checksum: String? = nil,
-        validationState: MapArtifactValidationState = .notValidated
+        validationState: MapArtifactValidationState = .notValidated,
+        sourceProof: BBBikeSourceProof? = nil
     ) {
         self.id = id
         self.source = source
@@ -121,6 +123,7 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
         self.downloadSizeBytes = downloadSizeBytes
         self.checksum = checksum
         self.validationState = validationState
+        self.sourceProof = sourceProof
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -139,6 +142,7 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
         case downloadSizeBytes
         case checksum
         case validationState
+        case sourceProof
     }
 
     init(from decoder: Decoder) throws {
@@ -158,7 +162,8 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
             sizeBytes: try container.decodeIfPresent(UInt64.self, forKey: .sizeBytes),
             downloadSizeBytes: try container.decodeIfPresent(UInt64.self, forKey: .downloadSizeBytes),
             checksum: try container.decodeIfPresent(String.self, forKey: .checksum),
-            validationState: try container.decodeIfPresent(MapArtifactValidationState.self, forKey: .validationState) ?? .notValidated
+            validationState: try container.decodeIfPresent(MapArtifactValidationState.self, forKey: .validationState) ?? .notValidated,
+            sourceProof: try? container.decodeIfPresent(BBBikeSourceProof.self, forKey: .sourceProof)
         )
     }
 }
@@ -348,7 +353,8 @@ struct MapProviderRegistry: Sendable {
     static let bundled = MapProviderRegistry(adapters: [
         FreizeitkarteProviderAdapter(),
         OpenTopoMapProviderAdapter(),
-        MapRandoProviderAdapter()
+        MapRandoProviderAdapter(),
+        BBBikeProviderAdapter()
     ])
 
     init(adapters: [any MapProviderAdapter]) {
@@ -647,6 +653,8 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
     let sourceURL: URL?
     let releaseDate: String?
     let identifier: String?
+    let mapType: String?
+    let geographicRegionId: String?
     let countryCodes: [String]
     let regionKind: MapRegionKind
     let tags: [String]
@@ -671,6 +679,8 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         installSizeBytes: UInt64? = nil,
         providerRegionId: String? = nil,
         canonicalRegionId: String? = nil,
+        mapType: String? = nil,
+        geographicRegionId: String? = nil,
         countryCodes: [String] = [],
         regionKind: MapRegionKind = .country,
         tags: [String] = [],
@@ -700,6 +710,8 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         self.sourceURL = sourceURL
         self.releaseDate = releaseDate
         self.identifier = identifier
+        self.mapType = mapType
+        self.geographicRegionId = geographicRegionId
         self.countryCodes = countryCodes
         self.regionKind = regionKind
         self.tags = tags
@@ -796,6 +808,8 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
             installSizeBytes: artifact.sizeBytes,
             providerRegionId: providerRegionId,
             canonicalRegionId: canonicalRegionId,
+            mapType: mapType,
+            geographicRegionId: geographicRegionId,
             countryCodes: countryCodes,
             regionKind: regionKind,
             tags: tags,
@@ -821,6 +835,8 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
             installSizeBytes: installSizeBytes,
             providerRegionId: providerRegionId,
             canonicalRegionId: canonicalRegionId,
+            mapType: mapType,
+            geographicRegionId: geographicRegionId,
             countryCodes: countryCodes,
             regionKind: regionKind,
             tags: tags,
@@ -856,6 +872,11 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
 
     var hasUsableMainArtifact: Bool {
         guard let mainArtifact else { return false }
+        // Existing providers retain their reviewed catalog contract, including
+        // source-unavailable MapRando rows. BBBike unavailable source metadata is
+        // visible but never a usable install artifact.
+        if MapIdentity.normalizeProvider(providerId) == "bbbike",
+           mainArtifact.validationState == .unavailable || mainArtifact.validationState == .failed { return false }
         return mainArtifact.sourceURL != nil || mainArtifact.localURL != nil
     }
 
@@ -874,6 +895,8 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
             installSizeBytes: installSizeBytes,
             providerRegionId: providerRegionId,
             canonicalRegionId: canonicalRegionId,
+            mapType: mapType,
+            geographicRegionId: geographicRegionId,
             countryCodes: countryCodes,
             regionKind: regionKind,
             tags: tags,
@@ -898,6 +921,7 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         case identifier
         case providerRegionId
         case canonicalRegionId
+        case mapType, geographicRegionId
         case countryCodes
         case regionKind
         case tags
@@ -955,6 +979,8 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
             providerRegionId: providerRegionId,
             explicitCanonicalRegionId: decodedCanonicalRegionId
         )
+        mapType = try container.decodeIfPresent(String.self, forKey: .mapType)
+        geographicRegionId = try container.decodeIfPresent(String.self, forKey: .geographicRegionId)
         countryCodes = try container.decodeIfPresent([String].self, forKey: .countryCodes) ?? []
         regionKind = try container.decodeIfPresent(MapRegionKind.self, forKey: .regionKind) ?? .country
         tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
@@ -1066,4 +1092,162 @@ struct MapCatalog: Equatable, Sendable {
                 return $0.id < $1.id
             }
     }
+}
+
+/// One provider, two independent complete maps. This is not an optional component.
+enum BBBikeMapType: String, Codable, CaseIterable, Sendable {
+    case bbbike = "bbbike-latin1"
+    case ontrail = "ontrail-latin1"
+    var style: String { self == .bbbike ? "bbbike" : "ontrail" }
+    var title: String { self == .bbbike ? "BBBike" : "BBBike (Ontrail)" }
+    var filterID: String { self == .bbbike ? "bbbike" : "bbbikeontrail" }
+}
+
+struct BBBikeSourceProof: Codable, Equatable, Sendable {
+    let sourceURL: URL
+    let etag: String?
+    let lastModified: String?
+    let downloadSizeBytes: UInt64
+    let installSizeBytes: UInt64
+    let payloadPath: String
+    let revision: String
+    let sourceIdentity: String
+    let mapType: String
+    let sourceRegion: String
+    let payloadMD5: String
+    let generatedAt: String
+}
+
+/// Optional manifest context. Display names never grant ownership; source path and
+/// type only corroborate the bounded IMG header after an exact ownership match.
+struct BBBikeMapMetadata: Codable, Equatable, Sendable {
+    let sourcePath: String
+    let mapType: String
+    let displayName: String
+    let geographicRegionId: String?
+    init?(package: MapPackage) {
+        guard MapIdentity.normalizeProvider(package.providerId) == "bbbike",
+              BBBikeProviderAdapter.validIdentity(package), let type = package.mapType else { return nil }
+        sourcePath = package.providerRegionId
+        mapType = type
+        displayName = package.name
+        geographicRegionId = package.geographicRegionId
+    }
+    var canonicalRegion: String { BBBikeProviderAdapter.regionToken(path: sourcePath, type: mapType) }
+}
+
+struct MapProviderFilterOption: Identifiable, Equatable, Sendable {
+    let id: String
+    let title: String
+}
+
+enum MapProviderDisplay {
+    static func sourceProviderID(filterID: String) -> String {
+        let id = MapIdentity.normalizeProvider(filterID)
+        return id == "bbbikeontrail" ? "bbbike" : id
+    }
+    static func filterOptions(providers: [MapProvider]) -> [MapProviderFilterOption] {
+        providers.flatMap { provider in
+            if MapIdentity.normalizeProvider(provider.id) == "bbbike" {
+                return BBBikeMapType.allCases.map { MapProviderFilterOption(id: $0.filterID, title: $0.title) }
+            }
+            return [MapProviderFilterOption(id: MapIdentity.normalizeProvider(provider.id), title: provider.name)]
+        }
+    }
+
+    static func filterID(providerID: String, regionID: String?) -> String {
+        let provider = MapIdentity.normalizeProvider(providerID)
+        guard provider == "bbbike" else { return provider }
+        return MapIdentity.normalizeRegion(regionID ?? "").hasSuffix("ONTRAILLATIN1") ? "bbbikeontrail" : "bbbike"
+    }
+    static func title(providerID: String, regionID: String?, fallback: String) -> String {
+        guard MapIdentity.normalizeProvider(providerID) == "bbbike" else { return fallback }
+        return filterID(providerID: providerID, regionID: regionID) == "bbbikeontrail" ? "BBBike (Ontrail)" : "BBBike"
+    }
+}
+
+struct BBBikeProviderAdapter: MapProviderAdapter, Sendable {
+    let id = "bbbike"
+    static func regionToken(path: String, type: String) -> String {
+        (path + "-" + type).replacingOccurrences(of: "/", with: "-").uppercased()
+    }
+    static let exampleRegions: Set<String> = ["asia/cambodia", "asia/jordan", "europe/luxembourg"]
+    static func isReviewedSourcePath(_ path: String, sourceRegion: String, type: String) -> Bool {
+        guard let leaf = sourceRegion.split(separator: "/").last, BBBikeMapType(rawValue: type) != nil else { return false }
+        let suffix = "\(sourceRegion)/\(leaf).osm.garmin-\(type).zip"
+        return path == "/osm/garmin/region/" + suffix
+            || (exampleRegions.contains(sourceRegion) && path == "/osm/garmin/example/" + suffix)
+    }
+    static let coexistenceReason = "Select either BBBike or BBBike (Ontrail) for the same region. These two map types cannot be installed together."
+    static func installedTypeConflictMessage(for package: MapPackage) -> String {
+        guard let selectedType = BBBikeMapType(rawValue: package.mapType ?? "") else { return coexistenceReason }
+        let installedType: BBBikeMapType = selectedType == .bbbike ? .ontrail : .bbbike
+        return "To install “\(selectedType.title) - \(package.name)”, first remove “\(installedType.title) - \(package.name)” in Manage maps. BBBike and BBBike (Ontrail) cannot be installed together for the same region."
+    }
+    static func unverifiedTypeConflictMessage(for package: MapPackage) -> String {
+        guard let selectedType = BBBikeMapType(rawValue: package.mapType ?? "") else { return coexistenceReason }
+        let otherType: BBBikeMapType = selectedType == .bbbike ? .ontrail : .bbbike
+        return "A possible “\(otherType.title) - \(package.name)” map needs review before installing “\(selectedType.title) - \(package.name)”. Terento has not confirmed ownership of the conflicting file."
+    }
+    static func conflicts(_ package: MapPackage, provider: String?, region: String?) -> Bool {
+        guard MapIdentity.normalizeProvider(package.providerId) == "bbbike",
+              MapIdentity.normalizeProvider(provider ?? "") == "bbbike", let region else { return false }
+        return BBBikeMapType.allCases.filter { $0.rawValue != package.mapType }.contains {
+            MapIdentity.normalizeRegion(regionToken(path: package.providerRegionId, type: $0.rawValue)) == MapIdentity.normalizeRegion(region)
+        }
+    }
+    static func conflicts(_ package: MapPackage, filename: String) -> Bool {
+        guard MapIdentity.normalizeProvider(package.providerId) == "bbbike",
+              filename.hasPrefix("terento_bbbike_"), filename.hasSuffix(".img") else { return false }
+        var token = String(filename.dropFirst("terento_bbbike_".count).dropLast(4))
+        if let date = token.range(of: #"_[0-9]{4}-[0-9]{2}(?:-[0-9]{2})?$"#, options: .regularExpression) { token.removeSubrange(date) }
+        return conflicts(package, provider: "bbbike", region: token)
+    }
+    static func selectionConflicts(_ packages: [MapPackage]) -> Bool {
+        packages.contains { package in packages.contains { other in
+            package.id != other.id && conflicts(package, provider: other.providerId, region: other.canonicalRegionId)
+        } }
+    }
+    static func validPath(_ path: String) -> Bool {
+        path.range(of: #"^(?:africa|asia|australia-oceania|central-america|europe|north-america|south-america|antarctica)/[a-z0-9]+(?:[-/][a-z0-9]+)*$"#, options: .regularExpression) != nil
+            && path.utf8.count <= 180
+    }
+    static func validIdentity(_ package: MapPackage) -> Bool {
+        guard MapIdentity.normalizeProvider(package.providerId) == "bbbike",
+              validPath(package.providerRegionId),
+              let type = package.mapType, BBBikeMapType(rawValue: type) != nil,
+              package.canonicalRegionId == regionToken(path: package.providerRegionId, type: type),
+              package.regionId == package.canonicalRegionId,
+              package.id == "bbbike-" + package.canonicalRegionId.lowercased(),
+              package.version.day != nil else { return false }
+        return true
+    }
+    func canonicalRegionIdentity(for package: MapPackage) -> CanonicalMapRegionIdentity? {
+        let parts = package.providerRegionId.lowercased().split(separator: "/")
+        if parts.contains("crimea") { return CanonicalMapRegionIdentity(countryCode: "UA", locality: "CRIMEA") }
+        if parts.contains("russia") || package.countryCodes.contains("RU") { return CanonicalMapRegionIdentity(countryCode: "RU") }
+        return package.countryCodes.first.map { CanonicalMapRegionIdentity(countryCode: $0) }
+    }
+    func expectedIMGIdentity(for package: MapPackage) -> MapIdentity? {
+        guard Self.validIdentity(package), let proof = package.mainArtifact?.sourceProof,
+              proof.sourceURL == package.downloadURL,
+              let etag = proof.etag, etag.hasPrefix("\""), etag.hasSuffix("\""), etag.count > 2,
+              proof.lastModified?.isEmpty == false,
+              ISO8601DateFormatter().date(from: proof.generatedAt) != nil,
+              proof.sourceRegion == package.providerRegionId,
+              proof.mapType == package.mapType,
+              proof.sourceIdentity == "bbbike:\(proof.sourceRegion):\(proof.mapType)",
+              proof.downloadSizeBytes == package.expectedDownloadSizeBytes,
+              proof.installSizeBytes == package.installSizeBytes,
+              proof.installSizeBytes > 0, proof.downloadSizeBytes > 0,
+              proof.downloadSizeBytes <= UInt64(Int64.max), proof.installSizeBytes <= UInt64(Int64.max),
+              proof.payloadMD5.range(of: #"^[a-f0-9]{32}$"#, options: .regularExpression) != nil,
+              proof.revision.range(of: #"^[a-f0-9]{64}$"#, options: .regularExpression) != nil,
+              let leaf = package.providerRegionId.split(separator: "/").last,
+              proof.payloadPath == "\(leaf)-garmin-\(proof.mapType)/gmapsupp.img",
+              Self.isReviewedSourcePath(proof.sourceURL.path, sourceRegion: proof.sourceRegion, type: proof.mapType),
+              proof.generatedAt.hasPrefix(package.version.description + "T") else { return nil }
+        return package.identity
+    }
+    func artifacts(for package: MapPackage) -> [MapArtifact] { package.artifacts }
 }

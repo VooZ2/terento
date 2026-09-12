@@ -42,7 +42,7 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <script defer src="/language.js?v=20260905-language-selector-full-name-v1"></script>
     <script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script>
-    <script defer src="/provider-list.js?v=20260911-three-providers-v2"></script>
+    <script defer src="/provider-list.js?v=20260912-bbbike-types-v1"></script>
     <script defer src="/home-features.js?v=20260904-home-workflow-tabs"></script>
     <script defer src="/localized-content.js?v=20260911-three-providers-v2"></script>
     <script type="application/ld+json">
@@ -67,10 +67,10 @@
             "applicationCategory": "UtilitiesApplication",
             "operatingSystem": "macOS 13 o successivo su Apple Silicon",
             "description": "Installa e gestisci mappe di terze parti sugli smartwatch Garmin compatibili con Terento, l’app macOS gratuita per Apple Silicon.",
-            "softwareVersion": "1.0.0-beta.11",
+            "softwareVersion": "1.0.0-beta.12",
             "softwareRequirements": "Mac Apple Silicon. I Mac Intel non sono supportati.",
-            "downloadUrl": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.11-build27/Terento-1.0.0-beta.11-macOS-arm64.dmg",
-            "releaseNotes": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.11-build27",
+            "downloadUrl": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.12-build28/Terento-1.0.0-beta.12-macOS-arm64.dmg",
+            "releaseNotes": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.12-build28",
             "offers": {
               "@type": "Offer",
               "price": "0",
@@ -200,7 +200,7 @@
       </section>
       <section class="provider-section section" id="providers" aria-labelledby="providers-title">
         <div class="shell">
-          <div class="section-heading provider-intro"><p class="eyebrow">Mappe disponibili</p><h2 id="providers-title">Scopri le mappe disponibili.</h2><p class="provider-copy">Scegli mappe di tre provider. Le mappe vengono scaricate dalla fonte originale di ciascun provider.</p></div>
+          <div class="section-heading provider-intro"><p class="eyebrow">Mappe disponibili</p><h2 id="providers-title">Scopri le mappe disponibili.</h2><p class="provider-copy">Scegli mappe dei provider disponibili. Le mappe vengono scaricate dalla fonte originale di ciascun provider.</p></div>
           <div class="provider-cards" id="provider-cards" data-provider-cards role="region" tabindex="0" aria-label="Provider di mappe">
             <article class="provider-card" data-provider-card="freizeitkarte">
               <div class="provider-card-header">
@@ -230,6 +230,22 @@
               </div>
               <p class="provider-summary">Per le escursioni e la scoperta dei sentieri minori.</p>
               <ul class="provider-benefits"><li>Stile cartografico pensato per le escursioni</li><li>Piccoli percorsi e sentieri</li><li>Aggiornamenti regolari dei dati OpenStreetMap</li></ul>
+            </article>
+<article class="provider-card" data-provider-card="bbbike" data-provider-type="bbbike-latin1" hidden>
+              <div class="provider-card-header">
+                <h3>BBBike</h3>
+                <p class="provider-count" data-provider-count data-count-template="{count} pacchetti di mappe" hidden></p>
+              </div>
+              <p class="provider-summary">Mappe alternative per le attività all’aperto.</p>
+              <ul class="provider-benefits"><li>Dati OpenStreetMap</li><li>Stile cartografico indipendente</li><li>Pacchetti di mappe regionali</li></ul>
+            </article>
+<article class="provider-card" data-provider-card="bbbike" data-provider-type="ontrail-latin1" hidden>
+              <div class="provider-card-header">
+                <h3>BBBike (Ontrail)</h3>
+                <p class="provider-count" data-provider-count data-count-template="{count} pacchetti di mappe" hidden></p>
+              </div>
+              <p class="provider-summary">Mappe più leggere per escursioni e ciclismo.</p>
+              <ul class="provider-benefits"><li>File delle mappe più piccoli</li><li>Strade e sentieri minori</li><li>Un’alternativa allo stile BBBike</li></ul>
             </article>
           </div>
           <div class="provider-controls" data-provider-controls hidden>

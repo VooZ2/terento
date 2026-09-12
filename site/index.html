@@ -42,7 +42,7 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <script defer src="/language.js?v=20260905-language-selector-full-name-v1"></script>
     <script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script>
-    <script defer src="/provider-list.js?v=20260911-three-providers-v2"></script>
+    <script defer src="/provider-list.js?v=20260912-bbbike-types-v1"></script>
     <script defer src="/home-features.js?v=20260904-home-workflow-tabs"></script>
     <script type="application/ld+json">
       {
@@ -66,10 +66,10 @@
             "applicationCategory": "UtilitiesApplication",
             "operatingSystem": "macOS 13 or later on Apple Silicon",
             "description": "Install and manage third-party maps on supported Garmin smartwatches with Terento, a free macOS app for Apple Silicon.",
-            "softwareVersion": "1.0.0-beta.11",
+            "softwareVersion": "1.0.0-beta.12",
             "softwareRequirements": "Apple Silicon Mac required.",
-            "downloadUrl": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.11-build27/Terento-1.0.0-beta.11-macOS-arm64.dmg",
-            "releaseNotes": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.11-build27",
+            "downloadUrl": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.12-build28/Terento-1.0.0-beta.12-macOS-arm64.dmg",
+            "releaseNotes": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.12-build28",
             "offers": {
               "@type": "Offer",
               "price": "0",
@@ -278,7 +278,7 @@
       </section>
       <section class="provider-section section" id="providers" aria-labelledby="providers-title">
         <div class="shell">
-          <div class="section-heading provider-intro"><p class="eyebrow">Available maps</p><h2 id="providers-title">Explore available maps.</h2><p class="provider-copy">Choose maps from three providers. Maps are downloaded from each provider's original source.</p></div>
+          <div class="section-heading provider-intro"><p class="eyebrow">Available maps</p><h2 id="providers-title">Explore available maps.</h2><p class="provider-copy">Choose maps from available providers. Maps are downloaded from each provider's original source.</p></div>
           <div class="provider-cards" id="provider-cards" data-provider-cards role="region" tabindex="0" aria-label="Map providers">
             <article class="provider-card" data-provider-card="freizeitkarte">
               <div class="provider-card-header">
@@ -308,6 +308,22 @@
               </div>
               <p class="provider-summary">For hiking and exploring smaller trails.</p>
               <ul class="provider-benefits"><li>Hiking-focused map styling</li><li>Small paths and trails</li><li>Regular OpenStreetMap data updates</li></ul>
+            </article>
+<article class="provider-card" data-provider-card="bbbike" data-provider-type="bbbike-latin1" hidden>
+              <div class="provider-card-header">
+                <h3>BBBike</h3>
+                <p class="provider-count" data-provider-count data-count-template="{count} map packages" hidden></p>
+              </div>
+              <p class="provider-summary">Alternative maps for outdoor activities.</p>
+              <ul class="provider-benefits"><li>OpenStreetMap data</li><li>Independent map style</li><li>Regional map packages</li></ul>
+            </article>
+<article class="provider-card" data-provider-card="bbbike" data-provider-type="ontrail-latin1" hidden>
+              <div class="provider-card-header">
+                <h3>BBBike (Ontrail)</h3>
+                <p class="provider-count" data-provider-count data-count-template="{count} map packages" hidden></p>
+              </div>
+              <p class="provider-summary">Smaller maps for hiking and cycling.</p>
+              <ul class="provider-benefits"><li>Smaller map files</li><li>Roads and smaller paths</li><li>An alternative to the BBBike style</li></ul>
             </article>
           </div>
           <div class="provider-controls" data-provider-controls hidden>

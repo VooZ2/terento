@@ -190,6 +190,10 @@ struct Stage42ArtifactValidator: MapInstallationArtifactValidator, Sendable {
             throw Stage42ArtifactValidationError.sourceSizeMismatch
         }
 
+        if packageProvider == "bbbike" {
+            let source = try MapSourceValidator().validate(fileURL: artifact.localIMGURL, expectedPackage: package)
+            guard source.sha256 == artifact.sha256 else { throw Stage42ArtifactValidationError.sourceHashMismatch }
+        }
         let actualHash = try Self.sha256(of: artifact.localIMGURL)
         guard actualHash.caseInsensitiveCompare(artifact.sha256) == .orderedSame else {
             throw Stage42ArtifactValidationError.sourceHashMismatch
@@ -523,7 +527,8 @@ struct MapInstallationCoordinator: Sendable {
             sha256: artifact.sha256,
             createdAt: now(),
             artifactID: artifact.artifactID,
-            artifactKind: artifact.artifactKind
+            artifactKind: artifact.artifactKind,
+            bbbikeMetadata: BBBikeMapMetadata(package: request.selectedMap)
         )
 
         let startedAt = ContinuousClock.now
@@ -797,7 +802,8 @@ struct MapInstallationCoordinator: Sendable {
                 installedAt: now(),
                 packageID: request.selectedMap.id,
                 artifactID: artifact.artifactID,
-                artifactKind: artifact.artifactKind
+                artifactKind: artifact.artifactKind,
+                bbbikeMetadata: BBBikeMapMetadata(package: request.selectedMap)
             )
 
             do {
@@ -921,7 +927,7 @@ struct MapInstallationCoordinator: Sendable {
                 transaction: transaction,
                 diagnostics: diagnostics
             )
-        case .blockedAmbiguousMapIdentity:
+        case .blockedAmbiguousMapIdentity, .blockedMapTypeConflict:
             return blocked(
                 status: .blockedAmbiguousMapIdentity,
                 failure: .mapIdentityAmbiguous,
@@ -1165,7 +1171,10 @@ struct MapInstallationCoordinator: Sendable {
                 from: url,
                 maxLength: GarminIMGMetadataParser.prefixLength
             )
-            guard let metadata = GarminIMGMetadataParser().parse(
+            let bbbikeMetadata = BBBikeMapMetadata(package: expectedPackage).flatMap {
+                BBBikeIMGMetadata.metadata(prefix, context: $0, version: expectedPackage.version)
+            }
+            guard let metadata = bbbikeMetadata ?? GarminIMGMetadataParser().parse(
                 prefix,
                 filename: url.lastPathComponent
             ) else {

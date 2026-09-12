@@ -40,6 +40,9 @@ struct Stage42TargetPolicy: Sendable {
         identity: DeviceIdentity,
         deviceFiles: [DeviceFile]
     ) throws {
+        if deviceFiles.contains(where: { BBBikeProviderAdapter.conflicts(package, filename: $0.filename) }) {
+            throw Stage42TargetPolicyError.unsupportedPackage
+        }
         if package.sourceKind == .custom {
             try validateCustom(package: package, artifact: artifact)
         } else {

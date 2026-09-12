@@ -862,7 +862,8 @@ final class MapLifecycleViewModel: ObservableObject {
                         transport: MTPSafeUpdateTransport(
                             operationProfile: operationProfile,
                             operationGate: operationGate,
-                            lifecycleLease: lease
+                            lifecycleLease: lease,
+                            bbbikeMetadata: BBBikeMapMetadata(package: request.selectedMap)
                         ),
                         onProgress: { progress in relay.send(progress) }
                     )

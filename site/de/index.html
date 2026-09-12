@@ -42,7 +42,7 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <script defer src="/language.js?v=20260905-language-selector-full-name-v1"></script>
     <script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script>
-    <script defer src="/provider-list.js?v=20260911-three-providers-v2"></script>
+    <script defer src="/provider-list.js?v=20260912-bbbike-types-v1"></script>
     <script defer src="/home-features.js?v=20260904-home-workflow-tabs"></script>
     <script defer src="/localized-content.js?v=20260911-three-providers-v2"></script>
     <script type="application/ld+json">
@@ -67,10 +67,10 @@
             "applicationCategory": "UtilitiesApplication",
             "operatingSystem": "macOS 13 oder neuer auf Apple Silicon",
             "description": "Installiere und verwalte Drittanbieter-Karten auf unterstützten Garmin-Smartwatches mit der kostenlosen macOS-App Terento für Apple Silicon.",
-            "softwareVersion": "1.0.0-beta.11",
+            "softwareVersion": "1.0.0-beta.12",
             "softwareRequirements": "Apple-Silicon-Mac. Intel-Macs werden nicht unterstützt.",
-            "downloadUrl": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.11-build27/Terento-1.0.0-beta.11-macOS-arm64.dmg",
-            "releaseNotes": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.11-build27",
+            "downloadUrl": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.12-build28/Terento-1.0.0-beta.12-macOS-arm64.dmg",
+            "releaseNotes": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.12-build28",
             "offers": {
               "@type": "Offer",
               "price": "0",
@@ -233,7 +233,7 @@
       </section>
       <section class="provider-section section" id="providers" aria-labelledby="providers-title">
         <div class="shell">
-          <div class="section-heading provider-intro"><p class="eyebrow">Verfügbare Karten</p><h2 id="providers-title">Verfügbare Karten entdecken.</h2><p class="provider-copy">Wähle Karten von drei Anbietern. Karten werden von der Originalquelle des jeweiligen Anbieters geladen.</p></div>
+          <div class="section-heading provider-intro"><p class="eyebrow">Verfügbare Karten</p><h2 id="providers-title">Verfügbare Karten entdecken.</h2><p class="provider-copy">Wähle Karten der verfügbaren Anbieter. Karten werden von der Originalquelle des jeweiligen Anbieters geladen.</p></div>
           <div class="provider-cards" id="provider-cards" data-provider-cards role="region" tabindex="0" aria-label="Kartenanbieter">
             <article class="provider-card" data-provider-card="freizeitkarte">
               <div class="provider-card-header">
@@ -263,6 +263,22 @@
               </div>
               <p class="provider-summary">Zum Wandern und Entdecken kleinerer Wege.</p>
               <ul class="provider-benefits"><li>Aufs Wandern abgestimmte Kartendarstellung</li><li>Kleine Wege und Pfade</li><li>Regelmäßige Aktualisierung der OpenStreetMap-Daten</li></ul>
+            </article>
+<article class="provider-card" data-provider-card="bbbike" data-provider-type="bbbike-latin1" hidden>
+              <div class="provider-card-header">
+                <h3>BBBike</h3>
+                <p class="provider-count" data-provider-count data-count-template="{count} Kartenpakete" hidden></p>
+              </div>
+              <p class="provider-summary">Alternative Karten für Outdoor-Aktivitäten.</p>
+              <ul class="provider-benefits"><li>OpenStreetMap-Daten</li><li>Eigenständiger Kartenstil</li><li>Regionale Kartenpakete</li></ul>
+            </article>
+<article class="provider-card" data-provider-card="bbbike" data-provider-type="ontrail-latin1" hidden>
+              <div class="provider-card-header">
+                <h3>BBBike (Ontrail)</h3>
+                <p class="provider-count" data-provider-count data-count-template="{count} Kartenpakete" hidden></p>
+              </div>
+              <p class="provider-summary">Kleinere Karten zum Wandern und Radfahren.</p>
+              <ul class="provider-benefits"><li>Kleinere Kartendateien</li><li>Straßen und kleinere Wege</li><li>Eine Alternative zum BBBike-Stil</li></ul>
             </article>
           </div>
           <div class="provider-controls" data-provider-controls hidden>

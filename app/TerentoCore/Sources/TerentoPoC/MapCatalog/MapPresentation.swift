@@ -88,6 +88,7 @@ enum MapDisplayNameNormalizer: Sendable {
 
         return Dictionary(uniqueKeysWithValues: packages.map { package in
             let base = baseNames[package.id] ?? package.name
+            if MapIdentity.normalizeProvider(package.providerId) == "bbbike" { return (package.id, base) }
             guard duplicateProviderNames.contains(duplicateKey(for: package, base: base)) else {
                 return (package.id, base)
             }
@@ -253,7 +254,9 @@ enum MapCatalogIdentityKey: Sendable {
         // catalog's `DEU-NORTH`/`DEU+NORTH` pair and keeps packages that share
         // a broad catalog region (AZORES, Balearics, Madeira) distinct.
         let concreteRegion: String
-        if let trimmedIdentifier = identifier?.trimmingCharacters(in: .whitespacesAndNewlines),
+        if normalizedProvider == "bbbike" {
+            concreteRegion = region ?? ""
+        } else if let trimmedIdentifier = identifier?.trimmingCharacters(in: .whitespacesAndNewlines),
            !trimmedIdentifier.isEmpty {
             concreteRegion = trimmedIdentifier
         } else {

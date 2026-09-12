@@ -7,6 +7,7 @@ enum InstallationPreflightStatus: String, Codable, Equatable, Sendable {
     case blockedUnknownInstallSize = "BLOCKED_UNKNOWN_INSTALL_SIZE"
     case blockedUnknownTarget = "BLOCKED_UNKNOWN_TARGET"
     case blockedAmbiguousMapIdentity = "BLOCKED_AMBIGUOUS_MAP_IDENTITY"
+    case blockedMapTypeConflict = "BLOCKED_MAP_TYPE_CONFLICT"
     case blockedUnsupportedDevice = "BLOCKED_UNSUPPORTED_DEVICE"
     case error = "ERROR"
 
@@ -24,6 +25,8 @@ enum InstallationPreflightStatus: String, Codable, Equatable, Sendable {
             return "Install target unavailable"
         case .blockedAmbiguousMapIdentity:
             return "Map identity unclear"
+        case .blockedMapTypeConflict:
+            return "Conflicting BBBike map already installed"
         case .blockedUnsupportedDevice:
             return "Device not supported"
         case .error:
@@ -72,6 +75,8 @@ struct InstallationPreflightResult: Equatable, Sendable {
             return "This device does not have a validated map installation target."
         case .blockedAmbiguousMapIdentity:
             return "An existing map could not be identified safely."
+        case .blockedMapTypeConflict:
+            return reason
         case .blockedUnsupportedDevice:
             return "This device has no validated Terento installation profile."
         case .error:
@@ -142,6 +147,12 @@ struct InstallationPreflightEngine: Sendable {
             )
         }
 
+        if installedMaps.contains(where: { BBBikeProviderAdapter.conflicts(selectedMap, provider: $0.provider, region: $0.region) })
+            || inspectedFiles.contains(where: { BBBikeProviderAdapter.conflicts(selectedMap, filename: $0.filename) }) {
+            return blocked(selectedMap: selectedMap, installedMatch: installedMatch, ownership: ownership,
+                comparisonStatus: comparison.status, status: .blockedMapTypeConflict,
+                installTarget: profile.targetDirectory, reason: BBBikeProviderAdapter.typeConflictMessage(for: selectedMap, installedMaps: installedMaps, inspectedFiles: inspectedFiles))
+        }
         let proposedFilename: String
         do {
             proposedFilename = try TerentoManagedFilenameGenerator().filename(
@@ -360,5 +371,19 @@ private struct CommonPreflightValues: Sendable {
             proposedFilename: proposedFilename,
             storagePlan: storagePlan
         )
+    }
+}
+
+// Ownership-aware copy belongs at the inventory/preflight boundary.
+extension BBBikeProviderAdapter {
+    static func typeConflictMessage(for package: MapPackage, installedMaps: [InstalledMap], inspectedFiles: [InstalledMapFile]) -> String {
+        let matches = installedMaps.filter { conflicts(package, provider: $0.provider, region: $0.region) }
+        let owned = matches.filter { $0.managementState == .managedByTerento }
+        let unverifiedFile = inspectedFiles.contains { file in
+            conflicts(package, filename: file.filename) && !owned.contains { $0.sourceFile == file }
+        }
+        return !owned.isEmpty && matches.allSatisfy { $0.managementState == .managedByTerento } && !unverifiedFile
+            ? installedTypeConflictMessage(for: package)
+            : unverifiedTypeConflictMessage(for: package)
     }
 }

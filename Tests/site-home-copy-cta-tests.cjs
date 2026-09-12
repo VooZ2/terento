@@ -24,7 +24,7 @@ const locales = new Map([
     manageShowcase: "See what's installed, update maps when newer releases are available, and remove third-party maps managed by Terento. Original Garmin maps remain protected.",
     providerEyebrow: "Available maps",
     providerTitle: "Explore available maps.",
-    providerCopy: "Choose maps from three providers. Maps are downloaded from each provider's original source.",
+    providerCopy: "Choose maps from available providers. Maps are downloaded from each provider's original source.",
     heroCompatibility: "Check compatibility",
     download: "Download",
   }],
@@ -46,7 +46,7 @@ const locales = new Map([
     manageShowcase: "Sieh, was installiert ist, aktualisiere Karten, wenn neuere Versionen verfügbar sind, und entferne von Terento verwaltete Drittanbieter-Karten. Originale Garmin-Karten bleiben geschützt.",
     providerEyebrow: "Verfügbare Karten",
     providerTitle: "Verfügbare Karten entdecken.",
-    providerCopy: "Wähle Karten von drei Anbietern. Karten werden von der Originalquelle des jeweiligen Anbieters geladen.",
+    providerCopy: "Wähle Karten der verfügbaren Anbieter. Karten werden von der Originalquelle des jeweiligen Anbieters geladen.",
     heroCompatibility: "Kompatibilität prüfen",
     download: "Herunterladen",
   }],
@@ -68,7 +68,7 @@ const locales = new Map([
     manageShowcase: "Consultez les cartes installées, mettez-les à jour lorsqu’une version plus récente est disponible et supprimez les cartes tierces gérées par Terento. Les cartes Garmin d’origine restent protégées.",
     providerEyebrow: "Cartes disponibles",
     providerTitle: "Découvrez les cartes disponibles.",
-    providerCopy: "Choisissez des cartes de trois fournisseurs. Les cartes sont téléchargées depuis la source d’origine de chaque fournisseur.",
+    providerCopy: "Choisissez parmi les fournisseurs disponibles. Les cartes sont téléchargées depuis la source d’origine de chaque fournisseur.",
     heroCompatibility: "Vérifier la compatibilité",
     download: "Télécharger",
   }],
@@ -90,7 +90,7 @@ const locales = new Map([
     manageShowcase: "Sprawdź, co jest zainstalowane, aktualizuj mapy, gdy dostępne są nowsze wydania, i usuwaj mapy innych firm zarządzane przez Terento. Oryginalne mapy Garmin pozostają chronione.",
     providerEyebrow: "Dostępne mapy",
     providerTitle: "Poznaj dostępne mapy.",
-    providerCopy: "Wybieraj mapy od trzech dostawców. Mapy są pobierane z oryginalnego źródła każdego dostawcy.",
+    providerCopy: "Wybieraj mapy od dostępnych dostawców. Mapy są pobierane z oryginalnego źródła każdego dostawcy.",
     heroCompatibility: "Sprawdź kompatybilność",
     download: "Pobierz",
   }],
@@ -112,7 +112,7 @@ const locales = new Map([
     manageShowcase: "Prohlédněte si nainstalované mapy, aktualizujte je, když je k dispozici novější vydání, a odstraňte mapy třetích stran spravované aplikací Terento. Původní mapy Garmin zůstávají chráněné.",
     providerEyebrow: "Dostupné mapy",
     providerTitle: "Prozkoumejte dostupné mapy.",
-    providerCopy: "Vyberte si mapy od tří poskytovatelů. Mapy se stahují z původního zdroje každého poskytovatele.",
+    providerCopy: "Vyberte si mapy od dostupných poskytovatelů. Mapy se stahují z původního zdroje každého poskytovatele.",
     heroCompatibility: "Ověřit kompatibilitu",
     download: "Stáhnout",
   }],
@@ -134,7 +134,7 @@ const locales = new Map([
     manageShowcase: "Visualizza le mappe installate, aggiornatele quando è disponibile una versione più recente e rimuovi le mappe di terze parti gestite da Terento. Le mappe Garmin originali restano protette.",
     providerEyebrow: "Mappe disponibili",
     providerTitle: "Scopri le mappe disponibili.",
-    providerCopy: "Scegli mappe di tre provider. Le mappe vengono scaricate dalla fonte originale di ciascun provider.",
+    providerCopy: "Scegli mappe dei provider disponibili. Le mappe vengono scaricate dalla fonte originale di ciascun provider.",
     heroCompatibility: "Verifica la compatibilità",
     download: "Scarica",
   }],
@@ -226,23 +226,29 @@ for (const [locale, expected] of locales) {
   assert.match(providerSection, new RegExp(`<p class="eyebrow">${expected.providerEyebrow.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/p>`));
   assert.match(providerSection, new RegExp(`<h2 id="providers-title">${expected.providerTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/h2>`));
   assert.match(providerSection, new RegExp(`<p class="provider-copy">${expected.providerCopy.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/p>`));
-  assert.equal((providerSection.match(/<article class="provider-card"/g) || []).length, 3, `${locale}: exactly three providers`);
+  assert.equal((providerSection.match(/<article class="provider-card"/g) || []).length, 5, `${locale}: five map types from four providers`);
   const maprando = providerSection.match(/<article class="provider-card" data-provider-card="maprando">[\s\S]*?<\/article>/)?.[0];
   assert.ok(maprando, `${locale}: MapRando card`);
   assert.match(maprando, /data-provider-count[^>]* hidden><\/p>/);
   assert.match(maprando, /OpenStreetMap/);
+  for (const [type, name] of [['bbbike-latin1', 'BBBike'], ['ontrail-latin1', 'BBBike (Ontrail)']]) {
+    const card = providerSection.match(new RegExp(`<article class="provider-card" data-provider-card="bbbike" data-provider-type="${type}" hidden>[\\s\\S]*?<\\/article>`))?.[0];
+    assert.ok(card, `${locale}: ${name} stays hidden until its type is available`);
+    assert.ok(card.includes(`<h3>${name}</h3>`));
+    assert.doesNotMatch(card, /provider-addon/);
+  }
   const otm = providerSection.match(/<article class="provider-card" data-provider-card="opentopomap">[\s\S]*?<\/article>/)?.[0];
   assert.ok(otm, `${locale}: OpenTopoMap card`);
   assert.match(otm, /<details class="provider-addon" data-provider-addon="contours">\s*<summary class="provider-addon-toggle">/);
   assert.doesNotMatch(otm, /<details[^>]*\bopen(?:\s|=|>)/);
   assert.match(otm, /<summary[^>]*>[\s\S]*provider-card-badge[\s\S]*provider-addon-title[\s\S]*<\/summary>\s*<p class="provider-addon-copy">/);
   assert.doesNotMatch(providerSection, /data-provider-card="opentopomap-contours"|type="checkbox"|role="switch"/);
-  assert.equal((providerSection.match(/class="provider-benefits"/g) || []).length, 3);
-  assert.equal((providerSection.match(/<li>/g) || []).length, 9);
-  assert.equal((providerSection.match(/class="provider-summary"/g) || []).length, 3);
+  assert.equal((providerSection.match(/class="provider-benefits"/g) || []).length, 5);
+  assert.equal((providerSection.match(/<li>/g) || []).length, 15);
+  assert.equal((providerSection.match(/class="provider-summary"/g) || []).length, 5);
   assert.match(providerSection, /data-provider-previous aria-controls="provider-cards"/);
   assert.match(providerSection, /data-provider-next aria-controls="provider-cards"/);
-  assert.match(page, /provider-list\.js\?v=20260911-three-providers-v2/);
+  assert.match(page, /provider-list\.js\?v=20260912-bbbike-types-v1/);
   assert.match(providerSection, /data-count-template="[^"]*\{count\}[^"]*"/);
   assert.match(providerSection, /63/);
   assert.match(providerSection, /177/);

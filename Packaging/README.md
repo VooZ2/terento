@@ -28,9 +28,9 @@ same override is used by the web, native, backend, and release checks.
 
 ## Full release validation
 
-The current public target is beta.11 build 22. Public tags and release
+The staged public target is beta.12 build 28; it is not published until the release gate passes. Public tags and release
 artifacts never use the `-local` suffix; Debug artifacts for owner testing do.
-The beta.11 release uses the same shared installation, update and removal path
+The beta.12 release uses the same shared installation, update and removal path
 as the existing providers.
 
 Run from the repository root:
@@ -43,11 +43,11 @@ For a beta release, keep the app's marketing version separate from the public
 release label:
 
 ```sh
-RELEASE_TAG=v1.0.0-beta.11-build22 \
+RELEASE_TAG=v1.0.0-beta.12-build28 \
 Packaging/release.sh \
   --version 1.0.0 \
-  --build 22 \
-  --release-version 1.0.0-beta.11 \
+  --build 28 \
+  --release-version 1.0.0-beta.12 \
   --overwrite
 ```
 
@@ -56,8 +56,8 @@ The pipeline fails rather than silently replacing an existing artifact. Use
 The results are written to:
 
 ```text
-dist/Terento-1.0.0-beta.11-macOS-arm64.zip
-dist/Terento-1.0.0-beta.11-macOS-arm64.dmg
+dist/Terento-1.0.0-beta.12-macOS-arm64.zip
+dist/Terento-1.0.0-beta.12-macOS-arm64.dmg
 ```
 
 The command prints the final artifact size and SHA-256 checksum for both
@@ -272,3 +272,25 @@ TERENTO_BUNDLED_MTP exactly once, matching the local Debug context cleanup path.
 The release contract guards against duplicate settings overriding the flag.
 See reports/2026-09-12-beta11-build27-release.md for the publication receipt
 and the distinction between owner hardware evidence and automated checks.
+
+## BBBike local integration candidate
+
+The BBBike candidate uses an optimized Debug build with the actual release label
+`1.0.0-beta.12-local` and build31. Both `BBBike` and `BBBike (Ontrail)` are
+independent map types of one source provider. Public release settings and the
+bundled release catalog remain unchanged until hardware review.
+
+For this local candidate only, copy the reviewed DB v4 metadata projection into
+`Terento.app/Contents/Resources/catalog.json`, set BBBike ACTIVE in that local
+copy, and set the Debug-only `TerentoUseBundledMapCatalog` Info.plist key to true.
+All 760 BBBike package IDs and source proofs must match the PAUSED receiving API
+before hardware tests. Record the exact source, catalog and ZIP hashes; re-sign
+after applying the local resources, then unzip and validate the actual delivered
+bundle. The override does not exist in the Release runtime path.
+
+Acceptance covers the full metadata catalog, both genuine small source archives
+through the final installation validator, the shared regression suites, Debug
+and Release compilation, and exact bundle/runtime validation. Real Garmin
+installation, reconnection, on-device usefulness and a genuine newer-release
+update remain separate evidence. Do not publish either map type before its
+applicable evidence gate passes.

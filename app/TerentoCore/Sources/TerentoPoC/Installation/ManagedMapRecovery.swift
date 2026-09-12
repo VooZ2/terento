@@ -10,6 +10,7 @@ struct TerentoManifestExportEntry: Codable, Equatable, Sendable {
     let sizeBytes: UInt64
     let sha256: String
     let installedAt: Date
+    var bbbikeMetadata: BBBikeMapMetadata? = nil
 }
 
 struct TerentoManifestExportDocument: Codable, Equatable, Sendable {
@@ -78,7 +79,8 @@ struct TerentoManifestExportService: Sendable {
                     version: $0.version,
                     sizeBytes: $0.sizeBytes,
                     sha256: $0.sha256,
-                    installedAt: $0.installedAt
+                    installedAt: $0.installedAt,
+                    bbbikeMetadata: $0.bbbikeMetadata
                 )
             }
         )
@@ -225,7 +227,8 @@ struct ManagedMapRecoveryCoordinator: Sendable {
             version: match.0.version,
             sizeBytes: match.0.sizeBytes,
             sha256: match.0.sha256.lowercased(),
-            installedAt: match.0.installedAt
+            installedAt: match.0.installedAt,
+            bbbikeMetadata: match.0.bbbikeMetadata
         )
         try manifestStore.record(recovered)
         return ManagedMapRecoveryResult(recoveredEntry: recovered)

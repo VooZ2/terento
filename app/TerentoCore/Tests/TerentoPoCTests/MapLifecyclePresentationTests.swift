@@ -572,10 +572,37 @@ private struct MapLifecyclePresentationTestRunner {
             try runMapLifecyclePresentationTests()
             try testIncompleteCustomRecovery()
             try testManageInventorySearch()
+            try testBBBikeManageTypeFilters()
             print("PASS: \(passed) Stage 5 UI lifecycle presentation tests")
         } catch {
             print("FAIL: \(error)")
             exit(1)
         }
     }
+}
+
+private func testBBBikeManageTypeFilters() throws {
+    func item(_ type: String, classification: MapLifecycleClassification = .terentoManaged) -> MapLifecycleItem {
+        MapLifecycleItem(id: "bbbike-\(type)", title: "Lithuania", sourceKind: .provider,
+            provider: "BBBike", region: "EUROPE-LITHUANIA-\(type.uppercased())",
+            version: installedVersion, rawVersion: nil, sizeBytes: 100,
+            installedMaps: [installedMap()], classification: classification)
+    }
+    let base = item("bbbike-latin1")
+    let ontrail = item("ontrail-latin1")
+    let inventory = MapLifecycleInventory(providerGroups: [MapLifecycleProviderGroup(
+        id: "bbbike", providerId: "bbbike", title: "BBBike", items: [base, ontrail])], otherMaps: [])
+    let index = MapInventoryListPresentationIndex(inventory: inventory)
+    try require(index.providerOptions == [MapInventoryProviderOption(id: "bbbike", title: "BBBike"),
+        MapInventoryProviderOption(id: "bbbikeontrail", title: "BBBike (Ontrail)")],
+        "Manage maps exposes both exact BBBike type labels under one source provider")
+    try require(index.filtered(query: "Lithuania", providerID: "bbbike").providerGroups.first?.items == [base]
+        && index.filtered(query: "Lithuania", providerID: "bbbikeontrail").providerGroups.first?.items == [ontrail],
+        "Geographic search and type filters preserve exact owned items independently")
+    let external = item("ontrail-latin1", classification: .externalRecognized)
+    let externalIndex = MapInventoryListPresentationIndex(inventory: MapLifecycleInventory(
+        providerGroups: [], otherMaps: [external]))
+    try require(externalIndex.providerOptions == [MapInventoryProviderOption(id: "bbbikeontrail", title: "BBBike (Ontrail)")]
+        && externalIndex.filtered(query: "Lithuania", providerID: "bbbikeontrail").otherMaps == [external],
+        "Recognized external Ontrail remains external and uses its own type filter")
 }

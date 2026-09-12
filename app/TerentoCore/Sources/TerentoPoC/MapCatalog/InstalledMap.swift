@@ -605,7 +605,17 @@ struct GarminMapScanner: Sendable {
             )
             inspectedFiles.append(installedFile)
 
-            let metadata = parser.parse(
+            let exactBBBikeRecords = ownershipRecords.filter {
+                MapIdentity.normalizeProvider($0.providerId) == "bbbike"
+                    && $0.devicePath == file.path && $0.filename == file.filename && $0.sizeBytes == file.sizeBytes
+                    && TerentoManagedFilenameGenerator().matchesIdentity(file.filename, providerId: $0.providerId,
+                        regionId: $0.regionId, version: $0.version)
+                    && $0.bbbikeMetadata.map { MapIdentity.normalizeRegion($0.canonicalRegion) } == MapIdentity.normalizeRegion($0.regionId)
+            }
+            let restoredBBBike = exactBBBikeRecords.count == 1 ? exactBBBikeRecords.first.flatMap { record in
+                record.bbbikeMetadata.flatMap { BBBikeIMGMetadata.metadata(prefixes[file.itemID] ?? [], context: $0, version: record.version) }
+            } : nil
+            let metadata = restoredBBBike ?? parser.parse(
                 prefixes[file.itemID] ?? [],
                 filename: file.filename
             )
@@ -779,5 +789,35 @@ struct MapScanResult: Sendable, Equatable {
 
     var imgParsingEvidence: EvidenceResult {
         parsingFailures == 0 ? .pass : .fail
+    }
+}
+
+/// mkgmap stores a 49-character description across two fixed fields, followed
+/// by padding. Long BBBike paths truncate type and date; only verified package
+/// context or an exact manifest match may restore that missing information.
+enum BBBikeIMGMetadata {
+    static func version(_ bytes: [UInt8]) -> MapVersion? {
+        guard bytes.count >= 0x84 else { return nil }
+        let year = Int(bytes[0x39]) | Int(bytes[0x3A]) << 8
+        return MapVersion(rawValue: String(format: "%04d-%02d-%02d", year, bytes[0x3B], bytes[0x3C]))
+    }
+    static func metadata(_ bytes: [UInt8], context: BBBikeMapMetadata, version: MapVersion) -> GarminIMGMetadata? {
+        guard bytes.count >= 0x84,
+              String(bytes: bytes[0x10..<0x16], encoding: .ascii) == "DSKIMG",
+              String(bytes: bytes[0x41..<0x47], encoding: .ascii) == "GARMIN",
+              Self.version(bytes) == version,
+              BBBikeProviderAdapter.validPath(context.sourcePath),
+              let type = BBBikeMapType(rawValue: context.mapType) else { return nil }
+        let months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        guard let day = version.day, (1...12).contains(version.month) else { return nil }
+        let date = String(format: "%02d-%@-%04d", day, months[version.month - 1], version.year)
+        let expected = "\(context.sourcePath) \(type.style)/latin1 BBBike.org \(date)"
+        let expectedBytes = Array(expected.utf8.prefix(49))
+        let actual = Array(bytes[0x49..<0x5D]) + Array(bytes[0x65..<0x83])
+        guard Array(actual.prefix(expectedBytes.count)) == expectedBytes,
+              actual.dropFirst(expectedBytes.count).allSatisfy({ $0 == 0x20 || $0 == 0 }) else { return nil }
+        return GarminIMGMetadata(name: context.displayName, provider: "BBBike", region: context.canonicalRegion,
+            family: type.title, rawVersion: version.description, version: version,
+            identifier: nil, productId: nil, familyId: nil)
     }
 }

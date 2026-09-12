@@ -27,6 +27,7 @@ struct MapSelectionItem: Identifiable, Equatable, Sendable {
     let acquisitionAvailability: MapAcquisitionAvailability
     let preflightStatus: InstallationPreflightStatus?
     let isRecommended: Bool
+    var preflightReason: String? = nil
 
     var title: String {
         displayName
@@ -42,7 +43,7 @@ struct MapSelectionItem: Identifiable, Equatable, Sendable {
         )
         var parts: [String] = []
         if !providerName.isEmpty {
-            parts.append(providerName)
+            parts.append(MapProviderDisplay.title(providerID: package.providerId, regionID: package.canonicalRegionId, fallback: providerName))
         }
         if let versionLabel = package.displayVersionLabel {
             parts.append(versionLabel)
@@ -91,6 +92,8 @@ struct MapSelectionItem: Identifiable, Equatable, Sendable {
     }
 
     var isSelectable: Bool {
+        guard package.mainArtifact?.validationState != .unavailable,
+              package.mainArtifact?.validationState != .failed else { return false }
         guard acquisitionAvailability == .available else { return false }
         switch action {
         case .install:
@@ -200,7 +203,8 @@ struct MapSelectionPlanner: Sendable {
         comparisons: [MapComparison],
         preflightStatuses: [String: InstallationPreflightStatus],
         recommendedRegionID: String?,
-        providerIDs: Set<String>? = nil
+        providerIDs: Set<String>? = nil,
+        preflightReasons: [String: String] = [:]
     ) -> [MapSelectionItem] {
         var uniqueComparisons: [String: MapComparison] = [:]
         let normalizedProviderIDs = providerIDs.map {
@@ -256,7 +260,8 @@ struct MapSelectionPlanner: Sendable {
                     isRecommended: recommendedRegionID.map {
                         MapIdentity.normalizeRegion(comparison.catalogMap.regionId)
                             == MapIdentity.normalizeRegion($0)
-                    } ?? false
+                    } ?? false,
+                    preflightReason: preflightReasons[comparison.id]
                 )
             }
             .sorted { lhs, rhs in
@@ -334,7 +339,10 @@ struct MapSelectionPlanner: Sendable {
         let status: InstallationPlanStatus
         let reason: String
 
-        if hasInvalidOptionalSelection {
+        if BBBikeProviderAdapter.selectionConflicts(selectedItems.map(\.package)) {
+            status = .blocked
+            reason = BBBikeProviderAdapter.coexistenceReason
+        } else if hasInvalidOptionalSelection {
             status = .blocked
             reason = "One selected map component is no longer available. Refresh the catalog and try again."
         } else if selectedItems.isEmpty {

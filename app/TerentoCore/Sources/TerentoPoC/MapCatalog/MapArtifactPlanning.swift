@@ -143,7 +143,8 @@ extension MapArtifact {
             sizeBytes: sizeBytes,
             downloadSizeBytes: downloadSizeBytes,
             checksum: checksum,
-            validationState: validationState
+            validationState: validationState,
+            sourceProof: sourceProof
         )
     }
 
@@ -163,7 +164,8 @@ extension MapArtifact {
             sizeBytes: sizeBytes,
             downloadSizeBytes: downloadSizeBytes,
             checksum: checksum,
-            validationState: validationState
+            validationState: validationState,
+            sourceProof: sourceProof
         )
     }
 }

@@ -1204,6 +1204,20 @@ struct Stage45MapSelectionTests {
         let unknown = index.filtered(query: "", geography: .other)
         if !unknown.isEmpty { print("UNKNOWN GEOGRAPHY: \(unknown.map { $0.package.id + ": " + $0.title })") }
         expect(unknown.isEmpty, "Every known bundled package has reviewed geography")
+        let americanOceania = items.filter { $0.package.id.hasPrefix("bbbike-australia-oceania-american-oceania-") }
+        expect(americanOceania.count == 2 && americanOceania.allSatisfy { $0.package.countryCodes.isEmpty },
+               "American Oceania keeps both types without inventing a single country")
+        expect(index.filtered(query: "American Oceania", geography: .oceania).count == 2,
+               "Both American Oceania types appear in geographic Oceania")
+        let taafID = "maprando-france-taaf"
+        expect(items.first { $0.package.id == taafID }?.package.countryCodes == ["TF"],
+               "TAAF retains its distinct territory code rather than metropolitan France")
+        for group in [MapGeographyGroup.africa, .antarctica] {
+            expect(index.filtered(query: "French Southern and Antarctic Lands", geography: group).contains { $0.package.id == taafID },
+                   "TAAF is discoverable across its reviewed Indian Ocean and Antarctic geography")
+        }
+        expect(!index.filtered(query: "French Southern and Antarctic Lands", geography: .europe).contains { $0.package.id == taafID },
+               "TAAF sovereignty does not place the package in geographic Europe")
         expect(index.filtered(query: "Canary", geography: .africa).count > 0, "Canary Islands follow geographic Africa")
         expect(!index.filtered(query: "", geography: .europe).contains { $0.package.regionId == "RUSSIAASIANPART" }, "Asian russia extract is not categorized as Europe")
         expect(!index.filtered(query: "", geography: .asia).contains { $0.package.regionId == "RUSSIAEUROPEANPART" }, "European russia extract is not categorized as Asia")

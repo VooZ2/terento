@@ -42,7 +42,7 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <script defer src="/language.js?v=20260905-language-selector-full-name-v1"></script>
     <script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script>
-    <script defer src="/provider-list.js?v=20260911-three-providers-v2"></script>
+    <script defer src="/provider-list.js?v=20260912-bbbike-types-v1"></script>
     <script defer src="/home-features.js?v=20260904-home-workflow-tabs"></script>
     <script defer src="/localized-content.js?v=20260911-three-providers-v2"></script>
     <script type="application/ld+json">
@@ -67,10 +67,10 @@
             "applicationCategory": "UtilitiesApplication",
             "operatingSystem": "macOS 13 nebo novější na Apple Silicon",
             "description": "Instalujte a spravujte mapy třetích stran na podporovaných hodinkách Garmin pomocí bezplatné aplikace Terento pro Macy s Apple Silicon.",
-            "softwareVersion": "1.0.0-beta.11",
+            "softwareVersion": "1.0.0-beta.12",
             "softwareRequirements": "Mac s Apple Silicon. Macy s Intelem nejsou podporovány.",
-            "downloadUrl": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.11-build27/Terento-1.0.0-beta.11-macOS-arm64.dmg",
-            "releaseNotes": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.11-build27",
+            "downloadUrl": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.12-build28/Terento-1.0.0-beta.12-macOS-arm64.dmg",
+            "releaseNotes": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.12-build28",
             "offers": {
               "@type": "Offer",
               "price": "0",
@@ -200,7 +200,7 @@
       </section>
       <section class="provider-section section" id="providers" aria-labelledby="providers-title">
         <div class="shell">
-          <div class="section-heading provider-intro"><p class="eyebrow">Dostupné mapy</p><h2 id="providers-title">Prozkoumejte dostupné mapy.</h2><p class="provider-copy">Vyberte si mapy od tří poskytovatelů. Mapy se stahují z původního zdroje každého poskytovatele.</p></div>
+          <div class="section-heading provider-intro"><p class="eyebrow">Dostupné mapy</p><h2 id="providers-title">Prozkoumejte dostupné mapy.</h2><p class="provider-copy">Vyberte si mapy od dostupných poskytovatelů. Mapy se stahují z původního zdroje každého poskytovatele.</p></div>
           <div class="provider-cards" id="provider-cards" data-provider-cards role="region" tabindex="0" aria-label="Poskytovatelé map">
             <article class="provider-card" data-provider-card="freizeitkarte">
               <div class="provider-card-header">
@@ -230,6 +230,22 @@
               </div>
               <p class="provider-summary">Pro pěší turistiku a objevování menších stezek.</p>
               <ul class="provider-benefits"><li>Vzhled mapy přizpůsobený pěší turistice</li><li>Drobné cesty a stezky</li><li>Pravidelné aktualizace dat OpenStreetMap</li></ul>
+            </article>
+<article class="provider-card" data-provider-card="bbbike" data-provider-type="bbbike-latin1" hidden>
+              <div class="provider-card-header">
+                <h3>BBBike</h3>
+                <p class="provider-count" data-provider-count data-count-template="Mapové balíčky: {count}" hidden></p>
+              </div>
+              <p class="provider-summary">Alternativní mapy pro venkovní aktivity.</p>
+              <ul class="provider-benefits"><li>Data OpenStreetMap</li><li>Samostatný mapový styl</li><li>Regionální mapové balíčky</li></ul>
+            </article>
+<article class="provider-card" data-provider-card="bbbike" data-provider-type="ontrail-latin1" hidden>
+              <div class="provider-card-header">
+                <h3>BBBike (Ontrail)</h3>
+                <p class="provider-count" data-provider-count data-count-template="Mapové balíčky: {count}" hidden></p>
+              </div>
+              <p class="provider-summary">Menší mapy pro pěší turistiku a cyklistiku.</p>
+              <ul class="provider-benefits"><li>Menší mapové soubory</li><li>Silnice a menší cesty</li><li>Alternativa ke stylu BBBike</li></ul>
             </article>
           </div>
           <div class="provider-controls" data-provider-controls hidden>

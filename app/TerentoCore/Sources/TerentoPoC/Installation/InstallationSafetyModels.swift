@@ -96,6 +96,7 @@ struct TerentoManifestEntry: Codable, Equatable, Sendable {
     let packageID: String?
     let artifactID: String?
     let artifactKind: MapArtifactKind?
+    let bbbikeMetadata: BBBikeMapMetadata?
 
     init(
         deviceKey: String,
@@ -109,7 +110,8 @@ struct TerentoManifestEntry: Codable, Equatable, Sendable {
         installedAt: Date,
         packageID: String? = nil,
         artifactID: String? = nil,
-        artifactKind: MapArtifactKind? = nil
+        artifactKind: MapArtifactKind? = nil,
+        bbbikeMetadata: BBBikeMapMetadata? = nil
     ) {
         self.deviceKey = deviceKey
         self.devicePath = devicePath
@@ -123,11 +125,12 @@ struct TerentoManifestEntry: Codable, Equatable, Sendable {
         self.packageID = packageID
         self.artifactID = artifactID
         self.artifactKind = artifactKind
+        self.bbbikeMetadata = bbbikeMetadata
     }
 
     private enum CodingKeys: String, CodingKey {
         case deviceKey, devicePath, filename, providerId, regionId, version
-        case sizeBytes, sha256, installedAt, packageID, artifactID, artifactKind
+        case sizeBytes, sha256, installedAt, packageID, artifactID, artifactKind, bbbikeMetadata
     }
 
     init(from decoder: Decoder) throws {
@@ -144,7 +147,8 @@ struct TerentoManifestEntry: Codable, Equatable, Sendable {
             installedAt: try container.decode(Date.self, forKey: .installedAt),
             packageID: try container.decodeIfPresent(String.self, forKey: .packageID),
             artifactID: try container.decodeIfPresent(String.self, forKey: .artifactID),
-            artifactKind: try container.decodeIfPresent(MapArtifactKind.self, forKey: .artifactKind)
+            artifactKind: try container.decodeIfPresent(MapArtifactKind.self, forKey: .artifactKind),
+            bbbikeMetadata: try container.decodeIfPresent(BBBikeMapMetadata.self, forKey: .bbbikeMetadata)
         )
     }
 }
@@ -172,6 +176,7 @@ struct TerentoFailedInstallRecoveryRecord: Codable, Equatable, Sendable {
     /// can be recovered and removed independently.
     let artifactID: String?
     let artifactKind: MapArtifactKind?
+    let bbbikeMetadata: BBBikeMapMetadata?
 
     init(
         deviceKey: String,
@@ -185,7 +190,8 @@ struct TerentoFailedInstallRecoveryRecord: Codable, Equatable, Sendable {
         sha256: String,
         createdAt: Date,
         artifactID: String? = nil,
-        artifactKind: MapArtifactKind? = nil
+        artifactKind: MapArtifactKind? = nil,
+        bbbikeMetadata: BBBikeMapMetadata? = nil
     ) {
         self.deviceKey = deviceKey
         self.packageID = packageID
@@ -199,12 +205,13 @@ struct TerentoFailedInstallRecoveryRecord: Codable, Equatable, Sendable {
         self.createdAt = createdAt
         self.artifactID = artifactID
         self.artifactKind = artifactKind
+        self.bbbikeMetadata = bbbikeMetadata
     }
 
     private enum CodingKeys: String, CodingKey {
         case deviceKey, packageID, providerId, regionId, version
         case devicePath, filename, sizeBytes, sha256, createdAt
-        case artifactID, artifactKind
+        case artifactID, artifactKind, bbbikeMetadata
     }
 
     init(from decoder: Decoder) throws {
@@ -221,7 +228,8 @@ struct TerentoFailedInstallRecoveryRecord: Codable, Equatable, Sendable {
             sha256: try container.decode(String.self, forKey: .sha256),
             createdAt: try container.decode(Date.self, forKey: .createdAt),
             artifactID: try container.decodeIfPresent(String.self, forKey: .artifactID),
-            artifactKind: try container.decodeIfPresent(MapArtifactKind.self, forKey: .artifactKind)
+            artifactKind: try container.decodeIfPresent(MapArtifactKind.self, forKey: .artifactKind),
+            bbbikeMetadata: try container.decodeIfPresent(BBBikeMapMetadata.self, forKey: .bbbikeMetadata)
         )
     }
 

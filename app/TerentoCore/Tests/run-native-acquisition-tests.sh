@@ -18,6 +18,7 @@ swiftc \
     "$project_root/Sources/TerentoPoC/Installation/ManagedFilename.swift" \
     "$project_root/Sources/TerentoPoC/Installation/InstallationSafetyModels.swift" \
     "$project_root/Sources/TerentoPoC/Installation/MapSourceValidator.swift" \
+    "$project_root/Sources/TerentoPoC/MapCatalog/BBBikeArchiveSafety.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapPackageAcquisition.swift" \
     "$project_root/Tests/TerentoPoCTests/Stage41AcquisitionTests.swift" \
     -o "$binary_path"
@@ -30,10 +31,12 @@ swiftc \
 bundled_catalog="$project_root/Sources/TerentoPoC/Resources/Maps/catalog.json"
 if ! jq -e '
     .catalogVersion == 1
-    and ([.providers[].maps[]] | length) == 240
-    and ([.providers[].maps[].id] | unique | length) == 240
+    and ([.providers[].maps[]] | length) == 1160
+    and ([.providers[].maps[].id] | unique | length) == 1160
     and ([.providers[] | select(.id == "freizeitkarte")] | length) == 1
     and ([.providers[] | select(.id == "opentopomap")] | length) == 1
+    and ([.providers[] | select(.id == "maprando") | .maps[]] | length) == 160
+    and ([.providers[] | select(.id == "bbbike") | .maps[]] | length) == 760
     and all(.providers[].maps[];
         (.installSizeBytes | type == "number")
         and .installSizeBytes > 0
@@ -52,7 +55,7 @@ if ! jq -e '
     exit 1
 fi
 
-printf '%s\n' "PASS: bundled fallback contains 63 FZK + 177 OTM packages with final IMG sizes"
+printf '%s\n' "PASS: bundled fallback contains 63 FZK + 177 OTM + 160 MapRando + 760 BBBike packages with final IMG sizes"
 
 if grep -Eq 'LibMTPBridge|MTPTransport|SendObject|DeleteObject|MoveObject|RenameObject|Backup' \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapPackageAcquisition.swift"; then
