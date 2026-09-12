@@ -153,7 +153,7 @@ const anchorFor = (page, className) => {
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20260911-three-providers-v2">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20260912-map-cards-v1">/, `${locale}: Home stylesheet cache bust`);
   assert.match(page, /<script defer src="\/home-features\.js\?v=20260904-home-workflow-tabs"><\/script>/, `${locale}: Home feature script cache bust`);
   assert.match(page, /installing-maps-1600\.png\?v=20260905-app-screens-v1/, `${locale}: installation screenshot cache bust`);
   const heroArtwork = page.match(/<figure class="app-shot app-shot--hero">[\s\S]*?<\/figure>/)?.[0];
@@ -245,6 +245,9 @@ for (const [locale, expected] of locales) {
   assert.doesNotMatch(providerSection, /data-provider-card="opentopomap-contours"|type="checkbox"|role="switch"/);
   assert.equal((providerSection.match(/class="provider-benefits"/g) || []).length, 5);
   assert.equal((providerSection.match(/<li>/g) || []).length, 15);
+  for (const list of providerSection.matchAll(/<ul class="provider-benefits">([\s\S]*?)<\/ul>/g)) {
+    assert.equal((list[1].match(/<li>/g) || []).length, 3, `${locale}: exactly three benefits per map`);
+  }
   assert.equal((providerSection.match(/class="provider-summary"/g) || []).length, 5);
   assert.match(providerSection, /data-provider-previous aria-controls="provider-cards"/);
   assert.match(providerSection, /data-provider-next aria-controls="provider-cards"/);
@@ -338,10 +341,10 @@ assert.match(styles, /\.section-heading h2 \.workflow-title-bullet\s*\{[^}]*disp
 assert.match(styles, /\.section-heading h2 \.workflow-title-bullet\s*\{[^}]*display:\s*inline-block[^}]*font-size:\s*\.72em/s);
 assert.match(styles, /\.section-heading h2 \.workflow-title-arrow\s*\{[^}]*display:\s*none/s);
 assert.match(styles, /\.map-feature-panel\[hidden\]\s*\{[^}]*display:\s*none/s);
-assert.match(styles, /\.provider-cards\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)/s);
+assert.match(styles, /\.provider-cards\s*\{[^}]*grid-auto-flow:\s*column/s);
 assert.match(styles, /\.provider-card\s*\{[^}]*background:\s*var\(--surface\)/s);
 assert.match(styles, /\.provider-addon\s*\{[^}]*border-top:\s*1px solid var\(--border\)/s);
-assert.match(styles, /\.provider-cards\s*\{[^}]*align-items:\s*start/s);
+assert.match(styles, /\.provider-cards\s*\{[^}]*align-items:\s*stretch/s);
 assert.match(styles, /\.provider-card-badge\s*\{[^}]*text-transform:\s*uppercase/s);
 assert.match(styles, /\.provider-benefits\s*\{[^}]*border-top:\s*1px solid var\(--border\)/s);
 const localizedContent = fs.readFileSync(path.join(root, "site", "localized-content.js"), "utf8");
@@ -349,7 +352,7 @@ assert.doesNotMatch(localizedContent, /querySelector\("\.scope-copy"\)/s, "remov
 
 console.log("Home copy, localized Hero, shared CTA, and CTA interaction-contract tests passed.");
 
-assert.match(englishHome, /The main map works without this add-on\./);
+assert.match(englishHome, /Add lines that show elevation and help you read slopes\./);
 assert.match(styles, /grid-auto-columns: min\(90%, 420px\)/);
 assert.match(styles, /\.provider-cards\s*\{[^}]*max-width: 1300px/s);
 assert.match(styles, /overflow-x: auto/);

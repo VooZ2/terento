@@ -228,38 +228,38 @@ PROVIDER_CARD_COPY = {
         "freizeitkarte": {
             "name": "Freizeitkarte",
             "count_template": "{count} map packages",
-            "summary": "For walking, cycling, and everyday navigation.",
+            "summary": "For walks, bike rides, and days out.",
             "benefits": [
-                "Routing for walking and cycling",
+                "Routes for walking and cycling",
                 "Contour lines included",
-                "Points of interest, bus stops, and train stations"
+                "Places to visit, bus stops, and train stations"
             ]
         },
         "opentopomap": {
             "name": "OpenTopoMap",
             "count_template": "{count} map packages",
-            "summary": "For exploring terrain with a topographic map.",
+            "summary": "For hikes where terrain matters.",
             "benefits": [
-                "Topographic styling for roads, paths, and terrain",
-                "Elevation data and terrain shading",
-                "Routing capability"
+                "Topographic detail for roads and paths",
+                "Elevation data and shaded relief",
+                "Optional contour lines for extra terrain detail"
             ]
         },
         "maprando": {
             "name": "MapRando",
             "count_template": "{count} map packages",
-            "summary": "For hiking and exploring smaller trails.",
+            "summary": "For exploring smaller trails on foot.",
             "benefits": [
-                "Hiking-focused map styling",
-                "Small paths and trails",
-                "Regular OpenStreetMap data updates"
+                "Small paths beyond the main trails",
+                "Map styling designed for hiking",
+                "New editions bring in OpenStreetMap changes"
             ]
         },
         "contours": {
-            "badge": "Optional add-on",
+            "badge": "Optional add-on for OpenTopoMap",
             "name": "Contour lines",
-            "description": "Choose whether to include them when installing an OpenTopoMap region in Terento. The main map works without this add-on.",
-            "count_template": "Available for {count} map packages · Uses additional storage when installed."
+            "description": "Add lines that show elevation and help you read slopes. Choose this add-on when installing an OpenTopoMap region in Terento.",
+            "count_template": "Available for {count} map packages · Uses additional storage."
         },
         "previous": "Previous map provider",
         "next": "Next map provider"
@@ -268,38 +268,38 @@ PROVIDER_CARD_COPY = {
         "freizeitkarte": {
             "name": "Freizeitkarte",
             "count_template": "{count} Kartenpakete",
-            "summary": "Für Spaziergänge, Radtouren und die tägliche Navigation.",
+            "summary": "Für Spaziergänge, Radtouren und Ausflüge.",
             "benefits": [
-                "Routenberechnung für Fußgänger und Radfahrer",
+                "Routen für Fußgänger und Radfahrer",
                 "Höhenlinien bereits enthalten",
-                "Sehenswürdigkeiten, Bushaltestellen und Bahnhöfe"
+                "Ausflugsziele, Bushaltestellen und Bahnhöfe"
             ]
         },
         "opentopomap": {
             "name": "OpenTopoMap",
             "count_template": "{count} Kartenpakete",
-            "summary": "Zum Erkunden des Geländes mit einer topografischen Karte.",
+            "summary": "Für Wanderungen, bei denen das Gelände zählt.",
             "benefits": [
-                "Topografische Darstellung von Straßen, Wegen und Gelände",
+                "Topografische Details für Straßen und Wege",
                 "Höhendaten und Geländeschummerung",
-                "Routenberechnung"
+                "Optionale Höhenlinien für zusätzliche Geländedetails"
             ]
         },
         "maprando": {
             "name": "MapRando",
             "count_template": "{count} Kartenpakete",
-            "summary": "Zum Wandern und Entdecken kleinerer Wege.",
+            "summary": "Zum Erkunden kleinerer Wege zu Fuß.",
             "benefits": [
-                "Aufs Wandern abgestimmte Kartendarstellung",
-                "Kleine Wege und Pfade",
-                "Regelmäßige Aktualisierung der OpenStreetMap-Daten"
+                "Kleine Pfade abseits der Hauptwege",
+                "Für Wanderungen gestaltete Karte",
+                "Neue Ausgaben übernehmen Änderungen aus OpenStreetMap"
             ]
         },
         "contours": {
-            "badge": "Optionale Erweiterung",
+            "badge": "Optionales Extra für OpenTopoMap",
             "name": "Höhenlinien",
-            "description": "Wähle beim Installieren einer OpenTopoMap-Region in Terento, ob du sie einschließen möchtest. Die Hauptkarte funktioniert auch ohne diese Erweiterung.",
-            "count_template": "Für {count} Kartenpakete verfügbar · Benötigt bei Installation zusätzlichen Speicher."
+            "description": "Ergänze Höhenlinien, um Höhen und Hänge besser zu erkennen. Wähle dieses Extra bei der Installation einer OpenTopoMap-Region in Terento.",
+            "count_template": "Für {count} Kartenpakete verfügbar · Benötigt zusätzlichen Speicherplatz."
         },
         "previous": "Vorheriger Kartenanbieter",
         "next": "Nächster Kartenanbieter"
@@ -308,38 +308,38 @@ PROVIDER_CARD_COPY = {
         "freizeitkarte": {
             "name": "Freizeitkarte",
             "count_template": "{count} paquets de cartes",
-            "summary": "Pour la marche, le vélo et la navigation au quotidien.",
+            "summary": "Pour les balades, le vélo et les sorties.",
             "benefits": [
-                "Calcul d’itinéraires à pied et à vélo",
+                "Itinéraires à pied et à vélo",
                 "Courbes de niveau incluses",
-                "Points d’intérêt, arrêts de bus et gares"
+                "Lieux à visiter, arrêts de bus et gares"
             ]
         },
         "opentopomap": {
             "name": "OpenTopoMap",
             "count_template": "{count} paquets de cartes",
-            "summary": "Pour explorer le relief avec une carte topographique.",
+            "summary": "Pour les randonnées où le relief compte.",
             "benefits": [
-                "Représentation topographique des routes, chemins et du terrain",
-                "Données d’altitude et ombrage du relief",
-                "Calcul d’itinéraires"
+                "Détails topographiques des routes et chemins",
+                "Données d’altitude et relief ombré",
+                "Courbes de niveau en option pour détailler le relief"
             ]
         },
         "maprando": {
             "name": "MapRando",
             "count_template": "{count} paquets de cartes",
-            "summary": "Pour la randonnée et la découverte de petits sentiers.",
+            "summary": "Pour explorer les petits sentiers à pied.",
             "benefits": [
-                "Un style cartographique adapté à la randonnée",
-                "Petits chemins et sentiers",
-                "Actualisations régulières des données OpenStreetMap"
+                "Petits chemins au-delà des sentiers principaux",
+                "Un style de carte conçu pour la randonnée",
+                "Les nouvelles éditions intègrent les modifications OpenStreetMap"
             ]
         },
         "contours": {
-            "badge": "Complément optionnel",
+            "badge": "Complément facultatif pour OpenTopoMap",
             "name": "Courbes de niveau",
-            "description": "Choisissez de les inclure ou non lors de l’installation d’une région OpenTopoMap dans Terento. La carte principale fonctionne sans ce complément.",
-            "count_template": "Disponible pour {count} paquets de cartes · Utilise de l’espace supplémentaire si installé."
+            "description": "Ajoutez des courbes d’altitude pour mieux lire les pentes. Choisissez ce complément lors de l’installation d’une région OpenTopoMap dans Terento.",
+            "count_template": "Disponible pour {count} cartes · Utilise de l’espace supplémentaire."
         },
         "previous": "Fournisseur de cartes précédent",
         "next": "Fournisseur de cartes suivant"
@@ -348,38 +348,38 @@ PROVIDER_CARD_COPY = {
         "freizeitkarte": {
             "name": "Freizeitkarte",
             "count_template": "Pakiety map: {count}",
-            "summary": "Do spacerów, jazdy na rowerze i codziennej nawigacji.",
+            "summary": "Na spacery, przejażdżki rowerowe i wycieczki.",
             "benefits": [
-                "Wyznaczanie tras pieszych i rowerowych",
-                "Poziomice zawarte w mapie",
-                "Punkty zainteresowania, przystanki autobusowe i stacje kolejowe"
+                "Trasy piesze i rowerowe",
+                "Poziomice w zestawie",
+                "Miejsca warte odwiedzenia, przystanki i stacje kolejowe"
             ]
         },
         "opentopomap": {
             "name": "OpenTopoMap",
             "count_template": "Pakiety map: {count}",
-            "summary": "Do poznawania terenu z mapą topograficzną.",
+            "summary": "Na wędrówki, podczas których liczy się rzeźba terenu.",
             "benefits": [
-                "Topograficzna prezentacja dróg, ścieżek i terenu",
+                "Topograficzne szczegóły dróg i ścieżek",
                 "Dane wysokościowe i cieniowanie terenu",
-                "Wyznaczanie tras"
+                "Opcjonalne poziomice ze szczegółami rzeźby terenu"
             ]
         },
         "maprando": {
             "name": "MapRando",
             "count_template": "Pakiety map: {count}",
-            "summary": "Do pieszych wędrówek i odkrywania mniejszych ścieżek.",
+            "summary": "Do odkrywania mniejszych szlaków pieszo.",
             "benefits": [
-                "Wygląd mapy dostosowany do pieszych wędrówek",
-                "Małe drogi i ścieżki",
-                "Regularne aktualizacje danych OpenStreetMap"
+                "Małe ścieżki poza głównymi szlakami",
+                "Styl mapy opracowany z myślą o wędrówkach",
+                "Nowe wydania uwzględniają zmiany w OpenStreetMap"
             ]
         },
         "contours": {
-            "badge": "Opcjonalny dodatek",
+            "badge": "Opcjonalny dodatek do OpenTopoMap",
             "name": "Poziomice",
-            "description": "Podczas instalowania regionu OpenTopoMap w Terento zdecyduj, czy je uwzględnić. Główna mapa działa bez tego dodatku.",
-            "count_template": "Liczba obsługiwanych pakietów map: {count} · Po instalacji zajmuje dodatkowe miejsce."
+            "description": "Dodaj linie wysokości, które pomagają odczytać nachylenie terenu. Wybierz ten dodatek podczas instalacji regionu OpenTopoMap w Terento.",
+            "count_template": "Dostępne dla {count} pakietów map · Zajmują dodatkowe miejsce."
         },
         "previous": "Poprzedni dostawca map",
         "next": "Następny dostawca map"
@@ -388,38 +388,38 @@ PROVIDER_CARD_COPY = {
         "freizeitkarte": {
             "name": "Freizeitkarte",
             "count_template": "Mapové balíčky: {count}",
-            "summary": "Pro pěší výlety, cyklistiku a každodenní navigaci.",
+            "summary": "Na procházky, vyjížďky na kole a výlety.",
             "benefits": [
-                "Výpočet tras pro pěší a cyklisty",
+                "Trasy pro pěší i cyklisty",
                 "Vrstevnice jsou součástí mapy",
-                "Body zájmu, autobusové zastávky a vlaková nádraží"
+                "Místa k návštěvě, autobusové zastávky a nádraží"
             ]
         },
         "opentopomap": {
             "name": "OpenTopoMap",
             "count_template": "Mapové balíčky: {count}",
-            "summary": "Pro poznávání terénu s topografickou mapou.",
+            "summary": "Na túry, při kterých záleží na terénu.",
             "benefits": [
-                "Topografické zobrazení silnic, cest a terénu",
-                "Výšková data a stínování terénu",
-                "Výpočet tras"
+                "Topografické detaily silnic a cest",
+                "Výšková data a stínovaný reliéf",
+                "Volitelné vrstevnice pro podrobnější zobrazení terénu"
             ]
         },
         "maprando": {
             "name": "MapRando",
             "count_template": "Mapové balíčky: {count}",
-            "summary": "Pro pěší turistiku a objevování menších stezek.",
+            "summary": "Pro pěší objevování menších stezek.",
             "benefits": [
-                "Vzhled mapy přizpůsobený pěší turistice",
-                "Drobné cesty a stezky",
-                "Pravidelné aktualizace dat OpenStreetMap"
+                "Drobné pěšiny mimo hlavní stezky",
+                "Mapový styl navržený pro pěší turistiku",
+                "Nová vydání zahrnují změny z OpenStreetMap"
             ]
         },
         "contours": {
-            "badge": "Volitelný doplněk",
+            "badge": "Volitelný doplněk pro OpenTopoMap",
             "name": "Vrstevnice",
-            "description": "Při instalaci oblasti OpenTopoMap v Terento zvolte, zda je chcete zahrnout. Hlavní mapa funguje i bez tohoto doplňku.",
-            "count_template": "Počet podporovaných mapových balíčků: {count} · Po instalaci zabírá další úložiště."
+            "description": "Přidejte výškové čáry, které pomáhají rozpoznat svahy. Tento doplněk vyberte při instalaci regionu OpenTopoMap v Terento.",
+            "count_template": "Dostupné pro {count} mapových balíčků · Zabírají další místo."
         },
         "previous": "Předchozí poskytovatel map",
         "next": "Další poskytovatel map"
@@ -428,38 +428,38 @@ PROVIDER_CARD_COPY = {
         "freizeitkarte": {
             "name": "Freizeitkarte",
             "count_template": "{count} pacchetti di mappe",
-            "summary": "Per camminare, andare in bicicletta e orientarsi ogni giorno.",
+            "summary": "Per passeggiate, giri in bici e gite.",
             "benefits": [
-                "Calcolo dei percorsi a piedi e in bicicletta",
+                "Percorsi a piedi e in bicicletta",
                 "Curve di livello incluse",
-                "Punti di interesse, fermate degli autobus e stazioni ferroviarie"
+                "Luoghi da visitare, fermate degli autobus e stazioni"
             ]
         },
         "opentopomap": {
             "name": "OpenTopoMap",
             "count_template": "{count} pacchetti di mappe",
-            "summary": "Per esplorare il terreno con una mappa topografica.",
+            "summary": "Per escursioni in cui il terreno conta.",
             "benefits": [
-                "Rappresentazione topografica di strade, sentieri e terreno",
-                "Dati altimetrici e ombreggiatura del terreno",
-                "Calcolo dei percorsi"
+                "Dettagli topografici di strade e sentieri",
+                "Dati altimetrici e rilievo ombreggiato",
+                "Curve di livello opzionali per maggiori dettagli del terreno"
             ]
         },
         "maprando": {
             "name": "MapRando",
             "count_template": "{count} pacchetti di mappe",
-            "summary": "Per le escursioni e la scoperta dei sentieri minori.",
+            "summary": "Per esplorare i sentieri minori a piedi.",
             "benefits": [
-                "Stile cartografico pensato per le escursioni",
-                "Piccoli percorsi e sentieri",
-                "Aggiornamenti regolari dei dati OpenStreetMap"
+                "Piccoli sentieri oltre i percorsi principali",
+                "Stile cartografico pensato per l’escursionismo",
+                "Le nuove edizioni integrano le modifiche di OpenStreetMap"
             ]
         },
         "contours": {
-            "badge": "Componente aggiuntivo opzionale",
+            "badge": "Componente aggiuntivo opzionale per OpenTopoMap",
             "name": "Curve di livello",
-            "description": "Scegli se includerle quando installi una regione OpenTopoMap in Terento. La mappa principale funziona anche senza questo componente aggiuntivo.",
-            "count_template": "Disponibile per {count} pacchetti di mappe · Occupa spazio aggiuntivo se installato."
+            "description": "Aggiungi linee altimetriche per leggere meglio le pendenze. Scegli questo componente durante l’installazione di una regione OpenTopoMap in Terento.",
+            "count_template": "Disponibile per {count} pacchetti di mappe · Occupa spazio aggiuntivo."
         },
         "previous": "Provider di mappe precedente",
         "next": "Provider di mappe successivo"
@@ -646,87 +646,87 @@ def wrap_map_feature_tabs(source: str, copy: dict[str, str], path: Path) -> str:
 
 BBBIKE_CARD_COPY = {
     "en": [
-        "Alternative maps for outdoor activities.",
-        "Smaller maps for hiking and cycling.",
+        "For exploring streets, cycle paths, and their surroundings.",
+        "For walks and bike rides when storage matters.",
         [
-            "OpenStreetMap data",
-            "Independent map style",
-            "Regional map packages"
+            "Distinct styling for roads, cycle paths, and footpaths",
+            "Buildings, parks, and woodland for context",
+            "Regional maps updated weekly"
         ],
         [
-            "Smaller map files",
-            "Roads and smaller paths",
-            "An alternative to the BBBike style"
+            "Compact maps that save device space",
+            "Smaller roads and paths included",
+            "Supports navigation along mapped roads and paths"
         ]
     ],
     "de": [
-        "Alternative Karten für Outdoor-Aktivitäten.",
-        "Kleinere Karten zum Wandern und Radfahren.",
+        "Zum Erkunden von Straßen, Radwegen und ihrer Umgebung.",
+        "Für Wanderungen und Radtouren bei wenig Speicherplatz.",
         [
-            "OpenStreetMap-Daten",
-            "Eigenständiger Kartenstil",
-            "Regionale Kartenpakete"
+            "Unterschiedliche Darstellung von Straßen, Rad- und Fußwegen",
+            "Gebäude, Parks und Wälder zur Orientierung",
+            "Wöchentlich aktualisierte Regionalkarten"
         ],
         [
-            "Kleinere Kartendateien",
-            "Straßen und kleinere Wege",
-            "Eine Alternative zum BBBike-Stil"
+            "Kompakte Karten sparen Gerätespeicher",
+            "Auch kleinere Straßen und Wege enthalten",
+            "Navigation entlang kartierter Straßen und Wege"
         ]
     ],
     "fr": [
-        "Des cartes alternatives pour les activités de plein air.",
-        "Des cartes plus légères pour la randonnée et le vélo.",
+        "Pour explorer les rues, les pistes cyclables et leurs environs.",
+        "Pour marcher et pédaler en économisant le stockage.",
         [
-            "Données OpenStreetMap",
-            "Style cartographique distinct",
-            "Cartes par région"
+            "Styles distincts pour routes, pistes cyclables et chemins piétons",
+            "Bâtiments, parcs et forêts pour se repérer",
+            "Cartes régionales actualisées chaque semaine"
         ],
         [
-            "Fichiers cartographiques plus petits",
-            "Routes et petits chemins",
-            "Une alternative au style BBBike"
+            "Des cartes compactes qui économisent de l’espace",
+            "Petites routes et chemins inclus",
+            "Navigation le long des routes et chemins cartographiés"
         ]
     ],
     "pl": [
-        "Alternatywne mapy do aktywności w terenie.",
-        "Mniejsze mapy do pieszych i rowerowych wycieczek.",
+        "Do odkrywania ulic, dróg rowerowych i ich okolic.",
+        "Na piesze i rowerowe wycieczki, gdy liczy się miejsce.",
         [
-            "Dane OpenStreetMap",
-            "Odrębny styl mapy",
-            "Pakiety map regionów"
+            "Odrębne oznaczenia dróg, dróg rowerowych i ścieżek pieszych",
+            "Budynki, parki i lasy ułatwiające orientację",
+            "Mapy regionów aktualizowane co tydzień"
         ],
         [
-            "Mniejsze pliki map",
-            "Drogi i mniejsze ścieżki",
-            "Alternatywa dla stylu BBBike"
+            "Kompaktowe mapy oszczędzające pamięć urządzenia",
+            "Uwzględnione mniejsze drogi i ścieżki",
+            "Nawigacja po drogach i ścieżkach zaznaczonych na mapie"
         ]
     ],
     "cs": [
-        "Alternativní mapy pro venkovní aktivity.",
-        "Menší mapy pro pěší turistiku a cyklistiku.",
+        "Pro objevování ulic, cyklostezek a jejich okolí.",
+        "Na pěší a cyklistické výlety, když záleží na místě.",
         [
-            "Data OpenStreetMap",
-            "Samostatný mapový styl",
-            "Regionální mapové balíčky"
+            "Odlišné zobrazení silnic, cyklostezek a pěšin",
+            "Budovy, parky a lesy pro orientaci",
+            "Regionální mapy aktualizované každý týden"
         ],
         [
-            "Menší mapové soubory",
-            "Silnice a menší cesty",
-            "Alternativa ke stylu BBBike"
+            "Kompaktní mapy šetří úložiště zařízení",
+            "Zahrnuty i menší silnice a cesty",
+            "Navigace po zmapovaných silnicích a cestách"
         ]
     ],
     "it": [
-        "Mappe alternative per le attività all’aperto.",
-        "Mappe più leggere per escursioni e ciclismo.",
+        "Per esplorare strade, piste ciclabili e dintorni.",
+        "Per camminare e pedalare quando lo spazio conta.",
         [
-            "Dati OpenStreetMap",
-            "Stile cartografico indipendente",
-            "Pacchetti di mappe regionali"
+            "Stili distinti per strade, piste ciclabili e percorsi pedonali",
+            "Edifici, parchi e boschi per orientarsi",
+            "Mappe regionali aggiornate ogni settimana"
         ],
         [
-            "File delle mappe più piccoli",
-            "Strade e sentieri minori",
-            "Un’alternativa allo stile BBBike"
+            "Mappe compatte che risparmiano spazio sul dispositivo",
+            "Incluse anche strade e sentieri minori",
+            "Navigazione lungo strade e sentieri presenti sulla mappa"
         ]
     ]
 }
