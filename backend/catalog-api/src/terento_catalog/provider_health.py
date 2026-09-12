@@ -56,6 +56,12 @@ class DefaultProviderProbe:
             )
 
     def inspect_zip(self, url: str):
+        if url.startswith(("https://data.bbbike.org/osm/garmin/region/", "https://data.bbbike.org/osm/garmin/example/")):
+            from .bbbike import ARTIFACT_ROOT, EXAMPLE_ROOT, inspect_bbbike
+            suffix = url[len(EXAMPLE_ROOT if url.startswith(EXAMPLE_ROOT) else ARTIFACT_ROOT):]
+            path = suffix.rsplit("/", 1)[0]
+            map_type = suffix.rsplit(".osm.garmin-", 1)[-1].removesuffix(".zip")
+            return inspect_bbbike(url, path, map_type)
         return ZipRangeInspector(HTTPRangeFetcher(timeout_seconds=15)).inspect(
             url, expected_payload_path=None
         )

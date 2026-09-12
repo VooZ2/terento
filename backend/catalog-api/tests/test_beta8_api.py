@@ -850,7 +850,7 @@ class Beta8APITests(unittest.TestCase):
             / "terento_catalog"
             / "db.py"
         ).read_text(encoding="utf-8")
-        self.assertIn('if definition.id in {"opentopomap", "maprando"}:', source)
+        self.assertIn('if definition.id in {"opentopomap", "maprando", "bbbike"}:', source)
         self.assertIn("DELETE FROM map_artifact", source)
         self.assertIn("availability = 'RETIRED'", source)
         self.assertIn("A complete provider snapshot retires only that provider", source)
@@ -940,7 +940,8 @@ class Beta8APITests(unittest.TestCase):
             cookie = "terento_admin_session=session; terento_admin_csrf=csrf"
             response, body = self._request(server, "GET", "/admin/providers.json", headers={"Cookie": cookie})
             self.assertEqual(response.status, 200)
-            self.assertEqual(json.loads(body)["providers"][0]["id"], "freizeitkarte")
+            self.assertEqual({provider["id"] for provider in json.loads(body)["providers"]},
+                             {"freizeitkarte", "opentopomap", "maprando", "bbbike"})
             self.assertEqual(response.headers["X-Robots-Tag"], "noindex, nofollow")
 
             test_data, test_data_body = self._request(

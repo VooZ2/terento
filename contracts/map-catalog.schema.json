@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "map-catalog.schema.json",
   "title": "Public map catalog",
-  "description": "GET /maps/catalog.json (legacy providers) and /maps/catalog-v3.json (reviewed additional providers). Both retain schemaVersion 2 and legacy aliases; unknown additive response fields are allowed.",
+  "description": "GET /maps/catalog.json (legacy providers) , /maps/catalog-v3.json (three providers), and /maps/catalog-v4.json (four providers). Both retain schemaVersion 2 and legacy aliases; unknown additive response fields are allowed.",
   "type": "object",
   "properties": {
     "schemaVersion": {
@@ -269,6 +269,25 @@
           "items": {
             "$ref": "#/$defs/artifact"
           }
+        },
+        "mapType": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "bbbike-latin1",
+            "ontrail-latin1",
+            null
+          ],
+          "description": "Independent BBBike map type; not a separate provider or contour component."
+        },
+        "geographicRegionId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Shared geographic identity; BBBike canonicalRegionId remains variant-specific lifecycle identity."
         }
       },
       "required": [

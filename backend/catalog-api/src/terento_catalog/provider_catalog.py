@@ -75,6 +75,8 @@ class CatalogPackage:
     tags: tuple[str, ...]
     capabilities: tuple[str, ...]
     artifacts: tuple[CatalogArtifact, ...]
+    map_type: str | None = None
+    geographic_region_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -129,8 +131,18 @@ MAPRANDO = ProviderDefinition(
     default_status="ACTIVE",
 )
 
+BBBIKE = ProviderDefinition(
+    id="bbbike", name="BBBike", adapter_id="bbbike",
+    website="https://extract.bbbike.org/",
+    catalog_url="https://data.bbbike.org/osm/region/",
+    license="Map data © OpenStreetMap contributors (ODbL); Garmin map styles and source terms provided by BBBike.",
+    attribution="Map data © OpenStreetMap contributors; Garmin maps from BBBike",
+    license_url="https://extract.bbbike.org/garmin.html",
+    default_status="PAUSED",
+)
+
 KNOWN_PROVIDER_DEFINITIONS: dict[str, ProviderDefinition] = {
-    item.id: item for item in (FREIZEITKARTE, OPENTOPO_MAP, MAPRANDO)
+    item.id: item for item in (FREIZEITKARTE, OPENTOPO_MAP, MAPRANDO, BBBIKE)
 }
 
 # Main package membership stays independent of optional contour availability.

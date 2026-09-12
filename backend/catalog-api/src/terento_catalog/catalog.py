@@ -179,7 +179,9 @@ def _build_provider_neutral_catalog(
             not artifact_id
             or not artifact_source_url
             or artifact_download_size is None
-            or int(artifact_download_size) <= 0
+            or (int(artifact_download_size) <= 0 and not (
+                provider_id == "bbbike" and row.get("availability") == "UNAVAILABLE"
+                and row.get("artifact_validation_status") == "UNAVAILABLE"))
         ):
             continue
         key = (provider_id, str(package_id))
@@ -229,6 +231,11 @@ def _build_provider_neutral_catalog(
                 },
                 "artifacts": [],
             }
+            if provider_id == "bbbike":
+                daily = datetime.strptime(release, "%Y-%m-%d")
+                package["version"]["day"] = daily.day
+                package["mapType"] = row.get("map_type")
+                package["geographicRegionId"] = row.get("geographic_region_id")
             if provider_id == "maprando":
                 try:
                     daily = datetime.strptime(release, "%Y-%m-%d")

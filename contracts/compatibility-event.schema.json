@@ -13,7 +13,7 @@
     },
     "provider": {
       "type": "string",
-      "pattern": "^(?:[fF][rR][eE][iI][zZ][eE][iI][tT][kK][aA][rR][tT][eE]|[oO][pP][eE][nN][tT][oO][pP][oO][mM][aA][pP]|[mM][aA][pP][rR][aA][nN][dD][oO]|[cC][uU][sS][tT][oO][mM])$"
+      "pattern": "^(?:[fF][rR][eE][iI][zZ][eE][iI][tT][kK][aA][rR][tT][eE]|[oO][pP][eE][nN][tT][oO][pP][oO][mM][aA][pP]|[mM][aA][pP][rR][aA][nN][dD][oO]|[bB][bB][bB][iI][kK][eE]|[cC][uU][sS][tT][oO][mM])$"
     },
     "region": {
       "$ref": "#/$defs/safeText"

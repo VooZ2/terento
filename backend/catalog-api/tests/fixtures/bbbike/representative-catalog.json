@@ -1,0 +1,490 @@
+{
+  "schemaVersion": 2,
+  "catalogVersion": 1,
+  "updatedAt": "2026-09-12T15:09:01Z",
+  "providers": [
+    {
+      "id": "bbbike",
+      "name": "BBBike",
+      "adapterId": "bbbike",
+      "status": "PAUSED",
+      "health": "UNKNOWN",
+      "lastCheckedAt": null,
+      "lastSuccessfulCatalogSync": null,
+      "website": "https://extract.bbbike.org/",
+      "attribution": "Map data \u00a9 OpenStreetMap contributors; Garmin maps from BBBike",
+      "licenseURL": "https://extract.bbbike.org/garmin.html",
+      "licenseInformation": "Map data \u00a9 OpenStreetMap contributors (ODbL); Garmin map styles and source terms provided by BBBike.",
+      "maps": [
+        {
+          "id": "bbbike-europe-alps-bbbike-latin1",
+          "region": "EUROPE-ALPS-BBBIKE-LATIN1",
+          "name": "Alps",
+          "country": null,
+          "version": {
+            "year": 2026,
+            "month": 9,
+            "day": 9
+          },
+          "sizeBytes": 825622203,
+          "downloadSizeBytes": 825622203,
+          "installSizeBytes": 1091338240,
+          "sourceURL": "https://data.bbbike.org/osm/garmin/region/europe/alps/alps.osm.garmin-bbbike-latin1.zip",
+          "sourceUrl": "https://data.bbbike.org/osm/garmin/region/europe/alps/alps.osm.garmin-bbbike-latin1.zip",
+          "releaseDate": "2026-09-09T07:22:59+00:00",
+          "identifier": "europe/alps",
+          "providerRegionId": "europe/alps",
+          "canonicalRegionId": "EUROPE-ALPS-BBBIKE-LATIN1",
+          "countryCodes": [
+            "AT",
+            "CH",
+            "DE",
+            "FR",
+            "IT",
+            "LI",
+            "SI"
+          ],
+          "regionKind": "multiCountry",
+          "tags": [],
+          "capabilities": [
+            "main"
+          ],
+          "release": "2026-09-09",
+          "availability": "AVAILABLE",
+          "releaseMetadata": {
+            "releaseId": "2cd510e65edc25e3164c5e65104336cc4359aa27c48923fa8bde0af2eadf4241",
+            "versionLabel": "2026-09-09",
+            "generatedAt": "2026-09-09T07:22:59+00:00",
+            "sourceUpdatedAt": "2026-09-09T07:22:59+00:00"
+          },
+          "artifacts": [
+            {
+              "id": "bbbike-europe-alps-bbbike-latin1-main",
+              "kind": "main",
+              "required": true,
+              "sourceUrl": "https://data.bbbike.org/osm/garmin/region/europe/alps/alps.osm.garmin-bbbike-latin1.zip",
+              "sourceURL": "https://data.bbbike.org/osm/garmin/region/europe/alps/alps.osm.garmin-bbbike-latin1.zip",
+              "sizeBytes": 1091338240,
+              "downloadSizeBytes": 825622203,
+              "installSizeBytes": 1091338240,
+              "checksumSha256": null,
+              "checksum": null,
+              "contentType": "application/zip",
+              "validationStatus": "VALIDATED",
+              "validationState": "validated",
+              "sourceProof": {
+                "sourceURL": "https://data.bbbike.org/osm/garmin/region/europe/alps/alps.osm.garmin-bbbike-latin1.zip",
+                "etag": "\"4173314724\"",
+                "lastModified": "Wed, 09 Sep 2026 07:30:34 GMT",
+                "downloadSizeBytes": 825622203,
+                "installSizeBytes": 1091338240,
+                "payloadPath": "alps-garmin-bbbike-latin1/gmapsupp.img",
+                "sourceIdentity": "bbbike:europe/alps:bbbike-latin1",
+                "mapType": "bbbike-latin1",
+                "sourceRegion": "europe/alps",
+                "payloadMD5": "3b6f74e080046f15cdab887ee22e2d66",
+                "generatedAt": "2026-09-09T07:22:59+00:00",
+                "headerIdentityValidated": true,
+                "revision": "2cd510e65edc25e3164c5e65104336cc4359aa27c48923fa8bde0af2eadf4241"
+              },
+              "sourceUpdatedAt": "2026-09-09T07:22:59+00:00",
+              "installPayloadPath": "alps-garmin-bbbike-latin1/gmapsupp.img",
+              "version": {
+                "year": 2026,
+                "month": 9
+              }
+            }
+          ],
+          "mapType": "bbbike-latin1",
+          "geographicRegionId": "ALPS"
+        },
+        {
+          "id": "bbbike-europe-alps-ontrail-latin1",
+          "region": "EUROPE-ALPS-ONTRAIL-LATIN1",
+          "name": "Alps",
+          "country": null,
+          "version": {
+            "year": 2026,
+            "month": 9,
+            "day": 9
+          },
+          "sizeBytes": 228487790,
+          "downloadSizeBytes": 228487790,
+          "installSizeBytes": 309731328,
+          "sourceURL": "https://data.bbbike.org/osm/garmin/region/europe/alps/alps.osm.garmin-ontrail-latin1.zip",
+          "sourceUrl": "https://data.bbbike.org/osm/garmin/region/europe/alps/alps.osm.garmin-ontrail-latin1.zip",
+          "releaseDate": "2026-09-09T07:18:45+00:00",
+          "identifier": "europe/alps",
+          "providerRegionId": "europe/alps",
+          "canonicalRegionId": "EUROPE-ALPS-ONTRAIL-LATIN1",
+          "countryCodes": [
+            "AT",
+            "CH",
+            "DE",
+            "FR",
+            "IT",
+            "LI",
+            "SI"
+          ],
+          "regionKind": "multiCountry",
+          "tags": [],
+          "capabilities": [
+            "main"
+          ],
+          "release": "2026-09-09",
+          "availability": "AVAILABLE",
+          "releaseMetadata": {
+            "releaseId": "7d9303c33a9de115668d319a620a8b9b092d37d3020d00e6cabb8a9e2a355263",
+            "versionLabel": "2026-09-09",
+            "generatedAt": "2026-09-09T07:18:45+00:00",
+            "sourceUpdatedAt": "2026-09-09T07:18:45+00:00"
+          },
+          "artifacts": [
+            {
+              "id": "bbbike-europe-alps-ontrail-latin1-main",
+              "kind": "main",
+              "required": true,
+              "sourceUrl": "https://data.bbbike.org/osm/garmin/region/europe/alps/alps.osm.garmin-ontrail-latin1.zip",
+              "sourceURL": "https://data.bbbike.org/osm/garmin/region/europe/alps/alps.osm.garmin-ontrail-latin1.zip",
+              "sizeBytes": 309731328,
+              "downloadSizeBytes": 228487790,
+              "installSizeBytes": 309731328,
+              "checksumSha256": null,
+              "checksum": null,
+              "contentType": "application/zip",
+              "validationStatus": "VALIDATED",
+              "validationState": "validated",
+              "sourceProof": {
+                "sourceURL": "https://data.bbbike.org/osm/garmin/region/europe/alps/alps.osm.garmin-ontrail-latin1.zip",
+                "etag": "\"4022837627\"",
+                "lastModified": "Wed, 09 Sep 2026 07:22:59 GMT",
+                "downloadSizeBytes": 228487790,
+                "installSizeBytes": 309731328,
+                "payloadPath": "alps-garmin-ontrail-latin1/gmapsupp.img",
+                "sourceIdentity": "bbbike:europe/alps:ontrail-latin1",
+                "mapType": "ontrail-latin1",
+                "sourceRegion": "europe/alps",
+                "payloadMD5": "ce0ca62efab0c733f6d74294f45d6384",
+                "generatedAt": "2026-09-09T07:18:45+00:00",
+                "headerIdentityValidated": true,
+                "revision": "7d9303c33a9de115668d319a620a8b9b092d37d3020d00e6cabb8a9e2a355263"
+              },
+              "sourceUpdatedAt": "2026-09-09T07:18:45+00:00",
+              "installPayloadPath": "alps-garmin-ontrail-latin1/gmapsupp.img",
+              "version": {
+                "year": 2026,
+                "month": 9
+              }
+            }
+          ],
+          "mapType": "ontrail-latin1",
+          "geographicRegionId": "ALPS"
+        },
+        {
+          "id": "bbbike-europe-andorra-bbbike-latin1",
+          "region": "EUROPE-ANDORRA-BBBIKE-LATIN1",
+          "name": "Andorra",
+          "country": "AD",
+          "version": {
+            "year": 2026,
+            "month": 9,
+            "day": 9
+          },
+          "sizeBytes": 1158838,
+          "downloadSizeBytes": 1158838,
+          "installSizeBytes": 1492992,
+          "sourceURL": "https://data.bbbike.org/osm/garmin/region/europe/andorra/andorra.osm.garmin-bbbike-latin1.zip",
+          "sourceUrl": "https://data.bbbike.org/osm/garmin/region/europe/andorra/andorra.osm.garmin-bbbike-latin1.zip",
+          "releaseDate": "2026-09-09T00:15:05+00:00",
+          "identifier": "europe/andorra",
+          "providerRegionId": "europe/andorra",
+          "canonicalRegionId": "EUROPE-ANDORRA-BBBIKE-LATIN1",
+          "countryCodes": [
+            "AD"
+          ],
+          "regionKind": "country",
+          "tags": [],
+          "capabilities": [
+            "main"
+          ],
+          "release": "2026-09-09",
+          "availability": "AVAILABLE",
+          "releaseMetadata": {
+            "releaseId": "7fd8873b9ea10d6c38a2faa6dcd95936c70fd70482b916b1d4d6bbc673a2316f",
+            "versionLabel": "2026-09-09",
+            "generatedAt": "2026-09-09T00:15:05+00:00",
+            "sourceUpdatedAt": "2026-09-09T00:15:05+00:00"
+          },
+          "artifacts": [
+            {
+              "id": "bbbike-europe-andorra-bbbike-latin1-main",
+              "kind": "main",
+              "required": true,
+              "sourceUrl": "https://data.bbbike.org/osm/garmin/region/europe/andorra/andorra.osm.garmin-bbbike-latin1.zip",
+              "sourceURL": "https://data.bbbike.org/osm/garmin/region/europe/andorra/andorra.osm.garmin-bbbike-latin1.zip",
+              "sizeBytes": 1492992,
+              "downloadSizeBytes": 1158838,
+              "installSizeBytes": 1492992,
+              "checksumSha256": null,
+              "checksum": null,
+              "contentType": "application/zip",
+              "validationStatus": "VALIDATED",
+              "validationState": "validated",
+              "sourceProof": {
+                "sourceURL": "https://data.bbbike.org/osm/garmin/region/europe/andorra/andorra.osm.garmin-bbbike-latin1.zip",
+                "etag": "\"2790484225\"",
+                "lastModified": "Wed, 09 Sep 2026 00:15:08 GMT",
+                "downloadSizeBytes": 1158838,
+                "installSizeBytes": 1492992,
+                "payloadPath": "andorra-garmin-bbbike-latin1/gmapsupp.img",
+                "sourceIdentity": "bbbike:europe/andorra:bbbike-latin1",
+                "mapType": "bbbike-latin1",
+                "sourceRegion": "europe/andorra",
+                "payloadMD5": "deb3661024bf8da2ff5eb50d32e953f3",
+                "generatedAt": "2026-09-09T00:15:05+00:00",
+                "headerIdentityValidated": true,
+                "revision": "7fd8873b9ea10d6c38a2faa6dcd95936c70fd70482b916b1d4d6bbc673a2316f"
+              },
+              "sourceUpdatedAt": "2026-09-09T00:15:05+00:00",
+              "installPayloadPath": "andorra-garmin-bbbike-latin1/gmapsupp.img",
+              "version": {
+                "year": 2026,
+                "month": 9
+              }
+            }
+          ],
+          "mapType": "bbbike-latin1",
+          "geographicRegionId": "ANDORRA"
+        },
+        {
+          "id": "bbbike-europe-andorra-ontrail-latin1",
+          "region": "EUROPE-ANDORRA-ONTRAIL-LATIN1",
+          "name": "Andorra",
+          "country": "AD",
+          "version": {
+            "year": 2026,
+            "month": 9,
+            "day": 9
+          },
+          "sizeBytes": 331345,
+          "downloadSizeBytes": 331345,
+          "installSizeBytes": 420864,
+          "sourceURL": "https://data.bbbike.org/osm/garmin/region/europe/andorra/andorra.osm.garmin-ontrail-latin1.zip",
+          "sourceUrl": "https://data.bbbike.org/osm/garmin/region/europe/andorra/andorra.osm.garmin-ontrail-latin1.zip",
+          "releaseDate": "2026-09-09T00:15:02+00:00",
+          "identifier": "europe/andorra",
+          "providerRegionId": "europe/andorra",
+          "canonicalRegionId": "EUROPE-ANDORRA-ONTRAIL-LATIN1",
+          "countryCodes": [
+            "AD"
+          ],
+          "regionKind": "country",
+          "tags": [],
+          "capabilities": [
+            "main"
+          ],
+          "release": "2026-09-09",
+          "availability": "AVAILABLE",
+          "releaseMetadata": {
+            "releaseId": "ccb4d52b1df8de087f56521622b951d73c01e8dfa5f79a5b29949d58437cab05",
+            "versionLabel": "2026-09-09",
+            "generatedAt": "2026-09-09T00:15:02+00:00",
+            "sourceUpdatedAt": "2026-09-09T00:15:02+00:00"
+          },
+          "artifacts": [
+            {
+              "id": "bbbike-europe-andorra-ontrail-latin1-main",
+              "kind": "main",
+              "required": true,
+              "sourceUrl": "https://data.bbbike.org/osm/garmin/region/europe/andorra/andorra.osm.garmin-ontrail-latin1.zip",
+              "sourceURL": "https://data.bbbike.org/osm/garmin/region/europe/andorra/andorra.osm.garmin-ontrail-latin1.zip",
+              "sizeBytes": 420864,
+              "downloadSizeBytes": 331345,
+              "installSizeBytes": 420864,
+              "checksumSha256": null,
+              "checksum": null,
+              "contentType": "application/zip",
+              "validationStatus": "VALIDATED",
+              "validationState": "validated",
+              "sourceProof": {
+                "sourceURL": "https://data.bbbike.org/osm/garmin/region/europe/andorra/andorra.osm.garmin-ontrail-latin1.zip",
+                "etag": "\"2030266497\"",
+                "lastModified": "Wed, 09 Sep 2026 00:15:05 GMT",
+                "downloadSizeBytes": 331345,
+                "installSizeBytes": 420864,
+                "payloadPath": "andorra-garmin-ontrail-latin1/gmapsupp.img",
+                "sourceIdentity": "bbbike:europe/andorra:ontrail-latin1",
+                "mapType": "ontrail-latin1",
+                "sourceRegion": "europe/andorra",
+                "payloadMD5": "4c12d4ea9efb2c5de412ba5a41ead9aa",
+                "generatedAt": "2026-09-09T00:15:02+00:00",
+                "headerIdentityValidated": true,
+                "revision": "ccb4d52b1df8de087f56521622b951d73c01e8dfa5f79a5b29949d58437cab05"
+              },
+              "sourceUpdatedAt": "2026-09-09T00:15:02+00:00",
+              "installPayloadPath": "andorra-garmin-ontrail-latin1/gmapsupp.img",
+              "version": {
+                "year": 2026,
+                "month": 9
+              }
+            }
+          ],
+          "mapType": "ontrail-latin1",
+          "geographicRegionId": "ANDORRA"
+        },
+        {
+          "id": "bbbike-europe-lithuania-bbbike-latin1",
+          "region": "EUROPE-LITHUANIA-BBBIKE-LATIN1",
+          "name": "Lithuania",
+          "country": "LT",
+          "version": {
+            "year": 2026,
+            "month": 9,
+            "day": 9
+          },
+          "sizeBytes": 100078479,
+          "downloadSizeBytes": 100078479,
+          "installSizeBytes": 129177600,
+          "sourceURL": "https://data.bbbike.org/osm/garmin/region/europe/lithuania/lithuania.osm.garmin-bbbike-latin1.zip",
+          "sourceUrl": "https://data.bbbike.org/osm/garmin/region/europe/lithuania/lithuania.osm.garmin-bbbike-latin1.zip",
+          "releaseDate": "2026-09-09T01:09:55+00:00",
+          "identifier": "europe/lithuania",
+          "providerRegionId": "europe/lithuania",
+          "canonicalRegionId": "EUROPE-LITHUANIA-BBBIKE-LATIN1",
+          "countryCodes": [
+            "LT"
+          ],
+          "regionKind": "country",
+          "tags": [],
+          "capabilities": [
+            "main"
+          ],
+          "release": "2026-09-09",
+          "availability": "AVAILABLE",
+          "releaseMetadata": {
+            "releaseId": "820858414781fc023395ed5203dba863bb4ce8f507578659b6b8a7e24d725f96",
+            "versionLabel": "2026-09-09",
+            "generatedAt": "2026-09-09T01:09:55+00:00",
+            "sourceUpdatedAt": "2026-09-09T01:09:55+00:00"
+          },
+          "artifacts": [
+            {
+              "id": "bbbike-europe-lithuania-bbbike-latin1-main",
+              "kind": "main",
+              "required": true,
+              "sourceUrl": "https://data.bbbike.org/osm/garmin/region/europe/lithuania/lithuania.osm.garmin-bbbike-latin1.zip",
+              "sourceURL": "https://data.bbbike.org/osm/garmin/region/europe/lithuania/lithuania.osm.garmin-bbbike-latin1.zip",
+              "sizeBytes": 129177600,
+              "downloadSizeBytes": 100078479,
+              "installSizeBytes": 129177600,
+              "checksumSha256": null,
+              "checksum": null,
+              "contentType": "application/zip",
+              "validationStatus": "VALIDATED",
+              "validationState": "validated",
+              "sourceProof": {
+                "sourceURL": "https://data.bbbike.org/osm/garmin/region/europe/lithuania/lithuania.osm.garmin-bbbike-latin1.zip",
+                "etag": "\"713382980\"",
+                "lastModified": "Wed, 09 Sep 2026 01:10:51 GMT",
+                "downloadSizeBytes": 100078479,
+                "installSizeBytes": 129177600,
+                "payloadPath": "lithuania-garmin-bbbike-latin1/gmapsupp.img",
+                "sourceIdentity": "bbbike:europe/lithuania:bbbike-latin1",
+                "mapType": "bbbike-latin1",
+                "sourceRegion": "europe/lithuania",
+                "payloadMD5": "ddfadf9bf629f60148dc81583e2dad63",
+                "generatedAt": "2026-09-09T01:09:55+00:00",
+                "headerIdentityValidated": true,
+                "revision": "820858414781fc023395ed5203dba863bb4ce8f507578659b6b8a7e24d725f96"
+              },
+              "sourceUpdatedAt": "2026-09-09T01:09:55+00:00",
+              "installPayloadPath": "lithuania-garmin-bbbike-latin1/gmapsupp.img",
+              "version": {
+                "year": 2026,
+                "month": 9
+              }
+            }
+          ],
+          "mapType": "bbbike-latin1",
+          "geographicRegionId": "LITHUANIA"
+        },
+        {
+          "id": "bbbike-europe-lithuania-ontrail-latin1",
+          "region": "EUROPE-LITHUANIA-ONTRAIL-LATIN1",
+          "name": "Lithuania",
+          "country": "LT",
+          "version": {
+            "year": 2026,
+            "month": 9,
+            "day": 9
+          },
+          "sizeBytes": 18402341,
+          "downloadSizeBytes": 18402341,
+          "installSizeBytes": 23998464,
+          "sourceURL": "https://data.bbbike.org/osm/garmin/region/europe/lithuania/lithuania.osm.garmin-ontrail-latin1.zip",
+          "sourceUrl": "https://data.bbbike.org/osm/garmin/region/europe/lithuania/lithuania.osm.garmin-ontrail-latin1.zip",
+          "releaseDate": "2026-09-09T01:09:31+00:00",
+          "identifier": "europe/lithuania",
+          "providerRegionId": "europe/lithuania",
+          "canonicalRegionId": "EUROPE-LITHUANIA-ONTRAIL-LATIN1",
+          "countryCodes": [
+            "LT"
+          ],
+          "regionKind": "country",
+          "tags": [],
+          "capabilities": [
+            "main"
+          ],
+          "release": "2026-09-09",
+          "availability": "AVAILABLE",
+          "releaseMetadata": {
+            "releaseId": "0fb4585181011060ecca07bb34913cb7fcbd7c5d2274113f83843adc6ac8f3fa",
+            "versionLabel": "2026-09-09",
+            "generatedAt": "2026-09-09T01:09:31+00:00",
+            "sourceUpdatedAt": "2026-09-09T01:09:31+00:00"
+          },
+          "artifacts": [
+            {
+              "id": "bbbike-europe-lithuania-ontrail-latin1-main",
+              "kind": "main",
+              "required": true,
+              "sourceUrl": "https://data.bbbike.org/osm/garmin/region/europe/lithuania/lithuania.osm.garmin-ontrail-latin1.zip",
+              "sourceURL": "https://data.bbbike.org/osm/garmin/region/europe/lithuania/lithuania.osm.garmin-ontrail-latin1.zip",
+              "sizeBytes": 23998464,
+              "downloadSizeBytes": 18402341,
+              "installSizeBytes": 23998464,
+              "checksumSha256": null,
+              "checksum": null,
+              "contentType": "application/zip",
+              "validationStatus": "VALIDATED",
+              "validationState": "validated",
+              "sourceProof": {
+                "sourceURL": "https://data.bbbike.org/osm/garmin/region/europe/lithuania/lithuania.osm.garmin-ontrail-latin1.zip",
+                "etag": "\"1739884370\"",
+                "lastModified": "Wed, 09 Sep 2026 01:09:55 GMT",
+                "downloadSizeBytes": 18402341,
+                "installSizeBytes": 23998464,
+                "payloadPath": "lithuania-garmin-ontrail-latin1/gmapsupp.img",
+                "sourceIdentity": "bbbike:europe/lithuania:ontrail-latin1",
+                "mapType": "ontrail-latin1",
+                "sourceRegion": "europe/lithuania",
+                "payloadMD5": "5467dcffc803508926b497ce86bb8c64",
+                "generatedAt": "2026-09-09T01:09:31+00:00",
+                "headerIdentityValidated": true,
+                "revision": "0fb4585181011060ecca07bb34913cb7fcbd7c5d2274113f83843adc6ac8f3fa"
+              },
+              "sourceUpdatedAt": "2026-09-09T01:09:31+00:00",
+              "installPayloadPath": "lithuania-garmin-ontrail-latin1/gmapsupp.img",
+              "version": {
+                "year": 2026,
+                "month": 9
+              }
+            }
+          ],
+          "mapType": "ontrail-latin1",
+          "geographicRegionId": "LITHUANIA"
+        }
+      ]
+    }
+  ]
+}
