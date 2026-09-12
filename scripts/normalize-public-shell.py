@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20260909-post-audit-v1"
 PROVIDER_SCRIPT_VERSION = "20260912-bbbike-types-v1"
 STYLE_VERSION = "20260912-map-cards-v1"
-IMAGE_VERSION = "20260905-app-screens-v1"
+IMAGE_VERSION = "20260912-app-screens-v2"
 LANGUAGE_VERSION = "20260905-language-selector-full-name-v1"
 LOCALIZED_CONTENT_VERSION = "20260911-three-providers-v2"
 COMPATIBILITY_LOCALES_VERSION = "20260912-compatibility-sort-v1"
@@ -292,6 +292,26 @@ def main() -> None:
             r'(/assets/app/optimized/your-garmin-\d+\.(?:avif|webp|png))(?:\?v=[^"\s]+)?',
             rf'\1?v={IMAGE_VERSION}',
             source,
+        )
+        source = re.sub(
+            r'(/assets/app/optimized/(?:your-garmin|install-maps|installing-maps|manage-maps|map-selected|maps-done|ready-to-install)-\d+\.(?:avif|webp|png))(?:\?v=[^"\s]+)?',
+            rf'\1?v={IMAGE_VERSION}', source,
+        )
+        def screenshot_sources(match):
+            picture = match.group(0)
+            if not re.search(r'/assets/app/optimized/(?:install-maps|manage-maps)-', picture):
+                return picture
+            picture = re.sub(
+                r'(/assets/app/optimized/(?:install-maps|manage-maps))-1280\.(avif|webp)(\?v=[^"\s,]+) 1280w(?!,)',
+                r'\1-1280.\2\3 1280w, \1-1600.\2\3 1600w', picture,
+            )
+            return re.sub(r'((?:install-maps|manage-maps))-1280\.png', r'\1-1600.png', picture)
+        source = re.sub(r'<picture>[\s\S]*?</picture>', screenshot_sources, source)
+        def screenshot_dimensions(match):
+            return re.sub(r'width="\d+" height="\d+"', 'width="2358" height="1575"', match.group(0))
+        source = re.sub(
+            r'<img\b[^>]*src="/assets/app/optimized/(?:your-garmin|install-maps|installing-maps|manage-maps|map-selected|maps-done|ready-to-install)-[^>]*>',
+            screenshot_dimensions, source,
         )
         source = source.replace('width="2205" height="1348"', 'width="2198" height="1335"')
         source = source.replace('width="2200" height="1346"', 'width="2198" height="1335"')
