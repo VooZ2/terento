@@ -74,9 +74,9 @@ for (const locale of locales) {
   assert.match(source, /\.img/ , locale + ": local map import guidance");
   assert.match(source, /three map providers|drei Kartenanbieter|trois fournisseurs de cartes|trzech dostawców map|tří poskytovatelů map|tre provider di mappe/ , locale + ": active provider catalog guidance");
   assert.doesNotMatch(source, /free storage|freier Speicher|espace libre|wolnego miejsca|volného místa|spazio libero|Not enough storage|Nicht genügend Speicher|Espace de stockage insuffisant|Za mało miejsca|Nedostatek úložiště|Spazio insufficiente/i, locale + ": no storage copy");
-  assert.match(source, /install-maps-1280\.avif[^\n]*width="1555" height="1012"/);
-  assert.match(source, /maps-done-1600\.avif\?v=20260905-app-screens-v1[^\n]*width="2198" height="1335"/);
-  assert.match(source, /your-garmin-1600\.avif\?v=20260905-app-screens-v1[^\n]*width="2198" height="1335"/);
+  assert.match(source, /map-selected-1600\.avif\?v=20260912-app-screens-v2[^\n]*width="2358" height="1575"/);
+  assert.match(source, /maps-done-1600\.avif\?v=20260912-app-screens-v2[^\n]*width="2358" height="1575"/);
+  assert.match(source, /your-garmin-1600\.avif\?v=20260912-app-screens-v2[^\n]*width="2358" height="1575"/);
   assert.equal([...source.matchAll(/<li class="guide-step">[\s\S]*?<\/li>/g)].length, 3, locale + ": three ordered steps");
   assert.match(source, /<ol class="guide-timeline">/);
   assert.match(source, /<ol class="guide-substeps">/);

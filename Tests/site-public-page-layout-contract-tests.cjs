@@ -120,7 +120,7 @@ for (const [locale, contract] of Object.entries(locales)) {
   assert.equal((html.match(/class="download-details"/g) || []).length, 1, `${locale} must use one technical details section`);
   assert.equal((html.match(/class="download-detail"/g) || []).length, 2, `${locale} must use two decision-support detail cards`);
   assert.equal((html.match(/class="download-visual"/g) || []).length, 1);
-  assert.match(html, /your-garmin-640\.avif\?v=20260905-app-screens-v1/);
+  assert.match(html, /your-garmin-640\.avif\?v=20260912-app-screens-v2/);
   const badges = html.match(/<ul class="download-badges">[\s\S]*?<\/ul>/)?.[0];
   assert.ok(badges);
   assert.equal((badges.match(/<li>/g) || []).length, 3);

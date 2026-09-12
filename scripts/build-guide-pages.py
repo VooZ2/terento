@@ -19,7 +19,7 @@ GUIDE_SLUG = "guides/install-garmin-maps-mac/"
 PUBLISHED = "2026-08-28T00:00:00Z"
 RELEASE = json.loads((ROOT / "site/updates/macos-arm64.json").read_text())
 REVIEWED = RELEASE["publishedAt"] + "T00:00:00Z"
-IMAGE_VERSION = "20260905-app-screens-v1"
+IMAGE_VERSION = "20260912-app-screens-v2"
 READING_STATE_VERSION = "20260902-reading-state"
 UMAMI_SCRIPT_VERSION = "20260905-campaign-url-only-v1"
 SHELL_VERSION = "20260905-in-page-language-v1"
@@ -73,7 +73,7 @@ def localized_path(locale: str, suffix: str = "") -> str:
 
 def image_markup(asset: str, width: int, height: int, alt: str, caption: str) -> str:
     stem = asset.rsplit("/", 1)[-1]
-    version = f"?v={IMAGE_VERSION}" if stem in {"your-garmin", "install-maps", "installing-maps", "ready-to-install", "maps-done"} else ""
+    version = f"?v={IMAGE_VERSION}"
     responsive_widths = tuple(size for size in (640, 960, 1280, 1600) if size < width)
     sources = ", ".join(
         f"/assets/app/optimized/{stem}-{size}.avif{version} {size}w"
@@ -752,8 +752,8 @@ def merged_copy(locale: str) -> dict[str, object]:
         if source_index == 3:
             image = {
                 "asset": "maps-done",
-                "width": 2198,
-                "height": 1335,
+                "width": 2358,
+                "height": 1575,
                 "alt": {
                     "en": "Terento showing a completed map installation on a Garmin watch",
                     "de": "Terento zeigt eine abgeschlossene Karteninstallation auf einer Garmin-Uhr",
@@ -768,8 +768,10 @@ def merged_copy(locale: str) -> dict[str, object]:
             image = source_steps[source_index].get("image")
         if image:
             step["image"] = image.copy()
+            if source_index == 2:
+                step["image"].update({"asset": "map-selected", "width": 2358, "height": 1575})
             if source_index == 1:
-                step["image"].update({"width": 2198, "height": 1335})
+                step["image"].update({"width": 2358, "height": 1575})
             step["image"]["caption"] = flow_step["caption"]
         base["steps"].append(step)
 
