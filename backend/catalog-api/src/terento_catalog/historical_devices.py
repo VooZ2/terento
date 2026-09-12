@@ -14,7 +14,7 @@ import re
 import unicodedata
 
 
-HISTORICAL_REGISTRY_VERSION = 2
+HISTORICAL_REGISTRY_VERSION = 3
 REGISTRY_SOURCE_URL = "https://developer.garmin.com/connect-iq/compatible-devices/"
 GARMIN_CATEGORY_URL = "https://www.garmin.com/en-US/c/wearables-smartwatches/"
 
@@ -74,6 +74,29 @@ HISTORICAL_DEVICE_REGISTRY: tuple[HistoricalDeviceSpec, ...] = (
     _spec(
         "garmin-fenix-7x-51", "fēnix 7X", "fenix 7x", "51 mm", 51,
         aliases=("fenix 7x",),
+    ),
+    # Garmin's reviewed Connect IQ identity list distinguishes the Pro
+    # families and the no-Wi-Fi Solar editions. Keep those identities separate
+    # so an operator can assign evidence without folding a Pro watch into the
+    # older base fēnix 7 record.
+    _spec("garmin-fenix-7-pro", "fēnix 7 Pro", "fenix 7 pro", "Historical", None),
+    _spec(
+        "garmin-fenix-7-pro-solar-no-wifi",
+        "fēnix 7 Pro",
+        "fenix 7 pro solar no wifi",
+        "Solar (no Wi-Fi)",
+        None,
+        aliases=("fēnix 7 Pro - Solar Edition (no Wi-Fi)",),
+    ),
+    _spec("garmin-fenix-7s-pro", "fēnix 7S Pro", "fenix 7s pro", "Historical", None),
+    _spec("garmin-fenix-7x-pro", "fēnix 7X Pro", "fenix 7x pro", "Historical", None),
+    _spec(
+        "garmin-fenix-7x-pro-solar-no-wifi",
+        "fēnix 7X Pro",
+        "fenix 7x pro solar no wifi",
+        "Solar (no Wi-Fi)",
+        None,
+        aliases=("fēnix 7X Pro - Solar Edition (no Wi-Fi)",),
     ),
     _spec("garmin-fenix-6-47", "fēnix 6", "fenix 6", "47 mm", 47),
     _spec(
