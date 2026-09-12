@@ -243,6 +243,16 @@ disables public statistics. Every change is audited. This action does not
 change evidence events, calculated status, installation counts, installation
 authorization, or any existing public/native/device API field.
 
+At widths up to 700px, admin card groups use the shared 12px
+`--admin-mobile-card-gap`. Overview spacing belongs to its parent grid, including
+when the review panel moves before the KPIs; nested chart cards have no extra
+outer margins. Provider, model, system-health and map-statistics card groups use
+the same spacing, while headings and internal control spacing retain their roles.
+Mobile Devices filters retain a 12px gap before empty or populated result cards.
+
+The Overview review panel retains its heading and queue shortcuts when empty,
+without an additional “No issues need attention” sentence.
+
 The shared authenticated admin navigation shows `Review queue` only when an
 actionable queue is non-empty. Its count is split into distinct active failed
 installation operations without linked issues, active GitHub issue operations,
@@ -617,6 +627,13 @@ groups. This keeps the event-detail DOM bounded without changing aggregate
 totals. These pagination parameters are private admin presentation controls.
 
 ## `GET /admin/map-statistics`
+
+The coverage map starts and resets at a padded full-world fit (100%). Resizing
+refits an untouched overview while preserving manual pan/zoom. Coverage and
+popularity share equal desktop columns and stack below 1200px. Popularity tables
+wrap full names, package identifiers and timestamps inside fixed-width columns.
+Top maps and Browse all maps omit the redundant Provider column; the package
+identifier remains below the map name and provider search remains available.
 
 Authenticated, no-store/noindex HTML dashboard for the same aggregate read
 model. It supports Last 24 hours, Last 7 days, Last 30 days, and All time

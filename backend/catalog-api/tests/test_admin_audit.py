@@ -27,6 +27,19 @@ class Tags(HTMLParser):
 
 
 class AdminAuditTests(unittest.TestCase):
+    def test_mobile_card_spacing_has_one_layout_owner(self):
+        from terento_catalog.admin import ADMIN_STYLES
+        mobile = ADMIN_STYLES.split("/* Mobile card spacing belongs", 1)[1].split("@media(prefers-reduced-motion", 1)[0]
+        self.assertIn("@media(max-width:700px)", mobile)
+        self.assertIn("--admin-mobile-card-gap:12px", mobile)
+        self.assertIn("main.overview-page{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--admin-mobile-card-gap)}", mobile)
+        self.assertIn(".overview-page>.overview-kpis,.overview-page>.overview-panel{margin:0}", mobile)
+        self.assertIn(".overview-columns>.overview-panel{margin:0}", mobile)
+        self.assertIn(".provider-dashboard-grid>.provider-card{margin-top:0}", mobile)
+        self.assertIn(".device-filter-bar{margin-bottom:var(--admin-mobile-card-gap)}", mobile)
+        for group in (".system-health-grid", ".model-information-columns", ".administration-grid", ".map-statistics-reliability", ".admin-kpi-grid"):
+            self.assertIn(group, mobile)
+
     def test_overview_kpis_match_installation_card_density(self):
         from terento_catalog.admin import ADMIN_STYLES
 
@@ -118,7 +131,7 @@ class AdminAuditTests(unittest.TestCase):
         for rule in (".filter-bar>.filter-disclosure{align-self:flex-end}",
                      ".filter-bar input,.filter-bar select{font-weight:400}",
                      ".filter-bar .device-mobile-sort{display:flex;flex-direction:column;gap:6px}",
-                     "coverage-map-v1.js?v=20260911-osm-boundaries-1"):
+                     "coverage-map-v1.js?v=20260913-world-fit-1"):
             self.assertIn(rule, body)
         result = subprocess.run([os.environ.get('TERENTO_NODE_BIN', 'node'),
                                  str(Path(__file__).with_name('coverage-map-tests.cjs'))],
