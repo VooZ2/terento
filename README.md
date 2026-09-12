@@ -9,7 +9,8 @@ Terento is a free, open-source native macOS app for installing and managing
 third-party maps on map-capable Garmin smartwatches. Choose from
 [Freizeitkarte](https://www.freizeitkarte-osm.de/),
 [OpenTopoMap](https://garmin.opentopomap.org/), or
-[MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), or import your own
+[MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), and
+[BBBike](https://garmin.bbbike.org), or import your own
 compatible `.img` map.
 
 **Connect → Install → Done**
@@ -117,8 +118,8 @@ stops and keeps the working map. Bugs are still possible during the beta.
 The current catalog includes main-map packages from
 [Freizeitkarte](https://www.freizeitkarte-osm.de/),
 [OpenTopoMap](https://garmin.opentopomap.org/), and
-[MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), based on OpenStreetMap
-data.
+[MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), and
+[BBBike](https://garmin.bbbike.org), based on OpenStreetMap data.
 Maps download from each provider's original infrastructure; Terento does not
 host, mirror, or repackage them.
 
