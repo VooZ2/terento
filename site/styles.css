@@ -1412,10 +1412,15 @@ h1 {
   grid-auto-columns: calc((100% - 88px) / 3);
   align-items: stretch;
   overflow-x: auto;
+  scrollbar-width: none;
   scroll-snap-type: x proximity;
   padding: 4px 4px 12px;
   gap: 20px;
   margin-top: 28px;
+}
+
+.provider-cards::-webkit-scrollbar {
+  display: none;
 }
 
 .provider-card {
@@ -1474,6 +1479,19 @@ h1 {
   padding: 14px 0 0 18px;
   border-top: 1px solid var(--border);
   color: var(--secondary);
+}
+
+.provider-language-note {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface-muted);
+  color: var(--graphite);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .provider-addon {

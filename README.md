@@ -223,3 +223,7 @@ retain their own licenses and attribution.
 
 Terento is an independent open-source project and is not affiliated with,
 endorsed by, or sponsored by Garmin.
+
+MapRando cards note that some map labels are in French in all six website
+locales. Provider cards retain scrolling and navigation controls with the
+horizontal scrollbar hidden.
