@@ -2,7 +2,7 @@
 
 Status: PREPARING, unpublished. The owner approved the English changelog and
 three-item update summary, then explicitly selected public build28 (last public
-build27; builds28–31-local were private tests). The next private candidate uses
+build27; builds28–31-local were private tests). The final private candidate used
 33-local to distinguish it from earlier private packages. Public metadata uses
 28 as requested; a local build33 user must install the public DMG manually,
 since the updater orders CFBundleVersion and must not be weakened for this case.
@@ -27,12 +27,25 @@ not a claimed fix. The owner explicitly waived the actual newer-map update test
 for this release and requested the Known issues note that map updates have not
 yet been tested; the update feature remains unchanged and the evidence pending.
 
-Before final publication: final source regression/runtime contracts, local33
-candidate conflict/offline checks and MapRando install/reconnect/watch check,
-Developer ID signed/notarized public28 package validation, real checksum in
-manifest/notes, source CI and reviewed public deployment. The current zero SHA
-is a temporary marker and must never be deployed. No public release, app/site
-deployment, or device file write was performed by this preparation checkpoint.
+Final local33 MapRando reinstall/watch-visible acceptance is PASS, reported by
+the owner. This is owner-reported hardware evidence, not an independent
+on-watch review.
+The final public packaging run uses source `adb7e431`: all69/69 test runners
+passed in278.5s and Developer ID signing passed. Apple notarization is Accepted
+(submission `7155de79-6abc-444c-9c51-cb5919f20264`); stapling, Gatekeeper and
+final ZIP/DMG launch checks PASS. Publication remains pending. Full source CI passed before release preparation.
+
+The final DMG checksum is synchronized in manifest and release notes. Before
+publication: final metadata/source CI and the reviewed release/site publication. README
+contains approved final publication copy, staged locally for that same gate;
+its publication wording is not evidence of completed publication.
+No public release or app/site deployment was performed by this checkpoint.
+
+The release tag will point at the final reviewed metadata commit. Packaged app
+source remains `adb7e431`; verify that intervening changes contain only release
+metadata, documentation and generated site content, with no app/runtime or
+packaging changes. This avoids the tag-triggered website workflow deploying the
+packaged source's placeholder checksum. Record the final metadata commit at publication.
 
 ## Final catalog determinism correction
 
@@ -43,3 +56,20 @@ adds that tie-break; equality is unchanged. Regression checks exact equality
 over12 full1160 catalog reloads and ordering for actual cross-provider name/ID
 collisions. Shared contract PASS. The not-yet-handed-off local32 artifact is
 superseded; a fresh local33 and public28 are built from the corrected source.
+
+## Final publication copy checks
+
+README publication copy is prepared. Release documentation synchronization and
+legal content tests PASS; the complete site plan PASS11/11 runners, including
+generator parity, accessibility, provider/API cards, structured data and SEO.
+These checks do not establish publication completion. No app, runtime or packaging files changed in this step.
+
+## Final signed artifact receipt — PASS
+
+Packaged app source: `adb7e431`. No app code changed afterward.
+
+- DMG:6800709 bytes; SHA256 `ccf5cd707c2d27d48b523c44c7c93a3045a126d22c3f9dd2458dbb00430b8304`.
+- ZIP:6135164 bytes; SHA256 `6293b4e7a49d2796cf38d766412e1c7f19899b544795f11c7be94c6563ec9890`.
+
+Developer ID signing, Apple acceptance, Gatekeeper and both final artifact
+launch checks PASS as reported by the completed official packaging pipeline.

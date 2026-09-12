@@ -1,7 +1,6 @@
 # Terento v1.0.0-beta.12 (build 28)
 
-<!-- Public DMG SHA-256: 0000000000000000000000000000000000000000000000000000000000000000 -->
-<!-- Release preparation: placeholder checksum; replace after signing before publication. -->
+<!-- Public DMG SHA-256: ccf5cd707c2d27d48b523c44c7c93a3045a126d22c3f9dd2458dbb00430b8304 -->
 
 BBBike joins Freizeitkarte, OpenTopoMap, and MapRando as the fourth provider, with BBBike and BBBike (Ontrail) as two separate map types.
 
@@ -20,5 +19,4 @@ BBBike joins Freizeitkarte, OpenTopoMap, and MapRando as the fourth provider, wi
 ## Known issues
 
 - The map update feature has not been tested yet.
-
-- Intermittent MTP/session failures can still stop an installation during Finishing; use Report issue to share the prefilled diagnostic report.
+- Occasional device connection issues may interrupt reading installed maps or finishing an installation. If prompted, disconnect and reconnect your Garmin, then try again.
