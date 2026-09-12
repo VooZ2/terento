@@ -1117,11 +1117,13 @@ final class MapEngine: ObservableObject {
         let selectedPackages = plan.installItems.map(\.package)
         let existingMaps = (result?.scan.installedMaps ?? []) + (result?.scan.otherMaps ?? [])
         let existingFiles = result?.scan.files ?? []
-        if BBBikeProviderAdapter.selectionConflicts(selectedPackages) || selectedPackages.contains(where: { package in
+        let installedTypeConflict = selectedPackages.first(where: { package in
             existingMaps.contains { BBBikeProviderAdapter.conflicts(package, provider: $0.provider, region: $0.region) }
                 || existingFiles.contains { BBBikeProviderAdapter.conflicts(package, filename: $0.filename) }
-        }) {
-            installationErrorMessage = BBBikeProviderAdapter.coexistenceReason
+        })
+        if BBBikeProviderAdapter.selectionConflicts(selectedPackages) || installedTypeConflict != nil {
+            installationErrorMessage = installedTypeConflict.map { BBBikeProviderAdapter.installedTypeConflictMessage(for: $0) }
+                ?? BBBikeProviderAdapter.coexistenceReason
             installationPhase = .failed
             state = .failed
             return

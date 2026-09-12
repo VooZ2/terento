@@ -927,7 +927,7 @@ struct MapInstallationCoordinator: Sendable {
                 transaction: transaction,
                 diagnostics: diagnostics
             )
-        case .blockedAmbiguousMapIdentity:
+        case .blockedAmbiguousMapIdentity, .blockedMapTypeConflict:
             return blocked(
                 status: .blockedAmbiguousMapIdentity,
                 failure: .mapIdentityAmbiguous,

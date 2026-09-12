@@ -1178,7 +1178,12 @@ struct BBBikeProviderAdapter: MapProviderAdapter, Sendable {
         return path == "/osm/garmin/region/" + suffix
             || (exampleRegions.contains(sourceRegion) && path == "/osm/garmin/example/" + suffix)
     }
-    static let coexistenceReason = "Choose one BBBike map type for this region. Remove the installed type yourself before installing the alternative."
+    static let coexistenceReason = "Select either BBBike or BBBike (Ontrail) for the same region. These two map types cannot be installed together."
+    static func installedTypeConflictMessage(for package: MapPackage) -> String {
+        guard let selectedType = BBBikeMapType(rawValue: package.mapType ?? "") else { return coexistenceReason }
+        let installedType: BBBikeMapType = selectedType == .bbbike ? .ontrail : .bbbike
+        return "To install “\(selectedType.title) - \(package.name)”, first remove “\(installedType.title) - \(package.name)” in Manage maps. BBBike and BBBike (Ontrail) cannot be installed together for the same region."
+    }
     static func conflicts(_ package: MapPackage, provider: String?, region: String?) -> Bool {
         guard MapIdentity.normalizeProvider(package.providerId) == "bbbike",
               MapIdentity.normalizeProvider(provider ?? "") == "bbbike", let region else { return false }

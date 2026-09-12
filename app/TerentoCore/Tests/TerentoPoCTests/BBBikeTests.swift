@@ -46,6 +46,15 @@ private struct PrefixReader: DeviceFileReader {
             let filename = try TerentoManagedFilenameGenerator().filename(providerId: package.providerId, regionId: package.canonicalRegionId)
             check(TerentoManagedFilenameGenerator().isValid(filename), "variant filename grammar")
             let other = andorra.first { $0.id != package.id }!
+            let selectedTitle = BBBikeMapType(rawValue: package.mapType!)!.title
+            let installedTitle = BBBikeMapType(rawValue: other.mapType!)!.title
+            check(BBBikeProviderAdapter.installedTypeConflictMessage(for: package) ==
+                "To install “\(selectedTitle) - Andorra”, first remove “\(installedTitle) - Andorra” in Manage maps. BBBike and BBBike (Ontrail) cannot be installed together for the same region.",
+                "conflict copy names exact selected and installed variants in both directions")
+            for provider in ["maprando", "opentopomap", "freizeitkarte"] {
+                check(!BBBikeProviderAdapter.conflicts(package, provider: provider, region: other.canonicalRegionId),
+                    "same region from \(provider) is not a BBBike type conflict")
+            }
             check(!TerentoManagedFilenameGenerator().matchesIdentity(filename, providerId: other.providerId, regionId: other.canonicalRegionId), "wrong type cannot match managed filename")
         }
         check(BBBikeProviderAdapter.selectionConflicts(andorra), "same-region type pair rejected in domain batch policy")
@@ -137,7 +146,10 @@ private struct PrefixReader: DeviceFileReader {
                 let comparison = MapComparison(providerName: "BBBike", regionName: package.name, catalogMap: package, installedMap: nil, status: .notInstalled)
                 let preflight = InstallationPreflightEngine().evaluate(identity: identity, selectedMap: package, comparison: comparison,
                     installedMaps: [], inspectedFiles: [InstalledMapFile(path: siblingFile.path, filename: siblingFile.filename, sizeBytes: siblingFile.sizeBytes, itemID: siblingFile.itemID)], availableStorage: 16 << 30, profile: profile)
-                check(!preflight.isReady, "preflight rejects sibling absent from catalog and parsed inventory")
+                check(!preflight.isReady && preflight.status == .blockedMapTypeConflict
+                    && preflight.status.userLabel.contains("already installed")
+                    && preflight.userNote.contains("Manage maps"),
+                    "preflight identifies installed sibling conflict with an actionable explanation")
                 let prefix = try MapPackageFormat.readPrefix(from: artifact.localIMGURL, maxLength: GarminIMGMetadataParser.prefixLength)
                 let file = DeviceFile(itemID: 101, parentID: 1, storageID: 1, path: "/GARMIN/" + artifact.targetFilename,
                     filename: artifact.targetFilename, sizeBytes: artifact.installSizeBytes, isFolder: false)
