@@ -28,12 +28,25 @@ reject_review_text() {
     fi
 }
 
-require_review_text 'Text("Terento will install these maps to your Garmin. Existing Garmin maps will not be changed.")' 'safety copy is not one compact sentence'
-require_review_text '.font(.terentoUI(size: 13, weight: .regular))' 'safety copy is not supporting text'
-require_review_text 'Terento sends privacy-minimised diagnostics by default to help improve the app and its services. You can turn this off anytime in Terento → Diagnostics.' 'diagnostics disclosure is missing'
-require_review_text '.padding(.bottom, TerentoPageLayout.sectionSpacing)' 'sharing block does not keep a stable gap above the footer'
-require_review_text '.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)' 'Review content cannot absorb the fixed body height'
-require_review_text 'bodyScrolls: mapEngine.installationPhase == .failed' 'normal Review state may scroll as a whole page'
+reject_review_text 'Terento will install these maps to your Garmin.' 'Ready repeats the installation explanation'
+reject_review_text 'Terento sends privacy-minimised diagnostics by default' 'Ready repeats the About privacy explanation'
+require_review_text 'TerentoInstallFooterPageShell(bodyScrolls: true)' 'Review body cannot scroll independently of Storage and actions'
+require_review_text 'VStack(spacing: TerentoPageLayout.sectionSpacing + 18)' 'Storage-to-button spacing no longer matches Install maps'
+require_review_text 'if !plan.canContinue, let reason = installAvailability.userReason' 'Review hides the resolved blocked-install reason'
+require_review_text 'beginInstallationAfterConsent(plan)' 'Install maps bypasses the existing authorized path'
+require_review_text '!mapSupport.canAttemptTerentoMapInstall' 'map capability guard is missing'
+require_review_text '|| !installAvailability.isEnabled' 'resolved install availability guard is missing'
+require_review_text 'selectedInstallationPlan = nil' 'Back no longer clears the selected plan'
+require_review_text 'localInstallStep = .choose' 'Back no longer returns to selection'
+# Assert placement, not merely presence: Storage belongs to the fixed footer
+# before its actions, and cannot drift back into the scrollable review body.
+review_body="${review_content%%\} footer:*}"
+review_footer="${review_content#*\} footer:}"
+if [[ "$review_body" == *'MapSelectionStorageSummary('* \
+    || "$review_footer" != *'MapSelectionStorageSummary('*'TerentoPageFooter'* ]]; then
+    print -u2 'FAIL: Storage is not immediately above the fixed footer actions'
+    exit 1
+fi
 require_review_text 'ReadyToInstallSelectedMapsHeader(count: plan.selectedItems.count)' 'selected-map count is not sourced from the plan'
 require_review_text 'ReadyToInstallSelectedMapsList(plan: plan)' 'selected-map list behavior changed'
 require_review_text 'MapSelectionStorageSummary(' 'Storage placement changed'

@@ -22,6 +22,36 @@ also be removed after exact live-object validation; unknown and Garmin-owned
 files remain read-only. The physical RC gate is still pending a connected MTP
 watch.
 
+## Catalog interface
+
+The working-tree UI keeps the existing select → review → install flow in a
+stable 1180×820 pt default window (920×600 pt minimum). The catalog has local
+country/region search, geography and provider menus, a filtered result count,
+and a separate collapsed import-from-Mac section. The catalog stays visible;
+its result count sits below the controls and its viewport has a persistent12pt
+top gap matching the import separation. Filters reuse an immutable
+presentation index; they never request a device scan or installation preflight.
+Selected maps remain selected across filters, and the existing one-provider
+batch restriction remains enforced. Recognized installed matches remain
+non-selectable search results; their lifecycle actions stay in Manage maps.
+
+The toolbar supports four-provider test catalogs without activating BBBike or
+changing provider licensing/acquisition policy. Search uses catalog geography
+and reviewed aliases, not provider names, style annotations, filenames or a
+city/POI lookup service. Official administrative regions remain catalog entries.
+
+Ready keeps Storage directly above the action row; its short body can scroll
+independently when needed. Manage maps has local search/provider filters over
+the exact scanned inventory, with no geographic guesses for custom files.
+About and Diagnostics share centered opening behavior and retain manual
+positions while already visible. These are presentation changes only.
+
+About, privacy/legal links, update status and diagnostics access are consolidated
+in `Terento → About Terento`. The sidebar contains only Device, Install maps and
+Manage maps. Update-controller behavior and all device operations are unchanged.
+See [UI validation receipt](../../reports/2026-09-12-catalog-ui-polish.md) for
+local validation and outstanding visual acceptance; this is not a release notice.
+
 ## Scope
 
 The connectivity baseline provides:

@@ -67,15 +67,17 @@ struct TerentoPoCApp: App {
         }
         Window("About Terento", id: "about") {
             AboutTerentoView(appUpdateController: appUpdateController)
+                .background(TerentoSecondaryWindowPlacement())
         }
-        .defaultSize(width: 420, height: 330)
-        .windowResizability(.contentSize)
+        .defaultSize(width: 560, height: 580)
+        .windowResizability(.automatic)
         .windowStyle(.titleBar)
         Window("Diagnostics", id: "diagnostics") {
             DiagnosticsView(
                 evidenceController: evidenceController,
                 mapStatisticsController: mapStatisticsController
             )
+            .background(TerentoSecondaryWindowPlacement())
         }
         .defaultSize(width: 520, height: 600)
         .windowResizability(.contentSize)
@@ -88,48 +90,103 @@ struct TerentoPoCApp: App {
 }
 
 /// SwiftUI's defaultSize is only consulted when macOS has no restored frame.
-/// A one-time geometry migration clears the oversized frame left by the
-/// earlier prototype while preserving later user resizing and navigation.
+/// A one-time migration grows the catalog workspace within its screen,
+/// while preserving larger restored frames and later user resizing.
 private struct TerentoWindowConfigurator: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
         DispatchQueue.main.async {
             guard let window = view.window else { return }
 
-            window.minSize = NSSize(
-                width: TerentoWindowPresentation.minimumWidth,
-                height: TerentoWindowPresentation.minimumHeight
-            )
-
-            let migrationKey = "Terento.windowGeometry.v2"
-            if UserDefaults.standard.bool(forKey: migrationKey) {
-                // Give existing installations the taller catalog once, keeping
-                // the user's width and any already-taller window intact.
-                let catalogHeightKey = "Terento.windowGeometry.catalogHeight.v3"
-                guard !UserDefaults.standard.bool(forKey: catalogHeightKey) else { return }
-                let contentSize = window.contentRect(forFrameRect: window.frame).size
-                if contentSize.height < TerentoWindowPresentation.defaultHeight {
-                    window.setContentSize(NSSize(
-                        width: contentSize.width,
-                        height: TerentoWindowPresentation.defaultHeight
-                    ))
-                }
-                UserDefaults.standard.set(true, forKey: catalogHeightKey)
-                return
-            }
-
-            window.setContentSize(
-                NSSize(
-                    width: TerentoWindowPresentation.defaultWidth,
-                    height: TerentoWindowPresentation.defaultHeight
+            let visibleFrame = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? window.frame
+            let minimumFrame = window.frameRect(forContentRect: NSRect(
+                origin: .zero,
+                size: NSSize(
+                    width: TerentoWindowPresentation.minimumWidth,
+                    height: TerentoWindowPresentation.minimumHeight
                 )
+            ))
+            window.minSize = NSSize(
+                width: min(minimumFrame.width, visibleFrame.width),
+                height: min(minimumFrame.height, visibleFrame.height)
             )
-            window.center()
+
+            // Supersedes v2's reset and v3's height-only migration. Grow both
+            // dimensions once, retaining larger restored frames and later
+            // manual resizing. Reopening or changing pages never resizes.
+            let migrationKey = "Terento.windowGeometry.catalog.v4"
+            guard !UserDefaults.standard.bool(forKey: migrationKey) else { return }
+            let currentContent = window.contentRect(forFrameRect: window.frame)
+            let desiredContent = NSRect(origin: .zero, size: NSSize(
+                width: max(currentContent.width, TerentoWindowPresentation.defaultWidth),
+                height: max(currentContent.height, TerentoWindowPresentation.defaultHeight)
+            ))
+            let desiredFrame = window.frameRect(forContentRect: desiredContent)
+            window.setFrame(TerentoWindowFrameLayout.fittedFrame(
+                current: window.frame,
+                desiredSize: desiredFrame.size,
+                visibleFrame: visibleFrame
+            ), display: true)
             UserDefaults.standard.set(true, forKey: migrationKey)
+            UserDefaults.standard.set(true, forKey: "Terento.windowGeometry.v2")
             UserDefaults.standard.set(true, forKey: "Terento.windowGeometry.catalogHeight.v3")
         }
         return view
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+/// Both utility windows open on the active display. Only a new opening is
+/// centered: bringing an already visible window forward respects its position.
+private struct TerentoSecondaryWindowPlacement: NSViewRepresentable {
+    func makeNSView(context: Context) -> PlacementView { PlacementView() }
+    func updateNSView(_ nsView: PlacementView, context: Context) {}
+
+    final class PlacementView: NSView {
+        private weak var observedWindow: NSWindow?
+        private var needsPlacement = true
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard observedWindow !== window else { return }
+            NotificationCenter.default.removeObserver(self)
+            observedWindow = window
+            needsPlacement = true
+            guard let window else { return }
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(windowBecameKey(_:)),
+                name: NSWindow.didBecomeKeyNotification, object: window
+            )
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(windowWillClose(_:)),
+                name: NSWindow.willCloseNotification, object: window
+            )
+            // Attachment can happen after SwiftUI has already made it key.
+            if window.isKeyWindow { placeIfNeeded() }
+        }
+
+        @objc private func windowBecameKey(_ notification: Notification) {
+            placeIfNeeded()
+        }
+
+        @objc private func windowWillClose(_ notification: Notification) {
+            needsPlacement = true
+        }
+
+        private func placeIfNeeded() {
+            guard needsPlacement, let window = observedWindow else { return }
+            needsPlacement = false
+            let sourceWindow = NSApp.orderedWindows.first {
+                $0 !== window && $0.isVisible && $0.screen != nil
+            }
+            guard let screen = sourceWindow?.screen ?? window.screen ?? NSScreen.main else { return }
+            window.setFrameOrigin(TerentoWindowFrameLayout.centeredOrigin(
+                windowSize: window.frame.size,
+                visibleFrame: screen.visibleFrame
+            ))
+        }
+
+        deinit { NotificationCenter.default.removeObserver(self) }
+    }
 }

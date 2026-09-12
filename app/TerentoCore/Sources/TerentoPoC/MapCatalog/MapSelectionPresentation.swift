@@ -105,42 +105,9 @@ enum MapSelectionPresentationModel: Sendable {
         _ items: [MapSelectionItem],
         query: String
     ) -> [MapSelectionItem] {
-        let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        return items
-            .filter { item in
-                if normalizedQuery.isEmpty {
-                    return item.comparison.installedMap == nil
-                }
-
-                if item.comparison.installedMap != nil {
-                    return true
-                }
-
-                return true
-            }
-            .filter { item in
-                guard !normalizedQuery.isEmpty else { return true }
-                return MapDisplayNameNormalizer.searchableText(
-                    package: item.package,
-                    displayName: item.title
-                ).appending(" \(policySearchAliases(for: item))")
-                    .localizedCaseInsensitiveContains(normalizedQuery)
-            }
-            .sorted { lhs, rhs in
-                if lhs.isRecommended != rhs.isRecommended {
-                    return lhs.isRecommended
-                }
-                return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
-            }
+        MapCatalogPresentationIndex(items: items).filtered(query: query)
     }
 
-    private static func policySearchAliases(for item: MapSelectionItem) -> String {
-        guard let identity = item.canonicalRegionIdentity else { return "" }
-        if identity == CanonicalMapRegionIdentity(countryCode: "UA", locality: "CRIMEA") {
-            return "UA Ukraine Crimea RUS-CRIMEA RUS_CRIMEA freizeitkarte-rus-crimea"
-        }
-        return "\(identity.countryCode) \(identity.locality ?? "")"
-    }
 }
 
 /// A visual-only projection of the conservative storage plan. It keeps the
@@ -303,5 +270,180 @@ enum InstallationFlowPresentation: Sendable {
         preflightSucceeded: Bool
     ) -> Bool {
         userAuthorized && preflightSucceeded
+    }
+}
+
+/// Geographic browsing is a local presentation projection, never acquisition identity.
+enum MapGeographyGroup: String, CaseIterable, Identifiable, Sendable {
+    case all, europe, asia, africa, northAmerica, centralAmericaCaribbean
+    case southAmerica, oceania, antarctica, other
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .all: return "All regions"
+        case .europe: return "Europe"
+        case .asia: return "Asia"
+        case .africa: return "Africa"
+        case .northAmerica: return "North America"
+        case .centralAmericaCaribbean: return "Central America & Caribbean"
+        case .southAmerica: return "South America"
+        case .oceania: return "Oceania"
+        case .antarctica: return "Antarctica"
+        case .other: return "Other regions"
+        }
+    }
+}
+
+/// Build once per authoritative selection snapshot. Filtering never calls preflight.
+struct MapCatalogPresentationIndex: Sendable {
+    private struct Row: Sendable {
+        let item: MapSelectionItem
+        let provider: String
+        let text: String
+        let groups: Set<MapGeographyGroup>
+    }
+    private let rows: [Row]
+    var geographyOptions: [MapGeographyGroup] {
+        MapGeographyGroup.allCases.filter { $0 != .other || rows.contains { $0.groups.contains(.other) } }
+    }
+    init(items: [MapSelectionItem]) {
+        rows = items.filter { $0.package.sourceKind == .provider }.map { item in
+            let geography = CatalogGeography.resolve(item)
+            return Row(item: item, provider: MapIdentity.normalizeProvider(item.package.providerId),
+                       text: CatalogGeography.fold(geography.terms.joined(separator: " ")),
+                       groups: geography.groups)
+        }.sorted { lhs, rhs in
+            if lhs.item.isRecommended != rhs.item.isRecommended { return lhs.item.isRecommended }
+            let titleOrder = lhs.item.title.localizedCaseInsensitiveCompare(rhs.item.title)
+            if titleOrder != .orderedSame { return titleOrder == .orderedAscending }
+            if lhs.provider != rhs.provider { return lhs.provider < rhs.provider }
+            return lhs.item.id < rhs.item.id
+        }
+    }
+    func filtered(query: String, providerID: String = "", geography: MapGeographyGroup = .all) -> [MapSelectionItem] {
+        let terms = CatalogGeography.fold(query).split(whereSeparator: { $0.isWhitespace }).map(String.init)
+        let provider = MapIdentity.normalizeProvider(providerID)
+        return rows.compactMap { row in
+            guard (providerID.isEmpty || row.provider == provider),
+                  (geography == .all || row.groups.contains(geography)),
+                  (!terms.isEmpty || row.item.comparison.installedMap == nil),
+                  terms.allSatisfy({ row.text.contains($0) }) else { return nil }
+            return row.item
+        }
+    }
+}
+
+private enum CatalogGeography {
+    static func fold(_ text: String) -> String {
+        text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    private static let countries: [MapGeographyGroup: String] = [
+        .europe: "AL AD AT BY BE BA BG HR CY CZ DK EE FI FR DE GI GR GG VA HU IS IE IM IT JE XK LV LI LT LU MT MD MC ME NL MK NO PL PT RO RU SM RS SK SI ES SJ SE CH TR UA GB AX FO",
+        .asia: "AF AM AZ BH BD BT BN KH CN CY GE HK IN ID IR IQ IL JP JO KZ KP KR KW KG LA LB MO MY MV MN MM NP OM PK PS PH QA RU SA SG LK SY TW TJ TH TL TR TM AE UZ VN YE",
+        .africa: "DZ AO BJ BW BF BI CV CM CF TD KM CG CD CI DJ EG GQ ER SZ ET GA GM GH GN GW KE LS LR LY MG MW ML MR MU YT MA MZ NA NE NG RE RW SH ST SN SC SL SO ZA SS SD TZ TG TN UG EH ZM ZW",
+        .northAmerica: "CA US MX GL PM BM",
+        .centralAmericaCaribbean: "AI AG AW BS BB BZ BQ VG KY CR CU CW DM DO SV GD GP GT HT HN JM MQ MS NI PA PR BL KN LC MF VC SX TT TC VI",
+        .southAmerica: "AR BO BR CL CO EC FK GF GY PY PE SR UY VE",
+        .oceania: "AS AU CX CC CK FJ PF GU KI MH FM NR NC NZ NU NF MP PW PG PN WS SB TK TO TV UM VU WF",
+        .antarctica: "AQ BV GS HM"
+    ]
+    private static let groupsByCode: [String: Set<MapGeographyGroup>] = {
+        var result: [String: Set<MapGeographyGroup>] = [:]
+        for (group, codes) in countries {
+            for code in codes.split(separator: " ") { result[String(code), default: []].insert(group) }
+        }
+        return result
+    }()
+    private static let namesByCode: [String: [String]] = {
+        Dictionary(uniqueKeysWithValues: groupsByCode.keys.map { code in
+            (code, ["en", "lt", "fr", "de"].compactMap { Locale(identifier: $0).localizedString(forRegionCode: code) })
+        })
+    }()
+    private static func geographicKey(_ value: String) -> String {
+        fold(value).filter { $0.isLetter || $0.isNumber }
+    }
+    private static let codeByName: [String: String] = {
+        var result: [String: String] = [:]
+        for (code, names) in namesByCode { for name in names { result[geographicKey(name)] = code } }
+        for (name, code) in ["china":"CN", "turkey":"TR", "czech republic":"CZ", "russia":"RU", "south korea":"KR", "north korea":"KP", "ivory coast":"CI", "swaziland":"SZ"] { result[geographicKey(name)] = code }
+        return result
+    }()
+    private static func code(_ value: String) -> String? {
+        let value = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if groupsByCode[value.uppercased()] != nil { return value.uppercased() }
+        if let code = codeByName[geographicKey(MapDisplayNameNormalizer.normalize(value))] { return code }
+        // Accept whole ISO3 tokens as geography, never arbitrary provider identifiers.
+        if value.count == 3, value.allSatisfy({ $0.isASCII && $0.isLetter }),
+           let name = Locale(identifier: "en").localizedString(forRegionCode: value.uppercased()) {
+            return codeByName[geographicKey(name)]
+        }
+        return nil
+    }
+    // Reviewed names from the bundled FZK/OTM catalog. Metadata-only aliases;
+    // they neither restrict catalog membership nor change policy identities.
+    private static let regionalCountries: [String: [String]] = [
+        "alps": ["AT", "CH", "DE", "FR", "IT", "LI", "SI"],
+        "alpes": ["AT", "CH", "DE", "FR", "IT", "LI", "SI"],
+        "dach": ["DE", "AT", "CH"], "regionbalkans": ["AL", "BA", "BG", "HR", "GR", "ME", "MK", "RS", "SI", "XK"],
+        "regionbelgiumnetherlandsluxembourg": ["BE", "NL", "LU"],
+        "britishisles": ["GB", "IE"], "greatbritain": ["GB"],
+        "irelandandnorthernireland": ["IE", "GB"],
+        "bosniaherzegovina": ["BA"], "macedonia": ["MK"],
+        "canadaeast": ["CA"], "canadawest": ["CA"],
+        "canaryislands": ["ES"], "canarias": ["ES"], "ilescanaries": ["ES"],
+        "azores": ["PT"], "acores": ["PT"], "madeira": ["PT"], "balearics": ["ES"],
+        "capeverde": ["CV"], "comores": ["KM"],
+        "congobrazzaville": ["CG"], "congodemocraticrepublic": ["CD"],
+        "faeroeislands": ["FO"], "faroeislands": ["FO"],
+        "gccstates": ["AE", "BH", "KW", "OM", "QA", "SA"],
+        "haitianddomrep": ["HT", "DO"], "israelandpalestine": ["IL", "PS"],
+        "malaysiasingaporebrunei": ["MY", "SG", "BN"],
+        "sainthelenaascensionandtristandacunha": ["SH"],
+        "saotomeandprincipe": ["ST"], "senegalandgambia": ["SN", "GM"],
+        "southafricaandlesotho": ["ZA", "LS"],
+        "usmidwest": ["US"], "usnortheast": ["US"], "uspacific": ["US"], "ussouth": ["US"], "uswest": ["US"]
+    ]
+    private static let regionalGroups: [String: Set<MapGeographyGroup>] = [
+        "azores": [.europe], "acores": [.europe], "balearics": [.europe],
+        "canaryislands": [.africa], "canarias": [.africa], "ilescanaries": [.africa], "madeira": [.africa],
+        "reunion": [.africa], "mayotte": [.africa],
+        "guadeloupe": [.centralAmericaCaribbean], "martinique": [.centralAmericaCaribbean],
+        "stbarthelemy": [.centralAmericaCaribbean], "saintbarthelemy": [.centralAmericaCaribbean],
+        "stmartin": [.centralAmericaCaribbean], "saintmartin": [.centralAmericaCaribbean],
+        "frenchguiana": [.southAmerica], "guyane": [.southAmerica],
+        "newcaledonia": [.oceania], "nouvellecaledonie": [.oceania], "hawaii": [.oceania],
+        "frenchpolynesia": [.oceania], "polynesiefrancaise": [.oceania],
+        "russiaasianpart": [.asia], "russiaeuropeanpart": [.europe],
+        "russiacentral": [.europe], "russiakaliningrad": [.europe], "kaliningrad": [.europe],
+        "russianorthwest": [.europe], "russiasouth": [.europe], "russiavolga": [.europe]
+    ]
+    static func resolve(_ item: MapSelectionItem) -> (terms: [String], groups: Set<MapGeographyGroup>) {
+        let package = item.package
+        // Style annotations are not geography. Preserve the region outside parentheses.
+        let region = item.title.replacingOccurrences(
+            of: #"(?i)\s*\([^)]*(?:contours?|IGN|latin1|UTF-?8|ASCII|style)[^)]*\)"#,
+            with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"(?i)\b(?:IGN|contours?|courbes|latin1|UTF-?8|ASCII|style)\b"#, with: "", options: .regularExpression)
+        var terms = [region]
+        var codes = Set(package.countryCodes.compactMap(code))
+        if let identity = item.canonicalRegionIdentity, let canonical = code(identity.countryCode) { codes.insert(canonical) }
+        if let regionCode = code(region) { codes.insert(regionCode) }
+        if let regionCode = code(package.regionId) { codes.insert(regionCode) }
+        let key = geographicKey(region)
+        codes.formUnion(regionalCountries[key] ?? [])
+        // Region-level overrides take precedence over sovereign-country coverage.
+        let overrideGroups = regionalGroups[key]
+        if item.canonicalRegionIdentity == CanonicalMapRegionIdentity(countryCode: "UA", locality: "CRIMEA") {
+            codes = ["UA"]; terms = ["Crimea", "Ukraine", "UA"]
+        }
+        for country in codes {
+            terms.append(country)
+            terms.append(contentsOf: namesByCode[country] ?? [])
+        }
+        // Retain geographic ISO3 search such as DEU without indexing raw package IDs.
+        if package.regionId.count == 3, code(package.regionId) != nil { terms.append(package.regionId) }
+        let groups = overrideGroups ?? codes.reduce(into: Set<MapGeographyGroup>()) { $0.formUnion(groupsByCode[$1] ?? []) }
+        return (terms, groups.isEmpty ? [.other] : groups)
     }
 }

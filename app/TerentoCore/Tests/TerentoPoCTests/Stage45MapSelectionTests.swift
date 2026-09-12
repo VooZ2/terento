@@ -46,7 +46,10 @@ struct Stage45MapSelectionTests {
         testParentDeselectionInvalidatesOptionalSelection()
         testDuplicateArtifactDefinitionsAreRejected()
 
-        print("PASS: 36 Stage 4.5 map selection tests")
+        testCatalogGeographyIndex()
+        testCatalogFilterPerformance()
+        testBundledCatalogGeography()
+        print("PASS: 39 Stage 4.5 map selection tests")
     }
 
     private static func testCatalogRegionsProduceOneCanonicalList() {
@@ -842,13 +845,13 @@ struct Stage45MapSelectionTests {
             preflightStatuses: [crimea.id: .readyNewInstall],
             recommendedRegionID: nil
         )
-        let queries = ["Crimea", "Ukraine", "RUS-CRIMEA", "RUS_CRIMEA", "freizeitkarte-rus-crimea"]
+        let queries = ["Crimea", "Ukraine", "UA"]
         expect(
             items.first?.title == "Crimea"
                 && items.first?.acquisitionAvailability.detailedExplanation
                     == "Crimea is part of Ukraine and is temporarily occupied by russia."
                 && queries.allSatisfy { MapSelectionPresentationModel.available(items, query: $0).count == 1 },
-            "Crimea uses the policy title and is searchable by geographic and provider identities"
+            "Crimea uses the policy title and is searchable by geographic identities only"
         )
     }
 
@@ -1158,6 +1161,80 @@ struct Stage45MapSelectionTests {
         }
     }
 
+    private static func testCatalogGeographyIndex() {
+        let comparisons = [
+            makeComparison(id: "raw-secret-a", providerID: "maprando", region: "FRA", name: "France (IGN contours)", status: .notInstalled, countryCodes: ["FR"]),
+            makeComparison(id: "raw-secret-b", providerID: "bbbike", region: "MULTI", name: "Border region", status: .notInstalled, countryCodes: ["France", "JP"]),
+            makeComparison(id: "unknown", region: "UNKNOWN", name: "Unclassified region", status: .notInstalled),
+            makeComparison(id: "diacritic", region: "RE", name: "Réunion", status: .notInstalled, countryCodes: ["RE"])
+        ]
+        let items = MapSelectionPlanner().items(comparisons: comparisons, preflightStatuses: [:], recommendedRegionID: nil)
+        let index = MapCatalogPresentationIndex(items: items)
+        expect(index.filtered(query: " france  fr ").count == 2, "Country aliases combine with AND and whitespace normalization")
+        expect(index.filtered(query: "REUNION").map(\.id) == ["diacritic"], "Query and index share diacritic folding")
+        expect(["raw-secret", "maprando", "bbbike", "IGN", "contours"].allSatisfy { index.filtered(query: $0).isEmpty }, "Provider, raw identifiers and style are excluded from geographic search")
+        expect(index.filtered(query: "", geography: .asia).map(\.id) == ["raw-secret-b"], "Multi-country row belongs to every relevant geography")
+        expect(index.filtered(query: "", geography: .other).map(\.id) == ["unknown"], "Unknown geography remains available in Other")
+        expect(index.filtered(query: "France", providerID: "MAPRANDO").count == 1, "Provider and query filters intersect")
+        expect(index.geographyOptions.contains(.other), "Other is exposed when needed")
+        expect(!MapCatalogPresentationIndex(items: []).geographyOptions.contains(.other), "Other is hidden without unknown packages")
+        let reversed = MapCatalogPresentationIndex(items: items.reversed())
+        expect(index.filtered(query: "").map(\.id) == reversed.filtered(query: "").map(\.id), "Ordering is independent of input order")
+    }
+
+    private static func testBundledCatalogGeography() {
+        guard let path = ProcessInfo.processInfo.environment["TERENTO_TEST_CATALOG"],
+              let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
+              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let providers = root["providers"] as? [[String: Any]] else {
+            expect(false, "Bundled catalog must be provided to geography test"); return
+        }
+        var comparisons: [MapComparison] = []
+        for provider in providers {
+            for map in provider["maps"] as? [[String: Any]] ?? [] {
+                comparisons.append(makeComparison(id: map["id"] as? String,
+                    providerID: provider["id"] as! String, providerName: provider["name"] as! String,
+                    region: map["region"] as! String, name: map["name"] as! String,
+                    status: .notInstalled, identifier: map["identifier"] as? String, countryCodes: map["countryCodes"] as? [String] ?? (map["country"] as? String).map { [$0] } ?? []))
+            }
+        }
+        let items = MapSelectionPlanner().items(comparisons: comparisons, preflightStatuses: [:], recommendedRegionID: nil)
+        let index = MapCatalogPresentationIndex(items: items)
+        expect(items.count == comparisons.count, "Bundled geography audit retains every distinct provider package")
+        let unknown = index.filtered(query: "", geography: .other)
+        if !unknown.isEmpty { print("UNKNOWN GEOGRAPHY: \(unknown.map { $0.package.id + ": " + $0.title })") }
+        expect(unknown.isEmpty, "Every known bundled package has reviewed geography")
+        expect(index.filtered(query: "Canary", geography: .africa).count > 0, "Canary Islands follow geographic Africa")
+        expect(!index.filtered(query: "", geography: .europe).contains { $0.package.regionId == "RUSSIAASIANPART" }, "Asian russia extract is not categorized as Europe")
+        expect(!index.filtered(query: "", geography: .asia).contains { $0.package.regionId == "RUSSIAEUROPEANPART" }, "European russia extract is not categorized as Asia")
+    }
+
+    private static func testCatalogFilterPerformance() {
+        for count in [500, 1000, 2000] {
+            let providers = ["freizeitkarte", "opentopomap", "maprando", "bbbike"]
+            let comparisons = (0..<count).map { index in
+                makeComparison(id: "fixture-\(index)", providerID: providers[index % 4], region: "FR-\(index)", name: "France region \(index)", status: .notInstalled, countryCodes: ["FR"])
+            }
+            let items = MapSelectionPlanner().items(comparisons: comparisons, preflightStatuses: [:], recommendedRegionID: nil)
+            let index = MapCatalogPresentationIndex(items: items)
+            var durations: [Double] = []
+            var resultCount = 0
+            for iteration in 0..<105 {
+                let start = DispatchTime.now().uptimeNanoseconds
+                let rows = index.filtered(query: iteration.isMultiple(of: 2) ? "france region" : "no matching region", providerID: iteration.isMultiple(of: 3) ? "maprando" : "", geography: .europe)
+                resultCount += rows.count
+                let duration = Double(DispatchTime.now().uptimeNanoseconds - start) / 1_000_000
+                if iteration >= 5 { durations.append(duration) }
+            }
+            let p95 = durations.sorted()[94]
+            expect(resultCount > 0 && items.count == count, "Performance fixture retains \(count) rows across four providers")
+            print("PERF: \(count) rows filter p95 \(String(format: "%.3f", p95)) ms")
+            #if !DEBUG
+            expect(p95 < 16, "Filter p95 is below 16 ms")
+            #endif
+        }
+    }
+
     private static func makeComparison(
         id: String? = nil,
         providerID: String = "freizeitkarte",
@@ -1170,7 +1247,8 @@ struct Stage45MapSelectionTests {
         installSize: UInt64? = nil,
         identifier: String? = nil,
         includeInstallSize: Bool = true,
-        artifacts: [MapArtifact]? = nil
+        artifacts: [MapArtifact]? = nil,
+        countryCodes: [String] = []
     ) -> MapComparison {
         let package = MapPackage(
             id: id ?? "\(providerID)-\(region.lowercased())",
@@ -1183,6 +1261,7 @@ struct Stage45MapSelectionTests {
             releaseDate: nil,
             identifier: identifier,
             installSizeBytes: includeInstallSize ? (installSize ?? size) : nil,
+            countryCodes: countryCodes,
             artifacts: artifacts
         )
 

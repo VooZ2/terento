@@ -5,7 +5,7 @@ project_root="$(cd "$(dirname "$0")/.." && pwd)"
 build_dir="$(mktemp -d "${TMPDIR:-/tmp}/terento-stage45-map-selection-tests.XXXXXX")"
 binary_path="$build_dir/stage45-map-selection-tests"
 
-swiftc \
+swiftc -O \
     -module-name TerentoStage45MapSelectionTests \
     "$project_root/Sources/TerentoPoC/Models/MTPModels.swift" \
     "$project_root/Sources/TerentoPoC/Compatibility/DeviceIdentity.swift" \
@@ -30,7 +30,7 @@ swiftc \
     "$project_root/Tests/TerentoPoCTests/Stage45MapSelectionTests.swift" \
     -o "$binary_path"
 
-"$binary_path"
+TERENTO_TEST_CATALOG="$project_root/Sources/TerentoPoC/Resources/Maps/catalog.json" "$binary_path"
 
 if grep -Eq 'LibMTPBridge|MTPTransport|SendObject|DeleteObject|MoveObject|Rename' \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapSelectionPlanner.swift"; then
@@ -73,10 +73,10 @@ if [[ "$(grep -Fc 'MapSelectionStorageSummary(' "$connect_screen")" -lt 2 ]]; th
     exit 1
 fi
 
-if ! grep -Fq 'Text("Terento will install these maps to your Garmin. Existing Garmin maps will not be changed.")' "$connect_screen" \
+if grep -Fq 'Text("Terento will install these maps to your Garmin. Existing Garmin maps will not be changed.")' "$connect_screen" \
     || grep -Fq 'Terento will install the selected maps to your Garmin.' "$connect_screen" \
     || grep -Fq 'Existing Garmin system maps are left unchanged.' "$connect_screen"; then
-    print -u2 "FAIL: Review safety disclosure is missing"
+    print -u2 "FAIL: Review still repeats the installation explanation"
     exit 1
 fi
 
@@ -90,20 +90,22 @@ if grep -Fq 'Help improve Garmin compatibility' "$connect_screen" \
     exit 1
 fi
 
-if ! grep -Fq 'Terento sends privacy-minimised diagnostics by default to help improve the app and its services. You can turn this off anytime in Terento → Diagnostics.' "$connect_screen" \
-    || ! grep -Fq 'SecondaryButton(title: "Manage diagnostics")' "$connect_screen"; then
-    print -u2 "FAIL: Review/About diagnostics disclosure or settings entry point is missing"
+if ! grep -Fq 'Terento sends privacy-minimised diagnostics by default' "$project_root/Sources/TerentoPoC/Views/AboutTerentoView.swift" \
+    || ! grep -Fq 'AboutSecondaryButton(title: "Manage diagnostics")' "$project_root/Sources/TerentoPoC/Views/AboutTerentoView.swift"; then
+    print -u2 "FAIL: About diagnostics disclosure or settings entry point is missing"
     exit 1
 fi
 
-if ! grep -Fq 'else if let reason = installAvailability.userReason' "$connect_screen" \
+if ! grep -Fq 'if !plan.canContinue, let reason = installAvailability.userReason' "$connect_screen" \
     || grep -Fq 'else if plan.storagePlan.status == .blockedInsufficientSpace' "$connect_screen"; then
     print -u2 "FAIL: Review warning does not show the applicable disabled-install reason"
     exit 1
 fi
 
 if grep -Eiq 'community maps?' "$connect_screen" \
-    || ! grep -Fq 'title: "Available maps"' "$connect_screen"; then
+    || ! grep -Fq 'let count = filteredAvailableSelectionItems.count' "$connect_screen" \
+    || grep -Fq 'availableMapsExpanded' "$connect_screen" \
+    || grep -Fq 'title: "Available maps"' "$connect_screen"; then
     print -u2 "FAIL: primary map flow exposes origin terminology or hides the current source"
     exit 1
 fi
@@ -115,13 +117,13 @@ if grep -Fq 'installedMapsExpanded' "$connect_screen" \
     exit 1
 fi
 
-if ! grep -Fq 'return "No maps are available."' "$connect_screen" \
+if ! grep -Fq 'return selectedGeography == .all ? "No maps are available." : "No maps match these filters."' "$connect_screen" \
     || ! grep -Fq 'return "No maps are available from \(selectedMapProviderLabel)."' "$connect_screen" \
     || ! grep -Fq '.labelsHidden()' "$connect_screen" \
     || ! grep -Fq '.accessibilityLabel("Map provider")' "$connect_screen" \
     || grep -Fq 'Button("Manage maps")' "$connect_screen" \
     || ! grep -Fq 'baseDetail = "Already installed"' "$connect_screen" \
-    || ! grep -Fq 'return item.comparison.installedMap == nil' \
+    || ! grep -Fq '(!terms.isEmpty || row.item.comparison.installedMap == nil)' \
         "$project_root/Sources/TerentoPoC/MapCatalog/MapSelectionPresentation.swift"; then
     printf '%s\n' "FAIL: Install empty state or installed-search presentation is missing" >&2
     exit 1
@@ -137,8 +139,8 @@ if ! grep -Fq 'InstallReviewAvailabilityResolver' "$connect_screen" \
     || ! grep -Fq 'ReadyToInstallSelectedMapsHeader(count: plan.selectedItems.count)' "$connect_screen" \
     || ! grep -Fq 'ReadyToInstallSelectedMapsList(plan: plan)' "$connect_screen" \
     || ! grep -Fq 'private static let visibleRowCapacity = 3' "$connect_screen" \
-    || ! grep -Fq 'idealHeight: Self.maximumListHeight' "$connect_screen" \
-    || ! grep -Fq 'Spacer(minLength: TerentoPageLayout.sectionSpacing)' "$connect_screen"; then
+    || ! grep -Fq 'idealHeight: visibleListHeight' "$connect_screen" \
+    || ! grep -Fq 'VStack(spacing: TerentoPageLayout.sectionSpacing + 18)' "$connect_screen"; then
     print -u2 "FAIL: Review CTA or content-aware selected-map sizing is missing"
     exit 1
 fi

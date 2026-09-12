@@ -5,9 +5,9 @@ project_root="$(cd "$(dirname "$0")/.." && pwd)"
 connect_screen="$project_root/Sources/TerentoPoC/Views/ConnectScreen.swift"
 map_models="$project_root/Sources/TerentoPoC/MapCatalog/MapModels.swift"
 
-if [[ "$(grep -Fc 'TerentoDisclosureIndicator(isExpanded:' "$connect_screen")" -lt 2 ]] \
+if [[ "$(grep -Fc 'TerentoDisclosureIndicator(isExpanded:' "$connect_screen")" -lt 1 ]] \
     || ! grep -Fq 'alignment: .center' "$connect_screen"; then
-    print -u2 "FAIL: Available maps and Import do not share the aligned disclosure indicator"
+    print -u2 "FAIL: Custom import lost its aligned disclosure indicator"
     exit 1
 fi
 

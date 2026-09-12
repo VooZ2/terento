@@ -26,10 +26,12 @@ if grep -Fq 'compatibilitySharingBinding' "$connect_screen" \
     exit 1
 fi
 
-if ! grep -Fq 'Terento sends privacy-minimised diagnostics by default to help improve the app and its services. You can turn this off anytime in Terento → Diagnostics.' "$connect_screen" \
+if ! grep -Fq 'Terento sends privacy-minimised diagnostics by default' "$about" \
+    || ! grep -Fq 'Both diagnostics streams are enabled by default.' "$repo_root/app/TerentoCore/Sources/TerentoPoC/Views/DiagnosticsView.swift" \
+    || grep -Fq 'Terento sends privacy-minimised diagnostics by default' "$connect_screen" \
     || grep -Fq 'Help improve Garmin compatibility' "$connect_screen" \
     || grep -Fq 'Share anonymous map statistics' "$connect_screen"; then
-    print -u2 "FAIL: Ready diagnostics disclosure is missing or still exposes old copy"
+    print -u2 "FAIL: About/Diagnostics disclosure is missing or Ready duplicates it"
     exit 1
 fi
 
@@ -42,7 +44,7 @@ if grep -Fq 'Compatibility reports are up to date.' "$connect_screen" \
     exit 1
 fi
 
-if ! grep -Fq 'Install maps on Garmin watches, simply.' "$connect_screen" \
+if ! grep -Fq 'Install maps on Garmin watches, simply.' "$about" \
     || grep -Fq 'TerentoAppMetadata.description' "$connect_screen" \
     || grep -Fq 'TerentoAppMetadata.description' "$about"; then
     print -u2 "FAIL: About does not use the concise installation tagline"

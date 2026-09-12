@@ -26,7 +26,8 @@ architecture, safety, documentation, and delivery.
 The current native macOS experience is intentionally calm and outcome-first.
 Preserve the existing SwiftUI structure and workflow:
 
-- sidebar navigation: `Device`, `Install maps`, `Manage maps`, `About`;
+- sidebar navigation: `Device`, `Install maps`, `Manage maps`;
+- one complete About window via `Terento → About Terento`;
 - the current connect, install, manage, update, troubleshooting, and About
   journeys;
 - the established hierarchy, density, proportions, neutral surfaces,

@@ -521,12 +521,57 @@ private func testIncompleteCustomRecovery() throws {
     try require(!blocked.allows(.remove), "filename without manifest or recovery proof never enables Remove")
 }
 
+private func testManageInventorySearch() throws {
+    func item(_ id: String, title: String = "Germany", provider: String? = nil,
+              source: MapSourceKind = .provider, classification: MapLifecycleClassification = .terentoManaged) -> MapLifecycleItem {
+        MapLifecycleItem(id: id, title: title, sourceKind: source, provider: provider, region: provider == nil || classification == .system ? nil : "DEU",
+            version: installedVersion, rawVersion: "Release 26.05", sizeBytes: 100,
+            installedMaps: [installedMap()], classification: classification)
+    }
+    let fzk = item("fzk", provider: "Freizeitkarte")
+    let otm = item("otm", provider: "OpenTopoMap")
+    let custom = item("custom", title: "My RÉUNION trip.img", source: .custom)
+    let external = item("external", provider: "MapRando", classification: .externalRecognized)
+    let unknown = item("unknown", title: "Unknown map", source: .custom, classification: .ambiguous)
+    let system = item("system", title: "Time zone map", provider: "Garmin", classification: .system)
+    let inventory = MapLifecycleInventory(providerGroups: [
+        MapLifecycleProviderGroup(id: "fzk-group", providerId: "freizeitkarte", title: "Freizeitkarte", items: [fzk]),
+        MapLifecycleProviderGroup(id: "otm-group", providerId: "opentopomap", title: "OpenTopoMap", items: [otm])
+    ], otherMaps: [custom, external, unknown, system])
+    let index = MapInventoryListPresentationIndex(inventory: inventory)
+    try require(index.filtered(query: "") == inventory, "All preserves custom, external, system and unknown inventory exactly")
+    try require(index.providerOptions.map(\.id) == ["freizeitkarte", "maprando", "opentopomap"], "Menu combines installed groups and recognized external providers only")
+    let duplicate = index.filtered(query: "germany DEU")
+    try require(duplicate.providerGroups.count == 2 && duplicate.otherMaps == [external], "Same region from multiple providers remains distinct")
+    let single = index.filtered(query: "germany", providerID: "OpenTopoMap")
+    try require(single.providerGroups.count == 1 && single.providerGroups[0].items == [otm] && single.otherMaps.isEmpty,
+        "Provider selection retains exact item and original group identity")
+    try require(index.filtered(query: "Germany", providerID: "MapRando").otherMaps == [external], "External provider filtering preserves external classification")
+    try require(index.filtered(query: " reunion  trip ").otherMaps == [custom], "Custom display label supports folded multiword search")
+    for term in ["Freizeitkarte", "26.05", ".img", "terento_freizeitkarte_deu"] {
+        let result = index.filtered(query: term)
+        try require(result.providerGroups.isEmpty && result.otherMaps.isEmpty, "Search excludes non-geographic metadata: \(term)")
+    }
+    let empty = index.filtered(query: "no such region")
+    try require(empty.providerGroups.isEmpty && empty.otherMaps.isEmpty, "No matches produces empty inventory without invented groups")
+    try require(index.filtered(query: "").otherMaps.last?.classification == .system, "Filtering never rewrites safety classification")
+    let replaced = MapInventoryListPresentationIndex(inventory: MapLifecycleInventory(providerGroups: [], otherMaps: [custom]))
+    try require(replaced.providerOptions.isEmpty && replaced.filtered(query: "").otherMaps == [custom], "New inventory snapshot drops removed rows and stale provider options")
+    let decorated = item("decorated", title: "Freizeitkarte Germany IGN contours Release 26.05", provider: "Freizeitkarte")
+    let decoratedIndex = MapInventoryListPresentationIndex(inventory: MapLifecycleInventory(providerGroups: [], otherMaps: [decorated]))
+    try require(decoratedIndex.filtered(query: "Germany").otherMaps == [decorated]
+        && decoratedIndex.filtered(query: "IGN").otherMaps.isEmpty
+        && decoratedIndex.filtered(query: "Freizeitkarte").otherMaps.isEmpty,
+        "Provider and style decoration is not searchable while geography stays visible")
+}
+
 @main
 private struct MapLifecyclePresentationTestRunner {
     static func main() {
         do {
             try runMapLifecyclePresentationTests()
             try testIncompleteCustomRecovery()
+            try testManageInventorySearch()
             print("PASS: \(passed) Stage 5 UI lifecycle presentation tests")
         } catch {
             print("FAIL: \(error)")
