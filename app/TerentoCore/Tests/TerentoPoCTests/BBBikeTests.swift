@@ -148,8 +148,21 @@ private struct PrefixReader: DeviceFileReader {
                     installedMaps: [], inspectedFiles: [InstalledMapFile(path: siblingFile.path, filename: siblingFile.filename, sizeBytes: siblingFile.sizeBytes, itemID: siblingFile.itemID)], availableStorage: 16 << 30, profile: profile)
                 check(!preflight.isReady && preflight.status == .blockedMapTypeConflict
                     && preflight.status.userLabel.contains("already installed")
-                    && preflight.userNote.contains("Manage maps"),
+                    && preflight.userNote.contains("needs review")
+                    && !preflight.userNote.contains("Manage maps"),
                     "preflight identifies installed sibling conflict with an actionable explanation")
+                let ownedSibling = InstalledMap(name: sibling.name, provider: sibling.providerId, region: sibling.canonicalRegionId,
+                    family: nil, rawVersion: sibling.version.description, version: sibling.version, identifier: nil,
+                    productId: nil, familyId: nil, sizeBytes: siblingFile.sizeBytes,
+                    sourceFile: InstalledMapFile(path: siblingFile.path, filename: siblingFile.filename, sizeBytes: siblingFile.sizeBytes, itemID: siblingFile.itemID),
+                    metadataStatus: .parsed, managementState: .managedByTerento)
+                let ownedPreflight = InstallationPreflightEngine().evaluate(identity: identity, selectedMap: package, comparison: comparison,
+                    installedMaps: [ownedSibling], inspectedFiles: [ownedSibling.sourceFile], availableStorage: 16 << 30, profile: profile)
+                check(!ownedPreflight.isReady && ownedPreflight.userNote == BBBikeProviderAdapter.installedTypeConflictMessage(for: package),
+                    "proven owned sibling preserves exact named Manage removal instruction")
+                let rows = MapSelectionPlanner().items(comparisons: [comparison], preflightStatuses: [comparison.id: preflight.status],
+                    recommendedRegionID: nil, preflightReasons: [comparison.id: preflight.reason])
+                check(rows.first?.preflightReason == preflight.userNote, "unverified conflict reason reaches selection row without inferred ownership")
                 let prefix = try MapPackageFormat.readPrefix(from: artifact.localIMGURL, maxLength: GarminIMGMetadataParser.prefixLength)
                 let file = DeviceFile(itemID: 101, parentID: 1, storageID: 1, path: "/GARMIN/" + artifact.targetFilename,
                     filename: artifact.targetFilename, sizeBytes: artifact.installSizeBytes, isFolder: false)

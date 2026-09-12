@@ -18,6 +18,8 @@ swiftc \
     "$project_root/Sources/TerentoPoC/MapCatalog/InstalledMap.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapOwnership.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapComparison.swift" \
+    "$project_root/Sources/TerentoPoC/MapCatalog/MapPresentation.swift" \
+    "$project_root/Sources/TerentoPoC/MapCatalog/MapSelectionPlanner.swift" \
     "$project_root/Sources/TerentoPoC/Installation/InstallationSafetyModels.swift" \
     "$project_root/Sources/TerentoPoC/Installation/StoragePlanner.swift" \
     "$project_root/Sources/TerentoPoC/Installation/InstallProfile.swift" \

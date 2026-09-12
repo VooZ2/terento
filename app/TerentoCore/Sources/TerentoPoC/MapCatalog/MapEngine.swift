@@ -739,6 +739,7 @@ final class MapEngine: ObservableObject {
 
         let preflightEngine = InstallationPreflightEngine()
         var preflightStatuses: [String: InstallationPreflightStatus] = [:]
+        var preflightReasons: [String: String] = [:]
         let profile = DeviceInstallProfileRegistry.local.profile(
             for: identity,
             deviceFiles: inventory.deviceFiles
@@ -755,6 +756,7 @@ final class MapEngine: ObservableObject {
                 profile: profile
             )
             preflightStatuses[comparison.id] = preflight.status
+            preflightReasons[comparison.id] = preflight.reason
         }
 
         let recommendedRegionID = MapRegionRecommendation.regionID(
@@ -765,7 +767,8 @@ final class MapEngine: ObservableObject {
         return MapSelectionPlanner().items(
             comparisons: inventory.comparisons,
             preflightStatuses: preflightStatuses,
-            recommendedRegionID: recommendedRegionID
+            recommendedRegionID: recommendedRegionID,
+            preflightReasons: preflightReasons
         )
     }
 
@@ -1122,7 +1125,7 @@ final class MapEngine: ObservableObject {
                 || existingFiles.contains { BBBikeProviderAdapter.conflicts(package, filename: $0.filename) }
         })
         if BBBikeProviderAdapter.selectionConflicts(selectedPackages) || installedTypeConflict != nil {
-            installationErrorMessage = installedTypeConflict.map { BBBikeProviderAdapter.installedTypeConflictMessage(for: $0) }
+            installationErrorMessage = installedTypeConflict.map { BBBikeProviderAdapter.typeConflictMessage(for: $0, installedMaps: existingMaps, inspectedFiles: existingFiles) }
                 ?? BBBikeProviderAdapter.coexistenceReason
             installationPhase = .failed
             state = .failed

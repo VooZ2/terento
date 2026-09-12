@@ -92,12 +92,19 @@ are outside the current public scope.
 
 ## Download and beta status
 
-Beta.11 adds MapRando as a third catalog provider, improves repeated-session
-recovery, and opens GitHub issue reports with a compact prefilled diagnostic
-body. Install and Remove behavior remains unchanged.
+**Release preparation — not published:** beta.12 build28 is the public release candidate in this
+working tree. A separate build32-local may be used for local hardware testing;
+it is not the public build number. The update-manifest checksum is temporarily
+zero until the signed public build28 artifact is verified. The currently published build remains beta.11 build27.
 
-The latest public release is **beta.11 (build 27)**. The macOS app is notarized
-and does not require Homebrew.
+Beta.12 adds BBBike and BBBike (Ontrail) maps, continent filtering, clearer
+country and region names, a larger catalog window, faster Install Maps
+filtering, and filters in Manage Maps.
+
+Staged release copy for publication:
+
+> The latest public release is **beta.12 (build 28)**. The macOS app is notarized
+> and does not require Homebrew.
 
 **[Download Terento](https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_download)**
 
@@ -118,7 +125,9 @@ The current catalog includes main-map packages from
 [Freizeitkarte](https://www.freizeitkarte-osm.de/),
 [OpenTopoMap](https://garmin.opentopomap.org/), and
 [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), based on OpenStreetMap
-data.
+data. The beta.12 candidate adds [BBBike](https://data.bbbike.org/osm/region/)
+as a fourth provider with two independent map types: BBBike and BBBike (Ontrail).
+Only the ready Garmin latin1 regional packages are included.
 Maps download from each provider's original infrastructure; Terento does not
 host, mirror, or repackage them.
 

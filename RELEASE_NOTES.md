@@ -1,22 +1,24 @@
-# Terento v1.0.0-beta.11
+# Terento v1.0.0-beta.12 (build 28)
 
-<!-- Public DMG SHA-256: ffa62491b55355ff5843f4a8780856cc0ba0506a69e99813453529c51d6a5ee5 -->
+<!-- Public DMG SHA-256: 0000000000000000000000000000000000000000000000000000000000000000 -->
+<!-- Release preparation: placeholder checksum; replace after signing before publication. -->
+
+BBBike joins Freizeitkarte, OpenTopoMap, and MapRando as the fourth provider, with BBBike and BBBike (Ontrail) as two separate map types.
 
 ## What's new?
 
-- MapRando is now available as the third catalog provider alongside Freizeitkarte and OpenTopoMap through the beta.11 API.
-- Manage Maps keeps the provider's map version/date and installed size visible.
-- GitHub issue reports open with the reviewed diagnostic title and body already filled in.
+- Added BBBike and BBBike (Ontrail) maps.
+- Added continent filtering.
 
-## Fixed
+## Improvements
 
-- Build 27 improves Garmin connection recovery after map operations and addresses sampled verification failures observed on fēnix 8. The owner completed MapRando Andorra and France installations with the local candidate.
-- Install maps reuses catalog presentation data to reduce repeated work during search, scrolling, and provider filtering.
-
-- Build 22 fixes Finishing stopping after two minutes while map verification was still progressing. Verification now allows continued progress, with a timeout for inactivity and a bounded overall duration.
-
-- MapRando map packages now pass the correct raw IMG validation path before installation.
+- Clearer country and region names in Install Maps and Manage Maps.
+- Enlarged the map catalog window.
+- Improved Install Maps performance and filtering.
+- Added filters to Manage Maps.
 
 ## Known issues
+
+- The map update feature has not been tested yet.
 
 - Intermittent MTP/session failures can still stop an installation during Finishing; use Report issue to share the prefilled diagnostic report.

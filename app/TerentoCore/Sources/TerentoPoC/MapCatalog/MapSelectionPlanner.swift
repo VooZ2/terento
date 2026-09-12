@@ -27,6 +27,7 @@ struct MapSelectionItem: Identifiable, Equatable, Sendable {
     let acquisitionAvailability: MapAcquisitionAvailability
     let preflightStatus: InstallationPreflightStatus?
     let isRecommended: Bool
+    var preflightReason: String? = nil
 
     var title: String {
         displayName
@@ -202,7 +203,8 @@ struct MapSelectionPlanner: Sendable {
         comparisons: [MapComparison],
         preflightStatuses: [String: InstallationPreflightStatus],
         recommendedRegionID: String?,
-        providerIDs: Set<String>? = nil
+        providerIDs: Set<String>? = nil,
+        preflightReasons: [String: String] = [:]
     ) -> [MapSelectionItem] {
         var uniqueComparisons: [String: MapComparison] = [:]
         let normalizedProviderIDs = providerIDs.map {
@@ -258,7 +260,8 @@ struct MapSelectionPlanner: Sendable {
                     isRecommended: recommendedRegionID.map {
                         MapIdentity.normalizeRegion(comparison.catalogMap.regionId)
                             == MapIdentity.normalizeRegion($0)
-                    } ?? false
+                    } ?? false,
+                    preflightReason: preflightReasons[comparison.id]
                 )
             }
             .sorted { lhs, rhs in

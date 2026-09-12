@@ -1085,10 +1085,12 @@ struct Stage41AcquisitionTests {
             let grouped = Dictionary(grouping: packages, by: resolver.availability(for:))
             let crimea = grouped[.withheldCrimea]?.first
             expect(
-                packages.count == 240
+                packages.count == 1160
                     && packages.filter { $0.providerId == "freizeitkarte" }.count == 63
                     && packages.filter { $0.providerId == "opentopomap" }.count == 177
-                    && grouped[.available]?.count == 231
+                    && packages.filter { $0.providerId == "maprando" }.count == 160
+                    && packages.filter { $0.providerId == "bbbike" }.count == 760
+                    && grouped[.available]?.count == 1151
                     && grouped[.withheldRussia]?.count == 8
                     && grouped[.withheldCrimea]?.count == 1
                     && packages
@@ -1100,10 +1102,10 @@ struct Stage41AcquisitionTests {
                             resolver.availability(for: $0) == .available
                         } == true
                     },
-                "bundled catalog preserves 63 FZK plus 177 OTM packages while policy withholds russia packages and Crimea"
+                "bundled catalog preserves all four providers while policy withholds russia packages and Crimea"
             )
         } catch {
-            expect(false, "bundled catalog preserves 63 FZK plus 177 OTM packages while policy withholds russia packages and Crimea")
+            expect(false, "bundled catalog preserves all four providers while policy withholds russia packages and Crimea")
         }
     }
 

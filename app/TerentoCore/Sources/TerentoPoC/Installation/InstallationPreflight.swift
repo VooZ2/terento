@@ -76,7 +76,7 @@ struct InstallationPreflightResult: Equatable, Sendable {
         case .blockedAmbiguousMapIdentity:
             return "An existing map could not be identified safely."
         case .blockedMapTypeConflict:
-            return BBBikeProviderAdapter.installedTypeConflictMessage(for: selectedMap)
+            return reason
         case .blockedUnsupportedDevice:
             return "This device has no validated Terento installation profile."
         case .error:
@@ -151,7 +151,7 @@ struct InstallationPreflightEngine: Sendable {
             || inspectedFiles.contains(where: { BBBikeProviderAdapter.conflicts(selectedMap, filename: $0.filename) }) {
             return blocked(selectedMap: selectedMap, installedMatch: installedMatch, ownership: ownership,
                 comparisonStatus: comparison.status, status: .blockedMapTypeConflict,
-                installTarget: profile.targetDirectory, reason: BBBikeProviderAdapter.installedTypeConflictMessage(for: selectedMap))
+                installTarget: profile.targetDirectory, reason: BBBikeProviderAdapter.typeConflictMessage(for: selectedMap, installedMaps: installedMaps, inspectedFiles: inspectedFiles))
         }
         let proposedFilename: String
         do {
@@ -371,5 +371,19 @@ private struct CommonPreflightValues: Sendable {
             proposedFilename: proposedFilename,
             storagePlan: storagePlan
         )
+    }
+}
+
+// Ownership-aware copy belongs at the inventory/preflight boundary.
+extension BBBikeProviderAdapter {
+    static func typeConflictMessage(for package: MapPackage, installedMaps: [InstalledMap], inspectedFiles: [InstalledMapFile]) -> String {
+        let matches = installedMaps.filter { conflicts(package, provider: $0.provider, region: $0.region) }
+        let owned = matches.filter { $0.managementState == .managedByTerento }
+        let unverifiedFile = inspectedFiles.contains { file in
+            conflicts(package, filename: file.filename) && !owned.contains { $0.sourceFile == file }
+        }
+        return !owned.isEmpty && matches.allSatisfy { $0.managementState == .managedByTerento } && !unverifiedFile
+            ? installedTypeConflictMessage(for: package)
+            : unverifiedTypeConflictMessage(for: package)
     }
 }

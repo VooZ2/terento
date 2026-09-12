@@ -4828,7 +4828,7 @@ struct MapSelectionRow: View {
                     case .blockedAmbiguousMapIdentity:
                         baseDetail = "Map identity needs to be checked before installation"
                     case .blockedMapTypeConflict:
-                        baseDetail = BBBikeProviderAdapter.installedTypeConflictMessage(for: item.package)
+                        baseDetail = item.preflightReason ?? BBBikeProviderAdapter.unverifiedTypeConflictMessage(for: item.package)
                     case .blockedInsufficientSpace:
                         baseDetail = "Not enough space for a safe installation"
                     case .blockedUnknownInstallSize:

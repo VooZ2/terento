@@ -55,7 +55,8 @@ for (const [, asset] of screenshotPaths) {
 }
 
 const notes = read("RELEASE_NOTES.md");
-assert.match(notes, new RegExp(`^# Terento v${label}$`, "m"));
+assert.equal(notes.split(/\r?\n/, 1)[0], `# Terento v${label} (build ${release.build})`,
+  "release-note title must match the exact manifest release label and public build");
 assert.ok(notes.includes(release.sha256), "release notes must contain the manifest DMG SHA-256");
 assert.equal(
   release.downloadURL,
