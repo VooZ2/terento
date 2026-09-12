@@ -40,3 +40,23 @@ monotonically. Human-readable beta labels such as `1.0.0-beta.7` do not replace
 the build-number requirement. The release manifest must carry the matching
 version/build, public release label, update channel, minimum macOS, canonical
 DMG URL, concise summary, and trusted full release-notes URL.
+
+## Verified release source
+
+New public builds must be packaged from a clean, GitHub-verified signed commit
+already merged into beta. Use the actual verified merge commit, not an unsigned
+PR head with an equivalent tree. `Packaging/release.sh` enforces this through
+`Packaging/verify-github-release-source.py` before building or contacting Apple;
+`--no-notarize` remains available for undistributed local validation.
+
+Create the new lightweight release tag at that exact packaged commit. Before
+publishing the draft release, verify the remote tag still resolves directly to
+that SHA and GitHub still reports its commit signature as valid. Do not create
+an unsigned annotated tag around it. Record the source SHA with the artifact
+checksums in the release receipt. GitHub signature verification is separate
+from Apple Developer ID signing/notarization and immutable release attestations.
+
+Existing unsigned releases cannot acquire a commit signature without changing
+source identity. Preserve historical tags and assets; never delete/recreate a
+release or disable immutability to obtain a badge. GitHub also prevents reuse of
+an immutable release's tag name after deletion.
