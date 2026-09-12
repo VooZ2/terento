@@ -846,6 +846,33 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn(".dmg</span>", body)
         self.assertIn(".zip</span>", body)
 
+    def test_download_chart_stacks_file_types_in_one_installation_style_bar(self):
+        import xml.etree.ElementTree as ET
+
+        body = _overview_downloads_chart({
+            "hasData": True,
+            "trend": [{
+                "bucket": "2026-09-11T20:00:00Z",
+                "dmg_count": 2,
+                "zip_count": 2,
+            }],
+        })
+        svg = ET.fromstring(body[body.index("<svg"):body.index("</svg>") + 6])
+        bars = svg.findall("g/rect")
+        self.assertEqual(len(bars), 2)
+        self.assertEqual(bars[0].attrib["x"], bars[1].attrib["x"])
+        self.assertAlmostEqual(
+            float(bars[1].attrib["y"]) + float(bars[1].attrib["height"]),
+            float(bars[0].attrib["y"]),
+            places=1,
+        )
+        self.assertAlmostEqual(
+            sum(float(bar.attrib["height"]) for bar in bars),
+            206 * 4 / 5,
+            places=1,
+        )
+        self.assertIn("<clipPath id='overview-download-bar-clip-0'>", body)
+
     def test_download_chart_uses_selected_period_bucket_and_label(self):
         body = _overview_downloads_chart({
             "hasData": True,

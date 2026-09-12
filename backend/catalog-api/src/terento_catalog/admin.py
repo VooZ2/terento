@@ -1291,7 +1291,7 @@ def _overview_downloads_chart(
             except (TypeError, ValueError):
                 counts.append(0)
         values.append(tuple(counts))
-    maximum = max((max(series) for series in values), default=1) or 1
+    maximum = max((sum(series) for series in values), default=1) or 1
     scale_maximum = max(4, math.ceil(maximum * 1.2))
     chart_width, chart_height = (360, 220) if _compact else (720, 260)
     left, top, bottom = 38, 20, 34
@@ -1315,15 +1315,20 @@ def _overview_downloads_chart(
     )
     for index, (counts, item) in enumerate(zip(values, trend)):
         center = left + (index + 0.5) * slot
-        bar_width = min(12, max(4, slot * 0.28))
-        gap = min(3, max(1, slot * 0.06))
-        group_width = bar_width * 2 + gap
-        for series_index, ((label, css_class), count) in enumerate(zip(series, counts)):
+        bar_width = min(44, slot * 0.58)
+        x = center - bar_width / 2
+        y = top + plot_height
+        clip_id = f"overview-download-bar-clip-{'mobile-' if _compact else ''}{index}"
+        bars.append(
+            f"<defs><clipPath id='{clip_id}'><rect x='{x:.1f}' "
+            f"y='{top:.1f}' width='{bar_width:.1f}' height='{plot_height:.1f}' rx='3'></rect></clipPath></defs>"
+            f"<g clip-path='url(#{clip_id})'>"
+        )
+        for (label, css_class), count in zip(series, counts):
             if count == 0:
                 continue
             height = plot_height * count / scale_maximum
-            x = center - group_width / 2 + series_index * (bar_width + gap)
-            y = top + plot_height - height
+            y -= height
             title = (
                 f"{label}: {count} · "
                 f"{_overview_chart_bucket_label(item.get('bucket'), chart_bucket, time_zone)} · {time_zone}"
@@ -1334,6 +1339,7 @@ def _overview_downloads_chart(
                 f"aria-label='{html.escape(title, quote=True)}'>"
                 f"<title>{html.escape(title)}</title></rect>"
             )
+        bars.append("</g>")
         label_step = max(1, round((len(values) - 1) / 11))
         show_label = len(values) <= 12 or index % label_step == 0 or index == len(values) - 1
         if _compact:
