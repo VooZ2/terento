@@ -28,7 +28,7 @@
       notify(code);
       if (focus) {
         const box = path.getBBox();
-        map.fitBounds([[height - box.y - box.height, box.x], [height - box.y, box.x + box.width]], {padding: [40, 40], maxZoom: 3});
+        map.fitBounds([[height - box.y - box.height, box.x], [height - box.y, box.x + box.width]], {padding: [40, 40], maxZoom: 3, animate: false});
       }
     };
     paths.forEach((path, code) => {
