@@ -5,8 +5,8 @@ project_root="$(cd "$(dirname "$0")/.." && pwd)"
 connect_screen="$project_root/Sources/TerentoPoC/Views/ConnectScreen.swift"
 
 control_group="$(awk '
-    /if availableMapsExpanded \{/ { capture = 1 }
-    /\.accessibilityValue\("\\\(filteredAvailableSelectionItems.count\) results"\)/ { if (capture) { print; exit } }
+    /private var catalogToolbar/ { capture = 1 }
+    /private var catalogSelectionNotice/ { capture = 0 }
     capture { print }
 ' "$connect_screen")"
 
@@ -28,13 +28,24 @@ reject_group_text() {
     fi
 }
 
-require_group_text 'HStack(spacing: 10)' 'provider and search are not one compact group'
-require_group_text '.frame(minWidth: 160, idealWidth: 168, maxWidth: 175, alignment: .leading)' 'provider picker is not compact and readable'
-require_group_text '.layoutPriority(1)' 'search is not configured to shrink before the picker'
-require_group_text '.frame(minWidth: 190, idealWidth: 290, maxWidth: 300)' 'search width is not wider and responsive'
-require_group_text '.pickerStyle(.menu)' 'native provider picker changed'
+require_group_text 'ViewThatFits(in: .horizontal)' 'toolbar does not adapt to available width'
+require_group_text 'HStack(spacing: 10)' 'wide toolbar does not preserve compact spacing'
+require_group_text 'VStack(alignment: .leading, spacing: 10)' 'narrow toolbar does not move search above menus'
+require_group_text 'catalogSearchField' 'responsive toolbar has no search'
+require_group_text 'catalogFilterMenus' 'responsive toolbar has no filters'
+require_group_text '.frame(minWidth: 240, maxWidth: .infinity)' 'search has no usable minimum or flexible width'
+require_group_text '.frame(width: 190)' 'geography menu width changed'
+require_group_text '.frame(width: 175)' 'provider menu width changed'
+require_group_text '.fixedSize(horizontal: true, vertical: false)' 'filter menus can collapse before toolbar wraps'
+require_group_text '.pickerStyle(.menu)' 'native picker changed'
 require_group_text '.textFieldStyle(.roundedBorder)' 'native search field changed'
-reject_group_text '.frame(minWidth: 377, idealWidth: 477, maxWidth: 546, alignment: .trailing)' 'independent flexible group frame remains'
-reject_group_text 'Spacer(' 'an expanding spacer exists inside the provider/search group'
+require_group_text '.accessibilityLabel("Map provider")' 'provider lacks distinct accessible label'
+require_group_text '.accessibilityLabel("Geographic region")' 'geography lacks distinct accessible label'
+require_group_text '.accessibilityLabel("Search countries and regions")' 'search scope is not announced'
+require_group_text '.accessibilityLabel("Clear search")' 'search clear lacks its own accessible label'
+require_group_text '.focused($mapSearchFieldFocused)' 'search focus binding was removed'
+require_group_text 'mapSearchFieldFocused = true' 'clearing search does not retain focus'
+reject_group_text '.accessibilityLabel("Search available maps")' 'container still overrides child control labels'
+reject_group_text 'Spacer(' 'expanding spacer exists inside the filter/search group'
 
-print 'PASS: Install maps provider/search micro-polish contract'
+print 'PASS: responsive catalog toolbar and distinct accessible native controls'

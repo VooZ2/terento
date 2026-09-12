@@ -68,8 +68,8 @@ struct TerentoPoCApp: App {
         Window("About Terento", id: "about") {
             AboutTerentoView(appUpdateController: appUpdateController)
         }
-        .defaultSize(width: 420, height: 330)
-        .windowResizability(.contentSize)
+        .defaultSize(width: 560, height: 580)
+        .windowResizability(.automatic)
         .windowStyle(.titleBar)
         Window("Diagnostics", id: "diagnostics") {
             DiagnosticsView(
@@ -88,44 +88,45 @@ struct TerentoPoCApp: App {
 }
 
 /// SwiftUI's defaultSize is only consulted when macOS has no restored frame.
-/// A one-time geometry migration clears the oversized frame left by the
-/// earlier prototype while preserving later user resizing and navigation.
+/// A one-time migration grows the catalog workspace within its screen,
+/// while preserving larger restored frames and later user resizing.
 private struct TerentoWindowConfigurator: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
         DispatchQueue.main.async {
             guard let window = view.window else { return }
 
-            window.minSize = NSSize(
-                width: TerentoWindowPresentation.minimumWidth,
-                height: TerentoWindowPresentation.minimumHeight
-            )
-
-            let migrationKey = "Terento.windowGeometry.v2"
-            if UserDefaults.standard.bool(forKey: migrationKey) {
-                // Give existing installations the taller catalog once, keeping
-                // the user's width and any already-taller window intact.
-                let catalogHeightKey = "Terento.windowGeometry.catalogHeight.v3"
-                guard !UserDefaults.standard.bool(forKey: catalogHeightKey) else { return }
-                let contentSize = window.contentRect(forFrameRect: window.frame).size
-                if contentSize.height < TerentoWindowPresentation.defaultHeight {
-                    window.setContentSize(NSSize(
-                        width: contentSize.width,
-                        height: TerentoWindowPresentation.defaultHeight
-                    ))
-                }
-                UserDefaults.standard.set(true, forKey: catalogHeightKey)
-                return
-            }
-
-            window.setContentSize(
-                NSSize(
-                    width: TerentoWindowPresentation.defaultWidth,
-                    height: TerentoWindowPresentation.defaultHeight
+            let visibleFrame = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? window.frame
+            let minimumFrame = window.frameRect(forContentRect: NSRect(
+                origin: .zero,
+                size: NSSize(
+                    width: TerentoWindowPresentation.minimumWidth,
+                    height: TerentoWindowPresentation.minimumHeight
                 )
+            ))
+            window.minSize = NSSize(
+                width: min(minimumFrame.width, visibleFrame.width),
+                height: min(minimumFrame.height, visibleFrame.height)
             )
-            window.center()
+
+            // Supersedes v2's reset and v3's height-only migration. Grow both
+            // dimensions once, retaining larger restored frames and later
+            // manual resizing. Reopening or changing pages never resizes.
+            let migrationKey = "Terento.windowGeometry.catalog.v4"
+            guard !UserDefaults.standard.bool(forKey: migrationKey) else { return }
+            let currentContent = window.contentRect(forFrameRect: window.frame)
+            let desiredContent = NSRect(origin: .zero, size: NSSize(
+                width: max(currentContent.width, TerentoWindowPresentation.defaultWidth),
+                height: max(currentContent.height, TerentoWindowPresentation.defaultHeight)
+            ))
+            let desiredFrame = window.frameRect(forContentRect: desiredContent)
+            window.setFrame(TerentoWindowFrameLayout.fittedFrame(
+                current: window.frame,
+                desiredSize: desiredFrame.size,
+                visibleFrame: visibleFrame
+            ), display: true)
             UserDefaults.standard.set(true, forKey: migrationKey)
+            UserDefaults.standard.set(true, forKey: "Terento.windowGeometry.v2")
             UserDefaults.standard.set(true, forKey: "Terento.windowGeometry.catalogHeight.v3")
         }
         return view

@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 /// One page-level geometry contract for every primary Terento screen.
@@ -24,8 +25,8 @@ enum TerentoPageLayout: Sendable {
 /// remains freely resizable; these values only describe the fresh-launch
 /// default and the smallest usable layout.
 enum TerentoWindowPresentation: Sendable {
-    static let defaultWidth: CGFloat = 1_100
-    static let defaultHeight: CGFloat = 760
+    static let defaultWidth: CGFloat = 1_180
+    static let defaultHeight: CGFloat = 820
     static let minimumWidth: CGFloat = 920
     static let minimumHeight: CGFloat = 600
 
@@ -33,4 +34,21 @@ enum TerentoWindowPresentation: Sendable {
     // tests. Views use TerentoPageLayout directly.
     static let contentMaxWidth: CGFloat = TerentoPageLayout.maxWidth
     static let contentHorizontalPadding: CGFloat = TerentoPageLayout.horizontalPadding
+}
+
+/// Pure frame calculation shared by the one-time migration and geometry tests.
+/// Sizes are frame sizes here, after AppKit has added the title bar.
+enum TerentoWindowFrameLayout {
+    static func fittedFrame(current: CGRect, desiredSize: CGSize, visibleFrame: CGRect) -> CGRect {
+        let size = CGSize(
+            width: min(desiredSize.width, visibleFrame.width),
+            height: min(desiredSize.height, visibleFrame.height)
+        )
+        return CGRect(
+            x: min(max(current.minX, visibleFrame.minX), visibleFrame.maxX - size.width),
+            y: min(max(current.maxY - size.height, visibleFrame.minY), visibleFrame.maxY - size.height),
+            width: size.width,
+            height: size.height
+        )
+    }
 }

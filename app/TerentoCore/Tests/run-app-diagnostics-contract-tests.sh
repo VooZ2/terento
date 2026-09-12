@@ -34,8 +34,8 @@ for text in \
     fi
 done
 
-if ! grep -Fq 'SecondaryButton(title: "Manage diagnostics")' "$connect_source" \
-    || ! grep -Fq 'AboutSecondaryButton(title: "Manage diagnostics")' "$about_source"; then
+if ! grep -Fq 'AboutSecondaryButton(title: "Manage diagnostics")' "$about_source" \
+    || ! grep -Fq 'openWindow(id: "diagnostics")' "$about_source"; then
     print -u2 "FAIL: About does not expose Manage diagnostics"
     exit 1
 fi

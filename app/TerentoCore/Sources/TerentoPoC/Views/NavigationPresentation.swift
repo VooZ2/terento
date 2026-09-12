@@ -6,7 +6,6 @@ enum TerentoSection: String, CaseIterable, Identifiable, Sendable {
     case device = "Device"
     case installMaps = "Install maps"
     case manageMaps = "Manage maps"
-    case about = "About"
 
     var id: String { rawValue }
 }

@@ -19,11 +19,17 @@ sidebar="$project_root/Sources/TerentoPoC/Views/NavigationPresentation.swift"
 
 if ! grep -Fq 'case installMaps = "Install maps"' "$sidebar" \
     || ! grep -Fq 'case manageMaps = "Manage maps"' "$sidebar" \
-    || ! grep -Fq 'case about = "About"' "$sidebar" \
     || ! grep -Fq 'TerentoSection.installMaps' "$connect_screen" \
-    || ! grep -Fq 'TerentoSection.manageMaps' "$connect_screen" \
-    || ! grep -Fq 'title: "About"' "$connect_screen"; then
+    || ! grep -Fq 'TerentoSection.manageMaps' "$connect_screen"; then
     print -u2 "FAIL: sidebar does not expose the expected product destinations"
+    exit 1
+fi
+
+if grep -Fq 'case about = "About"' "$sidebar" \
+    || grep -Fq 'private var aboutContent' "$connect_screen" \
+    || ! grep -Fq 'Window("About Terento", id: "about")' "$project_root/Sources/TerentoPoC/TerentoPoCApp.swift" \
+    || ! grep -Fq 'openWindow(id: "about")' "$project_root/Sources/TerentoPoC/TerentoPoCApp.swift"; then
+    print -u2 "FAIL: About is not consolidated into the app-menu window"
     exit 1
 fi
 

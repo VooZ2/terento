@@ -19,65 +19,118 @@ struct AboutTerentoView: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        ZStack {
-            TerentoColors.canvas
-                .ignoresSafeArea()
-
-            VStack(spacing: 14) {
-                Image(nsImage: NSApplication.shared.applicationIconImage)
-                    .resizable()
-                    .interpolation(.high)
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 84, height: 84)
-
-                VStack(spacing: 5) {
-                    Text("Terento")
-                        .font(.terentoHeading(size: 24, weight: .semibold))
-                        .foregroundStyle(TerentoColors.graphite)
-
-                    Text("Install maps on Garmin watches, simply.")
-                        .font(.terentoUI(size: 15, weight: .medium))
-                        .foregroundStyle(TerentoColors.secondaryText)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Text(TerentoAppMetadata.displayVersion)
-                        .font(.terentoUI(size: 13, weight: .regular))
-                        .foregroundStyle(TerentoColors.secondaryText)
-                }
-
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
                 HStack(spacing: 16) {
-                    AboutPrimaryButton(title: "Update") {
-                        updateAction()
-                    }
-                    .disabled(appUpdateController.isChecking)
+                    Image(nsImage: NSApplication.shared.applicationIconImage)
+                        .resizable()
+                        .interpolation(.high)
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 64, height: 64)
+                        .accessibilityHidden(true)
 
-                    AboutSecondaryButton(title: "Manage diagnostics") {
-                        openWindow(id: "diagnostics")
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("Terento")
+                            .font(.terentoHeading(size: 30, weight: .semibold))
+                            .foregroundStyle(TerentoColors.graphite)
+                        Text("Install maps on Garmin watches, simply.")
+                            .font(.terentoUI(size: 15, weight: .medium))
+                            .foregroundStyle(TerentoColors.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(TerentoAppMetadata.displayVersion)
+                            .font(.terentoUI(size: 13, weight: .regular))
+                            .foregroundStyle(TerentoColors.secondaryText)
                     }
                 }
 
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 14) {
-                        supportLink("Website", destination: TerentoAppLinks.websiteFromApp)
-                        supportLink("GitHub", destination: TerentoAppLinks.repository)
-                        supportLink("Report an issue", destination: TerentoAppLinks.issues)
-                        supportLink("Donate", destination: TerentoAppLinks.donate)
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 12) {
+                        AboutPrimaryButton(title: "Update", action: updateAction)
+                            .disabled(appUpdateController.isChecking)
+                        AboutSecondaryButton(title: "Manage diagnostics") {
+                            openWindow(id: "diagnostics")
+                        }
                     }
+                    updateStatus
+                }
 
-                    VStack(spacing: 7) {
-                        supportLink("Website", destination: TerentoAppLinks.websiteFromApp)
-                        supportLink("GitHub", destination: TerentoAppLinks.repository)
-                        supportLink("Report an issue", destination: TerentoAppLinks.issues)
-                        supportLink("Donate", destination: TerentoAppLinks.donate)
+                section(title: "Support") {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 16) { supportLinks }
+                        VStack(alignment: .leading, spacing: 10) { supportLinks }
                     }
                 }
+
+                section(title: "Privacy") {
+                    Text("Terento sends privacy-minimised diagnostics by default to help improve the app and its services. Device state, maps, manifests, Unit IDs, serial numbers, and local paths stay on this Mac.")
+                        .font(.terentoUI(size: 15, weight: .medium))
+                    Text("Terento may contact terento.app when the app starts to check whether a newer version is available. This request is not used for analytics or user tracking.")
+                        .font(.terentoUI(size: 13, weight: .regular))
+                    HStack(spacing: 18) {
+                        supportLink("Privacy ↗", destination: TerentoAppLinks.privacyFromApp)
+                        supportLink("Legal ↗", destination: TerentoAppLinks.legalFromApp)
+                    }
+                    .padding(.top, 5)
+                }
+                .foregroundStyle(TerentoColors.secondaryText)
             }
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: 680, alignment: .leading)
+            .padding(28)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(28)
-        .frame(width: 420)
+        .frame(minWidth: 520, idealWidth: 560, minHeight: 440, idealHeight: 580)
         .background(TerentoColors.canvas)
         .preferredColorScheme(.light)
+    }
+
+    @ViewBuilder
+    private var supportLinks: some View {
+        supportLink("GitHub repository ↗", destination: TerentoAppLinks.repository)
+        supportLink("Report an issue ↗", destination: TerentoAppLinks.issues)
+        supportLink("Website ↗", destination: TerentoAppLinks.websiteFromApp)
+        supportLink("Donate ↗", destination: TerentoAppLinks.donate)
+    }
+
+    private func section<Content: View>(
+        title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.terentoUI(size: 18, weight: .semibold))
+                .foregroundStyle(TerentoColors.graphite)
+            content()
+        }
+    }
+
+    @ViewBuilder
+    private var updateStatus: some View {
+        switch appUpdateController.state {
+        case .idle:
+            EmptyView()
+        case .checking:
+            status("Checking for updates…", icon: "arrow.triangle.2.circlepath")
+        case .upToDate:
+            status("You're using the latest version.", icon: "checkmark.circle")
+        case let .available(update):
+            status("Terento \(update.displayVersion) is available. Press Update to download it.", icon: "arrow.down.circle")
+        case let .incompatible(update):
+            status(
+                "Terento \(update.displayVersion) requires macOS "
+                    + "\(update.minimumMacOS ?? "a newer version") or later.",
+                icon: "info.circle"
+            )
+        case let .failed(message):
+            status(message, icon: "exclamationmark.circle")
+        }
+    }
+
+    private func status(_ message: String, icon: String) -> some View {
+        Label(message, systemImage: icon)
+            .font(.terentoUI(size: 13, weight: .regular))
+            .foregroundStyle(TerentoColors.secondaryText)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private func updateAction() {
