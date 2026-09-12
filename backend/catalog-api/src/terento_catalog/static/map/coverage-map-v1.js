@@ -43,15 +43,21 @@
         if (event.key === 'Escape') { highlight(null); container.focus(); }
       });
     });
-    // The owner-selected overview is the UI's 100%, not the full-world fit.
-    const initialZoom = () => map.getBoundsZoom(bounds) + .75;
+    // 100% fits the complete world with a small inset at every viewport size.
+    const initialZoom = () => map.getBoundsZoom(bounds, false, [24, 24]);
+    let overviewZoom;
     const reset = () => {
       map.invalidateSize();
-      // Three quarter-zoom steps above the world fit: 2^0.75 = 168%.
-      map.setView(bounds.getCenter(), initialZoom(), {animate: false});
+      overviewZoom = initialZoom();
+      map.setView(bounds.getCenter(), overviewZoom, {animate: false});
       highlight(null);
     };
-    const resize = new ResizeObserver(() => map.invalidateSize({pan: false}));
+    const resize = new ResizeObserver(() => {
+      const atOverview = map.getZoom() === overviewZoom && map.getCenter().equals(bounds.getCenter());
+      map.invalidateSize({pan: false});
+      if (atOverview) reset();
+      else options.onZoom?.(map.getZoom(), initialZoom());
+    });
     resize.observe(container);
     map.on('zoomend', () => options.onZoom?.(map.getZoom(), initialZoom()));
     reset();

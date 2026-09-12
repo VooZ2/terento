@@ -703,7 +703,9 @@ class AdminSemanticsTests(unittest.TestCase):
             {"username": "operator"}, "csrf",
         ).decode()
         attention = body.split("<section class='overview-panel overview-attention-panel", 1)[1].split("</section>", 1)[0]
-        self.assertIn("No issues need attention", attention)
+        self.assertNotIn("No issues need attention", attention)
+        self.assertIn("Review queue</h2>", attention)
+        self.assertIn("Review queue shortcuts", attention)
         self.assertNotIn("Download failed", attention)
 
     def test_failure_reason_normalizes_source_validation_variants(self):
@@ -803,9 +805,20 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Activity by provider", body)
         self.assertIn("id='map-statistics-coverage'", body)
         self.assertIn("id='world-map-svg'", body)
+        self.assertIn("coverage-map-v1.js?v=20260913-world-fit-1", body)
+        self.assertIn(".map-statistics-popularity .table-wrap table{width:100%;min-width:0;table-layout:fixed}", body)
+        self.assertIn(".map-statistics-popularity .table-wrap td{white-space:normal;overflow-wrap:anywhere}", body)
+        self.assertIn("@media(max-width:1200px){.map-statistics-coverage-layout{grid-template-columns:1fr}}", body)
         self.assertIn("window.terentoWorldMapSvg", body)
         popular_maps = body.split("id='map-statistics-popularity'", 1)[1].split("popularity-regions-disclosure", 1)[0]
         self.assertIn("id='top-maps-section'", popular_maps)
+        self.assertNotIn(">Provider</th>", popular_maps)
+        map_script = _map_statistics_script()
+        map_row = map_script.split("const mapRow =", 1)[1].split(";", 1)[0]
+        self.assertEqual(map_row.count("<td"), 3)
+        self.assertIn("escapeHtml(item.map)", map_row)
+        self.assertIn("mapItems.slice(0, 5).map(mapRow).join('') || emptyRow(3)", map_script)
+        self.assertIn('colspan="3" class="muted-value">No maps match your search.', map_script)
         self.assertIn("<th scope='col'>Package installs</th>", popular_maps)
         self.assertNotIn("<h2>Downloads per provider</h2>", body)
         self.assertNotIn("<th scope='col'>Completed map-package installs</th>", popular_maps)
