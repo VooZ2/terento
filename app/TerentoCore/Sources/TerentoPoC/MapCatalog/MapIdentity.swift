@@ -62,6 +62,10 @@ struct MapIdentityMatcher: Sendable {
         }
 
         let actualRegion = MapIdentity.normalizeRegion(actual.region)
+        if actual.provider == "bbbike" {
+            // A geographic source path cannot stand in for either map type.
+            return actualRegion == MapIdentity.normalizeRegion(expected.region)
+        }
         let acceptedRegions = [expected.region, providerRegionId, identifier]
             .compactMap { $0 }
             .map(MapIdentity.normalizeRegion)

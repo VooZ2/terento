@@ -405,3 +405,11 @@ contract. Observations are pruned after 180 days during later ingestion.
 latest start/completion, status, and a fixed bounded error summary. These
 tables are private `/admin` observability inputs and grant no command or test
 execution capability.
+
+Migration044: `map_package.map_type`, `geographic_region_id`, `country_codes`
+(JSONB), and `region_kind` are additive. Existing provider identities and
+historical event rows are unchanged. BBBike enforces its two allowed map types
+and non-null geographical key while lifecycle identity remains variant-specific.
+The map statistics read model uses geographical identity for grouping and a
+separate `map_type` for type attribution. The compatibility provider constraint
+adds BBBike independently of its PAUSED activation state.

@@ -272,3 +272,25 @@ TERENTO_BUNDLED_MTP exactly once, matching the local Debug context cleanup path.
 The release contract guards against duplicate settings overriding the flag.
 See reports/2026-09-12-beta11-build27-release.md for the publication receipt
 and the distinction between owner hardware evidence and automated checks.
+
+## BBBike local integration candidate
+
+The BBBike candidate uses an optimized Debug build with the actual release label
+`1.0.0-beta.12-local` and build31. Both `BBBike` and `BBBike (Ontrail)` are
+independent map types of one source provider. Public release settings and the
+bundled release catalog remain unchanged until hardware review.
+
+For this local candidate only, copy the reviewed DB v4 metadata projection into
+`Terento.app/Contents/Resources/catalog.json`, set BBBike ACTIVE in that local
+copy, and set the Debug-only `TerentoUseBundledMapCatalog` Info.plist key to true.
+All 760 BBBike package IDs and source proofs must match the PAUSED receiving API
+before hardware tests. Record the exact source, catalog and ZIP hashes; re-sign
+after applying the local resources, then unzip and validate the actual delivered
+bundle. The override does not exist in the Release runtime path.
+
+Acceptance covers the full metadata catalog, both genuine small source archives
+through the final installation validator, the shared regression suites, Debug
+and Release compilation, and exact bundle/runtime validation. Real Garmin
+installation, reconnection, on-device usefulness and a genuine newer-release
+update remain separate evidence. Do not publish either map type before its
+applicable evidence gate passes.

@@ -27,6 +27,14 @@ enum MapSelectionPresentationModel: Sendable {
         guard item.isSelectable else { return false }
         guard item.package.sourceKind == .provider else { return true }
 
+        if !selectedIDs.contains(item.id), MapIdentity.normalizeProvider(item.package.providerId) == "bbbike",
+           items.contains(where: { other in
+               other.id != item.id && MapIdentity.normalizeProvider(other.package.providerId) == "bbbike"
+                   && other.package.providerRegionId == item.package.providerRegionId
+                   && other.package.mapType != item.package.mapType
+                   && (selectedIDs.contains(other.id) || other.comparison.installedMap != nil)
+           }) { return false }
+
         let selectedProviderIDs = Set(
             items
                 .filter { selectedIDs.contains($0.id) && $0.package.sourceKind == .provider }
@@ -309,7 +317,7 @@ struct MapCatalogPresentationIndex: Sendable {
     init(items: [MapSelectionItem]) {
         rows = items.filter { $0.package.sourceKind == .provider }.map { item in
             let geography = CatalogGeography.resolve(item)
-            return Row(item: item, provider: MapIdentity.normalizeProvider(item.package.providerId),
+            return Row(item: item, provider: MapProviderDisplay.filterID(providerID: item.package.providerId, regionID: item.package.canonicalRegionId),
                        text: CatalogGeography.fold(geography.terms.joined(separator: " ")),
                        groups: geography.groups)
         }.sorted { lhs, rhs in

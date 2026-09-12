@@ -357,7 +357,11 @@ struct LocalSafeUpdateManifestReconciler: SafeUpdateManifestReconciler, Sendable
             version: package.version,
             sizeBytes: newObject.file.sizeBytes,
             sha256: hash,
-            installedAt: now()
+            installedAt: now(),
+            packageID: package.id,
+            artifactID: package.mainArtifact?.id,
+            artifactKind: .main,
+            bbbikeMetadata: BBBikeMapMetadata(package: package)
         )
         try store.replaceAfterUpdate(
             deviceKey: deviceKey,

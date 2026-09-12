@@ -8,18 +8,18 @@ const fixture = name => JSON.parse(fs.readFileSync(path.join(root, 'contracts/fi
 const script = fs.readFileSync(path.join(root, 'site/provider-list.js'), 'utf8');
 
 // Run the production script without changing the public asset or its caching.
-async function present(payload, fail = false, cardID = 'freizeitkarte') {
+async function present(payload, fail = false, cardID = 'freizeitkarte', mapType = '') {
   const counter = { dataset: { countTemplate: '{count} packages in {countries} countries' }, textContent: 'Static fallback' };
   const contourCounter = { dataset: { countTemplate: '{count} contour regions' }, textContent: 'Contour fallback' };
   const addon = { hidden: false, querySelector: () => contourCounter };
-  const card = { dataset: { providerCard: cardID }, hidden: false,
+  const card = { dataset: { providerCard: cardID, providerType: mapType }, hidden: Boolean(mapType),
     querySelector: selector => selector === '[data-provider-count]' ? counter : cardID === 'opentopomap' ? addon : null };
   let requests = 0;
   vm.runInNewContext(script, {
     document: { querySelector: () => null, querySelectorAll: selector => { assert.equal(selector, '[data-provider-card]'); return [card]; } },
     fetch: async (url, options) => {
       requests++;
-      assert.equal(url, 'https://api.terento.app/maps/catalog-v3.json');
+      assert.equal(url, 'https://api.terento.app/maps/catalog-v4.json');
       assert.equal(options.headers.Accept, 'application/json');
       if (fail) throw Error('offline');
       return { ok: true, json: async () => payload };
@@ -94,6 +94,7 @@ function checkNavigation(reducedMotion) {
   assert.deepEqual(await present(missingMaps), { hidden: false, text: 'Static fallback' });
   const missingCountry = structuredClone(available);
   delete missingCountry.providers[0].maps[0].country;
+  delete missingCountry.providers[0].maps[0].countryCodes;
   assert.deepEqual(await present(missingCountry), { hidden: false, text: '1 packages in 0 countries' });
   const missingProviderID = structuredClone(available);
   delete missingProviderID.providers[0].id;
@@ -104,6 +105,18 @@ function checkNavigation(reducedMotion) {
   assert.deepEqual(await present(maprando, false, 'maprando'), { hidden: false, text: '1 packages in 1 countries' });
   maprando.providers[0].status = 'PAUSED';
   assert.equal((await present(maprando, false, 'maprando')).hidden, true);
+  const bbbike = { providers: [{id: 'bbbike', status: 'ACTIVE', maps: [
+    {availability: 'AVAILABLE', mapType: 'bbbike-latin1', countryCodes: ['LT']},
+    {availability: 'AVAILABLE', mapType: 'ontrail-latin1', countryCodes: ['LT']},
+    {availability: 'AVAILABLE', mapType: 'ontrail-latin1', countryCodes: ['LT', 'PL']},
+    {availability: 'WITHHELD', mapType: 'ontrail-latin1', countryCodes: ['RU']},
+  ]}] };
+  assert.deepEqual(await present(bbbike, false, 'bbbike', 'bbbike-latin1'), {hidden: false, text: '1 packages in 1 countries'});
+  assert.deepEqual(await present(bbbike, false, 'bbbike', 'ontrail-latin1'), {hidden: false, text: '2 packages in 2 countries'});
+  assert.equal((await present(bbbike, true, 'bbbike', 'ontrail-latin1')).hidden, true, 'Unreleased type stays hidden when offline');
+  assert.equal((await present(bbbike, false, 'bbbike', 'other-type')).hidden, true);
+  bbbike.providers[0].status = 'PAUSED';
+  assert.equal((await present(bbbike, false, 'bbbike', 'bbbike-latin1')).hidden, true);
   const contours = structuredClone(valid);
   contours.providers = [{
     id: 'opentopomap',

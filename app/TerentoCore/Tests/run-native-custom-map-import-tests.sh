@@ -34,6 +34,7 @@ swiftc \
     "$project_root/Sources/TerentoPoC/Installation/MapLifecycle.swift" \
     "$project_root/Sources/TerentoPoC/Installation/MapLifecyclePresentation.swift" \
     "$project_root/Sources/TerentoPoC/Installation/MapSourceValidator.swift" \
+    "$project_root/Sources/TerentoPoC/MapCatalog/BBBikeArchiveSafety.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapPackageAcquisition.swift" \
     "$project_root/Tests/TerentoPoCTests/Stage2CustomMapImportTests.swift" \
     -o "$binary_path"

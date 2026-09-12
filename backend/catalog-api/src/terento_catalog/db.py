@@ -1783,6 +1783,8 @@ class Database:
                 package.id AS package_id,
                 package.provider_region_id,
                 package.canonical_region_id,
+                package.map_type, package.geographic_region_id,
+                package.country_codes, package.region_kind,
                 package.name AS package_name,
                 package.region AS package_region,
                 package.country AS package_country,
@@ -2299,8 +2301,9 @@ class Database:
                     INSERT INTO map_package (
                         id, provider_id, provider_region_id, canonical_region_id,
                         name, region, country, release, release_id, version_label,
-                        generated_at, source_updated_at, availability, updated_at
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
+                        generated_at, source_updated_at, availability,
+                        map_type, geographic_region_id, country_codes, region_kind, updated_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, now())
                     ON CONFLICT (id) DO UPDATE SET
                         provider_id = EXCLUDED.provider_id,
                         provider_region_id = EXCLUDED.provider_region_id,
@@ -2314,6 +2317,10 @@ class Database:
                         generated_at = EXCLUDED.generated_at,
                         source_updated_at = EXCLUDED.source_updated_at,
                         availability = EXCLUDED.availability,
+                        map_type = EXCLUDED.map_type,
+                        geographic_region_id = EXCLUDED.geographic_region_id,
+                        country_codes = EXCLUDED.country_codes,
+                        region_kind = EXCLUDED.region_kind,
                         updated_at = now()
                     """,
                     (
@@ -2322,6 +2329,8 @@ class Database:
                         package.country, package.release, package.release_id,
                         package.version_label, package.generated_at,
                         package.source_updated_at, package.availability,
+                        package.map_type, package.geographic_region_id,
+                        json.dumps(package.country_codes), package.region_kind,
                     ),
                 )
                 for artifact in package.artifacts:
@@ -2368,7 +2377,7 @@ class Database:
                         (definition.id, artifact.source_url),
                     )
 
-            if definition.id in {"opentopomap", "maprando"}:
+            if definition.id in {"opentopomap", "maprando", "bbbike"}:
                 # A complete provider snapshot retires only that provider's stale
                 # package/artifact metadata. It never touches map binaries or
                 # another provider's records.
@@ -2992,8 +3001,9 @@ class Database:
                     p.name AS provider_name,
                     e.map_package_id,
                     mp.name AS map_package_name,
+                    mp.map_type,
                     COALESCE(e.region, mp.region) AS region,
-                    mp.canonical_region_id,
+                    COALESCE(mp.geographic_region_id, mp.canonical_region_id) AS canonical_region_id,
                     mp.country AS region_country,
                     e.event_type,
                     e.outcome,
@@ -3008,10 +3018,11 @@ class Database:
                     c.provider_id,
                     p.name AS provider_name,
                     mp.id AS map_package_id,
-                    mp.name AS map_package_name,
+                    COALESCE(mp.name, geography.name) AS map_package_name,
+                    mp.map_type,
                     COALESCE(c.region, mp.region) AS region,
-                    mp.canonical_region_id,
-                    mp.country AS region_country,
+                    COALESCE(mp.geographic_region_id, mp.canonical_region_id, geography.geographic_region_id) AS canonical_region_id,
+                    COALESCE(mp.country, geography.country) AS region_country,
                     CASE WHEN c.outcome = 'FAILED' THEN 'INSTALL_FAILED'
                          ELSE 'INSTALL_SUCCEEDED' END AS event_type,
                     c.outcome,
@@ -3019,8 +3030,8 @@ class Database:
                 FROM compatibility_fallback AS c
                 LEFT JOIN map_provider AS p ON p.id = c.provider_id
                 LEFT JOIN LATERAL (
-                    SELECT package.id, package.name, package.region,
-                           package.canonical_region_id, package.country
+                    SELECT package.id, package.name, package.region, package.map_type,
+                           package.canonical_region_id, package.geographic_region_id, package.country
                     FROM map_package AS package
                     WHERE package.provider_id = c.provider_id
                       AND (
@@ -3028,16 +3039,31 @@ class Database:
                           OR package.provider_region_id = c.region
                           OR package.region = c.region
                       )
+                      AND (package.provider_id <> 'bbbike'
+                           OR package.canonical_region_id = c.region
+                           OR package.region = c.region)
                     ORDER BY CASE WHEN package.availability = 'AVAILABLE'
                                   THEN 0 ELSE 1 END, package.id
                     LIMIT 1
                 ) AS mp ON TRUE
+                LEFT JOIN LATERAL (
+                    -- Untyped BBBike evidence may establish geography but cannot
+                    -- establish which of two independent map types was installed.
+                    SELECT min(package.name) AS name, min(package.country) AS country,
+                           min(package.geographic_region_id) AS geographic_region_id
+                    FROM map_package AS package
+                    WHERE c.provider_id = 'bbbike' AND package.provider_id = c.provider_id
+                      AND (package.geographic_region_id = c.region
+                           OR package.provider_region_id = c.region)
+                    HAVING count(DISTINCT package.geographic_region_id) = 1
+                ) AS geography ON TRUE
             )
             SELECT
                 provider_id,
                 provider_name,
                 map_package_id,
                 map_package_name,
+                map_type,
                 region,
                 canonical_region_id,
                 region_country,
@@ -3048,7 +3074,7 @@ class Database:
                 min(occurred_at) AS first_occurred_at,
                 max(occurred_at) AS last_occurred_at
             FROM event_rows
-            GROUP BY provider_id, provider_name, map_package_id, map_package_name,
+            GROUP BY provider_id, provider_name, map_package_id, map_package_name, map_type,
                      region, canonical_region_id, region_country, event_type, outcome
             ORDER BY last_occurred_at DESC, provider_id,
                      map_package_id NULLS LAST, event_type, outcome

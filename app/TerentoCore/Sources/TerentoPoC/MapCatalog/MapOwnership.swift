@@ -16,6 +16,7 @@ struct MapOwnershipRecord: Sendable, Equatable {
     let packageID: String?
     let artifactID: String?
     let artifactKind: MapArtifactKind?
+    let bbbikeMetadata: BBBikeMapMetadata?
 
     init(
         devicePath: String,
@@ -26,7 +27,8 @@ struct MapOwnershipRecord: Sendable, Equatable {
         sizeBytes: UInt64,
         packageID: String? = nil,
         artifactID: String? = nil,
-        artifactKind: MapArtifactKind? = nil
+        artifactKind: MapArtifactKind? = nil,
+        bbbikeMetadata: BBBikeMapMetadata? = nil
     ) {
         self.devicePath = devicePath
         self.filename = filename
@@ -37,6 +39,7 @@ struct MapOwnershipRecord: Sendable, Equatable {
         self.packageID = packageID
         self.artifactID = artifactID
         self.artifactKind = artifactKind
+        self.bbbikeMetadata = bbbikeMetadata
     }
 }
 

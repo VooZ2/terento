@@ -142,6 +142,12 @@ struct InstallationPreflightEngine: Sendable {
             )
         }
 
+        if installedMaps.contains(where: { BBBikeProviderAdapter.conflicts(selectedMap, provider: $0.provider, region: $0.region) })
+            || inspectedFiles.contains(where: { BBBikeProviderAdapter.conflicts(selectedMap, filename: $0.filename) }) {
+            return blocked(selectedMap: selectedMap, installedMatch: installedMatch, ownership: ownership,
+                comparisonStatus: comparison.status, status: .blockedAmbiguousMapIdentity,
+                installTarget: profile.targetDirectory, reason: BBBikeProviderAdapter.coexistenceReason)
+        }
         let proposedFilename: String
         do {
             proposedFilename = try TerentoManagedFilenameGenerator().filename(

@@ -10,13 +10,16 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
     private let deviceReader: MTPTransport
     private let mapTransport: MTPMapInstallationTransport
     private let operationProfile: DeviceMapOperationProfile
+    private let bbbikeMetadata: BBBikeMapMetadata?
 
     init(
         operationProfile: DeviceMapOperationProfile,
         operationGate: MTPOperationGate = .shared,
-        lifecycleLease: MTPOperationLease? = nil
+        lifecycleLease: MTPOperationLease? = nil,
+        bbbikeMetadata: BBBikeMapMetadata? = nil
     ) {
         self.operationProfile = operationProfile
+        self.bbbikeMetadata = bbbikeMetadata
         self.operationGate = operationGate
         self.lifecycleLease = lifecycleLease
         self.deviceReader = MTPTransport(
@@ -273,7 +276,7 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
 
         return files.compactMap { file in
             let metadata = prefixes[file.itemID].flatMap {
-                GarminIMGMetadataParser().parse($0, filename: file.filename)
+                contextualMetadata($0, filename: file.filename) ?? GarminIMGMetadataParser().parse($0, filename: file.filename)
             }
             guard let metadata,
                   let identity = MapIdentity(provider: metadata.provider, region: metadata.region) else {
@@ -308,13 +311,22 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
             for: mtpFile,
             maxLength: GarminIMGMetadataParser.prefixLength
         )
-        guard let metadata = GarminIMGMetadataParser().parse(
+        guard let metadata = contextualMetadata(prefix, filename: file.filename) ?? GarminIMGMetadataParser().parse(
             prefix,
             filename: file.filename
         ) else {
             throw SafeUpdateTransportError.metadataMismatch
         }
         return metadata
+    }
+
+    private func contextualMetadata(_ prefix: [UInt8], filename: String) -> GarminIMGMetadata? {
+        guard let context = bbbikeMetadata, let version = BBBikeIMGMetadata.version(prefix),
+              TerentoManagedFilenameGenerator().matchesIdentity(filename, providerId: "bbbike",
+                  regionId: context.canonicalRegion, version: version) else { return nil }
+        // The update transaction still checks exact object coordinates and the
+        // complete recorded SHA-256. Context alone never grants ownership.
+        return BBBikeIMGMetadata.metadata(prefix, context: context, version: version)
     }
 
     private func parseManagedFilename(_ filename: String) -> (identity: MapIdentity, version: MapVersion?)? {
@@ -330,6 +342,10 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
             identityComponents = components
         }
 
+        if identityComponents.prefix(2) == ["terento", "bbbike"],
+           let identity = MapIdentity(provider: "bbbike", region: identityComponents.dropFirst(2).joined(separator: "_")) {
+            return (identity, version)
+        }
         let provider = identityComponents.dropFirst().dropLast().joined(separator: "_")
         let region = identityComponents.last ?? "unknown"
         guard !provider.isEmpty,

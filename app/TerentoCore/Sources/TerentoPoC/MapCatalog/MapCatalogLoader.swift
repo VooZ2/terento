@@ -153,7 +153,7 @@ struct MapCatalogLoader: Sendable {
             return nil
         }
         #endif
-        return URLComponents(string: "https://api.terento.app/maps/catalog-v3.json")?.url
+        return URLComponents(string: "https://api.terento.app/maps/catalog-v4.json")?.url
     }()
 
     let endpoint: URL?
@@ -299,7 +299,14 @@ struct MapCatalogClientCompatibilityValidator: Sendable {
             return false
         }
 
+        let bbbikeIdentities = catalog.packages.filter { MapIdentity.normalizeProvider($0.providerId) == "bbbike" }.compactMap(\.identity)
+        guard Set(bbbikeIdentities).count == bbbikeIdentities.count else { return false }
         return catalog.packages.allSatisfy { package in
+            if MapIdentity.normalizeProvider(package.providerId) == "bbbike",
+               package.mainArtifact?.validationState == .unavailable {
+                return BBBikeProviderAdapter.validIdentity(package)
+                    && package.artifacts.count == 1 && package.mainArtifact?.sourceProof == nil
+            }
             let providerID = MapIdentity.normalizeProvider(package.providerId)
             guard let adapter = providerRegistry.adapter(for: providerID),
                   let sourcePolicy = sourcePolicyRegistry.policy(for: providerID),
@@ -393,7 +400,7 @@ extension MapCatalog {
         guard !provider.isEmpty else { return nil }
 
         let region = [
-            package.providerRegionId,
+            provider == "bbbike" ? package.canonicalRegionId : package.providerRegionId,
             package.identifier,
             package.canonicalRegionId,
             package.regionId
@@ -523,6 +530,8 @@ private struct MapCatalogDocument: Decodable {
                         installSizeBytes: map.installSizeBytes,
                         providerRegionId: map.providerRegionId,
                         canonicalRegionId: map.canonicalRegionId,
+                        mapType: map.mapType,
+                        geographicRegionId: map.geographicRegionId,
                         countryCodes: map.countryCodes ?? map.country.map { [$0] } ?? [],
                         regionKind: map.regionKind ?? .country,
                         tags: map.tags ?? [],
@@ -588,6 +597,8 @@ private struct MapDocument: Decodable {
     let identifier: String?
     let providerRegionId: String?
     let canonicalRegionId: String?
+    let mapType: String?
+    let geographicRegionId: String?
     let countryCodes: [String]?
     let regionKind: MapRegionKind?
     let tags: [String]?

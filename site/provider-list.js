@@ -38,8 +38,8 @@
     updateControls();
   }
 
-  const API_URL = 'https://api.terento.app/maps/catalog-v3.json';
-  const PUBLIC_PROVIDER_IDS = new Set(["freizeitkarte", "opentopomap", "maprando"]);
+  const API_URL = 'https://api.terento.app/maps/catalog-v4.json';
+  const PUBLIC_PROVIDER_IDS = new Set(["freizeitkarte", "opentopomap", "maprando", "bbbike"]);
   const render = (providers) => {
     const activeProviders = new Map(providers
       .filter((provider) => PUBLIC_PROVIDER_IDS.has(String(provider?.id || '').trim().toLowerCase()))
@@ -49,12 +49,18 @@
       const provider = activeProviders.get(card.dataset.providerCard);
       card.hidden = !provider;
       if (!provider) return;
+      const mapType = card.dataset.providerType;
       const maps = Array.isArray(provider.maps)
-        ? provider.maps.filter((map) => String(map?.availability || '').toUpperCase() === 'AVAILABLE') : [];
+        ? provider.maps.filter((map) => String(map?.availability || '').toUpperCase() === 'AVAILABLE'
+          && (!mapType || map?.mapType === mapType)) : [];
+      // A new type is advertised only when its own catalog contains available maps.
+      if (mapType && maps.length === 0) { card.hidden = true; return; }
       const countElement = card.querySelector('[data-provider-count]');
       if (Array.isArray(provider.maps) && countElement) {
         countElement.hidden = false;
-        const countries = new Set(maps.map((map) => String(map?.country || '').trim()).filter(Boolean));
+        const countries = new Set(maps.flatMap((map) => Array.isArray(map?.countryCodes)
+          ? map.countryCodes.map((code) => String(code).trim().toUpperCase())
+          : [String(map?.country || '').trim()]).filter(Boolean));
         countElement.textContent = countElement.dataset.countTemplate
           .replace('{count}', String(maps.length)).replace('{countries}', String(countries.size));
       }

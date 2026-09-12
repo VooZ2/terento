@@ -19,6 +19,7 @@ from .provider_catalog import (
 )
 
 from .maprando import MapRandoProviderAdapter
+from .bbbike import BBBikeProviderAdapter
 
 LOGGER = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ LOGGER = logging.getLogger(__name__)
 def official_provider_adapters() -> tuple[ProviderAdapter, ...]:
     """Return every reviewed provider that the current release supports."""
 
-    return (FreizeitkarteProviderAdapter(), OpenTopoMapProviderAdapter(), MapRandoProviderAdapter())
+    return (FreizeitkarteProviderAdapter(), OpenTopoMapProviderAdapter(), MapRandoProviderAdapter(), BBBikeProviderAdapter())
 
 
 def snapshot_release_evidence(snapshot: ProviderSnapshot) -> tuple[str, str]:
@@ -126,6 +127,9 @@ def collect_provider_once(
     provider_id = adapter.definition.id
     run_id = None if dry_run else database.begin_catalog_collection(provider_id)
     try:
+        prepare = getattr(adapter, "set_previous_rows", None)
+        if callable(prepare) and callable(getattr(database, "catalog_snapshot", None)):
+            prepare(database.catalog_snapshot()[0])
         snapshot = adapter.collect()
         if not snapshot.packages:
             raise ProviderCollectionError("provider returned no packages")

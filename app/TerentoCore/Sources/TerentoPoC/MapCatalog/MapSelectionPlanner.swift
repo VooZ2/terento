@@ -42,7 +42,7 @@ struct MapSelectionItem: Identifiable, Equatable, Sendable {
         )
         var parts: [String] = []
         if !providerName.isEmpty {
-            parts.append(providerName)
+            parts.append(MapProviderDisplay.title(providerID: package.providerId, regionID: package.canonicalRegionId, fallback: providerName))
         }
         if let versionLabel = package.displayVersionLabel {
             parts.append(versionLabel)
@@ -91,6 +91,8 @@ struct MapSelectionItem: Identifiable, Equatable, Sendable {
     }
 
     var isSelectable: Bool {
+        guard package.mainArtifact?.validationState != .unavailable,
+              package.mainArtifact?.validationState != .failed else { return false }
         guard acquisitionAvailability == .available else { return false }
         switch action {
         case .install:
@@ -334,7 +336,10 @@ struct MapSelectionPlanner: Sendable {
         let status: InstallationPlanStatus
         let reason: String
 
-        if hasInvalidOptionalSelection {
+        if BBBikeProviderAdapter.selectionConflicts(selectedItems.map(\.package)) {
+            status = .blocked
+            reason = BBBikeProviderAdapter.coexistenceReason
+        } else if hasInvalidOptionalSelection {
             status = .blocked
             reason = "One selected map component is no longer available. Refresh the catalog and try again."
         } else if selectedItems.isEmpty {

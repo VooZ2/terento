@@ -42,7 +42,7 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <script defer src="/language.js?v=20260905-language-selector-full-name-v1"></script>
     <script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script>
-    <script defer src="/provider-list.js?v=20260911-three-providers-v2"></script>
+    <script defer src="/provider-list.js?v=20260912-bbbike-types-v1"></script>
     <script defer src="/home-features.js?v=20260904-home-workflow-tabs"></script>
     <script defer src="/localized-content.js?v=20260911-three-providers-v2"></script>
     <script type="application/ld+json">
@@ -200,7 +200,7 @@
       </section>
       <section class="provider-section section" id="providers" aria-labelledby="providers-title">
         <div class="shell">
-          <div class="section-heading provider-intro"><p class="eyebrow">Dostępne mapy</p><h2 id="providers-title">Poznaj dostępne mapy.</h2><p class="provider-copy">Wybieraj mapy od trzech dostawców. Mapy są pobierane z oryginalnego źródła każdego dostawcy.</p></div>
+          <div class="section-heading provider-intro"><p class="eyebrow">Dostępne mapy</p><h2 id="providers-title">Poznaj dostępne mapy.</h2><p class="provider-copy">Wybieraj mapy od dostępnych dostawców. Mapy są pobierane z oryginalnego źródła każdego dostawcy.</p></div>
           <div class="provider-cards" id="provider-cards" data-provider-cards role="region" tabindex="0" aria-label="Dostawcy map">
             <article class="provider-card" data-provider-card="freizeitkarte">
               <div class="provider-card-header">
@@ -230,6 +230,22 @@
               </div>
               <p class="provider-summary">Do pieszych wędrówek i odkrywania mniejszych ścieżek.</p>
               <ul class="provider-benefits"><li>Wygląd mapy dostosowany do pieszych wędrówek</li><li>Małe drogi i ścieżki</li><li>Regularne aktualizacje danych OpenStreetMap</li></ul>
+            </article>
+<article class="provider-card" data-provider-card="bbbike" data-provider-type="bbbike-latin1" hidden>
+              <div class="provider-card-header">
+                <h3>BBBike</h3>
+                <p class="provider-count" data-provider-count data-count-template="Pakiety map: {count}" hidden></p>
+              </div>
+              <p class="provider-summary">Alternatywne mapy do aktywności w terenie.</p>
+              <ul class="provider-benefits"><li>Dane OpenStreetMap</li><li>Odrębny styl mapy</li><li>Pakiety map regionów</li></ul>
+            </article>
+<article class="provider-card" data-provider-card="bbbike" data-provider-type="ontrail-latin1" hidden>
+              <div class="provider-card-header">
+                <h3>BBBike (Ontrail)</h3>
+                <p class="provider-count" data-provider-count data-count-template="Pakiety map: {count}" hidden></p>
+              </div>
+              <p class="provider-summary">Mniejsze mapy do pieszych i rowerowych wycieczek.</p>
+              <ul class="provider-benefits"><li>Mniejsze pliki map</li><li>Drogi i mniejsze ścieżki</li><li>Alternatywa dla stylu BBBike</li></ul>
             </article>
           </div>
           <div class="provider-controls" data-provider-controls hidden>

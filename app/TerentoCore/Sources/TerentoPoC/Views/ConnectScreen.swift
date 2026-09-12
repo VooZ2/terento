@@ -97,8 +97,8 @@ struct ConnectScreen: View {
         deviceEngine.hasConnectedDevice && mapSupport.showsTerentoCompatibility
     }
 
-    private var mapProviderOptions: [MapProvider] {
-        mapEngine.availableMapProviders
+    private var mapProviderOptions: [MapProviderFilterOption] {
+        MapProviderDisplay.filterOptions(providers: mapEngine.availableMapProviders)
     }
 
     private var customMapSelectionItems: [MapSelectionItem] {
@@ -118,7 +118,8 @@ struct ConnectScreen: View {
         providerMapSelectionItems = mapSelectionItems.filter { item in
             item.package.sourceKind == .provider
                 && (selectedMapProviderID.isEmpty
-                    || MapIdentity.normalizeProvider(item.package.providerId) == providerID)
+                    || MapProviderDisplay.filterID(providerID: item.package.providerId,
+                        regionID: item.package.canonicalRegionId) == providerID)
         }
         refreshSearchPresentation()
     }
@@ -1169,7 +1170,7 @@ struct ConnectScreen: View {
             Picker("Map provider", selection: $selectedMapProviderID) {
                 Text("All providers").tag("")
                 ForEach(mapProviderOptions) { provider in
-                    Text(provider.name).tag(provider.id)
+                    Text(provider.title).tag(provider.id)
                 }
             }
             .labelsHidden()
@@ -1451,14 +1452,14 @@ struct ConnectScreen: View {
               }) else {
             return "All providers"
         }
-        return provider.name
+        return provider.title
     }
 
     private var selectedMapProvider: MapProvider? {
         guard !selectedMapProviderID.isEmpty else { return nil }
-        return mapProviderOptions.first {
-            MapIdentity.normalizeProvider($0.id)
-                == MapIdentity.normalizeProvider(selectedMapProviderID)
+        let providerID = MapProviderDisplay.sourceProviderID(filterID: selectedMapProviderID)
+        return mapEngine.availableMapProviders.first {
+            MapIdentity.normalizeProvider($0.id) == MapIdentity.normalizeProvider(providerID)
         }
     }
 

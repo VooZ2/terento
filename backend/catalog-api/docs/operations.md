@@ -187,3 +187,29 @@ The asset URL returns 404 until an asset is explicitly approved and published.
 Before an administrator exists, `https://api.terento.app/admin` returns a 303
 redirect to `/admin/setup`; after setup it redirects unauthenticated requests
 to `/admin/login`. Both are expected and remain noindex/no-store.
+
+### BBBike metadata preparation
+
+Migration044 registers BBBike PAUSED and adds additive package type/geography
+columns plus compatibility-evidence acceptance. Do not activate it as part of
+migration or metadata collection. The reviewed `bbbike` adapter is included in
+the normal collector and authenticated provider collection action. Collection
+of a paused provider prepares metadata; it does not change provider status.
+
+The collector traverses the ready region tree, including subregion links, and
+excludes the Russia branch before requests. It makes at most four concurrent
+bounded artifact metadata inspections. A source429 ends further requests from
+that fetcher; no retry or alternative host bypass is attempted. Every source
+redirect is rejected. Persisted validated source proofs are reused only when
+an exact HEAD tuple (strong ETag, modification time, ZIP size) and source identity
+are unchanged, reducing the daily scheduler's archive reads. A changed source
+must pass a new bounded ZIP/README/checksum/IMG-header inspection. One bad
+artifact retains its known release as unavailable instead of dropping the
+whole provider. A failed directory traversal fails the collection and preserves
+the last committed snapshot.
+
+Before local hardware tests: migrate the receiving backend, collect BBBike while
+PAUSED, check the exact candidate IDs against stored packages, then verify both
+`-local` streams in Test data. Do not use synthetic production events. The
+`tools/check_bbbike_database.py` check permits synthetic classification evidence
+only in a disposable database named `terento_ci`.

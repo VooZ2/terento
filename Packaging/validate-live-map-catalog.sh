@@ -4,7 +4,7 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
-catalog_urls=("https://api.terento.app/maps/catalog.json" "https://api.terento.app/maps/catalog-v3.json")
+catalog_urls=("https://api.terento.app/maps/catalog.json" "https://api.terento.app/maps/catalog-v3.json" "https://api.terento.app/maps/catalog-v4.json")
 if [[ -n "${TERENTO_CATALOG_CONTRACT_URL:-}" ]]; then
     catalog_urls=("$TERENTO_CATALOG_CONTRACT_URL")
 fi
@@ -48,6 +48,10 @@ if sys.argv[2].endswith('/maps/catalog.json'):
     ids = {provider.get('id') for provider in providers}
     if ids - {'freizeitkarte', 'opentopomap'}:
         raise SystemExit('Legacy catalog must not expose providers unknown to released clients')
+if sys.argv[2].endswith('/maps/catalog-v3.json'):
+    ids = {provider.get('id') for provider in providers}
+    if ids - {'freizeitkarte', 'opentopomap', 'maprando'}:
+        raise SystemExit('v3 catalog must not expose providers unknown to beta.11 clients')
 for provider in providers:
     print(f"Catalog provider {provider.get('id', '<missing>')}: {len(provider.get('maps', []))} maps")
 print(f"Catalog total: {sum(len(provider.get('maps', [])) for provider in providers)} maps")

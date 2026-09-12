@@ -18,6 +18,7 @@ swiftc \
     "$project_root/Sources/TerentoPoC/Installation/ManagedFilename.swift" \
     "$project_root/Sources/TerentoPoC/Installation/InstallationSafetyModels.swift" \
     "$project_root/Sources/TerentoPoC/Installation/MapSourceValidator.swift" \
+    "$project_root/Sources/TerentoPoC/MapCatalog/BBBikeArchiveSafety.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapPackageAcquisition.swift" \
     "$project_root/Tests/TerentoPoCTests/Stage41AcquisitionTests.swift" \
     -o "$binary_path"
