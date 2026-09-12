@@ -41,7 +41,8 @@ regions; valid catalog packages are not discarded by a city-name blacklist.
 - Optimized Debug local-label app build: PASS.
 - Navigation/window: 15 behavioral cases + static checks PASS, including restored
   frame growth, screen clamping, negative-origin monitor and larger-frame retention.
-- All existing `run-app-*-contract-tests.sh` runners PASS.
+- Full CI app entrypoint `Tests/run-app-tests.sh`: 24/24 runners PASS after
+  updating the root About/readiness contracts for the consolidated window.
 - Map selection: 39 behavioral cases PASS, including all 240 distinct bundled packages having
   a geography group, aliases, Crimea, overseas/transcontinental regions, installed
   matches, stable ties, and negative provider/style/raw-ID searches.
