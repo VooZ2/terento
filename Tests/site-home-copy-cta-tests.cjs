@@ -153,7 +153,7 @@ const anchorFor = (page, className) => {
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20260912-map-cards-v1">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20260913-maprando-language-v2">/, `${locale}: Home stylesheet cache bust`);
   assert.match(page, /<script defer src="\/home-features\.js\?v=20260904-home-workflow-tabs"><\/script>/, `${locale}: Home feature script cache bust`);
   assert.match(page, /installing-maps-1600\.png\?v=20260912-app-screens-v2/, `${locale}: installation screenshot cache bust`);
   const heroArtwork = page.match(/<figure class="app-shot app-shot--hero">[\s\S]*?<\/figure>/)?.[0];
@@ -236,6 +236,7 @@ for (const [locale, expected] of locales) {
   assert.equal((providerSection.match(/<article class="provider-card"/g) || []).length, 5, `${locale}: five map types from four providers`);
   const maprando = providerSection.match(/<article class="provider-card" data-provider-card="maprando">[\s\S]*?<\/article>/)?.[0];
   assert.ok(maprando, `${locale}: MapRando card`);
+  assert.match(maprando, /class="provider-language-note"><span aria-hidden="true">ⓘ<\/span><span>[^<]+<\/span><\/p>/);
   assert.match(maprando, /data-provider-count[^>]* hidden><\/p>/);
   assert.match(maprando, /OpenStreetMap/);
   for (const [type, name] of [['bbbike-latin1', 'BBBike'], ['ontrail-latin1', 'BBBike (Ontrail)']]) {
