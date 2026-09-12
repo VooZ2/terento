@@ -32,10 +32,14 @@ require_text 'private static let visibleRowCapacity = 3' 'selected-map viewport 
 require_text 'componentRowCount > Self.visibleRowCapacity ? .automatic : .hidden' 'scroll indicators do not follow visible capacity'
 require_text 'idealHeight: visibleListHeight' 'selected-map region does not keep a responsive ideal height'
 require_text 'MapSelectionRow(' 'Review does not reuse the shared map row presentation'
-require_text 'Text("Terento will install these maps to your Garmin. Existing Garmin maps will not be changed.")' 'compact safety sentence is missing'
-require_text '.font(.terentoUI(size: 13, weight: .regular))' 'safety copy is not using compact supporting typography'
-require_text 'Terento sends privacy-minimised diagnostics by default to help improve the app and its services. You can turn this off anytime in Terento → Diagnostics.' 'diagnostics disclosure is missing'
-require_text '.padding(.bottom, TerentoPageLayout.sectionSpacing)' 'sharing block does not keep the approved footer separation'
+reject_text 'Text("Terento will install these maps to your Garmin. Existing Garmin maps will not be changed.")' 'Ready still repeats the installation explanation'
+reject_text 'Terento sends privacy-minimised diagnostics by default' 'Ready still repeats the About privacy explanation'
+if ! grep -Fq 'Terento sends privacy-minimised diagnostics by default' "$project_root/Sources/TerentoPoC/Views/AboutTerentoView.swift" \
+    || ! grep -Fq 'AboutSecondaryButton(title: "Manage diagnostics")' "$project_root/Sources/TerentoPoC/Views/AboutTerentoView.swift" \
+    || ! grep -Fq 'Both diagnostics streams are enabled by default.' "$project_root/Sources/TerentoPoC/Views/DiagnosticsView.swift"; then
+    print -u2 'FAIL: dedicated About/Diagnostics disclosure or settings entry point is missing'
+    exit 1
+fi
 require_text 'PrimaryButton(title: "Install maps")' 'Install maps action changed'
 reject_text 'Terento will install these maps to your Garmin.\nExisting Garmin maps will not be changed.' 'two-line safety copy remains'
 reject_text 'Share anonymous installation data to help us understand device compatibility and improve support for other Garmin users.' 'old verbose sharing copy remains'

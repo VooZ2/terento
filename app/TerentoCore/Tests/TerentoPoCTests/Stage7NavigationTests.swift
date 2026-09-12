@@ -103,7 +103,26 @@ struct Stage7NavigationTests {
             "offscreen restored positions are repositioned without shrinking a fitting window"
         )
 
-        print("PASS: 15 Stage 7 navigation/window presentation tests")
+        expect(
+            TerentoWindowFrameLayout.centeredOrigin(
+                windowSize: CGSize(width: 560, height: 608), visibleFrame: screen
+            ) == CGPoint(x: 440, y: 146),
+            "secondary windows center within the active display's usable frame"
+        )
+        expect(
+            TerentoWindowFrameLayout.centeredOrigin(
+                windowSize: CGSize(width: 520, height: 628), visibleFrame: compactScreen
+            ) == CGPoint(x: -900, y: 76),
+            "Diagnostics centers on a secondary display with a negative origin"
+        )
+        expect(
+            TerentoWindowFrameLayout.centeredOrigin(
+                windowSize: CGSize(width: 1500, height: 1000), visibleFrame: screen
+            ) == CGPoint(x: 0, y: -100),
+            "oversized utility windows retain a reachable title bar"
+        )
+
+        print("PASS: 18 Stage 7 navigation/window presentation tests")
     }
 
     private static func expect(_ condition: Bool, _ message: String) {

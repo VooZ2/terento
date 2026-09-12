@@ -25,6 +25,7 @@ swiftc \
     "$project_root/Sources/TerentoPoC/Installation/InstallProfile.swift" \
     "$project_root/Sources/TerentoPoC/Installation/MapLifecycle.swift" \
     "$project_root/Sources/TerentoPoC/Installation/MapLifecyclePresentation.swift" \
+    "$project_root/Sources/TerentoPoC/Views/MapInventoryListPresentation.swift" \
     "$project_root/Tests/TerentoPoCTests/MapLifecyclePresentationTests.swift" \
     -o "$binary_path"
 

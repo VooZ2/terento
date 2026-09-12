@@ -39,6 +39,14 @@ enum TerentoWindowPresentation: Sendable {
 /// Pure frame calculation shared by the one-time migration and geometry tests.
 /// Sizes are frame sizes here, after AppKit has added the title bar.
 enum TerentoWindowFrameLayout {
+    static func centeredOrigin(windowSize: CGSize, visibleFrame: CGRect) -> CGPoint {
+        CGPoint(
+            x: visibleFrame.minX + max(0, (visibleFrame.width - windowSize.width) / 2),
+            y: visibleFrame.maxY - windowSize.height
+                - max(0, (visibleFrame.height - windowSize.height) / 2)
+        )
+    }
+
     static func fittedFrame(current: CGRect, desiredSize: CGSize, visibleFrame: CGRect) -> CGRect {
         let size = CGSize(
             width: min(desiredSize.width, visibleFrame.width),

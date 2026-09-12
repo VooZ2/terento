@@ -73,10 +73,10 @@ if [[ "$(grep -Fc 'MapSelectionStorageSummary(' "$connect_screen")" -lt 2 ]]; th
     exit 1
 fi
 
-if ! grep -Fq 'Text("Terento will install these maps to your Garmin. Existing Garmin maps will not be changed.")' "$connect_screen" \
+if grep -Fq 'Text("Terento will install these maps to your Garmin. Existing Garmin maps will not be changed.")' "$connect_screen" \
     || grep -Fq 'Terento will install the selected maps to your Garmin.' "$connect_screen" \
     || grep -Fq 'Existing Garmin system maps are left unchanged.' "$connect_screen"; then
-    print -u2 "FAIL: Review safety disclosure is missing"
+    print -u2 "FAIL: Review still repeats the installation explanation"
     exit 1
 fi
 
@@ -90,13 +90,13 @@ if grep -Fq 'Help improve Garmin compatibility' "$connect_screen" \
     exit 1
 fi
 
-if ! grep -Fq 'Terento sends privacy-minimised diagnostics by default to help improve the app and its services. You can turn this off anytime in Terento → Diagnostics.' "$connect_screen" \
+if ! grep -Fq 'Terento sends privacy-minimised diagnostics by default' "$project_root/Sources/TerentoPoC/Views/AboutTerentoView.swift" \
     || ! grep -Fq 'AboutSecondaryButton(title: "Manage diagnostics")' "$project_root/Sources/TerentoPoC/Views/AboutTerentoView.swift"; then
-    print -u2 "FAIL: Review/About diagnostics disclosure or settings entry point is missing"
+    print -u2 "FAIL: About diagnostics disclosure or settings entry point is missing"
     exit 1
 fi
 
-if ! grep -Fq 'else if let reason = installAvailability.userReason' "$connect_screen" \
+if ! grep -Fq 'if !plan.canContinue, let reason = installAvailability.userReason' "$connect_screen" \
     || grep -Fq 'else if plan.storagePlan.status == .blockedInsufficientSpace' "$connect_screen"; then
     print -u2 "FAIL: Review warning does not show the applicable disabled-install reason"
     exit 1
@@ -138,7 +138,7 @@ if ! grep -Fq 'InstallReviewAvailabilityResolver' "$connect_screen" \
     || ! grep -Fq 'ReadyToInstallSelectedMapsList(plan: plan)' "$connect_screen" \
     || ! grep -Fq 'private static let visibleRowCapacity = 3' "$connect_screen" \
     || ! grep -Fq 'idealHeight: visibleListHeight' "$connect_screen" \
-    || ! grep -Fq 'Spacer(minLength: TerentoPageLayout.sectionSpacing)' "$connect_screen"; then
+    || ! grep -Fq 'VStack(spacing: TerentoPageLayout.sectionSpacing + 18)' "$connect_screen"; then
     print -u2 "FAIL: Review CTA or content-aware selected-map sizing is missing"
     exit 1
 fi

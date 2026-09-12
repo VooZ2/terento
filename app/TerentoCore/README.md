@@ -38,6 +38,12 @@ changing provider licensing/acquisition policy. Search uses catalog geography
 and reviewed aliases, not provider names, style annotations, filenames or a
 city/POI lookup service. Official administrative regions remain catalog entries.
 
+Ready keeps Storage directly above the action row; its short body can scroll
+independently when needed. Manage maps has local search/provider filters over
+the exact scanned inventory, with no geographic guesses for custom files.
+About and Diagnostics share centered opening behavior and retain manual
+positions while already visible. These are presentation changes only.
+
 About, privacy/legal links, update status and diagnostics access are consolidated
 in `Terento → About Terento`. The sidebar contains only Device, Install maps and
 Manage maps. Update-controller behavior and all device operations are unchanged.

@@ -26,10 +26,12 @@ if grep -Fq 'compatibilitySharingBinding' "$connect_screen" \
     exit 1
 fi
 
-if ! grep -Fq 'Terento sends privacy-minimised diagnostics by default to help improve the app and its services. You can turn this off anytime in Terento → Diagnostics.' "$connect_screen" \
+if ! grep -Fq 'Terento sends privacy-minimised diagnostics by default' "$about" \
+    || ! grep -Fq 'Both diagnostics streams are enabled by default.' "$repo_root/app/TerentoCore/Sources/TerentoPoC/Views/DiagnosticsView.swift" \
+    || grep -Fq 'Terento sends privacy-minimised diagnostics by default' "$connect_screen" \
     || grep -Fq 'Help improve Garmin compatibility' "$connect_screen" \
     || grep -Fq 'Share anonymous map statistics' "$connect_screen"; then
-    print -u2 "FAIL: Ready diagnostics disclosure is missing or still exposes old copy"
+    print -u2 "FAIL: About/Diagnostics disclosure is missing or Ready duplicates it"
     exit 1
 fi
 

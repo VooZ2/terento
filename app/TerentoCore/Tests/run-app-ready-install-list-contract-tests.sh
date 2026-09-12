@@ -32,7 +32,7 @@ require_text 'componentRowCount > Self.visibleRowCapacity ? .automatic : .hidden
 require_text 'idealHeight: visibleListHeight' 'list cannot compress at reduced height'
 require_text 'maxHeight: visibleListHeight' 'list can expand beyond three rows'
 require_text '.frame(minHeight: Self.rowHeight)' 'selected rows do not match the viewport calculation'
-require_text 'bodyScrolls: mapEngine.installationPhase == .failed' 'normal Ready screen may scroll as a whole page'
+require_text 'TerentoInstallFooterPageShell(bodyScrolls: true)' 'Ready body cannot scroll independently when content overflows'
 reject_text 'private static let listHeight: CGFloat = 116' 'legacy two-row viewport remains'
 
 print 'PASS: Ready to install selected-count and three-row viewport contract'

@@ -52,6 +52,12 @@ struct ConnectScreen: View {
     @State private var selectedGeography: MapGeographyGroup = .all
     @State private var revealedSelectionID: String?
     @State private var filteredAvailableSelectionItems: [MapSelectionItem] = []
+    @State private var managedInventory: MapLifecycleInventory?
+    @State private var managedPresentationIndex: MapInventoryListPresentationIndex?
+    @State private var filteredManagedInventory: MapLifecycleInventory?
+    @State private var managedSearchText = ""
+    @State private var managedProviderID = ""
+    @FocusState private var managedSearchFocused: Bool
     @State private var displayedInstallationPlan: InstallationPlan?
     @State private var mapSearchText = ""
     @State private var selectedMapProviderID = ""
@@ -102,6 +108,7 @@ struct ConnectScreen: View {
 
     private func refreshMapSelectionPresentation() {
         mapSelectionItems = mapEngine.mapSelectionItems
+        refreshManagedPresentation()
         catalogPresentationIndex = MapCatalogPresentationIndex(items: mapSelectionItems)
         refreshProviderPresentation()
         refreshDisplayedInstallationPlan()
@@ -275,6 +282,8 @@ struct ConnectScreen: View {
         .onChange(of: selectedMapProviderID) { _ in refreshProviderPresentation() }
         .onChange(of: mapSearchText) { _ in refreshSearchPresentation() }
         .onChange(of: selectedGeography) { _ in refreshSearchPresentation() }
+        .onChange(of: managedSearchText) { _ in refreshManagedFilters() }
+        .onChange(of: managedProviderID) { _ in refreshManagedFilters() }
         .onChange(of: selectedMapIDs) { _ in refreshDisplayedInstallationPlan() }
         .onChange(of: selectedOptionalArtifactIDs) { _ in refreshDisplayedInstallationPlan() }
         .onChange(of: mapEngine.customMapImportReadyForInstallation) { _ in
@@ -738,8 +747,83 @@ struct ConnectScreen: View {
         }
     }
 
+    private var managedFiltersAreActive: Bool {
+        !managedSearchText.isEmpty || !managedProviderID.isEmpty
+    }
+
+    private func refreshManagedPresentation() {
+        managedInventory = mapEngine.mapLifecycleInventory()
+        managedPresentationIndex = managedInventory.map(MapInventoryListPresentationIndex.init)
+        if !managedProviderID.isEmpty,
+           !(managedPresentationIndex?.providerOptions.contains { $0.id == managedProviderID } ?? false) {
+            managedProviderID = ""
+        }
+        refreshManagedFilters()
+    }
+
+    private func refreshManagedFilters() {
+        filteredManagedInventory = managedPresentationIndex?.filtered(
+            query: managedSearchText, providerID: managedProviderID
+        )
+        if managedFiltersAreActive, let inventory = filteredManagedInventory {
+            expandedProviderMapGroups.formUnion(inventory.providerGroups.map(\.id))
+            importedMapsExpanded = true
+            externalMapsExpanded = true
+        }
+    }
+
+    private var managedCatalogToolbar: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                TextField("Search countries and regions", text: $managedSearchText)
+                    .textFieldStyle(.roundedBorder)
+                    .focused($managedSearchFocused)
+                    .accessibilityLabel("Search installed maps")
+                    .accessibilityHint("Search a country, region or imported map name.")
+                if !managedSearchText.isEmpty {
+                    Button {
+                        managedSearchText = ""
+                        managedSearchFocused = true
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(TerentoColors.secondaryText)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear installed map search")
+                }
+                Picker("Map provider", selection: $managedProviderID) {
+                    Text("All providers").tag("")
+                    ForEach(managedPresentationIndex?.providerOptions ?? []) { provider in
+                        Text(provider.title).tag(provider.id)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(width: 175)
+                .accessibilityLabel("Installed map provider")
+            }
+            HStack {
+                let count = filteredManagedInventory?.allItems.count ?? 0
+                Text("\(count) \(count == 1 ? "map" : "maps")")
+                    .foregroundStyle(TerentoColors.secondaryText)
+                Spacer()
+                if managedFiltersAreActive {
+                    Button("Clear filters") {
+                        managedSearchText = ""
+                        managedProviderID = ""
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(TerentoColors.interactive)
+                }
+            }
+            .font(.terentoUI(size: 12, weight: .medium))
+        }
+        .padding(.bottom, 4)
+        .accessibilityElement(children: .contain)
+    }
+
     private var managedMapsContent: some View {
-        TerentoFooterPageShell {
+        TerentoFooterPageShell(bodyScrolls: false) {
             VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 16) {
                 TerentoPageHeader(
@@ -763,7 +847,65 @@ struct ConnectScreen: View {
                 }
             }
 
-            if let lifecycleInventory = mapEngine.mapLifecycleInventory() {
+            if let lifecycleInventory = filteredManagedInventory {
+                if !(managedInventory?.allItems.isEmpty ?? true) {
+                    managedCatalogToolbar
+                        .padding(.top, TerentoPageLayout.firstSectionTopPadding)
+                }
+                ScrollView {
+                    managedMapGroups(lifecycleInventory)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+                .scrollIndicators(.automatic)
+            } else {
+                MapStatusRow(
+                    title: mapEngine.state == .loadingCatalog || mapEngine.state == .scanning
+                        ? "Reading your maps"
+                        : "Map information is not available",
+                    detail: deviceEngine.hasConnectedDevice
+                        ? (mapEngine.state == .loadingCatalog || mapEngine.state == .scanning
+                            ? "Checking your Garmin watch…"
+                            : "Refresh the connected Garmin watch to try again.")
+                        : "Connect your Garmin watch first",
+                    status: deviceEngine.hasConnectedDevice
+                        ? (mapEngine.state == .loadingCatalog || mapEngine.state == .scanning
+                            ? "Checking"
+                            : "Pending")
+                        : "Pending",
+                    note: mapEngine.userErrorMessage
+                )
+                .padding(.top, 30)
+            }
+
+            }
+        } footer: {
+            TerentoPageFooter(
+                leading: {
+                    TerentoBackButton {
+                        selectedSection = .device
+                    }
+                },
+                trailing: {
+                    EmptyView()
+                }
+            )
+        }
+        .sheet(item: $lifecycleViewModel.pendingConfirmation) { confirmation in
+            MapLifecycleConfirmationSheet(
+                title: confirmation.action == .remove ? "Remove this map?" : "Update this map?",
+                subtitle: mapConfirmationSubtitle(for: confirmation),
+                message: lifecycleViewModel.confirmationMessage,
+                actionTitle: confirmation.action == .remove ? "Remove map" : "Update map",
+                isDestructive: confirmation.action == .remove,
+                onCancel: { lifecycleViewModel.cancelPendingAction() },
+                onConfirm: { lifecycleViewModel.confirmPendingAction() }
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func managedMapGroups(_ lifecycleInventory: MapLifecycleInventory) -> some View {
+        LazyVStack(alignment: .leading, spacing: 0) {
                 let hasProviderMaps = !lifecycleInventory.providerGroups.isEmpty
                 let importedMaps = lifecycleInventory.otherMaps.filter {
                     $0.sourceKind == .custom && $0.classification == .terentoManaged
@@ -828,58 +970,17 @@ struct ConnectScreen: View {
 
                 if lifecycleInventory.allItems.isEmpty {
                     MapStatusRow(
-                        title: "No maps detected",
-                        detail: deviceEngine.hasConnectedDevice
-                            ? "No installed maps were found on this Garmin."
-                            : "Connect your Garmin watch first",
+                        title: managedFiltersAreActive ? "No matching maps" : "No maps detected",
+                        detail: managedFiltersAreActive
+                            ? "Try another country or region, or clear the filters."
+                            : (deviceEngine.hasConnectedDevice
+                                ? "No installed maps were found on this Garmin."
+                                : "Connect your Garmin watch first"),
                         status: deviceEngine.hasConnectedDevice ? "Ready" : "Pending",
                         note: nil
                     )
                     .padding(.top, 30)
                 }
-            } else {
-                MapStatusRow(
-                    title: mapEngine.state == .loadingCatalog || mapEngine.state == .scanning
-                        ? "Reading your maps"
-                        : "Map information is not available",
-                    detail: deviceEngine.hasConnectedDevice
-                        ? (mapEngine.state == .loadingCatalog || mapEngine.state == .scanning
-                            ? "Checking your Garmin watch…"
-                            : "Refresh the connected Garmin watch to try again.")
-                        : "Connect your Garmin watch first",
-                    status: deviceEngine.hasConnectedDevice
-                        ? (mapEngine.state == .loadingCatalog || mapEngine.state == .scanning
-                            ? "Checking"
-                            : "Pending")
-                        : "Pending",
-                    note: mapEngine.userErrorMessage
-                )
-                .padding(.top, 30)
-            }
-
-            }
-        } footer: {
-            TerentoPageFooter(
-                leading: {
-                    TerentoBackButton {
-                        selectedSection = .device
-                    }
-                },
-                trailing: {
-                    EmptyView()
-                }
-            )
-        }
-        .sheet(item: $lifecycleViewModel.pendingConfirmation) { confirmation in
-            MapLifecycleConfirmationSheet(
-                title: confirmation.action == .remove ? "Remove this map?" : "Update this map?",
-                subtitle: mapConfirmationSubtitle(for: confirmation),
-                message: lifecycleViewModel.confirmationMessage,
-                actionTitle: confirmation.action == .remove ? "Remove map" : "Update map",
-                isDestructive: confirmation.action == .remove,
-                onCancel: { lifecycleViewModel.cancelPendingAction() },
-                onConfirm: { lifecycleViewModel.confirmPendingAction() }
-            )
         }
     }
 
@@ -1635,9 +1736,7 @@ struct ConnectScreen: View {
                 || lifecycleViewModel.isBusy
         )
 
-        return TerentoInstallFooterPageShell(
-            bodyScrolls: mapEngine.installationPhase == .failed
-        ) {
+        return TerentoInstallFooterPageShell(bodyScrolls: true) {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Ready to install")
                     .font(.terentoHeading(size: 42, weight: .semibold))
@@ -1655,30 +1754,7 @@ struct ConnectScreen: View {
                 ReadyToInstallSelectedMapsList(plan: plan)
                     .padding(.top, 4)
 
-                MapSelectionStorageSummary(
-                    plan: plan,
-                    totalCapacity: snapshot?.totalCapacity ?? 0,
-                    formatBytes: formatBytes
-                )
-                .padding(.top, 24)
-
-                if plan.canContinue {
-                    Text("Terento will install these maps to your Garmin. Existing Garmin maps will not be changed.")
-                        .font(.terentoUI(size: 13, weight: .regular))
-                        .foregroundStyle(TerentoColors.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 10)
-
-                    Text("Terento sends privacy-minimised diagnostics by default to help improve the app and its services. You can turn this off anytime in Terento → Diagnostics.")
-                        .font(.terentoUI(size: 13, weight: .regular))
-                        .foregroundStyle(TerentoColors.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 10)
-
-                    Spacer(minLength: TerentoPageLayout.sectionSpacing)
-                        .padding(.bottom, TerentoPageLayout.sectionSpacing)
-
-                } else if let reason = installAvailability.userReason {
+                if !plan.canContinue, let reason = installAvailability.userReason {
                     Text(reason)
                         .font(.terentoUI(size: 15, weight: .semibold))
                         .foregroundStyle(TerentoColors.error)
@@ -1689,6 +1765,14 @@ struct ConnectScreen: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         } footer: {
+            VStack(spacing: TerentoPageLayout.sectionSpacing + 18) {
+                MapSelectionStorageSummary(
+                    plan: plan,
+                    totalCapacity: snapshot?.totalCapacity ?? 0,
+                    formatBytes: formatBytes
+                )
+                .fixedSize(horizontal: false, vertical: true)
+
             TerentoPageFooter {
                 TerentoBackButton {
                     selectedInstallationPlan = nil
@@ -1709,6 +1793,7 @@ struct ConnectScreen: View {
                     !mapSupport.canAttemptTerentoMapInstall
                         || !installAvailability.isEnabled
                 )
+            }
             }
         }
     }

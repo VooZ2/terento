@@ -67,6 +67,7 @@ struct TerentoPoCApp: App {
         }
         Window("About Terento", id: "about") {
             AboutTerentoView(appUpdateController: appUpdateController)
+                .background(TerentoSecondaryWindowPlacement())
         }
         .defaultSize(width: 560, height: 580)
         .windowResizability(.automatic)
@@ -76,6 +77,7 @@ struct TerentoPoCApp: App {
                 evidenceController: evidenceController,
                 mapStatisticsController: mapStatisticsController
             )
+            .background(TerentoSecondaryWindowPlacement())
         }
         .defaultSize(width: 520, height: 600)
         .windowResizability(.contentSize)
@@ -133,4 +135,58 @@ private struct TerentoWindowConfigurator: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+/// Both utility windows open on the active display. Only a new opening is
+/// centered: bringing an already visible window forward respects its position.
+private struct TerentoSecondaryWindowPlacement: NSViewRepresentable {
+    func makeNSView(context: Context) -> PlacementView { PlacementView() }
+    func updateNSView(_ nsView: PlacementView, context: Context) {}
+
+    final class PlacementView: NSView {
+        private weak var observedWindow: NSWindow?
+        private var needsPlacement = true
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard observedWindow !== window else { return }
+            NotificationCenter.default.removeObserver(self)
+            observedWindow = window
+            needsPlacement = true
+            guard let window else { return }
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(windowBecameKey(_:)),
+                name: NSWindow.didBecomeKeyNotification, object: window
+            )
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(windowWillClose(_:)),
+                name: NSWindow.willCloseNotification, object: window
+            )
+            // Attachment can happen after SwiftUI has already made it key.
+            if window.isKeyWindow { placeIfNeeded() }
+        }
+
+        @objc private func windowBecameKey(_ notification: Notification) {
+            placeIfNeeded()
+        }
+
+        @objc private func windowWillClose(_ notification: Notification) {
+            needsPlacement = true
+        }
+
+        private func placeIfNeeded() {
+            guard needsPlacement, let window = observedWindow else { return }
+            needsPlacement = false
+            let sourceWindow = NSApp.orderedWindows.first {
+                $0 !== window && $0.isVisible && $0.screen != nil
+            }
+            guard let screen = sourceWindow?.screen ?? window.screen ?? NSScreen.main else { return }
+            window.setFrameOrigin(TerentoWindowFrameLayout.centeredOrigin(
+                windowSize: window.frame.size,
+                visibleFrame: screen.visibleFrame
+            ))
+        }
+
+        deinit { NotificationCenter.default.removeObserver(self) }
+    }
 }
