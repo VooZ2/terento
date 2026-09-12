@@ -37,7 +37,6 @@ struct ConnectScreen: View {
     @State private var selectedMapIDs: Set<String> = []
     @State private var selectedOptionalArtifactIDs: [String: Set<String>] = [:]
     @State private var selectedInstallationPlan: InstallationPlan?
-    @State private var availableMapsExpanded = true
     @State private var importedMapsExpanded = false
     @State private var externalMapsExpanded = false
     @State private var expandedProviderMapGroups: Set<String> = []
@@ -337,11 +336,6 @@ struct ConnectScreen: View {
         }
         .onChange(of: lifecycleViewModel.isBusy) { _ in
             updatePresenceMonitoring(for: mapEngine.state)
-        }
-        .onChange(of: availableMapsExpanded) { isExpanded in
-            if !isExpanded {
-                mapSearchFieldFocused = false
-            }
         }
         .onAppear {
             presentUpdatePromptIfSafe()
@@ -1110,18 +1104,31 @@ struct ConnectScreen: View {
     }
 
     private var catalogToolbar: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 10) {
-                catalogSearchField
-                catalogFilterMenus
+        VStack(alignment: .leading, spacing: 8) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    catalogSearchField
+                    catalogFilterMenus
+                }
+                VStack(alignment: .leading, spacing: 10) {
+                    catalogSearchField
+                    catalogFilterMenus
+                }
             }
-            VStack(alignment: .leading, spacing: 10) {
-                catalogSearchField
-                catalogFilterMenus
+            HStack {
+                let count = filteredAvailableSelectionItems.count
+                Text("\(count) \(count == 1 ? "map" : "maps")")
+                    .foregroundStyle(TerentoColors.secondaryText)
+                Spacer()
+                if catalogFiltersAreActive {
+                    Button("Clear filters") { clearCatalogFilters() }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(TerentoColors.interactive)
+                }
             }
+            .font(.terentoUI(size: 12, weight: .medium))
         }
         .accessibilityElement(children: .contain)
-        .padding(.bottom, 4)
     }
 
     private var catalogSearchField: some View {
@@ -1188,7 +1195,6 @@ struct ConnectScreen: View {
                     Text("\(hiddenItems.count) selected hidden.")
                     Button("Show selected") {
                         clearCatalogFilters()
-                        availableMapsExpanded = true
                         revealedSelectionID = selectedProviderItems.first?.id
                     }
                     .buttonStyle(.plain)
@@ -1208,7 +1214,7 @@ struct ConnectScreen: View {
                 // than clipping its file controls or pushing Storage offscreen.
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
-                        availableCatalogList.frame(height: availableMapsExpanded ? 180 : 0)
+                        availableCatalogList.frame(height: 180)
                         customMapImportPanel
                     }
                 }
@@ -1221,64 +1227,65 @@ struct ConnectScreen: View {
                 }
             }
         }
+        // Keep this gap outside both scroll views so rows cannot slide under
+        // the toolbar; it matches the gap before the custom import panel.
+        .padding(.top, 12)
         .clipped()
     }
 
     @ViewBuilder
     private var availableCatalogList: some View {
-        if availableMapsExpanded {
-            if providerMapSelectionItems.isEmpty || filteredAvailableSelectionItems.isEmpty {
-                Text(availableMapsEmptyMessage)
-                    .font(.terentoUI(size: 13, weight: .medium))
-                    .foregroundStyle(TerentoColors.secondaryText)
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-                .padding(.top, 10)
-            } else {
-                ScrollViewReader { scrollProxy in
-                    TerentoBoundedMapSelectionRegion {
-                        LazyVStack(spacing: 0) {
-                            ForEach(filteredAvailableSelectionItems) { item in
-                                MapSelectionRow(
-                                    item: item,
-                                    isSelected: Binding(
-                                        get: { selectedMapIDs.contains(item.id) },
-                                        set: { selected in
-                                            guard MapSelectionPresentationModel.isSelectionEnabled(
-                                                item,
-                                                selectedIDs: selectedMapIDs,
-                                                items: mapSelectionItems
-                                            ) else { return }
-                                            if selected {
-                                                selectedMapIDs.insert(item.id)
-                                            } else {
-                                                selectedMapIDs.remove(item.id)
-                                                selectedOptionalArtifactIDs.removeValue(forKey: item.id)
-                                            }
+        if providerMapSelectionItems.isEmpty || filteredAvailableSelectionItems.isEmpty {
+            Text(availableMapsEmptyMessage)
+                .font(.terentoUI(size: 13, weight: .medium))
+                .foregroundStyle(TerentoColors.secondaryText)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .padding(.top, 10)
+        } else {
+            ScrollViewReader { scrollProxy in
+                TerentoBoundedMapSelectionRegion {
+                    LazyVStack(spacing: 0) {
+                        ForEach(filteredAvailableSelectionItems) { item in
+                            MapSelectionRow(
+                                item: item,
+                                isSelected: Binding(
+                                    get: { selectedMapIDs.contains(item.id) },
+                                    set: { selected in
+                                        guard MapSelectionPresentationModel.isSelectionEnabled(
+                                            item,
+                                            selectedIDs: selectedMapIDs,
+                                            items: mapSelectionItems
+                                        ) else { return }
+                                        if selected {
+                                            selectedMapIDs.insert(item.id)
+                                        } else {
+                                            selectedMapIDs.remove(item.id)
+                                            selectedOptionalArtifactIDs.removeValue(forKey: item.id)
                                         }
-                                    ),
-                                    selectedOptionalArtifactIDs: Binding(
-                                        get: {
-                                            selectedOptionalArtifactIDs[item.id] ?? []
-                                        },
-                                        set: { value in
-                                            if value.isEmpty {
-                                                selectedOptionalArtifactIDs.removeValue(forKey: item.id)
-                                            } else {
-                                                selectedOptionalArtifactIDs[item.id] = value
-                                            }
+                                    }
+                                ),
+                                selectedOptionalArtifactIDs: Binding(
+                                    get: {
+                                        selectedOptionalArtifactIDs[item.id] ?? []
+                                    },
+                                    set: { value in
+                                        if value.isEmpty {
+                                            selectedOptionalArtifactIDs.removeValue(forKey: item.id)
+                                        } else {
+                                            selectedOptionalArtifactIDs[item.id] = value
                                         }
-                                    ),
-                                    isAvailable: true,
-                                    selectionEnabled: isMapSelectionEnabled(item)
-                                )
-                            }
+                                    }
+                                ),
+                                isAvailable: true,
+                                selectionEnabled: isMapSelectionEnabled(item)
+                            )
                         }
                     }
-                    .onChange(of: revealedSelectionID) { itemID in
-                        if let itemID {
-                            scrollProxy.scrollTo(itemID, anchor: .top)
-                            revealedSelectionID = nil
-                        }
+                }
+                .onChange(of: revealedSelectionID) { itemID in
+                    if let itemID {
+                        scrollProxy.scrollTo(itemID, anchor: .top)
+                        revealedSelectionID = nil
                     }
                 }
             }
@@ -1340,25 +1347,7 @@ struct ConnectScreen: View {
                         )
                         .padding(.top, 18)
                     } else {
-                        VStack(alignment: .leading, spacing: 10) {
-                            HStack {
-                                TerentoMapSectionHeader(
-                                    title: "Available maps",
-                                    count: filteredAvailableSelectionItems.count,
-                                    isExpanded: $availableMapsExpanded
-                                )
-                                Spacer(minLength: 10)
-                                if catalogFiltersAreActive {
-                                    Button("Clear filters") { clearCatalogFilters() }
-                                        .buttonStyle(.plain)
-                                        .font(.terentoUI(size: 13, weight: .medium))
-                                        .foregroundStyle(TerentoColors.interactive)
-                                }
-                            }
-                            if availableMapsExpanded {
-                                catalogToolbar
-                            }
-                        }
+                        catalogToolbar
                         .padding(.top, TerentoPageLayout.firstSectionTopPadding)
                     }
                 }

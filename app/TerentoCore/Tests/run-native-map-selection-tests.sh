@@ -103,7 +103,9 @@ if ! grep -Fq 'if !plan.canContinue, let reason = installAvailability.userReason
 fi
 
 if grep -Eiq 'community maps?' "$connect_screen" \
-    || ! grep -Fq 'title: "Available maps"' "$connect_screen"; then
+    || ! grep -Fq 'let count = filteredAvailableSelectionItems.count' "$connect_screen" \
+    || grep -Fq 'availableMapsExpanded' "$connect_screen" \
+    || grep -Fq 'title: "Available maps"' "$connect_screen"; then
     print -u2 "FAIL: primary map flow exposes origin terminology or hides the current source"
     exit 1
 fi

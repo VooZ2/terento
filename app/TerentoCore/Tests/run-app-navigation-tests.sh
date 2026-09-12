@@ -175,7 +175,9 @@ fi
 if grep -Fq 'title: "Freizeitkarte maps"' "$connect_screen" \
     || grep -Fq 'title: "Managed maps"' "$connect_screen" \
     || ! grep -Fq 'title: group.title' "$connect_screen" \
-    || ! grep -Fq 'title: "Available maps"' "$connect_screen" \
+    || ! grep -Fq 'let count = filteredAvailableSelectionItems.count' "$connect_screen" \
+    || grep -Fq 'availableMapsExpanded' "$connect_screen" \
+    || grep -Fq 'title: "Available maps"' "$connect_screen" \
     || grep -Eiq 'community maps?' "$connect_screen" \
     || ! grep -Fq 'title: "Imported maps"' "$connect_screen" \
     || ! grep -Fq 'title: "External maps"' "$connect_screen" \

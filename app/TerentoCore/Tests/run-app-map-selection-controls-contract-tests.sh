@@ -46,6 +46,19 @@ require_group_text '.accessibilityLabel("Clear search")' 'search clear lacks its
 require_group_text '.focused($mapSearchFieldFocused)' 'search focus binding was removed'
 require_group_text 'mapSearchFieldFocused = true' 'clearing search does not retain focus'
 reject_group_text '.accessibilityLabel("Search available maps")' 'container still overrides child control labels'
-reject_group_text 'Spacer(' 'expanding spacer exists inside the filter/search group'
+# Only the count/clear row may expand; the input/filter rows remain compact.
+require_group_text 'let count = filteredAvailableSelectionItems.count' 'toolbar count is not filtered'
+require_group_text 'Button("Clear filters") { clearCatalogFilters() }' 'count row lacks clear filters'
+python3 - "$connect_screen" <<'PYTEST'
+from pathlib import Path
+import sys
+source = Path(sys.argv[1]).read_text()
+toolbar = source.split('private var catalogToolbar: some View {', 1)[1].split('private var catalogSearchField:', 1)[0]
+assert toolbar.index('catalogSearchField') < toolbar.index('let count = filteredAvailableSelectionItems.count'), 'result count is not below search/filter controls'
+controls = toolbar.split('            HStack {', 1)[0]
+assert 'Spacer(' not in controls, 'expanding spacer exists in the adaptive input/filter rows'
+assert 'availableMapsExpanded' not in source, 'catalog can still be collapsed'
+print('PASS: permanent catalog toolbar places result count below its controls')
+PYTEST
 
 print 'PASS: responsive catalog toolbar and distinct accessible native controls'

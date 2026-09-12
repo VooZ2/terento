@@ -27,7 +27,9 @@ watch.
 The working-tree UI keeps the existing select → review → install flow in a
 stable 1180×820 pt default window (920×600 pt minimum). The catalog has local
 country/region search, geography and provider menus, a filtered result count,
-and a separate collapsed import-from-Mac section. Filters reuse an immutable
+and a separate collapsed import-from-Mac section. The catalog stays visible;
+its result count sits below the controls and its viewport has a persistent12pt
+top gap matching the import separation. Filters reuse an immutable
 presentation index; they never request a device scan or installation preflight.
 Selected maps remain selected across filters, and the existing one-provider
 batch restriction remains enforced. Recognized installed matches remain
