@@ -27,6 +27,15 @@ class Tags(HTMLParser):
 
 
 class AdminAuditTests(unittest.TestCase):
+    def test_empty_review_queue_uses_standard_card_header(self):
+        from terento_catalog.admin import ADMIN_STYLES, overview_page
+        body = overview_page({}, {"username": "operator"}, "csrf").decode()
+        panel = body.split("aria-labelledby='overview-attention-title'>", 1)[1].split("</section>", 1)[0]
+        self.assertTrue(panel.startswith("<div class='section-heading'>"))
+        self.assertIn("</a></div><nav class='attention-shortcuts'", panel)
+        self.assertNotIn(".overview-attention-empty h2", ADMIN_STYLES)
+        self.assertNotIn(".overview-attention-empty{display:grid", ADMIN_STYLES)
+
     def test_mobile_card_spacing_has_one_layout_owner(self):
         from terento_catalog.admin import ADMIN_STYLES
         mobile = ADMIN_STYLES.split("/* Mobile card spacing belongs", 1)[1].split("@media(prefers-reduced-motion", 1)[0]
@@ -131,7 +140,7 @@ class AdminAuditTests(unittest.TestCase):
         for rule in (".filter-bar>.filter-disclosure{align-self:flex-end}",
                      ".filter-bar input,.filter-bar select{font-weight:400}",
                      ".filter-bar .device-mobile-sort{display:flex;flex-direction:column;gap:6px}",
-                     "coverage-map-v1.js?v=20260913-world-fit-1"):
+                     "coverage-map-v1.js?v=20260913-full-width-2"):
             self.assertIn(rule, body)
         result = subprocess.run([os.environ.get('TERENTO_NODE_BIN', 'node'),
                                  str(Path(__file__).with_name('coverage-map-tests.cjs'))],
