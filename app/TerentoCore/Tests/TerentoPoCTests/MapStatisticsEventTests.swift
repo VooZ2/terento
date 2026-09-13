@@ -19,6 +19,35 @@ private actor MapStatisticsUploadRecorder: MapStatisticsEventUploading {
     func uploadedEvents() -> [MapStatisticsEvent] { events }
 }
 
+/// Hold the first response until a second event is durably queued. No network
+/// or scheduler delay determines when the tested interleaving occurs.
+private actor GatedMapStatisticsUploader: MapStatisticsEventUploading {
+    private var firstResponse: CheckedContinuation<Void, Never>?
+    private var calls: [MapStatisticsEvent] = []
+    private let failure: MapStatisticsUploadError?
+    private var failuresRemaining: Int
+
+    init(failure: MapStatisticsUploadError? = nil, failuresRemaining: Int = 0) {
+        self.failure = failure
+        self.failuresRemaining = failuresRemaining
+    }
+
+    func upload(_ event: MapStatisticsEvent) async throws {
+        calls.append(event)
+        if calls.count == 1 {
+            await withCheckedContinuation { firstResponse = $0 }
+        }
+        if failuresRemaining > 0, let failure {
+            failuresRemaining -= 1
+            throw failure
+        }
+    }
+
+    func waitingForFirstResponse() -> Bool { firstResponse != nil }
+    func releaseFirstResponse() { firstResponse?.resume(); firstResponse = nil }
+    func attemptedEvents() -> [MapStatisticsEvent] { calls }
+}
+
 @main
 struct MapStatisticsEventTests {
     static let package = MapPackage(
@@ -35,6 +64,15 @@ struct MapStatisticsEventTests {
 
     @MainActor
     static func main() async throws {
+        let watchdog = Task.detached {
+            try await Task.sleep(nanoseconds: 10_000_000_000)
+            fputs("FAIL: map statistics asynchronous tests exceeded 10 seconds\n", stderr)
+            exit(1)
+        }
+        defer { watchdog.cancel() }
+        try await testEventsQueuedDuringUpload()
+        try await testQueuedEventsRespectRetryPolicy()
+        try await testOptOutDuringUpload()
         try testPayloadAndOperationIdentity()
         try testCustomMapPrivacyBoundary()
         try await testCustomMapStatsNeverUpload()
@@ -185,6 +223,113 @@ struct MapStatisticsEventTests {
 
         controller.decideConsent(.declined)
         expect(!controller.sharingEnabled, "map usage diagnostics remain independently reversible")
+    }
+
+
+    @MainActor
+    private static func waitForFirstResponse(_ uploader: GatedMapStatisticsUploader) async {
+        while !(await uploader.waitingForFirstResponse()) { await Task.yield() }
+    }
+
+    @MainActor
+    static func testEventsQueuedDuringUpload() async throws {
+        for (type, outcome) in [
+            (MapStatisticsEventType.downloadSucceeded, MapStatisticsEventOutcome.succeeded),
+            (.downloadFailed, .failed), (.installSucceeded, .succeeded), (.installFailed, .failed)
+        ] {
+            let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            defer { try? FileManager.default.removeItem(at: root) }
+            let store = LocalMapStatisticsEventStore(rootURL: root)
+            let uploader = GatedMapStatisticsUploader()
+            let controller = MapStatisticsEventController(store: store, uploader: uploader)
+            let operation = UUID()
+            let start = MapStatisticsEvent(operationId: operation, package: package,
+                                          eventType: .downloadStarted, outcome: .unknown)
+            let terminal = MapStatisticsEvent(operationId: operation, package: package,
+                                             eventType: type, outcome: outcome)
+            controller.record(start)
+            await waitForFirstResponse(uploader)
+            let sending = controller.scheduledUploadForTesting()
+            expect(sending != nil, "record starts the real automatic sender")
+            controller.record(terminal)
+            await controller.scheduledRecordForTesting()?.value
+            expect(store.pendingEvents().count == 2, "terminal event is durably queued before the first response")
+            await uploader.releaseFirstResponse()
+            await sending?.value
+            let attempts = await uploader.attemptedEvents()
+            expect(attempts.map(\.id) == [start.id, terminal.id],
+                   "automatic sender delivers an event queued during an in-flight upload")
+            expect(store.pendingEvents().isEmpty && controller.uploadStatus == .uploaded,
+                   "uploaded means all queued outcomes were delivered")
+            await controller.flushPendingEvents()
+            let afterFlush = await uploader.attemptedEvents()
+            expect(afterFlush.map(\.id) == attempts.map(\.id), "a drained queue is not sent again")
+        }
+    }
+
+    @MainActor
+    static func testQueuedEventsRespectRetryPolicy() async throws {
+        for (failure, failures, expectedAttempts, expectedPending) in [
+            (MapStatisticsUploadError.httpStatus(503), 1, 3, 0),
+            (.httpStatus(503), 10, 2, 2),
+            (.httpStatus(400), 10, 1, 2)
+        ] {
+            let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            defer { try? FileManager.default.removeItem(at: root) }
+            let store = LocalMapStatisticsEventStore(rootURL: root)
+            let uploader = GatedMapStatisticsUploader(failure: failure, failuresRemaining: failures)
+            let controller = MapStatisticsEventController(store: store, uploader: uploader, retryDelays: [0, 0])
+            let operation = UUID()
+            let start = MapStatisticsEvent(operationId: operation, package: package,
+                                          eventType: .downloadStarted, outcome: .unknown)
+            let terminal = MapStatisticsEvent(operationId: operation, package: package,
+                                             eventType: .downloadFailed, outcome: .failed)
+            controller.record(start)
+            await waitForFirstResponse(uploader)
+            let sending = controller.scheduledUploadForTesting()
+            controller.record(terminal)
+            await controller.scheduledRecordForTesting()?.value
+            expect(store.pendingEvents().count == 2, "terminal event is durably queued before the first response")
+            await uploader.releaseFirstResponse()
+            await sending?.value
+            let attempts = await uploader.attemptedEvents()
+            expect(attempts.count == expectedAttempts, "draining respects retry bounds and permanent failures")
+            expect(attempts.first?.id == start.id, "retries preserve the start event identity")
+            expect(store.pendingEvents().count == expectedPending, "unsent outcomes remain durable after failure")
+            if expectedPending == 0 {
+                expect(attempts.map(\.id) == [start.id, start.id, terminal.id], "retry preserves IDs and drains the outcome")
+            } else {
+                expect(attempts.allSatisfy { $0.id == start.id }, "failed first event does not skip ahead or spin")
+                expect(controller.uploadStatus == .waiting(2, willRetry: failure.isRetryable),
+                       "failed delivery never reports uploaded")
+            }
+        }
+    }
+
+    @MainActor
+    static func testOptOutDuringUpload() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalMapStatisticsEventStore(rootURL: root)
+        let operation = UUID()
+        let start = MapStatisticsEvent(operationId: operation, package: package,
+                                      eventType: .downloadStarted, outcome: .unknown)
+        let terminal = MapStatisticsEvent(operationId: operation, package: package,
+                                         eventType: .downloadFailed, outcome: .failed)
+        // Both events are in the sender's initial snapshot before opt-out.
+        try store.append(start)
+        try store.append(terminal)
+        let uploader = GatedMapStatisticsUploader()
+        let controller = MapStatisticsEventController(store: store, uploader: uploader)
+        await waitForFirstResponse(uploader)
+        let sending = controller.scheduledUploadForTesting()
+        controller.decideConsent(.declined)
+        await uploader.releaseFirstResponse()
+        await sending?.value
+        let attempts = await uploader.attemptedEvents()
+        expect(attempts.map(\.id) == [start.id], "opt-out prevents sending the remaining snapshot")
+        expect(store.pendingEvents().isEmpty && controller.uploadStatus == .idle,
+               "a late response cannot replace opted-out idle state with uploaded")
     }
 
     static func expect(_ condition: @autoclosure () -> Bool, _ message: String) {

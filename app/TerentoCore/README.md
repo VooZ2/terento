@@ -76,6 +76,14 @@ Report issue opens a user-reviewed GitHub draft; raw logs are not automatically
 uploaded. App updates use metadata checks and an explicit official-download
 handoff, never silent application replacement.
 
+Map-use delivery drains events appended during an in-flight upload before
+reporting the queue uploaded. Retryable failures retain the queue and use the
+existing bounded retry schedule; permanent failures stop that send attempt.
+Opt-out clears pending events and stops the sender before another event is sent.
+A response already in flight cannot restore the opted-out status. This does not
+add cancellation/interruption events or reconstruct missing historical outcomes;
+a download start without a received outcome is not proof of a failed download.
+
 ## Build and automated validation
 
 Use Xcode with Swift 6 and macOS 13+ SDK support. The development SwiftPM bridge
@@ -95,7 +103,11 @@ The app suite owns UI wiring contracts. The native suite owns device safety,
 provider acquisition/identity, manifests and lifecycle behavior. The diagnostics
 runner compiles a `TERENTO_TESTING`-only task observer so tests await the real
 automatic upload rather than sleeping for a guessed 180 ms. The observer is
-absent from app builds; no production retry policy is changed.
+absent from app builds; no production retry policy is changed. Map-statistics
+tests similarly observe real record/send task completion and hold one fake
+response until a terminal event is durably queued. They cover queue draining,
+retry exhaustion, permanent failure and opt-out during delivery without using
+real telemetry endpoints.
 
 Filter timings are always reported. For a controlled-machine performance gate,
 set `TERENTO_ENFORCE_FILTER_BENCHMARK=1` when running the native map-selection
