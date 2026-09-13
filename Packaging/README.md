@@ -34,6 +34,16 @@ The current published build is identified by `site/updates/macos-arm64.json`
 and `RELEASE_NOTES.md`. Packaging a new artifact does not publish it. Public
 labels never use `-local`; local device-test candidates do.
 
+For a same-beta replacement, `Packaging/release-candidate.json` records only
+the reviewed version, unchanged release label, and next build number. Xcode
+must match that candidate exactly; its build must be newer than the public
+manifest. This permits a clean verified source merge before signing, without
+publishing unavailable download links or invented checksums. After the real
+release is available, update the public manifest and release documents and
+remove the candidate file in the same change. With no candidate, Xcode must
+match the public manifest exactly. All packaging/signature/notarization and
+public manifest checks remain required.
+
 Run from the repository root with explicitly selected new release values:
 
 ```sh

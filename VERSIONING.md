@@ -60,3 +60,14 @@ Existing unsigned releases cannot acquire a commit signature without changing
 source identity. Preserve historical tags and assets; never delete/recreate a
 release or disable immutability to obtain a badge. GitHub also prevents reuse of
 an immutable release's tag name after deletion.
+
+## Preparing a same-beta build
+
+A reviewed `Packaging/release-candidate.json` can hold the unchanged version
+and beta label plus a strictly newer build. Xcode settings must match it
+exactly, while public notes, downloads and checksums keep identifying the
+available release. Merge the candidate source through the normal checks, then
+package that clean verified merge commit. Publish the actual signed artifacts
+before updating public metadata; remove the candidate file in that metadata
+change. This staging record does not waive source verification, notarization,
+artifact validation or immutable-tag checks.
