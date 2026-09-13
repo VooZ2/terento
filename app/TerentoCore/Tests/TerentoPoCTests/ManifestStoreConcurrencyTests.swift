@@ -7,7 +7,8 @@ struct ManifestStoreConcurrencyTests {
         try testOlderEntryCannotReplaceNewerEntry()
         try testUnsafeDeviceKeyIsRejected()
         try testPhysicalWatchKeysAreStableAndDistinct()
-        print("PASS: 4 manifest store tests")
+        try testCatalogIdentityPreservesLegacyKeys()
+        print("PASS: 5 manifest store tests")
     }
 
     private static func testConcurrentReadModifyWritePreservesAllEntries() throws {
@@ -120,6 +121,26 @@ struct ManifestStoreConcurrencyTests {
         }
 
         print("PASS: identical models can use stable, distinct physical-watch namespaces")
+    }
+
+    private static func testCatalogIdentityPreservesLegacyKeys() throws {
+        for (model, expected) in [
+            ("fenix 8 - 47mm", "fenix-8-091e-51b8"),
+            ("fenix 8 Pro - 51mm AMOLED", "fenix-8-pro-091e-51b8"),
+            ("Forerunner 965 - 47mm", "forerunner-965-47mm-091e-51b8"),
+            ("fenix 9 Pro - 51mm", "fenix-9-pro-51mm-091e-51b8")
+        ] {
+            let identity = DeviceIdentity(manufacturer: "Garmin", model: model, family: nil, variant: nil,
+                usbVendorId: 0x091e, usbProductId: 0x51b8, firmware: nil, storageCapacity: 0, freeSpace: 0)
+            let catalogIdentity = identity.applying(catalogMetadata: CatalogDeviceMetadata(
+                candidateDeviceID: "server-owned-id", model: "New catalog label",
+                screenTechnology: "AMOLED", solar: false, inReach: false))
+            guard identity.legacyManifestDeviceKey == expected,
+                  catalogIdentity.legacyManifestDeviceKey == expected else {
+                throw TestFailure(message: "API identification changed an existing legacy ownership key")
+            }
+        }
+        print("PASS: generic model identification and API hints preserve historical manifest namespaces")
     }
 
     private static func requireVersion() throws -> MapVersion {

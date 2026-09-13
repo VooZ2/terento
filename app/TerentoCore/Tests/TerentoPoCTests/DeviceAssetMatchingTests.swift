@@ -287,8 +287,8 @@ struct DeviceAssetMatchingTests {
             storages: []
         )
         let identity = GarminDeviceIdentityAdapter().makeIdentity(from: snapshot)
-        expect(identity.variant == "47 mm, AMOLED", "reviewed real MTP identity resolves the exact 47 mm AMOLED variant")
-        expect(identity.canonicalModel == "fēnix 8", "real MTP model derives the canonical fēnix 8 model")
+        expect(identity.variant == "47 mm", "MTP identity keeps its reported size without inferring a screen")
+        expect(identity.canonicalModel == "fenix 8", "MTP model supplies its model name without a hardcoded replacement")
         let asset = DeviceCatalogAsset(
             url: URL(string: "/assets/devices/garmin/fenix-8-47.webp"),
             scope: "MODEL_SIZE",
@@ -327,7 +327,7 @@ struct DeviceAssetMatchingTests {
         expect(directMatch?.scope == "MODEL_SIZE", "real MTP identity matches the model-size catalog record")
 
         expect(
-            identity.variant == "47 mm, AMOLED"
+            identity.variant == "47 mm"
                 && result.scope == .modelSize
                 && !result.isFallback
                 && client.assetDownloadCount == 1,
@@ -346,7 +346,7 @@ struct DeviceAssetMatchingTests {
         )
         let identity = GarminDeviceIdentityAdapter().makeIdentity(from: snapshot)
         expect(
-            identity.compatibilityIdentity == "fēnix 8 · 51 mm, AMOLED"
+            identity.compatibilityIdentity == "fenix 8 · 51 mm, AMOLED"
                 && identity.caseSizeMm == 51
                 && identity.displayType == "AMOLED",
             "exact compatibility identity keeps 51mm and AMOLED evidence together"

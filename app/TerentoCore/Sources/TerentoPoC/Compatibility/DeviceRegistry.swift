@@ -38,21 +38,9 @@ struct DeviceRegistryEntry: Sendable, Equatable {
 struct DeviceRegistry: Sendable {
     let entries: [DeviceRegistryEntry]
 
-    static let local = DeviceRegistry(entries: [
-        DeviceRegistryEntry(
-            displayName: "Garmin fēnix 8",
-            manufacturer: "Garmin",
-            modelAliases: ["fēnix 8", "fenix 8"],
-            family: "fēnix",
-            usbVendorId: 0x091e,
-            usbProductIds: [0x51b8],
-            caseSizeMm: 47,
-            // The transport identity sometimes reports only 47 mm; do not
-            // infer AMOLED when the device did not expose display evidence.
-            displayType: nil,
-            evidence: .nativeConnectivityTested
-        )
-    ])
+    // Model identity is resolved from the device and API catalog. This empty
+    // compatibility registry supplies no model-specific display override.
+    static let local = DeviceRegistry(entries: [])
 
     func entry(for identity: DeviceIdentity) -> DeviceRegistryEntry? {
         entries.first { $0.matches(identity) }

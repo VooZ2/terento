@@ -57,6 +57,12 @@ struct CompatibilityEngine: Sendable {
 }
 
 extension CompatibilityDecision {
+    func applying(catalogMetadata: CatalogDeviceMetadata?) -> CompatibilityDecision {
+        CompatibilityDecision(identity: identity.applying(catalogMetadata: catalogMetadata), status: status,
+            statusSource: statusSource, publicRecord: publicRecord, evidence: evidence,
+            registryEntry: registryEntry, reason: reason)
+    }
+
     func applying(
         _ resolution: CompatibilityStatusResolution
     ) -> CompatibilityDecision {

@@ -63,6 +63,16 @@ struct CompatibilityEvidence: Sendable, Equatable {
     )
 }
 
+/// Catalog hints are fetched from the API. They never authorize a write or
+/// replace original MTP/XML observations; the server rechecks submitted IDs.
+struct CatalogDeviceMetadata: Sendable, Equatable {
+    let candidateDeviceID: String?
+    let model: String
+    let screenTechnology: String?
+    let solar: Bool?
+    let inReach: Bool?
+}
+
 struct DeviceIdentity: Sendable, Equatable {
     enum LocalIdentityResolution: String, Sendable, Equatable {
         case mtpSerial = "MTP_SERIAL"
@@ -85,6 +95,7 @@ struct DeviceIdentity: Sendable, Equatable {
     let garminModelDescription: String?
     let garminModelPartNumber: String?
     let garminDeviceXMLStatus: GarminDeviceXMLReadStatus
+    let catalogMetadata: CatalogDeviceMetadata?
 
     init(
         manufacturer: String,
@@ -101,7 +112,8 @@ struct DeviceIdentity: Sendable, Equatable {
         deviceDescription: String? = nil,
         garminDeviceXMLStatus: GarminDeviceXMLReadStatus = .unavailable,
         garminModelDescription: String? = nil,
-        garminModelPartNumber: String? = nil
+        garminModelPartNumber: String? = nil,
+        catalogMetadata: CatalogDeviceMetadata? = nil
     ) {
         self.manufacturer = manufacturer
         self.model = model
@@ -119,6 +131,7 @@ struct DeviceIdentity: Sendable, Equatable {
         self.garminModelDescription = garminModelDescription
         self.garminModelPartNumber = garminModelPartNumber
         self.garminDeviceXMLStatus = garminDeviceXMLStatus
+        self.catalogMetadata = catalogMetadata
     }
 
     /// Stable model identity derived from the raw MTP model string when the
@@ -129,7 +142,7 @@ struct DeviceIdentity: Sendable, Equatable {
     }
 
     var presentationModel: String {
-        canonicalModel ?? deviceDescription?.trimmingCharacters(in: .whitespacesAndNewlines)
+        catalogMetadata?.model ?? canonicalModel ?? deviceDescription?.trimmingCharacters(in: .whitespacesAndNewlines)
             ?? model.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
@@ -144,7 +157,7 @@ struct DeviceIdentity: Sendable, Equatable {
     /// status accidentally.
     var compatibilityIdentity: String {
         guard let canonicalModel else { return presentationModel }
-        let identitySource = [identityModelSource, model, variant].compactMap { $0 }.joined(separator: " ")
+        let identitySource = [identityModelSource, model, variant, garminModelDescription].compactMap { $0 }.joined(separator: " ")
         let size = GarminDeviceModelNormalizer.caseSizeMm(from: identitySource)
         let display = GarminDeviceModelNormalizer.displayType(from: identitySource)
         var details: [String] = []
@@ -155,54 +168,59 @@ struct DeviceIdentity: Sendable, Equatable {
     }
 
     var caseSizeMm: Int? {
-        let identitySource = [identityModelSource, model, variant].compactMap { $0 }.joined(separator: " ")
+        let identitySource = [identityModelSource, model, variant, garminModelDescription].compactMap { $0 }.joined(separator: " ")
         return GarminDeviceModelNormalizer.caseSizeMm(from: identitySource)
     }
 
     var displayType: String? {
-        let identitySource = [identityModelSource, model, variant].compactMap { $0 }.joined(separator: " ")
+        let identitySource = [identityModelSource, model, variant, garminModelDescription].compactMap { $0 }.joined(separator: " ")
         return GarminDeviceModelNormalizer.displayType(from: identitySource)
     }
 
     // Additional presentation/diagnostic facts never participate in local
     // ownership keys or write-profile validation.
     private var reportedModelText: String {
-        [identityModelSource, model, variant, garminModelDescription].compactMap { $0 }.joined(separator: " ")
+        [model, garminModelDescription].compactMap { $0 }.joined(separator: " ")
     }
 
     var screenTechnology: String? {
-        GarminDeviceModelNormalizer.screenTechnology(from: reportedModelText)
+        if hasReportedScreenTechnology {
+            return GarminDeviceModelNormalizer.screenTechnology(from: reportedModelText)
+        }
+        return catalogMetadata?.screenTechnology
+    }
+
+    private var hasReportedScreenTechnology: Bool {
+        ["amoled", "microled", "mip"].contains {
+            GarminDeviceModelNormalizer.hasExplicitFeature($0, in: reportedModelText)
+        }
+    }
+
+    var screenTechnologySource: String {
+        if hasReportedScreenTechnology {
+            return screenTechnology == nil ? "Conflicting MTP/XML model text" : "MTP/XML model text"
+        }
+        return screenTechnology == nil ? "Unavailable" : "Terento API catalog"
     }
 
     var solar: Bool? {
-        GarminDeviceModelNormalizer.hasExplicitFeature("solar", in: reportedModelText) ? true : nil
+        GarminDeviceModelNormalizer.hasExplicitFeature("solar", in: reportedModelText) ? true : catalogMetadata?.solar
     }
 
     var inReach: Bool? {
-        GarminDeviceModelNormalizer.hasExplicitFeature("inreach", in: reportedModelText) ? true : nil
+        GarminDeviceModelNormalizer.hasExplicitFeature("inreach", in: reportedModelText) ? true : catalogMetadata?.inReach
     }
 
-    /// Canonical catalog identity backed by separately reviewed hardware
-    /// evidence. This is intentionally narrower than model normalization:
-    /// model text, case size, or artwork alone must never manufacture an
-    /// AMOLED/Solar distinction.
-    var reviewedCanonicalDeviceID: String? {
-        if canonicalModel == "fēnix 8 Pro" {
-            switch (caseSizeMm, displayType) {
-            case (47, "AMOLED"): return "garmin-fenix-8-pro-47-amoled"
-            case (51, "AMOLED"): return "garmin-fenix-8-pro-51-amoled"
-            case (51, "MicroLED"): return "garmin-fenix-8-pro-51-microled"
-            default: return nil
-            }
-        }
-        guard usbVendorId == 0x091e,
-              usbProductId == 0x51b8,
-              canonicalModel == "fēnix 8",
-              caseSizeMm == 47,
-              displayType == nil || displayType == "AMOLED" else {
-            return nil
-        }
-        return "garmin-fenix-8-47-amoled"
+    var catalogDeviceID: String? { catalogMetadata?.candidateDeviceID }
+
+    func applying(catalogMetadata: CatalogDeviceMetadata?) -> DeviceIdentity {
+        DeviceIdentity(manufacturer: manufacturer, model: model, family: family, variant: variant,
+            usbVendorId: usbVendorId, usbProductId: usbProductId, firmware: firmware,
+            storageCapacity: storageCapacity, freeSpace: freeSpace,
+            localHardwareIdentifier: localHardwareIdentifier, localIdentityResolution: localIdentityResolution,
+            deviceDescription: deviceDescription, garminDeviceXMLStatus: garminDeviceXMLStatus,
+            garminModelDescription: garminModelDescription, garminModelPartNumber: garminModelPartNumber,
+            catalogMetadata: catalogMetadata)
     }
 
     /// Presentation/catalog identity for models that do not yet have a local
@@ -214,55 +232,25 @@ struct DeviceIdentity: Sendable, Equatable {
 
 struct GarminDeviceModelNormalizer: Sendable {
     static func canonicalModel(from rawModel: String) -> String? {
-        let normalized = normalize(rawModel)
-
-        let catalogModel = catalogCanonicalModel(from: normalized)
-        switch catalogModel {
-        case "fenix 8 pro": return "fēnix 8 Pro"
-        case "fenix 8": return "fēnix 8"
-        default: return nil
+        var model = rawModel.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: #"^garmin\s+"#, with: "", options: [.regularExpression, .caseInsensitive])
+        guard !model.isEmpty, !normalize(model).hasPrefix("unknown") else { return nil }
+        // This only removes explicitly reported variant tokens. All model
+        // names and exact IDs come from the device or the API catalog.
+        if let range = model.range(of: #"\b(?:\d{2,3}\s*mm|sapphire|solar|amoled|mip|microled|inreach|leather|titanium|stainless|silicone)\b"#,
+                                   options: [.regularExpression, .caseInsensitive]) {
+            model = String(model[..<range.lowerBound])
         }
+        model = model.trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "-–·,")))
+        return model.isEmpty ? nil : model
     }
 
     static func catalogCanonicalModel(from rawModel: String) -> String? {
-        var normalized = normalize(rawModel)
-        if normalized.hasPrefix("garmin ") {
-            normalized.removeFirst("garmin ".count)
-        }
-        guard !normalized.isEmpty,
-              !normalized.hasPrefix("unknown") else {
-            return nil
-        }
-
-        let cosmeticTokens = [
-            " sapphire",
-            " solar",
-            " amoled",
-            " mip",
-            " microled",
-            " leather",
-            " titanium",
-            " stainless",
-            " silicone"
-        ]
-        for token in cosmeticTokens {
-            if let range = normalized.range(of: token) {
-                normalized = String(normalized[..<range.lowerBound])
-            }
-        }
-
-        if let range = normalized.range(of: #"\s\d{2,3}\s*mm"#, options: .regularExpression) {
-            normalized = String(normalized[..<range.lowerBound])
-        }
-        return normalized
+        canonicalModel(from: rawModel).map(normalize)
     }
 
     static func displayCanonicalModel(_ normalizedModel: String) -> String {
-        switch normalize(normalizedModel) {
-        case "fenix 8 pro": return "fēnix 8 Pro"
-        case "fenix 8": return "fēnix 8"
-        default: return normalizedModel.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
+        normalizedModel.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     static func normalize(_ value: String) -> String {

@@ -153,20 +153,22 @@ struct InstallationEvidenceTests {
             manufacturer: "Garmin", model: "fenix 8 - 47mm", family: "fēnix",
             variant: "47 mm, AMOLED", usbVendorId: 0x091e, usbProductId: 0x51b8,
             firmware: "2244", storageCapacity: 32_000_000_000,
-            freeSpace: 10_000_000_000
+            freeSpace: 10_000_000_000,
+            catalogMetadata: CatalogDeviceMetadata(candidateDeviceID: "api-catalog-record-123",
+                model: "fēnix 8", screenTechnology: "AMOLED", solar: nil, inReach: nil)
         )
         let reviewedEvent = InstallationEvidenceEvent(
             identity: reviewedIdentity, package: package, outcome: .succeeded,
             finishingResult: .verified, terentoVersion: "test", macOSVersion: "test"
         )
         expect(
-            reviewedEvent.canonicalDeviceId == "garmin-fenix-8-47-amoled"
+            reviewedEvent.canonicalDeviceId == "api-catalog-record-123"
                 && reviewedEvent.displayType == "AMOLED",
             "reviewed exact identity is sent with canonical device and display fields"
         )
         let reviewedPayload = String(decoding: try JSONEncoder().encode(reviewedEvent), as: UTF8.self)
         expect(
-            reviewedPayload.contains("\"canonicalDeviceId\":\"garmin-fenix-8-47-amoled\"")
+            reviewedPayload.contains("\"canonicalDeviceId\":\"api-catalog-record-123\"")
                 && reviewedPayload.contains("\"displayType\":\"AMOLED\"")
                 && reviewedPayload.contains("\"appBuild\":")
                 && reviewedPayload.contains("\"operationId\":"),
@@ -240,12 +242,9 @@ struct InstallationEvidenceTests {
         )
         expect(failedOnly.successfulInstallCount == 0 && failedOnly.failedInstallCount == 1, "failed evidence does not become a successful count")
 
-        let variant47 = CompatibilityEvidenceCalculator.summarize(
-            [makeEvent(variant: "47mm")], forModel: "fēnix 8 · 47 mm"
-        )
-        let variant51 = CompatibilityEvidenceCalculator.summarize(
-            [makeEvent(variant: "51mm")], forModel: "fēnix 8 · 51 mm"
-        )
+        let differentSizes = [makeEvent(variant: "47mm"), makeEvent(variant: "51mm")]
+        let variant47 = CompatibilityEvidenceCalculator.summarize(differentSizes, forModel: "fenix 8 · 47 mm")
+        let variant51 = CompatibilityEvidenceCalculator.summarize(differentSizes, forModel: "fenix 8 · 51 mm")
         expect(variant47.successfulInstallCount == 1 && variant51.successfulInstallCount == 1, "47 mm and 51 mm evidence stays isolated")
 
         let withFailure = CompatibilityEvidenceCalculator.summarize(three + [makeEvent(outcome: .failed, finishing: .failed)], forModel: model)
@@ -357,7 +356,7 @@ struct InstallationEvidenceTests {
         expect(draft.title == "Installation stopped during Downloading — OpenTopoMap / Lithuania", "prepared issue title uses the real stage, provider, and region")
         expect(draft.body.contains("## Summary") && draft.body.contains("Failure stage: source-validation, preflight") && draft.body.contains("INSTALL_BLOCKED_SOURCE_VALIDATION_FAILED"), "prepared issue includes structured failure summary")
         expect(draft.body.contains("Provider: OpenTopoMap") && draft.body.contains("Region: LTU, AZORES") && draft.body.contains("Map version: 2026-08-30"), "prepared issue includes concise multi-map metadata")
-        expect(draft.body.contains("App version: 0.8.0-beta.8") && draft.body.contains("Model: fēnix 8") && draft.body.contains("Variant: 47 mm AMOLED"), "prepared issue includes safe environment metadata")
+        expect(draft.body.contains("App version: 0.8.0-beta.8") && draft.body.contains("Model: fenix 8") && draft.body.contains("Variant: 47 mm AMOLED"), "prepared issue includes safe environment metadata")
         expect(draft.body.lowercased().contains(operationID.uuidString.lowercased()) && draft.body.lowercased().contains(diagnosticID.uuidString.lowercased()), "prepared issue includes diagnostic and installation references")
         expect(!draft.body.contains("alice") && !draft.body.contains("private-token") && !draft.body.contains("SERIAL-PRIVATE") && !draft.body.contains("/Users/"), "prepared issue excludes local paths, tokens, and device identifiers")
 

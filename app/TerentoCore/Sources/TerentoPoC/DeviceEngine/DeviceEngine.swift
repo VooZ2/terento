@@ -571,7 +571,9 @@ final class DeviceEngine: ObservableObject {
         let client = compatibilityStatusClient
         let identity = decision.identity
         compatibilityStatusTask = Task { [weak self] in
-            let resolution = await client.resolve(identity: identity)
+            let catalogMetadata = await client.resolveCatalogMetadata(identity: identity)
+            let catalogDecision = decision.applying(catalogMetadata: catalogMetadata)
+            let resolution = await client.resolve(identity: catalogDecision.identity)
             guard !Task.isCancelled,
                   let self,
                   self.snapshot != nil,
@@ -579,7 +581,7 @@ final class DeviceEngine: ObservableObject {
                 return
             }
 
-            let updatedDecision = decision.applying(resolution)
+            let updatedDecision = catalogDecision.applying(resolution)
             self.compatibility = updatedDecision
             self.appendLog(
                 "Compatibility status: \(updatedDecision.status?.userLabel ?? "Unavailable") "

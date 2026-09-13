@@ -118,7 +118,9 @@ visibility/usability and real update acceptance require independent owner tests.
 
 ## Exact-model diagnostic metadata
 
-The XML reader independently extracts Model/Description and Model/PartNumber,
+The XML reader accepts the official namespaced GarminDevice v2 `Device` root
+and the legacy `GarminDevice` root, and independently extracts Model/Description
+and Model/PartNumber,
 including when the local Unit ID is unavailable or invalid. Existing local
 identity keys, write profiles, ownership and install/update/remove sequences
 are unchanged. A missing XML document preserves valid MTP DeviceInfo.
@@ -126,10 +128,21 @@ AMOLED/MicroLED/MIP, Solar and inReach are separate reported properties;
 missing words do not mean false. Technical originals appear in Diagnostics.
 Opening Diagnostics neither sends a report nor starts a device operation.
 
+Model labels and catalog IDs have no compiled per-model identification rules.
+The client fetches public catalog v2 without uploading device observations,
+then compares original model/size/screen/features conservatively. Shared or
+missing variant evidence cannot select an exact ID. Catalog-derived screen
+properties are labelled separately from MTP/XML observations; a submitted
+catalog ID remains a hint rechecked by the server. API failure preserves raw
+device metadata. Local map-capability and installation permission registries
+are unchanged. Historical manifest naming is frozen in the storage layer and
+is never a model-identification source.
+
 The existing v4 event queue sends only the two bounded optional model fields,
 with the existing diagnostic opt-out and local-test partition. The API must
 accept these additions before releasing the app. The current candidate uses
 beta.12 with build29; the published release remains whatever the canonical
-update manifest records. A read-only real-watch metadata check is still needed
-before claiming hardware validation of these additions. Map-operation safety
+update manifest records. A read-only Mac-side observation of fēnix 8 47 mm
+received original XML AMOLED text and code 006-B4536-00; this is metadata
+evidence for that watch, not other variants or map lifecycle acceptance. Map-operation safety
 regressions remain required; no new install/remove hardware test is introduced.

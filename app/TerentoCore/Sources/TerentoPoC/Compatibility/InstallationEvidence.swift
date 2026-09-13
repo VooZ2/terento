@@ -163,7 +163,7 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         self.variant = identity.variant
         self.caseSizeMm = identity.caseSizeMm
         self.displayType = identity.displayType
-        self.canonicalDeviceId = identity.reviewedCanonicalDeviceID
+        self.canonicalDeviceId = identity.catalogDeviceID
         self.family = identity.family
         self.firmwareVersion = identity.firmware
         self.usbVendorID = identity.usbVendorId
