@@ -503,6 +503,15 @@ physical screen size and resolution from reviewed specifications are shown
 separately. Screen size/resolution alone cannot distinguish AMOLED/MicroLED;
 several variants have the same values. No external AI service is integrated.
 
+Device information presents the catalog model followed by watch size, display,
+Solar charging and inReach. Unknown values remain `Not confirmed`; absence of
+a feature name is not a negative specification. More specifications reveals
+dimensions, screen size, resolution and family. A labelled Garmin source link
+replaces the raw URL in this overview. Retail codes, catalog bookkeeping,
+reported identifiers and all source-review actions remain under Technical
+details. The overview adapts from four fact columns to two using its available
+container width, keeps native keyboard disclosures and has no added motion.
+
 Deploy migration/API first, then catalog/admin/site, audit historical reports,
 and only then release the new app build. DB integration tests exercise replay,
 shared codes, contradictory manual choices, audited correction, old aggregate
