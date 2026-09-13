@@ -10,7 +10,7 @@ grep -Fq 'guard package.sourceKind == .provider else { return }' "$map_engine" |
   exit 1
 }
 
-swiftc -parse-as-library -module-name TerentoMapStatisticsEventTests \
+swiftc -D TERENTO_TESTING -parse-as-library -module-name TerentoMapStatisticsEventTests \
   "$project_root/Sources/TerentoPoC/Telemetry/TerentoTelemetryMetadata.swift" \
   "$project_root/Sources/TerentoPoC/MapCatalog/MapIdentity.swift" \
   "$project_root/Sources/TerentoPoC/MapCatalog/MapVersion.swift" \
