@@ -3,10 +3,51 @@ from __future__ import annotations
 import unittest
 from datetime import datetime, timezone
 
-from terento_catalog.admin import _admin_device_payload, device_detail_page, devices_page
+from terento_catalog.admin import _admin_device_payload, _device_information_markup, device_detail_page, devices_page
 
 
 UTC = timezone.utc
+
+
+class DeviceInformationLayoutTests(unittest.TestCase):
+    def test_primary_facts_keep_unknown_features_and_hide_identifiers(self):
+        device = dict(model='Watch <Example>', caseSizeMm=51, screenTechnology='AMOLED',
+                      solar=None, inReach=True, partNumber='010-example',
+                      specificationSource='https://www.garmin.com/en-US/p/123/',
+                      specificationEvidence={'display_resolution': {'value': '466 x 466 pixels'}})
+        body = _device_information_markup(device)
+        primary = body.split("<div class='device-information-more'>")[0]
+        for value in ('Watch &lt;Example&gt;', 'Watch size', '51 mm', 'AMOLED',
+                      '<dt>Solar charging</dt><dd><bdi>Not confirmed</bdi></dd>', '<dt>inReach</dt><dd><bdi>Available</bdi></dd>'):
+            self.assertIn(value, primary)
+        for value in ('010-example', '466 x 466', 'https://', '<form'):
+            self.assertNotIn(value, primary)
+        self.assertIn('<summary>More specifications</summary>', body)
+        self.assertIn('View Garmin specifications', body)
+        self.assertNotIn('<details open', body)
+
+    def test_missing_specs_are_not_inferred_from_name_and_false_is_distinct(self):
+        body = _device_information_markup(dict(model='Watch Solar 51mm AMOLED inReach', solar=False))
+        self.assertIn('<dt>Watch size</dt><dd><bdi>Not confirmed</bdi></dd>', body)
+        self.assertIn('<dt>Display</dt><dd><bdi>Not confirmed</bdi></dd>', body)
+        self.assertIn('<dt>Solar charging</dt><dd><bdi>Not included</bdi></dd>', body)
+        self.assertIn('<dt>inReach</dt><dd><bdi>Not confirmed</bdi></dd>', body)
+        self.assertNotIn('More specifications', body)
+        for url in ('javascript:alert(1)', 'https://garmin.com.example.org/', 'https://[invalid'):
+            self.assertNotIn('href=', _device_information_markup(dict(model='Watch', specificationSource=url)))
+
+    def test_technical_values_and_review_actions_remain_available_separately(self):
+        device = _admin_device_payload([device_row()], None)['devices'][0]
+        device['identityMappings'] = [dict(id=42, kind='XML_PART_NUMBER', value='006-B1234-00',
+            status='PENDING', source_url='https://example.org/source', source_version='revision', history=[])]
+        body = device_detail_page(device, {'username': 'operator'}, 'csrf').decode()
+        info = body.split("id='device-information-title'>Device information</summary>", 1)[1]
+        basic, technical = info.split("<details class='model-technical-details", 1)
+        self.assertNotIn('identity-mapping', basic)
+        self.assertNotIn(device['partNumber'], basic)
+        for value in (device['partNumber'], 'VID 0x091E', '006-B1234-00',
+                      "action='/admin/devices/identity-mapping'", "name='mapping_id' value='42'", 'required'):
+            self.assertIn(value, technical)
 
 
 def device_row(**changes):

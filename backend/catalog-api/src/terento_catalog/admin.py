@@ -3538,6 +3538,45 @@ def _usb_identity_details(identities: list[dict[str, Any]] | None) -> str:
     return ", ".join(values)
 
 
+def _device_information_markup(device: dict[str, Any]) -> str:
+    """Catalog facts first; absence stays unknown and is never inferred from a name."""
+    def feature(key: str) -> str:
+        value = device.get(key)
+        return "Available" if value is True else "Not included" if value is False else "Not confirmed"
+
+    size = device.get("caseSizeMm")
+    facts = _detail_rows([(label, f"<bdi>{html.escape(str(value))}</bdi>", True) for label, value in [
+        ("Watch size", f"{size} mm" if size else "Not confirmed"),
+        ("Display", device.get("screenTechnology") or "Not confirmed"),
+        ("Solar charging", feature("solar")),
+        ("inReach", feature("inReach")),
+    ]])
+    evidence = device.get("specificationEvidence") or {}
+    more = _detail_rows([
+        ("Dimensions", (evidence.get("physical_size") or {}).get("value"), False),
+        ("Screen size", (evidence.get("display_size") or {}).get("value"), False),
+        ("Resolution", (evidence.get("display_resolution") or {}).get("value"), False),
+        ("Family", device.get("familyName") or device.get("family"), False),
+    ])
+    more = ("<details class='device-extra-specifications admin-disclosure'><summary>More specifications</summary>"
+            f"<dl class='model-information-list'>{more}</dl></details>") if more else ""
+    source_url = str(device.get("specificationSource") or "")
+    try:
+        source = urlsplit(source_url)
+        official_source = source.scheme == "https" and (source.hostname == "garmin.com" or (source.hostname or "").endswith(".garmin.com"))
+    except ValueError:
+        official_source = False
+    source_link = (f"<a class='device-specification-link' href='{html.escape(source_url, quote=True)}' "
+                   f"target='_blank' rel='noopener noreferrer'>View Garmin specifications {_admin_icon('external')}</a>") if official_source else ""
+    note = ("<p class='device-information-note'>Not confirmed means the catalog does not yet have a verified value.</p>"
+            if not size or not device.get("screenTechnology") or any(device.get(key) is None for key in ("solar", "inReach")) else "")
+    return (f"<div class='device-overview-heading'><h3>{html.escape(str(device.get('model') or 'Unknown Garmin model'))}</h3>"
+            "<p>Catalog specifications for this variant.</p></div>"
+            f"<dl class='device-key-facts'>{facts}</dl>"
+            f"{note}"
+            f"<div class='device-information-more'>{more}{source_link}</div>")
+
+
 def device_detail_page(
     device: dict[str, Any], user: dict[str, Any], csrf_token: str, *,
     operations: list[dict[str, Any]] | None = None,
@@ -3682,34 +3721,25 @@ def device_detail_page(
         "Garmin retail catalog"
     )
     catalog = device.get("catalog") or {}
-    device_info = _detail_rows([
-        ("Model", model, False), ("Variant", variant, False),
-        ("Family", device.get("familyName") or device.get("family"), False),
-        ("Retail part number", device.get("partNumber"), False),
-        ("Case dimensions (specification)", device.get("specificationEvidence", {}).get("physical_size", {}).get("value"), False),
-        ("Screen size (specification)", device.get("specificationEvidence", {}).get("display_size", {}).get("value"), False),
-        ("Screen resolution", device.get("specificationEvidence", {}).get("display_resolution", {}).get("value"), False),
-        ("Screen technology", device.get("screenTechnology"), False),
-        ("Solar", ("Yes" if device["solar"] else "No") if device.get("solar") is not None else "Unknown", False),
-        ("inReach", ("Yes" if device["inReach"] else "No") if device.get("inReach") is not None else "Unknown", False),
-        ("Specification source", device.get("specificationSource"), False),
-        ("Lifecycle", lifecycle, False),
-        ("Map capability", _admin_status_badge(map_label, f"map-{map_kind}"), True),
-        ("Catalog source", catalog_source, False),
-        ("Last synced", _timestamp_markup(catalog.get("lastSeenAt")) if catalog.get("lastSeenAt") else None, True),
-    ])
+    device_info = _device_information_markup(device)
     all_events = active_events + resolved_events
     firmware = ", ".join(sorted({str(item.get("firmware_version")).strip() for item in all_events if item.get("firmware_version")}))
     raw_models = ", ".join(sorted({str(item.get("raw_mtp_model")).strip() for item in all_events if item.get("raw_mtp_model")}))
     transports = ", ".join(sorted({str(item.get("transport")).strip() for item in all_events if item.get("transport")}))
     technical_rows = _detail_rows([
         ("Catalog ID", device_id, False),
+        ("Catalog variant", variant, False),
+        ("Retail part number", device.get("partNumber"), False),
         ("USB identity", _usb_identity_details(device.get("usbIdentities")), False),
         ("Firmware", firmware, False),
         ("Raw MTP model", raw_models, False),
         ("XML model description", ", ".join(sorted({str(e["garmin_model_description"]) for e in all_events if e.get("garmin_model_description")})), False),
         ("XML part number", ", ".join(sorted({str(e["garmin_model_part_number"]) for e in all_events if e.get("garmin_model_part_number")})), False),
         ("Transport", transports, False),
+        ("Specification source", device.get("specificationSource"), False),
+        ("Catalog source", catalog_source, False),
+        ("Catalog status", lifecycle, False),
+        ("Last synced", _timestamp_markup(catalog.get("lastSeenAt")) if catalog.get("lastSeenAt") else None, True),
     ])
     if not technical_rows:
         technical_rows = "<p class='diagnostic-technical-empty'>Detailed technical data is not available for this record.</p>"
@@ -3733,9 +3763,9 @@ def device_detail_page(
           <article><h3>Installation authorization</h3><form method='post' action='/admin/devices/authorization' class='admin-async-action' data-authorization-form data-current-authorization='{html.escape(str(device.get('supportStatus') or 'NOT_EVALUATED'), quote=True)}'><input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'><input type='hidden' name='device_id' value='{html.escape(device_id, quote=True)}'><input type='hidden' name='return_to' value='{html.escape(detail_url, quote=True)}'><label>Status<select name='support_status'><option value='SUPPORTED'{' selected' if device.get('supportStatus') == 'SUPPORTED' else ''}>Approved</option><option value='UNSUPPORTED'{' selected' if device.get('supportStatus') == 'UNSUPPORTED' else ''}>Blocked</option><option value='NOT_EVALUATED'{' selected' if device.get('supportStatus') == 'NOT_EVALUATED' else ''}>Pending review</option></select></label><label>Note <span class='optional-label'>Optional</span><textarea name='note' rows='2'></textarea></label><button type='submit'>Save authorization</button></form></article>
           <article><h3>Public compatibility</h3><p>{public_copy}</p>{public_form}</article>
         </div></details>
-        <div class='model-information-columns'>
-        <details class='model-page-section device-information-section admin-disclosure'><summary id='device-information-title'>Device information</summary><dl class='model-information-list'>{device_info}</dl>{_identity_mapping_markup(device, csrf_token)}</details>
-        <details class='model-technical-details admin-disclosure'><summary>Technical details</summary><dl class='model-information-list'>{technical_rows}</dl></details>
+        <div class='model-information-columns device-overview-sections'>
+        <details class='model-page-section device-information-section admin-disclosure'><summary id='device-information-title'>Device information</summary>{device_info}</details>
+        <details class='model-technical-details admin-disclosure'><summary>Technical details<span class='device-technical-hint'>Identifiers, reported values and source reviews</span></summary><dl class='model-information-list'>{technical_rows}</dl>{_identity_mapping_markup(device, csrf_token)}</details>
         </div>
         {''.join(dialogs)}
       </main>
@@ -5793,6 +5823,14 @@ main.dashboard>.heading-row .lede{margin:12px 0 0}
 .model-information-columns .model-information-list div{padding:10px 12px;gap:4px 16px;grid-template-columns:minmax(100px,1fr) minmax(0,3fr)}
 .model-information-columns .device-information-section .model-information-list div{grid-template-columns:minmax(100px,1fr) minmax(0,3fr)}
 .model-information-columns .model-information-list dt,.model-information-columns .model-information-list dd{min-width:0;text-align:left;overflow-wrap:anywhere}
+.model-information-columns.device-overview-sections{grid-template-columns:minmax(0,1fr)}
+.device-overview-heading{margin-block:8px 24px}.device-overview-heading h3{margin:0;font:600 20px/1.3 var(--font-ui);text-wrap:balance;overflow-wrap:anywhere}.device-overview-heading p{margin:6px 0 0;color:var(--secondary);font-size:13px;text-wrap:pretty}
+.device-information-section{container-type:inline-size}.device-key-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin:0}.device-key-facts>div{min-width:0}.device-key-facts dt{color:var(--secondary);font-size:13px;line-height:20px}.device-key-facts dd{margin:6px 0 0;font-size:16px;line-height:24px;font-weight:600;overflow-wrap:anywhere}@container(min-width:720px){.device-key-facts{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.device-information-note{margin:24px 0 0;color:var(--secondary);font-size:13px;line-height:20px;text-wrap:pretty}.device-information-more{display:flex;flex-wrap:wrap;align-items:start;gap:12px 24px;margin-top:16px}.device-extra-specifications{flex:1 1 320px;min-width:0}.device-specification-link{display:inline-flex;align-items:center;gap:6px;min-height:40px;max-width:100%;font-size:13px;line-height:20px;text-wrap:pretty}.device-specification-link svg{flex:none}
+.device-overview-sections .admin-disclosure:not(.filter-disclosure)>summary{min-height:40px;align-content:center;padding-inline-start:22px;padding-inline-end:0}.device-overview-sections .admin-disclosure:not(.filter-disclosure)>summary::before{left:auto;inset-inline-start:3px}.device-overview-sections .admin-disclosure:not([open])>summary:dir(rtl)::before{transform:translateY(-50%) rotate(135deg)}
+.device-technical-hint{display:block;color:var(--secondary);font-size:13px;font-weight:400;line-height:20px;margin-top:4px}.device-overview-sections .identity-mappings{padding-inline:0}.device-overview-sections .identity-mappings summary{min-height:40px}.device-overview-sections .identity-mapping-source{padding-inline:12px}
+.device-overview-sections .device-extra-specifications .model-information-list{border:0;border-radius:0;background:transparent}.device-overview-sections .device-extra-specifications .model-information-list div{padding-inline:0;grid-template-columns:minmax(0,1fr) minmax(0,2fr);text-align:start}.device-overview-sections .device-extra-specifications :is(dt,dd){text-align:start}
+@media(max-width:700px){.device-overview-sections .admin-disclosure:not(.filter-disclosure)>summary,.device-specification-link,.device-overview-sections .identity-mappings summary{min-height:44px}}
 .world-map-controls{display:flex;align-items:center;gap:8px;padding:4px 10px 10px}
 .world-map-controls button{min-height:40px;min-width:40px;padding:6px 10px;border-radius:var(--admin-control-radius);background:var(--surface);color:var(--interactive);border:1px solid var(--border)}
 .world-map-controls span{font-size:12px;color:var(--secondary)}
