@@ -99,12 +99,13 @@ are outside the current public scope.
 
 ## Download and beta status
 
-The latest public release is **beta.12 (build 28)**. The macOS app is notarized
+The latest public release is **beta.12 (build 29)**. The macOS app is notarized
 and does not require Homebrew.
 
 Beta.12 adds BBBike and BBBike (Ontrail) maps, continent filtering, clearer
 country and region names, a larger catalog window, faster Install Maps
-filtering, and filters in Manage Maps.
+filtering, and filters in Manage Maps. Build 29 improves watch model and screen
+identification and fixes map activity diagnostics that could stay queued.
 
 **[Download Terento](https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_download)**
 
