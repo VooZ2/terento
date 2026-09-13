@@ -19,6 +19,32 @@ class IdentityAssessmentTests(unittest.TestCase):
         self.assertEqual(len(result['candidates'][0]['checks']), 5)
         self.assertIsNone(assess_identity(self.event, [self.device], self.mappings[:1])['canonicalDeviceId'])
 
+    def test_legacy_review_status_is_missing_model_evidence(self):
+        for label in ('Identity pending', 'Identity unresolved',
+                      'Identity not identifiable', 'Identity resolved'):
+            with self.subTest(label=label):
+                event = dict(self.event, model=label, rawMTPModel=None,
+                             canonicalDeviceId=self.device['id'])
+                original = dict(event)
+                result = assess_identity(event, [self.device], self.mappings)
+                check = result['candidates'][0]['checks'][0]
+                self.assertEqual(check['state'], 'MISSING')
+                self.assertEqual(check['evidence'], [])
+                self.assertFalse(result['candidates'][0]['conflict'])
+                self.assertIsNone(result['canonicalDeviceId'])
+                self.assertEqual(event, original)
+
+    def test_legacy_review_status_does_not_hide_original_model_conflict(self):
+        event = dict(self.event, model='Identity pending', rawMTPModel='fenix 7 Pro 51mm AMOLED')
+        result = assess_identity(event, [self.device], self.mappings)
+        self.assertEqual(result['candidates'][0]['checks'][0]['state'], 'CONFLICT')
+        self.assertIsNone(result['canonicalDeviceId'])
+
+    def test_legacy_review_status_does_not_replace_valid_original_model(self):
+        result = assess_identity(dict(self.event, model='Identity pending'), [self.device], self.mappings)
+        self.assertEqual(result['canonicalDeviceId'], self.device['id'])
+        self.assertEqual(result['candidates'][0]['checks'][0]['evidence'][0]['source'], 'rawMTPModel')
+
     def test_observed_retail_sku_uses_its_own_registry_kind(self):
         sku = dict(self.mappings[1], kind='RETAIL_SKU', value='010-03199-00')
         event = dict(self.event, garminModelPartNumber=sku['value'])

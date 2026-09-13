@@ -5,7 +5,14 @@ import re
 import unicodedata
 from typing import Any
 
-VERSION = 1
+VERSION = 2
+
+# Historical review statuses are not observations of a device model. Match
+# only the legacy model field; original MTP/XML values remain evidence.
+LEGACY_MODEL_PLACEHOLDERS = frozenset({
+    'identity pending', 'identity unresolved',
+    'identity not identifiable', 'identity resolved',
+})
 
 CORRECTABLE_FIELDS = {'model', 'variant', 'rawMTPModel', 'garminModelDescription',
                       'garminModelPartNumber', 'caseSizeMm', 'displayType', 'usbVendorID', 'usbProductID'}
@@ -51,7 +58,10 @@ def model_label(value: Any) -> str:
 def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> dict:
     """Five checks per candidate, retaining ambiguity and shared provenance."""
     sources = event.get('_sourceOverrides', {})
-    labels = [(sources.get(key, key), event.get(key)) for key in ('rawMTPModel', 'garminModelDescription', 'model') if event.get(key)]
+    labels = [(sources.get(key, key), event.get(key))
+              for key in ('rawMTPModel', 'garminModelDescription', 'model')
+              if event.get(key) and not (
+                  key == 'model' and normalized(event[key]) in LEGACY_MODEL_PLACEHOLDERS)]
     texts = [(key, normalized(value)) for key, value in labels]
     if event.get('variant'):
         texts.append((sources.get('variant', 'variant'), normalized(event['variant'])))
