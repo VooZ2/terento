@@ -27,6 +27,7 @@ struct InstallationEvidenceTests {
     static func main() async throws {
         try testEventStorageAndDuplicatePrevention()
         try testCustomIMGEvidencePayload()
+        try testOriginalModelMetadata()
         testStatisticsAndPromotionThresholds()
         try await testConsentAndUploadIsolation()
         testDiagnosticSanitization()
@@ -88,6 +89,29 @@ struct InstallationEvidenceTests {
         )
     }
 
+    static func testOriginalModelMetadata() throws {
+        func event(description: String?, part: String?) -> InstallationEvidenceEvent {
+            let watch = DeviceIdentity(manufacturer: "Garmin", model: "fenix 9 Pro 51mm", family: "fenix", variant: nil,
+                usbVendorId: 0x091e, usbProductId: 0x7777, firmware: "638", storageCapacity: 1, freeSpace: 1,
+                localHardwareIdentifier: "PRIVATE-UNIT-ID", garminModelDescription: description, garminModelPartNumber: part)
+            return InstallationEvidenceEvent(identity: watch, package: package, outcome: .succeeded,
+                finishingResult: .verified, terentoVersion: "test", macOSVersion: "test")
+        }
+        let original = event(description: "fenix 9 Pro - inReach, 51mm", part: "006-B4954-00")
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(InstallationEvidenceEvent.self, from: data)
+        expect(decoded.garminModelDescription == original.garminModelDescription && decoded.garminModelPartNumber == "006-B4954-00",
+               "queued diagnostics retain original XML model metadata")
+        let text = String(decoding: data, as: UTF8.self)
+        expect(!text.contains("PRIVATE-UNIT-ID") && !text.contains("GarminDevice"), "XML and private identity are excluded from reports")
+        for value in ["/Users/private", String(repeating: "A", count: 161), "model\nserial"] {
+            expect(event(description: value, part: "006/invalid").garminModelDescription == nil,
+                   "invalid optional description is omitted")
+        }
+        expect(event(description: "Valid", part: "006/invalid").garminModelPartNumber == nil, "invalid optional part number is omitted")
+        expect(event(description: nil, part: nil).garminModelPartNumber == nil, "old metadata-free diagnostics stay supported")
+    }
+
     static func makeEvent(
         id: UUID = UUID(), firmware: String = "20.19",
         variant: String? = nil,
@@ -129,20 +153,22 @@ struct InstallationEvidenceTests {
             manufacturer: "Garmin", model: "fenix 8 - 47mm", family: "fēnix",
             variant: "47 mm, AMOLED", usbVendorId: 0x091e, usbProductId: 0x51b8,
             firmware: "2244", storageCapacity: 32_000_000_000,
-            freeSpace: 10_000_000_000
+            freeSpace: 10_000_000_000,
+            catalogMetadata: CatalogDeviceMetadata(candidateDeviceID: "api-catalog-record-123",
+                model: "fēnix 8", screenTechnology: "AMOLED", solar: nil, inReach: nil)
         )
         let reviewedEvent = InstallationEvidenceEvent(
             identity: reviewedIdentity, package: package, outcome: .succeeded,
             finishingResult: .verified, terentoVersion: "test", macOSVersion: "test"
         )
         expect(
-            reviewedEvent.canonicalDeviceId == "garmin-fenix-8-47-amoled"
+            reviewedEvent.canonicalDeviceId == "api-catalog-record-123"
                 && reviewedEvent.displayType == "AMOLED",
             "reviewed exact identity is sent with canonical device and display fields"
         )
         let reviewedPayload = String(decoding: try JSONEncoder().encode(reviewedEvent), as: UTF8.self)
         expect(
-            reviewedPayload.contains("\"canonicalDeviceId\":\"garmin-fenix-8-47-amoled\"")
+            reviewedPayload.contains("\"canonicalDeviceId\":\"api-catalog-record-123\"")
                 && reviewedPayload.contains("\"displayType\":\"AMOLED\"")
                 && reviewedPayload.contains("\"appBuild\":")
                 && reviewedPayload.contains("\"operationId\":"),
@@ -216,12 +242,9 @@ struct InstallationEvidenceTests {
         )
         expect(failedOnly.successfulInstallCount == 0 && failedOnly.failedInstallCount == 1, "failed evidence does not become a successful count")
 
-        let variant47 = CompatibilityEvidenceCalculator.summarize(
-            [makeEvent(variant: "47mm")], forModel: "fēnix 8 · 47 mm"
-        )
-        let variant51 = CompatibilityEvidenceCalculator.summarize(
-            [makeEvent(variant: "51mm")], forModel: "fēnix 8 · 51 mm"
-        )
+        let differentSizes = [makeEvent(variant: "47mm"), makeEvent(variant: "51mm")]
+        let variant47 = CompatibilityEvidenceCalculator.summarize(differentSizes, forModel: "fenix 8 · 47 mm")
+        let variant51 = CompatibilityEvidenceCalculator.summarize(differentSizes, forModel: "fenix 8 · 51 mm")
         expect(variant47.successfulInstallCount == 1 && variant51.successfulInstallCount == 1, "47 mm and 51 mm evidence stays isolated")
 
         let withFailure = CompatibilityEvidenceCalculator.summarize(three + [makeEvent(outcome: .failed, finishing: .failed)], forModel: model)
@@ -333,7 +356,7 @@ struct InstallationEvidenceTests {
         expect(draft.title == "Installation stopped during Downloading — OpenTopoMap / Lithuania", "prepared issue title uses the real stage, provider, and region")
         expect(draft.body.contains("## Summary") && draft.body.contains("Failure stage: source-validation, preflight") && draft.body.contains("INSTALL_BLOCKED_SOURCE_VALIDATION_FAILED"), "prepared issue includes structured failure summary")
         expect(draft.body.contains("Provider: OpenTopoMap") && draft.body.contains("Region: LTU, AZORES") && draft.body.contains("Map version: 2026-08-30"), "prepared issue includes concise multi-map metadata")
-        expect(draft.body.contains("App version: 0.8.0-beta.8") && draft.body.contains("Model: fēnix 8") && draft.body.contains("Variant: 47 mm AMOLED"), "prepared issue includes safe environment metadata")
+        expect(draft.body.contains("App version: 0.8.0-beta.8") && draft.body.contains("Model: fenix 8") && draft.body.contains("Variant: 47 mm AMOLED"), "prepared issue includes safe environment metadata")
         expect(draft.body.lowercased().contains(operationID.uuidString.lowercased()) && draft.body.lowercased().contains(diagnosticID.uuidString.lowercased()), "prepared issue includes diagnostic and installation references")
         expect(!draft.body.contains("alice") && !draft.body.contains("private-token") && !draft.body.contains("SERIAL-PRIVATE") && !draft.body.contains("/Users/"), "prepared issue excludes local paths, tokens, and device identifiers")
 

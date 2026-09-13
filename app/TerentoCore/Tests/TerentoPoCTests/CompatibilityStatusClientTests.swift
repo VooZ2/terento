@@ -23,7 +23,7 @@ struct CompatibilityStatusClientTests {
             dataLoader: { _ in (initialResponse, httpResponse()) }
         )
 
-        let fenix47 = identity(size: 47)
+        let fenix47 = identity(size: 47, variant: "47 mm, AMOLED")
         let fenix51 = identity(size: 51)
         let supported = await client.resolve(identity: fenix47)
         let secondVariant = await client.resolve(identity: fenix51)
@@ -64,9 +64,9 @@ struct CompatibilityStatusClientTests {
             }
         )
         let ambiguousDisplay = await ambiguousDisplayClient.resolve(identity: fenix47)
-        require(ambiguousDisplay.status == .supported, "reviewed VID/PID selects only its exact AMOLED catalog identity")
+        require(ambiguousDisplay.status == .supported, "explicit display text selects only its exact AMOLED catalog identity")
 
-        let unreviewedSizeOnly = identity(size: 47, productID: 0x9999)
+        let unreviewedSizeOnly = identity(size: 47)
         let noDisplayGuess = await ambiguousDisplayClient.resolve(identity: unreviewedSizeOnly)
         require(noDisplayGuess.status == nil, "size-only identity does not choose AMOLED or Solar")
 
@@ -105,13 +105,13 @@ struct CompatibilityStatusClientTests {
 
         let adapter = GarminDeviceIdentityAdapter()
         let reviewedIdentity = adapter.makeIdentity(from: snapshot(model: "fenix 8 - 47mm", productID: 0x51b8))
-        require(reviewedIdentity.variant == "47 mm, AMOLED", "reviewed VID/PID enriches the exact AMOLED variant")
+        require(reviewedIdentity.variant == "47 mm", "USB alone does not enrich the screen variant")
         require(
             ConnectedDeviceSubtitleFormatter.format(
                 identity: reviewedIdentity,
                 fallbackModel: "fenix 8 - 47mm",
                 manufacturer: "Garmin"
-            ) == "47 mm · AMOLED · Firmware 22.44",
+            ) == "47 mm · Firmware 22.44",
             "connected subtitle renders exact case, variant, and firmware"
         )
         let unknownVariant = identity(size: 47, productID: 0x9999)
@@ -125,8 +125,65 @@ struct CompatibilityStatusClientTests {
             "unknown variant subtitle does not invent AMOLED or Solar"
         )
 
+        await testCatalogMetadata()
+
         try? FileManager.default.removeItem(at: cacheURL)
         print("PASS: canonical compatibility status client, exact variants, cache, and offline behavior")
+    }
+
+    private static func testCatalogMetadata() async {
+        let raw = DeviceIdentity(manufacturer: "Garmin", model: "Summit 42 Pro - 49mm",
+            family: nil, variant: nil, usbVendorId: 0x091e, usbProductId: 0x9999,
+            firmware: nil, storageCapacity: 1, freeSpace: 1,
+            garminModelDescription: "Summit 42 Pro - 49mm, AMOLED")
+        func resolve(_ rows: [[String: Any]], identity: DeviceIdentity = raw) async -> CatalogDeviceMetadata? {
+            let data = try! JSONSerialization.data(withJSONObject: ["catalogVersion": 2, "devices": rows])
+            return await CompatibilityStatusClient(dataLoader: { request in
+                require(request.url?.absoluteString == "https://api.terento.app/devices/catalog.json",
+                        "catalog request never sends model, USB, XML, or local identifiers")
+                require(request.httpBody == nil, "catalog request has no diagnostic body")
+                return (data, httpResponse())
+            }).resolveCatalogMetadata(identity: identity)
+        }
+        var record: [String: Any] = ["id": "database-id-42", "manufacturer": "Garmin",
+            "model": "Summit 42 Pro", "caseSizeMm": 49, "screenTechnology": "AMOLED"]
+        let exact = await resolve([record])
+        require(exact?.candidateDeviceID == "database-id-42", "an arbitrary model and ID resolve from API data")
+        record["id"] = "database-id-43"
+        let changed = await resolve([record])
+        require(changed?.candidateDeviceID == "database-id-43", "changing only API data changes the catalog candidate")
+        let enriched = raw.applying(catalogMetadata: changed)
+        require(enriched.model == raw.model && enriched.garminModelDescription == raw.garminModelDescription,
+                "catalog hints preserve original model observations")
+        require(enriched.catalogDeviceID == "database-id-43", "catalog ID has API provenance")
+        let sizeOnly = DeviceIdentity(manufacturer: "Garmin", model: "Summit 42 Pro - 49mm",
+            family: nil, variant: nil, usbVendorId: 0x091e, usbProductId: 0x9999,
+            firmware: nil, storageCapacity: 1, freeSpace: 1)
+        let common = await resolve([record], identity: sizeOnly)
+        require(common?.candidateDeviceID == nil && common?.screenTechnology == "AMOLED",
+                "unanimous catalog screen is a sourced presentation fact, not direct exact identity proof")
+        require(sizeOnly.applying(catalogMetadata: common).screenTechnologySource == "Terento API catalog",
+                "derived screen is distinguished from device observations")
+        var second = record
+        second["id"] = "solar-record"
+        second["screenTechnology"] = "MIP"
+        second["solar"] = true
+        let ambiguous = await resolve([record, second], identity: sizeOnly)
+        require(ambiguous?.candidateDeviceID == nil && ambiguous?.screenTechnology == nil && ambiguous?.solar == nil,
+                "size-only identity cannot choose between AMOLED and Solar MIP")
+        second["screenTechnology"] = "AMOLED"
+        second["inReach"] = true
+        let shared = await resolve([record, second])
+        require(shared?.candidateDeviceID == nil, "shared size and screen cannot choose an inReach variant")
+        second.removeValue(forKey: "screenTechnology")
+        let unknown = await resolve([record, second], identity: sizeOnly)
+        require(unknown?.screenTechnology == nil, "unknown catalog properties cannot establish unanimous screen evidence")
+        let conflicting = DeviceIdentity(manufacturer: "Garmin", model: "Summit 42 Pro - 49mm, MIP",
+            family: nil, variant: nil, usbVendorId: 0x091e, usbProductId: 0x9999,
+            firmware: nil, storageCapacity: 1, freeSpace: 1,
+            garminModelDescription: "Summit 42 Pro - 49mm, AMOLED")
+        let conflict = await resolve([record], identity: conflicting)
+        require(conflict == nil, "conflicting MTP/XML screen observations cannot acquire a catalog hint")
     }
 
     private static func identity(

@@ -74,6 +74,7 @@ struct TerentoPoCApp: App {
         .windowStyle(.titleBar)
         Window("Diagnostics", id: "diagnostics") {
             DiagnosticsView(
+                deviceEngine: deviceEngine,
                 evidenceController: evidenceController,
                 mapStatisticsController: mapStatisticsController
             )

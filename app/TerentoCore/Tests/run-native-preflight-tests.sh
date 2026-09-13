@@ -37,3 +37,16 @@ if grep -Eq 'LibMTPBridge|MTPTransport|SendObject|DeleteObject|MoveObject' \
 fi
 
 print "PASS: preflight engine has no MTP transport or write-operation dependency"
+
+python3 - "$project_root/Sources/LibMTPBridge/MTPBridge.c" <<'PYTHON'
+from pathlib import Path
+import sys
+source = Path(sys.argv[1]).read_text()
+# USB manufacturer/product string descriptors are not MTP DeviceInfo. Keep
+# snapshot discovery independent of optional text descriptors (OpenMTP lesson).
+assert 'LIBMTP_Get_Modelname(device)' in source
+assert 'LIBMTP_Get_Manufacturername(device)' in source
+assert 'iManufacturer' not in source and 'iProduct' not in source
+assert 'libusb_get_string_descriptor' not in source
+print('PASS: snapshot uses MTP DeviceInfo without requiring optional USB text descriptors')
+PYTHON

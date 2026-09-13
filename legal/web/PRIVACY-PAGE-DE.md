@@ -49,4 +49,6 @@ Kontaktiere [privacy@terento.app](mailto:privacy@terento.app). Wir antworten nor
 
 Kompatibilitätsberichte können außerdem eine bereinigte MTP-Modellbezeichnung, USB VID/PID, Transport, Identitätsquellenkategorie (nie den Kennungswert), Kartenausgaben, Zeitstempel, zufällige Ereignis-/Vorgangs-IDs, Fehlerphase, zugelassene App-/native Fehlercodes, Schreib-/Bereinigungsstatus und groben Fortschritt enthalten. Eigene Importe nutzen grobe Quellenbezeichnungen. Keiner der Ströme sendet Manifeste, MTP-Objekt-IDs, Karten-Hashes oder ungefilterte Fehlertexte.
 
-Aktualisiert: 5. September 2026.
+Berichte können zusätzlich die ursprüngliche XML-Modellbeschreibung (bis zu 160 Zeichen) und den Modellproduktcode (bis zu 64 ASCII-Buchstaben, Ziffern oder Bindestrichen) enthalten. Diese beschreiben ein Produktmodell, keine einzelne Uhr. Vollständige XML-Dokumente, Unit IDs und Seriennummern sind ausgeschlossen. Modellcode-Zuordnungen und administrative Korrekturen werden getrennt vom ursprünglichen Bericht gespeichert.
+
+Aktualisiert: 13. September 2026.

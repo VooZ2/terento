@@ -91,3 +91,7 @@ class CollectedDevice:
     source_url: str
     asset: DeviceAsset | None = None
     source_image_url: str | None = None
+    screen_technology: str | None = None
+    solar: bool | None = None
+    inreach: bool | None = None
+    retail_skus: tuple[str, ...] = ()

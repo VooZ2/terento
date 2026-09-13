@@ -7,6 +7,28 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 const release = JSON.parse(read("site/updates/macos-arm64.json"));
+// A reviewed candidate can be merged and signed before its installer exists.
+// Published URLs/checksums continue to describe the actually available build.
+const candidatePath = path.join(root, "Packaging/release-candidate.json");
+function candidateIdentity(candidate, published) {
+  if (!candidate) return published;
+  assert.deepEqual(Object.keys(candidate).sort(), ["build", "releaseLabel", "version"]);
+  assert.equal(candidate.version, published.version, "same-beta candidate must preserve the version");
+  assert.equal(candidate.releaseLabel, published.releaseLabel, "same-beta candidate must preserve the beta label");
+  assert.ok(Number.isInteger(candidate.build) && candidate.build > published.build,
+    "candidate build must be newer than the published build");
+  return candidate;
+}
+const artifactIdentity = candidateIdentity(
+  fs.existsSync(candidatePath) ? JSON.parse(fs.readFileSync(candidatePath, "utf8")) : null, release,
+);
+assert.equal(candidateIdentity(null, release), release);
+for (const invalid of [
+  { ...release, build: release.build + 1 },
+  { version: release.version, releaseLabel: release.releaseLabel, build: release.build },
+  { version: release.version, releaseLabel: release.releaseLabel, build: release.build - 1 },
+  { version: release.version, releaseLabel: `${release.releaseLabel}-local`, build: release.build + 1 },
+]) assert.throws(() => candidateIdentity(invalid, release));
 const label = release.releaseLabel;
 const releaseTag = release.releaseTag || `v${label}`;
 const semanticVersion = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
@@ -83,7 +105,7 @@ const assertXcodeSetting = (setting, expected) => {
   assert.deepEqual(
     [...new Set(values)],
     [String(expected)],
-    `Every Xcode ${setting} value must match the update manifest`,
+    `Every Xcode ${setting} value must match the reviewed artifact identity`,
   );
 };
 const configurationBody = (name) => [...project.matchAll(new RegExp(`^\\s*[^\\n]*\\/\\* ${name} \\*\\/ = \\{([\\s\\S]*?)\\}; name = ${name};`, "gm"))]
@@ -97,8 +119,8 @@ assert.equal(distributedReleaseLabel, label, "Release builds must keep the publi
 assert.doesNotMatch(label, /-local$/, "Public update manifests must never use a local release label");
 assert.doesNotMatch(distributedReleaseLabel || "", /-local$/, "Public Release builds must never use a local release label");
 assert.notEqual(distributedReleaseLabel, "development", "Public Release builds must never use development telemetry identity");
-assertXcodeSetting("CURRENT_PROJECT_VERSION", release.build);
-assertXcodeSetting("MARKETING_VERSION", release.version);
+assertXcodeSetting("CURRENT_PROJECT_VERSION", artifactIdentity.build);
+assertXcodeSetting("MARKETING_VERSION", artifactIdentity.version);
 
 for (const locale of ["en", "de", "fr", "pl", "cs", "it"]) {
   const prefix = locale === "en" ? "" : `${locale}/`;

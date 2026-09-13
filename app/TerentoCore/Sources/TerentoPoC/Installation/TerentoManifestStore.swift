@@ -497,7 +497,19 @@ extension DeviceIdentity {
     }
 
     var legacyManifestDeviceKey: String {
-        let modelKey = GarminDeviceModelNormalizer.normalize(canonicalModel ?? model)
+        // Frozen pre-build29 storage naming, used only to find existing local
+        // ownership records. Never use it for presentation or catalog identity.
+        // Generic API model normalization must not rename historical manifests.
+        var previousModel = GarminDeviceModelNormalizer.normalize(deviceDescription ?? model)
+        if previousModel.hasPrefix("garmin ") { previousModel.removeFirst("garmin ".count) }
+        for token in [" sapphire", " solar", " amoled", " mip", " microled", " leather", " titanium", " stainless", " silicone"] {
+            if let range = previousModel.range(of: token) { previousModel = String(previousModel[..<range.lowerBound]) }
+        }
+        if let range = previousModel.range(of: #"\s\d{2,3}\s*mm"#, options: .regularExpression) {
+            previousModel = String(previousModel[..<range.lowerBound])
+        }
+        let legacyModel = ["fenix 8", "fenix 8 pro"].contains(previousModel) ? previousModel : model
+        let modelKey = GarminDeviceModelNormalizer.normalize(legacyModel)
             .replacingOccurrences(of: " ", with: "-")
         return "\(modelKey)-\(String(format: "%04x", usbVendorId))-\(String(format: "%04x", usbProductId))"
     }

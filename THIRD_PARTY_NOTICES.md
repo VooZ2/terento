@@ -153,3 +153,24 @@ libraries in `Terento.app/Contents/Frameworks`.
   with Terento or redistributed by the site. MIT permits redistribution with the
   copyright and permission notice retained if a future copy is distributed.
 - No application linking or source-availability obligation is introduced.
+
+### Device identifier reference data
+
+The optional server-only identifier import tool can read a Garmin Connect IQ
+`deviceTypes` snapshot and libmtp's `src/music-players.h`. It stages factual
+model/code associations for review, records the source URL and SHA-256, and
+does not ship the registry or upstream snapshots in the macOS app. Garmin's
+endpoint is <https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes>;
+no blanket redistribution permission for its complete response has been
+established by this work. Keep raw snapshots private and retain Garmin naming
+and independence notices; imported names/codes do not imply Garmin approval.
+
+The libmtp reference header explicitly declares LGPL-2.0-or-later and names
+Richard A. Low, Linus Walleij, Marcus Meissner, Ted Bullock and Sony Mobile
+Communications AB among its copyright holders. If redistributing that header
+or a derivative, retain its notices, applicable LGPL text and source obligations.
+This does not change the existing libmtp runtime dependency/license above.
+
+OpenMTP and go-mtpfs were inspected for metadata resilience only. No OpenMTP
+or Go dependency or source code is incorporated. Reference:
+<https://github.com/ganeshrvel/go-mtpfs/pull/1> (optional USB descriptors).

@@ -49,4 +49,6 @@ Vous pouvez demander accès, rectification, effacement ou limitation et vous opp
 
 La compatibilité peut aussi inclure un libellé MTP nettoyé, USB VID/PID, transport, catégorie de source d’identité (jamais sa valeur), versions des cartes, horodatages, identifiants aléatoires, étape d’échec, codes d’erreur autorisés, état d’écriture/nettoyage et progression approximative. Les imports personnels utilisent des catégories générales. Aucun flux n’envoie de manifestes, identifiants d’objets MTP, empreintes de cartes ou erreurs non filtrées.
 
-Mise à jour : 5 septembre 2026.
+Les rapports peuvent aussi contenir la description originale du modèle XML (160 caractères maximum) et son code produit (64 lettres ASCII, chiffres ou traits d’union maximum). Ces données désignent un modèle, pas une montre individuelle. Les documents XML complets, Unit IDs et numéros de série sont exclus. Les correspondances des codes et les corrections administratives sont conservées séparément du rapport original.
+
+Mise à jour : 13 septembre 2026.

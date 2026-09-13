@@ -793,30 +793,6 @@ struct DeviceAssetRegistry: Sendable {
     static let local = DeviceAssetRegistry()
 
     func asset(for identity: DeviceIdentity?) -> DeviceAsset {
-        guard let identity,
-              identity.canonicalModel == "fēnix 8",
-              identity.usbVendorId == 0x091e,
-              identity.usbProductId == 0x51b8 else {
-            return DeviceAsset(
-                resourceName: "generic-garmin-watch",
-                resourceSubdirectory: "Devices",
-                scope: .fallback
-            )
-        }
-
-        let scope: DeviceAssetScope
-        if identity.caseSizeMm == 47, identity.displayType == "AMOLED" {
-            scope = .exactVariant
-        } else if identity.caseSizeMm == 47 {
-            scope = .modelSize
-        } else {
-            scope = .model
-        }
-
-        return DeviceAsset(
-            resourceName: "fenix8-render",
-            resourceSubdirectory: "Devices",
-            scope: scope
-        )
+        DeviceAsset(resourceName: "generic-garmin-watch", resourceSubdirectory: "Devices", scope: .fallback)
     }
 }

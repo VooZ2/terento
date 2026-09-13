@@ -98,6 +98,26 @@
         },
         "sourceAsset": {
           "$ref": "#/$defs/sourceAsset"
+        },
+        "screenTechnology": {
+          "enum": [
+            "AMOLED",
+            "MicroLED",
+            "MIP",
+            null
+          ]
+        },
+        "solar": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "inReach": {
+          "type": [
+            "boolean",
+            "null"
+          ]
         }
       },
       "required": [

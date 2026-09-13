@@ -180,6 +180,16 @@
     },
     "nativeFailureCode": {
       "description": "Diagnostic field. Typed and checked for versions 3–4. Legacy versions 1–2 do not validate this field; see README limitations."
+    },
+    "garminModelDescription": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+    },
+    "garminModelPartNumber": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9-]{1,64}$"
     }
   },
   "required": [

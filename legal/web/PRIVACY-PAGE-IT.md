@@ -49,4 +49,6 @@ Scrivi a [privacy@terento.app](mailto:privacy@terento.app). Normalmente rispondi
 
 La compatibilità può includere un nome modello MTP ripulito, USB VID/PID, trasporto, categoria dell’origine dell’identità (mai il valore), versioni mappe, orari, ID casuali, fase dell’errore, codici autorizzati app/nativi, stato scrittura/pulizia e avanzamento approssimativo. Gli import personali usano categorie generiche. Nessun flusso invia manifesti, ID oggetti MTP, hash delle mappe o errori non filtrati.
 
-Aggiornamento: 5 settembre 2026.
+I rapporti possono includere anche la descrizione originale del modello XML (fino a 160 caratteri) e il codice prodotto del modello (fino a 64 lettere ASCII, cifre o trattini). Questi dati identificano un modello, non un singolo orologio. Sono esclusi documenti XML completi, Unit ID e numeri di serie. Le associazioni dei codici e le correzioni amministrative sono conservate separatamente dal rapporto originale.
+
+Aggiornamento: 13 settembre 2026.

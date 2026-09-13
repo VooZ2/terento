@@ -112,9 +112,11 @@ class RecordingDatabase(Database):
                 database.calls.append((query, parameters))
                 if "SELECT event_id, diagnostic_status" in query:
                     return RecordingResult(rows=database.diagnostic_rows)
+                if "SELECT * FROM device_model" in query:
+                    return RecordingResult(rows=[database.canonical_row] if database.canonical_row else [])
                 if "SELECT id, model, variant" in query:
                     return RecordingResult(row=database.canonical_row)
-                if "SELECT event_id, compatibility_identity, canonical_device_model_id" in query:
+                if "SELECT *" in query and "FROM compatibility_evidence_event" in query:
                     return RecordingResult(rows=database.identity_rows)
                 if "SELECT compatibility_identity, calculated_status" in query:
                     return RecordingResult(row=database.statistics_row)

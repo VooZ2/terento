@@ -212,6 +212,23 @@ struct CompatibilityStatusClient: Sendable {
         )
     }
 
+    /// Fetch public catalog metadata without sending device observations.
+    /// This is a presentation/candidate hint; installation evidence is still
+    /// assessed independently against all five server-side checks.
+    func resolveCatalogMetadata(identity: DeviceIdentity) async -> CatalogDeviceMetadata? {
+        var request = URLRequest(url: URL(string: "https://api.terento.app/devices/catalog.json")!)
+        request.timeoutInterval = 15
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        do {
+            let (data, response) = try await dataLoader(request)
+            guard let response = response as? HTTPURLResponse, response.statusCode == 200,
+                  data.count <= 4 * 1024 * 1024 else { return nil }
+            let catalog = try JSONDecoder().decode(CatalogIdentityDocument.self, from: data)
+            guard catalog.catalogVersion == 2 else { return nil }
+            return catalog.metadata(for: identity)
+        } catch { return nil }
+    }
+
     private func fetchRecords() async throws -> [CompatibilityStatusRecord] {
         var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false)
         var queryItems = components?.queryItems ?? []
@@ -247,7 +264,7 @@ struct CompatibilityStatusClient: Sendable {
         identity: DeviceIdentity,
         in records: [CompatibilityStatusRecord]
     ) -> CompatibilityStatusRecord? {
-        let reviewedID = identity.reviewedCanonicalDeviceID
+        let reviewedID = identity.catalogDeviceID
         let candidates = records.compactMap { record -> (CompatibilityStatusIdentityKey, CompatibilityStatusRecord)? in
             guard record.status != nil,
                   record.mapCapable != false else {
@@ -283,6 +300,56 @@ struct CompatibilityStatusClient: Sendable {
     }
 }
 
+private struct CatalogIdentityDocument: Decodable {
+    let catalogVersion: Int
+    let devices: [Record]
+
+    struct Record: Decodable {
+        let id: String
+        let manufacturer: String
+        let model: String
+        let caseSizeMm: Int?
+        let screenTechnology: String?
+        let displayType: String?
+        let solar: Bool?
+        let inReach: Bool?
+
+        var screen: String? {
+            screenTechnology ?? displayType.flatMap(GarminDeviceModelNormalizer.screenTechnology)
+        }
+    }
+
+    func metadata(for identity: DeviceIdentity) -> CatalogDeviceMetadata? {
+        let texts = [identity.model, identity.garminModelDescription].compactMap { $0 }
+        let labels = Set(texts.compactMap(GarminDeviceModelNormalizer.catalogCanonicalModel))
+        let sizes = Set(texts.compactMap(GarminDeviceModelNormalizer.caseSizeMm))
+        let screens = Set(texts.flatMap { text in
+            ["AMOLED", "MicroLED", "MIP"].filter { GarminDeviceModelNormalizer.hasExplicitFeature($0.lowercased(), in: text) }
+        })
+        guard labels.count == 1, let label = labels.first, sizes.count <= 1, screens.count <= 1 else { return nil }
+        let candidates = devices.filter { record in
+            GarminDeviceModelNormalizer.normalize(record.manufacturer) == GarminDeviceModelNormalizer.normalize(identity.manufacturer)
+                && GarminDeviceModelNormalizer.catalogCanonicalModel(from: record.model) == label
+                && (sizes.isEmpty || record.caseSizeMm == nil || sizes.contains(record.caseSizeMm!))
+                && (screens.isEmpty || record.screen == nil || screens.contains(record.screen!))
+                && (identity.solar != true || record.solar != false)
+                && (identity.inReach != true || record.inReach != false)
+        }
+        guard !candidates.isEmpty else { return nil }
+        func agreed<T: Hashable>(_ values: [T?]) -> T? {
+            let distinct = Set(values)
+            return distinct.count == 1 ? distinct.first! : nil
+        }
+        guard let model = agreed(candidates.map { Optional($0.model) }) else { return nil }
+        let exact = candidates.count == 1 && candidates[0].caseSizeMm != nil
+            && sizes.contains(candidates[0].caseSizeMm!) && candidates[0].screen != nil
+            && screens.contains(candidates[0].screen!)
+        return CatalogDeviceMetadata(candidateDeviceID: exact ? candidates[0].id : nil, model: model,
+            screenTechnology: agreed(candidates.map(\.screen)), solar: agreed(candidates.map(\.solar)),
+            inReach: agreed(candidates.map(\.inReach)))
+    }
+}
+
 struct CompatibilityStatusIdentityKey: Hashable, Codable, Equatable, Sendable {
     let model: String
     let caseSizeMm: Int?
@@ -298,7 +365,7 @@ struct CompatibilityStatusIdentityKey: Hashable, Codable, Equatable, Sendable {
         self.model = Self.baseModel(deviceIdentity.canonicalModel ?? deviceIdentity.model)
         self.caseSizeMm = deviceIdentity.caseSizeMm
         self.displayType = deviceIdentity.displayType.flatMap { Self.normalizeDisplay($0) }
-        self.canonicalDeviceID = deviceIdentity.reviewedCanonicalDeviceID
+        self.canonicalDeviceID = deviceIdentity.catalogDeviceID
     }
 
     init(record: CompatibilityStatusRecord) {

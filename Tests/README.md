@@ -78,3 +78,9 @@ release notes/manifest, and dated evidence in `history/`. Do not accumulate loca
 candidate instructions in current build documentation. Public instructions must
 work without private `internal/` files. Preserve legal sources, migrations,
 legacy client contracts and regression fixtures even when they refer to old versions.
+
+For a same-beta candidate, release contracts separately validate the exact
+Xcode/candidate build and the still-published manifest/notes/downloads. The
+candidate must advance the build and preserve the public version/label; it
+cannot carry distribution URLs or checksums. Removing it restores the direct
+Xcode/public-manifest equality requirement.

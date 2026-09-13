@@ -32,12 +32,13 @@
     amoled: "AMOLED",
     solar: "Solar",
     microled: "microLED",
+    mip: "MIP",
   }[String(value || "").toLocaleLowerCase()] || String(value || "").trim());
 
   const variantParts = (value) => {
     const source = String(value || "").trim();
     const sizeMatch = source.match(/\b(\d{2})\s*mm\b/i);
-    const displayMatch = source.match(/\b(amoled|solar|microled)\b/i);
+    const displayMatch = source.match(/\b(amoled|solar|microled|mip)\b/i);
     return {
       size: sizeMatch ? `${Number(sizeMatch[1])} mm` : "",
       display: displayMatch ? displayLabel(displayMatch[1]) : "",
@@ -51,11 +52,13 @@
     const parsed = variantParts(source);
     const sizeValue = Number(row.caseSizeMm ?? row.case_size_mm);
     const size = Number.isInteger(sizeValue) && sizeValue > 0 ? `${sizeValue} mm` : parsed.size;
-    const displayValue = String(row.displayType ?? row.display_type ?? "").trim();
+    const displayValue = String(row.screenTechnology ?? row.screen_technology ?? row.displayType ?? row.display_type ?? "").trim();
     const display = displayValue ? displayLabel(displayValue) : parsed.display;
     const exactParts = [];
     if (size) exactParts.push(size);
     if (display) exactParts.push(display);
+    if ((row.solar === true || /\bsolar\b/i.test(source)) && display !== "Solar") exactParts.push("Solar");
+    if (row.inReach === true || row.inreach === true || /\binreach\b/i.test(source)) exactParts.push("inReach");
     if (exactParts.length) return exactParts.join(", ");
     if (rawVariant) return rawVariant.replace(/\s*(?:·|\||\/)\s*/g, ", ").replace(/\s+/g, " ");
     return fallbackVariants.map((value) => String(value).trim()).filter(Boolean).join(" · ");

@@ -126,3 +126,6 @@ assert public['successful_install_count'] == 4 and public['calculated_status'] =
 from terento_catalog.migrate import apply_migrations
 assert apply_migrations(database) == []
 print('PASS: unverified success cannot promote compatibility; migration replay is idempotent')
+
+from check_identity_database import check_identity_database
+check_identity_database(database)

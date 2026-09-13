@@ -15,7 +15,7 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 from urllib.parse import parse_qs, quote, unquote, urlsplit
-from uuid import uuid4
+from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .admin import (
@@ -1386,6 +1386,15 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     return
                 self._send_admin_html(body, send_body=send_body)
                 return
+            if request_path == "/admin/devices/identity-audit.json":
+                try:
+                    audit = service.database.identity_assignment_audit()
+                except Exception:
+                    LOGGER.exception("identity assignment audit failed")
+                    self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "identity_audit_unavailable"}, send_body=send_body, cache_control="no-store", noindex=True)
+                    return
+                self._send_json(HTTPStatus.OK, audit, send_body=send_body, cache_control="no-store", noindex=True)
+                return
             if request_path.startswith("/admin/devices/") and request_path != "/admin/devices/":
                 device_id = unquote(request_path.removeprefix("/admin/devices/")).strip()
                 if not device_id or "/" in device_id:
@@ -1754,6 +1763,32 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     return
                 self._redirect(self._safe_admin_return(form.get("return_to"), "/admin"), send_body=True)
                 return
+            if request_path == "/admin/diagnostics/identity-source":
+                try:
+                    event_id = str(UUID(form.get("event_id", "")))
+                    field = form.get("field", "")
+                    raw_value = form.get("value", "").strip()
+                    value = None if not raw_value else (int(raw_value) if field in {"caseSizeMm", "usbVendorID", "usbProductID"} else raw_value)
+                    changed = service.database.correct_identity_source(event_id, field, value, form.get("reason", ""), int(session["id"]))
+                    if not changed:
+                        raise ValueError("event not found")
+                except ValueError:
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_identity_source_correction"}, send_body=True, cache_control="no-store")
+                    return
+                self._redirect(self._safe_admin_return(form.get("return_to"), "/admin"), send_body=True)
+                return
+            if request_path == "/admin/devices/identity-mapping":
+                try:
+                    changed = service.database.review_identity_mapping(
+                        int(form.get("mapping_id", "")), form.get("status", ""),
+                        form.get("reason", ""), int(session["id"]))
+                    if not changed:
+                        raise ValueError("mapping not found")
+                except ValueError:
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_mapping_review"}, send_body=True, cache_control="no-store")
+                    return
+                self._redirect(self._safe_admin_return(form.get("return_to"), "/admin/devices"), send_body=True)
+                return
             if request_path == "/admin/diagnostics/identity":
                 try:
                     identity_action = form.get("identity_action", "").strip().upper()
@@ -1909,6 +1944,8 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     "variant": row.get("variant"),
                     "caseSizeMm": row.get("case_size_mm"),
                     "displayType": row.get("display_type"),
+                    "screenTechnology": row.get("screen_technology"),
+                    "solar": row.get("solar"), "inReach": row.get("inreach"),
                     "canonicalDeviceId": row.get("canonical_device_model_id"),
                     "attemptedInstallations": int(row.get("attempted_install_count") or 0),
                     "successfulInstallations": int(row.get("successful_install_count") or 0),

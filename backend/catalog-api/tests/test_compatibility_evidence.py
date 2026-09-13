@@ -289,6 +289,9 @@ class CaptureDatabase(Database):
         database = self
 
         class Result:
+            def fetchall(self):
+                return []
+
             def fetchone(self):
                 return {"event_id": "stored"}
 
@@ -301,6 +304,22 @@ class CaptureDatabase(Database):
 
 
 class CompatibilityEvidenceTests(unittest.TestCase):
+    def test_optional_original_xml_fields_are_bounded_and_private(self):
+        for schema in (1, 2, 3, 4):
+            source = event(schemaVersion=schema, garminModelDescription="fenix 9 Pro 51mm", garminModelPartNumber="006-B4954-00")
+            # Existing v3+ required operation fields are covered by their fixtures.
+            if schema in (3, 4):
+                source.update(operationId="123e4567-e89b-12d3-a456-426614174111", mapResultIndex=0, selectedMapCount=1, appBuild="29", releaseLabel="1.0.0-beta.12-local", writeStarted=True, remoteObjectCreated=True, cleanupAttempted=False, cleanupSucceeded=False, transferProgressBucket="100")
+            if schema == 4:
+                source.pop("deletionToken", None)
+            value = validate_event(json.dumps(source).encode())
+            self.assertEqual(value["garminModelPartNumber"], "006-B4954-00")
+        for key, value in [("garminModelPartNumber", "006/invalid"), ("garminModelPartNumber", "é"),
+                           ("garminModelPartNumber", "A" * 65), ("garminModelDescription", "A" * 161),
+                           ("garminModelDescription", "line\nprivate"), ("garminModelDescription", "/Users/private")]:
+            with self.subTest(key=key, value=value), self.assertRaises(EvidenceValidationError):
+                validate_event(json.dumps(event(**{key: value})).encode())
+
     def setUp(self):
         self.database = FakeEvidenceDatabase()
         service = CatalogService(
@@ -518,7 +537,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertEqual(database.parameters["identityResolutionState"], "UNRESOLVED")
         self.assertEqual(len(database.parameters["deletionTokenHash"]), 64)
 
-    def test_historical_fenix_7_evidence_is_canonicalized_without_retail_row(self):
+    def test_historical_fenix_7_without_five_checks_remains_unresolved(self):
         database = CaptureDatabase()
         payload = event(
             model="fēnix 7",
@@ -527,11 +546,8 @@ class CompatibilityEvidenceTests(unittest.TestCase):
             caseSizeMm=47,
         )
         self.assertTrue(database.insert_compatibility_event(payload))
-        self.assertEqual(
-            database.parameters["canonicalDeviceId"],
-            "garmin-fenix-7-47",
-        )
-        self.assertEqual(database.parameters["identityResolutionState"], "RESOLVED")
+        self.assertIsNone(database.parameters["canonicalDeviceId"])
+        self.assertEqual(database.parameters["identityResolutionState"], "UNRESOLVED")
 
     def test_admin_dashboard_uses_compact_english_evidence_layout(self):
         row = {
@@ -712,8 +728,8 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertFalse(database.parameters["reconnectVerified"])
         self.assertFalse(database.parameters["mapVisibleAfterReconnect"])
         self.assertEqual(database.parameters["displayType"], "AMOLED")
-        self.assertEqual(database.parameters["canonicalDeviceId"], "garmin-fenix-8-51-amoled")
-        self.assertEqual(database.parameters["identityResolutionState"], "RESOLVED")
+        self.assertIsNone(database.parameters["canonicalDeviceId"])
+        self.assertEqual(database.parameters["identityResolutionState"], "UNRESOLVED")
 
     def test_beta8_known_otm_provider_is_accepted_for_operation_linkage(self):
         validated = validate_event(json.dumps(event(
@@ -985,6 +1001,29 @@ class CompatibilityEvidenceTests(unittest.TestCase):
             self.database.identity_reviews[-1]["canonical_device_model_id"],
             canonical_id,
         )
+
+    def test_identifier_review_routes_require_authenticated_csrf_and_do_not_reassign(self):
+        calls = []
+        self.database.review_identity_mapping = lambda *args: calls.append(args) or True
+        self.database.correct_identity_source = lambda *args: calls.append(args) or True
+        self.database.identity_assignment_audit = lambda: {"readOnly": True, "approvalRequiredBeforeReassignment": True}
+        response, _ = self.request("GET", "/admin/devices/identity-audit.json")
+        self.assertEqual(response.status, 303)
+        auth = self.authenticated_admin_headers()
+        headers = {"Cookie": auth["Cookie"], "Content-Type": "application/x-www-form-urlencoded"}
+        response, data = self.request("GET", "/admin/devices/identity-audit.json", headers=headers)
+        self.assertTrue(json.loads(data)["readOnly"])
+        for path, form in [
+            ("/admin/devices/identity-mapping", {"mapping_id": "1", "status": "APPROVED", "reason": "Official source reviewed"}),
+            ("/admin/diagnostics/identity-source", {"event_id": "123e4567-e89b-12d3-a456-426614174000", "field": "garminModelDescription", "value": "Reviewed model", "reason": "Source corrected"}),
+        ]:
+            response, _ = self.request("POST", path, urlencode(form), headers)
+            self.assertEqual(response.status, 403)
+            self.assertEqual(len(calls), 0 if 'mapping' in path else 1)
+            response, _ = self.request("POST", path, urlencode(dict(form, csrf_token=auth["csrf_token"])), headers)
+            self.assertEqual(response.status, 303)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(self.database.identity_reviews, [])
 
     def test_admin_rejects_wrong_bootstrap_secret_and_csrf(self):
         setup_body = urlencode({

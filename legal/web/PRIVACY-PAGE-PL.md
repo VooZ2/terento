@@ -49,4 +49,6 @@ Napisz do [privacy@terento.app](mailto:privacy@terento.app). Zwykle odpowiadamy 
 
 Zgodność może obejmować oczyszczoną nazwę modelu MTP, USB VID/PID, transport, kategorię źródła tożsamości (nigdy wartość identyfikatora), wydania map, czas, losowe identyfikatory, etap awarii, dozwolone kody błędów aplikacji/systemu, stan zapisu/czyszczenia i przybliżony postęp. Importy własne mają ogólne etykiety źródła. Żaden strumień nie wysyła manifestów, ID obiektów MTP, skrótów map ani nieprzefiltrowanych błędów.
 
-Aktualizacja: 5 września 2026 r.
+Raporty mogą dodatkowo zawierać oryginalny opis modelu z XML (do 160 znaków) i kod produktu modelu (do 64 liter ASCII, cyfr lub łączników). Dane te określają model produktu, a nie pojedynczy zegarek. Pełne dokumenty XML, Unit ID i numery seryjne są wykluczone. Powiązania kodów modeli i poprawki administratora są przechowywane oddzielnie od oryginalnego raportu.
+
+Aktualizacja: 13 września 2026 r.

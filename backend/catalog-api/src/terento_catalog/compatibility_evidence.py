@@ -14,6 +14,7 @@ MAX_EVENT_BYTES = 16_384
 # the client sends only the coarse custom/custom/custom labels.
 SUPPORTED_COMPATIBILITY_SOURCES = frozenset({"freizeitkarte", "opentopomap", "maprando", "bbbike", "custom"})
 ALLOWED_KEYS = {
+    "garminModelDescription", "garminModelPartNumber",
     "schemaVersion", "id", "timestamp", "model", "compatibilityIdentity", "variant", "caseSizeMm", "displayType", "canonicalDeviceId", "family", "firmwareVersion",
     "usbVendorID", "usbProductID", "transport", "provider", "region",
     "mapRelease", "terentoVersion", "macOSVersion", "phaseOutcome",
@@ -95,6 +96,16 @@ def validate_event(raw: bytes) -> dict[str, Any]:
         value = event.get(key)
         if value is not None and (not isinstance(value, str) or len(value) > 160 or "/Users/" in value or "file://" in value):
             raise EvidenceValidationError(f"invalid_{key}")
+    description = event.get("garminModelDescription")
+    if description is not None and (
+        not isinstance(description, str) or not description.strip()
+        or len(description) > 160 or "/Users/" in description or "file://" in description
+        or any(ord(c) < 32 or ord(c) == 127 for c in description)
+    ):
+        raise EvidenceValidationError("invalid_garminModelDescription")
+    part = event.get("garminModelPartNumber")
+    if part is not None and (not isinstance(part, str) or re.fullmatch(r"[A-Za-z0-9-]{1,64}", part) is None):
+        raise EvidenceValidationError("invalid_garminModelPartNumber")
     raw_mtp_model = event.get("rawMTPModel")
     if raw_mtp_model is not None and (
         not isinstance(raw_mtp_model, str)

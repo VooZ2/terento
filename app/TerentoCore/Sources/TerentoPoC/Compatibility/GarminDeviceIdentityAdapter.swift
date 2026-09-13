@@ -8,7 +8,35 @@ struct GarminDeviceDocumentIdentity: Equatable, Sendable {
     let description: String?
 }
 
+struct GarminDeviceModelMetadata: Equatable, Sendable {
+    let description: String?
+    let partNumber: String?
+}
+
 enum GarminDeviceDocumentParser {
+    static func modelMetadata(_ data: Data) -> GarminDeviceModelMetadata? {
+        guard !data.isEmpty, data.count <= 2 * 1024 * 1024,
+              let source = String(data: data, encoding: .utf8),
+              source.range(of: "<!DOCTYPE", options: .caseInsensitive) == nil,
+              source.range(of: "<!ENTITY", options: .caseInsensitive) == nil else { return nil }
+        let delegate = GarminDeviceMetadataParserDelegate()
+        let parser = XMLParser(data: data)
+        parser.delegate = delegate
+        parser.shouldProcessNamespaces = true
+        parser.shouldResolveExternalEntities = false
+        guard parser.parse(), ["Device", "GarminDevice"].contains(delegate.rootElement ?? ""),
+              delegate.rootNamespace == nil || delegate.rootNamespace == ""
+                || delegate.rootNamespace == "http://www.garmin.com/xmlschemas/GarminDevice/v2" else { return nil }
+        let description = delegate.descriptions.count == 1
+            ? sanitizedDescription(delegate.descriptions[0]) : nil
+        let part = delegate.partNumbers.count == 1
+            ? delegate.partNumbers[0].trimmingCharacters(in: .whitespacesAndNewlines) : ""
+        let validPart = (1...64).contains(part.count) && part.allSatisfy {
+            $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-")
+        }
+        return GarminDeviceModelMetadata(description: description, partNumber: validPart ? part : nil)
+    }
+
     static func parse(_ data: Data) -> GarminDeviceDocumentIdentity? {
         guard !data.isEmpty, data.count <= 2 * 1024 * 1024 else { return nil }
         if let source = String(data: data, encoding: .utf8),
@@ -89,9 +117,53 @@ private final class GarminDeviceDocumentParserDelegate: NSObject, XMLParserDeleg
     }
 }
 
+/// Only direct, scalar Model children are diagnostic metadata. A nested
+/// element cannot turn a malformed field into an apparently valid suffix.
+private final class GarminDeviceMetadataParserDelegate: NSObject, XMLParserDelegate {
+    var rootElement: String?
+    var rootNamespace: String?
+    var descriptions: [String] = []
+    var partNumbers: [String] = []
+    private var elements: [String] = []
+    private var text = ""
+    private var nested = false
+
+    func parser(_ parser: XMLParser, didStartElement elementName: String,
+                namespaceURI: String?, qualifiedName qName: String?,
+                attributes attributeDict: [String: String] = [:]) {
+        if elements.isEmpty {
+            rootElement = elementName
+            rootNamespace = namespaceURI
+        }
+        elements.append((namespaceURI ?? "") == (rootNamespace ?? "") ? elementName : "")
+        if elements.count == 3 {
+            text = ""
+            nested = false
+        } else if elements.count > 3 { nested = true }
+    }
+
+    func parser(_ parser: XMLParser, foundCharacters string: String) {
+        if elements.count == 3 { text += string }
+    }
+
+    func parser(_ parser: XMLParser, foundCDATA CDATABlock: Data) {
+        if let value = String(data: CDATABlock, encoding: .utf8) {
+            self.parser(parser, foundCharacters: value)
+        } else { nested = true }
+    }
+
+    func parser(_ parser: XMLParser, didEndElement elementName: String,
+                namespaceURI: String?, qualifiedName qName: String?) {
+        if elements == [rootElement ?? "", "Model", "Description"] { descriptions.append(nested ? "" : text) }
+        if elements == [rootElement ?? "", "Model", "PartNumber"] { partNumbers.append(nested ? "" : text) }
+        elements.removeLast()
+    }
+}
+
 struct GarminDeviceIdentityAdapter: Sendable {
     func makeIdentity(from snapshot: DeviceSnapshot) -> DeviceIdentity {
         let document = snapshot.garminDeviceXML.flatMap(GarminDeviceDocumentParser.parse)
+        let metadata = snapshot.garminDeviceXML.flatMap(GarminDeviceDocumentParser.modelMetadata)
         let serial = snapshot.serialNumber.flatMap(nonEmpty)
         let localIdentifier = serial ?? document?.unitID
         let resolution: DeviceIdentity.LocalIdentityResolution = serial != nil
@@ -110,7 +182,9 @@ struct GarminDeviceIdentityAdapter: Sendable {
             localHardwareIdentifier: localIdentifier,
             localIdentityResolution: resolution,
             deviceDescription: document?.description,
-            garminDeviceXMLStatus: snapshot.garminDeviceXMLStatus
+            garminDeviceXMLStatus: snapshot.garminDeviceXMLStatus,
+            garminModelDescription: metadata?.description,
+            garminModelPartNumber: metadata?.partNumber
         )
     }
 
@@ -182,43 +256,12 @@ struct GarminDeviceIdentityAdapter: Sendable {
 
     private func variant(for snapshot: DeviceSnapshot, description: String?) -> String? {
         let model = [description, snapshot.model].compactMap { $0 }.joined(separator: " ")
-        let normalized = GarminDeviceModelNormalizer.normalize(model)
-
-        if normalized.contains("amoled") && normalized.contains("47mm") {
-            return "AMOLED 47mm"
-        }
-
-        if normalized.contains("amoled") {
-            return "AMOLED"
-        }
-
-        if normalized.contains("solar") {
-            if let size = GarminDeviceModelNormalizer.caseSizeMm(from: model) {
-                return "\(size) mm, Solar"
-            }
-            return "Solar"
-        }
-
-        // VID/PID 091e:51b8 is separately reviewed hardware evidence for the
-        // exact 47 mm AMOLED catalog record. This is not inferred from the
-        // product image or from size alone. An explicit display token above
-        // always wins, so a future Solar identity cannot leak AMOLED.
-        if snapshot.vendorID == 0x091e,
-           snapshot.productID == 0x51b8,
-           GarminDeviceModelNormalizer.canonicalModel(from: model) == "fēnix 8",
-           GarminDeviceModelNormalizer.caseSizeMm(from: model) == 47 {
-            return "47 mm, AMOLED"
-        }
-
-        if normalized.contains("47mm") {
-            return "47mm"
-        }
-
-        if let match = normalized.range(of: #"\b\d{2}\s*mm\b"#, options: .regularExpression) {
-            return normalized[match].replacingOccurrences(of: " ", with: "")
-        }
-
-        return nil
+        var parts: [String] = []
+        if let size = GarminDeviceModelNormalizer.caseSizeMm(from: model) { parts.append("\(size) mm") }
+        if let screen = GarminDeviceModelNormalizer.screenTechnology(from: model) { parts.append(screen) }
+        if GarminDeviceModelNormalizer.hasExplicitFeature("solar", in: model) { parts.append("Solar") }
+        if GarminDeviceModelNormalizer.hasExplicitFeature("inreach", in: model) { parts.append("inReach") }
+        return parts.isEmpty ? nil : parts.joined(separator: ", ")
     }
 
     private func nonEmpty(_ value: String) -> String? {
