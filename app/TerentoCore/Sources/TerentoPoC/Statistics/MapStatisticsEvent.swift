@@ -281,6 +281,12 @@ final class MapStatisticsEventController: ObservableObject {
     private let uploader: any MapStatisticsEventUploading
     private let retryDelays: [UInt64]
     private var uploadTask: Task<Void, Never>?
+    #if TERENTO_TESTING
+    /// Observe the automatic sender without replacing it with a manual flush.
+    func scheduledUploadForTesting() -> Task<Void, Never>? { uploadTask }
+    private var recordTaskForTesting: Task<Void, Never>?
+    func scheduledRecordForTesting() -> Task<Void, Never>? { recordTaskForTesting }
+    #endif
     @Published private(set) var uploadStatus: MapStatisticsUploadStatus = .idle
 
     init(
@@ -320,13 +326,18 @@ final class MapStatisticsEventController: ObservableObject {
         // boundary defensive so a stale caller cannot add them to map stats.
         guard sharingEnabled, event.providerId != "custom" else { return }
         let store = self.store
-        Task { [weak self] in
+        let recording = Task { [weak self] in
             let inserted = await Task.detached(priority: .utility) {
                 (try? store.appendIfSharingEnabled(event)) == true
             }.value
             guard inserted else { return }
             self?.scheduleFlush()
         }
+        #if TERENTO_TESTING
+        recordTaskForTesting = recording
+        #else
+        _ = recording
+        #endif
     }
 
     func flushPendingEvents() async {
@@ -359,31 +370,35 @@ final class MapStatisticsEventController: ObservableObject {
     private enum UploadResult { case empty, completed, retryableFailure, permanentFailure }
 
     private func uploadOnce() async -> UploadResult {
-        guard sharingEnabled else { return .empty }
-        let pending = store.pendingEvents()
-        guard !pending.isEmpty else {
-            uploadStatus = .uploaded
-            return .empty
-        }
-        uploadStatus = .uploading(pending.count)
-        for event in pending {
-            // Discard any custom event left by an older client before it can
-            // reach the map-statistics endpoint.
-            if event.providerId == "custom" {
-                try? store.markUploaded(eventID: event.id)
-                continue
+        while sharingEnabled && !Task.isCancelled {
+            // A record can arrive while an upload suspends this actor. Keep
+            // draining fresh snapshots before declaring the queue uploaded;
+            // scheduleFlush cannot start another sender while this one exists.
+            let pending = store.pendingEvents()
+            guard !pending.isEmpty else {
+                uploadStatus = .uploaded
+                return .completed
             }
-            do {
-                try await uploader.upload(event)
-                try store.markUploaded(eventID: event.id)
-            } catch {
-                let retryable = Self.isRetryable(error)
-                uploadStatus = .waiting(store.pendingEvents().count, willRetry: retryable)
-                return retryable ? .retryableFailure : .permanentFailure
+            uploadStatus = .uploading(pending.count)
+            for event in pending {
+                guard sharingEnabled, !Task.isCancelled else { return .empty }
+                do {
+                    // Discard stale custom events locally. A failed queue write
+                    // must use the bounded retry path, not repeat forever.
+                    if event.providerId != "custom" {
+                        try await uploader.upload(event)
+                    }
+                    guard sharingEnabled, !Task.isCancelled else { return .empty }
+                    try store.markUploaded(eventID: event.id)
+                } catch {
+                    guard sharingEnabled, !Task.isCancelled else { return .empty }
+                    let retryable = Self.isRetryable(error)
+                    uploadStatus = .waiting(store.pendingEvents().count, willRetry: retryable)
+                    return retryable ? .retryableFailure : .permanentFailure
+                }
             }
         }
-        uploadStatus = .uploaded
-        return .completed
+        return .empty
     }
 
     private static func isRetryable(_ error: Error) -> Bool {
