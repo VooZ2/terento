@@ -20,6 +20,7 @@ struct Stage401PreflightTests {
         testOperationProfileDoesNotOwnPhysicalWatchIdentity()
         testGarminDeviceXMLRestoresProIdentityAndUnitID()
         testGarminDeviceXMLRejectsAmbiguousUnitID()
+        testIndependentXMLMetadata()
         testBetaProfileRequiresOneGarminRoot()
         testNonMapWatchCannotEnroll()
         testExistingExternalMapRequiresExplicitReplacement()
@@ -31,7 +32,7 @@ struct Stage401PreflightTests {
         testUpToDateMapIsStillAnExistingMapConflict()
         testPreflightIsTransportIndependentAndReadOnly()
 
-        print("PASS: 21 Stage 4.0.1 preflight tests")
+        print("PASS: Stage 4.0.1 preflight and XML metadata tests")
     }
 
     private static func testRealFenixModelResolvesValidatedProfile() {
@@ -215,6 +216,50 @@ struct Stage401PreflightTests {
                 && identity.localHardwareIdentifier == "1234567890",
             "GarminDevice.xml preserves Pro and supplies a local Unit ID fallback without PID inference"
         )
+    }
+
+    private static func testIndependentXMLMetadata() {
+        let xml = Data("<GarminDevice><Model><Description>fenix 9 Pro 51mm</Description><PartNumber>006-B4954-00</PartNumber></Model><Id>!</Id></GarminDevice>".utf8)
+        let metadata = GarminDeviceDocumentParser.modelMetadata(xml)
+        expect(metadata?.partNumber == "006-B4954-00" && metadata?.description == "fenix 9 Pro 51mm",
+               "XML model metadata survives an invalid local Unit ID")
+        expect(GarminDeviceDocumentParser.parse(xml) == nil,
+               "additional metadata does not weaken local identity validation")
+        let duplicate = Data("<GarminDevice><Model><Description>fenix 9 Pro</Description><PartNumber>006-B1-00</PartNumber><PartNumber>006-B2-00</PartNumber></Model></GarminDevice>".utf8)
+        expect(GarminDeviceDocumentParser.modelMetadata(duplicate)?.partNumber == nil,
+               "duplicate XML part numbers are omitted")
+        let invalid = Data("<GarminDevice><Model><Description>fenix 9 Pro</Description><PartNumber>/Users/private</PartNumber></Model></GarminDevice>".utf8)
+        expect(GarminDeviceDocumentParser.modelMetadata(invalid)?.partNumber == nil,
+               "invalid XML part number is omitted without dropping the model")
+        let nested = Data("<GarminDevice><Model><PartNumber><Invalid/>006-B4954-00</PartNumber></Model></GarminDevice>".utf8)
+        expect(GarminDeviceDocumentParser.modelMetadata(nested)?.partNumber == nil, "nested metadata cannot fabricate a valid suffix")
+        // USB manufacturer/product string descriptors are not fields in the
+        // snapshot; the snapshot contains MTP DeviceInfo, independently.
+        let identity = GarminDeviceIdentityAdapter().makeIdentity(from: DeviceSnapshot(
+            manufacturer: "", model: "fenix 9 Pro 51mm", deviceVersion: "638",
+            vendorID: 0x091e, productID: 0x7777, storages: [], serialNumber: "local-only",
+            garminDeviceXMLStatus: .available, garminDeviceXML: xml))
+        expect(identity.model == "fenix 9 Pro 51mm" && identity.garminModelPartNumber == "006-B4954-00",
+               "empty optional manufacturer text preserves MTP and XML model metadata")
+        expect(identity.localHardwareIdentifier == "local-only", "additional XML metadata does not change local identity keys")
+        let withoutXML = GarminDeviceIdentityAdapter().makeIdentity(from: DeviceSnapshot(
+            manufacturer: "Garmin", model: "fenix 9 Pro 51mm AMOLED", deviceVersion: "638",
+            vendorID: 0x091e, productID: 0x7777, storages: [], garminDeviceXMLStatus: .readFailed))
+        expect(withoutXML.model == "fenix 9 Pro 51mm AMOLED" && withoutXML.screenTechnology == "AMOLED",
+               "unavailable XML preserves valid MTP model and screen evidence")
+        expect(withoutXML.solar == nil && withoutXML.inReach == nil, "absent feature words remain unknown")
+        expect(GarminDeviceModelNormalizer.screenTechnology(from: "MIP Solar inReach") == "MIP",
+               "Solar and inReach remain independent of screen technology")
+        expect(GarminDeviceModelNormalizer.screenTechnology(from: "AMOLED MicroLED") == nil,
+               "contradictory screen labels do not choose the first technology")
+        let conflicting = GarminDeviceIdentityAdapter().makeIdentity(from: DeviceSnapshot(
+            manufacturer: "Garmin", model: "fenix 9 Pro 51mm AMOLED", deviceVersion: "638",
+            vendorID: 0x091e, productID: 0x7777, storages: [], garminDeviceXMLStatus: .available,
+            garminDeviceXML: Data("<GarminDevice><Model><Description>fenix 9 Pro 51mm MicroLED</Description></Model></GarminDevice>".utf8)))
+        let subtitle = ConnectedDeviceSubtitleFormatter.format(identity: conflicting, fallbackModel: conflicting.model, manufacturer: "Garmin")
+        expect(!subtitle.contains("AMOLED") && !subtitle.contains("MicroLED"),
+               "presentation does not restore a conflicting legacy screen guess")
+
     }
 
     private static func testGarminDeviceXMLRejectsAmbiguousUnitID() {

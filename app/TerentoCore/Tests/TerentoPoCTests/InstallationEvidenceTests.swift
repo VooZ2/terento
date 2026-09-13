@@ -27,6 +27,7 @@ struct InstallationEvidenceTests {
     static func main() async throws {
         try testEventStorageAndDuplicatePrevention()
         try testCustomIMGEvidencePayload()
+        try testOriginalModelMetadata()
         testStatisticsAndPromotionThresholds()
         try await testConsentAndUploadIsolation()
         testDiagnosticSanitization()
@@ -86,6 +87,29 @@ struct InstallationEvidenceTests {
                 && !payload.contains("deletionToken"),
             "custom IMG evidence does not upload the local content fingerprint"
         )
+    }
+
+    static func testOriginalModelMetadata() throws {
+        func event(description: String?, part: String?) -> InstallationEvidenceEvent {
+            let watch = DeviceIdentity(manufacturer: "Garmin", model: "fenix 9 Pro 51mm", family: "fenix", variant: nil,
+                usbVendorId: 0x091e, usbProductId: 0x7777, firmware: "638", storageCapacity: 1, freeSpace: 1,
+                localHardwareIdentifier: "PRIVATE-UNIT-ID", garminModelDescription: description, garminModelPartNumber: part)
+            return InstallationEvidenceEvent(identity: watch, package: package, outcome: .succeeded,
+                finishingResult: .verified, terentoVersion: "test", macOSVersion: "test")
+        }
+        let original = event(description: "fenix 9 Pro - inReach, 51mm", part: "006-B4954-00")
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(InstallationEvidenceEvent.self, from: data)
+        expect(decoded.garminModelDescription == original.garminModelDescription && decoded.garminModelPartNumber == "006-B4954-00",
+               "queued diagnostics retain original XML model metadata")
+        let text = String(decoding: data, as: UTF8.self)
+        expect(!text.contains("PRIVATE-UNIT-ID") && !text.contains("GarminDevice"), "XML and private identity are excluded from reports")
+        for value in ["/Users/private", String(repeating: "A", count: 161), "model\nserial"] {
+            expect(event(description: value, part: "006/invalid").garminModelDescription == nil,
+                   "invalid optional description is omitted")
+        }
+        expect(event(description: "Valid", part: "006/invalid").garminModelPartNumber == nil, "invalid optional part number is omitted")
+        expect(event(description: nil, part: nil).garminModelPartNumber == nil, "old metadata-free diagnostics stay supported")
     }
 
     static func makeEvent(

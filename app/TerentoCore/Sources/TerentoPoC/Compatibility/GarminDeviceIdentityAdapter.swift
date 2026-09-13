@@ -8,7 +8,32 @@ struct GarminDeviceDocumentIdentity: Equatable, Sendable {
     let description: String?
 }
 
+struct GarminDeviceModelMetadata: Equatable, Sendable {
+    let description: String?
+    let partNumber: String?
+}
+
 enum GarminDeviceDocumentParser {
+    static func modelMetadata(_ data: Data) -> GarminDeviceModelMetadata? {
+        guard !data.isEmpty, data.count <= 2 * 1024 * 1024,
+              let source = String(data: data, encoding: .utf8),
+              source.range(of: "<!DOCTYPE", options: .caseInsensitive) == nil,
+              source.range(of: "<!ENTITY", options: .caseInsensitive) == nil else { return nil }
+        let delegate = GarminDeviceMetadataParserDelegate()
+        let parser = XMLParser(data: data)
+        parser.delegate = delegate
+        parser.shouldResolveExternalEntities = false
+        guard parser.parse(), delegate.rootElement == "GarminDevice" else { return nil }
+        let description = delegate.descriptions.count == 1
+            ? sanitizedDescription(delegate.descriptions[0]) : nil
+        let part = delegate.partNumbers.count == 1
+            ? delegate.partNumbers[0].trimmingCharacters(in: .whitespacesAndNewlines) : ""
+        let validPart = (1...64).contains(part.count) && part.allSatisfy {
+            $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-")
+        }
+        return GarminDeviceModelMetadata(description: description, partNumber: validPart ? part : nil)
+    }
+
     static func parse(_ data: Data) -> GarminDeviceDocumentIdentity? {
         guard !data.isEmpty, data.count <= 2 * 1024 * 1024 else { return nil }
         if let source = String(data: data, encoding: .utf8),
@@ -89,9 +114,49 @@ private final class GarminDeviceDocumentParserDelegate: NSObject, XMLParserDeleg
     }
 }
 
+/// Only direct, scalar Model children are diagnostic metadata. A nested
+/// element cannot turn a malformed field into an apparently valid suffix.
+private final class GarminDeviceMetadataParserDelegate: NSObject, XMLParserDelegate {
+    var rootElement: String?
+    var descriptions: [String] = []
+    var partNumbers: [String] = []
+    private var elements: [String] = []
+    private var text = ""
+    private var nested = false
+
+    func parser(_ parser: XMLParser, didStartElement elementName: String,
+                namespaceURI: String?, qualifiedName qName: String?,
+                attributes attributeDict: [String: String] = [:]) {
+        if elements.isEmpty { rootElement = elementName }
+        elements.append(elementName)
+        if elements.count == 3 {
+            text = ""
+            nested = false
+        } else if elements.count > 3 { nested = true }
+    }
+
+    func parser(_ parser: XMLParser, foundCharacters string: String) {
+        if elements.count == 3 { text += string }
+    }
+
+    func parser(_ parser: XMLParser, foundCDATA CDATABlock: Data) {
+        if let value = String(data: CDATABlock, encoding: .utf8) {
+            self.parser(parser, foundCharacters: value)
+        } else { nested = true }
+    }
+
+    func parser(_ parser: XMLParser, didEndElement elementName: String,
+                namespaceURI: String?, qualifiedName qName: String?) {
+        if elements == ["GarminDevice", "Model", "Description"] { descriptions.append(nested ? "" : text) }
+        if elements == ["GarminDevice", "Model", "PartNumber"] { partNumbers.append(nested ? "" : text) }
+        elements.removeLast()
+    }
+}
+
 struct GarminDeviceIdentityAdapter: Sendable {
     func makeIdentity(from snapshot: DeviceSnapshot) -> DeviceIdentity {
         let document = snapshot.garminDeviceXML.flatMap(GarminDeviceDocumentParser.parse)
+        let metadata = snapshot.garminDeviceXML.flatMap(GarminDeviceDocumentParser.modelMetadata)
         let serial = snapshot.serialNumber.flatMap(nonEmpty)
         let localIdentifier = serial ?? document?.unitID
         let resolution: DeviceIdentity.LocalIdentityResolution = serial != nil
@@ -110,7 +175,9 @@ struct GarminDeviceIdentityAdapter: Sendable {
             localHardwareIdentifier: localIdentifier,
             localIdentityResolution: resolution,
             deviceDescription: document?.description,
-            garminDeviceXMLStatus: snapshot.garminDeviceXMLStatus
+            garminDeviceXMLStatus: snapshot.garminDeviceXMLStatus,
+            garminModelDescription: metadata?.description,
+            garminModelPartNumber: metadata?.partNumber
         )
     }
 

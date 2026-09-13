@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct DiagnosticsView: View {
+    @ObservedObject var deviceEngine: DeviceEngine
     @ObservedObject var evidenceController: InstallationEvidenceController
     @ObservedObject var mapStatisticsController: MapStatisticsEventController
     @State private var isSending = false
@@ -43,12 +44,28 @@ struct DiagnosticsView: View {
                     }
                     .padding(.bottom, 22)
 
+                    diagnosticsSection(title: "Connected watch identity") {
+                        if let identity = deviceEngine.compatibility?.identity {
+                            Text("MTP model: \(identity.model)")
+                            Text("XML model: \(identity.garminModelDescription ?? "Unavailable")")
+                            Text("XML part number: \(identity.garminModelPartNumber ?? "Unavailable")")
+                            Text(String(format: "USB VID/PID: %04x:%04x", identity.usbVendorId, identity.usbProductId))
+                            Text("Screen: \(identity.screenTechnology ?? "Unknown") · Solar: \(identity.solar == true ? "Yes" : "Unknown") · inReach: \(identity.inReach == true ? "Yes" : "Unknown")")
+                            Text("These model fields were read from the watch. Opening this window does not send a report.")
+                                .foregroundStyle(TerentoColors.secondaryText)
+                        } else {
+                            Text("Connect your watch to view its model information.")
+                        }
+                    }
+                    .font(.terentoUI(size: 13, weight: .regular))
+                    .textSelection(.enabled)
+
                     diagnosticsSection(title: "Sharing") {
                         Toggle(isOn: compatibilitySharingBinding) {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text("Send privacy-minimised compatibility diagnostics")
                                     .font(.terentoUI(size: 14, weight: .semibold))
-                                Text("Watch model, firmware, connection details, map and software versions, and the installation result. No Unit ID, serial number, local path, manifest, or map file is included.")
+                                Text("Watch model, XML model description and product code, firmware, connection details, map and software versions, and the installation result. No Unit ID, serial number, local path, manifest, or map file is included.")
                                     .font(.terentoUI(size: 12, weight: .regular))
                                     .foregroundStyle(TerentoColors.secondaryText)
                                     .fixedSize(horizontal: false, vertical: true)

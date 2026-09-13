@@ -49,4 +49,6 @@ Kontaktujte [privacy@terento.app](mailto:privacy@terento.app). Běžně odpovím
 
 Kompatibilita může zahrnovat očištěný název modelu MTP, USB VID/PID, transport, kategorii zdroje identity (nikdy hodnotu identifikátoru), vydání map, čas, náhodná ID, fázi selhání, povolené chybové kódy, stav zápisu/úklidu a hrubý průběh. Vlastní importy používají obecná označení zdroje. Žádný proud neposílá manifesty, ID objektů MTP, hashe map ani nefiltrované chyby.
 
-Aktualizováno: 5. září 2026.
+Zprávy mohou navíc obsahovat původní popis modelu z XML (nejvýše 160 znaků) a produktový kód modelu (nejvýše 64 písmen ASCII, číslic nebo spojovníků). Tyto údaje označují model výrobku, nikoli jednotlivé hodinky. Celé dokumenty XML, Unit ID a sériová čísla jsou vyloučeny. Přiřazení kódů modelů a opravy správce se ukládají odděleně od původní zprávy.
+
+Aktualizováno: 13. září 2026.

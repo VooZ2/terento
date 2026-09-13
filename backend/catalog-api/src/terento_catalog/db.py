@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Iterator
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from .identity_assessment import assess_identity, apply_corrections, validate_correction
 from .failure_reasons import normalize_failure_reason
 from .compatibility_status import calculate_compatibility_status
 from .models import CollectedDevice, CollectedMap
@@ -430,7 +431,8 @@ class Database:
                 selected_map_count, app_build, release_label, failure_stage, failure_code,
                 native_failure_code, write_started, remote_object_created,
                 cleanup_attempted, cleanup_succeeded, transfer_progress_bucket,
-                raw_mtp_model, identity_resolution_code, is_local_test
+                raw_mtp_model, identity_resolution_code, is_local_test,
+                garmin_model_description, garmin_model_part_number, identity_assessment
             ) VALUES (
                 %(id)s, %(timestamp)s, %(model)s, %(compatibilityIdentity)s, %(variant)s, %(caseSizeMm)s,
                 %(displayType)s, %(canonicalDeviceId)s, %(identityResolutionState)s,
@@ -443,7 +445,7 @@ class Database:
                 %(failureCode)s, %(nativeFailureCode)s, %(writeStarted)s,
                 %(remoteObjectCreated)s, %(cleanupAttempted)s, %(cleanupSucceeded)s,
                 %(transferProgressBucket)s, %(rawMTPModel)s, %(identityResolutionCode)s,
-                %(isLocalTest)s
+                %(isLocalTest)s, %(garminModelDescription)s, %(garminModelPartNumber)s, %(identityAssessment)s::jsonb
             ) ON CONFLICT (event_id) DO NOTHING
             RETURNING event_id
         """
@@ -475,33 +477,19 @@ class Database:
             "cleanupAttempted": event.get("cleanupAttempted"),
             "cleanupSucceeded": event.get("cleanupSucceeded"),
             "transferProgressBucket": event.get("transferProgressBucket"),
+            "garminModelDescription": event.get("garminModelDescription"),
+            "garminModelPartNumber": event.get("garminModelPartNumber"),
             "rawMTPModel": event.get("rawMTPModel"),
             "identityResolutionCode": event.get("identityResolutionCode"),
             "isLocalTest": is_local_release_label(event.get("releaseLabel")),
         }
         with self.connection() as connection:
-            # The client contract remains unchanged: canonicalDeviceId is
-            # optional. Resolve a reviewed historical identity server-side so
-            # an installed fēnix 7 can be recorded even when retail collection
-            # no longer returns it. An unknown/stale client ID is ignored
-            # rather than allowing a foreign-key failure to drop the report.
-            requested_id = values.get("canonicalDeviceId")
-            canonical_id = None
-            if requested_id:
-                existing = connection.execute(
-                    "SELECT id FROM device_model WHERE id = %s",
-                    (requested_id,),
-                ).fetchone()
-                canonical_id = (existing.get("id") or requested_id) if existing else None
-            historical = historical_device_for_event(event)
-            if canonical_id is None and historical is not None:
-                self._ensure_historical_device(connection, historical)
-                canonical_id = historical.id
-            values["canonicalDeviceId"] = canonical_id
-            # A canonical link established by the server is a completed
-            # identity resolution. Keep this internal state out of the client
-            # payload contract and derive it only after canonical validation.
-            values["identityResolutionState"] = "RESOLVED" if canonical_id else "UNRESOLVED"
+            devices = list(connection.execute("SELECT * FROM device_model").fetchall())
+            mappings = list(connection.execute("SELECT * FROM device_identity_mapping").fetchall())
+            assessment = assess_identity(event, devices, mappings)
+            values["canonicalDeviceId"] = assessment["canonicalDeviceId"]
+            values["identityResolutionState"] = assessment["state"]
+            values["identityAssessment"] = json.dumps(assessment)
             inserted = connection.execute(query, values).fetchone() is not None
         return inserted
 
@@ -571,6 +559,8 @@ class Database:
                 COALESCE(cleanup_attempted, false) AS cleanup_attempted,
                 cleanup_succeeded, transfer_progress_bucket, error_category, transport,
                 raw_mtp_model, identity_resolution_code,
+                garmin_model_description, garmin_model_part_number, identity_assessment,
+                usb_vendor_id, usb_product_id, case_size_mm, display_type,
                 diagnostic_status, diagnostic_workflow_status,
                 resolution_code, resolution_reason,
                 resolution_note, resolved_at, resolved_by, linked_github_issue,
@@ -584,7 +574,16 @@ class Database:
             LIMIT %s
         """
         with self.connection() as connection:
-            return list(connection.execute(query, (diagnostic_status, limit)).fetchall())
+            rows = list(connection.execute(query, (diagnostic_status, limit)).fetchall())
+            if rows:
+                devices = list(connection.execute("SELECT * FROM device_model").fetchall())
+                mappings = list(connection.execute("SELECT * FROM device_identity_mapping").fetchall())
+                corrections = list(connection.execute("SELECT * FROM device_identity_source_correction WHERE event_id = ANY(%s) ORDER BY id", ([row["event_id"] for row in rows],)).fetchall())
+                for row in rows:
+                    row["identity_source_corrections"] = [c for c in corrections if c["event_id"] == row["event_id"]]
+                    event = apply_corrections(self._identity_event(row), row["identity_source_corrections"])
+                    row["current_identity_assessment"] = assess_identity(event, devices, mappings)
+            return rows
 
     def public_compatibility_statistics(self, limit: int) -> list[dict[str, Any]]:
         query = """
@@ -628,8 +627,8 @@ class Database:
                 s.public_display_name AS model,
                 s.model AS evidence_model,
                 s.compatibility_identity,
-                s.variant,
-                s.case_size_mm,
+                COALESCE(NULLIF(dm.variant, ''), s.variant) AS variant,
+                COALESCE(dm.case_size_mm, s.case_size_mm) AS case_size_mm,
                 s.display_type,
                 s.canonical_device_model_id,
                 s.attempted_install_count,
@@ -645,6 +644,7 @@ class Database:
                 f.canonical_name AS family,
                 f.name AS family_name,
                 dm.canonical_model,
+                dm.screen_technology, dm.solar, dm.inreach,
                 dm.model AS catalog_model,
                 dm.source_image_url,
                 asset.asset_type,
@@ -1703,6 +1703,68 @@ class Database:
                 )
             return len(rows)
 
+    @staticmethod
+    def enrich_device_specifications(connection, device_id: str, specifications: dict, source: str, version: str, skus=()) -> None:
+        values = {k: v for k, v in specifications.items() if k in {"screen_technology", "solar", "inreach"} and v is not None}
+        if values:
+            checked = datetime.now(timezone.utc).isoformat()
+            evidence = {key: {"value": value, "source": source, "version": version, "checkedAt": checked} for key, value in values.items()}
+            connection.execute("""UPDATE device_model SET screen_technology=COALESCE(%s,screen_technology),
+                solar=COALESCE(%s,solar), inreach=COALESCE(%s,inreach), specification_source=%s,
+                specification_checked_at=now(), specification_evidence=specification_evidence || %s::jsonb,
+                updated_at=now() WHERE id=%s""",
+                (values.get("screen_technology"), values.get("solar"), values.get("inreach"), source, json.dumps(evidence), device_id))
+        for sku in skus:
+            connection.execute("""INSERT INTO device_identity_mapping (kind,value,device_model_id,source_url,source_version)
+                VALUES ('RETAIL_SKU',%s,%s,%s,%s) ON CONFLICT DO NOTHING""", (sku, device_id, source, version))
+
+    def identity_assignment_audit(self) -> dict:
+        from .identity_registry import build_assignment_audit
+        with self.connection() as connection:
+            events = list(connection.execute("SELECT * FROM compatibility_evidence_event WHERE is_local_test IS NOT TRUE ORDER BY occurred_at,event_id").fetchall())
+            devices = list(connection.execute("SELECT * FROM device_model").fetchall())
+            mappings = list(connection.execute("SELECT * FROM device_identity_mapping").fetchall())
+            corrections = list(connection.execute("SELECT * FROM device_identity_source_correction ORDER BY id").fetchall())
+            return build_assignment_audit(events, devices, mappings, corrections)
+
+    def review_identity_mapping(self, mapping_id: int, status: str, reason: str, admin_user_id: int) -> bool:
+        if status not in {"APPROVED", "REJECTED"} or not reason.strip() or len(reason) > 1000:
+            raise ValueError("a mapping review requires status and evidence reason")
+        with self.connection() as connection:
+            row = connection.execute("SELECT * FROM device_identity_mapping WHERE id=%s FOR UPDATE", (mapping_id,)).fetchone()
+            if row is None:
+                return False
+            connection.execute("INSERT INTO device_identity_mapping_audit (mapping_id,previous_status,new_status,reason,reviewed_by) VALUES (%s,%s,%s,%s,%s)",
+                               (mapping_id, row["status"], status, reason, admin_user_id))
+            connection.execute("UPDATE device_identity_mapping SET status=%s, review_reason=%s, reviewed_by=%s, reviewed_at=now() WHERE id=%s",
+                               (status, reason, admin_user_id, mapping_id))
+            return True
+
+    def correct_identity_source(self, event_id: str, field: str, value: Any, reason: str, admin_user_id: int) -> bool:
+        validate_correction(field, value)
+        if not reason.strip() or len(reason) > 1000:
+            raise ValueError("source correction requires an evidence reason")
+        with self.connection() as connection:
+            row = connection.execute("SELECT * FROM compatibility_evidence_event WHERE event_id=%s FOR UPDATE", (event_id,)).fetchone()
+            if row is None:
+                return False
+            corrections = list(connection.execute("SELECT * FROM device_identity_source_correction WHERE event_id=%s ORDER BY id", (event_id,)).fetchall())
+            effective = apply_corrections(self._identity_event(row), corrections)
+            connection.execute("""INSERT INTO device_identity_source_correction
+                (event_id,field,previous_value,corrected_value,reason,corrected_by)
+                VALUES (%s,%s,%s::jsonb,%s::jsonb,%s,%s)""",
+                (event_id, field, json.dumps(effective.get(field)), json.dumps(value), reason.strip(), admin_user_id))
+            # No reassignment or change to original metadata/public status.
+            return True
+
+    @staticmethod
+    def _identity_event(row: dict[str, Any]) -> dict[str, Any]:
+        fields = {"rawMTPModel": "raw_mtp_model", "garminModelDescription": "garmin_model_description",
+                  "garminModelPartNumber": "garmin_model_part_number", "caseSizeMm": "case_size_mm",
+                  "displayType": "display_type", "usbVendorID": "usb_vendor_id", "usbProductID": "usb_product_id",
+                  "canonicalDeviceId": "canonical_device_model_id", "model": "model", "variant": "variant"}
+        return {key: row.get(column) for key, column in fields.items()}
+
     def resolve_compatibility_identity(
         self,
         operation_key: str,
@@ -1746,26 +1808,43 @@ class Database:
                 new_identity = "Identity unresolved" if normalized_action == "LEAVE_UNRESOLVED" else "Identity not identifiable"
             rows = connection.execute(
                 """
-                SELECT event_id, compatibility_identity, canonical_device_model_id
+                SELECT *
                 FROM compatibility_evidence_event
                 WHERE COALESCE(operation_id::text, 'legacy:' || event_id::text) = %s
                 FOR UPDATE
                 """,
                 (operation_key.strip(),),
             ).fetchall()
+            if normalized_action == "ASSIGN":
+                if not reason:
+                    raise ValueError("identity assignment requires an evidence reason")
+                devices = list(connection.execute("SELECT * FROM device_model").fetchall())
+                mappings = list(connection.execute("SELECT * FROM device_identity_mapping").fetchall())
+                for row in rows:
+                    corrections = list(connection.execute("SELECT * FROM device_identity_source_correction WHERE event_id=%s ORDER BY id", (row["event_id"],)).fetchall())
+                    event = apply_corrections(self._identity_event(row), corrections)
+                    event["canonicalDeviceId"] = canonical_device_model_id
+                    assessment = assess_identity(event, devices, mappings)
+                    candidate = next((c for c in assessment["candidates"] if c["deviceId"] == canonical_device_model_id), None)
+                    if candidate is None or candidate["conflict"]:
+                        raise ValueError("identity evidence conflicts with selected model; correct the source mapping first")
+                    assessment["decision"] = {"method": "ADMIN", "deviceId": canonical_device_model_id,
+                                              "reason": reason, "adminId": admin_user_id}
+                    row["reviewed_assessment"] = json.dumps(assessment)
             for row in rows:
                 connection.execute(
                     """
                     UPDATE compatibility_evidence_event
                     SET canonical_device_model_id = %s,
-                        identity_resolution_state = %s
+                        identity_resolution_state = %s,
+                        identity_assessment = COALESCE(%s::jsonb, identity_assessment)
                     WHERE event_id = %s
                     """,
                     (canonical_device_model_id,
                      "RESOLVED" if normalized_action == "ASSIGN" else (
                          "NOT_IDENTIFIABLE" if normalized_action == "NOT_IDENTIFIABLE" else "UNRESOLVED"
                      ),
-                     row["event_id"]),
+                     row.get("reviewed_assessment"), row["event_id"]),
                 )
                 connection.execute(
                     """
@@ -3345,6 +3424,7 @@ class Database:
                 dm.variant,
                 dm.case_size_mm,
                 dm.display_type,
+                dm.screen_technology, dm.solar, dm.inreach, dm.specification_source, dm.specification_evidence,
                 dm.part_number,
                 dm.product_url,
                 dm.source_url,
@@ -3444,6 +3524,9 @@ class Database:
                 dm.variant,
                 dm.case_size_mm,
                 dm.display_type,
+                dm.screen_technology, dm.solar, dm.inreach, dm.specification_source, dm.specification_evidence,
+                (SELECT jsonb_agg(to_jsonb(mapping) || jsonb_build_object('history', (SELECT jsonb_agg(to_jsonb(a) ORDER BY a.id) FROM device_identity_mapping_audit a WHERE a.mapping_id=mapping.id)) ORDER BY mapping.kind,mapping.value,mapping.id)
+                 FROM device_identity_mapping mapping WHERE mapping.device_model_id=dm.id) AS identity_mappings,
                 dm.part_number,
                 dm.product_url,
                 dm.source_url,
@@ -3659,7 +3742,7 @@ class Database:
                     """
                     SELECT id, family_id, manufacturer, model, canonical_model, variant,
                            case_size_mm, display_type, part_number, product_url,
-                           source_url, source_image_url, active
+                           source_url, source_image_url, active, screen_technology, solar, inreach
                     FROM device_model
                     WHERE id = ANY(%s)
                     """,
@@ -3692,7 +3775,9 @@ class Database:
                         "case_size_mm", "display_type", "part_number", "product_url",
                         "source_url", "source_image_url",
                     ))
-                    if existing["active"] is False or incoming_values != existing_values:
+                    specifications_changed = any(value is not None and value != existing.get(key)
+                        for key, value in (("screen_technology", record.screen_technology), ("solar", record.solar), ("inreach", record.inreach)))
+                    if existing["active"] is False or incoming_values != existing_values or specifications_changed:
                         updated_ids.append(record.id)
                 connection.execute(
                     family_query,
@@ -3723,6 +3808,10 @@ class Database:
                         classify_map_capable(record.canonical_model, record.manufacturer),
                     ),
                 )
+
+                self.enrich_device_specifications(connection, record.id,
+                    {"screen_technology": record.screen_technology, "solar": record.solar, "inreach": record.inreach},
+                    record.product_url, "official-product-specifications", record.retail_skus)
 
                 connection.execute(
                     """

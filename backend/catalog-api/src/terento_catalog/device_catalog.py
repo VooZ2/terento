@@ -80,6 +80,8 @@ def build_device_catalog(
                 "caseSizeMm": row["case_size_mm"],
                 "displayType": _clean_text(row["display_type"]),
                 "partNumber": _clean_text(row["part_number"]),
+                "screenTechnology": row.get("screen_technology"),
+                "solar": row.get("solar"), "inReach": row.get("inreach"),
                 "productURL": _public_https_url(row.get("product_url")),
                 "active": row["active"],
                 "mapCapable": bool(row["map_capable"]) if row.get("map_capable") is not None else None,

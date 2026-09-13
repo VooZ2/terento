@@ -82,6 +82,8 @@ struct DeviceIdentity: Sendable, Equatable {
     let localHardwareIdentifier: String?
     let localIdentityResolution: LocalIdentityResolution
     let deviceDescription: String?
+    let garminModelDescription: String?
+    let garminModelPartNumber: String?
     let garminDeviceXMLStatus: GarminDeviceXMLReadStatus
 
     init(
@@ -97,7 +99,9 @@ struct DeviceIdentity: Sendable, Equatable {
         localHardwareIdentifier: String? = nil,
         localIdentityResolution: LocalIdentityResolution? = nil,
         deviceDescription: String? = nil,
-        garminDeviceXMLStatus: GarminDeviceXMLReadStatus = .unavailable
+        garminDeviceXMLStatus: GarminDeviceXMLReadStatus = .unavailable,
+        garminModelDescription: String? = nil,
+        garminModelPartNumber: String? = nil
     ) {
         self.manufacturer = manufacturer
         self.model = model
@@ -112,6 +116,8 @@ struct DeviceIdentity: Sendable, Equatable {
         self.localIdentityResolution = localIdentityResolution
             ?? (localHardwareIdentifier == nil ? .unavailable : .mtpSerial)
         self.deviceDescription = deviceDescription
+        self.garminModelDescription = garminModelDescription
+        self.garminModelPartNumber = garminModelPartNumber
         self.garminDeviceXMLStatus = garminDeviceXMLStatus
     }
 
@@ -156,6 +162,24 @@ struct DeviceIdentity: Sendable, Equatable {
     var displayType: String? {
         let identitySource = [identityModelSource, model, variant].compactMap { $0 }.joined(separator: " ")
         return GarminDeviceModelNormalizer.displayType(from: identitySource)
+    }
+
+    // Additional presentation/diagnostic facts never participate in local
+    // ownership keys or write-profile validation.
+    private var reportedModelText: String {
+        [identityModelSource, model, variant, garminModelDescription].compactMap { $0 }.joined(separator: " ")
+    }
+
+    var screenTechnology: String? {
+        GarminDeviceModelNormalizer.screenTechnology(from: reportedModelText)
+    }
+
+    var solar: Bool? {
+        GarminDeviceModelNormalizer.hasExplicitFeature("solar", in: reportedModelText) ? true : nil
+    }
+
+    var inReach: Bool? {
+        GarminDeviceModelNormalizer.hasExplicitFeature("inreach", in: reportedModelText) ? true : nil
     }
 
     /// Canonical catalog identity backed by separately reviewed hardware
@@ -268,6 +292,16 @@ struct GarminDeviceModelNormalizer: Sendable {
         if normalized.contains("solar") { return "Solar" }
         return nil
     }
+
+    static func hasExplicitFeature(_ feature: String, in value: String) -> Bool {
+        normalize(value).split(separator: " ").contains(Substring(feature))
+    }
+
+    static func screenTechnology(from value: String) -> String? {
+        let matches = [("amoled", "AMOLED"), ("microled", "MicroLED"), ("mip", "MIP")]
+            .filter { hasExplicitFeature($0.0, in: value) }
+        return matches.count == 1 ? matches[0].1 : nil
+    }
 }
 
 /// Garmin's user-facing firmware notation is `major.minor`, while some MTP
@@ -308,9 +342,11 @@ enum ConnectedDeviceSubtitleFormatter: Sendable {
         if let size = identity.caseSizeMm {
             parts.append("\(size) mm")
         }
-        if let display = identity.displayType {
+        if let display = identity.screenTechnology {
             parts.append(display)
         }
+        if identity.solar == true && !parts.contains("Solar") { parts.append("Solar") }
+        if identity.inReach == true { parts.append("inReach") }
         if parts.isEmpty {
             let fallback = (identity.variant ?? fallbackModel)
                 .replacingOccurrences(of: "47mm", with: "47 mm", options: .caseInsensitive)

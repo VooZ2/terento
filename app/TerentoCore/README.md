@@ -115,3 +115,21 @@ connect the watch, inspect exact model/variant/firmware and storage, then check
 disconnect/reconnect behavior. Automatic connection is the current app flow;
 old “Read device” prototype instructions are not current UI. On-watch map
 visibility/usability and real update acceptance require independent owner tests.
+
+## Exact-model diagnostic metadata
+
+The XML reader independently extracts Model/Description and Model/PartNumber,
+including when the local Unit ID is unavailable or invalid. Existing local
+identity keys, write profiles, ownership and install/update/remove sequences
+are unchanged. A missing XML document preserves valid MTP DeviceInfo.
+AMOLED/MicroLED/MIP, Solar and inReach are separate reported properties;
+missing words do not mean false. Technical originals appear in Diagnostics.
+Opening Diagnostics neither sends a report nor starts a device operation.
+
+The existing v4 event queue sends only the two bounded optional model fields,
+with the existing diagnostic opt-out and local-test partition. The API must
+accept these additions before releasing the app. The current candidate uses
+beta.12 with build29; the published release remains whatever the canonical
+update manifest records. A read-only real-watch metadata check is still needed
+before claiming hardware validation of these additions. Map-operation safety
+regressions remain required; no new install/remove hardware test is introduced.

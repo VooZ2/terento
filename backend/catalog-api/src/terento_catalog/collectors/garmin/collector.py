@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .specifications import parse_specifications
+
 import logging
 from dataclasses import dataclass
 from typing import Any
@@ -68,11 +70,14 @@ class GarminCollector:
         warnings: list[str] = []
 
         part_numbers: dict[str, str | None] = {}
+        specifications: dict[str, dict] = {}
         if self.enrich_part_numbers:
             for product in products:
                 try:
+                    product_html = fetcher.fetch_text(product.product_url)
+                    specifications[product.source_id] = parse_specifications(product_html, product.source_id)
                     part_numbers[product.source_id] = parse_product_page(
-                        fetcher.fetch_text(product.product_url),
+                        product_html,
                         product_id=product.source_id,
                     )
                 except (OSError, GarminCatalogParserError, ValueError) as exc:
@@ -93,6 +98,11 @@ class GarminCollector:
                 key=lambda item: (item.product_url, item.source_id),
             )[0]
             part_number = part_numbers.get(source_product.source_id)
+            product_specs = [specifications.get(p.source_id, {}) for p in source_products]
+            merged_specs = {}
+            for field in ('screen_technology', 'solar', 'inreach'):
+                values = {spec.get(field) for spec in product_specs}
+                merged_specs[field] = next(iter(values)) if len(values) == 1 else None
             records.append(
                 CollectedDevice(
                     id=device.id,
@@ -105,6 +115,10 @@ class GarminCollector:
                     case_size_mm=device.case_size_mm,
                     display_type=device.display_type,
                     part_number=part_number,
+                    screen_technology=merged_specs['screen_technology'],
+                    solar=merged_specs['solar'],
+                    inreach=merged_specs['inreach'],
+                    retail_skus=tuple(sorted({sku for spec in product_specs for sku in spec.get('retail_skus', [])})),
                     product_url=device.product_url,
                     source_url=self.category_source_url,
                     source_image_url=device.source_image_url,

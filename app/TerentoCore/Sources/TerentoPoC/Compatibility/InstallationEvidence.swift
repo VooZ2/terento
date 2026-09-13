@@ -111,6 +111,8 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
     let reconnectVerified: Bool
     let mapVisibleAfterReconnect: Bool
     let errorCategory: EvidenceErrorCategory?
+    let garminModelDescription: String?
+    let garminModelPartNumber: String?
     let rawMTPModel: String?
     let identityResolutionCode: String?
     let operationId: UUID?
@@ -190,6 +192,8 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         self.reconnectVerified = reconnectVerified
         self.mapVisibleAfterReconnect = mapVisibleAfterReconnect
         self.errorCategory = errorCategory
+        self.garminModelDescription = identity.garminModelDescription.flatMap(Self.validModelDescription)
+        self.garminModelPartNumber = identity.garminModelPartNumber.flatMap(Self.validModelPartNumber)
         self.rawMTPModel = Self.sanitizedDiagnosticLabel(identity.model)
         self.identityResolutionCode = identity.localIdentityResolution.rawValue
         self.operationId = operationId
@@ -212,7 +216,7 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
              displayType, canonicalDeviceId, family, firmwareVersion, usbVendorID, usbProductID, transport, provider, region,
              mapRelease, terentoVersion, macOSVersion, phaseOutcome, automaticFinishingResult,
              reconnectVerified, mapVisibleAfterReconnect, errorCategory
-        case rawMTPModel, identityResolutionCode
+        case rawMTPModel, identityResolutionCode, garminModelDescription, garminModelPartNumber
         case operationId, mapResultIndex, selectedMapCount, appBuild, releaseLabel,
              failureStage, failureCode, nativeFailureCode, writeStarted, remoteObjectCreated,
              cleanupAttempted, cleanupSucceeded, transferProgressBucket
@@ -244,6 +248,8 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         reconnectVerified = try container.decodeIfPresent(Bool.self, forKey: .reconnectVerified) ?? false
         mapVisibleAfterReconnect = try container.decodeIfPresent(Bool.self, forKey: .mapVisibleAfterReconnect) ?? false
         errorCategory = try container.decodeIfPresent(EvidenceErrorCategory.self, forKey: .errorCategory)
+        garminModelDescription = try container.decodeIfPresent(String.self, forKey: .garminModelDescription).flatMap(Self.validModelDescription)
+        garminModelPartNumber = try container.decodeIfPresent(String.self, forKey: .garminModelPartNumber).flatMap(Self.validModelPartNumber)
         rawMTPModel = try container.decodeIfPresent(String.self, forKey: .rawMTPModel)
         identityResolutionCode = try container.decodeIfPresent(String.self, forKey: .identityResolutionCode)
         operationId = try container.decodeIfPresent(UUID.self, forKey: .operationId)
@@ -259,6 +265,21 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         cleanupAttempted = try container.decodeIfPresent(Bool.self, forKey: .cleanupAttempted)
         cleanupSucceeded = try container.decodeIfPresent(Bool.self, forKey: .cleanupSucceeded)
         transferProgressBucket = try container.decodeIfPresent(EvidenceTransferProgressBucket.self, forKey: .transferProgressBucket)
+    }
+
+    private static func validModelDescription(_ value: String) -> String? {
+        guard !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              value.unicodeScalars.count <= 160,
+              !value.contains("/Users/"), !value.contains("file://"),
+              !value.unicodeScalars.contains(where: { $0.value < 32 || $0.value == 127 }) else { return nil }
+        return value
+    }
+
+    private static func validModelPartNumber(_ value: String) -> String? {
+        guard (1...64).contains(value.count), value.allSatisfy({
+            $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-")
+        }) else { return nil }
+        return value
     }
 
     private static func sanitizedDiagnosticLabel(_ value: String) -> String? {

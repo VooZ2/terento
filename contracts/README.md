@@ -118,3 +118,23 @@ Backend tests validate real serializer outputs, shared fixtures, legacy request
 versions, privacy rejection examples and procedural checks. Swift tests exercise
 current decoders, additive fields and bundled fallback; Node tests execute the
 actual provider-card script with mocked DOM/fetch and shared map fixtures.
+
+## Optional XML model metadata and server identification
+
+Compatibility events accept optional `garminModelDescription` (1–160 Unicode
+code points, no control characters or local paths) and
+`garminModelPartNumber` (1–64 ASCII letters, digits or hyphens). The latter is
+the literal Model/PartNumber field, commonly `006-B…`; it is not a retail
+`010-…` SKU. Existing v1–v4 requests remain valid. Invalid optional app fields
+are omitted; whole XML, Unit ID and serial numbers remain excluded.
+
+Device catalog v2 adds nullable `screenTechnology` (`AMOLED`, `MicroLED`,
+`MIP`), `solar` and `inReach`. Legacy `displayType`, representative
+`partNumber`, IDs and status criteria remain compatible. Null is unknown,
+never false. The identity mapping registry is server-side and is not sent to
+clients. A reported `canonicalDeviceId` is a candidate, never assignment
+permission: the server evaluates all five identity checks before resolving it.
+
+An actually observed `010-…` XML value uses the separate retail SKU registry;
+`006-B…` uses the XML/Connect IQ registry. Source-derived properties share their
+provenance and never count as independent observations.

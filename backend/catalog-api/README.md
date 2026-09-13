@@ -436,3 +436,66 @@ map types under one provider. Lifecycle IDs include type; geographic IDs remain
 shared for statistics. Same-region opposite types conflict. See the
 [API contract](docs/api.md) and [historical source review](../../history/2026-09-12-bbbike-local-contract.md).
 Provider package counts are live metadata, not hardcoded compatibility claims.
+
+## Explainable exact-model identification
+
+Migration 047 adds optional XML model fields, nullable screen/Solar/inReach
+specifications, a server-only identifier registry, immutable ingestion
+assessments, and audited correction/review records. Original metadata and old
+assignments remain intact. Retail SKUs (`010-…`) and XML/Connect IQ codes
+(`006-B…`) have distinct kinds; USB and XML mappings can identify multiple
+variants. Unknown feature values are not negative evidence.
+
+Five checks evaluate model/variant, case size, screen, XML code and USB.
+Automatic assignment requires all five to match and exactly one non-conflicting
+candidate. Only approved mappings are positive evidence. Pending alternative
+targets prevent a partially reviewed shared code from appearing unique. Shared mappings only
+prove a property when all targets agree. Missing observations require a reasoned
+admin decision; a conflict cannot be overridden by the assignment form. Source
+corrections are separate append-only overlays, retaining the original field and
+administrator/reason/history. Neither correction nor mapping approval silently
+reassigns events. Public compatibility approval remains a separate action.
+
+Authenticated model/installation details show checks and provenance; Devices
+links to the read-only `/admin/devices/identity-audit.json` report, including
+classification and hypothetical count/status impact. Old assignments may be
+changed only after the owner separately approves that report. New unresolved
+reports remain reviewable and cannot inherit a text-label public approval.
+
+Operator commands (supply DATABASE_URL securely; snapshots are local files):
+
+```sh
+python -m terento_catalog.identity_registry import garmin connect-iq.json
+python -m terento_catalog.identity_registry import usb music-players.h
+python -m terento_catalog.identity_registry specifications /path/to/product-pages
+python -m terento_catalog.identity_registry audit
+```
+
+Imports/enrichment default to dry-run. `--apply` stages identifier candidates
+as PENDING, or enriches existing exact product URLs from `<product-id>.html`;
+it never reassigns installations. Identifier approval is a separate admin
+review requiring evidence and reason. Source SHA-256/revision and review
+history remain in the registry. If the original XML field actually contains a
+`010-…` SKU, its check uses the retail registry kind; `006-B…` observations use
+the XML/Connect IQ kind. No SKU is fabricated from a generic XML code. Preserve upstream license notices when distributing any snapshots;
+raw Garmin/Connect IQ snapshots are not included in this repository or client.
+The routine Garmin collector also enriches exact specifications during sync.
+
+Migration 048 supplies a reviewed 2026-09-13 bootstrap of 86 exact Garmin product
+pages: 175 retail SKU links, 80 known screen technologies, 15 explicit Solar
+and 10 explicit inReach values. Only matching existing IDs/product URLs are
+enriched. Retail links have a recorded source review; 126 Connect IQ and 39
+libmtp candidate links remain pending. The 27 historical records lacking exact
+product URLs are preserved. This contains factual mappings/specifications and
+source hashes, not raw upstream pages or private installation reports.
+
+Admin identifiers are collapsed and grouped by code; original source names,
+versions, decisions and review actions are disclosed on demand. Case dimensions,
+physical screen size and resolution from reviewed specifications are shown
+separately. Screen size/resolution alone cannot distinguish AMOLED/MicroLED;
+several variants have the same values. No external AI service is integrated.
+
+Deploy migration/API first, then catalog/admin/site, audit historical reports,
+and only then release the new app build. DB integration tests exercise replay,
+shared codes, contradictory manual choices, audited correction, old aggregate
+preservation and new unresolved/public-count isolation on a disposable DB.

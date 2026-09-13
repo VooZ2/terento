@@ -49,4 +49,6 @@ Contact [privacy@terento.app](mailto:privacy@terento.app). We normally respond w
 
 Compatibility reports may also include a sanitized MTP model label, USB VID/PID, transport, identity-source category (never the identifier value), map releases, timestamps, random event/operation IDs, failure stage, approved app/native error codes, write/cleanup status and coarse transfer progress. Custom imports use coarse custom-source labels. Neither stream sends manifests, MTP object IDs, map hashes or unfiltered error text.
 
-Updated: 5 September 2026.
+Reports may additionally include the original XML model description (up to 160 characters) and model product code (up to 64 ASCII letters, digits or hyphens). These identify a product model, not an individual watch. Whole XML documents, Unit IDs and serial numbers are excluded. Model-code mappings and any administrator corrections are kept separately from the original report.
+
+Updated: 13 September 2026.

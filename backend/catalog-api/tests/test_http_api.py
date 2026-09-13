@@ -235,7 +235,7 @@ class HTTPAPITests(unittest.TestCase):
             {
                 "id", "manufacturer", "family", "familyName", "model",
                 "canonicalModel", "variant", "caseSizeMm", "displayType",
-                "partNumber", "productURL", "active", "mapCapable", "asset", "sourceAsset",
+                "partNumber", "productURL", "active", "mapCapable", "asset", "sourceAsset", "screenTechnology", "solar", "inReach",
             },
         )
         self.assertTrue(document["devices"][0]["mapCapable"])

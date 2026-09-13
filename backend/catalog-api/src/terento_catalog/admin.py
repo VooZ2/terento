@@ -223,7 +223,7 @@ def _normalise_variant(value: Any) -> str:
         raw,
         flags=re.IGNORECASE,
     )
-    display_names = {"amoled": "AMOLED", "solar": "Solar", "microled": "MicroLED"}
+    display_names = {"amoled": "AMOLED", "solar": "Solar", "microled": "MicroLED", "mip": "MIP"}
     normalized = re.sub(
         r"\b(AMOLED|Solar|MicroLED)\b",
         lambda match: display_names[match.group(1).lower()],
@@ -2922,6 +2922,128 @@ def _display_identity(identity: str, row: dict[str, Any] | None = None) -> tuple
     return model, variant
 
 
+def _known_variant_description(row: dict) -> str:
+    variant = _normalise_variant(row.get("variant"))
+    parts = [variant] if variant and variant != "—" else []
+    for value in (row.get("screen_technology"), "Solar" if row.get("solar") is True else None,
+                  "inReach" if row.get("inreach") is True else None):
+        if value and value.casefold() not in " ".join(parts).casefold():
+            parts.append(value)
+    return ", ".join(parts) if parts else variant
+
+
+def _identity_mapping_markup(device: dict, csrf_token: str) -> str:
+    groups: dict[tuple[str, str], list[dict]] = {}
+    for mapping in device.get("identityMappings", []):
+        groups.setdefault((mapping['kind'], mapping['value']), []).append(mapping)
+    if not groups:
+        return "<p>No additional identifier mappings have been imported.</p>"
+    labels = {'RETAIL_SKU': 'Retail SKU', 'XML_PART_NUMBER': 'XML product code', 'USB': 'USB VID/PID'}
+    states = {'PENDING': '? Awaiting review', 'APPROVED': '✓ Approved', 'REJECTED': '✕ Rejected'}
+    pending = sum(any(m['status'] == 'PENDING' for m in group) for group in groups.values())
+    items = []
+    for (kind, value), group in sorted(groups.items()):
+        statuses = {m['status'] for m in group}
+        status = states[next(iter(statuses))] if len(statuses) == 1 else 'Mixed source decisions'
+        sources = []
+        for mapping in group:
+            source = html.escape(str(mapping['source_url']), quote=True)
+            # Source links remain evidence; only HTTPS links are actionable.
+            source = f'<a href="{source}" target="_blank" rel="noopener noreferrer">{source}</a>' if str(mapping['source_url']).startswith('https://') else source
+            names = html.escape('; '.join(mapping.get('source_names') or []))
+            reason = html.escape(str(mapping.get('review_reason') or 'No review recorded.'))
+            history = ''.join('<li>' + html.escape(f"{entry['previous_status']} → {entry['new_status']} · {entry['reason']} · {'administrator ' + str(entry['reviewed_by']) if entry['reviewed_by'] is not None else 'reviewed catalog import'} · {entry['created_at']}") + '</li>' for entry in mapping.get('history') or [])
+            history = '<details><summary>Review history</summary><ul>' + history + '</ul></details>' if history else ''
+            sources.append(f"""<div class='identity-mapping-source'><p>{html.escape(states[mapping['status']])} · {reason}</p>
+            <p>{names}</p><p>{source}</p><details><summary>Source version</summary><code>{html.escape(mapping['source_version'])}</code></details>{history}
+            <details><summary>Review this source</summary><form method='post' action='/admin/devices/identity-mapping' class='admin-async-action identity-mapping-review'>
+            <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>
+            <input type='hidden' name='mapping_id' value='{int(mapping['id'])}'>
+            <input type='hidden' name='return_to' value='/admin/devices/{html.escape(device['id'], quote=True)}'>
+            <label>Decision<select name='status'><option value='APPROVED'>Approve</option><option value='REJECTED'>Reject</option></select></label>
+            <label>Evidence reason<input name='reason' required maxlength='1000'></label><button type='submit'>Save review</button></form></details></div>""")
+        items.append(f"<details class='identity-mapping-code'><summary><strong>{labels[kind]} · {html.escape(value)}</strong><span>{html.escape(status)} · {len(group)} source(s)</span></summary>{''.join(sources)}</details>")
+    return (f"<details class='identity-mappings'><summary><strong>Identifiers and sources</strong><span>{len(groups)} codes · {pending} awaiting review</span></summary>"
+            "<p>Retail SKUs describe retail configurations. XML and USB codes may be shared by several variants. Source review does not reassign installations.</p>"
+            + ''.join(items) + '</details>')
+
+
+def _identity_evidence_markup(evidence: list[dict]) -> str:
+    labels = {"rawMTPModel": "MTP model", "garminModelDescription": "XML description", "model": "Client model",
+              "caseSizeMm": "Client size", "displayType": "Client display", "variant": "Client variant"}
+    items = []
+    for item in evidence:
+        source = str(item.get("source", ""))
+        version = f" · revision {item['version']}" if item.get("version") else ""
+        value = str(item.get("value", ""))
+        items.append(html.escape(value) + " <small>— " + html.escape(labels.get(source, source) + version) + "</small>")
+    return "<br>".join(items) or "No observation"
+
+
+def _identity_checks_markup(results: list[dict[str, Any]]) -> str:
+    labels = {"model": "Model and variant", "size": "Case size", "screen": "Screen technology",
+              "xmlPartNumber": "Device XML part number", "usb": "USB VID/PID"}
+    states = {"MATCH": "✓ Matches", "MISSING": "? Missing evidence", "CONFLICT": "✕ Conflicts"}
+    sections = []
+    for result in results:
+        original = result.get("identity_assessment") or {}
+        assessment = result.get("current_identity_assessment") or original
+        raw_fields = [("MTP model", result.get("raw_mtp_model")), ("XML description", result.get("garmin_model_description")), ("XML part number", result.get("garmin_model_part_number"))]
+        sections.append("<dl>" + "".join("<div><dt>" + key + "</dt><dd>" + html.escape(str(value or "Unavailable")) + "</dd></div>" for key, value in raw_fields) + "</dl>")
+        decision = original.get("decision")
+        if decision:
+            sections.append("<p>Administrator decision: " + html.escape(str(decision.get("deviceId")))
+                            + " — " + html.escape(str(decision.get("reason"))) + "</p>")
+        elif original.get("state") == "RESOLVED":
+            sections.append("<p>Automatically assigned after all five checks matched: "
+                            + html.escape(str(original.get("canonicalDeviceId"))) + "</p>")
+        for candidate in assessment.get("candidates", []):
+            rows = []
+            for check in candidate["checks"]:
+                evidence = _identity_evidence_markup(check.get("evidence", []))
+                for feature in check.get("features", []):
+                    evidence += "<br><strong>" + html.escape(feature["name"]) + ": " + html.escape(states[feature["state"]]) + "</strong> — " + _identity_evidence_markup(feature["evidence"])
+                expected = check.get("expected")
+                if expected is not None:
+                    evidence += "<br><small>Catalog: " + html.escape(str(expected)) + "</small>"
+                if check.get('catalogSource'):
+                    proof = check['catalogSource']
+                    evidence += "<br><small>Catalog specification: " + html.escape(str(proof.get('source', '')) + ' · ' + str(proof.get('version', ''))) + "</small>"
+                if check.get('pendingAlternativeTargets'):
+                    evidence += "<br><strong>Other variants for this code still need source review.</strong>"
+                rows.append("<tr><th scope='row'>" + html.escape(labels.get(check["name"], check["name"]))
+                            + "</th><td>" + html.escape(states[check["state"]]) + "</td><td>" + evidence + "</td></tr>")
+            sections.append("<h4>" + html.escape(candidate["model"] + " · " + candidate["deviceId"])
+                            + "</h4><div class='table-wrap'><table class='identity-checks-table'><caption>Current identity evidence checks</caption><thead><tr><th>Check</th>"
+                            "<th>Result</th><th>Value and source</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table></div>")
+    note = "<p>Properties derived from the same XML or USB mapping share one source; they are not independent observations. Missing evidence needs a reasoned administrator decision. Conflicts require a separate source or mapping correction.</p>"
+    return ("".join(dict.fromkeys(sections)) or "<p>No matching catalog candidate. Original metadata remains available for review.</p>") + note
+
+
+def _identity_source_markup(results: list[dict], csrf_token: str, return_to: str) -> str:
+    forms = []
+    fields = {"model": "Client model", "rawMTPModel": "MTP model", "garminModelDescription": "XML description",
+              "garminModelPartNumber": "XML part number", "variant": "Client variant", "caseSizeMm": "Case size (mm)",
+              "displayType": "Display type", "usbVendorID": "USB vendor (decimal)", "usbProductID": "USB product (decimal)"}
+    options = "".join(f"<option value='{key}'>{label}</option>" for key, label in fields.items())
+    for result in results:
+        event_id = str(result.get("event_id") or "")
+        if not event_id:
+            continue
+        history = "".join("<li>" + html.escape(f"{c['field']}: {c.get('previous_value')} → {c.get('corrected_value')} · {c['reason']} · administrator {c['corrected_by']} · {c['created_at']}") + "</li>"
+                          for c in result.get("identity_source_corrections", []))
+        forms.append(f"""<p>Report <code>{html.escape(event_id)}</code></p><ul>{history}</ul>
+          <form method='post' action='/admin/diagnostics/identity-source' class='admin-async-action'>
+          <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>
+          <input type='hidden' name='event_id' value='{html.escape(event_id, quote=True)}'>
+          <input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'>
+          <label>Source field<select name='field'>{options}</select></label>
+          <label>Correct value (empty means unknown)<input name='value' maxlength='160'></label>
+          <label>Evidence and reason<input name='reason' required maxlength='1000'></label>
+          <button type='submit'>Record source correction</button></form>""")
+    return "<details class='admin-disclosure'><summary>Correct an identity source</summary><div class='disclosure-body'><p>Original reports remain unchanged. This records a separate correction and does not reassign any installation.</p>" + "".join(forms) + "</div></details>" if forms else ""
+
+
 def _identity_device_options(devices: list[dict[str, Any]] | None, current_id: Any = None) -> tuple[str, str]:
     current = str(current_id or "").strip()
     current_label = current or "No canonical device selected"
@@ -3229,6 +3351,11 @@ def _diagnostic_detail_dialog(
     first = results[0]
     dialog_id = "diagnostic-detail-" + hashlib.sha256(operation_key.encode("utf-8")).hexdigest()[:16]
     model, variant = _display_identity(identity)
+    catalog_device = next((d for d in identity_devices or []
+                           if (d.get('id') or d.get('device_id')) == first.get('canonical_device_model_id')), None)
+    if catalog_device:
+        model = str(catalog_device.get('model') or model)
+        variant = _normalise_variant(catalog_device.get('variant'))
     issue = _operation_issue(results)
     result_label = _operation_result(results)
     state = _operation_state(results, resolved=resolved)
@@ -3288,7 +3415,7 @@ def _diagnostic_detail_dialog(
           <label>Garmin model<select name='canonical_device_model_id' id='{canonical_id}' required><option value=''>Choose a Garmin model</option>{options}</select></label>
         </div>
         <p class='identity-selection' data-identity-selection>Canonical ID: <code>{html.escape(current_label)}</code></p>
-        <label>Reason <span class='optional-label'>Optional</span><input name='identity_reason' placeholder='Exact model confirmed by operator'></label>
+        <label>Evidence reason<input name='identity_reason' required placeholder='Exact model confirmed by operator'></label>
         <label>Review note <span class='optional-label'>Optional</span><textarea name='identity_note' rows='3'></textarea></label>
         <button type='submit'>Save identity review</button>
       </form>""" if identity_pending else ""
@@ -3379,6 +3506,8 @@ def _diagnostic_detail_dialog(
             {review_state}
           </dl>
           {failure_summary}
+          <details class='admin-disclosure' open><summary>Model identification</summary><div class='disclosure-body'>{_identity_checks_markup(results)}</div></details>
+          {_identity_source_markup(results, csrf_token, return_to)}
           <div class='diagnostic-actions-grid'>{action_markup}</div>
           {technical_details}
         </div>
@@ -3556,7 +3685,14 @@ def device_detail_page(
     device_info = _detail_rows([
         ("Model", model, False), ("Variant", variant, False),
         ("Family", device.get("familyName") or device.get("family"), False),
-        ("Part number", device.get("partNumber"), False),
+        ("Retail part number", device.get("partNumber"), False),
+        ("Case dimensions (specification)", device.get("specificationEvidence", {}).get("physical_size", {}).get("value"), False),
+        ("Screen size (specification)", device.get("specificationEvidence", {}).get("display_size", {}).get("value"), False),
+        ("Screen resolution", device.get("specificationEvidence", {}).get("display_resolution", {}).get("value"), False),
+        ("Screen technology", device.get("screenTechnology"), False),
+        ("Solar", ("Yes" if device["solar"] else "No") if device.get("solar") is not None else "Unknown", False),
+        ("inReach", ("Yes" if device["inReach"] else "No") if device.get("inReach") is not None else "Unknown", False),
+        ("Specification source", device.get("specificationSource"), False),
         ("Lifecycle", lifecycle, False),
         ("Map capability", _admin_status_badge(map_label, f"map-{map_kind}"), True),
         ("Catalog source", catalog_source, False),
@@ -3571,6 +3707,8 @@ def device_detail_page(
         ("USB identity", _usb_identity_details(device.get("usbIdentities")), False),
         ("Firmware", firmware, False),
         ("Raw MTP model", raw_models, False),
+        ("XML model description", ", ".join(sorted({str(e["garmin_model_description"]) for e in all_events if e.get("garmin_model_description")})), False),
+        ("XML part number", ", ".join(sorted({str(e["garmin_model_part_number"]) for e in all_events if e.get("garmin_model_part_number")})), False),
         ("Transport", transports, False),
     ])
     if not technical_rows:
@@ -3596,7 +3734,7 @@ def device_detail_page(
           <article><h3>Public compatibility</h3><p>{public_copy}</p>{public_form}</article>
         </div></details>
         <div class='model-information-columns'>
-        <details class='model-page-section device-information-section admin-disclosure'><summary id='device-information-title'>Device information</summary><dl class='model-information-list'>{device_info}</dl></details>
+        <details class='model-page-section device-information-section admin-disclosure'><summary id='device-information-title'>Device information</summary><dl class='model-information-list'>{device_info}</dl>{_identity_mapping_markup(device, csrf_token)}</details>
         <details class='model-technical-details admin-disclosure'><summary>Technical details</summary><dl class='model-information-list'>{technical_rows}</dl></details>
         </div>
         {''.join(dialogs)}
@@ -3862,9 +4000,14 @@ def _admin_device_payload(
             "familyName": row.get("family_name"),
             "model": row.get("model"),
             "canonicalModel": row.get("canonical_model"),
-            "variant": _normalise_variant(row.get("variant")),
+            "variant": _known_variant_description(row),
             "caseSizeMm": row.get("case_size_mm"),
             "displayType": row.get("display_type"),
+            "identityMappings": row.get("identity_mappings") or [],
+            "screenTechnology": row.get("screen_technology"),
+            "solar": row.get("solar"), "inReach": row.get("inreach"),
+            "specificationSource": row.get("specification_source"),
+            "specificationEvidence": row.get("specification_evidence") or {},
             "partNumber": row.get("part_number"),
             "productURL": row.get("product_url"),
             "active": bool(row.get("active", True)),
@@ -4005,7 +4148,7 @@ def devices_page(
         for index, device in enumerate(payload["devices"])
     )
     empty = "<p class='empty'>No Garmin device records are available.</p>" if not rows_html else ""
-    payload_json = json.dumps({**payload, "csrfToken": csrf_token}, ensure_ascii=False).replace("<", "\\u003c")
+    payload_json = _admin_json({**payload, "csrfToken": csrf_token})
     mobile_sort_options = "".join(
         f"<option value='{key}:{direction}'>{label} · {suffix}</option>"
         for key, label in [("model", "Model"), ("variant", "Variant"), ("maps", "Map capability"),
@@ -4018,7 +4161,7 @@ def devices_page(
     content = f"""
       {_admin_header(user, csrf_token, active="devices")}
       <main class="dashboard devices-page" id="main-content">
-        <div class="heading-row"><div><p class="eyebrow">Catalog</p><h1>Devices</h1><p class="lede">Garmin device catalog, map capability, authorization, and compatibility evidence.</p></div></div>
+        <div class="heading-row"><div><p class="eyebrow">Catalog</p><h1>Devices</h1><p class="lede">Garmin device catalog, map capability, authorization, and compatibility evidence.</p></div><a class="button-link secondary-button" href="/admin/devices/identity-audit.json">Review assignment audit</a></div>
         <section class="admin-summary-strip device-summary-strip" aria-label="Device catalog summary and sync">
           <p class="device-summary-metrics"><strong>{_count_label(summary['models'], 'device')}</strong><span> · {summary['mapCapable']} map-capable · {summary['approved']} approved · {_count_label(summary['successful'], 'successful install')}</span></p>
           <p class="device-summary-sync"><strong>Last sync</strong> {completed}<span> · {sync_line}</span>{f"<span> · {html.escape(str(sync_data['status'] or '').title())}</span>" if sync_data['status'] else ''}</p>
@@ -5097,7 +5240,7 @@ textarea{min-height:78px;resize:vertical}
 input::placeholder,textarea::placeholder{color:var(--admin-placeholder);opacity:1;font-weight:400}
 input:disabled,select:disabled,textarea:disabled,button:disabled{cursor:not-allowed;background:var(--surface-muted);border-color:color-mix(in srgb,var(--border) 78%,var(--surface-muted));color:var(--secondary);opacity:1}
 button{cursor:pointer}
-.admin-action-dialog button:not(.secondary-button),.auth-card button:not(.link-button),.copy-button,.device-support-review button[type="submit"],.model-administration button[type="submit"]{min-height:var(--admin-control-height);padding:8px 12px;border:0;border-radius:var(--admin-control-radius);background:var(--interactive);color:var(--interactive-primary-text);font-weight:700}
+.admin-action-dialog button:not(.secondary-button),.auth-card button:not(.link-button),.copy-button,.device-support-review button[type="submit"],.model-administration button[type="submit"],.identity-mapping-review button[type="submit"]{min-height:var(--admin-control-height);padding:8px 12px;border:0;border-radius:var(--admin-control-radius);background:var(--interactive);color:var(--interactive-primary-text);font-weight:700}
 .admin-action-dialog button:not(.secondary-button):hover,.auth-card button:not(.link-button):hover,.copy-button:hover,.device-support-review button[type="submit"]:hover,.model-administration button[type="submit"]:hover{background:var(--interactive-hover)}
 .admin-topbar{position:sticky;top:0;z-index:30;border-bottom:1px solid color-mix(in srgb,var(--border) 78%,transparent);background:var(--off-white);box-shadow:0 1px 0 rgba(34,42,43,.04)}
 .admin-topbar-inner{width:min(calc(100% - 48px),var(--max-width));min-height:68px;margin:0 auto;display:grid;grid-template-columns:minmax(300px,1fr) max-content minmax(335px,1fr);align-items:center;gap:16px}
@@ -5283,6 +5426,14 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .device-modal-hero .device-detail-image{margin:0;width:72px;height:72px;border-radius:12px}
 .device-catalog-id{color:var(--secondary);font-size:11px;font-weight:500}.detail-status-value{color:var(--secondary);font-weight:650}
 .device-image-source{margin:0 0 3px;color:var(--graphite);font-size:13px;font-weight:700}
+.identity-checks-table{width:100%;min-width:0;table-layout:fixed}
+.identity-checks-table th,.identity-checks-table td{white-space:normal!important;overflow-wrap:anywhere;text-align:left;vertical-align:top}
+.identity-checks-table th:nth-child(1){width:24%}.identity-checks-table th:nth-child(2){width:20%}.identity-checks-table th:nth-child(3){width:56%}
+.identity-mappings{padding:16px;overflow-wrap:anywhere}.identity-mappings summary{cursor:pointer;padding:8px 0}.identity-mappings summary span{display:block;margin:4px 0 0 18px;color:var(--secondary)}
+.identity-mapping-code,.identity-mapping-source{border-top:1px solid var(--border);padding:8px 0}.identity-mapping-source{padding:12px 16px}.identity-mapping-source p{margin:8px 0}.identity-mapping-source code{white-space:normal}
+.identity-mapping-review{display:grid;grid-template-columns:minmax(120px,1fr) minmax(180px,3fr);gap:12px;margin:12px 0}.identity-mapping-review label{display:grid;gap:6px}.identity-mapping-review :is(input,select){width:100%;min-width:0}.identity-mapping-review button{justify-self:start}
+.identity-checks-table caption{text-align:left;padding:12px;font-weight:650}
+@media(max-width:600px){.identity-checks-table{min-width:480px}.identity-mapping-review{grid-template-columns:1fr}}
 .device-detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
 .device-detail-grid section{min-width:0;padding-top:2px}
 .detail-kicker{margin:0 0 8px;color:var(--interactive);font-size:11px;font-weight:750;letter-spacing:.12em;text-transform:uppercase}
