@@ -4,15 +4,15 @@
   "platform": "macOS",
   "architecture": "arm64",
   "version": "1.0.0",
-  "build": 28,
+  "build": 29,
   "releaseLabel": "1.0.0-beta.12",
-  "releaseTag": "v1.0.0-beta.12-build28",
-  "downloadURL": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.12-build28/Terento-1.0.0-beta.12-macOS-arm64.dmg",
-  "releaseURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.12-build28",
-  "releaseNotesURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.12-build28",
-  "summary": "\u2022 Added BBBike and BBBike (Ontrail) maps.\n\u2022 Improved Install Maps performance and filtering.\n\u2022 Added filters to Manage Maps.",
+  "releaseTag": "v1.0.0-beta.12-build29",
+  "downloadURL": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.12-build29/Terento-1.0.0-beta.12-macOS-arm64.dmg",
+  "releaseURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.12-build29",
+  "releaseNotesURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.12-build29",
+  "summary": "\u2022 Improved watch model and screen identification.\n\u2022 Kept technical watch identifiers out of the public app interface.\n\u2022 Fixed map activity diagnostics that could stay queued.",
   "channel": "beta",
   "minimumMacOS": "13.0",
-  "publishedAt": "2026-09-12",
-  "sha256": "ccf5cd707c2d27d48b523c44c7c93a3045a126d22c3f9dd2458dbb00430b8304"
+  "publishedAt": "2026-09-13",
+  "sha256": "a7c793307cde6dad91db5eb93379c481b14ea66878f64613911cbc9158fa5ddc"
 }
