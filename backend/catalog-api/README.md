@@ -6,8 +6,9 @@ between variants. Identity review uses a searchable native select with exact
 canonical IDs rather than datalist suggestions. Editing the search clears the
 selection, and typing immediately shows matching model buttons below the search
 field (including accent-insensitive fenix matches). The native select remains
-available as a fallback. Assignment requires an explicit model choice. Other identity
-actions disable the picker. Backend validation and save semantics are unchanged.
+available as a fallback. Assignment requires an explicit model choice and a
+reason, and conflicts require a separate audited source correction. Other
+identity actions disable the picker.
 
 GitHub report actions share inline-flex alignment, zero margins and stretched
 row heights for both the link and button; copy feedback occupies its own row.
@@ -463,6 +464,11 @@ links to the read-only `/admin/devices/identity-audit.json` report, including
 classification and hypothetical count/status impact. Old assignments may be
 changed only after the owner separately approves that report. New unresolved
 reports remain reviewable and cannot inherit a text-label public approval.
+Assessment version 2 treats legacy model-field review statuses such as
+`Identity pending` as missing model evidence. They cannot prove or contradict
+a model; original MTP/XML observations still participate in every check.
+Stored source values, intake assessments, assignments and public counts are
+unchanged by this classification correction.
 
 Operator commands (supply DATABASE_URL securely; snapshots are local files):
 
