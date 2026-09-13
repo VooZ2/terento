@@ -72,7 +72,7 @@ struct DiagnosticsView: View {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text("Send privacy-minimised compatibility diagnostics")
                                     .font(.terentoUI(size: 14, weight: .semibold))
-                                Text("Watch model, XML model description and product code, firmware, connection details, map and software versions, and the installation result. No Unit ID, serial number, local path, manifest, or map file is included.")
+                                Text("Watch model and variant, firmware, connection details, map and software versions, and the installation result. No Unit ID, serial number, local path, manifest, or map file is included.")
                                     .font(.terentoUI(size: 12, weight: .regular))
                                     .foregroundStyle(TerentoColors.secondaryText)
                                     .fixedSize(horizontal: false, vertical: true)
