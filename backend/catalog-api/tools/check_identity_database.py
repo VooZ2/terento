@@ -92,7 +92,8 @@ def check_identity_database(database):
         canonical_device_model_id='identity-ci-microled', admin_user_id=admin, reason='Two audited source corrections')
     details = database.compatibility_operation_details()
     corrected = next(r for r in details if r['event_id'] == exact['event_id'])
-    assert corrected['identity_assessment']['decision']['method'] == 'ADMIN'
+    assert corrected['identity_decision']['decision']['method'] == 'ADMIN'
+    assert corrected['identity_assessment'] == exact['identity_assessment']
     assert corrected['canonical_device_model_id'] == 'identity-ci-microled'
     assert len(corrected['identity_source_corrections']) == 2
     with database.connection() as c:

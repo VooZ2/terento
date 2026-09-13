@@ -453,7 +453,9 @@ targets prevent a partially reviewed shared code from appearing unique. Shared m
 prove a property when all targets agree. Missing observations require a reasoned
 admin decision; a conflict cannot be overridden by the assignment form. Source
 corrections are separate append-only overlays, retaining the original field and
-administrator/reason/history. Neither correction nor mapping approval silently
+administrator/reason/history. Each assignment review stores its complete
+assessment in the append-only decision audit; the original ingestion assessment
+is never overwritten. Neither correction nor mapping approval silently
 reassigns events. Public compatibility approval remains a separate action.
 
 Authenticated model/installation details show checks and provenance; Devices

@@ -560,6 +560,8 @@ class Database:
                 cleanup_succeeded, transfer_progress_bucket, error_category, transport,
                 raw_mtp_model, identity_resolution_code,
                 garmin_model_description, garmin_model_part_number, identity_assessment,
+                (SELECT a.assessment FROM compatibility_identity_resolution_audit a
+                 WHERE a.event_id=compatibility_evidence_event.event_id ORDER BY a.id DESC LIMIT 1) AS identity_decision,
                 usb_vendor_id, usb_product_id, case_size_mm, display_type,
                 diagnostic_status, diagnostic_workflow_status,
                 resolution_code, resolution_reason,
@@ -1836,15 +1838,14 @@ class Database:
                     """
                     UPDATE compatibility_evidence_event
                     SET canonical_device_model_id = %s,
-                        identity_resolution_state = %s,
-                        identity_assessment = COALESCE(%s::jsonb, identity_assessment)
+                        identity_resolution_state = %s
                     WHERE event_id = %s
                     """,
                     (canonical_device_model_id,
                      "RESOLVED" if normalized_action == "ASSIGN" else (
                          "NOT_IDENTIFIABLE" if normalized_action == "NOT_IDENTIFIABLE" else "UNRESOLVED"
                      ),
-                     row.get("reviewed_assessment"), row["event_id"]),
+                     row["event_id"]),
                 )
                 connection.execute(
                     """
@@ -1852,13 +1853,13 @@ class Database:
                         event_id, previous_identity,
                         previous_canonical_device_model_id,
                         new_identity, new_canonical_device_model_id,
-                        action, reason, note, corrected_by
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        action, reason, note, corrected_by, assessment
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb)
                     """,
                     (row["event_id"], str(row["compatibility_identity"]),
                      row["canonical_device_model_id"], new_identity,
                      canonical_device_model_id, normalized_action, reason, note,
-                     admin_user_id),
+                     admin_user_id, row.get("reviewed_assessment")),
                 )
             return len(rows)
 

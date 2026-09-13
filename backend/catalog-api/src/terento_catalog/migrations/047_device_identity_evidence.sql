@@ -37,6 +37,8 @@ ALTER TABLE compatibility_evidence_event
     ADD COLUMN garmin_model_part_number TEXT,
     ADD COLUMN identity_assessment JSONB;
 
+ALTER TABLE compatibility_identity_resolution_audit ADD COLUMN assessment JSONB;
+
 -- Corrections are append-only overlays. Original reported data stays intact.
 CREATE TABLE device_identity_source_correction (
     id BIGSERIAL PRIMARY KEY,

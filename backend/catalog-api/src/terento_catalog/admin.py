@@ -2990,12 +2990,12 @@ def _identity_checks_markup(results: list[dict[str, Any]]) -> str:
         assessment = result.get("current_identity_assessment") or original
         raw_fields = [("MTP model", result.get("raw_mtp_model")), ("XML description", result.get("garmin_model_description")), ("XML part number", result.get("garmin_model_part_number"))]
         sections.append("<dl>" + "".join("<div><dt>" + key + "</dt><dd>" + html.escape(str(value or "Unavailable")) + "</dd></div>" for key, value in raw_fields) + "</dl>")
-        decision = original.get("decision")
+        decision = (result.get("identity_decision") or {}).get("decision")
         if decision:
             sections.append("<p>Administrator decision: " + html.escape(str(decision.get("deviceId")))
                             + " — " + html.escape(str(decision.get("reason"))) + "</p>")
         elif original.get("state") == "RESOLVED":
-            sections.append("<p>Automatically assigned after all five checks matched: "
+            sections.append("<p>Automatically assigned at intake after all five checks matched: "
                             + html.escape(str(original.get("canonicalDeviceId"))) + "</p>")
         for candidate in assessment.get("candidates", []):
             rows = []
