@@ -55,3 +55,16 @@ if grep -Fq 'diagnosticsSection(title: "Privacy")' "$diagnostics_source" \
 fi
 
 print 'PASS: Diagnostics window, default-on controls, manual sending, and deletion boundary contract'
+
+python3 - "$diagnostics_source" <<'PYTHON'
+from pathlib import Path
+import re, sys
+source = Path(sys.argv[1]).read_text()
+debug = re.findall(r"#if DEBUG\n([\s\S]*?)#endif", source)
+assert any('releaseLabel.hasSuffix("-local")' in block and 'Connected watch identity' in block for block in debug)
+public = re.sub(r"#if DEBUG\n[\s\S]*?#endif", "", source)
+for field in ['Connected watch identity', 'MTP model:', 'XML model:', 'XML part number:', 'USB VID/PID:', 'API catalog candidate:']:
+    assert field not in public, field
+assert 'diagnosticsSection(title: "Sharing")' in public
+print('PASS: connected-watch technical fields are local-build only; public sharing controls remain')
+PYTHON

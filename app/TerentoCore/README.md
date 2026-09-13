@@ -137,7 +137,10 @@ including when the local Unit ID is unavailable or invalid. Existing local
 identity keys, write profiles, ownership and install/update/remove sequences
 are unchanged. A missing XML document preserves valid MTP DeviceInfo.
 AMOLED/MicroLED/MIP, Solar and inReach are separate reported properties;
-missing words do not mean false. Technical originals appear in Diagnostics.
+missing words do not mean false. Technical originals appear in Diagnostics
+only in Debug builds with a `-local` release label. Public Diagnostics keeps
+sharing controls and delivery status without connected-device technical fields;
+the bounded API report fields are unchanged.
 Opening Diagnostics neither sends a report nor starts a device operation.
 
 Model labels and catalog IDs have no compiled per-model identification rules.

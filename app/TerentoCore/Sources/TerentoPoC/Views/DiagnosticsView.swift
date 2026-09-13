@@ -44,24 +44,28 @@ struct DiagnosticsView: View {
                     }
                     .padding(.bottom, 22)
 
-                    diagnosticsSection(title: "Connected watch identity") {
-                        if let identity = deviceEngine.compatibility?.identity {
-                            Text("MTP model: \(identity.model)")
-                            Text("XML model: \(identity.garminModelDescription ?? "Unavailable")")
-                            Text("XML part number: \(identity.garminModelPartNumber ?? "Unavailable")")
-                            Text("XML read status: \(String(describing: identity.garminDeviceXMLStatus))")
-                            Text(String(format: "USB VID/PID: %04x:%04x", identity.usbVendorId, identity.usbProductId))
-                            Text("Screen: \(identity.screenTechnology ?? "Unknown") · Solar: \(identity.solar == true ? "Yes" : "Unknown") · inReach: \(identity.inReach == true ? "Yes" : "Unknown")")
-                            Text("Screen source: \(identity.screenTechnologySource)")
-                            Text("API catalog candidate: \(identity.catalogDeviceID ?? "Not uniquely identified")")
-                            Text("MTP/XML fields above are original watch metadata. Additional known properties come from the Terento API catalog. The API independently verifies installation assignments. Opening this window does not send a report.")
-                                .foregroundStyle(TerentoColors.secondaryText)
-                        } else {
-                            Text("Connect your watch to view its model information.")
+                    #if DEBUG
+                    if TerentoTelemetryMetadata.releaseLabel.hasSuffix("-local") {
+                        diagnosticsSection(title: "Connected watch identity") {
+                            if let identity = deviceEngine.compatibility?.identity {
+                                Text("MTP model: \(identity.model)")
+                                Text("XML model: \(identity.garminModelDescription ?? "Unavailable")")
+                                Text("XML part number: \(identity.garminModelPartNumber ?? "Unavailable")")
+                                Text("XML read status: \(String(describing: identity.garminDeviceXMLStatus))")
+                                Text(String(format: "USB VID/PID: %04x:%04x", identity.usbVendorId, identity.usbProductId))
+                                Text("Screen: \(identity.screenTechnology ?? "Unknown") · Solar: \(identity.solar == true ? "Yes" : "Unknown") · inReach: \(identity.inReach == true ? "Yes" : "Unknown")")
+                                Text("Screen source: \(identity.screenTechnologySource)")
+                                Text("API catalog candidate: \(identity.catalogDeviceID ?? "Not uniquely identified")")
+                                Text("MTP/XML fields above are original watch metadata. Additional known properties come from the Terento API catalog. The API independently verifies installation assignments. Opening this window does not send a report.")
+                                    .foregroundStyle(TerentoColors.secondaryText)
+                            } else {
+                                Text("Connect your watch to view its model information.")
+                            }
                         }
+                        .font(.terentoUI(size: 13, weight: .regular))
+                        .textSelection(.enabled)
                     }
-                    .font(.terentoUI(size: 13, weight: .regular))
-                    .textSelection(.enabled)
+                    #endif
 
                     diagnosticsSection(title: "Sharing") {
                         Toggle(isOn: compatibilitySharingBinding) {
