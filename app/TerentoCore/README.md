@@ -161,3 +161,15 @@ update manifest records. A read-only Mac-side observation of fēnix 8 47 mm
 received original XML AMOLED text and code 006-B4536-00; this is metadata
 evidence for that watch, not other variants or map lifecycle acceptance. Map-operation safety
 regressions remain required; no new install/remove hardware test is introduced.
+
+
+### Device display labels
+
+Connected-device headings format model names for display only; the model keeps
+Pro, generation and size-family suffixes, while size, screen, Solar and inReach
+appear in the subtitle in that order. Supplied special editions remain visible.
+Commas separate variant facts; firmware remains a separate subtitle segment.
+Missing specifications are not inferred from model names. This formatting does
+not alter identity/evidence strings, catalog matching, local manifest keys or
+installation authorization. The Map Manager registry includes the officially
+documented fēnix 9 family; exact-model public evidence remains independent.

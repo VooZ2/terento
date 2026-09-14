@@ -7,7 +7,7 @@ const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const data = require('../site/compatibility/compatibility-data.js');
 const locales = require('../site/compatibility/compatibility-locales.js');
 
-assert.equal(data.publicModelName('fēnix 9 Pro · inReach, 51 mm'), 'fēnix 9 Pro inReach');
+assert.equal(data.publicModelName('fēnix 9 Pro · inReach, 51 mm'), 'fēnix 9 Pro');
 assert.equal(locales.getLocale('it').successfulInstallLabel(2), '2 installazioni riuscite');
 assert.equal(locales.getLocale('de').successfulInstallLabel(2), '2 erfolgreiche Installationen');
 for (const language of ['en', 'de', 'fr', 'pl', 'cs', 'it']) {
@@ -28,7 +28,7 @@ for (const language of ['en', 'de', 'fr', 'pl', 'cs', 'it']) {
   const download = read(`site/${prefix}download/index.html`);
   assert.ok(download.includes(`<span class="download-recommended">${copy.freshness.recommended}</span>`));
   for (const asset of ['compatibility', 'compatibility-data', 'compatibility-locales']) {
-    assert.ok(page.includes(`${asset}.js?v=${asset === "compatibility-locales" ? "20260912-compatibility-sort-v1" : "20260914-model-variant-v1"}`));
+    assert.ok(page.includes(`${asset}.js?v=${asset === "compatibility-locales" ? "20260912-compatibility-sort-v1" : "20260914-device-labels-v1"}`));
   }
 }
 
@@ -93,7 +93,7 @@ async function checkRefreshAndFilters() {
   );
   await node('#compatibility-retry').listeners.click();
   const headings = () => [...node('#watch-grid').innerHTML.matchAll(/<h3>(.*?)<\/h3>/g)].map(match => match[1]);
-  const expected = ['fēnix 8', 'fēnix 8 Pro', 'fēnix 9 Pro inReach', 'Forerunner 965'];
+  const expected = ['fēnix 8', 'fēnix 8 Pro', 'fēnix 9 Pro', 'Forerunner 965'];
   assert.deepEqual(headings(), expected);
   assert.match(node('#watch-grid').innerHTML, /<p class="watch-variant">Historical<\/p>/);
   node('#sort-filter').listeners.change({target: {value: 'name'}});

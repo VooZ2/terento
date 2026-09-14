@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import urlsplit
 
+from .map_capability import classify_map_capable
 from . import DEVICE_CATALOG_VERSION
 from .asset_attribution import LEGAL_METADATA, public_asset_source
 
@@ -84,7 +85,13 @@ def build_device_catalog(
                 "solar": row.get("solar"), "inReach": row.get("inreach"),
                 "productURL": _public_https_url(row.get("product_url")),
                 "active": row["active"],
-                "mapCapable": bool(row["map_capable"]) if row.get("map_capable") is not None else None,
+                "mapCapable": (
+                    bool(row["map_capable"]) if row.get("map_capable") is not None
+                    else classify_map_capable(
+                        row.get("canonical_model") or row.get("model"),
+                        row.get("manufacturer") or "Garmin",
+                    )
+                ),
                 "asset": asset,
             }
         )

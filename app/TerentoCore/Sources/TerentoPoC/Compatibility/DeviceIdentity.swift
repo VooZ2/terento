@@ -324,6 +324,25 @@ enum GarminFirmwareVersionFormatter: Sendable {
     }
 }
 
+/// Display-only cleanup. Never used by identity, manifest, or evidence logic.
+enum DeviceModelLabelFormatter {
+    static func format(_ value: String) -> String {
+        var label = value.replacingOccurrences(of: "®", with: "").replacingOccurrences(of: "™", with: "")
+        for pattern in [#"^Garmin\s+"#, #"\b\d{2,3}(?:\s*[x×]\s*\d{2,3})?\s*mm\b"#,
+                        #"\b(?:AMOLED|MicroLED|MIP|Solar|inReach)\b"#, #"\bHistorical\s*$"#] {
+            label = label.replacingOccurrences(of: pattern, with: "", options: [.regularExpression, .caseInsensitive])
+        }
+        label = label.replacingOccurrences(of: #"\b(?:fenix|fēnix)\b"#, with: "fēnix", options: [.regularExpression, .caseInsensitive])
+            .replacingOccurrences(of: #"\bpro\b"#, with: "Pro", options: [.regularExpression, .caseInsensitive])
+            .replacingOccurrences(of: #"(fēnix\s+\d+)s\b"#, with: "$1S", options: [.regularExpression, .caseInsensitive])
+            .replacingOccurrences(of: #"(fēnix\s+\d+)x\b"#, with: "$1X", options: [.regularExpression, .caseInsensitive])
+            .replacingOccurrences(of: #"[·•|:,]+"#, with: " ", options: .regularExpression)
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: CharacterSet(charactersIn: " ,·•|:–—-"))
+        return label.isEmpty ? value : label
+    }
+}
+
 enum ConnectedDeviceSubtitleFormatter: Sendable {
     static func format(identity: DeviceIdentity, fallbackModel: String, manufacturer: String) -> String {
         var parts: [String] = []
@@ -341,6 +360,16 @@ enum ConnectedDeviceSubtitleFormatter: Sendable {
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             if !fallback.isEmpty { parts.append(fallback) }
         }
+        // Preserve supplied special editions without treating them as model names.
+        let extras = (identity.variant ?? "")
+            .replacingOccurrences(of: #"\b\d{2,3}\s*mm\b|\b(?:AMOLED|MicroLED|MIP|Solar|inReach)\b"#,
+                                  with: "", options: [.regularExpression, .caseInsensitive])
+            .components(separatedBy: CharacterSet(charactersIn: ",·•|/"))
+            .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: " ,·•|:–—-")) }
+            .filter { !$0.isEmpty }
+        for extra in extras where !parts.contains(extra) { parts.append(extra) }
+        let variant = parts.joined(separator: ", ")
+        parts = variant.isEmpty ? [] : [variant]
         let firmware = GarminFirmwareVersionFormatter.display(
             rawValue: identity.firmware ?? "",
             manufacturer: manufacturer

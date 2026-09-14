@@ -172,10 +172,10 @@ class IdentityAssessmentTests(unittest.TestCase):
         self.assertIsNone(_identity_recommendation([{'identity_assessment': conflict}]))
         self.assertIsNone(_identity_recommendation([{'identity_assessment': assessment}, {}]))
 
-    def test_inreach_feature_does_not_rename_variant(self):
+    def test_inreach_label_moves_to_variant_without_changing_identity(self):
         from terento_catalog.admin import _known_variant_description, _identity_parts
-        self.assertEqual(_known_variant_description(dict(variant='51 mm', screen_technology='AMOLED', inreach=True)), '51 mm, AMOLED')
-        self.assertEqual(_identity_parts(dict(model='fēnix 9 Pro · inReach', variant='51 mm'))[:2], ('fēnix 9 Pro · inReach', '51 mm'))
+        self.assertEqual(_known_variant_description(dict(variant='51 mm', screen_technology='AMOLED', inreach=True)), '51 mm, AMOLED, inReach')
+        self.assertEqual(_identity_parts(dict(model='fēnix 9 Pro · inReach', variant='51 mm'))[:2], ('fēnix 9 Pro', '51 mm, inReach'))
 
     def test_shared_model_keeps_name_but_does_not_guess_screen(self):
         from terento_catalog.admin import _identity_checks_markup, _identity_recommendation

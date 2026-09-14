@@ -164,7 +164,7 @@ class AdminAuditTests(unittest.TestCase):
     def test_display_cleanup_keeps_identity_and_functional_name(self):
         identity = "fēnix 9 Pro · inReach, · 51 mm"
         model, variant, unchanged = _identity_parts({"model": "fēnix 9 Pro · inReach,", "variant": "51 mm", "compatibility_identity": identity})
-        self.assertEqual((model, variant, unchanged), ("fēnix 9 Pro · inReach", "51 mm", identity))
+        self.assertEqual((model, variant, unchanged), ("fēnix 9 Pro", "51 mm, inReach", identity))
         self.assertEqual(_identity_parts({"model": "fēnix 8 51 mm", "variant": "51 mm"})[0], "fēnix 8")
 
     def test_map_statistics_has_one_dom_target_per_component(self):

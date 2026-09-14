@@ -125,6 +125,12 @@ struct CompatibilityStatusClientTests {
             "unknown variant subtitle does not invent AMOLED or Solar"
         )
 
+        let reachIdentity = adapter.makeIdentity(from: snapshot(model: "fenix 9 Pro - inReach, Solar, 51mm MIP", productID: 0x9999))
+        let originalIdentity = reachIdentity.compatibilityIdentity
+        require(ConnectedDeviceSubtitleFormatter.format(identity: reachIdentity, fallbackModel: reachIdentity.model,
+                    manufacturer: "Garmin") == "51 mm, MIP, Solar, inReach · Firmware 22.44",
+                "variant facts share the admin/site order and firmware stays separate")
+        require(reachIdentity.compatibilityIdentity == originalIdentity, "display formatting never rewrites evidence identity")
         await testCatalogMetadata()
 
         try? FileManager.default.removeItem(at: cacheURL)

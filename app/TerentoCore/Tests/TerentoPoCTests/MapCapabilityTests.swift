@@ -4,6 +4,16 @@ import Foundation
 struct MapCapabilityTests {
     static func main() {
         let registry = GarminMapCapabilityRegistry.local
+        for model in ["fēnix 9 43mm", "fēnix 9 47mm", "fēnix 9 51mm",
+                      "fēnix 9 Pro 43mm", "fēnix 9 Pro 47mm", "fēnix 9 Pro 51mm",
+                      "fēnix 9 Pro 43mm inReach", "fēnix 9 Pro 47mm inReach", "fēnix 9 Pro 51mm inReach",
+                      "fēnix 9 Pro 47mm Solar", "fēnix 9 Pro 51mm Solar",
+                      "fēnix 9 Pro 47mm Solar inReach", "fēnix 9 Pro 51mm Solar inReach"] {
+            expect(registry.evaluate(identity: identity(model: model)) == .supported, "official fēnix 9 Map Manager capability")
+        }
+        expect(DeviceModelLabelFormatter.format("fenix 9 Pro - inReach, 51mm") == "fēnix 9 Pro", "inReach belongs to variant only")
+        expect(DeviceModelLabelFormatter.format("fenix 7s pro") == "fēnix 7S Pro", "S and Pro remain in model")
+
 
         expect(
             registry.evaluate(identity: identity(model: "fēnix 7")) == .supported,
