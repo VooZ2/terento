@@ -1923,6 +1923,8 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     and asset_url.startswith(CONTROLLED_ASSET_PREFIX)
                     and isinstance(row.get("asset_storage_key"), str)
                     and public_asset_source(row) is not None
+                    and not (row.get("asset_scope") == "GENERIC"
+                             and _official_source_image_url(row.get("source_image_url")))
                 ):
                     image = {
                         "url": asset_url,

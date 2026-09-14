@@ -147,3 +147,10 @@ with database.connection() as connection:
     legacy = next(r for r in epix if r['id'] == 'garmin-epix-pro-gen-2')
     assert legacy['case_size_mm'] is None and legacy['variant'] == 'Historical'
 print('PASS: epix Pro exact historical sizes, official media, and unchanged legacy record')
+
+
+with database.connection() as connection:
+    media_rows = connection.execute("SELECT id,source_image_url FROM device_model WHERE id LIKE 'garmin-fenix-7%' OR id IN ('garmin-forerunner-965','garmin-epix-pro-gen-2')").fetchall()
+    assert len(media_rows) == 10, media_rows
+    assert all(r['source_image_url'].startswith('https://res.garmin.com/') for r in media_rows)
+print('PASS: all ten targeted historical records have official model photos')

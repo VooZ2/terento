@@ -4109,7 +4109,7 @@ def _admin_device_payload(
             and public_review_status == "APPROVED"
             and public_enabled
         )
-        if asset_url:
+        if asset_url and not (source_image_url and row.get("asset_scope") == "GENERIC"):
             image = {"url": asset_url, "origin": "controlled", "status": "AVAILABLE"}
         elif source_image_url:
             image = {"url": source_image_url, "origin": "garmin-source", "status": "SOURCE"}
