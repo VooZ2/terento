@@ -40,6 +40,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       suites: ${{ steps.selection.outputs.suites }}
+      release_manifest_changed: ${{ steps.selection.outputs.release_manifest_changed }}
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
@@ -63,6 +64,14 @@ jobs:
             printf '%s\n' "$changed_paths"
             suites="$(printf '%s\n' "$changed_paths" | python3 Tests/select-test-suites.py --json --stdin)"
           fi
+          release_manifest_changed=false
+          if [ "$EVENT_NAME" = "push" ] && [ "$GITHUB_REF" = "refs/heads/beta" ]; then
+            if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ] \
+              || ! git diff --quiet "$BASE_SHA" "$GITHUB_SHA" -- site/updates/macos-arm64.json; then
+              release_manifest_changed=true
+            fi
+          fi
+          echo "release_manifest_changed=$release_manifest_changed" >> "$GITHUB_OUTPUT"
           echo "Selected suites: $suites"
           echo "suites=$suites" >> "$GITHUB_OUTPUT"
 
@@ -332,7 +341,8 @@ jobs:
     name: Publish weekly or release health report
     if: >-
       always() &&
-      (github.event_name == 'schedule' ||
+      (needs.changes.outputs.release_manifest_changed == 'true' ||
+      github.event_name == 'schedule' ||
       startsWith(github.ref, 'refs/tags/v') ||
       (github.event_name == 'workflow_dispatch' &&
       (inputs.send_health_report || inputs.run_release_gate)))
@@ -369,7 +379,18 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Reject superseded release metadata
+        if: github.event_name != 'schedule' && !inputs.send_health_report
+        shell: bash
+        run: |
+          set -euo pipefail
+          latest="$(git ls-remote origin refs/heads/beta | cut -f1)"
+          test -n "$latest"
+          git fetch --no-tags origin "$latest"
+          git show "$latest:site/updates/macos-arm64.json" > "$RUNNER_TEMP/current-release-manifest.json"
+          python3 scripts/check-live-release-manifest.py "$RUNNER_TEMP/current-release-manifest.json" site/updates/macos-arm64.json
       - name: Build consolidated health report
+        id: report
         shell: bash
         run: |
           set -euo pipefail
@@ -441,7 +462,7 @@ jobs:
         if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.send_health_report)
         run: python3 scripts/send-weekly-health-report.py "$RUNNER_TEMP/terento-operational-report.json"
       - name: Retain consolidated health report
-        if: always()
+        if: always() && steps.report.outcome == 'success'
         env:
           EMAIL_OUTCOME: ${{ steps.email.outcome }}
         shell: bash

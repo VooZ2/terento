@@ -24,7 +24,7 @@ def expect(paths: list[str], suites: set[str]) -> None:
 def main() -> int:
     baseline = {"shared", "ci"}
     expect(["site/index.html"], baseline | {"site"})
-    expect(["site/updates/macos-arm64.json"], baseline | {"site", "release", "app"})
+    expect(["site/updates/macos-arm64.json"], set(MODULE.ALL_SUITES))
     expect(["app/Terento/Info.plist"], baseline | {"app"})
     expect(
         ["app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecycle.swift"],

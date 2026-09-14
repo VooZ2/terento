@@ -186,6 +186,55 @@ def verify_live_manifest():
     else:
         raise AssertionError("old live build accepted")
 
+
+def verify_release_reporting(swift):
+    """Execute the actual selection shell against real temporary git history."""
+    import textwrap
+    shell = swift.split("      - name: Select suites from changed paths", 1)[1].split("        run: |\n", 1)[1].split("\n  site-tests:", 1)[0]
+    shell = textwrap.dedent(shell)
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        (root / "Tests").mkdir()
+        (root / "Tests/select-test-suites.py").write_text((REPO_ROOT / "Tests/select-test-suites.py").read_text())
+        manifest = root / "site/updates/macos-arm64.json"
+        manifest.parent.mkdir(parents=True)
+        manifest.write_text('{"build":29}')
+        def git(*args):
+            return subprocess.check_output(["git", *args], cwd=root, text=True, stderr=subprocess.DEVNULL).strip()
+        git("init")
+        git("config", "user.email", "test@example.invalid")
+        git("config", "user.name", "Test")
+        git("add", ".")
+        git("commit", "-m", "initial")
+        before = git("rev-parse", "HEAD")
+        manifest.write_text('{"build":30}')
+        git("add", ".")
+        git("commit", "-m", "publish next build")
+        after = git("rev-parse", "HEAD")
+        for event, ref, base, expected in (
+            ("push", "refs/heads/beta", before, "true"),
+            ("pull_request", "refs/pull/1/merge", before, "false"),
+            ("push", "refs/heads/main", before, "false"),
+            ("push", "refs/tags/v1.0.0", before, "false"),
+            ("workflow_dispatch", "refs/heads/beta", "", "false"),
+            ("push", "refs/heads/beta", after, "false"),
+        ):
+            output = root / "output"
+            output.write_text("")
+            subprocess.run(["bash", "-c", shell], cwd=root, check=True, capture_output=True,
+                env={**os.environ, "EVENT_NAME":event, "GITHUB_REF":ref, "BASE_SHA":base,
+                     "GITHUB_SHA":after, "GITHUB_OUTPUT":str(output)})
+            values = dict(line.split("=", 1) for line in output.read_text().splitlines())
+            assert values["release_manifest_changed"] == expected, (event, ref, values)
+            if expected == "true":
+                assert set(json.loads(values["suites"])) == {"site", "app", "native", "backend", "release", "shared", "ci"}
+    report = swift.split("  publish-operational-report:", 1)[1]
+    assert "needs.changes.outputs.release_manifest_changed == 'true'" in report
+    assert report.index("Reject superseded release metadata") < report.index("Build consolidated health report")
+    assert 'scripts/check-live-release-manifest.py "$RUNNER_TEMP/current-release-manifest.json" site/updates/macos-arm64.json' in report
+    assert "if: always() && steps.report.outcome == 'success'" in report
+    assert 'if [ "$GATE_RESULT" = "success" ]; then' in report
+
 def main() -> int:
     workflow_files = sorted(WORKFLOWS.glob("*.yml")) + sorted(WORKFLOWS.glob("*.yaml"))
     assert workflow_files, "no GitHub workflows found"
@@ -294,6 +343,7 @@ def main() -> int:
     assert "actions/upload-artifact@" in reusable
     assert "schedule:" in swift
     assert "github.event_name == 'schedule' || startsWith(github.ref" not in swift
+    verify_release_reporting(swift)
     verify_quality_results()
     verify_live_manifest()
     verify_http_transport()

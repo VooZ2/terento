@@ -32,6 +32,9 @@ def select_suites(paths: list[str]) -> list[str]:
                 selected.add("shared")
             continue
 
+        if text == "site/updates/macos-arm64.json":
+            return list(ALL_SUITES)
+
         if text.startswith("Tests/"):
             stem = path.name.removeprefix("run-")
             if stem.startswith(("ci-", "select-test-suites")):
