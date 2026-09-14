@@ -11,6 +11,9 @@ private extension NSLock {
 
 enum MapStatisticsEventType: String, Codable, Sendable {
     case downloadStarted = "DOWNLOAD_STARTED"
+    case downloadProcessing = "DOWNLOAD_PROCESSING"
+    case downloadCancelled = "DOWNLOAD_CANCELLED"
+    case downloadInterrupted = "DOWNLOAD_INTERRUPTED"
     case downloadSucceeded = "DOWNLOAD_SUCCEEDED"
     case downloadFailed = "DOWNLOAD_FAILED"
     case installSucceeded = "INSTALL_SUCCEEDED"
@@ -35,6 +38,8 @@ struct MapStatisticsEvent: Codable, Equatable, Identifiable, Sendable {
     let providerId: String
     let mapId: String
     let region: String?
+    let acquisitionId: UUID?
+    let componentKind: MapArtifactKind?
     let eventType: MapStatisticsEventType
     let outcome: MapStatisticsEventOutcome
     let timestamp: Date
@@ -48,12 +53,16 @@ struct MapStatisticsEvent: Codable, Equatable, Identifiable, Sendable {
         eventType: MapStatisticsEventType,
         outcome: MapStatisticsEventOutcome,
         timestamp: Date = Date(),
+        acquisitionId: UUID? = nil,
+        componentKind: MapArtifactKind? = nil,
         appBuild: String = TerentoTelemetryMetadata.eventBuild,
         releaseLabel: String = TerentoTelemetryMetadata.releaseLabel
     ) {
         schemaVersion = Self.schemaVersion
         self.id = id
         self.operationId = operationId
+        self.acquisitionId = acquisitionId
+        self.componentKind = componentKind
 
         // A custom package ID may be derived from a local file hash. Never
         // disclose that identity; custom imports use deliberately coarse,
@@ -72,6 +81,27 @@ struct MapStatisticsEvent: Codable, Equatable, Identifiable, Sendable {
         self.timestamp = timestamp
         self.appBuild = String(appBuild.prefix(80))
         self.releaseLabel = String(releaseLabel.prefix(80))
+    }
+
+    /// Derive a phase from the immutable start, preserving package/build identity.
+    func phase(_ type: MapStatisticsEventType, at timestamp: Date = Date()) -> Self {
+        Self(start: self, type: type, timestamp: timestamp)
+    }
+
+    private init(start: Self, type: MapStatisticsEventType, timestamp: Date) {
+        schemaVersion = start.schemaVersion
+        id = UUID()
+        operationId = start.operationId
+        providerId = start.providerId
+        mapId = start.mapId
+        region = start.region
+        acquisitionId = start.acquisitionId
+        componentKind = start.componentKind
+        eventType = type
+        outcome = type == .downloadSucceeded ? .succeeded : type == .downloadFailed ? .failed : .unknown
+        self.timestamp = timestamp
+        appBuild = start.appBuild
+        releaseLabel = start.releaseLabel
     }
 
     private static func optionalSafeIdentifier(_ value: String) -> String? {
@@ -114,6 +144,8 @@ struct VersionedMapStatisticsConsent: Codable, Equatable, Sendable {
 private struct MapStatisticsQueueFile: Codable {
     var pendingEvents: [MapStatisticsEvent] = []
     var consent: VersionedMapStatisticsConsent?
+    // Optional for backwards-compatible decoding of existing queues.
+    var activeAcquisitions: [MapStatisticsEvent]?
 }
 
 final class LocalMapStatisticsEventStore: @unchecked Sendable {
@@ -157,9 +189,34 @@ final class LocalMapStatisticsEventStore: @unchecked Sendable {
                   !file.pendingEvents.contains(where: { $0.id == event.id }) else {
                 return false
             }
+            if let acquisitionID = event.acquisitionId {
+                var active = file.activeAcquisitions ?? []
+                if event.eventType == .downloadStarted {
+                    guard !active.contains(where: { $0.acquisitionId == acquisitionID }) else { return false }
+                    active.append(event)
+                } else {
+                    guard active.contains(where: { $0.acquisitionId == acquisitionID }) else { return false }
+                    if event.eventType != .downloadProcessing {
+                        active.removeAll { $0.acquisitionId == acquisitionID }
+                    }
+                }
+                file.activeAcquisitions = active
+            }
             file.pendingEvents.append(event)
             try saveUnlocked(file)
             return true
+        }
+    }
+
+    /// Called once by the app's controller at launch, never by a view refresh.
+    func reconcileInterruptedAcquisitions() throws {
+        try lock.withLock {
+            var file = try loadUnlocked()
+            if file.consent?.choice != .declined {
+                file.pendingEvents += (file.activeAcquisitions ?? []).map { $0.phase(.downloadInterrupted) }
+            }
+            file.activeAcquisitions = []
+            try saveUnlocked(file)
         }
     }
 
@@ -177,6 +234,7 @@ final class LocalMapStatisticsEventStore: @unchecked Sendable {
             )
             if consent.choice == .declined {
                 file.pendingEvents.removeAll()
+                file.activeAcquisitions = []
             }
             try saveUnlocked(file)
         }
@@ -200,6 +258,7 @@ final class LocalMapStatisticsEventStore: @unchecked Sendable {
             )
             if choice == .declined {
                 file.pendingEvents.removeAll()
+                file.activeAcquisitions = []
             }
             try saveUnlocked(file)
         }
@@ -281,6 +340,7 @@ final class MapStatisticsEventController: ObservableObject {
     private let uploader: any MapStatisticsEventUploading
     private let retryDelays: [UInt64]
     private var uploadTask: Task<Void, Never>?
+    private var unsavedEvents: [MapStatisticsEvent] = []
     #if TERENTO_TESTING
     /// Observe the automatic sender without replacing it with a manual flush.
     func scheduledUploadForTesting() -> Task<Void, Never>? { uploadTask }
@@ -298,6 +358,7 @@ final class MapStatisticsEventController: ObservableObject {
         self.uploader = uploader
         self.retryDelays = retryDelays
         try? store.migrateConsentToCurrentNotice()
+        try? store.reconcileInterruptedAcquisitions()
         if sharingEnabled { scheduleFlush() }
     }
 
@@ -313,6 +374,7 @@ final class MapStatisticsEventController: ObservableObject {
         if choice == .accepted {
             scheduleFlush()
         } else {
+            unsavedEvents.removeAll()
             uploadTask?.cancel()
             uploadTask = nil
             uploadStatus = .idle
@@ -325,19 +387,23 @@ final class MapStatisticsEventController: ObservableObject {
         // Custom IMG imports belong to compatibility evidence only. Keep this
         // boundary defensive so a stale caller cannot add them to map stats.
         guard sharingEnabled, event.providerId != "custom" else { return }
-        let store = self.store
-        let recording = Task { [weak self] in
-            let inserted = await Task.detached(priority: .utility) {
-                (try? store.appendIfSharingEnabled(event)) == true
-            }.value
-            guard inserted else { return }
-            self?.scheduleFlush()
+        // Persist before returning to the producer. UI teardown and process
+        // cancellation must not race an unstructured record task.
+        unsavedEvents.append(event)
+        persistBufferedEvents()
+        scheduleFlush()
+    }
+
+    private func persistBufferedEvents() {
+        while let event = unsavedEvents.first {
+            do {
+                _ = try store.appendIfSharingEnabled(event)
+                unsavedEvents.removeFirst()
+            } catch {
+                uploadStatus = .waiting(unsavedEvents.count + store.pendingEvents().count, willRetry: true)
+                return
+            }
         }
-        #if TERENTO_TESTING
-        recordTaskForTesting = recording
-        #else
-        _ = recording
-        #endif
     }
 
     func flushPendingEvents() async {
@@ -349,7 +415,7 @@ final class MapStatisticsEventController: ObservableObject {
     }
 
     private func scheduleFlush() {
-        guard sharingEnabled, uploadTask == nil, !store.pendingEvents().isEmpty else { return }
+        guard sharingEnabled, uploadTask == nil, (!store.pendingEvents().isEmpty || !unsavedEvents.isEmpty) else { return }
         let delays = retryDelays
         uploadTask = Task { [weak self] in
             defer { self?.uploadTask = nil }
@@ -371,6 +437,8 @@ final class MapStatisticsEventController: ObservableObject {
 
     private func uploadOnce() async -> UploadResult {
         while sharingEnabled && !Task.isCancelled {
+            persistBufferedEvents()
+            guard unsavedEvents.isEmpty else { return .retryableFailure }
             // A record can arrive while an upload suspends this actor. Keep
             // draining fresh snapshots before declaring the queue uploaded;
             // scheduleFlush cannot start another sender while this one exists.

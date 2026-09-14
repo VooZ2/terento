@@ -27,6 +27,7 @@ struct InstallationEvidenceTests {
     static func main() async throws {
         try testEventStorageAndDuplicatePrevention()
         try testCustomIMGEvidencePayload()
+        try testOTMClassificationAudit()
         try testOriginalModelMetadata()
         testStatisticsAndPromotionThresholds()
         try await testConsentAndUploadIsolation()
@@ -87,6 +88,28 @@ struct InstallationEvidenceTests {
                 && !payload.contains("deletionToken"),
             "custom IMG evidence does not upload the local content fingerprint"
         )
+    }
+
+    static func testOTMClassificationAudit() throws {
+        for provider in ["opentopomap", "freizeitkarte"] {
+            let original = MapPackage(id: provider + "-poland", providerId: provider,
+                regionId: "POL", name: "Poland", version: MapVersion(year: 2026, month: 9)!,
+                sizeBytes: 1, sourceURL: nil, releaseDate: nil, identifier: "POL")
+            let data = try JSONEncoder().encode(original)
+            var json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+            json.removeValue(forKey: "sourceKind")
+            let decoded = try JSONDecoder().decode(MapPackage.self,
+                from: JSONSerialization.data(withJSONObject: json))
+            for package in [original, decoded] {
+                let event = InstallationEvidenceEvent(identity: identity, package: package,
+                    outcome: .succeeded, finishingResult: .verified,
+                    terentoVersion: "test", macOSVersion: "test")
+                expect(package.sourceKind == .provider && event.provider == provider
+                    && event.region == "POL" && event.mapRelease != "custom",
+                    "provider identity survives package decoding and installation evidence")
+            }
+        }
+        print("PASS: audit OTM/Freizeitkarte explicit and default source classification")
     }
 
     static func testOriginalModelMetadata() throws {

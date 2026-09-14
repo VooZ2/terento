@@ -1144,7 +1144,20 @@ class Database:
             ).fetchone() or {}
             recent = list(connection.execute(
                 f"""
-                {compatibility_fallback_cte}
+                {compatibility_fallback_cte}, acquisition_activity AS (
+                    SELECT DISTINCT ON (COALESCE(e.acquisition_id, e.event_id), e.operation_id, e.provider_id, e.map_package_id)
+                        e.*,
+                        jsonb_agg(jsonb_build_object('type', e.event_type, 'at', e.occurred_at)) OVER (
+                            PARTITION BY COALESCE(e.acquisition_id, e.event_id), e.operation_id, e.provider_id, e.map_package_id
+                            ORDER BY e.occurred_at, CASE e.event_type WHEN 'DOWNLOAD_STARTED' THEN 0 WHEN 'DOWNLOAD_PROCESSING' THEN 1 ELSE 2 END, e.event_id
+                            ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+                        ) AS lifecycle
+                    FROM map_download_event e
+                    WHERE e.is_local_test IS NOT TRUE
+                    ORDER BY COALESCE(e.acquisition_id, e.event_id), e.operation_id, e.provider_id, e.map_package_id,
+                        CASE WHEN e.event_type IN ('DOWNLOAD_SUCCEEDED', 'DOWNLOAD_FAILED', 'DOWNLOAD_CANCELLED', 'DOWNLOAD_INTERRUPTED') THEN 0 ELSE 1 END,
+                        e.occurred_at DESC, e.event_id DESC
+                )
                 SELECT
                     e.operation_id::text AS operation_id,
                     e.provider_id,
@@ -1157,8 +1170,10 @@ class Database:
                     e.event_type,
                     e.outcome,
                     e.app_build,
-                    e.occurred_at
-                {event_scope}
+                    e.occurred_at,
+                    e.component_kind,
+                    e.lifecycle
+                {event_scope.replace('FROM map_download_event AS e', 'FROM acquisition_activity AS e')}
                 UNION ALL
                 SELECT
                     c.operation_id::text AS operation_id,
@@ -1173,7 +1188,9 @@ class Database:
                          ELSE 'INSTALL_SUCCEEDED' END AS event_type,
                     c.outcome,
                     NULL AS app_build,
-                    c.occurred_at
+                    c.occurred_at,
+                    NULL AS component_kind,
+                    NULL AS lifecycle
                 FROM compatibility_fallback AS c
                 LEFT JOIN map_provider AS p ON p.id = c.provider_id
                 ORDER BY occurred_at DESC
@@ -2846,8 +2863,8 @@ class Database:
                 INSERT INTO map_download_event (
                     event_id, operation_id, provider_id, map_package_id,
                     region, event_type, outcome, occurred_at, app_build,
-                    release_label, is_local_test
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    release_label, is_local_test, acquisition_id, component_kind
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT DO NOTHING
                 RETURNING event_id
                 """,
@@ -2856,6 +2873,7 @@ class Database:
                     map_package_id, event.get("region"), event["eventType"],
                     event["outcome"], event["timestamp"], event.get("appBuild"),
                     event["releaseLabel"], is_local_release_label(event.get("releaseLabel")),
+                    event.get("acquisitionId"), event.get("componentKind"),
                 ),
             ).fetchone()
         return row is not None

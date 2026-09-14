@@ -241,6 +241,8 @@ final class MapEngine: ObservableObject {
     @Published private(set) var userErrorMessage: String?
     @Published private(set) var mapStatisticsEvents: [MapStatisticsEvent] = []
 
+    private let statisticsController: MapStatisticsEventController?
+    private var activeAcquisition: MapStatisticsEvent?
     private let reader: MTPTransport
     private let operationGate: MTPOperationGate
     private let catalogLoader: MapCatalogLoader
@@ -272,9 +274,11 @@ final class MapEngine: ObservableObject {
     init(
         reader: MTPTransport = MTPTransport(),
         catalogLoader: MapCatalogLoader = MapCatalogLoader(),
-        operationGate: MTPOperationGate = .shared
+        operationGate: MTPOperationGate = .shared,
+        statisticsController: MapStatisticsEventController? = nil
     ) {
         self.reader = reader
+        self.statisticsController = statisticsController
         self.catalogLoader = catalogLoader
         self.operationGate = operationGate
     }
@@ -284,6 +288,7 @@ final class MapEngine: ObservableObject {
     /// write, delete, move, or rename operation.
     func resetForDisconnectedDevice() {
         operationGate.invalidateLifecycleOperations()
+        finishAcquisition(.downloadInterrupted)
         cancelActiveTaskAndCleanupWorkspaces()
         discardCustomMapImport(removeWorkspace: false)
         state = .idle
@@ -585,6 +590,7 @@ final class MapEngine: ObservableObject {
     }
 
     private func cancelActiveTaskAndCleanupWorkspaces() {
+        finishAcquisition(.downloadCancelled)
         let task = activeTask
         task?.cancel()
         activeTask = nil
@@ -1250,25 +1256,39 @@ final class MapEngine: ObservableObject {
                             stateRelay.send(.hashing)
                             stateRelay.send(.validated)
                         } else {
-                            self?.emitMapStatisticsEvent(
-                                package: package,
-                                type: .downloadStarted,
-                                outcome: .unknown
-                            )
-                            artifact = try await CancellableDetached.run(priority: .userInitiated) {
-                                try await acquirer.acquire(
-                                    package: package,
-                                    artifact: selectedArtifact,
-                                    canonicalRegion: package.canonicalRegionId,
-                                    onStateChange: { state in stateRelay.send(state) },
-                                    onDownloadProgress: { progress in progressRelay.send(progress) }
-                                )
+                            let start = MapStatisticsEvent(operationId: self?.mapStatisticsOperationID ?? UUID(),
+                                package: package, eventType: .downloadStarted, outcome: .unknown,
+                                acquisitionId: UUID(), componentKind: selectedArtifact.kind)
+                            self?.activeAcquisition = start
+                            self?.statisticsController?.record(start)
+                            let statistics = self?.statisticsController
+                            do {
+                                artifact = try await CancellableDetached.run(priority: .userInitiated) {
+                                    try await acquirer.acquire(
+                                        package: package,
+                                        artifact: selectedArtifact,
+                                        canonicalRegion: package.canonicalRegionId,
+                                        onStateChange: { state in
+                                            stateRelay.send(state)
+                                            if state == .validatingDownload {
+                                                Task { @MainActor in statistics?.record(start.phase(.downloadProcessing)) }
+                                            }
+                                        },
+                                        onDownloadProgress: { progress in progressRelay.send(progress) }
+                                    )
+                                }
+                                try Task.checkCancellation()
+                                statistics?.record(start.phase(.downloadSucceeded))
+                            } catch {
+                                statistics?.record(start.phase(Task.isCancelled ? .downloadCancelled : .downloadFailed))
+                                if self?.activeAcquisition?.acquisitionId == start.acquisitionId {
+                                    self?.activeAcquisition = nil
+                                }
+                                throw error
                             }
-                            self?.emitMapStatisticsEvent(
-                                package: package,
-                                type: .downloadSucceeded,
-                                outcome: .succeeded
-                            )
+                            if self?.activeAcquisition?.acquisitionId == start.acquisitionId {
+                                self?.activeAcquisition = nil
+                            }
                         }
                         artifactSets[package.id, default: [:]][selectedArtifact.id] = artifact
                     }
@@ -1291,14 +1311,6 @@ final class MapEngine: ObservableObject {
                 }
             } catch {
                 guard !Task.isCancelled else { return }
-                if packagePlans.indices.contains(activePackageIndex),
-                   packagePlans[activePackageIndex].item.package.sourceKind == .provider {
-                    self?.emitMapStatisticsEvent(
-                        package: packagePlans[activePackageIndex].item.package,
-                        type: .downloadFailed,
-                        outcome: .failed
-                    )
-                }
                 self?.evidencePrimaryFailureMapIndex = activePackageIndex
                 if let acquisitionError = error as? MapAcquisitionError {
                     let diagnostic = Self.evidenceDiagnostic(for: acquisitionError)
@@ -1771,14 +1783,20 @@ final class MapEngine: ObservableObject {
         // Custom local files have no registered provider catalog identity and
         // are intentionally outside provider-popularity statistics.
         guard package.sourceKind == .provider else { return }
-        mapStatisticsEvents.append(
-            MapStatisticsEvent(
+        let event = MapStatisticsEvent(
                 operationId: mapStatisticsOperationID,
                 package: package,
                 eventType: type,
                 outcome: outcome
             )
-        )
+        statisticsController?.record(event)
+        mapStatisticsEvents.append(event)
+    }
+
+    private func finishAcquisition(_ type: MapStatisticsEventType) {
+        guard let start = activeAcquisition else { return }
+        statisticsController?.record(start.phase(type))
+        activeAcquisition = nil
     }
 
     private static func evidenceStage(for failure: InstallationFailure?) -> EvidenceFailureStage {

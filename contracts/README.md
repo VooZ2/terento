@@ -138,3 +138,9 @@ permission: the server evaluates all five identity checks before resolving it.
 An actually observed `010-…` XML value uses the separate retail SKU registry;
 `006-B…` uses the XML/Connect IQ registry. Source-derived properties share their
 provenance and never count as independent observations.
+
+Build30 adds `map-event.valid-acquisition.json`, consumed by the Swift event
+runner and Python schema checks. Optional paired acquisition/component fields
+and processing/cancellation/interruption phases extend schema1; legacy fixtures
+remain unchanged and accepted. Server UUID and outcome validation remains the
+intake boundary. No raw device or file identity is added.

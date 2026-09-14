@@ -73,6 +73,8 @@ struct MapStatisticsEventTests {
         try await testEventsQueuedDuringUpload()
         try await testQueuedEventsRespectRetryPolicy()
         try await testOptOutDuringUpload()
+        try await testJournalWriteRecovery()
+        try testAcquisitionJournal()
         try testPayloadAndOperationIdentity()
         try testCustomMapPrivacyBoundary()
         try await testCustomMapStatsNeverUpload()
@@ -81,7 +83,90 @@ struct MapStatisticsEventTests {
         print("PASS: map usage diagnostics payload, privacy, default-on queue, retry, and idempotency tests")
     }
 
+    @MainActor
+    static func testJournalWriteRecovery() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        // A regular file in place of the directory makes atomic saves fail.
+        try Data("blocked".utf8).write(to: root)
+        let store = LocalMapStatisticsEventStore(rootURL: root)
+        let uploader = MapStatisticsUploadRecorder()
+        let controller = MapStatisticsEventController(store: store, uploader: uploader, retryDelays: [0])
+        let start = MapStatisticsEvent(operationId: UUID(), package: package,
+            eventType: .downloadStarted, outcome: .unknown,
+            acquisitionId: UUID(), componentKind: .main)
+        let end = start.phase(.downloadFailed)
+        controller.record(start)
+        controller.record(end)
+        await controller.scheduledUploadForTesting()?.value
+        expect(controller.uploadStatus == .waiting(2, willRetry: true), "disk failure is visible and retains both events")
+        try FileManager.default.removeItem(at: root)
+        await controller.flushPendingEvents()
+        let events = await uploader.uploadedEvents()
+        expect(events.map(\.id) == [start.id, end.id], "disk recovery retains IDs and start/terminal order")
+        try store.reconcileInterruptedAcquisitions()
+        expect(store.pendingEvents().isEmpty, "saved terminal closes journal before sending; restart cannot invent interruption")
+    }
+
+    static func testAcquisitionJournal() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = LocalMapStatisticsEventStore(rootURL: root)
+        let operation = UUID()
+        func start(_ kind: MapArtifactKind = .main) -> MapStatisticsEvent {
+            MapStatisticsEvent(operationId: operation, package: package,
+                eventType: .downloadStarted, outcome: .unknown,
+                acquisitionId: UUID(), componentKind: kind)
+        }
+        let main = start(), contours = start(.contours)
+        try store.appendIfSharingEnabled(main)
+        try store.appendIfSharingEnabled(contours)
+        try store.markUploaded(eventID: main.id)
+        try store.appendIfSharingEnabled(main.phase(.downloadProcessing))
+        try store.appendIfSharingEnabled(main.phase(.downloadSucceeded))
+        // Simulate process death/restart after the start was already delivered.
+        let restarted = LocalMapStatisticsEventStore(rootURL: root)
+        try restarted.reconcileInterruptedAcquisitions()
+        let recovered = restarted.pendingEvents().filter { $0.eventType == .downloadInterrupted }
+        expect(recovered.count == 1 && recovered[0].acquisitionId == contours.acquisitionId,
+               "restart interrupts only the unfinished contour component")
+        expect(recovered[0].providerId == "opentopomap" && recovered[0].operationId == operation,
+               "recovery preserves provider and operation without converting to custom")
+        try restarted.reconcileInterruptedAcquisitions()
+        expect(restarted.pendingEvents().filter { $0.eventType == .downloadInterrupted }.map(\.id) == recovered.map(\.id),
+               "repeated recovery retains exactly one durable event ID")
+        for terminal in [MapStatisticsEventType.downloadCancelled, .downloadInterrupted, .downloadFailed, .downloadSucceeded] {
+            let event = start()
+            try restarted.appendIfSharingEnabled(event)
+            let ended = event.phase(terminal)
+            let saved = try restarted.appendIfSharingEnabled(ended)
+            expect(saved, "terminal event persists")
+            let lateFailure = try restarted.appendIfSharingEnabled(event.phase(.downloadFailed))
+            expect(!lateFailure, "late callbacks cannot create a second terminal")
+            let latePhase = try restarted.appendIfSharingEnabled(event.phase(.downloadProcessing))
+            expect(!latePhase, "late phase cannot reopen a completed acquisition")
+            try restarted.markUploaded(eventID: ended.id)
+        }
+        let optedOut = start()
+        try restarted.appendIfSharingEnabled(optedOut)
+        try restarted.setConsent(.declined)
+        try restarted.reconcileInterruptedAcquisitions()
+        try restarted.setConsent(.accepted)
+        let oldCallback = try restarted.appendIfSharingEnabled(optedOut.phase(.downloadCancelled))
+        expect(!oldCallback, "opt-out clears journal; re-enable cannot revive old acquisition")
+        expect(restarted.pendingEvents().isEmpty, "opt-out clears pending events and recovery")
+        print("PASS: durable acquisition completion, cancellation, interruption, recovery, components and opt-out")
+    }
+
     static func testPayloadAndOperationIdentity() throws {
+        var fixtureRoot = URL(fileURLWithPath: #filePath)
+        for _ in 0..<5 { fixtureRoot.deleteLastPathComponent() }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let shared = try decoder.decode(MapStatisticsEvent.self, from: Data(contentsOf:
+            fixtureRoot.appendingPathComponent("contracts/fixtures/map-event.valid-acquisition.json")))
+        expect(shared.eventType == .downloadInterrupted && shared.componentKind == .contours
+            && shared.acquisitionId != nil, "shared API fixture preserves component interruption")
         let operationID = UUID()
         let first = MapStatisticsEvent(
             operationId: operationID,
