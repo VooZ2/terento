@@ -973,7 +973,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         })
         response, body = self.request("GET", path, headers={"Cookie": headers["Cookie"]})
         self.assertEqual(response.status, 200)
-        self.assertIn(b"Resolve identity", body)
+        self.assertIn(b"Confirm model", body)
         self.assertIn(b"pending-operation", body)
         self.assertNotIn(b"canonical-operation", body)
 

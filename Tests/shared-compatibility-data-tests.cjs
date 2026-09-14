@@ -179,12 +179,15 @@ for (const [locale, page] of localizedHomePages) {
 
 console.log("Compatibility family/data/API-source tests passed.");
 
-assert.equal(exactVariantLabel({ model: "fēnix 9 Pro", caseSizeMm: 47, screenTechnology: "AMOLED", inReach: true }), "47 mm, AMOLED, inReach");
+assert.equal(exactVariantLabel({ model: "fēnix 9 Pro", caseSizeMm: 47, screenTechnology: "AMOLED", inReach: true }), "47 mm, AMOLED");
 assert.equal(exactVariantLabel({ model: "fēnix 9 Pro", caseSizeMm: 51, screenTechnology: "MIP", solar: true }), "51 mm, MIP, Solar");
 assert.equal(exactVariantLabel({ model: "fēnix 9 Pro", caseSizeMm: 47, screenTechnology: null, solar: null }), "47 mm");
 for (const locale of ["", "cs/", "de/", "fr/", "it/", "pl/"]) {
   const page = fs.readFileSync(path.join(__dirname, "..", "site", locale, "compatibility/index.html"), "utf8");
   for (const asset of ["compatibility-data", "compatibility"]) {
-    assert.ok(page.includes(`/compatibility/${asset}.js?v=20260913-identity-specifications-v1`));
+    assert.ok(page.includes(`/compatibility/${asset}.js?v=20260914-model-variant-v1`));
   }
 }
+
+assert.equal(exactVariantLabel({model: "fēnix 8 Pro", caseSizeMm: 51, screenTechnology: "AMOLED", inReach: true}), "51 mm, AMOLED");
+assert.equal(publicModelName("fēnix 9 Pro · inReach"), "fēnix 9 Pro inReach");

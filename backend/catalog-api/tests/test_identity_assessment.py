@@ -146,3 +146,58 @@ class IdentityAssessmentTests(unittest.TestCase):
         self.assertIn('&lt;script&gt;', rendered)
         device = dict(id='test', identityMappings=[dict(self.mappings[0], id=1, review_reason='Evidence', history=[])])
         self.assertIn('required', _identity_mapping_markup(device, 'csrf'))
+
+    def test_review_summary_keeps_alternatives_collapsed(self):
+        from terento_catalog.admin import _identity_checks_markup, _identity_recommendation
+        other = dict(self.device, id='other', case_size_mm=47)
+        assessment = assess_identity(self.event, [self.device, other], self.mappings)
+        results = [{'identity_assessment': assessment}]
+        markup = _identity_checks_markup(results)
+        summary, technical = markup.split("<details class='admin-disclosure identity-technical-evidence'>")
+        self.assertIn('✓ Model recognized', summary)
+        self.assertEqual(summary.count('<li>'), 5)
+        self.assertNotIn('USB', summary)
+        self.assertNotIn('other', summary)
+        self.assertIn('other', technical)
+        self.assertEqual(_identity_recommendation(results)['deviceId'], self.device['id'])
+
+    def test_review_does_not_guess_when_ambiguous_missing_or_conflicting(self):
+        from terento_catalog.admin import _identity_checks_markup, _identity_recommendation
+        assessment = assess_identity(self.event, [self.device], self.mappings[:1])
+        self.assertIn('Not enough information', _identity_checks_markup([{'identity_assessment': assessment}]))
+        for value in ({}, dict(assessment, candidates=[]),
+                      dict(assessment, candidates=[assessment['candidates'][0]] * 2)):
+            self.assertIsNone(_identity_recommendation([{'identity_assessment': value}]))
+        conflict = assess_identity(dict(self.event, rawMTPModel='fenix 8 Pro 47mm'), [self.device], self.mappings)
+        self.assertIsNone(_identity_recommendation([{'identity_assessment': conflict}]))
+        self.assertIsNone(_identity_recommendation([{'identity_assessment': assessment}, {}]))
+
+    def test_inreach_feature_does_not_rename_variant(self):
+        from terento_catalog.admin import _known_variant_description, _identity_parts
+        self.assertEqual(_known_variant_description(dict(variant='51 mm', screen_technology='AMOLED', inreach=True)), '51 mm, AMOLED')
+        self.assertEqual(_identity_parts(dict(model='fēnix 9 Pro · inReach', variant='51 mm'))[:2], ('fēnix 9 Pro · inReach', '51 mm'))
+
+    def test_shared_model_keeps_name_but_does_not_guess_screen(self):
+        from terento_catalog.admin import _identity_checks_markup, _identity_recommendation
+        other = dict(self.device, id='microled', screen_technology='MicroLED')
+        mappings = self.mappings + [dict(m, device_model_id=other['id']) for m in self.mappings]
+        assessment = assess_identity(dict(self.event, rawMTPModel='fenix 8 Pro 51mm inReach'), [self.device, other], mappings)
+        results = [{'identity_assessment': assessment}]
+        summary = _identity_checks_markup(results).split('<details')[0]
+        self.assertIn('fēnix 8 Pro', summary)
+        self.assertIn('Screen: Not enough information', summary)
+        self.assertIsNone(_identity_recommendation(results))
+
+    def test_diagnostic_summary_remains_above_identification(self):
+        from terento_catalog.admin import _diagnostic_detail_dialog
+        assessment = assess_identity(self.event, [self.device], self.mappings[:1])
+        result = dict(identity_assessment=assessment, identity_resolution_state='UNRESOLVED',
+                      operation_id='preview', phase_outcome='SUCCEEDED', provider='custom')
+        markup = _diagnostic_detail_dialog('fēnix 8 Pro · 51 mm', 'preview', [result], resolved=False,
+                    csrf_token='test', identity_devices=[dict(self.device, variant='51 mm')])
+        summary = markup.split("<dl class='diagnostic-detail-summary'>")[1].split('</dl>')[0]
+        for label in ('Device', 'Variant', 'Date', 'Map / region', 'Result', 'App version', 'Review state'):
+            self.assertIn('<dt>' + label + '</dt>', summary)
+        self.assertLess(markup.index("class='diagnostic-detail-summary'"), markup.index('Model identification'))
+        self.assertIn("value='fenix8pro-51-amoled' selected", markup)
+        self.assertIn("name='identity_reason' required", markup)
