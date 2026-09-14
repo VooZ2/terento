@@ -234,6 +234,13 @@ rows become classifiable without a database migration or a source-specification
 rewrite. Capability is not installation authorization or compatibility evidence.
 This task adds no other unknown family without reviewed additional-map evidence.
 
+Build30 identity review presents the original XML model first. When explicitly
+reported Solar/inReach features have matching catalog rows, operator suggestions
+prefer those specific rows over rows whose corresponding feature is unknown.
+The complete authoritative assessment remains available and still controls
+assignment. Remaining same-model choices display screen/Solar properties rather
+than repeating model/SKU names. An unknown catalog feature is never treated as
+false, and genuine AMOLED/MIP/Solar ambiguity remains unresolved.
 
 The admin Installations table resolves its Variant label from the exact
 `canonical_device_model_id` catalog record, matching the linked device card.

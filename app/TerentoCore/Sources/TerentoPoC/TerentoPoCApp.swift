@@ -12,11 +12,17 @@ struct TerentoEntryPoint {
 
 struct TerentoPoCApp: App {
     @StateObject private var deviceEngine = DeviceEngine()
-    @StateObject private var mapEngine = MapEngine()
+    @StateObject private var mapEngine: MapEngine
     @StateObject private var appUpdateController = AppUpdateController()
     @StateObject private var evidenceController = InstallationEvidenceController()
-    @StateObject private var mapStatisticsController = MapStatisticsEventController()
+    @StateObject private var mapStatisticsController: MapStatisticsEventController
     @Environment(\.openWindow) private var openWindow
+
+    init() {
+        let statistics = MapStatisticsEventController()
+        _mapStatisticsController = StateObject(wrappedValue: statistics)
+        _mapEngine = StateObject(wrappedValue: MapEngine(statisticsController: statistics))
+    }
 
     var body: some Scene {
         WindowGroup("Terento") {

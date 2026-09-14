@@ -5,7 +5,7 @@ import re
 import unicodedata
 from typing import Any
 
-VERSION = 2
+VERSION = 3
 
 # Historical review statuses are not observations of a device model. Match
 # only the legacy model field; original MTP/XML values remain evidence.
@@ -92,6 +92,26 @@ def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> d
     incomplete = {kind: bool({m['device_model_id'] for m in observed_mappings[kind] if m['status'] == 'PENDING'}
                              - {m['device_model_id'] for m in group}) for kind, group in matched.items()}
     by_id = {d['id']: d for d in devices}
+    # XML provides the primary model. Specifications may fill an unobserved
+    # property only when every variant compatible with the observations agrees
+    # and each fact has reviewed provenance. Shared USB codes cannot widen it.
+    xml_label = model_label(event.get('garminModelDescription'))
+    specification_targets = [d for d in devices if xml_label
+        and model_label(d.get('model')) == xml_label
+        and all(model_label(value) == xml_label for _, value in labels)
+        and all(d.get('case_size_mm') is None or d['case_size_mm'] == value for _, value in sizes)
+        and all(d.get('screen_technology') is None or d['screen_technology'] == value for _, value in screens)
+        and (not solar or d.get('solar') is not False)
+        and (not inreach or d.get('inreach') is not False)]
+    specification_facts = {}
+    for field in ('screen_technology', 'solar', 'inreach'):
+        values = {d.get(field) for d in specification_targets}
+        if specification_targets and len(values) == 1 and None not in values and all(
+                (d.get('specification_evidence') or {}).get(field, {}).get('source')
+                for d in specification_targets):
+            specification_facts[field] = [
+                ('catalog specification: ' + d['specification_evidence'][field]['source'], d[field])
+                for d in specification_targets]
     candidates = []
     for device in devices:
         device_id = device['id']
@@ -111,6 +131,7 @@ def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> d
 
         check('model', [(key, model_label(value)) for key, value in labels], expected)
         model_check = checks[-1]
+        model_check['observedState'] = model_check['state']
         derived_size, derived_screen = list(sizes), list(screens)
         features = {'solar': [('model text', True)] if solar else [],
                     'inreach': [('model text', True)] if inreach else []}
@@ -124,6 +145,11 @@ def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> d
                 values = {d.get(field) for d in targets}
                 if targets and len(values) == 1 and None not in values:
                     result.append((kind + ':' + str(codes[kind]), next(iter(values))))
+        if not derived_screen:
+            derived_screen.extend(specification_facts.get('screen_technology', []))
+        for feature in features:
+            if not features[feature]:
+                features[feature].extend(specification_facts.get(feature, []))
         # An absent word is never a negative feature observation. Keep the
         # feature checks inside the model row with their original provenance.
         model_check['features'] = []

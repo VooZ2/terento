@@ -538,3 +538,10 @@ not mean false. Unknown or conflicting screens are not filled from family
 names. See [the display contract](docs/device-api.md#display-only-label-contract).
 Approved records retain their IDs, specifications, assignments, counts and
 approval state. The underlying catalog and event fields remain unchanged.
+
+Build30 preparation adds migration049 and backward-compatible component
+acquisition outcomes, preserving build29 intake and legacy deduplication.
+Admin shows received XML/USB codes independently of mapping approval and derives
+only unanimous reviewed specification facts for XML-matching variants.
+New acquisition phases are grouped in Recent activity with component/history;
+missing terminal receipt is explicit rather than treated as an active job.

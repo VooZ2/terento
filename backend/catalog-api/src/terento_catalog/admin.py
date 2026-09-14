@@ -894,8 +894,13 @@ def _overview_review_attention_item(item: dict[str, Any]) -> str:
 
 
 def _overview_map_event_label(event: dict[str, Any]) -> tuple[str, str]:
+    if event.get("event_type") == "DOWNLOAD_STARTED" and event.get("has_recorded_outcome"):
+        return "Download started · Outcome recorded", "started"
     labels = {
-        "DOWNLOAD_STARTED": ("Download started", "started"),
+        "DOWNLOAD_STARTED": ("Download started · Outcome not received", "started"),
+        "DOWNLOAD_PROCESSING": ("Checking / unpacking · Outcome not received", "started"),
+        "DOWNLOAD_CANCELLED": ("Download cancelled", "unknown"),
+        "DOWNLOAD_INTERRUPTED": ("Download interrupted", "unknown"),
         "DOWNLOAD_SUCCEEDED": ("Download completed", "succeeded"),
         "DOWNLOAD_FAILED": ("Download failed", "failed"),
         "INSTALL_SUCCEEDED": ("Install succeeded", "succeeded"),
@@ -1205,11 +1210,17 @@ def _overview_map_event_href(event: dict[str, Any]) -> str:
 def _overview_map_activity_row(event: dict[str, Any]) -> str:
     label, state = _overview_map_event_label(event)
     href = _overview_map_event_href(event)
+    component = {"main": "Main map", "contours": "Contours"}.get(event.get("component_kind"), "")
+    history = ""
+    if event.get("lifecycle") and len(event["lifecycle"]) > 1:
+        entries = "".join("<li>" + html.escape(str(item.get("type", "")).removeprefix("DOWNLOAD_").replace("_", " ").title())
+                          + " · " + _timestamp_markup(item.get("at")) + "</li>" for item in event["lifecycle"])
+        history = "<details><summary>Download history</summary><ol>" + entries + "</ol></details>"
     return (
         f"<li class='overview-activity-item overview-activity-{state}'>"
         f"<a href='{html.escape(href, quote=True)}'><span class='overview-activity-label'>{html.escape(label)}</span>"
-        f"<span>{html.escape(_overview_map_event_context(event))}</span></a>"
-        f"{_timestamp_markup(event.get('occurred_at'))}</li>"
+        f"<span>{html.escape(_overview_map_event_context(event))}{' · ' + component if component else ''}</span></a>"
+        f"{_timestamp_markup(event.get('occurred_at'))}{history}</li>"
     )
 
 
@@ -2529,7 +2540,7 @@ def map_statistics_page(
       {_admin_header(user, csrf_token, active='map-statistics')}
       <main class='dashboard map-statistics-page' id='main-content'>
         <div class='heading-row'><div><p class='eyebrow'>Map operations</p><h1>Map statistics</h1><p class='lede'>Downloads, installs, and provider health.</p></div></div>
-        <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search'><label><span class='sr-only'>Time range</span><select id='map-statistics-range'>{statistics_period_options}</select></label><label><span class='sr-only'>Provider</span><select id='map-statistics-provider'><option value=''>All providers</option>{provider_options}</select></label><details class='admin-disclosure filter-disclosure' id='map-statistics-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Map ID</span><input id='map-statistics-map' type='search' placeholder='Map ID'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event'><option value=''>All events</option><option value='DOWNLOAD_SUCCEEDED'>Download succeeded</option><option value='DOWNLOAD_FAILED'>Download failed</option><option value='INSTALL_SUCCEEDED'>Install succeeded</option><option value='INSTALL_FAILED'>Install failed</option><option value='DOWNLOAD_STARTED'>Download started</option></select></label></div></details><p class='results-count' id='map-statistics-status' aria-live='polite'>{event_status}</p><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear map statistics filters'>Clear</button></form>
+        <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search'><label><span class='sr-only'>Time range</span><select id='map-statistics-range'>{statistics_period_options}</select></label><label><span class='sr-only'>Provider</span><select id='map-statistics-provider'><option value=''>All providers</option>{provider_options}</select></label><details class='admin-disclosure filter-disclosure' id='map-statistics-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Map ID</span><input id='map-statistics-map' type='search' placeholder='Map ID'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event'><option value=''>All events</option><option value='DOWNLOAD_SUCCEEDED'>Download succeeded</option><option value='DOWNLOAD_FAILED'>Download failed</option><option value='INSTALL_SUCCEEDED'>Install succeeded</option><option value='INSTALL_FAILED'>Install failed</option><option value='DOWNLOAD_STARTED'>Download started</option><option value='DOWNLOAD_PROCESSING'>Checking / unpacking</option><option value='DOWNLOAD_CANCELLED'>Download cancelled</option><option value='DOWNLOAD_INTERRUPTED'>Download interrupted</option></select></label></div></details><p class='results-count' id='map-statistics-status' aria-live='polite'>{event_status}</p><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear map statistics filters'>Clear</button></form>
         <p class='table-help map-statistics-definition-note'>Counts map packages, not watches. One installation can include several packages. Success rates use completed outcomes (successful + failed), excluding operations still in progress. Compatibility evidence is counted separately.</p>
         <section class='admin-kpi-grid map-statistics-kpis' id='map-statistics-metrics' aria-label='Map statistics summary'><article><span>Completed downloads</span><strong data-stat='completedDownloads'>{event_value('completedDownloads')}</strong></article><article><span>Download success</span><strong data-stat='downloadSuccessRate'>{_format_rate(summary['downloadSuccessRate'])}</strong></article><article><span>Completed map-package installs</span><strong data-stat='completedInstalls'>{event_value('completedInstalls')}</strong></article><article><span>Package install success</span><strong data-stat='installSuccessRate'>{_format_rate(summary['installSuccessRate'])}</strong></article></section>
         <section class='map-statistics-empty' id='map-statistics-empty' {'hidden' if has_event_data else ''} aria-live='polite'><h2>{'No map operations in this period' if selected_period != 'all' else 'No map operations match these filters' if any(selected.get(key) for key in ('provider', 'map', 'region', 'event')) else 'No map operation data yet'}</h2><p>Try a wider time range or clear your filters. If all-time activity is empty, no map-operation reports have been received.</p><a href='/admin/map-statistics?period=all'>View all map activity</a></section>
@@ -2958,14 +2969,31 @@ def _identity_evidence_markup(evidence: list[dict]) -> str:
     return "<br>".join(items) or "No observation"
 
 
+def _identity_presentation_candidates(assessment: dict) -> list[dict]:
+    """Prefer explicitly observed features over less-specific catalog rows.
+
+    This narrows operator suggestions only. The authoritative assessment retains
+    every candidate and never treats an unknown feature as a negative fact.
+    """
+    candidates = [c for c in assessment.get("candidates", [])
+                  if not c.get("conflict") and c.get("checks")
+                  and not any(k.get("state") == "CONFLICT" for k in c["checks"])]
+    for feature_name in ("inreach", "solar"):
+        explicit = [c for c in candidates if any(
+            f.get("name") == feature_name and f.get("expected") is True
+            and any(e.get("source") == "model text" and e.get("value") is True for e in f.get("evidence", []))
+            for k in c["checks"] for f in k.get("features", []))]
+        if explicit:
+            candidates = explicit
+    return candidates
+
+
 def _identity_recommendation(results: list[dict[str, Any]]) -> dict | None:
     """Recommend only a single non-conflicting target shared by every report."""
     choices = []
     for result in results:
         assessment = result.get("current_identity_assessment") or result.get("identity_assessment") or {}
-        possible = [c for c in assessment.get("candidates", [])
-                    if not c.get("conflict") and c.get("checks")
-                    and not any(k.get("state") == "CONFLICT" for k in c["checks"])]
+        possible = _identity_presentation_candidates(assessment)
         if len(possible) != 1:
             return None
         choices.append(possible[0])
@@ -2975,7 +3003,7 @@ def _identity_recommendation(results: list[dict[str, Any]]) -> dict | None:
 def _identity_checks_markup(results: list[dict[str, Any]]) -> str:
     candidate = _identity_recommendation(results)
     recommended = candidate is not None
-    possible = [c for r in results for c in (r.get("current_identity_assessment") or r.get("identity_assessment") or {}).get("candidates", []) if not c.get("conflict") and not any(k.get("state") == "CONFLICT" for k in c.get("checks", []))]
+    possible = [c for r in results for c in _identity_presentation_candidates(r.get("current_identity_assessment") or r.get("identity_assessment") or {})]
     if candidate is None and possible and len({c["model"] for c in possible}) == 1:
         candidate = possible[0]
     labels = {"model": "Model", "size": "Case size", "screen": "Screen",
@@ -2986,7 +3014,7 @@ def _identity_checks_markup(results: list[dict[str, Any]]) -> str:
         title = "✓ Model recognized" if complete else "? Suggested model · more information needed"
         bullets = []
         for check in candidate["checks"]:
-            states = [k.get("state") for a in assessments for c in a.get("candidates", [])
+            states = [k.get("observedState", k.get("state")) if check["name"] == "model" else k.get("state") for a in assessments for c in a.get("candidates", [])
                       if (c["deviceId"] == candidate["deviceId"] if recommended else not c.get("conflict")) for k in c["checks"] if k["name"] == check["name"]]
             matched = bool(states) and all(state == "MATCH" for state in states)
             if not recommended and len({str(k.get("expected")) for c in possible for k in c["checks"] if k["name"] == check["name"]}) > 1:
@@ -2995,6 +3023,8 @@ def _identity_checks_markup(results: list[dict[str, Any]]) -> str:
             if value and check["name"] == "size":
                 value += " mm"
             detail = ("Matches" + (" · " + value if value else "")) if matched else "Not enough information"
+            if matched and any(str(e.get("source", "")).startswith("catalog specification:") for e in check.get("evidence", [])):
+                detail += " · catalog specification"
             bullets.append("<li>" + ("✓ " if matched else "? ") + html.escape(labels.get(check["name"], check["name"])) + ": " + html.escape(detail) + "</li>")
         recommendation = "No further model selection needed." if complete else "Recommended: review the missing information before confirming this model."
         if not recommended:
@@ -3002,6 +3032,18 @@ def _identity_checks_markup(results: list[dict[str, Any]]) -> str:
         summary = "<p class='section-kicker'>" + title + "</p><h4>" + html.escape(candidate["model"]) + "</h4><ul class='identity-match-list'>" + "".join(bullets) + "</ul><p>" + recommendation + "</p>"
     else:
         summary = "<h4>? Model not confirmed</h4><p>There is not enough consistent information to recommend one exact model. Leave the review open until the model, size or screen can be confirmed.</p>"
+    solar_checks = [feature for c in possible for check in c.get("checks", [])
+                    for feature in check.get("features", []) if feature.get("name") == "solar"]
+    solar_values = {feature.get("expected") for feature in solar_checks}
+    solar_label = "Not confirmed"
+    if solar_checks and len(solar_values) == 1 and all(feature.get("state") == "MATCH" for feature in solar_checks):
+        solar_label = "Yes" if next(iter(solar_values)) else "No"
+        if any(str(e.get("source", "")).startswith("catalog specification:") for feature in solar_checks for e in feature.get("evidence", [])):
+            solar_label += " · catalog specification"
+    summary += "<p>Solar: " + html.escape(solar_label) + "</p>"
+    xml_models = sorted({str(r["garmin_model_description"]) for r in results if r.get("garmin_model_description")})
+    if xml_models:
+        summary = "<p><strong>Reported device: " + html.escape(" / ".join(xml_models)) + "</strong></p>" + summary
     return "<section class='identity-summary'>" + summary + "</section><details class='admin-disclosure identity-technical-evidence'><summary>Technical evidence and other matches</summary><div class='disclosure-body'>" + _identity_checks_detail_markup(results) + "</div></details>"
 
 
@@ -3026,6 +3068,14 @@ def _identity_checks_detail_markup(results: list[dict[str, Any]]) -> str:
             rows = []
             for check in candidate["checks"]:
                 evidence = _identity_evidence_markup(check.get("evidence", []))
+                if check["name"] in {"xmlPartNumber", "usb"}:
+                    observed = check.get("value")
+                    evidence = ("Received: <strong>" + html.escape(str(observed)) + "</strong>"
+                                if observed is not None else "Not received")
+                    if check.get("evidence"):
+                        evidence += "<br>Catalog mappings: " + _identity_evidence_markup(check["evidence"])
+                    elif observed is not None:
+                        evidence += "<br>Catalog mapping not confirmed"
                 for feature in check.get("features", []):
                     evidence += "<br><strong>" + html.escape(feature["name"]) + ": " + html.escape(states[feature["state"]]) + "</strong> — " + _identity_evidence_markup(feature["evidence"])
                 expected = check.get("expected")
@@ -3069,7 +3119,7 @@ def _identity_source_markup(results: list[dict], csrf_token: str, return_to: str
     return "<details class='admin-disclosure'><summary>Correct an identity source</summary><div class='disclosure-body'><p>Original reports remain unchanged. This records a separate correction and does not reassign any installation.</p>" + "".join(forms) + "</div></details>" if forms else ""
 
 
-def _identity_device_options(devices: list[dict[str, Any]] | None, current_id: Any = None) -> tuple[str, str]:
+def _identity_device_options(devices: list[dict[str, Any]] | None, current_id: Any = None, *, properties_only: bool = False) -> tuple[str, str]:
     current = str(current_id or "").strip()
     current_label = current or "No canonical device selected"
     options: list[str] = []
@@ -3081,6 +3131,10 @@ def _identity_device_options(devices: list[dict[str, Any]] | None, current_id: A
         family = str(device.get("family_name") or device.get("familyName") or device.get("family") or "").strip()
         label_parts = [part for part in (model, variant if variant != "—" else "") if part]
         label = " · ".join(label_parts)
+        if properties_only:
+            screen = str(device.get("screen_technology") or device.get("screenTechnology") or "Screen not confirmed")
+            solar = device.get("solar")
+            label = screen + " · Solar: " + ("yes" if solar is True else "no" if solar is False else "not confirmed")
         if device_id == current:
             current_label = device_id
         options.append(
@@ -3388,7 +3442,21 @@ def _diagnostic_detail_dialog(
         "canonical_device_model_id": canonical_device_model_id,
     })
     recommendation = _identity_recommendation(results)
-    options, current_label = _identity_device_options(identity_devices, first.get("canonical_device_model_id") or (recommendation["deviceId"] if recommendation else None))
+    # Normal selection contains only mutually consistent candidates. A source
+    # correction, available separately, is needed before a conflicting choice.
+    assessments = [r.get("current_identity_assessment") or r.get("identity_assessment") or {} for r in results]
+    candidate_sets = [{c["deviceId"] for c in _identity_presentation_candidates(a)} for a in assessments]
+    selection_devices = identity_devices
+    if candidate_sets and all(a.get("candidates") for a in assessments):
+        allowed_ids = set.intersection(*candidate_sets)
+        selection_devices = [d for d in (identity_devices or [])
+                             if (d.get("id") or d.get("device_id")) in allowed_ids]
+    same_model = bool(selection_devices) and len({
+        (d.get("model"), d.get("case_size_mm")) for d in selection_devices}) == 1
+    options, current_label = _identity_device_options(selection_devices,
+        first.get("canonical_device_model_id") or (recommendation["deviceId"] if recommendation else None),
+        properties_only=same_model)
+    single_candidate = recommendation is not None and len(selection_devices or []) == 1
     search_id = f"identity-search-{dialog_id}"
     canonical_id = f"identity-canonical-{dialog_id}"
     action_id = f"identity-action-{dialog_id}"
@@ -3434,11 +3502,13 @@ def _diagnostic_detail_dialog(
         <h4>Confirm model</h4>
         <label>Action<select name='identity_action' id='{action_id}' data-identity-action><option value='ASSIGN'>Confirm selected model</option><option value='LEAVE_UNRESOLVED'>Leave unresolved</option><option value='NOT_IDENTIFIABLE'>Mark as not identifiable</option></select></label>
         <div data-canonical-device-wrap>
-          <label>Find another model<input id='{search_id}' type='search' data-identity-search placeholder='Model name or size' autocomplete='off' aria-controls='{canonical_id}'></label>
-          <div class='identity-search-results' data-identity-results role='group' aria-label='Matching Garmin models' hidden></div>
-          <label>Garmin model<select name='canonical_device_model_id' id='{canonical_id}' required><option value=''>Choose a Garmin model</option>{options}</select></label>
+          <div{' hidden' if single_candidate else ''}>
+          <div{' hidden' if same_model else ''}><label>Find another model<input id='{search_id}' type='search' data-identity-search placeholder='Model name or size' autocomplete='off' aria-controls='{canonical_id}'></label>
+          <div class='identity-search-results' data-identity-results role='group' aria-label='Matching Garmin models' hidden></div></div>
+          <label>{'Screen / Solar variant' if same_model else 'Garmin model'}<select name='canonical_device_model_id' id='{canonical_id}' required><option value=''>{'Choose the confirmed screen / Solar variant' if same_model else 'Choose a Garmin model'}</option>{options}</select></label>
+          </div>
         </div>
-        <p class='identity-selection' data-identity-selection>Select the model to confirm.</p>
+        <p class='identity-selection' data-identity-selection>{'Model selected from the reported device. No further model selection needed.' if single_candidate else 'Select the model to confirm.'}</p>
         <label>Evidence reason<input name='identity_reason' required placeholder='Exact model confirmed by operator'></label>
         <label>Review note <span class='optional-label'>Optional</span><textarea name='identity_note' rows='3'></textarea></label>
         <button type='submit'>Save identity review</button>
