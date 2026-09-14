@@ -1920,7 +1920,10 @@ def dashboard_page(
     *, operations: list[dict[str, Any]] | None = None,
     resolved_operations: list[dict[str, Any]] | None = None,
     public_stats_enabled: bool = False,
+    identity_devices: list[dict[str, Any]] | None = None,
 ) -> bytes:
+    catalog_by_id = {str(device.get("id") or device.get("device_id")): device
+                     for device in identity_devices or []}
     latest = _latest_data_timestamp(rows)
     status_values = [status.value for status in CANONICAL_STATUS_ORDER]
     status_options = "".join(
@@ -1946,6 +1949,7 @@ def dashboard_page(
         _statistics_row(
             row,
             diagnostic_summary.get(_identity_group_key(row), {}),
+            catalog_device=catalog_by_id.get(str(row.get("canonical_device_model_id") or "")),
         )
         for row in rows
     )
@@ -4350,8 +4354,12 @@ def account_page(user: dict[str, Any], csrf_token: str, *, error: str | None = N
 def _statistics_row(
     row: dict[str, Any],
     diagnostic_summary: dict[str, int] | None = None,
+    *, catalog_device: dict[str, Any] | None = None,
 ) -> str:
     model, variant, identity = _identity_parts(row)
+    if catalog_device is not None:
+        # Same exact catalog record as the linked device card; presentation only.
+        variant = _identity_parts(catalog_device)[1]
     summary = diagnostic_summary or {}
     attempted = int(row.get("attempted_install_count", summary.get("attempts", 0)) or 0)
     successful = int(row.get("successful_install_count", summary.get("successful", 0)) or 0)
