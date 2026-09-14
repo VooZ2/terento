@@ -1340,6 +1340,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         operations=service.compatibility_operation_details(),
                         resolved_operations=service.compatibility_resolved_operation_details(),
                         public_stats_enabled=service.public_compatibility_stats_enabled,
+                        identity_devices=service.admin_devices().get("devices", []),
                     )
                 except Exception:
                     LOGGER.exception("compatibility statistics failed")

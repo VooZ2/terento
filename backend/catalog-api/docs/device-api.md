@@ -217,8 +217,9 @@ model distinctions. Variant orders supplied facts as case size, screen
 Use `47 mm`, `MicroLED`, `fēnix` and `inReach` consistently. Rectangular dimensions
 already present in text stay rectangular (for example `41 × 46 mm`).
 
-Only fields already supplied by that record are formatted. No cross-record or
-family lookup fills missing size/display/features; null is not false. Conflicting
+Only fields supplied by the displayed record are formatted. Assigned installation
+rows display their exact linked catalog variant as described below. No family or
+lookalike lookup fills missing size/display/features; null is not false. Conflicting
 screen words do not choose one screen. Raw model/variant strings, canonical IDs,
 source specs, event assignments, historical identities, approval decisions and
 counts are preserved. The raw `/devices/catalog.json` model/variant contract
@@ -240,3 +241,8 @@ The complete authoritative assessment remains available and still controls
 assignment. Remaining same-model choices display screen/Solar properties rather
 than repeating model/SKU names. An unknown catalog feature is never treated as
 false, and genuine AMOLED/MIP/Solar ambiguity remains unresolved.
+
+The admin Installations table resolves its Variant label from the exact
+`canonical_device_model_id` catalog record, matching the linked device card.
+Unassigned rows retain their reported variant. This read-only presentation
+lookup does not rewrite evidence identity, specifications, assignments or counts.
