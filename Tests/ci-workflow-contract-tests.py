@@ -301,6 +301,8 @@ def main() -> int:
     assert not (WORKFLOWS / "refresh-compatibility-snapshot.yml").exists()
     assert "update-compatibility-snapshot.py" not in publisher
     codeql = (WORKFLOWS / "codeql.yml").read_text(encoding="utf-8")
+    codeql_refs = re.findall(r"uses:\s*github/codeql-action/[^@\s]+@([0-9a-f]{40})", codeql)
+    assert len(codeql_refs) >= 2 and len(set(codeql_refs)) == 1, "CodeQL steps must use the same pinned version"
     assert "name: CodeQL (python)" in codeql
     assert "languages: python" in codeql
     assert "build-mode: none" in codeql

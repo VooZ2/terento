@@ -155,3 +155,11 @@ Do not commit map binaries or redistribute provider data unless the applicable l
 ## Questions
 
 Use GitHub Issues for reproducible bugs and scoped feature requests. Use GitHub Discussions if it is enabled for the repository. For security issues, follow SECURITY.md.
+
+## CI dependency updates
+
+All `github/codeql-action` steps must use the same pinned commit. Dependabot
+groups these updates so initialization and analysis move together. The workflow
+contract rejects mixed versions. Artifact uploads remain pinned and preserve
+test output; CI dependency changes require successful checks before merging.
+These tools run in GitHub Actions and are not bundled in the macOS app.
