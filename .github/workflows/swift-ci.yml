@@ -20,6 +20,11 @@ on:
         required: false
         type: boolean
         default: false
+      run_release_gate:
+        description: Retain a release-gate observation for the checked-out manifest
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -329,7 +334,8 @@ jobs:
       always() &&
       (github.event_name == 'schedule' ||
       startsWith(github.ref, 'refs/tags/v') ||
-      (github.event_name == 'workflow_dispatch' && inputs.send_health_report))
+      (github.event_name == 'workflow_dispatch' &&
+      (inputs.send_health_report || inputs.run_release_gate)))
     needs:
       - changes
       - site-tests
