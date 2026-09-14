@@ -196,7 +196,19 @@ Before distributing a public build:
   run it again with `--check` before publishing;
 - publish and notarize the DMG using this existing process;
 - validate the manifest after publication and confirm its download and notes
-  URLs remain official Terento destinations.
+  URLs remain official Terento destinations;
+- require the beta manifest commit's automatic full Swift CI matrix and retained
+  release health report to pass, then confirm System health shows matching
+  release and website build numbers. A published DMG or successful site deploy
+  alone does not complete this operational release gate.
+
+Every change to the public macOS update manifest selects the full CI matrix.
+A beta push containing that change automatically retains a release observation,
+including failed gates; no separate manual dispatch or new tag is required.
+Before reporting, CI compares the checked-out manifest with current beta metadata
+so a rerun of an older tag cannot replace the current release observation.
+For recovery, dispatch Swift CI on current beta with `run_release_gate=true`
+and `send_health_report=false`; do not edit observations or suppress drift warnings.
 
 Every distributed rebuild must receive a new monotonically increasing build
 and a new build-specific tag, even if its semantic beta label is unchanged.
