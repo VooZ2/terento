@@ -26,6 +26,7 @@ from .compatibility_status import (
 from .device_catalog import _official_source_image_url
 from .failure_reasons import failure_reason_label, normalize_failure_reason
 from .map_capability import classify_map_capable
+from .device_labels import model_label, variant_label
 from .admin_world_map import WORLD_MAP_COUNTRY_ALIASES, WORLD_MAP_SVG
 from .maprando_geography import (
     REGION_DISPLAY_NAMES as MAPRANDO_REGION_DISPLAY_NAMES,
@@ -214,24 +215,7 @@ def _admin_icon(name: str) -> str:
 
 
 def _normalise_variant(value: Any) -> str:
-    raw = str(value or "").strip()[:256]
-    if not raw:
-        return "—"
-    normalized = re.sub(
-        r"\b(\d{2,3})\s*mm\b",
-        lambda match: f"{match.group(1)} mm",
-        raw,
-        flags=re.IGNORECASE,
-    )
-    display_names = {"amoled": "AMOLED", "solar": "Solar", "microled": "MicroLED", "mip": "MIP"}
-    normalized = re.sub(
-        r"\b(AMOLED|Solar|MicroLED)\b",
-        lambda match: display_names[match.group(1).lower()],
-        normalized,
-        flags=re.IGNORECASE,
-    )
-    normalized = ", ".join(part.strip() for part in normalized.split(","))
-    return " ".join(normalized.split())
+    return variant_label({"variant": str(value or "")[:256]}) or "—"
 
 
 def _identity_comparison_key(value: Any) -> str:
@@ -270,7 +254,7 @@ def _identity_parts(row: dict[str, Any]) -> tuple[str, str, str]:
     if size:
         model = re.sub(r"\s*[,·|:–—-]?\s*" + re.escape(size.group(0)) + r"\s*$", "", model, flags=re.IGNORECASE)
     model = model.strip(" ,·|:–—-")
-    return model or "—", _normalise_variant(variant), identity
+    return model_label(model) or "—", variant_label({**row, "model": model, "variant": variant}) or "—", identity
 
 
 def _operation_key(result: dict[str, Any]) -> str:
@@ -738,8 +722,7 @@ def _compatibility_source_label(value: Any) -> str:
 
 
 def _overview_operation_context(operation: dict[str, Any]) -> str:
-    model = str(operation.get("model") or operation.get("compatibility_identity") or "Unknown device").strip()
-    variant = _normalise_variant(operation.get("variant"))
+    model, variant, _ = _identity_parts(operation)
     provider = _compatibility_source_label(operation.get("provider"))
     parts = [model]
     if variant != "—" and variant not in model:
@@ -831,8 +814,7 @@ def _overview_system_attention_item(card: dict[str, Any]) -> str:
 
 
 def _overview_model_activity_item(item: dict[str, Any]) -> str:
-    model = str(item.get("model") or item.get("compatibility_identity") or "Unknown device").strip()
-    variant = _normalise_variant(item.get("variant"))
+    model, variant, _ = _identity_parts(item)
     context = " · ".join(part for part in (model, variant if variant != "—" and variant not in model else "") if part)
     operation_count = int(item.get("operation_count") or 0)
     successful = int(item.get("successful_count") or 0)
@@ -864,8 +846,7 @@ def _overview_model_activity(items: list[dict[str, Any]]) -> str:
 
 
 def _overview_review_item(item: dict[str, Any]) -> str:
-    model = str(item.get("model") or item.get("compatibility_identity") or "Unknown device").strip()
-    variant = _normalise_variant(item.get("variant"))
+    model, variant, _ = _identity_parts(item)
     context = " · ".join(part for part in (model, variant if variant != "—" and variant not in model else "") if part)
     review_status = str(item.get("review_status") or "PENDING").upper()
     public_enabled = bool(item.get("public_statistics_enabled"))
@@ -890,8 +871,7 @@ def _overview_review_required(items: list[dict[str, Any]]) -> str:
 
 
 def _overview_review_attention_item(item: dict[str, Any]) -> str:
-    model = str(item.get("model") or item.get("compatibility_identity") or "Unknown device").strip()
-    variant = _normalise_variant(item.get("variant"))
+    model, variant, _ = _identity_parts(item)
     context = " · ".join(
         part for part in (model, variant if variant != "—" and variant not in model else "") if part
     )
@@ -2923,12 +2903,7 @@ def _display_identity(identity: str, row: dict[str, Any] | None = None) -> tuple
 
 
 def _known_variant_description(row: dict) -> str:
-    variant = _normalise_variant(row.get("variant"))
-    parts = [variant] if variant and variant != "—" else []
-    for value in (row.get("screen_technology"), "Solar" if row.get("solar") is True else None):
-        if value and value.casefold() not in " ".join(parts).casefold():
-            parts.append(value)
-    return ", ".join(parts) if parts else variant
+    return variant_label(row) or "—"
 
 
 def _identity_mapping_markup(device: dict, csrf_token: str) -> str:
@@ -3098,8 +3073,7 @@ def _identity_device_options(devices: list[dict[str, Any]] | None, current_id: A
         device_id = str(device.get("device_id") or device.get("id") or "").strip()
         if not device_id:
             continue
-        model = str(device.get("model") or "Garmin device").strip()
-        variant = _normalise_variant(device.get("variant"))
+        model, variant, _ = _identity_parts(device)
         family = str(device.get("family_name") or device.get("familyName") or device.get("family") or "").strip()
         label_parts = [part for part in (model, variant if variant != "—" else "") if part]
         label = " · ".join(label_parts)
@@ -3400,8 +3374,7 @@ def _diagnostic_detail_dialog(
     catalog_device = next((d for d in identity_devices or []
                            if (d.get('id') or d.get('device_id')) == first.get('canonical_device_model_id')), None)
     if catalog_device:
-        model = str(catalog_device.get('model') or model)
-        variant = _normalise_variant(catalog_device.get('variant'))
+        model, variant, _ = _identity_parts(catalog_device)
     issue = _operation_issue(results)
     result_label = _operation_result(results)
     state = _operation_state(results, resolved=resolved)
@@ -3633,8 +3606,7 @@ def device_detail_page(
     requested_state: str | None = None,
 ) -> bytes:
     device_id = str(device.get("id") or "").strip()
-    model = str(device.get("model") or "Unknown Garmin model")
-    variant = _normalise_variant(device.get("variant"))
+    model, variant, _ = _identity_parts(device)
     identity = " · ".join(part for part in (model, variant if variant != "—" else "") if part)
 
     def matches(event: dict[str, Any]) -> bool:

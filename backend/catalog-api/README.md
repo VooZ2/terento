@@ -529,6 +529,12 @@ name can be shown while the exact size/screen remains unknown. Recommendations
 never assign records automatically or waive the required evidence reason.
 The resolver, source-correction rules and public approval counts are unchanged.
 
-Variant descriptions do not append inReach from the capability flag. Explicit
-inReach model names remain model names; having that capability alone does not
-rename fēnix 8 Pro. The public compatibility helper follows the same boundary.
+Model/variant presentation is standardized without changing stored identities:
+`Pro`, generation and model suffixes stay in Model; size, screen technology,
+Solar, inReach and existing edition labels appear in Variant, in that order.
+For example `fenix 9 Pro - inReach, 51mm` displays as `fēnix 9 Pro` with
+`51 mm, inReach`. Supplied true feature flags are displayed; missing flags do
+not mean false. Unknown or conflicting screens are not filled from family
+names. See [the display contract](docs/device-api.md#display-only-label-contract).
+Approved records retain their IDs, specifications, assignments, counts and
+approval state. The underlying catalog and event fields remain unchanged.

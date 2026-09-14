@@ -205,3 +205,30 @@ Records are never deleted automatically. A model is marked inactive only
 after it is absent from three consecutive successful full weekly collections;
 partial collections do not increment that counter. Inactive records remain
 available in the catalog for historical identity and future compatibility work.
+
+
+## Display-only label contract
+
+Admin inventory, installation/review lists, public compatibility cards and the
+native connected-device heading use presentation labels, never replacement
+identity keys. Model retains Pro, generation, 7S/7X, Mk3i and other official
+model distinctions. Variant orders supplied facts as case size, screen
+(AMOLED/MicroLED/MIP), Solar, inReach, then existing special-edition labels.
+Use `47 mm`, `MicroLED`, `fēnix` and `inReach` consistently. Rectangular dimensions
+already present in text stay rectangular (for example `41 × 46 mm`).
+
+Only fields already supplied by that record are formatted. No cross-record or
+family lookup fills missing size/display/features; null is not false. Conflicting
+screen words do not choose one screen. Raw model/variant strings, canonical IDs,
+source specs, event assignments, historical identities, approval decisions and
+counts are preserved. The raw `/devices/catalog.json` model/variant contract
+continues to support released clients. Shared presentation fixtures live in
+`contracts/fixtures/device-display-labels.json`.
+
+The fēnix 9 family is classified as map-capable in both backend and native
+registries, based on Garmin's official [Map Manager instructions](https://www8.garmin.com/manuals/webhelp/GUID-708A8F4D-9A78-49CF-9528-DE109BBCC472/EN-US/GUID-501D6F25-266A-4913-8F18-35AEEB9335DE.html).
+The public catalog now applies the same fallback as admin when stored map
+capability is null; an explicit stored true/false remains authoritative. Existing
+rows become classifiable without a database migration or a source-specification
+rewrite. Capability is not installation authorization or compatibility evidence.
+This task adds no other unknown family without reviewed additional-map evidence.

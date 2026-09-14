@@ -28,51 +28,47 @@
     ? [...rows]
     : rows.filter((row) => canonicalFamilyKey(row.family) === canonicalFamilyKey(family));
 
-  const displayLabel = (value) => ({
-    amoled: "AMOLED",
-    solar: "Solar",
-    microled: "microLED",
-    mip: "MIP",
-  }[String(value || "").toLocaleLowerCase()] || String(value || "").trim());
-
-  const variantParts = (value) => {
-    const source = String(value || "").trim();
-    const sizeMatch = source.match(/\b(\d{2})\s*mm\b/i);
-    const displayMatch = source.match(/\b(amoled|solar|microled|mip)\b/i);
-    return {
-      size: sizeMatch ? `${Number(sizeMatch[1])} mm` : "",
-      display: displayMatch ? displayLabel(displayMatch[1]) : "",
-    };
-  };
+  // Presentation only: never derive identity IDs or compatibility groups here.
+  const sizePattern = /\b\d{2,3}(?:\s*[x×]\s*\d{2,3})?\s*mm\b/gi;
+  const featurePattern = /\b(?:AMOLED|MicroLED|MIP|Solar|inReach)\b/gi;
+  const clean = (value) => String(value || "").replace(/[®™]/g, "").replace(/\s+/g, " ").trim();
+  const trimSeparators = (value) => clean(value).replace(/^[ ,·•|:–—-]+|[ ,·•|:–—-]+$/g, "");
 
   const exactVariantLabel = (row, fallbackVariants = []) => {
-    const rawVariant = String(row.variant || "").trim();
-    if (/\bHistorical\s*$/i.test(String(row.model || ""))) return "Historical";
-    const source = `${rawVariant} ${String(row.model || "")}`;
-    const parsed = variantParts(source);
-    const sizeValue = Number(row.caseSizeMm ?? row.case_size_mm);
-    const size = Number.isInteger(sizeValue) && sizeValue > 0 ? `${sizeValue} mm` : parsed.size;
-    const displayValue = String(row.screenTechnology ?? row.screen_technology ?? row.displayType ?? row.display_type ?? "").trim();
-    const display = displayValue ? displayLabel(displayValue) : parsed.display;
-    const exactParts = [];
-    if (size) exactParts.push(size);
-    if (display) exactParts.push(display);
-    if ((row.solar === true || /\bsolar\b/i.test(source)) && display !== "Solar") exactParts.push("Solar");
-    if (exactParts.length) return exactParts.join(", ");
-    if (rawVariant) return rawVariant.replace(/\s*(?:·|\||\/)\s*/g, ", ").replace(/\s+/g, " ");
-    return fallbackVariants.map((value) => String(value).trim()).filter(Boolean).join(" · ");
+    const raw = clean(row.variant);
+    const model = clean(row.model);
+    if (/\bHistorical\s*$/i.test(model)) return "Historical";
+    const source = `${raw} ${model}`;
+    const size = Number(row.caseSizeMm ?? row.case_size_mm);
+    const sizes = source.match(sizePattern) || [];
+    const parts = [];
+    if (Number.isInteger(size) && size > 0) parts.push(`${size} mm`);
+    else if (sizes.length) parts.push(sizes[0].replace(/\s*mm$/i, " mm").replace(/\s*[x×]\s*/g, " × "));
+    const display = row.screenTechnology || row.screen_technology || row.displayType || row.display_type || "";
+    const facts = `${source} ${display}`;
+    const screens = ["AMOLED", "MicroLED", "MIP"].filter(name => new RegExp(`\\b${name}\\b`, "i").test(facts));
+    for (const name of ["AMOLED", "MicroLED", "MIP", "Solar", "inReach"]) {
+      if (screens.includes(name) && screens.length > 1) continue;
+      const present = new RegExp(`\\b${name}\\b`, "i").test(facts)
+        || (name === "Solar" && row.solar === true)
+        || (name === "inReach" && (row.inReach ?? row.inreach) === true);
+      if (present) parts.push(name);
+    }
+    const extras = raw.replace(sizePattern, "").replace(featurePattern, "");
+    for (const extra of extras.split(/[,·•|/]/).map(trimSeparators).filter(Boolean)) {
+      if (!parts.includes(extra)) parts.push(extra);
+    }
+    return parts.length ? parts.join(", ") : fallbackVariants.map(clean).filter(Boolean).join(" · ");
   };
 
   const publicModelName = (value) => {
-    const label = String(value || "").trim().normalize("NFC").replace(/^Garmin\s+/i, "");
-    const withoutVariant = label
-      .replace(/\s*[·•|:]?\s*Historical\s*$/i, "")
-      .replace(/\s*(?:[·•|:]\s*|[-–—]\s*)?\d{2}\s*mm(?:\s*,?\s*(?:AMOLED|Solar|microLED))?\s*$/i, "")
-      .replace(/\s*(?:[·•|:]\s*|[-–—]\s*)?(?:AMOLED|Solar|microLED)\s*$/i, "")
-      .replace(/[·•]/g, " ")
-      .replace(/\s+/g, " ")
-      .replace(/[\s,·|:–—-]+$/u, "");
-    return withoutVariant || label;
+    const label = clean(value).replace(/^Garmin\s+/i, "");
+    return trimSeparators(label.replace(sizePattern, "").replace(featurePattern, "")
+      .replace(/\bHistorical\s*$/i, "")
+      .replace(/\b(?:fenix|fēnix)\b/gi, "fēnix")
+      .replace(/\bpro\b/gi, "Pro")
+      .replace(/(fēnix\s+\d+)([sx])\b/gi, (_, base, suffix) => base + suffix.toUpperCase())
+      .replace(/[·•|:,]+/g, " ")) || label;
   };
 
   const successfulInstallLabel = (value) => {
