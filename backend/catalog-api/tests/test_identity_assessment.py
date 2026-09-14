@@ -201,3 +201,17 @@ class IdentityAssessmentTests(unittest.TestCase):
         self.assertLess(markup.index("class='diagnostic-detail-summary'"), markup.index('Model identification'))
         self.assertIn("value='fenix8pro-51-amoled' selected", markup)
         self.assertIn("name='identity_reason' required", markup)
+
+    def test_epix_pro_report_matches_catalog_generation_without_granting_identity(self):
+        devices = [dict(id=f'epix-pro-{size}', model='epix Pro (Gen 2)',
+                        case_size_mm=size, screen_technology='AMOLED') for size in (42,47,51)]
+        event = dict(model='EPIX PRO - 51mm', rawMTPModel='EPIX PRO - 51mm',
+                     garminModelDescription='EPIX PRO - 51mm',
+                     garminModelPartNumber='006-B4314-00')
+        result = assess_identity(event, devices, [])
+        self.assertEqual(len(result['candidates']), 3)
+        possible = [c for c in result['candidates'] if not c['conflict']]
+        self.assertEqual([c['deviceId'] for c in possible], ['epix-pro-51'])
+        self.assertIsNone(result['canonicalDeviceId'])
+        for model in ('epix (Gen 2)', 'epix', 'epix Pro (Gen 3)'):
+            self.assertEqual(assess_identity(dict(model=model), devices, [])['candidates'], [])

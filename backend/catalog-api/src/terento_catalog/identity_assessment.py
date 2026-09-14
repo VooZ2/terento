@@ -52,7 +52,9 @@ def normalized(value: Any) -> str:
 
 def model_label(value: Any) -> str:
     text = normalized(value).removeprefix('garmin ')
-    return re.split(r'\b(?:\d{2,3}\s*mm|amoled|microled|mip|solar|sapphire|inreach)\b', text)[0].strip()
+    label = re.split(r'\b(?:\d{2,3}\s*mm|amoled|microled|mip|solar|sapphire|inreach)\b', text)[0].strip()
+    # Garmin device reports omit the retail generation suffix for epix Pro.
+    return 'epix pro gen 2' if label == 'epix pro' else label
 
 
 def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> dict:

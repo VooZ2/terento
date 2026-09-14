@@ -239,3 +239,19 @@ The admin Installations table resolves its Variant label from the exact
 `canonical_device_model_id` catalog record, matching the linked device card.
 Unassigned rows retain their reported variant. This read-only presentation
 lookup does not rewrite evidence identity, specifications, assignments or counts.
+
+
+## Reviewed epix Pro size inventory
+
+The historical registry includes epix Pro (Gen 2) in 42, 47 and 51 mm AMOLED
+variants. These are case diameters, not display diameters. Garmin sources:
+[42 mm](https://www.garmin.com/en-US/p/894039/),
+[47 mm](https://www.garmin.com/en-US/p/894067/),
+[51 mm](https://www.garmin.com/en-US/p/884088/). Each stores its own official
+product-media URL; Sapphire Edition photos illustrate the size, without
+claiming the connected watch's lens, finish or band. No media is mirrored.
+The unsized historical record and existing assignments remain intact. New
+records start NOT_EVALUATED and are not collector-managed retail entries.
+Reported `EPIX PRO` is a narrow generation-label alias for `epix Pro (Gen 2)`
+during evidence comparison only. Size conflicts still exclude other candidates;
+this alias does not approve XML/USB mappings or assign reports automatically.

@@ -129,3 +129,19 @@ print('PASS: unverified success cannot promote compatibility; migration replay i
 
 from check_identity_database import check_identity_database
 check_identity_database(database)
+
+
+# Historical additions remain review-only and do not replace the unsized record.
+with database.connection() as connection:
+    epix = connection.execute("SELECT * FROM device_model WHERE id LIKE 'garmin-epix-pro-gen-2%' ORDER BY case_size_mm").fetchall()
+    exact = [r for r in epix if r['case_size_mm'] is not None]
+    assert [r['case_size_mm'] for r in exact] == [42, 47, 51]
+    for row in exact:
+        assert row['screen_technology'] == 'AMOLED' and row['map_capable'] is True
+        assert row['collector_managed'] is False and row['record_source'] == 'HISTORICAL_REVIEWED'
+        assert row['support_status'] == 'NOT_EVALUATED'
+        assert row['source_image_url'].startswith('https://res.garmin.com/en/products/')
+        assert row['specification_evidence']['source_image']['edition'] == 'Sapphire Edition'
+    legacy = next(r for r in epix if r['id'] == 'garmin-epix-pro-gen-2')
+    assert legacy['case_size_mm'] is None and legacy['variant'] == 'Historical'
+print('PASS: epix Pro exact historical sizes, official media, and unchanged legacy record')
