@@ -282,6 +282,15 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertFalse(no_evidence["publicCompatibility"]["eligible"])
         self.assertFalse(no_evidence["publicCompatibility"]["published"])
 
+    def test_official_model_photo_precedes_controlled_generic_fallback(self):
+        source = "https://res.garmin.com/en/products/010-02809-01/v/cf-lg.jpg"
+        row = device_row(asset_status="AVAILABLE", asset_scope="GENERIC",
+                         asset_url="https://api.terento.app/assets/devices/generic.png",
+                         source_image_url=source)
+        image = _admin_device_payload([row], None)["devices"][0]["image"]
+        self.assertEqual(image["url"], source)
+        self.assertEqual(image["origin"], "garmin-source")
+
     def test_garmin_source_image_is_used_when_controlled_asset_is_missing(self) -> None:
         source = "https://res.garmin.com/en/products/010-02905-10/v/cf-lg.jpg"
         payload = _admin_device_payload(
