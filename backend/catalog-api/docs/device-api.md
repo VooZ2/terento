@@ -262,3 +262,18 @@ records start NOT_EVALUATED and are not collector-managed retail entries.
 Reported `EPIX PRO` is a narrow generation-label alias for `epix Pro (Gen 2)`
 during evidence comparison only. Size conflicts still exclude other candidates;
 this alias does not approve XML/USB mappings or assign reports automatically.
+
+
+## Historical model photography
+
+Reviewed official product-page media fills missing images for fēnix7/7S/7X,
+fēnix7 Pro/7S Pro/7X Pro (including no-Wi-Fi rows), Forerunner965 and the
+unsized epix Pro row. Regional Garmin product pages remain usable even when
+the US retail category no longer lists a model. Product-page provenance is
+retained under specification_evidence.source_image; URLs are linked directly.
+Photos represent the model, not a connected watch's exact finish, band or
+connectivity edition. Model/specification/approval data is unchanged. Admin
+and public model views prefer this official model photo over a controlled
+GENERIC asset. Generic artwork remains the last resort when no reviewed photo
+is available; family imagery must be deliberately reviewed, never guessed from
+an unrelated generation.
