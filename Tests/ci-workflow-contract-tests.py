@@ -206,7 +206,9 @@ def main() -> int:
     swift = (WORKFLOWS / "swift-ci.yml").read_text(encoding="utf-8")
     for contract in (
         "send_health_report:",
+        "run_release_gate:",
         "github.event_name == 'workflow_dispatch' && inputs.send_health_report",
+        "inputs.send_health_report || inputs.run_release_gate",
         "name: build-and-test",
         "Tests/select-test-suites.py --json --stdin",
         "xcodebuild \\",
