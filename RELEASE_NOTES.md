@@ -1,17 +1,19 @@
-# Terento v1.0.0-beta.12 (build 29)
+# Terento v1.0.0-beta.12 (build 30)
 
 Terento continues to offer Freizeitkarte, OpenTopoMap, MapRando, BBBike and BBBike (Ontrail) maps.
 
 ## Improvements
 
-- More accurate watch model and screen details from the connected watch and the Terento catalog.
-- Original watch model details help the service distinguish screen and hardware variants without exposing technical identifiers in the app.
-- Fixed map activity diagnostics that could stay queued when a download or installation result arrived during an earlier upload.
+- Map activity now distinguishes processing, cancellation and interruption after a download starts. Unfinished downloads are reconciled when Terento next opens.
+- Main maps and contour downloads keep separate outcomes and activity history.
+- Device review shows received XML and USB identifiers independently of catalog confirmation, prioritizes the reported model, and reduces repeated model choices to the remaining screen and Solar differences.
+- Preserves the provider identity of catalog maps, including OpenTopoMap and Freizeitkarte. Custom imports remain separate.
 
 ## Known issues
 
 - The map update feature has not been tested yet.
 - Occasional device connection issues may interrupt reading installed maps or finishing an installation. If prompted, disconnect and reconnect your Garmin, then try again.
-- Missing or shared model identifiers may still require administrator review. Metadata was checked on a fēnix 8 47 mm; this does not establish compatibility for other variants.
+- Missing or shared model identifiers may still require administrator review. Unknown screen or Solar properties remain unconfirmed.
+- Download recovery and component reporting passed automated tests; a complete build30 installation and interruption check on a real watch is still pending. Existing build29 records cannot always recover outcomes that were never recorded.
 
-<!-- DMG SHA-256: a7c793307cde6dad91db5eb93379c481b14ea66878f64613911cbc9158fa5ddc -->
+<!-- DMG SHA-256: c758b71e6cc5f92e6d8078f8c331b14ab0d850e7c8fe63313b169e0f644b08e6 -->
