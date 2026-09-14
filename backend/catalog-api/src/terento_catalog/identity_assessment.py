@@ -97,10 +97,10 @@ def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> d
     specification_targets = [d for d in devices if xml_label
         and model_label(d.get('model')) == xml_label
         and all(model_label(value) == xml_label for _, value in labels)
-        and all(d.get('case_size_mm') == value for _, value in sizes)
-        and all(d.get('screen_technology') == value for _, value in screens)
-        and (not solar or d.get('solar') is True)
-        and (not inreach or d.get('inreach') is True)]
+        and all(d.get('case_size_mm') is None or d['case_size_mm'] == value for _, value in sizes)
+        and all(d.get('screen_technology') is None or d['screen_technology'] == value for _, value in screens)
+        and (not solar or d.get('solar') is not False)
+        and (not inreach or d.get('inreach') is not False)]
     specification_facts = {}
     for field in ('screen_technology', 'solar', 'inreach'):
         values = {d.get(field) for d in specification_targets}

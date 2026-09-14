@@ -1172,7 +1172,15 @@ class Database:
                     e.app_build,
                     e.occurred_at,
                     e.component_kind,
-                    e.lifecycle
+                    e.lifecycle,
+                    EXISTS (SELECT 1 FROM map_download_event ended
+                            WHERE ended.operation_id = e.operation_id
+                              AND ended.provider_id = e.provider_id
+                              AND ended.map_package_id IS NOT DISTINCT FROM e.map_package_id
+                              AND ended.is_local_test IS NOT TRUE
+                              AND ended.event_type IN ('DOWNLOAD_SUCCEEDED', 'DOWNLOAD_FAILED', 'DOWNLOAD_CANCELLED', 'DOWNLOAD_INTERRUPTED')
+                              AND (ended.acquisition_id = e.acquisition_id OR
+                                   (ended.acquisition_id IS NULL AND e.acquisition_id IS NULL))) AS has_recorded_outcome
                 {event_scope.replace('FROM map_download_event AS e', 'FROM acquisition_activity AS e')}
                 UNION ALL
                 SELECT
@@ -1190,7 +1198,8 @@ class Database:
                     NULL AS app_build,
                     c.occurred_at,
                     NULL AS component_kind,
-                    NULL AS lifecycle
+                    NULL AS lifecycle,
+                    false AS has_recorded_outcome
                 FROM compatibility_fallback AS c
                 LEFT JOIN map_provider AS p ON p.id = c.provider_id
                 ORDER BY occurred_at DESC

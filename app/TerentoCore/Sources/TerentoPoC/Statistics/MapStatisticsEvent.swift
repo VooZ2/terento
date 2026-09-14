@@ -381,8 +381,8 @@ final class MapStatisticsEventController: ObservableObject {
         }
     }
 
-    /// Saving and delivery happen outside the installation task. Any local or
-    /// network error is contained here and can never change installation state.
+    /// Persist before returning; network delivery runs separately. Any local
+    /// or network error is contained here and cannot change installation state.
     func record(_ event: MapStatisticsEvent) {
         // Custom IMG imports belong to compatibility evidence only. Keep this
         // boundary defensive so a stale caller cannot add them to map stats.

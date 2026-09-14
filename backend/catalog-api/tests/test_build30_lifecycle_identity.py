@@ -20,7 +20,7 @@ class Build30Tests(unittest.TestCase):
         return dict(dict(model='fenix 9 Pro', rawMTPModel='fenix 9 Pro - inReach, 47mm',
                          garminModelDescription='fenix 9 Pro - inReach, 47mm',
                          garminModelPartNumber='006-B4953-00', usbVendorID=2334,
-                         usbProductID=20920), **changes)
+                         usbProductID=21337), **changes)
 
     def test_xml_selects_size_and_derives_reviewed_screen_and_solar(self):
         result = assess_identity(self.event(), [self.device(), self.device(id='fenix9-51', case_size_mm=51)], [])
@@ -39,6 +39,12 @@ class Build30Tests(unittest.TestCase):
             self.assertEqual(result['candidates'][0]['checks'][2]['state'], 'MISSING')
             self.assertEqual(result['candidates'][0]['checks'][0]['features'][0]['state'], 'MISSING')
 
+    def test_unknown_feature_is_not_excluded_from_specification_consensus(self):
+        devices = [self.device(), self.device(id='unknown-inreach', inreach=None, screen_technology='MicroLED')]
+        result = assess_identity(self.event(), devices, [])
+        self.assertEqual(result['candidates'][0]['checks'][2]['state'], 'MISSING')
+        self.assertFalse(result['candidates'][1]['conflict'])
+
     def test_xml_mtp_conflict_cannot_derive_specs(self):
         result = assess_identity(self.event(rawMTPModel='fenix 8 Pro 47mm'), [self.device()], [])
         self.assertTrue(result['candidates'][0]['conflict'])
@@ -49,7 +55,7 @@ class Build30Tests(unittest.TestCase):
         result = assess_identity(e, [self.device()], [])
         markup = _identity_checks_markup([dict(current_identity_assessment=result,
             garmin_model_description=e['garminModelDescription'])])
-        for text in ('006-B4953-00', '091e:51b8', 'Catalog mapping not confirmed',
+        for text in ('006-B4953-00', '091e:5359', 'Catalog mapping not confirmed',
                      'Reported device: fenix 9 Pro - inReach, 47mm'):
             self.assertIn(text, markup)
         missing = assess_identity(self.event(usbVendorID=None), [self.device()], [])
@@ -68,6 +74,28 @@ class Build30Tests(unittest.TestCase):
         self.assertIn("Model selected from the reported device.", markup)
         self.assertNotIn("<option value='wrong-size'", markup)
         self.assertIn('wrong-size', markup)  # technical evidence remains available
+
+    def test_reported_inreach_prefers_specific_rows_but_keeps_real_screen_ambiguity(self):
+        from terento_catalog.admin import _diagnostic_detail_dialog, _identity_recommendation
+        # Shape observed in production: unspecified rows alongside explicit
+        # inReach rows, with both AMOLED and Solar/MIP variants in the catalog.
+        devices = [self.device(id='generic', inreach=None, solar=None),
+                   self.device(id='inreach', solar=None),
+                   self.device(id='generic-solar', inreach=None, solar=True, screen_technology='MIP'),
+                   self.device(id='inreach-solar', solar=True, screen_technology='MIP')]
+        assessment = assess_identity(self.event(), devices, [])
+        result = dict(identity_assessment=assessment, identity_resolution_state='UNRESOLVED',
+                      operation_id='preview', phase_outcome='SUCCEEDED', provider='custom')
+        self.assertIsNone(_identity_recommendation([result]))
+        markup = _diagnostic_detail_dialog('fenix 9 Pro', 'preview', [result], resolved=False,
+                    csrf_token='test', identity_devices=devices)
+        self.assertIn('Screen / Solar variant', markup)
+        self.assertIn("<option value='inreach'>AMOLED · Solar: not confirmed</option>", markup)
+        self.assertIn("<option value='inreach-solar'>MIP · Solar: yes</option>", markup)
+        self.assertNotIn("<option value='generic'", markup)
+        self.assertNotIn("<option value='generic-solar'", markup)
+        self.assertEqual(len(assessment['candidates']), 4)  # authoritative evidence unchanged
+        self.assertEqual(assessment['state'], 'UNRESOLVED')
 
     def map_event(self, **changes):
         path = Path(__file__).resolve().parents[3] / 'contracts/fixtures/map-event.valid.json'
@@ -99,5 +127,8 @@ class Build30Tests(unittest.TestCase):
         markup = _overview_map_activity_row(row)
         for text in ('Outcome not received', 'Contours', 'Download history', 'Processing'):
             self.assertIn(text, markup)
+        legacy = _overview_map_activity_row(dict(event_type='DOWNLOAD_STARTED', has_recorded_outcome=True))
+        self.assertIn('Outcome recorded', legacy)
+        self.assertNotIn('Outcome not received', legacy)
         for event_type in ('DOWNLOAD_CANCELLED', 'DOWNLOAD_INTERRUPTED'):
             self.assertNotIn('failed', _overview_map_activity_row(dict(event_type=event_type)))

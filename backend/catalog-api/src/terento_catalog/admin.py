@@ -894,6 +894,8 @@ def _overview_review_attention_item(item: dict[str, Any]) -> str:
 
 
 def _overview_map_event_label(event: dict[str, Any]) -> tuple[str, str]:
+    if event.get("event_type") == "DOWNLOAD_STARTED" and event.get("has_recorded_outcome"):
+        return "Download started · Outcome recorded", "started"
     labels = {
         "DOWNLOAD_STARTED": ("Download started · Outcome not received", "started"),
         "DOWNLOAD_PROCESSING": ("Checking / unpacking · Outcome not received", "started"),
@@ -2963,14 +2965,31 @@ def _identity_evidence_markup(evidence: list[dict]) -> str:
     return "<br>".join(items) or "No observation"
 
 
+def _identity_presentation_candidates(assessment: dict) -> list[dict]:
+    """Prefer explicitly observed features over less-specific catalog rows.
+
+    This narrows operator suggestions only. The authoritative assessment retains
+    every candidate and never treats an unknown feature as a negative fact.
+    """
+    candidates = [c for c in assessment.get("candidates", [])
+                  if not c.get("conflict") and c.get("checks")
+                  and not any(k.get("state") == "CONFLICT" for k in c["checks"])]
+    for feature_name in ("inreach", "solar"):
+        explicit = [c for c in candidates if any(
+            f.get("name") == feature_name and f.get("expected") is True
+            and any(e.get("source") == "model text" and e.get("value") is True for e in f.get("evidence", []))
+            for k in c["checks"] for f in k.get("features", []))]
+        if explicit:
+            candidates = explicit
+    return candidates
+
+
 def _identity_recommendation(results: list[dict[str, Any]]) -> dict | None:
     """Recommend only a single non-conflicting target shared by every report."""
     choices = []
     for result in results:
         assessment = result.get("current_identity_assessment") or result.get("identity_assessment") or {}
-        possible = [c for c in assessment.get("candidates", [])
-                    if not c.get("conflict") and c.get("checks")
-                    and not any(k.get("state") == "CONFLICT" for k in c["checks"])]
+        possible = _identity_presentation_candidates(assessment)
         if len(possible) != 1:
             return None
         choices.append(possible[0])
@@ -2980,7 +2999,7 @@ def _identity_recommendation(results: list[dict[str, Any]]) -> dict | None:
 def _identity_checks_markup(results: list[dict[str, Any]]) -> str:
     candidate = _identity_recommendation(results)
     recommended = candidate is not None
-    possible = [c for r in results for c in (r.get("current_identity_assessment") or r.get("identity_assessment") or {}).get("candidates", []) if not c.get("conflict") and not any(k.get("state") == "CONFLICT" for k in c.get("checks", []))]
+    possible = [c for r in results for c in _identity_presentation_candidates(r.get("current_identity_assessment") or r.get("identity_assessment") or {})]
     if candidate is None and possible and len({c["model"] for c in possible}) == 1:
         candidate = possible[0]
     labels = {"model": "Model", "size": "Case size", "screen": "Screen",
@@ -3096,7 +3115,7 @@ def _identity_source_markup(results: list[dict], csrf_token: str, return_to: str
     return "<details class='admin-disclosure'><summary>Correct an identity source</summary><div class='disclosure-body'><p>Original reports remain unchanged. This records a separate correction and does not reassign any installation.</p>" + "".join(forms) + "</div></details>" if forms else ""
 
 
-def _identity_device_options(devices: list[dict[str, Any]] | None, current_id: Any = None) -> tuple[str, str]:
+def _identity_device_options(devices: list[dict[str, Any]] | None, current_id: Any = None, *, properties_only: bool = False) -> tuple[str, str]:
     current = str(current_id or "").strip()
     current_label = current or "No canonical device selected"
     options: list[str] = []
@@ -3108,6 +3127,10 @@ def _identity_device_options(devices: list[dict[str, Any]] | None, current_id: A
         family = str(device.get("family_name") or device.get("familyName") or device.get("family") or "").strip()
         label_parts = [part for part in (model, variant if variant != "—" else "") if part]
         label = " · ".join(label_parts)
+        if properties_only:
+            screen = str(device.get("screen_technology") or device.get("screenTechnology") or "Screen not confirmed")
+            solar = device.get("solar")
+            label = screen + " · Solar: " + ("yes" if solar is True else "no" if solar is False else "not confirmed")
         if device_id == current:
             current_label = device_id
         options.append(
@@ -3418,14 +3441,17 @@ def _diagnostic_detail_dialog(
     # Normal selection contains only mutually consistent candidates. A source
     # correction, available separately, is needed before a conflicting choice.
     assessments = [r.get("current_identity_assessment") or r.get("identity_assessment") or {} for r in results]
-    candidate_sets = [{c["deviceId"] for c in a.get("candidates", []) if not c.get("conflict")}
-                      for a in assessments]
+    candidate_sets = [{c["deviceId"] for c in _identity_presentation_candidates(a)} for a in assessments]
     selection_devices = identity_devices
     if candidate_sets and all(a.get("candidates") for a in assessments):
         allowed_ids = set.intersection(*candidate_sets)
         selection_devices = [d for d in (identity_devices or [])
                              if (d.get("id") or d.get("device_id")) in allowed_ids]
-    options, current_label = _identity_device_options(selection_devices, first.get("canonical_device_model_id") or (recommendation["deviceId"] if recommendation else None))
+    same_model = bool(selection_devices) and len({
+        (d.get("model"), d.get("case_size_mm")) for d in selection_devices}) == 1
+    options, current_label = _identity_device_options(selection_devices,
+        first.get("canonical_device_model_id") or (recommendation["deviceId"] if recommendation else None),
+        properties_only=same_model)
     single_candidate = recommendation is not None and len(selection_devices or []) == 1
     search_id = f"identity-search-{dialog_id}"
     canonical_id = f"identity-canonical-{dialog_id}"
@@ -3473,9 +3499,9 @@ def _diagnostic_detail_dialog(
         <label>Action<select name='identity_action' id='{action_id}' data-identity-action><option value='ASSIGN'>Confirm selected model</option><option value='LEAVE_UNRESOLVED'>Leave unresolved</option><option value='NOT_IDENTIFIABLE'>Mark as not identifiable</option></select></label>
         <div data-canonical-device-wrap>
           <div{' hidden' if single_candidate else ''}>
-          <label>Find another model<input id='{search_id}' type='search' data-identity-search placeholder='Model name or size' autocomplete='off' aria-controls='{canonical_id}'></label>
-          <div class='identity-search-results' data-identity-results role='group' aria-label='Matching Garmin models' hidden></div>
-          <label>Garmin model<select name='canonical_device_model_id' id='{canonical_id}' required><option value=''>Choose a Garmin model</option>{options}</select></label>
+          <div{' hidden' if same_model else ''}><label>Find another model<input id='{search_id}' type='search' data-identity-search placeholder='Model name or size' autocomplete='off' aria-controls='{canonical_id}'></label>
+          <div class='identity-search-results' data-identity-results role='group' aria-label='Matching Garmin models' hidden></div></div>
+          <label>{'Screen / Solar variant' if same_model else 'Garmin model'}<select name='canonical_device_model_id' id='{canonical_id}' required><option value=''>{'Choose the confirmed screen / Solar variant' if same_model else 'Choose a Garmin model'}</option>{options}</select></label>
           </div>
         </div>
         <p class='identity-selection' data-identity-selection>{'Model selected from the reported device. No further model selection needed.' if single_candidate else 'Select the model to confirm.'}</p>
