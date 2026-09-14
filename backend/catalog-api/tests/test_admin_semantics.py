@@ -1541,8 +1541,8 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertIn("Diagnostic ID: <code>pending-operation</code>", diagnostics)
         self.assertNotIn("Diagnostic ID: <code>canonical-operation</code>", diagnostics)
-        self.assertIn("Resolve identity", diagnostics)
-        self.assertIn("Assign canonical Garmin device", diagnostics)
+        self.assertIn("Confirm model", diagnostics)
+        self.assertIn("Confirm selected model", diagnostics)
 
     def test_canonical_diagnostics_include_all_raw_identity_spellings(self):
         canonical_id = "garmin-fenix-8-47-amoled"
@@ -1659,8 +1659,8 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Resolve diagnostic", body)
         self.assertIn("Reopen diagnostic", body)
         self.assertIn("HISTORICAL_SUPERSEDED", body)
-        self.assertIn("Model, family, variant, size, or ID", body)
-        self.assertIn("Canonical ID:", body)
+        self.assertIn("Model name or size", body)
+        self.assertIn("Selected model:", body)
         self.assertIn("Prepare GitHub issue", body)
         self.assertIn("Copy issue report", body)
         self.assertIn("Link issue", body)

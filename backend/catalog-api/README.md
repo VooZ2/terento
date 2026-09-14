@@ -516,3 +516,19 @@ Deploy migration/API first, then catalog/admin/site, audit historical reports,
 and only then release the new app build. DB integration tests exercise replay,
 shared codes, contradictory manual choices, audited correction, old aggregate
 preservation and new unresolved/public-count isolation on a disposable DB.
+
+## Model review presentation
+
+Diagnostic details retain the device/variant, date, map/region, result, app
+version and review-state summary above Model identification. Identification
+shows one model with five concise match/missing-information bullets; full
+candidate checks, original observations and source decisions remain in a
+collapsed technical disclosure. A recommendation is preselected only when
+every report has the same single non-conflicting candidate. A shared model
+name can be shown while the exact size/screen remains unknown. Recommendations
+never assign records automatically or waive the required evidence reason.
+The resolver, source-correction rules and public approval counts are unchanged.
+
+Variant descriptions do not append inReach from the capability flag. Explicit
+inReach model names remain model names; having that capability alone does not
+rename fēnix 8 Pro. The public compatibility helper follows the same boundary.

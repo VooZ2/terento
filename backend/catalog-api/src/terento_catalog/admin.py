@@ -2925,8 +2925,7 @@ def _display_identity(identity: str, row: dict[str, Any] | None = None) -> tuple
 def _known_variant_description(row: dict) -> str:
     variant = _normalise_variant(row.get("variant"))
     parts = [variant] if variant and variant != "—" else []
-    for value in (row.get("screen_technology"), "Solar" if row.get("solar") is True else None,
-                  "inReach" if row.get("inreach") is True else None):
+    for value in (row.get("screen_technology"), "Solar" if row.get("solar") is True else None):
         if value and value.casefold() not in " ".join(parts).casefold():
             parts.append(value)
     return ", ".join(parts) if parts else variant
@@ -2980,7 +2979,54 @@ def _identity_evidence_markup(evidence: list[dict]) -> str:
     return "<br>".join(items) or "No observation"
 
 
+def _identity_recommendation(results: list[dict[str, Any]]) -> dict | None:
+    """Recommend only a single non-conflicting target shared by every report."""
+    choices = []
+    for result in results:
+        assessment = result.get("current_identity_assessment") or result.get("identity_assessment") or {}
+        possible = [c for c in assessment.get("candidates", [])
+                    if not c.get("conflict") and c.get("checks")
+                    and not any(k.get("state") == "CONFLICT" for k in c["checks"])]
+        if len(possible) != 1:
+            return None
+        choices.append(possible[0])
+    return choices[0] if choices and len({c["deviceId"] for c in choices}) == 1 else None
+
+
 def _identity_checks_markup(results: list[dict[str, Any]]) -> str:
+    candidate = _identity_recommendation(results)
+    recommended = candidate is not None
+    possible = [c for r in results for c in (r.get("current_identity_assessment") or r.get("identity_assessment") or {}).get("candidates", []) if not c.get("conflict") and not any(k.get("state") == "CONFLICT" for k in c.get("checks", []))]
+    if candidate is None and possible and len({c["model"] for c in possible}) == 1:
+        candidate = possible[0]
+    labels = {"model": "Model", "size": "Case size", "screen": "Screen",
+              "xmlPartNumber": "Product identification", "usb": "Connection identification"}
+    if candidate:
+        assessments = [r.get("current_identity_assessment") or r.get("identity_assessment") or {} for r in results]
+        complete = all(a.get("state") == "RESOLVED" and a.get("canonicalDeviceId") == candidate["deviceId"] for a in assessments)
+        title = "✓ Model recognized" if complete else "? Suggested model · more information needed"
+        bullets = []
+        for check in candidate["checks"]:
+            states = [k.get("state") for a in assessments for c in a.get("candidates", [])
+                      if (c["deviceId"] == candidate["deviceId"] if recommended else not c.get("conflict")) for k in c["checks"] if k["name"] == check["name"]]
+            matched = bool(states) and all(state == "MATCH" for state in states)
+            if not recommended and len({str(k.get("expected")) for c in possible for k in c["checks"] if k["name"] == check["name"]}) > 1:
+                matched = False
+            value = str(check.get("expected") or "") if check["name"] in {"size", "screen"} else ""
+            if value and check["name"] == "size":
+                value += " mm"
+            detail = ("Matches" + (" · " + value if value else "")) if matched else "Not enough information"
+            bullets.append("<li>" + ("✓ " if matched else "? ") + html.escape(labels.get(check["name"], check["name"])) + ": " + html.escape(detail) + "</li>")
+        recommendation = "No further model selection needed." if complete else "Recommended: review the missing information before confirming this model."
+        if not recommended:
+            recommendation = "Recommended: leave the review open until the size or screen identifies one exact variant."
+        summary = "<p class='section-kicker'>" + title + "</p><h4>" + html.escape(candidate["model"]) + "</h4><ul class='identity-match-list'>" + "".join(bullets) + "</ul><p>" + recommendation + "</p>"
+    else:
+        summary = "<h4>? Model not confirmed</h4><p>There is not enough consistent information to recommend one exact model. Leave the review open until the model, size or screen can be confirmed.</p>"
+    return "<section class='identity-summary'>" + summary + "</section><details class='admin-disclosure identity-technical-evidence'><summary>Technical evidence and other matches</summary><div class='disclosure-body'>" + _identity_checks_detail_markup(results) + "</div></details>"
+
+
+def _identity_checks_detail_markup(results: list[dict[str, Any]]) -> str:
     labels = {"model": "Model and variant", "size": "Case size", "screen": "Screen technology",
               "xmlPartNumber": "Device XML part number", "usb": "USB VID/PID"}
     states = {"MATCH": "✓ Matches", "MISSING": "? Missing evidence", "CONFLICT": "✕ Conflicts"}
@@ -3055,7 +3101,7 @@ def _identity_device_options(devices: list[dict[str, Any]] | None, current_id: A
         model = str(device.get("model") or "Garmin device").strip()
         variant = _normalise_variant(device.get("variant"))
         family = str(device.get("family_name") or device.get("familyName") or device.get("family") or "").strip()
-        label_parts = [part for part in (model, variant if variant != "—" else "", family, device_id) if part]
+        label_parts = [part for part in (model, variant if variant != "—" else "") if part]
         label = " · ".join(label_parts)
         if device_id == current:
             current_label = device_id
@@ -3364,7 +3410,8 @@ def _diagnostic_detail_dialog(
         "compatibility_identity": identity,
         "canonical_device_model_id": canonical_device_model_id,
     })
-    options, current_label = _identity_device_options(identity_devices, first.get("canonical_device_model_id"))
+    recommendation = _identity_recommendation(results)
+    options, current_label = _identity_device_options(identity_devices, first.get("canonical_device_model_id") or (recommendation["deviceId"] if recommendation else None))
     search_id = f"identity-search-{dialog_id}"
     canonical_id = f"identity-canonical-{dialog_id}"
     action_id = f"identity-action-{dialog_id}"
@@ -3407,14 +3454,14 @@ def _diagnostic_detail_dialog(
         <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>
         <input type='hidden' name='operation_key' value='{html.escape(operation_key, quote=True)}'>
         <input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'>
-        <h4>Resolve identity</h4>
-        <label>Action<select name='identity_action' id='{action_id}' data-identity-action><option value='ASSIGN'>Assign canonical Garmin device</option><option value='LEAVE_UNRESOLVED'>Leave unresolved</option><option value='NOT_IDENTIFIABLE'>Mark as not identifiable</option></select></label>
+        <h4>Confirm model</h4>
+        <label>Action<select name='identity_action' id='{action_id}' data-identity-action><option value='ASSIGN'>Confirm selected model</option><option value='LEAVE_UNRESOLVED'>Leave unresolved</option><option value='NOT_IDENTIFIABLE'>Mark as not identifiable</option></select></label>
         <div data-canonical-device-wrap>
-          <label>Search Garmin device<input id='{search_id}' type='search' data-identity-search placeholder='Model, family, variant, size, or ID' autocomplete='off' aria-controls='{canonical_id}'></label>
+          <label>Find another model<input id='{search_id}' type='search' data-identity-search placeholder='Model name or size' autocomplete='off' aria-controls='{canonical_id}'></label>
           <div class='identity-search-results' data-identity-results role='group' aria-label='Matching Garmin models' hidden></div>
           <label>Garmin model<select name='canonical_device_model_id' id='{canonical_id}' required><option value=''>Choose a Garmin model</option>{options}</select></label>
         </div>
-        <p class='identity-selection' data-identity-selection>Canonical ID: <code>{html.escape(current_label)}</code></p>
+        <p class='identity-selection' data-identity-selection>Select the model to confirm.</p>
         <label>Evidence reason<input name='identity_reason' required placeholder='Exact model confirmed by operator'></label>
         <label>Review note <span class='optional-label'>Optional</span><textarea name='identity_note' rows='3'></textarea></label>
         <button type='submit'>Save identity review</button>
@@ -5112,7 +5159,7 @@ def _diagnostics_script() -> str:
             if (canonical) { canonical.required = assign; canonical.disabled = !assign; }
             if (search) search.disabled = !assign;
             if (search && canonical && selection) {
-              selection.textContent = assign ? `Canonical ID: ${canonical.value || 'No device selected'}` : 'No model will be assigned.';
+              selection.textContent = assign ? `Selected model: ${canonical.value ? canonical.selectedOptions[0].textContent : 'No model selected'}` : 'No model will be assigned.';
             }
           };
           action.addEventListener('change', sync);
@@ -5328,7 +5375,7 @@ td:nth-child(1){font-weight:650}
 td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-numeric:tabular-nums}.numeric{font-variant-numeric:tabular-nums}
 .muted-value{color:var(--secondary)}
 .error-count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;padding:2px 7px;border:1px solid color-mix(in srgb,var(--danger) 35%,var(--border));border-radius:999px;color:var(--danger);font-weight:700}
-.evidence-table-wrap table{min-width:760px}.evidence-model-row{cursor:pointer}.evidence-model-row:hover{background:color-mix(in srgb,var(--surface-muted) 52%,white)}.evidence-model-row:focus-visible{outline:3px solid color-mix(in srgb,var(--sky) 58%,white);outline-offset:-3px}.evidence-model-row td:nth-child(3),.evidence-model-row td:nth-child(4){font-variant-numeric:tabular-nums}.error-count{text-decoration:none}.identity-pending-indicator{display:inline-flex;align-items:center;margin-left:6px;padding:3px 6px;border:1px solid var(--border);border-radius:999px;color:var(--secondary);font-size:10px;font-weight:700;white-space:nowrap}.evidence-table-note{margin:10px 3px 0}.back-link{margin:0 0 20px;color:var(--interactive);font-size:13px;font-weight:700}.back-link a{text-underline-offset:3px}.diagnostic-model-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 30px}.diagnostic-model-metrics article{min-height:82px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px}.diagnostic-model-metrics span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.diagnostic-model-metrics strong{display:block;margin-top:4px;font-family:var(--font-brand);font-size:25px;line-height:1.15}.diagnostic-model-metrics .status-badge{margin-top:5px}.diagnostic-filter-bar{justify-content:flex-start}.diagnostic-list-wrap{max-height:min(70vh,720px)}.diagnostic-list-table{min-width:920px}.diagnostic-list-table th,.diagnostic-list-table td{white-space:normal;overflow-wrap:anywhere}.diagnostic-list-table td:first-child{white-space:nowrap}.diagnostic-list-table th:last-child,.diagnostic-list-table td:last-child{text-align:right}.diagnostic-list-table tbody tr:hover{background:color-mix(in srgb,var(--surface-muted) 52%,white)}.diagnostic-state{display:inline-flex;align-items:center;min-height:24px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;font-size:10px;font-weight:750;line-height:1;white-space:nowrap}.diagnostic-state-open{background:var(--status-error-surface);border-color:var(--status-error-border);color:var(--status-error-text)}.diagnostic-state-resolved{background:var(--status-success-surface);border-color:var(--status-success-border);color:var(--status-success-text)}.diagnostic-state-identity_pending{background:var(--surface-muted);color:var(--secondary)}.diagnostic-list-table .github-issue,.github-current .github-issue{color:var(--interactive);font-weight:700;white-space:nowrap}.diagnostic-detail-dialog{width:min(860px,calc(100% - 32px));max-height:min(900px,calc(100% - 32px));padding:0;border:0;border-radius:16px;background:var(--surface);color:var(--graphite);box-shadow:0 24px 80px rgba(34,42,43,.24)}.diagnostic-detail-dialog::backdrop{background:rgba(34,42,43,.34)}.diagnostic-detail-inner{max-height:min(900px,calc(100vh - 32px));padding:24px;overflow:auto}.diagnostic-detail-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;margin:0;border-top:1px solid var(--border)}.diagnostic-detail-summary div{display:grid;grid-template-columns:minmax(95px,.8fr) minmax(0,1.2fr);gap:12px;padding:9px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 72%,transparent)}.diagnostic-detail-summary dt{color:var(--secondary);font-size:12px}.diagnostic-detail-summary dd{margin:0;overflow-wrap:anywhere;font-size:13px;font-weight:650;text-align:right}.diagnostic-actions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:22px}.diagnostic-action-form{min-width:0;padding:14px;background:var(--surface-muted);border-radius:10px}.diagnostic-action-form h4{margin:0 0 10px;font-size:13px}.diagnostic-action-form label{display:block;margin:10px 0;color:var(--graphite);font-size:12px;font-weight:650}.diagnostic-action-form input,.diagnostic-action-form select,.diagnostic-action-form textarea{display:block;width:100%;margin-top:5px;min-height:36px;padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--graphite);font-size:12px}.diagnostic-action-form textarea{resize:vertical}.diagnostic-action-form button{margin-top:6px}.identity-selection{margin:8px 0;color:var(--secondary);font-size:11px}.identity-selection code{color:var(--graphite);font-family:var(--font-mono);overflow-wrap:anywhere}.github-review{grid-column:1/-1}.github-current{margin:0 0 8px;font-size:13px}.github-actions{margin:0 0 4px}.github-link-form{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:10px}.github-link-form label{margin:0}.github-link-form button{white-space:nowrap}.github-remove-form{display:inline-block;margin:8px 0 0}.diagnostic-technical-all{margin-top:16px}.diagnostic-technical-all>summary{font-size:13px}
+.evidence-table-wrap table{min-width:760px}.evidence-model-row{cursor:pointer}.evidence-model-row:hover{background:color-mix(in srgb,var(--surface-muted) 52%,white)}.evidence-model-row:focus-visible{outline:3px solid color-mix(in srgb,var(--sky) 58%,white);outline-offset:-3px}.evidence-model-row td:nth-child(3),.evidence-model-row td:nth-child(4){font-variant-numeric:tabular-nums}.error-count{text-decoration:none}.identity-pending-indicator{display:inline-flex;align-items:center;margin-left:6px;padding:3px 6px;border:1px solid var(--border);border-radius:999px;color:var(--secondary);font-size:10px;font-weight:700;white-space:nowrap}.evidence-table-note{margin:10px 3px 0}.back-link{margin:0 0 20px;color:var(--interactive);font-size:13px;font-weight:700}.back-link a{text-underline-offset:3px}.diagnostic-model-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 30px}.diagnostic-model-metrics article{min-height:82px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px}.diagnostic-model-metrics span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.diagnostic-model-metrics strong{display:block;margin-top:4px;font-family:var(--font-brand);font-size:25px;line-height:1.15}.diagnostic-model-metrics .status-badge{margin-top:5px}.diagnostic-filter-bar{justify-content:flex-start}.diagnostic-list-wrap{max-height:min(70vh,720px)}.diagnostic-list-table{min-width:920px}.diagnostic-list-table th,.diagnostic-list-table td{white-space:normal;overflow-wrap:anywhere}.diagnostic-list-table td:first-child{white-space:nowrap}.diagnostic-list-table th:last-child,.diagnostic-list-table td:last-child{text-align:right}.diagnostic-list-table tbody tr:hover{background:color-mix(in srgb,var(--surface-muted) 52%,white)}.diagnostic-state{display:inline-flex;align-items:center;min-height:24px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;font-size:10px;font-weight:750;line-height:1;white-space:nowrap}.diagnostic-state-open{background:var(--status-error-surface);border-color:var(--status-error-border);color:var(--status-error-text)}.diagnostic-state-resolved{background:var(--status-success-surface);border-color:var(--status-success-border);color:var(--status-success-text)}.diagnostic-state-identity_pending{background:var(--surface-muted);color:var(--secondary)}.diagnostic-list-table .github-issue,.github-current .github-issue{color:var(--interactive);font-weight:700;white-space:nowrap}.diagnostic-detail-dialog{width:min(860px,calc(100% - 32px));max-height:min(900px,calc(100% - 32px));padding:0;border:0;border-radius:16px;background:var(--surface);color:var(--graphite);box-shadow:0 24px 80px rgba(34,42,43,.24)}.diagnostic-detail-dialog::backdrop{background:rgba(34,42,43,.34)}.diagnostic-detail-inner{max-height:min(900px,calc(100vh - 32px));padding:24px;overflow:auto}.diagnostic-detail-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;margin:0;border-top:1px solid var(--border)}.diagnostic-detail-summary div{display:grid;grid-template-columns:minmax(95px,.8fr) minmax(0,1.2fr);gap:12px;padding:9px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 72%,transparent)}.diagnostic-detail-summary dt{color:var(--secondary);font-size:12px}.diagnostic-detail-summary dd{margin:0;overflow-wrap:anywhere;font-size:13px;font-weight:650;text-align:right}.diagnostic-actions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:22px}.diagnostic-action-form{min-width:0;padding:14px;background:var(--surface-muted);border-radius:10px}.diagnostic-action-form h4{margin:0 0 10px;font-size:13px}.diagnostic-action-form label{display:block;margin:10px 0;color:var(--graphite);font-size:12px;font-weight:650}.diagnostic-action-form input,.diagnostic-action-form select,.diagnostic-action-form textarea{display:block;width:100%;margin-top:5px;min-height:36px;padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--graphite);font-size:12px}.diagnostic-action-form textarea{resize:vertical}.diagnostic-action-form button{margin-top:6px}.identity-summary{font-size:14px;line-height:1.5}.identity-summary h4{font:600 22px/1.3 var(--font-ui);margin:8px 0;text-wrap:balance}.identity-match-list{list-style:none;padding:0;display:grid;gap:6px}.identity-technical-evidence>summary{min-height:40px}.identity-review-form input,.identity-review-form select,.identity-review-form button{min-height:40px}.identity-selection{margin:8px 0;color:var(--secondary);font-size:11px}.identity-selection code{color:var(--graphite);font-family:var(--font-mono);overflow-wrap:anywhere}.github-review{grid-column:1/-1}.github-current{margin:0 0 8px;font-size:13px}.github-actions{margin:0 0 4px}.github-link-form{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:10px}.github-link-form label{margin:0}.github-link-form button{white-space:nowrap}.github-remove-form{display:inline-block;margin:8px 0 0}.diagnostic-technical-all{margin-top:16px}.diagnostic-technical-all>summary{font-size:13px}
 .diagnostic-state-in_progress{background:color-mix(in srgb,var(--sky) 12%,var(--surface));border-color:color-mix(in srgb,var(--sky) 42%,var(--border));color:var(--interactive)}.diagnostic-state-under_review{background:color-mix(in srgb,var(--stone) 18%,var(--surface));border-color:color-mix(in srgb,var(--stone) 55%,var(--border));color:var(--graphite)}
 .diagnostic-action-form input,.diagnostic-action-form select,.diagnostic-action-form textarea{min-height:var(--admin-control-height);padding:8px var(--admin-control-padding-x);border-radius:var(--admin-control-radius)}
 .github-issue-disclosure{margin-top:8px}.github-issue-disclosure>summary{width:max-content;cursor:pointer;color:var(--interactive);font-size:12px;font-weight:750;text-underline-offset:3px}.github-issue-disclosure>summary:hover{text-decoration:underline}.github-issue-controls{margin-top:12px}

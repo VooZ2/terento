@@ -58,7 +58,6 @@
     if (size) exactParts.push(size);
     if (display) exactParts.push(display);
     if ((row.solar === true || /\bsolar\b/i.test(source)) && display !== "Solar") exactParts.push("Solar");
-    if (row.inReach === true || row.inreach === true || /\binreach\b/i.test(source)) exactParts.push("inReach");
     if (exactParts.length) return exactParts.join(", ");
     if (rawVariant) return rawVariant.replace(/\s*(?:·|\||\/)\s*/g, ", ").replace(/\s+/g, " ");
     return fallbackVariants.map((value) => String(value).trim()).filter(Boolean).join(" · ");
