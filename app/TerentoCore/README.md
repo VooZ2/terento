@@ -173,3 +173,16 @@ Missing specifications are not inferred from model names. This formatting does
 not alter identity/evidence strings, catalog matching, local manifest keys or
 installation authorization. The Map Manager registry includes the officially
 documented fēnix 9 family; exact-model public evidence remains independent.
+
+### Build30 acquisition reporting (local candidate)
+
+The app records each provider component acquisition directly through the shared
+statistics controller, including checking/unpacking, cancellation and interruption.
+The atomic local event queue journals active acquisitions; a subsequent launch
+closes unfinished entries as interrupted, retaining their original build/provider
+identity. Disconnect records interruption before clearing map state. Opt-out
+clears both queued events and journal entries. Delivery remains bounded/retryable
+and independent of installation safety. An absent server outcome is not proof
+of download failure. OTM main maps and contours use separate random acquisition
+IDs; manually imported IMG files remain custom compatibility evidence only.
+The API supporting migration049 must precede distribution of beta.12/build30.

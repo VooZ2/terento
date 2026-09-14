@@ -413,3 +413,13 @@ and non-null geographical key while lifecycle identity remains variant-specific.
 The map statistics read model uses geographical identity for grouping and a
 separate `map_type` for type attribution. The compatibility provider constraint
 adds BBBike independently of its PAUSED activation state.
+
+### Migration049: component acquisition evidence
+
+`map_download_event` adds nullable paired `acquisition_id` UUID and
+`component_kind` (main/contours). Legacy operation/event/package uniqueness is
+retained as a partial index for NULL acquisition IDs. New attempts use unique
+acquisition/event phases and at most one terminal phase. Existing rows are not
+rewritten. Accepted additional phases are DOWNLOAD_PROCESSING,
+DOWNLOAD_CANCELLED and DOWNLOAD_INTERRUPTED. All retain the existing telemetry
+privacy, retention and local-test exclusion boundaries.

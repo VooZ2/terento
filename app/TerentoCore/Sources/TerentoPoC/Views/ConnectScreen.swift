@@ -330,11 +330,6 @@ struct ConnectScreen: View {
                 localInstallStep = .done
             }
         }
-        .onChange(of: mapEngine.mapStatisticsEvents) { events in
-            for event in events {
-                mapStatisticsController.record(event)
-            }
-        }
         .onChange(of: lifecycleViewModel.isBusy) { _ in
             updatePresenceMonitoring(for: mapEngine.state)
         }

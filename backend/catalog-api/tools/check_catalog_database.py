@@ -130,6 +130,8 @@ print('PASS: unverified success cannot promote compatibility; migration replay i
 from check_identity_database import check_identity_database
 check_identity_database(database)
 
+from check_download_lifecycle_database import check_download_lifecycle_database
+check_download_lifecycle_database(database)
 
 # Historical additions remain review-only and do not replace the unsized record.
 with database.connection() as connection:
