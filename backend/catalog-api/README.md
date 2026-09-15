@@ -545,3 +545,20 @@ Admin shows received XML/USB codes independently of mapping approval and derives
 only unanimous reviewed specification facts for XML-matching variants.
 New acquisition phases are grouped in Recent activity with component/history;
 missing terminal receipt is explicit rather than treated as an active job.
+
+### Device identification review workspace
+
+`/admin/device-identification` lists models needing source decisions first and
+searches model names and imported codes. Separate text/icon badges show pending,
+approved, rejected and missing sources. A model detail explains missing XML/USB
+reference sources, compares the catalog model with source names, and links to
+other models with the same imported code, including each link's review state.
+Shared codes and approved sources are not presented as exact-match results.
+
+Reviews require an explicit decision and reason; no approval is preselected.
+The first pending code opens automatically, with watch/USB codes before retail
+codes among pending entries. Reviewed sources, revisions and decision history
+remain available. Saving has bounded progress, session-expiry and recoverable
+error feedback. Source decisions retain the existing endpoint, CSRF protection
+and audit behavior; they do not assign saved installations, authorize map
+installation or publish compatibility. No database or API schema changes.
