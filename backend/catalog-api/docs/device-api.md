@@ -277,3 +277,11 @@ and public model views prefer this official model photo over a controlled
 GENERIC asset. Generic artwork remains the last resort when no reviewed photo
 is available; family imagery must be deliberately reviewed, never guessed from
 an unrelated generation.
+
+### Forerunner 955 photograph
+
+Migration 052 fills the missing historical Forerunner 955 image from the
+[official non-Solar product page](https://www.garmin.com/en-US/p/777655/).
+The original Garmin-hosted photograph represents this model; it does not
+assert the connected watch's band or color. Existing nonempty media, model
+identity, specifications, approvals and evidence remain unchanged.
