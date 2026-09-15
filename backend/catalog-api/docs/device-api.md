@@ -285,3 +285,18 @@ Migration 052 fills the missing historical Forerunner 955 image from the
 The original Garmin-hosted photograph represents this model; it does not
 assert the connected watch's band or color. Existing nonempty media, model
 identity, specifications, approvals and evidence remain unchanged.
+
+### Historical watch photo completeness — 2026-09-15
+
+The current retail catalog contains 86 device rows and every row has an
+allowlisted Garmin `sourceAsset` URL. The public compatibility catalog contains
+14 model cards, all with a Garmin source image; no public card uses the generic
+fallback image. The historical review registry had 12 additional map-capable
+records without reviewed media. Migration 053 fills those records with direct
+Garmin-hosted photographs for D2 Mach 1, Descent Mk1/Mk2, Enduro 2, fēnix 5X,
+fēnix 5 Plus, Forerunner 945, quatix 6/7 and tactix Charlie/Delta/7.
+
+The migration updates only `source_image_url` and the `source_image` evidence
+object when the URL is empty. It preserves model IDs, display and size
+specifications, approval state, assignments and installation statistics. The
+photos remain remote Garmin assets; Terento does not mirror or repackage them.
