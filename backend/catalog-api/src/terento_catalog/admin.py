@@ -2959,60 +2959,159 @@ def _known_variant_description(row: dict) -> str:
     return variant_label(row) or "—"
 
 
-def _identity_mapping_markup(device: dict, csrf_token: str) -> str:
+def _identification_label(device: dict) -> str:
+    model, variant, _ = _identity_parts(device)
+    return model + (" · " + variant if variant != "—" else "")
+
+
+def _identification_badge(state: str, label: str) -> str:
+    icon = {'approved': '✓', 'rejected': '✕', 'pending': '!', 'missing': '?', 'shared': '↔'}[state]
+    return f"<span class='identification-badge identification-{state}'><span aria-hidden='true'>{icon}</span> {html.escape(label)}</span>"
+
+
+def _identification_summary(mappings: list[dict]) -> str:
+    counts = {state: sum(m.get('status') == state for m in mappings) for state in ('PENDING', 'APPROVED', 'REJECTED')}
+    if not mappings:
+        return _identification_badge('missing', 'No code sources')
+    labels = [('PENDING', 'pending', f"{counts['PENDING']} source" + ("" if counts['PENDING'] == 1 else "s") + " to review"),
+              ('APPROVED', 'approved', f"{counts['APPROVED']} approved"),
+              ('REJECTED', 'rejected', f"{counts['REJECTED']} rejected")]
+    return "<span class='identification-badges'>" + ''.join(_identification_badge(style, label) for state, style, label in labels if counts[state]) + '</span>'
+
+
+def _identity_mapping_markup(device: dict, csrf_token: str, *, code_models: dict | None = None) -> str:
     groups: dict[tuple[str, str], list[dict]] = {}
     for mapping in device.get("identityMappings", []):
         groups.setdefault((mapping['kind'], mapping['value']), []).append(mapping)
     if not groups:
-        return "<p>No additional identifier mappings have been imported.</p>"
-    labels = {'RETAIL_SKU': 'Retail SKU', 'XML_PART_NUMBER': 'XML product code', 'USB': 'USB VID/PID'}
-    states = {'PENDING': '? Awaiting review', 'APPROVED': '✓ Approved', 'REJECTED': '✕ Rejected'}
+        return "<div class='identification-empty'><h3>No code sources yet</h3><p>There is nothing to approve. Import a Garmin or USB reference source for this model, then return here to review it.</p><p>A missing source does not mean this watch cannot use maps.</p></div>"
+    labels = {'RETAIL_SKU': 'Retail product code', 'XML_PART_NUMBER': 'Code reported by the watch', 'USB': 'USB connection code'}
+    explanations = {
+        'RETAIL_SKU': 'Identifies a retail product. It is different from the code reported by the watch.',
+        'XML_PART_NUMBER': 'Terento compares this code with the product code in the watch’s device information (XML).',
+        'USB': 'Terento compares this code when the watch connects by USB. Several models can share it.',
+    }
+    states = {'PENDING': ('pending', 'Needs your review'), 'APPROVED': ('approved', 'Approved link'), 'REJECTED': ('rejected', 'Rejected link')}
+    label = html.escape(_identification_label(device))
     items = []
-    for (kind, value), group in sorted(groups.items()):
-        statuses = {m['status'] for m in group}
-        status = states[next(iter(statuses))] if len(statuses) == 1 else ' · '.join(f"{sum(m['status'] == state for m in group)} {label}" for state, label in [('APPROVED', 'approved'), ('PENDING', 'awaiting review'), ('REJECTED', 'rejected')] if any(m['status'] == state for m in group))
+    for (kind, value), group in sorted(groups.items(), key=lambda item: (not any(m['status'] == 'PENDING' for m in item[1]), ({'XML_PART_NUMBER': 0, 'USB': 1, 'RETAIL_SKU': 2}.get(item[0][0], 3), item[0][1]))):
+        peers = (code_models or {}).get((kind, value), {})
+        others = [(key, peer) for key, peer in peers.items() if str(key) != str(device['id'])]
+        shared = ''
+        if others:
+            links = ''.join(f"<li><a href='/admin/device-identification?{urlencode({'device': key})}'>{html.escape(peer['label'])}</a>{_identification_summary(peer['mappings'])}</li>" for key, peer in others)
+            shared = f"<div class='identification-shared'>{_identification_badge('shared', 'Also linked to other models')}<p>Other imported links exist for this code. Check their decisions before treating it as unique. Terento also checks the model, size and display.</p><details><summary>Compare {len(others)} other model{'s' if len(others) != 1 else ''}</summary><ul>{links}</ul></details></div>"
+        elif code_models is not None:
+            shared = "<p class='identification-context'>Only this model has an imported link for this code. This alone does not prove an exact match.</p>"
         sources = []
-        for mapping in group:
-            source = html.escape(str(mapping['source_url']), quote=True)
-            # Source links remain evidence; only HTTPS links are actionable.
-            source = f'<a href="{source}" target="_blank" rel="noopener noreferrer">Open source</a>' if str(mapping['source_url']).startswith('https://') else source
-            names = html.escape('; '.join(mapping.get('source_names') or []))
-            reason = html.escape(str(mapping.get('review_reason') or 'No review recorded.'))
+        for mapping in sorted(group, key=lambda m: m['status'] != 'PENDING'):
+            raw_source = str(mapping['source_url'])
+            source = html.escape(raw_source, quote=True)
+            source = f'<a class="section-link" href="{source}" target="_blank" rel="noopener noreferrer">Read source evidence ↗</a>' if raw_source.startswith('https://') else f'<p>Source link unavailable. Check the reference below before deciding.</p><code>{source}</code>'
+            names = html.escape('; '.join(mapping.get('source_names') or [])) or 'No model name supplied by this source. Open the evidence to check the link.'
+            reason = html.escape(str(mapping.get('review_reason') or 'No decision recorded yet.'))
             history = ''.join('<li>' + html.escape(f"{entry['previous_status']} → {entry['new_status']} · {entry['reason']} · {'administrator ' + str(entry['reviewed_by']) if entry['reviewed_by'] is not None else 'reviewed catalog import'} · {entry['created_at']}") + '</li>' for entry in mapping.get('history') or [])
-            history = '<details><summary>Review history</summary><ul>' + history + '</ul></details>' if history else ''
-            sources.append(f"""<div class='identity-mapping-source'><p>{html.escape(states[mapping['status']])} · {reason}</p>
-            <p class='identification-source-names'>{names}</p><p>{source}</p><details><summary>Technical reference</summary><code>{html.escape(mapping['source_version'])}</code></details>{history}
-            <details><summary>Review source</summary><form method='post' action='/admin/devices/identity-mapping' class='admin-async-action identity-mapping-review'>
+            history = '<details><summary>Previous decisions</summary><ul>' + history + '</ul></details>' if history else ''
+            status = _identification_badge(*states[mapping['status']])
+            effect = {'PENDING': 'Not yet accepted as evidence. Check whether the source links this code to this exact model.',
+                      'APPROVED': 'This source is accepted as evidence for this model. Other checks still determine an exact match.',
+                      'REJECTED': 'This source link is excluded from positive identification evidence.'}[mapping['status']]
+            open_review = ' open' if mapping['status'] == 'PENDING' else ''
+            sources.append(f"""<article class='identity-mapping-source'>
+            <h4>{status}</h4><p>{effect}</p>
+            <dl class='identification-comparison'><div><dt>Model being reviewed</dt><dd>{label}</dd></div><div><dt>Model names in the source</dt><dd>{names}</dd></div></dl>
+            <p>{source}</p><p><strong>Last decision:</strong> {reason}</p>
+            <details class='identification-review'{open_review}><summary>{'Decide whether this link is correct' if mapping['status'] == 'PENDING' else 'Change this decision'}</summary>
+            <p>Approve only if the source links <strong>{html.escape(value)}</strong> to <strong>{label}</strong>. Reject an incorrect link. If the evidence is unclear, leave it pending.</p>
+            <form method='post' action='/admin/devices/identity-mapping' class='admin-async-action identity-mapping-review'>
             <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>
             <input type='hidden' name='mapping_id' value='{int(mapping['id'])}'>
             <input type='hidden' name='return_to' value='/admin/device-identification?device={quote(str(device['id']), safe='')}'>
-            <label>Decision<select name='status'><option value='APPROVED'>Approve</option><option value='REJECTED'>Reject</option></select></label>
-            <label>Reason for this decision<input name='reason' required maxlength='1000'></label><button type='submit'>Save review</button></form></details></div>""")
-        items.append(f"<details class='identity-mapping-code'><summary><strong>{labels[kind]} · {html.escape(value)}</strong><span>{html.escape(status)} · {len(group)} {'source' if len(group) == 1 else 'sources'}</span></summary>{''.join(sources)}</details>")
+            <label>Does this source link the code to this model?<select name='status' required><option value=''>Choose a decision</option><option value='APPROVED'>Approve — the link is correct</option><option value='REJECTED'>Reject — the link is incorrect</option></select></label>
+            <label>What evidence supports your decision?<textarea name='reason' required maxlength='1000' rows='2' placeholder='Name the source and the model or variant it confirms.'></textarea></label>
+            <p class='identification-effect'>Saving updates this source link only. It does not change saved installations, allow installation or publish compatibility.</p>
+            <button type='submit'>Save source decision</button><p class='admin-action-status' role='status' aria-live='polite'></p></form></details>
+            <details><summary>Source version and review history</summary><code>{html.escape(str(mapping.get('source_version') or 'Version unavailable'))}</code>{history}</details></article>""")
+        opened = ' open' if not items and any(m['status'] == 'PENDING' for m in group) else ''
+        items.append(f"<details class='identity-mapping-code'{opened}><summary><strong>{labels.get(kind, kind)} · <bdi>{html.escape(value)}</bdi></strong>{_identification_summary(group)}<span class='identification-source-count'>{len(group)} {'source' if len(group) == 1 else 'sources'}</span></summary><p>{explanations.get(kind, '')}</p>{shared}{''.join(sources)}</details>")
     return "<div class='identity-mappings'>" + ''.join(items) + '</div>'
 
 
 def device_identification_page(devices: list[dict], user: dict, csrf_token: str, *, device_id: str = "", query: str = "") -> bytes:
     selected = next((d for d in devices if str(d.get('id')) == device_id), None)
-    choices = []
+    code_models: dict = {}
     for device in devices:
-        model, variant, _ = _identity_parts(device)
-        label = model + (" · " + variant if variant != "—" else "")
-        if query and query.casefold() not in label.casefold():
-            continue
+        for mapping in device.get('identityMappings') or []:
+            peer = code_models.setdefault((mapping['kind'], mapping['value']), {}).setdefault(str(device['id']), {'label': _identification_label(device), 'mappings': []})
+            peer['mappings'].append(mapping)
+    choices = []
+    ordered = sorted(devices, key=lambda d: (not any(m['status'] == 'PENDING' for m in d.get('identityMappings') or []), _identification_label(d).casefold()))
+    for device in ordered:
+        label = _identification_label(device)
         mappings = device.get('identityMappings') or []
-        pending = sum(m.get('status') == 'PENDING' for m in mappings)
-        detail = f"{pending} {'source' if pending == 1 else 'sources'} to review" if pending else ("Sources reviewed" if mappings else "No code sources")
-        choices.append(f"<a class='identification-choice' href='/admin/device-identification?{urlencode({'device': device['id']})}'><strong>{html.escape(label)}</strong><span>{detail}</span></a>")
+        searchable = ' '.join([label] + [str(m['value']) for m in mappings])
+        if query and query.casefold() not in searchable.casefold():
+            continue
+        choices.append(f"<a class='identification-choice' href='/admin/device-identification?{urlencode({'device': device['id']})}'><span class='identification-choice-title'><strong>{html.escape(label)}</strong><span>Review model sources →</span></span>{_identification_summary(mappings)}</a>")
+    pending_models = sum(any(m['status'] == 'PENDING' for m in d.get('identityMappings') or []) for d in devices)
+    pending_label = '1 model needs source review.' if pending_models == 1 else f'{pending_models} models need source review.'
+    result_label = '1 model shown' if len(choices) == 1 else f'{len(choices)} models shown'
     if selected:
-        model, variant, _ = _identity_parts(selected)
-        label = model + (" · " + variant if variant != "—" else "")
-        content = f"<section class='overview-panel identification-workspace'><a class='section-link' href='/admin/device-identification'>Back to model list</a><h2>{html.escape(label)}</h2><p class='muted'>Review whether each source links this code to this model. A code can belong to several variants.</p>{_identity_mapping_markup(selected, csrf_token)}</section>"
+        label = html.escape(_identification_label(selected))
+        mappings = selected.get('identityMappings') or []
+        missing = [name for kind, name in [('XML_PART_NUMBER', 'watch product code (XML)'), ('USB', 'USB connection code')] if not any(m['kind'] == kind for m in mappings)]
+        missing_note = ("<p><strong>Missing reference sources:</strong> " + html.escape(' and '.join(missing)) + ". These links have not been imported for this model. This does not tell us whether a watch has reported the codes.</p>") if missing else ''
+        pending = any(m['status'] == 'PENDING' for m in mappings)
+        next_step = 'Open the source evidence, compare the model names, then approve or reject each pending link below.' if pending else ('No pending decisions. Approved links can support identification; rejected links are excluded.' if mappings else 'Import reference sources before reviewing this model.')
+        content = f"<section class='overview-panel identification-workspace'><a class='section-link' href='/admin/device-identification'>← Back to model list</a><h2>{label}</h2>{_identification_summary(mappings)}<div class='identification-next'><h3>What needs your attention</h3><p>{next_step}</p>{missing_note}</div><h3>Which codes link to this model?</h3><p>These are reference links, not live results from a connected watch. A shared code can correctly belong to several variants.</p>{_identity_mapping_markup(selected, csrf_token, code_models=code_models)}<a class='section-link' href='/admin/devices/{quote(str(selected['id']), safe='')}'>View model details and installation evidence →</a></section>"
     else:
-        content = f"<section class='overview-panel identification-workspace'><h2>Select a model</h2><form method='get' class='identification-search'><label class='sr-only' for='identification-search'>Search models</label><input id='identification-search' name='q' placeholder='Search models' value='{html.escape(query, quote=True)}'><button class='secondary-button' type='submit'>Search</button></form><div class='identification-choices'>{''.join(choices) or '<p>No matching models.</p>'}</div></section>"
-    body = _admin_header(user, csrf_token, active='device-identification') + "<main id='main-content' class='dashboard'><p class='section-kicker'>Tools</p><h1>Device identification</h1><p class='identification-intro'>Maintain the Garmin code sources used to identify watch models. Use this tool when a model cannot be identified or a code appears incorrect.</p><p class='muted identification-intro'>Source reviews do not change saved installations or map compatibility approval.</p>" + content + '</main>'
-    return _layout('Device identification', body)
+        empty = f"<div class='identification-empty'><h3>No matching models.</h3><p>No model or code matches “{html.escape(query)}”. Try a shorter model name or clear the search.</p><a class='section-link' href='/admin/device-identification'>Clear search</a></div>" if query else "<div class='identification-empty'><h3>No models available</h3><p>Run the device catalog collection, then return here to review its sources.</p><a class='section-link' href='/admin/devices'>Open device catalog</a></div>"
+        invalid = "<p class='identification-not-found' role='alert'>This model is unavailable. Search the catalog below and select an existing model.</p>" if device_id else ''
+        content = f"<section class='overview-panel identification-workspace'>{invalid}<h2>Select a model</h2><p><strong>{pending_label}</strong> Models with pending decisions appear first.</p><form method='get' class='identification-search'><label for='identification-search'>Find a model or code<input id='identification-search' name='q' placeholder='For example, fēnix 8 or 006-B…' value='{html.escape(query, quote=True)}'></label><button class='secondary-button' type='submit'>Search</button></form><p class='identification-result-count'>{result_label}</p><div class='identification-choices'>{''.join(choices) or empty}</div></section>"
+    body = _admin_header(user, csrf_token, active='device-identification') + "<main id='main-content' class='dashboard identification-page'><p class='section-kicker'>Device identification</p><h1>Help Terento recognize each watch</h1><p class='identification-intro'>Check which Garmin codes belong to which models. Your review tells Terento which reference sources it can trust when identifying a watch.</p><details class='identification-guide'><summary>What am I approving, and why?</summary><p>You approve a link between a code, a model and a source. Compare the source’s model name and variant before deciding. Similar names or a shared USB code do not prove an exact match.</p><p>Exact identification also checks model, size, display and the codes reported by the watch. Source reviews do not change saved installations or map compatibility approval.</p></details>" + content + '</main>'
+    return _layout('Device identification', body + '<script>' + _identification_review_script() + '</script>')
 
+
+
+def _identification_review_script() -> str:
+    return r"""(() => {
+      document.querySelectorAll('.identity-mapping-review').forEach(form => {
+        form.addEventListener('submit', async event => {
+          event.preventDefault();
+          if (form.dataset.submitting === 'true') return;
+          const payload = new URLSearchParams(new FormData(form));
+          const controls = [...form.querySelectorAll('button,input,select,textarea')];
+          const status = form.querySelector('.admin-action-status');
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 20000);
+          form.dataset.submitting = 'true';
+          form.setAttribute('aria-busy', 'true');
+          controls.forEach(control => control.disabled = true);
+          status.dataset.error = 'false';
+          status.textContent = 'Saving source decision…';
+          try {
+            const response = await fetch(form.action, {method:'POST', body:payload,
+              credentials:'same-origin', signal:controller.signal});
+            if (!response.ok) throw new Error('save');
+            if (response.redirected && new URL(response.url).pathname === '/admin/login') {
+              status.textContent = 'Your session expired. Open this page in another tab to sign in, then retry. Your text is kept here.';
+              status.dataset.error = 'true';
+              return;
+            }
+            if (!response.redirected) throw new Error('save');
+            window.location.assign(response.url);
+          } catch (_) {
+            status.dataset.error = 'true';
+            status.textContent = 'Could not confirm the save. Your text is kept here. Check your connection and the current decision in another tab before retrying.';
+          } finally {
+            clearTimeout(timeout);
+            controls.forEach(control => control.disabled = false);
+            form.dataset.submitting = 'false';
+            form.removeAttribute('aria-busy');
+          }
+        });
+      });
+    })();"""
 
 
 def _identity_evidence_markup(evidence: list[dict]) -> str:
@@ -6234,8 +6333,9 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .identity-source-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .identity-source-form label{display:flex;flex-direction:column;gap:6px}.identity-source-form button{justify-self:start;grid-column:1/-1}.identity-source-form output{padding:10px 0;overflow-wrap:anywhere}
 .overview-activity-item:has(>.download-history){row-gap:0}.overview-activity-item:has(>.download-history)>a{grid-column:1;grid-row:1}.overview-activity-item:has(>.download-history)>time{grid-column:2;grid-row:1}
-.identification-intro{max-width:760px}.identification-workspace{max-width:960px}.identification-workspace h2{margin:16px 0 8px}.identification-workspace .identity-mappings{padding:0}.identification-search{display:flex;gap:8px;margin:16px 0}.identification-search input{flex:1;min-width:0}.identification-choice{display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:52px;padding:12px 0;border-top:1px solid var(--border);text-decoration:none;color:inherit}.identification-choice span{color:var(--secondary);font-size:13px}.identification-choice:hover strong{color:var(--interactive)}.identification-workspace .identity-mapping-code>summary{display:list-item;padding:14px 0;min-height:44px}.identification-workspace .identity-mapping-code>summary span{margin:4px 0 0}.identification-workspace .identity-mapping-source{padding:16px;background:var(--surface-muted);border:0;border-radius:var(--admin-control-radius);margin:0 0 12px}.identification-workspace .identity-mapping-source>p:first-child{margin-top:0;font-weight:600}.identification-workspace .identity-mapping-source summary{min-height:40px;align-content:center;padding:0}.identification-workspace .identity-mapping-source summary span{margin:0}.identification-workspace .identity-mapping-review button{grid-column:1/-1}.identification-workspace .identity-mapping-source code{font-size:12px}.identification-source-names{font-size:13px;color:var(--secondary)}
-@media(max-width:700px){.identification-choice{align-items:flex-start;flex-direction:column;gap:4px}.identification-workspace .identity-mapping-review{grid-template-columns:1fr}.identification-workspace .identity-mapping-source summary{min-height:44px}}
+.identification-page{max-width:1200px}.identification-page h1{text-wrap:balance}.identification-intro{max-width:70ch;font-size:16px;line-height:1.6}.identification-guide{max-width:75ch;margin-block:16px 28px}.identification-page summary{cursor:pointer;min-height:44px;align-content:center}.identification-guide p{line-height:1.6}.identification-workspace{max-width:1040px}.identification-workspace h2{margin-block:20px 12px;font-size:24px}.identification-workspace h3{font-size:18px;line-height:1.4;margin-block:24px 8px}.identification-workspace h4{font-size:15px;margin:0}.identification-workspace p{max-width:75ch;line-height:1.6}.identification-next{padding:4px 20px 12px;margin-block:24px;background:var(--surface-muted);border-radius:12px}.identification-next h3{margin-block-start:16px}.identification-workspace .identity-mappings{padding:0}.identification-search{display:flex;align-items:flex-end;gap:12px;margin-block:20px}.identification-search label{display:grid;gap:8px;flex:1;min-width:0;font-weight:600}.identification-search input{width:100%;min-width:0}.identification-page :is(input,textarea)::placeholder{color:var(--secondary);opacity:1}.identification-result-count{font-size:13px;color:var(--secondary)}.identification-choice{display:flex;justify-content:space-between;align-items:center;gap:20px;min-height:76px;padding:16px 4px;border-top:1px solid var(--border);text-decoration:none;color:inherit}.identification-choice-title{display:grid;gap:6px;min-width:0}.identification-choice-title>span{font-size:13px;color:var(--secondary)}.identification-choice:hover strong{text-decoration:underline}.identification-badges{display:flex;flex-wrap:wrap;gap:8px}.identification-page .identification-badge{display:inline-flex!important;align-items:center;gap:6px;max-width:100%;margin:0!important;padding:5px 10px;border:1px solid var(--border);border-radius:999px;font-size:13px;font-weight:600;line-height:1.4;font-variant-numeric:tabular-nums}.identification-page .identification-badge>span{display:inline;margin:0;color:inherit}.identification-page .identification-approved{color:var(--status-success-text);background:var(--status-success-surface);border-color:var(--status-success-border)}.identification-page .identification-rejected{color:var(--status-error-text);background:var(--status-error-surface);border-color:var(--status-error-border)}.identification-page :is(.identification-pending,.identification-missing){color:var(--status-tested-text);background:var(--status-tested-surface);border-color:var(--status-tested-border)}.identification-page .identification-shared>.identification-badge{color:var(--status-supported-text);background:var(--status-supported-surface);border-color:var(--status-supported-border)}.identification-workspace .identity-mapping-code{padding-block:8px 16px;margin-block:16px}.identification-workspace .identity-mapping-code>summary{display:list-item;padding-block:12px;min-height:44px}.identification-workspace .identity-mapping-code>summary strong{font-size:16px;line-height:1.5}.identification-workspace .identity-mapping-code>summary .identification-badges{display:flex;margin:12px 0 0}.identification-workspace .identification-source-count{margin:8px 0 0;font-size:13px}.identification-workspace .identity-mapping-source{padding:20px;background:var(--surface-muted);border:0;border-radius:16px;margin-block:16px}.identification-workspace .identity-mapping-source summary{padding-block:8px;min-height:44px}.identification-workspace .identity-mapping-source code{font-size:13px;overflow-wrap:anywhere}.identification-comparison{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-block:20px}.identification-comparison dt{font-size:13px;color:var(--graphite);margin-block-end:8px}.identification-comparison dd{margin:0;font-weight:600;line-height:1.5;overflow-wrap:anywhere}.identification-shared{margin-block:20px}.identification-shared ul{padding-inline-start:20px}.identification-shared li{padding-block:10px}.identification-shared li>.identification-badges{margin-block-start:8px}.identification-context,.identification-effect{font-size:14px}.identification-workspace .identity-mapping-review{grid-template-columns:1fr;gap:16px}.identification-workspace .identity-mapping-review :is(input,select,textarea){width:100%;min-width:0;font:inherit}.identification-workspace .identity-mapping-review select{white-space:normal;height:auto;min-height:44px}.identification-workspace .identity-mapping-review button{justify-self:start;min-height:44px}.identification-workspace .identity-mapping-review p{margin:0}.identification-workspace .admin-action-status:empty{display:none}.identification-workspace .admin-action-status{color:var(--graphite);font-size:14px}.identification-workspace .admin-action-status[data-error="true"]{color:var(--error-text)}.identification-empty{padding-block:20px}.identification-not-found{color:var(--error-text);background:var(--error-surface);padding:16px;border-radius:12px}.identification-page :is(a,button,input,textarea,select,summary):focus-visible{outline:2px solid var(--interactive);outline-offset:3px}.identification-page :is(a,p,strong,dd){overflow-wrap:anywhere}.identification-page .section-link{color:var(--graphite);text-decoration:underline;text-underline-offset:3px}
+@media(max-width:700px){.identification-choice{align-items:flex-start;flex-direction:column;gap:12px}.identification-comparison{grid-template-columns:1fr;gap:16px}.identification-workspace .identity-mapping-source{padding:16px}.identification-search{align-items:stretch;flex-direction:column}.identification-search button{align-self:flex-start}.identification-page :is(input,select,textarea){font-size:16px!important}.identification-workspace h2{font-size:22px}.identification-next{padding-inline:16px}}
+
 .download-history{grid-column:1/-1;grid-row:2;margin:0;font-size:13px}.download-history summary{font-size:13px;min-height:40px;align-content:center}
 .download-timeline{display:flex;flex-wrap:wrap;gap:8px 16px;list-style:none;padding:0;margin:0 0 4px;font-size:13px}
 .download-timeline li{display:flex;align-items:center;flex-wrap:wrap;gap:4px}.download-timeline li+li::before{content:'→';color:var(--secondary);margin-right:8px}
