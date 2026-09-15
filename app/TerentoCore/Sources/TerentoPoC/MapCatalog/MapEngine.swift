@@ -1802,7 +1802,7 @@ final class MapEngine: ObservableObject {
         }
     }
 
-    private static func evidenceDiagnostic(
+    nonisolated private static func evidenceDiagnostic(
         for error: MapAcquisitionError
     ) -> (stage: EvidenceFailureStage, failure: InstallationFailure) {
         switch error {

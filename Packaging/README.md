@@ -278,3 +278,8 @@ The two full-source native test harnesses explicitly select SwiftPM
 `--build-system native` because they link its C bridge object/module layout.
 Xcode27 defaults to a different Swift Build layout; production packaging still
 uses the root Xcode target and its bundled native runtime.
+
+The app CI job provisions Python3.12 and the backend test extra so fresh native
+payloads are validated by the actual API, including on the oldest CI Swift6
+toolchain. Pure diagnostic error classification is nonisolated; it does not
+read mutable engine/UI state.
