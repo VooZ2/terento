@@ -205,3 +205,17 @@ by this documentation.
 
 Client/server sequencing and required revision/test receipts are specified in
 [the app–API release contract](../../../contracts/APP_API_RELEASE_CONTRACT.md).
+
+## Map-capable identification review scope
+
+Device identification lists and opens only models whose canonical `mapCapable`
+value is explicitly true. Search, pending-model counts and shared-code review
+links use that same subset. Unsupported and unknown-capability models have no
+review form on this page, including through a direct model URL. Eligibility is
+map capability, not public compatibility approval, so untested map-capable
+models remain reviewable.
+
+This is a presentation filter, not deletion or modification of the identity
+registry. Hidden models and their source mappings remain available to identity
+assessment; a single visible target never proves code uniqueness. Source review
+does not grant installation permission or publish compatibility.
