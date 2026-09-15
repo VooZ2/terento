@@ -202,6 +202,8 @@ def _admin_icon(name: str) -> str:
         ),
         "arrow-right": "<path d='M2.5 8h11'/><path d='m9 3.5 4.5 4.5L9 12.5'/>",
         "arrow-left": "<path d='M13.5 8h-11'/><path d='m7 3.5-4.5 4.5L7 12.5'/>",
+        "check": "<path d='m3 8 3 3 7-7'/>",
+        "clock": "<circle cx='8' cy='8' r='6'/><path d='M8 4v4l3 2'/>",
         "close": "<path d='m3.5 3.5 9 9'/><path d='m12.5 3.5-9 9'/>",
     }
     path = paths.get(name, "")
@@ -254,6 +256,8 @@ def _identity_parts(row: dict[str, Any]) -> tuple[str, str, str]:
     if size:
         model = re.sub(r"\s*[,·|:–—-]?\s*" + re.escape(size.group(0)) + r"\s*$", "", model, flags=re.IGNORECASE)
     model = model.strip(" ,·|:–—-")
+    if row.get("canonical_device_model_id"):
+        model = row.get("canonical_model") or row.get("catalog_model") or model
     return model_label(model) or "—", variant_label({**row, "model": model, "variant": variant}) or "—", identity
 
 
@@ -1213,9 +1217,9 @@ def _overview_map_activity_row(event: dict[str, Any]) -> str:
     component = {"main": "Main map", "contours": "Contours"}.get(event.get("component_kind"), "")
     history = ""
     if event.get("lifecycle") and len(event["lifecycle"]) > 1:
-        entries = "".join("<li>" + html.escape(str(item.get("type", "")).removeprefix("DOWNLOAD_").replace("_", " ").title())
+        entries = "".join("<li>" + _admin_icon("check" if item.get("type") == "DOWNLOAD_SUCCEEDED" else "clock") + html.escape(str(item.get("type", "")).removeprefix("DOWNLOAD_").replace("_", " ").title())
                           + " · " + _timestamp_markup(item.get("at")) + "</li>" for item in event["lifecycle"])
-        history = "<details><summary>Download history</summary><ol>" + entries + "</ol></details>"
+        history = "<details class='download-history'><summary>Download history</summary><ol class='download-timeline'>" + entries + "</ol></details>"
     return (
         f"<li class='overview-activity-item overview-activity-{state}'>"
         f"<a href='{html.escape(href, quote=True)}'><span class='overview-activity-label'>{html.escape(label)}</span>"
@@ -2139,7 +2143,7 @@ def _provider_summary_row(provider: dict[str, Any]) -> str:
         f"<tr data-provider-search='{html.escape(' '.join((provider_id, name, str(provider.get('adapterId') or ''), status, health)).casefold(), quote=True)}'>"
         f"<td><a class='provider-name-link' href='/admin/providers/{provider_href}'><strong>{html.escape(name)}</strong></a><small class='table-secondary'>Newest package: {html.escape(str(provider.get('latestRelease') or 'Not recorded'))}</small></td>"
         f"<td>{_provider_status_badge(status)}</td>"
-        f"<td>{_provider_status_badge(health, kind='health')}</td>"
+        f"<td>{_provider_status_badge(health, kind='health')}<small class='table-secondary'>Last recorded check</small></td>"
         f"<td class='numeric'>{int(provider.get('packageCount') or 0)}</td>"
         f"<td>{_timestamp_markup(provider.get('lastCatalogSync'))}</td>"
         f"<td>{_timestamp_markup(provider.get('lastHealthCheck') or provider.get('lastDownloadTest'))}</td>"
@@ -2315,7 +2319,7 @@ def provider_detail_page(
     ]
     health_history = list(provider.get("healthHistory") or [])
     broken_packages = sum(int(package.get("broken_artifact_count") or 0) for package in packages)
-    package_count = int(provider.get("packageCount") or len(packages))
+    package_count = int(provider["packageCount"]) if provider.get("packageCount") is not None else sum(p.get("availability") == "AVAILABLE" for p in packages)
     release_counts: dict[str, int] = {}
     for package in packages:
         release = str(package.get('release') or 'Not recorded')
@@ -2388,7 +2392,7 @@ def provider_detail_page(
     audit_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Provider audit history</caption><thead><tr><th scope='col'>Action</th><th scope='col'>Old status</th><th scope='col'>New status</th><th scope='col'>Reason</th><th scope='col'>Timestamp</th><th scope='col'>Details</th></tr></thead><tbody>{rows_audits}</tbody></table></div>" if audits else ""
     health_summary = (
         f"{_provider_status_badge(latest_health_status, kind='health')} "
-        f"<span>{health_passed} checks passed · {health_not_evaluated} not evaluated</span>"
+        f"<span>{health_passed} checks passed · {health_not_evaluated} not evaluated. This check does not establish that every package can be installed.</span>"
         if latest_health else "<span class='muted-value'>No health check recorded yet.</span>"
     )
     health_transport = (
@@ -2412,7 +2416,7 @@ def provider_detail_page(
       {_admin_header(user, csrf_token, active='providers')}
       <main class='dashboard provider-detail' id='main-content'>
         <p class='back-link'><a href='/admin/providers'>{_admin_icon('arrow-left')} Back to providers</a></p>
-        <div class='heading-row'><div><p class='eyebrow'>Provider detail</p><h1>{html.escape(name)}</h1></div><div class='provider-heading-status'>{_provider_status_badge(status)} {_provider_status_badge(health, kind='health')}</div></div>
+        <div class='heading-row'><div><p class='eyebrow'>Provider detail</p><h1>{html.escape(name)}</h1></div><div class='provider-heading-status'>{_provider_status_badge(status)} <span>Last check: {_provider_status_badge(health, kind='health')}</span></div></div>
         <section class='provider-action-bar' data-provider-id='{html.escape(provider_id, quote=True)}' aria-label='Provider actions'>
           {_provider_action_button(provider_id, 'check', 'Check now')}
           {_provider_action_button(provider_id, 'collect', 'Collect catalog', secondary=True)}
@@ -2421,12 +2425,13 @@ def provider_detail_page(
           {activation_note}
           <p class='admin-action-status' id='provider-action-status' aria-live='polite'></p>
         </section>
-        <section class='provider-metrics' aria-label='Provider summary'><article><span>Packages</span><strong>{package_count}</strong></article><article><span>Broken</span><strong>{broken_packages}</strong></article><article><span>Last catalog sync</span><strong>{_timestamp_markup(provider.get('lastCatalogSync'))}</strong></article><article><span>Last health check</span><strong>{_timestamp_markup(provider.get('lastHealthCheck'))}</strong></article></section>
-        <section class='provider-card provider-release-summary' aria-label='Package release distribution'><div class='section-heading'><h2>Package releases</h2><a class='section-link' href='#provider-packages'>Inspect packages →</a></div><p>{release_summary}</p><p class='table-help'>Each region keeps its own provider release. System health shows the newest package release; collecting a catalog does not update every map.</p></section>
-        {download_source_section}
-        <section class='provider-card'><details class='admin-disclosure' id='provider-packages'><summary>Regions and packages · {len(packages)} packages · {broken_packages} broken</summary><div class='disclosure-body'><div class='inline-filter-row'><label><span class='sr-only'>Search packages</span><input id='provider-package-search' type='search' placeholder='Search packages' autocomplete='off'></label><label><span class='sr-only'>Package status</span><select id='provider-package-filter'><option value='all'>All packages</option><option value='broken'>Broken only</option></select></label><label><span class='sr-only'>Package page size</span><select id='provider-package-page-size'><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label></div>{empty_packages}{package_table}<div class='provider-pagination' id='provider-package-pagination' aria-live='polite'></div></div></details></section>
+        <p class='provider-attention'>{f'<strong>{broken_packages} broken artifacts need review.</strong> Check the affected catalog entries below.' if broken_packages else 'No broken artifacts recorded in this catalog.'} <a href='#provider-packages'>Review packages</a></p>
+        <section class='provider-metrics' aria-label='Provider summary'><article><span>Available packages</span><strong>{package_count}</strong></article><article><span>Broken artifacts</span><strong>{broken_packages}</strong></article><article><span>Last catalog sync</span><strong>{_timestamp_markup(provider.get('lastCatalogSync'))}</strong></article><article><span>Last health check</span><strong>{_timestamp_markup(provider.get('lastHealthCheck'))}</strong></article></section>
         <section class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Health</p><h2>Latest health check</h2></div></div><div class='provider-latest-summary'><div>{health_summary}</div><span>{health_transport}</span></div><details class='admin-disclosure' id='provider-health-details'><summary>View check details</summary><div class='disclosure-body'>{empty_health}{latest_health_table}</div></details><details class='admin-disclosure' id='provider-health-history'><summary>Health check history · {len(previous_health)} previous {'check' if len(previous_health) == 1 else 'checks'}</summary><div class='disclosure-body'>{empty_previous_health}{health_history_table}</div></details></section>
         {collection_section}
+        <section class='provider-card'><details class='admin-disclosure' id='provider-packages'><summary>Regions and packages · {len(packages)} catalog entries · {broken_packages} broken artifacts</summary><div class='disclosure-body'><div class='inline-filter-row'><label><span class='sr-only'>Search packages</span><input id='provider-package-search' type='search' placeholder='Search packages' autocomplete='off'></label><label><span class='sr-only'>Package status</span><select id='provider-package-filter'><option value='all'>All packages</option><option value='broken'>Broken only</option></select></label><label><span class='sr-only'>Package page size</span><select id='provider-package-page-size'><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label></div>{empty_packages}{package_table}<div class='provider-pagination' id='provider-package-pagination' aria-live='polite'></div></div></details></section>
+        <section class='provider-card provider-release-summary' aria-label='Package release distribution'><details class='admin-disclosure'><summary>Package releases</summary><div class='section-heading'><a class='section-link' href='#provider-packages'>Inspect packages →</a></div><p>{release_summary}</p><p class='table-help'>Each region keeps its own provider release. System health shows the newest package release; collecting a catalog does not update every map.</p></details></section>
+        {download_source_section}
         <details class='provider-card admin-disclosure'><summary>Provider metadata and attribution</summary><dl class='provider-information-list'><div><dt>Provider ID</dt><dd><code>{html.escape(provider_id)}</code></dd></div><div><dt>Adapter</dt><dd><code>{html.escape(str(provider.get('adapterId') or '—'))}</code></dd></div><div><dt>Website</dt><dd>{_provider_url(provider.get('website'))}</dd></div><div><dt>License</dt><dd>{html.escape(str(provider.get('license') or '—'))}</dd></div><div><dt>Attribution</dt><dd>{html.escape(str(provider.get('attribution') or '—'))}</dd></div><div><dt>License URL</dt><dd>{_provider_url(provider.get('licenseUrl'))}</dd></div></dl></details>
         <details class='provider-card admin-disclosure'><summary>Original links</summary>{empty_sources}{source_table}</details>
         <section class='provider-card'><details class='admin-disclosure' id='provider-history'><summary>Provider history · {len(audits)} events</summary><div class='disclosure-body'><p class='table-help'>Provider actions and detected map-release changes are retained. Detailed map changes are recorded from this deployment onward; older collection runs retain only their summary.</p>{empty_audits}{audit_table}</div></details></section>
@@ -2807,7 +2812,7 @@ def _map_statistics_script() -> str:
         if (topMapsTable) topMapsTable.hidden = showAllMaps || showRegions;
         if (topMapsHeading) topMapsHeading.hidden = showAllMaps || showRegions;
         if (allMapsDisclosure) allMapsDisclosure.hidden = showRegions;
-        const mapRow = (item) => `<tr><td><strong>${item.country ? `<button type="button" class="region-map-link" data-map-country="${escapeHtml(item.country)}" aria-label="Show ${escapeHtml(item.name || item.regionName || '—')} on map">${escapeHtml(item.name || item.regionName || '—')}</button>` : escapeHtml(item.name || item.regionName || '—')}</strong><small class="table-secondary"><code>${escapeHtml(item.map)}</code> · ${escapeHtml(item.regionName || '—')}</small></td><td class="numeric">${item.count}</td><td>${formatTimestamp(item.last)}</td></tr>`;
+        const mapRow = (item) => `<tr><td><strong>${item.country ? `<button type="button" class="region-map-link" data-map-country="${escapeHtml(item.country)}" aria-label="Show ${escapeHtml(item.name || item.regionName || '—')} on map">${escapeHtml(item.name || item.regionName || '—')}</button>` : escapeHtml(item.name || item.regionName || '—')}</strong><small class="table-secondary">${escapeHtml(providerName[item.provider] || item.provider)} · ${escapeHtml(item.regionName || '—')}</small><details><summary>Package identifier</summary><code>${escapeHtml(item.map)}</code></details></td><td class="numeric">${item.count}</td><td>${formatTimestamp(item.last)}</td></tr>`;
         if (mapRows) mapRows.innerHTML = mapItems.slice(0, 5).map(mapRow).join('') || emptyRow(3);
         if (allMapsSummary) allMapsSummary.textContent = `Browse all maps · ${mapItems.length}`;
         const query = String(allMapsSearch?.value || '').toLocaleLowerCase().trim();
@@ -2933,12 +2938,12 @@ def _identity_mapping_markup(device: dict, csrf_token: str) -> str:
     items = []
     for (kind, value), group in sorted(groups.items()):
         statuses = {m['status'] for m in group}
-        status = states[next(iter(statuses))] if len(statuses) == 1 else 'Mixed source decisions'
+        status = states[next(iter(statuses))] if len(statuses) == 1 else ' · '.join(f"{sum(m['status'] == state for m in group)} {label}" for state, label in [('APPROVED', 'approved'), ('PENDING', 'awaiting review'), ('REJECTED', 'rejected')] if any(m['status'] == state for m in group))
         sources = []
         for mapping in group:
             source = html.escape(str(mapping['source_url']), quote=True)
             # Source links remain evidence; only HTTPS links are actionable.
-            source = f'<a href="{source}" target="_blank" rel="noopener noreferrer">{source}</a>' if str(mapping['source_url']).startswith('https://') else source
+            source = f'<a href="{source}" target="_blank" rel="noopener noreferrer">Open source</a>' if str(mapping['source_url']).startswith('https://') else source
             names = html.escape('; '.join(mapping.get('source_names') or []))
             reason = html.escape(str(mapping.get('review_reason') or 'No review recorded.'))
             history = ''.join('<li>' + html.escape(f"{entry['previous_status']} → {entry['new_status']} · {entry['reason']} · {'administrator ' + str(entry['reviewed_by']) if entry['reviewed_by'] is not None else 'reviewed catalog import'} · {entry['created_at']}") + '</li>' for entry in mapping.get('history') or [])
@@ -3000,7 +3005,7 @@ def _identity_recommendation(results: list[dict[str, Any]]) -> dict | None:
     return choices[0] if choices and len({c["deviceId"] for c in choices}) == 1 else None
 
 
-def _identity_checks_markup(results: list[dict[str, Any]]) -> str:
+def _identity_observations_markup(results: list[dict[str, Any]]) -> str:
     candidate = _identity_recommendation(results)
     recommended = candidate is not None
     possible = [c for r in results for c in _identity_presentation_candidates(r.get("current_identity_assessment") or r.get("identity_assessment") or {})]
@@ -3022,16 +3027,19 @@ def _identity_checks_markup(results: list[dict[str, Any]]) -> str:
             value = str(check.get("expected") or "") if check["name"] in {"size", "screen"} else ""
             if value and check["name"] == "size":
                 value += " mm"
-            detail = ("Matches" + (" · " + value if value else "")) if matched else "Not enough information"
+            detail = ("Matches" + (" · " + value if value else "")) if matched else ("Conflicting values" if "CONFLICT" in states else "Code received · mapping needs review" if check["name"] in {"xmlPartNumber", "usb"} and check.get("value") is not None else "Not reported" if not check.get("evidence") else "Not enough information")
             if matched and any(str(e.get("source", "")).startswith("catalog specification:") for e in check.get("evidence", [])):
                 detail += " · catalog specification"
             bullets.append("<li>" + ("✓ " if matched else "? ") + html.escape(labels.get(check["name"], check["name"])) + ": " + html.escape(detail) + "</li>")
         recommendation = "No further model selection needed." if complete else "Recommended: review the missing information before confirming this model."
         if not recommended:
             recommendation = "Recommended: leave the review open until the size or screen identifies one exact variant."
+        if not _identity_is_pending(results):
+            title = "Automatic source assessment"
+            recommendation = "These source checks are separate from the saved model assignment."
         summary = "<p class='section-kicker'>" + title + "</p><h4>" + html.escape(candidate["model"]) + "</h4><ul class='identity-match-list'>" + "".join(bullets) + "</ul><p>" + recommendation + "</p>"
     else:
-        summary = "<h4>? Model not confirmed</h4><p>There is not enough consistent information to recommend one exact model. Leave the review open until the model, size or screen can be confirmed.</p>"
+        summary = ("<h4>Automatic source assessment</h4><p>Sources do not identify one unambiguous variant. The saved assignment is shown above.</p>" if not _identity_is_pending(results) else "<h4>Model not confirmed</h4><p>Review the reported values and resolve conflicts before selecting a variant.</p>")
     solar_checks = [feature for c in possible for check in c.get("checks", [])
                     for feature in check.get("features", []) if feature.get("name") == "solar"]
     solar_values = {feature.get("expected") for feature in solar_checks}
@@ -3044,13 +3052,52 @@ def _identity_checks_markup(results: list[dict[str, Any]]) -> str:
     xml_models = sorted({str(r["garmin_model_description"]) for r in results if r.get("garmin_model_description")})
     if xml_models:
         summary = "<p><strong>Reported device: " + html.escape(" / ".join(xml_models)) + "</strong></p>" + summary
-    return "<section class='identity-summary'>" + summary + "</section><details class='admin-disclosure identity-technical-evidence'><summary>Technical evidence and other matches</summary><div class='disclosure-body'>" + _identity_checks_detail_markup(results) + "</div></details>"
+    return "<section class='identity-summary'>" + summary + "</section>"
+
+
+def _identity_checks_markup(results: list[dict[str, Any]]) -> str:
+    pending = _identity_is_pending(results)
+    assigned = {r.get("canonical_device_model_id") for r in results if r.get("canonical_device_model_id")}
+    decisions = [(r.get("identity_decision") or {}).get("decision") or {} for r in results]
+    administrator = bool(results) and all(d.get("deviceId") == r.get("canonical_device_model_id") and d.get("deviceId") for r, d in zip(results, decisions))
+    assessments = [r.get("current_identity_assessment") or r.get("identity_assessment") or {} for r in results]
+    relevant = [c for a in assessments for c in a.get("candidates", []) if c.get("deviceId") in assigned]
+    conflict = any(c.get("conflict") or any(k.get("state") == "CONFLICT" for k in c.get("checks", [])) for c in relevant)
+    complete = bool(results) and len(assigned) == 1 and all(a.get("state") == "RESOLVED" and a.get("canonicalDeviceId") in assigned for a in assessments)
+    if pending:
+        title = "Model assignment needs review"
+        action = "Confirm the exact device variant using the identity evidence below."
+    elif conflict:
+        title = "Assigned model · conflicting source values"
+        action = "Review the conflicting values before changing the saved assignment."
+    elif administrator:
+        title = "Model confirmed by administrator"
+        action = "No further model selection needed."
+    elif assigned:
+        title = "Model assigned"
+        action = "No further model selection needed."
+    else:
+        title = "Model not identifiable" if any(r.get("identity_resolution_state") == "NOT_IDENTIFIABLE" for r in results) else "Model review completed"
+        action = "See the recorded review and source evidence below."
+    possible = [c for a in assessments for c in _identity_presentation_candidates(a)]
+    model_names = {c.get("model") for c in possible if c.get("model")}
+    reported_model = "<p>" + html.escape(next(iter(model_names))) + "</p>" if pending and len(model_names) == 1 else ""
+    missing_labels = {"size": "case size", "screen": "screen technology", "xmlPartNumber": "product-code mapping", "usb": "USB mapping", "model": "model / features"}
+    missing = list(dict.fromkeys(missing_labels.get(k["name"], k["name"]) for c in possible for k in c.get("checks", []) if k.get("state") != "MATCH"))
+    if pending and missing:
+        action = "Review " + ", ".join(missing) + " before confirming the variant."
+    sources = "Conflicting values" if conflict else "Checks complete" if complete else "Some source checks remain incomplete"
+    return ("<section class='identity-summary identity-outcome'><h3>" + title + "</h3>"
+            + reported_model + "<p><strong>Source checks:</strong> " + sources + "</p><p>" + action + "</p></section>"
+            "<details class='admin-disclosure identity-technical-evidence'><summary>Identity evidence and source checks</summary><div class='disclosure-body'>"
+            + _identity_observations_markup(results) + _identity_checks_detail_markup(results) + "</div></details>")
+
 
 
 def _identity_checks_detail_markup(results: list[dict[str, Any]]) -> str:
     labels = {"model": "Model and variant", "size": "Case size", "screen": "Screen technology",
               "xmlPartNumber": "Device XML part number", "usb": "USB VID/PID"}
-    states = {"MATCH": "✓ Matches", "MISSING": "? Missing evidence", "CONFLICT": "✕ Conflicts"}
+    states = {"MATCH": "✓ Matches", "MISSING": "? Not confirmed", "CONFLICT": "✕ Conflicts"}
     sections = []
     for result in results:
         original = result.get("identity_assessment") or {}
@@ -3064,7 +3111,14 @@ def _identity_checks_detail_markup(results: list[dict[str, Any]]) -> str:
         elif original.get("state") == "RESOLVED":
             sections.append("<p>Automatically assigned at intake after all five checks matched: "
                             + html.escape(str(original.get("canonicalDeviceId"))) + "</p>")
-        for candidate in assessment.get("candidates", []):
+        candidates = assessment.get("candidates", [])
+        selected_id = result.get("canonical_device_model_id")
+        if not selected_id:
+            recommendation = _identity_recommendation([result])
+            selected_id = recommendation.get("deviceId") if recommendation else None
+        candidates = sorted(candidates, key=lambda c: c.get("deviceId") != selected_id)
+        alternatives = []
+        for candidate in candidates:
             rows = []
             for check in candidate["checks"]:
                 evidence = _identity_evidence_markup(check.get("evidence", []))
@@ -3088,9 +3142,18 @@ def _identity_checks_detail_markup(results: list[dict[str, Any]]) -> str:
                     evidence += "<br><strong>Other variants for this code still need source review.</strong>"
                 rows.append("<tr><th scope='row'>" + html.escape(labels.get(check["name"], check["name"]))
                             + "</th><td>" + html.escape(states[check["state"]]) + "</td><td>" + evidence + "</td></tr>")
-            sections.append("<h4>" + html.escape(candidate["model"] + " · " + candidate["deviceId"])
+            candidate_label = candidate["model"] + " · " + ", ".join(str(k["expected"]) + (" mm" if k["name"] == "size" else "") for k in candidate["checks"] if k["name"] in {"size", "screen"} and k.get("expected"))
+            features = list(dict.fromkeys(f["name"] for k in candidate["checks"] for f in k.get("features", []) if f.get("expected") is True))
+            if features:
+                candidate_label += ", " + ", ".join({"inreach": "inReach", "solar": "Solar"}.get(f, f) for f in features)
+            mismatches = [labels.get(k["name"], k["name"]) for k in candidate["checks"] if k.get("state") == "CONFLICT"]
+            candidate_note = "Conflicts: " + ", ".join(mismatches) if mismatches else "Source checks"
+            target = sections if candidate.get("deviceId") == selected_id else alternatives
+            target.append("<details class='identity-candidate'" + (" open" if candidate.get("deviceId") == selected_id else "") + "><summary>" + html.escape(candidate_label + " · " + candidate_note) + "</summary><h4>" + html.escape(candidate["model"] + " · " + candidate["deviceId"])
                             + "</h4><div class='table-wrap'><table class='identity-checks-table'><caption>Current identity evidence checks</caption><thead><tr><th>Check</th>"
-                            "<th>Result</th><th>Value and source</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table></div>")
+                            "<th>Result</th><th>Value and source</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table></div></details>")
+        if alternatives:
+            sections.append("<details class='admin-disclosure identity-alternatives'><summary>Other candidates (" + str(len(alternatives)) + ")</summary>" + "".join(alternatives) + "</details>")
     note = "<p>Properties derived from the same XML or USB mapping share one source; they are not independent observations. Missing evidence needs a reasoned administrator decision. Conflicts require a separate source or mapping correction.</p>"
     return ("".join(dict.fromkeys(sections)) or "<p>No matching catalog candidate. Original metadata remains available for review.</p>") + note
 
@@ -3100,19 +3163,20 @@ def _identity_source_markup(results: list[dict], csrf_token: str, return_to: str
     fields = {"model": "Client model", "rawMTPModel": "MTP model", "garminModelDescription": "XML description",
               "garminModelPartNumber": "XML part number", "variant": "Client variant", "caseSizeMm": "Case size (mm)",
               "displayType": "Display type", "usbVendorID": "USB vendor (decimal)", "usbProductID": "USB product (decimal)"}
-    options = "".join(f"<option value='{key}'>{label}</option>" for key, label in fields.items())
+    source_columns = {"model": "model", "rawMTPModel": "raw_mtp_model", "garminModelDescription": "garmin_model_description", "garminModelPartNumber": "garmin_model_part_number", "variant": "variant", "caseSizeMm": "case_size_mm", "displayType": "display_type", "usbVendorID": "usb_vendor_id", "usbProductID": "usb_product_id"}
     for result in results:
+        options = "".join(f"<option value='{key}' data-original-value='{html.escape(str(result.get(source_columns[key]) if result.get(source_columns[key]) is not None else 'Not reported'), quote=True)}'>{label}</option>" for key, label in fields.items())
         event_id = str(result.get("event_id") or "")
         if not event_id:
             continue
         history = "".join("<li>" + html.escape(f"{c['field']}: {c.get('previous_value')} → {c.get('corrected_value')} · {c['reason']} · administrator {c['corrected_by']} · {c['created_at']}") + "</li>"
                           for c in result.get("identity_source_corrections", []))
-        forms.append(f"""<p>Report <code>{html.escape(event_id)}</code></p><ul>{history}</ul>
-          <form method='post' action='/admin/diagnostics/identity-source' class='admin-async-action'>
+        forms.append(f"""<details class='admin-disclosure'><summary>Report and correction history</summary><p>Report <code>{html.escape(event_id)}</code></p><ul>{history}</ul></details>
+          <form method='post' action='/admin/diagnostics/identity-source' class='admin-async-action diagnostic-action-form identity-source-form'>
           <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>
           <input type='hidden' name='event_id' value='{html.escape(event_id, quote=True)}'>
           <input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'>
-          <label>Source field<select name='field'>{options}</select></label>
+          <label>Source field<select name='field' data-source-field>{options}</select></label><label>Reported value<output data-source-original>{html.escape(str(result.get('model') or 'Not reported'))}</output></label>
           <label>Correct value (empty means unknown)<input name='value' maxlength='160'></label>
           <label>Evidence and reason<input name='reason' required maxlength='1000'></label>
           <button type='submit'>Record source correction</button></form>""")
@@ -3537,6 +3601,8 @@ def _diagnostic_detail_dialog(
         <p class='table-help'>Closed linked issues resolve this diagnostic after synchronization, normally within 15 minutes. Installation results stay in history.</p>
         <details class='github-issue-disclosure'><summary>{'Manage linked issue' if issue else 'Report an anomaly or link issue'}</summary><div class='github-issue-controls'>{issue_controls}</div></details>
       </section>"""
+    if not issue:
+        issue_form = "<details class='admin-disclosure github-empty'><summary>Report or link an issue</summary><div class='disclosure-body'>" + issue_form + "</div></details>"
     workflow_form = ""
     if not resolved and issue:
         workflow_value = {
@@ -3582,9 +3648,9 @@ def _diagnostic_detail_dialog(
         if identity_pending and lifecycle_action else ""
     )
     action_markup = (
-        f"{next_action}{identity_form}{secondary_lifecycle}{workflow_form}{issue_form}"
+        f"{identity_form}{secondary_lifecycle}{workflow_form}{issue_form}"
         if identity_pending else
-        f"{next_action}{lifecycle_action}{workflow_form}{identity_form}{issue_form}"
+        f"{lifecycle_action}{workflow_form}{identity_form}{issue_form}"
     )
     return f"""
       <dialog class='diagnostic-detail-dialog' id='{dialog_id}' aria-labelledby='{dialog_id}-title'>
@@ -3600,7 +3666,8 @@ def _diagnostic_detail_dialog(
             {review_state}
           </dl>
           {failure_summary}
-          <details class='admin-disclosure' open><summary>Model identification</summary><div class='disclosure-body'>{_identity_checks_markup(results)}</div></details>
+          {next_action}
+          {_identity_checks_markup(results)}
           {_identity_source_markup(results, csrf_token, return_to)}
           <div class='diagnostic-actions-grid'>{action_markup}</div>
           {technical_details}
@@ -3713,7 +3780,12 @@ def device_detail_page(
     authorization_label, authorization_kind, _ = _admin_installation_authorization(
         device.get("supportStatus")
     )
-    summary_badges = "".join((
+    if variant == "Historical":
+        variant = "—"
+        provenance = "<span class='admin-state'>Historical catalog entry</span>"
+    else:
+        provenance = ""
+    summary_badges = provenance + "".join((
         _admin_status_badge(f"Maps: {map_label}", f"map-{map_kind}"),
         _status_badge(status_value),
         _admin_status_badge(authorization_label, f"authorization-{authorization_kind}"),
@@ -4210,7 +4282,8 @@ def _admin_status_badge(label: str, kind: str) -> str:
 
 def _admin_device_row(device: dict[str, Any], index: int) -> str:
     model, variant, _ = _identity_parts(device)
-    variant = variant or "—"
+    provenance = "<small class='table-secondary'>Historical catalog entry</small>" if variant == "Historical" else ""
+    variant = "—" if provenance else variant or "—"
     family = str(device.get("familyName") or device.get("family") or "")
     map_label, map_kind = _admin_map_capability(device.get("mapCapable"))
     authorization_label, authorization_kind, _ = _admin_installation_authorization(
@@ -4233,7 +4306,7 @@ def _admin_device_row(device: dict[str, Any], index: int) -> str:
     last_success = _timestamp_markup(stats.get("lastSuccessfulAt")) if stats.get("lastSuccessfulAt") else "—"
     detail_url = _device_detail_url(device.get("id"), origin="devices")
     return f"""<tr data-device-index='{index}' data-device-url='{html.escape(detail_url, quote=True)}' data-search='{html.escape(search, quote=True)}' data-model='{html.escape(model.lower(), quote=True)}' data-updated='{html.escape(str(catalog.get('updatedAt') or ''), quote=True)}' data-installs='{stats['attempts']}' data-evidence='{html.escape(str(stats.get('lastSuccessfulAt') or ''), quote=True)}' data-status='{html.escape(evidence_status.lower())}'>
-      <td><a class='device-model-button' href='{html.escape(detail_url, quote=True)}'>{image}<span class='device-model-copy'><strong>{html.escape(model)}</strong>{new_badge}</span></a></td>
+      <td><a class='device-model-button' href='{html.escape(detail_url, quote=True)}'>{image}<span class='device-model-copy'><strong>{html.escape(model)}</strong>{provenance}{new_badge}</span></a></td>
       <td>{html.escape(variant)}</td>
       <td>{_admin_status_badge(map_label, f'map-{map_kind}')}</td>
       <td>{_admin_status_badge(authorization_label, f'authorization-{authorization_kind}')}</td>
@@ -4428,8 +4501,8 @@ def _statistics_row(
 ) -> str:
     model, variant, identity = _identity_parts(row)
     if catalog_device is not None:
-        # Same exact catalog record as the linked device card; presentation only.
-        variant = _identity_parts(catalog_device)[1]
+        # Exact catalog identity drives display; original reported identity remains searchable.
+        model, variant, _ = _identity_parts(catalog_device)
     summary = diagnostic_summary or {}
     attempted = int(row.get("attempted_install_count", summary.get("attempts", 0)) or 0)
     successful = int(row.get("successful_install_count", summary.get("successful", 0)) or 0)
@@ -4442,6 +4515,9 @@ def _statistics_row(
     diagnostics_url = _model_detail_url(row)
     pending_count = int(summary.get("identity_pending") or 0)
     model_cell = html.escape(model)
+    if variant == "Historical":
+        model_cell += " <small class='table-secondary'>Historical catalog entry</small>"
+        variant = "—"
     if pending_count:
         model_cell += (
             f" <span class='identity-pending-indicator' aria-label='{pending_count} identity review'>"
@@ -5014,7 +5090,7 @@ def _diagnostics_script() -> str:
           return matches;
         });
         const label = matching.length === 1 ? 'record' : 'records';
-        count.textContent = `${matching.length} ${label}`;
+        count.textContent = matching.length ? `${matching.length} ${label}` : selected === 'failed' ? 'No failed installations for this model' : 'No records match these filters';
         syncFilterControls();
         if (!pagination || !pageSize) {
           rows.forEach((row) => { row.hidden = !matching.includes(row); });
@@ -5029,7 +5105,7 @@ def _diagnostics_script() -> str:
         const start = matching.length ? startIndex + 1 : 0;
         const end = matching.length ? Math.min(matching.length, startIndex + size) : 0;
         const summary = pagination.querySelector('span');
-        if (summary) summary.textContent = `Showing ${start}–${end} of ${matching.length} · page ${page} of ${pages}`;
+        if (summary) summary.textContent = matching.length ? `Showing ${start}–${end} of ${matching.length} · page ${page} of ${pages}` : 'Change the filter to view installation history';
         const previous = pagination.querySelector('[data-history-page="previous"]');
         const next = pagination.querySelector('[data-history-page="next"]');
         if (previous) previous.disabled = page <= 1;
@@ -5063,6 +5139,14 @@ def _diagnostics_script() -> str:
         const query = parameters.toString();
         history.replaceState(null, '', query ? `${window.location.pathname}?${query}` : window.location.pathname);
         refresh();
+      });
+      document.querySelectorAll('[data-source-field]').forEach((select) => {
+        const renderOriginal = () => {
+          const output = select.form?.querySelector('[data-source-original]');
+          if (output) output.textContent = select.selectedOptions[0]?.dataset.originalValue || 'Not reported';
+        };
+        select.addEventListener('change', renderOriginal);
+        renderOriginal();
       });
       document.querySelectorAll('form[data-confirm]').forEach((form) => form.addEventListener('submit', (event) => {
         if (!window.confirm(form.dataset.confirm || 'Continue?')) event.preventDefault();
@@ -5330,6 +5414,12 @@ def _admin_timezone_script() -> str:
         document.querySelectorAll('[data-admin-timestamp]').forEach((element) => {
           element.textContent = format(element.dataset.adminTimestamp);
           element.title = `${element.textContent} · ${zone}`;
+          if (element.closest('.download-timeline')) element.setAttribute('aria-label', element.title);
+        });
+        document.querySelectorAll('.download-timeline').forEach((timeline) => {
+          const times = [...timeline.querySelectorAll('[data-admin-timestamp]')];
+          const dates = new Set(times.map(el => format(el.dataset.adminTimestamp).slice(0, 10)));
+          if (dates.size === 1) times.forEach(el => { el.setAttribute('aria-label', el.title); el.textContent = format(el.dataset.adminTimestamp).slice(11); });
         });
         select.title = select.value === 'browser' ? `Automatic browser time zone: ${browserTimeZone}` : zone;
         select.setAttribute('aria-label', `Time zone: ${select.value === 'browser' ? `Automatic (${browserTimeZone})` : select.value}`);
@@ -5616,24 +5706,24 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 @media(max-width:900px){.map-statistics-coverage-layout{grid-template-columns:1fr}.map-statistics-world-map{min-height:0}.map-statistics-world-map-card .section-heading .table-help{text-align:left}}
 @media(max-width:560px){.provider-card{padding:18px 16px}.provider-metrics,.map-statistics-metrics,.map-statistics-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.provider-metrics article{padding:12px}.provider-information-list div{grid-template-columns:1fr;gap:3px}.provider-information-list dd{text-align:left}.provider-action-bar{align-items:stretch;flex-direction:column}.provider-action-bar button,.button-link{width:100%}.provider-action-bar .admin-action-status{flex-basis:auto}.map-statistics-filter-bar label,.map-statistics-filter-bar input,.map-statistics-filter-bar select{width:100%;min-width:0}.map-statistics-filter-bar .results-count{width:100%;margin-left:4px}}
 @media(max-height:760px){.device-dialog-inner{max-height:calc(100vh - 32px);overflow:auto}.device-dialog-header{position:sticky;top:-1px;z-index:2;padding-bottom:10px;background:var(--surface)}}
-.overview-page{padding-top:30px}.overview-heading{align-items:flex-end;margin-bottom:20px}.overview-period-form{margin:0}.overview-period-form select{min-width:154px}.overview-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:14px}.overview-kpi{display:flex;min-height:84px;flex-direction:column;justify-content:flex-start;padding:14px 16px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:inherit;text-decoration:none;transition:border-color .15s ease,transform .15s ease}.overview-kpi:hover{border-color:color-mix(in srgb,var(--sky) 52%,var(--border));transform:translateY(-1px)}.overview-kpi span{color:var(--secondary);font-size:12px;font-weight:700}.overview-kpi strong{display:block;margin-top:6px;font-family:var(--font-brand);font-size:30px;line-height:1;font-variant-numeric:tabular-nums}.overview-kpi small{margin-top:8px;color:var(--secondary);font-size:11px;line-height:1.35}.overview-kpi-attention strong{color:var(--danger)}.overview-kpi-pending{background:var(--surface-muted)}.overview-kpi-pending strong{color:var(--secondary)}.overview-panel{margin-top:12px;padding:18px 20px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}.overview-panel .section-heading{margin-bottom:10px}.overview-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}.overview-columns .overview-panel{min-width:0}.overview-empty-state{margin:0;padding:12px 0;color:var(--secondary);font-weight:650}.overview-attention-list,.overview-activity-list,.overview-reason-list{list-style:none;margin:0;padding:0}.overview-attention-item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:10px;padding:10px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-attention-item:first-child{border-top:0;padding-top:3px}.overview-attention-dot{font-size:13px;line-height:1.5;color:var(--danger)}.overview-attention-provider .overview-attention-dot{color:var(--warning,var(--stone))}.overview-attention-item div{display:grid;gap:2px;min-width:0}.overview-attention-item a{color:var(--graphite);text-decoration:none}.overview-attention-item a:hover{text-decoration:underline;text-underline-offset:3px}.overview-attention-item strong{font-size:14px}.overview-attention-item span{color:var(--secondary);font-size:12px;overflow:hidden;text-overflow:ellipsis}.overview-attention-item small{color:var(--secondary);font-size:11px}.overview-detail-link,.section-link{color:var(--interactive);font-size:12px;font-weight:700;white-space:nowrap;text-decoration:none}.overview-detail-link:hover,.section-link:hover{text-decoration:underline;text-underline-offset:3px}.overview-activity-item{display:grid;grid-template-columns:126px minmax(0,1fr) max-content;align-items:center;gap:10px;padding:8px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-activity-item:first-child{border-top:0;padding-top:3px}.overview-activity-item time{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-activity-item a{display:grid;min-width:0;color:inherit;text-decoration:none}.overview-activity-item a:hover .overview-activity-label{text-decoration:underline;text-underline-offset:3px}.overview-activity-label{font-size:13px;font-weight:750}.overview-activity-item a span:not(.overview-activity-label){overflow:hidden;text-overflow:ellipsis;color:var(--secondary);font-size:12px;white-space:nowrap}.overview-activity-item a small{color:var(--danger);font-size:11px}.overview-activity-provider{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-activity-failed .overview-activity-label,.overview-activity-not-started .overview-activity-label{color:var(--danger)}.overview-reason-list{display:grid;gap:11px}.overview-reason-list li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center}.overview-reason-list li>span:first-child{font-size:13px}.overview-reason-list strong{font-variant-numeric:tabular-nums}.overview-bar{grid-column:1/-1;height:7px;overflow:hidden;border-radius:999px;background:var(--surface-muted)}.overview-bar i{display:block;height:100%;border-radius:inherit;background:var(--interactive)}.overview-chart-note,.overview-semantic-note{margin:12px 0 0;color:var(--secondary);font-size:11px}.overview-provider-summary{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.overview-provider-summary strong{margin-right:3px;font-variant-numeric:tabular-nums}.overview-provider-summary a{display:inline-flex;gap:5px;align-items:center;padding:5px 8px;border:1px solid var(--border);border-radius:999px;color:var(--graphite);font-size:12px;text-decoration:none}.overview-provider-summary a:hover{border-color:var(--sky);color:var(--interactive)}.overview-provider-summary a span{color:var(--secondary);font-size:11px}.overview-semantic-note{max-width:780px;margin-top:14px}.admin-section-nav{flex-wrap:wrap}
+.overview-page{padding-top:30px}.overview-heading{align-items:flex-end;margin-bottom:20px}.overview-period-form{margin:0}.overview-period-form select{min-width:154px}.overview-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:14px}.overview-kpi{display:flex;min-height:84px;flex-direction:column;justify-content:flex-start;padding:14px 16px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:inherit;text-decoration:none;transition:border-color .15s ease,transform .15s ease}.overview-kpi:hover{border-color:color-mix(in srgb,var(--sky) 52%,var(--border));transform:translateY(-1px)}.overview-kpi span{color:var(--secondary);font-size:12px;font-weight:700}.overview-kpi strong{display:block;margin-top:6px;font-family:var(--font-brand);font-size:30px;line-height:1;font-variant-numeric:tabular-nums}.overview-kpi small{margin-top:8px;color:var(--secondary);font-size:11px;line-height:1.35}.overview-kpi-attention strong{color:var(--danger)}.overview-kpi-pending{background:var(--surface-muted)}.overview-kpi-pending strong{color:var(--secondary)}.overview-panel{margin-top:12px;padding:18px 20px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}.overview-panel .section-heading{margin-bottom:10px}.overview-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}.overview-columns .overview-panel{min-width:0}.overview-empty-state{margin:0;padding:12px 0;color:var(--secondary);font-weight:650}.overview-attention-list,.overview-activity-list,.overview-reason-list{list-style:none;margin:0;padding:0}.overview-attention-item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:10px;padding:10px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-attention-item:first-child{border-top:0;padding-top:3px}.overview-attention-dot{font-size:13px;line-height:1.5;color:var(--danger)}.overview-attention-provider .overview-attention-dot{color:var(--warning,var(--stone))}.overview-attention-item div{display:grid;gap:2px;min-width:0}.overview-attention-item a{color:var(--graphite);text-decoration:none}.overview-attention-item a:hover{text-decoration:underline;text-underline-offset:3px}.overview-attention-item strong{font-size:14px}.overview-attention-item span{color:var(--secondary);font-size:12px;overflow:hidden;text-overflow:ellipsis}.overview-attention-item small{color:var(--secondary);font-size:11px}.overview-detail-link,.section-link{color:var(--interactive);font-size:12px;font-weight:700;white-space:nowrap;text-decoration:none}.overview-detail-link:hover,.section-link:hover{text-decoration:underline;text-underline-offset:3px}.overview-activity-item{display:grid;grid-template-columns:126px minmax(0,1fr) max-content;align-items:center;gap:10px;padding:8px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-activity-item:first-child{border-top:0;padding-top:3px}.overview-activity-item>time{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-activity-item a{display:grid;min-width:0;color:inherit;text-decoration:none}.overview-activity-item a:hover .overview-activity-label{text-decoration:underline;text-underline-offset:3px}.overview-activity-label{font-size:13px;font-weight:750}.overview-activity-item a span:not(.overview-activity-label){overflow:hidden;text-overflow:ellipsis;color:var(--secondary);font-size:12px;white-space:nowrap}.overview-activity-item a small{color:var(--danger);font-size:11px}.overview-activity-provider{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-activity-failed .overview-activity-label,.overview-activity-not-started .overview-activity-label{color:var(--danger)}.overview-reason-list{display:grid;gap:11px}.overview-reason-list li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center}.overview-reason-list li>span:first-child{font-size:13px}.overview-reason-list strong{font-variant-numeric:tabular-nums}.overview-bar{grid-column:1/-1;height:7px;overflow:hidden;border-radius:999px;background:var(--surface-muted)}.overview-bar i{display:block;height:100%;border-radius:inherit;background:var(--interactive)}.overview-chart-note,.overview-semantic-note{margin:12px 0 0;color:var(--secondary);font-size:11px}.overview-provider-summary{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.overview-provider-summary strong{margin-right:3px;font-variant-numeric:tabular-nums}.overview-provider-summary a{display:inline-flex;gap:5px;align-items:center;padding:5px 8px;border:1px solid var(--border);border-radius:999px;color:var(--graphite);font-size:12px;text-decoration:none}.overview-provider-summary a:hover{border-color:var(--sky);color:var(--interactive)}.overview-provider-summary a span{color:var(--secondary);font-size:11px}.overview-semantic-note{max-width:780px;margin-top:14px}.admin-section-nav{flex-wrap:wrap}
 .quick-filter-group{display:flex;align-items:center;gap:4px;flex:0 0 auto;flex-wrap:wrap}.quick-filter{min-height:var(--admin-control-height);padding:8px 10px;border:1px solid transparent;border-radius:var(--admin-control-radius);background:transparent;color:var(--secondary);font-weight:650}.quick-filter:hover{border-color:var(--border);color:var(--interactive)}.quick-filter.active{border-color:color-mix(in srgb,var(--sky) 45%,var(--border));background:var(--surface);color:var(--interactive);box-shadow:0 1px 1px rgba(34,42,43,.05)}
 .map-statistics-coverage-layout{display:grid;grid-template-columns:minmax(0,3fr) minmax(280px,1fr);gap:12px;margin-top:20px}.map-statistics-coverage-layout>.provider-card{min-width:0;margin-top:0}.map-statistics-popularity{grid-template-columns:minmax(0,1fr)}.map-statistics-popularity .provider-card{margin-top:0}.table-secondary{display:block;margin-top:3px;color:var(--secondary);font-size:11px;font-weight:500}
 .map-statistics-world-map{position:relative;min-height:300px;padding:8px 0 0;overflow:hidden;border:1px solid var(--border);border-radius:10px;background:var(--surface-muted)}.world-map-svg{width:100%;padding:0 8px}.world-map-svg svg{display:block;width:100%;height:auto;overflow:visible}.world-map-country{stroke:color-mix(in srgb,var(--interactive) 42%,var(--border));stroke-width:.65;vector-effect:non-scaling-stroke;cursor:help;outline:none;transition:filter .12s ease,stroke-width .12s ease}.world-map-country:hover,.world-map-country:focus{filter:brightness(.86);stroke:var(--interactive);stroke-width:1.5}.world-map-tooltip{position:absolute;z-index:2;top:12px;right:12px;min-width:170px;max-width:240px;padding:10px 12px;border:1px solid color-mix(in srgb,var(--interactive) 28%,var(--border));border-radius:9px;background:color-mix(in srgb,var(--surface) 94%,transparent);box-shadow:0 8px 24px rgba(34,42,43,.14);font-size:12px;pointer-events:none}.world-map-tooltip strong,.world-map-tooltip-total,.world-map-tooltip-empty{display:block}.world-map-tooltip-total{margin-top:2px;color:var(--secondary)}.world-map-tooltip-empty{margin-top:5px;color:var(--secondary);font-style:italic}.world-map-provider-line{display:flex;justify-content:space-between;gap:16px;margin-top:7px;padding-top:6px;border-top:1px solid var(--border)}.world-map-provider-line+ .world-map-provider-line{margin-top:5px;padding-top:5px}.world-map-provider-line span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.world-map-provider-line strong{font-variant-numeric:tabular-nums}.world-map-legend{display:flex;align-items:center;gap:8px;margin:8px 2px 0;color:var(--secondary);font-size:11px;font-variant-numeric:tabular-nums}.world-map-legend-gradient{display:block;flex:1;height:8px;border-radius:99px;background:linear-gradient(90deg,var(--surface),hsl(198 25% 49%));border:1px solid var(--border)}.world-map-note{margin:8px 2px 0}.map-statistics-world-map-card .section-heading{align-items:flex-start}.map-statistics-world-map-card .section-heading .table-help{padding-top:3px;text-align:right}
 .overview-columns{grid-template-columns:minmax(0,2fr) minmax(280px,1fr)}.overview-chart-wrap{overflow-x:auto}.overview-trend-chart{display:block;width:100%;min-width:520px;height:auto;min-height:180px}.overview-trend-chart text{fill:var(--secondary);font:500 11px var(--font-ui)}.overview-chart-success{fill:var(--interactive);background:var(--interactive)}.overview-chart-failed{fill:var(--danger);background:var(--danger)}.overview-chart-custom{fill:var(--status-success-text);background:var(--status-success-text)}.overview-chart-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:7px;color:var(--secondary);font-size:11px}.overview-chart-note{font-size:12px;color:var(--secondary);margin:10px 0 0}.overview-chart-legend span{display:inline-flex;align-items:center;gap:5px}.overview-chart-legend i{display:inline-block;width:9px;height:9px;border-radius:2px}.overview-info{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border:1px solid var(--border);border-radius:50%;color:var(--secondary);font-size:11px;font-weight:750;cursor:help}.overview-compatibility-summary{margin-top:12px}.overview-compatibility-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.overview-compatibility-grid div{padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-muted)}.overview-compatibility-grid span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.overview-compatibility-grid strong{display:block;margin-top:5px;font:700 20px var(--font-brand);font-variant-numeric:tabular-nums}.provider-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}.map-statistics-provider-table{display:block}.map-statistics-linkage>summary{padding:0;color:var(--interactive);font-size:13px;font-weight:750;list-style:none}.map-statistics-linkage>summary::-webkit-details-marker{display:none}.map-statistics-linkage>summary:before{content:'›';display:inline-block;width:16px;transition:transform .15s ease}.map-statistics-linkage[open]>summary:before{transform:rotate(90deg)}.provider-empty-disclosure{padding:16px 20px}.provider-empty-disclosure>details>summary{list-style:none}.provider-empty-disclosure>details>summary::-webkit-details-marker{display:none}.diagnostic-failure-summary{margin:14px 0 0;padding:11px 13px;border-left:3px solid var(--danger);border-radius:6px;background:var(--error-surface);color:var(--danger);font-size:13px}.diagnostic-failure-summary strong{font-weight:750}.model-statistics article>.info-control{display:inline-flex;margin-top:6px;vertical-align:middle}.history-more-filters{min-width:130px}.history-more-filters .disclosure-body{min-width:170px}.map-statistics-popularity .popularity-all-maps-disclosure{margin-top:12px}.map-statistics-popularity .popularity-regions-disclosure{margin-top:12px}
 @media(max-width:1100px){.overview-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:760px){.overview-heading{align-items:flex-start;flex-direction:column;gap:12px}.overview-period-form,.overview-period-form select{width:100%}.overview-columns{grid-template-columns:1fr}.overview-kpi strong{font-size:26px}.overview-activity-item{grid-template-columns:1fr max-content;gap:3px 8px}.overview-activity-item time{grid-column:1/-1}.overview-activity-provider{grid-column:2;grid-row:2}.overview-activity-item a{grid-column:1;grid-row:2}}
+@media(max-width:760px){.overview-heading{align-items:flex-start;flex-direction:column;gap:12px}.overview-period-form,.overview-period-form select{width:100%}.overview-columns{grid-template-columns:1fr}.overview-kpi strong{font-size:26px}.overview-activity-item{grid-template-columns:1fr max-content;gap:3px 8px}.overview-activity-item>time{grid-column:1/-1}.overview-activity-provider{grid-column:2;grid-row:2}.overview-activity-item a{grid-column:1;grid-row:2}}
 @media(max-width:560px){.overview-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.overview-panel{padding:16px}.overview-attention-item{grid-template-columns:auto minmax(0,1fr)}.overview-detail-link{grid-column:2}.overview-kpi{min-height:80px;padding:12px}.overview-kpi strong{font-size:24px}}
 @media(max-width:400px){.overview-kpis{grid-template-columns:1fr}}
 @media(max-width:700px){.overview-compatibility-grid{grid-template-columns:1fr}.provider-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:480px){.overview-compatibility-grid{grid-template-columns:1fr}}
-.overview-primary-grid,.overview-secondary-grid{display:grid;gap:12px}.overview-primary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.overview-secondary-grid{grid-template-columns:minmax(0,1.35fr) minmax(320px,1fr)}.overview-primary-grid .overview-panel,.overview-secondary-grid .overview-panel{min-width:0}.overview-model-list,.overview-review-list{list-style:none;margin:0;padding:0}.overview-model-item,.overview-review-item{display:grid;grid-template-columns:minmax(0,1fr) max-content;gap:8px;align-items:start;padding:9px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-model-item:first-child,.overview-review-item:first-child{border-top:0;padding-top:3px}.overview-model-item a,.overview-review-item a{display:grid;min-width:0;color:inherit;text-decoration:none}.overview-model-item a:hover strong,.overview-review-item a:hover strong{text-decoration:underline;text-underline-offset:3px}.overview-model-item strong,.overview-review-item strong{font-size:13px;overflow:hidden;text-overflow:ellipsis}.overview-model-item a span,.overview-review-item a span{color:var(--secondary);font-size:11px}.overview-model-item time{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-model-failed strong{color:var(--danger)}.overview-review-block{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}.overview-review-block h3{margin:0 0 5px;color:var(--secondary);font-size:12px}.overview-activity-item{grid-template-columns:minmax(0,1fr) max-content}.overview-activity-item time{grid-column:2;grid-row:1 / span 2}.overview-activity-item .overview-activity-label{grid-column:1}.overview-activity-item a span:not(.overview-activity-label){grid-column:1}.overview-compact-empty{padding-bottom:14px}.inline-filter-row{justify-content:flex-start}.inline-filter-row label{flex:0 1 260px}.inline-filter-row select{flex:0 0 170px}
+.overview-primary-grid,.overview-secondary-grid{display:grid;gap:12px}.overview-primary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.overview-secondary-grid{grid-template-columns:minmax(0,1.35fr) minmax(320px,1fr)}.overview-primary-grid .overview-panel,.overview-secondary-grid .overview-panel{min-width:0}.overview-model-list,.overview-review-list{list-style:none;margin:0;padding:0}.overview-model-item,.overview-review-item{display:grid;grid-template-columns:minmax(0,1fr) max-content;gap:8px;align-items:start;padding:9px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-model-item:first-child,.overview-review-item:first-child{border-top:0;padding-top:3px}.overview-model-item a,.overview-review-item a{display:grid;min-width:0;color:inherit;text-decoration:none}.overview-model-item a:hover strong,.overview-review-item a:hover strong{text-decoration:underline;text-underline-offset:3px}.overview-model-item strong,.overview-review-item strong{font-size:13px;overflow:hidden;text-overflow:ellipsis}.overview-model-item a span,.overview-review-item a span{color:var(--secondary);font-size:11px}.overview-model-item time{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-model-failed strong{color:var(--danger)}.overview-review-block{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}.overview-review-block h3{margin:0 0 5px;color:var(--secondary);font-size:12px}.overview-activity-item{grid-template-columns:minmax(0,1fr) max-content}.overview-activity-item>time{grid-column:2;grid-row:1 / span 2}.overview-activity-item .overview-activity-label{grid-column:1}.overview-activity-item a span:not(.overview-activity-label){grid-column:1}.overview-compact-empty{padding-bottom:14px}.inline-filter-row{justify-content:flex-start}.inline-filter-row label{flex:0 1 260px}.inline-filter-row select{flex:0 0 170px}
 .system-health-page{padding-top:30px}.system-health-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.system-health-card{min-height:150px;padding:18px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}.system-health-card .section-heading{align-items:center;margin-bottom:14px}.system-health-card h2{font-size:16px}.system-health-description p{margin:0 0 10px;color:var(--secondary);font-size:12px;line-height:1.55}.system-health-explanation{margin:12px 0;font-size:11px}.system-health-explanation div{display:grid;grid-template-columns:48px 1fr;gap:7px;padding:5px 0;border-top:1px solid var(--border)}.system-health-explanation dt{font-weight:750;color:var(--graphite)}.system-health-explanation dd{margin:0;color:var(--secondary)}.system-health-badge{display:inline-flex;padding:4px 8px;border:1px solid;border-radius:999px;font-size:11px;font-weight:750}.system-health-healthy{border-color:var(--status-success-border);background:var(--status-success-surface);color:var(--status-success-text)}.system-health-warning{border-color:var(--status-tested-border);background:var(--status-tested-surface);color:var(--status-tested-text)}.system-health-failed{border-color:var(--status-error-border);background:var(--status-error-surface);color:var(--status-error-text)}.system-health-unknown{border-color:var(--status-neutral-border);background:var(--status-neutral-surface);color:var(--status-neutral-text)}
 @media(max-width:1100px){.system-health-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.system-health-grid{grid-template-columns:1fr}.system-health-card{min-height:0}}
 .model-statistics .attempts-metric>span{display:inline-flex;align-items:center;gap:6px}.model-statistics .attempts-metric>span:after{content:'i';display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border:1px solid var(--border);border-radius:50%;color:var(--interactive);font-size:11px;font-weight:750;line-height:1}
 @media(max-width:900px){.overview-primary-grid,.overview-secondary-grid{grid-template-columns:1fr}}
-@media(max-width:760px){.overview-activity-item{grid-template-columns:1fr max-content}.overview-activity-item time{grid-column:2;grid-row:1 / span 2}.overview-activity-item a{grid-column:1;grid-row:1 / span 2}.overview-activity-item a span:not(.overview-activity-label){white-space:normal}}
+@media(max-width:760px){.overview-activity-item{grid-template-columns:1fr max-content}.overview-activity-item>time{grid-column:2;grid-row:1 / span 2}.overview-activity-item a{grid-column:1;grid-row:1 / span 2}.overview-activity-item a span:not(.overview-activity-label){white-space:normal}}
 @media(max-width:480px){.inline-filter-row label,.inline-filter-row select{flex-basis:auto}}
 .overview-attention-review .overview-attention-dot{color:var(--warning,var(--stone))}
 .provider-action-bar{padding:0 0 4px;background:transparent;border:0;border-radius:0}
@@ -5997,7 +6087,7 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .popularity-all-maps-disclosure .disclosure-body>label{display:flex;flex-direction:column;gap:6px;margin:0 0 16px;font-size:12px;font-weight:650;color:var(--secondary)}
 .popularity-all-maps-disclosure input{width:100%;min-width:0;min-height:40px;margin:0}
 @media(max-width:700px){.popularity-all-maps-disclosure input{min-height:44px}}
-.filter-bar label>.sr-only,.inline-filter-row label>.sr-only{position:static;width:auto;height:auto;margin:0;overflow:visible;clip:auto;clip-path:none;white-space:normal;font-size:12px;font-weight:650;color:var(--secondary)}
+.inline-filter-row label>.sr-only{position:static;width:auto;height:auto;margin:0;overflow:visible;clip:auto;clip-path:none;white-space:normal;font-size:12px;font-weight:650;color:var(--secondary)}
 .filter-bar label>input,.filter-bar label>select,.inline-filter-row label>input,.inline-filter-row label>select{flex:none}
 .inline-filter-row{align-items:flex-end}
 .inline-filter-row label{min-width:0}
@@ -6030,7 +6120,7 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .map-statistics-popularity .table-wrap .admin-table td::before{display:none}
 .map-statistics-popularity .table-wrap .admin-table td:nth-child(2)::after{content:' installs';font-size:11px;color:var(--secondary);font-weight:400}
 .map-statistics-popularity .table-secondary,.map-statistics-popularity code{white-space:normal;overflow-wrap:anywhere;font-size:11px}
-.map-statistics-popularity .table-wrap .region-map-link{width:auto;min-height:24px;font-weight:650;text-decoration:none}
+.map-statistics-popularity .table-wrap .region-map-link{width:auto;min-height:40px;font-weight:650;text-decoration:none}
 .map-statistics-popularity .region-map-link:hover,.map-statistics-popularity .region-map-link:focus-visible{text-decoration:underline}
 @media(max-width:700px){.map-statistics-popularity .table-wrap .region-map-link{min-height:44px}}
 .map-statistics-world-map-card .section-heading{flex-wrap:wrap}
@@ -6074,6 +6164,22 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
   .overview-page .attention-shortcuts{margin-bottom:0}
   .device-filter-bar{margin-bottom:var(--admin-mobile-card-gap)}
 }
+/* Information hierarchy: summaries first, complete evidence on demand. */
+.identity-outcome{padding:16px;background:var(--off-white);border-radius:12px;margin:12px 0}
+.identity-outcome h3{margin:0 0 8px;font-size:16px}.identity-outcome p{margin:4px 0}
+.identity-candidate{border-top:1px solid var(--border);padding:8px 0}.identity-candidate>summary{min-height:40px;display:list-item;font-weight:600}
+.identity-technical-evidence .identity-summary{font-size:13px}.identity-technical-evidence h4{font-size:14px;overflow-wrap:anywhere}
+.identity-checks-table{font-size:13px}.identity-checks-table td{overflow-wrap:anywhere}
+.identity-mapping-source code,.diagnostic-id code{overflow-wrap:anywhere}
+.identity-source-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.identity-source-form label{display:flex;flex-direction:column;gap:6px}.identity-source-form button{justify-self:start;grid-column:1/-1}.identity-source-form output{padding:10px 0;overflow-wrap:anywhere}
+.download-history{grid-column:1/-1;font-size:13px}.download-history summary{font-size:13px;min-height:40px}
+.download-timeline{display:flex;flex-wrap:wrap;gap:8px 16px;list-style:none;padding:0;margin:8px 0;font-size:13px}
+.download-timeline li{display:flex;align-items:center;flex-wrap:wrap;gap:4px}.download-timeline li+li::before{content:'→';color:var(--secondary);margin-right:8px}
+.download-timeline .admin-icon{width:14px;height:14px;flex:none}.download-timeline time{font-size:12px;font-variant-numeric:tabular-nums;position:static}
+.github-empty{margin:12px 0}.github-empty .github-review{margin:0}
+@media(max-width:700px){.identity-source-form{grid-template-columns:1fr}.identity-candidate>summary,.download-history summary{min-height:44px}}
+
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
