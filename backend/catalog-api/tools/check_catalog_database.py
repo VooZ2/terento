@@ -154,3 +154,9 @@ with database.connection() as connection:
     assert len(media_rows) == 10, media_rows
     assert all(r['source_image_url'].startswith('https://res.garmin.com/') for r in media_rows)
 print('PASS: all ten targeted historical records have official model photos')
+
+with database.connection() as connection:
+    photo = connection.execute("SELECT source_image_url, variant FROM device_model WHERE id='garmin-forerunner-955'").fetchone()
+    assert photo['source_image_url'] == 'https://res.garmin.com/en/products/010-02638-10/v/cf-lg-d0a186df-582c-4f80-aeef-7eb37b60471b.jpg'
+    assert photo['variant'] == 'Standard'
+print('PASS: Forerunner 955 official non-Solar photograph and preserved variant')
