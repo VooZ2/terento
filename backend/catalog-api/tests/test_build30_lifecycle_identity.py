@@ -149,7 +149,7 @@ class Build30Tests(unittest.TestCase):
         for phase, icon in zip(phases, ('hourglass-start', 'spinner', 'hourglass-end')):
             self.assertIn('fa-' + icon, markup)
             self.assertIn(phase.title(), markup)
-        self.assertEqual(markup.count('Font Awesome Free 7.3.1'), 3)
+        self.assertEqual(markup.count('Font Awesome Free 7.3.1'), 4)
         self.assertNotIn('fa-spin', markup.replace('fa-spinner', ''))
 
 
