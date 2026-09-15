@@ -194,3 +194,5 @@ SVGs used for Started, Succeeded and Processing in admin download history.
 Upstream directory: https://github.com/FortAwesome/Font-Awesome/tree/14c65a3747d0f3b751f15831fc719236aea8729d/svgs/solid
 Paths and attribution comments are unchanged; only CSS/accessibility attributes
 are added. No runtime or font dependency is introduced.
+
+Recent map activity also uses original solid `circle-xmark`, `ban`, `triangle-exclamation`, `circle-check` and `circle-info` assets from the same pinned Font Awesome Free 7.3.1 revision above, under CC BY 4.0, with attribution comments retained.

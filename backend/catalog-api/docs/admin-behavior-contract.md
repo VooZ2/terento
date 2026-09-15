@@ -227,3 +227,5 @@ This is a presentation filter, not deletion or modification of the identity
 registry. Hidden models and their source mappings remain available to identity
 assessment; a single visible target never proves code uniqueness. Source review
 does not grant installation permission or publish compatibility.
+
+Recent map activity uses original Font Awesome solid icons and semantic title colors: started/processing blue, succeeded green, failed red, cancelled/unknown neutral, interrupted amber. Text remains visible. Plain and collapsed download rows share spacing, icon width and context alignment; the trailing disclosure chevron adds no leading indent. Expanding retains start/finish timestamps and total duration. Historical spinners remain static.
