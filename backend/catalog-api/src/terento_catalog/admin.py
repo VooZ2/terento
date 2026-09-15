@@ -216,6 +216,15 @@ def _admin_icon(name: str) -> str:
     )
 
 
+def _historical_catalog_indicator() -> str:
+    """Compact provenance; the surrounding model link provides keyboard focus."""
+    return (
+        "<span class='historical-catalog-indicator'>"
+        + '<svg class=\'catalog-archive-icon\' aria-hidden=\'true\' focusable=\'false\' xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc. --><path fill="currentColor" d="M0 64C0 46.3 14.3 32 32 32l448 0c17.7 0 32 14.3 32 32l0 32c0 17.7-14.3 32-32 32L32 128C14.3 128 0 113.7 0 96L0 64zM32 176l448 0 0 240c0 35.3-28.7 64-64 64L96 480c-35.3 0-64-28.7-64-64l0-240zm152 64c-13.3 0-24 10.7-24 24s10.7 24 24 24l144 0c13.3 0 24-10.7 24-24s-10.7-24-24-24l-144 0z"/></svg>'
+        + "<span class='historical-catalog-tooltip'>Historical catalog entry</span></span>"
+    )
+
+
 def _normalise_variant(value: Any) -> str:
     return variant_label({"variant": str(value or "")[:256]}) or "—"
 
@@ -4434,7 +4443,7 @@ def _admin_status_badge(label: str, kind: str) -> str:
 
 def _admin_device_row(device: dict[str, Any], index: int) -> str:
     model, variant, _ = _identity_parts(device)
-    provenance = "<small class='table-secondary'>Historical catalog entry</small>" if variant == "Historical" else ""
+    provenance = _historical_catalog_indicator() if variant == "Historical" else ""
     variant = "—" if provenance else variant or "—"
     family = str(device.get("familyName") or device.get("family") or "")
     map_label, map_kind = _admin_map_capability(device.get("mapCapable"))
@@ -4668,7 +4677,7 @@ def _statistics_row(
     pending_count = int(summary.get("identity_pending") or 0)
     model_cell = html.escape(model)
     if variant == "Historical":
-        model_cell += " <small class='table-secondary'>Historical catalog entry</small>"
+        model_cell += " " + _historical_catalog_indicator()
         variant = "—"
     if pending_count:
         model_cell += (
@@ -5767,6 +5776,10 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .device-model-button{display:flex;align-items:center;gap:10px;width:100%;padding:0;border:0;background:none;color:inherit;text-align:left;text-decoration:none}
 .device-model-button strong{display:block;font-weight:700}
 .device-model-copy{display:flex;align-items:center;gap:8px;min-width:0}
+.historical-catalog-indicator{position:relative;display:inline-flex;align-items:center;justify-content:center;flex:0 0 18px;width:18px;height:18px;color:var(--secondary);font-weight:400}
+.historical-catalog-indicator .catalog-archive-icon{width:16px;height:16px}
+.historical-catalog-tooltip{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.historical-catalog-indicator:hover .historical-catalog-tooltip,.device-model-button:focus-visible .historical-catalog-tooltip{z-index:5;top:50%;left:calc(100% + 6px);transform:translateY(-50%);width:max-content;height:auto;max-width:220px;padding:6px 8px;margin:0;overflow:visible;clip-path:none;white-space:normal;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--secondary);font-size:12px;line-height:18px}
 .device-model-copy strong{min-width:0;overflow-wrap:anywhere}
 .device-thumb{display:block;width:38px;height:38px;flex:0 0 38px;object-fit:contain;border-radius:8px;background:var(--surface-muted)}
 .device-detail-image{display:block;width:120px;height:120px;object-fit:contain;border-radius:16px;background:var(--surface-muted);margin:0 0 16px}
