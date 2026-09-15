@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from datetime import datetime, timezone
 
-from terento_catalog.admin import _admin_device_payload, _device_information_markup, device_detail_page, devices_page
+from terento_catalog.admin import _admin_device_payload, _device_information_markup, device_detail_page, device_identification_page, devices_page
 
 
 UTC = timezone.utc
@@ -45,9 +45,20 @@ class DeviceInformationLayoutTests(unittest.TestCase):
         basic, technical = info.split("<details class='model-technical-details", 1)
         self.assertNotIn('identity-mapping', basic)
         self.assertNotIn(device['partNumber'], basic)
-        for value in (device['partNumber'], 'VID 0x091E', '006-B1234-00',
-                      "action='/admin/devices/identity-mapping'", "name='mapping_id' value='42'", 'required'):
+        for value in (device['partNumber'], 'VID 0x091E'):
             self.assertIn(value, technical)
+        self.assertNotIn("action='/admin/devices/identity-mapping'", body)
+        tool = device_identification_page([device], {'username': 'operator'}, 'csrf', device_id=device['id']).decode()
+        for value in ('006-B1234-00', "action='/admin/devices/identity-mapping'", "name='mapping_id' value='42'", 'required', '/admin/device-identification?device='):
+            self.assertIn(value, tool)
+        listing = device_identification_page([device], {'username': 'operator'}, 'csrf').decode()
+        self.assertIn('Select a model', listing)
+        self.assertIn('1 source to review', listing)
+        self.assertNotIn("name='mapping_id'", listing)
+        empty = device_identification_page([device], {'username': 'operator'}, 'csrf', query='<missing>').decode()
+        self.assertIn('No matching models.', empty)
+        self.assertIn('&lt;missing&gt;', empty)
+
 
 
 def device_row(**changes):

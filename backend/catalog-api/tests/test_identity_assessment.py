@@ -164,10 +164,10 @@ class IdentityAssessmentTests(unittest.TestCase):
         from terento_catalog.admin import _identity_mapping_markup
         mapping = dict(self.mappings[0], id=1, history=[])
         rendered = _identity_mapping_markup(dict(id='test', identityMappings=[mapping, dict(mapping, id=2, source_version='2')]), 'csrf')
-        self.assertIn('1 codes · 0 awaiting review', rendered)
+        self.assertIn("class='identity-mappings'", rendered)
         self.assertEqual(rendered.count("class='identity-mapping-code'"), 1)
         self.assertNotIn('<details open', rendered)
-        self.assertIn('2 source(s)', rendered)
+        self.assertIn('2 sources', rendered)
 
     def test_admin_shows_five_checks_sources_and_escaped_raw_metadata(self):
         from terento_catalog.admin import _identity_checks_markup, _identity_mapping_markup
