@@ -145,7 +145,15 @@ not an individual diagnostic and must not be offered as its replacement.
 A chart, total, filter and table that claim the same period/population must agree;
 cumulative totals must be labelled separately. Apply the selected time zone
 consistently. History remains accessible with compact, aligned rows and explicit
-status text; icons/color supplement rather than replace meaning.
+status text; icons/color supplement rather than replace meaning. Download history
+uses original Font Awesome solid hourglass-start (Started), spinner (Processing)
+and hourglass-end (Succeeded). These historical phase icons stay static, so past
+processing does not imply an operation is still running. The activity title itself
+expands the timeline; no separate Download history row is shown. The map/provider
+link remains visible below the title. Started and the terminal result show their
+recorded timestamps in the selected timezone; Processing shows total elapsed time
+from start to terminal result, or an em dash if either is missing or inconsistent.
+This duration includes the whole acquisition, not just unpacking/checking.
 
 ### Providers and collection history
 

@@ -185,3 +185,12 @@ or Go dependency or source code is incorporated. Reference:
 - Bundling/redistribution is permitted with attribution. The original SVG path
   and embedded attribution are preserved in `admin.py`; only presentation and
   accessibility attributes are added. No Font Awesome fonts or runtime are bundled.
+
+### Download history icons
+
+The same Font Awesome Free 7.3.1 source revision and CC BY 4.0 license above
+also apply to the original solid `hourglass-start`, `hourglass-end` and `spinner`
+SVGs used for Started, Succeeded and Processing in admin download history.
+Upstream directory: https://github.com/FortAwesome/Font-Awesome/tree/14c65a3747d0f3b751f15831fc719236aea8729d/svgs/solid
+Paths and attribution comments are unchanged; only CSS/accessibility attributes
+are added. No runtime or font dependency is introduced.
