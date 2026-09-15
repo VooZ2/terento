@@ -1,3 +1,7 @@
+> Behavioral requirements and release acceptance criteria:
+> [Admin behavior contract](admin-behavior-contract.md). Route descriptions below
+> describe implementation; known gaps are not a waiver of that contract.
+
 # Catalog API contract
 
 Base URL in production:
@@ -87,7 +91,8 @@ Returns the authenticated operator Overview. The default period is the last 24
 hours; `?period=7d`, `?period=30d`, and `?period=all` are also supported. Its
 primary operational domain is the existing `map_download_event` table: Map
 installs, Map install success, Failed map installs, recent map activity, and
-the installs-over-time chart use distinct map operation IDs. Historical
+the installs-over-time chart reconcile retained per-map results using operation,
+provider and region identity; an operation ID alone is not a unique-map count. Historical
 `DOWNLOAD_FAILED` map events remain in activity and statistics. Failed installs
 without a matching device diagnostic report also appear in the Overview Review
 queue, across all dates, labelled “No device diagnostic report received”. The
@@ -96,7 +101,10 @@ status. Matching uses operation ID, provider and region (including known package
 region aliases), excludes local tests, and includes resolved diagnostic reports
 so resolved failures never reappear as missing reports. When a report arrives,
 its normal diagnostic workflow takes over. Activity links show failed map events;
-this change adds no resolution mutation or diagnostic records. Compatibility evidence remains a secondary, explicitly
+this change adds no resolution mutation or diagnostic records. This PR212 path
+is an incomplete fallback: it does not supply a device diagnostic dialog,
+assignment or issue workflow. See the behavior contract's known gaps.
+Compatibility evidence remains a secondary, explicitly
 labelled block with its own variants, write-started attempts, evidence success,
 open errors, and normalized failure reasons. Common reason spelling variants
 are collapsed into stable canonical groups such as `source_validation`; only
@@ -141,16 +149,17 @@ explicitly scoped `Evidence success` percentage.
 Filter controls keep their accessible names in the markup while the compact
 toolbar presents search placeholders and select options without duplicate
 visible field headings.
-The canonical compatibility view itself uses active, write-started operations
-and excludes pre-write failures; the rendered page also retains historical
-failures for operator review. Open errors remain a separate unresolved
-diagnostic state. The route is the target of the earlier
+The canonical compatibility view retains final per-map successes and failures,
+including resolved failed history, under the shared compatibility counting rules.
+A final FAILED report is not discarded merely because write_started is false;
+NOT_STARTED pre-write results remain outside the completed-attempt denominator.
+Open errors remain a separate unresolved diagnostic state. The route is the target of the earlier
 `/internal/compatibility/` redirect.
 
 The first screen stops at the KPI summary, filters, and one-row-per-exact-
 model/variant table. Resolved and legacy diagnostics remain available in model
-history and may contribute to its historical-failure presentation, but are not
-part of the canonical compatibility view. Identity-pending evidence is shown
+history and retained failure totals; resolving an error does not erase the failed
+installation result. Identity-pending evidence is shown
 separately. Selecting a model or its error count opens the private per-model
 diagnostics view below. Device history uses the existing event groups and
 provides 25/50-row presentation pagination. Failed rows use the existing
@@ -995,3 +1004,10 @@ Migration 054 adds nullable new_package_count and updated_package_count to
 catalog_collection_run. Historical unknowns stay NULL. The admin table shows
 counts only for successful runs with both values recorded; older, incomplete
 and failed runs show —, never an inferred zero from release_change_detected.
+
+Compatibility intake delivery logs record stored, duplicate and validation-rejected
+reports with strictly formatted random event/operation UUIDs and rejection reason
+codes. They do not record raw request payloads, device identity fields or native
+logs. This allows delivery correlation without synthesizing a device diagnostic
+from a map-statistics event. Historical rejected payloads cannot be reconstructed
+from these new log entries.

@@ -959,15 +959,22 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if length <= 0 or length > 16_384:
                 self._send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"error": "invalid_size"}, send_body=True, cache_control="no-store")
                 return
+            raw_event = self.rfile.read(length)
+            # Correlate delivery without retaining device fields or raw payloads.
+            event_id, operation_id = _evidence_delivery_ids(raw_event)
             try:
-                inserted = service.receive_compatibility_event(self.rfile.read(length))
+                inserted = service.receive_compatibility_event(raw_event)
             except EvidenceValidationError as exc:
+                LOGGER.warning("compatibility intake rejected event=%s operation=%s reason=%s",
+                               event_id, operation_id, str(exc))
                 self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)}, send_body=True, cache_control="no-store")
                 return
             except Exception:
                 LOGGER.exception("compatibility event storage failed")
                 self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "evidence_unavailable"}, send_body=True, cache_control="no-store")
                 return
+            LOGGER.info("compatibility intake %s event=%s operation=%s",
+                        "stored" if inserted else "duplicate", event_id, operation_id)
             self._send_json(HTTPStatus.CREATED if inserted else HTTPStatus.OK, {"status": "stored" if inserted else "duplicate"}, send_body=True, cache_control="no-store")
 
         def _handle_admin_get(self, request_path: str, *, send_body: bool) -> None:
@@ -2273,6 +2280,24 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             LOGGER.info("%s - %s", self.address_string(), format % args)
 
     return Handler
+
+
+def _evidence_delivery_ids(raw: bytes) -> tuple[str, str]:
+    """Only syntactically valid random report/session UUIDs may enter logs."""
+    try:
+        value = json.loads(raw)
+    except (ValueError, UnicodeDecodeError):
+        return "unavailable", "unavailable"
+    if not isinstance(value, dict):
+        return "unavailable", "unavailable"
+    def safe_id(key: str) -> str:
+        candidate = value.get(key)
+        if not isinstance(candidate, str) or not re.fullmatch(
+            r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", candidate
+        ):
+            return "unavailable"
+        return str(UUID(candidate))
+    return safe_id("id"), safe_id("operationId")
 
 
 def _provider_activation_gate(

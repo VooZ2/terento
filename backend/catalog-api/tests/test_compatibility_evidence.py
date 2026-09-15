@@ -363,6 +363,22 @@ class CompatibilityEvidenceTests(unittest.TestCase):
             "csrf_token": csrf_cookie.split("=", 1)[1],
         }
 
+    def test_intake_logs_correlation_and_safe_rejection_reason(self):
+        payload = event(phaseOutcome="FAILED", automaticFinishingResult="FAILED")
+        with self.assertLogs("terento_catalog.http_api", level="INFO") as logs:
+            first, _ = self.request("POST", "/compatibility/events", json.dumps(payload))
+            second, _ = self.request("POST", "/compatibility/events", json.dumps(payload))
+            rejected, _ = self.request("POST", "/compatibility/events", json.dumps({
+                **payload, "id": "private-secret\nforged-log", "serialNumber": "never-log-this",
+            }))
+        self.assertEqual((first.status, second.status, rejected.status), (201, 200, 400))
+        output = "\n".join(logs.output)
+        self.assertIn("intake stored event=" + payload["id"], output)
+        self.assertIn("intake duplicate event=" + payload["id"], output)
+        self.assertIn("intake rejected event=unavailable operation=unavailable reason=unknown_fields", output)
+        for private in ("private-secret", "forged-log", "never-log-this", payload["model"], payload["deletionToken"]):
+            self.assertNotIn(private, output)
+
     def test_event_is_idempotent(self):
         body = json.dumps(event()).encode()
         first, _ = self.request("POST", "/compatibility/events", body, {"Content-Type": "application/json"})
