@@ -217,9 +217,8 @@ model distinctions. Variant orders supplied facts as case size, screen
 Use `47 mm`, `MicroLED`, `fēnix` and `inReach` consistently. Rectangular dimensions
 already present in text stay rectangular (for example `41 × 46 mm`).
 
-Only fields supplied by the displayed record are formatted. Assigned installation
-rows display their exact linked catalog variant as described below. No family or
-lookalike lookup fills missing size/display/features; null is not false. Conflicting
+Only fields already supplied by that record are formatted. No cross-record or
+family lookup fills missing size/display/features; null is not false. Conflicting
 screen words do not choose one screen. Raw model/variant strings, canonical IDs,
 source specs, event assignments, historical identities, approval decisions and
 counts are preserved. The raw `/devices/catalog.json` model/variant contract
@@ -242,42 +241,6 @@ assignment. Remaining same-model choices display screen/Solar properties rather
 than repeating model/SKU names. An unknown catalog feature is never treated as
 false, and genuine AMOLED/MIP/Solar ambiguity remains unresolved.
 
-The admin Installations table resolves its Variant label from the exact
-`canonical_device_model_id` catalog record, matching the linked device card.
-Unassigned rows retain their reported variant. This read-only presentation
-lookup does not rewrite evidence identity, specifications, assignments or counts.
-
-
-## Reviewed epix Pro size inventory
-
-The historical registry includes epix Pro (Gen 2) in 42, 47 and 51 mm AMOLED
-variants. These are case diameters, not display diameters. Garmin sources:
-[42 mm](https://www.garmin.com/en-US/p/894039/),
-[47 mm](https://www.garmin.com/en-US/p/894067/),
-[51 mm](https://www.garmin.com/en-US/p/884088/). Each stores its own official
-product-media URL; Sapphire Edition photos illustrate the size, without
-claiming the connected watch's lens, finish or band. No media is mirrored.
-The unsized historical record and existing assignments remain intact. New
-records start NOT_EVALUATED and are not collector-managed retail entries.
-Reported `EPIX PRO` is a narrow generation-label alias for `epix Pro (Gen 2)`
-during evidence comparison only. Size conflicts still exclude other candidates;
-this alias does not approve XML/USB mappings or assign reports automatically.
-
-
-## Historical model photography
-
-Reviewed official product-page media fills missing images for fēnix7/7S/7X,
-fēnix7 Pro/7S Pro/7X Pro (including no-Wi-Fi rows), Forerunner965 and the
-unsized epix Pro row. Regional Garmin product pages remain usable even when
-the US retail category no longer lists a model. Product-page provenance is
-retained under specification_evidence.source_image; URLs are linked directly.
-Photos represent the model, not a connected watch's exact finish, band or
-connectivity edition. Model/specification/approval data is unchanged. Admin
-and public model views prefer this official model photo over a controlled
-GENERIC asset. Generic artwork remains the last resort when no reviewed photo
-is available; family imagery must be deliberately reviewed, never guessed from
-an unrelated generation.
-
 ### Forerunner 955 photograph
 
 Migration 052 fills the missing historical Forerunner 955 image from the
@@ -285,3 +248,18 @@ Migration 052 fills the missing historical Forerunner 955 image from the
 The original Garmin-hosted photograph represents this model; it does not
 assert the connected watch's band or color. Existing nonempty media, model
 identity, specifications, approvals and evidence remain unchanged.
+
+### Historical watch photo completeness — 2026-09-15
+
+The current retail catalog contains 86 device rows and every row has an
+allowlisted Garmin `sourceAsset` URL. The public compatibility catalog contains
+14 model cards, all with a Garmin source image; no public card uses the generic
+fallback image. The historical review registry had 12 additional map-capable
+records without reviewed media. Migration 053 fills those records with direct
+Garmin-hosted photographs for D2 Mach 1, Descent Mk1/Mk2, Enduro 2, fēnix 5X,
+fēnix 5 Plus, Forerunner 945, quatix 6/7 and tactix Charlie/Delta/7.
+
+The migration updates only `source_image_url` and the `source_image` evidence
+object when the URL is empty. It preserves model IDs, display and size
+specifications, approval state, assignments and installation statistics. The
+photos remain remote Garmin assets; Terento does not mirror or repackage them.
