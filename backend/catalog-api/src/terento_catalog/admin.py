@@ -1235,20 +1235,60 @@ def _overview_map_event_href(event: dict[str, Any]) -> str:
     return "/admin/map-statistics?" + urlencode({key: value for key, value in parameters.items() if value})
 
 
+def _download_history_icon(event_type: str) -> str:
+    """Original Font Awesome Free 7.3.1 assets; historical phases stay static."""
+    icons = {
+        'DOWNLOAD_STARTED': '<svg class="download-phase-icon fa-solid fa-hourglass-start" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc. --><path fill="currentColor" d="M32 0C14.3 0 0 14.3 0 32S14.3 64 32 64l0 11c0 42.4 16.9 83.1 46.9 113.1l67.9 67.9-67.9 67.9C48.9 353.9 32 394.6 32 437l0 11c-17.7 0-32 14.3-32 32s14.3 32 32 32l320 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l0-11c0-42.4-16.9-83.1-46.9-113.1l-67.9-67.9 67.9-67.9c30-30 46.9-70.7 46.9-113.1l0-11c17.7 0 32-14.3 32-32S369.7 0 352 0L32 0zM288 437l0 11-192 0 0-11c0-25.5 10.1-49.9 28.1-67.9l67.9-67.9 67.9 67.9c18 18 28.1 42.4 28.1 67.9z"/></svg>',
+        'DOWNLOAD_PROCESSING': '<svg class="download-phase-icon fa-solid fa-spinner" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc. --><path fill="currentColor" d="M208 48a48 48 0 1 1 96 0 48 48 0 1 1 -96 0zm0 416a48 48 0 1 1 96 0 48 48 0 1 1 -96 0zM48 208a48 48 0 1 1 0 96 48 48 0 1 1 0-96zm368 48a48 48 0 1 1 96 0 48 48 0 1 1 -96 0zM75 369.1A48 48 0 1 1 142.9 437 48 48 0 1 1 75 369.1zM75 75A48 48 0 1 1 142.9 142.9 48 48 0 1 1 75 75zM437 369.1A48 48 0 1 1 369.1 437 48 48 0 1 1 437 369.1z"/></svg>',
+        'DOWNLOAD_SUCCEEDED': '<svg class="download-phase-icon fa-solid fa-hourglass-end" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc. --><path fill="currentColor" d="M32 0C14.3 0 0 14.3 0 32S14.3 64 32 64l0 11c0 42.4 16.9 83.1 46.9 113.1l67.9 67.9-67.9 67.9C48.9 353.9 32 394.6 32 437l0 11c-17.7 0-32 14.3-32 32s14.3 32 32 32l320 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l0-11c0-42.4-16.9-83.1-46.9-113.1l-67.9-67.9 67.9-67.9c30-30 46.9-70.7 46.9-113.1l0-11c17.7 0 32-14.3 32-32S369.7 0 352 0L32 0zM96 75l0-11 192 0 0 11c0 25.5-10.1 49.9-28.1 67.9l-67.9 67.9-67.9-67.9C106.1 124.9 96 100.4 96 75z"/></svg>',
+    }
+    return icons.get(event_type) or _admin_icon("clock")
+
+
 def _overview_map_activity_row(event: dict[str, Any]) -> str:
     label, state = _overview_map_event_label(event)
     href = _overview_map_event_href(event)
     component = {"main": "Main map", "contours": "Contours"}.get(event.get("component_kind"), "")
-    history = ""
-    if event.get("lifecycle") and len(event["lifecycle"]) > 1:
-        entries = "".join("<li>" + _admin_icon("check" if item.get("type") == "DOWNLOAD_SUCCEEDED" else "clock") + html.escape(str(item.get("type", "")).removeprefix("DOWNLOAD_").replace("_", " ").title())
-                          + " · " + _timestamp_markup(item.get("at")) + "</li>" for item in event["lifecycle"])
-        history = "<details class='download-history'><summary>Download history</summary><ol class='download-timeline'>" + entries + "</ol></details>"
+    context = html.escape(_overview_map_event_context(event)) + (' · ' + component if component else '')
+    lifecycle = event.get("lifecycle") or []
+    if len(lifecycle) > 1:
+        started = next((_parse_timestamp(item.get("at")) for item in lifecycle
+                        if item.get("type") == "DOWNLOAD_STARTED"), None)
+        finished = next((_parse_timestamp(item.get("at")) for item in lifecycle
+                         if item.get("type") in {"DOWNLOAD_SUCCEEDED", "DOWNLOAD_FAILED",
+                                                 "DOWNLOAD_CANCELLED", "DOWNLOAD_INTERRUPTED"}), None)
+        entries = []
+        for item in lifecycle:
+            phase = str(item.get("type") or "")
+            timing = _timestamp_markup(item.get("at"))
+            if phase == "DOWNLOAD_PROCESSING" and started is not None and finished is not None and finished >= started:
+                seconds = int((finished - started).total_seconds())
+                hours, remainder = divmod(seconds, 3600)
+                minutes, seconds = divmod(remainder, 60)
+                duration = " ".join(part for part in (
+                    f"{hours}h" if hours else "", f"{minutes}m" if minutes else "",
+                    f"{seconds}s" if seconds or not (hours or minutes) else "") if part)
+                timing = (f"<span class='download-elapsed' title='Total time from download start to finish'>"
+                          f"{duration}</span>")
+            elif phase == "DOWNLOAD_PROCESSING":
+                timing = "<span title='Start or finish time unavailable'>—</span>"
+            entries.append("<li>" + _download_history_icon(phase)
+                           + html.escape(phase.removeprefix("DOWNLOAD_").replace("_", " ").title())
+                           + " · " + timing + "</li>")
+        return (
+            f"<li class='overview-activity-item overview-activity-{state}'>"
+            "<details class='download-history'><summary>"
+            f"<span class='overview-activity-label'>{html.escape(label)}</span>"
+            f"{_timestamp_markup(event.get('occurred_at'))}"
+            f"<a class='download-context' href='{html.escape(href, quote=True)}'>{context}</a>"
+            "</summary><ol class='download-timeline' aria-label='Download start, total duration and finish'>"
+            + "".join(entries) + "</ol></details></li>"
+        )
     return (
         f"<li class='overview-activity-item overview-activity-{state}'>"
         f"<a href='{html.escape(href, quote=True)}'><span class='overview-activity-label'>{html.escape(label)}</span>"
-        f"<span>{html.escape(_overview_map_event_context(event))}{' · ' + component if component else ''}</span></a>"
-        f"{_timestamp_markup(event.get('occurred_at'))}{history}</li>"
+        f"<span>{context}</span></a>"
+        f"{_timestamp_markup(event.get('occurred_at'))}</li>"
     )
 
 
@@ -6345,14 +6385,14 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .identity-mapping-source code,.diagnostic-id code{overflow-wrap:anywhere}
 .identity-source-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .identity-source-form label{display:flex;flex-direction:column;gap:6px}.identity-source-form button{justify-self:start;grid-column:1/-1}.identity-source-form output{padding:10px 0;overflow-wrap:anywhere}
-.overview-activity-item:has(>.download-history){row-gap:0}.overview-activity-item:has(>.download-history)>a{grid-column:1;grid-row:1}.overview-activity-item:has(>.download-history)>time{grid-column:2;grid-row:1}
+.overview-activity-item:has(>.download-history){display:block}
 .identification-page{max-width:1200px}.identification-page h1{text-wrap:balance}.identification-intro{max-width:70ch;font-size:16px;line-height:1.6}.identification-guide{max-width:75ch;margin-block:16px 28px}.identification-page summary{cursor:pointer;min-height:44px;align-content:center}.identification-guide p{line-height:1.6}.identification-workspace{max-width:1040px}.identification-workspace h2{margin-block:20px 12px;font-size:24px}.identification-workspace h3{font-size:18px;line-height:1.4;margin-block:24px 8px}.identification-workspace h4{font-size:15px;margin:0}.identification-workspace p{max-width:75ch;line-height:1.6}.identification-next{padding:4px 20px 12px;margin-block:24px;background:var(--surface-muted);border-radius:12px}.identification-next h3{margin-block-start:16px}.identification-workspace .identity-mappings{padding:0}.identification-search{display:flex;align-items:flex-end;gap:12px;margin-block:20px}.identification-search label{display:grid;gap:8px;flex:1;min-width:0;font-weight:600}.identification-search input{width:100%;min-width:0}.identification-page :is(input,textarea)::placeholder{color:var(--secondary);opacity:1}.identification-result-count{font-size:13px;color:var(--secondary)}.identification-choice{display:flex;justify-content:space-between;align-items:center;gap:20px;min-height:76px;padding:16px 4px;border-top:1px solid var(--border);text-decoration:none;color:inherit}.identification-choice-title{display:grid;gap:6px;min-width:0}.identification-choice-title>span{font-size:13px;color:var(--secondary)}.identification-choice:hover strong{text-decoration:underline}.identification-badges{display:flex;flex-wrap:wrap;gap:8px}.identification-page .identification-badge{display:inline-flex!important;align-items:center;gap:6px;max-width:100%;margin:0!important;padding:5px 10px;border:1px solid var(--border);border-radius:999px;font-size:13px;font-weight:600;line-height:1.4;font-variant-numeric:tabular-nums}.identification-page .identification-badge>span{display:inline;margin:0;color:inherit}.identification-page .identification-approved{color:var(--status-success-text);background:var(--status-success-surface);border-color:var(--status-success-border)}.identification-page .identification-rejected{color:var(--status-error-text);background:var(--status-error-surface);border-color:var(--status-error-border)}.identification-page :is(.identification-pending,.identification-missing){color:var(--status-tested-text);background:var(--status-tested-surface);border-color:var(--status-tested-border)}.identification-page .identification-shared>.identification-badge{color:var(--status-supported-text);background:var(--status-supported-surface);border-color:var(--status-supported-border)}.identification-workspace .identity-mapping-code{padding-block:8px 16px;margin-block:16px}.identification-workspace .identity-mapping-code>summary{display:list-item;padding-block:12px;min-height:44px}.identification-workspace .identity-mapping-code>summary strong{font-size:16px;line-height:1.5}.identification-workspace .identity-mapping-code>summary .identification-badges{display:flex;margin:12px 0 0}.identification-workspace .identification-source-count{margin:8px 0 0;font-size:13px}.identification-workspace .identity-mapping-source{padding:20px;background:var(--surface-muted);border:0;border-radius:16px;margin-block:16px}.identification-workspace .identity-mapping-source summary{padding-block:8px;min-height:44px}.identification-workspace .identity-mapping-source code{font-size:13px;overflow-wrap:anywhere}.identification-comparison{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-block:20px}.identification-comparison dt{font-size:13px;color:var(--graphite);margin-block-end:8px}.identification-comparison dd{margin:0;font-weight:600;line-height:1.5;overflow-wrap:anywhere}.identification-shared{margin-block:20px}.identification-shared ul{padding-inline-start:20px}.identification-shared li{padding-block:10px}.identification-shared li>.identification-badges{margin-block-start:8px}.identification-context,.identification-effect{font-size:14px}.identification-workspace .identity-mapping-review{grid-template-columns:1fr;gap:16px}.identification-workspace .identity-mapping-review :is(input,select,textarea){width:100%;min-width:0;font:inherit}.identification-workspace .identity-mapping-review select{white-space:normal;height:auto;min-height:44px}.identification-workspace .identity-mapping-review button{justify-self:start;min-height:44px}.identification-workspace .identity-mapping-review p{margin:0}.identification-workspace .admin-action-status:empty{display:none}.identification-workspace .admin-action-status{color:var(--graphite);font-size:14px}.identification-workspace .admin-action-status[data-error="true"]{color:var(--error-text)}.identification-empty{padding-block:20px}.identification-not-found{color:var(--error-text);background:var(--error-surface);padding:16px;border-radius:12px}.identification-page :is(a,button,input,textarea,select,summary):focus-visible{outline:2px solid var(--interactive);outline-offset:3px}.identification-page :is(a,p,strong,dd){overflow-wrap:anywhere}.identification-page .section-link{color:var(--graphite);text-decoration:underline;text-underline-offset:3px}
 @media(max-width:700px){.identification-choice{align-items:flex-start;flex-direction:column;gap:12px}.identification-comparison{grid-template-columns:1fr;gap:16px}.identification-workspace .identity-mapping-source{padding:16px}.identification-search{align-items:stretch;flex-direction:column}.identification-search button{align-self:flex-start}.identification-page :is(input,select,textarea){font-size:16px!important}.identification-workspace h2{font-size:22px}.identification-next{padding-inline:16px}}
 
-.download-history{grid-column:1/-1;grid-row:2;margin:0;font-size:13px}.download-history summary{font-size:13px;min-height:40px;align-content:center}
+.download-history{margin:0;font-size:13px}.download-history>summary{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 16px;list-style:none;cursor:pointer;min-height:44px;align-content:center}.download-history>summary::-webkit-details-marker{display:none}.download-history>summary .overview-activity-label::before{content:'›';display:inline-block;width:14px;margin-right:4px;color:var(--interactive);transform-origin:5px center}.download-history[open]>summary .overview-activity-label::before{transform:rotate(90deg)}.download-history>summary>time{grid-column:2;grid-row:1 / span 2;align-self:center;color:var(--secondary);font-size:12px;white-space:nowrap}.overview-activity-item .download-history .download-context{grid-column:1;grid-row:2;display:block;margin-left:18px;color:var(--secondary);font-size:12px;font-weight:400;overflow-wrap:anywhere}.download-context:hover{text-decoration:underline}.download-history>summary:focus-visible{outline:2px solid var(--interactive);outline-offset:3px;border-radius:4px}.download-history[open]>.download-timeline{margin-top:6px;margin-left:18px}.download-elapsed{font-variant-numeric:tabular-nums}@media(max-width:500px){.download-history>summary{gap:3px 8px}.download-history>summary>time{font-size:11px}}
 .download-timeline{display:flex;flex-wrap:wrap;gap:8px 16px;list-style:none;padding:0;margin:0 0 4px;font-size:13px}
 .download-timeline li{display:flex;align-items:center;flex-wrap:wrap;gap:4px}.download-timeline li+li::before{content:'→';color:var(--secondary);margin-right:8px}
-.download-timeline .admin-icon{width:14px;height:14px;flex:none}.download-timeline time{font-size:12px;font-variant-numeric:tabular-nums;position:static}
+.download-timeline .admin-icon,.download-timeline .download-phase-icon{width:14px;height:14px;flex:none}.download-timeline time{font-size:12px;font-variant-numeric:tabular-nums;position:static}
 .github-empty{margin:0;grid-column:1/-1}.github-empty .github-review{margin:0}
 .diagnostic-detail-inner>.admin-disclosure>summary,.diagnostic-actions-grid>.github-empty>summary{min-height:40px;align-content:center}
 .diagnostic-actions-grid:has(>.github-empty:only-child){margin-top:0;gap:0}
