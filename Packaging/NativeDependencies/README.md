@@ -84,3 +84,18 @@ coverage, map mutation rules, or native dependency versions changed.
 The bundled recovery behavior is public; it is not a proven fix for
 the initiating USB transaction error. Context reinitialization, resource abort,
 platform/product scope and gate ordering have synthetic regression coverage.
+
+## SDK availability and startup gate
+
+The macOS build forces `ac_cv_func_pipe2=no`, selecting upstream libusb's
+`pipe` plus `fcntl` fallback. Xcode 27's SDK allowed configure to detect a
+weak `pipe2` import although macOS 26.7 did not export it; the resulting
+build31 candidate crashed during USB presence initialization. A minimum-OS
+load command and notarization did not detect this runtime failure.
+
+The `macos-portable-pipe-v1` prefix and cache marker rebuild libusb, including
+cleaning old objects after reconfiguration. Every build rejects a remaining
+`pipe2` import and runs three initialize/exit cycles against the actual bundled
+library, including cached builds. This check opens/claims no USB device and
+performs no transfers. Final packaged-app launch checks remain mandatory;
+the host check does not establish compatibility with every supported OS.

@@ -72,3 +72,13 @@ existing schema versions and fields remain unchanged. Initial operation context
 is in memory and terminal reports enter the existing durable outbox. This does
 not add crash journaling before a result exists, and cannot recover a historical
 missing report or infer an unknown user's watch.
+
+## Toolchain changes and final artifact startup
+
+An SDK/toolchain upgrade requires a fresh bundled-native build and a launch
+check of the final app extracted from each distribution format on the local
+macOS host. API contract tests, signing, deployment-target load commands and
+Apple notarization are independent evidence; none proves the app starts.
+A failed local launch blocks publication of the app, tag and update metadata.
+Record the OS, Xcode version, exact source and runtime checks in the release
+receipt. Do not infer older-OS compatibility from a successful newer-host run.

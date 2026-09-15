@@ -3,6 +3,7 @@
 set -eu
 
 LIBUSB_VERSION="1.0.30"
+LIBUSB_BUILD_POLICY="macos-portable-pipe-v1"
 LIBUSB_ARCHIVE="libusb-${LIBUSB_VERSION}.tar.bz2"
 LIBUSB_URL="https://github.com/libusb/libusb/releases/download/v${LIBUSB_VERSION}/${LIBUSB_ARCHIVE}"
 LIBUSB_SHA256="fea36f34f9156400209595e300840767ab1a385ede1dc7ee893015aea9c6dbaf"
@@ -75,11 +76,11 @@ fi
 src_dir="$output_dir/source"
 download_dir="$output_dir/downloads"
 prefix_dir="$output_dir/prefix"
-libusb_prefix="$prefix_dir/libusb"
+libusb_prefix="$prefix_dir/libusb-$LIBUSB_BUILD_POLICY"
 libmtp_prefix="$prefix_dir/libmtp-$LIBMTP_LOCAL_PATCH"
 bundle_lib_dir="$output_dir/lib"
 bundle_include_dir="$output_dir/include"
-build_marker="$output_dir/.terento-native-dependencies-${LIBUSB_VERSION}-${LIBMTP_VERSION}-${LIBMTP_LOCAL_PATCH}-${architecture}-macos-${deployment_target}"
+build_marker="$output_dir/.terento-native-dependencies-${LIBUSB_VERSION}-${LIBUSB_BUILD_POLICY}-${LIBMTP_VERSION}-${LIBMTP_LOCAL_PATCH}-${architecture}-macos-${deployment_target}"
 
 mkdir -p "$src_dir" "$download_dir" "$prefix_dir" "$bundle_lib_dir" "$bundle_include_dir"
 
@@ -213,10 +214,13 @@ if [ ! -f "$build_marker" ]; then
 
     common_cflags="-arch $architecture -mmacosx-version-min=$deployment_target"
 
+    # New SDKs can weak-link pipe2 even when the deployment OS lacks it.
+    # Use upstream's pipe + fcntl fallback for every supported macOS target.
     if [ ! -f "$libusb_prefix/lib/libusb-1.0.0.dylib" ]; then
         (
             cd "$libusb_source"
             lt_cv_sys_max_cmd_len=1048576 \
+            ac_cv_func_pipe2=no \
             CFLAGS="$common_cflags" \
             LDFLAGS="$common_cflags -Wl,-install_name,@rpath/libusb-1.0.0.dylib" \
             ./configure \
@@ -226,6 +230,8 @@ if [ ! -f "$build_marker" ]; then
                 --disable-udev \
                 --disable-examples-build \
                 --disable-tests-build
+            # A policy change must not reuse objects from the previous configure.
+            make clean
             make
             make install
         )
@@ -285,6 +291,16 @@ ln -sf "libusb-1.0.0.dylib" "$bundle_lib_dir/libusb-1.0.dylib"
 
 assert_arm64_and_minimum_target "$bundle_lib_dir/libusb-1.0.0.dylib" "@rpath/libusb-1.0.0.dylib"
 assert_arm64_and_minimum_target "$bundle_lib_dir/libmtp.9.dylib" "@rpath/libmtp.9.dylib"
+
+# Check cached outputs as well as fresh builds; minos alone cannot catch a
+# weak import of an API absent from the deployment OS.
+if nm -u "$bundle_lib_dir/libusb-1.0.0.dylib" | grep -E '[[:space:]]_pipe2$' >/dev/null; then
+    echo "Unsupported pipe2 import in bundled libusb" >&2
+    exit 1
+fi
+xcrun clang -arch "$architecture" -mmacosx-version-min="$deployment_target" \
+    "$script_dir/usb-runtime-smoke.c" -o "$output_dir/usb-runtime-smoke"
+"$output_dir/usb-runtime-smoke" "$bundle_lib_dir/libusb-1.0.0.dylib"
 
 if [ -n "$bundle_contents" ]; then
     bundle_frameworks="$bundle_contents/Frameworks"

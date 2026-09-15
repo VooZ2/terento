@@ -155,6 +155,11 @@ assert.match(nativeDependencyBuild, /12-byte split header detection/);
 assert.match(nativeDependencyBuild, /packet-aligned transfer detection/);
 assert.match(nativeDependencyBuild, /zero-length terminating write/);
 
+assert.match(nativeDependencyBuild, /ac_cv_func_pipe2=no/);
+assert.match(nativeDependencyBuild, /libusb-\$LIBUSB_BUILD_POLICY/);
+assert.match(nativeDependencyBuild, /Unsupported pipe2 import/);
+assert.match(nativeDependencyBuild, /usb-runtime-smoke/);
+
 const nativeDependencyDocumentation = read("Packaging/NativeDependencies/README.md");
 assert.match(nativeDependencyDocumentation, /12-byte split-header detection/);
 assert.match(nativeDependencyDocumentation, /zero-length terminating USB write/);
