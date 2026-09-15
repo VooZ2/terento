@@ -2386,7 +2386,7 @@ class Database:
                 ),
             )
 
-    def upsert_provider_snapshot(self, snapshot: ProviderSnapshot) -> None:
+    def upsert_provider_snapshot(self, snapshot: ProviderSnapshot, *, run_id: int | None = None) -> None:
         """Persist a complete metadata snapshot without storing map payloads."""
 
         definition = snapshot.definition
@@ -2405,6 +2405,18 @@ class Database:
                     changes.append({'packageId': package.id, 'region': package.region,
                                     'previousRelease': before.get('release'), 'release': package.release,
                                     'sourceUpdatedAt': package.source_updated_at.isoformat() if package.source_updated_at else None})
+            if run_id is not None:
+                new_count = len({package.id for package in snapshot.packages} - previous_packages.keys())
+                updated_count = len({item['packageId'] for item in changes})
+                recorded = connection.execute(
+                    """UPDATE catalog_collection_run
+                       SET new_package_count = %s, updated_package_count = %s
+                       WHERE id = %s AND provider_id = %s AND status = 'RUNNING'
+                       RETURNING id""",
+                    (new_count, updated_count, run_id, definition.id),
+                ).fetchone()
+                if recorded is None:
+                    raise ValueError("collection run does not match provider or is not running")
             if changes:
                 self._insert_admin_audit(connection, admin_user_id=None,
                     action='CATALOG_RELEASES_UPDATED', provider_id=definition.id,
@@ -2695,7 +2707,7 @@ class Database:
                 """
                 SELECT id, provider_id, started_at, finished_at, status,
                        package_count, artifact_count, error_code, error_detail,
-                       latest_release, release_change_detected
+                       latest_release, release_change_detected, new_package_count, updated_package_count
                 FROM catalog_collection_run
                 WHERE provider_id = %s
                 ORDER BY started_at DESC, id DESC

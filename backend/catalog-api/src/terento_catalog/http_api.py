@@ -24,6 +24,7 @@ from .admin import (
     campaign_links_page,
     dashboard_page,
     device_detail_page,
+    device_identification_page,
     diagnostics_page,
     github_issue_queue_page,
     devices_page,
@@ -1387,6 +1388,14 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     return
                 self._send_admin_html(body, send_body=send_body)
                 return
+            if request_path == "/admin/device-identification":
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                payload = service.admin_devices()
+                self._send_admin_html(device_identification_page(
+                    payload.get("devices", []), session, csrf_token,
+                    device_id=query.get("device", [""])[-1], query=query.get("q", [""])[-1],
+                ), send_body=send_body)
+                return
             if request_path == "/admin/devices/identity-audit.json":
                 try:
                     audit = service.database.identity_assignment_audit()
@@ -1824,6 +1833,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             target = (value or "").strip()
             if (
                 target.startswith("/admin/diagnostics")
+                or re.fullmatch(r"/admin/device-identification(?:\?[^#\s]*)?", target)
                 or target.startswith("/admin/review/github-issues")
                 or re.fullmatch(
                     r"/admin/devices/[A-Za-z0-9._~-]+(?:\?[^#\s]*)?(?:#[-A-Za-z0-9._~]+)?",

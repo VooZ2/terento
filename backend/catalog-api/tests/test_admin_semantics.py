@@ -820,7 +820,8 @@ class AdminSemanticsTests(unittest.TestCase):
         map_script = _map_statistics_script()
         map_row = map_script.split("const mapRow =", 1)[1].split(";", 1)[0]
         self.assertEqual(map_row.count("<td"), 3)
-        self.assertIn("escapeHtml(item.map)", map_row)
+        self.assertNotIn("Package identifier", map_row)
+        self.assertNotIn("escapeHtml(item.map)", map_row)
         self.assertIn("mapItems.slice(0, 5).map(mapRow).join('') || emptyRow(3)", map_script)
         self.assertIn('colspan="3" class="muted-value">No maps match your search.', map_script)
         self.assertIn("<th scope='col'>Package installs</th>", popular_maps)

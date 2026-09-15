@@ -80,7 +80,7 @@ def collect_once(database: Database, *, dry_run: bool = False) -> int:
             # Keep the legacy tables populated for existing maintenance commands,
             # while the public API reads the provider-neutral snapshot.
             snapshot = snapshot_from_freizeitkarte_records(records)
-            database.upsert_provider_snapshot(snapshot)
+            database.upsert_provider_snapshot(snapshot, run_id=run_id)
             latest_release, fingerprint = snapshot_release_evidence(snapshot)
             database.finish_catalog_collection(
                 int(run_id),
@@ -134,7 +134,7 @@ def collect_provider_once(
         if not snapshot.packages:
             raise ProviderCollectionError("provider returned no packages")
         if not dry_run:
-            database.upsert_provider_snapshot(snapshot)
+            database.upsert_provider_snapshot(snapshot, run_id=run_id)
             latest_release, fingerprint = snapshot_release_evidence(snapshot)
             database.finish_catalog_collection(
                 int(run_id),

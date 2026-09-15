@@ -544,7 +544,7 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     map_statistics_class = " class='active'" if active == "map-statistics" else ""
     system_health_class = " class='active'" if active == "system-health" else ""
     test_data_class = " class='active'" if active == "test-data" else ""
-    tools_class = " class='active'" if active in {"test-data", "campaigns"} else ""
+    tools_class = " class='active'" if active in {"test-data", "campaigns", "device-identification"} else ""
     account_class = " active" if active == "account" else ""
     review = user.get("admin_review_summary") or {}
     installation_issues = int(review.get("installationIssues") or 0)
@@ -566,6 +566,7 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     tools_menu = f"""<details class="admin-tools-menu">
         <summary{tools_class}>Tools</summary>
         <div class="admin-tools-popover" role="group" aria-label="Admin tools">
+          <a href="/admin/device-identification">Device identification</a>
           <a{test_data_class} href="/admin/test-data">Test data</a>
           <a{campaign_class} href="/admin/campaign-links">Campaign links</a>
         </div>
@@ -2257,13 +2258,20 @@ def _provider_health_row(health: dict[str, Any]) -> str:
     )
 
 
+def _provider_update_count(run: dict[str, Any]) -> str:
+    new, updated = run.get('new_package_count'), run.get('updated_package_count')
+    if run.get('status') != 'SUCCEEDED' or new is None or updated is None:
+        return "<span class='muted-value' title='Update count was not recorded for this collection'>—</span>"
+    return f"<strong>{int(new) + int(updated)}</strong><small class='table-secondary'>{int(new)} new · {int(updated)} updated</small>"
+
+
 def _provider_run_row(run: dict[str, Any]) -> str:
     error = str(run.get("error_code") or run.get("error_detail") or "").strip()
     error_markup = html.escape(error) if error else "<span class='muted-value'>—</span>"
     return (
         f"<tr><td><code>{html.escape(str(run.get('id') or '—'))}</code></td><td>{_timestamp_markup(run.get('started_at'))}</td>"
         f"<td>{_timestamp_markup(run.get('finished_at'))}</td><td>{_provider_status_badge(run.get('status'))}<small class='table-secondary'>{'Release change detected' if run.get('release_change_detected') is True else 'No release change detected' if run.get('release_change_detected') is False else 'Release change not recorded'} · {html.escape(str(run.get('latest_release') or '—'))}</small></td>"
-        f"<td class='numeric'>{int(run.get('package_count') or 0)}</td><td class='numeric'>{int(run.get('artifact_count') or 0)}</td>"
+        f"<td class='numeric'>{_provider_update_count(run)}</td><td class='numeric'>{int(run.get('package_count') or 0)}</td><td class='numeric'>{int(run.get('artifact_count') or 0)}</td>"
         f"<td>{error_markup}</td></tr>"
     )
 
@@ -2388,7 +2396,7 @@ def provider_detail_page(
     package_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-package-table'><caption class='sr-only'>Regions and packages</caption><thead><tr><th scope='col'>Region / package</th><th scope='col'>Release</th><th scope='col'>Artifacts</th><th scope='col'>State</th></tr></thead><tbody id='provider-package-rows'>{rows_packages}</tbody></table></div>" if packages else ""
     latest_health_table = f"<div class='table-wrap provider-table-wrap provider-history-wrap'><table class='admin-table'><caption class='sr-only'>Health check details</caption><thead><tr><th scope='col'>Checked</th><th scope='col'>Result</th><th scope='col'>Checks</th><th scope='col'>HTTP</th><th scope='col'>Artifacts</th><th scope='col'>Duration</th><th scope='col'>Error</th></tr></thead><tbody>{_provider_health_row(latest_health)}</tbody></table></div>" if latest_health else ""
     health_history_table = f"<div class='table-wrap provider-table-wrap provider-history-wrap'><table class='admin-table'><thead><tr><th scope='col'>Checked</th><th scope='col'>Result</th><th scope='col'>Checks</th><th scope='col'>HTTP</th><th scope='col'>Artifacts</th><th scope='col'>Duration</th><th scope='col'>Error</th></tr></thead><tbody>{rows_health}</tbody></table></div>" if previous_health else ""
-    run_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-run-table'><thead><tr><th scope='col'>Run</th><th scope='col'>Started</th><th scope='col'>Finished</th><th scope='col'>Result</th><th scope='col'>Packages</th><th scope='col'>Artifacts</th><th scope='col'>Error</th></tr></thead><tbody>{rows_runs}</tbody></table></div>" if runs else ""
+    run_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-run-table'><thead><tr><th scope='col'>Run</th><th scope='col'>Started</th><th scope='col'>Finished</th><th scope='col'>Result</th><th scope='col' class='numeric'>Updates</th><th scope='col'>Packages</th><th scope='col'>Artifacts</th><th scope='col'>Error</th></tr></thead><tbody>{rows_runs}</tbody></table></div>" if runs else ""
     audit_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Provider audit history</caption><thead><tr><th scope='col'>Action</th><th scope='col'>Old status</th><th scope='col'>New status</th><th scope='col'>Reason</th><th scope='col'>Timestamp</th><th scope='col'>Details</th></tr></thead><tbody>{rows_audits}</tbody></table></div>" if audits else ""
     health_summary = (
         f"{_provider_status_badge(latest_health_status, kind='health')} "
@@ -2408,7 +2416,7 @@ def provider_detail_page(
         if latest_run else "<span class='muted-value'>No collection run recorded yet.</span>"
     )
     collection_section = (
-        f"<section class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Collection</p><h2>Last collection</h2></div></div><div class='provider-latest-summary'>{collection_summary}</div><details class='admin-disclosure' id='provider-collection-history'><summary>Collection history · {len(runs)} runs</summary><div class='disclosure-body'>{empty_runs}{run_table}</div></details></section>"
+        f"<section class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Collection</p><h2>Last collection</h2></div></div><div class='provider-latest-summary'>{collection_summary}</div><details class='admin-disclosure' id='provider-collection-history'><summary>Collection history · {len(runs)} runs</summary><div class='disclosure-body'><p class='table-help'>Updates counts new maps and maps with a changed release or source date. — means the count was not recorded.</p>{empty_runs}{run_table}</div></details></section>"
         if latest_run or runs else
         "<section class='provider-card provider-empty-disclosure'><details class='admin-disclosure' id='provider-collection-history'><summary>Collection · No runs yet</summary><div class='disclosure-body'><p class='empty'>No catalog collection runs recorded yet.</p></div></details></section>"
     )
@@ -2812,7 +2820,7 @@ def _map_statistics_script() -> str:
         if (topMapsTable) topMapsTable.hidden = showAllMaps || showRegions;
         if (topMapsHeading) topMapsHeading.hidden = showAllMaps || showRegions;
         if (allMapsDisclosure) allMapsDisclosure.hidden = showRegions;
-        const mapRow = (item) => `<tr><td><strong>${item.country ? `<button type="button" class="region-map-link" data-map-country="${escapeHtml(item.country)}" aria-label="Show ${escapeHtml(item.name || item.regionName || '—')} on map">${escapeHtml(item.name || item.regionName || '—')}</button>` : escapeHtml(item.name || item.regionName || '—')}</strong><small class="table-secondary">${escapeHtml(providerName[item.provider] || item.provider)} · ${escapeHtml(item.regionName || '—')}</small><details><summary>Package identifier</summary><code>${escapeHtml(item.map)}</code></details></td><td class="numeric">${item.count}</td><td>${formatTimestamp(item.last)}</td></tr>`;
+        const mapRow = (item) => `<tr><td><strong>${item.country ? `<button type="button" class="region-map-link" data-map-country="${escapeHtml(item.country)}" aria-label="Show ${escapeHtml(item.name || item.regionName || '—')} on map">${escapeHtml(item.name || item.regionName || '—')}</button>` : escapeHtml(item.name || item.regionName || '—')}</strong><small class="table-secondary">${escapeHtml(providerName[item.provider] || item.provider)} · ${escapeHtml(item.regionName || '—')}</small></td><td class="numeric">${item.count}</td><td>${formatTimestamp(item.last)}</td></tr>`;
         if (mapRows) mapRows.innerHTML = mapItems.slice(0, 5).map(mapRow).join('') || emptyRow(3);
         if (allMapsSummary) allMapsSummary.textContent = `Browse all maps · ${mapItems.length}`;
         const query = String(allMapsSearch?.value || '').toLocaleLowerCase().trim();
@@ -2934,7 +2942,6 @@ def _identity_mapping_markup(device: dict, csrf_token: str) -> str:
         return "<p>No additional identifier mappings have been imported.</p>"
     labels = {'RETAIL_SKU': 'Retail SKU', 'XML_PART_NUMBER': 'XML product code', 'USB': 'USB VID/PID'}
     states = {'PENDING': '? Awaiting review', 'APPROVED': '✓ Approved', 'REJECTED': '✕ Rejected'}
-    pending = sum(any(m['status'] == 'PENDING' for m in group) for group in groups.values())
     items = []
     for (kind, value), group in sorted(groups.items()):
         statuses = {m['status'] for m in group}
@@ -2949,17 +2956,38 @@ def _identity_mapping_markup(device: dict, csrf_token: str) -> str:
             history = ''.join('<li>' + html.escape(f"{entry['previous_status']} → {entry['new_status']} · {entry['reason']} · {'administrator ' + str(entry['reviewed_by']) if entry['reviewed_by'] is not None else 'reviewed catalog import'} · {entry['created_at']}") + '</li>' for entry in mapping.get('history') or [])
             history = '<details><summary>Review history</summary><ul>' + history + '</ul></details>' if history else ''
             sources.append(f"""<div class='identity-mapping-source'><p>{html.escape(states[mapping['status']])} · {reason}</p>
-            <p>{names}</p><p>{source}</p><details><summary>Source version</summary><code>{html.escape(mapping['source_version'])}</code></details>{history}
-            <details><summary>Review this source</summary><form method='post' action='/admin/devices/identity-mapping' class='admin-async-action identity-mapping-review'>
+            <p class='identification-source-names'>{names}</p><p>{source}</p><details><summary>Technical reference</summary><code>{html.escape(mapping['source_version'])}</code></details>{history}
+            <details><summary>Review source</summary><form method='post' action='/admin/devices/identity-mapping' class='admin-async-action identity-mapping-review'>
             <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>
             <input type='hidden' name='mapping_id' value='{int(mapping['id'])}'>
-            <input type='hidden' name='return_to' value='/admin/devices/{html.escape(device['id'], quote=True)}'>
+            <input type='hidden' name='return_to' value='/admin/device-identification?device={quote(str(device['id']), safe='')}'>
             <label>Decision<select name='status'><option value='APPROVED'>Approve</option><option value='REJECTED'>Reject</option></select></label>
-            <label>Evidence reason<input name='reason' required maxlength='1000'></label><button type='submit'>Save review</button></form></details></div>""")
-        items.append(f"<details class='identity-mapping-code'><summary><strong>{labels[kind]} · {html.escape(value)}</strong><span>{html.escape(status)} · {len(group)} source(s)</span></summary>{''.join(sources)}</details>")
-    return (f"<details class='identity-mappings'><summary><strong>Identifiers and sources</strong><span>{len(groups)} codes · {pending} awaiting review</span></summary>"
-            "<p>Retail SKUs describe retail configurations. XML and USB codes may be shared by several variants. Source review does not reassign installations.</p>"
-            + ''.join(items) + '</details>')
+            <label>Reason for this decision<input name='reason' required maxlength='1000'></label><button type='submit'>Save review</button></form></details></div>""")
+        items.append(f"<details class='identity-mapping-code'><summary><strong>{labels[kind]} · {html.escape(value)}</strong><span>{html.escape(status)} · {len(group)} {'source' if len(group) == 1 else 'sources'}</span></summary>{''.join(sources)}</details>")
+    return "<div class='identity-mappings'>" + ''.join(items) + '</div>'
+
+
+def device_identification_page(devices: list[dict], user: dict, csrf_token: str, *, device_id: str = "", query: str = "") -> bytes:
+    selected = next((d for d in devices if str(d.get('id')) == device_id), None)
+    choices = []
+    for device in devices:
+        model, variant, _ = _identity_parts(device)
+        label = model + (" · " + variant if variant != "—" else "")
+        if query and query.casefold() not in label.casefold():
+            continue
+        mappings = device.get('identityMappings') or []
+        pending = sum(m.get('status') == 'PENDING' for m in mappings)
+        detail = f"{pending} {'source' if pending == 1 else 'sources'} to review" if pending else ("Sources reviewed" if mappings else "No code sources")
+        choices.append(f"<a class='identification-choice' href='/admin/device-identification?{urlencode({'device': device['id']})}'><strong>{html.escape(label)}</strong><span>{detail}</span></a>")
+    if selected:
+        model, variant, _ = _identity_parts(selected)
+        label = model + (" · " + variant if variant != "—" else "")
+        content = f"<section class='overview-panel identification-workspace'><a class='section-link' href='/admin/device-identification'>Back to model list</a><h2>{html.escape(label)}</h2><p class='muted'>Review whether each source links this code to this model. A code can belong to several variants.</p>{_identity_mapping_markup(selected, csrf_token)}</section>"
+    else:
+        content = f"<section class='overview-panel identification-workspace'><h2>Select a model</h2><form method='get' class='identification-search'><label class='sr-only' for='identification-search'>Search models</label><input id='identification-search' name='q' placeholder='Search models' value='{html.escape(query, quote=True)}'><button class='secondary-button' type='submit'>Search</button></form><div class='identification-choices'>{''.join(choices) or '<p>No matching models.</p>'}</div></section>"
+    body = _admin_header(user, csrf_token, active='device-identification') + "<main id='main-content' class='dashboard'><p class='section-kicker'>Tools</p><h1>Device identification</h1><p class='identification-intro'>Maintain the Garmin code sources used to identify watch models. Use this tool when a model cannot be identified or a code appears incorrect.</p><p class='muted identification-intro'>Source reviews do not change saved installations or map compatibility approval.</p>" + content + '</main>'
+    return _layout('Device identification', body)
+
 
 
 def _identity_evidence_markup(evidence: list[dict]) -> str:
@@ -3573,7 +3601,7 @@ def _diagnostic_detail_dialog(
           </div>
         </div>
         <p class='identity-selection' data-identity-selection>{'Model selected from the reported device. No further model selection needed.' if single_candidate else 'Select the model to confirm.'}</p>
-        <label>Evidence reason<input name='identity_reason' required placeholder='Exact model confirmed by operator'></label>
+        <label>Reason for this decision<input name='identity_reason' required placeholder='Exact model confirmed by operator'></label>
         <label>Review note <span class='optional-label'>Optional</span><textarea name='identity_note' rows='3'></textarea></label>
         <button type='submit'>Save identity review</button>
       </form>""" if identity_pending else ""
@@ -3930,7 +3958,7 @@ def device_detail_page(
         </div></details>
         <div class='model-information-columns device-overview-sections'>
         <details class='model-page-section device-information-section admin-disclosure'><summary id='device-information-title'>Device information</summary>{device_info}</details>
-        <details class='model-technical-details admin-disclosure'><summary>Technical details<span class='device-technical-hint'>Identifiers, reported values and source reviews</span></summary><dl class='model-information-list'>{technical_rows}</dl>{_identity_mapping_markup(device, csrf_token)}</details>
+        <details class='model-technical-details admin-disclosure'><summary>Technical details<span class='device-technical-hint'>Reported technical values</span></summary><dl class='model-information-list'>{technical_rows}</dl></details>
         </div>
         {''.join(dialogs)}
       </main>
@@ -5976,7 +6004,7 @@ h1,h2,h3,h4,.administration-grid h3,.overview-kpi strong,.admin-kpi-grid article
   .provider-history-wrap th:nth-child(7){width:24%}
   .provider-source-table th:nth-child(1){width:14%}.provider-source-table th:nth-child(2){width:50%}.provider-source-table th:nth-child(3){width:12%}.provider-source-table th:nth-child(4){width:24%}
   .provider-package-table{min-width:640px!important}.provider-package-table th:nth-child(1){width:49%}.provider-package-table th:nth-child(2){width:18%}.provider-package-table th:nth-child(3){width:16%}.provider-package-table th:nth-child(4){width:17%}.provider-package-table td{vertical-align:top}.provider-package-table details{margin-top:8px;font-weight:400}
-  .provider-run-table th:nth-child(1){width:6%}.provider-run-table th:nth-child(2),.provider-run-table th:nth-child(3){width:16%}.provider-run-table th:nth-child(4){width:12%}.provider-run-table th:nth-child(5),.provider-run-table th:nth-child(6){width:10%}.provider-run-table th:nth-child(7){width:30%}
+  .provider-run-table th:nth-child(1){width:5%}.provider-run-table th:nth-child(2),.provider-run-table th:nth-child(3){width:14%}.provider-run-table th:nth-child(4){width:20%}.provider-run-table th:nth-child(5){width:13%}.provider-run-table th:nth-child(6),.provider-run-table th:nth-child(7){width:8%}.provider-run-table th:nth-child(8){width:18%}
   .provider-component{white-space:normal;flex-wrap:wrap}.provider-component-list{min-width:0}
   .provider-component .provider-status{white-space:normal;line-height:1.3}
   .overview-trend-chart{min-width:0}
@@ -6012,6 +6040,9 @@ main.dashboard>.heading-row .lede{margin:12px 0 0}
 .model-information-columns .model-information-list dt,.model-information-columns .model-information-list dd{min-width:0;text-align:left;overflow-wrap:anywhere}
 .model-information-columns.device-overview-sections{grid-template-columns:minmax(0,1fr)}
 .device-overview-heading{margin-block:8px 24px}.device-overview-heading h3{margin:0;font:600 20px/1.3 var(--font-ui);text-wrap:balance;overflow-wrap:anywhere}.device-overview-heading p{margin:6px 0 0;color:var(--secondary);font-size:13px;text-wrap:pretty}
+.model-detail-page details:is(.model-administration,.device-information-section,.model-technical-details).admin-disclosure{padding:16px}
+.model-detail-page details:is(.model-administration,.device-information-section,.model-technical-details).admin-disclosure>summary{min-height:48px;line-height:24px;margin:0;padding:0 0 0 22px;align-content:center}
+.model-detail-page details:is(.model-administration,.device-information-section,.model-technical-details).admin-disclosure[open]>summary{margin-bottom:16px}
 .device-information-section{container-type:inline-size}.device-key-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin:0}.device-key-facts>div{min-width:0}.device-key-facts dt{color:var(--secondary);font-size:13px;line-height:20px}.device-key-facts dd{margin:6px 0 0;font-size:16px;line-height:24px;font-weight:600;overflow-wrap:anywhere}@container(min-width:720px){.device-key-facts{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .device-information-note{margin:24px 0 0;color:var(--secondary);font-size:13px;line-height:20px;text-wrap:pretty}.device-information-more{display:flex;flex-wrap:wrap;align-items:start;gap:12px 24px;margin-top:16px}.device-extra-specifications{flex:1 1 320px;min-width:0}.device-specification-link{display:inline-flex;align-items:center;gap:6px;min-height:40px;max-width:100%;font-size:13px;line-height:20px;text-wrap:pretty}.device-specification-link svg{flex:none}
 .device-overview-sections .admin-disclosure:not(.filter-disclosure)>summary{min-height:40px;align-content:center;padding-inline-start:22px;padding-inline-end:0}.device-overview-sections .admin-disclosure:not(.filter-disclosure)>summary::before{left:auto;inset-inline-start:3px}.device-overview-sections .admin-disclosure:not([open])>summary:dir(rtl)::before{transform:translateY(-50%) rotate(135deg)}
@@ -6123,6 +6154,10 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .map-statistics-popularity .table-wrap .region-map-link{width:auto;min-height:40px;font-weight:650;text-decoration:none}
 .map-statistics-popularity .region-map-link:hover,.map-statistics-popularity .region-map-link:focus-visible{text-decoration:underline}
 @media(max-width:700px){.map-statistics-popularity .table-wrap .region-map-link{min-height:44px}}
+/* Keep the date close to its region while retaining a full click target. */
+.map-statistics-popularity .table-wrap #top-region-rows tr{row-gap:2px;min-height:60px;align-content:start}
+.map-statistics-popularity .table-wrap #top-region-rows .region-map-link{position:relative;display:inline-block;min-height:0;line-height:20px;vertical-align:top}
+.map-statistics-popularity #top-region-rows .region-map-link::after{content:'';position:absolute;inset:0 0 auto;min-height:44px;min-width:44px}
 .map-statistics-world-map-card .section-heading{flex-wrap:wrap}
 .map-statistics-world-map-card .map-statistics-world-map{padding:0;min-height:0}
 .map-statistics-world-map-card .world-map-svg{height:auto;min-height:0;aspect-ratio:900 / 365}
@@ -6173,11 +6208,17 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .identity-mapping-source code,.diagnostic-id code{overflow-wrap:anywhere}
 .identity-source-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .identity-source-form label{display:flex;flex-direction:column;gap:6px}.identity-source-form button{justify-self:start;grid-column:1/-1}.identity-source-form output{padding:10px 0;overflow-wrap:anywhere}
-.download-history{grid-column:1/-1;font-size:13px}.download-history summary{font-size:13px;min-height:40px}
-.download-timeline{display:flex;flex-wrap:wrap;gap:8px 16px;list-style:none;padding:0;margin:8px 0;font-size:13px}
+.overview-activity-item:has(>.download-history){row-gap:0}.overview-activity-item:has(>.download-history)>a{grid-column:1;grid-row:1}.overview-activity-item:has(>.download-history)>time{grid-column:2;grid-row:1}
+.identification-intro{max-width:760px}.identification-workspace{max-width:960px}.identification-workspace h2{margin:16px 0 8px}.identification-workspace .identity-mappings{padding:0}.identification-search{display:flex;gap:8px;margin:16px 0}.identification-search input{flex:1;min-width:0}.identification-choice{display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:52px;padding:12px 0;border-top:1px solid var(--border);text-decoration:none;color:inherit}.identification-choice span{color:var(--secondary);font-size:13px}.identification-choice:hover strong{color:var(--interactive)}.identification-workspace .identity-mapping-code>summary{display:list-item;padding:14px 0;min-height:44px}.identification-workspace .identity-mapping-code>summary span{margin:4px 0 0}.identification-workspace .identity-mapping-source{padding:16px;background:var(--surface-muted);border:0;border-radius:var(--admin-control-radius);margin:0 0 12px}.identification-workspace .identity-mapping-source>p:first-child{margin-top:0;font-weight:600}.identification-workspace .identity-mapping-source summary{min-height:40px;align-content:center;padding:0}.identification-workspace .identity-mapping-source summary span{margin:0}.identification-workspace .identity-mapping-review button{grid-column:1/-1}.identification-workspace .identity-mapping-source code{font-size:12px}.identification-source-names{font-size:13px;color:var(--secondary)}
+@media(max-width:700px){.identification-choice{align-items:flex-start;flex-direction:column;gap:4px}.identification-workspace .identity-mapping-review{grid-template-columns:1fr}.identification-workspace .identity-mapping-source summary{min-height:44px}}
+.download-history{grid-column:1/-1;grid-row:2;margin:0;font-size:13px}.download-history summary{font-size:13px;min-height:40px;align-content:center}
+.download-timeline{display:flex;flex-wrap:wrap;gap:8px 16px;list-style:none;padding:0;margin:0 0 4px;font-size:13px}
 .download-timeline li{display:flex;align-items:center;flex-wrap:wrap;gap:4px}.download-timeline li+li::before{content:'→';color:var(--secondary);margin-right:8px}
 .download-timeline .admin-icon{width:14px;height:14px;flex:none}.download-timeline time{font-size:12px;font-variant-numeric:tabular-nums;position:static}
-.github-empty{margin:12px 0}.github-empty .github-review{margin:0}
+.github-empty{margin:0;grid-column:1/-1}.github-empty .github-review{margin:0}
+.diagnostic-detail-inner>.admin-disclosure>summary,.diagnostic-actions-grid>.github-empty>summary{min-height:40px;align-content:center}
+.diagnostic-actions-grid:has(>.github-empty:only-child){margin-top:0;gap:0}
+@media(max-width:700px){.diagnostic-detail-inner>.admin-disclosure>summary,.diagnostic-actions-grid>.github-empty>summary{min-height:44px}}
 @media(max-width:700px){.identity-source-form{grid-template-columns:1fr}.identity-candidate>summary,.download-history summary{min-height:44px}}
 
 @media(prefers-reduced-motion:reduce){

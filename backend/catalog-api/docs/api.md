@@ -963,3 +963,29 @@ separate from package issues. Collection and check results precede source URLs
 and release distributions. Download history uses a compact wrapping timeline;
 full timestamps remain in markup and accessible labels, with time-only visible
 labels when all phases occur on the same day in the selected timezone.
+
+### Device identification maintenance (local, not deployed)
+
+`GET /admin/device-identification` is an authenticated, no-store admin tool
+under Tools. Search models with `q`; select an exact model with `device`.
+Code/source reviews live here instead of the device detail page. The tool
+explains identification scope, groups sources by code, and retains review
+reasons, history, source URLs and version references. Existing CSRF-protected
+`POST /admin/devices/identity-mapping` remains the mutation route; its validated
+return destination can now point to the selected model in the tool. Saved
+installation assignments and compatibility approval semantics are unchanged.
+
+### Per-collection map updates (local, not deployed)
+
+Provider collection history includes Updates, the sum of new package IDs and
+existing packages with changed release or source_updated_at. One package counts
+once, independent of its artifacts; removed packages are not updates. The
+initial catalog import counts all packages as new. Counts are captured during
+snapshot persistence in the same transaction, tied to a RUNNING run for the
+same provider. Scheduled/manual collectors and BBBike candidate import supply
+that run ID. Health checks alone do not populate these counts.
+
+Migration 054 adds nullable new_package_count and updated_package_count to
+catalog_collection_run. Historical unknowns stay NULL. The admin table shows
+counts only for successful runs with both values recorded; older, incomplete
+and failed runs show —, never an inferred zero from release_change_detected.

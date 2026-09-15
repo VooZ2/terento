@@ -944,6 +944,18 @@ class Beta8APITests(unittest.TestCase):
                              {"freizeitkarte", "opentopomap", "maprando", "bbbike"})
             self.assertEqual(response.headers["X-Robots-Tag"], "noindex, nofollow")
 
+            with patch.object(service, "admin_devices", return_value={"devices": []}):
+                identification, identification_body = self._request(
+                    server, "GET", "/admin/device-identification?q=missing", headers={"Cookie": cookie}
+                )
+                self.assertEqual(identification.status, 200)
+                self.assertIn(b"No matching models.", identification_body)
+                self.assertEqual(identification.headers["Cache-Control"], "no-store")
+                self.assertEqual(identification.headers["X-Robots-Tag"], "noindex, nofollow")
+            handler = make_handler(service)
+            self.assertEqual(handler._safe_admin_return("/admin/device-identification?device=test", "/admin"), "/admin/device-identification?device=test")
+            self.assertEqual(handler._safe_admin_return("//evil.example/admin/device-identification", "/admin"), "/admin")
+
             test_data, test_data_body = self._request(
                 server, "GET", "/admin/test-data", headers={"Cookie": cookie}
             )
