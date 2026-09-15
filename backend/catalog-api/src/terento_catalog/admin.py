@@ -203,6 +203,7 @@ def _admin_icon(name: str) -> str:
         "arrow-right": "<path d='M2.5 8h11'/><path d='m9 3.5 4.5 4.5L9 12.5'/>",
         "arrow-left": "<path d='M13.5 8h-11'/><path d='m7 3.5-4.5 4.5L7 12.5'/>",
         "check": "<path d='m3 8 3 3 7-7'/>",
+        "history": "<path d='M2 7a6 6 0 1 1 1.4 5'/><path d='M2 3v4h4'/><path d='M8 4v4l3 2'/>",
         "clock": "<circle cx='8' cy='8' r='6'/><path d='M8 4v4l3 2'/>",
         "close": "<path d='m3.5 3.5 9 9'/><path d='m12.5 3.5-9 9'/>",
     }
@@ -213,6 +214,15 @@ def _admin_icon(name: str) -> str:
     return (
         f"<svg class='admin-icon admin-icon-{css_name}' viewBox='0 0 16 16' "
         f"fill='none' aria-hidden='true' focusable='false'>{path}</svg>"
+    )
+
+
+def _historical_catalog_indicator() -> str:
+    """Compact provenance; the surrounding model link provides keyboard focus."""
+    return (
+        "<span class='historical-catalog-indicator'>"
+        + _admin_icon("history")
+        + "<span class='historical-catalog-tooltip'>Historical catalog entry</span></span>"
     )
 
 
@@ -4434,7 +4444,7 @@ def _admin_status_badge(label: str, kind: str) -> str:
 
 def _admin_device_row(device: dict[str, Any], index: int) -> str:
     model, variant, _ = _identity_parts(device)
-    provenance = "<small class='table-secondary'>Historical catalog entry</small>" if variant == "Historical" else ""
+    provenance = _historical_catalog_indicator() if variant == "Historical" else ""
     variant = "—" if provenance else variant or "—"
     family = str(device.get("familyName") or device.get("family") or "")
     map_label, map_kind = _admin_map_capability(device.get("mapCapable"))
@@ -4668,7 +4678,7 @@ def _statistics_row(
     pending_count = int(summary.get("identity_pending") or 0)
     model_cell = html.escape(model)
     if variant == "Historical":
-        model_cell += " <small class='table-secondary'>Historical catalog entry</small>"
+        model_cell += " " + _historical_catalog_indicator()
         variant = "—"
     if pending_count:
         model_cell += (
@@ -5767,6 +5777,10 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .device-model-button{display:flex;align-items:center;gap:10px;width:100%;padding:0;border:0;background:none;color:inherit;text-align:left;text-decoration:none}
 .device-model-button strong{display:block;font-weight:700}
 .device-model-copy{display:flex;align-items:center;gap:8px;min-width:0}
+.historical-catalog-indicator{position:relative;display:inline-flex;align-items:center;justify-content:center;flex:0 0 18px;width:18px;height:18px;color:var(--secondary);font-weight:400}
+.historical-catalog-indicator .admin-icon{width:16px;height:16px}
+.historical-catalog-tooltip{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.historical-catalog-indicator:hover .historical-catalog-tooltip,.device-model-button:focus-visible .historical-catalog-tooltip{z-index:5;top:100%;left:0;width:max-content;height:auto;max-width:220px;padding:6px 8px;margin:4px 0 0;overflow:visible;clip-path:none;white-space:normal;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--secondary);font-size:12px;line-height:18px}
 .device-model-copy strong{min-width:0;overflow-wrap:anywhere}
 .device-thumb{display:block;width:38px;height:38px;flex:0 0 38px;object-fit:contain;border-radius:8px;background:var(--surface-muted)}
 .device-detail-image{display:block;width:120px;height:120px;object-fit:contain;border-radius:16px;background:var(--surface-muted);margin:0 0 16px}

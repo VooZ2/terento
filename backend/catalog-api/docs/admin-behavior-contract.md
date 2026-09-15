@@ -129,6 +129,12 @@ Use the canonical model name and a consistent variant order: case size, display,
 then features such as Solar/inReach when known. No specifications may be inferred
 merely to fill a visual gap. Cards and tables must use the same reviewed values.
 
+Historical catalog provenance in device and installation tables uses a small
+outline history icon beside the model. Its “Historical catalog entry” text stays
+in the accessible link name and appears on icon hover or model-link keyboard
+focus. This marker does not change support, specifications or installation
+authorization; the device detail retains the explicit provenance label.
+
 ### Map statistics and downloads
 
 Distinguish download phases, download outcomes and installation outcomes. Missing
