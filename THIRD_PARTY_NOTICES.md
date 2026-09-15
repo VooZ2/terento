@@ -174,3 +174,14 @@ This does not change the existing libmtp runtime dependency/license above.
 OpenMTP and go-mtpfs were inspected for metadata resilience only. No OpenMTP
 or Go dependency or source code is incorporated. Reference:
 <https://github.com/ganeshrvel/go-mtpfs/pull/1> (optional USB descriptors).
+
+## Font Awesome Free — box-archive
+
+- Version: 7.3.1, upstream commit `14c65a3747d0f3b751f15831fc719236aea8729d`
+- Upstream: https://github.com/FortAwesome/Font-Awesome/blob/14c65a3747d0f3b751f15831fc719236aea8729d/svgs/solid/box-archive.svg
+- Copyright 2026 Fonticons, Inc.
+- License: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
+- Use: the requested solid archive marker for historical admin catalog entries.
+- Bundling/redistribution is permitted with attribution. The original SVG path
+  and embedded attribution are preserved in `admin.py`; only presentation and
+  accessibility attributes are added. No Font Awesome fonts or runtime are bundled.

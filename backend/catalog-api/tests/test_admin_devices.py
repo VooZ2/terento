@@ -15,7 +15,9 @@ class DeviceInformationLayoutTests(unittest.TestCase):
             variant="Historical", case_size_mm=None, display_type=None,
             public_compatibility_identity=None)], None, {"username": "operator"}, "csrf").decode()
         row = body.split("<tbody", 1)[1].split("</tbody>", 1)[0]
-        self.assertIn("admin-icon-history", row)
+        self.assertIn("catalog-archive-icon", row)
+        self.assertIn("Font Awesome Free 7.3.1", row)
+        self.assertIn('viewBox="0 0 512 512"', row)
         self.assertIn("historical-catalog-tooltip'>Historical catalog entry</span>", row)
         self.assertIn("/admin/devices/historical-example?from=devices", row)
         self.assertNotIn("table-secondary'>Historical catalog entry", row)

@@ -203,7 +203,6 @@ def _admin_icon(name: str) -> str:
         "arrow-right": "<path d='M2.5 8h11'/><path d='m9 3.5 4.5 4.5L9 12.5'/>",
         "arrow-left": "<path d='M13.5 8h-11'/><path d='m7 3.5-4.5 4.5L7 12.5'/>",
         "check": "<path d='m3 8 3 3 7-7'/>",
-        "history": "<path d='M2 7a6 6 0 1 1 1.4 5'/><path d='M2 3v4h4'/><path d='M8 4v4l3 2'/>",
         "clock": "<circle cx='8' cy='8' r='6'/><path d='M8 4v4l3 2'/>",
         "close": "<path d='m3.5 3.5 9 9'/><path d='m12.5 3.5-9 9'/>",
     }
@@ -221,7 +220,7 @@ def _historical_catalog_indicator() -> str:
     """Compact provenance; the surrounding model link provides keyboard focus."""
     return (
         "<span class='historical-catalog-indicator'>"
-        + _admin_icon("history")
+        + '<svg class=\'catalog-archive-icon\' aria-hidden=\'true\' focusable=\'false\' xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc. --><path fill="currentColor" d="M0 64C0 46.3 14.3 32 32 32l448 0c17.7 0 32 14.3 32 32l0 32c0 17.7-14.3 32-32 32L32 128C14.3 128 0 113.7 0 96L0 64zM32 176l448 0 0 240c0 35.3-28.7 64-64 64L96 480c-35.3 0-64-28.7-64-64l0-240zm152 64c-13.3 0-24 10.7-24 24s10.7 24 24 24l144 0c13.3 0 24-10.7 24-24s-10.7-24-24-24l-144 0z"/></svg>'
         + "<span class='historical-catalog-tooltip'>Historical catalog entry</span></span>"
     )
 
@@ -5778,7 +5777,7 @@ td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-num
 .device-model-button strong{display:block;font-weight:700}
 .device-model-copy{display:flex;align-items:center;gap:8px;min-width:0}
 .historical-catalog-indicator{position:relative;display:inline-flex;align-items:center;justify-content:center;flex:0 0 18px;width:18px;height:18px;color:var(--secondary);font-weight:400}
-.historical-catalog-indicator .admin-icon{width:16px;height:16px}
+.historical-catalog-indicator .catalog-archive-icon{width:16px;height:16px}
 .historical-catalog-tooltip{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .historical-catalog-indicator:hover .historical-catalog-tooltip,.device-model-button:focus-visible .historical-catalog-tooltip{z-index:5;top:50%;left:calc(100% + 6px);transform:translateY(-50%);width:max-content;height:auto;max-width:220px;padding:6px 8px;margin:0;overflow:visible;clip-path:none;white-space:normal;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--secondary);font-size:12px;line-height:18px}
 .device-model-copy strong{min-width:0;overflow-wrap:anywhere}
