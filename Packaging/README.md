@@ -262,3 +262,24 @@ A local PASS is not publication evidence. The release receipt must distinguish
 compilation/tests, signing/notarization, exact-model owner hardware results,
 GitHub asset publication and live website verification. A waived real newer-map
 update remains untested and must remain in Known issues.
+
+## App–API release coordination
+
+The mandatory [app–API contract](../contracts/APP_API_RELEASE_CONTRACT.md) defines
+source/deployment receipts, native-to-API payload tests and server-first
+publication. The release suite runs fresh Swift failure payloads through API
+intake tests and checks all native failure codes. Before publishing a client,
+record the deployed API SHA accepting its payloads and the affected read-only
+admin workflow evidence. For build31 the API must accept INSTALL_FAILED_UNKNOWN.
+Build31 also restores legacy BBBike recognition and explicit external-map Remove;
+Garmin/protected and invalid/unreadable files remain blocked.
+
+The two full-source native test harnesses explicitly select SwiftPM
+`--build-system native` because they link its C bridge object/module layout.
+Xcode27 defaults to a different Swift Build layout; production packaging still
+uses the root Xcode target and its bundled native runtime.
+
+The app CI job provisions Python3.12 and the backend test extra so fresh native
+payloads are validated by the actual API, including on the oldest CI Swift6
+toolchain. Pure diagnostic error classification is nonisolated; it does not
+read mutable engine/UI state.

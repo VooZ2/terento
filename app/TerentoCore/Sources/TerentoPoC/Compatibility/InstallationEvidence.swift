@@ -687,6 +687,10 @@ final class InstallationEvidenceController: ObservableObject {
             result = await uploadPendingEventsOnce()
         }
 
+        guard uploadEnabled else {
+            latestDeliveryStatus = .notShared
+            return .notShared
+        }
         let status = deliveryStatus(for: result, count: max(insertedCount, 1))
         latestDeliveryStatus = status
         if case let .queued(_, _, willRetry) = status, willRetry {
@@ -783,6 +787,8 @@ final class InstallationEvidenceController: ObservableObject {
 
         uploadStatus = .uploading(count: pending.count)
         for event in pending {
+            // Opt-out during an in-flight upload must stop the remaining snapshot.
+            guard uploadEnabled else { return .empty }
             do {
                 try await uploader.upload(event)
                 try store.markUploaded(eventID: event.id)

@@ -192,8 +192,9 @@ by this documentation.
 
 - PR212 surfaces unmatched failed map events but links to Map statistics. It does
   not provide the full unknown-device diagnostic/issue workflow.
-- Diagnostic creation still depends on ConnectScreen state, unlike map event
-  delivery moved to MapEngine in build30. The particular France failure's cause
+- Build31 source moves diagnostic creation from ConnectScreen to an operation
+  observer and adds native-to-API regressions. Publication/live verification must
+  be recorded in the release receipt. The particular France failure's cause
   remains unproven; no retrospective watch identity has been recovered.
 - Safe correlated intake logging is included with this contract change; its
   production deployment must be verified separately. It cannot reconstruct past
@@ -201,3 +202,6 @@ by this documentation.
 - These are open implementation/acceptance gaps, not exceptions to the required
   operator outcome. Fixes must not change installation/removal or device-file
   behavior as a side effect of diagnostic work.
+
+Client/server sequencing and required revision/test receipts are specified in
+[the app–API release contract](../../../contracts/APP_API_RELEASE_CONTRACT.md).

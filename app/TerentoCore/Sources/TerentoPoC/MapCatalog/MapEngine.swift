@@ -242,6 +242,8 @@ final class MapEngine: ObservableObject {
     @Published private(set) var mapStatisticsEvents: [MapStatisticsEvent] = []
 
     private let statisticsController: MapStatisticsEventController?
+    private let evidenceController: InstallationEvidenceController?
+    private var operationDiagnostics: InstallationOperationDiagnostics?
     private var activeAcquisition: MapStatisticsEvent?
     private let reader: MTPTransport
     private let operationGate: MTPOperationGate
@@ -275,18 +277,32 @@ final class MapEngine: ObservableObject {
         reader: MTPTransport = MTPTransport(),
         catalogLoader: MapCatalogLoader = MapCatalogLoader(),
         operationGate: MTPOperationGate = .shared,
-        statisticsController: MapStatisticsEventController? = nil
+        statisticsController: MapStatisticsEventController? = nil,
+        evidenceController: InstallationEvidenceController? = nil
     ) {
         self.reader = reader
         self.statisticsController = statisticsController
+        self.evidenceController = evidenceController
         self.catalogLoader = catalogLoader
         self.operationGate = operationGate
     }
+
+    #if TERENTO_TESTING
+    /// Seed read-only inventory state without scanning or touching a device.
+    func waitForDiagnosticDeliveryForTesting() async {
+        await operationDiagnostics?.waitForDeliveryForTesting()
+    }
+    func setDiagnosticTestIdentity(_ identity: DeviceIdentity) {
+        currentIdentity = identity
+        state = .scanned
+    }
+    #endif
 
     /// Invalidates all device-derived map state after a disconnect or eject.
     /// This only cancels local work and clears memory; it never calls an MTP
     /// write, delete, move, or rename operation.
     func resetForDisconnectedDevice() {
+        operationDiagnostics?.deviceDisconnected()
         operationGate.invalidateLifecycleOperations()
         finishAcquisition(.downloadInterrupted)
         cancelActiveTaskAndCleanupWorkspaces()
@@ -1123,6 +1139,13 @@ final class MapEngine: ObservableObject {
             return
         }
 
+        evidenceController?.resetLatestDeliveryStatus()
+        operationDiagnostics = currentIdentity.flatMap { identity in
+            evidenceController.map { controller in
+                InstallationOperationDiagnostics(operationID: operationId, identity: identity,
+                    plan: plan, controller: controller)
+            }
+        }
         let selectedPackages = plan.installItems.map(\.package)
         let existingMaps = (result?.scan.installedMaps ?? []) + (result?.scan.otherMaps ?? [])
         let existingFiles = result?.scan.files ?? []
@@ -1135,6 +1158,7 @@ final class MapEngine: ObservableObject {
                 ?? BBBikeProviderAdapter.coexistenceReason
             installationPhase = .failed
             state = .failed
+            operationDiagnostics?.failed(index: 0, stage: .preflight, failure: .existingMapConflict)
             return
         }
         installationAuthorizationGranted = true
@@ -1177,6 +1201,8 @@ final class MapEngine: ObservableObject {
                     outcome: .failed
                 )
             }
+            operationDiagnostics?.failed(index: 0, stage: .preflight,
+                failure: evidenceFailure, native: evidenceNativeFailureCode)
             recordInstallationFailure(installationErrorMessage)
             discardCustomMapImport()
             return
@@ -1221,6 +1247,7 @@ final class MapEngine: ObservableObject {
         let stateRelay = MapEngineAcquisitionRelay(engine: self)
         let progressRelay = MapEngineDownloadProgressRelay(engine: self)
         activeTask?.cancel()
+        let diagnostics = operationDiagnostics
         activeTask = Task { [weak self] in
             var artifactSets: [String: [String: ValidatedMapArtifact]] = [:]
             var handedOff = false
@@ -1310,6 +1337,10 @@ final class MapEngine: ObservableObject {
                     self?.prepareInstallationConfirmation()
                 }
             } catch {
+                let known = (error as? MapAcquisitionError).map(Self.evidenceDiagnostic)
+                diagnostics?.failed(index: activePackageIndex, stage: known?.stage ?? .download,
+                    failure: known?.failure ?? (error is URLError ? .downloadFailed : nil),
+                    cancelled: Task.isCancelled || error is CancellationError)
                 guard !Task.isCancelled else { return }
                 self?.evidencePrimaryFailureMapIndex = activePackageIndex
                 if let acquisitionError = error as? MapAcquisitionError {
@@ -1362,6 +1393,7 @@ final class MapEngine: ObservableObject {
         let coordinator = MapInstallationCoordinator.live()
         let activeMapIndex = InstallationMapIndexState()
         activeTask?.cancel()
+        let diagnostics = operationDiagnostics
         activeTask = Task { [weak self] in
             var handedOff = false
             defer {
@@ -1401,6 +1433,7 @@ final class MapEngine: ObservableObject {
                                 userConfirmed: false
                             )
                             let result = coordinator.run(request)
+                            diagnostics?.record(result, packageID: item.package.id, artifactID: selectedArtifact.id)
                             results.append(result)
                             guard result.status == .confirmationRequired else {
                                 shouldStop = true
@@ -1470,6 +1503,11 @@ final class MapEngine: ObservableObject {
                     }
                 }
             } catch {
+                let known = (error as? MapAcquisitionError).map(Self.evidenceDiagnostic)
+                diagnostics?.failed(index: activeMapIndex.value, stage: known?.stage ?? .preflight,
+                    failure: known?.failure,
+                    native: error is MTPTransportError ? .preflightMTPReadFailed : nil,
+                    cancelled: Task.isCancelled || error is CancellationError)
                 guard !Task.isCancelled else { return }
                 let failureIndex = activeMapIndex.value
                 self?.evidencePrimaryFailureMapIndex = failureIndex
@@ -1542,6 +1580,7 @@ final class MapEngine: ObservableObject {
         let phaseProgressRelay = MapEnginePhaseProgressRelay(engine: self)
         let activeMapIndex = InstallationMapIndexState()
         activeTask?.cancel()
+        let diagnostics = operationDiagnostics
         activeTask = Task { [weak self] in
             defer {
                 let roots = Self.workspaceRoots(artifacts)
@@ -1631,6 +1670,7 @@ final class MapEngine: ObservableObject {
                                     phaseProgressRelay.send(phase, progress)
                                 }
                             )
+                            diagnostics?.record(result, packageID: packagePlan.item.package.id, artifactID: selectedArtifact.id)
                             packageResults.append(result)
                             componentResults.append(result)
                             packageComponents.append(
@@ -1731,6 +1771,11 @@ final class MapEngine: ObservableObject {
                     }
                 }
             } catch {
+                let known = (error as? MapAcquisitionError).map(Self.evidenceDiagnostic)
+                diagnostics?.failed(index: activeMapIndex.value, stage: known?.stage ?? .preflight,
+                    failure: known?.failure,
+                    native: error is MTPTransportError ? .preflightMTPReadFailed : nil,
+                    cancelled: Task.isCancelled || error is CancellationError)
                 guard !Task.isCancelled else { return }
                 let failureIndex = activeMapIndex.value
                 self?.evidencePrimaryFailureMapIndex = failureIndex
@@ -1757,7 +1802,7 @@ final class MapEngine: ObservableObject {
         }
     }
 
-    private static func evidenceDiagnostic(
+    nonisolated private static func evidenceDiagnostic(
         for error: MapAcquisitionError
     ) -> (stage: EvidenceFailureStage, failure: InstallationFailure) {
         switch error {

@@ -84,3 +84,7 @@ workflow and counting semantics. A row in Review queue or a green deploy is not
 proof that device history, detail actions and statistics work. Follow the
 contract's change/release gate; report unverified criteria explicitly. Documentation
 requirements do not authorize changes to device install/remove behavior.
+
+Before app/API payload, diagnostic or release changes, also read
+`contracts/APP_API_RELEASE_CONTRACT.md`. Verify both stream contracts and deploy
+additive API acceptance before publishing a client that uses it.

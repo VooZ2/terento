@@ -26,7 +26,7 @@ Compatible local IMG imports have no automatic provider update path.
 Install Maps provides geographic and provider/type filtering, local search,
 retained selections and one-provider batches. Filtering uses a cached
 presentation index and does not rescan the device. Manage Maps exposes current
-owned-map lifecycle actions and exact recognized external-map removal with
+owned-map lifecycle actions and exact valid external-map removal with
 separate confirmation. About is opened through `Terento → About Terento`;
 Diagnostics contains sharing settings. The sidebar remains Device, Install
 maps, Manage maps. UI layout and exact copy are reviewed visually; tests should
@@ -35,9 +35,19 @@ protect actions, state transitions, accessibility and data contracts.
 ## Safety and verification
 
 Ownership requires BOTH an approved managed filename and the exact file in the
-local device manifest. Unknown files, Garmin maps, GMA/UNL and protected system
-files remain read-only. Recognized external maps require a separate exact-target
-confirmation and live recheck; recognition never confers ownership.
+local device manifest. Garmin maps, GMA/UNL and protected system files remain
+read-only. A valid IMG with no identified provider may be removed explicitly,
+including an unowned file with a Terento-style name. Each external row represents
+one exact file; separate confirmation and a fresh live identity/header check are
+required. Invalid/unreadable images and ambiguous multi-file targets remain blocked;
+recognition never confers ownership. Protected filename checks apply in both
+Swift and the native delete bridge.
+
+BBBike inventory joins both fixed description fields and recognizes the complete
+source path, style and BBBike.org marker, corroborated by its binary creation
+date. An old exact manifest entry without BBBike context can then be recognized;
+a truncated path/style is never guessed. Duplicate or contradictory contextual
+records do not grant ownership.
 
 A safe update downloads and validates the replacement, checks space for both
 versions, uploads and verifies the replacement, then removes the old owned
@@ -186,3 +196,20 @@ and independent of installation safety. An absent server outcome is not proof
 of download failure. OTM main maps and contours use separate random acquisition
 IDs; manually imported IMG files remain custom compatibility evidence only.
 The API supporting migration049 must precede distribution of beta.12/build30.
+
+### Operation-owned installation reports
+
+`InstallationOperationDiagnostics` captures the operation ID, initial device
+identity and selected maps when MapEngine starts an operation. Workers report
+actual component outcomes directly, independently of ConnectScreen lifetime.
+The existing `InstallationEvidenceController` persists and retries one event ID
+per map, using the same operation ID as map statistics and preserving the
+compatibility sharing preference. Untouched maps after a failure are
+`NOT_STARTED`; ordinary cancellation is not synthesized as `FAILED`.
+Unclassified failures use `INSTALL_FAILED_UNKNOWN`, without guessing a cause.
+
+Run `Tests/run-app-installation-operation-diagnostics-tests.sh` for the actual
+engine/no-screen regression and producer/outbox/privacy cases. Initial context
+is in memory; force-quitting before a terminal result is observed is not a
+crash-recovery journal. Reports already persisted retain existing retry behavior.
+No device-operation behavior changes are part of this diagnostic producer fix.

@@ -11,13 +11,14 @@ struct MapInventoryListTests {
     static func main() {
         testFreizeitkarteRegionsAppearInOneList()
         testSelectedCatalogMapIsNotDuplicatedWhenInstalled()
-        testCompanionFilesAppearAsOneOtherMap()
+        testExternalFilesRemainSeparate()
+        testSameProviderRegionFilesRemainSeparate()
         testManifestRecordRestoresManagedOwnership()
         testOpenTopoMapLegacyAliasRestoresManagedOwnership()
         testRemovedMapIsAbsentAfterFreshScan()
         testManagedMapRandoUsesCatalogTitle()
 
-        print("PASS: 7 unified map inventory and ownership tests")
+        print("PASS: 8 unified map inventory and ownership tests")
     }
 
     private static func testManagedMapRandoUsesCatalogTitle() {
@@ -119,7 +120,7 @@ struct MapInventoryListTests {
         )
     }
 
-    private static func testCompanionFilesAppearAsOneOtherMap() {
+    private static func testExternalFilesRemainSeparate() {
         let main = makeInstalledMap(
             name: "OpenTopoMap Germany",
             provider: nil,
@@ -148,11 +149,23 @@ struct MapInventoryListTests {
         )
 
         expect(
-            list.otherMaps.count == 1
-                && list.otherMaps.first?.installedFileCount == 2
-                && list.otherMaps.first?.installedSizeBytes == 300,
-            "companion files appear as one read-only other-map entry"
+            list.otherMaps.count == 2
+                && list.otherMaps.allSatisfy { $0.installedFileCount == 1 }
+                && list.otherMaps.reduce(0, { $0 + $1.installedSizeBytes }) == 300,
+            "external files with the same description remain separate removal targets"
         )
+    }
+
+    private static func testSameProviderRegionFilesRemainSeparate() {
+        let first = makeInstalledMap(name: "Freizeitkarte France", provider: "Freizeitkarte", region: "FRA",
+            path: "/GARMIN/first.img")
+        let second = makeInstalledMap(name: "Freizeitkarte France", provider: "Freizeitkarte", region: "FRA",
+            path: "/GARMIN/second.img")
+        let list = MapInventoryListBuilder().build(scan: makeScan(installedMaps: [first, second]),
+            comparisons: [makeComparison(region: "FRA", name: "France", installedMap: first)],
+            selectedCatalogPackageID: "freizeitkarte-fra")
+        expect(list.freizeitkarte.count == 2 && list.freizeitkarte.allSatisfy { $0.installedFileCount == 1 },
+            "same provider/region files remain individual targets without duplicate catalog rows")
     }
 
     private static func testManifestRecordRestoresManagedOwnership() {

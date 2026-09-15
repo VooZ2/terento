@@ -67,8 +67,6 @@ struct ConnectScreen: View {
     @State private var diagnosticLogMessage: String?
     @State private var isShowingInstallationFailure = false
     @State private var evidenceOperationID = UUID()
-    @State private var evidenceOperationIdentity: DeviceIdentity?
-    @State private var evidenceRecordedForCurrentWrite = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.openWindow) private var openWindow
 
@@ -319,7 +317,6 @@ struct ConnectScreen: View {
         }
         .onChange(of: mapEngine.installationPhase) { phase in
             updatePresenceMonitoring(for: mapEngine.state)
-            recordInstallationEvidenceIfNeeded()
             if phase == .failed {
                 isShowingInstallationFailure = true
             } else {
@@ -2450,135 +2447,9 @@ struct ConnectScreen: View {
     private func beginInstallationAfterConsent(_ plan: InstallationPlan) {
         let operationID = UUID()
         evidenceOperationID = operationID
-        evidenceOperationIdentity = identity
-        evidenceRecordedForCurrentWrite = false
-        evidenceController.resetLatestDeliveryStatus()
         mapEngine.beginInstallation(plan: plan, operationId: operationID)
     }
 
-    private func recordInstallationEvidenceIfNeeded() {
-        guard !evidenceRecordedForCurrentWrite,
-              let identity = evidenceOperationIdentity,
-              let plan = selectedInstallationPlan,
-              mapEngine.installationPhase == .completed || mapEngine.installationPhase == .failed else {
-            return
-        }
-
-        let succeeded = mapEngine.installationPhase == .completed
-            && mapEngine.installationResult?.isSuccess == true
-        let results = mapEngine.installationBatchResults
-        let packageOutcomes = mapEngine.packageInstallationOutcomes
-        let primaryFailureIndex = mapEngine.evidencePrimaryFailureMapIndex ?? 0
-        var events: [InstallationEvidenceEvent] = []
-        for (index, item) in plan.installItems.enumerated() {
-            let result = results.indices.contains(index)
-                ? results[index]
-                : (results.isEmpty && index == primaryFailureIndex ? mapEngine.installationResult : nil)
-            let packageOutcome = packageOutcomes.first {
-                $0.packageID == item.package.id
-            }
-            let packageIsComplete = packageOutcome?.isComplete ?? true
-            let itemSucceeded = packageIsComplete
-                && (result?.isSuccess == true || (plan.installItems.count == 1 && succeeded))
-            let isPrimaryFailure = !itemSucceeded && (
-                result != nil
-                    || packageOutcome != nil
-                    || (results.isEmpty && index == primaryFailureIndex)
-            )
-            let outcome: InstallationEvidenceOutcome = itemSucceeded
-                ? .succeeded
-                : (isPrimaryFailure ? .failed : .notStarted)
-            let failure = result?.failure
-                ?? packageOutcome?.failedComponent?.failure
-                ?? (isPrimaryFailure ? mapEngine.evidenceFailure : nil)
-            let stage = result.map { evidenceStage(for: $0) }
-                ?? (failure.map { evidenceStage(for: $0) }
-                    ?? (isPrimaryFailure ? mapEngine.evidenceFailureStage ?? .preflight : .preflight))
-            let category = itemSucceeded ? nil : evidenceCategory(for: failure)
-            let writeStarted = result?.diagnostics.writeStarted ?? false
-            let remoteCreated = result?.diagnostics.remoteObjectCreated ?? false
-            let cleanupAttempted = result?.diagnostics.cleanupAttempted ?? false
-            events.append(InstallationEvidenceEvent(
-                identity: identity,
-                package: item.package,
-                outcome: outcome,
-                finishingResult: itemSucceeded ? .verified : (outcome == .notStarted ? .notReached : .failed),
-                errorCategory: itemSucceeded ? nil : category,
-                operationId: evidenceOperationID,
-                mapResultIndex: index,
-                selectedMapCount: plan.installItems.count,
-                failureStage: itemSucceeded ? nil : stage,
-                failureCode: itemSucceeded ? nil : (failure?.rawValue ?? "INSTALL_NOT_STARTED_AFTER_EARLIER_FAILURE"),
-                nativeFailureCode: itemSucceeded ? nil : (
-                    result?.diagnostics.nativeFailureCode.flatMap {
-                        EvidenceNativeFailureCode(rawValue: $0.rawValue)
-                    } ?? (result == nil ? mapEngine.evidenceNativeFailureCode : nil)
-                        ?? evidenceNativeCode(for: failure)
-                ),
-                writeStarted: writeStarted,
-                remoteObjectCreated: remoteCreated,
-                cleanupAttempted: cleanupAttempted,
-                cleanupSucceeded: result?.diagnostics.cleanupSucceeded ?? false,
-                transferProgressBucket: EvidenceTransferProgressBucket(
-                    bytes: result?.diagnostics.bytesTransferred ?? 0,
-                    total: result?.diagnostics.transferTotalBytes ?? 0
-                )
-            ))
-        }
-        evidenceRecordedForCurrentWrite = true
-
-        Task { @MainActor in
-            _ = await evidenceController.recordAndUpload(events)
-        }
-    }
-
-    private func evidenceStage(for result: MapInstallationResult) -> EvidenceFailureStage {
-        evidenceStage(for: result.failure)
-    }
-
-    private func evidenceStage(for failure: InstallationFailure?) -> EvidenceFailureStage {
-        switch failure {
-        case .manifestFailed: return .manifest
-        case .cleanupFailed: return .cleanup
-        case .sizeMismatch, .hashMismatch, .remoteFileMissing, .metadataMismatch, .verificationRequired:
-            return .verify
-        case .writeFailed, .deviceDisconnected: return .write
-        case .sourceArtifactInvalid, .sourceValidationFailed: return .sourceValidation
-        default: return .preflight
-        }
-    }
-
-    private func evidenceCategory(for failure: InstallationFailure?) -> EvidenceErrorCategory {
-        switch failure {
-        case .insufficientSpace:
-            return .storage
-        case .deviceDisconnected:
-            return .deviceDisconnected
-        case .sourceArtifactInvalid, .sourceValidationFailed:
-            return .sourceValidation
-        case .stableWatchIdentityUnavailable:
-            return .unknown
-        case .hashMismatch, .sizeMismatch, .remoteFileMissing,
-             .metadataMismatch, .verificationRequired:
-            return .verification
-        case .some:
-            return .transport
-        case .none:
-            return .unknown
-        }
-    }
-
-    private func evidenceNativeCode(for failure: InstallationFailure?) -> EvidenceNativeFailureCode? {
-        switch failure {
-        case .existingMapConflict: return .targetAlreadyExists
-        case .remoteFileMissing: return .remoteFileMissing
-        case .unknownInstallTarget: return .unsupportedDevice
-        case .stableWatchIdentityUnavailable: return .stableWatchIdentityUnavailable
-        case .deviceDisconnected: return .deviceDisconnected
-        case .writeFailed: return .sendObjectFailed
-        default: return nil
-        }
-    }
 
 }
 

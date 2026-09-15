@@ -118,6 +118,47 @@ private struct PrefixReader: DeviceFileReader {
             "truncated long header restores name only from verified context")
         check(GarminIMGMetadataParser().parse(longPrefix)?.provider == nil,
             "long header without exact manifest remains unidentified")
+        // The reported Lithuania header is split after "europe/lithuania bbb".
+        // Both variants must be recognized offline without manifest context.
+        for type in BBBikeMapType.allCases {
+            var prefix = longPrefix
+            let description = Array(("europe/lithuania \(type.style)/latin1 BBBike.org 09-Sep-2026").utf8.prefix(49))
+            let padded = description + Array(repeating: UInt8(32), count: 50 - description.count)
+            prefix.replaceSubrange(0x49..<0x5D, with: padded.prefix(20))
+            prefix.replaceSubrange(0x65..<0x83, with: padded.dropFirst(20))
+            let parsed = GarminIMGMetadataParser().parse(prefix)
+            let region = BBBikeProviderAdapter.regionToken(path: "europe/lithuania", type: type.rawValue)
+            check(parsed?.provider == "BBBike" && parsed?.region == region && parsed?.name == "Lithuania",
+                "complete split Lithuania \(type.style) header identifies region and variant")
+            let filename = try TerentoManagedFilenameGenerator().filename(providerId: "bbbike", regionId: region)
+            let file = DeviceFile(itemID: 101, parentID: 1, storageID: 1, path: "/GARMIN/" + filename,
+                filename: filename, sizeBytes: 129177600, isFolder: false)
+            let record = MapOwnershipRecord(devicePath: file.path, filename: filename, providerId: "bbbike",
+                regionId: region, version: parsed!.version!, sizeBytes: file.sizeBytes)
+            let scanner = GarminMapScanner()
+            let legacy = scanner.scan(files: [file], reader: PrefixReader(prefix: prefix), ownershipRecords: [record])
+            check(legacy.installedMaps.first?.managementState == .managedByTerento,
+                "legacy manifest without BBBike context is corroborated by full identity header")
+            let external = scanner.scan(files: [file], reader: PrefixReader(prefix: prefix))
+            check(external.installedMaps.first?.managementState == .detectedNotManaged,
+                "managed-looking filename alone never grants ownership")
+            let duplicate = scanner.scan(files: [file], reader: PrefixReader(prefix: prefix), ownershipRecords: [record, record])
+            check(duplicate.installedMaps.first?.managementState == .detectedNotManaged,
+                "duplicate exact records do not grant ownership through header fallback")
+            let contradictory = MapOwnershipRecord(devicePath: file.path, filename: filename, providerId: "bbbike",
+                regionId: region, version: parsed!.version!, sizeBytes: file.sizeBytes,
+                bbbikeMetadata: BBBikeMapMetadata(package: andorra[0]))
+            let rejected = scanner.scan(files: [file], reader: PrefixReader(prefix: prefix), ownershipRecords: [contradictory])
+            check(rejected.installedMaps.first?.managementState == .detectedNotManaged,
+                "present but contradictory context cannot be bypassed by complete header")
+            var changed = prefix
+            changed[0x3C] = 8
+            check(GarminIMGMetadataParser().parse(changed)?.provider == nil,
+                "conflicting header and binary dates cannot identify BBBike")
+            changed = prefix
+            changed[0x41] = 0
+            check(GarminIMGMetadataParser().parse(changed) == nil, "invalid IMG magic is rejected")
+        }
         // Real provider metadata and full official archives acquired locally by the
         // source gate. No test downloads or device access occur in this suite.
         if let samples = ProcessInfo.processInfo.environment["TERENTO_BBBIKE_SAMPLE_DIRECTORY"] {

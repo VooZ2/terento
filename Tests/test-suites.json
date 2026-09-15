@@ -37,7 +37,8 @@
     "app/TerentoCore/Tests/run-app-custom-map-import-presentation-tests.sh",
     "app/TerentoCore/Tests/run-app-navigation-tests.sh",
     "app/TerentoCore/Tests/run-app-user-facing-error-message-tests.sh",
-    "app/TerentoCore/Tests/run-app-map-selection-wiring-tests.sh"
+    "app/TerentoCore/Tests/run-app-map-selection-wiring-tests.sh",
+    "app/TerentoCore/Tests/run-app-installation-operation-diagnostics-tests.sh"
   ],
   "native": [
     "app/TerentoCore/Tests/run-native-compatibility-status-client-tests.sh",
@@ -69,7 +70,8 @@
     "app/TerentoCore/Tests/run-native-bbbike-archive-safety-tests.sh"
   ],
   "backend": [
-    "Tests/run-backend-api-unit-tests.sh"
+    "Tests/run-backend-api-unit-tests.sh",
+    "Tests/run-backend-operation-diagnostic-contract-tests.sh"
   ],
   "release": [
     "Tests/run-release-legal-content-tests.sh",

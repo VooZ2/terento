@@ -572,13 +572,13 @@ final class MapLifecycleViewModel: ObservableObject {
             return
         }
 
-        let filenameGenerator = TerentoManagedFilenameGenerator()
         let installedMaps = context.item.installedMaps
         let isExternalRemoval = context.item.classification == .externalRecognized
             && context.failedInstallRecovery == nil
-            && installedMaps.allSatisfy {
-                !filenameGenerator.isValid($0.sourceFile.filename)
-            }
+        guard !isExternalRemoval || installedMaps.count == 1 else {
+            fail(itemID: itemID, action: .remove, message: "Select one map to remove. Nothing was changed.")
+            return
+        }
         guard let mapIdentity = context.mapIdentity
                 ?? context.item.identity
                 ?? MapIdentity(provider: "external", region: context.item.id),

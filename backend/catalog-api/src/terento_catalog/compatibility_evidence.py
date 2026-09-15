@@ -211,6 +211,7 @@ def _validate_v3(event: dict[str, Any]) -> None:
         "INSTALL_FAILED_INVALID_STATE_TRANSITION", "INSTALL_BLOCKED_VERIFICATION_REQUIRED",
         "INSTALL_NOT_STARTED_AFTER_EARLIER_FAILURE",
         "INSTALL_BLOCKED_STABLE_WATCH_IDENTITY_UNAVAILABLE",
+        "INSTALL_FAILED_UNKNOWN",
     }
     if event.get("failureCode") not in failure_codes | {None}:
         raise EvidenceValidationError("invalid_failure_code")

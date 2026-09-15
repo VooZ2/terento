@@ -104,6 +104,7 @@ struct MapLifecyclePresentationResolver: Sendable {
 
         if item.classification == .externalRecognized,
            item.hasExactObjectIdentity,
+           item.installedMaps.count == 1,
            hasValidatedUpdateProfile,
            hasStableWatchIdentity {
             let hasTerentoManagedFilename = item.installedMaps.allSatisfy {
@@ -112,9 +113,9 @@ struct MapLifecyclePresentationResolver: Sendable {
 
             if hasTerentoManagedFilename {
                 return MapLifecycleActionAvailability(
-                    actions: [.recoverOwnership],
+                    actions: [.remove, .recoverOwnership],
                     status: "Recovery available",
-                    reason: "Verify this existing Terento map once to restore management."
+                    reason: "Remove only this map after confirmation, or verify it to restore management."
                 )
             }
 

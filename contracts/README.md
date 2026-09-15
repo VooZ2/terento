@@ -144,3 +144,17 @@ runner and Python schema checks. Optional paired acquisition/component fields
 and processing/cancellation/interruption phases extend schema1; legacy fixtures
 remain unchanged and accepted. Server UUID and outcome validation remains the
 intake boundary. No raw device or file identity is added.
+
+### Operation failure fixture
+
+`fixtures/compatibility-event.valid-failed-operation.json` is a deterministic
+synthetic fixture from the Swift InstallationEvidenceEvent encoder for an
+operation-owned failed installation. The event schema adds the controlled
+`INSTALL_FAILED_UNKNOWN` failure code for genuinely unclassified failures;
+there are no new payload fields or private data. The API must accept this code
+before the corresponding client is published. Backend delivery tests can also
+consume fresh native fixture output through `TERENTO_DIAGNOSTIC_FIXTURE_OUTPUT`.
+
+Cross-component changes and releases must follow
+[APP_API_RELEASE_CONTRACT.md](APP_API_RELEASE_CONTRACT.md), including generated
+Swift payload tests, accepted-code parity and API-before-client publication.
