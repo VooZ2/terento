@@ -132,6 +132,9 @@ quick filters `All`, `Failed`, `Open errors`, and `Successful` are
 presentation-only filters over the existing aggregate rows. The page labels
 the compatibility counters `Write-started attempts` and `Successful`, plus the
 explicitly scoped `Evidence success` percentage.
+Filter controls keep their accessible names in the markup while the compact
+toolbar presents search placeholders and select options without duplicate
+visible field headings.
 The canonical compatibility view itself uses active, write-started operations
 and excludes pre-write failures; the rendered page also retains historical
 failures for operator review. Open errors remain a separate unresolved
@@ -940,3 +943,23 @@ Recent activity groups the new acquisition phases with component and history;
 non-terminal observations are explicitly labelled `Outcome not received`.
 Cancellation/interruption are excluded from download failure/success ratios.
 The API/migration must be deployed before the build30 client.
+
+### Admin information hierarchy (local UI implementation)
+
+Diagnostic detail presents the saved model assignment separately from automatic
+source checks. An administrator assignment does not turn incomplete evidence
+into a match; a conflicting check for the assigned candidate remains visible.
+The compact outcome precedes expandable identity evidence, source corrections,
+issue management and full technical details. Other candidates retain their
+complete check tables behind individual disclosures. Source correction forms
+show the selected field's original reported value; corrections do not reassign
+installations. Original identifiers, source revisions and review history remain
+available. No identity policy, API mutation semantics or compatibility counts
+change as part of this presentation work.
+
+Provider details distinguish AVAILABLE package counts, non-retired catalog
+entries and broken artifacts. The latest recorded check and its coverage are
+separate from package issues. Collection and check results precede source URLs
+and release distributions. Download history uses a compact wrapping timeline;
+full timestamps remain in markup and accessible labels, with time-only visible
+labels when all phases occur on the same day in the selected timezone.

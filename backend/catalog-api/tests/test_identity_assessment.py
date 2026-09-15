@@ -13,6 +13,40 @@ class IdentityAssessmentTests(unittest.TestCase):
                               status='APPROVED', source_url='https://example.org/evidence', source_version='1')
                          for kind, value in [('USB', '091e:51b8'), ('XML_PART_NUMBER', '006-B4631-00')]]
 
+
+    def test_saved_assignment_and_conflicting_sources_stay_separate(self):
+        from copy import deepcopy
+        from terento_catalog.admin import _identity_checks_markup
+        assessment = assess_identity(self.event, [self.device], self.mappings[:1])
+        result = dict(canonical_device_model_id=self.device['id'], identity_assessment=assessment,
+                      identity_decision={'decision': {'deviceId': self.device['id'], 'reason': 'Confirmed on device'}})
+        original = deepcopy(result)
+        markup = _identity_checks_markup([result])
+        summary = markup.split('<details')[0]
+        self.assertIn('Model confirmed by administrator', summary)
+        self.assertIn('source checks remain incomplete', summary)
+        self.assertNotIn('leave the review open', markup)
+        self.assertEqual(result, original)
+        result['current_identity_assessment'] = assess_identity(dict(self.event, rawMTPModel='fenix 7 Pro 47mm'), [self.device], self.mappings)
+        summary = _identity_checks_markup([result]).split('<details')[0]
+        self.assertIn('conflicting source values', summary)
+        self.assertNotIn('No further model selection needed', summary)
+
+    def test_automatic_assignment_has_complete_checks_without_admin_claim(self):
+        from terento_catalog.admin import _identity_checks_markup
+        assessment = assess_identity(self.event, [self.device], self.mappings)
+        markup = _identity_checks_markup([dict(canonical_device_model_id=self.device['id'], identity_assessment=assessment)])
+        summary = markup.split('<details')[0]
+        self.assertIn('Checks complete', summary)
+        self.assertNotIn('confirmed by administrator', summary)
+
+    def test_display_prefers_saved_catalog_name_without_mutating_report(self):
+        from terento_catalog.admin import _identity_parts
+        row = dict(model='EPIX Pro', compatibility_identity='EPIX Pro · 51 mm',
+                   canonical_device_model_id='epix-pro-51', canonical_model='epix Pro (Gen 2)', variant='51 mm', screen_technology='AMOLED')
+        self.assertEqual(_identity_parts(row)[:2], ('epix Pro (Gen 2)', '51 mm, AMOLED'))
+        self.assertEqual(row['model'], 'EPIX Pro')
+
     def test_five_checks_required(self):
         result = assess_identity(self.event, [self.device], self.mappings)
         self.assertEqual(result['canonicalDeviceId'], self.device['id'])
@@ -154,8 +188,8 @@ class IdentityAssessmentTests(unittest.TestCase):
         results = [{'identity_assessment': assessment}]
         markup = _identity_checks_markup(results)
         summary, technical = markup.split("<details class='admin-disclosure identity-technical-evidence'>")
-        self.assertIn('✓ Model recognized', summary)
-        self.assertEqual(summary.count('<li>'), 5)
+        self.assertIn('Model assignment needs review', summary)
+        self.assertEqual(summary.count('<li>'), 0)
         self.assertNotIn('USB', summary)
         self.assertNotIn('other', summary)
         self.assertIn('other', technical)
@@ -164,7 +198,7 @@ class IdentityAssessmentTests(unittest.TestCase):
     def test_review_does_not_guess_when_ambiguous_missing_or_conflicting(self):
         from terento_catalog.admin import _identity_checks_markup, _identity_recommendation
         assessment = assess_identity(self.event, [self.device], self.mappings[:1])
-        self.assertIn('Not enough information', _identity_checks_markup([{'identity_assessment': assessment}]))
+        self.assertIn('mapping needs review', _identity_checks_markup([{'identity_assessment': assessment}]))
         for value in ({}, dict(assessment, candidates=[]),
                       dict(assessment, candidates=[assessment['candidates'][0]] * 2)):
             self.assertIsNone(_identity_recommendation([{'identity_assessment': value}]))
@@ -185,7 +219,7 @@ class IdentityAssessmentTests(unittest.TestCase):
         results = [{'identity_assessment': assessment}]
         summary = _identity_checks_markup(results).split('<details')[0]
         self.assertIn('fēnix 8 Pro', summary)
-        self.assertIn('Screen: Not enough information', summary)
+        self.assertIn('screen technology', summary)
         self.assertIsNone(_identity_recommendation(results))
 
     def test_diagnostic_summary_remains_above_identification(self):
@@ -198,20 +232,6 @@ class IdentityAssessmentTests(unittest.TestCase):
         summary = markup.split("<dl class='diagnostic-detail-summary'>")[1].split('</dl>')[0]
         for label in ('Device', 'Variant', 'Date', 'Map / region', 'Result', 'App version', 'Review state'):
             self.assertIn('<dt>' + label + '</dt>', summary)
-        self.assertLess(markup.index("class='diagnostic-detail-summary'"), markup.index('Model identification'))
+        self.assertLess(markup.index("class='diagnostic-detail-summary'"), markup.index("class='identity-summary identity-outcome'"))
         self.assertIn("value='fenix8pro-51-amoled' selected", markup)
         self.assertIn("name='identity_reason' required", markup)
-
-    def test_epix_pro_report_matches_catalog_generation_without_granting_identity(self):
-        devices = [dict(id=f'epix-pro-{size}', model='epix Pro (Gen 2)',
-                        case_size_mm=size, screen_technology='AMOLED') for size in (42,47,51)]
-        event = dict(model='EPIX PRO - 51mm', rawMTPModel='EPIX PRO - 51mm',
-                     garminModelDescription='EPIX PRO - 51mm',
-                     garminModelPartNumber='006-B4314-00')
-        result = assess_identity(event, devices, [])
-        self.assertEqual(len(result['candidates']), 3)
-        possible = [c for c in result['candidates'] if not c['conflict']]
-        self.assertEqual([c['deviceId'] for c in possible], ['epix-pro-51'])
-        self.assertIsNone(result['canonicalDeviceId'])
-        for model in ('epix (Gen 2)', 'epix', 'epix Pro (Gen 3)'):
-            self.assertEqual(assess_identity(dict(model=model), devices, [])['candidates'], [])

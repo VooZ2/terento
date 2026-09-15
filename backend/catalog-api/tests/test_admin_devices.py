@@ -417,6 +417,8 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertNotIn("src='None'", body)
         self.assertIn("generic-garmin-watch.png", body)
         self.assertIn("Compatibility status", body)
+        self.assertIn('<span class="sr-only">Filter by family</span>', body)
+        self.assertNotIn(".filter-bar label>.sr-only{position:static", body)
         self.assertIn("title=\"Installation authorization\"", body)
         self.assertNotIn("Support decision", body)
         self.assertNotIn("Evidence status", body)
