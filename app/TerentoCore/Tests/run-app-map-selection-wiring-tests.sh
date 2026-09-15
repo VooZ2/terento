@@ -164,8 +164,9 @@ if ! grep -Fq 'evidencePrimaryFailureMapIndex = activePackageIndex' \
         "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift" \
     || ! grep -Fq 'evidencePrimaryFailureMapIndex = failureIndex' \
         "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift" \
-    || ! grep -Fq 'results.isEmpty && index == primaryFailureIndex ? mapEngine.installationResult : nil' \
-        "$connect_screen"; then
+    || ! grep -Fq 'diagnostics?.failed(index: activeMapIndex.value' \
+        "$project_root/Sources/TerentoPoC/MapCatalog/MapEngine.swift" \
+    || grep -Fq 'recordInstallationEvidenceIfNeeded' "$connect_screen"; then
     print -u2 "FAIL: multi-map diagnostics do not preserve the actual failed map index"
     exit 1
 fi

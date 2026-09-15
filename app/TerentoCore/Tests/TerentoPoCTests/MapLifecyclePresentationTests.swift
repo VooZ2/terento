@@ -367,18 +367,18 @@ func runMapLifecyclePresentationTests() throws {
         hasStableWatchIdentity: true
     )
     try require(
-        recoverable.actions == [.recoverOwnership],
-        "read-only Terento filename exposes only explicit ownership recovery"
+        recoverable.actions == [.remove, .recoverOwnership],
+        "unowned Terento filename permits confirmed Remove and explicit recovery"
     )
     try require(
-        ManageMapRowActionPresentation.primaryActions(for: recoverable).isEmpty
+        ManageMapRowActionPresentation.primaryActions(for: recoverable) == [.remove]
             && ManageMapRowActionPresentation.advancedActions(for: recoverable)
                 == [.recoverOwnership],
         "ownership recovery is presented only in the advanced menu"
     )
     try require(
-        ManageMapRowActionPresentation.productionActions(for: recoverable).isEmpty,
-        "internal ownership recovery does not leak into production Manage Maps"
+        ManageMapRowActionPresentation.productionActions(for: recoverable) == [.remove],
+        "production exposes Remove even when ownership recovery stays internal"
     )
 
     let rawExternalMap = InstalledMap(
@@ -425,6 +425,17 @@ func runMapLifecyclePresentationTests() throws {
             && externalRemoval.status == "External map",
         "a parsed third-party map exposes one-by-one removal"
     )
+
+    let multipleExternal = MapLifecycleItem(
+        id: "multiple-external", title: "Maps", provider: nil, region: nil,
+        version: nil, rawVersion: nil, sizeBytes: 200,
+        installedMaps: [rawExternalMap, installedMap(managementState: .detectedNotManaged)],
+        classification: .externalRecognized
+    )
+    try require(!resolver.resolve(item: multipleExternal, comparison: nil,
+        hasIntegrityRecord: false, hasValidatedUpdateProfile: true,
+        hasStableWatchIdentity: true).allows(.remove),
+        "a legacy multi-file external row cannot authorize bulk removal")
 
     let ambiguous = resolver.resolve(
         item: lifecycleItem(installed: installedMap(itemID: nil), classification: .ambiguous),

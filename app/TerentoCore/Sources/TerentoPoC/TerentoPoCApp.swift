@@ -14,14 +14,16 @@ struct TerentoPoCApp: App {
     @StateObject private var deviceEngine = DeviceEngine()
     @StateObject private var mapEngine: MapEngine
     @StateObject private var appUpdateController = AppUpdateController()
-    @StateObject private var evidenceController = InstallationEvidenceController()
+    @StateObject private var evidenceController: InstallationEvidenceController
     @StateObject private var mapStatisticsController: MapStatisticsEventController
     @Environment(\.openWindow) private var openWindow
 
     init() {
         let statistics = MapStatisticsEventController()
+        let evidence = InstallationEvidenceController()
+        _evidenceController = StateObject(wrappedValue: evidence)
         _mapStatisticsController = StateObject(wrappedValue: statistics)
-        _mapEngine = StateObject(wrappedValue: MapEngine(statisticsController: statistics))
+        _mapEngine = StateObject(wrappedValue: MapEngine(statisticsController: statistics, evidenceController: evidence))
     }
 
     var body: some Scene {

@@ -202,7 +202,11 @@ struct MapInventoryListBuilder: Sendable {
         )
 
         for comparison in providerComparisons {
-            let key = identityKey(
+            let installedKey = comparison.installedMap.flatMap { installed -> String? in
+                guard installed.managementState == .detectedNotManaged else { return nil }
+                return installedGroups.first(where: { $0.value.contains { $0.sourceFile == installed.sourceFile } })?.key
+            }
+            let key = installedKey ?? identityKey(
                 provider: comparison.catalogMap.providerId,
                 region: comparison.catalogMap.regionId,
                 identifier: comparison.catalogMap.identifier,
@@ -345,6 +349,11 @@ struct MapInventoryListBuilder: Sendable {
         namespace: String
     ) -> [String: [InstalledMap]] {
         Dictionary(grouping: maps) { map in
+            // External Remove always addresses one exact file, even when
+            // two maps share their provider, region or description.
+            if map.managementState == .detectedNotManaged {
+                return "\(namespace):external-file:\(map.sourceFile.path)"
+            }
             if namespace.hasPrefix("provider-"),
                map.managementState == .managedByTerento,
                let managedPackageID = map.managedPackageID,
@@ -370,7 +379,7 @@ struct MapInventoryListBuilder: Sendable {
             // unowned third-party IMG merely because both files expose the
             // same human-readable header name. Keep each managed custom
             // file as its own lifecycle item so it receives Custom map /
-            // Remove, while the unrelated external file remains read-only.
+            // Remove, separate from the unrelated external file's confirmation.
             if namespace == "other",
                map.provider == nil,
                map.managementState == .managedByTerento {

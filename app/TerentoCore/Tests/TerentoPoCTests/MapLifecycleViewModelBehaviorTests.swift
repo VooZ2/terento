@@ -14,8 +14,9 @@ struct MapLifecycleViewModelBehaviorTests {
         try testConfirmationDisablesEject()
         try testDisconnectedDeviceCannotStartRemoval()
         try testResetInvalidatesPresentationState()
+        try testUnownedTerentoFilenameReachesRemovalConfirmation()
 
-        print("PASS: 3 MapLifecycleViewModel behavior tests")
+        print("PASS: 4 MapLifecycleViewModel behavior tests")
     }
 
     @MainActor
@@ -106,7 +107,28 @@ struct MapLifecycleViewModelBehaviorTests {
         print("PASS: disconnect reset clears stale lifecycle presentation state")
     }
 
-    private static func makeContext() throws -> MapLifecycleContext {
+    @MainActor
+    private static func testUnownedTerentoFilenameReachesRemovalConfirmation() throws {
+        let gate = MTPOperationGate()
+        let context = try makeContext(external: true)
+        let viewModel = MapLifecycleViewModel(
+            deviceEngine: DeviceEngine(operationGate: gate),
+            mapEngine: MapEngine(operationGate: gate), operationGate: gate,
+            contextProvider: { _ in context }, connectedDeviceProvider: { false }
+        )
+        viewModel.requestRemove(itemID: context.item.id)
+        guard viewModel.pendingConfirmation?.action == .remove else {
+            throw Failure("unowned Terento-style filename did not offer removal confirmation")
+        }
+        viewModel.confirmPendingAction()
+        guard viewModel.operation(for: context.item.id)?.phase == .failed,
+              !gate.isNativeOperationActive else {
+            throw Failure("external confirmation bypassed disconnected-device protection")
+        }
+        print("PASS: unowned Terento filename offers confirmation and retains device protection")
+    }
+
+    private static func makeContext(external: Bool = false) throws -> MapLifecycleContext {
         guard let version = MapVersion(year: 2026, month: 5),
               MapIdentity(provider: "Freizeitkarte", region: "FRA") != nil else {
             throw Failure("could not construct deterministic lifecycle test identity")
@@ -131,7 +153,7 @@ struct MapLifecycleViewModelBehaviorTests {
             sizeBytes: sourceFile.sizeBytes,
             sourceFile: sourceFile,
             metadataStatus: .parsed,
-            managementState: .managedByTerento
+            managementState: external ? .detectedNotManaged : .managedByTerento
         )
         let item = MapLifecycleItem(
             id: "freizeitkarte-fra",
@@ -142,7 +164,7 @@ struct MapLifecycleViewModelBehaviorTests {
             rawVersion: "Release 26.05",
             sizeBytes: sourceFile.sizeBytes,
             installedMaps: [installedMap],
-            classification: .terentoManaged
+            classification: external ? .externalRecognized : .terentoManaged
         )
         let deviceIdentity = DeviceIdentity(
             manufacturer: "Garmin",
@@ -153,7 +175,8 @@ struct MapLifecycleViewModelBehaviorTests {
             usbProductId: 0x51b8,
             firmware: "2244",
             storageCapacity: 31_060_000_000,
-            freeSpace: 14_540_000_000
+            freeSpace: 14_540_000_000,
+            localHardwareIdentifier: "local-test-watch", localIdentityResolution: .garminUnitID
         )
         let profile = DeviceInstallProfileRegistry.local.profile(for: deviceIdentity)
         let selectedMap = MapPackage(
@@ -187,7 +210,7 @@ struct MapLifecycleViewModelBehaviorTests {
             availableStorage: deviceIdentity.freeSpace,
             profile: profile,
             deviceKey: "test-device",
-            expectedSHA256ByItemID: [sourceFile.itemID ?? 0: String(repeating: "a", count: 64)]
+            expectedSHA256ByItemID: external ? [:] : [sourceFile.itemID ?? 0: String(repeating: "a", count: 64)]
         )
     }
 

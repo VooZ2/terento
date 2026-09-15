@@ -121,6 +121,7 @@ struct GarminIMGMetadataParser: Sendable {
         }
 
         if let metadata = mapRandoMetadata(bytes) { return metadata }
+        if let metadata = BBBikeIMGMetadata.standaloneMetadata(bytes) { return metadata }
 
         let description = text(bytes, offset: 0x49, length: 20)
         let headerDetail = text(bytes, offset: 0x65, length: 31)
@@ -626,19 +627,31 @@ struct GarminMapScanner: Sendable {
             }
 
             let ownershipMatcher = MapOwnershipMatcher()
+            let isManagedCustom = ownershipMatcher.isExactCustomRecord(
+                for: installedFile, records: ownershipRecords
+            )
+            // BBBike legacy records may lack contextual metadata. A complete
+            // header can corroborate them, but duplicate records cannot grant ownership.
+            let matchingRecords = metadata.provider == "BBBike" && !isManagedCustom
+                ? ownershipRecords.filter {
+                    $0.devicePath == file.path && $0.filename == file.filename
+                        && $0.sizeBytes == file.sizeBytes
+                        && TerentoManagedFilenameGenerator().matchesIdentity(file.filename,
+                            providerId: $0.providerId, regionId: $0.regionId, version: $0.version)
+                } : ownershipRecords
+            let invalidBBBikeRecords = metadata.provider == "BBBike" && !isManagedCustom
+                && (matchingRecords.count != 1
+                    || (matchingRecords.first?.bbbikeMetadata != nil && restoredBBBike == nil))
+            let effectiveRecords = invalidBBBikeRecords ? [] : matchingRecords
             let managementState = ownershipMatcher.managementState(
                 for: installedFile,
                 metadata: metadata,
-                records: ownershipRecords
+                records: effectiveRecords
             )
             let managedComponent = ownershipMatcher.managedComponent(
                 for: installedFile,
                 metadata: metadata,
-                records: ownershipRecords
-            )
-            let isManagedCustom = ownershipMatcher.isExactCustomRecord(
-                for: installedFile,
-                records: ownershipRecords
+                records: effectiveRecords
             )
             // A custom import remains custom even when its bytes happen to
             // contain a provider signature. The exact manifest record is the
@@ -650,7 +663,8 @@ struct GarminMapScanner: Sendable {
             // Classification is content-first. Garmin-owned images are
             // excluded before inspection. When a catalog is available, its
             // provider IDs decide which parsed community images can enter
-            // comparison logic; unknown parsed providers remain read-only.
+            // comparison logic. A missing provider does not prevent explicit
+            // single-file removal of a valid, unprotected IMG.
             let normalizedProvider = MapIdentity.normalizeProvider(effectiveProvider ?? "")
             let isRecognizedProvider = effectiveProvider != nil
                 && (recognizedProviderIDs == nil
@@ -796,6 +810,32 @@ struct MapScanResult: Sendable, Equatable {
 /// by padding. Long BBBike paths truncate type and date; only verified package
 /// context or an exact manifest match may restore that missing information.
 enum BBBikeIMGMetadata {
+    static func standaloneMetadata(_ bytes: [UInt8]) -> GarminIMGMetadata? {
+        guard bytes.count >= 0x84,
+              String(bytes: bytes[0x10..<0x16], encoding: .ascii) == "DSKIMG",
+              String(bytes: bytes[0x41..<0x47], encoding: .ascii) == "GARMIN",
+              let version = version(bytes), let day = version.day else { return nil }
+        let actual = Array(bytes[0x49..<0x5D]) + Array(bytes[0x65..<0x83])
+        guard let header = String(bytes: actual, encoding: .ascii) else { return nil }
+        let fields = header.split(separator: " ", omittingEmptySubsequences: true)
+        guard fields.count >= 3,
+              BBBikeProviderAdapter.validPath(String(fields[0])),
+              fields[2] == "BBBike.org",
+              let type = BBBikeMapType.allCases.first(where: { fields[1] == "\($0.style)/latin1" }) else { return nil }
+        let path = String(fields[0])
+        let months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        guard (1...12).contains(version.month) else { return nil }
+        let date = String(format: "%02d-%@-%04d", day, months[version.month - 1], version.year)
+        let expected = Array("\(path) \(type.style)/latin1 BBBike.org \(date)".utf8.prefix(49))
+        guard Array(actual.prefix(expected.count)) == expected,
+              actual.dropFirst(expected.count).allSatisfy({ $0 == 0x20 || $0 == 0 }) else { return nil }
+        let name = path.split(separator: "/").last.map { String($0).replacingOccurrences(of: "-", with: " ").capitalized }
+        return GarminIMGMetadata(name: name, provider: "BBBike",
+            region: BBBikeProviderAdapter.regionToken(path: path, type: type.rawValue),
+            family: type.title, rawVersion: version.description, version: version,
+            identifier: nil, productId: nil, familyId: nil)
+    }
+
     static func version(_ bytes: [UInt8]) -> MapVersion? {
         guard bytes.count >= 0x84 else { return nil }
         let year = Int(bytes[0x39]) | Int(bytes[0x3A]) << 8

@@ -1011,3 +1011,16 @@ codes. They do not record raw request payloads, device identity fields or native
 logs. This allows delivery correlation without synthesizing a device diagnostic
 from a map-statistics event. Historical rejected payloads cannot be reconstructed
 from these new log entries.
+
+### Build31 operation diagnostic acceptance
+
+Compatibility-event intake additionally accepts INSTALL_FAILED_UNKNOWN without
+adding fields or changing schema versions. The app uses it only when an observed
+failed boundary has no proven domain-specific cause. All prior accepted codes
+remain valid. Apply this acceptance before publishing build31; follow the
+[app–API release contract](../../../contracts/APP_API_RELEASE_CONTRACT.md).
+
+Operation-owned reports retain initial identity/map context and operationId even
+when the screen closes. Existing received-versus-reviewed identity, assignment,
+local-test partition and counting rules remain unchanged. This prospective fix
+does not reconstruct historical missing reports.

@@ -108,12 +108,12 @@ private func validTarget(
     return (target, contents)
 }
 
-private func externalTarget() -> (target: SafeDeleteTarget, contents: Data) {
+private func externalTarget(filename: String = "otm-lithuania-contours.img") -> (target: SafeDeleteTarget, contents: Data) {
     let contents = Data(repeating: 0x4F, count: 12)
     let identity = MapIdentity(provider: "external", region: "otm-lithuania-contours")!
     let file = InstalledMapFile(
-        path: "/GARMIN/otm-lithuania-contours.img",
-        filename: "otm-lithuania-contours.img",
+        path: "/GARMIN/\(filename)",
+        filename: filename,
         sizeBytes: UInt64(contents.count),
         itemID: 303
     )
@@ -404,6 +404,23 @@ private func testExternalAndUnknownMapsAreBlocked() throws {
     }
 }
 
+private func testExternalRemovalFilenameBoundaries() throws {
+    for name in ["terento_bbbike_europe_lithuania_bbbike_latin1.img", "custom-map.img", "gmapsupp.img"] {
+        let prepared = externalTarget(filename: name)
+        let (result, transport) = run(target: prepared.target,
+            current: deviceObject(for: prepared.target, sha256: sha256(prepared.contents)), requiresVerifiedBackup: false, scans: [[]])
+        try require(result.isSuccess && transport.events == ["inspect", "delete"],
+            "confirmed external removal permits an exact unowned map regardless of provider or Terento filename")
+    }
+    for name in ["gmapbmap.img", "gmaptz.img", "gmappmap.img", "gmapprom.img", "gmapdem.img", "gmap3d.img", "gmaprgn.img", "D123456.img", "d123.img", "map.gma", "map.unl", "../map.img"] {
+        let prepared = externalTarget(filename: name)
+        let (result, transport) = run(target: prepared.target,
+            current: deviceObject(for: prepared.target, sha256: sha256(prepared.contents)), requiresVerifiedBackup: false, scans: [[]])
+        try require(result.status == .blockedOwnership && transport.events.isEmpty,
+            "protected Garmin and non-map targets are blocked before transport: \(name)")
+    }
+}
+
 private func testConfirmedExternalMapDeletesWithoutManifestCleanup() throws {
     let prepared = externalTarget()
     let current = SafeDeleteDeviceObject(
@@ -680,6 +697,7 @@ struct Stage52SafeDeleteTests {
             ("OpenTopoMap contour filename can be removed", testOpenTopoMapContourFilenameCanBeRemoved),
             ("managed filename must match normalized identity", testManagedFilenameMustMatchNormalizedIdentity),
             ("external and unknown maps are blocked", testExternalAndUnknownMapsAreBlocked),
+            ("external removal filename protection", testExternalRemovalFilenameBoundaries),
             ("confirmed external map deletes without manifest cleanup", testConfirmedExternalMapDeletesWithoutManifestCleanup),
             ("removal reports measured progress", testRemovalReportsMeasuredProgress),
             ("managed Remove can skip a full hash read after exact identity proof", testManagedRemovalCanUseExactIdentityWithoutFullHashRead),
