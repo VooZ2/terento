@@ -10,6 +10,19 @@ UTC = timezone.utc
 
 
 class DeviceInformationLayoutTests(unittest.TestCase):
+    def test_historical_table_marker_preserves_label_and_device_link(self):
+        body = devices_page([device_row(device_id="historical-example", model="Descent Mk1",
+            variant="Historical", case_size_mm=None, display_type=None,
+            public_compatibility_identity=None)], None, {"username": "operator"}, "csrf").decode()
+        row = body.split("<tbody", 1)[1].split("</tbody>", 1)[0]
+        self.assertIn("catalog-archive-icon", row)
+        self.assertIn("Font Awesome Free 7.3.1", row)
+        self.assertIn('viewBox="0 0 512 512"', row)
+        self.assertIn("historical-catalog-tooltip'>Historical catalog entry</span>", row)
+        self.assertIn("/admin/devices/historical-example?from=devices", row)
+        self.assertNotIn("table-secondary'>Historical catalog entry", row)
+        self.assertIn(".device-model-button:focus-visible .historical-catalog-tooltip", body)
+
     def test_primary_facts_keep_unknown_features_and_hide_identifiers(self):
         device = dict(model='Watch <Example>', caseSizeMm=51, screenTechnology='AMOLED',
                       solar=None, inReach=True, partNumber='010-example',
