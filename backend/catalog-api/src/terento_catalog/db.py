@@ -1207,9 +1207,42 @@ class Database:
                 """,
                 (since, since, recent_limit),
             ).fetchall())
-            # Map events have no unresolved/actionable lifecycle state. Their
-            # failures remain in Recent activity and statistics; actionable
-            # diagnostics and provider problems are surfaced separately.
+            # A failed install can arrive without compatibility diagnostics
+            # (the streams have separate sharing controls and delivery). Surface
+            # this evidence gap, but never resurrect a linked resolved report.
+            # Match the package region as well as the batch operation ID.
+            missing_diagnostics = list(connection.execute(
+                """
+                SELECT e.*, p.name AS provider_name, mp.name AS map_package_name,
+                       count(*) OVER () AS total_missing_diagnostics
+                FROM map_download_event AS e
+                LEFT JOIN map_provider AS p ON p.id = e.provider_id
+                LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
+                WHERE e.is_local_test IS NOT TRUE
+                  AND e.event_type = 'INSTALL_FAILED' AND e.outcome = 'FAILED'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM compatibility_evidence_event AS diagnostic
+                      WHERE diagnostic.is_local_test IS NOT TRUE
+                        AND diagnostic.operation_id = e.operation_id
+                        AND diagnostic.provider = e.provider_id
+                        AND diagnostic.phase_outcome = 'FAILED'
+                        AND (
+                            diagnostic.region IS NOT DISTINCT FROM e.region
+                            OR (
+                                mp.provider_id = e.provider_id
+                                AND diagnostic.region IN (
+                                    mp.provider_region_id, mp.canonical_region_id, mp.region
+                                )
+                                AND e.region IN (
+                                    mp.provider_region_id, mp.canonical_region_id, mp.region
+                                )
+                            )
+                        )
+                  )
+                ORDER BY e.occurred_at DESC, e.event_id
+                LIMIT %s
+                """, (attention_limit,),
+            ).fetchall())
             attention: list[dict[str, Any]] = []
             trend = list(connection.execute(
                 f"""
@@ -1277,6 +1310,10 @@ class Database:
             "hasData": int(summary.get("event_count") or 0) > 0,
             "recentActivity": [dict(row) for row in recent],
             "attention": [dict(row) for row in attention],
+            "missingDiagnosticFailures": [dict(row) for row in missing_diagnostics],
+            "missingDiagnosticFailureCount": int(
+                missing_diagnostics[0].get("total_missing_diagnostics") or 0
+            ) if missing_diagnostics else 0,
             "trend": trend_rows,
             "bucket": bucket,
         }

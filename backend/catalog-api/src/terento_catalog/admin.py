@@ -786,6 +786,20 @@ def _overview_attention_item(operation: dict[str, Any]) -> str:
     )
 
 
+def _overview_missing_diagnostic_item(event: dict[str, Any]) -> str:
+    href = html.escape(_overview_map_event_href(event), quote=True)
+    context = html.escape(_overview_map_event_context(event))
+    return (
+        "<li class='overview-attention-item overview-attention-failed'>"
+        "<span class='overview-attention-dot' aria-hidden='true'>●</span>"
+        f"<div><a href='{href}'><strong>Install failed</strong></a>"
+        f"<span>{context}</span>"
+        "<small>No device diagnostic report received · "
+        f"{_timestamp_markup(event.get('occurred_at'))}</small></div>"
+        f"<a class='overview-detail-link' href='{href}'>View activity&nbsp;{_admin_icon('arrow-right')}</a></li>"
+    )
+
+
 def _overview_provider_attention_item(provider: dict[str, Any]) -> str:
     provider_id = str(provider.get("id") or "").strip()
     name = str(provider.get("name") or provider_id or "Provider")
@@ -1536,7 +1550,11 @@ def overview_page(
         provider for provider in providers
         if str(provider.get("health") or "UNKNOWN").upper() not in {"HEALTHY", ""}
     ]
-    attention_item_markup: list[str] = []
+    missing_diagnostics = list(data.get("missingDiagnosticFailures") or [])
+    missing_diagnostic_count = int(data.get("missingDiagnosticFailureCount") or 0)
+    attention_item_markup: list[str] = [
+        _overview_missing_diagnostic_item(item) for item in missing_diagnostics
+    ]
     compatibility_attention = [
         item for item in compatibility.get("attention", compatibility.get("recentActivity", []))
         if item.get("open_error") or item.get("identity_pending")
@@ -1575,6 +1593,7 @@ def overview_page(
     failure_href = map_statistics_href + ("&" if "?" in map_statistics_href else "?") + urlencode({"eventType": "INSTALL_FAILED"})
     attention_href = (
         "/admin/installations?state=open" if compatibility_attention else
+        "/admin/map-statistics?period=all&eventType=INSTALL_FAILED" if missing_diagnostics else
         "/admin/devices" if review_required else
         "/admin/providers" if attention_providers else map_statistics_href
     )
@@ -1645,8 +1664,14 @@ def overview_page(
         f"<section class='overview-panel overview-attention-panel{' overview-attention-empty' if not has_review_queue else ''}' aria-labelledby='overview-attention-title'><div class='section-heading'><div><p class='section-kicker'>All unresolved · any date</p><h2 id='overview-attention-title'>Review queue</h2></div><a class='section-link' href='{html.escape(attention_href, quote=True)}'>View all&nbsp;{_admin_icon('arrow-right')}</a></div>{attention_content}"
     )
     review = user.get("admin_review_summary") or {}
+    missing_diagnostic_shortcut = (
+        "<a href='/admin/map-statistics?period=all&amp;eventType=INSTALL_FAILED'>"
+        f"Missing diagnostics <strong>{missing_diagnostic_count}</strong></a>"
+        if missing_diagnostic_count else ""
+    )
     attention_section += (
         "<nav class='attention-shortcuts' aria-label='Review queue shortcuts'>"
+        f"{missing_diagnostic_shortcut}"
         f"<a href='/admin/installations?state=open'>Open errors <strong>{open_error_metric(open_errors)}</strong></a>"
         f"<a href='/admin/review/github-issues'>GitHub issues in progress <strong>{int(review.get('githubIssuesInProgress') or 0)}</strong></a>"
         f"<a href='/admin/installations?state=identity-pending'>Identity review <strong>{int(review.get('identityPending') or 0)}</strong></a>"

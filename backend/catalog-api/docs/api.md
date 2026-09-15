@@ -88,9 +88,15 @@ hours; `?period=7d`, `?period=30d`, and `?period=all` are also supported. Its
 primary operational domain is the existing `map_download_event` table: Map
 installs, Map install success, Failed map installs, recent map activity, and
 the installs-over-time chart use distinct map operation IDs. Historical
-`DOWNLOAD_FAILED` and `INSTALL_FAILED` map events remain in activity and
-statistics, but are not placed in `Needs attention` because map events do not
-carry an unresolved/actionable lifecycle state. Compatibility evidence remains a secondary, explicitly
+`DOWNLOAD_FAILED` map events remain in activity and statistics. Failed installs
+without a matching device diagnostic report also appear in the Overview Review
+queue, across all dates, labelled “No device diagnostic report received”. The
+separate Missing diagnostics count does not change Open errors or compatibility
+status. Matching uses operation ID, provider and region (including known package
+region aliases), excludes local tests, and includes resolved diagnostic reports
+so resolved failures never reappear as missing reports. When a report arrives,
+its normal diagnostic workflow takes over. Activity links show failed map events;
+this change adds no resolution mutation or diagnostic records. Compatibility evidence remains a secondary, explicitly
 labelled block with its own variants, write-started attempts, evidence success,
 open errors, and normalized failure reasons. Common reason spelling variants
 are collapsed into stable canonical groups such as `source_validation`; only
