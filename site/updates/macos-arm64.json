@@ -4,15 +4,15 @@
   "platform": "macOS",
   "architecture": "arm64",
   "version": "1.0.0",
-  "build": 31,
+  "build": 32,
   "releaseLabel": "1.0.0-beta.12",
-  "releaseTag": "v1.0.0-beta.12-build31",
-  "downloadURL": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.12-build31/Terento-1.0.0-beta.12-macOS-arm64.dmg",
-  "releaseURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.12-build31",
-  "releaseNotesURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.12-build31",
-  "summary": "• Recognizes previously installed BBBike maps.\n• Removes external maps with Garmin protection.\n• Preserves failed-install diagnostics and statistics.\n• Fixes startup with the newer macOS toolchain.",
+  "releaseTag": "v1.0.0-beta.12-build32",
+  "downloadURL": "https://github.com/VooZ2/terento/releases/download/v1.0.0-beta.12-build32/Terento-1.0.0-beta.12-macOS-arm64.dmg",
+  "releaseURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.12-build32",
+  "releaseNotesURL": "https://github.com/VooZ2/terento/releases/tag/v1.0.0-beta.12-build32",
+  "summary": "• Adds safe model-neutral map Update for map-capable Garmin watches.\n• Keeps map updates separate from new-installation statistics.\n• Classifies pre-write inventory failures with measured wait diagnostics.\n• Preserves bounded cancellation and non-destructive transfer verification.",
   "channel": "beta",
   "minimumMacOS": "13.0",
   "publishedAt": "2026-09-16",
-  "sha256": "295d5b37124d67d584526462d8ebab8ddf219cac491d937038ccc332b14b06c4"
+  "sha256": "d8c84f4d152afee978405793283aedb3868217b965b7ed6dde46284a923c6756"
 }
