@@ -317,7 +317,7 @@ private func testManagedFilenameMustMatchNormalizedIdentity() throws {
         expectedPath: prepared.target.expectedPath,
         expectedFilename: prepared.target.expectedFilename,
         expectedSizeBytes: prepared.target.expectedSizeBytes,
-        expectedSHA256: prepared.target.expectedSHA256,
+        expectedSHA256: prepared.target.expectedSHA256
     )
     let (result, transport) = run(
         target: target,
@@ -385,7 +385,7 @@ private func testConfirmedExternalMapDeletesWithoutManifestCleanup() throws {
         deviceConnected: true,
         rescan: { scanSequence.next() },
         transport: managerTransport,
-        ownershipSource: .external,
+        ownershipSource: .external
     )
     try require(managedResult.status == .success, "third-party removal should not require manifest cleanup")
     try require(cleanupStore.removed.isEmpty, "third-party removal must not create or delete ownership records")
