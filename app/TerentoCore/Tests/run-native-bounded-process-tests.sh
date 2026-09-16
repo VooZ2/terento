@@ -47,4 +47,22 @@ if ! TERENTO_FINISHING_TRACE=0 "$build/swift-debug" 2> "$build/swift-off.log"; t
     exit 1
 fi
 [[ ! -s "$build/swift-off.log" ]]
+
+bridge_source="$project_root/Sources/LibMTPBridge/MTPBridge.c"
+trace_source="$project_root/Sources/TerentoPoC/MTPTransport/BoundedNativeProcess.swift"
+for event in session_open_begin session_open_end file_list_begin file_list_end \
+    session_close_begin session_close_end native_cleanup_begin native_cleanup_end; do
+    grep -Fq "\"$event\"" "$bridge_source"
+    grep -Fq "\"$event\"" "$trace_source"
+done
+[[ "$(grep -n '"session_open_begin"' "$bridge_source" | head -n 1 | cut -d: -f1)" -lt \
+   "$(grep -n '"session_open_end"' "$bridge_source" | head -n 1 | cut -d: -f1)" ]]
+[[ "$(grep -n '"file_list_begin"' "$bridge_source" | head -n 1 | cut -d: -f1)" -lt \
+   "$(grep -n '"file_list_end"' "$bridge_source" | head -n 1 | cut -d: -f1)" ]]
+[[ "$(grep -n '"session_close_begin"' "$bridge_source" | head -n 1 | cut -d: -f1)" -lt \
+   "$(grep -n '"session_close_end"' "$bridge_source" | head -n 1 | cut -d: -f1)" ]]
+grep -Fq 'private static let inventoryTimeout: TimeInterval = 60' \
+    "$project_root/Sources/TerentoPoC/Installation/MTPMapInstallationTransport.swift"
+grep -Fq 'return inventoryTimeout' \
+    "$project_root/Sources/TerentoPoC/Installation/MTPMapInstallationTransport.swift"
 print 'PASS: normal-build private native trace and strict Swift diagnostics pass; Debug stderr remains opt-in; checkpoints throttled; exact failure counters retained; deadline/cancellation still reap workers'

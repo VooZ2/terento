@@ -26,10 +26,10 @@ private final class RecoveryReader: MapLifecycleReadTransport, @unchecked Sendab
         file: InstalledMapFile,
         to destinationURL: URL,
         onProgress: (@Sendable (TransferProgress) -> Void)?
-    ) throws -> MapLifecycleBackupTransfer {
+    ) throws -> MapLifecycleReadTransfer {
         reads += 1
         try data.write(to: destinationURL, options: .atomic)
-        return MapLifecycleBackupTransfer(
+        return MapLifecycleReadTransfer(
             itemID: returnedItemID ?? file.itemID ?? 0,
             sourcePath: file.path,
             reportedSizeBytes: UInt64(data.count)

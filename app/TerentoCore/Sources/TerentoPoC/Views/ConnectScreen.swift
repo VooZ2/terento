@@ -87,12 +87,12 @@ struct ConnectScreen: View {
         return GarminMapCapabilityRegistry.local.evaluate(identity: identity)
     }
 
-    /// Unknown map capability is still a useful read-only state. Let the user
-    /// open the map screens so the app can explain the missing validation;
-    /// only a model explicitly known not to support additional maps is kept
-    /// out of the flow. Installation remains fail-closed at preflight.
+    /// Map lifecycle access is determined from the live MTP scan, not from a
+    /// model allowlist. This keeps Manage maps available for every Garmin
+    /// watch that has a Terento-owned map; the lifecycle resolver remains
+    /// fail-closed until the exact live profile and manifest are verified.
     private var canOpenMapSections: Bool {
-        deviceEngine.hasConnectedDevice && mapSupport.showsTerentoCompatibility
+        deviceEngine.hasConnectedDevice
     }
 
     private var mapProviderOptions: [MapProviderFilterOption] {
@@ -1037,12 +1037,12 @@ struct ConnectScreen: View {
                 PrimaryButton(title: "Install maps") {
                     navigate(to: .installMaps)
                 }
-                .disabled(mapManagementActionsBusy || !presentation.mapSupport.showsTerentoCompatibility)
+                .disabled(mapManagementActionsBusy)
 
                 SecondaryButton(title: "Manage maps") {
                     navigate(to: .manageMaps)
                 }
-                .disabled(mapManagementActionsBusy || !presentation.mapSupport.showsTerentoCompatibility)
+                .disabled(mapManagementActionsBusy)
 
                 Spacer()
             }
@@ -3774,7 +3774,8 @@ private struct ManageMapRow: View {
     private var operationIsActive: Bool {
         guard let operation else { return false }
         switch operation.phase {
-        case .backingUp, .removing, .updating, .verifying:
+        case .removing, .updating, .verifying, .downloading, .checking,
+             .installing, .removingOld, .finishing:
             return true
         case .idle, .awaitingConfirmation, .completed, .failed:
             return false
@@ -3819,7 +3820,9 @@ private struct ManageMapRow: View {
             switch operation.phase {
             case .failed:
                 return operation.message
-            case .idle, .awaitingConfirmation, .backingUp, .removing, .updating, .verifying, .completed:
+            case .idle, .awaitingConfirmation, .removing, .updating, .verifying,
+                 .downloading, .checking, .installing, .removingOld, .finishing,
+                 .completed:
                 break
             }
         }
@@ -3833,7 +3836,7 @@ private struct ManageMapRow: View {
             onRemove()
         case .update:
             onUpdate()
-        case .backup, .transferOwnership, .recoverOwnership:
+        case .transferOwnership, .recoverOwnership:
             break
         }
     }
@@ -3886,7 +3889,7 @@ private struct ManageActionButton: View {
         switch action {
         case .update:
             return "Update"
-        case .backup, .transferOwnership, .recoverOwnership:
+        case .transferOwnership, .recoverOwnership:
             return "Action unavailable"
         case .remove:
             return "Remove"

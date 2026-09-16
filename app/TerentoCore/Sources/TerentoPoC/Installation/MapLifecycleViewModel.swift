@@ -53,14 +53,13 @@ private final class MapLifecycleProgressRelay: @unchecked Sendable {
 /// Presentation coordinator for the Stage 5 lifecycle actions.
 ///
 /// SwiftUI receives only resolved availability and operation state. All
-/// ownership, manifest, exact-object, backup, storage, and transaction rules
-/// remain in the existing domain adapters. Manual removal does not create a
-/// local backup; the separate Backup action and Safe Update transaction retain
-/// their own backup behavior.
+/// ownership, manifest, exact-object, storage, and transaction rules remain in
+/// the existing domain adapters. Manual removal does not create a local
+/// backup. Safe Update keeps the old device object until the new one is
+/// verified, so it does not create a redundant local copy.
 @MainActor
 final class MapLifecycleViewModel: ObservableObject {
     @Published private(set) var operations: [String: MapLifecycleOperationState] = [:]
-    @Published private(set) var backupResults: [String: ReadBackupResult] = [:]
     @Published var pendingConfirmation: MapLifecycleConfirmation?
 
     private let deviceEngine: DeviceEngine
@@ -103,7 +102,8 @@ final class MapLifecycleViewModel: ObservableObject {
             || operationController.isBusy
             || operations.values.contains { state in
                 switch state.phase {
-                case .backingUp, .removing, .updating, .verifying:
+                case .removing, .updating, .verifying, .downloading,
+                     .checking, .installing, .removingOld, .finishing:
                     return true
                 case .idle, .awaitingConfirmation, .completed, .failed:
                     return false
@@ -122,7 +122,6 @@ final class MapLifecycleViewModel: ObservableObject {
         operationTasks.values.forEach { $0.cancel() }
         pendingConfirmation = nil
         operations.removeAll()
-        backupResults.removeAll()
     }
 
     func operation(for itemID: String) -> MapLifecycleOperationState? {
@@ -240,107 +239,6 @@ final class MapLifecycleViewModel: ObservableObject {
         )
     }
 
-    func requestBackup(itemID: String) {
-        guard let context = lifecycleContext(for: itemID),
-              availability(for: context.item).allows(.backup),
-              let operationProfile = DeviceMapOperationProfile(
-                identity: context.identity,
-                installProfile: context.profile
-              ),
-              !isBusy else {
-            return
-        }
-
-        let operationGate = self.operationGate
-        let operationController = self.operationController
-        guard let operationToken = operationController.begin() else { return }
-        let operationEpoch = lifecycleEpoch
-        let relay = MapLifecycleProgressRelay(
-            viewModel: self,
-            itemID: itemID,
-            action: .backup,
-            epoch: operationEpoch
-        )
-        inFlightOperationCount += 1
-        setOperation(
-            itemID: itemID,
-            action: .backup,
-            phase: .backingUp,
-            progress: nil,
-            message: "Creating a verified backup…"
-        )
-
-        let task = Task { [weak self] in
-            let result: ReadBackupResult
-            do {
-                result = try await CancellableDetached.run(priority: .userInitiated) {
-                    let lease = try await operationGate.beginLifecycleAsync()
-                    defer { operationGate.endLifecycle(lease) }
-                    guard operationController.isCurrent(operationToken) else {
-                        throw CancellationError()
-                    }
-
-                    return ReadBackupAdapter(
-                        transport: MTPReadBackupAdapter(
-                            operationProfile: operationProfile,
-                            operationGate: operationGate,
-                            lifecycleLease: lease
-                        )
-                    ).backup(
-                        target: ManagedMapBackupTarget(
-                            item: context.item,
-                            expectedSHA256ByItemID: context.expectedSHA256ByItemID
-                        ),
-                        onProgress: { progress in
-                            relay.send(
-                                SafeUpdateProgress(
-                                    state: .backingUp,
-                                    bytesCompleted: progress.bytesTransferred,
-                                    totalBytes: progress.totalBytes,
-                                    bytesPerSecond: progress.bytesPerSecond
-                                )
-                            )
-                        }
-                    )
-                }
-            } catch {
-                result = ReadBackupResult(
-                    mapID: context.item.id,
-                    status: .backupFailedDeviceDisconnected,
-                    files: [],
-                    message: "The Garmin connection changed before the backup could finish."
-                )
-            }
-
-            guard let self else { return }
-            let isCurrent = operationController.isCurrent(operationToken)
-            operationController.finish(operationToken)
-            operationTasks.removeValue(forKey: itemID)
-            inFlightOperationCount = max(0, inFlightOperationCount - 1)
-            guard isCurrent, lifecycleEpoch == operationEpoch else { return }
-
-            backupResults[itemID] = result
-            if result.isSuccess {
-                setOperation(
-                    itemID: itemID,
-                    action: .backup,
-                    phase: .completed,
-                    progress: completedProgress(from: result),
-                    message: "The map was backed up locally and verified."
-                )
-            } else {
-                setOperation(
-                    itemID: itemID,
-                    action: .backup,
-                    phase: .failed,
-                    progress: nil,
-                    message: result.message
-                )
-            }
-        }
-        operationTasks[itemID] = task
-    }
-
     func requestRemove(itemID: String) {
         guard let context = lifecycleContext(for: itemID),
               availability(for: context.item).allows(.remove),
@@ -372,8 +270,6 @@ final class MapLifecycleViewModel: ObservableObject {
         pendingConfirmation = nil
 
         switch confirmation.action {
-        case .backup:
-            requestBackup(itemID: confirmation.itemID)
         case .transferOwnership:
             requestTransferOwnership(itemID: confirmation.itemID)
         case .recoverOwnership:
@@ -395,7 +291,7 @@ final class MapLifecycleViewModel: ObservableObject {
             return "Remove this map?"
         case .update:
             return "Update this map?"
-        case .backup, .transferOwnership, .recoverOwnership, .none:
+        case .transferOwnership, .recoverOwnership, .none:
             return "Confirm map action"
         }
     }
@@ -414,8 +310,8 @@ final class MapLifecycleViewModel: ObservableObject {
             }
             return "Terento will verify the Terento-managed map, remove only that map file, and confirm that it is gone. Other maps will be left untouched. No local backup is created."
         case .update:
-            return "Terento will download and verify the new map, keep the current map as a backup, then replace only the verified Terento-managed map."
-        case .backup, .transferOwnership, .recoverOwnership, .none:
+            return "Terento will download and verify the new map, install it while the current map remains on your Garmin, then remove only the old map after the new one is verified. No local backup is created during Update."
+        case .transferOwnership, .recoverOwnership, .none:
             return "Terento will perform only the selected safe map action."
         }
     }
@@ -470,7 +366,7 @@ final class MapLifecycleViewModel: ObservableObject {
                         document: document,
                         identity: context.identity,
                         liveFiles: liveFiles,
-                        reader: MTPReadBackupAdapter(
+                        reader: MTPMapReadAdapter(
                             operationProfile: operationProfile,
                             operationGate: operationGate,
                             lifecycleLease: lease
@@ -520,21 +416,34 @@ final class MapLifecycleViewModel: ObservableObject {
 
         let phase: MapLifecycleOperationPhase
         switch progress.state {
-        case .backingUp:
-            phase = .backingUp
-        case .writing, .acquiring:
-            phase = .updating
-        case .validating, .revalidating, .verifying, .committing,
-             .postVerifying, .reconcilingManifest:
-            phase = .verifying
+        case .acquiring:
+            phase = action == .update ? .downloading : .updating
+        case .validating, .revalidating:
+            phase = action == .update ? .checking : .verifying
+        case .writing:
+            phase = action == .update ? .installing : .updating
+        case .verifying:
+            phase = action == .update ? .checking : .verifying
+        case .committing:
+            phase = action == .update ? .removingOld : .verifying
+        case .postVerifying, .reconcilingManifest:
+            phase = action == .update ? .finishing : .verifying
         case .idle, .completed, .failed:
             phase = operations[itemID]?.phase ?? .updating
         }
 
         let message: String
         switch phase {
-        case .backingUp:
-            message = "Creating a verified backup…"
+        case .downloading:
+            message = "Downloading the new map…"
+        case .checking:
+            message = "Checking the map and device…"
+        case .installing:
+            message = "Installing the new map…"
+        case .removingOld:
+            message = "Removing the old map…"
+        case .finishing:
+            message = "Finishing the update…"
         case .updating:
             message = action == .update
                 ? "Preparing the map update…"
@@ -675,7 +584,6 @@ final class MapLifecycleViewModel: ObservableObject {
                             expectedFilename: installedMap.sourceFile.filename,
                             expectedSizeBytes: installedMap.sourceFile.sizeBytes,
                             expectedSHA256: context.expectedSHA256ByItemID[objectID] ?? "",
-                            backup: nil,
                             expectedVersion: isExternalRemoval ? nil : context.item.version,
                             allowsExternalRemoval: isExternalRemoval
                         )
@@ -700,7 +608,6 @@ final class MapLifecycleViewModel: ObservableObject {
                                 : (context.failedInstallRecovery == nil
                                     ? .manifest
                                     : .failedInstallRecovery),
-                            requiresVerifiedBackup: false,
                             onProgress: { progress in relay.sendRemoval(progress) }
                         )
                         lastResult = componentResult
@@ -806,10 +713,6 @@ final class MapLifecycleViewModel: ObservableObject {
             comparison: comparison,
             currentItem: context.item,
             currentObject: currentObject,
-            backupDirectory: FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
-                .appendingPathComponent("Terento", isDirectory: true)
-                .appendingPathComponent("Backups", isDirectory: true)
-                ?? FileManager.default.temporaryDirectory.appendingPathComponent("Terento-Backups", isDirectory: true),
             confirmed: true,
             deviceConnected: true
         )
@@ -817,6 +720,7 @@ final class MapLifecycleViewModel: ObservableObject {
         let operationController = self.operationController
         guard let operationToken = operationController.begin() else { return }
         let operationEpoch = lifecycleEpoch
+        let mapStatisticsOperationID = UUID()
         FinishingTrace.beginInstallation()
         let relay = MapLifecycleProgressRelay(
             viewModel: self,
@@ -851,7 +755,6 @@ final class MapLifecycleViewModel: ObservableObject {
                         comparison: request.comparison,
                         currentItem: request.currentItem,
                         currentObject: request.currentObject,
-                        backupDirectory: request.backupDirectory,
                         confirmed: request.confirmed,
                         deviceConnected: operationGate.isValid(lease),
                         deviceConnectionCheck: { operationGate.isValid(lease) }
@@ -874,7 +777,6 @@ final class MapLifecycleViewModel: ObservableObject {
                     state: .failed,
                     message: "The Garmin connection changed before the update could finish. The result must be checked again.",
                     storagePlan: nil,
-                    backup: nil,
                     newObject: nil,
                     finalObjects: [],
                     oldMapPreserved: true
@@ -893,7 +795,7 @@ final class MapLifecycleViewModel: ObservableObject {
                     lifecycleFacts: ["Previous version: \(version.description)",
                         "Transaction state: \(result.state.rawValue)",
                         "Old map preserved (transaction result): \(result.oldMapPreserved)",
-                        "Backup result: \(result.backup?.status.rawValue ?? "Unavailable")",
+                        "Local backup: Not used by Safe Update",
                         "New object reported: \(result.newObject != nil)",
                         "Final inventory object count: \(result.finalObjects.count)",
                         "Available device bytes: \(result.storagePlan.map { String($0.currentFreeSpace) } ?? "Unavailable")",
@@ -902,6 +804,11 @@ final class MapLifecycleViewModel: ObservableObject {
                     errorCodes: [result.status.rawValue]
                 ))
             }
+            self?.mapEngine.recordMapUpdateStatistics(
+                package: selectedMap,
+                operationID: mapStatisticsOperationID,
+                outcome: result.isSuccess ? .succeeded : .failed
+            )
             guard let self else { return }
             let isCurrent = operationController.isCurrent(operationToken)
             operationController.finish(operationToken)
@@ -961,15 +868,6 @@ final class MapLifecycleViewModel: ObservableObject {
         )
     }
 
-    private func completedProgress(from result: ReadBackupResult) -> SafeUpdateProgress? {
-        guard let file = result.files.first else { return nil }
-        return SafeUpdateProgress(
-            state: .backingUp,
-            bytesCompleted: file.sizeBytes,
-            totalBytes: file.sizeBytes,
-            bytesPerSecond: 0
-        )
-    }
 }
 
 private extension MapLifecycleItem {

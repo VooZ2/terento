@@ -202,8 +202,11 @@ struct MapInventoryListBuilder: Sendable {
         )
 
         for comparison in providerComparisons {
+            // Comparisons are produced from the same scanned object as the
+            // installed group. Reuse that exact object's group key for every
+            // management state: manifest-backed maps are grouped by package
+            // identity, while catalog rows use provider/region identity.
             let installedKey = comparison.installedMap.flatMap { installed -> String? in
-                guard installed.managementState == .detectedNotManaged else { return nil }
                 return installedGroups.first(where: { $0.value.contains { $0.sourceFile == installed.sourceFile } })?.key
             }
             let key = installedKey ?? identityKey(

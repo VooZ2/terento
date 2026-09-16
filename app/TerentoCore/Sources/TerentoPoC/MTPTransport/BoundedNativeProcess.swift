@@ -178,10 +178,13 @@ extension FinishingTrace {
     }
 
     private static let allowedEvents: Set<String> = [
-        "installation_begin", "source_validation", "operation_begin", "operation_worker_failed", "operation_failed",
+        "installation_begin", "source_validation", "preflight_inventory_begin", "preflight_inventory_end",
+        "preflight_inventory_failed", "operation_begin", "operation_worker_failed", "operation_failed",
         "operation_complete", "worker_operation_begin", "worker_operation_failed", "worker_started",
         "worker_exited", "worker_deadline", "worker_cancelled", "readback_attempt", "readback_failed",
         "verify_begin", "region_begin", "open_begin", "open_end", "identity_begin", "identity_end",
+        "session_open_begin", "session_open_end", "file_list_begin", "file_list_end",
+        "session_close_begin", "session_close_end", "native_cleanup_begin", "native_cleanup_end",
         "read_chunk_limit", "abort_close_begin", "abort_close_returned", "target_begin", "target_end", "read_failed", "read_error_code", "read_ptp_response", "retry_close_begin",
         "retry_close_returned", "compare_failed", "verify_result", "final_close_begin",
         "final_close_returned", "read_checkpoint", "target_matches", "target_size", "final_inventory", "installation_failure", "cleanup_result"

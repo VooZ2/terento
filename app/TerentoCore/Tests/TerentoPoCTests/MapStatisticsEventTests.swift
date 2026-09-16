@@ -320,7 +320,8 @@ struct MapStatisticsEventTests {
     static func testEventsQueuedDuringUpload() async throws {
         for (type, outcome) in [
             (MapStatisticsEventType.downloadSucceeded, MapStatisticsEventOutcome.succeeded),
-            (.downloadFailed, .failed), (.installSucceeded, .succeeded), (.installFailed, .failed)
+            (.downloadFailed, .failed), (.installSucceeded, .succeeded), (.installFailed, .failed),
+            (.mapUpdateSucceeded, .succeeded), (.mapUpdateFailed, .failed)
         ] {
             let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
             defer { try? FileManager.default.removeItem(at: root) }

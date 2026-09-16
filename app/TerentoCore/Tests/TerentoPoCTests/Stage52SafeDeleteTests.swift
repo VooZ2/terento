@@ -82,8 +82,7 @@ private func sha256(_ data: Data) -> String {
 }
 
 private func validTarget(
-    ownership: MapManagementState = .managedByTerento,
-    backup: VerifiedBackupFile? = nil
+    ownership: MapManagementState = .managedByTerento
 ) -> (target: SafeDeleteTarget, contents: Data) {
     let contents = Data(repeating: 0x41, count: 12)
     let hash = sha256(contents)
@@ -102,8 +101,7 @@ private func validTarget(
         expectedPath: file.path,
         expectedFilename: file.filename,
         expectedSizeBytes: file.sizeBytes,
-        expectedSHA256: hash,
-        backup: backup
+        expectedSHA256: hash
     )
     return (target, contents)
 }
@@ -126,37 +124,9 @@ private func externalTarget(filename: String = "otm-lithuania-contours.img") -> 
         expectedFilename: file.filename,
         expectedSizeBytes: file.sizeBytes,
         expectedSHA256: "",
-        backup: nil,
         allowsExternalRemoval: true
     )
     return (target, contents)
-}
-
-private func targetWithVerifiedBackup() throws -> (target: SafeDeleteTarget, contents: Data, backupURL: URL) {
-    let initial = validTarget()
-    let backupURL = FileManager.default.temporaryDirectory
-        .appendingPathComponent("terento-stage52-backup-\(UUID().uuidString).img")
-    try initial.contents.write(to: backupURL, options: .atomic)
-
-    let source = MapLifecycleFileIdentity(file: initial.target.sourceFile)!
-    let backup = VerifiedBackupFile(
-        source: source,
-        localURL: backupURL,
-        sizeBytes: initial.target.expectedSizeBytes,
-        sha256: initial.target.expectedSHA256
-    )
-    let target = SafeDeleteTarget(
-        deviceKey: initial.target.deviceKey,
-        mapIdentity: initial.target.mapIdentity,
-        ownership: initial.target.ownership,
-        objectID: initial.target.objectID,
-        expectedPath: initial.target.expectedPath,
-        expectedFilename: initial.target.expectedFilename,
-        expectedSizeBytes: initial.target.expectedSizeBytes,
-        expectedSHA256: initial.target.expectedSHA256,
-        backup: backup
-    )
-    return (target, initial.contents, backupURL)
 }
 
 private func run(
@@ -164,7 +134,6 @@ private func run(
     current: SafeDeleteDeviceObject?,
     confirmed: Bool = true,
     deviceConnected: Bool = true,
-    requiresVerifiedBackup: Bool = true,
     scans: [[InstalledMapFile]],
     transport: FakeSafeDeleteTransport? = nil,
     onProgress: (@Sendable (SafeDeleteProgress) -> Void)? = nil
@@ -178,7 +147,6 @@ private func run(
         deviceConnected: deviceConnected,
         rescan: { scanSequence.next() },
         transport: transport,
-        requiresVerifiedBackup: requiresVerifiedBackup,
         onProgress: onProgress
     )
     return (result, transport)
@@ -191,9 +159,8 @@ private func deviceObject(for target: SafeDeleteTarget, sha256 hash: String? = n
     )
 }
 
-private func testManagedMapDeletesAfterVerifiedBackup() throws {
-    let prepared = try targetWithVerifiedBackup()
-    defer { try? FileManager.default.removeItem(at: prepared.backupURL) }
+private func testManagedMapDeletesWithoutLocalBackup() throws {
+    let prepared = validTarget()
     let (result, transport) = run(
         target: prepared.target,
         current: deviceObject(for: prepared.target),
@@ -202,23 +169,6 @@ private func testManagedMapDeletesAfterVerifiedBackup() throws {
 
     try require(result.status == .success, "managed map should delete successfully")
     try require(transport.events == ["inspect", "delete"], "delete must inspect first and use one delete operation")
-}
-
-private func testManagedMapDeletesWithoutBackup() throws {
-    let prepared = validTarget()
-    let current = SafeDeleteDeviceObject(
-        file: prepared.target.sourceFile,
-        sha256: prepared.target.expectedSHA256
-    )
-    let (result, transport) = run(
-        target: prepared.target,
-        current: current,
-        requiresVerifiedBackup: false,
-        scans: [ [] ]
-    )
-
-    try require(result.status == .success, "manual remove must not require a local backup")
-    try require(transport.events == ["inspect", "delete"], "backup-free remove must still inspect before deleting")
 }
 
 private func testReconnectUsesFreshLiveObjectID() throws {
@@ -236,7 +186,6 @@ private func testReconnectUsesFreshLiveObjectID() throws {
     let (result, transport) = run(
         target: prepared.target,
         current: current,
-        requiresVerifiedBackup: false,
         scans: [[]]
     )
 
@@ -255,13 +204,11 @@ private func testBaseManagedFilenameAllowsRecordedMapVersion() throws {
         expectedFilename: prepared.target.expectedFilename,
         expectedSizeBytes: prepared.target.expectedSizeBytes,
         expectedSHA256: prepared.target.expectedSHA256,
-        backup: nil,
         expectedVersion: MapVersion(year: 2026, month: 5)
     )
     let (result, transport) = run(
         target: target,
         current: deviceObject(for: target, sha256: nil),
-        requiresVerifiedBackup: false,
         scans: [[]]
     )
 
@@ -287,13 +234,11 @@ private func testCompositeRegionManagedFilenameCanBeRemoved() throws {
         expectedFilename: file.filename,
         expectedSizeBytes: file.sizeBytes,
         expectedSHA256: sha256(contents),
-        backup: nil,
         expectedVersion: MapVersion(year: 2026, month: 5)
     )
     let (result, transport) = run(
         target: target,
         current: deviceObject(for: target, sha256: nil),
-        requiresVerifiedBackup: false,
         scans: [[]]
     )
 
@@ -319,13 +264,11 @@ private func testOpenTopoMapLegacyAliasFilenameCanBeRemoved() throws {
         expectedFilename: file.filename,
         expectedSizeBytes: file.sizeBytes,
         expectedSHA256: sha256(contents),
-        backup: nil,
         expectedVersion: MapVersion(year: 2026, month: 5)
     )
     let (result, transport) = run(
         target: target,
         current: deviceObject(for: target, sha256: nil),
-        requiresVerifiedBackup: false,
         scans: [[]]
     )
 
@@ -351,13 +294,11 @@ private func testOpenTopoMapContourFilenameCanBeRemoved() throws {
         expectedFilename: file.filename,
         expectedSizeBytes: file.sizeBytes,
         expectedSHA256: sha256(contents),
-        backup: nil,
         expectedVersion: MapVersion(year: 2026, month: 5)
     )
     let (result, transport) = run(
         target: target,
         current: deviceObject(for: target, sha256: nil),
-        requiresVerifiedBackup: false,
         scans: [[]]
     )
 
@@ -376,13 +317,11 @@ private func testManagedFilenameMustMatchNormalizedIdentity() throws {
         expectedPath: prepared.target.expectedPath,
         expectedFilename: prepared.target.expectedFilename,
         expectedSizeBytes: prepared.target.expectedSizeBytes,
-        expectedSHA256: prepared.target.expectedSHA256,
-        backup: nil
+        expectedSHA256: prepared.target.expectedSHA256
     )
     let (result, transport) = run(
         target: target,
         current: deviceObject(for: target, sha256: nil),
-        requiresVerifiedBackup: false,
         scans: [[]]
     )
 
@@ -408,14 +347,14 @@ private func testExternalRemovalFilenameBoundaries() throws {
     for name in ["terento_bbbike_europe_lithuania_bbbike_latin1.img", "custom-map.img", "gmapsupp.img"] {
         let prepared = externalTarget(filename: name)
         let (result, transport) = run(target: prepared.target,
-            current: deviceObject(for: prepared.target, sha256: sha256(prepared.contents)), requiresVerifiedBackup: false, scans: [[]])
+            current: deviceObject(for: prepared.target, sha256: sha256(prepared.contents)), scans: [[]])
         try require(result.isSuccess && transport.events == ["inspect", "delete"],
             "confirmed external removal permits an exact unowned map regardless of provider or Terento filename")
     }
     for name in ["gmapbmap.img", "gmaptz.img", "gmappmap.img", "gmapprom.img", "gmapdem.img", "gmap3d.img", "gmaprgn.img", "D123456.img", "d123.img", "map.gma", "map.unl", "../map.img"] {
         let prepared = externalTarget(filename: name)
         let (result, transport) = run(target: prepared.target,
-            current: deviceObject(for: prepared.target, sha256: sha256(prepared.contents)), requiresVerifiedBackup: false, scans: [[]])
+            current: deviceObject(for: prepared.target, sha256: sha256(prepared.contents)), scans: [[]])
         try require(result.status == .blockedOwnership && transport.events.isEmpty,
             "protected Garmin and non-map targets are blocked before transport: \(name)")
     }
@@ -430,7 +369,6 @@ private func testConfirmedExternalMapDeletesWithoutManifestCleanup() throws {
     let (result, transport) = run(
         target: prepared.target,
         current: current,
-        requiresVerifiedBackup: false,
         scans: [[]]
     )
 
@@ -447,8 +385,7 @@ private func testConfirmedExternalMapDeletesWithoutManifestCleanup() throws {
         deviceConnected: true,
         rescan: { scanSequence.next() },
         transport: managerTransport,
-        ownershipSource: .external,
-        requiresVerifiedBackup: false
+        ownershipSource: .external
     )
     try require(managedResult.status == .success, "third-party removal should not require manifest cleanup")
     try require(cleanupStore.removed.isEmpty, "third-party removal must not create or delete ownership records")
@@ -460,7 +397,6 @@ private func testRemovalReportsMeasuredProgress() throws {
     let (result, _) = run(
         target: prepared.target,
         current: deviceObject(for: prepared.target),
-        requiresVerifiedBackup: false,
         scans: [ [] ],
         onProgress: { progress in collector.append(progress) }
     )
@@ -487,7 +423,6 @@ private func testManagedRemovalCanUseExactIdentityWithoutFullHashRead() throws {
     let (result, transport) = run(
         target: prepared.target,
         current: current,
-        requiresVerifiedBackup: false,
         scans: [[]]
     )
 
@@ -510,7 +445,6 @@ private func testBusyDeviceFailureIsActionableAndNonDestructive() throws {
     let (result, returnedTransport) = run(
         target: prepared.target,
         current: transport.currentObject,
-        requiresVerifiedBackup: false,
         scans: [[]],
         transport: transport
     )
@@ -520,9 +454,8 @@ private func testBusyDeviceFailureIsActionableAndNonDestructive() throws {
     try require(returnedTransport.events == ["inspect", "delete"], "busy failure must not repeat the destructive delete")
 }
 
-private func testHashMismatchAndMissingBackupAreBlocked() throws {
-    let prepared = try targetWithVerifiedBackup()
-    defer { try? FileManager.default.removeItem(at: prepared.backupURL) }
+private func testHashMismatchIsBlocked() throws {
+    let prepared = validTarget()
 
     let (hashResult, hashTransport) = run(
         target: prepared.target,
@@ -532,29 +465,10 @@ private func testHashMismatchAndMissingBackupAreBlocked() throws {
     try require(hashResult.status == .blockedIntegrityCheck, "device hash mismatch must be blocked")
     try require(hashTransport.events == ["inspect"], "hash mismatch must stop before delete")
 
-    let withoutBackup = SafeDeleteTarget(
-        deviceKey: prepared.target.deviceKey,
-        mapIdentity: prepared.target.mapIdentity,
-        ownership: prepared.target.ownership,
-        objectID: prepared.target.objectID,
-        expectedPath: prepared.target.expectedPath,
-        expectedFilename: prepared.target.expectedFilename,
-        expectedSizeBytes: prepared.target.expectedSizeBytes,
-        expectedSHA256: prepared.target.expectedSHA256,
-        backup: nil
-    )
-    let (backupResult, backupTransport) = run(
-        target: withoutBackup,
-        current: deviceObject(for: withoutBackup),
-        scans: [ [] ]
-    )
-    try require(backupResult.status == .blockedBackupRequired, "missing backup must be blocked")
-    try require(backupTransport.events.isEmpty, "missing backup must stop before inspection")
 }
 
 private func testDisconnectAndConfirmationAreBlocked() throws {
-    let prepared = try targetWithVerifiedBackup()
-    defer { try? FileManager.default.removeItem(at: prepared.backupURL) }
+    let prepared = validTarget()
 
     let (disconnected, disconnectedTransport) = run(
         target: prepared.target,
@@ -576,8 +490,7 @@ private func testDisconnectAndConfirmationAreBlocked() throws {
 }
 
 private func testPostDeleteRescanAndExactIdentityAreRequired() throws {
-    let prepared = try targetWithVerifiedBackup()
-    defer { try? FileManager.default.removeItem(at: prepared.backupURL) }
+    let prepared = validTarget()
 
     let (stillPresent, stillPresentTransport) = run(
         target: prepared.target,
@@ -605,8 +518,7 @@ private func testPostDeleteRescanAndExactIdentityAreRequired() throws {
 }
 
 private func testPostDeleteRescanRetriesWithoutRepeatingDelete() throws {
-    let prepared = try targetWithVerifiedBackup()
-    defer { try? FileManager.default.removeItem(at: prepared.backupURL) }
+    let prepared = validTarget()
 
     let (result, transport) = run(
         target: prepared.target,
@@ -623,8 +535,7 @@ private func testPostDeleteRescanRetriesWithoutRepeatingDelete() throws {
 }
 
 private func testTransportFailureIsReported() throws {
-    let prepared = try targetWithVerifiedBackup()
-    defer { try? FileManager.default.removeItem(at: prepared.backupURL) }
+    let prepared = validTarget()
     let transport = FakeSafeDeleteTransport()
     transport.currentObject = deviceObject(for: prepared.target)
     transport.deleteError = .operationFailed("simulated delete failure")
@@ -648,8 +559,7 @@ private func testTransportFailureIsReported() throws {
 }
 
 private func testLifecycleManagerCleansManifestAfterVerifiedDelete() throws {
-    let prepared = try targetWithVerifiedBackup()
-    defer { try? FileManager.default.removeItem(at: prepared.backupURL) }
+    let prepared = validTarget()
 
     let cleanupStore = FakeManifestCleanupStore()
     let transport = FakeSafeDeleteTransport()
@@ -688,8 +598,7 @@ private func testLifecycleManagerCleansManifestAfterVerifiedDelete() throws {
 struct Stage52SafeDeleteTests {
     static func main() {
         let tests: [(String, () throws -> Void)] = [
-            ("managed map deletes after verified backup", testManagedMapDeletesAfterVerifiedBackup),
-            ("managed map deletes without backup", testManagedMapDeletesWithoutBackup),
+            ("managed map deletes without local backup", testManagedMapDeletesWithoutLocalBackup),
             ("reconnect uses fresh live object ID", testReconnectUsesFreshLiveObjectID),
             ("base managed filename allows recorded map version", testBaseManagedFilenameAllowsRecordedMapVersion),
             ("composite region managed filename can be removed", testCompositeRegionManagedFilenameCanBeRemoved),
@@ -702,7 +611,7 @@ struct Stage52SafeDeleteTests {
             ("removal reports measured progress", testRemovalReportsMeasuredProgress),
             ("managed Remove can skip a full hash read after exact identity proof", testManagedRemovalCanUseExactIdentityWithoutFullHashRead),
             ("busy USB removal failure is actionable and non-destructive", testBusyDeviceFailureIsActionableAndNonDestructive),
-            ("hash mismatch and missing backup are blocked", testHashMismatchAndMissingBackupAreBlocked),
+            ("hash mismatch is blocked", testHashMismatchIsBlocked),
             ("disconnect and confirmation are blocked", testDisconnectAndConfirmationAreBlocked),
             ("post-delete rescan and exact identity are required", testPostDeleteRescanAndExactIdentityAreRequired),
             ("post-delete rescan retries without repeating delete", testPostDeleteRescanRetriesWithoutRepeatingDelete),

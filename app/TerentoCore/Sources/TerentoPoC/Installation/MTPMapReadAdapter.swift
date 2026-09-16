@@ -27,12 +27,10 @@ private func terentoMTPReadProgressCallback(
     return 0
 }
 
-/// Native read-only adapter for the Stage 5.1 backup boundary.
-///
-/// The bridge function used here validates the exact MTP object ID and path
-/// before reading it. This adapter deliberately exposes no write or delete
-/// operation and reports verified transfer completion to the lifecycle UI.
-struct MTPReadBackupAdapter: MapLifecycleReadTransport, Sendable {
+/// Native read-only adapter for current-object verification and ownership
+/// recovery. It never creates a persistent local backup and exposes no write,
+/// delete, move, or rename operation.
+struct MTPMapReadAdapter: MapLifecycleReadTransport, Sendable {
     private static let errorCapacity = 2048
     private let operationGate: MTPOperationGate
     private let lifecycleLease: MTPOperationLease?
@@ -52,9 +50,9 @@ struct MTPReadBackupAdapter: MapLifecycleReadTransport, Sendable {
         file: InstalledMapFile,
         to destinationURL: URL,
         onProgress: (@Sendable (TransferProgress) -> Void)?
-    ) throws -> MapLifecycleBackupTransfer {
+    ) throws -> MapLifecycleReadTransfer {
         try operationGate.withOperation(
-            kind: .backup,
+            kind: .read,
             lifecycleLease: lifecycleLease
         ) {
             try readExistingFileUncoordinated(
@@ -69,7 +67,7 @@ struct MTPReadBackupAdapter: MapLifecycleReadTransport, Sendable {
         file: InstalledMapFile,
         to destinationURL: URL,
         onProgress: (@Sendable (TransferProgress) -> Void)?
-    ) throws -> MapLifecycleBackupTransfer {
+    ) throws -> MapLifecycleReadTransfer {
         guard let operationProfile else {
             throw MapLifecycleReadTransportError.readFailed(
                 "The connected Garmin does not have a live map operation profile."
@@ -149,7 +147,7 @@ struct MTPReadBackupAdapter: MapLifecycleReadTransport, Sendable {
             )
         }
 
-        return MapLifecycleBackupTransfer(
+        return MapLifecycleReadTransfer(
             itemID: resolvedItemID,
             sourcePath: file.path,
             reportedSizeBytes: sizeBytes

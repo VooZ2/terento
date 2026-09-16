@@ -306,7 +306,7 @@ struct LocalTerentoManifestStore: TerentoManifestStore, TerentoManifestCleanupSt
 
 /// Stores only incomplete-install candidates. A candidate is never enough by
 /// itself to delete a device object: the recovery delete path still verifies
-/// the live object, size, full hash, backup, and post-delete absence.
+/// the live object, size, full hash, and post-delete absence.
 struct LocalTerentoFailedInstallRecoveryStore: TerentoFailedInstallRecoveryStore, Sendable {
     private let rootDirectory: URL?
 

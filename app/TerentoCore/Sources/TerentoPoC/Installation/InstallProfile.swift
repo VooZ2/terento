@@ -14,26 +14,30 @@ struct DeviceInstallProfile: Equatable, Sendable {
 
     func matches(_ identity: DeviceIdentity) -> Bool {
         guard identity.usbVendorId == usbVendorId,
-              usbProductIds.contains(identity.usbProductId),
+              (usbProductIds.isEmpty || usbProductIds.contains(identity.usbProductId)),
               identity.manufacturer.compare(
                   manufacturer,
                   options: [.caseInsensitive, .diacriticInsensitive]
-              ) == .orderedSame,
-              let canonicalModel = requiresValidatedCanonicalModel
-                ? identity.canonicalModel
-                : identity.catalogCanonicalModel else {
+              ) == .orderedSame else {
             return false
         }
 
-        let familyMatches = identity.family == Optional(family)
-            || (!requiresValidatedCanonicalModel
-                && identity.family == nil
-                && family == "Garmin")
+        let familyMatches = family == "Garmin"
+            || identity.family == Optional(family)
+            || (!requiresValidatedCanonicalModel && identity.family == nil)
         guard familyMatches else { return false }
 
-        return modelAliases
-            .map(GarminDeviceModelNormalizer.normalize)
-            .contains(GarminDeviceModelNormalizer.normalize(canonicalModel))
+        let model = requiresValidatedCanonicalModel
+            ? identity.canonicalModel
+            : (identity.catalogCanonicalModel ?? identity.canonicalModel ?? identity.model)
+        guard let model, !GarminDeviceModelNormalizer.normalize(model).isEmpty else {
+            return false
+        }
+
+        return modelAliases.isEmpty
+            || modelAliases
+                .map(GarminDeviceModelNormalizer.normalize)
+                .contains(GarminDeviceModelNormalizer.normalize(model))
     }
 }
 
@@ -81,54 +85,57 @@ struct DeviceMapOperationProfile: Codable, Equatable, Sendable {
 struct DeviceInstallProfileRegistry: Sendable {
     let profiles: [DeviceInstallProfile]
 
+    /// The registry contains one provider-neutral Garmin template. It is not
+    /// a model allowlist. A write profile is bound to the exact live USB
+    /// product, model text, and `/GARMIN` inventory by the overload below.
     static let local = DeviceInstallProfileRegistry(profiles: [
         DeviceInstallProfile(
-            id: "garmin-fenix8-amoled-47mm",
-            displayName: "Garmin fēnix 8 AMOLED 47mm",
+            id: "garmin-live-map-device",
+            displayName: "Garmin map device",
             manufacturer: "Garmin",
-            family: "fēnix",
+            family: "Garmin",
             usbVendorId: 0x091e,
-            usbProductIds: [0x51b8],
-            modelAliases: ["fēnix 8", "fenix 8"],
+            usbProductIds: [],
+            modelAliases: [],
             targetDirectory: "/GARMIN",
-            supportsMapWrite: true
+            supportsMapWrite: true,
+            requiresValidatedCanonicalModel: false
         )
     ])
 
     func profile(for identity: DeviceIdentity) -> DeviceInstallProfile? {
-        profiles.first { $0.matches(identity) && $0.supportsMapWrite }
+        guard identity.usbProductId != 0,
+              !identity.model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return nil
+        }
+        return profiles.first { $0.matches(identity) && $0.supportsMapWrite }
     }
 
-    /// Beta enrollment path for a newly connected Garmin smartwatch. It does
-    /// not generalize from another device's USB product ID: the generated
-    /// profile is bound to the exact live VID/PID, catalog model and family.
-    /// A write target is returned only after the read-only inventory proves
-    /// that exactly one root `/GARMIN` folder exists.
+    /// Binds a provider-neutral profile to the exact live Garmin identity.
+    /// No model list is consulted: a write target is returned only after the
+    /// read-only inventory proves that exactly one root `/GARMIN` folder
+    /// exists. The safe update transaction performs its own final live
+    /// identity, ownership, artifact, storage, and post-write checks.
     func profile(
         for identity: DeviceIdentity,
         deviceFiles: [DeviceFile]
     ) -> DeviceInstallProfile? {
-        let family = identity.family ?? "Garmin"
-        guard identity.usbVendorId == 0x091e,
-              identity.manufacturer.range(
-                  of: "garmin",
-                  options: [.caseInsensitive, .diacriticInsensitive]
-              ) != nil,
-              GarminMapCapabilityRegistry.local.evaluate(identity: identity).canAttemptTerentoMapInstall,
-              let canonicalModel = identity.catalogCanonicalModel,
+        guard let template = profile(for: identity),
+              identity.usbProductId != 0,
+              !identity.model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               Self.hasSingleGarminRootFolder(in: deviceFiles) else {
             return nil
         }
 
         return DeviceInstallProfile(
-            id: "garmin-map-capable-beta",
+            id: "garmin-live-map-device",
             displayName: "Garmin \(identity.model)",
             manufacturer: identity.manufacturer,
-            family: family,
+            family: identity.family ?? "Garmin",
             usbVendorId: identity.usbVendorId,
             usbProductIds: [identity.usbProductId],
-            modelAliases: [canonicalModel],
-            targetDirectory: "/GARMIN",
+            modelAliases: [identity.catalogCanonicalModel ?? identity.canonicalModel ?? identity.model],
+            targetDirectory: template.targetDirectory,
             supportsMapWrite: true,
             requiresValidatedCanonicalModel: false
         )

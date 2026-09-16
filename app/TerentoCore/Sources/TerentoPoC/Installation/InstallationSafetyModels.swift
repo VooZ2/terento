@@ -8,10 +8,10 @@ enum InstallationFailure: String, Codable, Error, Equatable, Sendable {
     case unknownInstallTarget = "INSTALL_BLOCKED_UNKNOWN_TARGET"
     case stableWatchIdentityUnavailable = "INSTALL_BLOCKED_STABLE_WATCH_IDENTITY_UNAVAILABLE"
     case mapIdentityAmbiguous = "INSTALL_BLOCKED_MAP_IDENTITY_AMBIGUOUS"
-    case backupFailed = "INSTALL_BLOCKED_BACKUP_FAILED"
     case downloadFailed = "INSTALL_BLOCKED_DOWNLOAD_FAILED"
     case sourceValidationFailed = "INSTALL_BLOCKED_SOURCE_VALIDATION_FAILED"
     case deviceDisconnected = "INSTALL_FAILED_DEVICE_DISCONNECTED"
+    case preflightMTPReadFailed = "INSTALL_FAILED_PREFLIGHT_MTP_READ"
     case writeFailed = "INSTALL_FAILED_WRITE"
     case sizeMismatch = "INSTALL_FAILED_SIZE_MISMATCH"
     case hashMismatch = "INSTALL_FAILED_HASH_MISMATCH"
@@ -40,14 +40,14 @@ enum InstallationFailure: String, Codable, Error, Equatable, Sendable {
             return "Terento could not establish the stable local watch identity required to manage this installation safely."
         case .mapIdentityAmbiguous:
             return "An existing map could not be identified safely."
-        case .backupFailed:
-            return "The backup could not be verified, so installation was stopped."
         case .downloadFailed:
             return "The map could not be downloaded from the provider."
         case .sourceValidationFailed:
             return "The prepared map failed validation and was not transferred."
         case .deviceDisconnected:
             return "The Garmin device was disconnected during installation."
+        case .preflightMTPReadFailed:
+            return "Terento could not finish checking the Garmin before installation. No map was written."
         case .writeFailed:
             return "The map could not be transferred to the Garmin device."
         case .sizeMismatch:
@@ -460,8 +460,6 @@ enum InstallationTransactionState: String, Codable, Equatable, Sendable {
     case idle = "IDLE"
     case validating = "VALIDATING"
     case awaitingExistingMapDecision = "AWAITING_EXISTING_MAP_DECISION"
-    case awaitingBackupDecision = "AWAITING_BACKUP_DECISION"
-    case backingUp = "BACKING_UP"
     case downloading = "DOWNLOADING"
     case preparing = "PREPARING"
     case readyToWrite = "READY_TO_WRITE"

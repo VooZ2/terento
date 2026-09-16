@@ -490,8 +490,14 @@ struct MapInstallationCoordinator: Sendable {
         }
         defer { transactionGate.release(transactionID: transaction.id) }
 
+        let preWriteInventoryStartedAt = ContinuousClock.now
+        diagnostic("preflight_inventory_begin", "")
         do {
             let liveBeforeWrite = try deviceReader.readFileInventory()
+            diagnostic(
+                "preflight_inventory_end",
+                "elapsed=\(elapsedMilliseconds(since: preWriteInventoryStartedAt))"
+            )
             guard preWriteInventoryIsUnchanged(
                 before: request.beforeDeviceFiles,
                 live: liveBeforeWrite,
@@ -506,12 +512,17 @@ struct MapInstallationCoordinator: Sendable {
                 )
             }
         } catch {
+            let elapsed = elapsedMilliseconds(since: preWriteInventoryStartedAt)
+            diagnostic("preflight_inventory_failed", "elapsed=\(elapsed)")
+            let timedDiagnostics = diagnostics
+                .withElapsedMilliseconds(elapsed)
+                .withNativeFailureCode(.preflightMTPReadFailed)
             return blocked(
                 status: .failed,
-                failure: Self.failure(for: error, during: .postVerification),
+                failure: Self.failure(for: error, during: .preWriteInventory),
                 preflight: preflight,
                 transaction: transaction,
-                diagnostics: diagnostics
+                diagnostics: timedDiagnostics
             )
         }
 
@@ -1047,6 +1058,7 @@ struct MapInstallationCoordinator: Sendable {
     }
 
     private enum FailurePhase {
+        case preWriteInventory
         case write
         case verification
         case postVerification
@@ -1068,11 +1080,19 @@ struct MapInstallationCoordinator: Sendable {
             case .liveIdentityMismatch:
                 return .unknownInstallTarget
             case .operationFailed(_, _):
-                return phase == .write ? .writeFailed : .verificationRequired
+                switch phase {
+                case .preWriteInventory: return .preflightMTPReadFailed
+                case .write: return .writeFailed
+                case .verification, .postVerification: return .verificationRequired
+                }
             }
         }
 
-        return phase == .write ? .writeFailed : .verificationRequired
+        switch phase {
+        case .preWriteInventory: return .preflightMTPReadFailed
+        case .write: return .writeFailed
+        case .verification, .postVerification: return .verificationRequired
+        }
     }
 
     private static func nativeFailureCode(
@@ -1080,7 +1100,11 @@ struct MapInstallationCoordinator: Sendable {
         during phase: FailurePhase
     ) -> InstallationNativeFailureCode? {
         guard let error = error as? InstallationTransportError else {
-            return phase == .write ? .sendObjectFailed : .readbackFailed
+            switch phase {
+            case .preWriteInventory: return .preflightMTPReadFailed
+            case .write: return .sendObjectFailed
+            case .verification, .postVerification: return .readbackFailed
+            }
         }
         switch error {
         case .targetAlreadyExists: return .targetAlreadyExists
@@ -1090,7 +1114,11 @@ struct MapInstallationCoordinator: Sendable {
         case .liveIdentityMismatch: return .liveIdentityMismatch
         case .deviceDisconnected: return .deviceDisconnected
         case .operationFailed:
-            return phase == .write ? .sendObjectFailed : .readbackFailed
+            switch phase {
+            case .preWriteInventory: return .preflightMTPReadFailed
+            case .write: return .sendObjectFailed
+            case .verification, .postVerification: return .readbackFailed
+            }
         }
     }
 
@@ -1394,6 +1422,34 @@ private extension MapInstallationDiagnostics {
             targetPath: targetPath,
             bytesTransferred: progress.bytesTransferred,
             transferTotalBytes: progress.totalBytes,
+            elapsedMilliseconds: elapsedMilliseconds,
+            remoteObjectExists: remoteObjectExists,
+            remoteSizeBytes: remoteSizeBytes,
+            remoteSHA256: remoteSHA256,
+            metadataProvider: metadataProvider,
+            metadataRegion: metadataRegion,
+            metadataVersion: metadataVersion,
+            metadataWarning: metadataWarning,
+            freeSpaceBefore: freeSpaceBefore,
+            freeSpaceAfter: freeSpaceAfter,
+            projectedFreeSpace: projectedFreeSpace,
+            existingFilesProtectionPassed: existingFilesProtectionPassed,
+            unrelatedFilesProtectionPassed: unrelatedFilesProtectionPassed,
+            writeStarted: writeStarted,
+            remoteObjectCreated: remoteObjectCreated,
+            cleanupAttempted: cleanupAttempted,
+            cleanupSucceeded: cleanupSucceeded,
+            nativeFailureCode: nativeFailureCode
+        )
+    }
+
+    func withElapsedMilliseconds(_ elapsedMilliseconds: UInt64) -> MapInstallationDiagnostics {
+        MapInstallationDiagnostics(
+            sourceSizeBytes: sourceSizeBytes,
+            sourceSHA256: sourceSHA256,
+            targetPath: targetPath,
+            bytesTransferred: bytesTransferred,
+            transferTotalBytes: transferTotalBytes,
             elapsedMilliseconds: elapsedMilliseconds,
             remoteObjectExists: remoteObjectExists,
             remoteSizeBytes: remoteSizeBytes,

@@ -131,7 +131,7 @@ struct InstallationSafetyTests {
         )
         passed += expect(
             DeviceInstallProfileRegistry.local.profile(for: knownIdentity)?.targetDirectory == "/GARMIN",
-            "known fēnix 8 profile resolves /GARMIN"
+            "Garmin live profile resolves /GARMIN without a model binding"
         )
 
         let unknownIdentity = DeviceIdentity(
@@ -146,8 +146,8 @@ struct InstallationSafetyTests {
             freeSpace: 0
         )
         passed += expect(
-            DeviceInstallProfileRegistry.local.profile(for: unknownIdentity) == nil,
-            "unknown device has no install target"
+            DeviceInstallProfileRegistry.local.profile(for: unknownIdentity)?.targetDirectory == "/GARMIN",
+            "unknown Garmin model still resolves the provider-neutral live profile"
         )
 
         let package = makePackage()

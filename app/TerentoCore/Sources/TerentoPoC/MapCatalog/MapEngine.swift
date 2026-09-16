@@ -830,7 +830,7 @@ final class MapEngine: ObservableObject {
     }
 
     /// Resolves one lifecycle item together with the exact local integrity
-    /// records needed by backup/delete/update. Manifest entries are matched by
+    /// records needed by delete/update. Manifest entries are matched by
     /// path, filename, size, identity, and version; a filename alone never
     /// grants an operation.
     func lifecycleContext(for itemID: String) -> MapLifecycleContext? {
@@ -1838,6 +1838,26 @@ final class MapEngine: ObservableObject {
         mapStatisticsEvents.append(event)
     }
 
+    /// Records a lifecycle update separately from a first installation. The
+    /// update path is coordinated by MapLifecycleViewModel, so it needs an
+    /// explicit entry point rather than reusing the install event emitter.
+    @MainActor
+    func recordMapUpdateStatistics(
+        package: MapPackage,
+        operationID: UUID,
+        outcome: MapStatisticsEventOutcome
+    ) {
+        guard package.sourceKind == .provider else { return }
+        let event = MapStatisticsEvent(
+            operationId: operationID,
+            package: package,
+            eventType: outcome == .succeeded ? .mapUpdateSucceeded : .mapUpdateFailed,
+            outcome: outcome
+        )
+        statisticsController?.record(event)
+        mapStatisticsEvents.append(event)
+    }
+
     private func finishAcquisition(_ type: MapStatisticsEventType) {
         guard let start = activeAcquisition else { return }
         statisticsController?.record(start.phase(type))
@@ -1851,6 +1871,7 @@ final class MapEngine: ObservableObject {
         case .sizeMismatch, .hashMismatch, .remoteFileMissing, .metadataMismatch, .verificationRequired:
             return .verify
         case .writeFailed, .deviceDisconnected: return .write
+        case .preflightMTPReadFailed: return .preflight
         case .sourceArtifactInvalid, .sourceValidationFailed: return .sourceValidation
         default: return .preflight
         }

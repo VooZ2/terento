@@ -117,7 +117,7 @@ class AdminAuditTests(unittest.TestCase):
             width = float(chart.attrib['viewBox'].split()[2])
             self.assertLess(float(bars[0].attrib['x']) + float(bars[0].attrib['width']), width)
         self.assertEqual(charts[1].attrib['viewBox'], '0 0 360 220')
-        self.assertIn('No map install operations', _overview_trend_chart([], 'hour'))
+        self.assertIn('No map operations', _overview_trend_chart([], 'hour'))
 
     def test_identity_uses_required_native_select_with_exact_ids(self):
         from terento_catalog.admin import _diagnostic_detail_dialog
@@ -177,7 +177,7 @@ class AdminAuditTests(unittest.TestCase):
                 for target in ("map-statistics-metrics", "map-statistics-coverage",
                                "provider-statistic-rows", "world-map-svg", "map-rows"):
                     self.assertEqual(ids[target], 1, target)
-                self.assertEqual(body.count("Counts map packages, not watches. One installation can include several packages. Success rates use completed outcomes (successful + failed), excluding operations still in progress. Compatibility evidence is counted separately."), 1)
+                self.assertEqual(body.count("Counts map packages, not watches. One first installation can include several packages. Map updates are a separate lifecycle operation and never increase installation counts, coverage, or popularity. Success rates use completed outcomes (successful + failed), excluding operations still in progress. Compatibility evidence is counted separately."), 1)
 
     def test_health_disclosure_defaults_and_escaped_evidence(self):
         for state in ('HEALTHY', 'FAILED', 'WARNING', 'UNKNOWN', None):
@@ -367,7 +367,7 @@ class AdminAuditTests(unittest.TestCase):
             complete,
         )
         self.assertNotIn("e.phase_outcome = 'NOT_STARTED'", complete)
-        self.assertIn("event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')", complete)
+        self.assertIn("event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED',\n                                                   'MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED')", complete)
         self.assertEqual(tuple(parameters), ('SVN+', 'SVN+'))
 
 if __name__=='__main__': unittest.main()

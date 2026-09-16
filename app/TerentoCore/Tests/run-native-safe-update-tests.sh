@@ -28,7 +28,7 @@ swiftc \
     "$project_root/Sources/TerentoPoC/MapCatalog/BBBikeArchiveSafety.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapPackageAcquisition.swift" \
     "$project_root/Sources/TerentoPoC/Installation/MapLifecycle.swift" \
-    "$project_root/Sources/TerentoPoC/Installation/ReadBackupAdapter.swift" \
+    "$project_root/Sources/TerentoPoC/Installation/MapReadTransport.swift" \
     "$project_root/Sources/TerentoPoC/Installation/TerentoManifestStore.swift" \
     "$project_root/Sources/TerentoPoC/Installation/SafeDeleteAdapter.swift" \
     "$project_root/Sources/TerentoPoC/Installation/SafeUpdateTransaction.swift" \

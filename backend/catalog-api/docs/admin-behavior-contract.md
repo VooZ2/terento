@@ -62,6 +62,7 @@ shows only received structured fields. Missing data must be labelled unavailable
 | Concept | Required interpretation |
 | --- | --- |
 | Installation result | One retained per-map result, not a watch, tester, whole batch or component phase. Custom IMG results belong in compatibility accounting. |
+| Map update result | `MAP_UPDATE_SUCCEEDED` or `MAP_UPDATE_FAILED` is one replacement of an already installed Terento-owned provider map. It is not a new installation and is excluded from installation totals, coverage, and popularity counts. |
 | Success | SUCCEEDED with VERIFIED finishing; no success inferred from download completion or missing errors. |
 | Failed result | Recorded final failure; never a compatibility promotion. Preserve historical failed/attempt totals after resolution. |
 | Not started / cancellation | Not a successful or failed completed install merely because a later map was skipped or the user cancelled. Preserve the recorded distinction. |
@@ -74,8 +75,10 @@ The compatibility denominator includes retained final SUCCEEDED/FAILED results
 and the existing legacy attempted-write rules. A final FAILED report may have
 writeStarted=false; display that fact and stage accurately rather than claiming
 bytes were written. NOT_STARTED pre-write results remain outside the completed
-attempt denominator. Keep these rules distinct from Overview's existing map-event
-fallback, which does not synthesize INSTALL_FAILED from a pre-write-only report.
+attempt denominator. Overview's map-event fallback also projects a retained
+final FAILED report as INSTALL_FAILED when no matching explicit terminal map
+event exists, so Recent map activity and the installs-over-time chart retain
+the same failed-operation visibility without changing the stored streams.
 
 Counts use full retained history, not the currently loaded page, top-N list or
 bounded detail query. Resolution, pagination and formatting changes must not
@@ -203,12 +206,12 @@ by this documentation.
 
 ## Known gaps at adoption (2026-09-15)
 
-- PR212 surfaces unmatched failed map events but links to Map statistics. It does
-  not provide the full unknown-device diagnostic/issue workflow.
+- PR212 surfaces unmatched failed map events and final compatibility failures in
+  Overview, but it does not provide the full unknown-device diagnostic/issue
+  workflow for a map-only failure.
 - Build31 source moves diagnostic creation from ConnectScreen to an operation
-  observer and adds native-to-API regressions. Publication/live verification must
-  be recorded in the release receipt. The particular France failure's cause
-  remains unproven; no retrospective watch identity has been recovered.
+  observer with native-to-API regressions. Record publication/live validation in
+  the release receipt. The historical France cause and watch remain unknown.
 - Safe correlated intake logging is included with this contract change; its
   production deployment must be verified separately. It cannot reconstruct past
   missing/rejected reports.
@@ -216,21 +219,7 @@ by this documentation.
   operator outcome. Fixes must not change installation/removal or device-file
   behavior as a side effect of diagnostic work.
 
-Client/server sequencing and required revision/test receipts are specified in
+App/API sequencing and revision/test receipts follow
 [the app–API release contract](../../../contracts/APP_API_RELEASE_CONTRACT.md).
-
-## Map-capable identification review scope
-
-Device identification lists and opens only models whose canonical `mapCapable`
-value is explicitly true. Search, pending-model counts and shared-code review
-links use that same subset. Unsupported and unknown-capability models have no
-review form on this page, including through a direct model URL. Eligibility is
-map capability, not public compatibility approval, so untested map-capable
-models remain reviewable.
-
-This is a presentation filter, not deletion or modification of the identity
-registry. Hidden models and their source mappings remain available to identity
-assessment; a single visible target never proves code uniqueness. Source review
-does not grant installation permission or publish compatibility.
 
 Recent map activity uses original Font Awesome solid icons and semantic title colors: started/processing blue, succeeded green, failed red, cancelled/unknown neutral, interrupted amber. Text remains visible. Plain and collapsed download rows share spacing, icon width and context alignment; the trailing disclosure chevron adds no leading indent. Expanding retains start/finish timestamps and total duration. Historical spinners remain static.

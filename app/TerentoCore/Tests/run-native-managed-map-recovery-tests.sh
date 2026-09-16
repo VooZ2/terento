@@ -22,7 +22,7 @@ swiftc \
     "$project_root/Sources/TerentoPoC/Installation/StoragePlanner.swift" \
     "$project_root/Sources/TerentoPoC/Installation/ManagedFilename.swift" \
     "$project_root/Sources/TerentoPoC/Installation/MapLifecycle.swift" \
-    "$project_root/Sources/TerentoPoC/Installation/ReadBackupAdapter.swift" \
+    "$project_root/Sources/TerentoPoC/Installation/MapReadTransport.swift" \
     "$project_root/Sources/TerentoPoC/Installation/TerentoManifestStore.swift" \
     "$project_root/Sources/TerentoPoC/Installation/ManagedMapRecovery.swift" \
     "$project_root/Tests/TerentoPoCTests/ManagedMapRecoveryTests.swift" \

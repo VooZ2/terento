@@ -168,7 +168,7 @@ struct MTPOperationConcurrencyTests {
             throw Failure("idle operation gate unexpectedly blocked eject")
         }
 
-        for kind in [MTPOperationKind.install, .backup, .remove] {
+        for kind in [MTPOperationKind.install, .read, .remove] {
             var bodyRan = false
             try gate.withOperation(kind: kind) {
                 bodyRan = true
@@ -181,7 +181,7 @@ struct MTPOperationConcurrencyTests {
             }
         }
 
-        print("PASS: install, backup, and remove operations disable eject")
+        print("PASS: install, read, and remove operations disable eject")
     }
 
     private static func testPresenceDoesNotDisableEject() throws {

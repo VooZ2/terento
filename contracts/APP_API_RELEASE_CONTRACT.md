@@ -68,7 +68,10 @@ them. Live semantic behavior still needs the separate read-only review above.
    queued reports. Retried event IDs must retain idempotency.
 
 For build31, `INSTALL_FAILED_UNKNOWN` is the additive compatibility-event code;
-existing schema versions and fields remain unchanged. Initial operation context
+existing schema versions and fields remain unchanged. `MAP_UPDATE_SUCCEEDED` and
+`MAP_UPDATE_FAILED` are additive map-event types for the local Update candidate;
+the API acceptance and database check constraint must be deployed before a
+public client can emit them. Initial operation context
 is in memory and terminal reports enter the existing durable outbox. This does
 not add crash journaling before a result exists, and cannot recover a historical
 missing report or infer an unknown user's watch.

@@ -52,8 +52,12 @@ records do not grant ownership.
 A safe update downloads and validates the replacement, checks space for both
 versions, uploads and verifies the replacement, then removes the old owned
 version. Insufficient space stops the update. Interrupted transfers must not
-remove a known-good version. Recovery records retain exact created-object
-identity; cleanup never expands into heuristic deletion.
+remove a known-good version. The update does not create a persistent local
+backup; the existing device object is the recovery boundary until the new
+object is verified. Recovery records retain exact created-object
+identity; cleanup never expands into heuristic deletion. The write profile is
+bound from the live Garmin USB identity and read-only `/GARMIN` inventory; it
+does not contain a model allowlist.
 
 Remote transfer verification uses the implemented bounded sampled-read policy;
 it is not a claim of a whole remote-file SHA-256. Sample workers have a
@@ -63,9 +67,22 @@ reaps the owned child before releasing its lifecycle lease. These limits do
 not impose a universal timeout on every synchronous native inventory call.
 Connection/inventory and readback failures may still require physical reconnect.
 
-Installation/removal evidence is model-specific. A real update to a newer map
-release remains untested; neither automated tests nor reconnect recovery closes
-that hardware gate. See [historical evidence](../../history/README.md).
+For issue #222, a local follow-up now classifies a pre-write inventory worker
+timeout as preflight MTP-read failure instead of verification failure, records
+the measured bounded wait, and never starts upload when inventory has not
+completed. Inventory has a finite 60-second worker bound matching libmtp's
+LONG_TIMEOUT; this is not a model-specific USB workaround. Local sanitized
+trace markers separate session open, file-list read, session close and native
+cleanup. The initiating 091e:51b5 hardware stall remains unproven pending a
+controlled failing/successful-model retest.
+
+Installation/removal evidence is model-specific. The owner reported a
+successful real-device BBBike Lithuania Update using the local Debug candidate;
+Manage maps shows the installed `2026-09-16` release. This is owner-reported
+evidence, not independent verification or evidence for every model/provider.
+Freizeitkarte and OpenTopoMap still require their own real newer-release update
+gates. There is no public release or API deployment implied. See
+[historical evidence](../../history/README.md).
 
 ## Catalog and privacy contracts
 
@@ -136,7 +153,8 @@ For an authorized connection check, close other MTP clients, launch Terento,
 connect the watch, inspect exact model/variant/firmware and storage, then check
 disconnect/reconnect behavior. Automatic connection is the current app flow;
 old “Read device” prototype instructions are not current UI. On-watch map
-visibility/usability and real update acceptance require independent owner tests.
+visibility/usability and other-provider update acceptance require separate
+hardware evidence; the BBBike result above remains owner-reported.
 
 ## Exact-model diagnostic metadata
 
@@ -144,8 +162,9 @@ The XML reader accepts the official namespaced GarminDevice v2 `Device` root
 and the legacy `GarminDevice` root, and independently extracts Model/Description
 and Model/PartNumber,
 including when the local Unit ID is unavailable or invalid. Existing local
-identity keys, write profiles, ownership and install/update/remove sequences
-are unchanged. A missing XML document preserves valid MTP DeviceInfo.
+identity keys, ownership and install/update/remove sequences are unchanged.
+Write profiles are now live-bound and model-neutral; a missing XML document
+preserves valid MTP DeviceInfo.
 AMOLED/MicroLED/MIP, Solar and inReach are separate reported properties;
 missing words do not mean false. Technical originals appear in Diagnostics
 only in Debug builds with a `-local` release label. Public Diagnostics keeps

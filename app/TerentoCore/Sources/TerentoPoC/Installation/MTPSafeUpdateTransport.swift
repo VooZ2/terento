@@ -37,8 +37,8 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
         file: InstalledMapFile,
         to destinationURL: URL,
         onProgress: (@Sendable (TransferProgress) -> Void)?
-    ) throws -> MapLifecycleBackupTransfer {
-        try MTPReadBackupAdapter(
+    ) throws -> MapLifecycleReadTransfer {
+        try MTPMapReadAdapter(
             operationProfile: operationProfile,
             operationGate: operationGate,
             lifecycleLease: lifecycleLease
@@ -50,31 +50,15 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
     }
 
     func inspectExactObject(_ target: SafeDeleteTarget) throws -> SafeDeleteDeviceObject {
-        let object = try inspectCurrentObject(
-            SafeUpdateRemoteObject(
-                file: target.sourceFile,
-                identity: target.mapIdentity,
-                version: target.expectedVersion,
-                ownership: target.ownership,
-                sha256: target.expectedSHA256
-            )
-        )
-
-        guard object.file.path == target.expectedPath,
-              object.file.filename == target.expectedFilename,
-              object.file.sizeBytes == target.expectedSizeBytes,
-              MapIdentityMatcher.matches(
-                  actual: object.identity,
-                  expected: target.mapIdentity
-              ),
-              object.ownership == .managedByTerento,
-              let hash = object.sha256 else {
-            throw SafeDeleteTransportError.operationFailed(
-                "The exact managed map identity could not be verified."
-            )
-        }
-
-        return SafeDeleteDeviceObject(file: object.file, sha256: hash)
+        // Safe Update has already performed the full pre-write integrity read
+        // of the old map. At commit, re-establish the exact live object using
+        // read-only inventory only; copying and hashing the old IMG again is
+        // redundant and makes large-map updates unnecessarily slow.
+        return try MTPSafeDeleteTransport(
+            operationProfile: operationProfile,
+            operationGate: operationGate,
+            lifecycleLease: lifecycleLease
+        ).inspectExactObject(target)
     }
 
     func deleteExactObject(_ target: SafeDeleteTarget) throws {

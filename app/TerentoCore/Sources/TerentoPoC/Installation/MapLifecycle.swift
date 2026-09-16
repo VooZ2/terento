@@ -33,8 +33,6 @@ enum MapLifecycleError: Error, Equatable, Sendable {
     case exactObjectIdentityRequired
     case confirmationRequired
     case staleInventory
-    case backupDestinationExists
-    case backupVerificationFailed
     case deleteVerificationFailed
     case replacementNotReady
     case insufficientSpace
@@ -177,7 +175,7 @@ struct MapLifecycleItem: Identifiable, Equatable, Sendable {
             if sourceKind == .custom {
                 return "Imported from this Mac · Managed by Terento."
             }
-            return "Managed by Terento · backup and removal are available."
+            return "Managed by Terento · update and removal are available."
         case .externalRecognized:
             return "Installed outside Terento · removal is available after confirmation."
         case .ambiguous:
@@ -373,146 +371,10 @@ struct MapLifecycleInventoryFingerprint: Equatable, Sendable {
     }
 }
 
-struct MapLifecycleBackupTransfer: Equatable, Sendable {
+struct MapLifecycleReadTransfer: Equatable, Sendable {
     let itemID: UInt32
     let sourcePath: String
     let reportedSizeBytes: UInt64
-}
-
-/// The production MTP adapter must implement these operations without using
-/// filenames as identity. Install writes and lifecycle mutations share the
-/// same narrow native bridge, while this protocol keeps lifecycle actions
-/// transport-injected and independently testable.
-protocol MapLifecycleTransport: Sendable {
-    func backup(
-        file: InstalledMapFile,
-        to destinationURL: URL,
-        onProgress: (@Sendable (TransferProgress) -> Void)?
-    ) throws -> MapLifecycleBackupTransfer
-
-    func delete(file: InstalledMapFile) throws
-}
-
-struct VerifiedBackupFile: Equatable, Sendable {
-    let source: MapLifecycleFileIdentity
-    let localURL: URL
-    let sizeBytes: UInt64
-    let sha256: String
-}
-
-struct MapBackupResult: Equatable, Sendable {
-    let mapID: String
-    let files: [VerifiedBackupFile]
-
-    var totalSizeBytes: UInt64 {
-        files.reduce(0) { total, file in
-            let result = total.addingReportingOverflow(file.sizeBytes)
-            return result.overflow ? UInt64.max : result.partialValue
-        }
-    }
-}
-
-struct MapBackupEngine: Sendable {
-    func backup(
-        item: MapLifecycleItem,
-        to destinationDirectory: URL,
-        transport: any MapLifecycleTransport,
-        onProgress: (@Sendable (TransferProgress) -> Void)? = nil
-    ) throws -> MapBackupResult {
-        guard item.isInstalled else {
-            throw MapLifecycleError.mapNotInstalled
-        }
-        guard item.classification.canBeManaged else {
-            throw MapLifecycleError.unsafeClassification
-        }
-        guard item.hasExactObjectIdentity else {
-            throw MapLifecycleError.exactObjectIdentityRequired
-        }
-
-        let fileManager = FileManager.default
-        let backupDirectory = destinationDirectory.appendingPathComponent(item.id, isDirectory: true)
-        if fileManager.fileExists(atPath: backupDirectory.path) {
-            throw MapLifecycleError.backupDestinationExists
-        }
-
-        do {
-            try fileManager.createDirectory(
-                at: backupDirectory,
-                withIntermediateDirectories: true
-            )
-        } catch {
-            throw MapLifecycleError.transportFailure(error.localizedDescription)
-        }
-
-        var verifiedFiles: [VerifiedBackupFile] = []
-        for installedMap in item.installedMaps {
-            guard let identity = MapLifecycleFileIdentity(file: installedMap.sourceFile) else {
-                throw MapLifecycleError.exactObjectIdentityRequired
-            }
-
-            let destinationURL = backupDirectory.appendingPathComponent(
-                safeFilename(installedMap.sourceFile.filename)
-            )
-
-            do {
-                let transfer = try transport.backup(
-                    file: installedMap.sourceFile,
-                    to: destinationURL,
-                    onProgress: onProgress
-                )
-                let attributes = try fileManager.attributesOfItem(atPath: destinationURL.path)
-                guard let number = attributes[.size] as? NSNumber,
-                      number.uint64Value == identity.sizeBytes,
-                      transfer.itemID == identity.itemID,
-                      transfer.sourcePath == identity.path,
-                      transfer.reportedSizeBytes == identity.sizeBytes else {
-                    throw MapLifecycleError.backupVerificationFailed
-                }
-
-                verifiedFiles.append(
-                    VerifiedBackupFile(
-                        source: identity,
-                        localURL: destinationURL,
-                        sizeBytes: number.uint64Value,
-                        sha256: try sha256(of: destinationURL)
-                    )
-                )
-            } catch let error as MapLifecycleError {
-                throw error
-            } catch {
-                throw MapLifecycleError.transportFailure(error.localizedDescription)
-            }
-        }
-
-        return MapBackupResult(mapID: item.id, files: verifiedFiles)
-    }
-
-    private func safeFilename(_ value: String) -> String {
-        let normalized = value.replacingOccurrences(
-            of: "[^A-Za-z0-9._-]",
-            with: "_",
-            options: .regularExpression
-        )
-        return normalized.isEmpty ? "map.img" : normalized
-    }
-
-    fileprivate func sha256(of url: URL) throws -> String {
-        let handle = try FileHandle(forReadingFrom: url)
-        defer { try? handle.close() }
-
-        var hasher = SHA256()
-        while true {
-            let data = try handle.read(upToCount: 1024 * 1024) ?? Data()
-            if data.isEmpty {
-                break
-            }
-            hasher.update(data: data)
-        }
-
-        return hasher.finalize()
-            .map { String(format: "%02x", $0) }
-            .joined()
-    }
 }
 
 enum MapUpdatePlanStatus: String, Equatable, Sendable {
@@ -531,7 +393,6 @@ struct MapUpdatePlan: Equatable, Sendable {
     let targetVersion: MapVersion
     let targetFilename: String
     let storagePlan: StoragePlan
-    let backupRequired: Bool
 
     var isReady: Bool {
         status == .ready
@@ -574,8 +435,7 @@ struct MapUpdatePlanner: Sendable {
             installedVersion: installedVersion,
             targetVersion: targetVersion,
             targetFilename: targetFilename,
-            storagePlan: storagePlan,
-            backupRequired: status == .ready
+            storagePlan: storagePlan
         )
     }
 }
@@ -593,7 +453,7 @@ struct MapReplacementObject: Equatable, Sendable {
     let sha256: String
 }
 
-protocol MapReplacementTransport: MapLifecycleTransport {
+protocol MapReplacementTransport: Sendable {
     func writeReplacement(
         sourceURL: URL,
         targetFilename: String,
@@ -604,24 +464,24 @@ protocol MapReplacementTransport: MapLifecycleTransport {
         _ object: MapReplacementObject,
         expected: MapUpdateArtifact
     ) throws
+
+    func delete(file: InstalledMapFile) throws
 }
 
 struct MapReplacementResult: Equatable, Sendable {
     let plan: MapUpdatePlan
-    let backup: MapBackupResult
     let replacement: MapReplacementObject
     let finalInventory: MapLifecycleInventoryFingerprint
 }
 
-/// Executes update operations in the only safe order: verified local backup,
-/// write to a new Terento target, verify the new object, then delete the old
-/// exact object. Any failure before that final step preserves the old map.
+/// Executes update operations in the only safe order: write to a new Terento
+/// target, verify the new object, then delete the old exact object. Any
+/// failure before that final step preserves the old map.
 struct MapReplacementEngine: Sendable {
     func replace(
         plan: MapUpdatePlan,
         item: MapLifecycleItem,
         artifact: MapUpdateArtifact,
-        backupDirectory: URL,
         confirmed: Bool,
         rescan: @escaping @Sendable () throws -> MapLifecycleInventory,
         transport: any MapReplacementTransport,
@@ -641,12 +501,6 @@ struct MapReplacementEngine: Sendable {
         guard before.item(id: item.id)?.fileIdentities == item.fileIdentities else {
             throw MapLifecycleError.staleInventory
         }
-
-        let backup = try MapBackupEngine().backup(
-            item: item,
-            to: backupDirectory,
-            transport: transport
-        )
 
         let replacement: MapReplacementObject
         do {
@@ -680,7 +534,6 @@ struct MapReplacementEngine: Sendable {
 
         return MapReplacementResult(
             plan: plan,
-            backup: backup,
             replacement: replacement,
             finalInventory: after.fingerprint
         )

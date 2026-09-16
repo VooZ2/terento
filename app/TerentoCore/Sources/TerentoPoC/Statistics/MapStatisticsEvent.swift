@@ -18,6 +18,8 @@ enum MapStatisticsEventType: String, Codable, Sendable {
     case downloadFailed = "DOWNLOAD_FAILED"
     case installSucceeded = "INSTALL_SUCCEEDED"
     case installFailed = "INSTALL_FAILED"
+    case mapUpdateSucceeded = "MAP_UPDATE_SUCCEEDED"
+    case mapUpdateFailed = "MAP_UPDATE_FAILED"
 }
 
 enum MapStatisticsEventOutcome: String, Codable, Sendable {

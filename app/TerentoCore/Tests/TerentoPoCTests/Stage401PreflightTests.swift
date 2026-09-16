@@ -9,12 +9,12 @@ protocol DeviceFileReader: Sendable {
 @main
 struct Stage401PreflightTests {
     static func main() {
-        testRealFenixModelResolvesValidatedProfile()
+        testRealFenixModelResolvesLiveProfile()
         testRealFenixUsesGenericProductionProfile()
         testUSBIdentityDoesNotInferScreen()
         testUSBIdentityDoesNotClaimExactAsset()
         testUnknownGarminModelGetsLiveBoundProfile()
-        testMapCapableBetaDeviceGetsLiveBoundProfile()
+        testArbitraryGarminWatchGetsLiveBoundProfile()
         testOperationProfileBindsRawLiveIdentity()
         testOperationProfileRejectsAnotherDeviceProfile()
         testOperationProfileDoesNotOwnPhysicalWatchIdentity()
@@ -35,7 +35,7 @@ struct Stage401PreflightTests {
         print("PASS: Stage 4.0.1 preflight and XML metadata tests")
     }
 
-    private static func testRealFenixModelResolvesValidatedProfile() {
+    private static func testRealFenixModelResolvesLiveProfile() {
         let identity = realIdentity()
         let profile = DeviceInstallProfileRegistry.local.profile(for: identity)
 
@@ -55,7 +55,7 @@ struct Stage401PreflightTests {
         )
 
         expect(
-            profile?.id == "garmin-map-capable-beta"
+            profile?.id == "garmin-live-map-device"
                 && profile?.matches(identity) == true,
             "hardware-proven variants use the same generic production profile"
         )
@@ -105,26 +105,26 @@ struct Stage401PreflightTests {
         )
 
         expect(
-            profile?.id == "garmin-map-capable-beta"
+            profile?.id == "garmin-live-map-device"
                 && profile?.matches(unknownIdentity) == true
                 && result.status == .readyNewInstall,
-            "unknown Garmin model can use a live-bound beta profile without a model allowlist"
+            "unknown Garmin model can use a live-bound profile without a model allowlist"
         )
     }
 
-    private static func testMapCapableBetaDeviceGetsLiveBoundProfile() {
-        let identity = betaIdentity(model: "fenix 8 - 51mm", family: "fēnix")
+    private static func testArbitraryGarminWatchGetsLiveBoundProfile() {
+        let identity = betaIdentity(model: "Vivoactive Future 1", family: "Vivoactive")
         let profile = DeviceInstallProfileRegistry.local.profile(
             for: identity,
             deviceFiles: [garminRoot(itemID: 10)]
         )
 
         expect(
-            profile?.id == "garmin-map-capable-beta"
+            profile?.id == "garmin-live-map-device"
                 && profile?.usbProductIds == [0x7777]
                 && profile?.targetDirectory == "/GARMIN"
                 && profile?.matches(identity) == true,
-            "map-capable beta watch gets an exact live-bound /GARMIN profile"
+            "arbitrary Garmin watch gets an exact live-bound /GARMIN profile without a model allowlist"
         )
     }
 
@@ -324,7 +324,11 @@ struct Stage401PreflightTests {
             deviceFiles: [garminRoot(itemID: 10)]
         )
 
-        expect(profile == nil, "known non-map Garmin watch cannot enter beta map installation")
+        expect(
+            profile?.id == "garmin-live-map-device"
+                && profile?.matches(identity) == true,
+            "Garmin watch profile binding is model-neutral; final install policy remains separate"
+        )
     }
 
     private static func betaIdentity(model: String, family: String) -> DeviceIdentity {
@@ -372,9 +376,8 @@ struct Stage401PreflightTests {
                 && result.ownership == .externalRecognized
                 && result.replacementRequired
                 && result.replacementConfirmationRequired
-                && result.backupDecisionRequired
                 && result.proposedFilename == "terento_freizeitkarte_deu.img",
-            "existing EXTERNAL_RECOGNIZED map requires explicit replacement and backup choice"
+            "existing EXTERNAL_RECOGNIZED map requires explicit replacement confirmation"
         )
     }
 

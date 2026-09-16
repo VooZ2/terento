@@ -108,7 +108,7 @@ const assertXcodeSetting = (setting, expected) => {
     `Every Xcode ${setting} value must match the reviewed artifact identity`,
   );
 };
-const configurationBody = (name) => [...project.matchAll(new RegExp(`^\\s*[^\\n]*\\/\\* ${name} \\*\\/ = \\{([\\s\\S]*?)\\}; name = ${name};`, "gm"))]
+const configurationBody = (name) => [...project.matchAll(new RegExp(`^\\s*[^\\n]*\\/\\* ${name} \\*\\/ = \\{([\\s\\S]*?)\\};\\s*name = ${name};`, "gm"))]
   .map((match) => match[1])
   .find((body) => body.includes("TERENTO_RELEASE_LABEL")) || "";
 const debugReleaseLabel = configurationBody("Debug").match(/TERENTO_RELEASE_LABEL = "([^"]+)";/)?.[1];

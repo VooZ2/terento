@@ -587,13 +587,21 @@ raw error fields. The allowlisted fields are `id`, `operationId`, `timestamp`,
 and optional `appBuild`. `releaseLabel` must be a strict SemVer app identity;
 the exact `-local` suffix classifies the row server-side as local test data.
 Event types are `DOWNLOAD_STARTED`, `DOWNLOAD_SUCCEEDED`,
-`DOWNLOAD_FAILED`, `INSTALL_SUCCEEDED`, and `INSTALL_FAILED`; event IDs are
+`DOWNLOAD_FAILED`, `INSTALL_SUCCEEDED`, `INSTALL_FAILED`,
+`MAP_UPDATE_SUCCEEDED`, and `MAP_UPDATE_FAILED`; event IDs are
 UUIDs and are idempotent. The server stores only the normalized columns in
 `map_download_event`; it does not retain the raw JSON body. A successful
 insert returns `201`, a duplicate returns `200`, and both return the
 `operationId`. Local rows are excluded from production map statistics and can
 be removed only by an authenticated, CSRF-protected admin action at
 `/admin/test-data`; the purge deletes both telemetry streams in one transaction.
+
+`MAP_UPDATE_*` events represent a safe replacement of an already installed
+Terento-owned provider map. They are counted separately from first
+installations; they do not increase installation totals, country coverage, or
+map popularity counts. Admin Overview renders both update outcomes as one
+dedicated Map update chart series, while Map statistics exposes their success
+and failure breakdown and supports filtering by either event type.
 
 This endpoint receives map-usage diagnostics while the independent map-usage
 diagnostics switch is enabled in `Terento → Diagnostics`; it must not be used
@@ -1014,6 +1022,28 @@ codes. They do not record raw request payloads, device identity fields or native
 logs. This allows delivery correlation without synthesizing a device diagnostic
 from a map-statistics event. Historical rejected payloads cannot be reconstructed
 from these new log entries.
+
+### Operation-owned installation failure reports (local follow-up)
+
+The compatibility-event failure-code allowlist additionally accepts
+`INSTALL_FAILED_UNKNOWN`. This represents a failed boundary for which the app
+has no proven domain-specific failure code; it must not be relabelled as an
+assumed disconnect. Existing schema versions/fields and the other failure codes
+remain unchanged. Release this additive acceptance before publishing a client
+that can emit it.
+
+App reports retain the operation ID shared with map statistics. Model assignment
+continues to require existing identity evidence. An unassigned historical map
+statistic cannot provide a missing watch identity. Final FAILED reports, including
+pre-write failures, remain completed results in compatibility accounting and are
+now visible in the Overview install activity fallback. NOT_STARTED remains
+outside completed attempts; an explicit download-only map event is still not
+converted into an additional install failure.
+
+`test_operation_diagnostic_delivery.py` checks intake, idempotency, actual insert
+and identity assessment (SQLite adaptation), and review/diagnostic/model/photo
+and assignment/GitHub control rendering. It does not create issues or constitute
+production PostgreSQL/browser validation.
 
 ### Build31 operation diagnostic acceptance
 

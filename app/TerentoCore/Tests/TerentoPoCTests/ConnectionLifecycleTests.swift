@@ -147,7 +147,7 @@ private func testSafeEjectPolicyAcrossOperations() throws {
                 lifecycleOperationBusy: false,
                 installationActive: true
             ),
-        "backup, remove/update, and active install disable Eject"
+        "read, remove/update, and active install disable Eject"
     )
     try require(
         SafeEjectPolicy.canEject(

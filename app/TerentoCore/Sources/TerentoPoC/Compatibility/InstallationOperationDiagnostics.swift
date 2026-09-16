@@ -144,6 +144,7 @@ final class InstallationOperationDiagnostics: @unchecked Sendable {
         case .cleanupFailed: return .cleanup
         case .sizeMismatch, .hashMismatch, .remoteFileMissing, .metadataMismatch, .verificationRequired: return .verify
         case .writeFailed, .deviceDisconnected: return .write
+        case .preflightMTPReadFailed: return .preflight
         case .sourceArtifactInvalid, .sourceValidationFailed: return .sourceValidation
         default: return .preflight
         }
@@ -157,6 +158,7 @@ final class InstallationOperationDiagnostics: @unchecked Sendable {
         case .sourceArtifactInvalid, .sourceValidationFailed: return .sourceValidation
         case .hashMismatch, .sizeMismatch, .remoteFileMissing, .metadataMismatch, .verificationRequired: return .verification
         case .stableWatchIdentityUnavailable, nil: return .unknown
+        case .preflightMTPReadFailed: return .transport
         default: return .transport
         }
     }
