@@ -216,7 +216,7 @@ struct Stage2CustomMapImportTests {
         )
 
         expect(
-            availability.actions == [.backup, .remove, .transferOwnership]
+            availability.actions == [.remove, .transferOwnership]
                 && !availability.actions.contains(.update),
             "custom managed maps expose removal but never expose Update"
         )

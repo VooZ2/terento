@@ -82,6 +82,8 @@ private final class MockDeviceReader: InstallationDeviceReader, @unchecked Senda
     private(set) var inventoryReadCount = 0
     var missingTargetReads = 0
     var failInventoryRead: Int?
+    var inventoryError: InstallationTransportError?
+    var inventoryFailureDelay: TimeInterval = 0
     var renumberExistingObjectIDs = false
     var snapshot: DeviceSnapshot
     var shouldFail = false
@@ -112,6 +114,12 @@ private final class MockDeviceReader: InstallationDeviceReader, @unchecked Senda
     }
 
     func readFileInventory() throws -> [DeviceFile] {
+        if let inventoryError {
+            if inventoryFailureDelay > 0 {
+                Thread.sleep(forTimeInterval: inventoryFailureDelay)
+            }
+            throw inventoryError
+        }
         if shouldFail || failInventoryRead == inventoryReadCount {
             throw InstallationTransportError.deviceDisconnected(
                 "device disconnected",
@@ -282,6 +290,7 @@ struct Stage42InstallationTests {
         passed += testNonValidatedArtifactBlocksWrite()
         passed += testConfirmationIsRequiredBeforeWrite()
         passed += testReadFailureDoesNotClaimDisconnect()
+        passed += testPreWriteInventoryFailureIsPreflightAndNoWrite()
         passed += testWriteFailureIsNotSuccess()
         passed += testDisconnectDuringWriteFails()
         passed += testPartialObjectIsCleanedAfterWriteDisconnect()
@@ -775,6 +784,29 @@ struct Stage42InstallationTests {
             && result.cleanupFailure == .cleanupFailed
             && harness.transport.readBackCount == 1,
             "read I/O preserves verification failure separately from cleanup, without claiming cable removal")
+    }
+
+    private static func testPreWriteInventoryFailureIsPreflightAndNoWrite() -> Int {
+        let harness = makeHarness()
+        let recorder = DiagnosticRecorder()
+        let result = harness.run(configureReader: {
+            $0.inventoryError = .operationFailed("worker deadline", createdItemID: nil)
+            $0.inventoryFailureDelay = 0.01
+        }, diagnostic: recorder.record)
+        return expect(
+            result.status == .failed
+                && result.failure == .preflightMTPReadFailed
+                && result.diagnostics.nativeFailureCode == .preflightMTPReadFailed
+                && result.diagnostics.writeStarted == false
+                && result.diagnostics.remoteObjectCreated == false
+                && result.diagnostics.elapsedMilliseconds > 0
+                && harness.transport.writeCount == 0
+                && harness.manifest.entries.isEmpty
+                && harness.recovery.records.isEmpty
+                && recorder.text.contains("preflight_inventory_begin")
+                && recorder.text.contains("preflight_inventory_failed elapsed="),
+            "pre-write inventory timeout stays in preflight, records measured wait, and never starts upload"
+        )
     }
 
     private static func testWriteFailureIsNotSuccess() -> Int {

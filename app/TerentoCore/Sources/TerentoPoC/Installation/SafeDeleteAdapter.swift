@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 
 /// Outcomes for the only destructive lifecycle operation currently allowed.
@@ -9,7 +8,6 @@ enum SafeDeleteStatus: String, Equatable, Sendable {
     case failedObjectNotFound = "DELETE_FAILED_OBJECT_NOT_FOUND"
     case blockedOwnership = "DELETE_BLOCKED_OWNERSHIP"
     case blockedIntegrityCheck = "DELETE_BLOCKED_INTEGRITY_CHECK"
-    case blockedBackupRequired = "DELETE_BLOCKED_BACKUP_REQUIRED"
     case failedOperation = "DELETE_FAILED_OPERATION"
     case failedPostVerify = "DELETE_FAILED_POST_VERIFY"
     case failedManifestCleanup = "DELETE_FAILED_MANIFEST_CLEANUP"
@@ -47,7 +45,6 @@ struct SafeDeleteTarget: Equatable, Sendable {
     let expectedFilename: String
     let expectedSizeBytes: UInt64
     let expectedSHA256: String
-    let backup: VerifiedBackupFile?
     /// Set for a versioned map produced by Stage 5.3. Existing Stage 5.2
     /// base-filename targets leave this nil for source compatibility.
     let expectedVersion: MapVersion?
@@ -64,7 +61,6 @@ struct SafeDeleteTarget: Equatable, Sendable {
         expectedFilename: String,
         expectedSizeBytes: UInt64,
         expectedSHA256: String,
-        backup: VerifiedBackupFile?,
         expectedVersion: MapVersion? = nil,
         allowsExternalRemoval: Bool = false
     ) {
@@ -76,7 +72,6 @@ struct SafeDeleteTarget: Equatable, Sendable {
         self.expectedFilename = expectedFilename
         self.expectedSizeBytes = expectedSizeBytes
         self.expectedSHA256 = expectedSHA256
-        self.backup = backup
         self.expectedVersion = expectedVersion
         self.allowsExternalRemoval = allowsExternalRemoval
     }
@@ -100,7 +95,6 @@ struct SafeDeleteTarget: Equatable, Sendable {
             expectedFilename: expectedFilename,
             expectedSizeBytes: expectedSizeBytes,
             expectedSHA256: expectedSHA256,
-            backup: backup,
             expectedVersion: expectedVersion,
             allowsExternalRemoval: allowsExternalRemoval
         )
@@ -207,8 +201,8 @@ struct SafeDeleteResult: Equatable, Sendable {
 /// Isolated Stage 5.2 safety coordinator. It is deliberately not connected
 /// to SwiftUI or MapEngine. A caller must provide explicit confirmation, a
 /// live device check, exact manifest identity, and a post-delete rescan.
-/// Backup-protected callers such as Safe Update opt into the additional
-/// verified-backup gate.
+/// Safe Update verifies the newly written remote object before calling this
+/// adapter to remove the exact previous object. No local backup is required.
 struct SafeDeleteAdapter: Sendable {
     private static let postDeleteRescanAttempts = 3
     private static let postDeleteRescanSettleInterval: TimeInterval = 0.75
@@ -220,7 +214,6 @@ struct SafeDeleteAdapter: Sendable {
         deviceConnected: Bool,
         rescan: @escaping @Sendable () throws -> [InstalledMapFile],
         transport: any SafeDeleteTransport,
-        requiresVerifiedBackup: Bool = true,
         onProgress: (@Sendable (SafeDeleteProgress) -> Void)? = nil
     ) -> SafeDeleteResult {
         guard confirmed else {
@@ -253,24 +246,6 @@ struct SafeDeleteAdapter: Sendable {
                 status: .blockedIntegrityCheck,
                 message: "The map identity or integrity record did not match exactly. Nothing was removed."
             )
-        }
-
-        if requiresVerifiedBackup {
-            guard let backup = target.backup else {
-                return result(
-                    target,
-                    status: .blockedBackupRequired,
-                    message: "A verified local backup is required before this map can be removed."
-                )
-            }
-
-                guard isVerifiedBackup(backup, for: target) else {
-                return result(
-                    target,
-                    status: .blockedIntegrityCheck,
-                    message: "The local backup did not match the managed map. Nothing was removed."
-                )
-            }
         }
 
         let progressReporter = SafeDeleteProgressReporter(
@@ -430,33 +405,6 @@ struct SafeDeleteAdapter: Sendable {
             && hash.allSatisfy { $0.isHexDigit }
     }
 
-    private func isVerifiedBackup(
-        _ backup: VerifiedBackupFile,
-        for target: SafeDeleteTarget
-    ) -> Bool {
-        let source = backup.source
-        guard source.itemID == target.objectID,
-              source.path == target.expectedPath,
-              source.filename == target.expectedFilename,
-              source.sizeBytes == target.expectedSizeBytes,
-              backup.sizeBytes == target.expectedSizeBytes,
-              normalizedHash(backup.sha256) == normalizedHash(target.expectedSHA256),
-              FileManager.default.fileExists(atPath: backup.localURL.path) else {
-            return false
-        }
-
-        do {
-            let attributes = try FileManager.default.attributesOfItem(atPath: backup.localURL.path)
-            guard let number = attributes[.size] as? NSNumber,
-                  number.uint64Value == target.expectedSizeBytes else {
-                return false
-            }
-            return try sha256(of: backup.localURL) == normalizedHash(target.expectedSHA256)
-        } catch {
-            return false
-        }
-    }
-
     private func matchesExpectedObject(
         _ object: SafeDeleteDeviceObject,
         target: SafeDeleteTarget
@@ -552,23 +500,6 @@ struct SafeDeleteAdapter: Sendable {
         value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 
-    private func sha256(of url: URL) throws -> String {
-        let handle = try FileHandle(forReadingFrom: url)
-        defer { try? handle.close() }
-
-        var hasher = SHA256()
-        while true {
-            let data = try handle.read(upToCount: 1024 * 1024) ?? Data()
-            if data.isEmpty {
-                break
-            }
-            hasher.update(data: data)
-        }
-
-        return hasher.finalize()
-            .map { String(format: "%02x", $0) }
-            .joined()
-    }
 }
 
 /// Lifecycle-facing façade kept separate from SwiftUI and MapEngine. Future
@@ -601,7 +532,6 @@ struct MapLifecycleManager: Sendable {
         rescan: @escaping @Sendable () throws -> [InstalledMapFile],
         transport: any SafeDeleteTransport,
         ownershipSource: MapLifecycleOwnershipSource = .manifest,
-        requiresVerifiedBackup: Bool = true,
         onProgress: (@Sendable (SafeDeleteProgress) -> Void)? = nil
     ) -> SafeDeleteResult {
         let result = safeDeleteAdapter.delete(
@@ -610,7 +540,6 @@ struct MapLifecycleManager: Sendable {
             deviceConnected: deviceConnected,
             rescan: rescan,
             transport: transport,
-            requiresVerifiedBackup: requiresVerifiedBackup,
             onProgress: onProgress
         )
 

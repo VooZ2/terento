@@ -69,16 +69,11 @@ struct InstallationTransaction: Equatable, Sendable {
             return next == .validating
         case .validating:
             return next == .awaitingExistingMapDecision
-                || next == .awaitingBackupDecision
                 || next == .downloading
                 // Stage 4.2 receives a source that has already completed the
                 // Stage 4.1 acquisition pipeline, so downloading is optional.
                 || next == .preparing
         case .awaitingExistingMapDecision:
-            return next == .awaitingBackupDecision || next == .downloading
-        case .awaitingBackupDecision:
-            return next == .backingUp || next == .downloading
-        case .backingUp:
             return next == .downloading
         case .downloading:
             return next == .preparing

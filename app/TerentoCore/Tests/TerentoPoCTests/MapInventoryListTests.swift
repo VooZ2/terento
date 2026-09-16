@@ -11,6 +11,7 @@ struct MapInventoryListTests {
     static func main() {
         testFreizeitkarteRegionsAppearInOneList()
         testSelectedCatalogMapIsNotDuplicatedWhenInstalled()
+        testManagedMapComparisonStaysWithInstalledRow()
         testExternalFilesRemainSeparate()
         testSameProviderRegionFilesRemainSeparate()
         testManifestRecordRestoresManagedOwnership()
@@ -18,7 +19,51 @@ struct MapInventoryListTests {
         testRemovedMapIsAbsentAfterFreshScan()
         testManagedMapRandoUsesCatalogTitle()
 
-        print("PASS: 8 unified map inventory and ownership tests")
+        print("PASS: 9 unified map inventory and ownership tests")
+    }
+
+    private static func testManagedMapComparisonStaysWithInstalledRow() {
+        let packageID = "bbbike-europe-lithuania-bbbike-latin1"
+        let map = makeInstalledMap(
+            name: "BBBike Lithuania",
+            provider: "BBBike",
+            region: "EUROPE-LITHUANIA-BBBIKE-LATIN1",
+            path: "/GARMIN/terento_bbbike_europe_lithuania_bbbike_latin1.img",
+            rawVersion: "2026-09-09",
+            managementState: .managedByTerento,
+            managedPackageID: packageID
+        )
+        let package = MapPackage(
+            id: packageID,
+            providerId: "bbbike",
+            regionId: "EUROPE-LITHUANIA-BBBIKE-LATIN1",
+            name: "Lithuania",
+            version: MapVersion(year: 2026, month: 9, day: 16)!,
+            sizeBytes: 300,
+            sourceURL: nil,
+            releaseDate: nil,
+            identifier: nil
+        )
+        let comparison = MapComparison(
+            providerName: "BBBike",
+            regionName: "Lithuania",
+            catalogMap: package,
+            installedMap: map,
+            status: .updateAvailable
+        )
+
+        let list = MapInventoryListBuilder().build(
+            scan: makeScan(installedMaps: [map]),
+            comparisons: [comparison]
+        )
+        let installedEntries = list.allEntries.filter(\.isInstalled)
+
+        expect(
+            installedEntries.count == 1
+                && installedEntries.first?.comparison?.status == .updateAvailable
+                && installedEntries.first?.catalogPackage?.id == packageID,
+            "managed map keeps its catalog comparison and exposes an available update"
+        )
     }
 
     private static func testManagedMapRandoUsesCatalogTitle() {

@@ -61,7 +61,6 @@
     "app/TerentoCore/Tests/run-native-installation-tests.sh",
     "app/TerentoCore/Tests/run-native-map-selection-tests.sh",
     "app/TerentoCore/Tests/run-native-map-lifecycle-tests.sh",
-    "app/TerentoCore/Tests/run-native-read-backup-tests.sh",
     "app/TerentoCore/Tests/run-native-safe-delete-tests.sh",
     "app/TerentoCore/Tests/run-native-safe-update-tests.sh",
     "app/TerentoCore/Tests/run-native-bounded-process-tests.sh",

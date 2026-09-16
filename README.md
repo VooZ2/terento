@@ -118,7 +118,8 @@ one real update to a newer map release for each enabled provider.
 
 During an update, Terento verifies the replacement before removing the
 previous Terento-owned version. If there is not enough space for both, it
-stops and keeps the working map. Bugs are still possible during the beta.
+stops and keeps the working map; no persistent local map backup is created.
+Bugs are still possible during the beta.
 Some watches may need to be reconnected if detection or map listing stalls.
 
 ## Maps

@@ -466,7 +466,7 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertIn("<h1>Overview</h1>", body)
         self.assertIn("<span>Map install operations</span><strong>—</strong>", body)
-        self.assertIn("<span>Failed map operations</span><strong>—</strong>", body)
+        self.assertIn("<span>Failed map installs</span><strong>—</strong>", body)
         self.assertIn("<span>Open errors</span><strong>—</strong>", body)
         self.assertIn("No map activity in this period.", body)
 
@@ -529,13 +529,13 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("/admin/providers/opentopomap", body)
         self.assertNotIn("<section class='overview-panel overview-provider-panel'", body)
         self.assertIn("<span>Map install operations</span><strong>4</strong>", body)
-        self.assertIn("<span>Map operation success</span><strong>75%</strong>", body)
-        self.assertIn("<span>Failed map operations</span><strong>1</strong>", body)
+        self.assertIn("<span>Map install success</span><strong>75%</strong>", body)
+        self.assertIn("<span>Failed map installs</span><strong>1</strong>", body)
         self.assertIn("<span>Open errors</span><strong>1</strong>", body)
         self.assertIn("<span>Installation attempts</span><strong>2</strong>", body)
         self.assertIn("<span>Variants</span><strong>1</strong>", body)
         self.assertIn("<span>Success rate</span><strong>50%</strong>", body)
-        self.assertIn("Map install operations over time", body)
+        self.assertIn("Map operations over time", body)
         self.assertIn("overview-chart-success", body)
         self.assertIn("viewBox='0 0 720 260'", body)
         self.assertIn("overview-chart-panel", body)
@@ -797,7 +797,7 @@ class AdminSemanticsTests(unittest.TestCase):
                 self.assertIn("installed_package.region", source)
                 self.assertIn("e.region IN (", source)
                 self.assertIn("installed.region IN (", source)
-                self.assertIn("installed.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')", source)
+                self.assertIn("'MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED'", source)
 
         body = map_statistics_page(
             {"rows": []}, [], {"username": "operator"}, "csrf",
@@ -819,11 +819,11 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertNotIn(">Provider</th>", popular_maps)
         map_script = _map_statistics_script()
         map_row = map_script.split("const mapRow =", 1)[1].split(";", 1)[0]
-        self.assertEqual(map_row.count("<td"), 3)
+        self.assertEqual(map_row.count("<td"), 4)
         self.assertNotIn("Package identifier", map_row)
         self.assertNotIn("escapeHtml(item.map)", map_row)
-        self.assertIn("mapItems.slice(0, 5).map(mapRow).join('') || emptyRow(3)", map_script)
-        self.assertIn('colspan="3" class="muted-value">No maps match your search.', map_script)
+        self.assertIn("mapItems.slice(0, 5).map(mapRow).join('') || emptyRow(4)", map_script)
+        self.assertIn('colspan="4" class="muted-value">No maps match your search.', map_script)
         self.assertIn("<th scope='col'>Package installs</th>", popular_maps)
         self.assertNotIn("<h2>Downloads per provider</h2>", body)
         self.assertNotIn("<th scope='col'>Completed map-package installs</th>", popular_maps)
@@ -991,9 +991,10 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("AS custom_count", trend_query)
         self.assertNotIn("selected_map_count", trend_query)
         self.assertIn("installed.provider_id = e.provider", trend_query)
+        self.assertIn("e.phase_outcome = 'FAILED'", trend_query)
         self.assertNotIn("e.write_started IS NOT FALSE", trend_query)
         self.assertIn(
-            "event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')",
+            "event_type IN ('MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED')",
             trend_query,
         )
 
@@ -1010,10 +1011,7 @@ class AdminSemanticsTests(unittest.TestCase):
         )
         self.assertIn("e.phase_outcome = 'FAILED'", trend_query)
         self.assertNotIn("e.write_started IS NOT FALSE", trend_query)
-        self.assertIn(
-            "A final compatibility failure is an installation",
-            inspect.getsource(Database.admin_overview_map_snapshot),
-        )
+        self.assertIn("A final compatibility failure is an installation", inspect.getsource(Database.admin_overview_map_snapshot))
 
         body = overview_page({
             "period": "24h",
@@ -1769,6 +1767,10 @@ class AdminSemanticsTests(unittest.TestCase):
                 "failedInstalls": None,
                 "installAttempts": None,
                 "installSuccessRate": None,
+                "completedMapUpdates": None,
+                "failedMapUpdates": None,
+                "mapUpdates": None,
+                "mapUpdateSuccessRate": None,
             },
         )
         body = map_statistics_page(
@@ -1855,6 +1857,10 @@ class AdminSemanticsTests(unittest.TestCase):
                 "failedInstalls": 2,
                 "installAttempts": 6,
                 "installSuccessRate": 4 / 6 * 100,
+                "completedMapUpdates": 0,
+                "failedMapUpdates": 0,
+                "mapUpdates": 0,
+                "mapUpdateSuccessRate": None,
             },
         )
         body = map_statistics_page(
@@ -1901,6 +1907,10 @@ class AdminSemanticsTests(unittest.TestCase):
                 "failedInstalls": 0,
                 "installAttempts": 0,
                 "installSuccessRate": None,
+                "completedMapUpdates": 0,
+                "failedMapUpdates": 0,
+                "mapUpdates": 0,
+                "mapUpdateSuccessRate": None,
             },
         )
         body = map_statistics_page(

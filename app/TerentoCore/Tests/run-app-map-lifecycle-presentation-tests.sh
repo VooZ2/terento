@@ -49,7 +49,7 @@ if grep -Fq 'ProgressView(value: operation.progress?.fractionCompleted ?? 0)' \
     "$project_root/Sources/TerentoPoC/Views/ConnectScreen.swift" \
     || ! grep -Fq '.progressViewStyle(.linear)' \
         "$project_root/Sources/TerentoPoC/Views/ConnectScreen.swift"; then
-    print -u2 "FAIL: backup progress must be real when available and indeterminate otherwise"
+    print -u2 "FAIL: map progress must be real when available and indeterminate otherwise"
     exit 1
 fi
 

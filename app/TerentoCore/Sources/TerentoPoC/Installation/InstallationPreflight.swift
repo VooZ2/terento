@@ -45,7 +45,6 @@ struct InstallationPreflightResult: Equatable, Sendable {
     let storagePlan: StoragePlan?
     let replacementRequired: Bool
     let replacementConfirmationRequired: Bool
-    let backupDecisionRequired: Bool
     let status: InstallationPreflightStatus
     let reason: String
 
@@ -203,7 +202,6 @@ struct InstallationPreflightEngine: Sendable {
                 common: common,
                 replacementRequired: false,
                 replacementConfirmationRequired: false,
-                backupDecisionRequired: false,
                 status: .blockedInsufficientSpace,
                 reason: "The conservative storage plan does not leave the required safety reserve."
             )
@@ -221,7 +219,6 @@ struct InstallationPreflightEngine: Sendable {
                 common: common,
                 replacementRequired: false,
                 replacementConfirmationRequired: false,
-                backupDecisionRequired: false,
                 status: .blockedUnknownTarget,
                 reason: "The device-specific install target could not be resolved."
             )
@@ -244,7 +241,6 @@ struct InstallationPreflightEngine: Sendable {
                     common: common,
                     replacementRequired: false,
                     replacementConfirmationRequired: false,
-                    backupDecisionRequired: false,
                     status: .blockedAmbiguousMapIdentity,
                     reason: "Installed-map evidence and conflict resolution disagree."
                 )
@@ -254,7 +250,6 @@ struct InstallationPreflightEngine: Sendable {
                 common: common,
                 replacementRequired: false,
                 replacementConfirmationRequired: false,
-                backupDecisionRequired: false,
                 status: .readyNewInstall,
                 reason: "No matching installed map or occupied managed target was found."
             )
@@ -264,7 +259,6 @@ struct InstallationPreflightEngine: Sendable {
                 common: common.withOwnership(conflictOwnership),
                 replacementRequired: true,
                 replacementConfirmationRequired: true,
-                backupDecisionRequired: true,
                 status: .readyWithExistingMapConflict,
                 reason: "A matching map already exists and must be explicitly confirmed before replacement."
             )
@@ -274,7 +268,6 @@ struct InstallationPreflightEngine: Sendable {
                 common: common,
                 replacementRequired: false,
                 replacementConfirmationRequired: false,
-                backupDecisionRequired: false,
                 status: .blockedAmbiguousMapIdentity,
                 reason: "An existing object occupies the proposed target path without safe identity proof."
             )
@@ -321,7 +314,6 @@ struct InstallationPreflightEngine: Sendable {
             ),
             replacementRequired: false,
             replacementConfirmationRequired: false,
-            backupDecisionRequired: false,
             status: status,
             reason: reason
         )
@@ -331,7 +323,6 @@ struct InstallationPreflightEngine: Sendable {
         common: CommonPreflightValues,
         replacementRequired: Bool,
         replacementConfirmationRequired: Bool,
-        backupDecisionRequired: Bool,
         status: InstallationPreflightStatus,
         reason: String
     ) -> InstallationPreflightResult {
@@ -345,7 +336,6 @@ struct InstallationPreflightEngine: Sendable {
             storagePlan: common.storagePlan,
             replacementRequired: replacementRequired,
             replacementConfirmationRequired: replacementConfirmationRequired,
-            backupDecisionRequired: backupDecisionRequired,
             status: status,
             reason: reason
         )

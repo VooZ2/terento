@@ -2,12 +2,12 @@ import Foundation
 
 /// Native MTP operations are process-wide resources on macOS. This gate is
 /// deliberately below SwiftUI so presence checks, catalog loading, inventory
-/// reads, backup, removal, update, and installation cannot overlap.
+/// reads, removal, update, and installation cannot overlap.
 enum MTPOperationKind: String, Sendable {
     case presence
     case catalog
     case inventory
-    case backup
+    case read
     case remove
     case update
     case install

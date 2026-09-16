@@ -5,7 +5,7 @@ import Foundation
 /// This small value type keeps the map scanner independent from the
 /// installation/manifest module. It is not an authorization grant: the
 /// destructive delete path performs its own exact object, size, hash, and
-/// backup verification.
+/// live object verification.
 struct MapOwnershipRecord: Sendable, Equatable {
     let devicePath: String
     let filename: String
@@ -49,7 +49,7 @@ struct MapOwnershipRecord: Sendable, Equatable {
 /// SafeDeleteAdapter still re-reads the exact object identity before deleting
 /// anything. A manual Remove of a Terento-owned object does not need to copy
 /// the complete map again: the exact live path, filename, size, object ID,
-/// and local manifest record are the ownership proof. Safe Update and Backup
+/// and local manifest record are the ownership proof. Safe Update and Remove
 /// retain their full-content verification paths.
 struct MapOwnershipMatcher: Sendable {
     /// A missing release is accepted only for a recorded managed OTM contour.

@@ -7,6 +7,7 @@ enum InstallationNativeFailureCode: String, Equatable, Sendable {
     case unsupportedDevice = "UNSUPPORTED_DEVICE"
     case liveIdentityMismatch = "LIVE_IDENTITY_MISMATCH"
     case deviceDisconnected = "DEVICE_DISCONNECTED"
+    case preflightMTPReadFailed = "PREFLIGHT_MTP_READ_FAILED"
     case sendObjectFailed = "SEND_OBJECT_FAILED"
     case readbackFailed = "READBACK_FAILED"
     case deleteFailed = "DELETE_FAILED"

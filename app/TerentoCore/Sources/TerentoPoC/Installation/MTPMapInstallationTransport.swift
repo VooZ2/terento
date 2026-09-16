@@ -472,6 +472,25 @@ extension MapInstallationCoordinator {
 /// Garmin serial, Unit ID, XML, manifest, or map bytes. No worker can write maps.
 enum MTPFinishingWorker {
     enum Operation: String, Codable { case samples, cleanup, inventory, snapshot }
+    private static let inventoryTimeout: TimeInterval = 60
+
+    private static func timeout(
+        for operation: Operation,
+        sampleTimeout: TimeInterval
+    ) -> TimeInterval {
+        switch operation {
+        case .samples:
+            return min(600, sampleTimeout)
+        case .inventory:
+            // libmtp's LONG_TIMEOUT is 60 seconds per native USB operation.
+            // Keep the worker bound finite; do not turn this into an unbounded
+            // wait or alter any device-specific USB flags.
+            return inventoryTimeout
+        case .cleanup, .snapshot:
+            return 45
+        }
+    }
+
     struct Request: Codable {
         var operation: Operation
         var profile: DeviceMapOperationProfile? = nil
@@ -511,7 +530,7 @@ enum MTPFinishingWorker {
             try BoundedNativeProcess.run(executable: executable,
                 arguments: ["--terento-finishing-worker", output.path],
                 input: JSONEncoder().encode(request),
-                timeout: request.operation == .samples ? min(600, sampleTimeout) : 45,
+                timeout: Self.timeout(for: request.operation, sampleTimeout: sampleTimeout),
                 inactivityTimeout: request.operation == .samples ? 120 : nil,
                 verifiedProgress: { verifiedBytes },
                 diagnosticFile: traceURL,

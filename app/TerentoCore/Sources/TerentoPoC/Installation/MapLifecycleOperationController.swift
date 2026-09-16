@@ -7,7 +7,7 @@ struct MapLifecycleOperationToken: Equatable, Sendable {
 
 /// Small concurrency boundary owned by the lifecycle view model. It keeps
 /// stale completions from becoming visible after disconnect/eject and gives
-/// the UI one authoritative busy state for backup, remove, and update.
+/// the UI one authoritative busy state for remove and update.
 final class MapLifecycleOperationController: @unchecked Sendable {
     private let lock = NSLock()
     private var generation: UInt64 = 0

@@ -70,12 +70,10 @@ private final class FakeSafeUpdateTransport: SafeUpdateTransport, @unchecked Sen
         case writeFailure
         case verifyHashMismatch
         case deleteFailure
-        case disconnectOnRead
     }
 
     let oldObject: SafeUpdateRemoteObject
     let newObject: SafeUpdateRemoteObject
-    let oldData: Data
     let oldHash: String
     var freeSpace: UInt64 = 12 * 1024 * 1024 * 1024
     var mode: Mode = .success
@@ -83,31 +81,12 @@ private final class FakeSafeUpdateTransport: SafeUpdateTransport, @unchecked Sen
     var objects: [SafeUpdateRemoteObject]
     var currentInspectionObject: SafeUpdateRemoteObject
 
-    init(oldObject: SafeUpdateRemoteObject, newObject: SafeUpdateRemoteObject, oldData: Data) {
+    init(oldObject: SafeUpdateRemoteObject, newObject: SafeUpdateRemoteObject) {
         self.oldObject = oldObject
         self.newObject = newObject
-        self.oldData = oldData
-        self.oldHash = SHA256.hash(data: oldData).map { String(format: "%02x", $0) }.joined()
+        self.oldHash = oldObject.sha256 ?? ""
         self.objects = [oldObject]
         self.currentInspectionObject = oldObject
-    }
-
-    func readExistingFile(
-        file: InstalledMapFile,
-        to destinationURL: URL,
-        onProgress: (@Sendable (TransferProgress) -> Void)?
-    ) throws -> MapLifecycleBackupTransfer {
-        events.append("readExistingFile")
-        if mode == .disconnectOnRead {
-            throw MapLifecycleReadTransportError.deviceDisconnected("disconnected")
-        }
-        try oldData.write(to: destinationURL, options: .atomic)
-        onProgress?(TransferProgress(bytesTransferred: UInt64(oldData.count), totalBytes: UInt64(oldData.count), bytesPerSecond: 1))
-        return MapLifecycleBackupTransfer(
-            itemID: file.itemID!,
-            sourcePath: file.path,
-            reportedSizeBytes: UInt64(oldData.count)
-        )
     }
 
     func inspectCurrentObject(_ expected: SafeUpdateRemoteObject) throws -> SafeUpdateRemoteObject {
@@ -309,12 +288,10 @@ private func makeHarness(oldVersioned: Bool = false, withWorkspace: Bool = false
         comparison: comparison,
         currentItem: item,
         currentObject: oldObject,
-        backupDirectory: FileManager.default.temporaryDirectory
-            .appendingPathComponent("terento-stage53-backups-\(UUID().uuidString)", isDirectory: true),
         confirmed: true,
         deviceConnected: true
     )
-    let transport = FakeSafeUpdateTransport(oldObject: oldObject, newObject: newObject, oldData: oldData)
+    let transport = FakeSafeUpdateTransport(oldObject: oldObject, newObject: newObject)
     let provider = FakeSafeUpdateProvider(artifact: artifact)
     let validator = AllowSafeUpdateSourceValidator()
     let reconciler = FakeSafeUpdateManifestReconciler()
@@ -339,9 +316,12 @@ private func testSuccessfulUpdateAndOrdering() async throws {
     try require(result.status == .success, "valid update should succeed")
     try require(!result.oldMapPreserved, "old map should be replaced only after verification")
     try require(harness.reconciler.called, "manifest reconciliation should be last domain step")
-    try require(harness.transport.events.contains("writeTransactionObject"), "new object should be written")
-    try require(harness.transport.events.contains("verifyTransactionObject"), "new object should be verified")
-    try require(harness.transport.events.firstIndex(of: "deleteExactObject")! > harness.transport.events.firstIndex(of: "verifyTransactionObject")!, "delete must follow verification")
+    try require(harness.transport.events == [
+        "inspectCurrentObject", "readFreeSpace", "rescanObjects",
+        "writeTransactionObject", "verifyTransactionObject",
+        "inspectExactObject", "deleteExactObject", "rescanObjects",
+        "rescanObjects"
+    ], "update should write, verify, remove old, and finish without a local backup")
     try require(harness.artifact.workspaceRootURL.map { !FileManager.default.fileExists(atPath: $0.path) } == true, "successful update should remove its acquisition workspace")
 }
 
@@ -356,7 +336,7 @@ private func testInstallFailureRemovesAcquisitionWorkspace() async throws {
 private func testNoUpdateAndOwnershipAreBlockedBeforeTransport() async throws {
     let harness = makeHarness()
     var request = harness.request
-    request = SafeUpdateRequest(deviceKey: request.deviceKey, identity: request.identity, profile: request.profile, selectedMap: request.selectedMap, comparison: MapComparison(providerName: "Freizeitkarte", regionName: "France", catalogMap: request.selectedMap, installedMap: request.comparison.installedMap, status: .upToDate), currentItem: request.currentItem, currentObject: request.currentObject, backupDirectory: request.backupDirectory, confirmed: true, deviceConnected: true)
+    request = SafeUpdateRequest(deviceKey: request.deviceKey, identity: request.identity, profile: request.profile, selectedMap: request.selectedMap, comparison: MapComparison(providerName: "Freizeitkarte", regionName: "France", catalogMap: request.selectedMap, installedMap: request.comparison.installedMap, status: .upToDate), currentItem: request.currentItem, currentObject: request.currentObject, confirmed: true, deviceConnected: true)
     let result = await SafeUpdateTransaction(gate: harness.gate, sourceValidator: harness.validator, manifestReconciler: harness.reconciler).run(request: request, provider: harness.provider, transport: harness.transport)
     try require(result.status == .blockedNoUpdate, "up-to-date map must not enter update")
     try require(harness.transport.events.isEmpty, "blocked update must not touch transport")
@@ -364,19 +344,18 @@ private func testNoUpdateAndOwnershipAreBlockedBeforeTransport() async throws {
     let unmanaged = makeHarness()
     let unmanagedMap = InstalledMap(name: "External", provider: "Freizeitkarte", region: "FRA", family: nil, rawVersion: "Release 26.05", version: MapVersion(year: 2026, month: 5), identifier: nil, productId: nil, familyId: nil, sizeBytes: unmanaged.request.currentObject.file.sizeBytes, sourceFile: unmanaged.request.currentObject.file, metadataStatus: .parsed, managementState: .detectedNotManaged)
     let unmanagedItem = MapLifecycleItem(id: "freizeitkarte-fra", title: "External", provider: "freizeitkarte", region: "FRA", version: unmanagedMap.version, rawVersion: unmanagedMap.rawVersion, sizeBytes: unmanagedMap.sizeBytes, installedMaps: [unmanagedMap], classification: .externalRecognized)
-    let unmanagedRequest = SafeUpdateRequest(deviceKey: unmanaged.request.deviceKey, identity: unmanaged.request.identity, profile: unmanaged.request.profile, selectedMap: unmanaged.request.selectedMap, comparison: unmanaged.request.comparison, currentItem: unmanagedItem, currentObject: unmanaged.request.currentObject, backupDirectory: unmanaged.request.backupDirectory, confirmed: true, deviceConnected: true)
+    let unmanagedRequest = SafeUpdateRequest(deviceKey: unmanaged.request.deviceKey, identity: unmanaged.request.identity, profile: unmanaged.request.profile, selectedMap: unmanaged.request.selectedMap, comparison: unmanaged.request.comparison, currentItem: unmanagedItem, currentObject: unmanaged.request.currentObject, confirmed: true, deviceConnected: true)
     let unmanagedResult = await SafeUpdateTransaction(gate: unmanaged.gate, sourceValidator: unmanaged.validator, manifestReconciler: unmanaged.reconciler).run(request: unmanagedRequest, provider: unmanaged.provider, transport: unmanaged.transport)
     try require(unmanagedResult.status == .blockedNotManaged, "external map must be blocked")
     try require(unmanaged.transport.events.isEmpty, "unmanaged map must not touch transport")
 }
 
-private func testCurrentObjectChangedStopsBeforeBackup() async throws {
+private func testCurrentObjectChangedStopsBeforeWrite() async throws {
     let harness = makeHarness()
     let changed = SafeUpdateRemoteObject(file: InstalledMapFile(path: harness.request.currentObject.file.path, filename: harness.request.currentObject.file.filename, sizeBytes: 99, itemID: 101), identity: harness.request.currentObject.identity, version: harness.request.currentObject.version, ownership: .managedByTerento, sha256: harness.request.currentObject.sha256)
     harness.transport.currentInspectionObject = changed
     let result = await run(harness)
     try require(result.status == .blockedCurrentObjectChanged, "changed current object must be blocked")
-    try require(!harness.transport.events.contains("readExistingFile"), "backup must not start after stale-object detection")
     try require(!harness.transport.events.contains("writeTransactionObject"), "write must not start after stale-object detection")
 }
 
@@ -397,7 +376,6 @@ private func testMismatchedMapIdentityIsBlockedBeforeTransport() async throws {
         comparison: harness.request.comparison,
         currentItem: harness.request.currentItem,
         currentObject: mismatchedObject,
-        backupDirectory: harness.request.backupDirectory,
         confirmed: true,
         deviceConnected: true
     )
@@ -410,18 +388,17 @@ private func testMismatchedMapIdentityIsBlockedBeforeTransport() async throws {
     try require(harness.transport.events.isEmpty, "identity mismatch must not touch transport")
 }
 
-private func testStorageAndBackupGates() async throws {
+private func testStorageGateAndBackupFreeUpdate() async throws {
     let insufficient = makeHarness()
     insufficient.transport.freeSpace = insufficient.artifact.installSizeBytes + StoragePlanner.defaultSafetyReserve - 1
     let storageResult = await run(insufficient)
-    try require(storageResult.status == .blockedInsufficientSpace, "insufficient storage must block before backup")
-    try require(!insufficient.transport.events.contains("readExistingFile"), "insufficient storage must not create backup")
+    try require(storageResult.status == .blockedInsufficientSpace, "insufficient storage must block before writing")
+    try require(!insufficient.transport.events.contains("writeTransactionObject"), "insufficient storage must not write a new map")
 
-    let backupFailure = makeHarness()
-    backupFailure.transport.mode = .disconnectOnRead
-    let backupResult = await run(backupFailure)
-    try require(backupResult.status == .failedDeviceDisconnected, "backup disconnect must fail safely")
-    try require(!backupFailure.transport.events.contains("writeTransactionObject"), "write must not start after backup failure")
+    let successful = makeHarness()
+    let successfulResult = await run(successful)
+    try require(successfulResult.isSuccess, "backup-free update should succeed")
+    try require(!successful.transport.events.contains("readExistingFile"), "Safe Update must not copy the old map locally")
 }
 
 private func testVerificationFailureCleansOnlyNewObject() async throws {
@@ -466,7 +443,7 @@ private func testBusyGateAndNoDowngrade() async throws {
 
     let downgrade = makeHarness()
     let newerInstalled = SafeUpdateRemoteObject(file: downgrade.request.currentObject.file, identity: downgrade.request.currentObject.identity, version: MapVersion(year: 2026, month: 7), ownership: .managedByTerento, sha256: downgrade.request.currentObject.sha256)
-    let request = SafeUpdateRequest(deviceKey: downgrade.request.deviceKey, identity: downgrade.request.identity, profile: downgrade.request.profile, selectedMap: downgrade.request.selectedMap, comparison: MapComparison(providerName: "Freizeitkarte", regionName: "France", catalogMap: downgrade.request.selectedMap, installedMap: downgrade.request.comparison.installedMap, status: .newerInstalled), currentItem: downgrade.request.currentItem, currentObject: newerInstalled, backupDirectory: downgrade.request.backupDirectory, confirmed: true, deviceConnected: true)
+    let request = SafeUpdateRequest(deviceKey: downgrade.request.deviceKey, identity: downgrade.request.identity, profile: downgrade.request.profile, selectedMap: downgrade.request.selectedMap, comparison: MapComparison(providerName: "Freizeitkarte", regionName: "France", catalogMap: downgrade.request.selectedMap, installedMap: downgrade.request.comparison.installedMap, status: .newerInstalled), currentItem: downgrade.request.currentItem, currentObject: newerInstalled, confirmed: true, deviceConnected: true)
     let downgradeResult = await SafeUpdateTransaction(gate: downgrade.gate, sourceValidator: downgrade.validator, manifestReconciler: downgrade.reconciler).run(request: request, provider: downgrade.provider, transport: downgrade.transport)
     try require(downgradeResult.status == .blockedNewerInstalled, "newer installed map must never be downgraded")
 }
@@ -478,9 +455,9 @@ struct Stage53SafeUpdateTests {
             ("successful update and ordering", testSuccessfulUpdateAndOrdering),
             ("install failure acquisition cleanup", testInstallFailureRemovesAcquisitionWorkspace),
             ("no-update and ownership gates", testNoUpdateAndOwnershipAreBlockedBeforeTransport),
-            ("current-object revalidation", testCurrentObjectChangedStopsBeforeBackup),
+            ("current-object revalidation", testCurrentObjectChangedStopsBeforeWrite),
             ("map identity gate", testMismatchedMapIdentityIsBlockedBeforeTransport),
-            ("storage and backup gates", testStorageAndBackupGates),
+            ("storage gate and backup-free update", testStorageGateAndBackupFreeUpdate),
             ("verification cleanup", testVerificationFailureCleansOnlyNewObject),
             ("commit and manifest failures", testCommitAndManifestFailuresAreNotSuccess),
             ("previously versioned target", testPreviouslyVersionedMapCanBeUpdated),

@@ -237,8 +237,9 @@ release are covered by these limits; successful progress never substitutes for
 the final verified result. Cancellation still kills and reaps the owned child
 before the lifecycle lease is released.
 
-Connection discovery retains its separate 120-second limit. Cleanup, inventory
-and snapshot workers retain their 45-second limits. Sample coverage, native
+Connection discovery retains its separate 120-second limit. Cleanup and snapshot
+workers retain their 45-second limits; inventory workers have a bounded 60-second
+limit aligned with libmtp's LONG_TIMEOUT. Sample coverage, native
 USB calls, retry policy, map writes and ownership rules are unchanged.
 
 ## Release evidence and publication

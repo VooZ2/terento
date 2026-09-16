@@ -4,7 +4,6 @@ import Foundation
 /// decision is kept outside SwiftUI so a button can never become a second
 /// implementation of the lifecycle safety rules.
 enum MapLifecycleAction: String, CaseIterable, Equatable, Hashable, Sendable {
-    case backup
     case transferOwnership
     case recoverOwnership
     case remove
@@ -25,7 +24,7 @@ struct MapLifecycleActionAvailability: Equatable, Sendable {
 /// the resolver remains the only authority for which actions are available.
 enum ManageMapRowActionPresentation: Sendable {
     static let displayOrder: [MapLifecycleAction] = [
-        .update, .backup, .transferOwnership, .recoverOwnership, .remove
+        .update, .transferOwnership, .recoverOwnership, .remove
     ]
 
     static func actions(
@@ -43,12 +42,12 @@ enum ManageMapRowActionPresentation: Sendable {
     static func advancedActions(
         for availability: MapLifecycleActionAvailability
     ) -> [MapLifecycleAction] {
-        [.backup, .transferOwnership, .recoverOwnership].filter(availability.allows)
+        [.transferOwnership, .recoverOwnership].filter(availability.allows)
     }
 
     /// Production Manage Maps deliberately exposes only product actions.
-    /// Backup and ownership export/recovery remain internal lifecycle
-    /// capabilities and cannot leak into the normal release action surface.
+    /// Ownership export/recovery remain internal lifecycle capabilities and
+    /// cannot leak into the normal release action surface.
     static func productionActions(
         for availability: MapLifecycleActionAvailability
     ) -> [MapLifecycleAction] {
@@ -142,7 +141,7 @@ struct MapLifecyclePresentationResolver: Sendable {
             )
         }
 
-        var actions: Set<MapLifecycleAction> = [.backup, .remove]
+        var actions: Set<MapLifecycleAction> = [.remove]
         if hasStableWatchIdentity {
             actions.insert(.transferOwnership)
         }
@@ -242,10 +241,14 @@ struct MapLifecycleContext: Sendable {
 enum MapLifecycleOperationPhase: Equatable, Sendable {
     case idle
     case awaitingConfirmation
-    case backingUp
     case removing
     case updating
     case verifying
+    case downloading
+    case checking
+    case installing
+    case removingOld
+    case finishing
     case completed
     case failed
 
@@ -253,10 +256,14 @@ enum MapLifecycleOperationPhase: Equatable, Sendable {
         switch self {
         case .idle: return "Ready"
         case .awaitingConfirmation: return "Confirmation required"
-        case .backingUp: return "Backing up"
         case .removing: return "Removing"
         case .updating: return "Updating"
         case .verifying: return "Verifying"
+        case .downloading: return "Downloading"
+        case .checking: return "Checking"
+        case .installing: return "Installing"
+        case .removingOld: return "Removing old"
+        case .finishing: return "Finishing"
         case .completed: return "Complete"
         case .failed: return "Could not complete"
         }

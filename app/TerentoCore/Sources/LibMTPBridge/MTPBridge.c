@@ -593,6 +593,11 @@ int terento_mtp_read_file_inventory(
     clear_file_inventory(inventory);
     set_error(error_message, error_message_capacity, "");
 
+    TerentoFinishingTrace trace = terento_trace_start();
+    int result = 0;
+    int list_started = 0;
+    terento_trace_event(&trace, "session_open_begin", 0, 0, 0);
+
     LIBMTP_mtpdevice_t *device = open_single_garmin_device(
         NULL,
         NULL,
@@ -600,11 +605,14 @@ int terento_mtp_read_file_inventory(
         error_message_capacity,
         1
     );
+    terento_trace_event(&trace, "session_open_end", 0, device == NULL ? -2 : 0, 0);
     if (device == NULL) {
-        return -2;
+        result = -2;
+        goto cleanup;
     }
 
-    int result = 0;
+    terento_trace_event(&trace, "file_list_begin", 0, 0, 0);
+    list_started = 1;
     LIBMTP_Clear_Errorstack(device);
     if (LIBMTP_Get_Storage(device, LIBMTP_STORAGE_SORTBY_NOTSORTED) != 0) {
         set_device_error(
@@ -636,10 +644,20 @@ int terento_mtp_read_file_inventory(
     }
 
 cleanup:
-    LIBMTP_Release_Device(device);
+    if (list_started) {
+        terento_trace_event(&trace, "file_list_end", 0, result, inventory->file_count);
+    }
+    if (device != NULL) {
+        terento_trace_event(&trace, "session_close_begin", 0, result, 0);
+        LIBMTP_Release_Device(device);
+        terento_trace_event(&trace, "session_close_end", 0, result, 0);
+    }
+    terento_trace_event(&trace, "native_cleanup_begin", 0, result, inventory->file_count);
     if (result != 0) {
         clear_file_inventory(inventory);
     }
+    terento_trace_event(&trace, "native_cleanup_end", 0, result, inventory->file_count);
+    terento_trace_finish(&trace);
     return result;
 }
 
@@ -910,7 +928,7 @@ int terento_mtp_read_existing_file_to_local(
     }
     if (expected_item_id == 0 || expected_path == NULL || expected_size_bytes == 0
         || local_path == NULL || resolved_item_id == NULL || size_bytes == NULL) {
-        set_error(error_message, error_message_capacity, "The read-only map backup request is invalid");
+        set_error(error_message, error_message_capacity, "The read-only map read request is invalid");
         return -1;
     }
 
@@ -920,11 +938,11 @@ int terento_mtp_read_existing_file_to_local(
 
     struct stat destination_stat;
     if (stat(local_path, &destination_stat) == 0) {
-        set_error(error_message, error_message_capacity, "The local backup destination already exists");
+        set_error(error_message, error_message_capacity, "The local read destination already exists");
         return -2;
     }
     if (errno != ENOENT) {
-        set_error(error_message, error_message_capacity, "The local backup destination is not available");
+        set_error(error_message, error_message_capacity, "The local read destination is not available");
         return -3;
     }
 
@@ -1006,7 +1024,7 @@ int terento_mtp_read_existing_file_to_local(
         || !S_ISREG(destination_stat.st_mode)
         || (uint64_t)destination_stat.st_size != remote_size) {
         unlink(local_path);
-        set_error(error_message, error_message_capacity, "The local map backup size did not match the device object");
+        set_error(error_message, error_message_capacity, "The local map read size did not match the device object");
         result = -6;
         goto cleanup;
     }

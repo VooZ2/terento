@@ -169,8 +169,7 @@ struct Stage52HardwareDeleteMain {
                     )
                 }
             },
-            transport: MTPSafeDeleteTransport(operationProfile: operationProfile),
-            requiresVerifiedBackup: false
+            transport: MTPSafeDeleteTransport(operationProfile: operationProfile)
         )
 
         guard result.isSuccess else {

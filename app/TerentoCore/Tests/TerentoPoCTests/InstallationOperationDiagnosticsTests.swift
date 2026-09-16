@@ -64,7 +64,7 @@ private struct NoNetworkStatisticsUploader: MapStatisticsEventUploading {
     }
     @MainActor static func testResultsAndPrivacy() async throws {
         var fixtures: [InstallationEvidenceEvent] = []
-        for failure in [InstallationFailure.insufficientSpace, .writeFailed, .hashMismatch, .deviceDisconnected] {
+        for failure in [InstallationFailure.insufficientSpace, .preflightMTPReadFailed, .writeFailed, .hashMismatch, .deviceDisconnected] {
             let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
             defer { try? FileManager.default.removeItem(at: root) }
             let store = LocalInstallationEvidenceStore(rootURL: root)
@@ -74,15 +74,16 @@ private struct NoNetworkStatisticsUploader: MapStatisticsEventUploading {
             let operation = InstallationOperationDiagnostics(operationID: UUID(), identity: identity, plan: selection, controller: controller)
             let package = selection.installItems[0].package
             let artifact = selection.selectedPackagePlans[0].artifactPlan.selectedArtifacts[0]
-            let result = result(package: package, failure: failure, wrote: failure != .insufficientSpace)
+            let wrote = failure != .insufficientSpace && failure != .preflightMTPReadFailed
+            let result = result(package: package, failure: failure, wrote: wrote)
             operation.record(result, packageID: package.id, artifactID: artifact.id)
             operation.record(result, packageID: package.id, artifactID: artifact.id)
             await operation.waitForDeliveryForTesting()
             let events = store.events()
             check(events.count == 1 && events[0].failureCode == failure.rawValue && events[0].phaseOutcome == .failed,
                   "one report for repeated \(failure.rawValue) callback")
-            check(events[0].writeStarted == (failure != .insufficientSpace), "writeStarted comes only from result diagnostics")
-            check(events[0].failureStage == (failure == .hashMismatch ? .verify : (failure == .insufficientSpace ? .preflight : .write)),
+            check(events[0].writeStarted == wrote, "writeStarted comes only from result diagnostics")
+            check(events[0].failureStage == (failure == .hashMismatch ? .verify : ((failure == .insufficientSpace || failure == .preflightMTPReadFailed) ? .preflight : .write)),
                   "failure stage matches the failed operation")
             let received = await upload.received
             check(received == events, "persisted and uploaded reports match exactly")
@@ -232,7 +233,7 @@ private struct NoNetworkStatisticsUploader: MapStatisticsEventUploading {
             cleanupAttempted: wrote && failure != nil, cleanupSucceeded: false, nativeFailureCode: nil)
         let preflight = InstallationPreflightResult(selectedMap: package, installedMatch: nil, ownership: .unknown,
             comparisonStatus: .notInstalled, installTarget: nil, proposedFilename: nil, storagePlan: nil,
-            replacementRequired: false, replacementConfirmationRequired: false, backupDecisionRequired: false,
+            replacementRequired: false, replacementConfirmationRequired: false,
             status: .readyNewInstall, reason: "test")
         return MapInstallationResult(status: confirmation ? .confirmationRequired : (failure == nil ? .installVerified : .failed),
             failure: failure, originalFailure: failure, cleanupFailure: nil, preflight: preflight,

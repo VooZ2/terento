@@ -18,12 +18,12 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict/>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<key>TerentoReleaseLabel</key>
-	<string>$(TERENTO_RELEASE_LABEL)</string>
-	<key>TerentoReleaseChannel</key>
-	<string>$(TERENTO_RELEASE_CHANNEL)</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
 	<key>LSMinimumSystemVersion</key>
@@ -32,5 +32,9 @@
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2026 Terento Project</string>
+	<key>TerentoReleaseChannel</key>
+	<string>$(TERENTO_RELEASE_CHANNEL)</string>
+	<key>TerentoReleaseLabel</key>
+	<string>$(TERENTO_RELEASE_LABEL)</string>
 </dict>
 </plist>

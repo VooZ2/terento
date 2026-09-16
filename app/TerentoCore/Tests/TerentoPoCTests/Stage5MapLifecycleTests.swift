@@ -10,29 +10,6 @@ private final class FakeLifecycleTransport: MapReplacementTransport, @unchecked 
     var contentsByObjectID: [UInt32: Data] = [:]
     var failWrite = false
     var failVerification = false
-    var corruptBackup = false
-
-    func backup(
-        file: InstalledMapFile,
-        to destinationURL: URL,
-        onProgress: (@Sendable (TransferProgress) -> Void)?
-    ) throws -> MapLifecycleBackupTransfer {
-        guard let itemID = file.itemID else {
-            throw MapLifecycleError.exactObjectIdentityRequired
-        }
-        events.append("backup")
-        var data = contentsByObjectID[itemID] ?? Data(repeating: 0x41, count: Int(file.sizeBytes))
-        if corruptBackup {
-            data = Data(repeating: 0x41, count: max(0, Int(file.sizeBytes) - 1))
-        }
-        try data.write(to: destinationURL, options: .atomic)
-        onProgress?(TransferProgress(bytesTransferred: UInt64(data.count), totalBytes: file.sizeBytes))
-        return MapLifecycleBackupTransfer(
-            itemID: itemID,
-            sourcePath: file.path,
-            reportedSizeBytes: file.sizeBytes
-        )
-    }
 
     func delete(file: InstalledMapFile) throws {
         guard file.itemID != nil else {
@@ -99,16 +76,6 @@ private func require(_ condition: @autoclosure () -> Bool, _ message: String) th
     guard condition() else {
         throw Stage5TestError.failed(message)
     }
-}
-
-private func expect(_ error: MapLifecycleError, from operation: () throws -> Void) throws {
-    do {
-        try operation()
-    } catch let actual as MapLifecycleError {
-        try require(actual == error, "expected \(error), got \(actual)")
-        return
-    }
-    throw Stage5TestError.failed("expected \(error), but operation succeeded")
 }
 
 private func version(_ year: Int, _ month: Int) -> MapVersion {
@@ -241,38 +208,6 @@ private func testInventoryBuilderUsesCanonicalPackageIdentity() throws {
     )
 }
 
-private func testBackupIsVerified() throws {
-    let map = installedMap(sizeBytes: 12)
-    let item = lifecycleItem(map: map)
-    let transport = FakeLifecycleTransport()
-    let directory = FileManager.default.temporaryDirectory
-        .appendingPathComponent("terento-stage5-backup-\(UUID().uuidString)", isDirectory: true)
-    defer { try? FileManager.default.removeItem(at: directory) }
-
-    let result = try MapBackupEngine().backup(
-        item: item,
-        to: directory,
-        transport: transport
-    )
-
-    try require(result.files.count == 1, "backup should include the exact map object")
-    try require(result.files[0].sizeBytes == map.sizeBytes, "backup size must match the device object")
-    try require(FileManager.default.fileExists(atPath: result.files[0].localURL.path), "verified backup must exist locally")
-
-    let corruptTransport = FakeLifecycleTransport()
-    corruptTransport.corruptBackup = true
-    let corruptDirectory = FileManager.default.temporaryDirectory
-        .appendingPathComponent("terento-stage5-corrupt-backup-\(UUID().uuidString)", isDirectory: true)
-    defer { try? FileManager.default.removeItem(at: corruptDirectory) }
-    try expect(.backupVerificationFailed) {
-        _ = try MapBackupEngine().backup(
-            item: item,
-            to: corruptDirectory,
-            transport: corruptTransport
-        )
-    }
-}
-
 private func testUpdatePlanProtectsStorageAndVersionDirection() throws {
     let item = lifecycleItem(map: installedMap())
     let planner = MapUpdatePlanner()
@@ -305,7 +240,7 @@ private func testUpdatePlanProtectsStorageAndVersionDirection() throws {
         newMapSizeBytes: 100,
         currentFreeSpace: 3 * 1024 * 1024 * 1024
     )
-    try require(ready.isReady && ready.backupRequired, "newer catalog version should produce a safe update plan")
+    try require(ready.isReady, "newer catalog version should produce a safe update plan")
 
     let blocked = planner.plan(
         item: item,
@@ -363,39 +298,33 @@ private func testReplacementOrderAndRecovery() throws {
         newMapSizeBytes: 20,
         currentFreeSpace: 3 * 1024 * 1024 * 1024
     )
-    let backupDirectory = FileManager.default.temporaryDirectory
-        .appendingPathComponent("terento-stage5-replacement-\(UUID().uuidString)", isDirectory: true)
-    defer { try? FileManager.default.removeItem(at: backupDirectory) }
-
     _ = try MapReplacementEngine().replace(
         plan: plan,
         item: item,
         artifact: MapUpdateArtifact(localURL: artifactURL, sizeBytes: 20, sha256: "artifact-hash"),
-        backupDirectory: backupDirectory,
         confirmed: true,
         rescan: { try scans.next() },
         transport: transport
     )
-    try require(transport.events == ["backup", "write", "verify", "delete"], "replacement must verify before deleting the old map")
+    try require(transport.events == ["write", "verify", "delete"], "replacement must verify before deleting the old map")
 
     let failedTransport = FakeLifecycleTransport()
     failedTransport.failWrite = true
     let failedScans = ScanSequence([before])
-    let failedBackupDirectory = FileManager.default.temporaryDirectory
-        .appendingPathComponent("terento-stage5-failed-replacement-\(UUID().uuidString)", isDirectory: true)
-    defer { try? FileManager.default.removeItem(at: failedBackupDirectory) }
-    try expect(.transportFailure("simulated write failure")) {
+    do {
         _ = try MapReplacementEngine().replace(
             plan: plan,
             item: item,
             artifact: MapUpdateArtifact(localURL: artifactURL, sizeBytes: 20, sha256: "artifact-hash"),
-            backupDirectory: failedBackupDirectory,
             confirmed: true,
             rescan: { try failedScans.next() },
             transport: failedTransport
         )
+        throw Stage5TestError.failed("expected simulated write failure")
+    } catch let error as MapLifecycleError {
+        try require(error == .transportFailure("simulated write failure"), "expected simulated write failure, got \(error)")
     }
-    try require(failedTransport.events == ["backup", "write"], "failed update must preserve the old map and skip delete")
+    try require(failedTransport.events == ["write"], "failed update must preserve the old map and skip delete")
 }
 
 private func testFailedInstallRecoveryAcceptsProviderAlias() throws {
@@ -432,7 +361,6 @@ struct Stage5MapLifecycleTests {
         let tests: [(String, () throws -> Void)] = [
             ("inventory uses exact object identity", testInventoryBuilderUsesRealEntries),
             ("inventory uses canonical package identity", testInventoryBuilderUsesCanonicalPackageIdentity),
-            ("backup output is size-verified", testBackupIsVerified),
             ("update direction and storage reserve are safe", testUpdatePlanProtectsStorageAndVersionDirection),
             ("replacement verifies before delete and preserves on failure", testReplacementOrderAndRecovery),
             ("failed-install recovery accepts provider aliases", testFailedInstallRecoveryAcceptsProviderAlias)

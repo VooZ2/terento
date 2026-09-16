@@ -21,11 +21,13 @@ class CompatibilityAggregationMigrationTests(unittest.TestCase):
             / "terento_catalog"
             / "db.py"
         ).read_text(encoding="utf-8")
-        # Map statistics remains catalog-only and excludes explicit pre-write
-        # failures. Overview intentionally projects final failures separately.
+        # Map statistics keeps its catalog-only boundary. Overview separately
+        # exposes final compatibility failures, including pre-write failures,
+        # in its activity read model.
         self.assertEqual(db_source.count("e.write_started IS NOT FALSE"), 1)
+        self.assertIn("OR e.write_started IS NOT FALSE", db_source)
         self.assertIn(
-            "e.phase_outcome = 'SUCCEEDED'\n                    OR e.write_started IS NOT FALSE",
+            "A final compatibility failure is an installation",
             db_source,
         )
         self.assertIn("event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')", db_source)

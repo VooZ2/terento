@@ -23,7 +23,6 @@ enum SafeUpdateState: String, Equatable, Sendable {
     case validating
     case revalidating
     case acquiring
-    case backingUp
     case writing
     case verifying
     case committing
@@ -158,7 +157,6 @@ func runMapLifecyclePresentationTests() throws {
         hasIntegrityRecord: true,
         hasValidatedUpdateProfile: true
     )
-    try require(update.allows(.backup), "managed map allows backup")
     try require(update.allows(.remove), "managed map allows removal")
     try require(update.allows(.update), "older managed map allows update")
     try require(update.status == "Update available", "update status is user-facing")
@@ -169,13 +167,13 @@ func runMapLifecyclePresentationTests() throws {
         "managed row uses release and size without repeating provider or installed state"
     )
     try require(
-        ManageMapRowActionPresentation.actions(for: update) == [.update, .backup, .remove],
+        ManageMapRowActionPresentation.actions(for: update) == [.update, .remove],
         "three valid actions use one ordered action group"
     )
     try require(
         ManageMapRowActionPresentation.primaryActions(for: update) == [.update, .remove]
-            && ManageMapRowActionPresentation.advancedActions(for: update) == [.backup],
-        "backup moves to advanced actions while update and remove stay visible"
+            && ManageMapRowActionPresentation.advancedActions(for: update).isEmpty,
+        "ownership tools stay out of the primary action group"
     )
 
     let withheldUpdate = resolver.resolve(
@@ -185,7 +183,6 @@ func runMapLifecyclePresentationTests() throws {
         hasValidatedUpdateProfile: true,
         acquisitionAvailability: .withheldRussia
     )
-    try require(withheldUpdate.allows(.backup), "withheld managed map retains safe backup")
     try require(withheldUpdate.allows(.remove), "withheld managed map retains safe removal")
     try require(!withheldUpdate.allows(.update), "withheld managed map does not expose update")
     try require(
@@ -202,7 +199,7 @@ func runMapLifecyclePresentationTests() throws {
     )
     try require(
         withheldWithoutProfile.status == "Updates are not offered for this map"
-            && withheldWithoutProfile.actions == [.backup, .remove],
+            && withheldWithoutProfile.actions == [.remove],
         "withheld update policy remains neutral without a validated update profile"
     )
 
@@ -215,19 +212,19 @@ func runMapLifecyclePresentationTests() throws {
     )
     try require(
         ManageMapRowActionPresentation.actions(for: transferable)
-            == [.backup, .transferOwnership, .remove],
+            == [.transferOwnership, .remove],
         "managed map can export a private ownership file for another Mac"
     )
     try require(
         ManageMapRowActionPresentation.primaryActions(for: transferable) == [.remove]
             && ManageMapRowActionPresentation.advancedActions(for: transferable)
-                == [.backup, .transferOwnership],
-        "backup and ownership export are grouped under advanced actions"
+                == [.transferOwnership],
+        "ownership export and recovery are grouped under advanced actions"
     )
     try require(
         ManageMapRowActionPresentation.productionActions(for: transferable) == [.remove]
             && ManageMapRowActionPresentation.productionMenuActions(for: transferable).isEmpty,
-        "production rows hide backup and ownership tools while retaining removal"
+        "production rows expose only product lifecycle actions"
     )
 
     try require(
@@ -268,7 +265,6 @@ func runMapLifecyclePresentationTests() throws {
         failedInstallRecovery: true
     )
     try require(recovery.actions == [.remove], "failed install recovery exposes only removal")
-    try require(!recovery.allows(.backup), "failed install recovery does not expose backup as a separate action")
     try require(recovery.status == "Failed install recovery", "failed install recovery has a distinct status")
     try require(
         recoveryItem.manageMetadataLabel.contains("2026-05")
@@ -283,12 +279,11 @@ func runMapLifecyclePresentationTests() throws {
         hasIntegrityRecord: true,
         hasValidatedUpdateProfile: true
     )
-    try require(upToDate.allows(.backup), "up-to-date map allows backup")
     try require(upToDate.allows(.remove), "up-to-date map allows removal")
     try require(!upToDate.allows(.update), "up-to-date map does not expose update")
     try require(upToDate.reason?.contains("explicit confirmation") == true, "up-to-date replacement remains explicit")
     try require(
-        ManageMapRowActionPresentation.actions(for: upToDate) == [.backup, .remove],
+        ManageMapRowActionPresentation.actions(for: upToDate) == [.remove],
         "two valid actions use the same ordered action group"
     )
     try require(
@@ -297,24 +292,24 @@ func runMapLifecyclePresentationTests() throws {
         "production up-to-date row exposes only Remove and no overflow"
     )
 
-    let backupOnly = MapLifecycleActionAvailability(
-        actions: [.backup],
+    let noActions = MapLifecycleActionAvailability(
+        actions: [],
         status: "Installed",
         reason: nil
     )
     try require(
-        ManageMapRowActionPresentation.actions(for: backupOnly) == [.backup],
-        "one valid action keeps the same action control style"
+        ManageMapRowActionPresentation.actions(for: noActions).isEmpty,
+        "no lifecycle action produces no action control"
     )
     try require(
-        ManageMapRowActionPresentation.primaryActions(for: backupOnly).isEmpty
-            && ManageMapRowActionPresentation.advancedActions(for: backupOnly) == [.backup],
-        "backup-only rows expose the advanced menu without a primary button"
+        ManageMapRowActionPresentation.primaryActions(for: noActions).isEmpty
+            && ManageMapRowActionPresentation.advancedActions(for: noActions).isEmpty,
+        "an empty lifecycle state has no action surface"
     )
     try require(
-        ManageMapRowActionPresentation.productionActions(for: backupOnly).isEmpty
-            && ManageMapRowActionPresentation.productionMenuActions(for: backupOnly).isEmpty,
-        "internal backup-only state has no production action surface"
+        ManageMapRowActionPresentation.productionActions(for: noActions).isEmpty
+            && ManageMapRowActionPresentation.productionMenuActions(for: noActions).isEmpty,
+        "empty lifecycle state has no production action surface"
     )
 
     let newer = resolver.resolve(
@@ -467,22 +462,26 @@ func runMapLifecyclePresentationTests() throws {
     try require(managedContext.hasIntegrityRecord, "complete manifest hash is recognized")
     try require(!context(item: managed, comparison: comparison(), hash: "bad").hasIntegrityRecord, "invalid manifest hash is rejected")
 
-    try require(MapLifecycleOperationPhase.backingUp.userLabel == "Backing up", "backup phase has a product label")
     try require(MapLifecycleOperationPhase.removing.userLabel == "Removing", "remove phase has a product label")
     try require(MapLifecycleOperationPhase.updating.userLabel == "Updating", "update phase has a product label")
     try require(MapLifecycleOperationPhase.verifying.userLabel == "Verifying", "verify phase has a product label")
+    try require(MapLifecycleOperationPhase.downloading.userLabel == "Downloading", "download phase has a product label")
+    try require(MapLifecycleOperationPhase.checking.userLabel == "Checking", "checking phase has a product label")
+    try require(MapLifecycleOperationPhase.installing.userLabel == "Installing", "install phase has a product label")
+    try require(MapLifecycleOperationPhase.removingOld.userLabel == "Removing old", "old-map removal phase has a product label")
+    try require(MapLifecycleOperationPhase.finishing.userLabel == "Finishing", "finishing phase has a product label")
     try require(MapLifecycleOperationPhase.failed.userLabel == "Could not complete", "failure phase has a product label")
 
     let progress = SafeUpdateProgress(
-        state: .backingUp,
+        state: .acquiring,
         bytesCompleted: 50,
         totalBytes: 100,
         bytesPerSecond: 10
     )
     try require(progress.fractionCompleted == 0.5, "lifecycle progress reports a fraction")
     try require(
-        MapLifecycleAction.allCases.count == 5,
-        "only backup, transfer, recover, remove, and unchanged update actions are exposed"
+        MapLifecycleAction.allCases.count == 4,
+        "only transfer, recover, remove, and update actions are exposed"
     )
 }
 

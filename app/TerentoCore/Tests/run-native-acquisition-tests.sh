@@ -57,7 +57,7 @@ fi
 
 printf '%s\n' "PASS: bundled fallback contains 63 FZK + 177 OTM + 160 MapRando + 760 BBBike packages with final IMG sizes"
 
-if grep -Eq 'LibMTPBridge|MTPTransport|SendObject|DeleteObject|MoveObject|RenameObject|Backup' \
+if grep -Eq 'LibMTPBridge|MTPTransport|SendObject|DeleteObject|MoveObject|RenameObject' \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapPackageAcquisition.swift"; then
     print -u2 "FAIL: acquisition layer contains a device transport or write dependency"
     exit 1

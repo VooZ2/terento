@@ -98,6 +98,9 @@ def _fill_overview_trend_buckets(
             "success_count": 0,
             "failed_count": 0,
             "custom_count": 0,
+            "map_update_count": 0,
+            "map_update_success_count": 0,
+            "map_update_failed_count": 0,
         })
         current = _next_overview_bucket(current, bucket, time_zone=time_zone)
     return result
@@ -1082,7 +1085,8 @@ class Database:
                              )
                          )
                          AND installed.is_local_test IS NOT TRUE
-                         AND installed.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
+                         AND installed.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED',
+                                                      'MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED')
                    )
             )
         """
@@ -1107,6 +1111,14 @@ class Database:
                           AND e.outcome = 'FAILED'
                     ) + (SELECT count(*) FROM compatibility_fallback
                          WHERE outcome = 'FAILED') AS failed_install_count
+                    ,count(*) FILTER (
+                        WHERE e.event_type = 'MAP_UPDATE_SUCCEEDED'
+                          AND e.outcome = 'SUCCEEDED'
+                    ) AS completed_map_update_count
+                    ,count(*) FILTER (
+                        WHERE e.event_type = 'MAP_UPDATE_FAILED'
+                          AND e.outcome = 'FAILED'
+                    ) AS failed_map_update_count
                 {event_scope}
                 """,
                 (since, since),
@@ -1134,7 +1146,15 @@ class Database:
                         SELECT count(*) FROM compatibility_fallback
                         WHERE outcome = 'SUCCEEDED'
                           AND provider_id = 'custom'
-                    ) AS all_time_custom_count
+                    ) AS all_time_custom_count,
+                    count(*) FILTER (
+                        WHERE e.event_type = 'MAP_UPDATE_SUCCEEDED'
+                          AND e.outcome = 'SUCCEEDED'
+                    ) AS all_time_map_update_success_count,
+                    count(*) FILTER (
+                        WHERE e.event_type = 'MAP_UPDATE_FAILED'
+                          AND e.outcome = 'FAILED'
+                    ) AS all_time_map_update_failed_count
                 {event_scope}
                 """,
                 (all_time_since, all_time_since),
@@ -1275,9 +1295,21 @@ class Database:
                           AND outcome = 'FAILED'
                     ) AS failed_count,
                     count(*) FILTER (WHERE event_type = 'CUSTOM_SUCCEEDED') AS custom_count,
+                    count(DISTINCT operation_key) FILTER (
+                        WHERE event_type IN ('MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED')
+                    ) AS map_update_count,
+                    count(DISTINCT operation_key) FILTER (
+                        WHERE event_type = 'MAP_UPDATE_SUCCEEDED'
+                          AND outcome = 'SUCCEEDED'
+                    ) AS map_update_success_count,
+                    count(DISTINCT operation_key) FILTER (
+                        WHERE event_type = 'MAP_UPDATE_FAILED'
+                          AND outcome = 'FAILED'
+                    ) AS map_update_failed_count,
                     (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type = 'INSTALL_SUCCEEDED' AND outcome = 'SUCCEEDED'))[1:20] AS success_times,
                     (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type = 'INSTALL_FAILED' AND outcome = 'FAILED'))[1:20] AS failed_times,
-                    (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type = 'CUSTOM_SUCCEEDED'))[1:20] AS custom_times
+                    (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type = 'CUSTOM_SUCCEEDED'))[1:20] AS custom_times,
+                    (array_agg(DISTINCT to_char(local_occurred_at, 'YYYY-MM-DD HH24:MI')) FILTER (WHERE event_type IN ('MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED')))[1:20] AS map_update_times
                 FROM localized_events
                 GROUP BY {bucket_expression}
                 ORDER BY bucket
@@ -1296,14 +1328,24 @@ class Database:
             )
         completed = int(summary.get("completed_install_count") or 0)
         failed = int(summary.get("failed_install_count") or 0)
+        completed_updates = int(summary.get("completed_map_update_count") or 0)
+        failed_updates = int(summary.get("failed_map_update_count") or 0)
+        all_time_update_successes = int(all_time_summary.get("all_time_map_update_success_count") or 0)
+        all_time_update_failures = int(all_time_summary.get("all_time_map_update_failed_count") or 0)
         return {
             "eventCount": int(summary.get("event_count") or 0),
             "completedInstallCount": completed,
             "failedInstallCount": failed,
             "installSuccessRate": completed / (completed + failed) * 100 if completed + failed else None,
+            "completedMapUpdateCount": completed_updates,
+            "failedMapUpdateCount": failed_updates,
+            "mapUpdateCount": completed_updates + failed_updates,
             "allTimeSuccessCount": int(all_time_summary.get("all_time_success_count") or 0),
             "allTimeFailedCount": int(all_time_summary.get("all_time_failed_count") or 0),
             "allTimeCustomCount": int(all_time_summary.get("all_time_custom_count") or 0),
+            "allTimeMapUpdateCount": all_time_update_successes + all_time_update_failures,
+            "allTimeMapUpdateSuccessCount": all_time_update_successes,
+            "allTimeMapUpdateFailedCount": all_time_update_failures,
             "hasData": int(summary.get("event_count") or 0) > 0,
             "recentActivity": [dict(row) for row in recent],
             "attention": [dict(row) for row in attention],
@@ -3168,7 +3210,8 @@ class Database:
                           )
                       )
                       AND installed.is_local_test IS NOT TRUE
-                      AND installed.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
+                      AND installed.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED',
+                                                   'MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED')
                 )
             ), compatibility_fallback AS (
                 -- Each retained map result counts independently of its siblings.
