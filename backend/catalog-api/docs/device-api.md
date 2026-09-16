@@ -238,9 +238,11 @@ Build30 identity review presents the original XML model first. When explicitly
 reported Solar/inReach features have matching catalog rows, operator suggestions
 prefer those specific rows over rows whose corresponding feature is unknown.
 The complete authoritative assessment remains available and still controls
-assignment. Remaining same-model choices display screen/Solar properties rather
-than repeating model/SKU names. An unknown catalog feature is never treated as
-false, and genuine AMOLED/MIP/Solar ambiguity remains unresolved.
+assignment. Same-model choices preserve their exact catalog model/variant names
+and append only known screen/Solar facts, so distinct historical records cannot
+collapse into identical `not confirmed` labels. The form separately states which
+properties were reported by the device. An unknown catalog feature is never
+treated as false, and genuine AMOLED/MIP/Solar ambiguity remains unresolved.
 
 The admin Installations table resolves its Variant label from the exact
 `canonical_device_model_id` catalog record, matching the linked device card.

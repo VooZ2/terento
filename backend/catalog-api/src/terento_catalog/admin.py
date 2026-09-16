@@ -3216,6 +3216,26 @@ def _identity_recommendation(results: list[dict[str, Any]]) -> dict | None:
     return choices[0] if choices and len({c["deviceId"] for c in choices}) == 1 else None
 
 
+def _reported_identity_properties(results: list[dict[str, Any]]) -> dict[str, str | bool | None]:
+    """Return only explicit model properties present in the received report."""
+    values = {
+        str(result.get(field) or "")
+        for result in results
+        for field in (
+            "model", "variant", "compatibility_identity", "raw_mtp_model",
+            "garmin_model_description", "display_type",
+        )
+        if result.get(field)
+    }
+    text = " ".join(values)
+    screen = next(
+        (name for name in ("AMOLED", "MicroLED", "MIP")
+         if re.search(r"\b" + re.escape(name) + r"\b", text, flags=re.IGNORECASE)),
+        None,
+    )
+    return {"screen": screen, "solar": bool(re.search(r"\bsolar\b", text, flags=re.IGNORECASE))}
+
+
 def _identity_observations_markup(results: list[dict[str, Any]]) -> str:
     candidate = _identity_recommendation(results)
     recommended = candidate is not None
@@ -3254,8 +3274,13 @@ def _identity_observations_markup(results: list[dict[str, Any]]) -> str:
     solar_checks = [feature for c in possible for check in c.get("checks", [])
                     for feature in check.get("features", []) if feature.get("name") == "solar"]
     solar_values = {feature.get("expected") for feature in solar_checks}
-    solar_label = "Not confirmed"
-    if solar_checks and len(solar_values) == 1 and all(feature.get("state") == "MATCH" for feature in solar_checks):
+    reported_properties = _reported_identity_properties(results)
+    solar_label = "Not reported"
+    if reported_properties["solar"]:
+        solar_label = "Reported by device"
+        if solar_checks and len(solar_values) == 1 and all(feature.get("state") == "MATCH" for feature in solar_checks):
+            solar_label += " · catalog agrees"
+    elif solar_checks and len(solar_values) == 1 and all(feature.get("state") == "MATCH" for feature in solar_checks):
         solar_label = "Yes" if next(iter(solar_values)) else "No"
         if any(str(e.get("source", "")).startswith("catalog specification:") for feature in solar_checks for e in feature.get("evidence", [])):
             solar_label += " · catalog specification"
@@ -3398,24 +3423,55 @@ def _identity_device_options(devices: list[dict[str, Any]] | None, current_id: A
     current = str(current_id or "").strip()
     current_label = current or "No canonical device selected"
     options: list[str] = []
+    seen_labels: set[str] = set()
     for device in devices or []:
         device_id = str(device.get("device_id") or device.get("id") or "").strip()
         if not device_id:
             continue
         model, variant, _ = _identity_parts(device)
-        family = str(device.get("family_name") or device.get("familyName") or device.get("family") or "").strip()
+        variant = re.sub(r",\s*\(", " (", variant)
         label_parts = [part for part in (model, variant if variant != "—" else "") if part]
         label = " · ".join(label_parts)
         if properties_only:
-            screen = str(device.get("screen_technology") or device.get("screenTechnology") or "Screen not confirmed")
+            screen = str(device.get("screen_technology") or device.get("screenTechnology") or "").strip()
             solar = device.get("solar")
-            label = screen + " · Solar: " + ("yes" if solar is True else "no" if solar is False else "not confirmed")
+            if screen and not re.search(r"\b" + re.escape(screen) + r"\b", label, flags=re.IGNORECASE):
+                label_parts.append(screen)
+            if solar is True and not re.search(r"\bsolar\b", label, flags=re.IGNORECASE):
+                label_parts.append("Solar")
+            elif solar is False and not re.search(r"\bsolar\b", label, flags=re.IGNORECASE):
+                label_parts.append("Solar: no")
+            label = " · ".join(label_parts)
+        if not label:
+            label = "Garmin device"
+        if label in seen_labels:
+            label += " · Catalog record: " + device_id
+        seen_labels.add(label)
         if device_id == current:
             current_label = device_id
         options.append(
             f"<option value='{html.escape(device_id, quote=True)}'{' selected' if device_id == current else ''}>{html.escape(label)}</option>"
         )
     return "".join(options), current_label
+
+
+def _identity_review_guidance(result: dict[str, Any]) -> str:
+    model, variant, _ = _identity_parts(result)
+    reported = " · ".join(part for part in (model, variant if variant != "—" else "") if part)
+    properties = _reported_identity_properties([result])
+    facts = []
+    if properties["screen"]:
+        facts.append("Screen reported: " + str(properties["screen"]))
+    else:
+        facts.append("Screen not reported")
+    facts.append("Solar reported by device" if properties["solar"] else "Solar not reported")
+    return (
+        "<p class='table-help identity-review-guidance'><strong>How to read this list:</strong> "
+        + html.escape("Reported identity: " + (reported or "not available") + ". ")
+        + html.escape(" · ".join(facts) + ". ")
+        + "The choices are catalog variants; confirm the one supported by the evidence, "
+        + "not an unknown property label.</p>"
+    )
 
 
 def _operation_state(results: list[dict[str, Any]], *, resolved: bool) -> str:
@@ -3780,7 +3836,8 @@ def _diagnostic_detail_dialog(
           <div{' hidden' if single_candidate else ''}>
           <div{' hidden' if same_model else ''}><label>Find another model<input id='{search_id}' type='search' data-identity-search placeholder='Model name or size' autocomplete='off' aria-controls='{canonical_id}'></label>
           <div class='identity-search-results' data-identity-results role='group' aria-label='Matching Garmin models' hidden></div></div>
-          <label>{'Screen / Solar variant' if same_model else 'Garmin model'}<select name='canonical_device_model_id' id='{canonical_id}' required><option value=''>{'Choose the confirmed screen / Solar variant' if same_model else 'Choose a Garmin model'}</option>{options}</select></label>
+          <label>{'Candidate device variant' if same_model else 'Garmin model'}<select name='canonical_device_model_id' id='{canonical_id}' required><option value=''>{'Choose the catalog variant that matches the evidence' if same_model else 'Choose a Garmin model'}</option>{options}</select></label>
+          {_identity_review_guidance(first) if same_model else ''}
           </div>
         </div>
         <p class='identity-selection' data-identity-selection>{'Model selected from the reported device. No further model selection needed.' if single_candidate else 'Select the model to confirm.'}</p>
