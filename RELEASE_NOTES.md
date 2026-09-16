@@ -1,19 +1,21 @@
-# Terento v1.0.0-beta.12 (build 30)
+# Terento v1.0.0-beta.12 (build 31)
 
 Terento continues to offer Freizeitkarte, OpenTopoMap, MapRando, BBBike and BBBike (Ontrail) maps.
 
 ## Improvements
 
-- Map activity now distinguishes processing, cancellation and interruption after a download starts. Unfinished downloads are reconciled when Terento next opens.
-- Main maps and contour downloads keep separate outcomes and activity history.
-- Device review shows received XML and USB identifiers independently of catalog confirmation, prioritizes the reported model, and reduces repeated model choices to the remaining screen and Solar differences.
-- Preserves the provider identity of catalog maps, including OpenTopoMap and Freizeitkarte. Custom imports remain separate.
+- Better recognition of BBBike maps previously installed through Terento.
+- Remove is available for valid external maps, including maps installed outside Terento. Garmin maps remain protected, and removal still requires confirmation.
+- Failed-install diagnostics retain the selected maps and watch context when the screen closes or resets, and use the existing retry queue and sharing settings.
+- Installation diagnostics and map statistics keep their shared operation reference and separate outcomes for each selected map.
+- Fixed a startup crash introduced by the newer macOS build tools. Added checks to catch this before publication.
 
 ## Known issues
 
 - The map update feature has not been tested yet.
 - Occasional device connection issues may interrupt reading installed maps or finishing an installation. If prompted, disconnect and reconnect your Garmin, then try again.
 - Missing or shared model identifiers may still require administrator review. Unknown screen or Solar properties remain unconfirmed.
-- Download recovery and component reporting passed automated tests; a complete build30 installation and interruption check on a real watch is still pending. Existing build29 records cannot always recover outcomes that were never recorded.
+- Build31 fixes passed automated tests; their complete real-watch installation, interruption and external-removal checks remain pending.
+- Updating the app cannot reconstruct diagnostic reports or watch identities that were never recorded. Abrupt app termination before a result reaches the local queue can still leave an unrecorded result.
 
-<!-- DMG SHA-256: c758b71e6cc5f92e6d8078f8c331b14ab0d850e7c8fe63313b169e0f644b08e6 -->
+<!-- DMG SHA-256: 295d5b37124d67d584526462d8ebab8ddf219cac491d937038ccc332b14b06c4 -->
