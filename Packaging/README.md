@@ -261,8 +261,9 @@ retain prior route contracts and gain the new release source when appropriate.
 
 A local PASS is not publication evidence. The release receipt must distinguish
 compilation/tests, signing/notarization, exact-model owner hardware results,
-GitHub asset publication and live website verification. A waived real newer-map
-update remains untested and must remain in Known issues.
+GitHub asset publication and live website verification. Build32 includes the
+safe Update path, but exact-model real-device evidence remains model-specific
+and must remain in Known issues when no test watch is available.
 
 ## App–API release coordination
 
@@ -271,9 +272,10 @@ source/deployment receipts, native-to-API payload tests and server-first
 publication. The release suite runs fresh Swift failure payloads through API
 intake tests and checks all native failure codes. Before publishing a client,
 record the deployed API SHA accepting its payloads and the affected read-only
-admin workflow evidence. For build31 the API must accept INSTALL_FAILED_UNKNOWN.
-Build31 also restores legacy BBBike recognition and explicit external-map Remove;
-Garmin/protected and invalid/unreadable files remain blocked.
+admin workflow evidence. For build32 the API must accept INSTALL_FAILED_UNKNOWN
+and INSTALL_FAILED_PREFLIGHT_MTP_READ. Build32 also includes safe model-neutral
+map Update events and explicit external-map Remove; Garmin/protected and
+invalid/unreadable files remain blocked.
 
 The two full-source native test harnesses explicitly select SwiftPM
 `--build-system native` because they link its C bridge object/module layout.

@@ -99,7 +99,7 @@ are outside the current public scope.
 
 ## Download and beta status
 
-The latest public release is **beta.12 (build 31)**. The macOS app is notarized
+The latest public release is **beta.12 (build 32)**. The macOS app is notarized
 and does not require Homebrew.
 
 Beta.12 adds BBBike and BBBike (Ontrail) maps, continent filtering, clearer
