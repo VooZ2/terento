@@ -116,11 +116,13 @@ compatibility operations as individual rows; it is not a grouped model-count
 summary. The full installations history remains available on the
 `/admin/installations` route.
 
-When a compatibility failure has `write_started = false`, the read model treats
-it as a pre-install download/acquisition failure and does not project a
-synthetic `INSTALL_FAILED` map event. Existing explicit map events are kept;
-verified-success fallback projection is unchanged. A legacy `NULL
-write_started` value retains the established attempted-write behavior.
+When a compatibility failure has `write_started = false`, it remains a final
+failed installation outcome in the Overview fallback, so it appears in Recent
+map activity, the failed-install total, and the installs-over-time chart when
+there is no matching explicit terminal map event. The stored failure stage and
+write-started value remain available in compatibility diagnostics. Existing
+explicit map events are kept and verified-success fallback projection is
+unchanged; the correlation still prevents a duplicate terminal row.
 
 The Overview also exposes `Downloads over time`, a display-only chart of public
 GitHub release asset download changes for the selected Overview period. The
@@ -622,12 +624,11 @@ and `mapOnlyInstallationCount` describe map operations that emitted an install
 event, while `linkedSuccessfulInstallCount` and `linkedFailedInstallCount`
 use the linked watch evidence outcome. A missing watch event is coverage data,
 not an inferred installation failure. This field is private admin data and
-does not change either stored event stream. For compatibility fallback rows, a
-failed evidence event is projected as `INSTALL_FAILED` only when `write_started`
-is true or legacy `NULL`; explicit `false` means that writing never started and
-therefore produces no synthetic install failure. A verified compatibility
-success remains eligible for its `INSTALL_SUCCEEDED` fallback. An existing
-explicit `map_download_event` `INSTALL_FAILED` is never removed or duplicated.
+does not change either stored event stream. For compatibility fallback rows,
+every final failed evidence event is projected as `INSTALL_FAILED`, including
+an explicit `write_started = false` value. A verified compatibility success
+remains eligible for its `INSTALL_SUCCEEDED` fallback. An existing explicit
+`map_download_event` `INSTALL_FAILED` is never removed or duplicated.
 does not recalculate or merge the existing compatibility and map-operation
 aggregates.
 The linkage summary contains `mapOperationCount`, `linkedOperationCount`,
@@ -689,11 +690,13 @@ rather than silently presented zeros. Unauthenticated requests redirect to
 compatibility-evidence choices are both enabled for the same installation
 operation.
 
-This projection rule applies to Overview, Map statistics, the event trend, and
-provider aggregates. A pre-install failure can still remain in compatibility
-diagnostics and in the separate `DOWNLOAD_FAILED` map activity stream; it is
-excluded from map install attempts, failed installs, and install success-rate
-denominators.
+This projection rule applies to the Overview event trend and its provider/map
+activity read model. Map statistics keeps its catalog-only boundary and does
+not project a device diagnostic into a map-package aggregate. A pre-write
+failure remains a failed installation in the Overview read model; it is not
+counted as a successful installation and never advances compatibility status.
+A separate `DOWNLOAD_FAILED` map event remains download activity and is not
+converted into an additional install failure.
 
 ## `GET /devices/catalog.json`
 

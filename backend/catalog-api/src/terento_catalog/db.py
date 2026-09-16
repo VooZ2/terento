@@ -1053,14 +1053,11 @@ class Database:
                    AND (e.phase_outcome = 'FAILED' OR (
                        e.phase_outcome = 'SUCCEEDED'
                        AND e.automatic_finishing_result = 'VERIFIED'))
-                   -- A download failure before any device write is not an
-                   -- installation failure. Keep NULL write_started as the
-                   -- legacy attempted-write value, and leave verified
-                   -- success fallback unchanged even if its field is false.
-                   AND (
-                       e.phase_outcome = 'SUCCEEDED'
-                       OR e.write_started IS NOT FALSE
-                   )
+                   -- A final compatibility failure is an installation
+                   -- outcome even when the failure happened before the
+                   -- device write. Keep explicit terminal map events as the
+                   -- authoritative row, and leave verified-success fallback
+                   -- unchanged even if its field is false.
                    AND NOT EXISTS (
                        SELECT 1
                        FROM map_download_event AS installed
