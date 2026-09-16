@@ -722,7 +722,7 @@ struct SafeUpdateTransaction: Sendable {
             rescan: {
                 try transport.rescanObjects().map(\.file)
             },
-            transport: transport,
+            transport: transport
             // The new object has already passed remote size/hash/metadata
             // verification. Delete the old object only after that gate,
             // without a redundant local full-file copy or backup.
