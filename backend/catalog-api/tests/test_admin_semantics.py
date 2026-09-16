@@ -991,14 +991,49 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("AS custom_count", trend_query)
         self.assertNotIn("selected_map_count", trend_query)
         self.assertIn("installed.provider_id = e.provider", trend_query)
-        self.assertIn(
-            "e.phase_outcome = 'SUCCEEDED'\n                       OR e.write_started IS NOT FALSE",
-            trend_query,
-        )
+        self.assertNotIn("e.write_started IS NOT FALSE", trend_query)
         self.assertIn(
             "event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')",
             trend_query,
         )
+
+    def test_map_overview_fallback_keeps_final_prewrite_failures_visible(self):
+        database = RecordingDatabase()
+        since = datetime(2026, 9, 1, tzinfo=timezone.utc)
+
+        database.admin_overview_map_snapshot(since, period="24h")
+
+        trend_query, _ = next(
+            (query, parameters)
+            for query, parameters in database.calls
+            if "GROUP BY" in query and "success_count" in query
+        )
+        self.assertIn("e.phase_outcome = 'FAILED'", trend_query)
+        self.assertNotIn("e.write_started IS NOT FALSE", trend_query)
+        self.assertIn(
+            "A final compatibility failure is an installation",
+            inspect.getsource(Database.admin_overview_map_snapshot),
+        )
+
+        body = overview_page({
+            "period": "24h",
+            "data": {
+                "hasData": True,
+                "recentActivity": [{
+                    "event_type": "INSTALL_FAILED", "outcome": "FAILED",
+                    "provider_id": "freizeitkarte", "display_name": "Czechia",
+                    "occurred_at": "2026-09-16T09:31:00Z",
+                }],
+                "trend": [{
+                    "bucket": "2026-09-16T09:00:00Z", "failed_count": 1,
+                }],
+                "bucket": "hour",
+            },
+            "compatibility": {"hasData": False},
+            "providers": [],
+        }, {"username": "operator"}, "csrf").decode()
+        self.assertIn("Install failed", body)
+        self.assertIn("Install failed: 1", body)
 
     def test_installation_authorization_is_separate_from_compatibility_evidence(self):
         source = inspect.getsource(Database.update_device_support_status)
