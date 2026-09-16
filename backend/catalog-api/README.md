@@ -3,12 +3,16 @@
 The overview uses a compact mobile SVG with the same complete time series and
 three time-axis labels; desktop keeps its detailed chart. Clip IDs are unique
 between variants. Identity review uses a searchable native select with exact
-canonical IDs rather than datalist suggestions. Editing the search clears the
-selection, and typing immediately shows matching model buttons below the search
-field (including accent-insensitive fenix matches). The native select remains
-available as a fallback. Assignment requires an explicit model choice and a
-reason, and conflicts require a separate audited source correction. Other
-identity actions disable the picker.
+canonical IDs rather than datalist suggestions. Same-model choices preserve
+the catalog model and variant names and append only known screen/Solar facts;
+they never replace distinct candidates with identical `not confirmed` labels.
+The form also shows which identity facts were reported by the device and which
+remain unavailable. Editing the search clears the selection, and typing
+immediately shows matching model buttons below the search field (including
+accent-insensitive fenix matches). The native select remains available as a
+fallback. Assignment requires an explicit model choice and a reason, and
+conflicts require a separate audited source correction. Other identity actions
+disable the picker.
 
 GitHub report actions share inline-flex alignment, zero margins and stretched
 row heights for both the link and button; copy feedback occupies its own row.

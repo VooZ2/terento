@@ -128,6 +128,11 @@ A source-mapping review is not an automatic historical installation reassignment
 Use the canonical model name and a consistent variant order: case size, display,
 then features such as Solar/inReach when known. No specifications may be inferred
 merely to fill a visual gap. Cards and tables must use the same reviewed values.
+The identity-review picker must preserve the catalog model and variant names for
+same-model candidates. It may append known screen/Solar facts, but it must not
+replace distinct candidates with identical `not confirmed` labels. The review
+form must separately state which properties were reported by the device and
+which remain unavailable.
 
 Historical catalog provenance in device and installation tables uses a small
 Font Awesome Free solid `box-archive` icon beside the model. Its “Historical catalog entry” text stays
