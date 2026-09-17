@@ -13,6 +13,7 @@ from .telemetry import validate_release_label
 
 MAX_EVENT_BYTES = 8 * 1024
 ALLOWED_EVENT_KEYS = {
+    "acquisitionId", "componentKind",
     "schemaVersion",
     "id",
     "operationId",
@@ -26,11 +27,14 @@ ALLOWED_EVENT_KEYS = {
     "releaseLabel",
 }
 ALLOWED_EVENT_TYPES = {
+    "DOWNLOAD_PROCESSING", "DOWNLOAD_CANCELLED", "DOWNLOAD_INTERRUPTED",
     "DOWNLOAD_STARTED",
     "DOWNLOAD_SUCCEEDED",
     "DOWNLOAD_FAILED",
     "INSTALL_SUCCEEDED",
     "INSTALL_FAILED",
+    "MAP_UPDATE_SUCCEEDED",
+    "MAP_UPDATE_FAILED",
 }
 ALLOWED_OUTCOMES = {"SUCCEEDED", "FAILED", "UNKNOWN"}
 SAFE_ID = re.compile(r"[a-z0-9][a-z0-9._-]{0,159}\Z")
@@ -57,7 +61,22 @@ def validate_map_event(raw: bytes) -> dict[str, Any]:
         raise MapEventValidationError("missing_fields")
     if event["schemaVersion"] != 1:
         raise MapEventValidationError("unsupported_schema")
-    for key in ("id", "operationId"):
+    if not isinstance(event.get("eventType"), str):
+        raise MapEventValidationError("invalid_event_type")
+    has_acquisition = event.get("acquisitionId") is not None
+    if has_acquisition != (event.get("componentKind") is not None):
+        raise MapEventValidationError("incomplete_acquisition_identity")
+    if has_acquisition and (event.get("componentKind") not in ("main", "contours")
+                            or not str(event.get("eventType", "")).startswith("DOWNLOAD_")):
+        raise MapEventValidationError("invalid_acquisition_component")
+    if event.get("eventType") in {"DOWNLOAD_PROCESSING", "DOWNLOAD_CANCELLED", "DOWNLOAD_INTERRUPTED"}:
+        if not has_acquisition or event.get("outcome") != "UNKNOWN":
+            raise MapEventValidationError("invalid_acquisition_outcome")
+    if has_acquisition:
+        expected = {"DOWNLOAD_SUCCEEDED": "SUCCEEDED", "DOWNLOAD_FAILED": "FAILED"}.get(event.get("eventType"), "UNKNOWN")
+        if event.get("outcome") != expected:
+            raise MapEventValidationError("invalid_acquisition_outcome")
+    for key in ("id", "operationId") + (("acquisitionId",) if has_acquisition else ()) :
         if not isinstance(event[key], str):
             raise MapEventValidationError(f"invalid_{key}")
         try:
@@ -105,7 +124,7 @@ def validate_map_event(raw: bytes) -> dict[str, Any]:
 
 
 def validate_statistics_filters(filters: dict[str, str]) -> dict[str, Any]:
-    allowed = {"provider", "map", "region", "dateFrom", "dateTo", "eventType"}
+    allowed = {"provider", "map", "region", "dateFrom", "dateTo", "eventType", "outcome"}
     if set(filters) - allowed:
         raise MapEventValidationError("unknown_filter")
     result: dict[str, Any] = {}
@@ -120,6 +139,11 @@ def validate_statistics_filters(filters: dict[str, str]) -> dict[str, Any]:
         if event_type not in ALLOWED_EVENT_TYPES:
             raise MapEventValidationError("invalid_event_type_filter")
         result["eventType"] = event_type
+    if filters.get("outcome"):
+        outcome = filters["outcome"].upper()
+        if outcome not in ALLOWED_OUTCOMES:
+            raise MapEventValidationError("invalid_outcome_filter")
+        result["outcome"] = outcome
     for key in ("dateFrom", "dateTo"):
         value = filters.get(key)
         if value:

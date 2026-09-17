@@ -58,7 +58,7 @@ assert sum(row['success_count'] for row in overview['trend']) == 1
 assert sum(row['custom_count'] for row in overview['trend']) == 1
 assert database.admin_overview_snapshot(since)['successfulInstallCount'] == 2
 statistics = database.map_statistics({})
-assert sum(row['operation_count'] for row in statistics if row['event_type'] == 'INSTALL_SUCCEEDED') == 1
+assert sum(row['operation_count'] for row in statistics if row['event_type'] == 'INSTALL_SUCCEEDED') == 2
 devices, _ = database.admin_device_snapshot()
 watch = next(row for row in devices if row['device_id'] == device)
 assert watch['attempted_install_count'] == 2 and watch['successful_install_count'] == 2, watch
@@ -129,3 +129,6 @@ print('PASS: unverified success cannot promote compatibility; migration replay i
 
 from check_identity_database import check_identity_database
 check_identity_database(database)
+
+from check_download_lifecycle_database import check_download_lifecycle_database
+check_download_lifecycle_database(database)

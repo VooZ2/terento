@@ -37,17 +37,6 @@ def normalize_failure_reason(
     failure_code: Any = None,
 ) -> str:
     """Normalize existing diagnostic fields without changing stored evidence."""
-    category_token = _reason_token(error_category)
-    category = _CANONICAL_KEYS.get(category_token)
-    if category is None:
-        for suffix in ("failed", "failure", "errors", "error"):
-            if category_token.endswith(suffix):
-                category = _CANONICAL_KEYS.get(category_token.removesuffix(suffix))
-                if category is not None:
-                    break
-    if category and category != "unknown":
-        return category
-
     stage_token = _reason_token(failure_stage)
     code_token = _reason_token(failure_code)
     if stage_token == "sourcevalidation" or "sourcevalidation" in code_token:
@@ -62,6 +51,18 @@ def normalize_failure_reason(
         return "verification"
     if "space" in code_token or "storage" in code_token:
         return "storage"
+
+    # Prefer an explicit structured category only after the concrete stage and
+    # code. Older beta reports sometimes retained a stale generic transport
+    # category next to a precise acquisition failure code.
+    category_token = _reason_token(error_category)
+    category = _CANONICAL_KEYS.get(category_token)
+    if category is None:
+        for suffix in ("failed", "failure", "errors", "error"):
+            if category_token.endswith(suffix):
+                category = _CANONICAL_KEYS.get(category_token.removesuffix(suffix))
+                if category is not None:
+                    break
     return category or "unknown"
 
 

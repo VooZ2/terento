@@ -75,6 +75,39 @@ class AdminAuditTests(unittest.TestCase):
             ADMIN_STYLES,
         )
 
+    def test_admin_scrollbars_are_hidden_without_changing_scroll_surfaces(self):
+        from terento_catalog.admin import ADMIN_STYLES, _layout
+
+        self.assertIn('<body class="admin-shell">', _layout("Test", "").decode())
+        scrollbar_css = ADMIN_STYLES.split("/* Admin scrollbars are visually hidden", 1)[1]
+        self.assertIn("scrollbar-width:none", scrollbar_css)
+        self.assertIn("-ms-overflow-style:none", scrollbar_css)
+        self.assertIn("::-webkit-scrollbar", scrollbar_css)
+        self.assertIn("display:none;width:0;height:0", scrollbar_css)
+        self.assertNotIn("overflow:hidden", scrollbar_css)
+        self.assertNotIn("overflow:clip", scrollbar_css)
+        for selector in (
+            ".table-wrap",
+            ".overview-chart-wrap",
+            ".identity-search-results",
+            ".overview-secondary-grid .overview-activity-list",
+            ".overview-secondary-grid .overview-model-list",
+            "#admin-menu-panel",
+            ".quick-filter-group",
+            ".diagnostic-detail-inner",
+            ".device-dialog-inner",
+            ".generated-url",
+            ".device-table-wrap",
+            ".provider-detail .provider-history-wrap",
+            ".map-statistics-popularity",
+            ".audit-technical-details code",
+        ):
+            with self.subTest(selector=selector):
+                self.assertIn(selector, scrollbar_css)
+        self.assertIn(".table-wrap{max-height:none;overflow-x:auto;overflow-y:visible", ADMIN_STYLES)
+        self.assertIn(".overview-chart-wrap{overflow-x:auto}", ADMIN_STYLES)
+        self.assertIn(".diagnostic-detail-inner{max-height:min(900px,calc(100vh - 32px));padding:24px;overflow:auto}", ADMIN_STYLES)
+
     def test_inline_filter_controls_do_not_inherit_vertical_flex_basis(self):
         from terento_catalog.admin import ADMIN_STYLES
         # Labels became columns: the old select flex-basis (170px) must not
@@ -90,9 +123,10 @@ class AdminAuditTests(unittest.TestCase):
         self.assertIn('data-identity-results', markup)
         script = _diagnostics_script()
         self.assertIn("button.type = 'button'", script)
-        self.assertIn('canonical.value = option.value;', script)
-        self.assertIn('suggestions.hidden = !query;', script)
-        self.assertIn("empty.textContent = 'No models match your search'", script)
+        self.assertIn('canonical.value = choice.id;', script)
+        self.assertIn('render(search.value);', script)
+        self.assertIn("empty.textContent = 'No catalog models match this search.'", script)
+        self.assertIn("event.submitter?.name", script)
 
     def test_github_actions_share_alignment_without_form_button_margin(self):
         from terento_catalog.admin import _layout
@@ -117,9 +151,9 @@ class AdminAuditTests(unittest.TestCase):
             width = float(chart.attrib['viewBox'].split()[2])
             self.assertLess(float(bars[0].attrib['x']) + float(bars[0].attrib['width']), width)
         self.assertEqual(charts[1].attrib['viewBox'], '0 0 360 220')
-        self.assertIn('No map install operations', _overview_trend_chart([], 'hour'))
+        self.assertIn('No map installations', _overview_trend_chart([], 'hour'))
 
-    def test_identity_uses_required_native_select_with_exact_ids(self):
+    def test_identity_picker_uses_one_hidden_exact_id_and_catalog_buttons(self):
         from terento_catalog.admin import _diagnostic_detail_dialog
         markup = _diagnostic_detail_dialog('Unknown', 'preview', [{'phase_outcome': 'FAILED'}],
             resolved=False, csrf_token='preview', identity_devices=[
@@ -127,12 +161,15 @@ class AdminAuditTests(unittest.TestCase):
                 {'device_id': 'fenix-51', 'model': 'fēnix 8', 'variant': '51 mm'},
                 {'device_id': 'safe-id', 'model': '<unsafe>'}])
         tags = Tags(markup).tags
-        selects = [attrs for tag, attrs in tags if tag == 'select' and attrs.get('name') == 'canonical_device_model_id']
-        self.assertEqual(len(selects), 1)
-        self.assertIn('required', selects[0])
+        inputs = [attrs for tag, attrs in tags if tag == 'input' and attrs.get('name') == 'canonical_device_model_id']
+        self.assertEqual(len(inputs), 1)
+        self.assertEqual(inputs[0].get('type'), 'hidden')
+        self.assertEqual(inputs[0].get('value'), '')
+        self.assertFalse(any(tag == 'select' and attrs.get('name') == 'canonical_device_model_id' for tag, attrs in tags))
         self.assertNotIn('<datalist', markup)
-        self.assertIn("value='fenix-43'", markup)
-        self.assertIn("value='fenix-51'", markup)
+        self.assertIn("data-identity-device-id='fenix-43'", markup)
+        self.assertIn("data-identity-device-id='fenix-51'", markup)
+        self.assertIn("data-identity-device-id='safe-id'", markup)
         self.assertIn('&lt;unsafe&gt;', markup)
 
     def test_control_alignment_typography_and_coverage_focus(self):
@@ -149,8 +186,8 @@ class AdminAuditTests(unittest.TestCase):
 
     def test_post_audit_layout_copy_and_recovery_contract(self):
         body = map_statistics_page({"rows": []}, [], {"username": "audit"}, "csrf").decode()
-        for text in ("Completed downloads", "Download success", "Completed map-package installs",
-                     "Package install success", "View all map activity",
+        for text in ("Downloads", "Successful", "Success rate", "Fresh installs",
+                     "Updates", "Diagnostic coverage", "View all map activity",
                      "No maps match your search", "flex-direction:column", "min-width:960px"):
             self.assertIn(text, body)
         self.assertNotIn("<strong data-stat='providerIssues'>", body)
@@ -158,13 +195,13 @@ class AdminAuditTests(unittest.TestCase):
         self.assertNotIn("opted-in", body)
         self.assertNotIn("table-layout:fixed}", body.split("@media(min-width:701px){", 1)[1].split("}", 1)[0])
         self.assertIn("min-height:44px", body)
-        self.assertIn(".popularity-all-maps-disclosure .disclosure-body>label", body)
+        self.assertIn(".popularity-search-label", body)
         self.assertIn("installation-empty", _dashboard_script())
 
     def test_display_cleanup_keeps_identity_and_functional_name(self):
         identity = "fēnix 9 Pro · inReach, · 51 mm"
         model, variant, unchanged = _identity_parts({"model": "fēnix 9 Pro · inReach,", "variant": "51 mm", "compatibility_identity": identity})
-        self.assertEqual((model, variant, unchanged), ("fēnix 9 Pro · inReach", "51 mm", identity))
+        self.assertEqual((model, variant, unchanged), ("fēnix 9 Pro", "51 mm, inReach", identity))
         self.assertEqual(_identity_parts({"model": "fēnix 8 51 mm", "variant": "51 mm"})[0], "fēnix 8")
 
     def test_map_statistics_has_one_dom_target_per_component(self):
@@ -177,7 +214,7 @@ class AdminAuditTests(unittest.TestCase):
                 for target in ("map-statistics-metrics", "map-statistics-coverage",
                                "provider-statistic-rows", "world-map-svg", "map-rows"):
                     self.assertEqual(ids[target], 1, target)
-                self.assertEqual(body.count("Counts map packages, not watches. One installation can include several packages. Success rates use completed outcomes (successful + failed), excluding operations still in progress. Compatibility evidence is counted separately."), 1)
+                self.assertEqual(body.count("Acquisition, fresh-install, optional-component, and update outcomes remain separate."), 0)
 
     def test_health_disclosure_defaults_and_escaped_evidence(self):
         for state in ('HEALTHY', 'FAILED', 'WARNING', 'UNKNOWN', None):
@@ -355,17 +392,17 @@ class AdminAuditTests(unittest.TestCase):
         query, parameters = calls[0]
         # A verified result is counted even if its sibling is missing/failed.
         complete, filtered = query.split('), compatibility_fallback AS (', 1)
-        self.assertIn("e.event_id::text AS operation_key", complete)
+        self.assertIn("END AS result_key", complete)
+        self.assertIn("e.operation_id::text || ':' || e.map_result_index::text", complete)
         self.assertIn("installed.provider_id = e.provider", complete)
         self.assertNotIn("selected_map_count", complete)
         self.assertIn('installed.is_local_test IS NOT TRUE', complete)
         self.assertNotIn('e.region = %s', complete)
         self.assertIn('e.region = %s', filtered)
-        self.assertIn('GROUP BY c.operation_key, e.provider, e.region', filtered)
-        self.assertIn(
-            "e.phase_outcome = 'SUCCEEDED'\n                    OR e.write_started IS NOT FALSE",
-            complete,
-        )
+        self.assertIn('GROUP BY c.operation_key, c.provider, c.region, c.result_classification_effective', filtered)
+        self.assertIn("e.phase_outcome = 'SUCCEEDED'", complete)
+        self.assertIn("e.write_started IS TRUE", complete)
+        self.assertNotIn("e.write_started IS NOT FALSE", complete)
         self.assertNotIn("e.phase_outcome = 'NOT_STARTED'", complete)
         self.assertIn("event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')", complete)
         self.assertEqual(tuple(parameters), ('SVN+', 'SVN+'))

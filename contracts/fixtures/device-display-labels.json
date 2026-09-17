@@ -1,0 +1,18 @@
+[
+  {"row":{"model":"fenix 9 Pro - inReach, 51mm","variant":"51mm"},"model":"fēnix 9 Pro","variant":"51 mm, inReach"},
+  {"row":{"model":"fēnix 9 Pro","variant":"inReach, Solar, 47mm","screenTechnology":"MIP","solar":true,"inReach":true},"model":"fēnix 9 Pro","variant":"47 mm, MIP, Solar, inReach"},
+  {"row":{"model":"fēnix 9 Pro","variant":"47 mm, inReach"},"model":"fēnix 9 Pro","variant":"47 mm, inReach"},
+  {"row":{"model":"fēnix 8 Pro","caseSizeMm":51},"model":"fēnix 8 Pro","variant":"51 mm"},
+  {"row":{"model":"fēnix 8 Pro","caseSizeMm":51,"screenTechnology":"MicroLED","inReach":true},"model":"fēnix 8 Pro","variant":"51 mm, MicroLED, inReach"},
+  {"row":{"model":"fēnix 8 Pro","caseSizeMm":47,"screenTechnology":"AMOLED","inReach":true},"model":"fēnix 8 Pro","variant":"47 mm, AMOLED, inReach"},
+  {"row":{"model":"fenix 7s pro"},"model":"fēnix 7S Pro","variant":""},
+  {"row":{"model":"Descent Mk3i","variant":"43mm"},"model":"Descent Mk3i","variant":"43 mm"},
+  {"row":{"model":"D2 Mach 2 Pro","screenTechnology":"AMOLED","inReach":true},"model":"D2 Mach 2 Pro","variant":"AMOLED, inReach"},
+  {"row":{"model":"tactix 8","variant":"51 mm, Solar, Elite","screenTechnology":"MIP"},"model":"tactix 8","variant":"51 mm, MIP, Solar, Elite"},
+  {"row":{"model":"MARQ Athlete (Gen 2)","variant":"Carbon Edition","screenTechnology":"AMOLED"},"model":"MARQ Athlete (Gen 2)","variant":"AMOLED, Carbon Edition"},
+  {"row":{"model":"Venu X1","variant":"41 x 46 mm, AMOLED"},"model":"Venu X1","variant":"41 × 46 mm, AMOLED"},
+  {"row":{"model":"fēnix 9 Pro","caseSizeMm":47,"screenTechnology":null,"solar":null,"inReach":null},"model":"fēnix 9 Pro","variant":"47 mm"},
+  {"row":{"model":"fēnix 9 Pro","caseSizeMm":47,"screenTechnology":"AMOLED","solar":false,"inReach":false},"model":"fēnix 9 Pro","variant":"47 mm, AMOLED"},
+  {"row":{"model":"fēnix 9 Pro","variant":"51 mm AMOLED MicroLED"},"model":"fēnix 9 Pro","variant":"51 mm"},
+  {"row":{"model":"Garmin fēnix 7 Pro · Historical"},"model":"fēnix 7 Pro","variant":"Historical"}
+]

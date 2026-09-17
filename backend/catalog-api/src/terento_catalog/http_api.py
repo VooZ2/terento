@@ -24,6 +24,7 @@ from .admin import (
     campaign_links_page,
     dashboard_page,
     device_detail_page,
+    device_identification_page,
     diagnostics_page,
     github_issue_queue_page,
     devices_page,
@@ -36,6 +37,7 @@ from .admin import (
     _admin_map_display_name,
     _admin_region_display_name,
     _admin_region_identity,
+    _map_statistics_summary,
     _normalise_github_issue_reference,
     hash_password,
     login_page,
@@ -50,7 +52,7 @@ from .admin import (
 from .asset_storage import AssetStorage
 from .asset_attribution import generic_fallback_image, public_asset_source
 from .catalog import build_catalog, catalog_etag, serialize_catalog
-from .db import Database
+from .db import Database, IdentityResolutionError
 from .device_catalog import (
     CONTROLLED_ASSET_PREFIX,
     _official_source_image_url,
@@ -407,6 +409,10 @@ class CatalogService:
                 datetime.now(timezone.utc) - periods[period]
             ).isoformat()
         filters = validate_statistics_filters(filter_query)
+        population_filters = {
+            key: value for key, value in filters.items()
+            if key not in {"eventType", "outcome"}
+        }
         try:
             detail_page = max(1, int(query.get("detailPage", "1") or "1"))
             detail_page_size = int(query.get("detailPageSize", "25") or "25")
@@ -414,7 +420,7 @@ class CatalogService:
             raise MapEventValidationError("invalid_detail_pagination") from exc
         if detail_page_size not in {25, 50}:
             raise MapEventValidationError("invalid_detail_page_size")
-        rows = self.database.map_statistics(filters)
+        rows = self.database.map_statistics(population_filters)
         rows = [
             {
                 **row,
@@ -437,7 +443,12 @@ class CatalogService:
             }
             for row in rows
         ]
-        detail_total = len(rows)
+        detail_source_rows = (
+            rows
+            if filters == population_filters
+            else self.database.map_statistics(filters)
+        )
+        detail_total = len(detail_source_rows)
         detail_pages = max(1, (detail_total + detail_page_size - 1) // detail_page_size)
         detail_page = min(detail_page, detail_pages)
         detail_rows = self.database.map_statistics(
@@ -467,12 +478,13 @@ class CatalogService:
             }
             for row in detail_rows
         ]
-        linkage = self.database.map_statistics_linkage(filters)
+        linkage = self.database.map_statistics_linkage(population_filters)
         return {
             "schemaVersion": 1,
             "filters": {**query, "period": period},
             "generatedAt": datetime.now(timezone.utc),
             "rows": rows,
+            "summary": _map_statistics_summary(rows),
             "detailRows": detail_rows,
             "detailTotal": detail_total,
             "detailPage": detail_page,
@@ -538,6 +550,10 @@ class CatalogService:
 
     def compatibility_operation_details(self) -> list[dict[str, Any]]:
         return self.database.compatibility_operation_details()
+
+    def compatibility_issue_queue_operations(self) -> list[dict[str, Any]]:
+        getter = getattr(self.database, "compatibility_issue_queue_operations", None)
+        return getter() if callable(getter) else self.database.compatibility_operation_details()
 
     def compatibility_resolved_operation_details(self) -> list[dict[str, Any]]:
         getter = getattr(self.database, "compatibility_resolved_operation_details", None)
@@ -647,7 +663,7 @@ class CatalogService:
             note=note,
         )
 
-    def admin_review_summary(self) -> dict[str, int]:
+    def admin_review_summary(self) -> dict[str, Any]:
         return self.database.admin_review_summary()
 
     def local_test_data(self) -> dict[str, Any]:
@@ -958,15 +974,22 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if length <= 0 or length > 16_384:
                 self._send_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"error": "invalid_size"}, send_body=True, cache_control="no-store")
                 return
+            raw_event = self.rfile.read(length)
+            # Correlate delivery without retaining device fields or raw payloads.
+            event_id, operation_id = _evidence_delivery_ids(raw_event)
             try:
-                inserted = service.receive_compatibility_event(self.rfile.read(length))
+                inserted = service.receive_compatibility_event(raw_event)
             except EvidenceValidationError as exc:
+                LOGGER.warning("compatibility intake rejected event=%s operation=%s reason=%s",
+                               event_id, operation_id, str(exc))
                 self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)}, send_body=True, cache_control="no-store")
                 return
             except Exception:
                 LOGGER.exception("compatibility event storage failed")
                 self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "evidence_unavailable"}, send_body=True, cache_control="no-store")
                 return
+            LOGGER.info("compatibility intake %s event=%s operation=%s",
+                        "stored" if inserted else "duplicate", event_id, operation_id)
             self._send_json(HTTPStatus.CREATED if inserted else HTTPStatus.OK, {"status": "stored" if inserted else "duplicate"}, send_body=True, cache_control="no-store")
 
         def _handle_admin_get(self, request_path: str, *, send_body: bool) -> None:
@@ -1145,17 +1168,19 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             except Exception:
                 LOGGER.exception("admin review summary failed")
                 session = {**session, "admin_review_summary": {
-                    "installationIssues": 0,
-                    "githubIssuesInProgress": 0,
-                    "identityPending": 0,
-                    "readyToPublish": 0,
-                    "total": 0,
+                    "available": False,
+                    "installationIssues": None,
+                    "githubIssuesInProgress": None,
+                    "identityPending": None,
+                    "readyToPublish": None,
+                    "pendingReviewTasks": None,
+                    "total": None,
                 }}
             if request_path in {"/admin/review/github-issues", "/admin/review/github-issues/"}:
                 try:
                     payload = service.admin_devices()
                     body = github_issue_queue_page(
-                        service.compatibility_operation_details(),
+                        service.compatibility_issue_queue_operations(),
                         payload.get("devices", []),
                         session,
                         csrf_token,
@@ -1340,6 +1365,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         operations=service.compatibility_operation_details(),
                         resolved_operations=service.compatibility_resolved_operation_details(),
                         public_stats_enabled=service.public_compatibility_stats_enabled,
+                        identity_devices=service.admin_devices().get("devices", []),
                     )
                 except Exception:
                     LOGGER.exception("compatibility statistics failed")
@@ -1385,6 +1411,14 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     )
                     return
                 self._send_admin_html(body, send_body=send_body)
+                return
+            if request_path == "/admin/device-identification":
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                payload = service.admin_devices()
+                self._send_admin_html(device_identification_page(
+                    payload.get("devices", []), session, csrf_token,
+                    device_id=query.get("device", [""])[-1], query=query.get("q", [""])[-1],
+                ), send_body=send_body)
                 return
             if request_path == "/admin/devices/identity-audit.json":
                 try:
@@ -1804,10 +1838,17 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     if not changed:
                         self._send_json(HTTPStatus.NOT_FOUND, {"error": "diagnostic_not_found"}, send_body=True, cache_control="no-store")
                         return
+                except IdentityResolutionError as exc:
+                    error_code = getattr(exc, "code", "invalid_identity_resolution")
+                    status = HTTPStatus.CONFLICT if error_code == "identity_conflict_manual_required" else (
+                        HTTPStatus.NOT_FOUND if error_code in {"diagnostic_not_found", "canonical_device_not_found"} else HTTPStatus.BAD_REQUEST
+                    )
+                    self._send_json(status, {"error": error_code}, send_body=True, cache_control="no-store")
+                    return
                 except ValueError:
                     self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_identity_resolution"}, send_body=True, cache_control="no-store")
                     return
-                if identity_action == "ASSIGN" and canonical_device_model_id:
+                if identity_action in {"ASSIGN", "MANUAL_ASSIGN"} and canonical_device_model_id:
                     target = (
                         f"/admin/devices/{quote(canonical_device_model_id, safe='')}"
                         "?from=installations#installations"
@@ -1823,6 +1864,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             target = (value or "").strip()
             if (
                 target.startswith("/admin/diagnostics")
+                or re.fullmatch(r"/admin/device-identification(?:\?[^#\s]*)?", target)
                 or target.startswith("/admin/review/github-issues")
                 or re.fullmatch(
                     r"/admin/devices/[A-Za-z0-9._~-]+(?:\?[^#\s]*)?(?:#[-A-Za-z0-9._~]+)?",
@@ -1922,6 +1964,8 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     and asset_url.startswith(CONTROLLED_ASSET_PREFIX)
                     and isinstance(row.get("asset_storage_key"), str)
                     and public_asset_source(row) is not None
+                    and not (row.get("asset_scope") == "GENERIC"
+                             and _official_source_image_url(row.get("source_image_url")))
                 ):
                     image = {
                         "url": asset_url,
@@ -2262,6 +2306,24 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
     return Handler
 
 
+def _evidence_delivery_ids(raw: bytes) -> tuple[str, str]:
+    """Only syntactically valid random report/session UUIDs may enter logs."""
+    try:
+        value = json.loads(raw)
+    except (ValueError, UnicodeDecodeError):
+        return "unavailable", "unavailable"
+    if not isinstance(value, dict):
+        return "unavailable", "unavailable"
+    def safe_id(key: str) -> str:
+        candidate = value.get(key)
+        if not isinstance(candidate, str) or not re.fullmatch(
+            r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", candidate
+        ):
+            return "unavailable"
+        return str(UUID(candidate))
+    return safe_id("id"), safe_id("operationId")
+
+
 def _provider_activation_gate(
     provider_id: str,
     detail: dict[str, Any],
@@ -2363,6 +2425,16 @@ def _non_negative_int(value: Any) -> int:
         return 0
 
 
+def _optional_nonnegative_int(value: Any) -> int | None:
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return None
+    return number if number >= 0 else None
+
+
 def _provider_summary_payload(
     definition: Any,
     row: dict[str, Any],
@@ -2375,6 +2447,15 @@ def _provider_summary_payload(
             for package in row.get("packages", [])
             if package.get("availability") == "AVAILABLE"
         )
+    affected_package_count = row.get("affected_package_count")
+    if affected_package_count is None and "broken_package_count" in row:
+        affected_package_count = row.get("broken_package_count")
+    problematic_source_count = row.get("problematic_source_count")
+    if problematic_source_count is None and "broken_url_count" in row:
+        problematic_source_count = row.get("broken_url_count")
+    package_count = _optional_nonnegative_int(package_count)
+    affected_package_count = _optional_nonnegative_int(affected_package_count)
+    problematic_source_count = _optional_nonnegative_int(problematic_source_count)
     return {
         "id": provider_id,
         "name": row.get("provider_name") or getattr(definition, "name", provider_id),
@@ -2398,9 +2479,12 @@ def _provider_summary_payload(
         "latestRelease": row.get("latest_release"),
         "packageReleases": row.get("package_releases") or [],
         "latestReleaseDetectedAt": _format_json_value(row.get("latest_release_detected_at")),
-        "packageCount": int(package_count or 0),
-        "brokenPackageCount": int(row.get("broken_package_count") or 0),
-        "brokenUrlCount": int(row.get("broken_url_count") or 0),
+        "packageCount": package_count,
+        "affectedPackageCount": affected_package_count,
+        "problematicSourceCount": problematic_source_count,
+        # Compatibility aliases. New admin surfaces use the explicit units above.
+        "brokenPackageCount": affected_package_count,
+        "brokenUrlCount": problematic_source_count,
     }
 
 
@@ -2411,6 +2495,32 @@ def _provider_detail_payload(
     payload = _provider_summary_payload(definition, detail)
     payload["sources"] = _format_json_value(detail.get("sources") or [])
     payload["maps"] = _format_json_value(detail.get("packages") or [])
+    packages = detail.get("packages") or []
+    current_packages = [
+        package for package in packages
+        if str(package.get("availability") or "").upper() != "RETIRED"
+    ]
+    broken_counts = [
+        _optional_nonnegative_int(package.get("broken_artifact_count"))
+        for package in current_packages
+    ]
+    broken_packages = [
+        package for package, count in zip(current_packages, broken_counts)
+        if count is not None and count > 0
+    ]
+    problematic_sources = {
+        str(artifact.get("source_url"))
+        for package in current_packages
+        for artifact in package.get("artifacts") or []
+        if str(artifact.get("validation_status") or "").upper() in {"FAILED", "UNAVAILABLE"}
+        and artifact.get("source_url")
+    }
+    payload["affectedPackageCount"] = (
+        len(broken_packages)
+        if all(count is not None for count in broken_counts)
+        else None
+    )
+    payload["problematicSourceCount"] = len(problematic_sources)
     latest_health = detail.get("health") or {}
     payload["health"] = _format_json_value(latest_health)
     payload["healthStatus"] = latest_health.get("status") if isinstance(latest_health, dict) else "UNKNOWN"

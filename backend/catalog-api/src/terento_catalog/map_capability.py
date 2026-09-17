@@ -28,6 +28,7 @@ SUPPORTED_PREFIXES = (
     "fenix 6",
     "fenix 7",
     "fenix 8",
+    "fenix 9",
     "fenix e",
     "forerunner 945",
     "forerunner 955",

@@ -13,9 +13,11 @@ from urllib.parse import parse_qs, urlsplit
 from zoneinfo import ZoneInfo
 
 from terento_catalog.admin import (
+    ADMIN_STYLES,
     GITHUB_ADMIN_NOTE_MAX_LENGTH,
     GITHUB_ISSUE_URL_MAX_LENGTH,
     _admin_device_payload,
+    _admin_error_counter,
     _admin_event_outcome_label,
     _admin_map_display_name,
     _admin_region_identity,
@@ -40,6 +42,8 @@ from terento_catalog.admin import (
     _overview_chart_bucket_label,
     _overview_downloads_chart,
     _map_statistics_script,
+    _provider_health_row,
+    _provider_package_row,
     _provider_detail_script,
     format_timestamp,
     _providers_list_script,
@@ -64,6 +68,7 @@ from terento_catalog.compatibility_status import (
 )
 from terento_catalog.db import (
     Database,
+    IdentityResolutionError,
     _fill_overview_trend_buckets,
     _overview_bucket_floor,
 )
@@ -137,6 +142,7 @@ class ReviewSummaryDatabase(Database):
             def execute(self, query, parameters=None):
                 return RecordingResult(row={
                     "installation_issues": 1,
+                    "github_issues_in_progress": 0,
                     "identity_pending": 2,
                     "ready_to_publish": 3,
                 })
@@ -190,6 +196,168 @@ class AdminSemanticsTests(unittest.TestCase):
                     capture_output=True, text=True,
                 )
                 self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_error_counter_has_explicit_zero_positive_and_unknown_states(self):
+        self.assertEqual(
+            _admin_error_counter(0),
+            "<strong class='admin-error-counter'>0</strong>",
+        )
+        self.assertIn(
+            "class='admin-error-counter is-positive'",
+            _admin_error_counter(3),
+        )
+        self.assertEqual(
+            _admin_error_counter(None),
+            "<strong class='admin-error-counter'>—</strong>",
+        )
+        self.assertEqual(
+            _admin_error_counter(4, available=False),
+            "<strong class='admin-error-counter'>—</strong>",
+        )
+        zero_link = _admin_error_counter(0, href="/admin/installations?state=open")
+        self.assertIn("class='error-count'", zero_link)
+        self.assertNotIn("is-positive", zero_link)
+        self.assertIn("<strong class='admin-error-counter'>0</strong>", zero_link)
+
+    def test_map_statistics_async_error_counters_follow_zero_positive_unknown_sequence(self):
+        harness = r"""
+        const assert = require('node:assert/strict');
+        const nodes = {};
+        const makeNode = () => ({
+          value: '', textContent: '', innerHTML: '', hidden: false, disabled: false,
+          classList: {names: new Set(), toggle(name, force) {
+            if (force) this.names.add(name); else this.names.delete(name);
+          }},
+          addEventListener() {}, querySelector() { return null; }
+        });
+        const node = (selector) => {
+          const stat = selector.match(/^\[data-stat="([^"]+)"\]$/);
+          if (stat) return nodes[stat[1]] ||= makeNode();
+          if (selector === '#map-statistics-range') return nodes.range ||= makeNode();
+          if (selector === '#map-statistics-provider') return nodes.provider ||= makeNode();
+          if (selector === '#map-statistics-map') return nodes.map ||= makeNode();
+          if (selector === '#map-statistics-region') return nodes.region ||= makeNode();
+          if (selector === '#map-statistics-event') return nodes.event ||= makeNode();
+          if (selector === '#map-statistics-outcome') return nodes.outcome ||= makeNode();
+          if (selector === '#map-statistics-status') return nodes.status ||= makeNode();
+          if (['#map-rows', '#top-region-rows', '#all-map-rows', '#all-maps-page',
+               '#all-maps-prev', '#all-maps-next', '#map-statistics-rows',
+               '#provider-statistic-rows'].includes(selector)) {
+            return nodes[selector] ||= makeNode();
+          }
+          return null;
+        };
+        global.document = {querySelector: node, querySelectorAll: () => []};
+        global.window = {
+          terentoAdminProviders: [], terentoMapStatisticsFilters: {},
+          addEventListener() {}
+        };
+        const script = process.argv[1];
+        for (const value of [0, 1, 0, null]) {
+          window.terentoMapStatistics = {
+            rows: [],
+            summary: {
+              hasEventData: true,
+              failedDownloads: value, failedInstalls: value, failedMapUpdates: value,
+              completedDownloads: 0, completedInstalls: 0, completedMapUpdates: 0,
+              downloadSuccessRate: null, installSuccessRate: null, mapUpdateSuccessRate: null
+            }
+          };
+          eval(script);
+          for (const key of ['failedDownloads', 'failedInstalls', 'failedMapUpdates']) {
+            const expected = value === null ? '—' : String(value);
+            assert.equal(nodes[key].textContent, expected, key);
+            assert.equal(nodes[key].classList.names.has('is-positive'), value !== null && value > 0, key);
+          }
+        }
+        """
+        self._run_node(harness, _map_statistics_script())
+
+    def test_visual_consistency_uses_one_popularity_renderer_and_semantic_alignment(self):
+        script = _map_statistics_script()
+        self.assertEqual(script.count("const mapRow ="), 1)
+        self.assertIn('return `<tr class="popular-map-row">', script)
+        self.assertIn("popular-map-name-content", script)
+        self.assertIn("popular-map-detail", script)
+        self.assertIn("popular-map-count-label", script)
+        self.assertIn("mapRow(item, {includeProvider: true})", script)
+        self.assertIn("matchedMaps.slice((allMapsPage - 1) * 10", script)
+        self.assertNotIn("#top-region-rows", ADMIN_STYLES)
+        self.assertNotIn("popular-maps-table td:last-child{text-align", ADMIN_STYLES)
+        self.assertNotIn("diagnostic-list-table th:last-child", ADMIN_STYLES)
+        for selector in (
+            ".admin-table th.column-number,.admin-table td.column-number",
+            ".admin-table th.column-status,.admin-table td.column-status",
+            ".admin-table th.column-date,.admin-table td.column-date",
+            ".admin-table th.column-number>button",
+            ".admin-table th.column-status>button",
+            ".admin-table th.column-date>button",
+        ):
+            self.assertIn(selector, ADMIN_STYLES)
+
+    def test_overview_installations_and_device_detail_share_kpi_hierarchy(self):
+        overview = overview_page(
+            {
+                "period": "24h",
+                "data": {
+                    "hasData": True, "eventCount": 6,
+                    "completedInstallCount": 4, "failedInstallCount": 2,
+                    "mapUpdateCount": 1, "installSuccessRate": 66.7,
+                    "recentActivity": [], "trend": [],
+                },
+                "compatibility": {"hasData": True, "allTimeOpenErrorCount": 0},
+                "providers": [{"id": "freizeitkarte", "health": "HEALTHY"}],
+            },
+            {"username": "operator"}, "csrf",
+        ).decode()
+        overview_panel = overview.split(
+            "class='map-statistics-kpi-panel provider-card admin-kpi-panel overview-kpis overview-kpi-panel'",
+            1,
+        )[1].split("\n        </section>", 1)[0]
+        self.assertEqual(overview_panel.count("class='map-statistics-kpi-value "), 6)
+        self.assertEqual(overview_panel.count("class='map-statistics-kpi-group overview-kpi-group'"), 2)
+        self.assertIn(">Fresh installs</h2>", overview_panel)
+        self.assertIn(">Current status</h2>", overview_panel)
+        self.assertIn("admin-error-counter is-positive", overview_panel)
+        self.assertIn("admin-error-counter'>0</strong>", overview_panel)
+
+        installations = dashboard_page(
+            [{
+                "model": "fēnix 8", "variant": "47 mm, AMOLED",
+                "attempted_install_count": 3, "successful_install_count": 2,
+                "failed_install_count": 1, "recognized_map_capable_evidence": True,
+            }],
+            {"username": "operator"}, "csrf",
+        ).decode()
+        installation_panel = installations.split(
+            "class=\"map-statistics-kpi-panel provider-card admin-kpi-panel installation-kpis\"",
+            1,
+        )[1].split("\n        </section>", 1)[0]
+        self.assertEqual(
+            installation_panel.count('class="map-statistics-kpi-value"')
+            + installation_panel.count('class="map-statistics-kpi-value '),
+            5,
+        )
+        self.assertIn("<span>Open errors</span>", installation_panel)
+
+        device = _admin_device_payload([{
+            "device_id": "garmin-fenix-8-47-amoled", "model": "fēnix 8",
+            "variant": "47 mm, AMOLED", "family_name": "fēnix", "map_capable": True,
+            "support_status": "SUPPORTED", "active": True,
+            "attempted_install_count": 1, "successful_install_count": 1,
+            "failed_install_count": 0, "usb_identities": [],
+        }], None)["devices"][0]
+        detail = device_detail_page(device, {"username": "operator"}, "csrf").decode()
+        detail_panel = detail.split(
+            "class='map-statistics-kpi-panel provider-card admin-kpi-panel diagnostic-model-metrics model-statistics'",
+            1,
+        )[1].split("<section class='diagnostics-detail-section'", 1)[0]
+        self.assertIn("Installation outcomes", detail_panel)
+        self.assertIn("<span>Attempts</span>", detail_panel)
+        self.assertIn("<span>Failed</span>", detail_panel)
+        self.assertIn("<span>Open errors</span>", detail_panel)
+        self.assertIn("<span>Last activity</span><strong>—</strong>", detail_panel)
+        self.assertIn(".admin-kpi-panel.model-statistics .timestamp-metric>strong", detail)
 
     def test_local_test_data_page_uses_shared_admin_layout(self):
         body = local_test_data_page(
@@ -321,7 +489,7 @@ class AdminSemanticsTests(unittest.TestCase):
                 "attention": [{"model": "Old unresolved watch", "open_error": True,
                     "has_failed": True, "last_occurred_at": "2026-01-01T00:00:00Z"}]},
         }, {"username": "operator"}, "csrf").decode()
-        self.assertIn("<span>Open errors</span><strong>12</strong>", body)
+        self.assertIn("<span>Open errors</span><strong class='admin-error-counter is-positive'>12</strong>", body)
         self.assertIn("Old unresolved watch", body)
         self.assertIn("All unresolved · any date", body)
         self.assertNotIn("No issues need attention", body)
@@ -351,7 +519,8 @@ class AdminSemanticsTests(unittest.TestCase):
     def test_overview_model_activity_keeps_resolved_failures_in_historical_counts(self):
         source = inspect.getsource(Database.admin_overview_snapshot)
         self.assertIn("WHERE e.is_local_test IS NOT TRUE", source)
-        self.assertIn("e.diagnostic_status = 'ACTIVE'", source)
+        self.assertIn("diagnostic_status = 'ACTIVE'", source)
+        self.assertIn("result_classification_effective", source)
         self.assertNotIn(
             "WHERE e.diagnostic_status = 'ACTIVE'\n                  AND e.is_local_test IS NOT TRUE",
             source,
@@ -440,7 +609,8 @@ class AdminSemanticsTests(unittest.TestCase):
         cards = body.split("aria-label='System health summary'>")[1]
         self.assertLess(cards.index("<h2>Database</h2>"), cards.index("<h2>API</h2>"))
         self.assertIn("GitHub issue sync", cards)
-        self.assertIn("checks need attention", body)
+        self.assertNotIn("class='admin-health-summary'", body)
+        self.assertNotIn("Healthy checks stay collapsed; expand a check for its evidence and next action.", body)
         self.assertIn("<details class='overview-panel admin-disclosure'><summary>Quality-gate results", body)
 
     def test_overview_does_not_turn_missing_evidence_into_zero(self):
@@ -465,9 +635,9 @@ class AdminSemanticsTests(unittest.TestCase):
             "csrf",
         ).decode()
         self.assertIn("<h1>Overview</h1>", body)
-        self.assertIn("<span>Map install operations</span><strong>—</strong>", body)
-        self.assertIn("<span>Failed map operations</span><strong>—</strong>", body)
-        self.assertIn("<span>Open errors</span><strong>—</strong>", body)
+        self.assertIn("<span>Fresh installs</span><strong>—</strong>", body)
+        self.assertIn("<span>Failed fresh installs</span><strong class='admin-error-counter'>—</strong>", body)
+        self.assertIn("<span>Open errors</span><strong class='admin-error-counter'>—</strong>", body)
         self.assertIn("No map activity in this period.", body)
 
     def test_overview_uses_existing_operation_and_provider_drill_downs(self):
@@ -528,20 +698,20 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("/admin/diagnostics?identity=f%C4%93nix+8+%C2%B7+47+mm&amp;identity_scope=unresolved&amp;state=failed", body)
         self.assertIn("/admin/providers/opentopomap", body)
         self.assertNotIn("<section class='overview-panel overview-provider-panel'", body)
-        self.assertIn("<span>Map install operations</span><strong>4</strong>", body)
-        self.assertIn("<span>Map operation success</span><strong>75%</strong>", body)
-        self.assertIn("<span>Failed map operations</span><strong>1</strong>", body)
-        self.assertIn("<span>Open errors</span><strong>1</strong>", body)
+        self.assertIn("<span>Fresh installs</span><strong>4</strong>", body)
+        self.assertIn("<span>Fresh install success</span><strong>75%</strong>", body)
+        self.assertIn("<span>Failed fresh installs</span><strong class='admin-error-counter is-positive'>1</strong>", body)
+        self.assertIn("<span>Open errors</span><strong class='admin-error-counter is-positive'>1</strong>", body)
         self.assertIn("<span>Installation attempts</span><strong>2</strong>", body)
         self.assertIn("<span>Variants</span><strong>1</strong>", body)
         self.assertIn("<span>Success rate</span><strong>50%</strong>", body)
-        self.assertIn("Map install operations over time", body)
+        self.assertIn("Map installations over time", body)
         self.assertIn("overview-chart-success", body)
         self.assertIn("viewBox='0 0 720 260'", body)
         self.assertIn("overview-chart-panel", body)
         self.assertIn("Recent map activity", body)
         self.assertIn("Compatibility evidence", body)
-        self.assertIn("Downloads over time", body)
+        self.assertIn("Observed download increases", body)
         self.assertIn("overview-download-panel", body)
         self.assertNotIn("Failures by reason", body)
         self.assertNotIn("Pending metric definition", body)
@@ -771,20 +941,20 @@ class AdminSemanticsTests(unittest.TestCase):
         )
         statistics_script = _map_statistics_script()
         self.assertIn("row.region_identity || row.canonical_region_id", statistics_script)
-        self.assertIn("const mapKey = row.map_package_id || row.region_identity || row.canonical_region_id", statistics_script)
-        self.assertNotIn("row.map_package_id || 'unknown'}\\u0000${row.region || '—'}", statistics_script)
-        self.assertIn("const key = item.regionIdentity || item.region", statistics_script)
+        self.assertIn("const catalogInstallRows = rows.filter(isCatalogMainInstall);", statistics_script)
+        self.assertIn("Boolean(row.map_package_id)", statistics_script)
+        self.assertIn("row.component_kind === 'main'", statistics_script)
+        self.assertNotIn("const updateRows = rows.filter", statistics_script)
         self.assertIn("const installRows = rows.filter((row) => row.event_type === 'INSTALL_SUCCEEDED'", statistics_script)
         self.assertIn("renderWorldMap(installRows)", statistics_script)
         self.assertIn("const countryAliases = window.terentoWorldMapCountryAliases || {};", statistics_script)
-        self.assertIn("const showRegions = Boolean(regionsDisclosure?.open);", statistics_script)
-        self.assertIn("if (topMapsSection) topMapsSection.hidden = showRegions;", statistics_script)
-        self.assertIn("if (topMapsTable) topMapsTable.hidden = showAllMaps || showRegions;", statistics_script)
-        self.assertIn("if (allMapsDisclosure) allMapsDisclosure.hidden = showRegions;", statistics_script)
-        self.assertIn("if (regionsDisclosure.open && allMapsDisclosure?.open) allMapsDisclosure.open = false;", statistics_script)
+        self.assertIn("const popularityViews = [...document.querySelectorAll('[data-popularity-view]')];", statistics_script)
+        self.assertIn("const popularityViewButtons = [...document.querySelectorAll('[data-popularity-view-button]')];", statistics_script)
         statistics_query = inspect.getsource(Database.map_statistics)
         self.assertIn("mp.canonical_region_id", statistics_query)
         self.assertIn("mp.country AS region_country", statistics_query)
+        self.assertIn("e.component_kind", statistics_query)
+        self.assertIn("e.acquisition_id::text", statistics_query)
 
     def test_map_statistics_fallback_matches_provider_region_aliases_to_explicit_events(self):
         map_statistics_source = inspect.getsource(Database.map_statistics)
@@ -797,7 +967,8 @@ class AdminSemanticsTests(unittest.TestCase):
                 self.assertIn("installed_package.region", source)
                 self.assertIn("e.region IN (", source)
                 self.assertIn("installed.region IN (", source)
-                self.assertIn("installed.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')", source)
+        self.assertIn("'MAP_UPDATE_SUCCEEDED'", overview_source)
+        self.assertIn("'MAP_UPDATE_FAILED'", overview_source)
 
         body = map_statistics_page(
             {"rows": []}, [], {"username": "operator"}, "csrf",
@@ -815,15 +986,23 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("@media(min-width:1101px){.map-statistics-popularity{contain:size;align-self:stretch;overflow:auto", body)
         self.assertIn("window.terentoWorldMapSvg", body)
         popular_maps = body.split("id='map-statistics-popularity'", 1)[1].split("map-events-card", 1)[0]
-        self.assertIn("id='top-maps-section'", popular_maps)
+        self.assertIn("id='top-maps-view'", popular_maps)
+        self.assertIn("id='regions-view'", popular_maps)
+        self.assertIn("id='all-maps-view'", popular_maps)
         self.assertNotIn(">Provider</th>", popular_maps)
         map_script = _map_statistics_script()
-        map_row = map_script.split("const mapRow =", 1)[1].split(";", 1)[0]
-        self.assertEqual(map_row.count("<td"), 3)
-        self.assertIn("escapeHtml(item.map)", map_row)
-        self.assertIn("mapItems.slice(0, 5).map(mapRow).join('') || emptyRow(3)", map_script)
-        self.assertIn('colspan="3" class="muted-value">No maps match your search.', map_script)
-        self.assertIn("<th scope='col'>Package installs</th>", popular_maps)
+        map_start = map_script.find("const mapRow =")
+        map_row = map_script[map_start:].split("return `<tr class=\"popular-map-row\">", 1)[1].split("</tr>`", 1)[0]
+        self.assertEqual(map_row.count("<td"), 2)
+        self.assertNotIn("Package identifier", map_row)
+        self.assertNotIn("escapeHtml(item.map)", map_row)
+        self.assertIn("regionItems.slice(0, 5).map(mapRow).join('')", map_script)
+        self.assertIn('colspan="2" class="muted-value">${escapeHtml(message)}', map_script)
+        self.assertIn("id='all-maps-search'", popular_maps)
+        self.assertIn("data-popularity-view-button='regions'", popular_maps)
+        self.assertIn("data-popularity-view-button='all'", popular_maps)
+        self.assertIn("Last install", body)
+        self.assertIn("Diagnostic coverage", body)
         self.assertNotIn("<h2>Downloads per provider</h2>", body)
         self.assertNotIn("<th scope='col'>Completed map-package installs</th>", popular_maps)
         self.assertNotIn("90 days", body)
@@ -856,9 +1035,9 @@ class AdminSemanticsTests(unittest.TestCase):
         body = _overview_trend_chart([{
             "bucket": "2026-09-05T00:00:00Z", "custom_count": 3,
         }], "hour")
-        self.assertIn("Custom .img installed: 3", body)
+        self.assertIn("Custom fresh install: 3", body)
         self.assertRegex(body, r"class='overview-chart-custom'[^>]*height='154.50'")
-        self.assertIn("</i>Custom .img</span>", body)
+        self.assertIn("</i>Custom fresh install</span>", body)
         self.assertNotIn("Custom .img: successful manual installations.", body)
 
     def test_download_chart_has_two_hourly_series_and_accessible_values(self):
@@ -871,12 +1050,14 @@ class AdminSemanticsTests(unittest.TestCase):
         }, "Europe/Vilnius")
         self.assertIn("overview-chart-download-dmg", body)
         self.assertIn("overview-chart-download-zip", body)
-        self.assertIn(".dmg downloads: 2 · 22:00 · Europe/Vilnius", body)
-        self.assertIn(".zip downloads: 3 · 23:00 · Europe/Vilnius", body)
+        self.assertIn(".dmg downloads: 2 · observed increase ending 22:00 · Europe/Vilnius", body)
+        self.assertIn(".zip downloads: 3 · observed increase ending 23:00 · Europe/Vilnius", body)
         self.assertIn("viewBox='0 0 720 260'", body)
         self.assertIn("viewBox='0 0 360 220'", body)
         self.assertIn(".dmg</span>", body)
         self.assertIn(".zip</span>", body)
+        self.assertNotIn("overview-chart-download-zero", body)
+        self.assertIn("observed zero increase between checks", body)
 
     def test_download_chart_stacks_file_types_in_one_installation_style_bar(self):
         import xml.etree.ElementTree as ET
@@ -913,9 +1094,134 @@ class AdminSemanticsTests(unittest.TestCase):
                 {"bucket": "2026-09-10T00:00:00Z", "dmg_count": 2, "zip_count": 1},
             ],
         }, "UTC", period="7d")
-        self.assertIn("GitHub downloads over the last 7 days", body)
-        self.assertIn(".dmg downloads: 2 · 10 Sep · UTC", body)
+        self.assertIn("Observed download increases between checks over the last 7 days", body)
+        self.assertIn(".dmg downloads: 2 · observed increase ending 10 Sep · UTC", body)
         self.assertNotIn("10:00", body)
+
+    def test_download_chart_distinguishes_observed_zero_and_counter_discontinuity(self):
+        body = _overview_downloads_chart({
+            "hasData": True,
+            "trend": [
+                {
+                    "bucket": "2026-09-11T10:00:00Z",
+                    "observed_at": "2026-09-11T10:00:00Z",
+                    "state": "observed_zero",
+                    "dmg_count": 0,
+                    "zip_count": 0,
+                },
+                {
+                    "bucket": "2026-09-11T11:00:00Z",
+                    "observed_at": "2026-09-11T11:00:00Z",
+                    "state": "discontinuity",
+                    "dmg_count": None,
+                    "zip_count": None,
+                },
+            ],
+        })
+        self.assertNotIn("overview-chart-download-zero", body)
+        self.assertIn("observed zero increase between checks", body)
+        self.assertIn("overview-chart-download-unknown", body)
+        self.assertIn("interval unknown", body)
+
+    def test_download_chart_omits_zero_markers_in_desktop_and_compact_svgs(self):
+        import re
+        import xml.etree.ElementTree as ET
+
+        body = _overview_downloads_chart({
+            "hasData": True,
+            "trend": [
+                {
+                    "bucket": "2026-09-11T10:00:00Z",
+                    "observed_at": "2026-09-11T10:00:00Z",
+                    "dmg_count": 2,
+                    "zip_count": 0,
+                },
+                {
+                    "bucket": "2026-09-11T11:00:00Z",
+                    "observed_at": "2026-09-11T11:00:00Z",
+                    "dmg_count": 0,
+                    "zip_count": 0,
+                },
+            ],
+        })
+        charts = [ET.fromstring(markup) for markup in re.findall(r"<svg.*?</svg>", body)]
+        self.assertEqual(len(charts), 2)
+        for chart in charts:
+            self.assertEqual(len(chart.findall("g/rect")), 1)
+            self.assertEqual(
+                len([group for group in chart.findall("g") if group.attrib.get("role") == "group"]),
+                2,
+            )
+        self.assertNotIn("<circle", body)
+        self.assertNotIn("overview-chart-download-zero", body)
+        self.assertIn("Download interval:", body)
+        self.assertIn("observed zero increase between checks", body)
+
+    def test_download_chart_renders_legacy_counter_deltas_as_real_bars(self):
+        import xml.etree.ElementTree as ET
+
+        body = _overview_downloads_chart({
+            "hasData": True,
+            "trend": [{
+                "bucket": "2026-09-11T10:00:00Z",
+                "observed_at": "2026-09-11T10:00:00Z",
+                "state": "observed_increase",
+                "confidence": "legacy",
+                "population_comparability": "unconfirmed",
+                "legacy": True,
+                "dmg_count": 3,
+                "zip_count": 5,
+            }],
+        })
+        svg = ET.fromstring(body[body.index("<svg"):body.index("</svg>") + 6])
+        bars = svg.findall("g/rect")
+        self.assertEqual(len(bars), 2)
+        self.assertNotIn("overview-chart-download-unknown", body)
+        self.assertIn("legacy observed counter delta", body)
+        self.assertIn("population comparability unconfirmed", body)
+
+    def test_download_chart_marks_partial_known_total_and_preserves_unknown_interval(self):
+        body = _overview_downloads_chart({
+            "hasData": True,
+            "bucket": "day",
+            "trend": [{
+                "bucket": "2026-09-10T00:00:00Z",
+                "observed_at": "2026-09-10T23:00:00Z",
+                "previous_observed_at": "2026-09-10T02:00:00Z",
+                "state": "partial",
+                "partial": True,
+                "contains_discontinuity": True,
+                "discontinuity_count": 1,
+                "dmg_count": 0,
+                "zip_count": 2,
+            }],
+        }, period="7d")
+        self.assertNotIn("overview-chart-download-zero", body)
+        self.assertIn("partial known total", body)
+        self.assertIn("observed increase across 10 Sep–10 Sep", body)
+        self.assertIn("overview-chart-download-unknown", body)
+        self.assertIn("1 unknown interval retained", body)
+
+    def test_download_chart_positions_observations_on_real_time_axis(self):
+        import xml.etree.ElementTree as ET
+
+        body = _overview_downloads_chart({
+            "hasData": True,
+            "trend": [
+                {"observed_at": "2026-09-11T10:00:00Z", "bucket": "2026-09-11T10:00:00Z", "dmg_count": 1, "zip_count": 0},
+                {"observed_at": "2026-09-11T11:00:00Z", "bucket": "2026-09-11T11:00:00Z", "dmg_count": 1, "zip_count": 0},
+                {"observed_at": "2026-09-11T15:00:00Z", "bucket": "2026-09-11T15:00:00Z", "dmg_count": 1, "zip_count": 0},
+            ],
+        })
+        svg = ET.fromstring(body[body.index("<svg"):body.index("</svg>") + 6])
+        centers = sorted({
+            round(float(bar.attrib["x"]) + float(bar.attrib["width"]) / 2, 3)
+            for bar in svg.findall("g/rect")
+        })
+        self.assertEqual(len(centers), 3)
+        first_gap = centers[1] - centers[0]
+        second_gap = centers[2] - centers[1]
+        self.assertGreater(second_gap, first_gap * 3)
 
     def test_overview_renders_github_download_totals(self):
         body = overview_page(
@@ -928,20 +1234,23 @@ class AdminSemanticsTests(unittest.TestCase):
                 "compatibility": {"hasData": False, "recentActivity": [], "failureReasons": []},
                 "downloads": {
                     "hasData": True, "dmgTotal": 23, "zipTotal": 11,
+                    "lastObservedAt": "2026-09-11T20:00:00Z",
                     "trend": [{"bucket": "2026-09-11T20:00:00Z", "dmg_count": 1, "zip_count": 2}],
                 },
                 "providers": [],
             },
             {"username": "operator"}, "csrf",
         ).decode()
-        self.assertIn("Downloads over time", body)
+        self.assertIn("Observed download increases", body)
+        self.assertNotIn("Observed download increases between checks.", body)
+        self.assertIn("Last successful data update:", body)
         self.assertIn("overview-download-heading", body)
         self.assertIn("overview-download-total' aria-label='.dmg downloads total: 23'><strong>23</strong><small>.dmg", body)
         self.assertIn("overview-download-total' aria-label='.zip downloads total: 11'><strong>11</strong><small>.zip", body)
         self.assertIn("overview-download-totals", body)
         self.assertIn("overview-map-heading", body)
         self.assertIn("overview-map-total' aria-label='All-time successful installs: 16'><strong>16</strong><small>Successful", body)
-        self.assertIn("overview-map-total' aria-label='All-time failed installs: 4'><strong>4</strong><small>Failed", body)
+        self.assertIn("overview-map-total' aria-label='All-time failed installs: 4'><strong class='admin-error-counter is-positive'>4</strong><small>Failed", body)
         self.assertIn("overview-map-total' aria-label='All-time custom .img installs: 2'><strong>2</strong><small>Custom", body)
         self.assertNotIn("Total downloads:</span>", body)
         heading_index = body.index("overview-download-heading")
@@ -978,7 +1287,7 @@ class AdminSemanticsTests(unittest.TestCase):
         trend_query, trend_parameters = next(
             (query, parameters)
             for query, parameters in database.calls
-            if "GROUP BY" in query and "success_count" in query
+            if parameters == (since, "UTC", since, "UTC", "UTC")
         )
         self.assertIn("timezone(%s, e.occurred_at)", trend_query)
         self.assertIn("date_trunc('day', local_occurred_at)", trend_query)
@@ -990,14 +1299,36 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("AS custom_count", trend_query)
         self.assertNotIn("selected_map_count", trend_query)
         self.assertIn("installed.provider_id = e.provider", trend_query)
+        self.assertIn("e.phase_outcome = 'FAILED'", trend_query)
+        self.assertNotIn("e.write_started IS NOT FALSE", trend_query)
         self.assertIn(
-            "e.phase_outcome = 'SUCCEEDED'\n                       OR e.write_started IS NOT FALSE",
+            "event_type IN ('MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED')",
             trend_query,
         )
-        self.assertIn(
-            "event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')",
-            trend_query,
+
+    def test_map_overview_fallback_excludes_final_prewrite_failures(self):
+        database = RecordingDatabase()
+        since = datetime(2026, 9, 1, tzinfo=timezone.utc)
+
+        database.admin_overview_map_snapshot(since, period="24h")
+
+        trend_query, _ = next(
+            (query, parameters)
+            for query, parameters in database.calls
+            if parameters == (since, "UTC", since, "UTC", "UTC")
         )
+        self.assertIn("e.phase_outcome = 'FAILED'", trend_query)
+        self.assertNotIn("e.write_started IS NOT FALSE", trend_query)
+        self.assertIn("A final compatibility failure is an installation", inspect.getsource(Database.admin_overview_map_snapshot))
+
+        body = overview_page({
+            "period": "24h",
+            "data": {"hasData": False, "recentActivity": [], "trend": [], "bucket": "hour"},
+            "compatibility": {"hasData": False},
+            "providers": [],
+        }, {"username": "operator"}, "csrf").decode()
+        self.assertNotIn("Install failed: 1", body)
+        self.assertIn("No map activity in this period.", body)
 
     def test_installation_authorization_is_separate_from_compatibility_evidence(self):
         source = inspect.getsource(Database.update_device_support_status)
@@ -1069,10 +1400,12 @@ class AdminSemanticsTests(unittest.TestCase):
     def test_needs_review_summary_counts_actionable_tasks(self):
         summary = ReviewSummaryDatabase().admin_review_summary()
         self.assertEqual(summary, {
+            "available": True,
             "installationIssues": 1,
             "githubIssuesInProgress": 0,
             "identityPending": 2,
             "readyToPublish": 3,
+            "pendingReviewTasks": 6,
             "total": 6,
         })
         source = inspect.getsource(Database.admin_review_summary)
@@ -1087,6 +1420,7 @@ class AdminSemanticsTests(unittest.TestCase):
             "username": "operator",
             "admin_review_summary": {
                 "installationIssues": 1,
+                "githubIssuesInProgress": 0,
                 "identityPending": 2,
                 "readyToPublish": 3,
                 "total": 6,
@@ -1094,8 +1428,8 @@ class AdminSemanticsTests(unittest.TestCase):
         }, "csrf").decode()
         self.assertIn('aria-label="Review queue: 6"', body)
         self.assertIn('class="needs-review-count">6</span>', body)
-        self.assertIn("Installation issues</span><strong>1", body)
-        self.assertIn("GitHub issues in progress</span><strong>0", body)
+        self.assertIn("Failure diagnostics</span><strong>1", body)
+        self.assertIn("GitHub review tasks</span><strong>0", body)
         self.assertIn("Identity review</span><strong>2", body)
         self.assertIn("Publication review</span><strong>3", body)
         self.assertIn("needs-review-popover", body)
@@ -1167,6 +1501,117 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertEqual(audit_call[1][3], "fēnix 7 · 47 mm")
         self.assertEqual(audit_call[1][6], "Exact model confirmed")
         self.assertFalse(any("phase_outcome" in query for query, _ in database.calls if "UPDATE compatibility_evidence_event" in query))
+
+    def test_identity_result_scope_matches_uuid_and_zero_index_without_operation_fallback(self):
+        operation_id = "123e4567-e89b-12d3-a456-426614174000"
+        database = RecordingDatabase(
+            identity_rows=[{
+                "event_id": "event-0", "operation_id": operation_id,
+                "map_result_index": 0, "canonical_device_model_id": None,
+            }],
+            canonical_row={"id": "garmin-fenix-7-47", "model": "fēnix 7", "variant": "47 mm"},
+        )
+        self.assertEqual(
+            database.resolve_compatibility_identity(
+                f"result:{operation_id}:0", action="ASSIGN",
+                canonical_device_model_id="garmin-fenix-7-47", admin_user_id=7,
+            ),
+            1,
+        )
+        select_query, select_parameters = database.calls[0]
+        self.assertIn("operation_id::text = %s AND map_result_index = %s", select_query)
+        self.assertNotIn("OR (operation_id IS NOT NULL", select_query)
+        self.assertEqual(select_parameters, (operation_id, 0))
+
+        database.calls.clear()
+        database.identity_rows = []
+        self.assertEqual(
+            database.resolve_compatibility_identity(
+                f"result:{operation_id}:1", action="NOT_IDENTIFIABLE",
+                canonical_device_model_id=None, admin_user_id=7,
+            ),
+            0,
+        )
+        self.assertEqual(len(database.calls), 1)
+
+    def test_raw_operation_scope_remains_explicit_batch_scope(self):
+        database = RecordingDatabase(
+            identity_rows=[{"event_id": "event-0"}, {"event_id": "event-1"}],
+        )
+        self.assertEqual(
+            database.resolve_compatibility_identity(
+                "123e4567-e89b-12d3-a456-426614174000", action="NOT_IDENTIFIABLE",
+                canonical_device_model_id=None, admin_user_id=7,
+            ),
+            2,
+        )
+        query, parameters = database.calls[0]
+        self.assertIn("OR (operation_id IS NOT NULL", query)
+        self.assertEqual(parameters, ("123e4567-e89b-12d3-a456-426614174000",) * 2)
+
+    def test_missing_identity_reason_is_generated_and_conflict_requires_manual_action(self):
+        selected = {"id": "garmin-fenix-8-47", "model": "fēnix 8", "variant": "47 mm",
+                    "case_size_mm": 47, "screen_technology": "AMOLED", "solar": False, "inreach": False}
+        conflict_row = {
+            "event_id": "event-1", "raw_mtp_model": "fenix 7 47mm",
+            "model": "fenix 7", "canonical_device_model_id": None,
+            "identity_assessment": {},
+        }
+        database = RecordingDatabase(identity_rows=[conflict_row], canonical_row=selected)
+        with self.assertRaises(IdentityResolutionError) as error:
+            database.resolve_compatibility_identity(
+                "operation-1", action="ASSIGN", canonical_device_model_id=selected["id"], admin_user_id=7,
+            )
+        self.assertEqual(error.exception.code, "identity_conflict_manual_required")
+        database.calls.clear()
+        self.assertEqual(
+            database.resolve_compatibility_identity(
+                "operation-1", action="MANUAL_ASSIGN", canonical_device_model_id=selected["id"], admin_user_id=7,
+            ),
+            1,
+        )
+        audit = next(params for query, params in database.calls if "compatibility_identity_resolution_audit" in query)
+        self.assertEqual(audit[5], "ASSIGN")
+        self.assertIn("MANUAL_ASSIGNMENT", audit[9])
+        self.assertNotIn("verified on", audit[6].lower())
+
+    def test_identity_confirm_without_reason_uses_action_specific_audit_text(self):
+        selected = {"id": "garmin-fenix-8-47", "model": "fēnix 8", "variant": "47 mm",
+                    "case_size_mm": 47, "screen_technology": "AMOLED", "solar": False, "inreach": False}
+        database = RecordingDatabase(
+            identity_rows=[{
+                "event_id": "event-1", "model": "fēnix 8", "raw_mtp_model": "fenix 8 47mm",
+                "canonical_device_model_id": None, "identity_assessment": {},
+            }],
+            canonical_row=selected,
+        )
+        self.assertEqual(
+            database.resolve_compatibility_identity(
+                "operation-1", action="ASSIGN", canonical_device_model_id=selected["id"], admin_user_id=7,
+            ),
+            1,
+        )
+        audit = next(params for query, params in database.calls if "compatibility_identity_resolution_audit" in query)
+        self.assertEqual(audit[6], "Administrator selected a catalog model for this diagnostic result.")
+        self.assertIn('"decisionType": "CATALOG_SELECTION"', audit[9])
+
+    def test_identical_identity_retry_does_not_add_a_second_audit(self):
+        selected_id = "garmin-fenix-8-47"
+        database = RecordingDatabase(
+            identity_rows=[{
+                "event_id": "event-1", "model": "fēnix 8",
+                "canonical_device_model_id": selected_id,
+                "identity_assessment": {"decision": {"deviceId": selected_id}},
+            }],
+            canonical_row={"id": selected_id, "model": "fēnix 8", "variant": "47 mm"},
+        )
+        self.assertEqual(
+            database.resolve_compatibility_identity(
+                "operation-1", action="ASSIGN", canonical_device_model_id=selected_id, admin_user_id=7,
+            ),
+            1,
+        )
+        self.assertFalse(any("compatibility_identity_resolution_audit" in query for query, _ in database.calls))
 
     def test_admin_result_counts_use_the_public_statistics_view(self):
         db_source = inspect.getsource(Database.admin_device_snapshot)
@@ -1400,7 +1845,7 @@ class AdminSemanticsTests(unittest.TestCase):
             }],
         ).decode()
         self.assertNotIn("class='metric'", body)
-        self.assertIn('class="admin-kpi-grid installation-kpis"', body)
+        self.assertIn('class="map-statistics-kpi-panel provider-card admin-kpi-panel installation-kpis"', body)
         self.assertIn("<span>Installation attempts</span><strong>3</strong>", body)
         self.assertIn("<span>Successful</span><strong>1</strong>", body)
         self.assertIn("<span>Success rate</span><strong>33.3%</strong>", body)
@@ -1473,8 +1918,9 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         evidence_row = body.split("class='evidence-model-row'", 1)[1].split("</tr>", 1)[0]
         self.assertIn("Identity review", evidence_row)
-        self.assertNotIn("error-count", evidence_row)
-        self.assertIn("historical-number'>0</td>", evidence_row)
+        self.assertNotIn("class='error-count'", evidence_row)
+        self.assertIn("column-number numeric historical-number", evidence_row)
+        self.assertIn("class='admin-error-counter'>0</strong>", evidence_row)
 
     def test_pending_and_canonical_rows_with_the_same_text_keep_distinct_destinations(self):
         identity = "fēnix 8 Pro · 47 mm, AMOLED"
@@ -1541,8 +1987,8 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertIn("Diagnostic ID: <code>pending-operation</code>", diagnostics)
         self.assertNotIn("Diagnostic ID: <code>canonical-operation</code>", diagnostics)
-        self.assertIn("Confirm model", diagnostics)
-        self.assertIn("Confirm selected model", diagnostics)
+        self.assertIn("Choose a catalog model", diagnostics)
+        self.assertIn("Confirm", diagnostics)
 
     def test_canonical_diagnostics_include_all_raw_identity_spellings(self):
         canonical_id = "garmin-fenix-8-47-amoled"
@@ -1616,6 +2062,7 @@ class AdminSemanticsTests(unittest.TestCase):
             "identity_resolution_state": "UNRESOLVED",
             "canonical_device_model_id": None,
             "linked_github_issue": None,
+            "automatic_finishing_result": "VERIFIED",
         }
         succeeded = {
             **pending,
@@ -1659,7 +2106,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Resolve diagnostic", body)
         self.assertIn("Reopen diagnostic", body)
         self.assertIn("HISTORICAL_SUPERSEDED", body)
-        self.assertIn("Model name or size", body)
+        self.assertIn("Filter installation history", body)
         self.assertIn("Selected model:", body)
         self.assertIn("Prepare GitHub issue", body)
         self.assertIn("Copy issue report", body)
@@ -1676,10 +2123,16 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("#32 <svg class='admin-icon admin-icon-external'", body)
         self.assertIn("Diagnostic ID:", body)
         self.assertIn("Technical details", body)
+        self.assertIn(".diagnostic-actions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))", body)
+        self.assertIn(".identity-review-form{grid-column:auto}", body)
+        self.assertNotIn(".identity-review-form{grid-column:1/-1}", body)
         self.assertIn("<option value='all' selected>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='open'>Open</option><option value='resolved'>Resolved</option><option value='identity-pending'>Identity review</option><option value='with-issue'>With issue</option>", body)
         self.assertEqual(body.count("action='/admin/diagnostics/resolve'"), 1)
         self.assertEqual(body.count("action='/admin/diagnostics/reopen'"), 1)
-        self.assertEqual(body.count("action='/admin/diagnostics/identity'"), 1)
+        self.assertEqual(
+            body.count("action='/admin/diagnostics/identity'"),
+            body.count("<dialog class='diagnostic-detail-dialog'"),
+        )
         self.assertIn("data-diagnostic-state='history'", body)
         self.assertIn("data-diagnostic-result='succeeded'", body)
         self.assertIn("new URLSearchParams(window.location.search).get('state')", body)
@@ -1709,30 +2162,34 @@ class AdminSemanticsTests(unittest.TestCase):
             "csrf",
         ).decode()
         self.assertIn("<p class=\"eyebrow\">Compatibility</p>", body)
-        self.assertIn('class="admin-kpi-grid installation-kpis"', body)
+        self.assertIn('class="map-statistics-kpi-panel provider-card admin-kpi-panel installation-kpis"', body)
         for label in ("Variants", "Installation attempts", "Successful", "Success rate", "Open errors"):
             self.assertIn(f"<span>{label}</span>", body)
         self.assertIn("<span>Successful</span><strong>2</strong>", body)
         self.assertIn("<span>Success rate</span><strong>66.7%</strong>", body)
         self.assertNotIn("Historical failures: 2", body)
-        self.assertIn("<th scope=\"col\">Status</th><th scope=\"col\">Attempts</th><th scope=\"col\">Successful</th>", body)
+        self.assertIn("<th scope=\"col\" class=\"column-status\">Status</th><th scope=\"col\" class=\"column-number\">Attempts</th><th scope=\"col\" class=\"column-number\">Successful</th>", body)
         self.assertNotIn("installation-summary-strip", body)
 
-    def test_map_statistics_does_not_render_event_derived_zeros_without_data(self):
+    def test_map_statistics_distinguishes_empty_population_from_unavailable_data(self):
         self.assertEqual(
             _map_statistics_summary([]),
             {
                 "hasEventData": False,
                 "eventGroupCount": 0,
-                "eventCount": None,
-                "completedDownloads": None,
-                "failedDownloads": None,
-                "downloadAttempts": None,
+                "eventCount": 0,
+                "completedDownloads": 0,
+                "failedDownloads": 0,
+                "downloadAttempts": 0,
                 "downloadSuccessRate": None,
-                "completedInstalls": None,
-                "failedInstalls": None,
-                "installAttempts": None,
+                "completedInstalls": 0,
+                "failedInstalls": 0,
+                "installAttempts": 0,
                 "installSuccessRate": None,
+                "completedMapUpdates": 0,
+                "failedMapUpdates": 0,
+                "mapUpdates": 0,
+                "mapUpdateSuccessRate": None,
             },
         )
         body = map_statistics_page(
@@ -1742,13 +2199,24 @@ class AdminSemanticsTests(unittest.TestCase):
             "csrf",
         ).decode()
         self.assertIn("No map operation data yet", body)
-        self.assertIn("<strong data-stat='completedDownloads'>—</strong>", body)
-        self.assertIn("<strong data-stat='failedDownloads'>—</strong>", body)
-        self.assertIn("<strong data-stat='completedInstalls'>—</strong>", body)
-        self.assertIn("<strong data-stat='failedInstalls'>—</strong>", body)
+        self.assertIn("<strong data-stat='completedDownloads'>0</strong>", body)
+        self.assertIn("class='admin-error-counter' data-stat='failedDownloads'>0</strong>", body)
+        self.assertIn("<strong data-stat='completedInstalls'>0</strong>", body)
+        self.assertIn("class='admin-error-counter' data-stat='failedInstalls'>0</strong>", body)
         self.assertIn("<section class='provider-card map-events-card' hidden>", body)
         self.assertIn("id='map-statistics-more-filters'", body)
-        self.assertNotIn("<strong data-stat='completedDownloads'>0</strong>", body)
+
+    def test_map_statistics_keeps_zero_operation_count_separate_from_event_count(self):
+        summary = _map_statistics_summary([{
+            "event_type": "DOWNLOAD_SUCCEEDED",
+            "outcome": "SUCCEEDED",
+            "operation_count": 0,
+            "event_count": 12,
+        }])
+        self.assertEqual(summary["completedDownloads"], 0)
+        self.assertEqual(summary["eventCount"], 12)
+        self.assertEqual(summary["downloadAttempts"], 0)
+        self.assertIsNone(summary["downloadSuccessRate"])
 
     def test_map_statistics_shows_zero_counts_only_when_event_data_exists(self):
         body = map_statistics_page(
@@ -1763,8 +2231,47 @@ class AdminSemanticsTests(unittest.TestCase):
             "csrf",
         ).decode()
         self.assertIn("<strong data-stat='completedDownloads'>0</strong>", body)
-        self.assertIn("<strong data-stat='failedDownloads'>0</strong>", body)
+        self.assertIn("class='admin-error-counter' data-stat='failedDownloads'>0</strong>", body)
         self.assertIn("map-statistics-empty' id='map-statistics-empty' hidden", body)
+        self.assertNotIn("map-events-card' hidden", body)
+
+    def test_empty_event_detail_keeps_population_summary_and_marks_detail_empty(self):
+        body = map_statistics_page(
+            {
+                "rows": [
+                    {"event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 9, "event_count": 9},
+                    {"event_type": "INSTALL_FAILED", "outcome": "FAILED", "operation_count": 1, "event_count": 1},
+                ],
+                "summary": {
+                    "hasEventData": True,
+                    "completedInstalls": 9,
+                    "failedInstalls": 1,
+                    "installSuccessRate": 90.0,
+                    "completedDownloads": 0,
+                    "failedDownloads": 0,
+                    "downloadSuccessRate": None,
+                    "completedMapUpdates": 0,
+                    "failedMapUpdates": 0,
+                    "mapUpdateSuccessRate": None,
+                },
+                "detailRows": [],
+                "detailTotal": 0,
+                "linkage": {
+                    "freshMapAttemptCount": 10,
+                    "freshMapLinkedDiagnosticCount": 5,
+                    "freshMapMissingDiagnosticCount": 5,
+                    "freshMapDiagnosticCoverageRate": 50.0,
+                },
+            },
+            [{"id": "freizeitkarte", "name": "Freizeitkarte", "health": "HEALTHY"}],
+            {"username": "operator"},
+            "csrf",
+            selected_filters={"eventType": "DOWNLOAD_FAILED"},
+        ).decode()
+        self.assertIn("<strong data-stat='completedInstalls'>9</strong>", body)
+        self.assertIn("<strong data-stat='installSuccessRate'>90%</strong>", body)
+        self.assertIn("<strong data-stat='freshMapDiagnosticCoverageRate'>50%</strong>", body)
+        self.assertIn("No matching event groups", body)
         self.assertNotIn("map-events-card' hidden", body)
 
     def test_map_statistics_counts_failed_installations_and_scopes_provider_health(self):
@@ -1819,6 +2326,10 @@ class AdminSemanticsTests(unittest.TestCase):
                 "failedInstalls": 2,
                 "installAttempts": 6,
                 "installSuccessRate": 4 / 6 * 100,
+                "completedMapUpdates": 0,
+                "failedMapUpdates": 0,
+                "mapUpdates": 0,
+                "mapUpdateSuccessRate": None,
             },
         )
         body = map_statistics_page(
@@ -1833,14 +2344,17 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertIn("5 event groups · 20 event records", body)
         self.assertIn("<strong data-stat='completedDownloads'>6</strong>", body)
-        self.assertIn("<strong data-stat='failedInstalls'>2</strong>", body)
+        self.assertIn("class='admin-error-counter is-positive' data-stat='failedInstalls'>2</strong>", body)
         self.assertIn("<strong data-stat='installSuccessRate'>66.7%</strong>", body)
         self.assertNotIn("id='map-statistics-provider-health'", body)
         self.assertNotIn("providerHealth", body)
 
         script = _map_statistics_script()
-        self.assertIn("set('failedInstalls', hasEventData ? failedInstalls : '—')", script)
+        self.assertIn("setFailed('failedInstalls', metric('failedInstalls'))", script)
+        self.assertIn("const summary = payload.summary", script)
         self.assertIn("const scopedProviders = selectedProvider ? providers.filter", script)
+        self.assertIn("const eventRecordValues = detailRows.map", script)
+        self.assertIn("countValue(operations(row))", script)
 
     def test_download_only_failure_has_no_install_statistics(self):
         rows = [{
@@ -1865,6 +2379,10 @@ class AdminSemanticsTests(unittest.TestCase):
                 "failedInstalls": 0,
                 "installAttempts": 0,
                 "installSuccessRate": None,
+                "completedMapUpdates": 0,
+                "failedMapUpdates": 0,
+                "mapUpdates": 0,
+                "mapUpdateSuccessRate": None,
             },
         )
         body = map_statistics_page(
@@ -1875,12 +2393,62 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertIn("<td>DOWNLOAD_FAILED</td>", body)
         self.assertNotIn("<td>INSTALL_FAILED</td>", body)
-        self.assertIn("<strong data-stat='failedInstalls'>0</strong>", body)
+        self.assertIn("class='admin-error-counter' data-stat='failedInstalls'>0</strong>", body)
         self.assertIn("<strong data-stat='installSuccessRate'>—</strong>", body)
-        self.assertIn(
-            "const failedInstalls = count(rows, 'INSTALL_FAILED', 'FAILED');",
-            _map_statistics_script(),
-        )
+        self.assertIn("setFailed('failedInstalls', metric('failedInstalls'))", _map_statistics_script())
+
+    def test_map_statistics_keeps_update_success_and_failure_counts_separate(self):
+        summary = _map_statistics_summary([
+            {"event_type": "MAP_UPDATE_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 2},
+            {"event_type": "MAP_UPDATE_FAILED", "outcome": "FAILED", "operation_count": 3},
+        ])
+        self.assertEqual(summary["completedMapUpdates"], 2)
+        self.assertEqual(summary["failedMapUpdates"], 3)
+        self.assertEqual(summary["mapUpdates"], 5)
+        self.assertEqual(summary["mapUpdateSuccessRate"], 40.0)
+        script = _map_statistics_script()
+        self.assertNotIn("addMapActivity", script)
+        self.assertNotIn("const updateRows = rows.filter", script)
+        self.assertIn("const catalogInstallRows = rows.filter(isCatalogMainInstall);", script)
+        self.assertIn("const regionItems = Object.values(byRegion)", script)
+
+    def test_map_statistics_admin_presentation_keeps_semantics_compact_and_separate(self):
+        rows = [
+            {"provider_id": "freizeitkarte", "map_package_id": "fzk-pl", "region_identity": "POLAND", "region_display_name": "Poland", "region_country": "PL", "component_kind": "main", "event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 3, "last_occurred_at": "2026-09-16T10:00:00Z"},
+            {"provider_id": "opentopomap", "map_package_id": "otm-pl", "region_identity": "POLAND", "region_display_name": "Poland", "region_country": "PL", "component_kind": "main", "event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 2, "last_occurred_at": "2026-09-15T10:00:00Z"},
+            {"provider_id": "freizeitkarte", "map_package_id": "fzk-pl-contours", "region_identity": "POLAND", "region_display_name": "Poland", "region_country": "PL", "component_kind": "contours", "event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 13, "last_occurred_at": "2026-09-17T10:00:00Z"},
+            {"provider_id": "freizeitkarte", "map_package_id": "fzk-pl", "region_identity": "POLAND", "region_display_name": "Poland", "region_country": "PL", "component_kind": "main", "event_type": "MAP_UPDATE_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 20, "last_occurred_at": "2026-09-17T11:00:00Z"},
+        ]
+        statistics = {"rows": rows, "summary": _map_statistics_summary(rows), "linkage": {
+            "freshMapAttemptCount": 5, "freshMapLinkedDiagnosticCount": 4,
+            "freshMapMissingDiagnosticCount": 1, "freshMapDiagnosticCoverageRate": 80.0,
+        }}
+        body = map_statistics_page(
+            statistics,
+            [{"id": "freizeitkarte", "name": "Freizeitkarte", "health": "HEALTHY"}, {"id": "opentopomap", "name": "OpenTopoMap", "health": "HEALTHY"}],
+            {"username": "operator"}, "csrf",
+        ).decode()
+        main = body.split("<main", 1)[1]
+        for text in (
+            "Acquisition, fresh-install, optional-component, and update outcomes remain separate.",
+            "Coverage is linked diagnostic observation, not diagnostic success.",
+            "Observed download increases between checks. Missing observations and counter resets are not treated as zero.",
+        ):
+            self.assertNotIn(text, body)
+        self.assertEqual(main.count("class='map-statistics-kpi-group'"), 3)
+        self.assertEqual(main.count("id='map-statistics-metrics'"), 1)
+        for text in ("Downloads", "Fresh installs", "Updates", "Diagnostic coverage", "Fresh attempts", "Linked reports", "Report gaps", "Coverage rate", "Last install"):
+            self.assertIn(text, main)
+        self.assertIn("class='admin-error-counter' data-stat='failedMapUpdates'>0</strong>", main)
+        self.assertNotIn("map-statistics-reliability", main)
+
+        script = _map_statistics_script()
+        self.assertIn("const catalogInstallRows = rows.filter(isCatalogMainInstall);", script)
+        self.assertIn("knownProviderIds.has", script)
+        self.assertIn("row.component_kind === 'main'", script)
+        self.assertIn("const matchedMaps = allMapItems.filter", script)
+        self.assertIn("matchedMaps.slice((allMapsPage - 1) * 10", script)
+        self.assertNotIn("const updateRows = rows.filter", script)
 
     def test_map_statistics_exposes_operation_id_watch_linkage(self):
         linkage = {
@@ -1914,8 +2482,9 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertNotIn("Telemetry diagnostics · event matching", body)
         self.assertNotIn("id='map-statistics-linkage'", body)
         self.assertIn("id='map-rows'", body)
-        self.assertIn("Browse all maps", body)
-        self.assertIn("<h3>Top 5 maps</h3>", body)
+        self.assertIn("All maps", body)
+        self.assertIn("id='top-maps-view'", body)
+        self.assertIn("data-popularity-view-button='regions'", body)
 
         script = _map_statistics_script()
         self.assertNotIn("const linkage = payload.linkage || {};", script)
@@ -1931,6 +2500,13 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("map_only_installation_count", source)
         self.assertIn("linked_failed_install_count", source)
         self.assertIn("count(*) FILTER (WHERE has_install_event)", source)
+        self.assertIn("count(DISTINCT map_operation_key)", source)
+        self.assertIn("fresh_map_attempt_count", source)
+        self.assertIn("map_reported_regions", source)
+        self.assertIn("map_result_index IS NOT NULL", source)
+        self.assertIn("compatibility_identity_keys", source)
+        self.assertNotIn("min(e.provider)", source)
+        self.assertIn("freshMapMissingDiagnosticCount", source)
 
     def test_provider_list_uses_compact_columns_and_summary(self):
         body = providers_page(
@@ -1941,6 +2517,8 @@ class AdminSemanticsTests(unittest.TestCase):
                 "status": "PAUSED",
                 "health": "HEALTHY",
                 "packageCount": 177,
+                "affectedPackageCount": 0,
+                "problematicSourceCount": 0,
                 "lastCatalogSync": "2026-08-31T12:00:00+00:00",
                 "lastHealthCheck": "2026-08-31T12:05:00+00:00",
             }],
@@ -1948,12 +2526,58 @@ class AdminSemanticsTests(unittest.TestCase):
             "csrf",
         ).decode()
         self.assertIn("1 provider", body)
-        self.assertIn("0 active · 1 healthy · 177 packages · 0 issues", body)
-        self.assertIn("<th scope='col'>Provider</th><th scope='col'>Activity</th><th scope='col'>Health</th><th scope='col'>Packages</th>", body)
-        self.assertIn("<th scope='col'>Last check</th><th scope='col'>Issues</th>", body)
+        self.assertIn("0 active · 1 healthy · 177 packages · 0 affected packages · 0 problematic sources", body)
+        self.assertIn("<th scope='col'>Provider</th><th scope='col' class='column-status'>Activity</th><th scope='col' class='column-status'>Health</th><th scope='col' class='column-number'>Packages</th>", body)
+        self.assertIn("<th scope='col' class='column-date'>Last check</th><th scope='col' class='column-number'>Problems</th>", body)
+
+    def test_provider_problems_keep_packages_sources_and_health_separate(self):
+        body = providers_page(
+            [{
+                "id": "freizeitkarte", "name": "Freizeitkarte", "health": "DOWN",
+                "lastHealthError": "health_timeout", "packageCount": 2,
+                "affectedPackageCount": 2, "problematicSourceCount": 1,
+            }],
+            {"username": "operator"}, "csrf",
+        ).decode()
+        self.assertIn("2 packages · 1 source", body)
+        self.assertIn(">Problems</th>", body)
+        self.assertIn("health_timeout", body)
+        self.assertNotIn("provider issue(s)", body)
+        source = inspect.getsource(Database.provider_rows)
+        self.assertIn("affected_package_count", source)
+        self.assertIn("problematic_source_count", source)
+        self.assertIn("mp.availability <> 'RETIRED'", source)
+        self.assertIn("ma.source_url IS NOT NULL", source)
         self.assertNotIn(">Adapter<", body)
         self.assertNotIn("Open map statistics", body)
         self.assertNotIn("<small>opentopomap</small>", body)
+
+    def test_provider_metrics_keep_unknown_values_distinct_from_measured_zero(self):
+        package = _provider_package_row({
+            "id": "map-1",
+            "name": "Map",
+            "availability": "AVAILABLE",
+            "artifact_count": None,
+            "broken_artifact_count": None,
+            "artifacts": [{
+                "kind": "main",
+                "size_bytes": None,
+                "install_size_bytes": 0,
+                "validation_status": "UNKNOWN",
+            }],
+        })
+        health = _provider_health_row({
+            "status": "HEALTHY",
+            "http_status": 0,
+            "artifact_count": 0,
+            "duration_ms": 0,
+        })
+        self.assertIn("Download: — bytes · IMG: 0 bytes", package)
+        self.assertIn("<td class='column-number numeric'>—</td>", package)
+        self.assertIn("><span class='provider-status", health)
+        self.assertIn(">—</td>", health)
+        self.assertIn(">0</td>", health)
+        self.assertIn(">0 ms</td>", health)
 
     def test_provider_detail_uses_progressive_disclosure_and_human_audit_actions(self):
         body = provider_detail_page(
@@ -2080,9 +2704,10 @@ class AdminSemanticsTests(unittest.TestCase):
             device, {"username": "operator"}, "csrf",
             operations=active, resolved_operations=resolved,
         ).decode()
-        statistics = body.split("class='diagnostic-model-metrics model-statistics'", 1)[1].split("</section>", 1)[0]
+        statistics = body.split("class='map-statistics-kpi-panel provider-card admin-kpi-panel diagnostic-model-metrics model-statistics'", 1)[1].split("<section class='diagnostics-detail-section'", 1)[0]
         for label, value in (("Attempts", "1"), ("Successful", "1"), ("Failed", "0"), ("Open errors", "0")):
-            self.assertIn(f"<span>{label}</span><strong>{value}</strong>", statistics)
+            self.assertIn(f"<span>{label}</span>", statistics)
+            self.assertIn(f">{value}</strong>", statistics)
         self.assertIn("<span>Last activity</span><strong>—</strong>", statistics)
         self.assertNotIn("<span>Compatibility status</span>", statistics)
         self.assertIn("diagnostic-state-resolved", body)
@@ -2125,9 +2750,9 @@ class AdminSemanticsTests(unittest.TestCase):
             "write_started": False, "diagnostic_status": "RESOLVED",
         }]
         summary = _diagnostic_summary_by_identity(successful + open_failed, resolved_failed)[f"canonical:{device_id}"]
-        self.assertEqual(summary["attempts"], 10)
+        self.assertEqual(summary["attempts"], 9)
         self.assertEqual(summary["successful"], 7)
-        self.assertEqual(summary["failed"], 3)
+        self.assertEqual(summary["failed"], 2)
         self.assertEqual(summary["open_errors"], 1)
 
         device = _admin_device_payload([{
@@ -2140,9 +2765,10 @@ class AdminSemanticsTests(unittest.TestCase):
             device, {"username": "operator"}, "csrf",
             operations=successful + open_failed, resolved_operations=resolved_failed,
         ).decode()
-        statistics = body.split("class='diagnostic-model-metrics model-statistics'", 1)[1].split("</section>", 1)[0]
+        statistics = body.split("class='map-statistics-kpi-panel provider-card admin-kpi-panel diagnostic-model-metrics model-statistics'", 1)[1].split("<section class='diagnostics-detail-section'", 1)[0]
         for label, value in (("Attempts", "8"), ("Successful", "7"), ("Failed", "1"), ("Open errors", "1")):
-            self.assertIn(f"<span>{label}</span><strong>{value}</strong>", statistics)
+            self.assertIn(f"<span>{label}</span>", statistics)
+            self.assertIn(f">{value}</strong>", statistics)
         self.assertIn("<span>Last activity</span><strong>—</strong>", statistics)
         self.assertNotIn("<span>Compatibility status</span>", statistics)
 
@@ -2390,7 +3016,7 @@ class AdminSemanticsTests(unittest.TestCase):
             }},
             "csrf",
         ).decode()
-        self.assertIn("<h1>GitHub issues in progress</h1>", body)
+        self.assertIn("<h1>GitHub review tasks</h1>", body)
         self.assertIn("#157", body)
         self.assertIn("In progress", body)
         self.assertIn("action='/admin/diagnostics/workflow'", body)
@@ -2414,6 +3040,47 @@ class AdminSemanticsTests(unittest.TestCase):
             database.update_diagnostic_workflow(
                 "operation-1", workflow_status="OPEN", admin_user_id=7,
             )
+
+    def test_github_review_queue_groups_multiple_results_into_one_operation_task(self):
+        body = github_issue_queue_page(
+            [
+                {
+                    "operation_id": "batch-1",
+                    "operation_key": "batch-1:0",
+                    "map_result_index": 0,
+                    "compatibility_identity": "fēnix 9 Pro · 47 mm",
+                    "model": "fēnix 9 Pro",
+                    "variant": "47 mm",
+                    "region": "France",
+                    "phase_outcome": "FAILED",
+                    "failure_code": "SEND_OBJECT_FAILED",
+                    "occurred_at": "2026-09-11T17:26:00+00:00",
+                    "linked_github_issue": "#157",
+                    "diagnostic_workflow_status": "IN_PROGRESS",
+                    "diagnostic_status": "ACTIVE",
+                },
+                {
+                    "operation_id": "batch-1",
+                    "operation_key": "batch-1:1",
+                    "map_result_index": 1,
+                    "compatibility_identity": "fēnix 9 Pro · 47 mm",
+                    "model": "fēnix 9 Pro",
+                    "variant": "47 mm",
+                    "region": "France",
+                    "phase_outcome": "FAILED",
+                    "failure_code": "SEND_OBJECT_FAILED",
+                    "occurred_at": "2026-09-11T17:27:00+00:00",
+                    "linked_github_issue": "#157",
+                    "diagnostic_workflow_status": "IN_PROGRESS",
+                    "diagnostic_status": "ACTIVE",
+                },
+            ],
+            [],
+            {"username": "operator"},
+            "csrf",
+        ).decode()
+        self.assertIn("<h2 id='github-issue-queue-title'>1 linked diagnostic task</h2>", body)
+        self.assertEqual(body.count("class='diagnostic-detail-dialog'"), 1)
 
     def test_issue_workflow_migration_is_additive_and_backfills_linked_active_rows(self):
         migration = WORKFLOW_MIGRATION.read_text(encoding="utf-8")
@@ -2472,6 +3139,7 @@ class AdminSemanticsTests(unittest.TestCase):
         for outcome in ("SUCCEEDED", "FAILED"):
             with self.subTest(outcome=outcome):
                 result["phase_outcome"] = outcome
+                result["automatic_finishing_result"] = "VERIFIED" if outcome == "SUCCEEDED" else "FAILED"
                 second = {**result, "map_result_index": 1, "region": "DEU+",
                           "raw_mtp_model": "<script>alert(1)</script>"}
                 body = diagnostics_page(
@@ -2481,7 +3149,7 @@ class AdminSemanticsTests(unittest.TestCase):
                 ).decode()
                 self.assertEqual(body.count("<dialog class='diagnostic-detail-dialog'"), 1)
                 dialog = body.split("<dialog class='diagnostic-detail-dialog'", 1)[1].split("</dialog>", 1)[0]
-                for value in ("fēnix 8 Pro", "51 mm", "FRA+", "DEU+", "Resolved", "#32",
+                for value in ("fēnix 8 Pro", "51 mm", "France", "Germany", "Resolved", "#32",
                               "Technical details · map result 1", "Technical details · map result 2",
                               "action='/admin/diagnostics/reopen'", "&lt;script&gt;alert(1)&lt;/script&gt;"):
                     self.assertIn(value, dialog)

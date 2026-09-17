@@ -1,3 +1,7 @@
+> Behavioral requirements and release acceptance criteria:
+> [Admin behavior contract](admin-behavior-contract.md). Route descriptions below
+> describe implementation; known gaps are not a waiver of that contract.
+
 # Catalog API contract
 
 Base URL in production:
@@ -16,8 +20,10 @@ events use literal `custom` region and release labels so no local filename,
 hash-derived identity, or provider claim is uploaded. Provider installation
 evidence can be linked to map-operation events by a shared operation ID when
 both default-on diagnostics streams are enabled; users can disable either
-stream from the app's Diagnostics window. Custom events are evidence-only and have no map-
-statistics event. Provider controls and statistics are private
+stream from the app's Diagnostics window. Custom events do not create a provider
+map-statistics event; eligible custom fresh results can still be projected into the
+private map-statistics read model without a guessed catalog package or country.
+Provider controls and statistics are private
 authenticated admin routes. No route serves map binaries.
 
 ## `POST /compatibility/events`
@@ -55,18 +61,20 @@ device count, operator review, reconnect, and map visibility are retained only
 as optional evidence dimensions and do not promote a status.
 
 Version 3 groups all map results from one Install press under a random
-`operationId` and records the exact app release/build plus controlled failure
-stage/code, write/remote-object/cleanup booleans, and a coarse transfer
-progress bucket. It may also record the sanitized raw MTP model label and one
-allowlisted identity-source category (`MTP_SERIAL`, `GARMIN_UNIT_ID`, or
-`UNAVAILABLE`) without the identifier value. It never accepts raw native messages, local paths, object
-IDs, manifests, hashes, serials, Unit IDs, or local watch keys. Selected maps
-not reached after an earlier failure use `NOT_STARTED`. Download, extraction,
-source-validation, and preflight failures remain visible in the private
-operation detail but do not enter the main Installations or compatibility-rate
-aggregate when `writeStarted=false`. Compatibility thresholds count successful
-distinct write-started operations, not child map rows; a multi-map operation
-succeeds only when all of its selected map results verify. Legacy events remain
+`operationId`; each result is identified by `mapResultIndex` plus package/map,
+provider/region and selected-component facts. The exact app release/build plus
+controlled failure stage/code, write/remote-object/cleanup booleans, and a
+coarse transfer progress bucket are recorded. It may also record the sanitized
+raw MTP model label and one allowlisted identity-source category
+(`MTP_SERIAL`, `GARMIN_UNIT_ID`, or `UNAVAILABLE`) without the identifier value.
+It never accepts raw native messages, local paths, object IDs, manifests,
+hashes, serials, Unit IDs, or local watch keys. Selected maps not reached after
+an earlier failure use `NOT_STARTED`. Download, extraction, source-validation,
+and preflight failures remain visible in private operation detail but do not
+enter fresh-install attempts or compatibility rates when `writeStarted=false`.
+A current missing write fact is unknown and is not guessed. Compatibility
+thresholds count distinct verified per-result successes, not child component
+rows; optional contours remain part of the main-map result. Legacy events remain
 one operation each.
 
 Schema version 4 keeps the structured diagnostics contract while removing the
@@ -85,36 +93,65 @@ by the service health cycle.
 
 Returns the authenticated operator Overview. The default period is the last 24
 hours; `?period=7d`, `?period=30d`, and `?period=all` are also supported. Its
-primary operational domain is the existing `map_download_event` table: Map
-installs, Map install success, Failed map installs, recent map activity, and
-the installs-over-time chart use distinct map operation IDs. Historical
-`DOWNLOAD_FAILED` and `INSTALL_FAILED` map events remain in activity and
-statistics, but are not placed in `Needs attention` because map events do not
-carry an unresolved/actionable lifecycle state. Compatibility evidence remains a secondary, explicitly
+primary operational domain is the existing `map_download_event` table: fresh
+map installs, fresh-install success, failed fresh installs, recent map activity,
+and the map-installations-over-time chart reconcile retained per-map results only
+at the map/package boundary using shared operation, provider and exact or
+unambiguous package-region identity; an operation ID alone is not a unique-map
+count. Historical
+`DOWNLOAD_FAILED` map events remain in activity and statistics. Failed installs
+without a matching device diagnostic report also appear in the Overview Review
+queue, across all dates, labelled “No device diagnostic report received”. The
+separate Missing diagnostics count does not change Open errors or compatibility
+status. Matching is evaluated per map package/result: it uses the operation ID,
+provider, and an exact or unambiguous known package-region alias; it excludes
+local tests and does not treat a sibling map's diagnostic as a match. A resolved
+diagnostic is still evidence for that result and is not reported as missing.
+When a report arrives, its normal diagnostic workflow takes over. Activity links
+show failed map events; this change adds no resolution mutation or diagnostic
+records. This PR212 path is an incomplete fallback: it does not supply a device
+diagnostic dialog, assignment or issue workflow. See the behavior contract's
+known gaps.
+Compatibility evidence remains a secondary, explicitly
 labelled block with its own variants, write-started attempts, evidence success,
 open errors, and normalized failure reasons. Common reason spelling variants
 are collapsed into stable canonical groups such as `source_validation`; only
-events without a classifiable category, stage, or code remain `unknown`. If the selected domain has no
-data, event-derived values use an em dash rather than zero. No new client
+events without a classifiable category, stage, or code remain `unknown`. A
+successful full statistics query with no matching rows reports zero recorded
+events and zero terminal attempts, while rates remain an em dash because their
+denominator is zero. Failed or partial queries remain unavailable/partial; no new client
 telemetry, public statistics, or map-event payload is created by this page.
 The `Device/model activity` panel shows the five most recent identified
 compatibility operations as individual rows; it is not a grouped model-count
 summary. The full installations history remains available on the
 `/admin/installations` route.
 
-When a compatibility failure has `write_started = false`, the read model treats
-it as a pre-install download/acquisition failure and does not project a
-synthetic `INSTALL_FAILED` map event. Existing explicit map events are kept;
-verified-success fallback projection is unchanged. A legacy `NULL
-write_started` value retains the established attempted-write behavior.
+When a compatibility result has `write_started = false`, it remains visible as
+a pre-install diagnostic, but it is not projected as `INSTALL_FAILED` in the
+Overview fallback or fresh-install totals. Its stage/code and false write fact
+remain available in compatibility diagnostics. A missing write fact is retained
+as unknown. Existing explicit map events are kept and eligible verified-success
+or write-started failure fallback projection is deduplicated by logical map
+result.
 
-The Overview also exposes `Downloads over time`, a display-only chart of public
-GitHub release asset download changes for the selected Overview period. The
-default `24h` period uses hourly buckets; `7d` and `30d` use local calendar-day
-buckets, and `all` uses compact month buckets. `.dmg` and `.zip` are separate
-series, while the two total fields use the newest cumulative values across all
-public releases and tags. The scheduler refreshes this data hourly; a failed
-GitHub read does not erase the last stored snapshot.
+The Overview also exposes `Observed download increases`, a display-only chart
+of public GitHub release asset cumulative-counter increases for the selected
+Overview period. `.dmg` and `.zip` remain separate series, while the two total
+fields use the newest cumulative values across all public releases and tags.
+The first valid snapshot is a baseline with no increase; an unchanged valid
+counter is an observed zero; missing observations are unknown, not zero.
+Historical observations without the new asset-count and population-fingerprint
+metadata retain nonnegative counter deltas as legacy/unverified observations;
+missing metadata alone is not a discontinuity. Counter decreases or confirmed
+release/asset-population changes remain discontinuities. Increases spanning a
+missing-check gap or period boundary are retained as uncertain intervals. Each
+trend item retains the previous observation time, the current `observed_at`,
+the two deltas, its continuity state, and population-comparability confidence.
+Aggregated buckets retain known deltas as partial when another interval is
+unknown. The chart uses actual observation times and never invents individual
+download times or zero observations. The scheduler refreshes hourly; a failed
+or partial GitHub read does not erase the last successful snapshot, and the
+last successful data-update timestamp is shown separately.
 
 The first administrator can
 be created only once through `/admin/setup` with the environment-provided
@@ -132,16 +169,21 @@ quick filters `All`, `Failed`, `Open errors`, and `Successful` are
 presentation-only filters over the existing aggregate rows. The page labels
 the compatibility counters `Write-started attempts` and `Successful`, plus the
 explicitly scoped `Evidence success` percentage.
-The canonical compatibility view itself uses active, write-started operations
-and excludes pre-write failures; the rendered page also retains historical
-failures for operator review. Open errors remain a separate unresolved
-diagnostic state. The route is the target of the earlier
+Filter controls keep their accessible names in the markup while the compact
+toolbar presents search placeholders and select options without duplicate
+visible field headings.
+The canonical compatibility view retains final per-map successes and eligible
+write-started failures, including resolved failed history, under the shared
+compatibility counting rules. A current `write_started = false` report remains
+diagnostic history but is outside the completed-attempt denominator; an absent
+write fact is unknown rather than guessed.
+Open errors remain a separate unresolved diagnostic state. The route is the target of the earlier
 `/internal/compatibility/` redirect.
 
 The first screen stops at the KPI summary, filters, and one-row-per-exact-
 model/variant table. Resolved and legacy diagnostics remain available in model
-history and may contribute to its historical-failure presentation, but are not
-part of the canonical compatibility view. Identity-pending evidence is shown
+history and retained failure totals; resolving an error does not erase the failed
+installation result. Identity-pending evidence is shown
 separately. Selecting a model or its error count opens the private per-model
 diagnostics view below. Device history uses the existing event groups and
 provides 25/50-row presentation pagination. Failed rows use the existing
@@ -256,10 +298,11 @@ header and any issue list. The panel retains its heading and shortcuts when empt
 without an additional “No issues need attention” sentence.
 
 The shared authenticated admin navigation shows `Review queue` only when an
-actionable queue is non-empty. Its count is split into distinct active failed
-installation operations without linked issues, active GitHub issue operations,
+actionable queue is non-empty. Its count is labelled `Pending review tasks` and
+is split into distinct active failed installation operations without linked
+issues, active GitHub review-task operations,
 unresolved-identity operations, and exact eligible models awaiting first
-public publication. The popover links GitHub work to the dedicated issue queue,
+public publication. The popover links GitHub work to the dedicated review queue,
 failures and identity work to Installation evidence, and publication work to
 Devices.
 Resolved diagnostics, `NOT_IDENTIFIABLE` identities, rejected publication
@@ -481,7 +524,9 @@ JSON response. Each row contains `id`, `name`, `adapterId`, lifecycle
 `status` (`ACTIVE`, `PAUSED`, `RETIRED`), health (`HEALTHY`, `DEGRADED`,
 `DOWN`, `UNKNOWN`), official website, license and attribution metadata,
 catalog-sync/check timestamps, package counts, broken-package count, and the
-broken URL count, and the last health error. The endpoint never returns
+broken URL count, and the last health error. Additive `affectedPackageCount`
+and `problematicSourceCount` are the current problem units used by the admin
+UI; the health state/error is separate. The endpoint never returns
 provider binaries or executable adapter configuration.
 
 ## `GET /admin/providers` and `GET /admin/providers/{id}`
@@ -489,7 +534,8 @@ provider binaries or executable adapter configuration.
 These authenticated, no-store/noindex HTML pages provide the operator views
 for the provider registry and each registered provider. The list shows provider name and
 secondary ID, lifecycle/health state, package count, catalog sync, last check,
-and issues, with a compact total/active/healthy/package/issue summary. The
+and current Problems (affected packages · problematic sources), with a compact
+total/active/healthy/package/problem summary. The
 detail page shows metadata, license/attribution, provider-level original
 source links, and progressive-disclosure sections for download sources,
 regions/packages, health details/history, collection history, and retained
@@ -567,13 +613,21 @@ raw error fields. The allowlisted fields are `id`, `operationId`, `timestamp`,
 and optional `appBuild`. `releaseLabel` must be a strict SemVer app identity;
 the exact `-local` suffix classifies the row server-side as local test data.
 Event types are `DOWNLOAD_STARTED`, `DOWNLOAD_SUCCEEDED`,
-`DOWNLOAD_FAILED`, `INSTALL_SUCCEEDED`, and `INSTALL_FAILED`; event IDs are
+`DOWNLOAD_FAILED`, `INSTALL_SUCCEEDED`, `INSTALL_FAILED`,
+`MAP_UPDATE_SUCCEEDED`, and `MAP_UPDATE_FAILED`; event IDs are
 UUIDs and are idempotent. The server stores only the normalized columns in
 `map_download_event`; it does not retain the raw JSON body. A successful
 insert returns `201`, a duplicate returns `200`, and both return the
 `operationId`. Local rows are excluded from production map statistics and can
 be removed only by an authenticated, CSRF-protected admin action at
 `/admin/test-data`; the purge deletes both telemetry streams in one transaction.
+
+`MAP_UPDATE_*` events represent a safe replacement of an already installed
+Terento-owned provider map. They are counted separately from first
+installations; they do not increase installation totals, country coverage, or
+map popularity counts. Admin Overview renders both update outcomes as one
+dedicated Map update chart series, while Map statistics exposes their success
+and failure breakdown and supports filtering by either event type.
 
 This endpoint receives map-usage diagnostics while the independent map-usage
 diagnostics switch is enabled in `Terento → Diagnostics`; it must not be used
@@ -582,51 +636,82 @@ does not alter compatibility evidence.
 
 ## `GET /admin/map-statistics.json`
 
-Returns private aggregate map-operation rows with `event_count`, distinct
-`operation_count`, first/last occurrence, provider, map, region, event type,
-and outcome. Where the existing registry has names, admin rows also include
+Returns private aggregate map-operation rows with `event_count`, a source-aware
+statistical `operation_count`, first/last occurrence, provider, map, region, event type,
+outcome, and the optional `component_kind` (`main` or `contours`). Where the existing registry has names, admin rows also include
 `provider_name` and `map_package_name` for human-readable popularity tables;
 `region_display_name` is an additive display-only region label and
 `region_identity` is an additive cross-provider grouping key derived from
 existing canonical region/country metadata. The technical IDs remain available.
 Supported query filters are `provider`, `map`, `region`,
-`dateFrom`, `dateTo`, and `eventType`. The response is no-store/noindex and
+`dateFrom`, `dateTo`, `eventType`, and `outcome`. `provider`, `map`, `region`,
+and dates define the KPI, coverage, and popularity population. `eventType` and
+`outcome` affect only the Event detail projection; pagination is also detail
+only. The response is no-store/noindex and
 does not expose individual event payloads or device identifiers. Each response
 row is an event group, not a complete download/install total: a single map
-operation can produce started, completed, and failed event groups. Admin KPI
-totals count the distinct operations for the relevant completed/failed event
-type, while compatibility evidence remains a separate data source.
+operation can produce started, completed, and failed event groups. For download
+event groups, `operation_count` counts distinct `acquisition_id` values (or the
+legacy event identity when that field is absent), so main-map and contours
+acquisitions remain separate. For explicit install/update groups it counts
+distinct retained result events. Admin KPI totals use that source-aware count
+for the relevant terminal event type, while compatibility evidence remains a
+separate data source.
 The response also includes an additive `linkage` summary. It matches one
-operation from each stream only when their UUID `operationId` values are equal;
-the server first aggregates each stream to one row per operation, so a
-multi-map install is never counted once per child map. `linkedInstallationCount`
-and `mapOnlyInstallationCount` describe map operations that emitted an install
-event, while `linkedSuccessfulInstallCount` and `linkedFailedInstallCount`
-use the linked watch evidence outcome. A missing watch event is coverage data,
-not an inferred installation failure. This field is private admin data and
-does not change either stored event stream. For compatibility fallback rows, a
-failed evidence event is projected as `INSTALL_FAILED` only when `write_started`
-is true or legacy `NULL`; explicit `false` means that writing never started and
-therefore produces no synthetic install failure. A verified compatibility
-success remains eligible for its `INSTALL_SUCCEEDED` fallback. An existing
-explicit `map_download_event` `INSTALL_FAILED` is never removed or duplicated.
-does not recalculate or merge the existing compatibility and map-operation
-aggregates.
-The linkage summary contains `mapOperationCount`, `linkedOperationCount`,
-`mapInstallationCount`, `linkedInstallationCount`,
+map result from each stream only when their UUID `operationId`, provider and
+region are equal and the match is unambiguous; `mapResultIndex` keeps sibling
+results separate. An operation ID alone, or provider + region alone when
+multiple map results are possible, is not enough to infer a match. A missing or
+ambiguous watch event is coverage data, not an inferred installation outcome.
+This field is private admin data and does not change either stored event stream.
+Compatibility fallback rows include only verified successes or failures after
+writing started. An explicit `write_started = false` result remains diagnostic
+detail, not a failed fresh-install row. An existing explicit
+`map_download_event` `INSTALL_FAILED` is never removed or duplicated.
+The linkage summary contains `mapOperationCount`, `mapSessionCount`,
+`linkedOperationCount`, `mapInstallationCount`, `linkedInstallationCount`,
 `mapOnlyInstallationCount`, `linkedWriteStartedInstallCount`,
 `linkedSuccessfulInstallCount`, `linkedFailedInstallCount`,
-`linkedPrewriteFailureCount`, and `linkageRate`.
+`linkedPrewriteFailureCount`, `linkedUnclassifiedInstallCount`, and
+`linkageRate`, plus the explicit aliases
+`freshMapAttemptCount`, `freshMapLinkedDiagnosticCount`,
+`freshMapMissingDiagnosticCount`, and `freshMapDiagnosticCoverageRate`.
+The historical operation/session compatibility fields and `linkageRate` stay
+at operation-key scope (`mapSessionCount` is the distinct non-null operation
+UUID count). The explicit `freshMap*` fields are per-map-result fields and are
+the only linkage fields used for diagnostic coverage. They must not be
+interchanged merely because both are returned in the same object.
 `linkedPrewriteFailureCount` is the subset that failed before a device write;
 it remains visible for traceability but is not folded into the existing
 write-started compatibility success-rate aggregate.
 
-The response's `rows` remain the complete filtered aggregate used for KPI and
-popularity calculations. The additive `detailRows` projection is bounded for
-the Event detail disclosure. `detailPage` and `detailPageSize` (`25` or `50`)
-select its page, and `detailTotal` reports the number of filtered aggregate
-groups. This keeps the event-detail DOM bounded without changing aggregate
-totals. These pagination parameters are private admin presentation controls.
+The response's `rows` remain the complete population aggregate used for KPI,
+coverage, and popularity calculations. The additive `summary` object contains
+those KPI values and is never recomputed from detail rows. The additive
+`detailRows` projection is bounded for the Event detail disclosure.
+`detailPage` and `detailPageSize` (`25` or `50`) select its page, and
+`detailTotal` reports the number of detail-filtered aggregate groups. An empty
+detail projection does not turn a non-empty population into an overall no-data
+state. These pagination parameters are private admin presentation controls.
+
+The Admin presentation keeps the six primary map-statistics metrics in one
+compact container, grouped as Downloads, Fresh installs, and Updates, with a
+secondary Diagnostic coverage row. Popular maps derives only from successful
+fresh main-map installs for known provider catalog packages: Top 5 and Regions
+group canonical country/region identities across providers, while All maps
+groups canonical country/region plus provider. Custom images, contours,
+updates, and downloads are excluded from these views before grouping. All maps
+searches the complete eligible set before pagination. Provider activity labels
+the final value Last install and uses the latest successful fresh-install
+timestamp in the selected scope.
+
+Linkage is per independent map result. A reliable shared `operationId` and
+`mapResultIndex`, with unambiguous provider/region identity, is required;
+session-level `min(provider)`, time, model, or region matching is not used. A
+linked diagnostic is an observation regardless of success/failure state, while
+a missing diagnostic is an observation gap and never a synthesized failure.
+Review queue actions may operate on all diagnostic rows in the selected
+operation; this administrative action scope does not merge per-map statistics.
 
 ## `GET /admin/map-statistics`
 
@@ -638,26 +723,27 @@ the cards with the shared spacing. The map viewport follows its 900:365 source
 proportions without a fixed minimum height. Zoom/reset controls overlay the
 desktop top-left corner; mobile uses a compact edge toolbar so 44px controls do
 not cover small countries. World-fit zoom uses continuous precision with 12px
-total fit padding. Popularity uses compact rows with full names, package
-identifiers, counts and timestamps; the redundant Provider column is omitted.
-Regions is available above Top 5 maps. Map and region buttons highlight and
-focus the corresponding country; focus is immediate so reset cannot race an
-unfinished navigation animation. Browse-all pagination and provider search
-remain available. The scrollable sidebar has a keyboard focus indicator.
+total fit padding. Popularity uses compact rows with full names, counts and
+timestamps; the redundant Provider column is omitted from Top 5 and Regions.
+Top 5 and Regions group canonical country/region identities across providers,
+while All maps retains the provider in each row. Map and region buttons
+highlight and focus the corresponding country; focus is immediate so reset
+cannot race an unfinished navigation animation. All maps search is applied
+before pagination, and the sidebar has a keyboard focus indicator.
 
 Authenticated, no-store/noindex HTML dashboard for the same aggregate read
 model. It supports Last 24 hours, Last 7 days, Last 30 days, and All time
-ranges plus provider, map, region, and event-type filters. It displays map
-operation totals, map-package download/install totals, success rates, Top 5
-maps with a single-table View all disclosure, collapsed Regions, per-provider
-popularity, provider health, and broken provider package/link counts. When a
+ranges plus provider, map, region, and event-type filters. It displays terminal
+acquisition totals, fresh-install totals, separate update totals and success
+rates, the three compact Popular maps views, provider health, and separate
+affected-package/problematic-source counts. When a
 provider filter is selected, the health, issue, and per-provider popularity
 summaries are scoped to that provider. The UI labels the distinction between
 distinct map operations and map-package records because one operation may
 contain multiple packages. Overview and Map statistics therefore do not imply
-identical totals. The Regions disclosure groups equivalent provider labels by
-`region_identity`, sums their package-operation counts, and keeps the newest
-activity timestamp; Popular maps remains grouped by provider package. The
+identical totals. Regions groups equivalent provider labels by `region_identity`
+and sums successful fresh main-map installs; All maps retains the provider in
+its grouping key and uses the latest eligible fresh-install timestamp. The
 compatibility fallback suppression also resolves provider-region aliases
 through the catalog package identity, so one operation reported as `BEL` and
 `BEL+` is not projected as two installs. At country level, `region_identity`
@@ -671,11 +757,14 @@ rather than silently presented zeros. Unauthenticated requests redirect to
 compatibility-evidence choices are both enabled for the same installation
 operation.
 
-This projection rule applies to Overview, Map statistics, the event trend, and
-provider aggregates. A pre-install failure can still remain in compatibility
-diagnostics and in the separate `DOWNLOAD_FAILED` map activity stream; it is
-excluded from map install attempts, failed installs, and install success-rate
-denominators.
+This projection rule applies to the Overview event trend and its provider/map
+activity read model. Map statistics keeps its event and fresh-result boundary
+and does not project a device diagnostic into a guessed map-package aggregate.
+A pre-write failure remains a diagnostic outcome; it is not a fresh-install
+failure, is not counted in the fresh denominator, and never advances
+compatibility status.
+A separate `DOWNLOAD_FAILED` map event remains download activity and is not
+converted into an additional install failure.
 
 ## `GET /devices/catalog.json`
 
@@ -847,8 +936,8 @@ normalized alias tokens, preserving spaces and accented country names.
 
 Map dragging suppresses native browser selection, including WebKit selection;
 Reset clears stale selection and region emphasis. Top 5 remains a stable summary;
-Browse all maps has search and ten-row pagination instead of expanding the summary
-without a bound. Evidence success is labelled Success rate. Download sources use
+All maps has search and ten-row pagination, while Regions remains the full
+canonical-region grouping. Evidence success is labelled Success rate. Download sources use
 artifact metadata to show Main map / Contours labels and separate source counts
 (shared contour URLs count once).
 
@@ -927,3 +1016,105 @@ Map statistics resolve the stored package to its geographic identity and expose
 `map_type`; diagnostics fallback without a variant identity does not guess a
 package or type. Candidate package IDs must be seeded in the receiving DB before
 owner testing, because unknown map IDs cannot link to package geography.
+
+### Build30 acquisition lifecycle extension
+
+Schema1 additionally accepts paired optional `acquisitionId` (random UUID) and
+`componentKind` (`main` or `contours`) for download events. Build29 requests remain
+valid. `DOWNLOAD_PROCESSING`, `DOWNLOAD_CANCELLED`, and `DOWNLOAD_INTERRUPTED`
+require this pair and outcome `UNKNOWN`; new successes/failures require the
+corresponding outcome. These are metadata only, never filenames or device IDs.
+A repeated event/phase is idempotent and one acquisition admits one terminal.
+Recent activity groups the new acquisition phases with component and history;
+non-terminal observations are explicitly labelled `Outcome not received`.
+Cancellation/interruption are excluded from download failure/success ratios.
+The API/migration must be deployed before the build30 client.
+
+### Admin information hierarchy (local UI implementation)
+
+Diagnostic detail presents the saved model assignment separately from automatic
+source checks. An administrator assignment does not turn incomplete evidence
+into a match; a conflicting check for the assigned candidate remains visible.
+The compact outcome precedes expandable identity evidence, source corrections,
+issue management and full technical details. Other candidates retain their
+complete check tables behind individual disclosures. Source correction forms
+show the selected field's original reported value; corrections do not reassign
+installations. Original identifiers, source revisions and review history remain
+available. No identity policy, API mutation semantics or compatibility counts
+change as part of this presentation work.
+
+Provider details distinguish AVAILABLE package counts, non-retired catalog
+entries and broken artifacts. The latest recorded check and its coverage are
+separate from package issues. Collection and check results precede source URLs
+and release distributions. Download history uses a compact wrapping timeline;
+full timestamps remain in markup and accessible labels, with time-only visible
+labels when all phases occur on the same day in the selected timezone.
+
+### Device identification maintenance (local, not deployed)
+
+`GET /admin/device-identification` is an authenticated, no-store admin tool
+under Tools. Search models with `q`; select an exact model with `device`.
+Code/source reviews live here instead of the device detail page. The tool
+explains identification scope, groups sources by code, and retains review
+reasons, history, source URLs and version references. Existing CSRF-protected
+`POST /admin/devices/identity-mapping` remains the mutation route; its validated
+return destination can now point to the selected model in the tool. Saved
+installation assignments and compatibility approval semantics are unchanged.
+
+### Per-collection map updates (local, not deployed)
+
+Provider collection history includes Updates, the sum of new package IDs and
+existing packages with changed release or source_updated_at. One package counts
+once, independent of its artifacts; removed packages are not updates. The
+initial catalog import counts all packages as new. Counts are captured during
+snapshot persistence in the same transaction, tied to a RUNNING run for the
+same provider. Scheduled/manual collectors and BBBike candidate import supply
+that run ID. Health checks alone do not populate these counts.
+
+Migration 054 adds nullable new_package_count and updated_package_count to
+catalog_collection_run. Historical unknowns stay NULL. The admin table shows
+counts only for successful runs with both values recorded; older, incomplete
+and failed runs show —, never an inferred zero from release_change_detected.
+
+Compatibility intake delivery logs record stored, duplicate and validation-rejected
+reports with strictly formatted random event/operation UUIDs and rejection reason
+codes. They do not record raw request payloads, device identity fields or native
+logs. This allows delivery correlation without synthesizing a device diagnostic
+from a map-statistics event. Historical rejected payloads cannot be reconstructed
+from these new log entries.
+
+### Operation-owned installation failure reports (local follow-up)
+
+The compatibility-event failure-code allowlist additionally accepts
+`INSTALL_FAILED_UNKNOWN`. This represents a failed boundary for which the app
+has no proven domain-specific failure code; it must not be relabelled as an
+assumed disconnect. Existing schema versions/fields and the other failure codes
+remain unchanged. Release this additive acceptance before publishing a client
+that can emit it.
+
+App reports retain the operation ID shared with map statistics. Model assignment
+continues to require existing identity evidence. An unassigned historical map
+statistic cannot provide a missing watch identity. Final FAILED reports enter
+compatibility accounting only when writing actually started (or the documented
+legacy fallback applies); current pre-write results remain diagnostic history and
+are outside completed attempts and the Overview fresh-install fallback.
+NOT_STARTED remains outside completed attempts; an explicit download-only map
+event is still not converted into an additional install failure.
+
+`test_operation_diagnostic_delivery.py` checks intake, idempotency, actual insert
+and identity assessment (SQLite adaptation), and review/diagnostic/model/photo
+and assignment/GitHub control rendering. It does not create issues or constitute
+production PostgreSQL/browser validation.
+
+### Build31 operation diagnostic acceptance
+
+Compatibility-event intake additionally accepts INSTALL_FAILED_UNKNOWN without
+adding fields or changing schema versions. The app uses it only when an observed
+failed boundary has no proven domain-specific cause. All prior accepted codes
+remain valid. Apply this acceptance before publishing build31; follow the
+[app–API release contract](../../../contracts/APP_API_RELEASE_CONTRACT.md).
+
+Operation-owned reports retain initial identity/map context and operationId even
+when the screen closes. Existing received-versus-reviewed identity, assignment,
+local-test partition and counting rules remain unchanged. This prospective fix
+does not reconstruct historical missing reports.

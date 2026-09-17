@@ -45,5 +45,40 @@ class MapCapabilityTests(unittest.TestCase):
         self.assertFalse(classify_map_capable("Instinct 3"))
         self.assertIsNone(classify_map_capable("Garmin Future Watch"))
         self.assertIsNone(classify_map_capable("Forerunner 170"))
-        self.assertIsNone(classify_map_capable("fēnix 9"))
+        self.assertTrue(classify_map_capable("fēnix 9"))
         self.assertIsNone(classify_map_capable("fenix 7", manufacturer="Suunto"))
+
+    def test_existing_fenix9_rows_are_classified_without_rewriting_specs_or_approval(self):
+        from copy import deepcopy
+        from datetime import datetime, timezone
+        from test_admin_devices import device_row
+        from terento_catalog.admin import _admin_device_payload
+        from terento_catalog.device_catalog import build_device_catalog
+
+        variants = [(size, '', False) for size in (43, 47, 51)]
+        variants += [(size, 'Pro', reach) for size in (43, 47, 51) for reach in (False, True)]
+        variants += [(size, 'Pro Solar', reach) for size in (47, 51) for reach in (False, True)]
+        self.assertEqual(len(variants), 13)
+        for size, edition, reach in variants:
+            with self.subTest(size=size, edition=edition, inreach=reach):
+                row = device_row(model='fēnix 9' + (' Pro' if edition else ''),
+                    canonical_model='fenix 9' + (' pro' if edition else ''),
+                    variant=f'{size} mm' + (', Solar' if 'Solar' in edition else '') + (', inReach' if reach else ''),
+                    case_size_mm=size, screen_technology='MIP' if 'Solar' in edition else 'AMOLED',
+                    solar='Solar' in edition, inreach=reach, map_capable=None,
+                    support_status='NOT_EVALUATED', public_review_status='PENDING',
+                    public_statistics_enabled=False, successful_install_count=0, attempted_install_count=0,
+                    failed_install_count=0)
+                original = deepcopy(row)
+                device = build_device_catalog([row], datetime.now(timezone.utc))['devices'][0]
+                admin = _admin_device_payload([row], None)['devices'][0]
+                self.assertTrue(device['mapCapable'])
+                self.assertTrue(admin['mapCapable'])
+                self.assertFalse(admin['publicCompatibility']['published'])
+                self.assertEqual(admin['supportStatus'], 'NOT_EVALUATED')
+                self.assertEqual(device['model'], row['model'])
+                self.assertEqual(device['variant'], row['variant'])
+                self.assertEqual(device['inReach'], reach)
+                self.assertEqual(row, original)
+        row['map_capable'] = False
+        self.assertFalse(build_device_catalog([row], datetime.now(timezone.utc))['devices'][0]['mapCapable'])

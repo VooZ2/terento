@@ -18,6 +18,12 @@ schemas. Schema versions are independent of Terento app versions and build
 numbers. Relative `$id` values identify files within this directory; `$ref`
 values resolve only to local `$defs`. No schema or fixture needs network access.
 
+Statistics populations, formulas, deduplication and historical interpretation
+are canonical in [`STATISTICS_CONTRACT.md`](STATISTICS_CONTRACT.md). The
+contract distinguishes terminal provider acquisitions, fresh main-map results,
+optional components and updates; it does not authorize a production migration
+or claim complete telemetry coverage.
+
 ## Responses and client compatibility
 
 The current beta.12 client requests `/maps/catalog-v4.json`. The legacy route
@@ -138,3 +144,23 @@ permission: the server evaluates all five identity checks before resolving it.
 An actually observed `010-…` XML value uses the separate retail SKU registry;
 `006-B…` uses the XML/Connect IQ registry. Source-derived properties share their
 provenance and never count as independent observations.
+
+Build30 adds `map-event.valid-acquisition.json`, consumed by the Swift event
+runner and Python schema checks. Optional paired acquisition/component fields
+and processing/cancellation/interruption phases extend schema1; legacy fixtures
+remain unchanged and accepted. Server UUID and outcome validation remains the
+intake boundary. No raw device or file identity is added.
+
+### Operation failure fixture
+
+`fixtures/compatibility-event.valid-failed-operation.json` is a deterministic
+synthetic fixture from the Swift InstallationEvidenceEvent encoder for an
+operation-owned failed installation. The event schema adds the controlled
+`INSTALL_FAILED_UNKNOWN` failure code for genuinely unclassified failures and
+the optional-component outcome fields; no private data is added. The API must accept this code
+before the corresponding client is published. Backend delivery tests can also
+consume fresh native fixture output through `TERENTO_DIAGNOSTIC_FIXTURE_OUTPUT`.
+
+Cross-component changes and releases must follow
+[APP_API_RELEASE_CONTRACT.md](APP_API_RELEASE_CONTRACT.md), including generated
+Swift payload tests, accepted-code parity and API-before-client publication.

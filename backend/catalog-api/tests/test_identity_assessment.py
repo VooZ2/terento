@@ -13,6 +13,40 @@ class IdentityAssessmentTests(unittest.TestCase):
                               status='APPROVED', source_url='https://example.org/evidence', source_version='1')
                          for kind, value in [('USB', '091e:51b8'), ('XML_PART_NUMBER', '006-B4631-00')]]
 
+
+    def test_saved_assignment_and_conflicting_sources_stay_separate(self):
+        from copy import deepcopy
+        from terento_catalog.admin import _identity_checks_markup
+        assessment = assess_identity(self.event, [self.device], self.mappings[:1])
+        result = dict(canonical_device_model_id=self.device['id'], identity_assessment=assessment,
+                      identity_decision={'decision': {'deviceId': self.device['id'], 'reason': 'Confirmed on device'}})
+        original = deepcopy(result)
+        markup = _identity_checks_markup([result])
+        summary = markup.split('<details')[0]
+        self.assertIn('Confirmed by administrator', summary)
+        self.assertIn('Device codes', markup)
+        self.assertNotIn('leave the review open', markup)
+        self.assertEqual(result, original)
+        result['current_identity_assessment'] = assess_identity(dict(self.event, rawMTPModel='fenix 7 Pro 47mm'), [self.device], self.mappings)
+        summary = _identity_checks_markup([result]).split('<details')[0]
+        self.assertIn('conflicting source values', summary)
+        self.assertNotIn('No further model selection needed', summary)
+
+    def test_automatic_assignment_has_complete_checks_without_admin_claim(self):
+        from terento_catalog.admin import _identity_checks_markup
+        assessment = assess_identity(self.event, [self.device], self.mappings)
+        markup = _identity_checks_markup([dict(canonical_device_model_id=self.device['id'], identity_assessment=assessment)])
+        summary = markup.split('<details')[0]
+        self.assertIn('Catalog model already assigned', summary)
+        self.assertNotIn('confirmed by administrator', summary)
+
+    def test_display_prefers_saved_catalog_name_without_mutating_report(self):
+        from terento_catalog.admin import _identity_parts
+        row = dict(model='EPIX Pro', compatibility_identity='EPIX Pro · 51 mm',
+                   canonical_device_model_id='epix-pro-51', canonical_model='epix Pro (Gen 2)', variant='51 mm', screen_technology='AMOLED')
+        self.assertEqual(_identity_parts(row)[:2], ('epix Pro (Gen 2)', '51 mm, AMOLED'))
+        self.assertEqual(row['model'], 'EPIX Pro')
+
     def test_five_checks_required(self):
         result = assess_identity(self.event, [self.device], self.mappings)
         self.assertEqual(result['canonicalDeviceId'], self.device['id'])
@@ -130,19 +164,20 @@ class IdentityAssessmentTests(unittest.TestCase):
         from terento_catalog.admin import _identity_mapping_markup
         mapping = dict(self.mappings[0], id=1, history=[])
         rendered = _identity_mapping_markup(dict(id='test', identityMappings=[mapping, dict(mapping, id=2, source_version='2')]), 'csrf')
-        self.assertIn('1 codes · 0 awaiting review', rendered)
+        self.assertIn("class='identity-mappings'", rendered)
         self.assertEqual(rendered.count("class='identity-mapping-code'"), 1)
         self.assertNotIn('<details open', rendered)
-        self.assertIn('2 source(s)', rendered)
+        self.assertIn('2 sources', rendered)
 
-    def test_admin_shows_five_checks_sources_and_escaped_raw_metadata(self):
+    def test_admin_shows_six_facts_without_redundant_identity_details(self):
         from terento_catalog.admin import _identity_checks_markup, _identity_mapping_markup
         assessment = assess_identity(self.event, [self.device], self.mappings)
         rendered = _identity_checks_markup([{'identity_assessment': assessment, 'garmin_model_description': '<script>unsafe</script>'}])
-        for label in ['Model and variant', 'Case size', 'Screen technology', 'Device XML part number', 'USB VID/PID', 'not independent observations']:
+        for label in ['Model', 'Case size', 'Display', 'Solar', 'inReach', 'Device codes']:
             self.assertIn(label, rendered)
-        self.assertIn('Automatically assigned', rendered)
-        self.assertNotIn('<script>unsafe', rendered)
+        self.assertNotIn('Technical identity details', rendered)
+        self.assertNotIn('identity-technical-evidence', rendered)
+        self.assertNotIn('Automatic identity assessment', rendered)
         self.assertIn('&lt;script&gt;', rendered)
         device = dict(id='test', identityMappings=[dict(self.mappings[0], id=1, review_reason='Evidence', history=[])])
         self.assertIn('required', _identity_mapping_markup(device, 'csrf'))
@@ -153,18 +188,18 @@ class IdentityAssessmentTests(unittest.TestCase):
         assessment = assess_identity(self.event, [self.device, other], self.mappings)
         results = [{'identity_assessment': assessment}]
         markup = _identity_checks_markup(results)
-        summary, technical = markup.split("<details class='admin-disclosure identity-technical-evidence'>")
-        self.assertIn('✓ Model recognized', summary)
-        self.assertEqual(summary.count('<li>'), 5)
-        self.assertNotIn('USB', summary)
-        self.assertNotIn('other', summary)
-        self.assertIn('other', technical)
+        self.assertIn('Model assignment needs review', markup)
+        self.assertEqual(markup.count('<li>'), 0)
+        self.assertIn('Device codes', markup)
+        self.assertNotIn('device-id other', markup)
+        self.assertNotIn('identity-candidate', markup)
+        self.assertNotIn('Technical identity details', markup)
         self.assertEqual(_identity_recommendation(results)['deviceId'], self.device['id'])
 
     def test_review_does_not_guess_when_ambiguous_missing_or_conflicting(self):
         from terento_catalog.admin import _identity_checks_markup, _identity_recommendation
         assessment = assess_identity(self.event, [self.device], self.mappings[:1])
-        self.assertIn('Not enough information', _identity_checks_markup([{'identity_assessment': assessment}]))
+        self.assertIn('Model assignment needs review', _identity_checks_markup([{'identity_assessment': assessment}]))
         for value in ({}, dict(assessment, candidates=[]),
                       dict(assessment, candidates=[assessment['candidates'][0]] * 2)):
             self.assertIsNone(_identity_recommendation([{'identity_assessment': value}]))
@@ -172,10 +207,10 @@ class IdentityAssessmentTests(unittest.TestCase):
         self.assertIsNone(_identity_recommendation([{'identity_assessment': conflict}]))
         self.assertIsNone(_identity_recommendation([{'identity_assessment': assessment}, {}]))
 
-    def test_inreach_feature_does_not_rename_variant(self):
+    def test_inreach_label_moves_to_variant_without_changing_identity(self):
         from terento_catalog.admin import _known_variant_description, _identity_parts
-        self.assertEqual(_known_variant_description(dict(variant='51 mm', screen_technology='AMOLED', inreach=True)), '51 mm, AMOLED')
-        self.assertEqual(_identity_parts(dict(model='fēnix 9 Pro · inReach', variant='51 mm'))[:2], ('fēnix 9 Pro · inReach', '51 mm'))
+        self.assertEqual(_known_variant_description(dict(variant='51 mm', screen_technology='AMOLED', inreach=True)), '51 mm, AMOLED, inReach')
+        self.assertEqual(_identity_parts(dict(model='fēnix 9 Pro · inReach', variant='51 mm'))[:2], ('fēnix 9 Pro', '51 mm, inReach'))
 
     def test_shared_model_keeps_name_but_does_not_guess_screen(self):
         from terento_catalog.admin import _identity_checks_markup, _identity_recommendation
@@ -185,7 +220,7 @@ class IdentityAssessmentTests(unittest.TestCase):
         results = [{'identity_assessment': assessment}]
         summary = _identity_checks_markup(results).split('<details')[0]
         self.assertIn('fēnix 8 Pro', summary)
-        self.assertIn('Screen: Not enough information', summary)
+        self.assertIn('Display', summary)
         self.assertIsNone(_identity_recommendation(results))
 
     def test_diagnostic_summary_remains_above_identification(self):
@@ -198,6 +233,86 @@ class IdentityAssessmentTests(unittest.TestCase):
         summary = markup.split("<dl class='diagnostic-detail-summary'>")[1].split('</dl>')[0]
         for label in ('Device', 'Variant', 'Date', 'Map / region', 'Result', 'App version', 'Review state'):
             self.assertIn('<dt>' + label + '</dt>', summary)
-        self.assertLess(markup.index("class='diagnostic-detail-summary'"), markup.index('Model identification'))
-        self.assertIn("value='fenix8pro-51-amoled' selected", markup)
-        self.assertIn("name='identity_reason' required", markup)
+        self.assertLess(markup.index("class='diagnostic-detail-summary'"), markup.index("class='identity-summary identity-outcome'"))
+        self.assertIn("name='canonical_device_model_id'", markup)
+        self.assertIn("value='fenix8pro-51-amoled'", markup)
+        self.assertNotIn("name='identity_reason'", markup)
+
+    def test_catalog_specs_can_derive_mip_from_model_size_and_solar(self):
+        solar = dict(
+            id='fenix7-47-solar-mip', model='fēnix 7', case_size_mm=47,
+            screen_technology='MIP', solar=True, inreach=False,
+            specification_evidence={
+                'screen_technology': {'source': 'Garmin specifications'},
+                'solar': {'source': 'Garmin specifications'},
+                'inreach': {'source': 'Garmin specifications'},
+            },
+        )
+        amoled = dict(solar, id='fenix7-47-amoled', screen_technology='AMOLED', solar=False)
+        result = assess_identity(
+            {'model': 'fēnix 7', 'caseSizeMm': 47, 'displayType': 'Solar'},
+            [solar, amoled], [],
+        )
+        candidate = next(item for item in result['candidates'] if item['deviceId'] == solar['id'])
+        screen = next(check for check in candidate['checks'] if check['name'] == 'screen')
+        self.assertEqual(screen['state'], 'MATCH')
+        self.assertEqual(screen['evidence'][0]['source'], 'catalog specification: Garmin specifications')
+        self.assertEqual(result['facts']['solar'][0]['value'], True)
+        from terento_catalog.admin import _identity_checks_markup, _identity_recommendation
+        self.assertEqual(_identity_recommendation([{'identity_assessment': result}])['deviceId'], solar['id'])
+        markup = _identity_checks_markup([{'identity_assessment': result}])
+        self.assertIn('MIP', markup)
+        self.assertIn('From catalog', markup)
+
+    def test_display_type_solar_is_not_a_screen_and_variant_mip_is(self):
+        solar_event = dict(self.event, rawMTPModel='fenix 8 Pro 51mm', displayType='Solar', variant=None)
+        result = assess_identity(solar_event, [self.device], self.mappings)
+        self.assertEqual(result['facts']['solar'][0]['value'], True)
+        self.assertEqual(result['facts']['screenTechnology'], [])
+        mip_result = assess_identity(dict(self.event, rawMTPModel='fenix 8 Pro 51mm', displayType='Solar', variant='51 mm MIP'), [self.device], self.mappings)
+        self.assertEqual(mip_result['facts']['screenTechnology'][0]['value'], 'MIP')
+
+    def test_true_false_and_unknown_features_keep_their_meaning(self):
+        from terento_catalog.admin import _identity_checks_markup
+        true_device = dict(self.device, id='solar', solar=True, inreach=True)
+        true_result = assess_identity(dict(self.event, rawMTPModel='fenix 8 Pro 51mm Solar inReach'), [true_device], [])
+        true_candidate = true_result['candidates'][0]
+        true_features = true_candidate['checks'][0]['features']
+        self.assertEqual({item['name']: item['evidence'][0]['value'] for item in true_features}, {'solar': True, 'inreach': True})
+
+        false_result = assess_identity(dict(self.event, rawMTPModel='fenix 8 Pro 51mm'), [self.device], [])
+        false_features = {item['name']: item for item in false_result['candidates'][0]['checks'][0]['features']}
+        self.assertEqual(false_features['solar']['state'], 'MISSING')
+        self.assertEqual(false_features['solar']['expected'], False)
+        false_markup = _identity_checks_markup([{'identity_assessment': false_result}])
+        self.assertIn('<span>Solar</span></div><strong>No</strong><small>From catalog</small>', false_markup)
+
+        unknown_device = dict(self.device, id='unknown-features', solar=None, inreach=None)
+        unknown_result = assess_identity(dict(self.event, rawMTPModel='fenix 8 Pro 51mm'), [unknown_device], [])
+        unknown_markup = _identity_checks_markup([{'identity_assessment': unknown_result}])
+        self.assertIn('<span>Solar</span></div><strong>Not reported</strong>', unknown_markup)
+        self.assertIn('<span>inReach</span></div><strong>Not reported</strong>', unknown_markup)
+
+    def test_multiple_variants_are_not_selected_by_order_and_labels_expose_inreach(self):
+        from terento_catalog.admin import _identity_checks_markup, _identity_device_options, _identity_recommendation
+        first = dict(self.device, id='fenix-47-no-inreach', inreach=False, screen_technology='AMOLED')
+        second = dict(self.device, id='fenix-47-inreach', inreach=True, screen_technology='AMOLED')
+        result = assess_identity({'model': 'fēnix 8 Pro', 'caseSizeMm': 51}, [first, second], [])
+        self.assertIsNone(_identity_recommendation([{'identity_assessment': result}]))
+        self.assertIn('Select a catalog variant', _identity_checks_markup([{'identity_assessment': result}]))
+        options, _ = _identity_device_options([first, second])
+        self.assertIn("data-identity-device-id='fenix-47-no-inreach'", options)
+        self.assertIn('inReach: No', options)
+        self.assertIn("data-identity-device-id='fenix-47-inreach'", options)
+        self.assertIn('inReach: Yes', options)
+
+    def test_selected_catalog_id_does_not_create_reported_screen_evidence(self):
+        result = assess_identity(
+            {'model': 'fēnix 8 Pro', 'caseSizeMm': 51,
+             'canonicalDeviceId': self.device['id']},
+            [self.device], [],
+        )
+        screen = next(check for check in result['candidates'][0]['checks'] if check['name'] == 'screen')
+        self.assertEqual(screen['state'], 'MISSING')
+        self.assertEqual(screen['evidence'], [])
+        self.assertEqual(result['facts']['screenTechnology'], [])

@@ -5,7 +5,7 @@ import re
 import unicodedata
 from typing import Any
 
-VERSION = 2
+VERSION = 3
 
 # Historical review statuses are not observations of a device model. Match
 # only the legacy model field; original MTP/XML values remain evidence.
@@ -55,8 +55,13 @@ def model_label(value: Any) -> str:
     return re.split(r'\b(?:\d{2,3}\s*mm|amoled|microled|mip|solar|sapphire|inreach)\b', text)[0].strip()
 
 
-def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> dict:
-    """Five checks per candidate, retaining ambiguity and shared provenance."""
+def _identity_observations(event: dict) -> dict[str, Any]:
+    """Collect safe, independently reported identity facts.
+
+    Catalog rows and an administrator's selected ID are deliberately not part
+    of this collection.  In particular, the legacy ``displayType=Solar``
+    value contributes Solar evidence only; it never becomes a screen type.
+    """
     sources = event.get('_sourceOverrides', {})
     labels = [(sources.get(key, key), event.get(key))
               for key in ('rawMTPModel', 'garminModelDescription', 'model')
@@ -74,13 +79,93 @@ def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> d
         for token, screen in (('microled', 'MicroLED'), ('amoled', 'AMOLED'), ('mip', 'MIP')):
             if token in text.split():
                 screens.append((key, screen))
-    solar = any('solar' in text.split() for _, text in texts) or normalized(event.get('displayType')) == 'solar'
-    inreach = any('inreach' in text.split() for _, text in texts)
+    solar = []
+    if any('solar' in text.split() for _, text in texts):
+        solar.append((next(key for key, text in texts if 'solar' in text.split()), True))
+    if normalized(event.get('displayType')) == 'solar':
+        solar.append((sources.get('displayType', 'displayType'), True))
+    inreach = []
+    if any('inreach' in text.split() for _, text in texts):
+        inreach.append((next(key for key, text in texts if 'inreach' in text.split()), True))
     part_number = event.get('garminModelPartNumber')
     part_kind = 'RETAIL_SKU' if str(part_number or '').startswith('010-') else 'XML_PART_NUMBER'
     codes = {part_kind: part_number, 'USB': None}
     if isinstance(event.get('usbVendorID'), int) and isinstance(event.get('usbProductID'), int):
         codes['USB'] = f"{event['usbVendorID']:04x}:{event['usbProductID']:04x}"
+    return {
+        'labels': labels,
+        'sizes': sizes,
+        'screens': screens,
+        'solar': solar,
+        'inreach': inreach,
+        'part_kind': part_kind,
+        'codes': codes,
+    }
+
+
+def selected_identity_conflicts(
+    event: dict, device: dict, mappings: list[dict] | None = None,
+) -> list[dict[str, Any]]:
+    """Return only concrete contradictions for one independently selected ID.
+
+    Missing facts are intentionally absent from the result.  This helper is
+    used by manual review validation so a submitted catalog ID cannot become
+    its own evidence through ``canonicalDeviceId``.
+    """
+    observations = _identity_observations(event)
+    conflicts: list[dict[str, Any]] = []
+    expected_model = model_label(device.get('model'))
+    for source, value in observations['labels']:
+        reported_model = model_label(value)
+        if reported_model and expected_model and reported_model != expected_model:
+            conflicts.append({'field': 'model', 'source': source,
+                              'reported': reported_model, 'selected': expected_model})
+    expected_size = device.get('case_size_mm')
+    if expected_size is not None:
+        for source, value in observations['sizes']:
+            if value != expected_size:
+                conflicts.append({'field': 'caseSizeMm', 'source': source,
+                                  'reported': value, 'selected': expected_size})
+    expected_screen = device.get('screen_technology')
+    if expected_screen:
+        for source, value in observations['screens']:
+            if value != expected_screen:
+                conflicts.append({'field': 'screenTechnology', 'source': source,
+                                  'reported': value, 'selected': expected_screen})
+    if device.get('solar') is False and observations['solar']:
+        conflicts.append({'field': 'solar', 'source': observations['solar'][0][0],
+                          'reported': True, 'selected': False})
+    if device.get('inreach') is False and observations['inreach']:
+        conflicts.append({'field': 'inReach', 'source': observations['inreach'][0][0],
+                          'reported': True, 'selected': False})
+    if mappings:
+        device_id = str(device.get('id') or '')
+        for kind, value in observations['codes'].items():
+            if value is None:
+                continue
+            approved_ids = {
+                str(mapping.get('device_model_id'))
+                for mapping in mappings
+                if mapping.get('kind') == kind
+                and mapping.get('value') == value
+                and mapping.get('status') == 'APPROVED'
+            }
+            if approved_ids and device_id not in approved_ids:
+                conflicts.append({'field': kind, 'source': kind,
+                                  'reported': value, 'selected': ' / '.join(sorted(approved_ids))})
+    return conflicts
+
+
+def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> dict:
+    """Five checks per candidate, retaining ambiguity and shared provenance."""
+    observations = _identity_observations(event)
+    labels = observations['labels']
+    sizes = observations['sizes']
+    screens = observations['screens']
+    solar = bool(observations['solar'])
+    inreach = bool(observations['inreach'])
+    part_kind = observations['part_kind']
+    codes = observations['codes']
     observed_mappings = {kind: [m for m in mappings if m['kind'] == kind and m['value'] == value]
                          for kind, value in codes.items()}
     matched = {kind: [m for m in group if m['status'] == 'APPROVED'] for kind, group in observed_mappings.items()}
@@ -90,6 +175,27 @@ def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> d
     incomplete = {kind: bool({m['device_model_id'] for m in observed_mappings[kind] if m['status'] == 'PENDING'}
                              - {m['device_model_id'] for m in group}) for kind, group in matched.items()}
     by_id = {d['id']: d for d in devices}
+    # XML provides the primary model. Specifications may fill an unobserved
+    # property only when every variant compatible with the observations agrees
+    # and each fact has reviewed provenance. Shared USB codes cannot widen it.
+    observed_model_labels = {model_label(value) for _, value in labels if model_label(value)}
+    specification_model = next(iter(observed_model_labels), '') if len(observed_model_labels) == 1 else ''
+    specification_targets = [d for d in devices if specification_model
+        and model_label(d.get('model')) == specification_model
+        and all(model_label(value) == specification_model for _, value in labels)
+        and all(d.get('case_size_mm') is None or d['case_size_mm'] == value for _, value in sizes)
+        and all(d.get('screen_technology') is None or d['screen_technology'] == value for _, value in screens)
+        and (not solar or d.get('solar') is not False)
+        and (not inreach or d.get('inreach') is not False)]
+    specification_facts = {}
+    for field in ('screen_technology', 'solar', 'inreach'):
+        values = {d.get(field) for d in specification_targets}
+        if specification_targets and len(values) == 1 and None not in values and all(
+                (d.get('specification_evidence') or {}).get(field, {}).get('source')
+                for d in specification_targets):
+            specification_facts[field] = [
+                ('catalog specification: ' + d['specification_evidence'][field]['source'], d[field])
+                for d in specification_targets]
     candidates = []
     for device in devices:
         device_id = device['id']
@@ -109,6 +215,7 @@ def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> d
 
         check('model', [(key, model_label(value)) for key, value in labels], expected)
         model_check = checks[-1]
+        model_check['observedState'] = model_check['state']
         derived_size, derived_screen = list(sizes), list(screens)
         features = {'solar': [('model text', True)] if solar else [],
                     'inreach': [('model text', True)] if inreach else []}
@@ -122,6 +229,11 @@ def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> d
                 values = {d.get(field) for d in targets}
                 if targets and len(values) == 1 and None not in values:
                     result.append((kind + ':' + str(codes[kind]), next(iter(values))))
+        if not derived_screen:
+            derived_screen.extend(specification_facts.get('screen_technology', []))
+        for feature in features:
+            if not features[feature]:
+                features[feature].extend(specification_facts.get(feature, []))
         # An absent word is never a negative feature observation. Keep the
         # feature checks inside the model row with their original provenance.
         model_check['features'] = []
@@ -150,5 +262,13 @@ def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> d
     possible = [c for c in candidates if not c['conflict']]
     exact = [c for c in possible if all(k['state'] == 'MATCH' for k in c['checks'])]
     resolved = exact[0]['deviceId'] if len(possible) == 1 and len(exact) == 1 else None
+    facts = {
+        'model': [{'source': source, 'value': value} for source, value in labels],
+        'caseSizeMm': [{'source': source, 'value': value} for source, value in sizes],
+        'screenTechnology': [{'source': source, 'value': value} for source, value in screens],
+        'solar': [{'source': source, 'value': value} for source, value in observations['solar']],
+        'inReach': [{'source': source, 'value': value} for source, value in observations['inreach']],
+        'codes': [{'kind': kind, 'value': value} for kind, value in codes.items() if value is not None],
+    }
     return {'version': VERSION, 'reportedCanonicalDeviceId': event.get('canonicalDeviceId'), 'canonicalDeviceId': resolved,
-            'state': 'RESOLVED' if resolved else 'UNRESOLVED', 'candidates': candidates}
+            'state': 'RESOLVED' if resolved else 'UNRESOLVED', 'facts': facts, 'candidates': candidates}

@@ -47,9 +47,14 @@ The September 9 post-audit contract keeps persistent labels above filters
 (including expanded map search), sentence-case health badges, and at least
 40 px desktop / 44 px mobile map controls. Wide evidence tables scroll inside
 their container instead of splitting headings. Empty time ranges and filtered
-searches explain how to recover. Map statistics count packages; compatibility
-statistics count watch-installation attempts that reached transfer. Success
-rates exclude in-progress operations. Provider health has one summary, with
+searches explain how to recover. Map statistics distinguish terminal provider
+acquisitions, fresh main-map results, optional components and updates.
+Compatibility statistics use the same logical per-result semantics: verified
+fresh results and failures after writing began are counted, while current
+pre-install and unknown results remain visible in diagnostics but stay outside
+the fresh denominator. See the canonical
+[`../../contracts/STATISTICS_CONTRACT.md`](../../contracts/STATISTICS_CONTRACT.md).
+Success rates exclude in-progress operations. Provider health has one summary, with
 per-provider status retained as row context. Display-name cleanup must not
 change stored identities or evidence.
 
@@ -332,9 +337,12 @@ unit. Resolved failures stay in all-time attempt/failure totals; unstarted
 siblings do not become fabricated attempts. Immutable event IDs provide replay
 idempotency. Diagnostic review actions remain grouped by the original session.
 
-Overview reconciles map events against compatibility results by session,
-provider and region. One catalog event cannot suppress a custom result or a
-different region. Map statistics remains catalog-only. Existing retained mixed
+Overview keeps map events and compatibility results as separate streams and
+links them only at the independent map-result boundary: shared operation,
+provider and an exact/unambiguous package-region identity. One catalog event
+cannot suppress a custom result, a sibling map, or a different region. Provider
+map-event telemetry remains separate, while map statistics can project eligible
+custom fresh results with unknown catalog geography. Existing retained mixed
 sessions recalculate on read; no production event rewrite or backfill is needed.
 The public API, watch cards and Installations use compatibility_model_statistics
 as the authoritative full-history source; the 500-row diagnostics display limit
@@ -343,8 +351,9 @@ both verify, even before other selected results arrive. Failed/unverified result
 never advance status. Thresholds remain 0 TESTING, 1–2 TESTED, 3–4 SUPPORTED,
 5+ VERIFIED. Local telemetry stays excluded, resolved failures stay in historical
 counts, and existing exact-model administrator publication approval is preserved.
-Native telemetry contracts, provider-only Map statistics and review actions are
-unchanged. These counts represent map installations, not unique users or watches.
+Native telemetry contracts, provider-only map-event uploads and review actions
+are unchanged. These counts represent map installations, not unique users or
+watches.
 
 ### Admin custom IMG chart series
 
@@ -529,6 +538,36 @@ name can be shown while the exact size/screen remains unknown. Recommendations
 never assign records automatically or waive the required evidence reason.
 The resolver, source-correction rules and public approval counts are unchanged.
 
-Variant descriptions do not append inReach from the capability flag. Explicit
-inReach model names remain model names; having that capability alone does not
-rename fēnix 8 Pro. The public compatibility helper follows the same boundary.
+Model/variant presentation is standardized without changing stored identities:
+`Pro`, generation and model suffixes stay in Model; size, screen technology,
+Solar, inReach and existing edition labels appear in Variant, in that order.
+For example `fenix 9 Pro - inReach, 51mm` displays as `fēnix 9 Pro` with
+`51 mm, inReach`. Supplied true feature flags are displayed; missing flags do
+not mean false. Unknown or conflicting screens are not filled from family
+names. See [the display contract](docs/device-api.md#display-only-label-contract).
+Approved records retain their IDs, specifications, assignments, counts and
+approval state. The underlying catalog and event fields remain unchanged.
+
+Build30 preparation adds migration049 and backward-compatible component
+acquisition outcomes, preserving build29 intake and legacy deduplication.
+Admin shows received XML/USB codes independently of mapping approval and derives
+only unanimous reviewed specification facts for XML-matching variants.
+New acquisition phases are grouped in Recent activity with component/history;
+missing terminal receipt is explicit rather than treated as an active job.
+
+### Device identification review workspace
+
+`/admin/device-identification` lists models needing source decisions first and
+searches model names and imported codes. Separate text/icon badges show pending,
+approved, rejected and missing sources. A model detail explains missing XML/USB
+reference sources, compares the catalog model with source names, and links to
+other models with the same imported code, including each link's review state.
+Shared codes and approved sources are not presented as exact-match results.
+
+Reviews require an explicit decision and reason; no approval is preselected.
+The first pending code opens automatically, with watch/USB codes before retail
+codes among pending entries. Reviewed sources, revisions and decision history
+remain available. Saving has bounded progress, session-expiry and recoverable
+error feedback. Source decisions retain the existing endpoint, CSRF protection
+and audit behavior; they do not assign saved installations, authorize map
+installation or publish compatibility. No database or API schema changes.

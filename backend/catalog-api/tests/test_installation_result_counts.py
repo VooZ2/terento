@@ -37,11 +37,11 @@ class InstallationResultCountsTests(unittest.TestCase):
     def summary(self, events, resolved=None):
         return next(iter(_diagnostic_summary_by_identity(events, resolved).values()))
 
-    def test_mixed_session_is_two_successes_but_one_diagnostic_group(self):
+    def test_mixed_session_is_two_successes_and_two_result_groups(self):
         events = self.events()
         summary = self.summary(events)
         self.assertEqual((summary['attempts'], summary['successful'], summary['failed']), (2, 2, 0))
-        self.assertEqual(len(_group_operations(events)), 1)
+        self.assertEqual(len(_group_operations(events)), 2)
 
     def test_failed_sibling_does_not_cancel_success(self):
         events = self.events()

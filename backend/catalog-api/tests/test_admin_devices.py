@@ -3,13 +3,26 @@ from __future__ import annotations
 import unittest
 from datetime import datetime, timezone
 
-from terento_catalog.admin import _admin_device_payload, _device_information_markup, device_detail_page, devices_page
+from terento_catalog.admin import _admin_device_payload, _device_information_markup, device_detail_page, device_identification_page, devices_page
 
 
 UTC = timezone.utc
 
 
 class DeviceInformationLayoutTests(unittest.TestCase):
+    def test_historical_table_marker_preserves_label_and_device_link(self):
+        body = devices_page([device_row(device_id="historical-example", model="Descent Mk1",
+            variant="Historical", case_size_mm=None, display_type=None,
+            public_compatibility_identity=None)], None, {"username": "operator"}, "csrf").decode()
+        row = body.split("<tbody", 1)[1].split("</tbody>", 1)[0]
+        self.assertIn("catalog-archive-icon", row)
+        self.assertIn("Font Awesome Free 7.3.1", row)
+        self.assertIn('viewBox="0 0 512 512"', row)
+        self.assertIn("historical-catalog-tooltip'>Historical catalog entry</span>", row)
+        self.assertIn("/admin/devices/historical-example?from=devices", row)
+        self.assertNotIn("table-secondary'>Historical catalog entry", row)
+        self.assertIn(".device-model-button:focus-visible .historical-catalog-tooltip", body)
+
     def test_primary_facts_keep_unknown_features_and_hide_identifiers(self):
         device = dict(model='Watch <Example>', caseSizeMm=51, screenTechnology='AMOLED',
                       solar=None, inReach=True, partNumber='010-example',
@@ -45,9 +58,20 @@ class DeviceInformationLayoutTests(unittest.TestCase):
         basic, technical = info.split("<details class='model-technical-details", 1)
         self.assertNotIn('identity-mapping', basic)
         self.assertNotIn(device['partNumber'], basic)
-        for value in (device['partNumber'], 'VID 0x091E', '006-B1234-00',
-                      "action='/admin/devices/identity-mapping'", "name='mapping_id' value='42'", 'required'):
+        for value in (device['partNumber'], 'VID 0x091E'):
             self.assertIn(value, technical)
+        self.assertNotIn("action='/admin/devices/identity-mapping'", body)
+        tool = device_identification_page([device], {'username': 'operator'}, 'csrf', device_id=device['id']).decode()
+        for value in ('006-B1234-00', "action='/admin/devices/identity-mapping'", "name='mapping_id' value='42'", 'required', '/admin/device-identification?device='):
+            self.assertIn(value, tool)
+        listing = device_identification_page([device], {'username': 'operator'}, 'csrf').decode()
+        self.assertIn('Select a model', listing)
+        self.assertIn('1 source to review', listing)
+        self.assertNotIn("name='mapping_id'", listing)
+        empty = device_identification_page([device], {'username': 'operator'}, 'csrf', query='<missing>').decode()
+        self.assertIn('No matching models.', empty)
+        self.assertIn('&lt;missing&gt;', empty)
+
 
 
 def device_row(**changes):
@@ -282,6 +306,15 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertFalse(no_evidence["publicCompatibility"]["eligible"])
         self.assertFalse(no_evidence["publicCompatibility"]["published"])
 
+    def test_official_model_photo_precedes_controlled_generic_fallback(self):
+        source = "https://res.garmin.com/en/products/010-02809-01/v/cf-lg.jpg"
+        row = device_row(asset_status="AVAILABLE", asset_scope="GENERIC",
+                         asset_url="https://api.terento.app/assets/devices/generic.png",
+                         source_image_url=source)
+        image = _admin_device_payload([row], None)["devices"][0]["image"]
+        self.assertEqual(image["url"], source)
+        self.assertEqual(image["origin"], "garmin-source")
+
     def test_garmin_source_image_is_used_when_controlled_asset_is_missing(self) -> None:
         source = "https://res.garmin.com/en/products/010-02905-10/v/cf-lg.jpg"
         payload = _admin_device_payload(
@@ -408,6 +441,8 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertNotIn("src='None'", body)
         self.assertIn("generic-garmin-watch.png", body)
         self.assertIn("Compatibility status", body)
+        self.assertIn('<span class="sr-only">Filter by family</span>', body)
+        self.assertNotIn(".filter-bar label>.sr-only{position:static", body)
         self.assertIn("title=\"Installation authorization\"", body)
         self.assertNotIn("Support decision", body)
         self.assertNotIn("Evidence status", body)

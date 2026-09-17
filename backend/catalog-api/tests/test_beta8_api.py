@@ -944,6 +944,18 @@ class Beta8APITests(unittest.TestCase):
                              {"freizeitkarte", "opentopomap", "maprando", "bbbike"})
             self.assertEqual(response.headers["X-Robots-Tag"], "noindex, nofollow")
 
+            with patch.object(service, "admin_devices", return_value={"devices": []}):
+                identification, identification_body = self._request(
+                    server, "GET", "/admin/device-identification?q=missing", headers={"Cookie": cookie}
+                )
+                self.assertEqual(identification.status, 200)
+                self.assertIn(b"No matching models.", identification_body)
+                self.assertEqual(identification.headers["Cache-Control"], "no-store")
+                self.assertEqual(identification.headers["X-Robots-Tag"], "noindex, nofollow")
+            handler = make_handler(service)
+            self.assertEqual(handler._safe_admin_return("/admin/device-identification?device=test", "/admin"), "/admin/device-identification?device=test")
+            self.assertEqual(handler._safe_admin_return("//evil.example/admin/device-identification", "/admin"), "/admin")
+
             test_data, test_data_body = self._request(
                 server, "GET", "/admin/test-data", headers={"Cookie": cookie}
             )
@@ -1145,6 +1157,41 @@ class Beta8APITests(unittest.TestCase):
             stale_date,
         )
 
+    def test_map_statistics_event_filters_only_change_detail_not_population_summary(self):
+        class PopulationDatabase(FakeProviderDatabase):
+            rows = [
+                {"event_type": "DOWNLOAD_SUCCEEDED", "outcome": "SUCCEEDED", "event_count": 4, "operation_count": 4},
+                {"event_type": "DOWNLOAD_FAILED", "outcome": "FAILED", "event_count": 1, "operation_count": 1},
+                {"event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "event_count": 9, "operation_count": 9},
+                {"event_type": "INSTALL_FAILED", "outcome": "FAILED", "event_count": 1, "operation_count": 1},
+                {"event_type": "MAP_UPDATE_SUCCEEDED", "outcome": "SUCCEEDED", "event_count": 3, "operation_count": 3},
+                {"event_type": "MAP_UPDATE_FAILED", "outcome": "FAILED", "event_count": 2, "operation_count": 2},
+            ]
+
+            def map_statistics(self, filters, *, limit=None, offset=0):
+                self.map_statistic_filters.append(dict(filters))
+                rows = list(self.rows)
+                if filters.get("eventType"):
+                    rows = [row for row in rows if row["event_type"] == filters["eventType"]]
+                if filters.get("outcome"):
+                    rows = [row for row in rows if row["outcome"] == filters["outcome"]]
+                return rows[offset: offset + limit] if limit is not None else rows
+
+        database = PopulationDatabase()
+        payload = CatalogService(database).map_statistics({
+            "period": "all", "provider": "freizeitkarte", "eventType": "INSTALL_FAILED",
+        })
+        self.assertEqual(payload["summary"]["completedInstalls"], 9)
+        self.assertEqual(payload["summary"]["failedInstalls"], 1)
+        self.assertEqual(payload["summary"]["installSuccessRate"], 90.0)
+        self.assertEqual(payload["summary"]["downloadSuccessRate"], 80.0)
+        self.assertEqual(payload["summary"]["mapUpdateSuccessRate"], 60.0)
+        self.assertEqual(payload["detailTotal"], 1)
+        self.assertNotIn("eventType", database.map_statistic_filters[0])
+        self.assertEqual(database.map_statistic_filters[1]["eventType"], "INSTALL_FAILED")
+        self.assertEqual(database.map_statistic_filters[2]["eventType"], "INSTALL_FAILED")
+        self.assertEqual(database.map_statistic_filters[0]["provider"], "freizeitkarte")
+
     def test_admin_pages_require_login_and_render_provider_statistics_views(self):
         database = FakeProviderDatabase()
         service = CatalogService(database)
@@ -1184,7 +1231,7 @@ class Beta8APITests(unittest.TestCase):
             self.assertEqual(statistics.status, 200)
             self.assertIn(b"Map statistics", statistics_body)
             self.assertIn(b"7 days", statistics_body)
-            self.assertIn(b"Package install success", statistics_body)
+            self.assertIn(b"Fresh install success", statistics_body)
         finally:
             server.shutdown()
             server.server_close()

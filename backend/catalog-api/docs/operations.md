@@ -66,9 +66,12 @@ startup and then at every UTC hour. It follows all public release pages for
 `VooZ2/terento` and aggregates only the current `download_count` values of
 `.dmg` and `.zip` assets. It stores one cumulative snapshot per hour in
 `github_download_snapshot`; a failed read leaves the previous snapshot intact.
-The Overview chart derives the last 24 hourly deltas from those snapshots while
-its two total fields use the newest cumulative values. No GitHub token, release
-metadata, or binary is stored.
+The Overview chart derives observed `.dmg`/`.zip` deltas for the selected
+period while its two total fields use the newest cumulative values. Historical
+rows without the population metadata retain nonnegative deltas as
+legacy/unverified observations; confirmed counter or population discontinuity
+intervals remain unknown, and long gaps remain uncertain. No GitHub token,
+release metadata, or binary is stored.
 
 ## CI, deployment, and weekly email health
 
@@ -103,10 +106,11 @@ operator selects `All` or `Resolved`.
 
 Migration 025 also records its application time in
 `compatibility_device_card_failure_epoch`. Device cards exclude failures
-received before that timestamp and count every distinct failure received
-afterward, including pre-write failures. Successful device-card history is
-preserved. Do not edit the epoch after deployment unless a separately reviewed
-counter reset is explicitly requested.
+received before that timestamp and count every distinct eligible failure
+received afterward; current pre-write and unknown-write results remain visible
+diagnostic history but stay outside completed installation counts. Successful
+device-card history is preserved. Do not edit the epoch after deployment unless
+a separately reviewed counter reset is explicitly requested.
 
 Migration `021_canonical_admin_semantics.sql` keeps its SQL
 compatibility-status classifier parameter as `BIGINT`, matching PostgreSQL's

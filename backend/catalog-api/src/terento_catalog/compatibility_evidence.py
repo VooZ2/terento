@@ -24,6 +24,8 @@ ALLOWED_KEYS = {
     "failureStage", "failureCode", "nativeFailureCode", "writeStarted",
     "remoteObjectCreated", "cleanupAttempted", "cleanupSucceeded",
     "transferProgressBucket", "rawMTPModel", "identityResolutionCode",
+    "optionalComponentSelected", "optionalComponentOutcome", "optionalComponentFailureStage",
+    "optionalComponentFailureCode", "optionalComponentNativeFailureCode",
 }
 FORBIDDEN_KEY_PARTS = ("serial", "unitid", "unit_id", "path", "manifest", "username", "token", "password")
 
@@ -204,6 +206,7 @@ def _validate_v3(event: dict[str, Any]) -> None:
         "INSTALL_BLOCKED_UNKNOWN_TARGET", "INSTALL_BLOCKED_MAP_IDENTITY_AMBIGUOUS",
         "INSTALL_BLOCKED_BACKUP_FAILED", "INSTALL_BLOCKED_DOWNLOAD_FAILED",
         "INSTALL_BLOCKED_SOURCE_VALIDATION_FAILED", "INSTALL_FAILED_DEVICE_DISCONNECTED",
+        "INSTALL_FAILED_PREFLIGHT_MTP_READ",
         "INSTALL_FAILED_WRITE", "INSTALL_FAILED_SIZE_MISMATCH", "INSTALL_FAILED_HASH_MISMATCH",
         "INSTALL_FAILED_REMOTE_FILE_MISSING", "INSTALL_FAILED_METADATA_MISMATCH",
         "INSTALL_FAILED_MANIFEST", "INSTALL_FAILED_PROTECTION_VIOLATION",
@@ -211,6 +214,7 @@ def _validate_v3(event: dict[str, Any]) -> None:
         "INSTALL_FAILED_INVALID_STATE_TRANSITION", "INSTALL_BLOCKED_VERIFICATION_REQUIRED",
         "INSTALL_NOT_STARTED_AFTER_EARLIER_FAILURE",
         "INSTALL_BLOCKED_STABLE_WATCH_IDENTITY_UNAVAILABLE",
+        "INSTALL_FAILED_UNKNOWN",
     }
     if event.get("failureCode") not in failure_codes | {None}:
         raise EvidenceValidationError("invalid_failure_code")
@@ -223,6 +227,32 @@ def _validate_v3(event: dict[str, Any]) -> None:
     }
     if event.get("nativeFailureCode") not in native_codes | {None}:
         raise EvidenceValidationError("invalid_native_failure_code")
+    optional_selected = event.get("optionalComponentSelected")
+    if optional_selected is not None and not isinstance(optional_selected, bool):
+        raise EvidenceValidationError("invalid_optional_component_selection")
+    optional_outcome = event.get("optionalComponentOutcome")
+    optional_fields = (
+        "optionalComponentOutcome", "optionalComponentFailureStage",
+        "optionalComponentFailureCode", "optionalComponentNativeFailureCode",
+    )
+    if optional_selected is False and any(event.get(key) is not None for key in optional_fields):
+        raise EvidenceValidationError("inconsistent_optional_component")
+    if optional_selected is not True and any(event.get(key) is not None for key in optional_fields):
+        raise EvidenceValidationError("missing_optional_component_selection")
+    if optional_outcome not in {None, "VERIFIED", "FAILED", "NOT_STARTED", "UNKNOWN"}:
+        raise EvidenceValidationError("invalid_optional_component_outcome")
+    if optional_outcome == "VERIFIED" and any(
+        event.get(key) is not None
+        for key in ("optionalComponentFailureStage", "optionalComponentFailureCode", "optionalComponentNativeFailureCode")
+    ):
+        raise EvidenceValidationError("inconsistent_optional_component_success")
+    optional_stages = {"download", "extract", "source-validation", "preflight", "write", "verify", "cleanup", "manifest"}
+    if event.get("optionalComponentFailureStage") not in optional_stages | {None}:
+        raise EvidenceValidationError("invalid_optional_component_stage")
+    if event.get("optionalComponentFailureCode") not in failure_codes | {None}:
+        raise EvidenceValidationError("invalid_optional_component_failure_code")
+    if event.get("optionalComponentNativeFailureCode") not in native_codes | {None}:
+        raise EvidenceValidationError("invalid_optional_component_native_failure_code")
     if event.get("identityResolutionCode") not in {
         None, "MTP_SERIAL", "GARMIN_UNIT_ID", "UNAVAILABLE"
     }:

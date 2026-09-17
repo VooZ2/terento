@@ -56,7 +56,12 @@
         "DOWNLOAD_SUCCEEDED",
         "DOWNLOAD_FAILED",
         "INSTALL_SUCCEEDED",
-        "INSTALL_FAILED"
+        "INSTALL_FAILED",
+        "MAP_UPDATE_SUCCEEDED",
+        "MAP_UPDATE_FAILED",
+        "DOWNLOAD_PROCESSING",
+        "DOWNLOAD_CANCELLED",
+        "DOWNLOAD_INTERRUPTED"
       ]
     },
     "outcome": {
@@ -77,6 +82,20 @@
     "releaseLabel": {
       "$ref": "#/$defs/releaseLabel",
       "description": "SemVer app release identity. Local debug builds end in -local and are purgeable only in the authenticated admin test-data flow."
+    },
+    "acquisitionId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Random UUID for one component acquisition attempt."
+    },
+    "componentKind": {
+      "enum": [
+        "main",
+        "contours",
+        null
+      ]
     }
   },
   "required": [
@@ -100,5 +119,162 @@
       "maxLength": 80,
       "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$"
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "enum": [
+              "DOWNLOAD_PROCESSING",
+              "DOWNLOAD_CANCELLED",
+              "DOWNLOAD_INTERRUPTED"
+            ]
+          }
+        },
+        "required": [
+          "eventType"
+        ]
+      },
+      "then": {
+        "required": [
+          "acquisitionId",
+          "componentKind"
+        ],
+        "properties": {
+          "acquisitionId": {
+            "type": "string"
+          },
+          "componentKind": {
+            "enum": [
+              "main",
+              "contours"
+            ]
+          },
+          "outcome": {
+            "const": "UNKNOWN"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "acquisitionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "acquisitionId"
+        ]
+      },
+      "then": {
+        "required": [
+          "componentKind"
+        ],
+        "properties": {
+          "componentKind": {
+            "enum": [
+              "main",
+              "contours"
+            ]
+          },
+          "eventType": {
+            "pattern": "^DOWNLOAD_"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "componentKind": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "componentKind"
+        ]
+      },
+      "then": {
+        "required": [
+          "acquisitionId"
+        ],
+        "properties": {
+          "acquisitionId": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "acquisitionId": {
+            "type": "string"
+          },
+          "eventType": {
+            "const": "DOWNLOAD_STARTED"
+          }
+        },
+        "required": [
+          "acquisitionId",
+          "eventType"
+        ]
+      },
+      "then": {
+        "properties": {
+          "outcome": {
+            "const": "UNKNOWN"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "acquisitionId": {
+            "type": "string"
+          },
+          "eventType": {
+            "const": "DOWNLOAD_SUCCEEDED"
+          }
+        },
+        "required": [
+          "acquisitionId",
+          "eventType"
+        ]
+      },
+      "then": {
+        "properties": {
+          "outcome": {
+            "const": "SUCCEEDED"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "acquisitionId": {
+            "type": "string"
+          },
+          "eventType": {
+            "const": "DOWNLOAD_FAILED"
+          }
+        },
+        "required": [
+          "acquisitionId",
+          "eventType"
+        ]
+      },
+      "then": {
+        "properties": {
+          "outcome": {
+            "const": "FAILED"
+          }
+        }
+      }
+    }
+  ]
 }

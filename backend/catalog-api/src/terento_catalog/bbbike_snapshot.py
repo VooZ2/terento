@@ -95,7 +95,7 @@ def main():
                 raise ProviderCollectionError('BBBike metadata candidate import requires PAUSED provider')
         database.ensure_provider_definition(BBBIKE)
         run=database.begin_catalog_collection('bbbike')
-        database.upsert_provider_snapshot(snapshot)
+        database.upsert_provider_snapshot(snapshot, run_id=run)
         release,fingerprint=snapshot_release_evidence(snapshot)
         database.finish_catalog_collection(run,status='SUCCEEDED',package_count=len(snapshot.packages),
             artifact_count=len(snapshot.packages),latest_release=release,catalog_fingerprint=fingerprint)

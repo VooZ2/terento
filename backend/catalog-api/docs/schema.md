@@ -143,10 +143,18 @@ type/package key prevents accidental duplicates.
 
 One cumulative observation of public GitHub release asset downloads for a UTC
 hour. The scheduler upserts the current hour so retries do not create duplicate
-rows. The table stores aggregate counters only; it does not retain release
-metadata, asset names, response bodies, or binaries. The Overview derives
-hourly `.dmg` and `.zip` deltas with a window function and uses the newest row
-for all-time totals.
+rows. The table stores aggregate counters and a compact release/asset
+population identity; it does not retain release metadata, asset names,
+response bodies, or binaries. The Overview derives `.dmg` and `.zip` increases
+only between valid consecutive observations. The first observation is a
+baseline; unchanged counters are observed zero; nonnegative deltas from rows
+with missing population metadata remain legacy/unverified observations; counter
+decreases or confirmed population changes are discontinuities; and missing or
+long-gap intervals are unknown/uncertain rather than filled with zero.
+`observed_at` is the source measurement time, while `hour_start` is only the
+upsert key. Equality of `release_count` alone does not prove equal asset
+composition, and a nullable fingerprint alone does not prove that the
+population changed.
 
 | Column | Type | Meaning |
 | --- | --- | --- |
@@ -155,6 +163,8 @@ for all-time totals.
 | `dmg_total` | `bigint` | Current sum of `.dmg` asset download counts |
 | `zip_total` | `bigint` | Current sum of `.zip` asset download counts |
 | `release_count` | `integer` | Number of public releases observed in the paginated read |
+| `asset_count` | `integer` | Number of counted `.dmg` and `.zip` assets in the observation; nullable for legacy rows |
+| `population_fingerprint` | `text` | Stable hash of counted release/asset identities; nullable for legacy rows |
 
 ## `admin_audit_log`
 
@@ -329,27 +339,35 @@ authorization audit rows. It also installs the canonical threshold function
 used by the live compatibility view: recognized map-capable evidence is
 required, then 0 successful operations is `TESTING`, 1–2 is `TESTED`, 3–4 is
 `SUPPORTED`, and 5+ is `VERIFIED`; unrecognized or non-map records have no
-compatibility status. Migration 025 restores the view to distinct active,
-write-started installation operations while retaining per-map evidence for
-diagnosis. Historical reviewed records are not deactivated by the retail
-collector. Compatibility evidence, canonical links, and operator installation
-authorization remain separate from device write authorization.
+compatibility status. Migration 025's older active/write-started operation
+projection is superseded by migration 056's logical per-result semantics while
+per-map evidence remains available for diagnosis. Historical reviewed records
+are not deactivated by the retail collector. Compatibility evidence, canonical
+links, and operator installation authorization remain separate from device write
+authorization.
 
 `compatibility_model_statistics` is a live SQL view over the evidence event
-table and model review metadata. It includes only `ACTIVE` diagnostic events;
-resolved history remains queryable through the private diagnostics path.
+table and model review metadata. It includes active events and retained failed
+history under the historical-count rule; resolved history remains queryable
+through the private diagnostics path. The
+canonical population, result classification and rate definitions are in
+[`contracts/STATISTICS_CONTRACT.md`](../../../contracts/STATISTICS_CONTRACT.md).
 Migration `032_custom_img_compatibility_evidence.sql` extends the event source
-constraint with the fixed `custom` local-IMG label. Custom evidence still
-uses the same watch/model aggregation and never creates a map-operation
-statistics row.
+constraint with the fixed `custom` local-IMG label. Custom evidence still uses
+the same watch/model aggregation and never creates a provider map-event row;
+eligible custom fresh results may be projected into common map-statistics read
+models without a guessed catalog package or country.
 Events with a `canonical_device_model_id` are
 grouped by that exact Garmin catalog record; textual `compatibility_identity`
 is only the fallback for older uncanonicalized events. Formatting changes
 between app versions therefore increase one variant's report and success
 counts instead of creating another model row. Schema-v3 rows are first grouped
-by operation; legacy rows each form one operation. Only write-started
-operations enter attempted/success/failed compatibility counts, and a
-multi-map operation succeeds only if every selected child result verifies.
+by logical map result (`operation_id + map_result_index`); legacy rows each form
+one result. A verified main-map result or a failure after writing began enters
+the fresh-install denominator; current pre-install `write_started=false` and
+unknown write facts do not. Optional component outcomes remain on the main
+result, and a multi-map operation therefore contributes one result per selected
+main map rather than one result per component.
 Separate map-result and pre-write-failure totals remain available for private
 diagnosis. The view calculates attempted, successful and
 failed installation counts, success rate, firmware coverage, latest outcomes,
@@ -361,6 +379,12 @@ is `SUPPORTED`, and 5 or more is `VERIFIED`. The private dashboard reads this vi
 prepared public query additionally requires both `review_status = 'APPROVED'`
 and `public_statistics_enabled = true` and only exposes evidence-backed
 statuses.
+
+Migration `056_statistics_semantics.sql` replaces the earlier per-operation and
+`write_started` interpretation with logical map-result classification,
+explicit pre-install exclusion and conflict-safe deduplication. It retains raw
+evidence and historical failure visibility; it does not migrate or invent
+production counts.
 
 Migration `015_canonical_compatibility_aggregation.sql` replaces the earlier
 view rule that promoted one successful install to `SUPPORTED`. The view now
@@ -380,10 +404,10 @@ It returns one row per exact Garmin catalog record, so display model strings
 cannot merge separate variants. The HTML `/admin/devices` page uses the same
 query and keeps technical USB identities inside the detail dialog. Migration
 025 stores one server-time row in `compatibility_device_card_failure_epoch`.
-Device-card Attempts include all retained successful operations plus failed
-operations received on or after that epoch; Failed includes only those
-post-epoch failures. Resolving a post-epoch failure does not remove it from the
-card, while every failure received before the epoch remains excluded.
+Device-card Attempts include all retained successful results plus eligible
+failed results received on or after that epoch; Failed includes only those
+post-epoch eligible failures. Resolving a post-epoch failure does not remove it
+from the card, while every failure received before the epoch remains excluded.
 
 ## Administrator authentication
 
@@ -413,3 +437,13 @@ and non-null geographical key while lifecycle identity remains variant-specific.
 The map statistics read model uses geographical identity for grouping and a
 separate `map_type` for type attribution. The compatibility provider constraint
 adds BBBike independently of its PAUSED activation state.
+
+### Migration049: component acquisition evidence
+
+`map_download_event` adds nullable paired `acquisition_id` UUID and
+`component_kind` (main/contours). Legacy operation/event/package uniqueness is
+retained as a partial index for NULL acquisition IDs. New attempts use unique
+acquisition/event phases and at most one terminal phase. Existing rows are not
+rewritten. Accepted additional phases are DOWNLOAD_PROCESSING,
+DOWNLOAD_CANCELLED and DOWNLOAD_INTERRUPTED. All retain the existing telemetry
+privacy, retention and local-test exclusion boundaries.

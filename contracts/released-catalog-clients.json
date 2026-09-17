@@ -13,5 +13,15 @@
     "tag": "v1.0.0-beta.12-build28",
     "commit": "f2de8eda3e8ab36724aaeae85ba23fceef5c9d86",
     "route": "catalog-v4.json"
+  },
+  {
+    "tag": "v1.0.0-beta.12-build30",
+    "commit": "5183d726bdc05f73b005b79200424d19f4e7e413",
+    "route": "catalog-v4.json"
+  },
+  {
+    "tag": "v1.0.0-beta.12-build31",
+    "commit": "143a95b01acc5a5ab08213bacb4369e2d2a89095",
+    "route": "catalog-v4.json"
   }
 ]

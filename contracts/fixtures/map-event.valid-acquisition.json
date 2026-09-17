@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "00000000-0000-4000-8000-000000000003",
+  "operationId": "00000000-0000-4000-8000-000000000002",
+  "timestamp": "2026-09-01T12:00:00Z",
+  "providerId": "freizeitkarte",
+  "releaseLabel": "1.0.0-beta.12-local",
+  "mapId": "freizeitkarte-deu",
+  "region": "DE",
+  "eventType": "DOWNLOAD_INTERRUPTED",
+  "outcome": "UNKNOWN",
+  "appBuild": "30-local",
+  "acquisitionId": "d127b33f-548e-4c0b-91c3-f798d5ef094a",
+  "componentKind": "contours"
+}
