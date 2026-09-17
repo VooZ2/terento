@@ -149,8 +149,8 @@ class AdminAuditTests(unittest.TestCase):
 
     def test_post_audit_layout_copy_and_recovery_contract(self):
         body = map_statistics_page({"rows": []}, [], {"username": "audit"}, "csrf").decode()
-        for text in ("Completed downloads", "Download success", "Fresh installs",
-                     "Fresh install success", "View all map activity",
+        for text in ("Downloads", "Successful", "Success rate", "Fresh installs",
+                     "Updates", "Diagnostic coverage", "View all map activity",
                      "No maps match your search", "flex-direction:column", "min-width:960px"):
             self.assertIn(text, body)
         self.assertNotIn("<strong data-stat='providerIssues'>", body)
@@ -158,7 +158,7 @@ class AdminAuditTests(unittest.TestCase):
         self.assertNotIn("opted-in", body)
         self.assertNotIn("table-layout:fixed}", body.split("@media(min-width:701px){", 1)[1].split("}", 1)[0])
         self.assertIn("min-height:44px", body)
-        self.assertIn(".popularity-all-maps-disclosure .disclosure-body>label", body)
+        self.assertIn(".popularity-search-label", body)
         self.assertIn("installation-empty", _dashboard_script())
 
     def test_display_cleanup_keeps_identity_and_functional_name(self):
@@ -177,7 +177,7 @@ class AdminAuditTests(unittest.TestCase):
                 for target in ("map-statistics-metrics", "map-statistics-coverage",
                                "provider-statistic-rows", "world-map-svg", "map-rows"):
                     self.assertEqual(ids[target], 1, target)
-                self.assertEqual(body.count("Acquisition, fresh-install, optional-component, and update outcomes remain separate."), 1)
+                self.assertEqual(body.count("Acquisition, fresh-install, optional-component, and update outcomes remain separate."), 0)
 
     def test_health_disclosure_defaults_and_escaped_evidence(self):
         for state in ('HEALTHY', 'FAILED', 'WARNING', 'UNKNOWN', None):

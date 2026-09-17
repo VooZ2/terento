@@ -1857,7 +1857,6 @@ def overview_page(
         f"<div class='overview-download-total' aria-label='.zip downloads total: {download_total('zipTotal')}'><strong>{download_total('zipTotal')}</strong><small>.zip</small></div>"
         "</div></div>"
         f"{_overview_downloads_chart(downloads, time_zone, period=period)}"
-        "<p class='overview-chart-note'>Observed download increases between checks. Missing observations and counter resets are not treated as zero.</p>"
         f"<p class='overview-chart-note'>{download_update_note}</p>"
         "</section>"
     )
@@ -2378,16 +2377,16 @@ def _provider_summary_row(provider: dict[str, Any]) -> str:
     issue_markup = f"<span class='provider-issue-count' title='Current catalog problems: {html.escape(problem_label, quote=True)}' aria-label='Current catalog problems: {html.escape(problem_label, quote=True)}'>{html.escape(problem_label)}</span>"
     package_value = count_label(provider.get("packageCount"), "package", "packages")
     health_error = str(provider.get("lastHealthError") or "").strip()
-    health_note = f"<small class='table-secondary' title='{html.escape(health_error, quote=True)}'>{html.escape(health_error)}</small>" if health_error else "<small class='table-secondary'>Latest check state</small>"
+    health_note = f"<small class='table-secondary' title='{html.escape(health_error, quote=True)}'>{html.escape(health_error)}</small>" if health_error else ""
     return (
         f"<tr data-provider-search='{html.escape(' '.join((provider_id, name, str(provider.get('adapterId') or ''), status, health)).casefold(), quote=True)}'>"
         f"<td><a class='provider-name-link' href='/admin/providers/{provider_href}'><strong>{html.escape(name)}</strong></a><small class='table-secondary'>Newest package: {html.escape(str(provider.get('latestRelease') or 'Not recorded'))}</small></td>"
-        f"<td>{_provider_status_badge(status)}</td>"
-        f"<td>{_provider_status_badge(health, kind='health')}{health_note}</td>"
-        f"<td class='numeric'>{html.escape(package_value)}</td>"
-        f"<td>{_timestamp_markup(provider.get('lastCatalogSync'))}</td>"
-        f"<td>{_timestamp_markup(provider.get('lastHealthCheck') or provider.get('lastDownloadTest'))}</td>"
-        f"<td class='numeric'>{issue_markup}</td>"
+        f"<td class='column-status'>{_provider_status_badge(status)}</td>"
+        f"<td class='column-status'>{_provider_status_badge(health, kind='health')}{health_note}</td>"
+        f"<td class='column-number numeric'>{html.escape(package_value)}</td>"
+        f"<td class='column-date'>{_timestamp_markup(provider.get('lastCatalogSync'))}</td>"
+        f"<td class='column-date'>{_timestamp_markup(provider.get('lastHealthCheck') or provider.get('lastDownloadTest'))}</td>"
+        f"<td class='column-number numeric'>{issue_markup}</td>"
         "</tr>"
     )
 
@@ -2420,7 +2419,7 @@ def providers_page(
         {empty}
         <section class='provider-section' aria-label='Provider list'>
           <form class='filter-bar provider-filter-bar' id='provider-filters' role='search'><label class='filter-search'><span class='sr-only'>Search providers</span><input id='provider-search' type='search' placeholder='Search providers' autocomplete='off'></label><p class='results-count' id='provider-results-count' aria-live='polite'>{_count_label(len(provider_rows), 'provider')}</p><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear provider filters'>Clear</button></form>
-          <div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Map provider status</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Activity</th><th scope='col'>Health</th><th scope='col'>Packages</th><th scope='col'>Catalog sync</th><th scope='col'>Last check</th><th scope='col'>Problems</th></tr></thead><tbody id='provider-rows'>{rows}</tbody></table></div>
+          <div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Map provider status</caption><thead><tr><th scope='col'>Provider</th><th scope='col' class='column-status'>Activity</th><th scope='col' class='column-status'>Health</th><th scope='col' class='column-number'>Packages</th><th scope='col' class='column-date'>Catalog sync</th><th scope='col' class='column-date'>Last check</th><th scope='col' class='column-number'>Problems</th></tr></thead><tbody id='provider-rows'>{rows}</tbody></table></div>
         </section>
       </main>
       <script>window.terentoAdminCsrf = {_admin_json(csrf_token)};{_providers_list_script()}</script>
@@ -2851,17 +2850,37 @@ def map_statistics_page(
         )
     linkage = statistics.get("linkage") if isinstance(statistics.get("linkage"), dict) else {}
     linkage_value = lambda key: "—" if key not in linkage or linkage.get(key) is None else str(linkage[key])
+    def failed_metric_markup(key: str) -> str:
+        value = summary.get(key)
+        rendered = "—" if value is None else str(value)
+        positive = " is-positive" if isinstance(value, (int, float)) and value > 0 else ""
+        return f"<strong class='map-statistics-failed-value{positive}' data-stat='{key}'>{rendered}</strong>"
+
     linkage_section = (
-        "<section class='provider-card map-statistics-linkage' aria-label='Fresh map diagnostic coverage'>"
-        "<div class='section-heading'><div><p class='section-kicker'>Telemetry coverage</p>"
-        "<h2>Fresh map diagnostic coverage</h2></div></div>"
-        "<div class='map-statistics-linkage-grid'>"
-        f"<div><span>Fresh map attempts</span><strong data-stat='freshMapAttemptCount'>{linkage_value('freshMapAttemptCount')}</strong></div>"
-        f"<div><span>Reliably linked diagnostics</span><strong data-stat='freshMapLinkedDiagnosticCount'>{linkage_value('freshMapLinkedDiagnosticCount')}</strong></div>"
-        f"<div><span>Observation gaps</span><strong data-stat='freshMapMissingDiagnosticCount'>{linkage_value('freshMapMissingDiagnosticCount')}</strong></div>"
+        "<section class='map-statistics-kpi-panel provider-card' id='map-statistics-metrics' aria-label='Map statistics summary'>"
+        "<div class='map-statistics-kpi-groups'>"
+        "<section class='map-statistics-kpi-group' aria-labelledby='map-statistics-downloads-title'><h2 id='map-statistics-downloads-title'>Downloads</h2><div class='map-statistics-kpi-values'>"
+        f"<div class='map-statistics-kpi-value'><span>Successful</span><strong data-stat='completedDownloads'>{event_value('completedDownloads')}</strong></div>"
+        f"<div class='map-statistics-kpi-value'><span>Success rate</span><strong data-stat='downloadSuccessRate'>{_format_rate(summary['downloadSuccessRate'])}</strong></div>"
+        f"<div class='map-statistics-kpi-value failed'><span>Failed</span>{failed_metric_markup('failedDownloads')}</div>"
+        "</div></section>"
+        "<section class='map-statistics-kpi-group' aria-labelledby='map-statistics-installs-title'><h2 id='map-statistics-installs-title'>Fresh installs</h2><div class='map-statistics-kpi-values'>"
+        f"<div class='map-statistics-kpi-value'><span>Successful</span><strong data-stat='completedInstalls'>{event_value('completedInstalls')}</strong></div>"
+        f"<div class='map-statistics-kpi-value'><span>Success rate</span><strong data-stat='installSuccessRate'>{_format_rate(summary['installSuccessRate'])}</strong></div>"
+        f"<div class='map-statistics-kpi-value failed'><span>Failed</span>{failed_metric_markup('failedInstalls')}</div>"
+        "</div></section>"
+        "<section class='map-statistics-kpi-group' aria-labelledby='map-statistics-updates-title'><h2 id='map-statistics-updates-title'>Updates</h2><div class='map-statistics-kpi-values'>"
+        f"<div class='map-statistics-kpi-value'><span>Successful</span><strong data-stat='completedMapUpdates'>{event_value('completedMapUpdates')}</strong></div>"
+        f"<div class='map-statistics-kpi-value'><span>Success rate</span><strong data-stat='mapUpdateSuccessRate'>{_format_rate(summary['mapUpdateSuccessRate'])}</strong></div>"
+        f"<div class='map-statistics-kpi-value failed'><span>Failed</span>{failed_metric_markup('failedMapUpdates')}</div>"
+        "</div></section>"
+        "</div>"
+        "<section class='map-statistics-diagnostic-coverage' aria-labelledby='map-statistics-diagnostic-coverage-title'><h2 id='map-statistics-diagnostic-coverage-title'>Diagnostic coverage</h2><div class='map-statistics-diagnostic-coverage-row'>"
+        f"<div><span>Fresh attempts</span><strong data-stat='freshMapAttemptCount'>{linkage_value('freshMapAttemptCount')}</strong></div>"
+        f"<div><span>Linked reports</span><strong data-stat='freshMapLinkedDiagnosticCount'>{linkage_value('freshMapLinkedDiagnosticCount')}</strong></div>"
+        f"<div><span>Report gaps</span><strong data-stat='freshMapMissingDiagnosticCount'>{linkage_value('freshMapMissingDiagnosticCount')}</strong></div>"
         f"<div><span>Coverage rate</span><strong data-stat='freshMapDiagnosticCoverageRate'>{_format_rate(linkage.get('freshMapDiagnosticCoverageRate'))}</strong></div>"
-        "</div><p class='table-help map-statistics-scope-note'>Coverage is linked diagnostic observation, not diagnostic success. A missing report is an observation gap, not a failed installation. Session counts remain separate.</p></section>"
-        if linkage else ""
+        "</div></section></section>"
     )
     selected_period = str(
         selected.get("period")
@@ -2885,13 +2904,10 @@ def map_statistics_page(
       <main class='dashboard map-statistics-page' id='main-content'>
         <div class='heading-row'><div><p class='eyebrow'>Map installations</p><h1>Map statistics</h1><p class='lede'>Acquisitions, fresh installs, updates, and provider health.</p></div></div>
         <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search'><label><span class='sr-only'>Time range</span><select id='map-statistics-range'>{statistics_period_options}</select></label><label><span class='sr-only'>Provider</span><select id='map-statistics-provider'><option value=''>All providers</option>{provider_options}</select></label><details class='admin-disclosure filter-disclosure' id='map-statistics-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Map ID</span><input id='map-statistics-map' type='search' placeholder='Map ID'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event'><option value=''>All events</option><option value='DOWNLOAD_SUCCEEDED'>Download succeeded</option><option value='DOWNLOAD_FAILED'>Download failed</option><option value='INSTALL_SUCCEEDED'>Install succeeded</option><option value='INSTALL_FAILED'>Install failed</option><option value='MAP_UPDATE_SUCCEEDED'>Map update succeeded</option><option value='MAP_UPDATE_FAILED'>Map update failed</option><option value='DOWNLOAD_STARTED'>Download started</option><option value='DOWNLOAD_PROCESSING'>Checking / unpacking</option><option value='DOWNLOAD_CANCELLED'>Download cancelled</option><option value='DOWNLOAD_INTERRUPTED'>Download interrupted</option></select></label><label><span class='sr-only'>Outcome</span><select id='map-statistics-outcome'><option value=''>All outcomes</option><option value='SUCCEEDED'>Succeeded</option><option value='FAILED'>Failed</option><option value='UNKNOWN'>Unknown</option></select></label></div></details><p class='results-count' id='map-statistics-status' aria-live='polite'>{event_status}</p><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear map statistics filters'>Clear</button></form>
-        <p class='table-help map-statistics-definition-note'>Acquisition, fresh-install, optional-component, and update outcomes remain separate. One fresh install is one independent main-map result; optional contours do not create another fresh install. Updates never increase fresh-install counts, compatibility thresholds, coverage, or popularity. Success rates use terminal success + failure outcomes only; lifecycle phases and not-started results are excluded. Compatibility evidence is counted separately.</p>
         {linkage_section}
-        <section class='admin-kpi-grid map-statistics-kpis' id='map-statistics-metrics' aria-label='Map statistics summary'><article><span>Completed downloads</span><strong data-stat='completedDownloads'>{event_value('completedDownloads')}</strong></article><article><span>Download success</span><strong data-stat='downloadSuccessRate'>{_format_rate(summary['downloadSuccessRate'])}</strong></article><article><span>Fresh installs</span><strong data-stat='completedInstalls'>{event_value('completedInstalls')}</strong></article><article><span>Fresh install success</span><strong data-stat='installSuccessRate'>{_format_rate(summary['installSuccessRate'])}</strong></article><article><span>Successful updates</span><strong data-stat='completedMapUpdates'>{event_value('completedMapUpdates')}</strong></article><article><span>Update success</span><strong data-stat='mapUpdateSuccessRate'>{_format_rate(summary['mapUpdateSuccessRate'])}</strong></article></section>
         <section class='map-statistics-empty' id='map-statistics-empty' {'hidden' if has_event_data else ''} aria-live='polite'><h2>{'No map operations in this period' if selected_period != 'all' else 'No map operations match these filters' if any(selected.get(key) for key in ('provider', 'map', 'region', 'event')) else 'No map operation data yet'}</h2><p>Try a wider time range or clear your filters. If all-time activity is empty, no map-operation reports have been received.</p><a href='/admin/map-statistics?period=all'>View all map activity</a></section>
-        <section class='map-statistics-reliability' aria-label='Reliability summary'><div><span>Failed fresh installs</span><strong data-stat='failedInstalls'>{event_value('failedInstalls')}</strong></div><div><span>Failed downloads</span><strong data-stat='failedDownloads'>{event_value('failedDownloads')}</strong></div><div><span>Failed updates</span><strong data-stat='failedMapUpdates'>{event_value('failedMapUpdates')}</strong></div></section>
-        <section class='provider-card map-statistics-provider-table' id='map-statistics-provider-table' {'hidden' if not has_event_data else ''}><div class='section-heading'><div><p class='section-kicker'>Activity</p><h2>Activity by provider</h2></div></div><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Activity by provider</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Downloads</th><th scope='col'>Fresh installs</th><th scope='col'>Successful updates</th><th scope='col'>Failed updates</th><th scope='col'>Fresh install success</th><th scope='col'>Update success</th><th scope='col'>Current health</th></tr></thead><tbody id='provider-statistic-rows'></tbody></table></div></section>
-        <section class='map-statistics-coverage-layout' id='map-statistics-coverage' {'hidden' if not has_event_data else ''} aria-label='Installation coverage'><section class='provider-card map-statistics-world-map-card' aria-labelledby='map-statistics-world-map-title'><div class='section-heading'><div><p class='section-kicker'>Coverage</p><h2 id='map-statistics-world-map-title'>Installations by country</h2></div><p class='table-help' id='map-statistics-world-map-status'>Successful fresh installs</p></div><div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map showing successful fresh installs by country'><div class='world-map-controls' role='group' aria-label='Map navigation'><button type='button' data-map-zoom='in' aria-label='Zoom in'>+</button><button type='button' data-map-zoom='out' aria-label='Zoom out'>−</button><button type='button' data-map-zoom='reset'>Reset map</button><span id='world-map-zoom-status' role='status'>100%</span></div><div class='world-map-svg' id='world-map-svg' tabindex='0' aria-label='Map viewport. Use arrow keys to pan, plus and minus to zoom, or drag the map.'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div></section><section class='provider-card map-statistics-popularity' id='map-statistics-popularity' tabindex='0' aria-label='Popular maps and regions'><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Popular maps</h2></div></div><details class='admin-disclosure filter-disclosure popularity-regions-disclosure'><summary>Regions</summary><div class='disclosure-body'><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Top regions</caption><thead><tr><th scope='col'>Region</th><th scope='col' title='Completed fresh installs'>Installs</th><th scope='col' title='Successful map updates'>Successful updates</th><th scope='col' title='Failed map updates'>Failed updates</th><th scope='col'>Last activity</th></tr></thead><tbody id='top-region-rows'></tbody></table></div></div></details><div class='popularity-subsection' id='top-maps-section'><h3>Top 5 maps</h3><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Popular maps</caption><thead><tr><th scope='col'>Map / region</th><th scope='col'>Fresh installs</th><th scope='col'>Successful updates</th><th scope='col'>Failed updates</th><th scope='col'>Last activity</th></tr></thead><tbody id='map-rows'></tbody></table></div><details class='admin-disclosure popularity-all-maps-disclosure'><summary id='all-maps-summary'>Browse all maps</summary><div class='disclosure-body'><label>Search maps<input type='search' id='all-maps-search' placeholder='Map, region or provider'></label><div class='table-wrap'><table class='admin-table'><thead><tr><th>Map / region</th><th>Fresh installs</th><th>Successful updates</th><th>Failed updates</th><th>Last activity</th></tr></thead><tbody id='all-map-rows'></tbody></table></div><div class='provider-pagination'><button type='button' id='all-maps-prev'>Previous</button><span id='all-maps-page' role='status'></span><button type='button' id='all-maps-next'>Next</button></div></div></details></div></section></section>
+        <section class='provider-card map-statistics-provider-table' id='map-statistics-provider-table' {'hidden' if not has_event_data else ''}><div class='section-heading'><div><p class='section-kicker'>Activity</p><h2>Activity by provider</h2></div></div><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Activity by provider</caption><thead><tr><th scope='col'>Provider</th><th scope='col' class='column-number'>Downloads</th><th scope='col' class='column-number'>Fresh installs</th><th scope='col' class='column-number'>Successful updates</th><th scope='col' class='column-number'>Failed updates</th><th scope='col' class='column-number'>Fresh install success</th><th scope='col' class='column-number'>Update success</th><th scope='col' class='column-date'>Last install</th></tr></thead><tbody id='provider-statistic-rows'></tbody></table></div></section>
+        <section class='map-statistics-coverage-layout' id='map-statistics-coverage' {'hidden' if not has_event_data else ''} aria-label='Installation coverage'><section class='provider-card map-statistics-world-map-card' aria-labelledby='map-statistics-world-map-title'><div class='section-heading'><div><p class='section-kicker'>Coverage</p><h2 id='map-statistics-world-map-title'>Installations by country</h2></div><p class='table-help' id='map-statistics-world-map-status'>Successful fresh installs</p></div><div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map showing successful fresh installs by country'><div class='world-map-controls' role='group' aria-label='Map navigation'><button type='button' data-map-zoom='in' aria-label='Zoom in'>+</button><button type='button' data-map-zoom='out' aria-label='Zoom out'>−</button><button type='button' data-map-zoom='reset'>Reset map</button><span id='world-map-zoom-status' role='status'>100%</span></div><div class='world-map-svg' id='world-map-svg' tabindex='0' aria-label='Map viewport. Use arrow keys to pan, plus and minus to zoom, or drag the map.'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div></section><section class='provider-card map-statistics-popularity' id='map-statistics-popularity' tabindex='0' aria-label='Popular maps and regions'><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Popular maps</h2></div></div><div class='map-statistics-popularity-views'><section class='popularity-view' data-popularity-view='top' id='top-maps-view' aria-labelledby='top-maps-title'><h3 id='top-maps-title'>Top 5 maps</h3><div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Top 5 popular maps</caption><thead><tr><th scope='col'>Map</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='map-rows'></tbody></table></div></section><section class='popularity-view' data-popularity-view='regions' id='regions-view' aria-labelledby='regions-title' hidden><h3 id='regions-title'>Regions</h3><div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Popular regions</caption><thead><tr><th scope='col'>Region</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='top-region-rows'></tbody></table></div></section><section class='popularity-view' data-popularity-view='all' id='all-maps-view' aria-labelledby='all-maps-title' hidden><h3 id='all-maps-title'>All maps</h3><label class='popularity-search-label' for='all-maps-search'>Search maps</label><input type='search' id='all-maps-search' placeholder='Map, region or provider'><div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>All maps by region and provider</caption><thead><tr><th scope='col'>Map</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='all-map-rows'></tbody></table></div><div class='provider-pagination' aria-live='polite'><button type='button' id='all-maps-prev'>Previous</button><span id='all-maps-page' role='status'></span><button type='button' id='all-maps-next'>Next</button></div></section></div><nav class='popular-maps-nav' aria-label='Popular maps views'><button type='button' data-popularity-view-button='top' hidden>Top 5</button><button type='button' data-popularity-view-button='regions'>Regions</button><button type='button' data-popularity-view-button='all'>All maps</button></nav></section></section>
         <section class='provider-card map-events-card' {'hidden' if not has_event_data else ''}><details class='admin-disclosure' id='map-statistics-event-detail'><summary id='map-statistics-event-summary'>Event detail · {event_status}</summary><div class='disclosure-body' id='map-statistics-event-body'>{event_table}</div></details></section>
       </main>
       <link rel="stylesheet" href="/admin/map-assets/leaflet-1.9.4.css"><link rel="stylesheet" href="/admin/map-assets/coverage-map-v1.css"><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/leaflet-1.9.4.js"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/coverage-map-v1.js?v=20260913-coverage-sidebar-3"></script><script>window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};window.terentoWorldMapSvg = {_admin_json(WORLD_MAP_SVG)};window.terentoWorldMapCountryAliases = {_admin_json(WORLD_MAP_COUNTRY_ALIASES)};{_map_statistics_script()}</script>
@@ -3022,12 +3038,9 @@ def _map_statistics_script() -> str:
       const worldMapLegendMax = document.querySelector('#world-map-legend-max');
       const providerTable = document.querySelector('#map-statistics-provider-table');
       const mapRows = document.querySelector('#map-rows');
-      const topMapsSection = document.querySelector('#top-maps-section');
-      const topMapsTable = mapRows?.closest('.table-wrap');
-      const topMapsHeading = topMapsSection?.querySelector('h3');
-      const allMapsDisclosure = document.querySelector('.popularity-all-maps-disclosure');
-      const allMapsSummary = allMapsDisclosure?.querySelector('summary');
-      const regionsDisclosure = document.querySelector('.popularity-regions-disclosure');
+      const popularityViews = [...document.querySelectorAll('[data-popularity-view]')];
+      const popularityViewButtons = [...document.querySelectorAll('[data-popularity-view-button]')];
+      let popularityView = 'top';
       const allMapsSearch = document.querySelector('#all-maps-search');
       let allMapsPage = 1;
       const eventDetail = document.querySelector('#map-statistics-event-detail');
@@ -3142,13 +3155,19 @@ def _map_statistics_script() -> str:
           ? eventRecordValues.reduce((total, value) => total + value, 0)
           : null;
         const set = (key, value) => { const node = document.querySelector(`[data-stat="${key}"]`); if (node) node.textContent = value; };
+        const setFailed = (key, value) => {
+          const node = document.querySelector(`[data-stat="${key}"]`);
+          if (!node) return;
+          node.textContent = value === null || value === undefined ? '—' : String(value);
+          node.classList.toggle('is-positive', Number.isFinite(Number(value)) && Number(value) > 0);
+        };
         const metric = (key) => Object.prototype.hasOwnProperty.call(summary, key) ? summary[key] : null;
         set('completedDownloads', metric('completedDownloads') === null ? '—' : String(metric('completedDownloads')));
-        set('failedDownloads', metric('failedDownloads') === null ? '—' : String(metric('failedDownloads')));
+        setFailed('failedDownloads', metric('failedDownloads'));
         set('completedInstalls', metric('completedInstalls') === null ? '—' : String(metric('completedInstalls')));
-        set('failedInstalls', metric('failedInstalls') === null ? '—' : String(metric('failedInstalls')));
+        setFailed('failedInstalls', metric('failedInstalls'));
         set('completedMapUpdates', metric('completedMapUpdates') === null ? '—' : String(metric('completedMapUpdates')));
-        set('failedMapUpdates', metric('failedMapUpdates') === null ? '—' : String(metric('failedMapUpdates')));
+        setFailed('failedMapUpdates', metric('failedMapUpdates'));
         set('downloadSuccessRate', formatRate(metric('downloadSuccessRate')));
         set('installSuccessRate', formatRate(metric('installSuccessRate')));
         set('mapUpdateSuccessRate', formatRate(metric('mapUpdateSuccessRate')));
@@ -3166,39 +3185,64 @@ def _map_statistics_script() -> str:
         if (popularity) popularity.hidden = !hasEventData;
         if (providerTable) providerTable.hidden = !hasEventData;
         if (eventDetail) eventDetail.closest('.map-events-card').hidden = !hasEventData;
-        const byProvider = Object.fromEntries(scopedProviders.map((item) => [item.id, {downloads: 0, installs: 0, failedInstalls: 0, updates: 0, completedUpdates: 0, failedUpdates: 0}]));
-        rows.forEach((row) => { const id = row.provider_id || 'unknown'; byProvider[id] ||= {downloads: 0, installs: 0, failedInstalls: 0, updates: 0, completedUpdates: 0, failedUpdates: 0}; if (row.event_type === 'DOWNLOAD_SUCCEEDED' && row.outcome === 'SUCCEEDED') addOperation(byProvider[id], 'downloads', row); if (row.event_type === 'INSTALL_SUCCEEDED' && row.outcome === 'SUCCEEDED') addOperation(byProvider[id], 'installs', row); if (row.event_type === 'INSTALL_FAILED' && row.outcome === 'FAILED') addOperation(byProvider[id], 'failedInstalls', row); if (row.event_type === 'MAP_UPDATE_SUCCEEDED' && row.outcome === 'SUCCEEDED') { addOperation(byProvider[id], 'updates', row); addOperation(byProvider[id], 'completedUpdates', row); } if (row.event_type === 'MAP_UPDATE_FAILED' && row.outcome === 'FAILED') { addOperation(byProvider[id], 'updates', row); addOperation(byProvider[id], 'failedUpdates', row); } });
-        const providerRows = Object.entries(byProvider).sort((a, b) => (b[1].downloads ?? -1) - (a[1].downloads ?? -1) || a[0].localeCompare(b[0])).map(([id, item]) => { const installTotal = item.installs !== null && item.failedInstalls !== null ? item.installs + item.failedInstalls : null; const updateRate = item.updates !== null && item.completedUpdates !== null && item.updates > 0 ? item.completedUpdates / item.updates * 100 : null; const installRate = installTotal !== null && installTotal > 0 ? item.installs / installTotal * 100 : null; return `<tr><td>${escapeHtml(providerName[id] || id)}</td><td class="numeric">${countValue(item.downloads)}</td><td class="numeric">${countValue(item.installs)}</td><td class="numeric">${countValue(item.completedUpdates)}</td><td class="numeric">${countValue(item.failedUpdates)}</td><td>${formatRate(installRate)}</td><td>${formatRate(updateRate)}</td><td>${badge(healthByProvider[id])}</td></tr>`; }).join('');
+        const byProvider = Object.fromEntries(scopedProviders.map((item) => [item.id, {downloads: 0, installs: 0, failedInstalls: 0, updates: 0, completedUpdates: 0, failedUpdates: 0, lastInstall: null}]));
+        rows.forEach((row) => { const id = row.provider_id || 'unknown'; byProvider[id] ||= {downloads: 0, installs: 0, failedInstalls: 0, updates: 0, completedUpdates: 0, failedUpdates: 0, lastInstall: null}; if (row.event_type === 'DOWNLOAD_SUCCEEDED' && row.outcome === 'SUCCEEDED') addOperation(byProvider[id], 'downloads', row); if (row.event_type === 'INSTALL_SUCCEEDED' && row.outcome === 'SUCCEEDED') { addOperation(byProvider[id], 'installs', row); if ((!row.component_kind || row.component_kind === 'main') && String(row.last_occurred_at || '') > String(byProvider[id].lastInstall || '')) byProvider[id].lastInstall = row.last_occurred_at; } if (row.event_type === 'INSTALL_FAILED' && row.outcome === 'FAILED') addOperation(byProvider[id], 'failedInstalls', row); if (row.event_type === 'MAP_UPDATE_SUCCEEDED' && row.outcome === 'SUCCEEDED') { addOperation(byProvider[id], 'updates', row); addOperation(byProvider[id], 'completedUpdates', row); } if (row.event_type === 'MAP_UPDATE_FAILED' && row.outcome === 'FAILED') { addOperation(byProvider[id], 'updates', row); addOperation(byProvider[id], 'failedUpdates', row); } });
+        const providerRows = Object.entries(byProvider).sort((a, b) => (b[1].downloads ?? -1) - (a[1].downloads ?? -1) || a[0].localeCompare(b[0])).map(([id, item]) => { const installTotal = item.installs !== null && item.failedInstalls !== null ? item.installs + item.failedInstalls : null; const updateRate = item.updates !== null && item.completedUpdates !== null && item.updates > 0 ? item.completedUpdates / item.updates * 100 : null; const installRate = installTotal !== null && installTotal > 0 ? item.installs / installTotal * 100 : null; return `<tr><td>${escapeHtml(providerName[id] || id)}</td><td class="column-number numeric">${countValue(item.downloads)}</td><td class="column-number numeric">${countValue(item.installs)}</td><td class="column-number numeric">${countValue(item.completedUpdates)}</td><td class="column-number numeric">${countValue(item.failedUpdates)}</td><td class="column-number numeric">${formatRate(installRate)}</td><td class="column-number numeric">${formatRate(updateRate)}</td><td class="column-date">${formatTimestamp(item.lastInstall)}</td></tr>`; }).join('');
         document.querySelector('#provider-statistic-rows').innerHTML = providerRows || emptyRow(8);
         renderWorldMap(installRows);
-        const updateRows = rows.filter((row) => ['MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED'].includes(row.event_type));
+        const knownProviderIds = new Set(providers.map((item) => String(item.id || '').trim()).filter(Boolean));
+        const isCatalogMainInstall = (row) => row.event_type === 'INSTALL_SUCCEEDED'
+          && row.outcome === 'SUCCEEDED'
+          && Boolean(row.map_package_id)
+          && knownProviderIds.has(String(row.provider_id || '').trim())
+          && (!row.component_kind || row.component_kind === 'main');
+        const catalogInstallRows = rows.filter(isCatalogMainInstall);
         const byMap = {};
-        const addMapActivity = (row, field) => { const mapKey = row.map_package_id || row.region_identity || row.canonical_region_id || row.region || 'unknown'; const key = `${row.provider_id || 'unknown'}\u0000${mapKey}`; byMap[key] ||= {map: row.map_package_id || '—', name: row.display_name || row.map_package_name || '', provider: row.provider_id || '', region: row.region || '—', regionIdentity: row.region_identity || row.canonical_region_id || row.region || 'UNKNOWN', regionName: row.region_display_name || humanize(row.region), country: countryCode(row), installs: 0, updates: 0, completedUpdates: 0, failedUpdates: 0, last: row.last_occurred_at}; addOperation(byMap[key], field, row); if (row.event_type === 'MAP_UPDATE_SUCCEEDED') addOperation(byMap[key], 'completedUpdates', row); if (row.event_type === 'MAP_UPDATE_FAILED') addOperation(byMap[key], 'failedUpdates', row); if (String(row.last_occurred_at || '') > String(byMap[key].last || '')) byMap[key].last = row.last_occurred_at; };
-        installRows.forEach((row) => addMapActivity(row, 'installs'));
-        updateRows.forEach((row) => addMapActivity(row, 'updates'));
-        const mapItems = Object.values(byMap).sort((a, b) => b.installs - a.installs || a.map.localeCompare(b.map));
-        const popularMapItems = mapItems.filter((item) => item.installs !== null && item.installs > 0);
-        const showRegions = Boolean(regionsDisclosure?.open);
-        const showAllMaps = !showRegions && Boolean(allMapsDisclosure?.open);
-        if (topMapsSection) topMapsSection.hidden = showRegions;
-        if (topMapsTable) topMapsTable.hidden = showAllMaps || showRegions;
-        if (topMapsHeading) topMapsHeading.hidden = showAllMaps || showRegions;
-        if (allMapsDisclosure) allMapsDisclosure.hidden = showRegions;
-        const mapRow = (item) => `<tr><td><strong>${item.country ? `<button type="button" class="region-map-link" data-map-country="${escapeHtml(item.country)}" aria-label="Show ${escapeHtml(item.name || item.regionName || '—')} on map">${escapeHtml(item.name || item.regionName || '—')}</button>` : escapeHtml(item.name || item.regionName || '—')}</strong><small class="table-secondary">${escapeHtml(providerName[item.provider] || item.provider)} · ${escapeHtml(item.regionName || '—')}</small></td><td class="numeric">${countValue(item.installs)}</td><td class="numeric">${countValue(item.completedUpdates)}</td><td class="numeric">${countValue(item.failedUpdates)}</td><td>${formatTimestamp(item.last)}</td></tr>`;
-        if (mapRows) mapRows.innerHTML = popularMapItems.slice(0, 5).map(mapRow).join('') || emptyRow(5);
-        if (allMapsSummary) allMapsSummary.textContent = `Browse all maps · ${mapItems.length}`;
+        catalogInstallRows.forEach((row) => {
+          const providerId = String(row.provider_id || '').trim();
+          const regionIdentity = row.region_identity || row.canonical_region_id || row.region || 'UNKNOWN';
+          const key = `${regionIdentity}\u0000${providerId}`;
+          byMap[key] ||= {regionIdentity, regionName: row.region_display_name || humanize(row.region), provider: providerId, country: countryCode(row), installs: 0, lastInstall: null};
+          addOperation(byMap[key], 'installs', row);
+          if (String(row.last_occurred_at || '') > String(byMap[key].lastInstall || '')) byMap[key].lastInstall = row.last_occurred_at;
+        });
+        const allMapItems = Object.values(byMap)
+          .filter((item) => item.installs !== null && item.installs > 0)
+          .sort((a, b) => b.installs - a.installs || a.regionName.localeCompare(b.regionName) || a.provider.localeCompare(b.provider));
+        const byRegion = {};
+        allMapItems.forEach((item) => {
+          const key = item.regionIdentity;
+          byRegion[key] ||= {regionIdentity: key, regionName: item.regionName, country: item.country, installs: 0, lastInstall: null};
+          addValue(byRegion[key], 'installs', item.installs);
+          if (!byRegion[key].country && item.country) byRegion[key].country = item.country;
+          if (String(item.lastInstall || '') > String(byRegion[key].lastInstall || '')) byRegion[key].lastInstall = item.lastInstall;
+        });
+        const regionItems = Object.values(byRegion)
+          .filter((item) => item.installs !== null && item.installs > 0)
+          .sort((a, b) => b.installs - a.installs || a.regionName.localeCompare(b.regionName));
+        const mapRow = (item, {includeProvider = false} = {}) => {
+          const label = item.regionName || '—';
+          const mapLink = item.country
+            ? `<button type="button" class="region-map-link" data-map-country="${escapeHtml(item.country)}" aria-label="Show ${escapeHtml(label)} on map">${escapeHtml(label)}</button>`
+            : escapeHtml(label);
+          const detail = includeProvider
+            ? `${providerName[item.provider] || item.provider || '—'} · ${formatTimestamp(item.lastInstall)}`
+            : formatTimestamp(item.lastInstall);
+          const installsLabel = `${countValue(item.installs)} install${item.installs === 1 ? '' : 's'}`;
+          return `<tr><td><strong>${mapLink}</strong><small class="table-secondary">${escapeHtml(detail)}</small></td><td class="column-number numeric"><strong>${escapeHtml(installsLabel)}</strong></td></tr>`;
+        };
+        if (mapRows) mapRows.innerHTML = regionItems.slice(0, 5).map(mapRow).join('') || emptyPopularRow('No popular catalog maps in this period.');
         const query = String(allMapsSearch?.value || '').toLocaleLowerCase().trim();
-        const matchedMaps = mapItems.filter(item => `${item.name} ${item.map} ${item.regionName} ${providerName[item.provider] || item.provider}`.toLocaleLowerCase().includes(query));
+        const matchedMaps = allMapItems.filter((item) => `${item.regionName} ${providerName[item.provider] || item.provider}`.toLocaleLowerCase().includes(query));
         const pages = Math.max(1, Math.ceil(matchedMaps.length / 10));
         allMapsPage = Math.max(1, Math.min(pages, allMapsPage));
-        document.querySelector('#all-map-rows').innerHTML = matchedMaps.slice((allMapsPage - 1) * 10, allMapsPage * 10).map(mapRow).join('') || '<tr><td colspan="5" class="muted-value">No maps match your search. Clear the search to show all maps.</td></tr>';
+        document.querySelector('#all-map-rows').innerHTML = matchedMaps.slice((allMapsPage - 1) * 10, allMapsPage * 10).map((item) => mapRow(item, {includeProvider: true})).join('') || emptyPopularRow('No maps match your search. Clear the search to show all maps.');
         document.querySelector('#all-maps-page').textContent = `${matchedMaps.length} ${matchedMaps.length === 1 ? 'map' : 'maps'} · Page ${allMapsPage} of ${pages}`;
         document.querySelector('#all-maps-prev').disabled = allMapsPage <= 1;
         document.querySelector('#all-maps-next').disabled = allMapsPage >= pages;
-        const byRegion = {};
-        popularMapItems.forEach((item) => { const key = item.regionIdentity || item.region; byRegion[key] ||= {region: key, display: item.regionName, country: item.country, installs: 0, updates: 0, completedUpdates: 0, failedUpdates: 0, last: item.last}; addValue(byRegion[key], 'installs', item.installs); addValue(byRegion[key], 'updates', item.updates); addValue(byRegion[key], 'completedUpdates', item.completedUpdates); addValue(byRegion[key], 'failedUpdates', item.failedUpdates); if (String(item.last || '') > String(byRegion[key].last || '')) byRegion[key].last = item.last; });
-        const topRegions = Object.values(byRegion).sort((a, b) => b.installs - a.installs || a.region.localeCompare(b.region)).slice(0, 10).map((item) => `<tr><td>${item.country ? `<button type="button" class="region-map-link" data-map-country="${escapeHtml(item.country)}" aria-label="Show ${escapeHtml(item.display || humanize(item.region))} on map">${escapeHtml(item.display || humanize(item.region))}</button>` : escapeHtml(item.display || humanize(item.region))}</td><td class="numeric">${item.installs}</td><td class="numeric">${item.completedUpdates}</td><td class="numeric">${item.failedUpdates}</td><td>${formatTimestamp(item.last)}</td></tr>`).join('');
-        document.querySelector('#top-region-rows').innerHTML = topRegions || emptyRow(5);
+        document.querySelector('#top-region-rows').innerHTML = regionItems.map(mapRow).join('') || emptyPopularRow('No catalog regions in this period.');
+        popularityViews.forEach((view) => { view.hidden = view.dataset.popularityView !== popularityView; });
+        popularityViewButtons.forEach((button) => { const active = button.dataset.popularityViewButton === popularityView; button.hidden = active; button.setAttribute('aria-current', active ? 'page' : 'false'); });
         document.querySelectorAll('[data-map-country]').forEach((button) => {
           ['mouseenter', 'focus'].forEach((name) => button.addEventListener(name, () => highlightCountry(button.dataset.mapCountry)));
           ['mouseleave', 'blur'].forEach((name) => button.addEventListener(name, () => highlightCountry(null)));
@@ -3237,6 +3281,7 @@ def _map_statistics_script() -> str:
       };
       const badge = (value) => `<span class="provider-status provider-status-${String(value || 'UNKNOWN').toLowerCase()}">${escapeHtml(String(value || 'Unknown').toUpperCase() === 'SUCCEEDED' ? 'Successful' : String(value || 'Unknown').toLowerCase().replaceAll('_', ' ').replace(/^./, letter => letter.toUpperCase()))}</span>`;
       const emptyRow = (columns) => `<tr><td colspan="${columns}" class="muted-value">No events in this period.</td></tr>`;
+      const emptyPopularRow = (message) => `<tr><td colspan="2" class="muted-value">${escapeHtml(message)}</td></tr>`;
       const sync = async ({resetDetailPage = false} = {}) => {
         if (resetDetailPage) detailPage = 1;
         const parameters = new URLSearchParams();
@@ -3262,11 +3307,12 @@ def _map_statistics_script() -> str:
         if (moreFilters) moreFilters.open = false;
         sync({resetDetailPage: true});
       });
-      allMapsDisclosure?.addEventListener('toggle', () => render(currentPayload));
-      regionsDisclosure?.addEventListener('toggle', () => {
-        if (regionsDisclosure.open && allMapsDisclosure?.open) allMapsDisclosure.open = false;
-        render(currentPayload);
-      });
+      const setPopularityView = (view) => {
+        popularityView = ['top', 'regions', 'all'].includes(view) ? view : 'top';
+        popularityViews.forEach((section) => { section.hidden = section.dataset.popularityView !== popularityView; });
+        popularityViewButtons.forEach((button) => { const active = button.dataset.popularityViewButton === popularityView; button.hidden = active; button.setAttribute('aria-current', active ? 'page' : 'false'); });
+      };
+      popularityViewButtons.forEach((button) => button.addEventListener('click', () => { setPopularityView(button.dataset.popularityViewButton); render(currentPayload); }));
       allMapsSearch?.addEventListener('input', () => { allMapsPage = 1; render(currentPayload); });
       document.querySelector('#all-maps-prev')?.addEventListener('click', () => { allMapsPage--; render(currentPayload); });
       document.querySelector('#all-maps-next')?.addEventListener('click', () => { allMapsPage++; render(currentPayload); });
@@ -3278,6 +3324,7 @@ def _map_statistics_script() -> str:
       eventPagination?.querySelector('[data-event-page="next"]')?.addEventListener('click', () => { detailPage += 1; sync(); });
       window.addEventListener('terento-admin-timezone-ready', () => render(currentPayload));
       window.addEventListener('terento-admin-timezone-change', () => render(currentPayload));
+      setPopularityView(popularityView);
       render(initial);
     })();"""
 
@@ -6656,7 +6703,7 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .map-statistics-popularity .table-wrap .admin-table td:nth-child(3){grid-column:1/-1;color:var(--secondary);font-size:11px;font-weight:400}
 .map-statistics-popularity .table-wrap .admin-table td[colspan]{grid-column:1/-1}
 .map-statistics-popularity .table-wrap .admin-table td::before{display:none}
-.map-statistics-popularity .table-wrap .admin-table td:nth-child(2)::after{content:' installs';font-size:11px;color:var(--secondary);font-weight:400}
+.map-statistics-popularity .table-wrap .admin-table td:nth-child(2)::after{content:none}
 .map-statistics-popularity .table-secondary,.map-statistics-popularity code{white-space:normal;overflow-wrap:anywhere;font-size:11px}
 .map-statistics-popularity .table-wrap .region-map-link{width:auto;min-height:40px;font-weight:650;text-decoration:none}
 .map-statistics-popularity .region-map-link:hover,.map-statistics-popularity .region-map-link:focus-visible{text-decoration:underline}
@@ -6753,6 +6800,45 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .map-activity-warning .overview-activity-label{color:var(--status-tested-text)}
 .map-activity-neutral .overview-activity-label{color:var(--secondary)}
 @media(max-width:500px){.map-activity-row{grid-template-columns:minmax(0,1fr)}.map-activity-row>time{grid-column:1;grid-row:3;margin-left:21px}.map-activity-row .download-history>summary{grid-template-columns:minmax(0,1fr)}.map-activity-row .download-history>summary>time{grid-column:1;grid-row:3;margin-left:21px}.map-activity-row>a{grid-row:1}}
+
+/* Map statistics compact summary, popularity views, and table alignment. */
+.map-statistics-kpi-panel{margin-top:18px;padding:16px 18px}
+.map-statistics-kpi-groups{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}
+.map-statistics-kpi-group{min-width:0}
+.map-statistics-kpi-group h2{margin:0 0 10px;font-size:16px;line-height:1.25}
+.map-statistics-kpi-values{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px}
+.map-statistics-kpi-value{min-width:0;padding:0 4px}
+.map-statistics-kpi-value.failed{grid-column:1/-1;padding-top:8px;border-top:1px solid color-mix(in srgb,var(--border) 78%,transparent)}
+.map-statistics-kpi-value span,.map-statistics-diagnostic-coverage-row span{display:block;color:var(--secondary);font-size:12px;font-weight:650}
+.map-statistics-kpi-value>strong{display:block;margin-top:4px;color:var(--graphite);font:700 24px/1.15 var(--font-brand);font-variant-numeric:tabular-nums}
+.map-statistics-kpi-value.failed>strong{font-size:19px}
+.map-statistics-failed-value.is-positive{color:var(--danger)}
+.map-statistics-diagnostic-coverage{margin-top:16px;padding-top:13px;border-top:1px solid var(--border)}
+.map-statistics-diagnostic-coverage h2{margin:0 0 9px;font-size:14px;line-height:1.3}
+.map-statistics-diagnostic-coverage-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.map-statistics-diagnostic-coverage-row>div{min-width:0;padding:0 4px}
+.map-statistics-diagnostic-coverage-row strong{display:block;margin-top:3px;color:var(--graphite);font:700 18px/1.2 var(--font-brand);font-variant-numeric:tabular-nums}
+.map-statistics-provider-table .column-number,.map-statistics-provider-table .numeric,.map-statistics-provider-table .column-status{text-align:center!important}
+.map-statistics-provider-table .column-date{text-align:left!important}
+.map-statistics-provider-table .column-status .provider-status{margin-inline:auto}
+.admin-table th.column-number,.admin-table td.column-number,.admin-table th.numeric,.admin-table td.numeric{ text-align:center }
+.admin-table th.column-status,.admin-table td.column-status{text-align:center}
+.admin-table th.column-date,.admin-table td.column-date{text-align:left}
+.admin-table .column-status .provider-status{margin-inline:auto}
+.map-statistics-popularity-views{min-width:0}
+.popularity-view h3{margin:0 0 9px;font:700 15px/1.3 var(--font-brand)}
+.popularity-view[hidden]{display:none}
+.popular-maps-nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
+.popular-maps-nav button{min-height:34px;padding:7px 11px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--interactive);font:700 12px/1.3 var(--font-ui)}
+.popular-maps-nav button:hover{border-color:var(--interactive);background:var(--success-bg)}
+.popularity-search-label{display:block;margin:0 0 6px;color:var(--secondary);font-size:12px;font-weight:650}
+.popularity-view>input{width:100%;min-width:0;margin:0 0 12px}
+.popularity-view .popular-maps-table{min-width:0}
+.popularity-view .popular-maps-table td:last-child{text-align:right!important}
+.popularity-view .popular-maps-table td:last-child strong{font-weight:750;white-space:nowrap}
+@media(max-width:900px){.map-statistics-kpi-groups{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.map-statistics-diagnostic-coverage-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.map-statistics-kpi-panel{padding:16px}.map-statistics-kpi-groups{grid-template-columns:1fr;gap:16px}.map-statistics-diagnostic-coverage-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.popular-maps-nav button{min-height:44px}.popularity-view>input{min-height:44px}}
+@media(max-width:420px){.map-statistics-diagnostic-coverage-row{grid-template-columns:1fr}}
 """
 
 
