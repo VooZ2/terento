@@ -347,7 +347,7 @@ table and model review metadata. It includes active events and retained failed
 history under the historical-count rule; resolved history remains queryable
 through the private diagnostics path. The
 canonical population, result classification and rate definitions are in
-[`contracts/STATISTICS_CONTRACT.md`](../../contracts/STATISTICS_CONTRACT.md).
+[`contracts/STATISTICS_CONTRACT.md`](../../../contracts/STATISTICS_CONTRACT.md).
 Migration `032_custom_img_compatibility_evidence.sql` extends the event source
 constraint with the fixed `custom` local-IMG label. Custom evidence still uses
 the same watch/model aggregation and never creates a provider map-event row;

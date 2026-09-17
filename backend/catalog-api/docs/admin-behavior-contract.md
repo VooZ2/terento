@@ -96,7 +96,7 @@ Each metric must have a stable definition: source, unit, outcome eligibility,
 time window, test exclusion and deduplication. Views using the same population
 must agree. Different populations must be named so a difference is explainable.
 The canonical formulas and population boundaries live in
-[`contracts/STATISTICS_CONTRACT.md`](../../contracts/STATISTICS_CONTRACT.md);
+[`contracts/STATISTICS_CONTRACT.md`](../../../contracts/STATISTICS_CONTRACT.md);
 this document governs the admin workflow that presents them. Do not force
 equality by inventing data. Missing/unavailable measurements use an em dash,
 while a measured zero is 0.

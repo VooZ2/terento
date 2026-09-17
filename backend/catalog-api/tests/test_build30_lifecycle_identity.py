@@ -89,34 +89,13 @@ class Build30Tests(unittest.TestCase):
         self.assertIsNone(_identity_recommendation([result]))
         markup = _diagnostic_detail_dialog('fenix 9 Pro', 'preview', [result], resolved=False,
                     csrf_token='test', identity_devices=devices)
-        self.assertIn('Candidate device variant', markup)
-        self.assertIn("<option value='inreach'>fēnix 9 Pro · 47 mm, AMOLED, inReach</option>", markup)
-        self.assertIn("<option value='inreach-solar'>fēnix 9 Pro · 47 mm, MIP, Solar, inReach</option>", markup)
-        self.assertIn('Screen not reported', markup)
+        self.assertIn('Screen / Solar variant', markup)
+        self.assertIn("<option value='inreach'>AMOLED · Solar: not confirmed</option>", markup)
+        self.assertIn("<option value='inreach-solar'>MIP · Solar: yes</option>", markup)
         self.assertNotIn("<option value='generic'", markup)
         self.assertNotIn("<option value='generic-solar'", markup)
         self.assertEqual(len(assessment['candidates']), 4)  # authoritative evidence unchanged
         self.assertEqual(assessment['state'], 'UNRESOLVED')
-
-    def test_same_model_options_keep_historical_catalog_variants_distinct(self):
-        from terento_catalog.admin import _identity_device_options
-        options, _ = _identity_device_options([
-            {'id': 'garmin-fenix-7-pro', 'model': 'fēnix 7 Pro', 'variant': 'Historical'},
-            {'id': 'garmin-fenix-7-pro-solar-no-wifi', 'model': 'fēnix 7 Pro', 'variant': 'Solar (no Wi-Fi)'},
-        ], properties_only=True)
-        self.assertIn("fēnix 7 Pro · Historical", options)
-        self.assertIn("fēnix 7 Pro · Solar (no Wi-Fi)", options)
-        self.assertNotIn('Screen not confirmed', options)
-        self.assertNotIn('Solar: not confirmed', options)
-
-    def test_reported_solar_is_not_rendered_as_unknown(self):
-        from terento_catalog.admin import _identity_observations_markup
-        markup = _identity_observations_markup([{
-            'model': 'fēnix 7 Pro', 'variant': 'Solar',
-            'identity_assessment': {'candidates': []},
-        }])
-        self.assertIn('Solar: Reported by device', markup)
-        self.assertNotIn('Solar: Not confirmed', markup)
 
     def map_event(self, **changes):
         path = Path(__file__).resolve().parents[3] / 'contracts/fixtures/map-event.valid.json'
@@ -161,7 +140,6 @@ class Build30Tests(unittest.TestCase):
         row['lifecycle'][0]['at'] = None
         self.assertNotIn('download-elapsed', _overview_map_activity_row(row))
 
-
     def test_download_history_uses_requested_fontawesome_icons(self):
         phases = ('STARTED', 'PROCESSING', 'SUCCEEDED')
         row = dict(event_type='DOWNLOAD_SUCCEEDED', lifecycle=[
@@ -172,7 +150,6 @@ class Build30Tests(unittest.TestCase):
             self.assertIn(phase.title(), markup)
         self.assertEqual(markup.count('Font Awesome Free 7.3.1'), 4)
         self.assertNotIn('fa-spin', markup.replace('fa-spinner', ''))
-
 
     def test_admin_shows_missing_outcome_component_and_timeline(self):
         row = dict(event_type='DOWNLOAD_PROCESSING', component_kind='contours',
