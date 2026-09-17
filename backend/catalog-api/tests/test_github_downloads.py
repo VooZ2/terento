@@ -239,6 +239,137 @@ class GithubDownloadTests(unittest.TestCase):
             datetime(2026, 9, 11, 11, tzinfo=timezone.utc),
         )
 
+    def test_legacy_snapshots_keep_nonnegative_counter_deltas(self):
+        """Pre-057 rows retain useful deltas while population identity is unknown."""
+        now = datetime(2026, 9, 11, 12, tzinfo=timezone.utc)
+        database = SnapshotDatabase(
+            {"dmg_total": 108, "zip_total": 209, "observed_at": now},
+            [
+                {"observed_at": datetime(2026, 9, 11, 10, tzinfo=timezone.utc), "dmg_total": 100, "zip_total": 200, "release_count": 2, "asset_count": None, "population_fingerprint": None},
+                {"observed_at": datetime(2026, 9, 11, 11, tzinfo=timezone.utc), "dmg_total": 103, "zip_total": 202, "release_count": 2, "asset_count": None, "population_fingerprint": None},
+                {"observed_at": now, "dmg_total": 108, "zip_total": 209, "release_count": 2, "asset_count": None, "population_fingerprint": None},
+            ],
+        )
+        trend = database.github_downloads_snapshot(now=now)["trend"]
+        self.assertEqual([item["dmg_count"] for item in trend], [None, 3, 5])
+        self.assertEqual([item["zip_count"] for item in trend], [None, 2, 7])
+        self.assertTrue(all(item.get("legacy") for item in trend[1:]))
+        self.assertTrue(all(item["population_comparability"] == "unconfirmed" for item in trend[1:]))
+        self.assertNotIn("discontinuity", [item["state"] for item in trend[1:]])
+
+    def test_legacy_to_new_metadata_arrival_is_not_a_discontinuity(self):
+        now = datetime(2026, 9, 11, 11, tzinfo=timezone.utc)
+        database = SnapshotDatabase(
+            {"dmg_total": 114, "zip_total": 51, "observed_at": now},
+            [
+                {"observed_at": datetime(2026, 9, 11, 10, tzinfo=timezone.utc), "dmg_total": 110, "zip_total": 50, "release_count": 2, "asset_count": None, "population_fingerprint": None},
+                {"observed_at": now, "dmg_total": 114, "zip_total": 51, "release_count": 2, "asset_count": 2, "population_fingerprint": "same"},
+            ],
+        )
+        item = database.github_downloads_snapshot(now=now)["trend"][1]
+        self.assertEqual(item["state"], "observed_increase")
+        self.assertEqual((item["dmg_count"], item["zip_count"]), (4, 1))
+        self.assertEqual(item["confidence"], "legacy")
+        self.assertEqual(item["population_comparability"], "unconfirmed")
+
+    def test_comparable_new_snapshots_are_verified_deltas(self):
+        now = datetime(2026, 9, 11, 11, tzinfo=timezone.utc)
+        database = SnapshotDatabase(
+            {"dmg_total": 114, "zip_total": 50, "observed_at": now},
+            [
+                {"observed_at": datetime(2026, 9, 11, 10, tzinfo=timezone.utc), "dmg_total": 110, "zip_total": 50, "release_count": 2, "asset_count": 2, "population_fingerprint": "same"},
+                {"observed_at": now, "dmg_total": 114, "zip_total": 50, "release_count": 2, "asset_count": 2, "population_fingerprint": "same"},
+            ],
+        )
+        item = database.github_downloads_snapshot(now=now)["trend"][1]
+        self.assertEqual(item["dmg_count"], 4)
+        self.assertEqual(item["confidence"], "verified")
+        self.assertEqual(item["population_comparability"], "verified")
+        self.assertFalse(item.get("legacy", False))
+
+    def test_first_observation_is_only_a_baseline(self):
+        now = datetime(2026, 9, 11, 10, tzinfo=timezone.utc)
+        database = SnapshotDatabase(
+            {"dmg_total": 110, "zip_total": 50, "observed_at": now},
+            [{"observed_at": now, "dmg_total": 110, "zip_total": 50, "release_count": 2}],
+        )
+        item = database.github_downloads_snapshot(now=now)["trend"][0]
+        self.assertEqual(item["state"], "baseline")
+        self.assertIsNone(item["dmg_count"])
+        self.assertIsNone(item["zip_count"])
+
+    def test_counter_decrease_and_confirmed_population_change_stay_discontinuous(self):
+        now = datetime(2026, 9, 11, 12, tzinfo=timezone.utc)
+        database = SnapshotDatabase(
+            {"dmg_total": 120, "zip_total": 50, "observed_at": now},
+            [
+                {"observed_at": datetime(2026, 9, 11, 10, tzinfo=timezone.utc), "dmg_total": 110, "zip_total": 50, "release_count": 2, "asset_count": 2, "population_fingerprint": "same"},
+                {"observed_at": datetime(2026, 9, 11, 11, tzinfo=timezone.utc), "dmg_total": 105, "zip_total": 50, "release_count": 2, "asset_count": 2, "population_fingerprint": "same"},
+                {"observed_at": now, "dmg_total": 120, "zip_total": 50, "release_count": 2, "asset_count": 3, "population_fingerprint": "changed"},
+            ],
+        )
+        trend = database.github_downloads_snapshot(now=now)["trend"]
+        self.assertEqual(trend[1]["state"], "discontinuity")
+        self.assertEqual(trend[1]["discontinuity_reason"], "counter_decrease")
+        self.assertIsNone(trend[1]["dmg_count"])
+        self.assertEqual(trend[2]["state"], "discontinuity")
+        self.assertEqual(trend[2]["discontinuity_reason"], "population_change")
+        self.assertIsNone(trend[2]["dmg_count"])
+
+    def test_daily_aggregation_keeps_known_delta_next_to_unknown_interval(self):
+        now = datetime(2026, 9, 11, 12, tzinfo=timezone.utc)
+        database = SnapshotDatabase(
+            {"dmg_total": 112, "zip_total": 50, "observed_at": now},
+            [
+                {"observed_at": datetime(2026, 9, 10, 1, tzinfo=timezone.utc), "dmg_total": 100, "zip_total": 50, "release_count": 2, "asset_count": 2, "population_fingerprint": "same"},
+                {"observed_at": datetime(2026, 9, 10, 2, tzinfo=timezone.utc), "dmg_total": 102, "zip_total": 50, "release_count": 2, "asset_count": 2, "population_fingerprint": "same"},
+                {"observed_at": datetime(2026, 9, 10, 23, tzinfo=timezone.utc), "dmg_total": 112, "zip_total": 50, "release_count": 2, "asset_count": 3, "population_fingerprint": "changed"},
+            ],
+        )
+        item = database.github_downloads_snapshot(now=now, period="7d")["trend"][0]
+        self.assertEqual(item["dmg_count"], 2)
+        self.assertEqual(item["state"], "partial")
+        self.assertTrue(item["partial"])
+        self.assertTrue(item["contains_discontinuity"])
+        self.assertEqual(item["unknown_interval_count"], 1)
+
+    def test_daily_aggregation_does_not_call_known_zero_a_confirmed_full_day_zero(self):
+        now = datetime(2026, 9, 10, 23, tzinfo=timezone.utc)
+        database = SnapshotDatabase(
+            {"dmg_total": 100, "zip_total": 50, "observed_at": now},
+            [
+                {"observed_at": datetime(2026, 9, 10, 1, tzinfo=timezone.utc), "dmg_total": 100, "zip_total": 50, "release_count": 2, "asset_count": 2, "population_fingerprint": "same"},
+                {"observed_at": datetime(2026, 9, 10, 2, tzinfo=timezone.utc), "dmg_total": 100, "zip_total": 50, "release_count": 2, "asset_count": 2, "population_fingerprint": "same"},
+                {"observed_at": now, "dmg_total": 100, "zip_total": 50, "release_count": 2, "asset_count": 3, "population_fingerprint": "changed"},
+            ],
+        )
+        item = database.github_downloads_snapshot(now=now, period="7d")["trend"][0]
+        self.assertEqual((item["dmg_count"], item["zip_count"]), (0, 0))
+        self.assertEqual(item["state"], "partial")
+        self.assertTrue(item["partial"])
+        self.assertTrue(item["contains_discontinuity"])
+
+    def test_period_views_preserve_known_deltas_across_gaps(self):
+        now = datetime(2026, 9, 11, 12, tzinfo=timezone.utc)
+        database = SnapshotDatabase(
+            {"dmg_total": 113, "zip_total": 50, "observed_at": now},
+            [
+                {"observed_at": datetime(2026, 9, 5, 1, tzinfo=timezone.utc), "dmg_total": 100, "zip_total": 50, "release_count": 2},
+                {"observed_at": datetime(2026, 9, 5, 2, tzinfo=timezone.utc), "dmg_total": 102, "zip_total": 50, "release_count": 2},
+                {"observed_at": datetime(2026, 9, 7, 4, tzinfo=timezone.utc), "dmg_total": 105, "zip_total": 50, "release_count": 2},
+                {"observed_at": datetime(2026, 9, 10, 13, tzinfo=timezone.utc), "dmg_total": 110, "zip_total": 50, "release_count": 2},
+                {"observed_at": datetime(2026, 9, 11, 10, tzinfo=timezone.utc), "dmg_total": 113, "zip_total": 50, "release_count": 2},
+            ],
+        )
+        views = {
+            period: database.github_downloads_snapshot(now=now, period=period)["trend"]
+            for period in ("24h", "7d", "all")
+        }
+        self.assertEqual(sum(item["dmg_count"] or 0 for item in views["24h"]), 8)
+        self.assertEqual(sum(item["dmg_count"] or 0 for item in views["7d"]), 13)
+        self.assertEqual(sum(item["dmg_count"] or 0 for item in views["all"]), 13)
+        self.assertEqual(views["all"][0]["dmg_count"], 13)
+
     def test_collection_failure_does_not_replace_last_successful_snapshot(self):
         database = CollectDatabase()
         with self.assertRaisesRegex(RuntimeError, "GitHub unavailable"):

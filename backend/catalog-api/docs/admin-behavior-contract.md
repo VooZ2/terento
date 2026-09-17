@@ -186,10 +186,15 @@ successful message, and an absent message is an observation gap, not a failed
 install. Session totals are separate.
 
 The GitHub chart says `Observed download increases between checks`. It starts
-with a baseline, preserves valid zero increases, leaves missing checks and
-counter/population discontinuities unknown, and keeps the previous and actual
-`observed_at` values for each observed interval. Failed collection keeps the
-last successful observation and timestamp.
+with a baseline and preserves valid zero increases. Historical counter deltas
+whose observations lack the new population metadata remain visible as legacy
+or unverified deltas; missing metadata alone is not a discontinuity. A counter
+decrease or confirmed population change remains unknown/discontinuous. Missing
+check gaps and period-boundary intervals retain the previous and actual
+`observed_at` values, are marked uncertain, and are never filled with zero or
+used to spread a delta across the gap. Daily/monthly buckets with known values
+and unknown intervals are marked partial. Failed collection keeps the last
+successful observation and timestamp.
 
 ### Providers and collection history
 

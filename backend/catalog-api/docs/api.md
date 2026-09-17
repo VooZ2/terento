@@ -140,14 +140,18 @@ Overview period. `.dmg` and `.zip` remain separate series, while the two total
 fields use the newest cumulative values across all public releases and tags.
 The first valid snapshot is a baseline with no increase; an unchanged valid
 counter is an observed zero; missing observations are unknown, not zero.
-Counter decreases or release/asset-population changes start a new baseline.
-Increases spanning a missing-check gap or period boundary are retained as
-uncertain intervals. Each trend item retains the previous observation time,
-the current `observed_at`, the two deltas, and its continuity state. The chart
-uses those actual observation times and never invents individual download
-times. The scheduler refreshes hourly; a failed or partial GitHub read does not
-erase the last successful snapshot, and the last successful data-update
-timestamp is shown separately.
+Historical observations without the new asset-count and population-fingerprint
+metadata retain nonnegative counter deltas as legacy/unverified observations;
+missing metadata alone is not a discontinuity. Counter decreases or confirmed
+release/asset-population changes remain discontinuities. Increases spanning a
+missing-check gap or period boundary are retained as uncertain intervals. Each
+trend item retains the previous observation time, the current `observed_at`,
+the two deltas, its continuity state, and population-comparability confidence.
+Aggregated buckets retain known deltas as partial when another interval is
+unknown. The chart uses actual observation times and never invents individual
+download times or zero observations. The scheduler refreshes hourly; a failed
+or partial GitHub read does not erase the last successful snapshot, and the
+last successful data-update timestamp is shown separately.
 
 The first administrator can
 be created only once through `/admin/setup` with the environment-provided

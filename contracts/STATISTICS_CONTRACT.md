@@ -168,12 +168,43 @@ GitHub download history is a display of observed cumulative-counter increases
 between valid checks, not individual downloads. The first valid observation is
 a baseline and contributes no increase. An unchanged valid counter is an
 observed zero; an absent check is unknown and is not filled with zero. Counter
-decreases and release/asset-population changes start a new baseline. Increases
-across a missing-check gap or selected-period boundary may be shown as an
-uncertain observed interval, retaining the previous observation time, the actual
-ending `observed_at`, both deltas, and the continuity state; no individual
-download time is invented. Failed collection leaves the last successful
-snapshot and its timestamp unchanged.
+decreases and confirmed release/asset-population changes are discontinuities.
+Missing newly introduced metadata must not automatically invalidate historical counter observations. Observed counter deltas and population-comparability confidence are separate dimensions.
+
+The GitHub read model uses these meanings:
+
+The trend `state` carries interval continuity and rendering semantics;
+`confidence` carries whether a retained delta is `legacy`, `verified`, or
+`partial`, while `population_comparability` carries `baseline`, `verified`,
+`unconfirmed`, `mixed`, or `changed` population evidence.
+
+- `baseline`: the first observation in the retained history; it has no delta.
+- `legacy`: a nonnegative counter delta retained from an interval where one or
+  both observations lack the post-057 asset count or population fingerprint.
+  It is a legacy observed counter delta, not a verified count of individual
+  downloads; population comparability is unconfirmed. Arrival of the new
+  metadata alone is not a discontinuity, and equal `release_count` alone does
+  not prove that the asset population is unchanged.
+- `verified`: both observations have complete population metadata and the
+  stored release/asset identity facts agree, so the counter delta is
+  population-comparable.
+- `partial`: an aggregated day or month has some known deltas and one or more
+  uncertain or discontinuous intervals. Known values remain visible and are
+  labelled partial; an observed zero in such a bucket is not a confirmed
+  full-bucket zero.
+- `discontinuity`: a counter decreased or the stored facts confirmed a
+  release/asset-population change. The affected interval has no fabricated
+  delta and remains separately marked.
+- `gap`: a retained nonnegative delta spans missing checks; its previous and
+  actual ending `observed_at` values remain visible and the interval is
+  uncertain. Missing intervals are never rendered as fake zero observations or
+  used to spread a delta across hours.
+
+Increases across a selected-period boundary may also be shown as an uncertain
+observed interval, retaining the previous observation time, the actual ending
+`observed_at`, both deltas, and the continuity state; no individual download
+time is invented. Failed collection leaves the last successful snapshot and
+its timestamp unchanged.
 
 Recent map activity remains mixed and may show provider downloads, fresh
 install outcomes, optional-component warnings, and updates. Map history keeps
