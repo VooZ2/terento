@@ -332,7 +332,7 @@ count, user count or physical-device count.
 Average raw seconds first, then round once to the nearest whole second for
 mm:ss display: 8 → 00:08, 277 → 04:37, 3912 → 65:12. Empty/invalid sample means
 null/“—”, never zero. A genuine zero-duration eligible pair displays 00:00.
-Both Admin tables use the same formatter and expose measured n plus measured/
+Both Admin tables use the same formatter and expose a plain-language measured sample label (“X downloads”) plus measured/
 successful coverage, formula and period through the accessible explanation.
 Historical versions without reliable phases remain unmeasured. No app payload,
 public ingestion schema or health threshold changes are required.

@@ -411,12 +411,13 @@ formulas, sorting, filtering, pagination, or device actions.
   its distinct diagnostic activity remains accessible under Device/model activity. Installations
   retains five metrics in one panel. Device detail groups Attempts, Successful,
   Failed, and Open errors together, while Last activity remains in that panel
-  with smaller date typography and the Attempts explanation control.
+  with smaller date typography. Attempts has no decorative information icon.
 
-- System health uses compact disclosure rows, status badges, and retained
+- System health uses compact disclosure cards in three columns on wide screens,
+  two on tablet and one on mobile, with status badges and retained
   diagnostic evidence/actions. All rows start collapsed, with problems ordered
   before healthy checks. The count summary, status filter and name search support
-  30–50 checks without a large card grid.
+  30–50 checks in a compact responsive grid.
 
 
 ## Approved Admin plan — local implementation (2026-09-18)
@@ -476,9 +477,37 @@ work-item boundaries. Implementation evidence is local until separately publishe
   require confirmation before a user-requested full refresh discards edits.
 - Average download time uses the canonical statistics definition below and one
   backend calculation/shared formatter in both tables. Show tabular mm:ss (minutes
-  may exceed 59), round only the final average, “—” for missing, and n for measured
+  may exceed 59), round only the final average, “—” for missing, and a plain-language “X downloads” label for measured
   sample size. The focusable compact explanation states formula, selected period
   (Providers: last 30 days), measured/population coverage and interpretation limits.
 - Scale acceptance uses isolated fixtures: 120 identities, 3,000 diagnostics,
   40 pending tasks and 50 health checks. Browser evidence must include wide,
   tablet and mobile views, keyboard controls, long names and empty states.
+
+
+### Owner visual corrections (2026-09-18)
+
+Map statistics is the KPI presentation reference. All shared KPI primary values
+use its 24px/1.15 scale, with 19px secondary result values and horizontal separators.
+Overview, Installations and exact-model detail must not override that scale with
+larger KPI tokens. Exact-model activity follows a horizontal divider; Attempts
+has no generated information icon. Functional accessible descriptions remain.
+
+The shared error counter owns semantic color only and inherits typography from
+its context. Table Failed/Open errors values match Attempts/Successful; compact
+chart totals use identical font/line height and badge geometry. Positive errors
+stay red, zero and missing values stay neutral.
+
+Admin display copy omits the word “Fresh”; install/update populations and API
+keys remain unchanged. Country coverage names custom-source results “Custom maps”.
+Provider records without drawable country metadata remain separately identified
+as installs without country coverage, never relabelled custom. Duration sample
+size uses “1 download” / “X downloads” rather than statistical “n=X”; the accessible
+explanation retains measured-versus-successful coverage and the formula.
+
+A started acquisition with no recorded matching terminal event remains explicitly
+unresolved. Do not convert elapsed time, another acquisition's interruption, or
+missing telemetry into success/failure. App acquisition lifecycle tests cover
+completion, cancellation, disconnect, restart recovery, queue draining, retry
+and opt-out. A server-side absence alone cannot establish which client-side
+condition prevented delivery.
