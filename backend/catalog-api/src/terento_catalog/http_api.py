@@ -52,7 +52,7 @@ from .admin import (
 from .asset_storage import AssetStorage
 from .asset_attribution import generic_fallback_image, public_asset_source
 from .catalog import build_catalog, catalog_etag, serialize_catalog
-from .db import Database
+from .db import Database, IdentityResolutionError
 from .device_catalog import (
     CONTROLLED_ASSET_PREFIX,
     _official_source_image_url,
@@ -1838,10 +1838,17 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     if not changed:
                         self._send_json(HTTPStatus.NOT_FOUND, {"error": "diagnostic_not_found"}, send_body=True, cache_control="no-store")
                         return
+                except IdentityResolutionError as exc:
+                    error_code = getattr(exc, "code", "invalid_identity_resolution")
+                    status = HTTPStatus.CONFLICT if error_code == "identity_conflict_manual_required" else (
+                        HTTPStatus.NOT_FOUND if error_code in {"diagnostic_not_found", "canonical_device_not_found"} else HTTPStatus.BAD_REQUEST
+                    )
+                    self._send_json(status, {"error": error_code}, send_body=True, cache_control="no-store")
+                    return
                 except ValueError:
                     self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_identity_resolution"}, send_body=True, cache_control="no-store")
                     return
-                if identity_action == "ASSIGN" and canonical_device_model_id:
+                if identity_action in {"ASSIGN", "MANUAL_ASSIGN"} and canonical_device_model_id:
                     target = (
                         f"/admin/devices/{quote(canonical_device_model_id, safe='')}"
                         "?from=installations#installations"

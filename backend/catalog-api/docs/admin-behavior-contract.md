@@ -236,6 +236,68 @@ table interaction. Hiding the scrollbar must not clip content, disable focus,
 change overflow behavior, or add scrolling to a view that was not already
 scrollable.
 
+## Identity Review operator-assisted assignment addendum (2026-09-17)
+
+Identity Review is an operator-assisted model-selection workflow, not a
+mandatory all-evidence form. Its 10–15 second outcome is: see the reported
+device, see the available facts, confirm the suggested exact catalog model, or
+choose another exact variant. Missing facts remain visible and do not by
+themselves block an explicit manual catalog selection.
+
+The compact review shows one `Reported device` value and six fact cards:
+`Model`, `Case size`, `Display`, `Solar`, `inReach`, and `Device codes`.
+Facts retain their provenance as `Reported`, `From mapping`, `From catalog`, or
+`Not confirmed`; `No`, `Not confirmed`, and an unavailable value must not be
+collapsed into one another. Catalog-derived facts are allowed only when the
+independently reported model/variant and the catalog specifications identify a
+consistent exact target. A selected catalog ID is never fed back as evidence
+for its own assessment. The legacy `displayType=Solar` value is Solar evidence
+only, not a screen technology; MIP/AMOLED/MicroLED are screen values and Solar
+and inReach are separate feature values.
+
+One non-conflicting candidate may be suggested and shown with the active
+`Confirm`/`Edit` path. Multiple candidates show `Select variant`. The picker is
+one exact-ID search/list mechanism that supports mouse, touch, arrow keys,
+Enter, and Escape; typing after a selection clears the hidden ID. The server
+must validate the selected Garmin catalog ID and preserve the previous result
+scope. The canonical UI key is
+`result:<operation UUID>:<mapResultIndex>` and index `0` is valid. It selects
+only that result, including for Review queue, Installations and device history.
+A raw operation UUID remains an explicit operation-level batch scope only when
+the operator submits that scope intentionally. Legacy event keys match only
+their exact legacy row. No scope may fall back from a missing result to the
+whole operation.
+
+An ordinary `Confirm` is blocked when selected and independently reported facts
+conflict. The separate explicit `Confirm manual assignment` action is the only
+way to override that conflict. It records an automatic audit containing the
+administrator, time, exact scope, previous/new identities, decision type, safe
+facts, missing facts and conflicts. Identity confirmation needs no reason or
+review note. A missing selection, unknown catalog ID, missing diagnostic and
+identity conflict are distinct errors; failures preserve the selection and do
+not claim that a successful database write was not saved. Repeating an
+identical decision is idempotent. Identity decisions never alter installation
+outcomes, device files, map statistics, telemetry fields or publication state.
+Late corrections update only the selected result(s) and retain the previous/new
+identity audit trail. Existing source-correction and mapping-review controls
+remain available in technical/admin workflows; they are not duplicated in the
+compact confirmation form.
+
+The shared implementation is in `identity_assessment.py` (safe observations,
+catalog-derived facts and conflict checks), `db.py` (strict result scope,
+validated persistence and audit), `admin.py` (compact review and diagnostic
+detail dialog), and `http_api.py` (specific error responses and safe redirects).
+The Diagnostic detail dialog keeps the date, result, map/region, app version,
+failure or success state, issue/lifecycle actions and one collapsed Technical
+details section, with a single Identity Review section and one secondary
+technical disclosure. The daily review does not render a separate `Technical
+identity details` or candidate table; safe raw diagnostic fields remain only
+in that single diagnostic-level `Technical details` disclosure. A successful
+result with pending identity is not a failure. On desktop, the `Resolve
+diagnostic` lifecycle card and the selected/choose catalog-model card are
+siblings in the diagnostic action grid, each using one half of the row; the
+grid becomes one column at the mobile breakpoint.
+
 ### Providers and collection history
 
 Separate provider health, collection outcome, available packages and broken
@@ -311,3 +373,45 @@ App/API sequencing and revision/test receipts follow
 [the app–API release contract](../../../contracts/APP_API_RELEASE_CONTRACT.md).
 
 Recent map activity uses original Font Awesome solid icons and semantic title colors: started/processing blue, succeeded green, failed red, cancelled/unknown neutral, interrupted amber. Text remains visible. Plain and collapsed download rows share spacing, icon width and context alignment; the trailing disclosure chevron adds no leading indent. Expanding retains start/finish timestamps and total duration. Historical spinners remain static.
+
+## Admin visual consistency addendum (2026-09-17)
+
+These rules extend the existing Admin behavior contract and apply to the
+current visual unification work. They do not change API payloads, populations,
+formulas, sorting, filtering, pagination, or device actions.
+
+- Popularity uses one `mapRow` renderer and one compact `popular-map-row`
+  geometry in Top 5, Regions, and All maps. The first line keeps the region
+  name at left and the install count at right; the second line is the last
+  eligible install time, or provider plus time for All maps. Only the numeric
+  value uses the bold treatment; `install`/`installs` remains regular and is
+  kept with the value. Long names may wrap, while the count remains on the
+  first line. Regions and All maps retain their existing scroll/search/page
+  behavior, and the map button keeps its full focus/click target.
+
+- Admin tables use semantic `column-number`, `column-status`, and
+  `column-date` classes on headers and cells. Text and dates are left aligned;
+  numeric values and status badges are centered. Sort controls inside those
+  headers inherit the same alignment, including both the Devices sticky header
+  and the horizontally scrolled main table. Future table rows must use these
+  classes instead of page-specific positional selectors.
+
+- Error and failed counters use the shared `admin-error-counter` helper/class:
+  a measured zero is graphite, a measured positive value is danger red, and an
+  unavailable value is `—` in neutral graphite. The class applies to the value
+  only; links and headings do not force a zero into an error state. Async
+  refreshes must use explicit numeric checks and preserve the same 0 → positive
+  → 0 → unknown semantics.
+
+- Overview, Installations, and device detail KPI summaries use the same
+  `map-statistics-kpi-panel`, `map-statistics-kpi-groups`,
+  `map-statistics-kpi-group`, and `map-statistics-kpi-value` hierarchy as Map
+  statistics. Overview retains six metrics with fresh metrics grouped together
+  and current status separated within the same compact panel. Installations
+  retains five metrics in one panel. Device detail groups Attempts, Successful,
+  Failed, and Open errors together, while Last activity remains in that panel
+  with smaller date typography and the Attempts explanation control.
+
+- System health retains its result cards, badges, collapsed/expanded evidence,
+  and diagnostic actions, but does not show the explanatory summary paragraph
+  about healthy checks staying collapsed.

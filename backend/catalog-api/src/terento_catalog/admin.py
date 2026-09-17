@@ -198,6 +198,29 @@ def _optional_count_label(value: Any, suffix: str = "") -> str:
     return f"{number:,}{suffix}" if number is not None else f"—{suffix}"
 
 
+def _admin_error_counter(
+    value: Any,
+    *,
+    available: bool = True,
+    href: str | None = None,
+    aria_label: str | None = None,
+    data_stat: str | None = None,
+) -> str:
+    """Render an error count with neutral unknown and positive-only danger state."""
+    number = _optional_nonnegative_int(value) if available else None
+    rendered = str(number) if number is not None else "—"
+    classes = "admin-error-counter" + (" is-positive" if number is not None and number > 0 else "")
+    stat_attribute = f" data-stat='{html.escape(data_stat, quote=True)}'" if data_stat else ""
+    counter = f"<strong class='{classes}'{stat_attribute}>{rendered}</strong>"
+    if not href:
+        return counter
+    label = aria_label or f"View {rendered} open error{'s' if rendered != '1' else ''}"
+    return (
+        f"<a class='error-count' href='{html.escape(href, quote=True)}' "
+        f"aria-label='{html.escape(label, quote=True)}'>{counter}</a>"
+    )
+
+
 def _count_label(value: Any, singular: str, plural: str | None = None) -> str:
     """Render a count with consistent singular/plural copy across the admin UI."""
     count = _optional_nonnegative_int(value)
@@ -667,9 +690,9 @@ def local_test_data_page(
     activity_rows = ''.join(
         f"<tr><td>{html.escape(str(row.get('stream') or '—'))}</td>"
         f"<td><code>{html.escape(str(row.get('release_label') or '—'))}</code></td>"
-        f"<td>{html.escape(str(row.get('outcome') or '—'))}</td>"
-        f"<td>{int(row.get('event_count') or 0)}</td>"
-        f"<td>{_timestamp_markup(row.get('last_occurred_at'))}</td></tr>"
+        f"<td class='column-status'>{html.escape(str(row.get('outcome') or '—'))}</td>"
+        f"<td class='column-number'>{int(row.get('event_count') or 0)}</td>"
+        f"<td class='column-date'>{_timestamp_markup(row.get('last_occurred_at'))}</td></tr>"
         for row in summary.get('activity', [])
     ) or "<tr><td colspan='5'>No local test events recorded.</td></tr>"
     content = f"""
@@ -697,7 +720,7 @@ def local_test_data_page(
           </section>
           <p class="test-data-release-labels">Release labels <code>{labels}</code></p>
           <p class="table-help">Local builds end in <code>-local</code> and are stored with <code>is_local_test=true</code>. Public beta builds use a public release label and <code>is_local_test=false</code>. These test events never contribute to user dashboards or public compatibility counts.</p>
-          <div class="table-wrap"><table class="admin-table"><caption class="test-data-activity-caption">Latest local activity · up to 50 release/outcome groups</caption><thead><tr><th scope="col">Stream</th><th scope="col">Release</th><th scope="col">Result</th><th scope="col">Events</th><th scope="col">Last activity</th></tr></thead><tbody>{activity_rows}</tbody></table></div>
+          <div class="table-wrap"><table class="admin-table"><caption class="test-data-activity-caption">Latest local activity · up to 50 release/outcome groups</caption><thead><tr><th scope="col">Stream</th><th scope="col">Release</th><th scope="col" class="column-status">Result</th><th scope="col" class="column-number">Events</th><th scope="col" class="column-date">Last activity</th></tr></thead><tbody>{activity_rows}</tbody></table></div>
           <div class="test-data-danger-zone">
             <div>
               <p class="section-kicker">Danger zone</p>
@@ -1705,7 +1728,7 @@ def _overview_period_script() -> str:
           else window.history.replaceState({period, timeZone}, '', url);
           window.TerentoAdminTime?.render();
           bind();
-        } catch (_) {
+        } catch (error) {
           window.location.assign(url);
         } finally {
           loadingKey = '';
@@ -1752,7 +1775,32 @@ def overview_page(
     has_map_data = bool(data.get("hasData")) if "hasData" in data else bool(event_count or recent)
     event_metric = lambda value: str(value) if has_map_data else "—"
     compatibility_has_data = bool(compatibility.get("hasData"))
-    open_error_metric = lambda value: str(value) if "allTimeOpenErrorCount" in compatibility or compatibility_has_data else "—"
+    open_error_key = (
+        "allTimeOpenErrorCount" if "allTimeOpenErrorCount" in compatibility
+        else "openErrorCount" if "openErrorCount" in compatibility
+        else None
+    )
+    # These counters are independent of the selected map-activity period. An
+    # explicit all-time value is measured even when the period has no events;
+    # a missing value is the only unavailable state.
+    open_error_value = compatibility.get(open_error_key) if open_error_key else None
+    open_error_number = _optional_nonnegative_int(open_error_value)
+    open_error_available = (
+        open_error_number is not None
+        and (compatibility_has_data or open_error_number > 0)
+    )
+    failed_install_value = data.get("failedInstallCount")
+    failed_install_number = _optional_nonnegative_int(failed_install_value)
+    failed_install_available = (
+        failed_install_number is not None
+        and (has_map_data or failed_install_number > 0)
+    )
+    failed_install_counter = _admin_error_counter(
+        failed_installs, available=failed_install_available,
+    )
+    open_error_counter = _admin_error_counter(
+        open_errors, available=open_error_available,
+    )
     attention_providers = [
         provider for provider in providers
         if str(provider.get("health") or "UNKNOWN").upper() not in {"HEALTHY", ""}
@@ -1852,7 +1900,7 @@ def overview_page(
     map_totals = (
         "<div class='overview-map-totals' aria-label='All-time map operation totals'>"
         f"<div class='overview-map-total' aria-label='All-time successful installs: {map_total('allTimeSuccessCount')}'><strong>{map_total('allTimeSuccessCount')}</strong><small>Successful</small></div>"
-        f"<div class='overview-map-total' aria-label='All-time failed installs: {map_total('allTimeFailedCount')}'><strong>{map_total('allTimeFailedCount')}</strong><small>Failed</small></div>"
+        f"<div class='overview-map-total' aria-label='All-time failed installs: {map_total('allTimeFailedCount')}'>{_admin_error_counter(data.get('allTimeFailedCount'), available='allTimeFailedCount' in data, aria_label='All-time failed installs')}<small>Failed</small></div>"
         f"<div class='overview-map-total' aria-label='All-time custom .img installs: {map_total('allTimeCustomCount')}'><strong>{map_total('allTimeCustomCount')}</strong><small>Custom</small></div>"
         f"<div class='overview-map-total overview-map-total-update' aria-label='All-time map updates: {map_total('allTimeMapUpdateCount')}'><strong>{map_total('allTimeMapUpdateCount')}</strong><small>Updates</small></div>"
         "</div>"
@@ -1888,7 +1936,7 @@ def overview_page(
     attention_section += (
         "<nav class='attention-shortcuts' aria-label='Review queue shortcuts'>"
         f"{missing_diagnostic_shortcut}"
-        f"<a href='/admin/installations?state=open'>Open errors <strong>{open_error_metric(open_errors)}</strong></a>"
+        f"<a href='/admin/installations?state=open'>Open errors {open_error_counter}</a>"
         f"<a href='/admin/review/github-issues'>GitHub review tasks <strong>{review_metric('githubIssuesInProgress')}</strong></a>"
         f"<a href='/admin/installations?state=identity-pending'>Identity review <strong>{review_metric('identityPending')}</strong></a>"
         f"<a href='/admin/devices?review=publication'>Publication review <strong>{review_metric('readyToPublish')}</strong></a>"
@@ -1899,13 +1947,19 @@ def overview_page(
       {_admin_header(user, csrf_token, active='overview')}
       <main class='dashboard overview-page' id='main-content'>
         <div class='heading-row overview-heading'><div><p class='eyebrow'>Operations</p><h1>Overview</h1><p class='lede'>Current Terento health and activity that needs attention.</p></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin'><label><span class='sr-only'>Time period</span><select id='overview-period' name='period'>{period_options}</select></label></form></div>
-        <section class='overview-kpis' aria-label='Operational summary'>
-          <a class='overview-kpi' href='/admin/installations'><span>Fresh installs</span><strong>{event_metric(completed_installs + failed_installs)}</strong></a>
-          <a class='overview-kpi' href='/admin/installations'><span>Fresh install success</span><strong>{success_rate}</strong></a>
-          <a class='overview-kpi overview-kpi-attention' href='{html.escape(failure_href, quote=True)}'><span>Failed fresh installs</span><strong>{event_metric(failed_installs)}</strong></a>
-          <a class='overview-kpi' href='{html.escape(map_statistics_href, quote=True)}'><span>Map updates</span><strong>{event_metric(map_updates)}</strong></a>
-          <a class='overview-kpi overview-kpi-attention' href='/admin/installations?state=open'><span>Open errors</span><strong>{open_error_metric(open_errors)}</strong></a>
-          <a class='overview-kpi' href='/admin/providers'><span>Providers</span><strong>{healthy} / {provider_count}</strong></a>
+        <section class='map-statistics-kpi-panel provider-card admin-kpi-panel overview-kpis overview-kpi-panel' aria-label='Operational summary'>
+          <div class='map-statistics-kpi-groups overview-kpi-groups'>
+            <section class='map-statistics-kpi-group overview-kpi-group' aria-labelledby='overview-fresh-kpis-title'><h2 id='overview-fresh-kpis-title'>Fresh installs</h2><div class='map-statistics-kpi-values'>
+              <a class='map-statistics-kpi-value overview-kpi-link' href='/admin/installations'><span>Fresh installs</span><strong>{event_metric(completed_installs + failed_installs)}</strong></a>
+              <a class='map-statistics-kpi-value overview-kpi-link' href='/admin/installations'><span>Fresh install success</span><strong>{success_rate}</strong></a>
+              <a class='map-statistics-kpi-value overview-kpi-link error-counter-kpi' href='{html.escape(failure_href, quote=True)}'><span>Failed fresh installs</span>{failed_install_counter}</a>
+            </div></section>
+            <section class='map-statistics-kpi-group overview-kpi-group' aria-labelledby='overview-status-kpis-title'><h2 id='overview-status-kpis-title'>Current status</h2><div class='map-statistics-kpi-values'>
+              <a class='map-statistics-kpi-value overview-kpi-link' href='{html.escape(map_statistics_href, quote=True)}'><span>Map updates</span><strong>{event_metric(map_updates)}</strong></a>
+              <a class='map-statistics-kpi-value overview-kpi-link error-counter-kpi' href='/admin/installations?state=open'><span>Open errors</span>{open_error_counter}</a>
+              <a class='map-statistics-kpi-value overview-kpi-link' href='/admin/providers'><span>Providers</span><strong>{healthy} / {provider_count}</strong></a>
+            </div></section>
+          </div>
         </section>
         {attention_section}
         <div class='overview-primary-grid'><section class='overview-panel overview-chart-panel' aria-labelledby='overview-trend-title'><div class='section-heading overview-map-heading'><div><p class='section-kicker'>Map installations</p><h2 id='overview-trend-title'>Map installations over time</h2></div>{map_totals}</div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'), time_zone)}</section>{downloads_section}</div>
@@ -2139,14 +2193,6 @@ def _system_health_cards(health: dict[str, Any]) -> tuple[list[dict[str, Any]], 
 def system_health_page(health: dict[str, Any], user: dict[str, Any], csrf_token: str) -> bytes:
     cards, weekly, weekly_details = _system_health_cards(health)
     card_markup = "".join(card['html'] for card in cards)
-    incident_count = sum(card['status'] in {'FAILED', 'WARNING'} for card in cards)
-    missing_count = sum(card['status'] == 'UNKNOWN' for card in cards)
-    summary_parts = []
-    if incident_count:
-        summary_parts.append(f"{_count_label(incident_count, 'check')} {'needs' if incident_count == 1 else 'need'} attention")
-    if missing_count:
-        summary_parts.append(f"{_count_label(missing_count, 'check')} {'needs' if missing_count == 1 else 'need'} evidence")
-    health_summary = " · ".join(summary_parts) + ". Problems appear first." if summary_parts else "All checks healthy."
     suite_labels = {
         "selection": "Test-suite selection",
         "site": "Public website",
@@ -2158,7 +2204,7 @@ def system_health_page(health: dict[str, Any], user: dict[str, Any], csrf_token:
         "live_catalog": "Live catalog contract",
     }
     detail_rows = "".join(
-        f"<tr><th scope='row'>{html.escape(suite_labels.get(str(name), str(name).replace('_', ' ').title()))}</th><td>{_health_status_badge('HEALTHY' if str(value).lower() in {'success', 'passed', 'healthy'} else 'FAILED' if str(value).lower() in {'failure', 'failed', 'cancelled', 'timed_out'} else 'UNKNOWN')}</td><td>{html.escape(str(value))}</td></tr>"
+        f"<tr><th scope='row'>{html.escape(suite_labels.get(str(name), str(name).replace('_', ' ').title()))}</th><td class='column-status'>{_health_status_badge('HEALTHY' if str(value).lower() in {'success', 'passed', 'healthy'} else 'FAILED' if str(value).lower() in {'failure', 'failed', 'cancelled', 'timed_out'} else 'UNKNOWN')}</td><td class='column-status'>{html.escape(str(value))}</td></tr>"
         for name, value in sorted(weekly_details.items())
         if name != "email" and not str(name).startswith("catalog_")
     ) or "<tr><td colspan='3'>No weekly suite details received yet.</td></tr>"
@@ -2166,8 +2212,8 @@ def system_health_page(health: dict[str, Any], user: dict[str, Any], csrf_token:
       {_admin_header(user, csrf_token, active='system-health')}
       <main class='dashboard system-health-page' id='main-content'>
         <div class='heading-row'><div><p class='eyebrow'>Operations</p><h1>System health</h1><p class='lede'>Production state and retained GitHub evidence. Tests run in GitHub Actions, not in this admin panel.</p></div></div>
-        <p class='admin-health-summary' role='status'>{health_summary} Healthy checks stay collapsed; expand a check for its evidence and next action.</p><section class='system-health-grid' aria-label='System health summary'>{card_markup}</section>
-        <details class='overview-panel admin-disclosure'><summary>Quality-gate results · weekly report</summary>{_health_run_link(weekly)}<div class='table-wrap'><table class='admin-table'><thead><tr><th scope='col'>Check</th><th scope='col'>Health</th><th scope='col'>Result</th></tr></thead><tbody>{detail_rows}</tbody></table></div></details>
+        <section class='system-health-grid' aria-label='System health summary'>{card_markup}</section>
+        <details class='overview-panel admin-disclosure'><summary>Quality-gate results · weekly report</summary>{_health_run_link(weekly)}<div class='table-wrap'><table class='admin-table'><thead><tr><th scope='col'>Check</th><th scope='col' class='column-status'>Health</th><th scope='col' class='column-status'>Result</th></tr></thead><tbody>{detail_rows}</tbody></table></div></details>
       </main>
     """
     return _layout("System health", content)
@@ -2217,12 +2263,14 @@ def dashboard_page(
       {_admin_header(user, csrf_token, active='installations')}
       <main class="dashboard" id="main-content">
         <div class="heading-row installation-heading"><div><p class="eyebrow">Compatibility</p><h1>Installations</h1><p class="lede">Each map installation counts as one attempt, including custom .img files. A session with two maps counts as two attempts. Verified successful map installations determine compatibility status.</p></div><p class="page-meta">{latest_copy}</p></div>
-        <section class="admin-kpi-grid installation-kpis" aria-label="Installation summary">
-          <article><span>Variants</span><strong>{len(rows)}</strong></article>
-          <article><span>Installation attempts</span><strong>{attempts}</strong></article>
-          <article><span>Successful</span><strong>{successes}</strong></article>
-          <article><span>Success rate</span><strong>{_format_rate(success_rate)}</strong></article>
-          <article><span>Open errors</span><strong>{open_errors}</strong></article>
+        <section class="map-statistics-kpi-panel provider-card admin-kpi-panel installation-kpis" aria-label="Installation summary">
+          <div class="map-statistics-kpi-groups installation-kpi-groups"><section class="map-statistics-kpi-group" aria-labelledby="installation-kpis-title"><h2 id="installation-kpis-title" class="sr-only">Installation summary</h2><div class="map-statistics-kpi-values installation-kpi-values">
+            <div class="map-statistics-kpi-value"><span>Variants</span><strong>{len(rows)}</strong></div>
+            <div class="map-statistics-kpi-value"><span>Installation attempts</span><strong>{attempts}</strong></div>
+            <div class="map-statistics-kpi-value"><span>Successful</span><strong>{successes}</strong></div>
+            <div class="map-statistics-kpi-value"><span>Success rate</span><strong>{_format_rate(success_rate)}</strong></div>
+            <div class="map-statistics-kpi-value error-counter-kpi"><span>Open errors</span>{_admin_error_counter(open_errors)}</div>
+          </div></section></div>
         </section>
         {empty}
         <section class="evidence-section" aria-label="Installation evidence table">
@@ -2235,7 +2283,7 @@ def dashboard_page(
             <button type="button" class="secondary-button filter-clear" data-filter-clear aria-label="Clear installation filters">Clear</button>
           </form>
           <p id="installation-empty" class="table-help" role="status" hidden>No models match your filters. Use Clear to show all installations.</p>
-          <div class="table-wrap evidence-table-wrap"><table class="admin-table"><caption class="sr-only">Installations by exact device identity</caption><colgroup><col class="evidence-column-model"><col class="evidence-column-variant"><col class="evidence-column-status"><col class="evidence-column-attempts"><col class="evidence-column-successful"><col class="evidence-column-failed"><col class="evidence-column-open-errors"><col class="evidence-column-last-success"></colgroup><thead><tr><th scope="col">Model</th><th scope="col">Variant</th><th scope="col">Status</th><th scope="col">Attempts</th><th scope="col">Successful</th><th scope="col">Failed</th><th scope="col">Open errors</th><th scope="col">Last success</th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
+          <div class="table-wrap evidence-table-wrap"><table class="admin-table"><caption class="sr-only">Installations by exact device identity</caption><colgroup><col class="evidence-column-model"><col class="evidence-column-variant"><col class="evidence-column-status"><col class="evidence-column-attempts"><col class="evidence-column-successful"><col class="evidence-column-failed"><col class="evidence-column-open-errors"><col class="evidence-column-last-success"></colgroup><thead><tr><th scope="col">Model</th><th scope="col">Variant</th><th scope="col" class="column-status">Status</th><th scope="col" class="column-number">Attempts</th><th scope="col" class="column-number">Successful</th><th scope="col" class="column-number">Failed</th><th scope="col" class="column-number">Open errors</th><th scope="col" class="column-date">Last success</th></tr></thead><tbody id="evidence-rows">{table_rows}</tbody></table></div>
         </section>
       </main>
       <script>{_dashboard_script()}</script>
@@ -2466,8 +2514,8 @@ def _provider_package_row(package: dict[str, Any]) -> str:
         artifact_details = f"<details class='admin-disclosure' style='text-align:left;overflow-wrap:anywhere'><summary>Artifact details</summary>{artifact_details}</details>"
     return (
         f"<tr class='{row_class.strip()}' data-package-search='{html.escape(search, quote=True)}' data-package-broken='{str(is_broken).lower()}'><td><span class='provider-package-name'>{html.escape(package_name)}</span><code class='provider-package-id'>{html.escape(package_id)}</code>{f'<small>{html.escape(region)}</small>' if region and region.casefold() != package_name.casefold() else ''}{artifact_details}</td>"
-        f"<td>{html.escape(str(package.get('release') or '—'))}</td><td class='numeric'>{_optional_count_label(package.get('artifact_count'))}</td>"
-        f"<td>{broken_markup}{f' <small>{broken_count} broken</small>' if is_broken else ''}</td></tr>"
+        f"<td>{html.escape(str(package.get('release') or '—'))}</td><td class='column-number numeric'>{_optional_count_label(package.get('artifact_count'))}</td>"
+        f"<td class='column-status'>{broken_markup}{f' <small>{broken_count} broken</small>' if is_broken else ''}</td></tr>"
     )
 
 
@@ -2480,8 +2528,8 @@ def _provider_source_row(source: dict[str, Any]) -> str:
     return (
         f"<tr data-source-type='{html.escape(source_type, quote=True)}' data-source-search='{html.escape(search, quote=True)}' data-source-broken='{str(broken).lower()}'><td>{html.escape({'main': 'Main map', 'contours': 'Contours'}.get(source.get('artifact_kind'), _provider_source_type_label(source_type)))}</td>"
         f"<td class='provider-url-cell' title='{html.escape(source_url, quote=True)}'>{_provider_url(source_url, label=source_label)}</td>"
-        f"<td>{_provider_status_badge('ACTIVE' if source.get('enabled', True) else 'PAUSED')}</td>"
-        f"<td>{_timestamp_markup(source.get('last_checked_at'))}</td></tr>"
+        f"<td class='column-status'>{_provider_status_badge('ACTIVE' if source.get('enabled', True) else 'PAUSED')}</td>"
+        f"<td class='column-date'>{_timestamp_markup(source.get('last_checked_at'))}</td></tr>"
     )
 
 
@@ -2506,9 +2554,9 @@ def _provider_health_row(health: dict[str, Any]) -> str:
     if http_status is not None and not 100 <= http_status <= 599:
         http_status = None
     return (
-        f"<tr><td>{_timestamp_markup(health.get('checked_at'))}</td><td>{_provider_status_badge(health.get('status'), kind='health')}</td>"
-        f"<td><div class='provider-component-list'>{component_markup}</div></td><td>{_optional_count_label(http_status)}</td>"
-        f"<td>{_optional_count_label(health.get('artifact_count'))}</td><td>{_optional_count_label(health.get('duration_ms'), ' ms')}</td>"
+        f"<tr><td class='column-date'>{_timestamp_markup(health.get('checked_at'))}</td><td class='column-status'>{_provider_status_badge(health.get('status'), kind='health')}</td>"
+        f"<td class='column-status'><div class='provider-component-list'>{component_markup}</div></td><td class='column-number'>{_optional_count_label(http_status)}</td>"
+        f"<td class='column-number'>{_optional_count_label(health.get('artifact_count'))}</td><td class='column-number'>{_optional_count_label(health.get('duration_ms'), ' ms')}</td>"
         f"<td>{error_markup}</td></tr>"
     )
 
@@ -2524,9 +2572,9 @@ def _provider_run_row(run: dict[str, Any]) -> str:
     error = str(run.get("error_code") or run.get("error_detail") or "").strip()
     error_markup = html.escape(error) if error else "<span class='muted-value'>—</span>"
     return (
-        f"<tr><td><code>{html.escape(str(run.get('id') or '—'))}</code></td><td>{_timestamp_markup(run.get('started_at'))}</td>"
-        f"<td>{_timestamp_markup(run.get('finished_at'))}</td><td>{_provider_status_badge(run.get('status'))}<small class='table-secondary'>{'Release change detected' if run.get('release_change_detected') is True else 'No release change detected' if run.get('release_change_detected') is False else 'Release change not recorded'} · {html.escape(str(run.get('latest_release') or '—'))}</small></td>"
-        f"<td class='numeric'>{_provider_update_count(run)}</td><td class='numeric'>{_optional_count_label(run.get('package_count'))}</td><td class='numeric'>{_optional_count_label(run.get('artifact_count'))}</td>"
+        f"<tr><td><code>{html.escape(str(run.get('id') or '—'))}</code></td><td class='column-date'>{_timestamp_markup(run.get('started_at'))}</td>"
+        f"<td class='column-date'>{_timestamp_markup(run.get('finished_at'))}</td><td class='column-status'>{_provider_status_badge(run.get('status'))}<small class='table-secondary'>{'Release change detected' if run.get('release_change_detected') is True else 'No release change detected' if run.get('release_change_detected') is False else 'Release change not recorded'} · {html.escape(str(run.get('latest_release') or '—'))}</small></td>"
+        f"<td class='column-number numeric'>{_provider_update_count(run)}</td><td class='column-number numeric'>{_optional_count_label(run.get('package_count'))}</td><td class='column-number numeric'>{_optional_count_label(run.get('artifact_count'))}</td>"
         f"<td>{error_markup}</td></tr>"
     )
 
@@ -2551,8 +2599,8 @@ def _provider_audit_row(audit: dict[str, Any]) -> str:
     )
     return (
         f"<tr><td title='{html.escape(str(audit.get('action') or ''), quote=True)}'>{html.escape(_provider_action_label(audit.get('action')))}</td>"
-        f"<td>{html.escape(str(audit.get('old_status') or '—'))}</td><td>{html.escape(str(audit.get('new_status') or '—'))}</td>"
-        f"<td>{html.escape(str(audit.get('reason') or '—'))}{changes_markup}</td><td>{_timestamp_markup(audit.get('occurred_at'))}</td>"
+        f"<td class='column-status'>{html.escape(str(audit.get('old_status') or '—'))}</td><td class='column-status'>{html.escape(str(audit.get('new_status') or '—'))}</td>"
+        f"<td>{html.escape(str(audit.get('reason') or '—'))}{changes_markup}</td><td class='column-date'>{_timestamp_markup(audit.get('occurred_at'))}</td>"
         f"<td><details class='audit-technical-details'><summary>Technical details</summary><code>{html.escape(technical_text if technical_text != '{}' else '—')}</code></details></td></tr>"
     )
 
@@ -2673,14 +2721,14 @@ def provider_detail_page(
     empty_previous_health = "<p class='empty'>No previous health checks recorded.</p>" if not previous_health else ""
     empty_runs = "<p class='empty'>No catalog collection runs recorded yet.</p>" if not runs else ""
     empty_audits = "<p class='empty'>No provider audit entries recorded yet.</p>" if not audits else ""
-    source_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-source-table'><caption class='sr-only'>Provider-level original sources</caption><thead><tr><th scope='col'>Source</th><th scope='col'>Original link</th><th scope='col'>Status</th><th scope='col'>Last checked</th></tr></thead><tbody>{rows_sources}</tbody></table></div>" if provider_sources else ""
-    download_source_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-source-table'><caption class='sr-only'>Download source URLs</caption><thead><tr><th scope='col'>Source</th><th scope='col'>Original link</th><th scope='col'>Status</th><th scope='col'>Last checked</th></tr></thead><tbody id='provider-download-source-rows'>{rows_download_sources}</tbody></table></div>" if download_sources else ""
+    source_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-source-table'><caption class='sr-only'>Provider-level original sources</caption><thead><tr><th scope='col'>Source</th><th scope='col'>Original link</th><th scope='col' class='column-status'>Status</th><th scope='col' class='column-date'>Last checked</th></tr></thead><tbody>{rows_sources}</tbody></table></div>" if provider_sources else ""
+    download_source_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-source-table'><caption class='sr-only'>Download source URLs</caption><thead><tr><th scope='col'>Source</th><th scope='col'>Original link</th><th scope='col' class='column-status'>Status</th><th scope='col' class='column-date'>Last checked</th></tr></thead><tbody id='provider-download-source-rows'>{rows_download_sources}</tbody></table></div>" if download_sources else ""
     download_source_section = f"<section class='provider-card'><details class='admin-disclosure' id='provider-download-sources'><summary>Download source URLs · {len(download_sources)}</summary><div class='disclosure-body'><p>{source_counts}</p><div class='inline-filter-row'><label><span class='sr-only'>Search source URLs</span><input id='provider-source-search' type='search' placeholder='Search source URLs' autocomplete='off'></label><label><span class='sr-only'>Source status</span><select id='provider-source-filter'><option value='all'>All sources</option><option value='broken'>Broken only</option></select></label><label><span class='sr-only'>Source page size</span><select id='provider-source-page-size'><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label></div>{download_source_table}<div class='provider-pagination' id='provider-source-pagination' aria-live='polite'></div></div></details></section>" if download_sources else ""
-    package_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-package-table'><caption class='sr-only'>Regions and packages</caption><thead><tr><th scope='col'>Region / package</th><th scope='col'>Release</th><th scope='col'>Artifacts</th><th scope='col'>State</th></tr></thead><tbody id='provider-package-rows'>{rows_packages}</tbody></table></div>" if packages else ""
-    latest_health_table = f"<div class='table-wrap provider-table-wrap provider-history-wrap'><table class='admin-table'><caption class='sr-only'>Health check details</caption><thead><tr><th scope='col'>Checked</th><th scope='col'>Result</th><th scope='col'>Checks</th><th scope='col'>HTTP</th><th scope='col'>Artifacts</th><th scope='col'>Duration</th><th scope='col'>Error</th></tr></thead><tbody>{_provider_health_row(latest_health)}</tbody></table></div>" if latest_health else ""
-    health_history_table = f"<div class='table-wrap provider-table-wrap provider-history-wrap'><table class='admin-table'><thead><tr><th scope='col'>Checked</th><th scope='col'>Result</th><th scope='col'>Checks</th><th scope='col'>HTTP</th><th scope='col'>Artifacts</th><th scope='col'>Duration</th><th scope='col'>Error</th></tr></thead><tbody>{rows_health}</tbody></table></div>" if previous_health else ""
-    run_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-run-table'><thead><tr><th scope='col'>Run</th><th scope='col'>Started</th><th scope='col'>Finished</th><th scope='col'>Result</th><th scope='col' class='numeric'>Updates</th><th scope='col'>Packages</th><th scope='col'>Artifacts</th><th scope='col'>Error</th></tr></thead><tbody>{rows_runs}</tbody></table></div>" if runs else ""
-    audit_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Provider audit history</caption><thead><tr><th scope='col'>Action</th><th scope='col'>Old status</th><th scope='col'>New status</th><th scope='col'>Reason</th><th scope='col'>Timestamp</th><th scope='col'>Details</th></tr></thead><tbody>{rows_audits}</tbody></table></div>" if audits else ""
+    package_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-package-table'><caption class='sr-only'>Regions and packages</caption><thead><tr><th scope='col'>Region / package</th><th scope='col'>Release</th><th scope='col' class='column-number'>Artifacts</th><th scope='col' class='column-status'>State</th></tr></thead><tbody id='provider-package-rows'>{rows_packages}</tbody></table></div>" if packages else ""
+    latest_health_table = f"<div class='table-wrap provider-table-wrap provider-history-wrap'><table class='admin-table'><caption class='sr-only'>Health check details</caption><thead><tr><th scope='col' class='column-date'>Checked</th><th scope='col' class='column-status'>Result</th><th scope='col' class='column-status'>Checks</th><th scope='col' class='column-number'>HTTP</th><th scope='col' class='column-number'>Artifacts</th><th scope='col' class='column-number'>Duration</th><th scope='col'>Error</th></tr></thead><tbody>{_provider_health_row(latest_health)}</tbody></table></div>" if latest_health else ""
+    health_history_table = f"<div class='table-wrap provider-table-wrap provider-history-wrap'><table class='admin-table'><thead><tr><th scope='col' class='column-date'>Checked</th><th scope='col' class='column-status'>Result</th><th scope='col' class='column-status'>Checks</th><th scope='col' class='column-number'>HTTP</th><th scope='col' class='column-number'>Artifacts</th><th scope='col' class='column-number'>Duration</th><th scope='col'>Error</th></tr></thead><tbody>{rows_health}</tbody></table></div>" if previous_health else ""
+    run_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table provider-run-table'><thead><tr><th scope='col'>Run</th><th scope='col' class='column-date'>Started</th><th scope='col' class='column-date'>Finished</th><th scope='col' class='column-status'>Result</th><th scope='col' class='column-number'>Updates</th><th scope='col' class='column-number'>Packages</th><th scope='col' class='column-number'>Artifacts</th><th scope='col'>Error</th></tr></thead><tbody>{rows_runs}</tbody></table></div>" if runs else ""
+    audit_table = f"<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Provider audit history</caption><thead><tr><th scope='col'>Action</th><th scope='col' class='column-status'>Old status</th><th scope='col' class='column-status'>New status</th><th scope='col'>Reason</th><th scope='col' class='column-date'>Timestamp</th><th scope='col'>Details</th></tr></thead><tbody>{rows_audits}</tbody></table></div>" if audits else ""
     health_summary = (
         f"{_provider_status_badge(latest_health_status, kind='health')} "
         f"<span>{health_passed} checks passed · {health_not_evaluated} not evaluated. This check does not establish that every package can be installed.</span>"
@@ -2810,8 +2858,8 @@ def _map_statistics_rows(rows: list[dict[str, Any]]) -> str:
             f"<tr><td>{html.escape(str(row.get('provider_id') or '—'))}</td>"
             f"<td><code>{html.escape(str(row.get('map_package_id') or '—'))}</code></td>"
             f"<td>{html.escape(region_name)}</td><td>{html.escape(str(row.get('event_type') or '—'))}</td>"
-            f"<td>{html.escape(_admin_event_outcome_label(row.get('outcome')))}</td><td class='numeric'>{operation_label}</td>"
-            f"<td>{_timestamp_markup(row.get('last_occurred_at'))}</td></tr>"
+            f"<td class='column-status'>{html.escape(_admin_event_outcome_label(row.get('outcome')))}</td><td class='column-number numeric'>{operation_label}</td>"
+            f"<td class='column-date'>{_timestamp_markup(row.get('last_occurred_at'))}</td></tr>"
         )
     return "".join(markup)
 
@@ -2862,9 +2910,7 @@ def map_statistics_page(
     linkage_value = lambda key: "—" if key not in linkage or linkage.get(key) is None else str(linkage[key])
     def failed_metric_markup(key: str) -> str:
         value = summary.get(key)
-        rendered = "—" if value is None else str(value)
-        positive = " is-positive" if isinstance(value, (int, float)) and value > 0 else ""
-        return f"<strong class='map-statistics-failed-value{positive}' data-stat='{key}'>{rendered}</strong>"
+        return _admin_error_counter(value, data_stat=key)
 
     linkage_section = (
         "<section class='map-statistics-kpi-panel provider-card' id='map-statistics-metrics' aria-label='Map statistics summary'>"
@@ -2908,7 +2954,7 @@ def map_statistics_page(
             ("all", "All time"),
         )
     )
-    event_table = f"""<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Map operation events</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Map</th><th scope='col'>Region</th><th scope='col'>Event</th><th scope='col'>Outcome</th><th scope='col'>Operations</th><th scope='col'>Last activity</th></tr></thead><tbody id='map-statistics-rows'>{_map_statistics_rows(detail_rows)}</tbody></table></div><div class='provider-pagination' id='map-statistics-event-pagination' aria-live='polite'><label>Rows <select id='map-statistics-event-page-size' aria-label='Rows per event page'><option value='25'{' selected' if detail_page_size == 25 else ''}>25</option><option value='50'{' selected' if detail_page_size == 50 else ''}>50</option></select></label><button type='button' data-event-page='previous' disabled>Previous</button><span>Showing {detail_start}–{detail_end} of {detail_total} · page {detail_page} of {detail_pages}</span><button type='button' data-event-page='next' {'disabled' if detail_page >= detail_pages else ''}>Next</button></div>"""
+    event_table = f"""<div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Map operation events</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Map</th><th scope='col'>Region</th><th scope='col'>Event</th><th scope='col' class='column-status'>Outcome</th><th scope='col' class='column-number'>Operations</th><th scope='col' class='column-date'>Last activity</th></tr></thead><tbody id='map-statistics-rows'>{_map_statistics_rows(detail_rows)}</tbody></table></div><div class='provider-pagination' id='map-statistics-event-pagination' aria-live='polite'><label>Rows <select id='map-statistics-event-page-size' aria-label='Rows per event page'><option value='25'{' selected' if detail_page_size == 25 else ''}>25</option><option value='50'{' selected' if detail_page_size == 50 else ''}>50</option></select></label><button type='button' data-event-page='previous' disabled>Previous</button><span>Showing {detail_start}–{detail_end} of {detail_total} · page {detail_page} of {detail_pages}</span><button type='button' data-event-page='next' {'disabled' if detail_page >= detail_pages else ''}>Next</button></div>"""
     content = f"""
       {_admin_header(user, csrf_token, active='map-statistics')}
       <main class='dashboard map-statistics-page' id='main-content'>
@@ -3168,8 +3214,9 @@ def _map_statistics_script() -> str:
         const setFailed = (key, value) => {
           const node = document.querySelector(`[data-stat="${key}"]`);
           if (!node) return;
-          node.textContent = value === null || value === undefined ? '—' : String(value);
-          node.classList.toggle('is-positive', Number.isFinite(Number(value)) && Number(value) > 0);
+          const numeric = typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+          node.textContent = numeric === null ? '—' : String(numeric);
+          node.classList.toggle('is-positive', numeric !== null && numeric > 0);
         };
         const metric = (key) => Object.prototype.hasOwnProperty.call(summary, key) ? summary[key] : null;
         set('completedDownloads', metric('completedDownloads') === null ? '—' : String(metric('completedDownloads')));
@@ -3238,8 +3285,8 @@ def _map_statistics_script() -> str:
           const detail = includeProvider
             ? `${providerName[item.provider] || item.provider || '—'} · ${formatTimestamp(item.lastInstall)}`
             : formatTimestamp(item.lastInstall);
-          const installsLabel = `${countValue(item.installs)} install${item.installs === 1 ? '' : 's'}`;
-          return `<tr><td><strong>${mapLink}</strong><small class="table-secondary">${escapeHtml(detail)}</small></td><td class="column-number numeric"><strong>${escapeHtml(installsLabel)}</strong></td></tr>`;
+          const installWord = item.installs === 1 ? 'install' : 'installs';
+          return `<tr class="popular-map-row"><td class="popular-map-name"><div class="popular-map-name-content"><strong>${mapLink}</strong><small class="popular-map-detail">${escapeHtml(detail)}</small></div></td><td class="column-number numeric popular-map-count" aria-label="${escapeHtml(`${countValue(item.installs)} ${installWord}`)}"><span class="popular-map-count-label"><strong>${escapeHtml(countValue(item.installs))}</strong> <span>${installWord}</span></span></td></tr>`;
         };
         if (mapRows) mapRows.innerHTML = regionItems.slice(0, 5).map(mapRow).join('') || emptyPopularRow('No popular catalog maps in this period.');
         const query = String(allMapsSearch?.value || '').toLocaleLowerCase().trim();
@@ -3258,7 +3305,7 @@ def _map_statistics_script() -> str:
           ['mouseleave', 'blur'].forEach((name) => button.addEventListener(name, () => highlightCountry(null)));
           button.addEventListener('click', () => highlightCountry(button.dataset.mapCountry, true));
         });
-        const detailMarkup = detailRows.map((row) => `<tr><td>${escapeHtml(row.provider_id || '—')}</td><td><code>${escapeHtml(row.map_package_id || '—')}</code></td><td>${escapeHtml(row.region_display_name || humanize(row.region))}</td><td>${escapeHtml(row.event_type || '—')}</td><td>${escapeHtml(outcomeLabel(row.outcome))}</td><td class="numeric">${countValue(operations(row))}</td><td>${formatTimestamp(row.last_occurred_at)}</td></tr>`).join('');
+        const detailMarkup = detailRows.map((row) => `<tr><td>${escapeHtml(row.provider_id || '—')}</td><td><code>${escapeHtml(row.map_package_id || '—')}</code></td><td>${escapeHtml(row.region_display_name || humanize(row.region))}</td><td>${escapeHtml(row.event_type || '—')}</td><td class="column-status">${escapeHtml(outcomeLabel(row.outcome))}</td><td class="column-number numeric">${countValue(operations(row))}</td><td class="column-date">${formatTimestamp(row.last_occurred_at)}</td></tr>`).join('');
         document.querySelector('#map-statistics-rows').innerHTML = detailMarkup || emptyRow(7);
         const eventRecordLabel = eventRecords === null ? '— event records' : `${eventRecords} event record${eventRecords === 1 ? '' : 's'}`;
         const eventStatus = detailRows.length ? `${detailRows.length} event group${detailRows.length === 1 ? '' : 's'} · ${eventRecordLabel}` : 'No matching event groups';
@@ -3556,157 +3603,191 @@ def _identity_recommendation(results: list[dict[str, Any]]) -> dict | None:
     return choices[0] if choices and len({c["deviceId"] for c in choices}) == 1 else None
 
 
-def _identity_observations_markup(results: list[dict[str, Any]]) -> str:
-    candidate = _identity_recommendation(results)
-    recommended = candidate is not None
-    possible = [c for r in results for c in _identity_presentation_candidates(r.get("current_identity_assessment") or r.get("identity_assessment") or {})]
-    if candidate is None and possible and len({c["model"] for c in possible}) == 1:
-        candidate = possible[0]
-    labels = {"model": "Model", "size": "Case size", "screen": "Screen",
-              "xmlPartNumber": "Product identification", "usb": "Connection identification"}
-    if candidate:
-        assessments = [r.get("current_identity_assessment") or r.get("identity_assessment") or {} for r in results]
-        complete = all(a.get("state") == "RESOLVED" and a.get("canonicalDeviceId") == candidate["deviceId"] for a in assessments)
-        title = "✓ Model recognized" if complete else "? Suggested model · more information needed"
-        bullets = []
-        for check in candidate["checks"]:
-            states = [k.get("observedState", k.get("state")) if check["name"] == "model" else k.get("state") for a in assessments for c in a.get("candidates", [])
-                      if (c["deviceId"] == candidate["deviceId"] if recommended else not c.get("conflict")) for k in c["checks"] if k["name"] == check["name"]]
-            matched = bool(states) and all(state == "MATCH" for state in states)
-            if not recommended and len({str(k.get("expected")) for c in possible for k in c["checks"] if k["name"] == check["name"]}) > 1:
-                matched = False
-            value = str(check.get("expected") or "") if check["name"] in {"size", "screen"} else ""
-            if value and check["name"] == "size":
-                value += " mm"
-            detail = ("Matches" + (" · " + value if value else "")) if matched else ("Conflicting values" if "CONFLICT" in states else "Code received · mapping needs review" if check["name"] in {"xmlPartNumber", "usb"} and check.get("value") is not None else "Not reported" if not check.get("evidence") else "Not enough information")
-            if matched and any(str(e.get("source", "")).startswith("catalog specification:") for e in check.get("evidence", [])):
-                detail += " · catalog specification"
-            bullets.append("<li>" + ("✓ " if matched else "? ") + html.escape(labels.get(check["name"], check["name"])) + ": " + html.escape(detail) + "</li>")
-        recommendation = "No further model selection needed." if complete else "Recommended: review the missing information before confirming this model."
-        if not recommended:
-            recommendation = "Recommended: leave the review open until the size or screen identifies one exact variant."
-        if not _identity_is_pending(results):
-            title = "Automatic source assessment"
-            recommendation = "These source checks are separate from the saved model assignment."
-        summary = "<p class='section-kicker'>" + title + "</p><h4>" + html.escape(candidate["model"]) + "</h4><ul class='identity-match-list'>" + "".join(bullets) + "</ul><p>" + recommendation + "</p>"
-    else:
-        summary = ("<h4>Automatic source assessment</h4><p>Sources do not identify one unambiguous variant. The saved assignment is shown above.</p>" if not _identity_is_pending(results) else "<h4>Model not confirmed</h4><p>Review the reported values and resolve conflicts before selecting a variant.</p>")
-    solar_checks = [feature for c in possible for check in c.get("checks", [])
-                    for feature in check.get("features", []) if feature.get("name") == "solar"]
-    solar_values = {feature.get("expected") for feature in solar_checks}
-    solar_label = "Not confirmed"
-    if solar_checks and len(solar_values) == 1 and all(feature.get("state") == "MATCH" for feature in solar_checks):
-        solar_label = "Yes" if next(iter(solar_values)) else "No"
-        if any(str(e.get("source", "")).startswith("catalog specification:") for feature in solar_checks for e in feature.get("evidence", [])):
-            solar_label += " · catalog specification"
-    summary += "<p>Solar: " + html.escape(solar_label) + "</p>"
-    xml_models = sorted({str(r["garmin_model_description"]) for r in results if r.get("garmin_model_description")})
-    if xml_models:
-        summary = "<p><strong>Reported device: " + html.escape(" / ".join(xml_models)) + "</strong></p>" + summary
-    return "<section class='identity-summary'>" + summary + "</section>"
+def _identity_assessments(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [r.get("current_identity_assessment") or r.get("identity_assessment") or {} for r in results]
 
 
-def _identity_checks_markup(results: list[dict[str, Any]]) -> str:
-    pending = _identity_is_pending(results)
-    assigned = {r.get("canonical_device_model_id") for r in results if r.get("canonical_device_model_id")}
-    decisions = [(r.get("identity_decision") or {}).get("decision") or {} for r in results]
-    administrator = bool(results) and all(d.get("deviceId") == r.get("canonical_device_model_id") and d.get("deviceId") for r, d in zip(results, decisions))
-    assessments = [r.get("current_identity_assessment") or r.get("identity_assessment") or {} for r in results]
-    relevant = [c for a in assessments for c in a.get("candidates", []) if c.get("deviceId") in assigned]
-    conflict = any(c.get("conflict") or any(k.get("state") == "CONFLICT" for k in c.get("checks", [])) for c in relevant)
-    complete = bool(results) and len(assigned) == 1 and all(a.get("state") == "RESOLVED" and a.get("canonicalDeviceId") in assigned for a in assessments)
-    if pending:
-        title = "Model assignment needs review"
-        action = "Confirm the exact device variant using the identity evidence below."
-    elif conflict:
-        title = "Assigned model · conflicting source values"
-        action = "Review the conflicting values before changing the saved assignment."
-    elif administrator:
-        title = "Model confirmed by administrator"
-        action = "No further model selection needed."
-    elif assigned:
-        title = "Model assigned"
-        action = "No further model selection needed."
-    else:
-        title = "Model not identifiable" if any(r.get("identity_resolution_state") == "NOT_IDENTIFIABLE" for r in results) else "Model review completed"
-        action = "See the recorded review and source evidence below."
-    possible = [c for a in assessments for c in _identity_presentation_candidates(a)]
-    model_names = {c.get("model") for c in possible if c.get("model")}
-    reported_model = "<p>" + html.escape(next(iter(model_names))) + "</p>" if pending and len(model_names) == 1 else ""
-    missing_labels = {"size": "case size", "screen": "screen technology", "xmlPartNumber": "product-code mapping", "usb": "USB mapping", "model": "model / features"}
-    missing = list(dict.fromkeys(missing_labels.get(k["name"], k["name"]) for c in possible for k in c.get("checks", []) if k.get("state") != "MATCH"))
-    if pending and missing:
-        action = "Review " + ", ".join(missing) + " before confirming the variant."
-    sources = "Conflicting values" if conflict else "Checks complete" if complete else "Some source checks remain incomplete"
-    return ("<section class='identity-summary identity-outcome'><h3>" + title + "</h3>"
-            + reported_model + "<p><strong>Source checks:</strong> " + sources + "</p><p>" + action + "</p></section>"
-            "<details class='admin-disclosure identity-technical-evidence'><summary>Identity evidence and source checks</summary><div class='disclosure-body'>"
-            + _identity_observations_markup(results) + _identity_checks_detail_markup(results) + "</div></details>")
+def _identity_selected_id(results: list[dict[str, Any]]) -> str | None:
+    return next((str(r.get("canonical_device_model_id")).strip() for r in results
+                 if str(r.get("canonical_device_model_id") or "").strip()), None)
 
 
+def _identity_candidate(results: list[dict[str, Any]], device_id: str | None = None) -> dict[str, Any] | None:
+    target = device_id or _identity_selected_id(results)
+    if target:
+        for assessment in _identity_assessments(results):
+            candidate = next((c for c in assessment.get("candidates", []) if c.get("deviceId") == target), None)
+            if candidate:
+                return candidate
+        # A selected catalog ID must not borrow the facts of a different
+        # suggested candidate when an old assessment lacks that ID.
+        return None
+    return _identity_recommendation(results)
 
-def _identity_checks_detail_markup(results: list[dict[str, Any]]) -> str:
-    labels = {"model": "Model and variant", "size": "Case size", "screen": "Screen technology",
-              "xmlPartNumber": "Device XML part number", "usb": "USB VID/PID"}
-    states = {"MATCH": "✓ Matches", "MISSING": "? Not confirmed", "CONFLICT": "✕ Conflicts"}
-    sections = []
+
+def _identity_check(candidate: dict[str, Any] | None, name: str) -> dict[str, Any]:
+    return next((check for check in (candidate or {}).get("checks", []) if check.get("name") == name), {})
+
+
+def _identity_feature(candidate: dict[str, Any] | None, name: str) -> dict[str, Any]:
+    return next((feature for check in (candidate or {}).get("checks", [])
+                 for feature in check.get("features", []) if feature.get("name") == name), {})
+
+
+def _identity_source_label(evidence: list[dict[str, Any]] | None) -> str:
+    sources = [str(item.get("source") or "") for item in evidence or []]
+    has_catalog = any(source.startswith("catalog specification:") for source in sources)
+    has_mapping = any(":" in source and source.split(":", 1)[0] in {"USB", "XML_PART_NUMBER", "RETAIL_SKU"} for source in sources)
+    if has_catalog and has_mapping:
+        return "From catalog / mapping"
+    if has_catalog:
+        return "From catalog"
+    if has_mapping:
+        return "From mapping"
+    return "Reported" if evidence else "Not confirmed"
+
+
+def _identity_evidence_values(check: dict[str, Any]) -> list[Any]:
+    return list(dict.fromkeys(item.get("value") for item in check.get("evidence", [])
+                             if item.get("value") is not None))
+
+
+def _identity_value(value: Any, *, suffix: str = "") -> str:
+    if value is None or value == "":
+        return "Not reported"
+    if isinstance(value, bool):
+        return "Yes" if value else "No"
+    return f"{value}{suffix}"
+
+
+def _identity_fact_markup(label: str, value: str, state: str, source: str) -> str:
+    icon = {"match": "✓", "conflict": "!", "missing": "?"}.get(state, "?")
+    return (f"<article class='identity-fact identity-fact-{state}'>"
+            f"<div class='identity-fact-heading'><span class='identity-fact-icon' aria-hidden='true'>{icon}</span><span>{html.escape(label)}</span></div>"
+            f"<strong>{html.escape(value)}</strong><small>{html.escape(source)}</small></article>")
+
+
+def _identity_observations_markup(
+    results: list[dict[str, Any]], identity_devices: list[dict[str, Any]] | None = None,
+) -> str:
+    selected_id = _identity_selected_id(results)
+    candidate = _identity_candidate(results, selected_id)
+    assessments = _identity_assessments(results)
+    def fact_records(name: str) -> list[dict[str, Any]]:
+        records: list[dict[str, Any]] = []
+        for assessment in assessments:
+            records.extend(assessment.get("facts", {}).get(name, []) or [])
+        return records
+
+    def fact_values(name: str) -> list[Any]:
+        values: list[Any] = []
+        for record in fact_records(name):
+            value = record.get("value")
+            if value is not None and value not in values:
+                values.append(value)
+        return values
+
+    reported_values = list(dict.fromkeys(
+        str(result.get(field)).strip() for result in results
+        for field in ("raw_mtp_model", "garmin_model_description", "model")
+        if str(result.get(field) or "").strip()
+    ))
+    if not reported_values:
+        reported_values = [str(value).strip() for value in fact_values("model") if str(value).strip()]
+    reported = reported_values[0] if reported_values else "Not reported"
+    reported_markup = "<p class='identity-reported-device'><strong>Reported device:</strong> " + html.escape(reported) + "</p>"
+    if len(reported_values) > 1:
+        reported_markup += "<p class='identity-reported-also'>Also reported: " + html.escape(" / ".join(reported_values[1:])) + "</p>"
+
+    model_check = _identity_check(candidate, "model")
+    model_values = [str(value) for value in _identity_evidence_values(model_check)] if candidate else [str(value) for value in fact_values("model")]
+    model_observed_state = model_check.get("observedState", model_check.get("state"))
+    model_state = ("conflict" if model_observed_state == "CONFLICT" else "match" if model_observed_state == "MATCH" else "missing") if candidate else ("match" if model_values else "missing")
+    model_source = _identity_source_label(model_check.get("evidence")) if candidate else ("Reported" if model_values else "Not confirmed")
+    facts = [_identity_fact_markup("Model", " / ".join(model_values) if model_values else "Not reported", model_state, model_source)]
+    size_check = _identity_check(candidate, "size")
+    size_values = _identity_evidence_values(size_check) if candidate else fact_values("caseSizeMm")
+    size_from_catalog = bool(candidate and not size_values and size_check.get("expected") is not None and size_check.get("state") != "CONFLICT")
+    facts.append(_identity_fact_markup("Case size", _identity_value(size_values[0] if size_values else size_check.get("expected") if size_from_catalog else None, suffix=" mm"),
+                                       ("conflict" if size_check.get("state") == "CONFLICT" else "match" if size_check.get("state") == "MATCH" or size_from_catalog else "missing") if candidate else ("match" if size_values else "missing"),
+                                       "From catalog" if size_from_catalog else _identity_source_label(size_check.get("evidence")) if candidate else ("Reported" if size_values else "Not confirmed")))
+    screen_check = _identity_check(candidate, "screen")
+    screen_values = _identity_evidence_values(screen_check) if candidate else fact_values("screenTechnology")
+    screen_from_catalog = bool(candidate and not screen_values and screen_check.get("expected") and screen_check.get("state") != "CONFLICT")
+    facts.append(_identity_fact_markup("Display", _identity_value(screen_values[0] if screen_values else screen_check.get("expected") if screen_from_catalog else None),
+                                       ("conflict" if screen_check.get("state") == "CONFLICT" else "match" if screen_check.get("state") == "MATCH" or screen_from_catalog else "missing") if candidate else ("match" if screen_values else "missing"),
+                                       "From catalog" if screen_from_catalog else _identity_source_label(screen_check.get("evidence")) if candidate else ("Reported" if screen_values else "Not confirmed")))
+    for label, feature_name in (("Solar", "solar"), ("inReach", "inreach")):
+        feature = _identity_feature(candidate, feature_name)
+        fact_name = "inReach" if feature_name == "inreach" else feature_name
+        values = _identity_evidence_values(feature) if candidate else fact_values(fact_name)
+        from_catalog = bool(candidate and not values and feature.get("expected") is not None and feature.get("state") != "CONFLICT")
+        feature_value = values[0] if values else feature.get("expected") if from_catalog else None
+        facts.append(_identity_fact_markup(label, _identity_value(feature_value),
+                                           "conflict" if feature.get("state") == "CONFLICT" else "match" if from_catalog or feature.get("state") == "MATCH" else "missing" if candidate else ("match" if values else "missing"),
+                                           "From catalog" if from_catalog else _identity_source_label(feature.get("evidence")) if candidate else ("Reported" if values else "Not confirmed")))
+    code_checks = [_identity_check(candidate, "xmlPartNumber"), _identity_check(candidate, "usb")]
+    code_lines = []
+    code_states = []
+    for label, check in (("Product", code_checks[0]), ("USB", code_checks[1])):
+        kind = "RETAIL_SKU" if label == "Product" and check.get("codeKind") == "RETAIL_SKU" else "XML_PART_NUMBER" if label == "Product" else "USB"
+        value = check.get("value") if candidate else next((record.get("value") for record in fact_records("codes") if record.get("kind") == kind), None)
+        if value is None:
+            code_lines.append(f"{label}: Not reported")
+        else:
+            status = ("mapped" if check.get("state") == "MATCH" else "mapping not confirmed" if check.get("state") != "CONFLICT" else "conflict") if candidate else "received"
+            code_lines.append(f"{label}: {value} · {status}")
+        code_states.append(check.get("state"))
+    code_state = "conflict" if "CONFLICT" in code_states else "match" if "MATCH" in code_states else "missing" if candidate else ("match" if any("Not reported" not in line for line in code_lines) else "missing")
+    code_source = "From mapping" if candidate and code_state == "match" else "Reported" if any(check.get("value") is not None for check in code_checks) or fact_values("codes") else "Not confirmed"
+    facts.append(_identity_fact_markup("Device codes", " · ".join(code_lines), code_state, code_source))
+    selected_device = next((device for device in identity_devices or []
+                            if str(device.get("id") or device.get("device_id") or "") == str(selected_id or "")), None)
+    selection_label = _identity_device_label(selected_device) if selected_device else (
+        _identity_device_label(candidate) if candidate else "No catalog model selected"
+    )
+    recommendation_label = "Suggested model" if not selected_id else "Selected catalog model"
+    status = "Confirmed by administrator" if any(
+        isinstance((result.get("identity_decision") or {}).get("decision"), dict)
+        for result in results
+    ) else "Catalog model already assigned" if selected_id else "Suggested model" if candidate else "Select a catalog variant"
+    if any(assessment.get("candidates") and not _identity_candidate([result]) for result, assessment in zip(results, assessments)):
+        status = "Select variant"
+    return ("<div class='identity-review-facts'>" + reported_markup
+            + "<div class='identity-facts' aria-label='Identity facts'>" + "".join(facts) + "</div>"
+            + f"<div class='identity-selected-model'><span class='section-kicker'>{html.escape(recommendation_label)}</span><strong>{html.escape(selection_label)}</strong><small>{html.escape(status)}</small></div>"
+            + "</div>")
+
+
+def _identity_checks_markup(
+    results: list[dict[str, Any]], identity_devices: list[dict[str, Any]] | None = None,
+) -> str:
+    assigned = _identity_selected_id(results)
+    candidate = _identity_candidate(results, assigned)
+    decision = {}
     for result in results:
-        original = result.get("identity_assessment") or {}
-        assessment = result.get("current_identity_assessment") or original
-        raw_fields = [("MTP model", result.get("raw_mtp_model")), ("XML description", result.get("garmin_model_description")), ("XML part number", result.get("garmin_model_part_number"))]
-        sections.append("<dl>" + "".join("<div><dt>" + key + "</dt><dd>" + html.escape(str(value or "Unavailable")) + "</dd></div>" for key, value in raw_fields) + "</dl>")
-        decision = (result.get("identity_decision") or {}).get("decision")
-        if decision:
-            sections.append("<p>Administrator decision: " + html.escape(str(decision.get("deviceId")))
-                            + " — " + html.escape(str(decision.get("reason"))) + "</p>")
-        elif original.get("state") == "RESOLVED":
-            sections.append("<p>Automatically assigned at intake after all five checks matched: "
-                            + html.escape(str(original.get("canonicalDeviceId"))) + "</p>")
-        candidates = assessment.get("candidates", [])
-        selected_id = result.get("canonical_device_model_id")
-        if not selected_id:
-            recommendation = _identity_recommendation([result])
-            selected_id = recommendation.get("deviceId") if recommendation else None
-        candidates = sorted(candidates, key=lambda c: c.get("deviceId") != selected_id)
-        alternatives = []
-        for candidate in candidates:
-            rows = []
-            for check in candidate["checks"]:
-                evidence = _identity_evidence_markup(check.get("evidence", []))
-                if check["name"] in {"xmlPartNumber", "usb"}:
-                    observed = check.get("value")
-                    evidence = ("Received: <strong>" + html.escape(str(observed)) + "</strong>"
-                                if observed is not None else "Not received")
-                    if check.get("evidence"):
-                        evidence += "<br>Catalog mappings: " + _identity_evidence_markup(check["evidence"])
-                    elif observed is not None:
-                        evidence += "<br>Catalog mapping not confirmed"
-                for feature in check.get("features", []):
-                    evidence += "<br><strong>" + html.escape(feature["name"]) + ": " + html.escape(states[feature["state"]]) + "</strong> — " + _identity_evidence_markup(feature["evidence"])
-                expected = check.get("expected")
-                if expected is not None:
-                    evidence += "<br><small>Catalog: " + html.escape(str(expected)) + "</small>"
-                if check.get('catalogSource'):
-                    proof = check['catalogSource']
-                    evidence += "<br><small>Catalog specification: " + html.escape(str(proof.get('source', '')) + ' · ' + str(proof.get('version', ''))) + "</small>"
-                if check.get('pendingAlternativeTargets'):
-                    evidence += "<br><strong>Other variants for this code still need source review.</strong>"
-                rows.append("<tr><th scope='row'>" + html.escape(labels.get(check["name"], check["name"]))
-                            + "</th><td>" + html.escape(states[check["state"]]) + "</td><td>" + evidence + "</td></tr>")
-            candidate_label = candidate["model"] + " · " + ", ".join(str(k["expected"]) + (" mm" if k["name"] == "size" else "") for k in candidate["checks"] if k["name"] in {"size", "screen"} and k.get("expected"))
-            features = list(dict.fromkeys(f["name"] for k in candidate["checks"] for f in k.get("features", []) if f.get("expected") is True))
-            if features:
-                candidate_label += ", " + ", ".join({"inreach": "inReach", "solar": "Solar"}.get(f, f) for f in features)
-            mismatches = [labels.get(k["name"], k["name"]) for k in candidate["checks"] if k.get("state") == "CONFLICT"]
-            candidate_note = "Conflicts: " + ", ".join(mismatches) if mismatches else "Source checks"
-            target = sections if candidate.get("deviceId") == selected_id else alternatives
-            target.append("<details class='identity-candidate'" + (" open" if candidate.get("deviceId") == selected_id else "") + "><summary>" + html.escape(candidate_label + " · " + candidate_note) + "</summary><h4>" + html.escape(candidate["model"] + " · " + candidate["deviceId"])
-                            + "</h4><div class='table-wrap'><table class='identity-checks-table'><caption>Current identity evidence checks</caption><thead><tr><th>Check</th>"
-                            "<th>Result</th><th>Value and source</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table></div></details>")
-        if alternatives:
-            sections.append("<details class='admin-disclosure identity-alternatives'><summary>Other candidates (" + str(len(alternatives)) + ")</summary>" + "".join(alternatives) + "</details>")
-    note = "<p>Properties derived from the same XML or USB mapping share one source; they are not independent observations. Missing evidence needs a reasoned administrator decision. Conflicts require a separate source or mapping correction.</p>"
-    return ("".join(dict.fromkeys(sections)) or "<p>No matching catalog candidate. Original metadata remains available for review.</p>") + note
+        value = (result.get("identity_decision") or {}).get("decision")
+        if isinstance(value, dict):
+            decision = value
+            break
+    candidate_conflict = bool(candidate and (candidate.get("conflict") or any(
+        check.get("state") == "CONFLICT" for check in candidate.get("checks", []))))
+    if candidate_conflict:
+        title = "Assigned model · conflicting source values"
+        action = "A regular Confirm is blocked for this selection. Use the explicit manual assignment action if the report is known to be wrong."
+    elif decision.get("decisionType") == "MANUAL_ASSIGNMENT":
+        title, action = "Confirmed by administrator · manual assignment", "The reported conflict and the administrator's choice remain in the audit."
+    elif decision.get("deviceId"):
+        title, action = "Confirmed by administrator", "The selected catalog model is saved for this diagnostic result."
+    elif assigned:
+        title, action = "Catalog model already assigned", "The existing catalog assignment is shown below. Use Edit only if it needs correction."
+    elif candidate:
+        title, action = "Model assignment needs review", "Review the compact facts and confirm the suggested model, or use Edit to choose another variant."
+    else:
+        title, action = "Select a catalog variant", "Missing evidence remains visible, but it does not prevent an explicit catalog selection."
+    return ("<section class='identity-summary identity-outcome'><p class='section-kicker'>Identity Review</p><h3>" + title + "</h3><p>" + action + "</p>"
+            + _identity_observations_markup(results, identity_devices)
+            + "</section>")
 
 
 def _identity_source_markup(results: list[dict], csrf_token: str, return_to: str) -> str:
@@ -3734,7 +3815,25 @@ def _identity_source_markup(results: list[dict], csrf_token: str, return_to: str
     return "<details class='admin-disclosure'><summary>Correct an identity source</summary><div class='disclosure-body'><p>Original reports remain unchanged. This records a separate correction and does not reassign any installation.</p>" + "".join(forms) + "</div></details>" if forms else ""
 
 
+def _identity_device_label(device: dict[str, Any] | None) -> str:
+    if not device:
+        return "No catalog model selected"
+    model, variant, _ = _identity_parts(device)
+    parts = [part for part in (model, variant if variant != "—" else "") if part]
+    screen = device.get("screen_technology") or device.get("screenTechnology")
+    if screen and not any(str(screen).casefold() in part.casefold() for part in parts):
+        parts.append(str(screen))
+    solar = device.get("solar")
+    if not any(re.search(r"\bSolar:\s*(?:Yes|No|Not confirmed)\b", part, re.IGNORECASE) for part in parts):
+        parts.append("Solar: Yes" if solar is True else "Solar: No" if solar is False else "Solar: Not confirmed")
+    inreach = device.get("inreach", device.get("inReach"))
+    if not any(re.search(r"\binReach:\s*(?:Yes|No|Not confirmed)\b", part, re.IGNORECASE) for part in parts):
+        parts.append("inReach: Yes" if inreach is True else "inReach: No" if inreach is False else "inReach: Not confirmed")
+    return " · ".join(parts) or "Unknown Garmin model"
+
+
 def _identity_device_options(devices: list[dict[str, Any]] | None, current_id: Any = None, *, properties_only: bool = False) -> tuple[str, str]:
+    """Render one keyboard-friendly picker while preserving exact catalog IDs."""
     current = str(current_id or "").strip()
     current_label = current or "No canonical device selected"
     options: list[str] = []
@@ -3742,18 +3841,11 @@ def _identity_device_options(devices: list[dict[str, Any]] | None, current_id: A
         device_id = str(device.get("device_id") or device.get("id") or "").strip()
         if not device_id:
             continue
-        model, variant, _ = _identity_parts(device)
-        family = str(device.get("family_name") or device.get("familyName") or device.get("family") or "").strip()
-        label_parts = [part for part in (model, variant if variant != "—" else "") if part]
-        label = " · ".join(label_parts)
-        if properties_only:
-            screen = str(device.get("screen_technology") or device.get("screenTechnology") or "Screen not confirmed")
-            solar = device.get("solar")
-            label = screen + " · Solar: " + ("yes" if solar is True else "no" if solar is False else "not confirmed")
+        label = _identity_device_label(device)
         if device_id == current:
-            current_label = device_id
+            current_label = label
         options.append(
-            f"<option value='{html.escape(device_id, quote=True)}'{' selected' if device_id == current else ''}>{html.escape(label)}</option>"
+            f"<button type='button' class='identity-picker-option' role='option' data-identity-device-id='{html.escape(device_id, quote=True)}' data-identity-device-label='{html.escape(label, quote=True)}'>{html.escape(label)}</button>"
         )
     return "".join(options), current_label
 
@@ -3847,6 +3939,21 @@ def _operation_text(results: list[dict[str, Any]], field: str, *, fallback: str 
         if value and value not in values:
             values.append(value)
     return ", ".join(values) if values else fallback
+
+
+def _operation_region_label(results: list[dict[str, Any]]) -> str:
+    """Render result regions through the shared human-readable resolver."""
+    values: list[str] = []
+    for result in results:
+        label = _admin_region_display_name(
+            result.get("canonical_region_id"),
+            result.get("region_country"),
+            result.get("region"),
+            result.get("map_package_name"),
+        )
+        if label != "—" and label not in values:
+            values.append(label)
+    return ", ".join(values) if values else "—"
 
 
 def _operation_issue(results: list[dict[str, Any]]) -> str | None:
@@ -4091,24 +4198,34 @@ def _diagnostic_detail_dialog(
         "canonical_device_model_id": canonical_device_model_id,
     })
     recommendation = _identity_recommendation(results)
-    # Normal selection contains only mutually consistent candidates. A source
-    # correction, available separately, is needed before a conflicting choice.
-    assessments = [r.get("current_identity_assessment") or r.get("identity_assessment") or {} for r in results]
-    candidate_sets = [{c["deviceId"] for c in _identity_presentation_candidates(a)} for a in assessments]
-    selection_devices = identity_devices
-    if candidate_sets and all(a.get("candidates") for a in assessments):
-        allowed_ids = set.intersection(*candidate_sets)
-        selection_devices = [d for d in (identity_devices or [])
-                             if (d.get("id") or d.get("device_id")) in allowed_ids]
-    same_model = bool(selection_devices) and len({
-        (d.get("model"), d.get("case_size_mm")) for d in selection_devices}) == 1
-    options, current_label = _identity_device_options(selection_devices,
-        first.get("canonical_device_model_id") or (recommendation["deviceId"] if recommendation else None),
-        properties_only=same_model)
-    single_candidate = recommendation is not None and len(selection_devices or []) == 1
+    selection_id = str(first.get("canonical_device_model_id") or (recommendation or {}).get("deviceId") or "").strip()
+    picker_devices = list(identity_devices or [])
+    if not selection_id:
+        candidate_ids = {
+            str(candidate.get("deviceId") or "").strip()
+            for assessment in _identity_assessments(results)
+            for candidate in _identity_presentation_candidates(assessment)
+            if str(candidate.get("deviceId") or "").strip()
+        }
+        if candidate_ids:
+            picker_devices = [
+                device for device in picker_devices
+                if str(device.get("id") or device.get("device_id") or "").strip() in candidate_ids
+            ]
+    options, current_label = _identity_device_options(picker_devices, selection_id)
+    selected_candidate = _identity_candidate(results, selection_id or None)
+    selection_conflict = bool(selected_candidate and (selected_candidate.get("conflict") or any(
+        check.get("state") == "CONFLICT" for check in selected_candidate.get("checks", []))))
+    conflict_detail = ""
+    if selection_conflict:
+        conflict_check = next((check for check in selected_candidate.get("checks", []) if check.get("state") == "CONFLICT"), None)
+        if conflict_check:
+            conflict_detail = "Reported " + str(conflict_check.get("name") or "value") + ": " + str(
+                (conflict_check.get("evidence") or [{}])[0].get("value") or conflict_check.get("value") or "unknown"
+            ) + ". Selected model: " + str(conflict_check.get("expected") or selected_candidate.get("model") or "different value")
+    picker_hidden = bool(selection_id)
     search_id = f"identity-search-{dialog_id}"
     canonical_id = f"identity-canonical-{dialog_id}"
-    action_id = f"identity-action-{dialog_id}"
     technical = "".join(
         _diagnostic_technical_details(result, index)
         for index, result in enumerate(results, start=1)
@@ -4144,24 +4261,21 @@ def _diagnostic_detail_dialog(
     else:
         lifecycle_action = ""
     identity_form = f"""
-      <form method='post' action='/admin/diagnostics/identity' class='diagnostic-action-form identity-review-form admin-async-action'>
+      <form method='post' action='/admin/diagnostics/identity' class='diagnostic-action-form identity-review-form admin-async-action' data-identity-form>
         <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>
         <input type='hidden' name='operation_key' value='{html.escape(operation_key, quote=True)}'>
         <input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'>
-        <h4>Confirm model</h4>
-        <label>Action<select name='identity_action' id='{action_id}' data-identity-action><option value='ASSIGN'>Confirm selected model</option><option value='LEAVE_UNRESOLVED'>Leave unresolved</option><option value='NOT_IDENTIFIABLE'>Mark as not identifiable</option></select></label>
-        <div data-canonical-device-wrap>
-          <div{' hidden' if single_candidate else ''}>
-          <div{' hidden' if same_model else ''}><label>Find another model<input id='{search_id}' type='search' data-identity-search placeholder='Model name or size' autocomplete='off' aria-controls='{canonical_id}'></label>
-          <div class='identity-search-results' data-identity-results role='group' aria-label='Matching Garmin models' hidden></div></div>
-          <label>{'Screen / Solar variant' if same_model else 'Garmin model'}<select name='canonical_device_model_id' id='{canonical_id}' required><option value=''>{'Choose the confirmed screen / Solar variant' if same_model else 'Choose a Garmin model'}</option>{options}</select></label>
-          </div>
+        <div class='identity-picker-heading'><h4>{'Selected catalog model' if selection_id else 'Choose a catalog model'}</h4><button type='button' class='secondary-button' data-identity-edit{'' if selection_id else ' hidden'}>Edit</button></div>
+        <div class='identity-picker' data-canonical-device-wrap{' hidden' if picker_hidden else ''}>
+          <label for='{search_id}'>Find a catalog model<input id='{search_id}' type='search' data-identity-search role='combobox' aria-expanded='{'false' if picker_hidden else 'true'}' aria-controls='{canonical_id}' placeholder='Search model, size or variant' autocomplete='off' value='{html.escape(current_label if selection_id else '', quote=True)}'></label>
+          <input type='hidden' name='canonical_device_model_id' id='{canonical_id}' value='{html.escape(selection_id, quote=True)}'>
+          <div class='identity-search-results' id='{canonical_id}-options' data-identity-results role='listbox' aria-label='Matching Garmin catalog models'>{options}</div>
         </div>
-        <p class='identity-selection' data-identity-selection>{'Model selected from the reported device. No further model selection needed.' if single_candidate else 'Select the model to confirm.'}</p>
-        <label>Reason for this decision<input name='identity_reason' required placeholder='Exact model confirmed by operator'></label>
-        <label>Review note <span class='optional-label'>Optional</span><textarea name='identity_note' rows='3'></textarea></label>
-        <button type='submit'>Save identity review</button>
-      </form>""" if identity_pending else ""
+        <p class='identity-selection' data-identity-selection>{'Selected model: ' + html.escape(current_label) if selection_id else 'Select a specific catalog model.'}</p>
+        {f"<p class='identity-conflict-warning' data-identity-conflict role='alert'>{html.escape(conflict_detail)} Use the explicit manual assignment action if this is the intended correction.</p>" if conflict_detail else ""}
+        <div class='identity-review-actions'><button type='submit' name='identity_action' value='ASSIGN' data-identity-confirm>Confirm</button><button type='submit' name='identity_action' value='MANUAL_ASSIGN' class='secondary-button' data-manual-confirm{' hidden' if not selection_conflict else ''}>Confirm manual assignment</button></div>
+        <p class='admin-action-status' data-identity-status role='status' aria-live='polite'></p>
+      </form>"""
     report_device = next((
         device for device in (identity_devices or [])
         if str(device.get("id") or device.get("device_id") or "") == str(canonical_device_model_id or "")
@@ -4222,12 +4336,9 @@ def _diagnostic_detail_dialog(
         if result_label == "FAILED" else ""
     )
     technical_details = f"<details class='diagnostic-technical-details diagnostic-technical-all'><summary>Technical details</summary><p class='diagnostic-id'>Diagnostic ID: <code>{html.escape(operation_key)}</code></p><div class='technical-copy-actions'><button type='button' class='secondary-button' data-copy-diagnostic-id='{html.escape(operation_key, quote=True)}'>Copy diagnostic ID</button><button type='button' class='secondary-button' data-copy-technical-report data-report='{html.escape(issue_body, quote=True)}'>Copy technical report</button><span class='copy-status' data-copy-status role='status' aria-live='polite'></span></div>{technical}</details>"
-    next_action = (
-        "<p class='diagnostic-next-action' role='status'><strong>Next action:</strong> Confirm the exact Garmin device identity before resolving this diagnostic.</p>"
-        if identity_pending else
-        "<p class='diagnostic-next-action' role='status'><strong>Next action:</strong> Review the linked issue and technical report. Mark fixed only after a successful retest confirms the problem is resolved; otherwise leave it open.</p>"
-        if state in {"open", "in-progress", "under-review"} else ""
-    )
+    # Identity Review and the lifecycle controls already state the available
+    # next actions. A second imperative paragraph only repeats those controls.
+    next_action = ""
     secondary_lifecycle = (
         f"<details class='admin-disclosure diagnostic-secondary-action'><summary>Resolve diagnostic</summary><div class='disclosure-body'>{lifecycle_action}</div></details>"
         if identity_pending and lifecycle_action else ""
@@ -4240,20 +4351,19 @@ def _diagnostic_detail_dialog(
     return f"""
       <dialog class='diagnostic-detail-dialog' id='{dialog_id}' aria-labelledby='{dialog_id}-title'>
         <div class='diagnostic-detail-inner'>
-          <div class='device-dialog-header'><div><p class='section-kicker'>Diagnostic detail</p><h2 id='{dialog_id}-title'>{html.escape(model)}{f' · {html.escape(variant)}' if variant != '—' else ''}</h2></div><button class='dialog-close' type='button' data-close-dialog aria-label='Close diagnostic detail'>{_admin_icon('close')}</button></div>
+          <div class='device-dialog-header'><div><p class='section-kicker'>Installation diagnostic</p><h2 id='{dialog_id}-title'>Diagnostic detail</h2></div><button class='dialog-close' type='button' data-close-dialog aria-label='Close diagnostic detail'>{_admin_icon('close')}</button></div>
           <dl class='diagnostic-detail-summary'>
             <div><dt>Device</dt><dd>{html.escape(model)}</dd></div>
             <div><dt>Variant</dt><dd>{html.escape(variant)}</dd></div>
             <div><dt>Date</dt><dd>{_timestamp_markup(first.get('occurred_at'))}</dd></div>
-            <div><dt>Map / region</dt><dd>{html.escape(_operation_text(results, 'region'))}</dd></div>
+            <div><dt>Map / region</dt><dd>{html.escape(_operation_region_label(results))}</dd></div>
             <div><dt>Result</dt><dd>{_diagnostic_result(result_label)}</dd></div>
             <div><dt>App version</dt><dd>{html.escape(_admin_app_version_label(first.get('release_label') or first.get('terento_version'), first.get('app_build')))}</dd></div>
             {review_state}
           </dl>
           {failure_summary}
           {next_action}
-          {_identity_checks_markup(results)}
-          {_identity_source_markup(results, csrf_token, return_to)}
+          {_identity_checks_markup(results, identity_devices)}
           <div class='diagnostic-actions-grid'>{action_markup}</div>
           {technical_details}
         </div>
@@ -4429,13 +4539,13 @@ def device_detail_page(
         dialog_id = "diagnostic-detail-" + hashlib.sha256(operation_key.encode("utf-8")).hexdigest()[:16]
         rows_markup.append(
             f"<tr data-diagnostic-state='{'resolved-error' if is_resolved_error else 'open' if is_open_error else 'history'}' data-review-open='{'true' if is_open_error else 'false'}' data-review-resolved='{'true' if is_resolved_error else 'false'}' data-diagnostic-result='{html.escape(result.lower(), quote=True)}' data-has-issue='{'true' if issue else 'false'}'>"
-            f"<td>{_timestamp_markup(first.get('occurred_at'))}</td>"
+            f"<td class='column-date'>{_timestamp_markup(first.get('occurred_at'))}</td>"
             f"<td class='history-map'>{map_copy}</td>"
-            f"<td>{_diagnostic_result(result)}</td>"
+            f"<td class='column-status'>{_diagnostic_result(result)}</td>"
             f"<td class='history-error'>{error_markup}</td>"
             f"<td>{_github_issue_link(issue)}</td>"
             f"<td>{release_markup}</td>"
-            f"<td><button type='button' class='secondary-button diagnostic-review' data-dialog-id='{dialog_id}' aria-label='View installation details {index + 1}'>Details</button></td>"
+            f"<td class='column-status'><button type='button' class='secondary-button diagnostic-review' data-dialog-id='{dialog_id}' aria-label='View installation details {index + 1}'>Details</button></td>"
             "</tr>"
         )
         dialogs.append(_diagnostic_detail_dialog(
@@ -4500,13 +4610,13 @@ def device_detail_page(
       <main class='dashboard model-detail-page' id='main-content'>
         <p class='back-link'><a href='{back_href}'>{_admin_icon('arrow-left')} {back_label}</a></p>
         <header class='model-page-header'>{image}<div class='model-page-heading'><p class='eyebrow'>Garmin device</p><h1>{html.escape(model)}{f' · <span>{html.escape(variant)}</span>' if variant != '—' else ''}</h1><div class='model-page-badges'>{summary_badges}</div></div>{public_link}</header>
-        <section class='diagnostic-model-metrics model-statistics' aria-label='Model installation statistics'><article class='attempts-metric' aria-label='Attempts. Each map result counts once, including custom .img and resolved failures.' title='Each map installation counts separately. Verified successful map installations determine compatibility status.'><span>Attempts</span><strong>{attempts}</strong></article><article><span>Successful</span><strong>{successful}</strong></article><article><span>Failed</span><strong>{failed}</strong></article><article><span>Open errors</span><strong>{open_errors}</strong></article><article class='timestamp-metric'><span>Last activity</span><strong>{last_activity}</strong></article></section>
+        <section class='map-statistics-kpi-panel provider-card admin-kpi-panel diagnostic-model-metrics model-statistics' aria-label='Model installation statistics'><div class='map-statistics-kpi-groups model-kpi-groups'><section class='map-statistics-kpi-group' aria-labelledby='model-installation-kpis-title'><h2 id='model-installation-kpis-title' class='sr-only'>Installation outcomes</h2><div class='map-statistics-kpi-values'><div class='map-statistics-kpi-value attempts-metric' aria-label='Attempts. Each map result counts once, including custom .img and resolved failures.' title='Each map installation counts separately. Verified successful map installations determine compatibility status.'><span>Attempts</span><strong>{attempts}</strong></div><div class='map-statistics-kpi-value'><span>Successful</span><strong>{successful}</strong></div><div class='map-statistics-kpi-value error-counter-kpi'><span>Failed</span>{_admin_error_counter(failed)}</div><div class='map-statistics-kpi-value error-counter-kpi'><span>Open errors</span>{_admin_error_counter(open_errors)}</div></div></section><section class='map-statistics-kpi-group model-activity-kpi-group' aria-labelledby='model-activity-kpis-title'><h2 id='model-activity-kpis-title'>Activity</h2><div class='map-statistics-kpi-values'><div class='map-statistics-kpi-value timestamp-metric'><span>Last activity</span><strong>{last_activity}</strong></div></div></section></div></section>
         {alert}
         <section class='diagnostics-detail-section model-page-section' id='installations' aria-labelledby='installation-history-title'>
           <div class='section-heading'><div><p class='section-kicker'>Operational history</p><h2 id='installation-history-title'>Installation history</h2></div><p class='table-help'>Failed results remain historical after their error is resolved.</p></div>
           <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'><div class='quick-filter-group' role='group' aria-label='Quick history filters'><button type='button' class='quick-filter active' data-history-filter='all' aria-pressed='true'>All</button><button type='button' class='quick-filter' data-history-filter='failed' aria-pressed='false'>Failed</button><button type='button' class='quick-filter' data-history-filter='open' aria-pressed='false'>Open errors</button><button type='button' class='quick-filter' data-history-filter='succeeded' aria-pressed='false'>Successful</button></div><details class='admin-disclosure filter-disclosure history-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter'><option value='all'>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='open'>Open errors</option><option value='resolved-errors'>Resolved errors</option></select></label></div></details><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters'>Clear</button></form>
           <p class='results-count' id='diagnostic-results-count' aria-live='polite'>{len(history)} records</p>
-          <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table model-history-table'><caption class='sr-only'>Installation history for this exact model and variant</caption><thead><tr><th scope='col'>Date</th><th scope='col'>Map</th><th scope='col'>Result</th><th scope='col'>Error</th><th scope='col'>GitHub issue</th><th scope='col'>App version</th><th scope='col'>Action</th></tr></thead><tbody id='diagnostic-rows'>{history_rows}</tbody></table></div>
+          <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table model-history-table'><caption class='sr-only'>Installation history for this exact model and variant</caption><thead><tr><th scope='col' class='column-date'>Date</th><th scope='col'>Map</th><th scope='col' class='column-status'>Result</th><th scope='col'>Error</th><th scope='col'>GitHub issue</th><th scope='col'>App version</th><th scope='col' class='column-status'>Action</th></tr></thead><tbody id='diagnostic-rows'>{history_rows}</tbody></table></div>
           <div class='provider-pagination' id='diagnostic-history-pagination' aria-live='polite'><label>Rows <select id='diagnostic-history-page-size' aria-label='Rows per installation history page'><option value='25' selected>25</option><option value='50'>50</option></select></label><button type='button' data-history-page='previous' disabled>Previous</button><span>Showing {1 if history else 0}–{min(len(history), 25)} of {len(history)} · page 1 of {max(1, (len(history) + 24) // 25)}</span><button type='button' data-history-page='next' {'disabled' if len(history) <= 25 else ''}>Next</button></div>
         </section>
         <details class='model-page-section model-administration admin-disclosure' {'open' if device.get('supportStatus') == 'NOT_EVALUATED' or not publication.get('published') else ''}><summary id='administration-title'>Administration · authorization and publication</summary><div class='administration-grid'>
@@ -4595,14 +4705,14 @@ def diagnostics_page(
         dialog_id = "diagnostic-detail-" + hashlib.sha256(operation_key.encode("utf-8")).hexdigest()[:16]
         rows_markup.append(
             f"<tr data-diagnostic-state='{state}' data-review-open='{'true' if state in {'open', 'in-progress', 'under-review', 'identity-pending'} else 'false'}' data-review-resolved='{'true' if resolved else 'false'}' data-identity-pending='{'true' if identity_pending else 'false'}' data-diagnostic-result='{html.escape(result.lower(), quote=True)}' data-has-issue='{'true' if issue else 'false'}'>"
-            f"<td>{_timestamp_markup(first.get('occurred_at'))}</td>"
+            f"<td class='column-date'>{_timestamp_markup(first.get('occurred_at'))}</td>"
             f"<td>{html.escape(_operation_text(results, 'region'))}</td>"
-            f"<td>{_diagnostic_result(result)}</td>"
+            f"<td class='column-status'>{_diagnostic_result(result)}</td>"
             f"<td>{html.escape(_operation_text(results, 'failure_stage'))}</td>"
             f"<td>{html.escape(_operation_text(results, 'failure_code'))}</td>"
             f"<td>{_github_issue_link(issue)}</td>"
-            f"<td>{review_badge}</td>"
-            f"<td><button type='button' class='secondary-button diagnostic-review' data-dialog-id='{dialog_id}' aria-label='View installation details {index + 1}'>Details</button></td>"
+            f"<td class='column-status'>{review_badge}</td>"
+            f"<td class='column-status'><button type='button' class='secondary-button diagnostic-review' data-dialog-id='{dialog_id}' aria-label='View installation details {index + 1}'>Details</button></td>"
             "</tr>"
         )
         dialogs.append(_diagnostic_detail_dialog(
@@ -4616,12 +4726,12 @@ def diagnostics_page(
       <main class='dashboard diagnostics-page' id='main-content'>
         <p class='back-link'><a href='/admin/installations'>{_admin_icon('arrow-left')} Installations</a></p>
         <div class='heading-row'><div><p class='eyebrow'>Diagnostics</p><h1>{html.escape(model)}{f' · {html.escape(variant)}' if variant != '—' else ''}</h1><p class='lede'>Exact model and variant diagnostic history.</p></div></div>
-        <section class='diagnostic-model-metrics' aria-label='Model diagnostic summary'><article><span>Attempts</span><strong>{attempts}</strong></article><article><span>Successful</span><strong>{successes}</strong></article><article><span>Errors</span><strong>{errors}</strong></article><article><span>Compatibility status</span><strong>{_status_badge(status.value if status else '')}</strong></article></section>
+        <section class='diagnostic-model-metrics' aria-label='Model diagnostic summary'><article><span>Attempts</span><strong>{attempts}</strong></article><article><span>Successful</span><strong>{successes}</strong></article><article><span>Errors</span>{_admin_error_counter(errors)}</article><article><span>Compatibility status</span><strong>{_status_badge(status.value if status else '')}</strong></article></section>
         <section class='diagnostics-detail-section' aria-labelledby='diagnostic-list-title'>
           <div class='section-heading'><div><p class='section-kicker'>Evidence history</p><h2 id='diagnostic-list-title'>Installations</h2></div><p class='table-help'>Successful normal evidence remains historical evidence, not an open problem.</p></div>
           <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'>{filters}</form>
           <p class='results-count' id='diagnostic-results-count' aria-live='polite'>{len(diagnostic_groups)} records</p>
-          <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table'><caption class='sr-only'>Installation and diagnostic records for exact model and variant</caption><thead><tr><th scope='col'>Date</th><th scope='col'>Region</th><th scope='col'>Result</th><th scope='col'>Stage</th><th scope='col'>Code</th><th scope='col'>Issue</th><th scope='col'>Review</th><th scope='col'>Action</th></tr></thead><tbody id='diagnostic-rows'>{rows_body}</tbody></table></div>
+          <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table'><caption class='sr-only'>Installation and diagnostic records for exact model and variant</caption><thead><tr><th scope='col' class='column-date'>Date</th><th scope='col'>Region</th><th scope='col' class='column-status'>Result</th><th scope='col'>Stage</th><th scope='col'>Code</th><th scope='col'>Issue</th><th scope='col' class='column-status'>Review</th><th scope='col' class='column-status'>Action</th></tr></thead><tbody id='diagnostic-rows'>{rows_body}</tbody></table></div>
         </section>
         {''.join(dialogs)}
       </main>
@@ -4666,10 +4776,10 @@ def github_issue_queue_page(
             f"<tr><td>{_github_issue_link(issue)}</td>"
             f"<td><strong>{html.escape(model)}</strong><small class='table-secondary'>{html.escape(variant) if variant != '—' else ''}</small></td>"
             f"<td>{html.escape(_operation_text(results, 'region'))}</td>"
-            f"<td>{_diagnostic_result(result)}</td>"
-            f"<td>{_diagnostic_state_badge(state)}</td>"
-            f"<td>{_timestamp_markup(max((result.get('occurred_at') for result in results), key=_timestamp_iso))}</td>"
-            f"<td><button type='button' class='secondary-button diagnostic-review' data-dialog-id='{dialog_id}' aria-label='View GitHub issue details {index + 1}'>Details</button></td></tr>"
+            f"<td class='column-status'>{_diagnostic_result(result)}</td>"
+            f"<td class='column-status'>{_diagnostic_state_badge(state)}</td>"
+            f"<td class='column-date'>{_timestamp_markup(max((result.get('occurred_at') for result in results), key=_timestamp_iso))}</td>"
+            f"<td class='column-status'><button type='button' class='secondary-button diagnostic-review' data-dialog-id='{dialog_id}' aria-label='View GitHub issue details {index + 1}'>Details</button></td></tr>"
         )
         dialogs.append(_diagnostic_detail_dialog(
             identity,
@@ -4691,7 +4801,7 @@ def github_issue_queue_page(
         <div class='heading-row'><div><p class='eyebrow'>Review queue</p><h1>GitHub review tasks</h1><p class='lede'>Each active operation is one review task. A linked GitHub issue is shown as work on that diagnostic operation; closure synchronization moves it to resolved history.</p></div></div>
         <section class='diagnostics-detail-section' aria-labelledby='github-issue-queue-title'>
           <div class='section-heading'><div><p class='section-kicker'>Active work</p><h2 id='github-issue-queue-title'>{len(queue)} linked diagnostic task{'s' if len(queue) != 1 else ''}</h2></div></div>
-          <div class='table-wrap diagnostic-list-wrap'><table class='admin-table diagnostic-list-table'><caption class='sr-only'>GitHub issues linked to active diagnostics</caption><thead><tr><th scope='col'>Issue</th><th scope='col'>Device</th><th scope='col'>Map / region</th><th scope='col'>Result</th><th scope='col'>Workflow</th><th scope='col'>Last activity</th><th scope='col'>Action</th></tr></thead><tbody>{rows}</tbody></table></div>
+          <div class='table-wrap diagnostic-list-wrap'><table class='admin-table diagnostic-list-table'><caption class='sr-only'>GitHub issues linked to active diagnostics</caption><thead><tr><th scope='col'>Issue</th><th scope='col'>Device</th><th scope='col'>Map / region</th><th scope='col' class='column-status'>Result</th><th scope='col' class='column-status'>Workflow</th><th scope='col' class='column-date'>Last activity</th><th scope='col' class='column-status'>Action</th></tr></thead><tbody>{rows}</tbody></table></div>
         </section>
         {''.join(dialogs)}
       </main>
@@ -4893,12 +5003,12 @@ def _admin_device_row(device: dict[str, Any], index: int) -> str:
     return f"""<tr data-device-index='{index}' data-device-url='{html.escape(detail_url, quote=True)}' data-search='{html.escape(search, quote=True)}' data-model='{html.escape(model.lower(), quote=True)}' data-updated='{html.escape(str(catalog.get('updatedAt') or ''), quote=True)}' data-installs='{stats['attempts']}' data-evidence='{html.escape(str(stats.get('lastSuccessfulAt') or ''), quote=True)}' data-status='{html.escape(evidence_status.lower())}'>
       <td><a class='device-model-button' href='{html.escape(detail_url, quote=True)}'>{image}<span class='device-model-copy'><strong>{html.escape(model)}</strong>{provenance}{new_badge}</span></a></td>
       <td>{html.escape(variant)}</td>
-      <td>{_admin_status_badge(map_label, f'map-{map_kind}')}</td>
-      <td>{_admin_status_badge(authorization_label, f'authorization-{authorization_kind}')}</td>
-      <td>{_status_badge(evidence_status)}</td>
-      <td class='numeric'>{stats['attempts']}</td>
-      <td class='numeric'>{stats['successful']}</td>
-      <td>{last_success}</td>
+      <td class='column-status'>{_admin_status_badge(map_label, f'map-{map_kind}')}</td>
+      <td class='column-status'>{_admin_status_badge(authorization_label, f'authorization-{authorization_kind}')}</td>
+      <td class='column-status'>{_status_badge(evidence_status)}</td>
+      <td class='column-number numeric'>{stats['attempts']}</td>
+      <td class='column-number numeric'>{stats['successful']}</td>
+      <td class='column-date'>{last_success}</td>
     </tr>"""
 
 
@@ -4972,7 +5082,7 @@ def devices_page(
 
 
 def _device_table_header() -> str:
-    return """<thead><tr><th scope="col" aria-sort="ascending"><button type="button" class="device-sort-button" data-device-sort="model" aria-label="Model">Model <span aria-hidden="true">↑</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="variant" aria-label="Variant">Variant <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="maps" aria-label="Map capability" title="Map capability">Maps <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="authorization" aria-label="Installation authorization" title="Installation authorization">Authorization <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="status" aria-label="Compatibility status" title="Compatibility status">Status <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="attempts" aria-label="Install attempts" title="Install attempts">Attempts <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="success" aria-label="Successful installations" title="Successful installations">Successful <span aria-hidden="true">↕</span></button></th><th scope="col" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="evidence" aria-label="Last successful installation" title="Last successful installation">Last success <span aria-hidden="true">↕</span></button></th></tr></thead>"""
+    return """<thead><tr><th scope="col" class="column-text" aria-sort="ascending"><button type="button" class="device-sort-button" data-device-sort="model" aria-label="Model">Model <span aria-hidden="true">↑</span></button></th><th scope="col" class="column-text" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="variant" aria-label="Variant">Variant <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="maps" aria-label="Map capability" title="Map capability">Maps <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="authorization" aria-label="Installation authorization" title="Installation authorization">Authorization <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-status" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="status" aria-label="Compatibility status" title="Compatibility status">Status <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="attempts" aria-label="Install attempts" title="Install attempts">Attempts <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-number" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="success" aria-label="Successful installations" title="Successful installations">Successful <span aria-hidden="true">↕</span></button></th><th scope="col" class="column-date" aria-sort="none"><button type="button" class="device-sort-button" data-device-sort="evidence" aria-label="Last successful installation" title="Last successful installation">Last success <span aria-hidden="true">↕</span></button></th></tr></thead>"""
 
 
 def _device_table_columns() -> str:
@@ -5112,19 +5222,20 @@ def _statistics_row(
         f"<a class='device-model-button' href='{html.escape(diagnostics_url, quote=True)}'>"
         f"{model_cell}</a>"
     )
-    open_errors_markup = (
-        f"<a class='error-count' href='{html.escape(_model_detail_url(row, state='open'), quote=True)}' aria-label='View {open_errors} open {'error' if open_errors == 1 else 'errors'}'>{open_errors}</a>"
-        if open_errors else "0"
+    open_errors_markup = _admin_error_counter(
+        open_errors,
+        href=_model_detail_url(row, state="open") if open_errors else None,
+        aria_label=f"View {open_errors} open {'error' if open_errors == 1 else 'errors'}",
     )
     cells = (
         ("", model_cell),
         ("", html.escape(variant)),
-        ("", _status_badge(status)),
-        ("numeric", html.escape(str(attempted))),
-        ("numeric", html.escape(str(successful))),
-        ("numeric historical-number", html.escape(str(failed))),
-        ("numeric", open_errors_markup),
-        ("numeric", _timestamp_markup(row.get("last_success"))),
+        ("column-status", _status_badge(status)),
+        ("column-number numeric", html.escape(str(attempted))),
+        ("column-number numeric", html.escape(str(successful))),
+        ("column-number numeric historical-number", _admin_error_counter(failed)),
+        ("column-number numeric", open_errors_markup),
+        ("column-date", _timestamp_markup(row.get("last_success"))),
     )
     return (
         f"<tr class='evidence-model-row' data-search='{html.escape(search_text, quote=True)}' data-status='{html.escape(status.lower(), quote=True)}' data-activity='{html.escape(activity, quote=True)}' data-attempts='{attempted}' data-errors='{open_errors}' data-identity-pending='{int(summary.get('identity_pending') or 0)}' data-failed='{str(failed > 0).lower()}' data-successful='{str(successful > 0).lower()}' data-diagnostics-url='{html.escape(diagnostics_url, quote=True)}'>"
@@ -5749,6 +5860,9 @@ def _diagnostics_script() -> str:
         event.preventDefault();
         if (form.dataset.submitting === 'true') return;
         const formData = new FormData(form);
+        // FormData(form) omits the clicked submit button. Identity Review
+        // uses named Confirm buttons for the normal and manual paths.
+        if (event.submitter?.name) formData.append(event.submitter.name, event.submitter.value);
         const payload = new URLSearchParams();
         formData.forEach((value, key) => payload.append(key, String(value)));
         const controls = [...form.querySelectorAll('button,input,select,textarea')];
@@ -5777,19 +5891,39 @@ def _diagnostics_script() -> str:
             headers: {'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'},
             redirect: 'follow',
           });
-          if (!response.ok) throw new Error(`Save failed (${response.status})`);
+          if (!response.ok) {
+            let payload = {};
+            try { payload = await response.json(); } catch (_) {}
+            const messages = {
+              missing_model_selection: 'Choose a specific catalog model before confirming.',
+              canonical_device_not_found: 'That catalog model is no longer available. Choose another model.',
+              diagnostic_not_found: 'This diagnostic result is no longer available. Reload the review queue.',
+              identity_conflict_manual_required: 'The selected model conflicts with reported information. Confirm manual assignment if this is the intended correction.',
+              invalid_diagnostic_record: 'This diagnostic result identifier is invalid. Reload the review queue.',
+            };
+            const message = messages[payload.error] || (form.matches('[data-identity-form]')
+              ? 'The identity review could not be saved. Your selection is kept; check the current record and retry.'
+              : `Save failed (${response.status})`);
+            const error = new Error(message);
+            error.identityCode = payload.error;
+            throw error;
+          }
           if (response.redirected) {
             window.location.assign(response.url);
           } else {
             window.location.reload();
           }
-        } catch (_) {
+        } catch (error) {
           controls.forEach((control) => {
             control.disabled = control.dataset.preSubmitDisabled === 'true';
             delete control.dataset.preSubmitDisabled;
           });
           if (submit) submit.textContent = originalLabel;
-          status.textContent = 'Could not save. Check the values and try again.';
+          status.textContent = error?.message || 'Could not save. Check the values and try again.';
+          if (form.matches('[data-identity-form]') && error?.identityCode === 'identity_conflict_manual_required') {
+            const manual = form.querySelector('[data-manual-confirm]');
+            if (manual) manual.hidden = false;
+          }
           delete form.dataset.submitting;
           submit?.focus();
         }
@@ -5864,59 +5998,80 @@ def _diagnostics_script() -> str:
           if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
           else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
         });
-        dialog.querySelectorAll('[data-identity-action]').forEach((action) => {
-          const form = action.closest('form');
-          const wrap = form?.querySelector('[data-canonical-device-wrap]');
-          const search = form?.querySelector('[data-identity-search]');
-          const canonical = form?.querySelector('select[name="canonical_device_model_id"]');
-          const selection = form?.querySelector('[data-identity-selection]');
-          const suggestions = form?.querySelector('[data-identity-results]');
-          const choices = canonical ? [...canonical.options].filter(option => option.value).map(option => option.cloneNode(true)) : [];
+        dialog.querySelectorAll('[data-identity-form]').forEach((form) => {
+          const wrap = form.querySelector('[data-canonical-device-wrap]');
+          const search = form.querySelector('[data-identity-search]');
+          const canonical = form.querySelector('input[name="canonical_device_model_id"]');
+          const selection = form.querySelector('[data-identity-selection]');
+          const results = form.querySelector('[data-identity-results]');
+          const edit = form.querySelector('[data-identity-edit]');
+          const confirm = form.querySelector('[data-identity-confirm]');
+          const choices = results ? [...results.querySelectorAll('[data-identity-device-id]')].map((option) => ({
+            id: option.dataset.identityDeviceId,
+            label: option.dataset.identityDeviceLabel || option.textContent.trim(),
+          })) : [];
+          const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
           const sync = () => {
-            const assign = action.value === 'ASSIGN';
-            if (wrap) wrap.hidden = !assign;
-            if (canonical) { canonical.required = assign; canonical.disabled = !assign; }
-            if (search) search.disabled = !assign;
-            if (search && canonical && selection) {
-              selection.textContent = assign ? `Selected model: ${canonical.value ? canonical.selectedOptions[0].textContent : 'No model selected'}` : 'No model will be assigned.';
-            }
+            const hasSelection = Boolean(canonical?.value);
+            if (confirm) confirm.disabled = !hasSelection;
+            if (selection) selection.textContent = hasSelection
+              ? `Selected model: ${search?.value || canonical.value}`
+              : 'Select a specific catalog model.';
+            if (search) search.setAttribute('aria-expanded', wrap?.hidden ? 'false' : 'true');
           };
-          action.addEventListener('change', sync);
-          canonical?.addEventListener('change', sync);
-          search?.addEventListener('input', () => {
-            const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-            const query = normalize(search.value.trim());
-            const matches = choices.filter(option => normalize(option.textContent).includes(query));
-            const placeholder = document.createElement('option');
-            placeholder.value = '';
-            placeholder.textContent = matches.length ? 'Choose a Garmin model' : 'No models match your search';
-            canonical.replaceChildren(placeholder, ...matches.map(option => option.cloneNode(true)));
-            canonical.value = '';
-            if (suggestions) {
-              suggestions.replaceChildren();
-              suggestions.hidden = !query;
-              if (query && !matches.length) {
-                const empty = document.createElement('p');
-                empty.setAttribute('role', 'status');
-                empty.textContent = 'No models match your search';
-                suggestions.append(empty);
-              }
-              if (query) matches.forEach(option => {
-                const button = document.createElement('button');
-                button.type = 'button';
-                button.className = 'secondary-button';
-                button.textContent = option.textContent;
-                button.addEventListener('click', () => {
-                  canonical.value = option.value;
-                  search.value = option.textContent;
-                  suggestions.hidden = true;
-                  sync();
-                  search.focus();
-                });
-                suggestions.append(button);
+          const render = (query = '') => {
+            if (!results) return [];
+            const matches = choices.filter(choice => normalize(choice.label).includes(normalize(query.trim())));
+            results.replaceChildren(...matches.map(choice => {
+              const button = document.createElement('button');
+              button.type = 'button';
+              button.className = 'identity-picker-option';
+              button.setAttribute('role', 'option');
+              button.dataset.identityDeviceId = choice.id;
+              button.dataset.identityDeviceLabel = choice.label;
+              button.textContent = choice.label;
+              button.addEventListener('click', () => {
+                if (canonical) canonical.value = choice.id;
+                if (search) search.value = choice.label;
+                if (results) results.hidden = true;
+                if (edit) edit.hidden = false;
+                sync();
+                search?.focus();
               });
+              return button;
+            }));
+            results.hidden = false;
+            if (!matches.length) {
+              const empty = document.createElement('p');
+              empty.className = 'identity-picker-empty';
+              empty.setAttribute('role', 'status');
+              empty.textContent = 'No catalog models match this search.';
+              results.append(empty);
             }
+            return matches;
+          };
+          edit?.addEventListener('click', () => {
+            if (wrap) wrap.hidden = false;
+            if (results) results.hidden = false;
+            render('');
+            search?.focus();
             sync();
+          });
+          search?.addEventListener('input', () => {
+            const selected = choices.find(choice => choice.id === canonical?.value);
+            if (!selected || normalize(search.value) !== normalize(selected.label)) {
+              if (canonical) canonical.value = '';
+              form.querySelector('[data-manual-confirm]')?.setAttribute('hidden', '');
+            }
+            if (wrap) wrap.hidden = false;
+            render(search.value);
+            sync();
+          });
+          search?.addEventListener('keydown', (event) => {
+            const visible = results ? [...results.querySelectorAll('[data-identity-device-id]')] : [];
+            if (event.key === 'ArrowDown' && visible.length) { event.preventDefault(); visible[0].focus(); }
+            if (event.key === 'ArrowUp' && visible.length) { event.preventDefault(); visible[visible.length - 1].focus(); }
+            if (event.key === 'Escape' && wrap) { wrap.hidden = Boolean(canonical?.value); if (results) results.hidden = true; sync(); }
           });
           sync();
         });
@@ -6096,11 +6251,11 @@ th,td{padding:10px 14px;border-bottom:1px solid color-mix(in srgb,var(--border) 
 thead th{background:var(--surface);box-shadow:0 1px 0 var(--border);color:var(--secondary);font-size:11px;font-weight:750;letter-spacing:.07em;text-transform:uppercase}
 tbody tr:last-child td{border-bottom:0}
 tbody tr[hidden]{display:none}
-td:nth-child(1){font-weight:650}
-td:nth-child(4),td:nth-child(5),td:nth-child(6),td:nth-child(7){font-variant-numeric:tabular-nums}.numeric{font-variant-numeric:tabular-nums}
+td:first-child{font-weight:650}
+td.column-number,td.column-date,.numeric{font-variant-numeric:tabular-nums}
 .muted-value{color:var(--secondary)}
 .error-count{display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px;padding:2px 7px;border:1px solid color-mix(in srgb,var(--danger) 35%,var(--border));border-radius:999px;color:var(--danger);font-weight:700}
-.evidence-table-wrap table{min-width:760px}.evidence-model-row{cursor:pointer}.evidence-model-row:hover{background:color-mix(in srgb,var(--surface-muted) 52%,white)}.evidence-model-row:focus-visible{outline:3px solid color-mix(in srgb,var(--sky) 58%,white);outline-offset:-3px}.evidence-model-row td:nth-child(3),.evidence-model-row td:nth-child(4){font-variant-numeric:tabular-nums}.error-count{text-decoration:none}.identity-pending-indicator{display:inline-flex;align-items:center;margin-left:6px;padding:3px 6px;border:1px solid var(--border);border-radius:999px;color:var(--secondary);font-size:10px;font-weight:700;white-space:nowrap}.evidence-table-note{margin:10px 3px 0}.back-link{margin:0 0 20px;color:var(--interactive);font-size:13px;font-weight:700}.back-link a{text-underline-offset:3px}.diagnostic-model-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 30px}.diagnostic-model-metrics article{min-height:82px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px}.diagnostic-model-metrics span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.diagnostic-model-metrics strong{display:block;margin-top:4px;font-family:var(--font-brand);font-size:25px;line-height:1.15}.diagnostic-model-metrics .status-badge{margin-top:5px}.diagnostic-filter-bar{justify-content:flex-start}.diagnostic-list-wrap{max-height:min(70vh,720px)}.diagnostic-list-table{min-width:920px}.diagnostic-list-table th,.diagnostic-list-table td{white-space:normal;overflow-wrap:anywhere}.diagnostic-list-table td:first-child{white-space:nowrap}.diagnostic-list-table th:last-child,.diagnostic-list-table td:last-child{text-align:right}.diagnostic-list-table tbody tr:hover{background:color-mix(in srgb,var(--surface-muted) 52%,white)}.diagnostic-state{display:inline-flex;align-items:center;min-height:24px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;font-size:10px;font-weight:750;line-height:1;white-space:nowrap}.diagnostic-state-open{background:var(--status-error-surface);border-color:var(--status-error-border);color:var(--status-error-text)}.diagnostic-state-resolved{background:var(--status-success-surface);border-color:var(--status-success-border);color:var(--status-success-text)}.diagnostic-state-identity_pending{background:var(--surface-muted);color:var(--secondary)}.diagnostic-list-table .github-issue,.github-current .github-issue{color:var(--interactive);font-weight:700;white-space:nowrap}.diagnostic-detail-dialog{width:min(860px,calc(100% - 32px));max-height:min(900px,calc(100% - 32px));padding:0;border:0;border-radius:16px;background:var(--surface);color:var(--graphite);box-shadow:0 24px 80px rgba(34,42,43,.24)}.diagnostic-detail-dialog::backdrop{background:rgba(34,42,43,.34)}.diagnostic-detail-inner{max-height:min(900px,calc(100vh - 32px));padding:24px;overflow:auto}.diagnostic-detail-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;margin:0;border-top:1px solid var(--border)}.diagnostic-detail-summary div{display:grid;grid-template-columns:minmax(95px,.8fr) minmax(0,1.2fr);gap:12px;padding:9px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 72%,transparent)}.diagnostic-detail-summary dt{color:var(--secondary);font-size:12px}.diagnostic-detail-summary dd{margin:0;overflow-wrap:anywhere;font-size:13px;font-weight:650;text-align:right}.diagnostic-actions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:22px}.diagnostic-action-form{min-width:0;padding:14px;background:var(--surface-muted);border-radius:10px}.diagnostic-action-form h4{margin:0 0 10px;font-size:13px}.diagnostic-action-form label{display:block;margin:10px 0;color:var(--graphite);font-size:12px;font-weight:650}.diagnostic-action-form input,.diagnostic-action-form select,.diagnostic-action-form textarea{display:block;width:100%;margin-top:5px;min-height:36px;padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--graphite);font-size:12px}.diagnostic-action-form textarea{resize:vertical}.diagnostic-action-form button{margin-top:6px}.identity-summary{font-size:14px;line-height:1.5}.identity-summary h4{font:600 22px/1.3 var(--font-ui);margin:8px 0;text-wrap:balance}.identity-match-list{list-style:none;padding:0;display:grid;gap:6px}.identity-technical-evidence>summary{min-height:40px}.identity-review-form input,.identity-review-form select,.identity-review-form button{min-height:40px}.identity-selection{margin:8px 0;color:var(--secondary);font-size:11px}.identity-selection code{color:var(--graphite);font-family:var(--font-mono);overflow-wrap:anywhere}.github-review{grid-column:1/-1}.github-current{margin:0 0 8px;font-size:13px}.github-actions{margin:0 0 4px}.github-link-form{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:10px}.github-link-form label{margin:0}.github-link-form button{white-space:nowrap}.github-remove-form{display:inline-block;margin:8px 0 0}.diagnostic-technical-all{margin-top:16px}.diagnostic-technical-all>summary{font-size:13px}
+.evidence-table-wrap table{min-width:760px}.evidence-model-row{cursor:pointer}.evidence-model-row:hover{background:color-mix(in srgb,var(--surface-muted) 52%,white)}.evidence-model-row:focus-visible{outline:3px solid color-mix(in srgb,var(--sky) 58%,white);outline-offset:-3px}.evidence-model-row td.column-number{font-variant-numeric:tabular-nums}.error-count{text-decoration:none}.identity-pending-indicator{display:inline-flex;align-items:center;margin-left:6px;padding:3px 6px;border:1px solid var(--border);border-radius:999px;color:var(--secondary);font-size:10px;font-weight:700;white-space:nowrap}.evidence-table-note{margin:10px 3px 0}.back-link{margin:0 0 20px;color:var(--interactive);font-size:13px;font-weight:700}.back-link a{text-underline-offset:3px}.diagnostic-model-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 30px}.diagnostic-model-metrics article{min-height:82px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px}.diagnostic-model-metrics span{display:block;color:var(--secondary);font-size:12px;font-weight:650}.diagnostic-model-metrics strong{display:block;margin-top:4px;font-family:var(--font-brand);font-size:25px;line-height:1.15}.diagnostic-model-metrics .status-badge{margin-top:5px}.diagnostic-filter-bar{justify-content:flex-start}.diagnostic-list-wrap{max-height:min(70vh,720px)}.diagnostic-list-table{min-width:920px}.diagnostic-list-table th,.diagnostic-list-table td{white-space:normal;overflow-wrap:anywhere}.diagnostic-list-table td:first-child{white-space:nowrap}.diagnostic-list-table tbody tr:hover{background:color-mix(in srgb,var(--surface-muted) 52%,white)}.diagnostic-state{display:inline-flex;align-items:center;min-height:24px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;font-size:10px;font-weight:750;line-height:1;white-space:nowrap}.diagnostic-state-open{background:var(--status-error-surface);border-color:var(--status-error-border);color:var(--status-error-text)}.diagnostic-state-resolved{background:var(--status-success-surface);border-color:var(--status-success-border);color:var(--status-success-text)}.diagnostic-state-identity_pending{background:var(--surface-muted);color:var(--secondary)}.diagnostic-list-table .github-issue,.github-current .github-issue{color:var(--interactive);font-weight:700;white-space:nowrap}.diagnostic-detail-dialog{width:min(860px,calc(100% - 32px));max-height:min(900px,calc(100% - 32px));padding:0;border:0;border-radius:16px;background:var(--surface);color:var(--graphite);box-shadow:0 24px 80px rgba(34,42,43,.24)}.diagnostic-detail-dialog::backdrop{background:rgba(34,42,43,.34)}.diagnostic-detail-inner{max-height:min(900px,calc(100vh - 32px));padding:24px;overflow:auto}.diagnostic-detail-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;margin:0;border-top:1px solid var(--border)}.diagnostic-detail-summary div{display:grid;grid-template-columns:minmax(95px,.8fr) minmax(0,1.2fr);gap:12px;padding:9px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 72%,transparent)}.diagnostic-detail-summary dt{color:var(--secondary);font-size:12px}.diagnostic-detail-summary dd{margin:0;overflow-wrap:anywhere;font-size:13px;font-weight:650;text-align:right}.diagnostic-actions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:22px}.diagnostic-action-form{min-width:0;padding:14px;background:var(--surface-muted);border-radius:10px}.diagnostic-action-form h4{margin:0 0 10px;font-size:13px}.diagnostic-action-form label{display:block;margin:10px 0;color:var(--graphite);font-size:12px;font-weight:650}.diagnostic-action-form input,.diagnostic-action-form select,.diagnostic-action-form textarea{display:block;width:100%;margin-top:5px;min-height:36px;padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--graphite);font-size:12px}.diagnostic-action-form textarea{resize:vertical}.diagnostic-action-form button{margin-top:6px}.identity-summary{font-size:14px;line-height:1.5}.identity-summary h4{font:600 22px/1.3 var(--font-ui);margin:8px 0;text-wrap:balance}.identity-match-list{list-style:none;padding:0;display:grid;gap:6px}.identity-technical-evidence>summary{min-height:40px}.identity-review-form input,.identity-review-form select,.identity-review-form button{min-height:40px}.identity-selection{margin:8px 0;color:var(--secondary);font-size:11px}.identity-selection code{color:var(--graphite);font-family:var(--font-mono);overflow-wrap:anywhere}.github-review{grid-column:1/-1}.github-current{margin:0 0 8px;font-size:13px}.github-actions{margin:0 0 4px}.github-link-form{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:10px}.github-link-form label{margin:0}.github-link-form button{white-space:nowrap}.github-remove-form{display:inline-block;margin:8px 0 0}.diagnostic-technical-all{margin-top:16px}.diagnostic-technical-all>summary{font-size:13px}
 .diagnostic-state-in_progress{background:color-mix(in srgb,var(--sky) 12%,var(--surface));border-color:color-mix(in srgb,var(--sky) 42%,var(--border));color:var(--interactive)}.diagnostic-state-under_review{background:color-mix(in srgb,var(--stone) 18%,var(--surface));border-color:color-mix(in srgb,var(--stone) 55%,var(--border));color:var(--graphite)}
 .diagnostic-action-form input,.diagnostic-action-form select,.diagnostic-action-form textarea{min-height:var(--admin-control-height);padding:8px var(--admin-control-padding-x);border-radius:var(--admin-control-radius)}
 .github-issue-disclosure{margin-top:8px}.github-issue-disclosure>summary{width:max-content;cursor:pointer;color:var(--interactive);font-size:12px;font-weight:750;text-underline-offset:3px}.github-issue-disclosure>summary:hover{text-decoration:underline}.github-issue-controls{margin-top:12px}
@@ -6707,20 +6862,21 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .map-statistics-popularity .table-wrap .admin-table tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:8px 0;background:none;border:0;border-bottom:1px solid var(--border);border-radius:0;min-width:0}
 .map-statistics-popularity .table-wrap .admin-table tbody tr:last-child{border-bottom:0}
 .map-statistics-popularity .table-wrap .admin-table td{display:block;width:auto!important;min-width:0;padding:0!important;border:0!important;white-space:normal;overflow-wrap:anywhere;text-align:left!important;font-size:13px}
-.map-statistics-popularity .table-wrap .admin-table td:first-child{grid-column:1;grid-row:1}
-.map-statistics-popularity .table-wrap .admin-table td:nth-child(2){grid-column:2;grid-row:1;align-self:start;text-align:right!important;font-weight:650;white-space:nowrap}
-.map-statistics-popularity .table-wrap .admin-table td:nth-child(3){grid-column:1/-1;color:var(--secondary);font-size:11px;font-weight:400}
+.map-statistics-popularity .table-wrap .admin-table td.popular-map-name{grid-column:1;grid-row:1}
+.map-statistics-popularity .table-wrap .admin-table td.popular-map-count{grid-column:2;grid-row:1;align-self:start;text-align:right!important;white-space:nowrap}
 .map-statistics-popularity .table-wrap .admin-table td[colspan]{grid-column:1/-1}
 .map-statistics-popularity .table-wrap .admin-table td::before{display:none}
-.map-statistics-popularity .table-wrap .admin-table td:nth-child(2)::after{content:none}
+.map-statistics-popularity .table-wrap .admin-table td.popular-map-count::after{content:none}
 .map-statistics-popularity .table-secondary,.map-statistics-popularity code{white-space:normal;overflow-wrap:anywhere;font-size:11px}
-.map-statistics-popularity .table-wrap .region-map-link{width:auto;min-height:40px;font-weight:650;text-decoration:none}
+.map-statistics-popularity .table-wrap .popular-map-name-content{display:grid;min-width:0;gap:2px}
+.map-statistics-popularity .table-wrap .popular-map-name-content>strong{min-width:0;font-weight:650}
+.map-statistics-popularity .table-wrap .popular-map-detail{display:block;color:var(--secondary);font-size:11px;font-weight:400;line-height:1.35}
+.map-statistics-popularity .table-wrap .popular-map-count-label{display:inline-flex;align-items:baseline;gap:3px;white-space:nowrap;font-weight:400}
+.map-statistics-popularity .table-wrap .popular-map-count-label>strong{font-weight:750}
+.map-statistics-popularity .table-wrap .region-map-link{position:relative;display:inline-flex;width:auto;min-height:40px;align-items:flex-start;font-weight:650;text-decoration:none}
+.map-statistics-popularity .table-wrap .region-map-link::after{content:'';position:absolute;inset:0;min-width:44px;min-height:44px}
 .map-statistics-popularity .region-map-link:hover,.map-statistics-popularity .region-map-link:focus-visible{text-decoration:underline}
 @media(max-width:700px){.map-statistics-popularity .table-wrap .region-map-link{min-height:44px}}
-/* Keep the date close to its region while retaining a full click target. */
-.map-statistics-popularity .table-wrap #top-region-rows tr{row-gap:2px;min-height:60px;align-content:start}
-.map-statistics-popularity .table-wrap #top-region-rows .region-map-link{position:relative;display:inline-block;min-height:0;line-height:20px;vertical-align:top}
-.map-statistics-popularity #top-region-rows .region-map-link::after{content:'';position:absolute;inset:0 0 auto;min-height:44px;min-width:44px}
 .map-statistics-world-map-card .section-heading{flex-wrap:wrap}
 .map-statistics-world-map-card .map-statistics-world-map{padding:0;min-height:0}
 .map-statistics-world-map-card .world-map-svg{height:auto;min-height:0;aspect-ratio:900 / 365}
@@ -6821,7 +6977,6 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .map-statistics-kpi-value span,.map-statistics-diagnostic-coverage-row span{display:block;color:var(--secondary);font-size:12px;font-weight:650}
 .map-statistics-kpi-value>strong{display:block;margin-top:4px;color:var(--graphite);font:700 24px/1.15 var(--font-brand);font-variant-numeric:tabular-nums}
 .map-statistics-kpi-value.failed>strong{font-size:19px}
-.map-statistics-failed-value.is-positive{color:var(--danger)}
 .map-statistics-diagnostic-coverage{margin-top:16px;padding-top:13px;border-top:1px solid var(--border)}
 .map-statistics-diagnostic-coverage h2{margin:0 0 9px;font-size:14px;line-height:1.3}
 .map-statistics-diagnostic-coverage-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
@@ -6843,8 +6998,8 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .popularity-search-label{display:block;margin:0 0 6px;color:var(--secondary);font-size:12px;font-weight:650}
 .popularity-view>input{width:100%;min-width:0;margin:0 0 12px}
 .popularity-view .popular-maps-table{min-width:0}
-.popularity-view .popular-maps-table td:last-child{text-align:right!important}
-.popularity-view .popular-maps-table td:last-child strong{font-weight:750;white-space:nowrap}
+.popularity-view .popular-maps-table td.popular-map-count{text-align:right!important}
+.popularity-view .popular-maps-table td.popular-map-count strong{font-weight:750;white-space:nowrap}
 @media(max-width:900px){.map-statistics-kpi-groups{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.map-statistics-diagnostic-coverage-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.map-statistics-kpi-panel{padding:16px}.map-statistics-kpi-groups{grid-template-columns:1fr;gap:16px}.map-statistics-diagnostic-coverage-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.popular-maps-nav button{min-height:44px}.popularity-view>input{min-height:44px}}
 @media(max-width:420px){.map-statistics-diagnostic-coverage-row{grid-template-columns:1fr}}
@@ -6884,6 +7039,67 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
   .map-statistics-popularity,
   .audit-technical-details code
 )::-webkit-scrollbar{display:none;width:0;height:0}
+
+/* Shared KPI and error-counter presentation across the operational views. */
+.admin-kpi-panel{display:block;margin-top:0;margin-bottom:12px}
+.admin-kpi-panel .map-statistics-kpi-groups{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.admin-kpi-panel .map-statistics-kpi-values{gap:8px 16px}
+.admin-kpi-panel .map-statistics-kpi-value{display:block;min-width:0}
+.admin-kpi-panel .map-statistics-kpi-value>strong{font-size:var(--admin-type-kpi-value-size);line-height:var(--admin-type-kpi-value-line)}
+.admin-kpi-panel .map-statistics-kpi-value.error-counter-kpi{padding-top:0;border-top:0}
+.admin-kpi-panel .map-statistics-kpi-value.error-counter-kpi>strong{font-size:var(--admin-type-kpi-value-size)}
+.map-statistics-kpi-value.failed>.admin-error-counter{font-size:19px}
+.admin-kpi-panel .overview-kpi-link{display:block;color:inherit;text-decoration:none}
+.admin-kpi-panel .overview-kpi-link:hover>span{text-decoration:underline;text-underline-offset:3px}
+.admin-kpi-panel .overview-kpi-link:focus-visible{outline:var(--admin-focus-ring);outline-offset:4px;border-radius:6px}
+.admin-kpi-panel .installation-kpi-values{grid-template-columns:repeat(5,minmax(0,1fr))}
+.admin-kpi-panel.model-statistics .model-kpi-groups{grid-template-columns:minmax(0,2fr) minmax(180px,1fr)}
+.admin-kpi-panel.model-statistics .model-activity-kpi-group{border-left:1px solid var(--border);padding-left:20px}
+.admin-kpi-panel.model-statistics .timestamp-metric>strong{font-size:var(--admin-type-subsection-size);line-height:var(--admin-type-subsection-line)}
+.admin-error-counter{color:var(--graphite)!important;font:700 var(--admin-type-kpi-value-size)/var(--admin-type-kpi-value-line) var(--font-brand);font-variant-numeric:tabular-nums}
+.admin-error-counter.is-positive{color:var(--danger)!important}
+.error-count{display:inline-flex;align-items:center;justify-content:center;min-width:0;min-height:0;padding:0;border:0;border-radius:0;color:inherit;font-weight:inherit;text-decoration:none}
+.error-count:hover .admin-error-counter,.error-count:focus-visible .admin-error-counter{text-decoration:underline;text-underline-offset:3px}
+.admin-table th.column-number>button,.admin-table th.column-number>.device-sort-button{justify-content:center;text-align:center}
+.admin-table th.column-status>button,.admin-table th.column-status>.device-sort-button{justify-content:center;text-align:center}
+.admin-table th.column-date>button,.admin-table th.column-date>.device-sort-button{justify-content:flex-start;text-align:left}
+.admin-table td.column-number,.admin-table th.column-number{font-variant-numeric:tabular-nums}
+.device-table-wrap th.column-number>.device-sort-button,.device-sticky-header th.column-number>.device-sort-button{width:100%}
+.device-table-wrap th.column-status>.device-sort-button,.device-sticky-header th.column-status>.device-sort-button{width:100%}
+.device-table-wrap th.column-date>.device-sort-button,.device-sticky-header th.column-date>.device-sort-button{width:100%}
+@media(max-width:900px){.admin-kpi-panel .installation-kpi-values{grid-template-columns:repeat(3,minmax(0,1fr))}.admin-kpi-panel.model-statistics .model-kpi-groups{grid-template-columns:1fr}.admin-kpi-panel.model-statistics .model-activity-kpi-group{border-top:1px solid var(--border);border-left:0;padding:16px 0 0}}
+@media(max-width:700px){.admin-kpi-panel{padding:16px}.admin-kpi-panel .map-statistics-kpi-groups{grid-template-columns:1fr;gap:16px}.admin-kpi-panel .installation-kpi-values{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-kpi-panel.model-statistics .model-activity-kpi-group{padding-top:12px}.admin-kpi-panel .map-statistics-kpi-value>strong{font-size:22px}}
+@media(max-width:420px){.admin-kpi-panel .installation-kpi-values{grid-template-columns:1fr}}
+
+/* Identity Review is a compact fact summary, not a repeated evidence form. */
+.identity-review-form{grid-column:auto}
+.identity-picker-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.identity-picker-heading h4{margin:0}
+.identity-reported-device{margin:0 0 4px;font-size:14px}
+.identity-reported-also{margin:0 0 12px;color:var(--secondary);font-size:12px;overflow-wrap:anywhere}
+.identity-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0}
+.identity-fact{min-width:0;padding:10px 11px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+.identity-fact-heading{display:flex;align-items:center;gap:6px;color:var(--secondary);font-size:11px;font-weight:700}
+.identity-fact-icon{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;font-size:12px;font-weight:800}
+.identity-fact strong{display:block;margin-top:5px;overflow-wrap:anywhere;font-size:13px;line-height:1.35}
+.identity-fact small{display:block;margin-top:5px;color:var(--secondary);font-size:10px}
+.identity-fact-match{border-color:var(--status-success-border);background:var(--status-success-surface)}
+.identity-fact-match .identity-fact-icon{background:var(--status-success-border);color:var(--status-success-text)}
+.identity-fact-conflict{border-color:var(--status-error-border);background:var(--status-error-surface)}
+.identity-fact-conflict .identity-fact-icon{background:var(--status-error-border);color:var(--status-error-text)}
+.identity-fact-missing{border-color:var(--border);background:var(--surface-muted)}
+.identity-fact-missing .identity-fact-icon{background:var(--surface);color:var(--secondary)}
+.identity-selected-model{display:grid;gap:3px;margin-top:12px;padding:12px 14px;border-left:3px solid var(--interactive);background:var(--surface-muted)}
+.identity-selected-model strong{overflow-wrap:anywhere}.identity-selected-model small{color:var(--secondary);font-size:11px}
+.identity-picker{margin-top:10px}.identity-picker[hidden]{display:none}
+.identity-search-results{display:grid;gap:4px;max-height:260px;margin-top:6px;overflow:auto;padding:4px;border:1px solid var(--border);border-radius:9px;background:var(--surface)}
+.identity-picker-option{display:block;width:100%;min-height:38px;margin:0;padding:8px 10px;border:0;border-radius:6px;background:transparent;color:var(--graphite);font:inherit;font-size:12px;text-align:left;white-space:normal;overflow-wrap:anywhere}
+.identity-picker-option:hover,.identity-picker-option:focus-visible{background:var(--surface-muted);outline:2px solid color-mix(in srgb,var(--interactive) 55%,transparent);outline-offset:-2px}
+.identity-picker-empty{margin:8px;color:var(--secondary);font-size:12px}
+.identity-review-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.identity-review-actions button[disabled]{opacity:.55;cursor:not-allowed}
+.identity-conflict-warning{margin:10px 0;padding:9px 11px;border:1px solid var(--status-error-border);border-radius:8px;background:var(--status-error-surface);color:var(--status-error-text);font-size:12px;overflow-wrap:anywhere}
+@media(max-width:700px){.identity-facts{grid-template-columns:repeat(2,minmax(0,1fr))}.identity-review-actions{display:grid;grid-template-columns:1fr}.identity-review-actions button{width:100%;min-height:44px}}
+@media(max-width:430px){.identity-facts{grid-template-columns:1fr}}
 """
 
 

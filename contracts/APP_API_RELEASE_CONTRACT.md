@@ -3,7 +3,9 @@
 This is the shared release contract for the native app, catalog/evidence API and
 admin read models. Read it before changing either diagnostic stream, payload
 schemas, accepted codes, correlation, counting, or release order. The behavioral
-requirements remain in [the admin contract](../backend/catalog-api/docs/admin-behavior-contract.md).
+requirements remain in [the admin contract](../backend/catalog-api/docs/admin-behavior-contract.md);
+statistics populations and formulas are canonical in
+[`STATISTICS_CONTRACT.md`](STATISTICS_CONTRACT.md).
 A build number is not an API schema version.
 
 ## Required compatibility record
@@ -19,10 +21,12 @@ List each stream separately:
 | Map activity | MapEngine and existing acquisition journal; provider/map/component phases | MapStatisticsEventController queue, independent sharing choice | /map-events, Map statistics and Overview reconciliation |
 
 Use the same random operationId for an operation in both streams. Correlate each
-map by provider/region (and validated variant/component identity where applicable),
-not by timestamp or a nearby watch. Neither stream can manufacture missing facts
-from the other. Different sharing preferences can legitimately leave only one
-stream. A missing report must remain visible as missing.
+map result by `operationId + mapResultIndex` when available, together with
+package/map, provider/region and component identity; legacy records retain their
+event identity. Do not use operationId alone, provider/region alone, timestamp,
+or a nearby watch. Neither stream can manufacture missing facts from the other.
+Different sharing preferences can legitimately leave only one stream. A missing
+report must remain visible as missing.
 
 ## Mandatory tests before merging/releasing
 
@@ -35,9 +39,11 @@ stream. A missing report must remain visible as missing.
    intake/storage/identity/admin tests. Committed fixture tests remain available
    on Linux. All InstallationFailure codes plus the diagnostic-only unknown code
    must pass both schema and actual API validation.
-3. Preserve result semantics: write/pre-write/verification failure, partial maps,
-   NOT_STARTED, cancellation, disconnect, screen reset, retry/restart, duplicate
-   event IDs and opt-out. Do not fabricate writeStarted, cause or device identity.
+3. Preserve result semantics: one fresh result per main map, optional components,
+   write/pre-write/verification failure, separate acquisition/update outcomes,
+   partial maps, NOT_STARTED, cancellation, disconnect, screen reset,
+   retry/restart, duplicate event IDs and opt-out. Do not fabricate writeStarted,
+   cause or device identity.
 4. Run backend PostgreSQL migration/read-model integration, full app/native and
    release suites. Retain legacy client contracts and local-test exclusion.
 5. Follow the admin contract through review → diagnostic → correct device/history

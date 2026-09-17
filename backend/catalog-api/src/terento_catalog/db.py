@@ -7,9 +7,15 @@ import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterator
+from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from .identity_assessment import assess_identity, apply_corrections, validate_correction
+from .identity_assessment import (
+    assess_identity,
+    apply_corrections,
+    selected_identity_conflicts,
+    validate_correction,
+)
 from .failure_reasons import normalize_failure_reason
 from .compatibility_status import calculate_compatibility_status
 from .models import CollectedDevice, CollectedMap
@@ -23,6 +29,14 @@ from .telemetry import is_local_release_label
 
 
 OVERVIEW_MODEL_ACTIVITY_LIMIT = 5
+
+
+class IdentityResolutionError(ValueError):
+    """Safe, user-facing validation failure for an identity review action."""
+
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
 
 
 def _overview_time_zone(value: str) -> ZoneInfo:
@@ -727,7 +741,7 @@ class Database:
             SELECT
                 CASE
                     WHEN operation_id IS NOT NULL AND map_result_index IS NOT NULL
-                        THEN operation_id::text || ':' || map_result_index::text
+                        THEN 'result:' || operation_id::text || ':' || map_result_index::text
                     ELSE COALESCE(operation_id::text, 'legacy:' || event_id::text)
                 END AS operation_key,
                 operation_id, event_id, occurred_at, model, compatibility_identity,
@@ -1919,23 +1933,17 @@ class Database:
                 raise ValueError("invalid GitHub issue reference")
             linked_issue = f"#{int(issue_match.group(1))}"
         note = (resolution_note or "").strip() or None
+        scope_sql, scope_parameters = self._diagnostic_scope(operation_key)
         with self.connection() as connection:
             rows = connection.execute(
-                """
+                f"""
                 SELECT event_id, diagnostic_status, diagnostic_workflow_status,
                        linked_github_issue
                 FROM compatibility_evidence_event
-                WHERE (
-                    CASE
-                              WHEN operation_id IS NOT NULL AND map_result_index IS NOT NULL
-                                  THEN operation_id::text || ':' || map_result_index::text
-                              ELSE COALESCE(operation_id::text, 'legacy:' || event_id::text)
-                          END = %s
-                    OR operation_id::text = %s
-                )
+                WHERE {scope_sql}
                 FOR UPDATE
                 """,
-                (operation_key, operation_key),
+                scope_parameters,
             ).fetchall()
             for row in rows:
                 previous = str(row["diagnostic_status"])
@@ -2013,23 +2021,17 @@ class Database:
             linked_github_issue = f"#{int(match.group(1))}"
         else:
             linked_github_issue = None
+        scope_sql, scope_parameters = self._diagnostic_scope(operation_key)
         with self.connection() as connection:
             rows = connection.execute(
-                """
+                f"""
                 SELECT event_id, diagnostic_status, diagnostic_workflow_status,
                        linked_github_issue
                 FROM compatibility_evidence_event
-                WHERE (
-                    CASE
-                              WHEN operation_id IS NOT NULL AND map_result_index IS NOT NULL
-                                  THEN operation_id::text || ':' || map_result_index::text
-                              ELSE COALESCE(operation_id::text, 'legacy:' || event_id::text)
-                          END = %s
-                    OR operation_id::text = %s
-                )
+                WHERE {scope_sql}
                 FOR UPDATE
                 """,
-                (operation_key, operation_key),
+                scope_parameters,
             ).fetchall()
             for row in rows:
                 previous_workflow = str(row.get("diagnostic_workflow_status") or "OPEN")
@@ -2080,23 +2082,17 @@ class Database:
         operation_key = operation_key.strip()
         if not operation_key or len(operation_key) > 160:
             raise ValueError("invalid diagnostic record")
+        scope_sql, scope_parameters = self._diagnostic_scope(operation_key)
         with self.connection() as connection:
             rows = connection.execute(
-                """
+                f"""
                 SELECT event_id, diagnostic_status, diagnostic_workflow_status,
                        linked_github_issue
                 FROM compatibility_evidence_event
-                WHERE (
-                    CASE
-                              WHEN operation_id IS NOT NULL AND map_result_index IS NOT NULL
-                                  THEN operation_id::text || ':' || map_result_index::text
-                              ELSE COALESCE(operation_id::text, 'legacy:' || event_id::text)
-                          END = %s
-                    OR operation_id::text = %s
-                )
+                WHERE {scope_sql}
                 FOR UPDATE
                 """,
-                (operation_key, operation_key),
+                scope_parameters,
             ).fetchall()
             for row in rows:
                 if str(row.get("diagnostic_status") or "ACTIVE") != "ACTIVE":
@@ -2188,8 +2184,45 @@ class Database:
         fields = {"rawMTPModel": "raw_mtp_model", "garminModelDescription": "garmin_model_description",
                   "garminModelPartNumber": "garmin_model_part_number", "caseSizeMm": "case_size_mm",
                   "displayType": "display_type", "usbVendorID": "usb_vendor_id", "usbProductID": "usb_product_id",
-                  "canonicalDeviceId": "canonical_device_model_id", "model": "model", "variant": "variant"}
+                  "model": "model", "variant": "variant"}
         return {key: row.get(column) for key, column in fields.items()}
+
+    @staticmethod
+    def _diagnostic_scope(operation_key: str) -> tuple[str, tuple[Any, ...]]:
+        """Return a strict SQL scope for one result or an explicit batch.
+
+        ``result:<operation UUID>:<index>`` is the canonical per-result key.
+        It may only select that exact result, including index zero.  A raw
+        operation UUID remains an explicit batch scope for the existing
+        operation-level actions.  Legacy ``legacy:<event UUID>`` keys match
+        their exact legacy row and never fall back to a wider operation.
+        """
+        key = operation_key.strip()
+        if not key or len(key) > 160:
+            raise IdentityResolutionError("invalid_diagnostic_record", "The diagnostic result identifier is invalid.")
+        if key.startswith("result:"):
+            match = re.fullmatch(r"result:([0-9a-fA-F-]{36}):(0|[1-9][0-9]*)", key)
+            if not match:
+                raise IdentityResolutionError("invalid_diagnostic_record", "The diagnostic result identifier is invalid.")
+            try:
+                operation_id = str(UUID(match.group(1)))
+            except ValueError as exc:
+                raise IdentityResolutionError("invalid_diagnostic_record", "The diagnostic result identifier is invalid.") from exc
+            return (
+                "operation_id::text = %s AND map_result_index = %s",
+                (operation_id, int(match.group(2))),
+            )
+        return (
+            """(
+                CASE
+                    WHEN operation_id IS NOT NULL AND map_result_index IS NOT NULL
+                        THEN 'result:' || operation_id::text || ':' || map_result_index::text
+                    ELSE COALESCE(operation_id::text, 'legacy:' || event_id::text)
+                END = %s
+                OR (operation_id IS NOT NULL AND operation_id::text = %s)
+            )""",
+            (key, key),
+        )
 
     def resolve_compatibility_identity(
         self,
@@ -2202,79 +2235,149 @@ class Database:
         note: str | None = None,
     ) -> int:
         """Apply an explicit identity review without changing outcomes."""
-        allowed_actions = {"ASSIGN", "LEAVE_UNRESOLVED", "NOT_IDENTIFIABLE"}
+        allowed_actions = {"ASSIGN", "MANUAL_ASSIGN", "LEAVE_UNRESOLVED", "NOT_IDENTIFIABLE"}
         normalized_action = action.strip().upper()
         if normalized_action not in allowed_actions:
-            raise ValueError("unsupported identity action")
-        if normalized_action == "ASSIGN":
+            raise IdentityResolutionError("unsupported_identity_action", "This identity action is not available.")
+        if normalized_action in {"ASSIGN", "MANUAL_ASSIGN"}:
             canonical_device_model_id = (canonical_device_model_id or "").strip()
             if not canonical_device_model_id:
-                raise ValueError("a canonical device is required")
+                raise IdentityResolutionError("missing_model_selection", "Choose a specific catalog model before confirming.")
         else:
             canonical_device_model_id = None
         reason = (reason or "").strip() or None
         note = (note or "").strip() or None
         operation_key = operation_key.strip()
-        if not operation_key or len(operation_key) > 160:
-            raise ValueError("invalid diagnostic record")
+        scope_sql, scope_parameters = self._diagnostic_scope(operation_key)
         with self.connection() as connection:
+            rows = connection.execute(
+                f"""
+                SELECT *
+                FROM compatibility_evidence_event
+                WHERE {scope_sql}
+                FOR UPDATE
+                """,
+                scope_parameters,
+            ).fetchall()
+            if not rows:
+                return 0
             if canonical_device_model_id is not None:
                 device = connection.execute(
                     """
-                    SELECT id, model, variant
+                    SELECT id, model, variant, case_size_mm,
+                           screen_technology, solar, inreach
                     FROM device_model
                     WHERE id = %s AND manufacturer = 'Garmin'
                     """,
                     (canonical_device_model_id,),
                 ).fetchone()
                 if device is None:
-                    raise ValueError("canonical Garmin device not found")
+                    raise IdentityResolutionError("canonical_device_not_found", "That catalog model is no longer available.")
                 new_identity = f"{device['model']} · {device['variant']}" if device["variant"] else str(device["model"])
             else:
                 new_identity = "Identity unresolved" if normalized_action == "LEAVE_UNRESOLVED" else "Identity not identifiable"
-            rows = connection.execute(
-                """
-                SELECT *
-                FROM compatibility_evidence_event
-                WHERE CASE
-                          WHEN operation_id IS NOT NULL AND map_result_index IS NOT NULL
-                              THEN operation_id::text || ':' || map_result_index::text
-                          ELSE COALESCE(operation_id::text, 'legacy:' || event_id::text)
-                      END = %s
-                FOR UPDATE
-                """,
-                (operation_key.strip(),),
-            ).fetchall()
-            if normalized_action == "ASSIGN":
-                if not reason:
-                    raise ValueError("identity assignment requires an evidence reason")
+            reviewed_assessments: dict[Any, tuple[str, dict[str, Any], str | None]] = {}
+            if normalized_action in {"ASSIGN", "MANUAL_ASSIGN"}:
                 devices = list(connection.execute("SELECT * FROM device_model").fetchall())
                 mappings = list(connection.execute("SELECT * FROM device_identity_mapping").fetchall())
                 for row in rows:
                     corrections = list(connection.execute("SELECT * FROM device_identity_source_correction WHERE event_id=%s ORDER BY id", (row["event_id"],)).fetchall())
                     event = apply_corrections(self._identity_event(row), corrections)
-                    event["canonicalDeviceId"] = canonical_device_model_id
                     assessment = assess_identity(event, devices, mappings)
-                    candidate = next((c for c in assessment["candidates"] if c["deviceId"] == canonical_device_model_id), None)
-                    if candidate is None or candidate["conflict"]:
-                        raise ValueError("identity evidence conflicts with selected model; correct the source mapping first")
-                    assessment["decision"] = {"method": "ADMIN", "deviceId": canonical_device_model_id,
-                                              "reason": reason, "adminId": admin_user_id}
-                    row["reviewed_assessment"] = json.dumps(assessment)
+                    conflicts = selected_identity_conflicts(event, device, mappings)
+                    if conflicts and normalized_action == "ASSIGN":
+                        comparison = conflicts[0]
+                        reported = comparison.get("reported")
+                        selected = comparison.get("selected")
+                        raise IdentityResolutionError(
+                            "identity_conflict_manual_required",
+                            f"The selected model conflicts with reported {comparison.get('field')}: {reported} vs {selected}. Use manual assignment to confirm it.",
+                        )
+                    previous_id = str(row.get("canonical_device_model_id") or "").strip() or None
+                    if normalized_action == "MANUAL_ASSIGN":
+                        decision_type = "MANUAL_ASSIGNMENT"
+                    prior_assessment = row.get("identity_assessment")
+                    if isinstance(prior_assessment, str):
+                        try:
+                            prior_assessment = json.loads(prior_assessment)
+                        except json.JSONDecodeError:
+                            prior_assessment = None
+                    elif not isinstance(prior_assessment, dict):
+                        prior_assessment = None
+                    if normalized_action != "MANUAL_ASSIGN":
+                        if previous_id and previous_id != canonical_device_model_id:
+                            decision_type = "ASSIGNMENT_CORRECTION"
+                        elif isinstance(prior_assessment, dict) and prior_assessment.get("canonicalDeviceId") == canonical_device_model_id:
+                            decision_type = "SUGGESTION_CONFIRMATION"
+                        else:
+                            decision_type = "CATALOG_SELECTION"
+                    generated_reason = {
+                        "SUGGESTION_CONFIRMATION": "Administrator confirmed the suggested catalog model.",
+                        "CATALOG_SELECTION": "Administrator selected a catalog model for this diagnostic result.",
+                        "ASSIGNMENT_CORRECTION": "Administrator corrected the catalog model assignment.",
+                        "MANUAL_ASSIGNMENT": "Administrator manually confirmed a catalog model despite a reported conflict.",
+                    }[decision_type]
+                    missing = sorted({
+                        str(check.get("name"))
+                        for candidate in assessment.get("candidates", [])
+                        if candidate.get("deviceId") == canonical_device_model_id
+                        for check in candidate.get("checks", [])
+                        if check.get("state") == "MISSING"
+                    })
+                    assessment["decision"] = {
+                        "method": "ADMIN",
+                        "deviceId": canonical_device_model_id,
+                        "decisionType": decision_type,
+                        "reason": reason or generated_reason,
+                        "adminId": admin_user_id,
+                        "scope": operation_key,
+                        "missing": missing,
+                        "conflicts": conflicts,
+                    }
+                    reviewed_assessments[row["event_id"]] = (
+                        json.dumps(assessment), assessment, reason or generated_reason,
+                    )
             for row in rows:
+                reviewed = reviewed_assessments.get(row["event_id"])
+                previous_id = str(row.get("canonical_device_model_id") or "").strip() or None
+                if reviewed:
+                    audit_reason = reviewed[2]
+                elif reason:
+                    audit_reason = reason
+                elif normalized_action == "LEAVE_UNRESOLVED":
+                    audit_reason = "Administrator left the identity unresolved."
+                else:
+                    audit_reason = "Administrator marked the identity as not identifiable."
                 connection.execute(
-                    """
+                    f"""
                     UPDATE compatibility_evidence_event
                     SET canonical_device_model_id = %s,
-                        identity_resolution_state = %s
+                        identity_resolution_state = %s,
+                        identity_assessment = COALESCE(%s::jsonb, identity_assessment)
                     WHERE event_id = %s
                     """,
                     (canonical_device_model_id,
-                     "RESOLVED" if normalized_action == "ASSIGN" else (
+                     "RESOLVED" if normalized_action in {"ASSIGN", "MANUAL_ASSIGN"} else (
                          "NOT_IDENTIFIABLE" if normalized_action == "NOT_IDENTIFIABLE" else "UNRESOLVED"
-                     ),
-                     row["event_id"]),
+                     ), reviewed[0] if reviewed else None, row["event_id"]),
                 )
+                prior_assessment = row.get("identity_assessment")
+                if isinstance(prior_assessment, str):
+                    try:
+                        prior_assessment = json.loads(prior_assessment)
+                    except json.JSONDecodeError:
+                        prior_assessment = None
+                prior_decision = prior_assessment.get("decision") if isinstance(prior_assessment, dict) else None
+                # A retry of the identical confirmed result is idempotent. It
+                # returns success to the HTTP caller but does not add a second
+                # administrative decision or alter installation statistics.
+                if (
+                    normalized_action in {"ASSIGN", "MANUAL_ASSIGN"}
+                    and previous_id == canonical_device_model_id
+                    and isinstance(prior_decision, dict)
+                    and prior_decision.get("deviceId") == canonical_device_model_id
+                ):
+                    continue
                 connection.execute(
                     """
                     INSERT INTO compatibility_identity_resolution_audit (
@@ -2284,10 +2387,10 @@ class Database:
                         action, reason, note, corrected_by, assessment
                     ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb)
                     """,
-                    (row["event_id"], str(row["compatibility_identity"]),
-                     row["canonical_device_model_id"], new_identity,
-                     canonical_device_model_id, normalized_action, reason, note,
-                     admin_user_id, row.get("reviewed_assessment")),
+                    (row["event_id"], str(row.get("compatibility_identity") or "Identity unresolved"),
+                     row.get("canonical_device_model_id"), new_identity,
+                     canonical_device_model_id, "ASSIGN" if normalized_action == "MANUAL_ASSIGN" else normalized_action,
+                     audit_reason, note, admin_user_id, reviewed[0] if reviewed else None),
                 )
             return len(rows)
 

@@ -73,7 +73,7 @@ class MissingDiagnosticReviewTests(unittest.TestCase):
         self.assertIn('Install failed', panel)
         self.assertIn('No device diagnostic report received', panel)
         self.assertIn('Missing diagnostics <strong>1</strong>', panel)
-        self.assertIn('Open errors <strong>0</strong>', panel)
+        self.assertIn("Open errors <strong class='admin-error-counter'>—</strong>", panel)
         self.assertIn('period=all&amp;eventType=INSTALL_FAILED', panel)
         self.assertIn('France', panel)
         self.assertNotIn('overview-attention-empty', body)

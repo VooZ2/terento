@@ -587,7 +587,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         body = dashboard_page([row], {"username": "gediminas"}, "csrf", public_stats_enabled=True).decode()
         self.assertIn("Installations", body)
         self.assertIn("Each map installation counts as one attempt", body)
-        self.assertIn('class="admin-kpi-grid installation-kpis"', body)
+        self.assertIn('class="map-statistics-kpi-panel provider-card admin-kpi-panel installation-kpis"', body)
         self.assertIn("<span>Installation attempts</span><strong>1</strong>", body)
         self.assertIn('class="filter-bar admin-filter-bar"', body)
         self.assertIn(">51 mm<", body)
@@ -989,7 +989,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         })
         response, body = self.request("GET", path, headers={"Cookie": headers["Cookie"]})
         self.assertEqual(response.status, 200)
-        self.assertIn(b"Confirm model", body)
+        self.assertIn(b"Confirm", body)
         self.assertIn(b"pending-operation", body)
         self.assertNotIn(b"canonical-operation", body)
 
