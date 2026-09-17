@@ -63,11 +63,11 @@ WITH normalized_events AS (
         bool_or(e.reconnect_verified) FILTER (WHERE e.result_classification = 'SUCCESS') AS reconnect_verified,
         min(NULLIF(e.firmware_version, '')) FILTER (WHERE e.result_classification = 'SUCCESS') AS successful_firmware_version,
         max(e.occurred_at) AS occurred_at,
-        1 AS map_result_count,
-        CASE WHEN bool_or(e.result_classification = 'SUCCESS') THEN 1 ELSE 0 END AS successful_map_result_count,
-        CASE WHEN bool_or(e.result_classification = 'FAILURE') THEN 1 ELSE 0 END AS failed_map_result_count,
-        CASE WHEN bool_or(e.result_classification = 'NOT_STARTED') THEN 1 ELSE 0 END AS not_started_map_result_count,
-        CASE WHEN bool_or(e.phase_outcome = 'FAILED' AND e.result_classification <> 'FAILURE') THEN 1 ELSE 0 END AS prewrite_failure_count
+        1::numeric AS map_result_count,
+        CASE WHEN bool_or(e.result_classification = 'SUCCESS') THEN 1::numeric ELSE 0::numeric END AS successful_map_result_count,
+        CASE WHEN bool_or(e.result_classification = 'FAILURE') THEN 1::numeric ELSE 0::numeric END AS failed_map_result_count,
+        CASE WHEN bool_or(e.result_classification = 'NOT_STARTED') THEN 1::numeric ELSE 0::numeric END AS not_started_map_result_count,
+        CASE WHEN bool_or(e.phase_outcome = 'FAILED' AND e.result_classification <> 'FAILURE') THEN 1::numeric ELSE 0::numeric END AS prewrite_failure_count
     FROM normalized_events e
     GROUP BY e.aggregate_key, e.result_key
 ), event_stats AS (
