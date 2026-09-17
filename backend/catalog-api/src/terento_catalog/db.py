@@ -3531,7 +3531,7 @@ class Database:
             ), event_rows AS (
                 SELECT
                     CASE
-                        WHEN e.event_type LIKE 'DOWNLOAD_%'
+                        WHEN e.event_type LIKE 'DOWNLOAD_%%'
                             THEN COALESCE(e.acquisition_id::text, 'event:' || e.event_id::text)
                         ELSE 'event:' || e.event_id::text
                     END AS operation_key,
