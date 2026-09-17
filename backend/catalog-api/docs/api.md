@@ -638,7 +638,7 @@ does not alter compatibility evidence.
 
 Returns private aggregate map-operation rows with `event_count`, a source-aware
 statistical `operation_count`, first/last occurrence, provider, map, region, event type,
-and outcome. Where the existing registry has names, admin rows also include
+outcome, and the optional `component_kind` (`main` or `contours`). Where the existing registry has names, admin rows also include
 `provider_name` and `map_package_name` for human-readable popularity tables;
 `region_display_name` is an additive display-only region label and
 `region_identity` is an additive cross-provider grouping key derived from
@@ -694,6 +694,17 @@ those KPI values and is never recomputed from detail rows. The additive
 detail projection does not turn a non-empty population into an overall no-data
 state. These pagination parameters are private admin presentation controls.
 
+The Admin presentation keeps the six primary map-statistics metrics in one
+compact container, grouped as Downloads, Fresh installs, and Updates, with a
+secondary Diagnostic coverage row. Popular maps derives only from successful
+fresh main-map installs for known provider catalog packages: Top 5 and Regions
+group canonical country/region identities across providers, while All maps
+groups canonical country/region plus provider. Custom images, contours,
+updates, and downloads are excluded from these views before grouping. All maps
+searches the complete eligible set before pagination. Provider activity labels
+the final value Last install and uses the latest successful fresh-install
+timestamp in the selected scope.
+
 Linkage is per independent map result. A reliable shared `operationId` and
 `mapResultIndex`, with unambiguous provider/region identity, is required;
 session-level `min(provider)`, time, model, or region matching is not used. A
@@ -712,28 +723,27 @@ the cards with the shared spacing. The map viewport follows its 900:365 source
 proportions without a fixed minimum height. Zoom/reset controls overlay the
 desktop top-left corner; mobile uses a compact edge toolbar so 44px controls do
 not cover small countries. World-fit zoom uses continuous precision with 12px
-total fit padding. Popularity uses compact rows with full names, package
-identifiers, counts and timestamps; the redundant Provider column is omitted.
-Regions is available above Top 5 maps. Map and region buttons highlight and
-focus the corresponding country; focus is immediate so reset cannot race an
-unfinished navigation animation. Browse-all pagination and provider search
-remain available. The scrollable sidebar has a keyboard focus indicator.
+total fit padding. Popularity uses compact rows with full names, counts and
+timestamps; the redundant Provider column is omitted from Top 5 and Regions.
+Top 5 and Regions group canonical country/region identities across providers,
+while All maps retains the provider in each row. Map and region buttons
+highlight and focus the corresponding country; focus is immediate so reset
+cannot race an unfinished navigation animation. All maps search is applied
+before pagination, and the sidebar has a keyboard focus indicator.
 
 Authenticated, no-store/noindex HTML dashboard for the same aggregate read
 model. It supports Last 24 hours, Last 7 days, Last 30 days, and All time
 ranges plus provider, map, region, and event-type filters. It displays terminal
 acquisition totals, fresh-install totals, separate update totals and success
-rates, Top 5
-maps with a single-table View all disclosure, collapsed Regions, per-provider
-popularity, provider health, and separate affected-package/problematic-source
-counts. When a
+rates, the three compact Popular maps views, provider health, and separate
+affected-package/problematic-source counts. When a
 provider filter is selected, the health, issue, and per-provider popularity
 summaries are scoped to that provider. The UI labels the distinction between
 distinct map operations and map-package records because one operation may
 contain multiple packages. Overview and Map statistics therefore do not imply
-identical totals. The Regions disclosure groups equivalent provider labels by
-`region_identity`, sums their package-operation counts, and keeps the newest
-activity timestamp; Popular maps remains grouped by provider package. The
+identical totals. Regions groups equivalent provider labels by `region_identity`
+and sums successful fresh main-map installs; All maps retains the provider in
+its grouping key and uses the latest eligible fresh-install timestamp. The
 compatibility fallback suppression also resolves provider-region aliases
 through the catalog package identity, so one operation reported as `BEL` and
 `BEL+` is not projected as two installs. At country level, `region_identity`
@@ -926,8 +936,8 @@ normalized alias tokens, preserving spaces and accented country names.
 
 Map dragging suppresses native browser selection, including WebKit selection;
 Reset clears stale selection and region emphasis. Top 5 remains a stable summary;
-Browse all maps has search and ten-row pagination instead of expanding the summary
-without a bound. Evidence success is labelled Success rate. Download sources use
+All maps has search and ten-row pagination, while Regions remains the full
+canonical-region grouping. Evidence success is labelled Success rate. Download sources use
 artifact metadata to show Main map / Contours labels and separate source counts
 (shared contour URLs count once).
 

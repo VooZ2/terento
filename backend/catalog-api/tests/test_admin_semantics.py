@@ -775,20 +775,19 @@ class AdminSemanticsTests(unittest.TestCase):
         )
         statistics_script = _map_statistics_script()
         self.assertIn("row.region_identity || row.canonical_region_id", statistics_script)
-        self.assertIn("const mapKey = row.map_package_id || row.region_identity || row.canonical_region_id", statistics_script)
-        self.assertNotIn("row.map_package_id || 'unknown'}\\u0000${row.region || '—'}", statistics_script)
-        self.assertIn("const key = item.regionIdentity || item.region", statistics_script)
+        self.assertIn("const catalogInstallRows = rows.filter(isCatalogMainInstall);", statistics_script)
+        self.assertIn("Boolean(row.map_package_id)", statistics_script)
+        self.assertIn("row.component_kind === 'main'", statistics_script)
+        self.assertNotIn("const updateRows = rows.filter", statistics_script)
         self.assertIn("const installRows = rows.filter((row) => row.event_type === 'INSTALL_SUCCEEDED'", statistics_script)
         self.assertIn("renderWorldMap(installRows)", statistics_script)
         self.assertIn("const countryAliases = window.terentoWorldMapCountryAliases || {};", statistics_script)
-        self.assertIn("const showRegions = Boolean(regionsDisclosure?.open);", statistics_script)
-        self.assertIn("if (topMapsSection) topMapsSection.hidden = showRegions;", statistics_script)
-        self.assertIn("if (topMapsTable) topMapsTable.hidden = showAllMaps || showRegions;", statistics_script)
-        self.assertIn("if (allMapsDisclosure) allMapsDisclosure.hidden = showRegions;", statistics_script)
-        self.assertIn("if (regionsDisclosure.open && allMapsDisclosure?.open) allMapsDisclosure.open = false;", statistics_script)
+        self.assertIn("const popularityViews = [...document.querySelectorAll('[data-popularity-view]')];", statistics_script)
+        self.assertIn("const popularityViewButtons = [...document.querySelectorAll('[data-popularity-view-button]')];", statistics_script)
         statistics_query = inspect.getsource(Database.map_statistics)
         self.assertIn("mp.canonical_region_id", statistics_query)
         self.assertIn("mp.country AS region_country", statistics_query)
+        self.assertIn("e.component_kind", statistics_query)
         self.assertIn("e.acquisition_id::text", statistics_query)
 
     def test_map_statistics_fallback_matches_provider_region_aliases_to_explicit_events(self):
@@ -821,20 +820,23 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("@media(min-width:1101px){.map-statistics-popularity{contain:size;align-self:stretch;overflow:auto", body)
         self.assertIn("window.terentoWorldMapSvg", body)
         popular_maps = body.split("id='map-statistics-popularity'", 1)[1].split("map-events-card", 1)[0]
-        self.assertIn("id='top-maps-section'", popular_maps)
+        self.assertIn("id='top-maps-view'", popular_maps)
+        self.assertIn("id='regions-view'", popular_maps)
+        self.assertIn("id='all-maps-view'", popular_maps)
         self.assertNotIn(">Provider</th>", popular_maps)
         map_script = _map_statistics_script()
-        map_row = map_script.split("const mapRow =", 1)[1].split(";", 1)[0]
-        self.assertEqual(map_row.count("<td"), 5)
+        map_start = map_script.find("const mapRow =")
+        map_row = map_script[map_start:].split("return `<tr>", 1)[1].split("</tr>`", 1)[0]
+        self.assertEqual(map_row.count("<td"), 2)
         self.assertNotIn("Package identifier", map_row)
         self.assertNotIn("escapeHtml(item.map)", map_row)
-        self.assertIn("popularMapItems.slice(0, 5).map(mapRow).join('') || emptyRow(5)", map_script)
-        self.assertIn('colspan="5" class="muted-value">No maps match your search.', map_script)
-        self.assertIn("<th scope='col'>Fresh installs</th>", popular_maps)
-        self.assertIn("<th scope='col'>Successful updates</th>", popular_maps)
-        self.assertIn("<th scope='col'>Failed updates</th>", popular_maps)
-        self.assertIn("<th scope='col'>Successful updates</th>", body)
-        self.assertIn("<th scope='col'>Failed updates</th>", body)
+        self.assertIn("regionItems.slice(0, 5).map(mapRow).join('')", map_script)
+        self.assertIn('colspan="2" class="muted-value">${escapeHtml(message)}', map_script)
+        self.assertIn("id='all-maps-search'", popular_maps)
+        self.assertIn("data-popularity-view-button='regions'", popular_maps)
+        self.assertIn("data-popularity-view-button='all'", popular_maps)
+        self.assertIn("Last install", body)
+        self.assertIn("Diagnostic coverage", body)
         self.assertNotIn("<h2>Downloads per provider</h2>", body)
         self.assertNotIn("<th scope='col'>Completed map-package installs</th>", popular_maps)
         self.assertNotIn("90 days", body)
@@ -1030,6 +1032,7 @@ class AdminSemanticsTests(unittest.TestCase):
                 "compatibility": {"hasData": False, "recentActivity": [], "failureReasons": []},
                 "downloads": {
                     "hasData": True, "dmgTotal": 23, "zipTotal": 11,
+                    "lastObservedAt": "2026-09-11T20:00:00Z",
                     "trend": [{"bucket": "2026-09-11T20:00:00Z", "dmg_count": 1, "zip_count": 2}],
                 },
                 "providers": [],
@@ -1037,7 +1040,8 @@ class AdminSemanticsTests(unittest.TestCase):
             {"username": "operator"}, "csrf",
         ).decode()
         self.assertIn("Observed download increases", body)
-        self.assertIn("Observed download increases between checks.", body)
+        self.assertNotIn("Observed download increases between checks.", body)
+        self.assertIn("Last successful data update:", body)
         self.assertIn("overview-download-heading", body)
         self.assertIn("overview-download-total' aria-label='.dmg downloads total: 23'><strong>23</strong><small>.dmg", body)
         self.assertIn("overview-download-total' aria-label='.zip downloads total: 11'><strong>11</strong><small>.zip", body)
@@ -1876,9 +1880,9 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertIn("No map operation data yet", body)
         self.assertIn("<strong data-stat='completedDownloads'>0</strong>", body)
-        self.assertIn("<strong data-stat='failedDownloads'>0</strong>", body)
+        self.assertIn("data-stat='failedDownloads'>0</strong>", body)
         self.assertIn("<strong data-stat='completedInstalls'>0</strong>", body)
-        self.assertIn("<strong data-stat='failedInstalls'>0</strong>", body)
+        self.assertIn("data-stat='failedInstalls'>0</strong>", body)
         self.assertIn("<section class='provider-card map-events-card' hidden>", body)
         self.assertIn("id='map-statistics-more-filters'", body)
 
@@ -1907,7 +1911,7 @@ class AdminSemanticsTests(unittest.TestCase):
             "csrf",
         ).decode()
         self.assertIn("<strong data-stat='completedDownloads'>0</strong>", body)
-        self.assertIn("<strong data-stat='failedDownloads'>0</strong>", body)
+        self.assertIn("data-stat='failedDownloads'>0</strong>", body)
         self.assertIn("map-statistics-empty' id='map-statistics-empty' hidden", body)
         self.assertNotIn("map-events-card' hidden", body)
 
@@ -2020,13 +2024,13 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertIn("5 event groups · 20 event records", body)
         self.assertIn("<strong data-stat='completedDownloads'>6</strong>", body)
-        self.assertIn("<strong data-stat='failedInstalls'>2</strong>", body)
+        self.assertIn("data-stat='failedInstalls'>2</strong>", body)
         self.assertIn("<strong data-stat='installSuccessRate'>66.7%</strong>", body)
         self.assertNotIn("id='map-statistics-provider-health'", body)
         self.assertNotIn("providerHealth", body)
 
         script = _map_statistics_script()
-        self.assertIn("set('failedInstalls', metric('failedInstalls') === null ? '—'", script)
+        self.assertIn("setFailed('failedInstalls', metric('failedInstalls'))", script)
         self.assertIn("const summary = payload.summary", script)
         self.assertIn("const scopedProviders = selectedProvider ? providers.filter", script)
         self.assertIn("const eventRecordValues = detailRows.map", script)
@@ -2069,9 +2073,9 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertIn("<td>DOWNLOAD_FAILED</td>", body)
         self.assertNotIn("<td>INSTALL_FAILED</td>", body)
-        self.assertIn("<strong data-stat='failedInstalls'>0</strong>", body)
+        self.assertIn("data-stat='failedInstalls'>0</strong>", body)
         self.assertIn("<strong data-stat='installSuccessRate'>—</strong>", body)
-        self.assertIn("set('failedInstalls', metric('failedInstalls') === null ? '—'", _map_statistics_script())
+        self.assertIn("setFailed('failedInstalls', metric('failedInstalls'))", _map_statistics_script())
 
     def test_map_statistics_keeps_update_success_and_failure_counts_separate(self):
         summary = _map_statistics_summary([
@@ -2083,12 +2087,48 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertEqual(summary["mapUpdates"], 5)
         self.assertEqual(summary["mapUpdateSuccessRate"], 40.0)
         script = _map_statistics_script()
-        self.assertIn("item.completedUpdates", script)
-        self.assertIn("item.failedUpdates", script)
-        self.assertIn(
-            "popularMapItems = mapItems.filter((item) => item.installs !== null && item.installs > 0)",
-            script,
-        )
+        self.assertNotIn("addMapActivity", script)
+        self.assertNotIn("const updateRows = rows.filter", script)
+        self.assertIn("const catalogInstallRows = rows.filter(isCatalogMainInstall);", script)
+        self.assertIn("const regionItems = Object.values(byRegion)", script)
+
+    def test_map_statistics_admin_presentation_keeps_semantics_compact_and_separate(self):
+        rows = [
+            {"provider_id": "freizeitkarte", "map_package_id": "fzk-pl", "region_identity": "POLAND", "region_display_name": "Poland", "region_country": "PL", "component_kind": "main", "event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 3, "last_occurred_at": "2026-09-16T10:00:00Z"},
+            {"provider_id": "opentopomap", "map_package_id": "otm-pl", "region_identity": "POLAND", "region_display_name": "Poland", "region_country": "PL", "component_kind": "main", "event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 2, "last_occurred_at": "2026-09-15T10:00:00Z"},
+            {"provider_id": "freizeitkarte", "map_package_id": "fzk-pl-contours", "region_identity": "POLAND", "region_display_name": "Poland", "region_country": "PL", "component_kind": "contours", "event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 13, "last_occurred_at": "2026-09-17T10:00:00Z"},
+            {"provider_id": "freizeitkarte", "map_package_id": "fzk-pl", "region_identity": "POLAND", "region_display_name": "Poland", "region_country": "PL", "component_kind": "main", "event_type": "MAP_UPDATE_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 20, "last_occurred_at": "2026-09-17T11:00:00Z"},
+        ]
+        statistics = {"rows": rows, "summary": _map_statistics_summary(rows), "linkage": {
+            "freshMapAttemptCount": 5, "freshMapLinkedDiagnosticCount": 4,
+            "freshMapMissingDiagnosticCount": 1, "freshMapDiagnosticCoverageRate": 80.0,
+        }}
+        body = map_statistics_page(
+            statistics,
+            [{"id": "freizeitkarte", "name": "Freizeitkarte", "health": "HEALTHY"}, {"id": "opentopomap", "name": "OpenTopoMap", "health": "HEALTHY"}],
+            {"username": "operator"}, "csrf",
+        ).decode()
+        main = body.split("<main", 1)[1]
+        for text in (
+            "Acquisition, fresh-install, optional-component, and update outcomes remain separate.",
+            "Coverage is linked diagnostic observation, not diagnostic success.",
+            "Observed download increases between checks. Missing observations and counter resets are not treated as zero.",
+        ):
+            self.assertNotIn(text, body)
+        self.assertEqual(main.count("class='map-statistics-kpi-group'"), 3)
+        self.assertEqual(main.count("id='map-statistics-metrics'"), 1)
+        for text in ("Downloads", "Fresh installs", "Updates", "Diagnostic coverage", "Fresh attempts", "Linked reports", "Report gaps", "Coverage rate", "Last install"):
+            self.assertIn(text, main)
+        self.assertIn("data-stat='failedMapUpdates'>0</strong>", main)
+        self.assertNotIn("map-statistics-reliability", main)
+
+        script = _map_statistics_script()
+        self.assertIn("const catalogInstallRows = rows.filter(isCatalogMainInstall);", script)
+        self.assertIn("knownProviderIds.has", script)
+        self.assertIn("row.component_kind === 'main'", script)
+        self.assertIn("const matchedMaps = allMapItems.filter", script)
+        self.assertIn("matchedMaps.slice((allMapsPage - 1) * 10", script)
+        self.assertNotIn("const updateRows = rows.filter", script)
 
     def test_map_statistics_exposes_operation_id_watch_linkage(self):
         linkage = {
@@ -2122,8 +2162,9 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertNotIn("Telemetry diagnostics · event matching", body)
         self.assertNotIn("id='map-statistics-linkage'", body)
         self.assertIn("id='map-rows'", body)
-        self.assertIn("Browse all maps", body)
-        self.assertIn("<h3>Top 5 maps</h3>", body)
+        self.assertIn("All maps", body)
+        self.assertIn("id='top-maps-view'", body)
+        self.assertIn("data-popularity-view-button='regions'", body)
 
         script = _map_statistics_script()
         self.assertNotIn("const linkage = payload.linkage || {};", script)
@@ -2166,8 +2207,8 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertIn("1 provider", body)
         self.assertIn("0 active · 1 healthy · 177 packages · 0 affected packages · 0 problematic sources", body)
-        self.assertIn("<th scope='col'>Provider</th><th scope='col'>Activity</th><th scope='col'>Health</th><th scope='col'>Packages</th>", body)
-        self.assertIn("<th scope='col'>Last check</th><th scope='col'>Problems</th>", body)
+        self.assertIn("<th scope='col'>Provider</th><th scope='col' class='column-status'>Activity</th><th scope='col' class='column-status'>Health</th><th scope='col' class='column-number'>Packages</th>", body)
+        self.assertIn("<th scope='col' class='column-date'>Last check</th><th scope='col' class='column-number'>Problems</th>", body)
 
     def test_provider_problems_keep_packages_sources_and_health_separate(self):
         body = providers_page(
@@ -2179,7 +2220,7 @@ class AdminSemanticsTests(unittest.TestCase):
             {"username": "operator"}, "csrf",
         ).decode()
         self.assertIn("2 packages · 1 source", body)
-        self.assertIn("<th scope='col'>Problems</th>", body)
+        self.assertIn(">Problems</th>", body)
         self.assertIn("health_timeout", body)
         self.assertNotIn("provider issue(s)", body)
         source = inspect.getsource(Database.provider_rows)

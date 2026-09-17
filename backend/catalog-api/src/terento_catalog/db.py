@@ -3627,6 +3627,7 @@ class Database:
                     COALESCE(e.region, mp.region) AS region,
                     COALESCE(mp.geographic_region_id, mp.canonical_region_id) AS canonical_region_id,
                     mp.country AS region_country,
+                    e.component_kind,
                     e.event_type,
                     e.outcome,
                     e.occurred_at
@@ -3645,6 +3646,7 @@ class Database:
                     COALESCE(c.region, mp.region) AS region,
                     COALESCE(mp.geographic_region_id, mp.canonical_region_id, geography.geographic_region_id) AS canonical_region_id,
                     COALESCE(mp.country, geography.country) AS region_country,
+                    NULL AS component_kind,
                     CASE WHEN c.outcome = 'FAILED' THEN 'INSTALL_FAILED'
                          ELSE 'INSTALL_SUCCEEDED' END AS event_type,
                     c.outcome,
@@ -3690,6 +3692,7 @@ class Database:
                 region,
                 canonical_region_id,
                 region_country,
+                component_kind,
                 event_type,
                 outcome,
                 count(*) AS event_count,
@@ -3697,8 +3700,8 @@ class Database:
                 min(occurred_at) AS first_occurred_at,
                 max(occurred_at) AS last_occurred_at
             FROM event_rows
-            GROUP BY provider_id, provider_name, map_package_id, map_package_name, map_type,
-                     region, canonical_region_id, region_country, event_type, outcome
+                GROUP BY provider_id, provider_name, map_package_id, map_package_name, map_type,
+                     region, canonical_region_id, region_country, component_kind, event_type, outcome
             ORDER BY last_occurred_at DESC, provider_id,
                      map_package_id NULLS LAST, event_type, outcome
         """

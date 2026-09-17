@@ -185,6 +185,34 @@ all selected fresh-map attempts. A linked message is not synonymous with a
 successful message, and an absent message is an observation gap, not a failed
 install. Session totals are separate.
 
+The visible Map statistics KPI summary is one compact container. On wide
+layouts it has equal Downloads, Fresh installs, and Updates groups, with
+Successful and Success rate on the first row and Failed below in each group.
+Diagnostic coverage is a compact secondary row in the same container with
+Fresh attempts, Linked reports, Report gaps, and Coverage rate. A positive
+Failed value uses the same semantic error token as Open errors; zero is neutral
+and an unavailable value is shown as an em dash. These are presentation rules
+only; the existing summary counts and formulas remain authoritative.
+
+Popular maps uses only successful fresh main-map installs for known provider
+catalog packages. Custom images, optional components, updates, and downloads
+are excluded before grouping and sorting. Top 5 and Regions group by canonical
+country/region across providers; Top 5 keeps five eligible rows and Regions
+shows the full grouped list. All maps groups by canonical country/region and
+provider. Each row keeps the last eligible fresh-install timestamp; All maps
+also shows the provider. Search is applied to the complete All maps set before
+pagination, and view navigation does not change the selected population. The
+three views share compact list geometry and use bottom navigation buttons.
+
+The Activity by provider table labels its final column Last install. It shows
+the latest successful fresh-install timestamp in the selected scope and
+timezone, or an em dash when none exists; updates, downloads, and provider
+health checks do not advance it. Admin tables keep descriptive text and dates
+left-aligned, counters and percentages centered, and status badges centered,
+with column headers aligned to their values. Sort controls retain their
+keyboard, focus, and `aria-sort` behavior. The Providers table shows the health
+badge without an additional “Latest check state” helper when no error exists.
+
 The GitHub chart says `Observed download increases between checks`. It starts
 with a baseline and preserves valid zero increases. Historical counter deltas
 whose observations lack the new population metadata remain visible as legacy

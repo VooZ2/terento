@@ -156,6 +156,16 @@ views use the selected period; all-time views say so explicitly. Period
 boundaries use the server/read-model timezone supplied by the request, and
 timestamps remain immutable source facts.
 
+Popular maps uses only known provider-catalog packages and successful fresh
+main-map installs. Custom `.img` rows, optional components, updates, and
+downloads are excluded from this population before grouping, sorting, Top 5,
+search, or pagination; they remain available to the common statistics and
+other views where their existing formulas require them. Top 5 and Regions
+group by canonical country/region across providers. All maps groups by
+canonical country/region plus provider. A popularity timestamp is the last
+successful fresh install eligible for that grouped row, not arbitrary activity
+or an update.
+
 Map-statistics `provider`, `map`, `region`, and date filters define the KPI,
 coverage, and popularity population. `eventType`, `outcome`, and pagination
 filters affect only the Event detail disclosure. Therefore event-detail
