@@ -1566,35 +1566,45 @@ def _overview_downloads_chart(
         x = center - bar_width / 2
         y = top + plot_height
         clip_id = f"overview-download-bar-clip-{'mobile-' if _compact else ''}{index}"
+        observed_at = item.get("observed_at") or item.get("bucket")
+        legacy_note = (
+            " · legacy observed counter delta · population comparability unconfirmed"
+            if item.get("legacy")
+            or item.get("confidence") == "legacy"
+            or item.get("population_comparability") == "unconfirmed"
+            else ""
+        )
+        partial_note = " · partial known total" if item.get("partial") else ""
+        zero_titles = []
+        for (label, _), count in zip(series, counts):
+            if count != 0:
+                continue
+            zero_description = (
+                "known zero increase in partial bucket ending"
+                if item.get("partial")
+                else "observed zero increase between checks ending"
+            )
+            zero_title = f"{label}: 0 · {zero_description} {_overview_chart_bucket_label(observed_at, chart_bucket, time_zone)} · {time_zone}"
+            zero_titles.append(zero_title + legacy_note + partial_note)
+        group_accessibility = ""
+        group_title = ""
+        if zero_titles:
+            interval_title = "Download interval: " + " · ".join(zero_titles)
+            group_accessibility = (
+                " role='group' aria-label='"
+                + html.escape(interval_title, quote=True)
+                + "'"
+            )
+            group_title = f"<title>{html.escape(interval_title)}</title>"
         bars.append(
             f"<defs><clipPath id='{clip_id}'><rect x='{x:.1f}' "
             f"y='{top:.1f}' width='{bar_width:.1f}' height='{plot_height:.1f}' rx='3'></rect></clipPath></defs>"
-            f"<g clip-path='url(#{clip_id})'>"
+            f"<g clip-path='url(#{clip_id})'{group_accessibility}>{group_title}"
         )
-        for series_index, ((label, css_class), count) in enumerate(zip(series, counts)):
-            observed_at = item.get("observed_at") or item.get("bucket")
+        for (label, css_class), count in zip(series, counts):
             if count is None:
                 continue
-            legacy_note = (
-                " · legacy observed counter delta · population comparability unconfirmed"
-                if item.get("legacy")
-                or item.get("confidence") == "legacy"
-                or item.get("population_comparability") == "unconfirmed"
-                else ""
-            )
-            partial_note = " · partial known total" if item.get("partial") else ""
             if count == 0:
-                zero_description = (
-                    "known zero increase in partial bucket ending"
-                    if item.get("partial")
-                    else "observed zero increase between checks ending"
-                )
-                zero_title = f"{label}: 0 · {zero_description} {_overview_chart_bucket_label(observed_at, chart_bucket, time_zone)} · {time_zone}"
-                zero_title += legacy_note + partial_note
-                zero_x = center + (-4 if series_index == 0 else 4)
-                bars.append(
-                    f"<circle class='overview-chart-download-zero' cx='{zero_x:.1f}' cy='{top + plot_height - 3:.1f}' r='3' tabindex='0' role='img' aria-label='{html.escape(zero_title, quote=True)}'><title>{html.escape(zero_title)}</title></circle>"
-                )
                 continue
             height = plot_height * count / scale_maximum
             y -= height
@@ -6361,7 +6371,6 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
 .overview-map-total small,.overview-download-total small{color:var(--secondary);font-size:var(--admin-type-support-size)}
 .overview-chart-download-dmg{fill:var(--interactive);background:var(--interactive)}
 .overview-chart-download-zip{fill:var(--status-success-text);background:var(--status-success-text)}
-.overview-chart-download-zero{fill:var(--surface);stroke:var(--secondary);stroke-width:2}
 .overview-chart-download-unknown{stroke:var(--secondary);stroke-width:3;stroke-dasharray:4 3}
 .overview-trend-chart{display:block;width:100%;height:260px;max-width:760px;min-height:0;margin:0 auto}
 .overview-trend-mobile{display:none}
@@ -6839,6 +6848,42 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 @media(max-width:900px){.map-statistics-kpi-groups{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.map-statistics-diagnostic-coverage-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.map-statistics-kpi-panel{padding:16px}.map-statistics-kpi-groups{grid-template-columns:1fr;gap:16px}.map-statistics-diagnostic-coverage-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.popular-maps-nav button{min-height:44px}.popularity-view>input{min-height:44px}}
 @media(max-width:420px){.map-statistics-diagnostic-coverage-row{grid-template-columns:1fr}}
+
+/* Admin scrollbars are visually hidden without changing the scroll surface. */
+.admin-shell :where(
+  .table-wrap,
+  .overview-chart-wrap,
+  .identity-search-results,
+  .overview-secondary-grid .overview-activity-list,
+  .overview-secondary-grid .overview-model-list,
+  #admin-menu-panel,
+  .admin-section-nav,
+  .quick-filter-group,
+  .diagnostic-detail-inner,
+  .device-dialog-inner,
+  .generated-url,
+  .device-table-wrap,
+  .provider-detail .provider-history-wrap,
+  .map-statistics-popularity,
+  .audit-technical-details code
+){scrollbar-width:none;-ms-overflow-style:none}
+.admin-shell :where(
+  .table-wrap,
+  .overview-chart-wrap,
+  .identity-search-results,
+  .overview-secondary-grid .overview-activity-list,
+  .overview-secondary-grid .overview-model-list,
+  #admin-menu-panel,
+  .admin-section-nav,
+  .quick-filter-group,
+  .diagnostic-detail-inner,
+  .device-dialog-inner,
+  .generated-url,
+  .device-table-wrap,
+  .provider-detail .provider-history-wrap,
+  .map-statistics-popularity,
+  .audit-technical-details code
+)::-webkit-scrollbar{display:none;width:0;height:0}
 """
 
 
@@ -6865,7 +6910,7 @@ def _layout(title: str, content: str) -> bytes:
     content = content.replace(
         "<script>", f"<script nonce=\"{_ADMIN_NONCE_PLACEHOLDER}\">"
     )
-    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>{html.escape(title)} · Terento</title><style>{ADMIN_STYLES}</style></head><body>{content}</body></html>""".encode("utf-8")
+    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>{html.escape(title)} · Terento</title><style>{ADMIN_STYLES}</style></head><body class="admin-shell">{content}</body></html>""".encode("utf-8")
 
 
 def _admin_disclosure_script() -> str:

@@ -75,6 +75,43 @@ class AdminAuditTests(unittest.TestCase):
             ADMIN_STYLES,
         )
 
+    def test_admin_scrollbars_are_hidden_without_changing_scroll_surfaces(self):
+        from terento_catalog.admin import ADMIN_STYLES, _layout
+
+        self.assertIn('<body class="admin-shell">', _layout("Test", "").decode())
+        scrollbar_css = ADMIN_STYLES.split("/* Admin scrollbars are visually hidden", 1)[1]
+        self.assertIn("scrollbar-width:none", scrollbar_css)
+        self.assertIn("-ms-overflow-style:none", scrollbar_css)
+        self.assertIn("::-webkit-scrollbar", scrollbar_css)
+        self.assertIn("display:none;width:0;height:0", scrollbar_css)
+        self.assertNotIn("overflow:hidden", scrollbar_css)
+        self.assertNotIn("overflow:clip", scrollbar_css)
+        for selector in (
+            ".table-wrap",
+            ".overview-chart-wrap",
+            ".identity-search-results",
+            ".overview-secondary-grid .overview-activity-list",
+            ".overview-secondary-grid .overview-model-list",
+            "#admin-menu-panel",
+            ".quick-filter-group",
+            ".diagnostic-detail-inner",
+            ".device-dialog-inner",
+            ".generated-url",
+            ".device-table-wrap",
+            ".provider-detail .provider-history-wrap",
+            ".map-statistics-popularity",
+            ".audit-technical-details code",
+        ):
+            with self.subTest(selector=selector):
+                self.assertIn(selector, scrollbar_css)
+        self.assertIn(".table-wrap{max-height:none;overflow-x:auto;overflow-y:visible", ADMIN_STYLES)
+        self.assertIn(".overview-chart-wrap{overflow-x:auto}", ADMIN_STYLES)
+        self.assertIn(".diagnostic-detail-inner{max-height:min(900px,calc(100vh - 32px));padding:24px;overflow:auto}", ADMIN_STYLES)
+        self.assertIn(
+            '.overview-secondary-grid .overview-activity-list,.overview-secondary-grid .overview-model-list{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}',
+            ADMIN_STYLES,
+        )
+
     def test_inline_filter_controls_do_not_inherit_vertical_flex_basis(self):
         from terento_catalog.admin import ADMIN_STYLES
         # Labels became columns: the old select flex-basis (170px) must not

@@ -224,6 +224,18 @@ used to spread a delta across the gap. Daily/monthly buckets with known values
 and unknown intervals are marked partial. Failed collection keeps the last
 successful observation and timestamp.
 
+The GitHub downloads bar chart keeps zero-valued intervals in its data and time
+axis, but does not render `.dmg` or `.zip` zero values as extra circles or
+repeated zero symbols. Zero information remains available through the interval
+tooltip/accessibility label. Unknown, missing, partial, legacy, and
+discontinuity semantics remain unchanged.
+
+Admin scrollbars are visually hidden in existing scrollable regions while the
+regions remain scrollable with wheel, trackpad, touch, keyboard, and horizontal
+table interaction. Hiding the scrollbar must not clip content, disable focus,
+change overflow behavior, or add scrolling to a view that was not already
+scrollable.
+
 ### Providers and collection history
 
 Separate provider health, collection outcome, available packages and broken

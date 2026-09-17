@@ -890,6 +890,8 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("viewBox='0 0 360 220'", body)
         self.assertIn(".dmg</span>", body)
         self.assertIn(".zip</span>", body)
+        self.assertNotIn("overview-chart-download-zero", body)
+        self.assertIn("observed zero increase between checks", body)
 
     def test_download_chart_stacks_file_types_in_one_installation_style_bar(self):
         import xml.etree.ElementTree as ET
@@ -950,10 +952,44 @@ class AdminSemanticsTests(unittest.TestCase):
                 },
             ],
         })
-        self.assertIn("overview-chart-download-zero", body)
+        self.assertNotIn("overview-chart-download-zero", body)
         self.assertIn("observed zero increase between checks", body)
         self.assertIn("overview-chart-download-unknown", body)
         self.assertIn("interval unknown", body)
+
+    def test_download_chart_omits_zero_markers_in_desktop_and_compact_svgs(self):
+        import re
+        import xml.etree.ElementTree as ET
+
+        body = _overview_downloads_chart({
+            "hasData": True,
+            "trend": [
+                {
+                    "bucket": "2026-09-11T10:00:00Z",
+                    "observed_at": "2026-09-11T10:00:00Z",
+                    "dmg_count": 2,
+                    "zip_count": 0,
+                },
+                {
+                    "bucket": "2026-09-11T11:00:00Z",
+                    "observed_at": "2026-09-11T11:00:00Z",
+                    "dmg_count": 0,
+                    "zip_count": 0,
+                },
+            ],
+        })
+        charts = [ET.fromstring(markup) for markup in re.findall(r"<svg.*?</svg>", body)]
+        self.assertEqual(len(charts), 2)
+        for chart in charts:
+            self.assertEqual(len(chart.findall("g/rect")), 1)
+            self.assertEqual(
+                len([group for group in chart.findall("g") if group.attrib.get("role") == "group"]),
+                2,
+            )
+        self.assertNotIn("<circle", body)
+        self.assertNotIn("overview-chart-download-zero", body)
+        self.assertIn("Download interval:", body)
+        self.assertIn("observed zero increase between checks", body)
 
     def test_download_chart_renders_legacy_counter_deltas_as_real_bars(self):
         import xml.etree.ElementTree as ET
@@ -994,7 +1030,7 @@ class AdminSemanticsTests(unittest.TestCase):
                 "zip_count": 2,
             }],
         }, period="7d")
-        self.assertIn("overview-chart-download-zero", body)
+        self.assertNotIn("overview-chart-download-zero", body)
         self.assertIn("partial known total", body)
         self.assertIn("observed increase across 10 Sep–10 Sep", body)
         self.assertIn("overview-chart-download-unknown", body)
