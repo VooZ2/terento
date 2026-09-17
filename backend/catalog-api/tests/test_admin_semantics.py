@@ -953,6 +953,72 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("overview-chart-download-unknown", body)
         self.assertIn("interval unknown", body)
 
+    def test_download_chart_renders_legacy_counter_deltas_as_real_bars(self):
+        import xml.etree.ElementTree as ET
+
+        body = _overview_downloads_chart({
+            "hasData": True,
+            "trend": [{
+                "bucket": "2026-09-11T10:00:00Z",
+                "observed_at": "2026-09-11T10:00:00Z",
+                "state": "observed_increase",
+                "confidence": "legacy",
+                "population_comparability": "unconfirmed",
+                "legacy": True,
+                "dmg_count": 3,
+                "zip_count": 5,
+            }],
+        })
+        svg = ET.fromstring(body[body.index("<svg"):body.index("</svg>") + 6])
+        bars = svg.findall("g/rect")
+        self.assertEqual(len(bars), 2)
+        self.assertNotIn("overview-chart-download-unknown", body)
+        self.assertIn("legacy observed counter delta", body)
+        self.assertIn("population comparability unconfirmed", body)
+
+    def test_download_chart_marks_partial_known_total_and_preserves_unknown_interval(self):
+        body = _overview_downloads_chart({
+            "hasData": True,
+            "bucket": "day",
+            "trend": [{
+                "bucket": "2026-09-10T00:00:00Z",
+                "observed_at": "2026-09-10T23:00:00Z",
+                "previous_observed_at": "2026-09-10T02:00:00Z",
+                "state": "partial",
+                "partial": True,
+                "contains_discontinuity": True,
+                "discontinuity_count": 1,
+                "dmg_count": 0,
+                "zip_count": 2,
+            }],
+        }, period="7d")
+        self.assertIn("overview-chart-download-zero", body)
+        self.assertIn("partial known total", body)
+        self.assertIn("observed increase across 10 Sep–10 Sep", body)
+        self.assertIn("overview-chart-download-unknown", body)
+        self.assertIn("1 unknown interval retained", body)
+
+    def test_download_chart_positions_observations_on_real_time_axis(self):
+        import xml.etree.ElementTree as ET
+
+        body = _overview_downloads_chart({
+            "hasData": True,
+            "trend": [
+                {"observed_at": "2026-09-11T10:00:00Z", "bucket": "2026-09-11T10:00:00Z", "dmg_count": 1, "zip_count": 0},
+                {"observed_at": "2026-09-11T11:00:00Z", "bucket": "2026-09-11T11:00:00Z", "dmg_count": 1, "zip_count": 0},
+                {"observed_at": "2026-09-11T15:00:00Z", "bucket": "2026-09-11T15:00:00Z", "dmg_count": 1, "zip_count": 0},
+            ],
+        })
+        svg = ET.fromstring(body[body.index("<svg"):body.index("</svg>") + 6])
+        centers = sorted({
+            round(float(bar.attrib["x"]) + float(bar.attrib["width"]) / 2, 3)
+            for bar in svg.findall("g/rect")
+        })
+        self.assertEqual(len(centers), 3)
+        first_gap = centers[1] - centers[0]
+        second_gap = centers[2] - centers[1]
+        self.assertGreater(second_gap, first_gap * 3)
+
     def test_overview_renders_github_download_totals(self):
         body = overview_page(
             {

@@ -67,6 +67,42 @@ def _next_overview_bucket(
     return value + timedelta(days=1)
 
 
+def _github_snapshot_metadata_complete(snapshot: dict[str, Any]) -> bool:
+    """Return whether the post-057 population identity is fully available."""
+    return (
+        snapshot.get("asset_count") is not None
+        and snapshot.get("population_fingerprint") is not None
+    )
+
+
+def _github_snapshot_population_change(
+    current: dict[str, Any], previous: dict[str, Any],
+) -> bool:
+    """Only report a population change when the stored facts confirm one.
+
+    A changed release count is itself a confirmed population change. Asset
+    identity changes require both new metadata fields on both observations;
+    missing legacy metadata is therefore an unconfirmed comparison, not a
+    discontinuity.
+    """
+    if (
+        current.get("release_count") is not None
+        and previous.get("release_count") is not None
+        and current.get("release_count") != previous.get("release_count")
+    ):
+        return True
+    if not (
+        _github_snapshot_metadata_complete(current)
+        and _github_snapshot_metadata_complete(previous)
+    ):
+        return False
+    return (
+        current.get("asset_count") != previous.get("asset_count")
+        or current.get("population_fingerprint")
+        != previous.get("population_fingerprint")
+    )
+
+
 def _fill_overview_trend_buckets(
     rows: list[dict[str, Any]],
     *,
@@ -314,10 +350,12 @@ class Database:
     ) -> dict[str, Any]:
         """Return cumulative totals and observed increases between checks.
 
-        The first observation is a baseline. Counter decreases and release or
-        asset-population changes start a new baseline. Long gaps and intervals
-        crossing the selected period boundary remain visible as uncertain; the
-        read model never fabricates zero observations.
+        The first observation is a baseline. Counter decreases and confirmed
+        release or asset-population changes are discontinuities. Legacy rows
+        without the post-057 population metadata still provide counter deltas,
+        but their population comparison remains unconfirmed. Long gaps and
+        intervals crossing the selected period boundary remain visible as
+        uncertain; the read model never fabricates zero observations.
         """
         periods = {
             "24h": timedelta(hours=24),
@@ -395,26 +433,36 @@ class Database:
                 "state": "baseline",
                 "dmg_count": None,
                 "zip_count": None,
+                "confidence": "baseline",
+                "population_comparability": "baseline",
             }
             if previous is None:
                 raw_trend.append(item)
                 continue
-            same_population = (
-                current.get("release_count") == previous.get("release_count")
-                and current.get("asset_count") is not None
-                and previous.get("asset_count") is not None
-                and current.get("asset_count") == previous.get("asset_count")
-                and current.get("population_fingerprint") is not None
-                and current.get("population_fingerprint") == previous.get("population_fingerprint")
-            )
             dmg_delta = int(current["dmg_total"]) - int(previous["dmg_total"])
             zip_delta = int(current["zip_total"]) - int(previous["zip_total"])
-            if not same_population or dmg_delta < 0 or zip_delta < 0:
-                raw_trend.append(item | {"state": "discontinuity"})
+            population_changed = _github_snapshot_population_change(current, previous)
+            if dmg_delta < 0 or zip_delta < 0 or population_changed:
+                reason = "counter_decrease" if dmg_delta < 0 or zip_delta < 0 else "population_change"
+                raw_trend.append(item | {
+                    "state": "discontinuity",
+                    "confidence": "discontinuity",
+                    "population_comparability": "changed",
+                    "discontinuity_reason": reason,
+                    "contains_discontinuity": True,
+                    "discontinuity_count": 1,
+                })
                 continue
             item["dmg_count"] = dmg_delta
             item["zip_count"] = zip_delta
             item["state"] = "observed_zero" if dmg_delta == 0 and zip_delta == 0 else "observed_increase"
+            comparable = (
+                _github_snapshot_metadata_complete(current)
+                and _github_snapshot_metadata_complete(previous)
+            )
+            item["confidence"] = "verified" if comparable else "legacy"
+            item["population_comparability"] = "verified" if comparable else "unconfirmed"
+            item["legacy"] = not comparable
             if previous["observed_at"] < start:
                 item["state"] = "period_boundary"
                 item["uncertain"] = True
@@ -463,17 +511,53 @@ class Database:
                     )
                 if row.get("uncertain"):
                     target["uncertain"] = True
+                if row.get("legacy"):
+                    target["legacy"] = True
+                if row.get("confidence") == "discontinuity":
+                    target["unknown_interval_count"] = target.get("unknown_interval_count", 0) + 1
             filled = []
             for row in sorted(aggregated.values(), key=lambda value: value["observed_at"]):
                 states = row.pop("states")
-                row["state"] = (
-                    "gap" if "gap" in states else
-                    "period_boundary" if "period_boundary" in states else
-                    "discontinuity" if "discontinuity" in states else
-                    "baseline" if "baseline" in states and all(state == "baseline" for state in states) else
-                    "observed_zero" if states and all(state == "observed_zero" for state in states)
-                    else "observed_increase"
-                )
+                has_known_counts = row["dmg_count"] is not None or row["zip_count"] is not None
+                has_unknown_intervals = bool(row.get("unknown_interval_count")) or "discontinuity" in states
+                row["contains_discontinuity"] = has_unknown_intervals
+                row["discontinuity_count"] = row.get("unknown_interval_count", 0)
+                row["partial"] = bool(row.get("uncertain")) or has_unknown_intervals
+                all_baseline = states and all(state == "baseline" for state in states)
+                if all_baseline:
+                    row["population_comparability"] = "baseline"
+                    row["confidence"] = "baseline"
+                elif not has_known_counts and "discontinuity" in states:
+                    row["population_comparability"] = "changed"
+                    row["confidence"] = "discontinuity"
+                elif has_unknown_intervals:
+                    row["population_comparability"] = (
+                        "unconfirmed" if row.get("legacy") else "mixed"
+                    )
+                    row["confidence"] = "legacy" if row.get("legacy") else "partial"
+                elif row.get("legacy"):
+                    row["population_comparability"] = "unconfirmed"
+                    row["confidence"] = "legacy"
+                else:
+                    row["population_comparability"] = "verified"
+                    row["confidence"] = "partial" if row.get("uncertain") else "verified"
+                if has_known_counts:
+                    if has_unknown_intervals:
+                        row["state"] = "partial"
+                    else:
+                        row["state"] = (
+                            "gap" if "gap" in states else
+                            "period_boundary" if "period_boundary" in states else
+                            "observed_zero" if states and all(state == "observed_zero" for state in states)
+                            else "observed_increase"
+                        )
+                else:
+                    row["state"] = (
+                        "discontinuity" if "discontinuity" in states else
+                        "baseline" if states and all(state == "baseline" for state in states) else
+                        "gap" if "gap" in states else
+                        "baseline"
+                    )
                 filled.append(row)
         return {
             "hasData": True,

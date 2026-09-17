@@ -1530,12 +1530,38 @@ def _overview_downloads_chart(
         )
     bars: list[str] = []
     labels: list[str] = []
+    plot_width = chart_width - left - 12
+    position_times = [
+        _parse_timestamp(item.get("observed_at") or item.get("bucket"))
+        for item in trend
+    ]
+    valid_position_times = [value for value in position_times if value is not None]
+    position_start = min(valid_position_times) if valid_position_times else None
+    position_end = max(valid_position_times) if valid_position_times else None
+    position_span = (
+        position_end - position_start
+        if position_start is not None and position_end is not None
+        else None
+    )
+    edge_inset = min(slot / 2, plot_width / 2)
+    timeline_width = max(0.0, plot_width - edge_inset * 2)
+
+    def position_center(index: int) -> float:
+        """Place observations on their measured timeline, preserving gaps."""
+        observed_at = position_times[index]
+        if position_start is None or position_span is None or observed_at is None:
+            return left + (index + 0.5) * slot
+        if position_span.total_seconds() <= 0:
+            return left + plot_width / 2
+        fraction = (observed_at - position_start).total_seconds() / position_span.total_seconds()
+        return left + edge_inset + max(0.0, min(1.0, fraction)) * timeline_width
+
     series = (
         (".dmg downloads", "overview-chart-download-dmg"),
         (".zip downloads", "overview-chart-download-zip"),
     )
     for index, (counts, item) in enumerate(zip(values, trend)):
-        center = left + (index + 0.5) * slot
+        center = position_center(index)
         bar_width = min(44, slot * 0.58)
         x = center - bar_width / 2
         y = top + plot_height
@@ -1549,8 +1575,22 @@ def _overview_downloads_chart(
             observed_at = item.get("observed_at") or item.get("bucket")
             if count is None:
                 continue
+            legacy_note = (
+                " · legacy observed counter delta · population comparability unconfirmed"
+                if item.get("legacy")
+                or item.get("confidence") == "legacy"
+                or item.get("population_comparability") == "unconfirmed"
+                else ""
+            )
+            partial_note = " · partial known total" if item.get("partial") else ""
             if count == 0:
-                zero_title = f"{label}: 0 · observed zero increase between checks ending {_overview_chart_bucket_label(observed_at, chart_bucket, time_zone)} · {time_zone}"
+                zero_description = (
+                    "known zero increase in partial bucket ending"
+                    if item.get("partial")
+                    else "observed zero increase between checks ending"
+                )
+                zero_title = f"{label}: 0 · {zero_description} {_overview_chart_bucket_label(observed_at, chart_bucket, time_zone)} · {time_zone}"
+                zero_title += legacy_note + partial_note
                 zero_x = center + (-4 if series_index == 0 else 4)
                 bars.append(
                     f"<circle class='overview-chart-download-zero' cx='{zero_x:.1f}' cy='{top + plot_height - 3:.1f}' r='3' tabindex='0' role='img' aria-label='{html.escape(zero_title, quote=True)}'><title>{html.escape(zero_title)}</title></circle>"
@@ -1559,12 +1599,13 @@ def _overview_downloads_chart(
             height = plot_height * count / scale_maximum
             y -= height
             previous_observed_at = item.get("previous_observed_at")
-            if item.get("state") in {"gap", "period_boundary"} and previous_observed_at is not None:
+            if item.get("state") in {"gap", "period_boundary", "partial"} and previous_observed_at is not None:
                 interval_start = _overview_chart_bucket_label(previous_observed_at, chart_bucket, time_zone)
                 interval_end = _overview_chart_bucket_label(observed_at, chart_bucket, time_zone)
                 title = f"{label}: {count} · observed increase across {interval_start}–{interval_end} · {time_zone} · interval uncertain"
             else:
                 title = f"{label}: {count} · observed increase ending {_overview_chart_bucket_label(observed_at, chart_bucket, time_zone)} · {time_zone}"
+            title += legacy_note + partial_note
             bars.append(
                 f"<rect class='{css_class}' x='{x:.1f}' y='{y:.2f}' width='{bar_width:.1f}' "
                 f"height='{height:.2f}' tabindex='0' role='img' "
@@ -1572,8 +1613,13 @@ def _overview_downloads_chart(
                 f"<title>{html.escape(title)}</title></rect>"
             )
         bars.append("</g>")
-        if not any(count is not None for count in counts) and item.get("state") == "discontinuity":
+        if item.get("contains_discontinuity") or (
+            not any(count is not None for count in counts)
+            and item.get("state") == "discontinuity"
+        ):
             discontinuity_title = f"Download counters discontinuity ending {_overview_chart_bucket_label(item.get('observed_at') or item.get('bucket'), chart_bucket, time_zone)} · interval unknown"
+            if item.get("discontinuity_count"):
+                discontinuity_title += f" · {item['discontinuity_count']} unknown interval retained"
             bars.append(
                 f"<line class='overview-chart-download-unknown' x1='{center - 9:.1f}' x2='{center + 9:.1f}' y1='{top + plot_height - 3:.1f}' y2='{top + plot_height - 3:.1f}' tabindex='0' role='img' aria-label='{html.escape(discontinuity_title, quote=True)}'><title>{html.escape(discontinuity_title)}</title></line>"
             )

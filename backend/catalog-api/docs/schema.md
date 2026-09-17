@@ -147,10 +147,14 @@ rows. The table stores aggregate counters and a compact release/asset
 population identity; it does not retain release metadata, asset names,
 response bodies, or binaries. The Overview derives `.dmg` and `.zip` increases
 only between valid consecutive observations. The first observation is a
-baseline; unchanged counters are observed zero; counter decreases or
-population changes start a new baseline; and missing or long-gap intervals are
-unknown/uncertain rather than filled with zero. `observed_at` is the source
-measurement time, while `hour_start` is only the upsert key.
+baseline; unchanged counters are observed zero; nonnegative deltas from rows
+with missing population metadata remain legacy/unverified observations; counter
+decreases or confirmed population changes are discontinuities; and missing or
+long-gap intervals are unknown/uncertain rather than filled with zero.
+`observed_at` is the source measurement time, while `hour_start` is only the
+upsert key. Equality of `release_count` alone does not prove equal asset
+composition, and a nullable fingerprint alone does not prove that the
+population changed.
 
 | Column | Type | Meaning |
 | --- | --- | --- |
