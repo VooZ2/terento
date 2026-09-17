@@ -534,7 +534,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         rendered = body.decode()
         self.assertIn("fēnix 7 Pro", rendered)
         self.assertNotIn("custom-installation-indicator", rendered)
-        self.assertIn("Each map installation counts as one attempt", rendered)
+        self.assertIn("Installation attempts", rendered)
         self.assertNotIn("Map install operations", rendered)
 
     def test_database_binds_omitted_optional_fields_as_null(self):
@@ -586,7 +586,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         }
         body = dashboard_page([row], {"username": "gediminas"}, "csrf", public_stats_enabled=True).decode()
         self.assertIn("Installations", body)
-        self.assertIn("Each map installation counts as one attempt", body)
+        self.assertIn("Installation attempts", body)
         self.assertIn('class="map-statistics-kpi-panel provider-card admin-kpi-panel installation-kpis"', body)
         self.assertIn("<span>Installation attempts</span><strong>1</strong>", body)
         self.assertIn('class="filter-bar admin-filter-bar"', body)
@@ -613,7 +613,7 @@ class CompatibilityEvidenceTests(unittest.TestCase):
         self.assertIn(">—<", unknown_body)
 
         self.assertIn("Sign in", login_page().decode())
-        self.assertIn("Create the first admin account", setup_page().decode())
+        self.assertIn("Create admin account", setup_page().decode())
 
     def test_admin_installations_marks_custom_img_evidence(self):
         row = {

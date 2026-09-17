@@ -32,7 +32,7 @@ class AdminAuditTests(unittest.TestCase):
         body = overview_page({}, {"username": "operator"}, "csrf").decode()
         panel = body.split("aria-labelledby='overview-attention-title'>", 1)[1].split("</section>", 1)[0]
         self.assertTrue(panel.startswith("<div class='section-heading'>"))
-        self.assertIn("</a></div><nav class='attention-shortcuts'", panel)
+        self.assertIn("</span></div><nav class='attention-shortcuts'", panel)
         self.assertNotIn(".overview-attention-empty h2", ADMIN_STYLES)
         self.assertNotIn(".overview-attention-empty{display:grid", ADMIN_STYLES)
 
@@ -67,7 +67,7 @@ class AdminAuditTests(unittest.TestCase):
         self.assertIn('.overview-primary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}', ADMIN_STYLES)
         self.assertIn('.overview-primary-grid,.overview-secondary-grid{align-items:stretch}', ADMIN_STYLES)
         self.assertIn(
-            '.overview-secondary-grid>.overview-panel{display:flex;min-height:0;max-height:320px;flex-direction:column;overflow:hidden}',
+            '.overview-secondary-grid>.overview-panel{display:flex;min-height:0;max-height:320px;flex-direction:column;overflow:auto}',
             ADMIN_STYLES,
         )
         self.assertIn(
@@ -222,9 +222,9 @@ class AdminAuditTests(unittest.TestCase):
                 card = _system_health_card('API <test>', state, '<p>Live check</p>',
                     {'observed_at':'2026-09-07T16:43:00Z'}, reason='failure', action='inspect')
                 attrs = next(attrs for tag,attrs in Tags(card['html']).tags if tag=='details')
-                self.assertEqual('open' in attrs, state != 'HEALTHY')
+                self.assertEqual('open' in attrs, False)
                 self.assertIn('API &lt;test&gt;',card['html'])
-                self.assertIn('Evidence recorded:',card['html'])
+                self.assertIn('Last checked:',card['html'])
 
     def test_provider_explains_mixed_releases_without_relabelling_packages(self):
         body = provider_detail_page({'provider':{'id':'opentopomap','maps':[

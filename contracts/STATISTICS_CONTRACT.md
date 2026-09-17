@@ -295,3 +295,44 @@ They must never require Garmin Unit IDs, serial numbers, accounts, local paths,
 manifests, raw logs, map binaries, credentials, or persistent user/watch IDs.
 The contract does not guarantee complete use: telemetry is opt-out, delivery
 can fail, reports may be delayed, and legacy records can have unknown fields.
+
+
+## Average download time
+
+This private Admin metric describes the observed main-map download phase, not
+server speed or a health verdict. File size, the user's connection, provider
+infrastructure and app phase timing all affect it.
+
+For each eligible successful main acquisition, duration in seconds is
+`DOWNLOAD_PROCESSING.occurred_at - DOWNLOAD_STARTED.occurred_at`. The current
+and released beta.12 build32 producer records Processing on entry to downloaded
+file validation, and Succeeded after acquisition completes. Started → Succeeded
+includes validation/unpacking and is not this metric.
+
+Join by acquisition ID and require agreement on operation, provider, package and
+explicit main component. Deduplicate identical phase facts. Require exactly one
+Started, Processing and successful terminal phase, nonnegative duration and a
+terminal timestamp not before Processing. Conflicting phases, missing identity
+or phases, contours, custom imports, local test events and failed/cancelled/
+interrupted acquisitions do not contribute. Never repair history with nearest
+timestamps or choose convenient min/max facts. Aggregate all eligible durations
+on the backend, without Recent activity or event-detail pagination limits.
+
+Completion time selects the population. Resolve its earlier Started/Processing
+phases even outside the window. Activity by provider uses selected statistics
+population filters; event-detail type/outcome/page filters do not change it.
+Providers uses the last 30 days. Return `averageSeconds` (number or null),
+`sampleCount`, and `populationCount` per provider. Population counts distinct
+successful main acquisition identities, including legacy successes with unknown
+component treated as historical main for coverage only; legacy missing phase
+identity never creates a measurement. Conflicting successes count once for
+coverage and supply no measurement. This coverage denominator is not an install
+count, user count or physical-device count.
+
+Average raw seconds first, then round once to the nearest whole second for
+mm:ss display: 8 → 00:08, 277 → 04:37, 3912 → 65:12. Empty/invalid sample means
+null/“—”, never zero. A genuine zero-duration eligible pair displays 00:00.
+Both Admin tables use the same formatter and expose measured n plus measured/
+successful coverage, formula and period through the accessible explanation.
+Historical versions without reliable phases remain unmeasured. No app payload,
+public ingestion schema or health threshold changes are required.

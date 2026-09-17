@@ -111,7 +111,7 @@ identity/publication review and provider/system problems as distinct work types.
 Counts and list links must lead to the corresponding work, even when the preview
 is truncated. Empty active work does not mean there have been no failures.
 
-The Review queue is labelled and counted as `Pending review tasks`. A failed
+The section title is `Review queue`; its total counts pending review tasks. A failed
 diagnostic and GitHub handling linked to the same operation are alternative
 states of one task; linking an issue moves the task between categories and
 does not increase the total. Identity review is an additional task and
@@ -406,12 +406,79 @@ formulas, sorting, filtering, pagination, or device actions.
 - Overview, Installations, and device detail KPI summaries use the same
   `map-statistics-kpi-panel`, `map-statistics-kpi-groups`,
   `map-statistics-kpi-group`, and `map-statistics-kpi-value` hierarchy as Map
-  statistics. Overview retains six metrics with fresh metrics grouped together
-  and current status separated within the same compact panel. Installations
+  statistics. Overview groups fresh map-stream metrics and provider health within the same
+  compact panel. Compatibility-stream totals remain authoritative in Installations;
+  its distinct diagnostic activity remains accessible under Device/model activity. Installations
   retains five metrics in one panel. Device detail groups Attempts, Successful,
   Failed, and Open errors together, while Last activity remains in that panel
   with smaller date typography and the Attempts explanation control.
 
-- System health retains its result cards, badges, collapsed/expanded evidence,
-  and diagnostic actions, but does not show the explanatory summary paragraph
-  about healthy checks staying collapsed.
+- System health uses compact disclosure rows, status badges, and retained
+  diagnostic evidence/actions. All rows start collapsed, with problems ordered
+  before healthy checks. The count summary, status filter and name search support
+  30–50 checks without a large card grid.
+
+
+## Approved Admin plan — local implementation (2026-09-18)
+
+These rules extend the existing contract, including the preceding identity and
+work-item boundaries. Implementation evidence is local until separately published.
+
+- Every page, section, chart, table, dialog and disclosure uses a title without
+  decorative eyebrows or kickers. Editorial titles contain at most three words
+  (excluding connective “by”); real model/provider names are retained. Counts,
+  dates and statuses are separate metadata. Functional warnings, eligibility
+  conditions and form instructions remain visible.
+- Reuse the Map statistics KPI hierarchy. Provider detail has one summary of
+  affected packages, problematic sources and broken artifacts. Health and
+  Collection share the next row on wide screens and stack on narrow screens.
+  Their details retain HTTP/status/duration, checks, sources, package history,
+  collection runs, catalog sync, licensing and attribution. Check now, Collect
+  catalog, Pause/Activate, More and activation restrictions remain unchanged.
+- Native disclosures share a 44px minimum summary target, 14px chevron, common
+  padding/focus geometry and Enter/Space behavior. Existing anchors still open
+  their target. Nested detail content is padded independently of the summary.
+- Installations shares Devices sort-button/aria-sort and column alignment.
+  Model/Variant use natural text order; counts numeric order; dates chronological
+  order; statuses canonical order. Unknown values are last in both directions;
+  identity breaks ties. Latest activity remains the default. Dropdown and header
+  controls use one URL/session state and sort the entire filtered model list.
+  Server summaries use the complete narrow diagnostic population, not the newest
+  500 events. A selected identity history is scoped in SQL before retrieval;
+  the browser does not receive all histories to calculate summary counts.
+- Empty table rows span the actual columns and center their content. Mobile grid
+  presentation retains a full-width cell without a generated column label.
+- Recent map activity uses one label/state/tone dictionary: success green, failure
+  red, interrupted warning, started/processing informational, cancelled/unknown
+  neutral. Text and existing icons accompany color; historical phases do not
+  animate as live work. Update success uses the same success color as install.
+- Overview preserves distinct compatibility-only, custom, pre-install and unknown
+  identity diagnostics under Device/model activity. Removing its duplicate evidence
+  card does not merge streams, delete history, or equate their denominators.
+- Review queue previews at most three tasks. Category counts use the full all-date
+  unresolved work population and link to the corresponding existing work view;
+  zero categories are omitted, unavailable counts remain unavailable. Each preview
+  retains object, reason/action and available timestamp with one primary link.
+- System health answers which component needs attention. Collapsed rows show title,
+  status and a concrete issue. Details retain result, actual last-check time and
+  operational links. Missing observations are “—”; next-check time appears only
+  when recorded as scheduled. No synthetic problem-start/Changed timestamps are
+  inferred from a check time. Schedules and health thresholds remain unchanged.
+- Freshness revisions hash explicit source-data sections, never rendered HTML.
+  Ignore rendering timestamps, tokens, check clocks, successful heartbeat metadata,
+  identical logical redelivery and irrelevant ordering. A download poll with zero
+  delta alone does not notify; actual increases, gaps/discontinuities and derived
+  stale/status transitions remain meaningful. Poll every 60 seconds only while
+  visible, without overlapping requests. Discard responses for an obsolete URL,
+  generation or replaced view. Async rendering acknowledges only its rendered
+  section keys; other pending changes stay pending. Show one short message and
+  Refresh, no dismiss. Keep connection/session failures distinct. Dirty POST forms
+  require confirmation before a user-requested full refresh discards edits.
+- Average download time uses the canonical statistics definition below and one
+  backend calculation/shared formatter in both tables. Show tabular mm:ss (minutes
+  may exceed 59), round only the final average, “—” for missing, and n for measured
+  sample size. The focusable compact explanation states formula, selected period
+  (Providers: last 30 days), measured/population coverage and interpretation limits.
+- Scale acceptance uses isolated fixtures: 120 identities, 3,000 diagnostics,
+  40 pending tasks and 50 health checks. Browser evidence must include wide,
+  tablet and mobile views, keyboard controls, long names and empty states.

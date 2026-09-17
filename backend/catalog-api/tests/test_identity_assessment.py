@@ -29,7 +29,7 @@ class IdentityAssessmentTests(unittest.TestCase):
         self.assertEqual(result, original)
         result['current_identity_assessment'] = assess_identity(dict(self.event, rawMTPModel='fenix 7 Pro 47mm'), [self.device], self.mappings)
         summary = _identity_checks_markup([result]).split('<details')[0]
-        self.assertIn('conflicting source values', summary)
+        self.assertIn('Conflicting assignment', summary)
         self.assertNotIn('No further model selection needed', summary)
 
     def test_automatic_assignment_has_complete_checks_without_admin_claim(self):
@@ -37,7 +37,7 @@ class IdentityAssessmentTests(unittest.TestCase):
         assessment = assess_identity(self.event, [self.device], self.mappings)
         markup = _identity_checks_markup([dict(canonical_device_model_id=self.device['id'], identity_assessment=assessment)])
         summary = markup.split('<details')[0]
-        self.assertIn('Catalog model already assigned', summary)
+        self.assertIn('Assigned catalog model', summary)
         self.assertNotIn('confirmed by administrator', summary)
 
     def test_display_prefers_saved_catalog_name_without_mutating_report(self):
@@ -188,7 +188,7 @@ class IdentityAssessmentTests(unittest.TestCase):
         assessment = assess_identity(self.event, [self.device, other], self.mappings)
         results = [{'identity_assessment': assessment}]
         markup = _identity_checks_markup(results)
-        self.assertIn('Model assignment needs review', markup)
+        self.assertIn('Review model assignment', markup)
         self.assertEqual(markup.count('<li>'), 0)
         self.assertIn('Device codes', markup)
         self.assertNotIn('device-id other', markup)
@@ -199,7 +199,7 @@ class IdentityAssessmentTests(unittest.TestCase):
     def test_review_does_not_guess_when_ambiguous_missing_or_conflicting(self):
         from terento_catalog.admin import _identity_checks_markup, _identity_recommendation
         assessment = assess_identity(self.event, [self.device], self.mappings[:1])
-        self.assertIn('Model assignment needs review', _identity_checks_markup([{'identity_assessment': assessment}]))
+        self.assertIn('Review model assignment', _identity_checks_markup([{'identity_assessment': assessment}]))
         for value in ({}, dict(assessment, candidates=[]),
                       dict(assessment, candidates=[assessment['candidates'][0]] * 2)):
             self.assertIsNone(_identity_recommendation([{'identity_assessment': value}]))
@@ -299,7 +299,7 @@ class IdentityAssessmentTests(unittest.TestCase):
         second = dict(self.device, id='fenix-47-inreach', inreach=True, screen_technology='AMOLED')
         result = assess_identity({'model': 'fēnix 8 Pro', 'caseSizeMm': 51}, [first, second], [])
         self.assertIsNone(_identity_recommendation([{'identity_assessment': result}]))
-        self.assertIn('Select a catalog variant', _identity_checks_markup([{'identity_assessment': result}]))
+        self.assertIn('Select catalog variant', _identity_checks_markup([{'identity_assessment': result}]))
         options, _ = _identity_device_options([first, second])
         self.assertIn("data-identity-device-id='fenix-47-no-inreach'", options)
         self.assertIn('inReach: No', options)

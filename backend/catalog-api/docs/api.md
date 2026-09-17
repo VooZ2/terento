@@ -1118,3 +1118,24 @@ Operation-owned reports retain initial identity/map context and operationId even
 when the screen closes. Existing received-versus-reviewed identity, assignment,
 local-test partition and counting rules remain unchanged. This prospective fix
 does not reconstruct historical missing reports.
+
+
+## Private Admin plan read-model additions (local, 2026-09-18)
+
+Admin HTML carries `data-admin-revisions`, a JSON mapping of meaningful section
+revision keys. Existing asynchronous Map statistics responses add `revisions`
+(`statistics`, `eventDetail`), `downloadTimes` keyed by provider, and shared
+`downloadTimeMarkup` for those rows. Each timing value has `averageSeconds`
+(number/null), `sampleCount` and `populationCount`; see the statistics contract.
+These additions are authenticated presentation/read-model data, not public
+telemetry or ingestion-schema changes. Freshness polls use the existing page
+route and cadence; no endpoint or scheduling infrastructure is added.
+
+`/admin/providers` requests the same timing aggregate over the last 30 days.
+Other callers of the operational provider summary do not incur that query.
+`/admin/installations` receives complete per-identity diagnostic aggregates;
+its values/filters/sorting no longer depend on the default 500 detail limit.
+Device/unknown-identity drilldowns scope history to that exact identity in SQL.
+No device writes, provider artifacts, telemetry facts, ownership or destructive
+lifecycle rules change. Existing authentication, CSRF and private no-store/noindex
+boundaries remain in effect.
