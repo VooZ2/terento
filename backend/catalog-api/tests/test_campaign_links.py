@@ -75,7 +75,7 @@ class CampaignLinkContractTests(unittest.TestCase):
         body = campaign_links_page({"username": "operator"}, "csrf").decode()
         for text in (
             "Campaign links",
-            "Create consistent tracking links for Terento campaigns.",
+            "<h1>Campaign links</h1>",
             "Campaign link builder",
             "Reddit community post",
             "Home",

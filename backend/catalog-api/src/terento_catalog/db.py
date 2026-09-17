@@ -725,6 +725,21 @@ class Database:
         with self.connection() as connection:
             return list(connection.execute(query).fetchall())
 
+    def compatibility_diagnostic_population(self) -> list[dict[str, Any]]:
+        """Full narrow diagnostic population; aggregated on server, never sent to clients."""
+        with self.connection() as connection:
+            return list(connection.execute("""
+                SELECT event_id, operation_id, map_result_index,
+                       CASE WHEN operation_id IS NOT NULL AND map_result_index IS NOT NULL
+                            THEN 'result:' || operation_id::text || ':' || map_result_index::text
+                            ELSE COALESCE(operation_id::text, 'legacy:' || event_id::text) END AS operation_key,
+                       canonical_device_model_id, compatibility_identity, model,
+                       diagnostic_status, identity_resolution_state, phase_outcome,
+                       automatic_finishing_result, write_started, app_build, release_label
+                FROM compatibility_evidence_event
+                WHERE is_local_test IS NOT TRUE
+            """).fetchall())
+
     def compatibility_operation_details(self, limit: int = 500) -> list[dict[str, Any]]:
         return self._compatibility_operation_details("ACTIVE", limit)
 
@@ -735,8 +750,21 @@ class Database:
     def compatibility_resolved_operation_details(self, limit: int = 500) -> list[dict[str, Any]]:
         return self._compatibility_operation_details("RESOLVED", limit)
 
-    def _compatibility_operation_details(self, diagnostic_status: str, limit: int | None) -> list[dict[str, Any]]:
+    def compatibility_identity_details(self, diagnostic_status: str, *, device_id: str = "", identity: str = "") -> list[dict[str, Any]]:
+        if not device_id and not identity:
+            raise ValueError("Diagnostic identity is required")
+        return self._compatibility_operation_details(diagnostic_status, None, device_id=device_id, identity=identity)
+
+    def _compatibility_operation_details(self, diagnostic_status: str, limit: int | None, *, device_id: str = "", identity: str = "") -> list[dict[str, Any]]:
         limit_clause = "LIMIT %s" if limit is not None else ""
+        identity_clause = ""
+        scope_values = []
+        if device_id:
+            identity_clause = " AND canonical_device_model_id = %s"
+            scope_values = [device_id]
+        elif identity:
+            identity_clause = " AND canonical_device_model_id IS NULL AND COALESCE(NULLIF(trim(compatibility_identity), ''), model, 'Unknown') = %s"
+            scope_values = [identity]
         query = """
             SELECT
                 CASE
@@ -770,10 +798,11 @@ class Database:
             LEFT JOIN admin_user ON admin_user.id = compatibility_evidence_event.resolved_by
             WHERE diagnostic_status = %s
               AND is_local_test IS NOT TRUE
+        """ + identity_clause + """
             ORDER BY occurred_at DESC, operation_key, map_result_index NULLS FIRST
         """ + limit_clause
         with self.connection() as connection:
-            parameters = (diagnostic_status, limit) if limit is not None else (diagnostic_status,)
+            parameters = tuple([diagnostic_status] + scope_values + ([limit] if limit is not None else []))
             rows = list(connection.execute(query, parameters).fetchall())
             if rows:
                 devices = list(connection.execute("SELECT * FROM device_model").fetchall())
@@ -3602,6 +3631,66 @@ class Database:
                 clauses.append(f"{alias}.occurred_at {operator} %s")
                 values.append(filters[key])
         return clauses, values
+
+    def provider_download_times(self, filters: dict[str, Any]) -> dict[str, dict[str, Any]]:
+        """Successful main acquisitions scoped by completion; phases may precede the window.
+
+        DISTINCT removes re-delivery, never resolves conflicting phases with min/max.
+        Acquisition identity is checked against every phase before an interval is eligible.
+        """
+        scope = {k: v for k, v in filters.items() if k not in {"eventType", "outcome"}}
+        clauses, values = self._map_statistics_filter(scope)
+        query = f"""
+            WITH successes AS (
+                SELECT DISTINCT COALESCE(e.acquisition_id::text, 'event:' || e.event_id::text) AS key,
+                       e.acquisition_id, e.operation_id, e.provider_id, e.map_package_id,
+                       e.component_kind, e.occurred_at
+                FROM map_download_event e
+                WHERE {" AND ".join(clauses)}
+                  AND e.event_type = 'DOWNLOAD_SUCCEEDED' AND e.outcome = 'SUCCEEDED'
+                  AND e.provider_id <> 'custom'
+                  AND COALESCE(e.component_kind, 'main') = 'main'
+            ), phases AS (
+                SELECT DISTINCT e.acquisition_id, e.operation_id, e.provider_id,
+                       e.map_package_id, e.component_kind, e.event_type, e.outcome, e.occurred_at
+                FROM map_download_event e
+                WHERE e.is_local_test IS NOT TRUE AND e.acquisition_id IN
+                    (SELECT acquisition_id FROM successes WHERE acquisition_id IS NOT NULL)
+            ), measured AS (
+                SELECT s.key, s.provider_id,
+                       CASE WHEN s.acquisition_id IS NOT NULL
+                         AND s.operation_id IS NOT NULL AND s.map_package_id IS NOT NULL
+                         AND s.component_kind = 'main'
+                         AND count(*) = 3
+                         AND count(*) FILTER (WHERE p.event_type = 'DOWNLOAD_STARTED' AND p.outcome = 'UNKNOWN') = 1
+                         AND count(*) FILTER (WHERE p.event_type = 'DOWNLOAD_PROCESSING' AND p.outcome = 'UNKNOWN') = 1
+                         AND count(*) FILTER (WHERE p.event_type = 'DOWNLOAD_SUCCEEDED' AND p.outcome = 'SUCCEEDED') = 1
+                         AND bool_and(p.operation_id IS NOT DISTINCT FROM s.operation_id
+                             AND p.provider_id IS NOT DISTINCT FROM s.provider_id
+                             AND p.map_package_id IS NOT DISTINCT FROM s.map_package_id
+                             AND p.component_kind IS NOT DISTINCT FROM s.component_kind)
+                         AND max(p.occurred_at) FILTER (WHERE p.event_type = 'DOWNLOAD_PROCESSING')
+                             >= max(p.occurred_at) FILTER (WHERE p.event_type = 'DOWNLOAD_STARTED')
+                         AND s.occurred_at >= max(p.occurred_at) FILTER (WHERE p.event_type = 'DOWNLOAD_PROCESSING')
+                       THEN extract(epoch FROM (
+                           max(p.occurred_at) FILTER (WHERE p.event_type = 'DOWNLOAD_PROCESSING') -
+                           max(p.occurred_at) FILTER (WHERE p.event_type = 'DOWNLOAD_STARTED')))
+                       END AS seconds
+                FROM successes s LEFT JOIN phases p ON p.acquisition_id = s.acquisition_id
+                GROUP BY s.key, s.acquisition_id, s.operation_id, s.provider_id,
+                         s.map_package_id, s.component_kind, s.occurred_at
+            )
+            SELECT provider_id, avg(seconds) AS average_seconds,
+                   count(seconds) AS sample_count, count(DISTINCT key) AS population_count
+            FROM measured GROUP BY provider_id
+        """
+        with self.connection() as connection:
+            rows = connection.execute(query, values).fetchall()
+        return {str(row["provider_id"]): {
+            "averageSeconds": float(row["average_seconds"]) if row["average_seconds"] is not None else None,
+            "sampleCount": int(row["sample_count"]),
+            "populationCount": int(row["population_count"]),
+        } for row in rows}
 
     def map_statistics(
         self,

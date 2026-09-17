@@ -412,7 +412,7 @@ class AdminDevicesTests(unittest.TestCase):
             "csrf",
         ).decode()
         for value in (
-            "Devices", "Garmin device catalog, map capability, authorization, and compatibility evidence.",
+            "Devices", "<h1>Devices</h1>",
             "Search devices", "All families", "All maps", "Maps: Yes", "Maps: No",
             "Maps: Unknown", "Approved", "Blocked", "Pending", "Last success",
             "admin-timezone",

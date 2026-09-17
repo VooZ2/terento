@@ -385,15 +385,15 @@ class AdminSemanticsTests(unittest.TestCase):
         const assert = require('node:assert/strict');
         const listeners = {}; let check, reloads = 0, confirmed = false, revision = 'a', fail = false;
         const elements = [];
-        const current = {dataset:{adminRevision:'a'},getAttribute:()=>null};
+        const current = {dataset:{adminRevisions:'{"content":"a"}'},getAttribute:()=>null};
         global.document = {hidden:false,
-          querySelector:s=>s==='[data-admin-revision]'?current:s==='.admin-topbar'?{after:()=>{}}:null,
+          querySelector:s=>s==='[data-admin-revisions]'?current:s==='.admin-topbar'?{after:()=>{}}:null,
           createElement:()=>{const e={setAttribute:()=>{},append:()=>{},addEventListener:(k,f)=>e[k]=f};elements.push(e);return e;},
           addEventListener:(k,f)=>listeners[k]=f};
-        global.window = {location:{href:'https://example.test/admin',reload:()=>reloads++},confirm:()=>confirmed};
+        global.window = {location:{href:'https://example.test/admin',reload:()=>reloads++},confirm:()=>confirmed,addEventListener:()=>{}};
         global.setInterval = f=>check=f;
         global.fetch = async()=>{if(fail)throw Error('offline');return {ok:true,text:async()=>revision};};
-        global.DOMParser = class {parseFromString(s){return {querySelector:()=>({dataset:{adminRevision:s}})};}};
+        global.DOMParser = class {parseFromString(s){return {querySelector:()=>({dataset:{adminRevisions:JSON.stringify({content:s})}})};}};
         eval(process.argv[1]);
         (async()=>{
           await check(); assert.equal(elements[0].hidden,true);
@@ -401,7 +401,7 @@ class AdminSemanticsTests(unittest.TestCase):
           assert.match(elements[1].textContent,/New activity/); assert.equal(reloads,0);
           listeners.input({target:{closest:()=>true}});elements[2].click();assert.equal(reloads,0);
           confirmed=true;elements[2].click();assert.equal(reloads,1);
-          fail=true;await check();assert.match(elements[1].textContent,/out of date/);
+          fail=true;await check();assert.match(elements[1].textContent,/unavailable/);
           document.hidden=true;elements[0].hidden=true;await check();assert.equal(elements[0].hidden,true);
         })().catch(e=>{console.error(e);process.exitCode=1});
         """
@@ -491,7 +491,7 @@ class AdminSemanticsTests(unittest.TestCase):
         }, {"username": "operator"}, "csrf").decode()
         self.assertIn("<span>Open errors</span><strong class='admin-error-counter is-positive'>12</strong>", body)
         self.assertIn("Old unresolved watch", body)
-        self.assertIn("All unresolved · any date", body)
+        self.assertIn("Unresolved work · all dates", body)
         self.assertNotIn("No issues need attention", body)
         self.assertIn("Review queue shortcuts", body)
 
@@ -599,7 +599,7 @@ class AdminSemanticsTests(unittest.TestCase):
         import re
         def revision(time, count):
             markup = f'<main id="main-content"><p>{count} errors</p><script>{{"generatedAt":"{time}"}}</script></main>'
-            return re.search(r'data-admin-revision="([^"]+)"', _layout("Test", markup).decode())[1]
+            return re.search(r'data-admin-revisions="([^"]+)"', _layout("Test", markup, sections={"data": {"count": count, "generatedAt": time}}).decode())[1]
         self.assertEqual(revision("time-one", 2), revision("time-two", 2))
         self.assertNotEqual(revision("time-one", 2), revision("time-one", 3))
 
@@ -611,7 +611,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("GitHub issue sync", cards)
         self.assertNotIn("class='admin-health-summary'", body)
         self.assertNotIn("Healthy checks stay collapsed; expand a check for its evidence and next action.", body)
-        self.assertIn("<details class='overview-panel admin-disclosure'><summary>Quality-gate results", body)
+        self.assertIn("<details class='overview-panel admin-disclosure'><summary>Weekly results", body)
 
     def test_overview_does_not_turn_missing_evidence_into_zero(self):
         body = overview_page(
@@ -702,16 +702,16 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("<span>Fresh install success</span><strong>75%</strong>", body)
         self.assertIn("<span>Failed fresh installs</span><strong class='admin-error-counter is-positive'>1</strong>", body)
         self.assertIn("<span>Open errors</span><strong class='admin-error-counter is-positive'>1</strong>", body)
-        self.assertIn("<span>Installation attempts</span><strong>2</strong>", body)
-        self.assertIn("<span>Variants</span><strong>1</strong>", body)
-        self.assertIn("<span>Success rate</span><strong>50%</strong>", body)
-        self.assertIn("Map installations over time", body)
+        self.assertNotIn("overview-compatibility-summary'", body)
+        self.assertIn("Diagnostic activity", body)
+        self.assertIn("/admin/installations", body)
+        self.assertIn("Map installations", body)
         self.assertIn("overview-chart-success", body)
         self.assertIn("viewBox='0 0 720 260'", body)
         self.assertIn("overview-chart-panel", body)
         self.assertIn("Recent map activity", body)
-        self.assertIn("Compatibility evidence", body)
-        self.assertIn("Observed download increases", body)
+        self.assertIn("Device/model activity", body)
+        self.assertIn("Downloads</h2>", body)
         self.assertIn("overview-download-panel", body)
         self.assertNotIn("Failures by reason", body)
         self.assertNotIn("Pending metric definition", body)
@@ -773,7 +773,7 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertIn("Device/model activity", body)
         self.assertIn("fēnix 8 · 47 mm, AMOLED", body)
-        self.assertIn("New / review-required devices", body)
+        self.assertIn("Diagnostic activity", body)
         self.assertIn("Review queue", body)
         self.assertIn("Review required", body)
         self.assertIn("Last 24 hours", body)
@@ -793,9 +793,9 @@ class AdminSemanticsTests(unittest.TestCase):
             },
             {"username": "operator"}, "csrf",
         ).decode()
-        self.assertNotIn("overview-model-title", body)
+        self.assertIn("overview-model-title", body)
         self.assertIn("<div class='overview-primary-grid'>", body)
-        self.assertIn("overview-secondary-grid-single", body)
+        self.assertIn("No diagnostic activity in this period.", body)
         self.assertNotIn("class='overview-primary-grid overview-primary-grid-single'", body)
 
     def test_overview_period_control_updates_without_hard_reload(self):
@@ -1241,7 +1241,7 @@ class AdminSemanticsTests(unittest.TestCase):
             },
             {"username": "operator"}, "csrf",
         ).decode()
-        self.assertIn("Observed download increases", body)
+        self.assertIn("Downloads</h2>", body)
         self.assertNotIn("Observed download increases between checks.", body)
         self.assertIn("Last successful data update:", body)
         self.assertIn("overview-download-heading", body)
@@ -1742,7 +1742,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("Installation authorization", detail_body)
         self.assertIn('textarea name=\'note\'', detail_body)
         self.assertIn("Save authorization", detail_body)
-        self.assertIn("Garmin device", detail_body)
+        self.assertIn("Device information", detail_body)
         self.assertIn("device-information-section", detail_body)
         self.assertIn(".device-information-section .model-information-list{max-width:780px}", detail_body)
         self.assertIn("grid-template-columns:150px minmax(0,1fr)", detail_body)
@@ -1792,7 +1792,7 @@ class AdminSemanticsTests(unittest.TestCase):
             self.assertIn(f">{label}<", table)
         self.assertNotIn("Raw MTP model", table)
         dialog = body.split("<dialog class='diagnostic-detail-dialog'", 1)[1].split("</dialog>", 1)[0]
-        for value in ("Technical details · map result 1", "Raw MTP model", "fenix 8 51mm",
+        for value in ("Technical details <span class='disclosure-meta'>· map result 1</span>", "Raw MTP model", "fenix 8 51mm",
                       "LIBMTP_ERROR_IO", "25-50%", "Cleanup attempted", "Failed",
                       "Diagnostic ID: <code>legacy:diagnostic-1</code>", "#32"):
             self.assertIn(value, dialog)
@@ -1855,9 +1855,9 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("1 open error", body)
         self.assertIn("/admin/devices/garmin-fenix-8-51-amoled?from=installations&amp;state=open#installations", body)
         self.assertIn("data-diagnostics-url='/admin/devices/garmin-fenix-8-51-amoled?from=installations#installations'", body)
-        self.assertIn("Most errors", body)
+        self.assertIn("Open errors ↓", body)
         self.assertIn("Latest activity", body)
-        self.assertIn("Model name", body)
+        self.assertIn("Model ↑", body)
         self.assertNotIn("Diagnostic record", body)
         self.assertNotIn("Raw MTP model", body)
         self.assertNotIn("resolve-diagnostic-dialog", body)
@@ -1987,7 +1987,7 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertIn("Diagnostic ID: <code>pending-operation</code>", diagnostics)
         self.assertNotIn("Diagnostic ID: <code>canonical-operation</code>", diagnostics)
-        self.assertIn("Choose a catalog model", diagnostics)
+        self.assertIn("Choose catalog model", diagnostics)
         self.assertIn("Confirm", diagnostics)
 
     def test_canonical_diagnostics_include_all_raw_identity_spellings(self):
@@ -2161,14 +2161,14 @@ class AdminSemanticsTests(unittest.TestCase):
             {"username": "operator"},
             "csrf",
         ).decode()
-        self.assertIn("<p class=\"eyebrow\">Compatibility</p>", body)
+        self.assertIn("<h1>Installations</h1>", body)
         self.assertIn('class="map-statistics-kpi-panel provider-card admin-kpi-panel installation-kpis"', body)
         for label in ("Variants", "Installation attempts", "Successful", "Success rate", "Open errors"):
             self.assertIn(f"<span>{label}</span>", body)
         self.assertIn("<span>Successful</span><strong>2</strong>", body)
         self.assertIn("<span>Success rate</span><strong>66.7%</strong>", body)
         self.assertNotIn("Historical failures: 2", body)
-        self.assertIn("<th scope=\"col\" class=\"column-status\">Status</th><th scope=\"col\" class=\"column-number\">Attempts</th><th scope=\"col\" class=\"column-number\">Successful</th>", body)
+        self.assertIn('data-installation-sort="attempts"', body)
         self.assertNotIn("installation-summary-strip", body)
 
     def test_map_statistics_distinguishes_empty_population_from_unavailable_data(self):
@@ -2198,7 +2198,7 @@ class AdminSemanticsTests(unittest.TestCase):
             {"username": "operator"},
             "csrf",
         ).decode()
-        self.assertIn("No map operation data yet", body)
+        self.assertIn("No map activity", body)
         self.assertIn("<strong data-stat='completedDownloads'>0</strong>", body)
         self.assertIn("class='admin-error-counter' data-stat='failedDownloads'>0</strong>", body)
         self.assertIn("<strong data-stat='completedInstalls'>0</strong>", body)
@@ -2631,13 +2631,13 @@ class AdminSemanticsTests(unittest.TestCase):
             {"username": "operator"},
             "csrf",
         ).decode()
-        for text in ("Packages", "Broken", "Last catalog sync", "Last health check", "Check now", "Collect catalog", "More", "Retire provider", "Provider metadata", "Original links", "Download source URLs", "Regions and packages", "Latest health check", "View check details", "Collection history", "Provider history"):
+        for text in ("Packages", "Broken", "Catalog sync", "Health", "Check now", "Collect catalog", "More", "Retire provider", "Metadata and attribution", "Original links", "Download source URLs", "Regions and packages", "Health", "View check details", "Collection history", "Provider history"):
             self.assertIn(text, body)
         self.assertIn("id='provider-source-pagination'", body)
         self.assertIn("id='provider-package-pagination'", body)
         self.assertIn("id='provider-source-page-size'", body)
         self.assertIn("id='provider-package-page-size'", body)
-        self.assertIn("Health check history · 0 previous checks", body)
+        self.assertIn("Health check history <span class='disclosure-meta'>· 0 previous checks</span>", body)
         self.assertIn("Status changed", body)
         self.assertIn("provider.status_changed", body)
         self.assertIn("audit-technical-details", body)
@@ -2669,11 +2669,11 @@ class AdminSemanticsTests(unittest.TestCase):
             }}, [], [], {"username": "operator"}, "csrf",
         ).decode()
         history = body.split("id='provider-health-history'", 1)[1].split("</details>", 1)[0]
-        self.assertIn("Health check history · 1 previous check", history)
+        self.assertIn("Health check history <span class='disclosure-meta'>· 1 previous check</span>", history)
         self.assertIn("2026-08-30", history)
         self.assertNotIn("2026-08-31", history)
         self.assertNotIn("Download source URLs", body)
-        self.assertIn("Collection · No runs yet", body)
+        self.assertIn("Collection <span class='table-help'>No runs yet</span>", body)
 
     def test_shared_model_page_keeps_resolved_failures_historical_and_open_errors_active_only(self):
         device = _admin_device_payload([{
@@ -3079,7 +3079,7 @@ class AdminSemanticsTests(unittest.TestCase):
             {"username": "operator"},
             "csrf",
         ).decode()
-        self.assertIn("<h2 id='github-issue-queue-title'>1 linked diagnostic task</h2>", body)
+        self.assertIn("<h2 id='github-issue-queue-title'>Linked diagnostics</h2><span class='table-help'>1 tasks</span>", body)
         self.assertEqual(body.count("class='diagnostic-detail-dialog'"), 1)
 
     def test_issue_workflow_migration_is_additive_and_backfills_linked_active_rows(self):
@@ -3150,7 +3150,7 @@ class AdminSemanticsTests(unittest.TestCase):
                 self.assertEqual(body.count("<dialog class='diagnostic-detail-dialog'"), 1)
                 dialog = body.split("<dialog class='diagnostic-detail-dialog'", 1)[1].split("</dialog>", 1)[0]
                 for value in ("fēnix 8 Pro", "51 mm", "France", "Germany", "Resolved", "#32",
-                              "Technical details · map result 1", "Technical details · map result 2",
+                              "Technical details <span class='disclosure-meta'>· map result 1</span>", "Technical details <span class='disclosure-meta'>· map result 2</span>",
                               "action='/admin/diagnostics/reopen'", "&lt;script&gt;alert(1)&lt;/script&gt;"):
                     self.assertIn(value, dialog)
                 self.assertIn("Failed" if outcome == "FAILED" else "Successful", dialog)
@@ -3204,8 +3204,8 @@ class SystemHealthPageTests(unittest.TestCase):
             "csrf",
         ).decode()
         self.assertIn("<h1>System health</h1>", body)
-        self.assertIn("Tests run in GitHub Actions, not in this admin panel", body)
-        self.assertIn("Freizeitkarte catalog", body)
+        self.assertIn("Search checks", body)
+        self.assertIn("Freizeitkarte</h2>", body)
         self.assertIn("63 packages", body)
         self.assertIn("No weekly test report received yet", body)
         self.assertIn("system-health-unknown", body)

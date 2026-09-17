@@ -76,7 +76,7 @@ class IdentificationWorkspaceTests(unittest.TestCase):
         for status in ('APPROVED', 'REJECTED'):
             body = self.render([device(identityMappings=[mapping(status, history=[dict(previous_status='PENDING', new_status=status,
                               reason='Evidence checked', reviewed_by=1, created_at='2026-09-15')])])], device_id='watch')
-            self.assertIn('Change this decision', body)
+            self.assertIn('Change decision', body)
             self.assertIn('Previous decisions', body)
             self.assertIn('Evidence checked', body)
             self.assertNotIn("class='identity-mapping-code' open", body)

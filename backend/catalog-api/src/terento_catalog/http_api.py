@@ -18,6 +18,7 @@ from urllib.parse import parse_qs, quote, unquote, urlsplit
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from .admin_revisions import statistics_revisions
 from .admin import (
     AdminValidationError,
     account_page,
@@ -38,6 +39,8 @@ from .admin import (
     _admin_region_display_name,
     _admin_region_identity,
     _map_statistics_summary,
+    _download_time_markup,
+    _diagnostic_summary_by_identity,
     _normalise_github_issue_reference,
     hash_password,
     login_page,
@@ -199,7 +202,7 @@ class CatalogService:
         body = serialize_device_catalog(build_device_catalog(rows, updated_at))
         return body, device_catalog_etag(body), updated_at
 
-    def admin_providers(self) -> dict[str, Any]:
+    def admin_providers(self, *, include_download_times: bool = False) -> dict[str, Any]:
         rows = {str(row["provider_id"]): row for row in self.database.provider_rows()}
         providers: list[dict[str, Any]] = []
         for provider_id, definition in KNOWN_PROVIDER_DEFINITIONS.items():
@@ -208,6 +211,10 @@ class CatalogService:
         for provider_id, row in rows.items():
             if provider_id not in KNOWN_PROVIDER_DEFINITIONS:
                 providers.append(_provider_summary_payload(None, row))
+        timing_getter = getattr(self.database, "provider_download_times", None)
+        timings = timing_getter({"dateFrom": datetime.now(timezone.utc) - timedelta(days=30)}) if include_download_times and callable(timing_getter) else {}
+        for provider in providers:
+            provider["downloadTime"] = timings.get(provider["id"], {"averageSeconds": None, "sampleCount": 0, "populationCount": 0})
         providers.sort(key=lambda item: (str(item["name"]).casefold(), item["id"]))
         return {"schemaVersion": 1, "providers": providers}
 
@@ -479,18 +486,24 @@ class CatalogService:
             for row in detail_rows
         ]
         linkage = self.database.map_statistics_linkage(population_filters)
-        return {
+        timings = self.database.provider_download_times(population_filters) if callable(getattr(self.database, "provider_download_times", None)) else {}
+        timing_ids = set(timings) | {str(r.get("provider_id")) for r in rows} | set(KNOWN_PROVIDER_DEFINITIONS)
+        payload = {
             "schemaVersion": 1,
             "filters": {**query, "period": period},
             "generatedAt": datetime.now(timezone.utc),
             "rows": rows,
             "summary": _map_statistics_summary(rows),
+            "downloadTimes": timings,
+            "downloadTimeMarkup": {provider: _download_time_markup(timings.get(provider), "Selected statistics period") for provider in timing_ids},
             "detailRows": detail_rows,
             "detailTotal": detail_total,
             "detailPage": detail_page,
             "detailPageSize": detail_page_size,
             "linkage": linkage,
         }
+        payload["revisions"] = statistics_revisions(payload)
+        return payload
 
     def admin_overview(
         self, period: str = "24h", time_zone: str = "UTC",
@@ -547,6 +560,22 @@ class CatalogService:
 
     def compatibility_statistics(self) -> list[dict[str, Any]]:
         return self._canonicalize_statistics(self.database.compatibility_statistics())
+
+    def compatibility_diagnostic_summary(self) -> dict[str, dict[str, int]]:
+        getter = getattr(self.database, "compatibility_diagnostic_population", None)
+        if not callable(getter):
+            return _diagnostic_summary_by_identity(self.compatibility_operation_details(), self.compatibility_resolved_operation_details())
+        rows = getter()
+        return _diagnostic_summary_by_identity(
+            [r for r in rows if r["diagnostic_status"] == "ACTIVE"],
+            [r for r in rows if r["diagnostic_status"] == "RESOLVED"],
+        )
+
+    def compatibility_identity_details(self, status: str, *, device_id: str = "", identity: str = "") -> list[dict[str, Any]]:
+        getter = getattr(self.database, "compatibility_identity_details", None)
+        if callable(getter):
+            return getter(status, device_id=device_id, identity=identity)
+        return self.compatibility_operation_details() if status == "ACTIVE" else self.compatibility_resolved_operation_details()
 
     def compatibility_operation_details(self) -> list[dict[str, Any]]:
         return self.database.compatibility_operation_details()
@@ -1223,7 +1252,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return
             if request_path in {"/admin/providers", "/admin/providers/"}:
                 try:
-                    body = providers_page(service.admin_providers(), session, csrf_token)
+                    body = providers_page(service.admin_providers(include_download_times=True), session, csrf_token)
                 except Exception:
                     LOGGER.exception("admin provider page failed")
                     self._send_json(
@@ -1346,8 +1375,8 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         session,
                         csrf_token,
                         identity=identity,
-                        operations=service.compatibility_operation_details(),
-                        resolved_operations=service.compatibility_resolved_operation_details(),
+                        operations=service.compatibility_identity_details("ACTIVE", identity=identity),
+                        resolved_operations=service.compatibility_identity_details("RESOLVED", identity=identity),
                         identity_devices=identity_devices,
                         canonical_device_model_id=canonical_device_id,
                         unresolved_only=unresolved_only,
@@ -1362,8 +1391,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 try:
                     body = dashboard_page(
                         service.compatibility_statistics(), session, csrf_token,
-                        operations=service.compatibility_operation_details(),
-                        resolved_operations=service.compatibility_resolved_operation_details(),
+                        diagnostic_summary=service.compatibility_diagnostic_summary(),
                         public_stats_enabled=service.public_compatibility_stats_enabled,
                         identity_devices=service.admin_devices().get("devices", []),
                     )
@@ -1447,8 +1475,8 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     origin = query.get("from", ["devices"])[0]
                     body = device_detail_page(
                         device, session, csrf_token,
-                        operations=service.compatibility_operation_details(),
-                        resolved_operations=service.compatibility_resolved_operation_details(),
+                        operations=service.compatibility_identity_details("ACTIVE", device_id=device_id),
+                        resolved_operations=service.compatibility_identity_details("RESOLVED", device_id=device_id),
                         identity_devices=payload.get("devices", []),
                         origin="installations" if origin == "installations" else "devices",
                         requested_state=query.get("state", [""])[0].strip() or None,
