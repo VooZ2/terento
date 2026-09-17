@@ -55,11 +55,11 @@ class Build30Tests(unittest.TestCase):
         result = assess_identity(e, [self.device()], [])
         markup = _identity_checks_markup([dict(current_identity_assessment=result,
             garmin_model_description=e['garminModelDescription'])])
-        for text in ('006-B4953-00', '091e:5359', 'Catalog mapping not confirmed',
-                     'Reported device: fenix 9 Pro - inReach, 47mm'):
+        for text in ('006-B4953-00', '091e:5359', 'mapping not confirmed',
+                     'fenix 9 Pro - inReach, 47mm'):
             self.assertIn(text, markup)
         missing = assess_identity(self.event(usbVendorID=None), [self.device()], [])
-        self.assertIn('Not received', _identity_checks_markup([dict(current_identity_assessment=missing)]))
+        self.assertIn('Not reported', _identity_checks_markup([dict(current_identity_assessment=missing)]))
 
     def test_normal_selector_excludes_conflicting_variants(self):
         from terento_catalog.admin import _diagnostic_detail_dialog
@@ -69,10 +69,12 @@ class Build30Tests(unittest.TestCase):
                       operation_id='preview', phase_outcome='SUCCEEDED', provider='custom')
         markup = _diagnostic_detail_dialog('fenix 9 Pro', 'preview', [result], resolved=False,
                     csrf_token='test', identity_devices=devices)
-        self.assertIn("value='fenix9-47' selected", markup)
-        self.assertIn("<div hidden>", markup)
-        self.assertIn("Model selected from the reported device.", markup)
-        self.assertNotIn("<option value='wrong-size'", markup)
+        self.assertIn("name='canonical_device_model_id'", markup)
+        self.assertIn("value='fenix9-47'", markup)
+        self.assertIn("data-canonical-device-wrap hidden", markup)
+        self.assertIn("Suggested model", markup)
+        self.assertNotIn("<option", markup)
+        self.assertIn("data-identity-device-id='wrong-size'", markup)  # Edit can search the full catalog.
         self.assertIn('wrong-size', markup)  # technical evidence remains available
 
     def test_reported_inreach_prefers_specific_rows_but_keeps_real_screen_ambiguity(self):
@@ -89,11 +91,15 @@ class Build30Tests(unittest.TestCase):
         self.assertIsNone(_identity_recommendation([result]))
         markup = _diagnostic_detail_dialog('fenix 9 Pro', 'preview', [result], resolved=False,
                     csrf_token='test', identity_devices=devices)
-        self.assertIn('Screen / Solar variant', markup)
-        self.assertIn("<option value='inreach'>AMOLED · Solar: not confirmed</option>", markup)
-        self.assertIn("<option value='inreach-solar'>MIP · Solar: yes</option>", markup)
-        self.assertNotIn("<option value='generic'", markup)
-        self.assertNotIn("<option value='generic-solar'", markup)
+        self.assertIn('Select a catalog variant', markup)
+        self.assertIn("data-identity-device-id='inreach'", markup)
+        self.assertIn('AMOLED', markup)
+        self.assertIn('inReach: Yes', markup)
+        self.assertIn("data-identity-device-id='inreach-solar'", markup)
+        self.assertIn('MIP', markup)
+        self.assertIn('Solar: Yes', markup)
+        self.assertNotIn("data-identity-device-id='generic'", markup)
+        self.assertNotIn("data-identity-device-id='generic-solar'", markup)
         self.assertEqual(len(assessment['candidates']), 4)  # authoritative evidence unchanged
         self.assertEqual(assessment['state'], 'UNRESOLVED')
 

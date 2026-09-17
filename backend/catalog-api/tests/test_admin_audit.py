@@ -107,10 +107,6 @@ class AdminAuditTests(unittest.TestCase):
         self.assertIn(".table-wrap{max-height:none;overflow-x:auto;overflow-y:visible", ADMIN_STYLES)
         self.assertIn(".overview-chart-wrap{overflow-x:auto}", ADMIN_STYLES)
         self.assertIn(".diagnostic-detail-inner{max-height:min(900px,calc(100vh - 32px));padding:24px;overflow:auto}", ADMIN_STYLES)
-        self.assertIn(
-            '.overview-secondary-grid .overview-activity-list,.overview-secondary-grid .overview-model-list{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}',
-            ADMIN_STYLES,
-        )
 
     def test_inline_filter_controls_do_not_inherit_vertical_flex_basis(self):
         from terento_catalog.admin import ADMIN_STYLES
@@ -127,9 +123,10 @@ class AdminAuditTests(unittest.TestCase):
         self.assertIn('data-identity-results', markup)
         script = _diagnostics_script()
         self.assertIn("button.type = 'button'", script)
-        self.assertIn('canonical.value = option.value;', script)
-        self.assertIn('suggestions.hidden = !query;', script)
-        self.assertIn("empty.textContent = 'No models match your search'", script)
+        self.assertIn('canonical.value = choice.id;', script)
+        self.assertIn('render(search.value);', script)
+        self.assertIn("empty.textContent = 'No catalog models match this search.'", script)
+        self.assertIn("event.submitter?.name", script)
 
     def test_github_actions_share_alignment_without_form_button_margin(self):
         from terento_catalog.admin import _layout
@@ -156,7 +153,7 @@ class AdminAuditTests(unittest.TestCase):
         self.assertEqual(charts[1].attrib['viewBox'], '0 0 360 220')
         self.assertIn('No map installations', _overview_trend_chart([], 'hour'))
 
-    def test_identity_uses_required_native_select_with_exact_ids(self):
+    def test_identity_picker_uses_one_hidden_exact_id_and_catalog_buttons(self):
         from terento_catalog.admin import _diagnostic_detail_dialog
         markup = _diagnostic_detail_dialog('Unknown', 'preview', [{'phase_outcome': 'FAILED'}],
             resolved=False, csrf_token='preview', identity_devices=[
@@ -164,12 +161,15 @@ class AdminAuditTests(unittest.TestCase):
                 {'device_id': 'fenix-51', 'model': 'fēnix 8', 'variant': '51 mm'},
                 {'device_id': 'safe-id', 'model': '<unsafe>'}])
         tags = Tags(markup).tags
-        selects = [attrs for tag, attrs in tags if tag == 'select' and attrs.get('name') == 'canonical_device_model_id']
-        self.assertEqual(len(selects), 1)
-        self.assertIn('required', selects[0])
+        inputs = [attrs for tag, attrs in tags if tag == 'input' and attrs.get('name') == 'canonical_device_model_id']
+        self.assertEqual(len(inputs), 1)
+        self.assertEqual(inputs[0].get('type'), 'hidden')
+        self.assertEqual(inputs[0].get('value'), '')
+        self.assertFalse(any(tag == 'select' and attrs.get('name') == 'canonical_device_model_id' for tag, attrs in tags))
         self.assertNotIn('<datalist', markup)
-        self.assertIn("value='fenix-43'", markup)
-        self.assertIn("value='fenix-51'", markup)
+        self.assertIn("data-identity-device-id='fenix-43'", markup)
+        self.assertIn("data-identity-device-id='fenix-51'", markup)
+        self.assertIn("data-identity-device-id='safe-id'", markup)
         self.assertIn('&lt;unsafe&gt;', markup)
 
     def test_control_alignment_typography_and_coverage_focus(self):

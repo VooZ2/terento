@@ -5,7 +5,7 @@ This is not a PostgreSQL integration or a production-data repair.
 """
 from contextlib import contextmanager
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timezone
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 import json
@@ -15,9 +15,11 @@ import re
 import sqlite3
 import threading
 import unittest
+from urllib.parse import urlencode
 
 from terento_catalog.admin import (
-    _admin_device_payload, _diagnostic_summary_by_identity, diagnostics_page, device_detail_page, overview_page,
+    _admin_device_payload, _diagnostic_summary_by_identity, diagnostics_page, device_detail_page,
+    hash_password, overview_page, token_hash,
 )
 from terento_catalog.db import Database
 from terento_catalog.http_api import CatalogService, make_handler
@@ -60,9 +62,41 @@ class IntakeDatabase(FakeEvidenceDatabase, Database):
             optional_component_native_failure_code TEXT'''
         self.sqlite.execute('CREATE TABLE compatibility_evidence_event (' + columns + ')')
         self.mappings = deepcopy(MAPPINGS)
+        self.identity_scope_calls = []
 
     def insert_compatibility_event(self, event):
         return Database.insert_compatibility_event(self, event)
+
+    def resolve_compatibility_identity(
+        self, operation_key, *, action, canonical_device_model_id,
+        admin_user_id=None, reason=None, note=None,
+    ):
+        """Exercise the HTTP-to-storage scope with the real result key shape."""
+        self.identity_scope_calls.append({
+            "operation_key": operation_key, "action": action,
+            "canonical_device_model_id": canonical_device_model_id,
+            "reason": reason, "note": note,
+        })
+        match = re.fullmatch(r"result:([0-9a-fA-F-]{36}):(0|[1-9][0-9]*)", operation_key)
+        if match:
+            rows = self.sqlite.execute(
+                'SELECT event_id FROM compatibility_evidence_event WHERE operation_id = ? AND map_result_index = ?',
+                (match.group(1), int(match.group(2))),
+            ).fetchall()
+        else:
+            rows = self.sqlite.execute(
+                'SELECT event_id FROM compatibility_evidence_event WHERE operation_id = ?',
+                (operation_key,),
+            ).fetchall()
+        if not rows:
+            return 0
+        self.sqlite.execute(
+            'UPDATE compatibility_evidence_event SET canonical_device_model_id = ?, identity_resolution_state = ? WHERE event_id IN ('
+            + ','.join('?' for _ in rows) + ')',
+            [canonical_device_model_id, 'RESOLVED', *(row[0] for row in rows)],
+        )
+        self.sqlite.commit()
+        return len(rows)
 
     @contextmanager
     def connection(self):
@@ -79,7 +113,12 @@ class IntakeDatabase(FakeEvidenceDatabase, Database):
     def rows(self):
         rows = [dict(r) for r in self.sqlite.execute('SELECT * FROM compatibility_evidence_event')]
         for row in rows:
-            row.update(operation_key=row['operation_id'], diagnostic_status='ACTIVE',
+            operation_key = (
+                f"result:{row['operation_id']}:{row['map_result_index']}"
+                if row['operation_id'] and row['map_result_index'] is not None
+                else row['operation_id'] or f"legacy:{row['event_id']}"
+            )
+            row.update(operation_key=operation_key, diagnostic_status='ACTIVE',
                        identity_assessment=json.loads(row['identity_assessment']))
         return rows
 
@@ -100,6 +139,17 @@ class OperationDiagnosticDeliveryTests(unittest.TestCase):
         connection.request('POST', '/compatibility/events', json.dumps(payload), {'Content-Type': 'application/json'})
         response = connection.getresponse(); body = response.read(); connection.close()
         return response.status, body
+
+    def authenticated_identity_headers(self):
+        session = 'diagnostic-test-session'
+        csrf = 'diagnostic-test-csrf'
+        self.db.users = [{
+            'id': 1, 'username': 'operator', 'password_hash': hash_password('test-password-123'),
+        }]
+        self.db.create_admin_session(
+            1, token_hash(session), token_hash(csrf), datetime.now(timezone.utc),
+        )
+        return {'Cookie': f'terento_admin_session={session}; terento_admin_csrf={csrf}', 'csrf_token': csrf}
 
     def fixture(self):
         dynamic = os.environ.get('TERENTO_DIAGNOSTIC_FIXTURE_OUTPUT')
@@ -174,6 +224,45 @@ class OperationDiagnosticDeliveryTests(unittest.TestCase):
         self.assertIn('Details', panel)
         # Rendering is read-only: no assignment or GitHub action was submitted.
         self.assertEqual(self.db.identity_reviews, [])
+
+    def test_result_zero_form_http_and_db_scope_update_only_that_result(self):
+        first = self.fixture()
+        second = dict(first, id='aabbccdd-1111-4111-8111-111111111112', mapResultIndex=1,
+                      selectedMapCount=2, caseSizeMm=51)
+        self.assertEqual(self.send(first)[0], 201)
+        self.assertEqual(self.send(second)[0], 201)
+        rows = self.db.rows()
+        html = diagnostics_page(
+            [], {'username': 'operator'}, 'diagnostic-test-csrf',
+            identity=rows[0]['compatibility_identity'], operations=rows,
+            identity_devices=[DEVICE],
+        ).decode()
+        canonical_key = f"result:{first['operationId']}:0"
+        self.assertIn(f"name='operation_key' value='{canonical_key}'", html)
+        self.assertIn("name='canonical_device_model_id'", html)
+
+        auth = self.authenticated_identity_headers()
+        form = urlencode({
+            'csrf_token': auth['csrf_token'], 'operation_key': canonical_key,
+            'identity_action': 'ASSIGN', 'canonical_device_model_id': DEVICE['id'],
+            'return_to': '/admin/installations',
+        })
+        connection = HTTPConnection(*self.server.server_address)
+        connection.request(
+            'POST', '/admin/diagnostics/identity', form,
+            {'Content-Type': 'application/x-www-form-urlencoded', 'Cookie': auth['Cookie']},
+        )
+        response = connection.getresponse()
+        response.read()
+        connection.close()
+        self.assertEqual(response.status, 303)
+        self.assertEqual(self.db.identity_scope_calls[-1]['operation_key'], canonical_key)
+        updated = {
+            row['map_result_index']: row['canonical_device_model_id']
+            for row in self.db.rows()
+        }
+        self.assertEqual(updated[0], DEVICE['id'])
+        self.assertIsNone(updated[1])
 
     def test_unknown_failure_is_accepted_without_faking_disconnect(self):
         payload = self.fixture()

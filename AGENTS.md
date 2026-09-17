@@ -86,6 +86,22 @@ proof that device history, detail actions and statistics work. Follow the
 contract's change/release gate; report unverified criteria explicitly. Documentation
 requirements do not authorize changes to device install/remove behavior.
 
+The Admin visual consistency addendum (popularity rows, table alignment, KPI
+groups, error counters, and System health presentation) is maintained in that
+canonical contract; keep the source classes/helpers there synchronized with
+the implementation.
+
+Identity Review is operator-assisted exact-model selection. Do not reintroduce
+a required identity reason/review note, require all technical checks to be
+`MATCH` before an operator can select a catalog model, hide case-size/display/
+Solar/inReach variant differences, or add duplicate picker mechanisms. Keep
+missing facts distinct from conflicts, keep the canonical per-result scope
+strict (including index `0`), and preserve the server-side conflict check and
+explicit manual-assignment audit path. Do not add a separate daily-review
+`Technical identity details` or candidate-table disclosure; identity-specific
+raw fields belong only in the single diagnostic-level `Technical details`
+disclosure.
+
 Before app/API payload, diagnostic or release changes, also read
 `contracts/APP_API_RELEASE_CONTRACT.md`. Verify both stream contracts and deploy
 additive API acceptance before publishing a client that uses it.
