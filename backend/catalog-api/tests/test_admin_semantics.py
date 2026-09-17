@@ -316,7 +316,7 @@ class AdminSemanticsTests(unittest.TestCase):
         )[1].split("\n        </section>", 1)[0]
         self.assertEqual(overview_panel.count("class='map-statistics-kpi-value "), 6)
         self.assertEqual(overview_panel.count("class='map-statistics-kpi-group overview-kpi-group'"), 2)
-        self.assertIn(">Fresh installs</h2>", overview_panel)
+        self.assertIn(">Installs</h2>", overview_panel)
         self.assertIn(">Current status</h2>", overview_panel)
         self.assertIn("admin-error-counter is-positive", overview_panel)
         self.assertIn("admin-error-counter'>0</strong>", overview_panel)
@@ -635,8 +635,8 @@ class AdminSemanticsTests(unittest.TestCase):
             "csrf",
         ).decode()
         self.assertIn("<h1>Overview</h1>", body)
-        self.assertIn("<span>Fresh installs</span><strong>—</strong>", body)
-        self.assertIn("<span>Failed fresh installs</span><strong class='admin-error-counter'>—</strong>", body)
+        self.assertIn("<span>Installs</span><strong>—</strong>", body)
+        self.assertIn("<span>Failed installs</span><strong class='admin-error-counter'>—</strong>", body)
         self.assertIn("<span>Open errors</span><strong class='admin-error-counter'>—</strong>", body)
         self.assertIn("No map activity in this period.", body)
 
@@ -698,9 +698,9 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("/admin/diagnostics?identity=f%C4%93nix+8+%C2%B7+47+mm&amp;identity_scope=unresolved&amp;state=failed", body)
         self.assertIn("/admin/providers/opentopomap", body)
         self.assertNotIn("<section class='overview-panel overview-provider-panel'", body)
-        self.assertIn("<span>Fresh installs</span><strong>4</strong>", body)
-        self.assertIn("<span>Fresh install success</span><strong>75%</strong>", body)
-        self.assertIn("<span>Failed fresh installs</span><strong class='admin-error-counter is-positive'>1</strong>", body)
+        self.assertIn("<span>Installs</span><strong>4</strong>", body)
+        self.assertIn("<span>Install success</span><strong>75%</strong>", body)
+        self.assertIn("<span>Failed installs</span><strong class='admin-error-counter is-positive'>1</strong>", body)
         self.assertIn("<span>Open errors</span><strong class='admin-error-counter is-positive'>1</strong>", body)
         self.assertNotIn("overview-compatibility-summary'", body)
         self.assertIn("Diagnostic activity", body)
@@ -1035,9 +1035,9 @@ class AdminSemanticsTests(unittest.TestCase):
         body = _overview_trend_chart([{
             "bucket": "2026-09-05T00:00:00Z", "custom_count": 3,
         }], "hour")
-        self.assertIn("Custom fresh install: 3", body)
+        self.assertIn("Custom install: 3", body)
         self.assertRegex(body, r"class='overview-chart-custom'[^>]*height='154.50'")
-        self.assertIn("</i>Custom fresh install</span>", body)
+        self.assertIn("</i>Custom install</span>", body)
         self.assertNotIn("Custom .img: successful manual installations.", body)
 
     def test_download_chart_has_two_hourly_series_and_accessible_values(self):
@@ -2437,7 +2437,7 @@ class AdminSemanticsTests(unittest.TestCase):
             self.assertNotIn(text, body)
         self.assertEqual(main.count("class='map-statistics-kpi-group'"), 3)
         self.assertEqual(main.count("id='map-statistics-metrics'"), 1)
-        for text in ("Downloads", "Fresh installs", "Updates", "Diagnostic coverage", "Fresh attempts", "Linked reports", "Report gaps", "Coverage rate", "Last install"):
+        for text in ("Downloads", "Installs", "Updates", "Diagnostic coverage", "Attempts", "Linked reports", "Report gaps", "Coverage rate", "Last install"):
             self.assertIn(text, main)
         self.assertIn("class='admin-error-counter' data-stat='failedMapUpdates'>0</strong>", main)
         self.assertNotIn("map-statistics-reliability", main)

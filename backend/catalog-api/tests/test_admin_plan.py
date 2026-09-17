@@ -34,6 +34,8 @@ class AdminPlanTests(unittest.TestCase):
                 markup = _download_time_markup({'averageSeconds': seconds, 'sampleCount': 3, 'populationCount': 8}, 'Last 30 days')
                 self.assertIn('>' + expected + '<small', markup)
                 self.assertIn('3 measured of 8', markup)
+                self.assertIn('3 downloads</small>', markup)
+                self.assertNotIn('n=3', markup)
                 self.assertIn("tabindex='0'", markup)
                 self.assertIn('Processing minus Started', markup)
 

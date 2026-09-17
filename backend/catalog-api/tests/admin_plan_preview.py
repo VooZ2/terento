@@ -21,12 +21,14 @@ def build(root):
         'downloadTime':metric,'lastHealthCheck':'2026-09-17T10:30:00Z','lastCatalogSync':'2026-09-16T10:30:00Z'} for k,n in [('freizeitkarte','Freizeitkarte'),('opentopomap','OpenTopoMap'),('long','Provider With A Very Long Real Name')]]
     stats={'rows':[{'provider_id':'freizeitkarte','map_package_id':'lt','region':'LT','region_country':'LT','region_identity':'lt','display_name':'Lithuania',
         'component_kind':'main','event_type':'INSTALL_SUCCEEDED','outcome':'SUCCEEDED','operation_count':3000,'event_count':3000,'last_occurred_at':'2026-09-17T10:30:00Z'}], 'downloadTimes':{'freizeitkarte':metric},'summary':{'hasEventData':True,'completedDownloads':3000,'completedInstalls':3000,'failedInstalls':0,'downloadSuccessRate':100,'installSuccessRate':100}}
+    stats['rows'] += [{'provider_id':'custom','event_type':'INSTALL_SUCCEEDED','outcome':'SUCCEEDED','operation_count':15,'event_count':15},
+        {'provider_id':'freizeitkarte','region':'unknown','event_type':'INSTALL_SUCCEEDED','outcome':'SUCCEEDED','operation_count':1,'event_count':1}]
     stats["summary"] = _map_statistics_summary(stats["rows"])
     recent=[]
     for i,kind in enumerate(('DOWNLOAD_STARTED','DOWNLOAD_PROCESSING','DOWNLOAD_CANCELLED','DOWNLOAD_INTERRUPTED','DOWNLOAD_SUCCEEDED','DOWNLOAD_FAILED','INSTALL_SUCCEEDED','INSTALL_FAILED','MAP_UPDATE_SUCCEEDED','MAP_UPDATE_FAILED')):
         recent.append({'event_type':kind,'provider_id':'freizeitkarte','map_package_id':'lt','region':'Lithuania','occurred_at':'2026-09-17T10:30:00Z','component_kind':'main'})
     recent[4]['lifecycle']=[{'type':'DOWNLOAD_STARTED','at':'2026-09-17T10:20:00Z'},{'type':'DOWNLOAD_PROCESSING','at':'2026-09-17T10:25:00Z'},{'type':'DOWNLOAD_SUCCEEDED','at':'2026-09-17T10:30:00Z'}]
-    overview={'period':'30d','data':{'hasData':True,'eventCount':3000,'completedInstallCount':2700,'failedInstallCount':300,'installSuccessRate':90,'recentActivity':recent},
+    overview={'period':'30d','data':{'hasData':True,'allTimeSuccessCount':56,'allTimeFailedCount':9,'allTimeCustomCount':15,'allTimeMapUpdateCount':0,'eventCount':3000,'completedInstallCount':2700,'failedInstallCount':300,'installSuccessRate':90,'recentActivity':recent},
         'providers':providers,'compatibility':{'hasData':True,'allTimeOpenErrorCount':20,'recentActivity':[dict(events[0],operation_key='fixture-0',last_occurred_at='2026-09-17T10:30:00Z')],
         'attention':[dict(events[i],operation_key=f'fixture-{i}',open_error=True,has_failed=True,error_category='TRANSFER_FAILED',last_occurred_at='2026-09-17T10:30:00Z') for i in range(40)]}}
     device=_admin_device_payload([{'device_id':'model-0','model':'fēnix 8','variant':'51 mm, AMOLED','family_name':'fēnix','map_capable':True,'active':True,'support_status':'SUPPORTED','usb_identities':[]}],None)['devices'][0]

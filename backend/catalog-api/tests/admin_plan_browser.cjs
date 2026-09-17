@@ -12,6 +12,38 @@ const {chromium}=require(process.argv[2]);
    await page.goto(base+'/admin/'+name+'.html');await page.waitForTimeout(150);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${name}/${width}: page overflow`);
    assert.deepEqual(errors.splice(0),[],`${name}/${width}: script errors`);
+   assert(!/\bFresh\b/i.test(await page.locator('main').innerText()), `${name}: no Fresh labels`);
+   if(name==='health'){
+    const boxes=await page.locator('[data-health-status]').evaluateAll(es=>es.slice(0,4).map(e=>({x:e.offsetLeft,y:e.offsetTop})));
+    const columns=width===1440?3:width===900?2:1;
+    assert.equal(boxes.filter(b=>b.y===boxes[0].y).length,columns,`health/${width}: expected columns`);
+   }
+   if(name==='overview'){
+    const metrics=await page.locator('.overview-map-total').evaluateAll(es=>es.map(e=>({height:e.getBoundingClientRect().height,font:getComputedStyle(e.querySelector('strong')).fontSize,weight:getComputedStyle(e.querySelector('strong')).fontWeight})));
+    assert.equal(new Set(metrics.map(m=>m.height)).size,1,'Chart totals share height');
+    assert.equal(new Set(metrics.map(m=>m.font)).size,1,'Chart totals share numeric size');
+    assert.equal(new Set(metrics.map(m=>m.weight)).size,1,'Chart totals share numeric weight');
+    assert.equal(await page.locator('.overview-kpis .map-statistics-kpi-value.failed').first().evaluate(e=>getComputedStyle(e).borderTopWidth),'1px');
+   }
+   if(name==='installations'){
+    const fonts=await page.locator('#evidence-rows tr').first().evaluate(e=>[3,4,5,6].map(i=>getComputedStyle(e.children[i].querySelector('.admin-error-counter')||e.children[i].querySelector('a')||e.children[i]).fontSize));
+    assert.equal(new Set(fonts).size,1,'Installation numbers share size');
+    assert.equal(await page.locator('.installation-kpis .failed').evaluate(e=>getComputedStyle(e).borderTopWidth),'1px');
+   }
+   if(name==='device'){
+    assert.equal(await page.locator('.attempts-metric>span').evaluate(e=>getComputedStyle(e,'::after').content),'none');
+    assert.equal(await page.locator('.map-statistics-kpi-secondary').evaluate(e=>getComputedStyle(e).borderTopWidth),'1px');
+   }
+   if(name==='statistics'){
+    assert.match(await page.locator('#map-statistics-world-map-status').innerText(),/15 Custom maps/);
+    assert.match(await page.locator('#map-statistics-world-map-status').innerText(),/1 installs without country coverage/);
+    assert.match(await page.locator('.download-time').first().innerText(),/downloads/);
+   }
+   if(['overview','installations','device','statistics'].includes(name)){
+    const selector=name==='statistics'?'.map-statistics-kpi-value:not(.failed)>strong':'.admin-kpi-panel .map-statistics-kpi-value:not(.failed):not(.timestamp-metric)>strong';
+    assert.equal(await page.locator(selector).first().evaluate(e=>getComputedStyle(e).fontSize),'24px',`${name}: shared KPI size`);
+   }
+
    await page.screenshot({path:`${output}/${name}-${width}.png`,fullPage:true});
   }
   await page.goto(base+'/admin/device.html');

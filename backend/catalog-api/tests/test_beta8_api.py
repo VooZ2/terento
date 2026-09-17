@@ -1231,7 +1231,7 @@ class Beta8APITests(unittest.TestCase):
             self.assertEqual(statistics.status, 200)
             self.assertIn(b"Map statistics", statistics_body)
             self.assertIn(b"7 days", statistics_body)
-            self.assertIn(b"Fresh install success", statistics_body)
+            self.assertIn(b"Install success", statistics_body)
         finally:
             server.shutdown()
             server.server_close()
