@@ -95,7 +95,7 @@ WITH normalized_events AS (
         sum(o.successful_map_result_count) AS successful_map_result_count,
         sum(o.failed_map_result_count) AS failed_map_result_count,
         sum(o.not_started_map_result_count) AS not_started_map_result_count,
-        sum(o.prewrite_failure_count) AS prewrite_failure_count
+        sum(o.prewrite_failure_count)::bigint AS prewrite_failure_count
     FROM result_stats o
     GROUP BY o.aggregate_key
 ), error_stats AS (
