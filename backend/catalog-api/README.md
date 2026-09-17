@@ -3,16 +3,12 @@
 The overview uses a compact mobile SVG with the same complete time series and
 three time-axis labels; desktop keeps its detailed chart. Clip IDs are unique
 between variants. Identity review uses a searchable native select with exact
-canonical IDs rather than datalist suggestions. Same-model choices preserve
-the catalog model and variant names and append only known screen/Solar facts;
-they never replace distinct candidates with identical `not confirmed` labels.
-The form also shows which identity facts were reported by the device and which
-remain unavailable. Editing the search clears the selection, and typing
-immediately shows matching model buttons below the search field (including
-accent-insensitive fenix matches). The native select remains available as a
-fallback. Assignment requires an explicit model choice and a reason, and
-conflicts require a separate audited source correction. Other identity actions
-disable the picker.
+canonical IDs rather than datalist suggestions. Editing the search clears the
+selection, and typing immediately shows matching model buttons below the search
+field (including accent-insensitive fenix matches). The native select remains
+available as a fallback. Assignment requires an explicit model choice and a
+reason, and conflicts require a separate audited source correction. Other
+identity actions disable the picker.
 
 GitHub report actions share inline-flex alignment, zero margins and stretched
 row heights for both the link and button; copy feedback occupies its own row.
@@ -51,9 +47,14 @@ The September 9 post-audit contract keeps persistent labels above filters
 (including expanded map search), sentence-case health badges, and at least
 40 px desktop / 44 px mobile map controls. Wide evidence tables scroll inside
 their container instead of splitting headings. Empty time ranges and filtered
-searches explain how to recover. Map statistics count packages; compatibility
-statistics count watch-installation attempts that reached transfer. Success
-rates exclude in-progress operations. Provider health has one summary, with
+searches explain how to recover. Map statistics distinguish terminal provider
+acquisitions, fresh main-map results, optional components and updates.
+Compatibility statistics use the same logical per-result semantics: verified
+fresh results and failures after writing began are counted, while current
+pre-install and unknown results remain visible in diagnostics but stay outside
+the fresh denominator. See the canonical
+[`../../contracts/STATISTICS_CONTRACT.md`](../../contracts/STATISTICS_CONTRACT.md).
+Success rates exclude in-progress operations. Provider health has one summary, with
 per-provider status retained as row context. Display-name cleanup must not
 change stored identities or evidence.
 
@@ -336,9 +337,12 @@ unit. Resolved failures stay in all-time attempt/failure totals; unstarted
 siblings do not become fabricated attempts. Immutable event IDs provide replay
 idempotency. Diagnostic review actions remain grouped by the original session.
 
-Overview reconciles map events against compatibility results by session,
-provider and region. One catalog event cannot suppress a custom result or a
-different region. Map statistics remains catalog-only. Existing retained mixed
+Overview keeps map events and compatibility results as separate streams and
+links them only at the independent map-result boundary: shared operation,
+provider and an exact/unambiguous package-region identity. One catalog event
+cannot suppress a custom result, a sibling map, or a different region. Provider
+map-event telemetry remains separate, while map statistics can project eligible
+custom fresh results with unknown catalog geography. Existing retained mixed
 sessions recalculate on read; no production event rewrite or backfill is needed.
 The public API, watch cards and Installations use compatibility_model_statistics
 as the authoritative full-history source; the 500-row diagnostics display limit
@@ -347,8 +351,9 @@ both verify, even before other selected results arrive. Failed/unverified result
 never advance status. Thresholds remain 0 TESTING, 1–2 TESTED, 3–4 SUPPORTED,
 5+ VERIFIED. Local telemetry stays excluded, resolved failures stay in historical
 counts, and existing exact-model administrator publication approval is preserved.
-Native telemetry contracts, provider-only Map statistics and review actions are
-unchanged. These counts represent map installations, not unique users or watches.
+Native telemetry contracts, provider-only map-event uploads and review actions
+are unchanged. These counts represent map installations, not unique users or
+watches.
 
 ### Admin custom IMG chart series
 

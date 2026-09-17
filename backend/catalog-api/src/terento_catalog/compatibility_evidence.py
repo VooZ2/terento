@@ -24,6 +24,8 @@ ALLOWED_KEYS = {
     "failureStage", "failureCode", "nativeFailureCode", "writeStarted",
     "remoteObjectCreated", "cleanupAttempted", "cleanupSucceeded",
     "transferProgressBucket", "rawMTPModel", "identityResolutionCode",
+    "optionalComponentSelected", "optionalComponentOutcome", "optionalComponentFailureStage",
+    "optionalComponentFailureCode", "optionalComponentNativeFailureCode",
 }
 FORBIDDEN_KEY_PARTS = ("serial", "unitid", "unit_id", "path", "manifest", "username", "token", "password")
 
@@ -225,6 +227,32 @@ def _validate_v3(event: dict[str, Any]) -> None:
     }
     if event.get("nativeFailureCode") not in native_codes | {None}:
         raise EvidenceValidationError("invalid_native_failure_code")
+    optional_selected = event.get("optionalComponentSelected")
+    if optional_selected is not None and not isinstance(optional_selected, bool):
+        raise EvidenceValidationError("invalid_optional_component_selection")
+    optional_outcome = event.get("optionalComponentOutcome")
+    optional_fields = (
+        "optionalComponentOutcome", "optionalComponentFailureStage",
+        "optionalComponentFailureCode", "optionalComponentNativeFailureCode",
+    )
+    if optional_selected is False and any(event.get(key) is not None for key in optional_fields):
+        raise EvidenceValidationError("inconsistent_optional_component")
+    if optional_selected is not True and any(event.get(key) is not None for key in optional_fields):
+        raise EvidenceValidationError("missing_optional_component_selection")
+    if optional_outcome not in {None, "VERIFIED", "FAILED", "NOT_STARTED", "UNKNOWN"}:
+        raise EvidenceValidationError("invalid_optional_component_outcome")
+    if optional_outcome == "VERIFIED" and any(
+        event.get(key) is not None
+        for key in ("optionalComponentFailureStage", "optionalComponentFailureCode", "optionalComponentNativeFailureCode")
+    ):
+        raise EvidenceValidationError("inconsistent_optional_component_success")
+    optional_stages = {"download", "extract", "source-validation", "preflight", "write", "verify", "cleanup", "manifest"}
+    if event.get("optionalComponentFailureStage") not in optional_stages | {None}:
+        raise EvidenceValidationError("invalid_optional_component_stage")
+    if event.get("optionalComponentFailureCode") not in failure_codes | {None}:
+        raise EvidenceValidationError("invalid_optional_component_failure_code")
+    if event.get("optionalComponentNativeFailureCode") not in native_codes | {None}:
+        raise EvidenceValidationError("invalid_optional_component_native_failure_code")
     if event.get("identityResolutionCode") not in {
         None, "MTP_SERIAL", "GARMIN_UNIT_ID", "UNAVAILABLE"
     }:

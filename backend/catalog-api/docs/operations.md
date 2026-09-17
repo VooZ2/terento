@@ -103,10 +103,11 @@ operator selects `All` or `Resolved`.
 
 Migration 025 also records its application time in
 `compatibility_device_card_failure_epoch`. Device cards exclude failures
-received before that timestamp and count every distinct failure received
-afterward, including pre-write failures. Successful device-card history is
-preserved. Do not edit the epoch after deployment unless a separately reviewed
-counter reset is explicitly requested.
+received before that timestamp and count every distinct eligible failure
+received afterward; current pre-write and unknown-write results remain visible
+diagnostic history but stay outside completed installation counts. Successful
+device-card history is preserved. Do not edit the epoch after deployment unless
+a separately reviewed counter reset is explicitly requested.
 
 Migration `021_canonical_admin_semantics.sql` keeps its SQL
 compatibility-status classifier parameter as `BIGINT`, matching PostgreSQL's

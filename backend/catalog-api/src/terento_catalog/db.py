@@ -258,9 +258,17 @@ class Database:
         dmg_total: int,
         zip_total: int,
         release_count: int,
+        asset_count: int | None = None,
+        population_fingerprint: str | None = None,
         observed_at: datetime | None = None,
     ) -> bool:
-        """Store one cumulative GitHub release download observation per hour."""
+        """Store one cumulative GitHub release-download observation per hour."""
+        for name, value in (
+            ("dmg_total", dmg_total), ("zip_total", zip_total),
+            ("release_count", release_count), ("asset_count", asset_count),
+        ):
+            if value is not None and (isinstance(value, bool) or int(value) < 0):
+                raise ValueError(f"{name} cannot be negative")
         observed_at = observed_at or datetime.now(timezone.utc)
         if observed_at.tzinfo is None:
             observed_at = observed_at.replace(tzinfo=timezone.utc)
@@ -277,15 +285,23 @@ class Database:
             connection.execute(
                 """
                 INSERT INTO github_download_snapshot (
-                    hour_start, observed_at, dmg_total, zip_total, release_count
-                ) VALUES (%s, %s, %s, %s, %s)
+                    hour_start, observed_at, dmg_total, zip_total, release_count,
+                    asset_count, population_fingerprint
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (hour_start) DO UPDATE SET
                     observed_at = EXCLUDED.observed_at,
                     dmg_total = EXCLUDED.dmg_total,
                     zip_total = EXCLUDED.zip_total,
-                    release_count = EXCLUDED.release_count
+                    release_count = EXCLUDED.release_count,
+                    asset_count = EXCLUDED.asset_count,
+                    population_fingerprint = EXCLUDED.population_fingerprint
+                WHERE EXCLUDED.observed_at >= github_download_snapshot.observed_at
                 """,
-                (hour_start, observed_at, int(dmg_total), int(zip_total), int(release_count)),
+                (
+                    hour_start, observed_at, int(dmg_total), int(zip_total), int(release_count),
+                    int(asset_count) if asset_count is not None else None,
+                    population_fingerprint,
+                ),
             )
         return True
 
@@ -296,7 +312,13 @@ class Database:
         now: datetime | None = None,
         period: str = "24h",
     ) -> dict[str, Any]:
-        """Return current totals and period-aware display-only deltas."""
+        """Return cumulative totals and observed increases between checks.
+
+        The first observation is a baseline. Counter decreases and release or
+        asset-population changes start a new baseline. Long gaps and intervals
+        crossing the selected period boundary remain visible as uncertain; the
+        read model never fabricates zero observations.
+        """
         periods = {
             "24h": timedelta(hours=24),
             "7d": timedelta(days=7),
@@ -321,7 +343,6 @@ class Database:
             if duration is None
             else now - duration
         )
-        end = now.replace(minute=0, second=0, microsecond=0)
         if period == "24h":
             # Match the map-operation chart's rolling 24-hour window: include
             # the current hour bucket and the bucket at the same hour yesterday.
@@ -331,11 +352,13 @@ class Database:
         with self.connection() as connection:
             latest = connection.execute(
                 """
-                SELECT dmg_total, zip_total, observed_at
+                SELECT dmg_total, zip_total, observed_at, release_count,
+                       asset_count, population_fingerprint
                 FROM github_download_snapshot
-                ORDER BY hour_start DESC
+                WHERE observed_at <= %s
+                ORDER BY observed_at DESC, hour_start DESC
                 LIMIT 1
-                """
+                """, (now,)
             ).fetchone()
             if latest is None:
                 return {
@@ -343,80 +366,121 @@ class Database:
                     "dmgTotal": None,
                     "zipTotal": None,
                     "lastObservedAt": None,
+                    "lastSuccessfulObservedAt": None,
                     "trend": [],
                     "bucket": bucket,
                 }
-            trend = connection.execute(
+            snapshots = connection.execute(
                 """
-                WITH snapshots AS (
-                    SELECT hour_start, observed_at, dmg_total, zip_total,
-                           lag(dmg_total) OVER (ORDER BY hour_start) AS previous_dmg_total,
-                           lag(zip_total) OVER (ORDER BY hour_start) AS previous_zip_total
-                    FROM github_download_snapshot
-                )
-                SELECT hour_start AS bucket,
-                       greatest(
-                           dmg_total - coalesce(previous_dmg_total, dmg_total), 0
-                       ) AS dmg_count,
-                       greatest(
-                           zip_total - coalesce(previous_zip_total, zip_total), 0
-                       ) AS zip_count,
-                       observed_at
-                FROM snapshots
-                WHERE hour_start >= %s
-                ORDER BY hour_start
-                """,
-                (start,),
+                SELECT hour_start, observed_at, dmg_total, zip_total,
+                       release_count, asset_count, population_fingerprint
+                FROM github_download_snapshot
+                WHERE observed_at <= %s
+                ORDER BY observed_at, hour_start
+                """, (now,),
             ).fetchall()
-        raw_trend = [dict(row) for row in trend if isinstance(row.get("bucket"), datetime)]
+        observations = [
+            dict(row) for row in snapshots
+            if isinstance(row.get("observed_at"), datetime)
+        ]
+        period_observations = [row for row in observations if row["observed_at"] >= start]
+        first_period_index = observations.index(period_observations[0]) if period_observations else len(observations)
+        raw_trend: list[dict[str, Any]] = []
+        for index, current in enumerate(period_observations, start=first_period_index):
+            previous = observations[index - 1] if index > 0 else None
+            item = {
+                "bucket": current["observed_at"] if bucket == "hour" else _overview_bucket_floor(current["observed_at"], bucket, time_zone=time_zone),
+                "previous_observed_at": previous["observed_at"] if previous is not None else None,
+                "observed_at": current["observed_at"],
+                "state": "baseline",
+                "dmg_count": None,
+                "zip_count": None,
+            }
+            if previous is None:
+                raw_trend.append(item)
+                continue
+            same_population = (
+                current.get("release_count") == previous.get("release_count")
+                and current.get("asset_count") is not None
+                and previous.get("asset_count") is not None
+                and current.get("asset_count") == previous.get("asset_count")
+                and current.get("population_fingerprint") is not None
+                and current.get("population_fingerprint") == previous.get("population_fingerprint")
+            )
+            dmg_delta = int(current["dmg_total"]) - int(previous["dmg_total"])
+            zip_delta = int(current["zip_total"]) - int(previous["zip_total"])
+            if not same_population or dmg_delta < 0 or zip_delta < 0:
+                raw_trend.append(item | {"state": "discontinuity"})
+                continue
+            item["dmg_count"] = dmg_delta
+            item["zip_count"] = zip_delta
+            item["state"] = "observed_zero" if dmg_delta == 0 and zip_delta == 0 else "observed_increase"
+            if previous["observed_at"] < start:
+                item["state"] = "period_boundary"
+                item["uncertain"] = True
+            elif (
+                (
+                    current.get("hour_start") is not None
+                    and previous.get("hour_start") is not None
+                    and current["hour_start"] - previous["hour_start"] > timedelta(hours=1)
+                )
+                or current["observed_at"] - previous["observed_at"] > timedelta(hours=1, minutes=30)
+            ):
+                item["state"] = "gap"
+                item["uncertain"] = True
+            raw_trend.append(item)
+
         if bucket == "hour":
-            indexed = {row["bucket"]: row for row in raw_trend}
-            filled = []
-            current = start
-            while current <= end:
-                filled.append(indexed.get(current, {
-                    "bucket": current,
-                    "dmg_count": 0,
-                    "zip_count": 0,
-                }))
-                current += timedelta(hours=1)
+            filled = raw_trend
         else:
             aggregated: dict[datetime, dict[str, Any]] = {}
             for row in raw_trend:
-                row_bucket = _overview_bucket_floor(
-                    row["bucket"], bucket, time_zone=time_zone,
-                )
-                target = aggregated.setdefault(row_bucket, {
-                    "bucket": row_bucket,
-                    "dmg_count": 0,
-                    "zip_count": 0,
+                target = aggregated.setdefault(row["bucket"], {
+                    "bucket": row["bucket"],
+                    "previous_observed_at": row.get("previous_observed_at"),
+                    "observed_at": row["observed_at"],
+                    "dmg_count": None, "zip_count": None, "states": [],
                 })
-                target["dmg_count"] += max(0, int(row.get("dmg_count") or 0))
-                target["zip_count"] += max(0, int(row.get("zip_count") or 0))
-            if aggregated:
-                current = (
-                    min(aggregated)
-                    if period == "all"
-                    else _overview_bucket_floor(start, bucket, time_zone=time_zone)
-                )
-                end_bucket = _overview_bucket_floor(now, bucket, time_zone=time_zone)
-                filled = []
-                while current <= end_bucket:
-                    filled.append(aggregated.get(current, {
-                        "bucket": current,
-                        "dmg_count": 0,
-                        "zip_count": 0,
-                    }))
-                    current = _next_overview_bucket(
-                        current, bucket, time_zone=time_zone,
+                previous_observed_at = row.get("previous_observed_at")
+                if previous_observed_at is not None and (
+                    target["previous_observed_at"] is None
+                    or previous_observed_at < target["previous_observed_at"]
+                ):
+                    target["previous_observed_at"] = previous_observed_at
+                target["observed_at"] = max(target["observed_at"], row["observed_at"])
+                target["states"].append(row["state"])
+                if row["dmg_count"] is not None:
+                    target["dmg_count"] = (
+                        row["dmg_count"]
+                        if target["dmg_count"] is None
+                        else target["dmg_count"] + row["dmg_count"]
                     )
-            else:
-                filled = []
+                if row["zip_count"] is not None:
+                    target["zip_count"] = (
+                        row["zip_count"]
+                        if target["zip_count"] is None
+                        else target["zip_count"] + row["zip_count"]
+                    )
+                if row.get("uncertain"):
+                    target["uncertain"] = True
+            filled = []
+            for row in sorted(aggregated.values(), key=lambda value: value["observed_at"]):
+                states = row.pop("states")
+                row["state"] = (
+                    "gap" if "gap" in states else
+                    "period_boundary" if "period_boundary" in states else
+                    "discontinuity" if "discontinuity" in states else
+                    "baseline" if "baseline" in states and all(state == "baseline" for state in states) else
+                    "observed_zero" if states and all(state == "observed_zero" for state in states)
+                    else "observed_increase"
+                )
+                filled.append(row)
         return {
             "hasData": True,
             "dmgTotal": int(latest["dmg_total"]),
             "zipTotal": int(latest["zip_total"]),
             "lastObservedAt": latest["observed_at"],
+            "lastSuccessfulObservedAt": latest["observed_at"],
             "trend": filled,
             "bucket": bucket,
         }
@@ -452,6 +516,21 @@ class Database:
             ) ON CONFLICT (event_id) DO NOTHING
             RETURNING event_id
         """
+        if any(
+            key in event
+            for key in (
+                "optionalComponentSelected", "optionalComponentOutcome",
+                "optionalComponentFailureStage", "optionalComponentFailureCode",
+                "optionalComponentNativeFailureCode",
+            )
+        ):
+            query = query.replace(
+                "cleanup_attempted, cleanup_succeeded, transfer_progress_bucket,\n                raw_mtp_model",
+                "cleanup_attempted, cleanup_succeeded, transfer_progress_bucket,\n                optional_component_selected, optional_component_outcome,\n                optional_component_failure_stage, optional_component_failure_code,\n                optional_component_native_failure_code, raw_mtp_model",
+            ).replace(
+                "%(remoteObjectCreated)s, %(cleanupAttempted)s, %(cleanupSucceeded)s,\n                %(transferProgressBucket)s, %(rawMTPModel)s",
+                "%(remoteObjectCreated)s, %(cleanupAttempted)s, %(cleanupSucceeded)s,\n                %(transferProgressBucket)s, %(optionalComponentSelected)s,\n                %(optionalComponentOutcome)s, %(optionalComponentFailureStage)s,\n                %(optionalComponentFailureCode)s, %(optionalComponentNativeFailureCode)s,\n                %(rawMTPModel)s",
+            )
         values = {
             **event,
             # Swift Codable omits nil optional fields. PostgreSQL still needs
@@ -480,6 +559,11 @@ class Database:
             "cleanupAttempted": event.get("cleanupAttempted"),
             "cleanupSucceeded": event.get("cleanupSucceeded"),
             "transferProgressBucket": event.get("transferProgressBucket"),
+            "optionalComponentSelected": event.get("optionalComponentSelected"),
+            "optionalComponentOutcome": event.get("optionalComponentOutcome"),
+            "optionalComponentFailureStage": event.get("optionalComponentFailureStage"),
+            "optionalComponentFailureCode": event.get("optionalComponentFailureCode"),
+            "optionalComponentNativeFailureCode": event.get("optionalComponentNativeFailureCode"),
             "garminModelDescription": event.get("garminModelDescription"),
             "garminModelPartNumber": event.get("garminModelPartNumber"),
             "rawMTPModel": event.get("rawMTPModel"),
@@ -546,21 +630,34 @@ class Database:
     def compatibility_operation_details(self, limit: int = 500) -> list[dict[str, Any]]:
         return self._compatibility_operation_details("ACTIVE", limit)
 
+    def compatibility_issue_queue_operations(self) -> list[dict[str, Any]]:
+        """Return the complete active operation population for the review queue."""
+        return self._compatibility_operation_details("ACTIVE", None)
+
     def compatibility_resolved_operation_details(self, limit: int = 500) -> list[dict[str, Any]]:
         return self._compatibility_operation_details("RESOLVED", limit)
 
-    def _compatibility_operation_details(self, diagnostic_status: str, limit: int) -> list[dict[str, Any]]:
+    def _compatibility_operation_details(self, diagnostic_status: str, limit: int | None) -> list[dict[str, Any]]:
+        limit_clause = "LIMIT %s" if limit is not None else ""
         query = """
             SELECT
-                COALESCE(operation_id::text, 'legacy:' || event_id::text) AS operation_key,
+                CASE
+                    WHEN operation_id IS NOT NULL AND map_result_index IS NOT NULL
+                        THEN operation_id::text || ':' || map_result_index::text
+                    ELSE COALESCE(operation_id::text, 'legacy:' || event_id::text)
+                END AS operation_key,
                 operation_id, event_id, occurred_at, model, compatibility_identity,
                 variant, firmware_version, provider, region, map_release, terento_version,
                 app_build, release_label, map_result_index, selected_map_count,
                 phase_outcome, automatic_finishing_result, failure_stage, failure_code, native_failure_code,
-                COALESCE(write_started, true) AS write_started,
-                COALESCE(remote_object_created, false) AS remote_object_created,
-                COALESCE(cleanup_attempted, false) AS cleanup_attempted,
-                cleanup_succeeded, transfer_progress_bucket, error_category, transport,
+                write_started,
+                remote_object_created,
+                cleanup_attempted,
+                cleanup_succeeded, transfer_progress_bucket,
+                optional_component_selected, optional_component_outcome,
+                optional_component_failure_stage, optional_component_failure_code,
+                optional_component_native_failure_code,
+                error_category, transport,
                 raw_mtp_model, identity_resolution_code,
                 garmin_model_description, garmin_model_part_number, identity_assessment,
                 (SELECT a.assessment FROM compatibility_identity_resolution_audit a
@@ -576,10 +673,10 @@ class Database:
             WHERE diagnostic_status = %s
               AND is_local_test IS NOT TRUE
             ORDER BY occurred_at DESC, operation_key, map_result_index NULLS FIRST
-            LIMIT %s
-        """
+        """ + limit_clause
         with self.connection() as connection:
-            rows = list(connection.execute(query, (diagnostic_status, limit)).fetchall())
+            parameters = (diagnostic_status, limit) if limit is not None else (diagnostic_status,)
+            rows = list(connection.execute(query, parameters).fetchall())
             if rows:
                 devices = list(connection.execute("SELECT * FROM device_model").fetchall())
                 mappings = list(connection.execute("SELECT * FROM device_identity_mapping").fetchall())
@@ -701,8 +798,13 @@ class Database:
         with self.connection() as connection:
             return list(connection.execute(query, (limit,)).fetchall())
 
-    def admin_review_summary(self) -> dict[str, int]:
-        """Return actionable operator-review counts without exposing events."""
+    def admin_review_summary(self) -> dict[str, Any]:
+        """Return active review-task counts, grouped at operation level.
+
+        A failed diagnostic and its linked GitHub issue are alternative task
+        states for one operation. Identity review is an additional task, while
+        publication review is counted per model. Resolved evidence is excluded.
+        """
         query = """
             WITH operation_reviews AS (
                 SELECT
@@ -742,13 +844,25 @@ class Database:
         """
         with self.connection() as connection:
             row = connection.execute(query).fetchone()
+        values = row or {}
         summary = {
-            "installationIssues": int((row or {}).get("installation_issues") or 0),
-            "githubIssuesInProgress": int((row or {}).get("github_issues_in_progress") or 0),
-            "identityPending": int((row or {}).get("identity_pending") or 0),
-            "readyToPublish": int((row or {}).get("ready_to_publish") or 0),
+            "available": row is not None,
+            "installationIssues": int(values["installation_issues"]) if values.get("installation_issues") is not None else None,
+            "githubIssuesInProgress": int(values["github_issues_in_progress"]) if values.get("github_issues_in_progress") is not None else None,
+            "identityPending": int(values["identity_pending"]) if values.get("identity_pending") is not None else None,
+            "readyToPublish": int(values["ready_to_publish"]) if values.get("ready_to_publish") is not None else None,
         }
-        summary["total"] = sum(summary.values())
+        summary["pendingReviewTasks"] = (
+            sum(summary[key] for key in (
+                "installationIssues", "githubIssuesInProgress",
+                "identityPending", "readyToPublish",
+            ))
+            if all(summary[key] is not None for key in (
+                "installationIssues", "githubIssuesInProgress",
+                "identityPending", "readyToPublish",
+            )) else None
+        )
+        summary["total"] = summary["pendingReviewTasks"]
         return summary
 
     def admin_overview_snapshot(
@@ -765,66 +879,92 @@ class Database:
         compatibility and map-operation success rates are interchangeable.
         """
         operation_cte = """
-            WITH operation_rows AS (
+            WITH classified_results AS (
                 SELECT
+                    e.*,
                     COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text)
                         AS operation_key,
-                    min(e.canonical_device_model_id) AS canonical_device_model_id,
-                    min(e.compatibility_identity) AS compatibility_identity,
-                    min(e.model) AS model,
-                    min(e.variant) FILTER (
-                        WHERE e.variant IS NOT NULL AND btrim(e.variant) <> ''
-                    ) AS variant,
-                    min(e.provider) AS provider,
-                    min(e.region) AS region,
-                    min(e.release_label) FILTER (
-                        WHERE e.release_label IS NOT NULL AND btrim(e.release_label) <> ''
-                    ) AS release_label,
-                    min(e.app_build) FILTER (
-                        WHERE e.app_build IS NOT NULL AND btrim(e.app_build) <> ''
-                    ) AS app_build,
-                    min(e.failure_stage) FILTER (
-                        WHERE e.failure_stage IS NOT NULL AND btrim(e.failure_stage) <> ''
-                    ) AS failure_stage,
-                    min(e.failure_code) FILTER (
-                        WHERE e.failure_code IS NOT NULL AND btrim(e.failure_code) <> ''
-                    ) AS failure_code,
-                    min(e.error_category) FILTER (
-                        WHERE e.error_category IS NOT NULL AND btrim(e.error_category) <> ''
-                    ) AS error_category,
-                    min(e.linked_github_issue) FILTER (
-                        WHERE e.linked_github_issue IS NOT NULL AND btrim(e.linked_github_issue) <> ''
-                    ) AS linked_github_issue,
-                    min(e.diagnostic_workflow_status) AS diagnostic_workflow_status,
-                    max(e.occurred_at) AS last_occurred_at,
-                    bool_or(COALESCE(e.write_started, TRUE) OR
-                        e.phase_outcome IN ('SUCCEEDED', 'FAILED')) AS write_started,
-                    bool_and(
-                        e.phase_outcome = 'SUCCEEDED'
-                        AND e.automatic_finishing_result = 'VERIFIED'
-                    )
-                        AS operation_succeeded,
-                    bool_or(e.phase_outcome = 'FAILED') AS has_failed,
-                    bool_or(e.phase_outcome = 'NOT_STARTED') AS has_not_started,
-                    bool_or(e.diagnostic_status = 'ACTIVE' AND
-                        e.linked_github_issue IS NOT NULL AND
-                        btrim(e.linked_github_issue) <> '') AS has_github_issue,
-                    bool_or(e.diagnostic_status = 'ACTIVE' AND
-                        e.canonical_device_model_id IS NULL AND
-                        COALESCE(e.identity_resolution_state, 'UNRESOLVED')
-                        NOT IN ('RESOLVED', 'NOT_IDENTIFIABLE')) AS identity_pending,
-                    bool_or(
-                        e.diagnostic_status = 'ACTIVE'
-                        AND (
-                            e.phase_outcome IN ('FAILED', 'NOT_STARTED')
-                            OR e.failure_stage IS NOT NULL
-                            OR e.failure_code IS NOT NULL
-                            OR e.error_category IS NOT NULL
-                        )
-                    ) AS open_error
+                    CASE
+                        WHEN e.operation_id IS NOT NULL AND e.map_result_index IS NOT NULL
+                            THEN e.operation_id::text || ':' || e.map_result_index::text
+                        ELSE 'event:' || e.event_id::text
+                    END AS result_key,
+                    CASE
+                        WHEN e.phase_outcome = 'SUCCEEDED'
+                             AND e.automatic_finishing_result = 'VERIFIED'
+                            THEN 'SUCCESS'
+                        WHEN e.phase_outcome = 'FAILED'
+                             AND (e.write_started IS TRUE OR (
+                                 e.write_started IS NULL
+                                 AND e.app_build IS NULL
+                                 AND e.release_label IS NULL
+                             ))
+                            THEN 'FAILURE'
+                        WHEN e.phase_outcome IN ('FAILED', 'NOT_STARTED')
+                             AND e.write_started IS FALSE
+                            THEN 'NOT_STARTED'
+                        ELSE 'UNKNOWN'
+                    END AS result_classification
                 FROM compatibility_evidence_event AS e
                 WHERE e.is_local_test IS NOT TRUE
-                GROUP BY e.event_id
+            ), result_flags AS (
+                SELECT
+                    result_key,
+                    bool_or(result_classification = 'SUCCESS') AS has_success,
+                    bool_or(result_classification = 'FAILURE') AS has_failure,
+                    count(DISTINCT result_classification) > 1 AS has_conflict
+                FROM classified_results
+                GROUP BY result_key
+            ), deduplicated_results AS (
+                SELECT DISTINCT ON (c.result_key)
+                    c.*,
+                    CASE
+                        WHEN f.has_conflict THEN 'UNKNOWN'
+                        WHEN f.has_success THEN 'SUCCESS'
+                        WHEN f.has_failure THEN 'FAILURE'
+                        ELSE c.result_classification
+                    END AS result_classification_effective
+                FROM classified_results AS c
+                JOIN result_flags AS f USING (result_key)
+                ORDER BY c.result_key, c.occurred_at DESC NULLS LAST, c.event_id DESC
+            ), operation_rows AS (
+                SELECT
+                    result_key,
+                    operation_key,
+                    canonical_device_model_id,
+                    compatibility_identity,
+                    model,
+                    variant,
+                    provider,
+                    region,
+                    release_label,
+                    app_build,
+                    failure_stage,
+                    failure_code,
+                    error_category,
+                    linked_github_issue,
+                    diagnostic_workflow_status,
+                    occurred_at AS last_occurred_at,
+                    (write_started IS TRUE) AS write_started,
+                    (result_classification_effective = 'SUCCESS') AS operation_succeeded,
+                    (result_classification_effective = 'FAILURE') AS fresh_failure,
+                    (phase_outcome = 'FAILED') AS has_failed,
+                    (result_classification_effective = 'NOT_STARTED') AS has_not_started,
+                    (diagnostic_status = 'ACTIVE' AND
+                        linked_github_issue IS NOT NULL AND btrim(linked_github_issue) <> '')
+                        AS has_github_issue,
+                    (diagnostic_status = 'ACTIVE' AND
+                        canonical_device_model_id IS NULL AND
+                        COALESCE(identity_resolution_state, 'UNRESOLVED')
+                            NOT IN ('RESOLVED', 'NOT_IDENTIFIABLE')) AS identity_pending,
+                    (diagnostic_status = 'ACTIVE' AND (
+                        phase_outcome IN ('FAILED', 'NOT_STARTED')
+                        OR result_classification_effective = 'UNKNOWN'
+                        OR failure_stage IS NOT NULL
+                        OR failure_code IS NOT NULL
+                        OR error_category IS NOT NULL
+                    )) AS open_error
+                FROM deduplicated_results
             )
         """
         scoped = f"{operation_cte}, scoped_operations AS (\n                SELECT *\n                FROM operation_rows\n                WHERE last_occurred_at >= %s\n            )"
@@ -843,19 +983,19 @@ class Database:
                 {scoped}
                 SELECT
                     count(*) AS operation_count,
+                    count(*) FILTER (WHERE operation_succeeded)
+                        AS successful_install_count,
                     count(*) FILTER (
-                        WHERE operation_succeeded AND write_started
-                    ) AS successful_install_count,
-                    count(*) FILTER (
-                        WHERE has_failed AND write_started
+                        WHERE fresh_failure
                     ) AS failed_install_count,
                     count(*) FILTER (WHERE open_error) AS open_error_count,
-                    count(*) FILTER (WHERE write_started) AS write_started_count,
+                    count(*) FILTER (WHERE operation_succeeded OR fresh_failure)
+                        AS write_started_count,
                     count(DISTINCT COALESCE(
                         canonical_device_model_id::text,
                         NULLIF(compatibility_identity, ''),
                         NULLIF(model, '')
-                    )) FILTER (WHERE write_started) AS variant_count
+                    )) FILTER (WHERE operation_succeeded OR fresh_failure) AS variant_count
                 FROM scoped_operations
                 """,
                 (since,),
@@ -905,7 +1045,7 @@ class Database:
                     1 AS operation_count,
                     CASE WHEN operation_succeeded THEN 1 ELSE 0 END
                         AS successful_count,
-                    CASE WHEN has_failed THEN 1 ELSE 0 END AS failed_count,
+                    CASE WHEN fresh_failure THEN 1 ELSE 0 END AS failed_count,
                     CASE WHEN open_error THEN 1 ELSE 0 END AS open_error_count,
                     last_occurred_at
                 FROM scoped_operations
@@ -994,8 +1134,9 @@ class Database:
         The native map-event stream and compatibility evidence share the same
         random operation ID when both are available. Match provider and region
         within that session before suppressing a compatibility result. Custom
-        IMG results count in Overview totals and their own success chart series,
-        but never in the catalog-only Map statistics page. No records are changed.
+        IMG results count in Overview totals and their own success chart series.
+        Map statistics keeps custom results visible with unknown catalog
+        geography when no unambiguous package match exists. No records are changed.
         """
         # Keep the date_trunc field as a trusted SQL literal. PostgreSQL can
         # resolve a bound value here in some driver/server combinations, but
@@ -1042,25 +1183,72 @@ class Database:
               AND e.is_local_test IS NOT TRUE
         """
         compatibility_fallback_cte = """
-            WITH compatibility_fallback AS (
+            WITH classified_fallback AS (
                 SELECT
-                    e.event_id::text AS operation_key,
+                    e.*,
+                    CASE
+                        WHEN e.operation_id IS NOT NULL AND e.map_result_index IS NOT NULL
+                            THEN e.operation_id::text || ':' || e.map_result_index::text
+                        ELSE 'event:' || e.event_id::text
+                    END AS result_key,
+                    CASE
+                        WHEN e.operation_id IS NOT NULL AND e.map_result_index IS NOT NULL
+                            THEN e.operation_id::text || ':' || e.map_result_index::text
+                        ELSE 'event:' || e.event_id::text
+                    END AS operation_key,
+                    CASE
+                        WHEN e.phase_outcome = 'SUCCEEDED'
+                             AND e.automatic_finishing_result = 'VERIFIED'
+                            THEN 'SUCCESS'
+                        WHEN e.phase_outcome = 'FAILED'
+                             AND (e.write_started IS TRUE OR (
+                                 e.write_started IS NULL
+                                 AND e.app_build IS NULL
+                                 AND e.release_label IS NULL
+                             ))
+                            THEN 'FAILURE'
+                        WHEN e.phase_outcome IN ('FAILED', 'NOT_STARTED')
+                             AND e.write_started IS FALSE
+                            THEN 'NOT_STARTED'
+                        ELSE 'UNKNOWN'
+                    END AS result_classification
+                FROM compatibility_evidence_event AS e
+                WHERE e.is_local_test IS NOT TRUE
+                  AND e.occurred_at >= %s
+            ), result_flags AS (
+                SELECT
+                    result_key,
+                    bool_or(result_classification = 'SUCCESS') AS has_success,
+                    bool_or(result_classification = 'FAILURE') AS has_failure,
+                    count(DISTINCT result_classification) > 1 AS has_conflict
+                FROM classified_fallback
+                GROUP BY result_key
+            ), deduplicated_fallback AS (
+                SELECT DISTINCT ON (c.result_key)
+                    c.*,
+                    CASE
+                        WHEN f.has_conflict THEN 'UNKNOWN'
+                        WHEN f.has_success THEN 'SUCCESS'
+                        WHEN f.has_failure THEN 'FAILURE'
+                        ELSE c.result_classification
+                    END AS result_classification_effective
+                FROM classified_fallback AS c
+                JOIN result_flags AS f USING (result_key)
+                ORDER BY c.result_key, c.occurred_at DESC NULLS LAST, c.event_id DESC
+            ), compatibility_fallback AS (
+                SELECT
+                    e.operation_key,
                     e.operation_id,
                     e.provider AS provider_id,
                     e.region,
                     e.occurred_at,
-                    e.phase_outcome AS outcome
-                FROM compatibility_evidence_event AS e
-                WHERE e.is_local_test IS NOT TRUE
-                   AND e.occurred_at >= %s
-                   AND (e.phase_outcome = 'FAILED' OR (
-                       e.phase_outcome = 'SUCCEEDED'
-                       AND e.automatic_finishing_result = 'VERIFIED'))
+                    CASE WHEN e.result_classification_effective = 'FAILURE'
+                         THEN 'FAILED' ELSE 'SUCCEEDED' END AS outcome
+                FROM deduplicated_fallback AS e
+                WHERE e.result_classification_effective IN ('SUCCESS', 'FAILURE')
                    -- A final compatibility failure is an installation
-                   -- outcome even when the failure happened before the
-                   -- device write. Keep explicit terminal map events as the
-                   -- authoritative row, and leave verified-success fallback
-                   -- unchanged even if its field is false.
+                   -- outcome only when writing actually started. False and
+                   -- current unknown write facts remain outside installs.
                    AND NOT EXISTS (
                        SELECT 1
                        FROM map_download_event AS installed
@@ -1085,8 +1273,11 @@ class Database:
                              )
                          )
                          AND installed.is_local_test IS NOT TRUE
-                         AND installed.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED',
-                                                      'MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED')
+                         AND installed.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
+                         AND ((e.result_classification_effective = 'SUCCESS'
+                               AND installed.event_type = 'INSTALL_SUCCEEDED')
+                              OR (e.result_classification_effective = 'FAILURE'
+                                  AND installed.event_type = 'INSTALL_FAILED'))
                    )
             )
         """
@@ -1133,7 +1324,6 @@ class Database:
                     ) + (
                         SELECT count(*) FROM compatibility_fallback
                         WHERE outcome = 'SUCCEEDED'
-                          AND provider_id IS DISTINCT FROM 'custom'
                     ) AS all_time_success_count,
                     count(*) FILTER (
                         WHERE e.event_type = 'INSTALL_FAILED'
@@ -1237,24 +1427,51 @@ class Database:
                 LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
                 WHERE e.is_local_test IS NOT TRUE
                   AND e.event_type = 'INSTALL_FAILED' AND e.outcome = 'FAILED'
-                  AND NOT EXISTS (
-                      SELECT 1 FROM compatibility_evidence_event AS diagnostic
-                      WHERE diagnostic.is_local_test IS NOT TRUE
-                        AND diagnostic.operation_id = e.operation_id
-                        AND diagnostic.provider = e.provider_id
-                        AND diagnostic.phase_outcome = 'FAILED'
-                        AND (
-                            diagnostic.region IS NOT DISTINCT FROM e.region
-                            OR (
-                                mp.provider_id = e.provider_id
-                                AND diagnostic.region IN (
-                                    mp.provider_region_id, mp.canonical_region_id, mp.region
-                                )
-                                AND e.region IN (
-                                    mp.provider_region_id, mp.canonical_region_id, mp.region
+                  AND (
+                      NOT EXISTS (
+                          SELECT 1 FROM compatibility_evidence_event AS diagnostic
+                          WHERE diagnostic.is_local_test IS NOT TRUE
+                            AND diagnostic.operation_id = e.operation_id
+                            AND diagnostic.map_result_index IS NOT NULL
+                            AND diagnostic.provider = e.provider_id
+                            AND (
+                                diagnostic.region IS NOT DISTINCT FROM e.region
+                                OR (
+                                    mp.provider_id = e.provider_id
+                                    AND diagnostic.region IN (
+                                        mp.provider_region_id, mp.canonical_region_id, mp.region
+                                    )
+                                    AND e.region IN (
+                                        mp.provider_region_id, mp.canonical_region_id, mp.region
+                                    )
                                 )
                             )
-                        )
+                      )
+                      OR EXISTS (
+                          -- A sibling package in the same region makes a
+                          -- region-only diagnostic match ambiguous. Surface
+                          -- the gap instead of claiming either sibling.
+                          SELECT 1
+                          FROM map_download_event AS sibling
+                          LEFT JOIN map_package AS sibling_package
+                            ON sibling_package.id = sibling.map_package_id
+                          WHERE sibling.is_local_test IS NOT TRUE
+                            AND sibling.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
+                            AND sibling.operation_id = e.operation_id
+                            AND sibling.provider_id = e.provider_id
+                            AND sibling.map_package_id IS DISTINCT FROM e.map_package_id
+                            AND COALESCE(
+                                sibling_package.canonical_region_id,
+                                sibling_package.provider_region_id,
+                                sibling_package.region,
+                                sibling.region
+                            ) IS NOT DISTINCT FROM COALESCE(
+                                mp.canonical_region_id,
+                                mp.provider_region_id,
+                                mp.region,
+                                e.region
+                            )
+                      )
                   )
                 ORDER BY e.occurred_at DESC, e.event_id
                 LIMIT %s
@@ -1624,10 +1841,17 @@ class Database:
                 SELECT event_id, diagnostic_status, diagnostic_workflow_status,
                        linked_github_issue
                 FROM compatibility_evidence_event
-                WHERE COALESCE(operation_id::text, 'legacy:' || event_id::text) = %s
+                WHERE (
+                    CASE
+                              WHEN operation_id IS NOT NULL AND map_result_index IS NOT NULL
+                                  THEN operation_id::text || ':' || map_result_index::text
+                              ELSE COALESCE(operation_id::text, 'legacy:' || event_id::text)
+                          END = %s
+                    OR operation_id::text = %s
+                )
                 FOR UPDATE
                 """,
-                (operation_key,),
+                (operation_key, operation_key),
             ).fetchall()
             for row in rows:
                 previous = str(row["diagnostic_status"])
@@ -1711,10 +1935,17 @@ class Database:
                 SELECT event_id, diagnostic_status, diagnostic_workflow_status,
                        linked_github_issue
                 FROM compatibility_evidence_event
-                WHERE COALESCE(operation_id::text, 'legacy:' || event_id::text) = %s
+                WHERE (
+                    CASE
+                              WHEN operation_id IS NOT NULL AND map_result_index IS NOT NULL
+                                  THEN operation_id::text || ':' || map_result_index::text
+                              ELSE COALESCE(operation_id::text, 'legacy:' || event_id::text)
+                          END = %s
+                    OR operation_id::text = %s
+                )
                 FOR UPDATE
                 """,
-                (operation_key,),
+                (operation_key, operation_key),
             ).fetchall()
             for row in rows:
                 previous_workflow = str(row.get("diagnostic_workflow_status") or "OPEN")
@@ -1771,10 +2002,17 @@ class Database:
                 SELECT event_id, diagnostic_status, diagnostic_workflow_status,
                        linked_github_issue
                 FROM compatibility_evidence_event
-                WHERE COALESCE(operation_id::text, 'legacy:' || event_id::text) = %s
+                WHERE (
+                    CASE
+                              WHEN operation_id IS NOT NULL AND map_result_index IS NOT NULL
+                                  THEN operation_id::text || ':' || map_result_index::text
+                              ELSE COALESCE(operation_id::text, 'legacy:' || event_id::text)
+                          END = %s
+                    OR operation_id::text = %s
+                )
                 FOR UPDATE
                 """,
-                (operation_key,),
+                (operation_key, operation_key),
             ).fetchall()
             for row in rows:
                 if str(row.get("diagnostic_status") or "ACTIVE") != "ACTIVE":
@@ -1914,7 +2152,11 @@ class Database:
                 """
                 SELECT *
                 FROM compatibility_evidence_event
-                WHERE COALESCE(operation_id::text, 'legacy:' || event_id::text) = %s
+                WHERE CASE
+                          WHEN operation_id IS NOT NULL AND map_result_index IS NOT NULL
+                              THEN operation_id::text || ':' || map_result_index::text
+                          ELSE COALESCE(operation_id::text, 'legacy:' || event_id::text)
+                      END = %s
                 FOR UPDATE
                 """,
                 (operation_key.strip(),),
@@ -2635,8 +2877,10 @@ class Database:
                 pc.package_releases,
                 latest_change.finished_at AS latest_release_detected_at,
                 COALESCE(pc.active_package_count, 0) AS active_package_count,
-                COALESCE(pc.broken_package_count, 0) AS broken_package_count,
-                COALESCE(pc.broken_url_count, 0) AS broken_url_count
+                COALESCE(pc.affected_package_count, 0) AS affected_package_count,
+                COALESCE(pc.problematic_source_count, 0) AS problematic_source_count,
+                COALESCE(pc.affected_package_count, 0) AS broken_package_count,
+                COALESCE(pc.problematic_source_count, 0) AS broken_url_count
             FROM map_provider AS p
             LEFT JOIN LATERAL (
                 SELECT ph.status, ph.checked_at, ph.error_code
@@ -2677,15 +2921,18 @@ class Database:
                     count(DISTINCT mp.id) FILTER (WHERE mp.availability = 'AVAILABLE')
                         AS active_package_count,
                     count(DISTINCT mp.id) FILTER (
-                        WHERE EXISTS (
-                            SELECT 1 FROM map_artifact ma
-                            WHERE ma.package_id = mp.id
-                              AND ma.validation_status IN ('FAILED', 'UNAVAILABLE')
-                        )
-                    ) AS broken_package_count,
+                        WHERE mp.availability <> 'RETIRED'
+                          AND EXISTS (
+                            SELECT 1 FROM map_artifact ma_current
+                            WHERE ma_current.package_id = mp.id
+                              AND ma_current.validation_status IN ('FAILED', 'UNAVAILABLE')
+                          )
+                    ) AS affected_package_count,
                     count(DISTINCT ma.source_url) FILTER (
-                        WHERE ma.validation_status IN ('FAILED', 'UNAVAILABLE')
-                    ) AS broken_url_count
+                        WHERE mp.availability <> 'RETIRED'
+                          AND ma.source_url IS NOT NULL
+                          AND ma.validation_status IN ('FAILED', 'UNAVAILABLE')
+                    ) AS problematic_source_count
                 FROM map_package mp
                 LEFT JOIN map_artifact ma ON ma.package_id = mp.id
                 WHERE mp.provider_id = p.id
@@ -3117,6 +3364,9 @@ class Database:
         if filters.get("eventType"):
             clauses.append(f"{alias}.event_type = %s")
             values.append(filters["eventType"])
+        if filters.get("outcome"):
+            clauses.append(f"{alias}.outcome = %s")
+            values.append(filters["outcome"])
         if filters.get("dateFrom"):
             clauses.append(f"{alias}.occurred_at >= %s")
             values.append(filters["dateFrom"])
@@ -3129,15 +3379,16 @@ class Database:
     def _compatibility_map_statistics_filter(
         filters: dict[str, Any], alias: str = "e",
     ) -> tuple[list[str], list[Any]]:
-        """Build the provider-only compatibility fallback filter.
+        """Build the compatibility fallback filter for fresh map results.
 
         Compatibility evidence has no package ID by design. A package filter
         therefore cannot safely claim a match. Only final failed or verified
-        successful map results can be projected into map statistics.
+        successful map results can be projected into map statistics. Custom
+        results remain visible with unknown map/geography instead of being
+        assigned a provider package.
         """
         clauses = [
             f"{alias}.is_local_test IS NOT TRUE",
-            f"{alias}.provider <> 'custom'",
         ]
         values: list[Any] = []
         if filters.get("provider"):
@@ -3152,6 +3403,12 @@ class Database:
             if filters["eventType"] in {"INSTALL_SUCCEEDED", "INSTALL_FAILED"}:
                 clauses.append(f"{alias}.phase_outcome = %s")
                 values.append("FAILED" if filters["eventType"] == "INSTALL_FAILED" else "SUCCEEDED")
+            else:
+                clauses.append("1 = 0")
+        if filters.get("outcome"):
+            if filters["outcome"] in {"SUCCEEDED", "FAILED"}:
+                clauses.append(f"{alias}.phase_outcome = %s")
+                values.append(filters["outcome"])
             else:
                 clauses.append("1 = 0")
         for key, operator in (("dateFrom", ">="), ("dateTo", "<=")):
@@ -3170,22 +3427,65 @@ class Database:
         clauses, values = self._map_statistics_filter(filters)
         compatibility_clauses, compatibility_values = self._compatibility_map_statistics_filter(filters)
         query = f"""
-            WITH complete_compatibility_operations AS (
+            WITH classified_compatibility AS (
                 SELECT
-                    e.event_id::text AS operation_key,
-                    e.operation_id, e.event_id
+                    e.*,
+                    CASE
+                        WHEN e.operation_id IS NOT NULL AND e.map_result_index IS NOT NULL
+                            THEN e.operation_id::text || ':' || e.map_result_index::text
+                        ELSE 'event:' || e.event_id::text
+                    END AS result_key,
+                    CASE
+                        WHEN e.operation_id IS NOT NULL AND e.map_result_index IS NOT NULL
+                            THEN e.operation_id::text || ':' || e.map_result_index::text
+                        ELSE 'event:' || e.event_id::text
+                    END AS operation_key,
+                    CASE
+                        WHEN e.phase_outcome = 'SUCCEEDED'
+                             AND e.automatic_finishing_result = 'VERIFIED'
+                            THEN 'SUCCESS'
+                        WHEN e.phase_outcome = 'FAILED'
+                             AND (e.write_started IS TRUE OR (
+                                 e.write_started IS NULL
+                                 AND e.app_build IS NULL
+                                 AND e.release_label IS NULL
+                             ))
+                            THEN 'FAILURE'
+                        WHEN e.phase_outcome IN ('FAILED', 'NOT_STARTED')
+                             AND e.write_started IS FALSE
+                            THEN 'NOT_STARTED'
+                        ELSE 'UNKNOWN'
+                    END AS result_classification
                 FROM compatibility_evidence_event AS e
                 WHERE e.is_local_test IS NOT TRUE
-                AND (e.phase_outcome = 'FAILED' OR (
-                    e.phase_outcome = 'SUCCEEDED'
-                    AND e.automatic_finishing_result = 'VERIFIED'))
-                -- Explicit false means the install was never attempted.
-                -- NULL retains the established legacy attempted-write
-                -- semantics; verified success remains eligible regardless.
-                AND (
-                    e.phase_outcome = 'SUCCEEDED'
-                    OR e.write_started IS NOT FALSE
-                )
+            ), result_flags AS (
+                SELECT
+                    result_key,
+                    bool_or(result_classification = 'SUCCESS') AS has_success,
+                    bool_or(result_classification = 'FAILURE') AS has_failure,
+                    count(DISTINCT result_classification) > 1 AS has_conflict
+                FROM classified_compatibility
+                GROUP BY result_key
+            ), deduplicated_compatibility AS (
+                SELECT DISTINCT ON (c.result_key)
+                    c.*,
+                    CASE
+                        WHEN f.has_conflict THEN 'CONFLICT'
+                        WHEN f.has_success THEN 'SUCCESS'
+                        WHEN f.has_failure THEN 'FAILURE'
+                        ELSE c.result_classification
+                    END AS result_classification_effective
+                FROM classified_compatibility AS c
+                JOIN result_flags AS f USING (result_key)
+                ORDER BY c.result_key, c.occurred_at DESC NULLS LAST, c.event_id DESC
+            ), complete_compatibility_operations AS (
+                SELECT
+                    e.operation_key,
+                    e.operation_id, e.event_id,
+                    e.provider, e.region,
+                    e.result_classification_effective
+                FROM deduplicated_compatibility AS e
+                WHERE e.result_classification_effective IN ('SUCCESS', 'FAILURE')
                 AND NOT EXISTS (
                     SELECT 1
                     FROM map_download_event AS installed
@@ -3210,23 +3510,31 @@ class Database:
                           )
                       )
                       AND installed.is_local_test IS NOT TRUE
-                      AND installed.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED',
-                                                   'MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED')
+                      AND installed.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
+                      AND ((e.result_classification_effective = 'SUCCESS'
+                            AND installed.event_type = 'INSTALL_SUCCEEDED')
+                           OR (e.result_classification_effective = 'FAILURE'
+                               AND installed.event_type = 'INSTALL_FAILED'))
                 )
             ), compatibility_fallback AS (
                 -- Each retained map result counts independently of its siblings.
-                SELECT c.operation_key, e.provider AS provider_id, e.region,
-                       e.phase_outcome AS outcome,
+                SELECT c.operation_key, c.provider AS provider_id, c.region,
+                       CASE WHEN c.result_classification_effective = 'FAILURE'
+                            THEN 'FAILED' ELSE 'SUCCEEDED' END AS outcome,
                        min(e.occurred_at) AS first_occurred_at,
                        max(e.occurred_at) AS last_occurred_at
                 FROM complete_compatibility_operations AS c
                 JOIN compatibility_evidence_event AS e
                   ON e.event_id = c.event_id
                 WHERE {' AND '.join(compatibility_clauses)}
-                GROUP BY c.operation_key, e.provider, e.region, e.phase_outcome
+                GROUP BY c.operation_key, c.provider, c.region, c.result_classification_effective
             ), event_rows AS (
                 SELECT
-                    COALESCE(e.operation_id::text, e.event_id::text) AS operation_key,
+                    CASE
+                        WHEN e.event_type LIKE 'DOWNLOAD_%'
+                            THEN COALESCE(e.acquisition_id::text, 'event:' || e.event_id::text)
+                        ELSE 'event:' || e.event_id::text
+                    END AS operation_key,
                     e.provider_id,
                     p.name AS provider_name,
                     e.map_package_id,
@@ -3260,8 +3568,11 @@ class Database:
                 FROM compatibility_fallback AS c
                 LEFT JOIN map_provider AS p ON p.id = c.provider_id
                 LEFT JOIN LATERAL (
-                    SELECT package.id, package.name, package.region, package.map_type,
-                           package.canonical_region_id, package.geographic_region_id, package.country
+                    SELECT min(package.id) AS id, min(package.name) AS name,
+                           min(package.region) AS region, min(package.map_type) AS map_type,
+                           min(package.canonical_region_id) AS canonical_region_id,
+                           min(package.geographic_region_id) AS geographic_region_id,
+                           min(package.country) AS country
                     FROM map_package AS package
                     WHERE package.provider_id = c.provider_id
                       AND (
@@ -3272,9 +3583,7 @@ class Database:
                       AND (package.provider_id <> 'bbbike'
                            OR package.canonical_region_id = c.region
                            OR package.region = c.region)
-                    ORDER BY CASE WHEN package.availability = 'AVAILABLE'
-                                  THEN 0 ELSE 1 END, package.id
-                    LIMIT 1
+                    HAVING count(*) = 1
                 ) AS mp ON TRUE
                 LEFT JOIN LATERAL (
                     -- Untyped BBBike evidence may establish geography but cannot
@@ -3317,99 +3626,233 @@ class Database:
             return list(connection.execute(query, values).fetchall())
 
     def map_statistics_linkage(self, filters: dict[str, Any]) -> dict[str, Any]:
-        """Match map operations to watch evidence without changing either aggregate.
+        """Match independent map results to watch evidence without changing aggregates.
 
         The client intentionally gives a map operation and its compatibility
         evidence the same random operation UUID when both sharing choices are
-        enabled. Aggregate each stream to one row per operation before joining;
-        otherwise a multi-map install would create a many-to-many count.
+        enabled. Join at map-package/result granularity; a batch operation is
+        not itself a fresh-install count. A result without mapResultIndex, or
+        with conflicting provider/region identities, is intentionally not
+        linked. Missing evidence is coverage loss, not a failed install.
         """
-        clauses, values = self._map_statistics_filter(filters)
+        population_filters = {
+            key: value for key, value in filters.items()
+            if key not in {"eventType", "outcome"}
+        }
+        clauses, values = self._map_statistics_filter(population_filters)
         query = f"""
             WITH map_operations AS (
                 SELECT
                     e.operation_id,
-                    min(e.provider_id) AS provider_id,
+                    COALESCE(e.operation_id::text, 'event:' || e.event_id::text) AS map_operation_key,
+                    e.provider_id,
+                    e.map_package_id,
+                    mp.provider_region_id AS map_provider_region,
+                    mp.canonical_region_id AS map_canonical_region,
+                    mp.region AS map_package_region,
+                    COALESCE(
+                        mp.canonical_region_id,
+                        mp.provider_region_id,
+                        mp.region,
+                        e.region
+                    ) AS map_region_key,
+                    array_agg(DISTINCT e.region) FILTER (WHERE e.region IS NOT NULL)
+                        AS map_reported_regions,
                     bool_or(e.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED'))
                         AS has_install_event
                 FROM map_download_event AS e
+                LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
                 WHERE {' AND '.join(clauses)}
-                GROUP BY e.operation_id
-            ), compatibility_operations AS (
+                GROUP BY e.operation_id, COALESCE(e.operation_id::text, 'event:' || e.event_id::text),
+                         e.provider_id, e.map_package_id, mp.provider_region_id,
+                         mp.canonical_region_id, mp.region,
+                         COALESCE(
+                             mp.canonical_region_id,
+                             mp.provider_region_id,
+                             mp.region,
+                             e.region
+                         )
+            ), map_region_counts AS (
+                SELECT operation_id, provider_id, map_region_key,
+                       count(DISTINCT map_package_id) AS map_count
+                FROM map_operations
+                GROUP BY operation_id, provider_id, map_region_key
+            ), classified_compatibility AS (
                 SELECT
-                    e.operation_id,
-                    min(e.provider) AS provider_id,
-                    bool_or(COALESCE(e.write_started, TRUE)) AS write_started,
-                    bool_and(
-                        e.phase_outcome = 'SUCCEEDED'
-                        AND e.automatic_finishing_result = 'VERIFIED'
-                    )
-                    AND count(*) = max(COALESCE(e.selected_map_count, 1))
-                        AS operation_succeeded
+                    e.*,
+                    CASE
+                        WHEN e.phase_outcome = 'SUCCEEDED'
+                             AND e.automatic_finishing_result = 'VERIFIED'
+                            THEN 'SUCCESS'
+                        WHEN e.phase_outcome = 'FAILED'
+                             AND (e.write_started IS TRUE OR (
+                                 e.write_started IS NULL
+                                 AND e.app_build IS NULL
+                                 AND e.release_label IS NULL
+                             ))
+                            THEN 'FAILURE'
+                        WHEN e.phase_outcome IN ('FAILED', 'NOT_STARTED')
+                             AND e.write_started IS FALSE
+                            THEN 'NOT_STARTED'
+                        ELSE 'UNKNOWN'
+                    END AS result_classification
                 FROM compatibility_evidence_event AS e
                 WHERE e.operation_id IS NOT NULL
+                  AND e.map_result_index IS NOT NULL
                   AND e.is_local_test IS NOT TRUE
-                GROUP BY e.operation_id
+            ), compatibility_result_identities AS (
+                SELECT DISTINCT operation_id, map_result_index, provider, region
+                FROM classified_compatibility
+            ), compatibility_identity_keys AS (
+                SELECT operation_id, map_result_index
+                FROM classified_compatibility
+                GROUP BY operation_id, map_result_index
+                HAVING count(DISTINCT provider) = 1
+                   AND count(DISTINCT region) = 1
+            ), compatibility_aggregates AS (
+                SELECT
+                    e.operation_id,
+                    e.map_result_index,
+                    bool_or(e.write_started IS TRUE) AS write_started,
+                    bool_or(
+                        e.result_classification = 'SUCCESS'
+                    ) AS has_success,
+                    bool_or(e.result_classification = 'FAILURE') AS has_failure,
+                    bool_or(e.result_classification = 'NOT_STARTED') AS has_not_started,
+                    bool_or(e.result_classification = 'UNKNOWN') AS has_unknown
+                FROM classified_compatibility AS e
+                GROUP BY e.operation_id, e.map_result_index
+            ), compatibility_operations AS (
+                SELECT a.*, i.provider AS provider_id, i.region
+                FROM compatibility_aggregates AS a
+                JOIN compatibility_identity_keys AS k
+                  ON k.operation_id = a.operation_id
+                 AND k.map_result_index = a.map_result_index
+                JOIN compatibility_result_identities AS i
+                  ON i.operation_id = a.operation_id
+                 AND i.map_result_index = a.map_result_index
             ), linked_operations AS (
                 SELECT
                     m.*,
                     c.operation_id AS compatibility_operation_id,
+                    c.map_result_index,
                     c.write_started,
-                    c.operation_succeeded
+                    (c.has_success AND NOT c.has_failure AND NOT c.has_not_started
+                        AND NOT c.has_unknown) AS operation_succeeded,
+                    (c.has_failure AND NOT c.has_success AND NOT c.has_not_started
+                        AND NOT c.has_unknown) AS fresh_failure
                 FROM map_operations AS m
                 LEFT JOIN compatibility_operations AS c
-                    ON c.operation_id = m.operation_id
+                   ON c.operation_id = m.operation_id
                    AND c.provider_id = m.provider_id
+                   AND (
+                       c.region = ANY(COALESCE(m.map_reported_regions, ARRAY[]::text[]))
+                       OR (
+                           m.map_package_id IS NOT NULL
+                           AND c.region IN (
+                               m.map_provider_region,
+                               m.map_canonical_region,
+                               m.map_package_region
+                           )
+                           AND m.map_region_key IN (
+                               m.map_provider_region,
+                               m.map_canonical_region,
+                               m.map_package_region
+                           )
+                       )
+                   )
+                   AND (SELECT map_count FROM map_region_counts
+                        WHERE operation_id = m.operation_id
+                          AND provider_id = m.provider_id
+                          AND map_region_key = m.map_region_key) = 1
             )
             SELECT
-                count(*) AS map_operation_count,
-                count(*) FILTER (WHERE compatibility_operation_id IS NOT NULL)
+                count(DISTINCT map_operation_key) AS map_operation_count,
+                count(DISTINCT operation_id) FILTER (WHERE operation_id IS NOT NULL)
+                    AS map_session_count,
+                count(DISTINCT map_operation_key) FILTER (WHERE compatibility_operation_id IS NOT NULL)
                     AS linked_operation_count,
-                count(*) FILTER (WHERE has_install_event) AS map_installation_count,
-                count(*) FILTER (
+                count(DISTINCT map_operation_key) FILTER (WHERE has_install_event)
+                    AS map_installation_count,
+                count(DISTINCT map_operation_key) FILTER (
                     WHERE has_install_event AND compatibility_operation_id IS NOT NULL
                 ) AS linked_installation_count,
-                count(*) FILTER (
+                count(DISTINCT map_operation_key) FILTER (
                     WHERE has_install_event AND compatibility_operation_id IS NULL
                 ) AS map_only_installation_count,
-                count(*) FILTER (
+                count(DISTINCT map_operation_key) FILTER (
                     WHERE has_install_event
                       AND compatibility_operation_id IS NOT NULL
-                      AND write_started
+                      AND (operation_succeeded OR fresh_failure)
                 ) AS linked_write_started_install_count,
-                count(*) FILTER (
+                count(DISTINCT map_operation_key) FILTER (
                     WHERE has_install_event
                       AND compatibility_operation_id IS NOT NULL
-                      AND write_started
                       AND operation_succeeded
                 ) AS linked_successful_install_count,
-                count(*) FILTER (
+                count(DISTINCT map_operation_key) FILTER (
                     WHERE has_install_event
                       AND compatibility_operation_id IS NOT NULL
-                      AND NOT operation_succeeded
+                      AND fresh_failure
                 ) AS linked_failed_install_count,
-                count(*) FILTER (
+                count(DISTINCT map_operation_key) FILTER (
                     WHERE has_install_event
                       AND compatibility_operation_id IS NOT NULL
                       AND write_started = FALSE
                 ) AS linked_prewrite_failure_count,
+                count(DISTINCT map_operation_key) FILTER (
+                    WHERE has_install_event
+                      AND compatibility_operation_id IS NOT NULL
+                      AND NOT (operation_succeeded OR fresh_failure)
+                ) AS linked_unclassified_install_count,
                 round(
+                    100.0 * count(DISTINCT map_operation_key) FILTER (
+                        WHERE has_install_event AND compatibility_operation_id IS NOT NULL
+                    ) / NULLIF(count(DISTINCT map_operation_key) FILTER (WHERE has_install_event), 0),
+                    1
+                ) AS linkage_rate
+                ,count(*) FILTER (WHERE has_install_event)
+                    AS fresh_map_attempt_count
+                ,count(*) FILTER (
+                    WHERE has_install_event AND compatibility_operation_id IS NOT NULL
+                ) AS fresh_map_linked_diagnostic_count
+                ,count(*) FILTER (
+                    WHERE has_install_event AND compatibility_operation_id IS NULL
+                ) AS fresh_map_missing_diagnostic_count
+                ,count(*) FILTER (
+                    WHERE has_install_event
+                      AND compatibility_operation_id IS NOT NULL
+                      AND (operation_succeeded OR fresh_failure)
+                ) AS fresh_map_linked_write_started_install_count
+                ,count(*) FILTER (
+                    WHERE has_install_event
+                      AND compatibility_operation_id IS NOT NULL
+                      AND operation_succeeded
+                ) AS fresh_map_linked_successful_install_count
+                ,count(*) FILTER (
+                    WHERE has_install_event
+                      AND compatibility_operation_id IS NOT NULL
+                      AND fresh_failure
+                ) AS fresh_map_linked_failed_install_count
+                ,round(
                     100.0 * count(*) FILTER (
                         WHERE has_install_event AND compatibility_operation_id IS NOT NULL
                     ) / NULLIF(count(*) FILTER (WHERE has_install_event), 0),
                     1
-                ) AS linkage_rate
+                ) AS fresh_map_coverage_rate
             FROM linked_operations
         """
         with self.connection() as connection:
             row = connection.execute(query, values).fetchone() or {}
 
         def integer(key: str) -> int:
-            return int(row.get(key) or 0)
+            value = row.get(key)
+            return int(value) if value is not None else 0
 
         linkage_rate = row.get("linkage_rate")
         return {
             "mapOperationCount": integer("map_operation_count"),
+            "mapSessionCount": integer("map_session_count"),
             "mapInstallationCount": integer("map_installation_count"),
             "linkedOperationCount": integer("linked_operation_count"),
             "linkedInstallationCount": integer("linked_installation_count"),
@@ -3418,6 +3861,17 @@ class Database:
             "linkedSuccessfulInstallCount": integer("linked_successful_install_count"),
             "linkedFailedInstallCount": integer("linked_failed_install_count"),
             "linkedPrewriteFailureCount": integer("linked_prewrite_failure_count"),
+            "linkedUnclassifiedInstallCount": integer("linked_unclassified_install_count"),
+            "freshMapAttemptCount": integer("fresh_map_attempt_count"),
+            "freshMapLinkedDiagnosticCount": integer("fresh_map_linked_diagnostic_count"),
+            "freshMapMissingDiagnosticCount": integer("fresh_map_missing_diagnostic_count"),
+            "freshMapLinkedWriteStartedInstallCount": integer("fresh_map_linked_write_started_install_count"),
+            "freshMapLinkedSuccessfulInstallCount": integer("fresh_map_linked_successful_install_count"),
+            "freshMapLinkedFailedInstallCount": integer("fresh_map_linked_failed_install_count"),
+            "freshMapDiagnosticCoverageRate": (
+                float(row["fresh_map_coverage_rate"])
+                if row.get("fresh_map_coverage_rate") is not None else None
+            ),
             "linkageRate": float(linkage_rate) if linkage_rate is not None else None,
         }
 

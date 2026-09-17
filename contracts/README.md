@@ -18,6 +18,12 @@ schemas. Schema versions are independent of Terento app versions and build
 numbers. Relative `$id` values identify files within this directory; `$ref`
 values resolve only to local `$defs`. No schema or fixture needs network access.
 
+Statistics populations, formulas, deduplication and historical interpretation
+are canonical in [`STATISTICS_CONTRACT.md`](STATISTICS_CONTRACT.md). The
+contract distinguishes terminal provider acquisitions, fresh main-map results,
+optional components and updates; it does not authorize a production migration
+or claim complete telemetry coverage.
+
 ## Responses and client compatibility
 
 The current beta.12 client requests `/maps/catalog-v4.json`. The legacy route
@@ -150,8 +156,8 @@ intake boundary. No raw device or file identity is added.
 `fixtures/compatibility-event.valid-failed-operation.json` is a deterministic
 synthetic fixture from the Swift InstallationEvidenceEvent encoder for an
 operation-owned failed installation. The event schema adds the controlled
-`INSTALL_FAILED_UNKNOWN` failure code for genuinely unclassified failures;
-there are no new payload fields or private data. The API must accept this code
+`INSTALL_FAILED_UNKNOWN` failure code for genuinely unclassified failures and
+the optional-component outcome fields; no private data is added. The API must accept this code
 before the corresponding client is published. Backend delivery tests can also
 consume fresh native fixture output through `TERENTO_DIAGNOSTIC_FIXTURE_OUTPUT`.
 

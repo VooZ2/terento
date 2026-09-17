@@ -54,7 +54,10 @@ class IntakeDatabase(FakeEvidenceDatabase, Database):
             write_started BOOLEAN, remote_object_created BOOLEAN, cleanup_attempted BOOLEAN,
             cleanup_succeeded BOOLEAN, transfer_progress_bucket TEXT, raw_mtp_model TEXT,
             identity_resolution_code TEXT, is_local_test BOOLEAN, garmin_model_description TEXT,
-            garmin_model_part_number TEXT, identity_assessment TEXT'''
+            garmin_model_part_number TEXT, identity_assessment TEXT,
+            optional_component_selected BOOLEAN, optional_component_outcome TEXT,
+            optional_component_failure_stage TEXT, optional_component_failure_code TEXT,
+            optional_component_native_failure_code TEXT'''
         self.sqlite.execute('CREATE TABLE compatibility_evidence_event (' + columns + ')')
         self.mappings = deepcopy(MAPPINGS)
 

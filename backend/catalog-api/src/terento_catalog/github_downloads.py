@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import hashlib
 from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import urlencode
@@ -21,11 +22,12 @@ class NoRedirect(HTTPRedirectHandler):
         return None
 
 
-def release_download_totals(releases: list[Any]) -> dict[str, int]:
+def release_download_totals(releases: list[Any]) -> dict[str, Any]:
     """Aggregate public release assets, keeping only DMG and ZIP downloads."""
     dmg_total = 0
     zip_total = 0
     release_count = 0
+    asset_keys: list[str] = []
     for release in releases:
         if not isinstance(release, dict):
             raise ValueError("Unexpected GitHub release response")
@@ -45,12 +47,19 @@ def release_download_totals(releases: list[Any]) -> dict[str, int]:
             normalized_name = name.casefold()
             if normalized_name.endswith(".dmg"):
                 dmg_total += count
+                asset_keys.append(f"{release.get('id', release.get('tag_name', ''))}:dmg:{name.casefold()}")
             elif normalized_name.endswith(".zip"):
                 zip_total += count
+                asset_keys.append(f"{release.get('id', release.get('tag_name', ''))}:zip:{name.casefold()}")
+    population_fingerprint = hashlib.sha256(
+        "\n".join(sorted(asset_keys)).encode("utf-8")
+    ).hexdigest()
     return {
         "dmg_total": dmg_total,
         "zip_total": zip_total,
         "release_count": release_count,
+        "asset_count": len(asset_keys),
+        "population_fingerprint": population_fingerprint,
     }
 
 
@@ -74,16 +83,26 @@ def _fetch_page(opener: Any, page: int) -> list[Any]:
     return document
 
 
-def fetch_github_download_totals(*, opener: Any | None = None) -> dict[str, int]:
+def fetch_github_download_totals(*, opener: Any | None = None) -> dict[str, Any]:
     """Read every public release page and return current cumulative totals."""
     opener = opener or build_opener(NoRedirect())
-    totals = {"dmg_total": 0, "zip_total": 0, "release_count": 0}
+    totals = {
+        "dmg_total": 0, "zip_total": 0, "release_count": 0,
+        "asset_count": 0, "population_fingerprint": None,
+    }
+    population_parts: list[str] = []
     for page in range(1, MAX_PAGES + 1):
         releases = _fetch_page(opener, page)
         page_totals = release_download_totals(releases)
         for key in totals:
+            if key == "population_fingerprint":
+                continue
             totals[key] += page_totals[key]
+        population_parts.append(page_totals["population_fingerprint"])
         if len(releases) < PAGE_SIZE:
+            totals["population_fingerprint"] = hashlib.sha256(
+                "\n".join(population_parts).encode("utf-8")
+            ).hexdigest()
             return totals
     raise ValueError("GitHub releases pagination exceeds limit")
 
@@ -103,6 +122,8 @@ def collect_once(
         dmg_total=totals["dmg_total"],
         zip_total=totals["zip_total"],
         release_count=totals["release_count"],
+        asset_count=totals.get("asset_count"),
+        population_fingerprint=totals.get("population_fingerprint"),
         observed_at=observed_at,
     )
     return {**totals, "observed_at": observed_at, "stored": bool(stored)}
