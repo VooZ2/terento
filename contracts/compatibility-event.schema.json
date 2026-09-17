@@ -190,6 +190,49 @@
     "garminModelPartNumber": {
       "type": "string",
       "pattern": "^[A-Za-z0-9-]{1,64}$"
+    },
+    "optionalComponentSelected": {
+      "type": [
+        "boolean",
+        "null"
+      ],
+      "description": "Whether an optional companion such as contours was selected for this main map. It never creates another fresh-install result."
+    },
+    "optionalComponentOutcome": {
+      "enum": [
+        null,
+        "VERIFIED",
+        "FAILED",
+        "NOT_STARTED",
+        "UNKNOWN"
+      ]
+    },
+    "optionalComponentFailureStage": {
+      "enum": [
+        null,
+        "download",
+        "extract",
+        "source-validation",
+        "preflight",
+        "write",
+        "verify",
+        "cleanup",
+        "manifest"
+      ]
+    },
+    "optionalComponentFailureCode": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 80
+    },
+    "optionalComponentNativeFailureCode": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 80
     }
   },
   "required": [

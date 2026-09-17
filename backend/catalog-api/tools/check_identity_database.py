@@ -77,7 +77,8 @@ def check_identity_database(database):
     assert not any(r['canonical_device_model_id'] is None and r['canonical_model'] == 'Identity CI Watch' for r in public)
     # Wrong client and manual selections encounter the same contradiction.
     try:
-        database.resolve_compatibility_identity(str(exact['operation_id']), action='ASSIGN',
+        operation_key = f"{exact['operation_id']}:{exact['map_result_index']}"
+        database.resolve_compatibility_identity(operation_key, action='ASSIGN',
             canonical_device_model_id='identity-ci-microled', admin_user_id=admin, reason='Cannot override a conflict')
         raise AssertionError('conflict accepted')
     except ValueError:
@@ -88,7 +89,7 @@ def check_identity_database(database):
         original = c.execute('SELECT * FROM compatibility_evidence_event WHERE event_id=%s', (exact['event_id'],)).fetchone()
         assert original['canonical_device_model_id'] == 'identity-ci-amoled'
         assert original['garmin_model_description'].endswith('AMOLED inReach')
-    database.resolve_compatibility_identity(str(exact['operation_id']), action='ASSIGN',
+    database.resolve_compatibility_identity(operation_key, action='ASSIGN',
         canonical_device_model_id='identity-ci-microled', admin_user_id=admin, reason='Two audited source corrections')
     details = database.compatibility_operation_details()
     corrected = next(r for r in details if r['event_id'] == exact['event_id'])

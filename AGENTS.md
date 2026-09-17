@@ -79,8 +79,9 @@ or change application/API behavior as a side effect of contract documentation.
 
 Before changing diagnostic delivery, API intake, admin UI/navigation or statistics,
 read `backend/catalog-api/docs/admin-behavior-contract.md` and the relevant routes
-in `backend/catalog-api/docs/api.md`. Preserve the complete failure-to-diagnostic
-workflow and counting semantics. A row in Review queue or a green deploy is not
+in `backend/catalog-api/docs/api.md`, plus the canonical
+`contracts/STATISTICS_CONTRACT.md` population/formula contract. Preserve the
+complete failure-to-diagnostic workflow and counting semantics. A row in Review queue or a green deploy is not
 proof that device history, detail actions and statistics work. Follow the
 contract's change/release gate; report unverified criteria explicitly. Documentation
 requirements do not authorize changes to device install/remove behavior.

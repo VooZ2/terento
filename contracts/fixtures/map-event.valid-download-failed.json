@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "d2e00000-0000-4000-8000-000000000030",
+  "operationId": "d2e00000-0000-4000-8000-000000000031",
+  "timestamp": "2026-09-17T08:29:58Z",
+  "providerId": "freizeitkarte",
+  "releaseLabel": "1.0.0-beta.12",
+  "mapId": "freizeitkarte-cze-plus",
+  "region": "CZE",
+  "eventType": "DOWNLOAD_FAILED",
+  "outcome": "FAILED",
+  "appBuild": "30",
+  "acquisitionId": "d2e00000-0000-4000-8000-000000000032",
+  "componentKind": "main"
+}

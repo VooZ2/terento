@@ -124,7 +124,7 @@ def validate_map_event(raw: bytes) -> dict[str, Any]:
 
 
 def validate_statistics_filters(filters: dict[str, str]) -> dict[str, Any]:
-    allowed = {"provider", "map", "region", "dateFrom", "dateTo", "eventType"}
+    allowed = {"provider", "map", "region", "dateFrom", "dateTo", "eventType", "outcome"}
     if set(filters) - allowed:
         raise MapEventValidationError("unknown_filter")
     result: dict[str, Any] = {}
@@ -139,6 +139,11 @@ def validate_statistics_filters(filters: dict[str, str]) -> dict[str, Any]:
         if event_type not in ALLOWED_EVENT_TYPES:
             raise MapEventValidationError("invalid_event_type_filter")
         result["eventType"] = event_type
+    if filters.get("outcome"):
+        outcome = filters["outcome"].upper()
+        if outcome not in ALLOWED_OUTCOMES:
+            raise MapEventValidationError("invalid_outcome_filter")
+        result["outcome"] = outcome
     for key in ("dateFrom", "dateTo"):
         value = filters.get(key)
         if value:

@@ -24,7 +24,11 @@ information and actions; visual simplification must not silently remove them.
 - A compatibility diagnostic describes a retained per-map result with reported
   device identity, stage/code and available bounded technical observations.
 - A random operation ID links a session; it is not a user or unique-watch ID.
-  One session can contain several maps and optional components.
+  One session can contain several maps and optional components. Map-result
+  identity uses `operationId + mapResultIndex` when available, together with
+  package/map, provider/region and component facts. `operationId` alone is not
+  a map-result identity, and provider + region alone cannot distinguish two
+  different custom IMG results.
 - Correlation must include operation and provider/map-region identity. A failure
   for one map must not be consumed by another map's report in the same batch.
   Only validated provider-specific aliases may equate region names.
@@ -62,6 +66,7 @@ shows only received structured fields. Missing data must be labelled unavailable
 | Concept | Required interpretation |
 | --- | --- |
 | Installation result | One retained per-map result, not a watch, tester, whole batch or component phase. Custom IMG results belong in compatibility accounting. |
+| Acquisition result | One terminal provider acquisition identified by `acquisition_id` and `component_kind` where available. Started/processing/cancelled/interrupted phases are history, not completed acquisition attempts. |
 | Map update result | `MAP_UPDATE_SUCCEEDED` or `MAP_UPDATE_FAILED` is one replacement of an already installed Terento-owned provider map. It is not a new installation and is excluded from installation totals, coverage, and popularity counts. |
 | Success | SUCCEEDED with VERIFIED finishing; no success inferred from download completion or missing errors. |
 | Failed result | Recorded final failure; never a compatibility promotion. Preserve historical failed/attempt totals after resolution. |
@@ -71,14 +76,15 @@ shows only received structured fields. Missing data must be labelled unavailable
 | Missing diagnostic | Map event lacks matching device diagnostic evidence. It cannot supply model-specific counts or public compatibility evidence by guessing. |
 | Public compatibility | Exact approved model/variant, retained verified successes and existing promotion/publication rules. No family-wide inference or promotion from map statistics. |
 
-The compatibility denominator includes retained final SUCCEEDED/FAILED results
-and the existing legacy attempted-write rules. A final FAILED report may have
-writeStarted=false; display that fact and stage accurately rather than claiming
-bytes were written. NOT_STARTED pre-write results remain outside the completed
-attempt denominator. Overview's map-event fallback also projects a retained
-final FAILED report as INSTALL_FAILED when no matching explicit terminal map
-event exists, so Recent map activity and the installs-over-time chart retain
-the same failed-operation visibility without changing the stored streams.
+The compatibility denominator includes only retained verified successes and
+failures for which writing actually started, plus the explicitly documented
+legacy fallback when the write fact is absent. A current `writeStarted=false`
+result is a pre-install result, not a failed installation attempt; its stage and
+reason remain visible in diagnostics, but it does not enter fresh-install
+attempts, failures or success rates. A current missing write fact is unknown and
+is not guessed. Overview's map-event fallback projects only a verified success
+or a failure with writing started, so Recent map activity and the installations
+chart do not turn a download/preflight failure into a fresh-install failure.
 
 Counts use full retained history, not the currently loaded page, top-N list or
 bounded detail query. Resolution, pagination and formatting changes must not
@@ -88,10 +94,12 @@ outside production/public totals and has its own explicit admin scope.
 
 Each metric must have a stable definition: source, unit, outcome eligibility,
 time window, test exclusion and deduplication. Views using the same population
-must agree. Different populations must be named so a difference is explainable:
-Map statistics is provider-catalog activity; compatibility includes custom IMG;
-Overview reconciles available streams. Do not force equality by inventing data.
-Missing/unavailable measurements use an em dash, while a measured zero is 0.
+must agree. Different populations must be named so a difference is explainable.
+The canonical formulas and population boundaries live in
+[`contracts/STATISTICS_CONTRACT.md`](../../../contracts/STATISTICS_CONTRACT.md);
+this document governs the admin workflow that presents them. Do not force
+equality by inventing data. Missing/unavailable measurements use an em dash,
+while a measured zero is 0.
 
 ## Page and navigation behavior
 
@@ -102,6 +110,16 @@ work across all dates. Keep that scope explicit. Show failures, linked issue wor
 identity/publication review and provider/system problems as distinct work types.
 Counts and list links must lead to the corresponding work, even when the preview
 is truncated. Empty active work does not mean there have been no failures.
+
+The Review queue is labelled and counted as `Pending review tasks`. A failed
+diagnostic and GitHub handling linked to the same operation are alternative
+states of one task; linking an issue moves the task between categories and
+does not increase the total. Identity review is an additional task and
+publication review is counted per exact model. The queue groups operation work,
+not unique GitHub incidents, and resolved work is excluded. If the query fails,
+the queue is unavailable rather than zero. Actions opened from an operation
+task retain that operation-level diagnostic scope; per-map installation history
+remains separate in the statistics read model.
 
 A received device failure must lead to its actionable diagnostic context with
 model/variant, available watch image, provider/map, time, result and known reason.
@@ -131,11 +149,6 @@ A source-mapping review is not an automatic historical installation reassignment
 Use the canonical model name and a consistent variant order: case size, display,
 then features such as Solar/inReach when known. No specifications may be inferred
 merely to fill a visual gap. Cards and tables must use the same reviewed values.
-The identity-review picker must preserve the catalog model and variant names for
-same-model candidates. It may append known screen/Solar facts, but it must not
-replace distinct candidates with identical `not confirmed` labels. The review
-form must separately state which properties were reported by the device and
-which remain unavailable.
 
 Historical catalog provenance in device and installation tables uses a small
 Font Awesome Free solid `box-archive` icon beside the model. Its “Historical catalog entry” text stays
@@ -163,6 +176,21 @@ recorded timestamps in the selected timezone; Processing shows total elapsed tim
 from start to terminal result, or an em dash if either is missing or inconsistent.
 This duration includes the whole acquisition, not just unpacking/checking.
 
+Map-statistics population filters are provider, map, region, and date. Event
+type, outcome, and detail pagination affect only the Event detail disclosure;
+they do not recalculate KPI totals, success rates, coverage, or popularity.
+The initial HTML and asynchronous response must use the same server summary.
+Per-map diagnostic coverage is reliably linked fresh-map attempts divided by
+all selected fresh-map attempts. A linked message is not synonymous with a
+successful message, and an absent message is an observation gap, not a failed
+install. Session totals are separate.
+
+The GitHub chart says `Observed download increases between checks`. It starts
+with a baseline, preserves valid zero increases, leaves missing checks and
+counter/population discontinuities unknown, and keeps the previous and actual
+`observed_at` values for each observed interval. Failed collection keeps the
+last successful observation and timestamp.
+
 ### Providers and collection history
 
 Separate provider health, collection outcome, available packages and broken
@@ -171,6 +199,21 @@ or a completed user download. Updates count newly discovered plus changed map
 packages for that run, with the components explained; do not count every artifact
 as a new map. Unknown historical counts remain unknown, not zero. Technical
 source/review controls remain accessible behind clearly labelled disclosures.
+
+Provider `Problems` has separate counts: unique current affected packages and
+unique problematic source identities. Two broken artifacts in one package are
+one affected package; one source used by two packages is one problematic source
+and two packages. The latest provider health state/error is separate and does
+not become a package/source problem. Counts use the complete current catalog,
+not the first page or a preview, and retired/resolved historical entries are
+excluded.
+
+All admin statistics preserve the distinction between a measured zero,
+unknown/unavailable, stale, and partial data. Do not use truthiness or
+cross-unit fallbacks to turn missing values into zero; `false` remains `No`.
+A successful empty map-statistics population is `0 recorded events` with
+zero terminal attempts and an unavailable (`—`) success rate, not an error or
+evidence that nobody used the app.
 
 ## Mandatory change and release gate
 
@@ -206,7 +249,7 @@ by this documentation.
 
 ## Known gaps at adoption (2026-09-15)
 
-- PR212 surfaces unmatched failed map events and final compatibility failures in
+- PR212 surfaces unmatched failed map events and eligible compatibility failures in
   Overview, but it does not provide the full unknown-device diagnostic/issue
   workflow for a map-only failure.
 - Build31 source moves diagnostic creation from ConnectScreen to an operation

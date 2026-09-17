@@ -117,7 +117,7 @@ class AdminAuditTests(unittest.TestCase):
             width = float(chart.attrib['viewBox'].split()[2])
             self.assertLess(float(bars[0].attrib['x']) + float(bars[0].attrib['width']), width)
         self.assertEqual(charts[1].attrib['viewBox'], '0 0 360 220')
-        self.assertIn('No map operations', _overview_trend_chart([], 'hour'))
+        self.assertIn('No map installations', _overview_trend_chart([], 'hour'))
 
     def test_identity_uses_required_native_select_with_exact_ids(self):
         from terento_catalog.admin import _diagnostic_detail_dialog
@@ -149,8 +149,8 @@ class AdminAuditTests(unittest.TestCase):
 
     def test_post_audit_layout_copy_and_recovery_contract(self):
         body = map_statistics_page({"rows": []}, [], {"username": "audit"}, "csrf").decode()
-        for text in ("Completed downloads", "Download success", "Completed map-package installs",
-                     "Package install success", "View all map activity",
+        for text in ("Completed downloads", "Download success", "Fresh installs",
+                     "Fresh install success", "View all map activity",
                      "No maps match your search", "flex-direction:column", "min-width:960px"):
             self.assertIn(text, body)
         self.assertNotIn("<strong data-stat='providerIssues'>", body)
@@ -177,7 +177,7 @@ class AdminAuditTests(unittest.TestCase):
                 for target in ("map-statistics-metrics", "map-statistics-coverage",
                                "provider-statistic-rows", "world-map-svg", "map-rows"):
                     self.assertEqual(ids[target], 1, target)
-                self.assertEqual(body.count("Counts map packages, not watches. One first installation can include several packages. Map updates are a separate lifecycle operation and never increase installation counts, coverage, or popularity. Success rates use completed outcomes (successful + failed), excluding operations still in progress. Compatibility evidence is counted separately."), 1)
+                self.assertEqual(body.count("Acquisition, fresh-install, optional-component, and update outcomes remain separate."), 1)
 
     def test_health_disclosure_defaults_and_escaped_evidence(self):
         for state in ('HEALTHY', 'FAILED', 'WARNING', 'UNKNOWN', None):
@@ -355,19 +355,19 @@ class AdminAuditTests(unittest.TestCase):
         query, parameters = calls[0]
         # A verified result is counted even if its sibling is missing/failed.
         complete, filtered = query.split('), compatibility_fallback AS (', 1)
-        self.assertIn("e.event_id::text AS operation_key", complete)
+        self.assertIn("END AS result_key", complete)
+        self.assertIn("e.operation_id::text || ':' || e.map_result_index::text", complete)
         self.assertIn("installed.provider_id = e.provider", complete)
         self.assertNotIn("selected_map_count", complete)
         self.assertIn('installed.is_local_test IS NOT TRUE', complete)
         self.assertNotIn('e.region = %s', complete)
         self.assertIn('e.region = %s', filtered)
-        self.assertIn('GROUP BY c.operation_key, e.provider, e.region', filtered)
-        self.assertIn(
-            "e.phase_outcome = 'SUCCEEDED'\n                    OR e.write_started IS NOT FALSE",
-            complete,
-        )
+        self.assertIn('GROUP BY c.operation_key, c.provider, c.region, c.result_classification_effective', filtered)
+        self.assertIn("e.phase_outcome = 'SUCCEEDED'", complete)
+        self.assertIn("e.write_started IS TRUE", complete)
+        self.assertNotIn("e.write_started IS NOT FALSE", complete)
         self.assertNotIn("e.phase_outcome = 'NOT_STARTED'", complete)
-        self.assertIn("event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED',\n                                                   'MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED')", complete)
+        self.assertIn("event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')", complete)
         self.assertEqual(tuple(parameters), ('SVN+', 'SVN+'))
 
 if __name__=='__main__': unittest.main()

@@ -183,12 +183,26 @@ def _format_rate(value: Any) -> str:
     return f"{rate:.1f}%"
 
 
+def _optional_nonnegative_int(value: Any) -> int | None:
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return None
+    return number if number >= 0 else None
+
+
+def _optional_count_label(value: Any, suffix: str = "") -> str:
+    number = _optional_nonnegative_int(value)
+    return f"{number:,}{suffix}" if number is not None else f"—{suffix}"
+
+
 def _count_label(value: Any, singular: str, plural: str | None = None) -> str:
     """Render a count with consistent singular/plural copy across the admin UI."""
-    try:
-        count = int(value or 0)
-    except (TypeError, ValueError):
-        count = 0
+    count = _optional_nonnegative_int(value)
+    if count is None:
+        return "—"
     noun = singular if count == 1 else (plural or f"{singular}s")
     return f"{count} {noun}"
 
@@ -279,14 +293,49 @@ def _operation_key(result: dict[str, Any]) -> str:
     ).strip()
 
 
+def _result_key(result: dict[str, Any]) -> str:
+    """Identify one main-map result, not the enclosing install batch."""
+    operation = str(result.get("operation_id") or "").strip()
+    index = result.get("map_result_index")
+    if operation and index is not None:
+        return f"result:{operation}:{index}"
+    existing_key = str(result.get("operation_key") or "").strip()
+    if existing_key:
+        return existing_key
+    event_id = str(result.get("event_id") or "").strip()
+    return f"event:{event_id}" if event_id else _operation_key(result)
+
+
 def _group_operations(events: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     grouped: dict[str, list[dict[str, Any]]] = {}
     for event in events:
-        key = _operation_key(event)
+        key = _result_key(event)
         if key:
             grouped.setdefault(key, []).append(event)
     for results in grouped.values():
         results.sort(key=lambda item: int(item.get("map_result_index") or 0))
+    return grouped
+
+
+def _group_operation_tasks(events: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    """Group operator work by operation, keeping one task for a multi-map batch."""
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for event in events:
+        # compatibility_operation_details exposes a per-result operation_key;
+        # deliberately prefer the raw operation ID here so the queue remains
+        # operation-level when one batch contains several map results.
+        key = str(
+            event.get("operation_id")
+            or event.get("operationId")
+            or event.get("event_id")
+            or event.get("eventId")
+            or event.get("operation_key")
+            or ""
+        ).strip()
+        if key:
+            grouped.setdefault(key, []).append(event)
+    for results in grouped.values():
+        results.sort(key=lambda item: (_timestamp_iso(item.get("occurred_at")), str(item.get("event_id") or "")))
     return grouped
 
 
@@ -378,13 +427,13 @@ def _diagnostic_summary_by_identity(
     grouped: dict[str, dict[str, list[dict[str, Any]]]] = {}
     for event in events:
         identity = _identity_group_key(event)
-        key = str(event.get("event_id") or f"{_operation_key(event)}:{event.get('map_result_index', 0)}")
+        key = _result_key(event)
         if identity and key:
             grouped.setdefault(identity, {}).setdefault(key, []).append(event)
     resolved_grouped: dict[str, dict[str, list[dict[str, Any]]]] = {}
     for event in resolved_events or []:
         identity = _identity_group_key(event)
-        key = str(event.get("event_id") or f"{_operation_key(event)}:{event.get('map_result_index', 0)}")
+        key = _result_key(event)
         if identity and key:
             resolved_grouped.setdefault(identity, {}).setdefault(key, []).append(event)
     for identity in set(grouped) | set(resolved_grouped):
@@ -507,6 +556,11 @@ def _diagnostic_technical_details(result: dict[str, Any], result_number: int) ->
         ("Transfer progress", "transfer_progress_bucket"),
         ("Map result", "map_result_index"),
         ("Selected maps", "selected_map_count"),
+        ("Optional component selected", "optional_component_selected"),
+        ("Optional component outcome", "optional_component_outcome"),
+        ("Optional component failure stage", "optional_component_failure_stage"),
+        ("Optional component failure code", "optional_component_failure_code"),
+        ("Optional component native code", "optional_component_native_failure_code"),
         ("Error category", "error_category"),
         ("Transport", "transport"),
     ):
@@ -556,22 +610,32 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     tools_class = " class='active'" if active in {"test-data", "campaigns", "device-identification"} else ""
     account_class = " active" if active == "account" else ""
     review = user.get("admin_review_summary") or {}
-    installation_issues = int(review.get("installationIssues") or 0)
-    github_issues_in_progress = int(review.get("githubIssuesInProgress") or 0)
-    identity_pending = int(review.get("identityPending") or 0)
-    ready_to_publish = int(review.get("readyToPublish") or 0)
-    review_total = int(review.get("total") or (
-        installation_issues + github_issues_in_progress + identity_pending + ready_to_publish
-    ))
+    review_available = review.get("available", True) is not False
+    def review_value(key: str) -> int | None:
+        value = review.get(key)
+        try:
+            return int(value) if value is not None and int(value) >= 0 else None
+        except (TypeError, ValueError):
+            return None
+    installation_issues = review_value("installationIssues")
+    github_issues_in_progress = review_value("githubIssuesInProgress")
+    identity_pending = review_value("identityPending")
+    ready_to_publish = review_value("readyToPublish")
+    review_total = review_value("pendingReviewTasks")
+    if review_total is None:
+        review_total = review_value("total")
+    if review_total is None and all(value is not None for value in (installation_issues, github_issues_in_progress, identity_pending, ready_to_publish)):
+        review_total = sum(value for value in (installation_issues, github_issues_in_progress, identity_pending, ready_to_publish) if value is not None)
+    review_count_markup = str(review_total) if review_total is not None else "—"
     review_menu = f"""<details class="needs-review-menu">
-        <summary aria-label="Review queue: {review_total}">Review queue <span class="needs-review-count">{review_total}</span></summary>
+        <summary aria-label="Review queue: {html.escape(review_count_markup)}">Review queue <span class="needs-review-count">{review_count_markup}</span></summary>
         <div class="needs-review-popover" role="group" aria-label="Review queue">
-          <a href="/admin/installations?state=open"><span>Installation issues</span><strong>{installation_issues}</strong></a>
-          <a href="/admin/review/github-issues"><span>GitHub issues in progress</span><strong>{github_issues_in_progress}</strong></a>
-          <a href="/admin/installations?state=identity-pending"><span>Identity review</span><strong>{identity_pending}</strong></a>
-          <a href="/admin/devices?review=publication"><span>Publication review</span><strong>{ready_to_publish}</strong></a>
+          {"<p class='muted-value'>Pending review tasks: unavailable.</p>" if not review_available else f'''<p class='table-help'>Pending review tasks</p><a href="/admin/installations?state=open"><span>Failure diagnostics</span><strong>{installation_issues if installation_issues is not None else "—"}</strong></a>
+          <a href="/admin/review/github-issues"><span>GitHub review tasks</span><strong>{github_issues_in_progress if github_issues_in_progress is not None else "—"}</strong></a>
+          <a href="/admin/installations?state=identity-pending"><span>Identity review</span><strong>{identity_pending if identity_pending is not None else "—"}</strong></a>
+          <a href="/admin/devices?review=publication"><span>Publication review</span><strong>{ready_to_publish if ready_to_publish is not None else "—"}</strong></a>'''}
         </div>
-      </details>""" if review_total else ""
+      </details>""" if (review_total or not review_available) else ""
     tools_menu = f"""<details class="admin-tools-menu">
         <summary{tools_class}>Tools</summary>
         <div class="admin-tools-popover" role="group" aria-label="Admin tools">
@@ -1341,7 +1405,7 @@ def _overview_trend_chart(
     *, _compact: bool = False,
 ) -> str:
     if not trend:
-        return "<p class='overview-empty-state'>No map operations in this period.</p>"
+        return "<p class='overview-empty-state'>No map installations in this period.</p>"
     values = [
         (max(0, int(item.get("success_count") or 0)), max(0, int(item.get("failed_count") or 0)), max(0, int(item.get("custom_count") or 0)), max(0, int(item.get("map_update_count") or 0)))
         for item in trend
@@ -1367,7 +1431,7 @@ def _overview_trend_chart(
         center = left + (index + 0.5) * slot
         active = [(name, label, count) for name, label, count in zip(
             ("success", "failed", "custom", "update"),
-            ("Install succeeded", "Install failed", "Custom .img installed", "Map update"), counts,
+            ("Fresh install succeeded", "Fresh install failed", "Custom fresh install", "Map update"), counts,
         ) if count > 0]
         bar_width = min(44, slot * 0.58)
         x = center - bar_width / 2
@@ -1408,7 +1472,7 @@ def _overview_trend_chart(
             anchor = 'start' if _compact and index == 0 else 'end' if _compact and index == len(values) - 1 else 'middle'
             labels.append(f"<text x='{center:.1f}' y='{chart_height - 8}' text-anchor='{anchor}'>{html.escape(_overview_chart_bucket_label(item.get('bucket'), bucket, time_zone))}</text>")
     svg = (
-        f"<svg class='overview-trend-chart overview-trend-{'mobile' if _compact else 'desktop'}' viewBox='0 0 {chart_width} {chart_height}' role='img' aria-label='Map operations over time'>"
+        f"<svg class='overview-trend-chart overview-trend-{'mobile' if _compact else 'desktop'}' viewBox='0 0 {chart_width} {chart_height}' role='img' aria-label='Map installations over time'>"
         f"{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
     )
     if _compact:
@@ -1416,7 +1480,7 @@ def _overview_trend_chart(
     return (
         "<div class='overview-chart-wrap'>"
         + svg + _overview_trend_chart(trend, bucket, time_zone, _compact=True) +
-        "<div class='overview-chart-legend'><span><i class='overview-chart-success'></i>Successful</span><span><i class='overview-chart-failed'></i>Failed</span><span><i class='overview-chart-custom'></i>Custom .img</span><span><i class='overview-chart-update'></i>Map update</span></div></div>"
+        "<div class='overview-chart-legend'><span><i class='overview-chart-success'></i>Fresh success</span><span><i class='overview-chart-failed'></i>Fresh failed</span><span><i class='overview-chart-custom'></i>Custom fresh install</span><span><i class='overview-chart-update'></i>Map update</span></div></div>"
     )
 
 
@@ -1442,12 +1506,13 @@ def _overview_downloads_chart(
     for item in trend:
         counts = []
         for key in ("dmg_count", "zip_count"):
+            value = item.get(key)
             try:
-                counts.append(max(0, int(item.get(key) or 0)))
+                counts.append(int(value) if value is not None and int(value) >= 0 else None)
             except (TypeError, ValueError):
-                counts.append(0)
+                counts.append(None)
         values.append(tuple(counts))
-    maximum = max((sum(series) for series in values), default=1) or 1
+    maximum = max((sum(value for value in series if value is not None) for series in values), default=1) or 1
     scale_maximum = max(4, math.ceil(maximum * 1.2))
     chart_width, chart_height = (360, 220) if _compact else (720, 260)
     left, top, bottom = 38, 20, 34
@@ -1480,15 +1545,26 @@ def _overview_downloads_chart(
             f"y='{top:.1f}' width='{bar_width:.1f}' height='{plot_height:.1f}' rx='3'></rect></clipPath></defs>"
             f"<g clip-path='url(#{clip_id})'>"
         )
-        for (label, css_class), count in zip(series, counts):
+        for series_index, ((label, css_class), count) in enumerate(zip(series, counts)):
+            observed_at = item.get("observed_at") or item.get("bucket")
+            if count is None:
+                continue
             if count == 0:
+                zero_title = f"{label}: 0 · observed zero increase between checks ending {_overview_chart_bucket_label(observed_at, chart_bucket, time_zone)} · {time_zone}"
+                zero_x = center + (-4 if series_index == 0 else 4)
+                bars.append(
+                    f"<circle class='overview-chart-download-zero' cx='{zero_x:.1f}' cy='{top + plot_height - 3:.1f}' r='3' tabindex='0' role='img' aria-label='{html.escape(zero_title, quote=True)}'><title>{html.escape(zero_title)}</title></circle>"
+                )
                 continue
             height = plot_height * count / scale_maximum
             y -= height
-            title = (
-                f"{label}: {count} · "
-                f"{_overview_chart_bucket_label(item.get('bucket'), chart_bucket, time_zone)} · {time_zone}"
-            )
+            previous_observed_at = item.get("previous_observed_at")
+            if item.get("state") in {"gap", "period_boundary"} and previous_observed_at is not None:
+                interval_start = _overview_chart_bucket_label(previous_observed_at, chart_bucket, time_zone)
+                interval_end = _overview_chart_bucket_label(observed_at, chart_bucket, time_zone)
+                title = f"{label}: {count} · observed increase across {interval_start}–{interval_end} · {time_zone} · interval uncertain"
+            else:
+                title = f"{label}: {count} · observed increase ending {_overview_chart_bucket_label(observed_at, chart_bucket, time_zone)} · {time_zone}"
             bars.append(
                 f"<rect class='{css_class}' x='{x:.1f}' y='{y:.2f}' width='{bar_width:.1f}' "
                 f"height='{height:.2f}' tabindex='0' role='img' "
@@ -1496,6 +1572,11 @@ def _overview_downloads_chart(
                 f"<title>{html.escape(title)}</title></rect>"
             )
         bars.append("</g>")
+        if not any(count is not None for count in counts) and item.get("state") == "discontinuity":
+            discontinuity_title = f"Download counters discontinuity ending {_overview_chart_bucket_label(item.get('observed_at') or item.get('bucket'), chart_bucket, time_zone)} · interval unknown"
+            bars.append(
+                f"<line class='overview-chart-download-unknown' x1='{center - 9:.1f}' x2='{center + 9:.1f}' y1='{top + plot_height - 3:.1f}' y2='{top + plot_height - 3:.1f}' tabindex='0' role='img' aria-label='{html.escape(discontinuity_title, quote=True)}'><title>{html.escape(discontinuity_title)}</title></line>"
+            )
         label_step = max(1, round((len(values) - 1) / 11))
         show_label = len(values) <= 12 or index % label_step == 0 or index == len(values) - 1
         if _compact:
@@ -1513,7 +1594,7 @@ def _overview_downloads_chart(
     svg = (
         f"<svg class='overview-trend-chart overview-trend-{'mobile' if _compact else 'desktop'}' "
         f"viewBox='0 0 {chart_width} {chart_height}' role='img' "
-        f"aria-label='GitHub downloads over {period_label}'>"
+        f"aria-label='Observed download increases between checks over {period_label}'>"
         f"{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
     )
     if _compact:
@@ -1689,6 +1770,12 @@ def overview_page(
         if model_activity or review_required else ""
     )
     download_has_data = bool(downloads.get("hasData"))
+    download_last_update = downloads.get("lastSuccessfulObservedAt", downloads.get("lastObservedAt"))
+    download_update_note = (
+        f"Last successful data update: {_timestamp_markup(download_last_update)}."
+        if download_has_data and download_last_update is not None
+        else "Last successful data update: —."
+    )
 
     def download_total(key: str) -> str:
         if not download_has_data or downloads.get(key) is None:
@@ -1718,12 +1805,14 @@ def overview_page(
     downloads_section = (
         "<section class='overview-panel overview-download-panel' aria-labelledby='overview-downloads-title'>"
         "<div class='section-heading overview-download-heading'><div><p class='section-kicker'>GitHub releases</p>"
-        "<h2 id='overview-downloads-title'>Downloads over time</h2></div>"
+        "<h2 id='overview-downloads-title'>Observed download increases</h2></div>"
         "<div class='overview-download-totals' aria-label='Total GitHub downloads'>"
         f"<div class='overview-download-total' aria-label='.dmg downloads total: {download_total('dmgTotal')}'><strong>{download_total('dmgTotal')}</strong><small>.dmg</small></div>"
         f"<div class='overview-download-total' aria-label='.zip downloads total: {download_total('zipTotal')}'><strong>{download_total('zipTotal')}</strong><small>.zip</small></div>"
         "</div></div>"
         f"{_overview_downloads_chart(downloads, time_zone, period=period)}"
+        "<p class='overview-chart-note'>Observed download increases between checks. Missing observations and counter resets are not treated as zero.</p>"
+        f"<p class='overview-chart-note'>{download_update_note}</p>"
         "</section>"
     )
     secondary_grid_class = (
@@ -1735,6 +1824,7 @@ def overview_page(
         f"<section class='overview-panel overview-attention-panel{' overview-attention-empty' if not has_review_queue else ''}' aria-labelledby='overview-attention-title'><div class='section-heading'><div><p class='section-kicker'>All unresolved · any date</p><h2 id='overview-attention-title'>Review queue</h2></div><a class='section-link' href='{html.escape(attention_href, quote=True)}'>View all&nbsp;{_admin_icon('arrow-right')}</a></div>{attention_content}"
     )
     review = user.get("admin_review_summary") or {}
+    review_metric = lambda key: str(review[key]) if key in review and review.get(key) is not None else "—"
     missing_diagnostic_shortcut = (
         "<a href='/admin/map-statistics?period=all&amp;eventType=INSTALL_FAILED'>"
         f"Missing diagnostics <strong>{missing_diagnostic_count}</strong></a>"
@@ -1744,9 +1834,9 @@ def overview_page(
         "<nav class='attention-shortcuts' aria-label='Review queue shortcuts'>"
         f"{missing_diagnostic_shortcut}"
         f"<a href='/admin/installations?state=open'>Open errors <strong>{open_error_metric(open_errors)}</strong></a>"
-        f"<a href='/admin/review/github-issues'>GitHub issues in progress <strong>{int(review.get('githubIssuesInProgress') or 0)}</strong></a>"
-        f"<a href='/admin/installations?state=identity-pending'>Identity review <strong>{int(review.get('identityPending') or 0)}</strong></a>"
-        f"<a href='/admin/devices?review=publication'>Publication review <strong>{int(review.get('readyToPublish') or 0)}</strong></a>"
+        f"<a href='/admin/review/github-issues'>GitHub review tasks <strong>{review_metric('githubIssuesInProgress')}</strong></a>"
+        f"<a href='/admin/installations?state=identity-pending'>Identity review <strong>{review_metric('identityPending')}</strong></a>"
+        f"<a href='/admin/devices?review=publication'>Publication review <strong>{review_metric('readyToPublish')}</strong></a>"
         f"<a href='/admin/providers'>Provider issues <strong>{len(attention_providers)}</strong></a>"
         f"<a href='/admin/system-health'>System issues <strong>{health_issue_count}</strong></a></nav></section>"
     )
@@ -1755,15 +1845,15 @@ def overview_page(
       <main class='dashboard overview-page' id='main-content'>
         <div class='heading-row overview-heading'><div><p class='eyebrow'>Operations</p><h1>Overview</h1><p class='lede'>Current Terento health and activity that needs attention.</p></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin'><label><span class='sr-only'>Time period</span><select id='overview-period' name='period'>{period_options}</select></label></form></div>
         <section class='overview-kpis' aria-label='Operational summary'>
-          <a class='overview-kpi' href='/admin/installations'><span>Map install operations</span><strong>{event_metric(completed_installs + failed_installs)}</strong></a>
-          <a class='overview-kpi' href='/admin/installations'><span>Map install success</span><strong>{success_rate}</strong></a>
-          <a class='overview-kpi overview-kpi-attention' href='{html.escape(failure_href, quote=True)}'><span>Failed map installs</span><strong>{event_metric(failed_installs)}</strong></a>
-          <a class='overview-kpi' href='{html.escape(map_statistics_href, quote=True)}'><span>Map update operations</span><strong>{event_metric(map_updates)}</strong></a>
+          <a class='overview-kpi' href='/admin/installations'><span>Fresh installs</span><strong>{event_metric(completed_installs + failed_installs)}</strong></a>
+          <a class='overview-kpi' href='/admin/installations'><span>Fresh install success</span><strong>{success_rate}</strong></a>
+          <a class='overview-kpi overview-kpi-attention' href='{html.escape(failure_href, quote=True)}'><span>Failed fresh installs</span><strong>{event_metric(failed_installs)}</strong></a>
+          <a class='overview-kpi' href='{html.escape(map_statistics_href, quote=True)}'><span>Map updates</span><strong>{event_metric(map_updates)}</strong></a>
           <a class='overview-kpi overview-kpi-attention' href='/admin/installations?state=open'><span>Open errors</span><strong>{open_error_metric(open_errors)}</strong></a>
           <a class='overview-kpi' href='/admin/providers'><span>Providers</span><strong>{healthy} / {provider_count}</strong></a>
         </section>
         {attention_section}
-        <div class='overview-primary-grid'><section class='overview-panel overview-chart-panel' aria-labelledby='overview-trend-title'><div class='section-heading overview-map-heading'><div><p class='section-kicker'>Map operations</p><h2 id='overview-trend-title'>Map operations over time</h2></div>{map_totals}</div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'), time_zone)}</section>{downloads_section}</div>
+        <div class='overview-primary-grid'><section class='overview-panel overview-chart-panel' aria-labelledby='overview-trend-title'><div class='section-heading overview-map-heading'><div><p class='section-kicker'>Map installations</p><h2 id='overview-trend-title'>Map installations over time</h2></div>{map_totals}</div>{_overview_trend_chart(list(data.get('trend') or []), str(data.get('bucket') or 'day'), time_zone)}</section>{downloads_section}</div>
         <div class='{secondary_grid_class}'><section class='overview-panel' aria-labelledby='overview-activity-title'><div class='section-heading'><div><p class='section-kicker'>Latest</p><h2 id='overview-activity-title'>Recent map activity</h2></div><a class='section-link' href='{html.escape(map_statistics_href, quote=True)}'>View all&nbsp;{_admin_icon('arrow-right')}</a></div>{recent_content}</section>{model_panel}</div>
         {compatibility_summary}
       </main>
@@ -2226,23 +2316,29 @@ def _provider_summary_row(provider: dict[str, Any]) -> str:
     name = str(provider.get("name") or provider_id or "Unknown provider")
     status = str(provider.get("status") or "UNKNOWN")
     health = str(provider.get("health") or "UNKNOWN")
-    broken = max(
-        int(provider.get("brokenUrlCount") or 0),
-        int(provider.get("brokenPackageCount") or 0),
-    )
+    affected_packages = provider.get("affectedPackageCount")
+    if affected_packages is None and "brokenPackageCount" in provider:
+        affected_packages = provider.get("brokenPackageCount")
+    problematic_sources = provider.get("problematicSourceCount")
+    if problematic_sources is None and "brokenUrlCount" in provider:
+        problematic_sources = provider.get("brokenUrlCount")
+    def count_label(value: Any, singular: str, plural: str) -> str:
+        try:
+            return f"{int(value)} {singular if int(value) == 1 else plural}" if value is not None else "—"
+        except (TypeError, ValueError):
+            return "—"
     provider_href = html.escape(quote(provider_id, safe=""), quote=True)
-    error = str(provider.get("lastHealthError") or "").strip()
-    issue_count = max(broken, 1 if error else 0)
-    issue_markup = (
-        f"<span class='provider-issue-count' title='{html.escape(error or f'{issue_count} provider issue(s)', quote=True)}' aria-label='{html.escape(f'{issue_count} provider issue(s)', quote=True)}'>{issue_count}</span>"
-        if issue_count else "0"
-    )
+    problem_label = f"{count_label(affected_packages, 'package', 'packages')} · {count_label(problematic_sources, 'source', 'sources')}"
+    issue_markup = f"<span class='provider-issue-count' title='Current catalog problems: {html.escape(problem_label, quote=True)}' aria-label='Current catalog problems: {html.escape(problem_label, quote=True)}'>{html.escape(problem_label)}</span>"
+    package_value = count_label(provider.get("packageCount"), "package", "packages")
+    health_error = str(provider.get("lastHealthError") or "").strip()
+    health_note = f"<small class='table-secondary' title='{html.escape(health_error, quote=True)}'>{html.escape(health_error)}</small>" if health_error else "<small class='table-secondary'>Latest check state</small>"
     return (
         f"<tr data-provider-search='{html.escape(' '.join((provider_id, name, str(provider.get('adapterId') or ''), status, health)).casefold(), quote=True)}'>"
         f"<td><a class='provider-name-link' href='/admin/providers/{provider_href}'><strong>{html.escape(name)}</strong></a><small class='table-secondary'>Newest package: {html.escape(str(provider.get('latestRelease') or 'Not recorded'))}</small></td>"
         f"<td>{_provider_status_badge(status)}</td>"
-        f"<td>{_provider_status_badge(health, kind='health')}<small class='table-secondary'>Last recorded check</small></td>"
-        f"<td class='numeric'>{int(provider.get('packageCount') or 0)}</td>"
+        f"<td>{_provider_status_badge(health, kind='health')}{health_note}</td>"
+        f"<td class='numeric'>{html.escape(package_value)}</td>"
         f"<td>{_timestamp_markup(provider.get('lastCatalogSync'))}</td>"
         f"<td>{_timestamp_markup(provider.get('lastHealthCheck') or provider.get('lastDownloadTest'))}</td>"
         f"<td class='numeric'>{issue_markup}</td>"
@@ -2259,24 +2355,26 @@ def providers_page(
     empty = "<p class='empty'>No known providers are registered.</p>" if not provider_rows else ""
     active = sum(1 for provider in provider_rows if str(provider.get("status")).upper() == "ACTIVE")
     healthy = sum(1 for provider in provider_rows if str(provider.get("health")).upper() == "HEALTHY")
-    packages = sum(int(provider.get("packageCount") or 0) for provider in provider_rows)
-    issues = sum(
-        max(
-            int(provider.get("brokenUrlCount") or 0),
-            int(provider.get("brokenPackageCount") or 0),
-            1 if str(provider.get("lastHealthError") or "").strip() else 0,
-        )
-        for provider in provider_rows
+    package_values = [provider.get("packageCount") for provider in provider_rows]
+    packages = sum(int(value) for value in package_values) if all(value is not None for value in package_values) else None
+    affected_packages = [provider.get("affectedPackageCount", provider.get("brokenPackageCount")) for provider in provider_rows]
+    problematic_sources = [provider.get("problematicSourceCount", provider.get("brokenUrlCount")) for provider in provider_rows]
+    affected_package_total = sum(int(value) for value in affected_packages) if all(value is not None for value in affected_packages) else None
+    problematic_source_total = sum(int(value) for value in problematic_sources) if all(value is not None for value in problematic_sources) else None
+    problem_summary = (
+        f"{affected_package_total} affected packages · {problematic_source_total} problematic sources"
+        if affected_package_total is not None and problematic_source_total is not None
+        else "—"
     )
     content = f"""
       {_admin_header(user, csrf_token, active='providers')}
       <main class='dashboard' id='main-content'>
         <div class='heading-row'><div><p class='eyebrow'>Map operations</p><h1>Providers</h1><p class='lede'>Known provider adapters, catalog state, and the latest health evidence.</p></div></div>
-        <section class='admin-summary-strip' aria-label='Provider summary'><p class='admin-summary-metrics'><strong>{_count_label(len(provider_rows), 'provider')}</strong><span> · {active} active · {healthy} healthy · {_count_label(packages, 'package')} · {_count_label(issues, 'issue')}</span></p></section>
+        <section class='admin-summary-strip' aria-label='Provider summary'><p class='admin-summary-metrics'><strong>{_count_label(len(provider_rows), 'provider')}</strong><span> · {active} active · {healthy} healthy · {_count_label(packages, 'package')} · {html.escape(problem_summary)}</span></p></section>
         {empty}
         <section class='provider-section' aria-label='Provider list'>
           <form class='filter-bar provider-filter-bar' id='provider-filters' role='search'><label class='filter-search'><span class='sr-only'>Search providers</span><input id='provider-search' type='search' placeholder='Search providers' autocomplete='off'></label><p class='results-count' id='provider-results-count' aria-live='polite'>{_count_label(len(provider_rows), 'provider')}</p><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear provider filters'>Clear</button></form>
-          <div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Map provider status</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Activity</th><th scope='col'>Health</th><th scope='col'>Packages</th><th scope='col'>Catalog sync</th><th scope='col'>Last check</th><th scope='col'>Issues</th></tr></thead><tbody id='provider-rows'>{rows}</tbody></table></div>
+          <div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Map provider status</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Activity</th><th scope='col'>Health</th><th scope='col'>Packages</th><th scope='col'>Catalog sync</th><th scope='col'>Last check</th><th scope='col'>Problems</th></tr></thead><tbody id='provider-rows'>{rows}</tbody></table></div>
         </section>
       </main>
       <script>window.terentoAdminCsrf = {_admin_json(csrf_token)};{_providers_list_script()}</script>
@@ -2285,10 +2383,12 @@ def providers_page(
 
 
 def _provider_package_row(package: dict[str, Any]) -> str:
-    broken_count = int(package.get("broken_artifact_count") or 0)
+    broken_count = _optional_nonnegative_int(package.get("broken_artifact_count"))
     availability = str(package.get("availability") or "UNKNOWN")
-    row_class = " provider-package-broken" if broken_count else ""
-    broken_markup = _provider_status_badge("FAILED" if broken_count else availability)
+    is_broken = broken_count is not None and broken_count > 0
+    row_class = " provider-package-broken" if is_broken else ""
+    package_state = "FAILED" if is_broken else "UNKNOWN" if broken_count is None else availability
+    broken_markup = _provider_status_badge(package_state)
     package_id = str(package.get("id") or "—")
     package_name = _admin_map_display_name(
         package.get("country"), package.get("name"), package.get("region"), package_id,
@@ -2304,15 +2404,15 @@ def _provider_package_row(package: dict[str, Any]) -> str:
         artifact_details += (
             f"<p><strong>{html.escape(str(artifact.get('kind') or ''))}</strong> · "
             f"{html.escape(str(artifact.get('validation_status') or 'UNKNOWN'))}<br>"
-            f"Download: {int(artifact.get('size_bytes') or 0):,} bytes · IMG: {int(artifact.get('install_size_bytes') or 0):,} bytes<br>"
+            f"Download: {_optional_count_label(artifact.get('size_bytes'), ' bytes')} · IMG: {_optional_count_label(artifact.get('install_size_bytes'), ' bytes')}<br>"
             f"Source date: {html.escape(str(artifact.get('source_updated_at') or 'Unknown'))}<br>{source}</p>"
         )
     if artifact_details:
         artifact_details = f"<details class='admin-disclosure' style='text-align:left;overflow-wrap:anywhere'><summary>Artifact details</summary>{artifact_details}</details>"
     return (
-        f"<tr class='{row_class.strip()}' data-package-search='{html.escape(search, quote=True)}' data-package-broken='{str(bool(broken_count)).lower()}'><td><span class='provider-package-name'>{html.escape(package_name)}</span><code class='provider-package-id'>{html.escape(package_id)}</code>{f'<small>{html.escape(region)}</small>' if region and region.casefold() != package_name.casefold() else ''}{artifact_details}</td>"
-        f"<td>{html.escape(str(package.get('release') or '—'))}</td><td class='numeric'>{int(package.get('artifact_count') or 0)}</td>"
-        f"<td>{broken_markup}{f' <small>{broken_count} broken</small>' if broken_count else ''}</td></tr>"
+        f"<tr class='{row_class.strip()}' data-package-search='{html.escape(search, quote=True)}' data-package-broken='{str(is_broken).lower()}'><td><span class='provider-package-name'>{html.escape(package_name)}</span><code class='provider-package-id'>{html.escape(package_id)}</code>{f'<small>{html.escape(region)}</small>' if region and region.casefold() != package_name.casefold() else ''}{artifact_details}</td>"
+        f"<td>{html.escape(str(package.get('release') or '—'))}</td><td class='numeric'>{_optional_count_label(package.get('artifact_count'))}</td>"
+        f"<td>{broken_markup}{f' <small>{broken_count} broken</small>' if is_broken else ''}</td></tr>"
     )
 
 
@@ -2347,10 +2447,13 @@ def _provider_health_row(health: dict[str, Any]) -> str:
         f"<span class='provider-error' title='{html.escape(error, quote=True)}'>{html.escape(error)}</span>"
         if error else "<span class='muted-value'>—</span>"
     )
+    http_status = _optional_nonnegative_int(health.get("http_status"))
+    if http_status is not None and not 100 <= http_status <= 599:
+        http_status = None
     return (
         f"<tr><td>{_timestamp_markup(health.get('checked_at'))}</td><td>{_provider_status_badge(health.get('status'), kind='health')}</td>"
-        f"<td><div class='provider-component-list'>{component_markup}</div></td><td>{html.escape(str(health.get('http_status') or '—'))}</td>"
-        f"<td>{html.escape(str(health.get('artifact_count') or '—'))}</td><td>{html.escape(str(health.get('duration_ms') or '—'))} ms</td>"
+        f"<td><div class='provider-component-list'>{component_markup}</div></td><td>{_optional_count_label(http_status)}</td>"
+        f"<td>{_optional_count_label(health.get('artifact_count'))}</td><td>{_optional_count_label(health.get('duration_ms'), ' ms')}</td>"
         f"<td>{error_markup}</td></tr>"
     )
 
@@ -2368,7 +2471,7 @@ def _provider_run_row(run: dict[str, Any]) -> str:
     return (
         f"<tr><td><code>{html.escape(str(run.get('id') or '—'))}</code></td><td>{_timestamp_markup(run.get('started_at'))}</td>"
         f"<td>{_timestamp_markup(run.get('finished_at'))}</td><td>{_provider_status_badge(run.get('status'))}<small class='table-secondary'>{'Release change detected' if run.get('release_change_detected') is True else 'No release change detected' if run.get('release_change_detected') is False else 'Release change not recorded'} · {html.escape(str(run.get('latest_release') or '—'))}</small></td>"
-        f"<td class='numeric'>{_provider_update_count(run)}</td><td class='numeric'>{int(run.get('package_count') or 0)}</td><td class='numeric'>{int(run.get('artifact_count') or 0)}</td>"
+        f"<td class='numeric'>{_provider_update_count(run)}</td><td class='numeric'>{_optional_count_label(run.get('package_count'))}</td><td class='numeric'>{_optional_count_label(run.get('artifact_count'))}</td>"
         f"<td>{error_markup}</td></tr>"
     )
 
@@ -2423,7 +2526,35 @@ def provider_detail_page(
         if str(source.get("source_type") or "").upper() == "DOWNLOAD"
     ]
     health_history = list(provider.get("healthHistory") or [])
-    broken_packages = sum(int(package.get("broken_artifact_count") or 0) for package in packages)
+    broken_artifact_counts = [
+        _optional_nonnegative_int(package.get("broken_artifact_count"))
+        for package in packages
+    ]
+    broken_packages = (
+        sum(count for count in broken_artifact_counts if count is not None)
+        if all(count is not None for count in broken_artifact_counts)
+        else None
+    )
+    affected_package_count = provider.get("affectedPackageCount")
+    if affected_package_count is None:
+        affected_values = [
+            _optional_nonnegative_int(package.get("broken_artifact_count"))
+            for package in packages
+        ]
+        affected_package_count = (
+            sum(value > 0 for value in affected_values if value is not None)
+            if all(value is not None for value in affected_values)
+            else None
+        )
+    problematic_source_count = provider.get("problematicSourceCount")
+    if problematic_source_count is None:
+        problematic_source_count = len({
+            str(artifact.get("source_url"))
+            for package in packages
+            for artifact in package.get("artifacts") or []
+            if str(artifact.get("validation_status") or "").upper() in {"FAILED", "UNAVAILABLE"}
+            and artifact.get("source_url")
+        })
     package_count = int(provider["packageCount"]) if provider.get("packageCount") is not None else sum(p.get("availability") == "AVAILABLE" for p in packages)
     release_counts: dict[str, int] = {}
     for package in packages:
@@ -2507,8 +2638,8 @@ def provider_detail_page(
     )
     collection_summary = (
         f"{_provider_status_badge(latest_run_status)} "
-        f"<span>{int(latest_run.get('package_count') or 0)} packages · "
-        f"{int(latest_run.get('artifact_count') or 0)} artifacts · "
+        f"<span>{_optional_count_label(latest_run.get('package_count'), ' packages')} · "
+        f"{_optional_count_label(latest_run.get('artifact_count'), ' artifacts')} · "
         f"{_timestamp_markup(latest_run.get('finished_at') or latest_run.get('started_at'))}</span>"
         if latest_run else "<span class='muted-value'>No collection run recorded yet.</span>"
     )
@@ -2530,11 +2661,11 @@ def provider_detail_page(
           {activation_note}
           <p class='admin-action-status' id='provider-action-status' aria-live='polite'></p>
         </section>
-        <p class='provider-attention'>{f'<strong>{broken_packages} broken artifacts need review.</strong> Check the affected catalog entries below.' if broken_packages else 'No broken artifacts recorded in this catalog.'} <a href='#provider-packages'>Review packages</a></p>
-        <section class='provider-metrics' aria-label='Provider summary'><article><span>Available packages</span><strong>{package_count}</strong></article><article><span>Broken artifacts</span><strong>{broken_packages}</strong></article><article><span>Last catalog sync</span><strong>{_timestamp_markup(provider.get('lastCatalogSync'))}</strong></article><article><span>Last health check</span><strong>{_timestamp_markup(provider.get('lastHealthCheck'))}</strong></article></section>
+        <p class='provider-attention'>{f'<strong>{broken_packages} broken artifacts need review.</strong> Check the affected catalog entries below.' if broken_packages is not None and broken_packages > 0 else 'Broken artifact count is unavailable for this catalog.' if broken_packages is None else 'No broken artifacts recorded in this catalog.'} <a href='#provider-packages'>Review packages</a></p>
+        <section class='provider-metrics' aria-label='Provider summary'><article><span>Affected packages</span><strong><a href='#provider-packages'>{_optional_count_label(affected_package_count)}</a></strong></article><article><span>Problematic sources</span><strong><a href='#provider-download-sources'>{_optional_count_label(problematic_source_count)}</a></strong></article><article><span>Broken artifacts</span><strong>{_optional_count_label(broken_packages)}</strong></article><article><span>Provider health</span><strong>{_provider_status_badge(latest_health_status, kind='health')}</strong></article><article><span>Last catalog sync</span><strong>{_timestamp_markup(provider.get('lastCatalogSync'))}</strong></article><article><span>Last health check</span><strong>{_timestamp_markup(provider.get('lastHealthCheck'))}</strong></article></section>
         <section class='provider-card'><div class='section-heading'><div><p class='section-kicker'>Health</p><h2>Latest health check</h2></div></div><div class='provider-latest-summary'><div>{health_summary}</div><span>{health_transport}</span></div><details class='admin-disclosure' id='provider-health-details'><summary>View check details</summary><div class='disclosure-body'>{empty_health}{latest_health_table}</div></details><details class='admin-disclosure' id='provider-health-history'><summary>Health check history · {len(previous_health)} previous {'check' if len(previous_health) == 1 else 'checks'}</summary><div class='disclosure-body'>{empty_previous_health}{health_history_table}</div></details></section>
         {collection_section}
-        <section class='provider-card'><details class='admin-disclosure' id='provider-packages'><summary>Regions and packages · {len(packages)} catalog entries · {broken_packages} broken artifacts</summary><div class='disclosure-body'><div class='inline-filter-row'><label><span class='sr-only'>Search packages</span><input id='provider-package-search' type='search' placeholder='Search packages' autocomplete='off'></label><label><span class='sr-only'>Package status</span><select id='provider-package-filter'><option value='all'>All packages</option><option value='broken'>Broken only</option></select></label><label><span class='sr-only'>Package page size</span><select id='provider-package-page-size'><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label></div>{empty_packages}{package_table}<div class='provider-pagination' id='provider-package-pagination' aria-live='polite'></div></div></details></section>
+        <section class='provider-card'><details class='admin-disclosure' id='provider-packages'><summary>Regions and packages · {len(packages)} catalog entries · {_optional_count_label(broken_packages)} broken artifacts</summary><div class='disclosure-body'><div class='inline-filter-row'><label><span class='sr-only'>Search packages</span><input id='provider-package-search' type='search' placeholder='Search packages' autocomplete='off'></label><label><span class='sr-only'>Package status</span><select id='provider-package-filter'><option value='all'>All packages</option><option value='broken'>Broken only</option></select></label><label><span class='sr-only'>Package page size</span><select id='provider-package-page-size'><option value='25'>25 per page</option><option value='50'>50 per page</option></select></label></div>{empty_packages}{package_table}<div class='provider-pagination' id='provider-package-pagination' aria-live='polite'></div></div></details></section>
         <section class='provider-card provider-release-summary' aria-label='Package release distribution'><details class='admin-disclosure'><summary>Package releases</summary><div class='section-heading'><a class='section-link' href='#provider-packages'>Inspect packages →</a></div><p>{release_summary}</p><p class='table-help'>Each region keeps its own provider release. System health shows the newest package release; collecting a catalog does not update every map.</p></details></section>
         {download_source_section}
         <details class='provider-card admin-disclosure'><summary>Provider metadata and attribution</summary><dl class='provider-information-list'><div><dt>Provider ID</dt><dd><code>{html.escape(provider_id)}</code></dd></div><div><dt>Adapter</dt><dd><code>{html.escape(str(provider.get('adapterId') or '—'))}</code></dd></div><div><dt>Website</dt><dd>{_provider_url(provider.get('website'))}</dd></div><div><dt>License</dt><dd>{html.escape(str(provider.get('license') or '—'))}</dd></div><div><dt>Attribution</dt><dd>{html.escape(str(provider.get('attribution') or '—'))}</dd></div><div><dt>License URL</dt><dd>{_provider_url(provider.get('licenseUrl'))}</dd></div></dl></details>
@@ -2549,42 +2680,53 @@ def provider_detail_page(
 def _map_statistics_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
     has_event_data = bool(rows)
 
-    def count(event_type: str, outcome: str | None = None) -> int:
-        return sum(
-            int(row.get("operation_count") or row.get("event_count") or 0)
+    def row_count(row: dict[str, Any], key: str) -> int | None:
+        if key not in row or row.get(key) is None:
+            return None
+        try:
+            value = int(row[key])
+        except (TypeError, ValueError):
+            return None
+        return value if value >= 0 else None
+
+    def count(event_type: str, outcome: str | None = None) -> int | None:
+        values = [
+            row_count(row, "operation_count")
             for row in rows
-            if row.get("event_type") == event_type and (outcome is None or row.get("outcome") == outcome)
-        )
+            if row.get("event_type") == event_type
+            and (outcome is None or row.get("outcome") == outcome)
+        ]
+        return sum(value for value in values if value is not None) if all(value is not None for value in values) else None
 
     downloads = count("DOWNLOAD_SUCCEEDED", "SUCCEEDED")
     failed_downloads = count("DOWNLOAD_FAILED", "FAILED")
-    download_attempts = downloads + failed_downloads
+    download_attempts = downloads + failed_downloads if downloads is not None and failed_downloads is not None else None
     installs = count("INSTALL_SUCCEEDED", "SUCCEEDED")
     failed_installs = count("INSTALL_FAILED", "FAILED")
-    install_attempts = installs + failed_installs
-    updates = count("MAP_UPDATE_SUCCEEDED", "SUCCEEDED") + count("MAP_UPDATE_FAILED", "FAILED")
+    install_attempts = installs + failed_installs if installs is not None and failed_installs is not None else None
     successful_updates = count("MAP_UPDATE_SUCCEEDED", "SUCCEEDED")
     failed_updates = count("MAP_UPDATE_FAILED", "FAILED")
-    event_count = sum(
-        int(row.get("event_count") or row.get("operation_count") or 0)
-        for row in rows
-    )
+    updates = successful_updates + failed_updates if successful_updates is not None and failed_updates is not None else None
+    event_counts = [row_count(row, "event_count") for row in rows]
+    event_count = sum(value for value in event_counts if value is not None) if all(value is not None for value in event_counts) else None
     return {
         "hasEventData": has_event_data,
         "eventGroupCount": len(rows),
-        "eventCount": event_count if has_event_data else None,
-        "completedDownloads": downloads if has_event_data else None,
-        "failedDownloads": failed_downloads if has_event_data else None,
-        "downloadAttempts": download_attempts if has_event_data else None,
-        "downloadSuccessRate": (downloads / download_attempts * 100) if has_event_data and download_attempts else None,
-        "completedInstalls": installs if has_event_data else None,
-        "failedInstalls": failed_installs if has_event_data else None,
-        "installAttempts": install_attempts if has_event_data else None,
-        "installSuccessRate": (installs / install_attempts * 100) if has_event_data and install_attempts else None,
-        "completedMapUpdates": successful_updates if has_event_data else None,
-        "failedMapUpdates": failed_updates if has_event_data else None,
-        "mapUpdates": updates if has_event_data else None,
-        "mapUpdateSuccessRate": (successful_updates / updates * 100) if has_event_data and updates else None,
+        # An empty result from a successful full query is a measured zero
+        # population. Rates remain unavailable because their denominator is 0.
+        "eventCount": event_count,
+        "completedDownloads": downloads,
+        "failedDownloads": failed_downloads,
+        "downloadAttempts": download_attempts,
+        "downloadSuccessRate": (downloads / download_attempts * 100) if download_attempts else None,
+        "completedInstalls": installs,
+        "failedInstalls": failed_installs,
+        "installAttempts": install_attempts,
+        "installSuccessRate": (installs / install_attempts * 100) if install_attempts else None,
+        "completedMapUpdates": successful_updates,
+        "failedMapUpdates": failed_updates,
+        "mapUpdates": updates,
+        "mapUpdateSuccessRate": (successful_updates / updates * 100) if updates else None,
     }
 
 
@@ -2593,6 +2735,14 @@ def _map_statistics_rows(rows: list[dict[str, Any]]) -> str:
         return "<tr><td colspan='7' class='muted-value'>No map events in this period.</td></tr>"
     markup: list[str] = []
     for row in rows:
+        operation_count = row.get("operation_count")
+        if operation_count is None:
+            operation_label = "—"
+        else:
+            try:
+                operation_label = str(int(operation_count))
+            except (TypeError, ValueError):
+                operation_label = "—"
         region_name = str(row.get("region_display_name") or "").strip()
         if not region_name:
             region_name = _admin_region_display_name(
@@ -2605,7 +2755,7 @@ def _map_statistics_rows(rows: list[dict[str, Any]]) -> str:
             f"<tr><td>{html.escape(str(row.get('provider_id') or '—'))}</td>"
             f"<td><code>{html.escape(str(row.get('map_package_id') or '—'))}</code></td>"
             f"<td>{html.escape(region_name)}</td><td>{html.escape(str(row.get('event_type') or '—'))}</td>"
-            f"<td>{html.escape(_admin_event_outcome_label(row.get('outcome')))}</td><td class='numeric'>{int(row.get('operation_count') or row.get('event_count') or 0)}</td>"
+            f"<td>{html.escape(_admin_event_outcome_label(row.get('outcome')))}</td><td class='numeric'>{operation_label}</td>"
             f"<td>{_timestamp_markup(row.get('last_occurred_at'))}</td></tr>"
         )
     return "".join(markup)
@@ -2616,26 +2766,57 @@ def map_statistics_page(
     csrf_token: str, *, selected_filters: dict[str, str] | None = None,
 ) -> bytes:
     rows = list(statistics.get("rows") or [])
-    summary = _map_statistics_summary(rows)
+    summary = statistics.get("summary") if isinstance(statistics.get("summary"), dict) else _map_statistics_summary(rows)
     selected = selected_filters or {}
-    has_event_data = bool(rows)
+    has_population_data = bool(rows)
+    has_event_data = has_population_data
     event_value = lambda key: "—" if summary.get(key) is None else str(summary[key])
-    event_status = (
-        f"{summary['eventGroupCount']} event group{'s' if summary['eventGroupCount'] != 1 else ''} · "
-        f"{summary['eventCount']} event record{'s' if summary['eventCount'] != 1 else ''}"
-        if has_event_data else "No event groups"
-    )
+    event_status = "No matching event groups"
     provider_options = "".join(
         f"<option value='{html.escape(str(provider.get('id') or ''), quote=True)}'>{html.escape(str(provider.get('name') or provider.get('id') or ''))}</option>"
         for provider in providers
     )
-    detail_rows = list(statistics.get("detailRows") or rows[:25])
-    detail_total = int(statistics.get("detailTotal") or len(rows))
+    detail_rows = list(statistics.get("detailRows") or (rows[:25] if "detailRows" not in statistics else []))
+    has_detail_data = bool(detail_rows)
+    detail_total = int(statistics.get("detailTotal") if statistics.get("detailTotal") is not None else len(detail_rows))
     detail_page = int(statistics.get("detailPage") or 1)
     detail_page_size = int(statistics.get("detailPageSize") or 25)
     detail_pages = max(1, (detail_total + detail_page_size - 1) // detail_page_size)
     detail_start = min(detail_total, (detail_page - 1) * detail_page_size + 1) if detail_total else 0
     detail_end = min(detail_total, detail_page * detail_page_size)
+    detail_event_counts = [
+        _optional_nonnegative_int(row.get("event_count"))
+        for row in detail_rows
+    ]
+    detail_event_count = (
+        sum(count for count in detail_event_counts if count is not None)
+        if all(count is not None for count in detail_event_counts)
+        else None
+    )
+    if detail_rows:
+        detail_event_label = (
+            f"{detail_event_count} event record{'s' if detail_event_count != 1 else ''}"
+            if detail_event_count is not None
+            else "— event records"
+        )
+        event_status = (
+            f"{len(detail_rows)} event group{'s' if len(detail_rows) != 1 else ''} · "
+            f"{detail_event_label}"
+        )
+    linkage = statistics.get("linkage") if isinstance(statistics.get("linkage"), dict) else {}
+    linkage_value = lambda key: "—" if key not in linkage or linkage.get(key) is None else str(linkage[key])
+    linkage_section = (
+        "<section class='provider-card map-statistics-linkage' aria-label='Fresh map diagnostic coverage'>"
+        "<div class='section-heading'><div><p class='section-kicker'>Telemetry coverage</p>"
+        "<h2>Fresh map diagnostic coverage</h2></div></div>"
+        "<div class='map-statistics-linkage-grid'>"
+        f"<div><span>Fresh map attempts</span><strong data-stat='freshMapAttemptCount'>{linkage_value('freshMapAttemptCount')}</strong></div>"
+        f"<div><span>Reliably linked diagnostics</span><strong data-stat='freshMapLinkedDiagnosticCount'>{linkage_value('freshMapLinkedDiagnosticCount')}</strong></div>"
+        f"<div><span>Observation gaps</span><strong data-stat='freshMapMissingDiagnosticCount'>{linkage_value('freshMapMissingDiagnosticCount')}</strong></div>"
+        f"<div><span>Coverage rate</span><strong data-stat='freshMapDiagnosticCoverageRate'>{_format_rate(linkage.get('freshMapDiagnosticCoverageRate'))}</strong></div>"
+        "</div><p class='table-help map-statistics-scope-note'>Coverage is linked diagnostic observation, not diagnostic success. A missing report is an observation gap, not a failed installation. Session counts remain separate.</p></section>"
+        if linkage else ""
+    )
     selected_period = str(
         selected.get("period")
         or (statistics.get("filters") or {}).get("period")
@@ -2656,14 +2837,15 @@ def map_statistics_page(
     content = f"""
       {_admin_header(user, csrf_token, active='map-statistics')}
       <main class='dashboard map-statistics-page' id='main-content'>
-        <div class='heading-row'><div><p class='eyebrow'>Map operations</p><h1>Map statistics</h1><p class='lede'>Downloads, installs, and provider health.</p></div></div>
-        <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search'><label><span class='sr-only'>Time range</span><select id='map-statistics-range'>{statistics_period_options}</select></label><label><span class='sr-only'>Provider</span><select id='map-statistics-provider'><option value=''>All providers</option>{provider_options}</select></label><details class='admin-disclosure filter-disclosure' id='map-statistics-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Map ID</span><input id='map-statistics-map' type='search' placeholder='Map ID'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event'><option value=''>All events</option><option value='DOWNLOAD_SUCCEEDED'>Download succeeded</option><option value='DOWNLOAD_FAILED'>Download failed</option><option value='INSTALL_SUCCEEDED'>Install succeeded</option><option value='INSTALL_FAILED'>Install failed</option><option value='MAP_UPDATE_SUCCEEDED'>Map update succeeded</option><option value='MAP_UPDATE_FAILED'>Map update failed</option><option value='DOWNLOAD_STARTED'>Download started</option><option value='DOWNLOAD_PROCESSING'>Checking / unpacking</option><option value='DOWNLOAD_CANCELLED'>Download cancelled</option><option value='DOWNLOAD_INTERRUPTED'>Download interrupted</option></select></label></div></details><p class='results-count' id='map-statistics-status' aria-live='polite'>{event_status}</p><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear map statistics filters'>Clear</button></form>
-        <p class='table-help map-statistics-definition-note'>Counts map packages, not watches. One first installation can include several packages. Map updates are a separate lifecycle operation and never increase installation counts, coverage, or popularity. Success rates use completed outcomes (successful + failed), excluding operations still in progress. Compatibility evidence is counted separately.</p>
-        <section class='admin-kpi-grid map-statistics-kpis' id='map-statistics-metrics' aria-label='Map statistics summary'><article><span>Completed downloads</span><strong data-stat='completedDownloads'>{event_value('completedDownloads')}</strong></article><article><span>Download success</span><strong data-stat='downloadSuccessRate'>{_format_rate(summary['downloadSuccessRate'])}</strong></article><article><span>Completed map-package installs</span><strong data-stat='completedInstalls'>{event_value('completedInstalls')}</strong></article><article><span>Package install success</span><strong data-stat='installSuccessRate'>{_format_rate(summary['installSuccessRate'])}</strong></article><article><span>Completed map updates</span><strong data-stat='completedMapUpdates'>{event_value('completedMapUpdates')}</strong></article><article><span>Map update success</span><strong data-stat='mapUpdateSuccessRate'>{_format_rate(summary['mapUpdateSuccessRate'])}</strong></article></section>
+        <div class='heading-row'><div><p class='eyebrow'>Map installations</p><h1>Map statistics</h1><p class='lede'>Acquisitions, fresh installs, updates, and provider health.</p></div></div>
+        <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search'><label><span class='sr-only'>Time range</span><select id='map-statistics-range'>{statistics_period_options}</select></label><label><span class='sr-only'>Provider</span><select id='map-statistics-provider'><option value=''>All providers</option>{provider_options}</select></label><details class='admin-disclosure filter-disclosure' id='map-statistics-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Map ID</span><input id='map-statistics-map' type='search' placeholder='Map ID'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event'><option value=''>All events</option><option value='DOWNLOAD_SUCCEEDED'>Download succeeded</option><option value='DOWNLOAD_FAILED'>Download failed</option><option value='INSTALL_SUCCEEDED'>Install succeeded</option><option value='INSTALL_FAILED'>Install failed</option><option value='MAP_UPDATE_SUCCEEDED'>Map update succeeded</option><option value='MAP_UPDATE_FAILED'>Map update failed</option><option value='DOWNLOAD_STARTED'>Download started</option><option value='DOWNLOAD_PROCESSING'>Checking / unpacking</option><option value='DOWNLOAD_CANCELLED'>Download cancelled</option><option value='DOWNLOAD_INTERRUPTED'>Download interrupted</option></select></label><label><span class='sr-only'>Outcome</span><select id='map-statistics-outcome'><option value=''>All outcomes</option><option value='SUCCEEDED'>Succeeded</option><option value='FAILED'>Failed</option><option value='UNKNOWN'>Unknown</option></select></label></div></details><p class='results-count' id='map-statistics-status' aria-live='polite'>{event_status}</p><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear map statistics filters'>Clear</button></form>
+        <p class='table-help map-statistics-definition-note'>Acquisition, fresh-install, optional-component, and update outcomes remain separate. One fresh install is one independent main-map result; optional contours do not create another fresh install. Updates never increase fresh-install counts, compatibility thresholds, coverage, or popularity. Success rates use terminal success + failure outcomes only; lifecycle phases and not-started results are excluded. Compatibility evidence is counted separately.</p>
+        {linkage_section}
+        <section class='admin-kpi-grid map-statistics-kpis' id='map-statistics-metrics' aria-label='Map statistics summary'><article><span>Completed downloads</span><strong data-stat='completedDownloads'>{event_value('completedDownloads')}</strong></article><article><span>Download success</span><strong data-stat='downloadSuccessRate'>{_format_rate(summary['downloadSuccessRate'])}</strong></article><article><span>Fresh installs</span><strong data-stat='completedInstalls'>{event_value('completedInstalls')}</strong></article><article><span>Fresh install success</span><strong data-stat='installSuccessRate'>{_format_rate(summary['installSuccessRate'])}</strong></article><article><span>Successful updates</span><strong data-stat='completedMapUpdates'>{event_value('completedMapUpdates')}</strong></article><article><span>Update success</span><strong data-stat='mapUpdateSuccessRate'>{_format_rate(summary['mapUpdateSuccessRate'])}</strong></article></section>
         <section class='map-statistics-empty' id='map-statistics-empty' {'hidden' if has_event_data else ''} aria-live='polite'><h2>{'No map operations in this period' if selected_period != 'all' else 'No map operations match these filters' if any(selected.get(key) for key in ('provider', 'map', 'region', 'event')) else 'No map operation data yet'}</h2><p>Try a wider time range or clear your filters. If all-time activity is empty, no map-operation reports have been received.</p><a href='/admin/map-statistics?period=all'>View all map activity</a></section>
-        <section class='map-statistics-reliability' aria-label='Reliability summary'><div><span>Failed map-package installs</span><strong data-stat='failedInstalls'>{event_value('failedInstalls')}</strong></div><div><span>Failed downloads</span><strong data-stat='failedDownloads'>{event_value('failedDownloads')}</strong></div><div><span>Failed map updates</span><strong data-stat='failedMapUpdates'>{event_value('failedMapUpdates')}</strong></div></section>
-        <section class='provider-card map-statistics-provider-table' id='map-statistics-provider-table' {'hidden' if not has_event_data else ''}><div class='section-heading'><div><p class='section-kicker'>Activity</p><h2>Activity by provider</h2></div></div><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Activity by provider</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Downloads</th><th scope='col'>Map-package installs</th><th scope='col'>Map updates</th><th scope='col'>Package install success</th><th scope='col'>Map update success</th><th scope='col'>Current health</th></tr></thead><tbody id='provider-statistic-rows'></tbody></table></div></section>
-        <section class='map-statistics-coverage-layout' id='map-statistics-coverage' {'hidden' if not has_event_data else ''} aria-label='Installation coverage'><section class='provider-card map-statistics-world-map-card' aria-labelledby='map-statistics-world-map-title'><div class='section-heading'><div><p class='section-kicker'>Coverage</p><h2 id='map-statistics-world-map-title'>Installations by country</h2></div><p class='table-help' id='map-statistics-world-map-status'>Successful map-package installs</p></div><div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map showing successful map-package installations by country'><div class='world-map-controls' role='group' aria-label='Map navigation'><button type='button' data-map-zoom='in' aria-label='Zoom in'>+</button><button type='button' data-map-zoom='out' aria-label='Zoom out'>−</button><button type='button' data-map-zoom='reset'>Reset map</button><span id='world-map-zoom-status' role='status'>100%</span></div><div class='world-map-svg' id='world-map-svg' tabindex='0' aria-label='Map viewport. Use arrow keys to pan, plus and minus to zoom, or drag the map.'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div></section><section class='provider-card map-statistics-popularity' id='map-statistics-popularity' tabindex='0' aria-label='Popular maps and regions'><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Popular maps</h2></div></div><details class='admin-disclosure popularity-regions-disclosure'><summary>Regions</summary><div class='disclosure-body'><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Top regions</caption><thead><tr><th scope='col'>Region</th><th scope='col' title='Completed map-package installs'>Installs</th><th scope='col' title='Completed map updates'>Updates</th><th scope='col'>Last activity</th></tr></thead><tbody id='top-region-rows'></tbody></table></div></div></details><div class='popularity-subsection' id='top-maps-section'><h3>Top 5 maps</h3><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Popular maps</caption><thead><tr><th scope='col'>Map / region</th><th scope='col'>Package installs</th><th scope='col'>Map updates</th><th scope='col'>Last activity</th></tr></thead><tbody id='map-rows'></tbody></table></div><details class='admin-disclosure popularity-all-maps-disclosure'><summary id='all-maps-summary'>Browse all maps</summary><div class='disclosure-body'><label>Search maps<input type='search' id='all-maps-search' placeholder='Map, region or provider'></label><div class='table-wrap'><table class='admin-table'><thead><tr><th>Map / region</th><th>Installs</th><th>Updates</th><th>Last activity</th></tr></thead><tbody id='all-map-rows'></tbody></table></div><div class='provider-pagination'><button type='button' id='all-maps-prev'>Previous</button><span id='all-maps-page' role='status'></span><button type='button' id='all-maps-next'>Next</button></div></div></details></div></section></section>
+        <section class='map-statistics-reliability' aria-label='Reliability summary'><div><span>Failed fresh installs</span><strong data-stat='failedInstalls'>{event_value('failedInstalls')}</strong></div><div><span>Failed downloads</span><strong data-stat='failedDownloads'>{event_value('failedDownloads')}</strong></div><div><span>Failed updates</span><strong data-stat='failedMapUpdates'>{event_value('failedMapUpdates')}</strong></div></section>
+        <section class='provider-card map-statistics-provider-table' id='map-statistics-provider-table' {'hidden' if not has_event_data else ''}><div class='section-heading'><div><p class='section-kicker'>Activity</p><h2>Activity by provider</h2></div></div><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Activity by provider</caption><thead><tr><th scope='col'>Provider</th><th scope='col'>Downloads</th><th scope='col'>Fresh installs</th><th scope='col'>Successful updates</th><th scope='col'>Failed updates</th><th scope='col'>Fresh install success</th><th scope='col'>Update success</th><th scope='col'>Current health</th></tr></thead><tbody id='provider-statistic-rows'></tbody></table></div></section>
+        <section class='map-statistics-coverage-layout' id='map-statistics-coverage' {'hidden' if not has_event_data else ''} aria-label='Installation coverage'><section class='provider-card map-statistics-world-map-card' aria-labelledby='map-statistics-world-map-title'><div class='section-heading'><div><p class='section-kicker'>Coverage</p><h2 id='map-statistics-world-map-title'>Installations by country</h2></div><p class='table-help' id='map-statistics-world-map-status'>Successful fresh installs</p></div><div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map showing successful fresh installs by country'><div class='world-map-controls' role='group' aria-label='Map navigation'><button type='button' data-map-zoom='in' aria-label='Zoom in'>+</button><button type='button' data-map-zoom='out' aria-label='Zoom out'>−</button><button type='button' data-map-zoom='reset'>Reset map</button><span id='world-map-zoom-status' role='status'>100%</span></div><div class='world-map-svg' id='world-map-svg' tabindex='0' aria-label='Map viewport. Use arrow keys to pan, plus and minus to zoom, or drag the map.'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div></section><section class='provider-card map-statistics-popularity' id='map-statistics-popularity' tabindex='0' aria-label='Popular maps and regions'><div class='section-heading'><div><p class='section-kicker'>Popularity</p><h2>Popular maps</h2></div></div><details class='admin-disclosure filter-disclosure popularity-regions-disclosure'><summary>Regions</summary><div class='disclosure-body'><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Top regions</caption><thead><tr><th scope='col'>Region</th><th scope='col' title='Completed fresh installs'>Installs</th><th scope='col' title='Successful map updates'>Successful updates</th><th scope='col' title='Failed map updates'>Failed updates</th><th scope='col'>Last activity</th></tr></thead><tbody id='top-region-rows'></tbody></table></div></div></details><div class='popularity-subsection' id='top-maps-section'><h3>Top 5 maps</h3><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Popular maps</caption><thead><tr><th scope='col'>Map / region</th><th scope='col'>Fresh installs</th><th scope='col'>Successful updates</th><th scope='col'>Failed updates</th><th scope='col'>Last activity</th></tr></thead><tbody id='map-rows'></tbody></table></div><details class='admin-disclosure popularity-all-maps-disclosure'><summary id='all-maps-summary'>Browse all maps</summary><div class='disclosure-body'><label>Search maps<input type='search' id='all-maps-search' placeholder='Map, region or provider'></label><div class='table-wrap'><table class='admin-table'><thead><tr><th>Map / region</th><th>Fresh installs</th><th>Successful updates</th><th>Failed updates</th><th>Last activity</th></tr></thead><tbody id='all-map-rows'></tbody></table></div><div class='provider-pagination'><button type='button' id='all-maps-prev'>Previous</button><span id='all-maps-page' role='status'></span><button type='button' id='all-maps-next'>Next</button></div></div></details></div></section></section>
         <section class='provider-card map-events-card' {'hidden' if not has_event_data else ''}><details class='admin-disclosure' id='map-statistics-event-detail'><summary id='map-statistics-event-summary'>Event detail · {event_status}</summary><div class='disclosure-body' id='map-statistics-event-body'>{event_table}</div></details></section>
       </main>
       <link rel="stylesheet" href="/admin/map-assets/leaflet-1.9.4.css"><link rel="stylesheet" href="/admin/map-assets/coverage-map-v1.css"><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/leaflet-1.9.4.js"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/coverage-map-v1.js?v=20260913-coverage-sidebar-3"></script><script>window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};window.terentoWorldMapSvg = {_admin_json(WORLD_MAP_SVG)};window.terentoWorldMapCountryAliases = {_admin_json(WORLD_MAP_COUNTRY_ALIASES)};{_map_statistics_script()}</script>
@@ -2781,6 +2963,7 @@ def _map_statistics_script() -> str:
       const map = document.querySelector('#map-statistics-map');
       const region = document.querySelector('#map-statistics-region');
       const event = document.querySelector('#map-statistics-event');
+      const outcome = document.querySelector('#map-statistics-outcome');
       const status = document.querySelector('#map-statistics-status');
       const moreFilters = document.querySelector('#map-statistics-more-filters');
       const emptyState = document.querySelector('#map-statistics-empty');
@@ -2808,8 +2991,16 @@ def _map_statistics_script() -> str:
       let detailPage = 1;
       let currentPayload = initial;
       const formatRate = (value) => value === null || value === undefined ? '—' : `${Number(value).toFixed(Number(value) % 1 ? 1 : 0)}%`;
-      const operations = (row) => Number(row.operation_count || row.event_count || 0);
-      const count = (rows, eventType, outcome) => rows.filter((row) => row.event_type === eventType && (!outcome || row.outcome === outcome)).reduce((total, row) => total + operations(row), 0);
+      const operations = (row) => {
+        if (!Object.prototype.hasOwnProperty.call(row, 'operation_count') || row.operation_count === null || row.operation_count === undefined) return null;
+        const value = Number(row.operation_count);
+        return Number.isFinite(value) && value >= 0 ? value : null;
+      };
+      const addValue = (target, key, value) => {
+        target[key] = target[key] === null || value === null || value === undefined ? null : target[key] + value;
+      };
+      const addOperation = (target, key, row) => addValue(target, key, operations(row));
+      const countValue = (value) => value === null || value === undefined ? '—' : String(value);
       const healthByProvider = Object.fromEntries(providers.map((item) => [item.id, item.health || 'UNKNOWN']));
       const providerName = Object.fromEntries(providers.map((item) => [item.id, item.name || item.id]));
       const humanize = (value) => String(value || '—').replace(/[-_]+/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
@@ -2847,12 +3038,11 @@ def _map_statistics_script() -> str:
           const code = countryCode(row);
           if (!code) return;
           const providerId = row.provider_id || 'unknown';
-          const countValue = operations(row);
           byCountry[code] ||= {code, count: 0, last: row.last_occurred_at, providers: {}};
-          byCountry[code].count += countValue;
+          addOperation(byCountry[code], 'count', row);
           if (String(row.last_occurred_at || '') > String(byCountry[code].last || '')) byCountry[code].last = row.last_occurred_at;
           byCountry[code].providers[providerId] ||= {id: providerId, count: 0};
-          byCountry[code].providers[providerId].count += countValue;
+          addOperation(byCountry[code].providers[providerId], 'count', row);
         });
         return Object.values(byCountry);
       };
@@ -2860,9 +3050,10 @@ def _map_statistics_script() -> str:
         if (!worldMapTooltip) return;
         const label = item?.name || countryNames[code] || code.toUpperCase();
         const providersMarkup = item?.providers
-          ? Object.values(item.providers).sort((a, b) => b.count - a.count || a.id.localeCompare(b.id)).map((providerItem) => `<div class="world-map-provider-line"><span>${escapeHtml(providerName[providerItem.id] || providerItem.id)}</span><strong>${providerItem.count}</strong></div>`).join('')
+          ? Object.values(item.providers).sort((a, b) => (b.count ?? -1) - (a.count ?? -1) || a.id.localeCompare(b.id)).map((providerItem) => `<div class="world-map-provider-line"><span>${escapeHtml(providerName[providerItem.id] || providerItem.id)}</span><strong>${countValue(providerItem.count)}</strong></div>`).join('')
           : '';
-        worldMapTooltip.innerHTML = `<strong>${escapeHtml(label)}</strong><span class="world-map-tooltip-total">${item?.count || 0} completed install${item?.count === 1 ? '' : 's'}</span>${providersMarkup || '<span class="world-map-tooltip-empty">No recorded installs</span>'}`;
+        const itemCount = item?.count === null || item?.count === undefined ? '—' : String(item.count);
+        worldMapTooltip.innerHTML = `<strong>${escapeHtml(label)}</strong><span class="world-map-tooltip-total">${itemCount} completed install${item?.count === 1 ? '' : 's'}</span>${providersMarkup || '<span class="world-map-tooltip-empty">No recorded installs</span>'}`;
         worldMapTooltip.hidden = false;
       };
       let coverageMap = null;
@@ -2877,88 +3068,105 @@ def _map_statistics_script() -> str:
         });
         const drawableCodes = coverageMap.codes;
         const items = countryCoverage(installRows).filter((item) => drawableCodes.has(item.code));
-        const unmapped = installRows.filter((row) => !drawableCodes.has(countryCode(row))).reduce((total, row) => total + operations(row), 0);
+        const unmappedRows = installRows.filter((row) => !drawableCodes.has(countryCode(row)));
+        const unmapped = unmappedRows.some((row) => operations(row) === null) ? null : unmappedRows.reduce((total, row) => total + operations(row), 0);
         const byCountry = Object.fromEntries(items.map((item) => [item.code, item]));
         const maximum = Math.max(0, ...items.map((item) => item.count));
         coverageMap.update(items);
-        if (worldMapStatus) worldMapStatus.textContent = maximum ? `${items.length} ${items.length === 1 ? 'country' : 'countries'} · ${items.reduce((total, item) => total + item.count, 0)} mapped install${items.reduce((total, item) => total + item.count, 0) === 1 ? '' : 's'}${unmapped ? ` · ${unmapped} unmapped install${unmapped === 1 ? '' : 's'}` : ''}` : unmapped ? `${unmapped} installs without drawable country coverage` : 'No completed installs in this period';
+        const mappedTotal = items.some((item) => item.count === null) ? null : items.reduce((total, item) => total + item.count, 0);
+        if (worldMapStatus) worldMapStatus.textContent = mappedTotal !== null && mappedTotal > 0 ? `${items.length} ${items.length === 1 ? 'country' : 'countries'} · ${mappedTotal} mapped fresh install${mappedTotal === 1 ? '' : 's'}${unmapped !== null && unmapped > 0 ? ` · ${unmapped} unmapped fresh install${unmapped === 1 ? '' : 's'}` : unmapped === null ? ' · unmapped count unavailable' : ''}` : unmapped !== null && unmapped > 0 ? `${unmapped} fresh installs without drawable country coverage` : mappedTotal === null || unmapped === null ? 'Country coverage is partially unavailable' : 'No completed fresh installs in this period';
         if (worldMapLegendMax) worldMapLegendMax.textContent = maximum ? String(maximum) : 'Most';
         if (worldMap) worldMap.dataset.countryCount = String(items.length);
       };
       const render = (payload) => {
         currentPayload = payload;
-        const rows = payload.rows || [];
-        const detailRows = payload.detailRows || rows;
-        const hasEventData = rows.length > 0;
+        const rows = Array.isArray(payload.rows) ? payload.rows : [];
+        const detailRows = Array.isArray(payload.detailRows) ? payload.detailRows : rows;
+        const summary = payload.summary && typeof payload.summary === 'object' ? payload.summary : {};
+        const hasEventData = summary.hasEventData === true || rows.length > 0;
         const installRows = rows.filter((row) => row.event_type === 'INSTALL_SUCCEEDED' && row.outcome === 'SUCCEEDED');
         const selectedProvider = String((payload.filters && payload.filters.provider) || provider?.value || '').trim().toLowerCase();
         const scopedProviders = selectedProvider ? providers.filter((item) => String(item.id || '').trim().toLowerCase() === selectedProvider) : providers;
-        const eventRecords = rows.reduce((total, row) => total + Number(row.event_count || row.operation_count || 0), 0);
-        const downloads = count(rows, 'DOWNLOAD_SUCCEEDED', 'SUCCEEDED');
-        const failedDownloads = count(rows, 'DOWNLOAD_FAILED', 'FAILED');
-        const installs = count(rows, 'INSTALL_SUCCEEDED', 'SUCCEEDED');
-        const failedInstalls = count(rows, 'INSTALL_FAILED', 'FAILED');
-        const updates = count(rows, 'MAP_UPDATE_SUCCEEDED', 'SUCCEEDED') + count(rows, 'MAP_UPDATE_FAILED', 'FAILED');
-        const completedUpdates = count(rows, 'MAP_UPDATE_SUCCEEDED', 'SUCCEEDED');
-        const failedUpdates = count(rows, 'MAP_UPDATE_FAILED', 'FAILED');
+        const eventRecordValues = detailRows.map((row) => {
+          if (!Object.prototype.hasOwnProperty.call(row, 'event_count') || row.event_count === null || row.event_count === undefined) return null;
+          const value = Number(row.event_count);
+          return Number.isFinite(value) && value >= 0 ? value : null;
+        });
+        const eventRecords = eventRecordValues.every((value) => value !== null)
+          ? eventRecordValues.reduce((total, value) => total + value, 0)
+          : null;
         const set = (key, value) => { const node = document.querySelector(`[data-stat="${key}"]`); if (node) node.textContent = value; };
-        set('completedDownloads', hasEventData ? downloads : '—'); set('failedDownloads', hasEventData ? failedDownloads : '—'); set('completedInstalls', hasEventData ? installs : '—'); set('failedInstalls', hasEventData ? failedInstalls : '—'); set('completedMapUpdates', hasEventData ? completedUpdates : '—'); set('failedMapUpdates', hasEventData ? failedUpdates : '—');
-        set('downloadSuccessRate', hasEventData ? formatRate(downloads + failedDownloads ? downloads / (downloads + failedDownloads) * 100 : null) : '—');
-        set('installSuccessRate', hasEventData ? formatRate(installs + failedInstalls ? installs / (installs + failedInstalls) * 100 : null) : '—');
-        set('mapUpdateSuccessRate', hasEventData ? formatRate(updates ? completedUpdates / updates * 100 : null) : '—');
+        const metric = (key) => Object.prototype.hasOwnProperty.call(summary, key) ? summary[key] : null;
+        set('completedDownloads', metric('completedDownloads') === null ? '—' : String(metric('completedDownloads')));
+        set('failedDownloads', metric('failedDownloads') === null ? '—' : String(metric('failedDownloads')));
+        set('completedInstalls', metric('completedInstalls') === null ? '—' : String(metric('completedInstalls')));
+        set('failedInstalls', metric('failedInstalls') === null ? '—' : String(metric('failedInstalls')));
+        set('completedMapUpdates', metric('completedMapUpdates') === null ? '—' : String(metric('completedMapUpdates')));
+        set('failedMapUpdates', metric('failedMapUpdates') === null ? '—' : String(metric('failedMapUpdates')));
+        set('downloadSuccessRate', formatRate(metric('downloadSuccessRate')));
+        set('installSuccessRate', formatRate(metric('installSuccessRate')));
+        set('mapUpdateSuccessRate', formatRate(metric('mapUpdateSuccessRate')));
+        const linkage = payload.linkage && typeof payload.linkage === 'object' ? payload.linkage : {};
+        ['freshMapAttemptCount', 'freshMapLinkedDiagnosticCount', 'freshMapMissingDiagnosticCount'].forEach((key) => {
+          const value = Object.prototype.hasOwnProperty.call(linkage, key) ? linkage[key] : null;
+          set(key, value === null || value === undefined ? '—' : String(value));
+        });
+        set('freshMapDiagnosticCoverageRate', formatRate(linkage.freshMapDiagnosticCoverageRate));
         if (emptyState) {
           emptyState.hidden = hasEventData;
-          emptyState.querySelector('h2').textContent = range?.value !== 'all' ? 'No map operations in this period' : [provider, map, region, event].some(control => control?.value) ? 'No map operations match these filters' : 'No map operation data yet';
+          emptyState.querySelector('h2').textContent = range?.value !== 'all' ? 'No map installations in this period' : [provider, map, region, event].some(control => control?.value) ? 'No map installations match these filters' : 'No map installation data yet';
         }
         if (coverage) coverage.hidden = !hasEventData;
         if (popularity) popularity.hidden = !hasEventData;
         if (providerTable) providerTable.hidden = !hasEventData;
         if (eventDetail) eventDetail.closest('.map-events-card').hidden = !hasEventData;
         const byProvider = Object.fromEntries(scopedProviders.map((item) => [item.id, {downloads: 0, installs: 0, failedInstalls: 0, updates: 0, completedUpdates: 0, failedUpdates: 0}]));
-        rows.forEach((row) => { const id = row.provider_id || 'unknown'; byProvider[id] ||= {downloads: 0, installs: 0, failedInstalls: 0, updates: 0, completedUpdates: 0, failedUpdates: 0}; if (row.event_type === 'DOWNLOAD_SUCCEEDED' && row.outcome === 'SUCCEEDED') byProvider[id].downloads += operations(row); if (row.event_type === 'INSTALL_SUCCEEDED' && row.outcome === 'SUCCEEDED') byProvider[id].installs += operations(row); if (row.event_type === 'INSTALL_FAILED' && row.outcome === 'FAILED') byProvider[id].failedInstalls += operations(row); if (row.event_type === 'MAP_UPDATE_SUCCEEDED' && row.outcome === 'SUCCEEDED') { byProvider[id].updates += operations(row); byProvider[id].completedUpdates += operations(row); } if (row.event_type === 'MAP_UPDATE_FAILED' && row.outcome === 'FAILED') { byProvider[id].updates += operations(row); byProvider[id].failedUpdates += operations(row); } });
-        const providerRows = Object.entries(byProvider).sort((a, b) => b[1].downloads - a[1].downloads || a[0].localeCompare(b[0])).map(([id, item]) => `<tr><td>${escapeHtml(providerName[id] || id)}</td><td class="numeric">${item.downloads}</td><td class="numeric">${item.installs}</td><td class="numeric">${item.updates}</td><td>${formatRate(item.installs + item.failedInstalls ? item.installs / (item.installs + item.failedInstalls) * 100 : null)}</td><td>${formatRate(item.updates ? item.completedUpdates / item.updates * 100 : null)}</td><td>${badge(healthByProvider[id])}</td></tr>`).join('');
-        document.querySelector('#provider-statistic-rows').innerHTML = providerRows || emptyRow(7);
+        rows.forEach((row) => { const id = row.provider_id || 'unknown'; byProvider[id] ||= {downloads: 0, installs: 0, failedInstalls: 0, updates: 0, completedUpdates: 0, failedUpdates: 0}; if (row.event_type === 'DOWNLOAD_SUCCEEDED' && row.outcome === 'SUCCEEDED') addOperation(byProvider[id], 'downloads', row); if (row.event_type === 'INSTALL_SUCCEEDED' && row.outcome === 'SUCCEEDED') addOperation(byProvider[id], 'installs', row); if (row.event_type === 'INSTALL_FAILED' && row.outcome === 'FAILED') addOperation(byProvider[id], 'failedInstalls', row); if (row.event_type === 'MAP_UPDATE_SUCCEEDED' && row.outcome === 'SUCCEEDED') { addOperation(byProvider[id], 'updates', row); addOperation(byProvider[id], 'completedUpdates', row); } if (row.event_type === 'MAP_UPDATE_FAILED' && row.outcome === 'FAILED') { addOperation(byProvider[id], 'updates', row); addOperation(byProvider[id], 'failedUpdates', row); } });
+        const providerRows = Object.entries(byProvider).sort((a, b) => (b[1].downloads ?? -1) - (a[1].downloads ?? -1) || a[0].localeCompare(b[0])).map(([id, item]) => { const installTotal = item.installs !== null && item.failedInstalls !== null ? item.installs + item.failedInstalls : null; const updateRate = item.updates !== null && item.completedUpdates !== null && item.updates > 0 ? item.completedUpdates / item.updates * 100 : null; const installRate = installTotal !== null && installTotal > 0 ? item.installs / installTotal * 100 : null; return `<tr><td>${escapeHtml(providerName[id] || id)}</td><td class="numeric">${countValue(item.downloads)}</td><td class="numeric">${countValue(item.installs)}</td><td class="numeric">${countValue(item.completedUpdates)}</td><td class="numeric">${countValue(item.failedUpdates)}</td><td>${formatRate(installRate)}</td><td>${formatRate(updateRate)}</td><td>${badge(healthByProvider[id])}</td></tr>`; }).join('');
+        document.querySelector('#provider-statistic-rows').innerHTML = providerRows || emptyRow(8);
         renderWorldMap(installRows);
         const updateRows = rows.filter((row) => ['MAP_UPDATE_SUCCEEDED', 'MAP_UPDATE_FAILED'].includes(row.event_type));
         const byMap = {};
-        const addMapActivity = (row, field) => { const mapKey = row.map_package_id || row.region_identity || row.canonical_region_id || row.region || 'unknown'; const key = `${row.provider_id || 'unknown'}\u0000${mapKey}`; byMap[key] ||= {map: row.map_package_id || '—', name: row.display_name || row.map_package_name || '', provider: row.provider_id || '', region: row.region || '—', regionIdentity: row.region_identity || row.canonical_region_id || row.region || 'UNKNOWN', regionName: row.region_display_name || humanize(row.region), country: countryCode(row), installs: 0, updates: 0, last: row.last_occurred_at}; byMap[key][field] += operations(row); if (String(row.last_occurred_at || '') > String(byMap[key].last || '')) byMap[key].last = row.last_occurred_at; };
+        const addMapActivity = (row, field) => { const mapKey = row.map_package_id || row.region_identity || row.canonical_region_id || row.region || 'unknown'; const key = `${row.provider_id || 'unknown'}\u0000${mapKey}`; byMap[key] ||= {map: row.map_package_id || '—', name: row.display_name || row.map_package_name || '', provider: row.provider_id || '', region: row.region || '—', regionIdentity: row.region_identity || row.canonical_region_id || row.region || 'UNKNOWN', regionName: row.region_display_name || humanize(row.region), country: countryCode(row), installs: 0, updates: 0, completedUpdates: 0, failedUpdates: 0, last: row.last_occurred_at}; addOperation(byMap[key], field, row); if (row.event_type === 'MAP_UPDATE_SUCCEEDED') addOperation(byMap[key], 'completedUpdates', row); if (row.event_type === 'MAP_UPDATE_FAILED') addOperation(byMap[key], 'failedUpdates', row); if (String(row.last_occurred_at || '') > String(byMap[key].last || '')) byMap[key].last = row.last_occurred_at; };
         installRows.forEach((row) => addMapActivity(row, 'installs'));
         updateRows.forEach((row) => addMapActivity(row, 'updates'));
-        const mapItems = Object.values(byMap).sort((a, b) => b.installs - a.installs || b.updates - a.updates || a.map.localeCompare(b.map));
+        const mapItems = Object.values(byMap).sort((a, b) => b.installs - a.installs || a.map.localeCompare(b.map));
+        const popularMapItems = mapItems.filter((item) => item.installs !== null && item.installs > 0);
         const showRegions = Boolean(regionsDisclosure?.open);
         const showAllMaps = !showRegions && Boolean(allMapsDisclosure?.open);
         if (topMapsSection) topMapsSection.hidden = showRegions;
         if (topMapsTable) topMapsTable.hidden = showAllMaps || showRegions;
         if (topMapsHeading) topMapsHeading.hidden = showAllMaps || showRegions;
         if (allMapsDisclosure) allMapsDisclosure.hidden = showRegions;
-        const mapRow = (item) => `<tr><td><strong>${item.country ? `<button type="button" class="region-map-link" data-map-country="${escapeHtml(item.country)}" aria-label="Show ${escapeHtml(item.name || item.regionName || '—')} on map">${escapeHtml(item.name || item.regionName || '—')}</button>` : escapeHtml(item.name || item.regionName || '—')}</strong><small class="table-secondary">${escapeHtml(providerName[item.provider] || item.provider)} · ${escapeHtml(item.regionName || '—')}</small></td><td class="numeric">${item.installs}</td><td class="numeric">${item.updates}</td><td>${formatTimestamp(item.last)}</td></tr>`;
-        if (mapRows) mapRows.innerHTML = mapItems.slice(0, 5).map(mapRow).join('') || emptyRow(4);
+        const mapRow = (item) => `<tr><td><strong>${item.country ? `<button type="button" class="region-map-link" data-map-country="${escapeHtml(item.country)}" aria-label="Show ${escapeHtml(item.name || item.regionName || '—')} on map">${escapeHtml(item.name || item.regionName || '—')}</button>` : escapeHtml(item.name || item.regionName || '—')}</strong><small class="table-secondary">${escapeHtml(providerName[item.provider] || item.provider)} · ${escapeHtml(item.regionName || '—')}</small></td><td class="numeric">${countValue(item.installs)}</td><td class="numeric">${countValue(item.completedUpdates)}</td><td class="numeric">${countValue(item.failedUpdates)}</td><td>${formatTimestamp(item.last)}</td></tr>`;
+        if (mapRows) mapRows.innerHTML = popularMapItems.slice(0, 5).map(mapRow).join('') || emptyRow(5);
         if (allMapsSummary) allMapsSummary.textContent = `Browse all maps · ${mapItems.length}`;
         const query = String(allMapsSearch?.value || '').toLocaleLowerCase().trim();
         const matchedMaps = mapItems.filter(item => `${item.name} ${item.map} ${item.regionName} ${providerName[item.provider] || item.provider}`.toLocaleLowerCase().includes(query));
         const pages = Math.max(1, Math.ceil(matchedMaps.length / 10));
         allMapsPage = Math.max(1, Math.min(pages, allMapsPage));
-        document.querySelector('#all-map-rows').innerHTML = matchedMaps.slice((allMapsPage - 1) * 10, allMapsPage * 10).map(mapRow).join('') || '<tr><td colspan="4" class="muted-value">No maps match your search. Clear the search to show all maps.</td></tr>';
+        document.querySelector('#all-map-rows').innerHTML = matchedMaps.slice((allMapsPage - 1) * 10, allMapsPage * 10).map(mapRow).join('') || '<tr><td colspan="5" class="muted-value">No maps match your search. Clear the search to show all maps.</td></tr>';
         document.querySelector('#all-maps-page').textContent = `${matchedMaps.length} ${matchedMaps.length === 1 ? 'map' : 'maps'} · Page ${allMapsPage} of ${pages}`;
         document.querySelector('#all-maps-prev').disabled = allMapsPage <= 1;
         document.querySelector('#all-maps-next').disabled = allMapsPage >= pages;
         const byRegion = {};
-        Object.values(byMap).forEach((item) => { const key = item.regionIdentity || item.region; byRegion[key] ||= {region: key, display: item.regionName, country: item.country, installs: 0, updates: 0, last: item.last}; byRegion[key].installs += item.installs; byRegion[key].updates += item.updates; if (String(item.last || '') > String(byRegion[key].last || '')) byRegion[key].last = item.last; });
-        const topRegions = Object.values(byRegion).sort((a, b) => b.installs - a.installs || b.updates - a.updates || a.region.localeCompare(b.region)).slice(0, 10).map((item) => `<tr><td>${item.country ? `<button type="button" class="region-map-link" data-map-country="${escapeHtml(item.country)}" aria-label="Show ${escapeHtml(item.display || humanize(item.region))} on map">${escapeHtml(item.display || humanize(item.region))}</button>` : escapeHtml(item.display || humanize(item.region))}</td><td class="numeric">${item.installs}</td><td class="numeric">${item.updates}</td><td>${formatTimestamp(item.last)}</td></tr>`).join('');
-        document.querySelector('#top-region-rows').innerHTML = topRegions || emptyRow(4);
+        popularMapItems.forEach((item) => { const key = item.regionIdentity || item.region; byRegion[key] ||= {region: key, display: item.regionName, country: item.country, installs: 0, updates: 0, completedUpdates: 0, failedUpdates: 0, last: item.last}; addValue(byRegion[key], 'installs', item.installs); addValue(byRegion[key], 'updates', item.updates); addValue(byRegion[key], 'completedUpdates', item.completedUpdates); addValue(byRegion[key], 'failedUpdates', item.failedUpdates); if (String(item.last || '') > String(byRegion[key].last || '')) byRegion[key].last = item.last; });
+        const topRegions = Object.values(byRegion).sort((a, b) => b.installs - a.installs || a.region.localeCompare(b.region)).slice(0, 10).map((item) => `<tr><td>${item.country ? `<button type="button" class="region-map-link" data-map-country="${escapeHtml(item.country)}" aria-label="Show ${escapeHtml(item.display || humanize(item.region))} on map">${escapeHtml(item.display || humanize(item.region))}</button>` : escapeHtml(item.display || humanize(item.region))}</td><td class="numeric">${item.installs}</td><td class="numeric">${item.completedUpdates}</td><td class="numeric">${item.failedUpdates}</td><td>${formatTimestamp(item.last)}</td></tr>`).join('');
+        document.querySelector('#top-region-rows').innerHTML = topRegions || emptyRow(5);
         document.querySelectorAll('[data-map-country]').forEach((button) => {
           ['mouseenter', 'focus'].forEach((name) => button.addEventListener(name, () => highlightCountry(button.dataset.mapCountry)));
           ['mouseleave', 'blur'].forEach((name) => button.addEventListener(name, () => highlightCountry(null)));
           button.addEventListener('click', () => highlightCountry(button.dataset.mapCountry, true));
         });
-        const detailMarkup = detailRows.map((row) => `<tr><td>${escapeHtml(row.provider_id || '—')}</td><td><code>${escapeHtml(row.map_package_id || '—')}</code></td><td>${escapeHtml(row.region_display_name || humanize(row.region))}</td><td>${escapeHtml(row.event_type || '—')}</td><td>${escapeHtml(outcomeLabel(row.outcome))}</td><td class="numeric">${operations(row)}</td><td>${formatTimestamp(row.last_occurred_at)}</td></tr>`).join('');
+        const detailMarkup = detailRows.map((row) => `<tr><td>${escapeHtml(row.provider_id || '—')}</td><td><code>${escapeHtml(row.map_package_id || '—')}</code></td><td>${escapeHtml(row.region_display_name || humanize(row.region))}</td><td>${escapeHtml(row.event_type || '—')}</td><td>${escapeHtml(outcomeLabel(row.outcome))}</td><td class="numeric">${countValue(operations(row))}</td><td>${formatTimestamp(row.last_occurred_at)}</td></tr>`).join('');
         document.querySelector('#map-statistics-rows').innerHTML = detailMarkup || emptyRow(7);
-        const eventStatus = rows.length ? `${rows.length} event group${rows.length === 1 ? '' : 's'} · ${eventRecords} event record${eventRecords === 1 ? '' : 's'}` : 'No event groups';
+        const eventRecordLabel = eventRecords === null ? '— event records' : `${eventRecords} event record${eventRecords === 1 ? '' : 's'}`;
+        const eventStatus = detailRows.length ? `${detailRows.length} event group${detailRows.length === 1 ? '' : 's'} · ${eventRecordLabel}` : 'No matching event groups';
         if (eventSummary) eventSummary.textContent = `Event detail · ${eventStatus}`;
         if (status) status.textContent = eventStatus;
         detailPage = Number(payload.detailPage || 1);
-        const total = Number(payload.detailTotal || rows.length || 0);
-        const size = Number(payload.detailPageSize || eventPageSize?.value || 25);
+        const total = payload.detailTotal === null || payload.detailTotal === undefined ? detailRows.length : Number(payload.detailTotal);
+        const size = payload.detailPageSize === null || payload.detailPageSize === undefined ? Number(eventPageSize?.value || 25) : Number(payload.detailPageSize);
         if (eventPageSize && ['25', '50'].includes(String(size))) eventPageSize.value = String(size);
         if (eventPagination) {
           const pages = Math.max(1, Math.ceil(total / size));
@@ -2990,6 +3198,7 @@ def _map_statistics_script() -> str:
         if (map.value.trim()) parameters.set('map', map.value.trim());
         if (region.value.trim()) parameters.set('region', region.value.trim());
         if (event.value) parameters.set('eventType', event.value);
+        if (outcome?.value) parameters.set('outcome', outcome.value);
         parameters.set('period', range.value || 'all');
         if (filters.dateFrom && !filters.period && range.value === 'all') parameters.set('dateFrom', filters.dateFrom);
         parameters.set('detailPage', String(detailPage));
@@ -3003,6 +3212,7 @@ def _map_statistics_script() -> str:
         map.value = '';
         region.value = '';
         event.value = '';
+        if (outcome) outcome.value = '';
         if (moreFilters) moreFilters.open = false;
         sync({resetDetailPage: true});
       });
@@ -3014,9 +3224,9 @@ def _map_statistics_script() -> str:
       allMapsSearch?.addEventListener('input', () => { allMapsPage = 1; render(currentPayload); });
       document.querySelector('#all-maps-prev')?.addEventListener('click', () => { allMapsPage--; render(currentPayload); });
       document.querySelector('#all-maps-next')?.addEventListener('click', () => { allMapsPage++; render(currentPayload); });
-      const initialRange = ['24h', '7d', '30d', 'all'].includes(String(filters.period || '')) ? String(filters.period) : 'all'; range.value = initialRange; if (filters.provider) provider.value = filters.provider; if (filters.map) map.value = filters.map; if (filters.region) region.value = filters.region; if (filters.eventType) event.value = filters.eventType;
-      if (moreFilters && (filters.map || filters.region || filters.eventType)) moreFilters.open = true;
-      [range, provider, event].forEach((control) => control?.addEventListener('change', () => sync({resetDetailPage: true}))); [map, region].forEach((control) => { control?.addEventListener('change', () => sync({resetDetailPage: true})); control?.addEventListener('input', () => sync({resetDetailPage: true})); });
+      const initialRange = ['24h', '7d', '30d', 'all'].includes(String(filters.period || '')) ? String(filters.period) : 'all'; range.value = initialRange; if (filters.provider) provider.value = filters.provider; if (filters.map) map.value = filters.map; if (filters.region) region.value = filters.region; if (filters.eventType) event.value = filters.eventType; if (filters.outcome) outcome.value = filters.outcome;
+      if (moreFilters && (filters.map || filters.region || filters.eventType || filters.outcome)) moreFilters.open = true;
+      [range, provider, event, outcome].forEach((control) => control?.addEventListener('change', () => sync({resetDetailPage: true}))); [map, region].forEach((control) => { control?.addEventListener('change', () => sync({resetDetailPage: true})); control?.addEventListener('input', () => sync({resetDetailPage: true})); });
       eventPageSize?.addEventListener('change', () => sync({resetDetailPage: true}));
       eventPagination?.querySelector('[data-event-page="previous"]')?.addEventListener('click', () => { detailPage = Math.max(1, detailPage - 1); sync(); });
       eventPagination?.querySelector('[data-event-page="next"]')?.addEventListener('click', () => { detailPage += 1; sync(); });
@@ -3088,7 +3298,7 @@ def _identity_mapping_markup(device: dict, csrf_token: str, *, code_models: dict
             links = ''.join(f"<li><a href='/admin/device-identification?{urlencode({'device': key})}'>{html.escape(peer['label'])}</a>{_identification_summary(peer['mappings'])}</li>" for key, peer in others)
             shared = f"<div class='identification-shared'>{_identification_badge('shared', 'Also linked to other models')}<p>Other imported links exist for this code. Check their decisions before treating it as unique. Terento also checks the model, size and display.</p><details><summary>Compare {len(others)} other model{'s' if len(others) != 1 else ''}</summary><ul>{links}</ul></details></div>"
         elif code_models is not None:
-            shared = "<p class='identification-context'>Only this model in the map-capable review list has an imported link for this code. Codes may also belong to models outside this list; this does not prove an exact match.</p>"
+            shared = "<p class='identification-context'>Only this model has an imported link for this code. This alone does not prove an exact match.</p>"
         sources = []
         for mapping in sorted(group, key=lambda m: m['status'] != 'PENDING'):
             raw_source = str(mapping['source_url'])
@@ -3124,8 +3334,6 @@ def _identity_mapping_markup(device: dict, csrf_token: str, *, code_models: dict
 
 
 def device_identification_page(devices: list[dict], user: dict, csrf_token: str, *, device_id: str = "", query: str = "") -> bytes:
-    # Presentation scope only: retain the full registry for identity assessment.
-    devices = [device for device in devices if device.get("mapCapable") is True]
     selected = next((d for d in devices if str(d.get('id')) == device_id), None)
     code_models: dict = {}
     for device in devices:
@@ -3154,9 +3362,9 @@ def device_identification_page(devices: list[dict], user: dict, csrf_token: str,
         content = f"<section class='overview-panel identification-workspace'><a class='section-link' href='/admin/device-identification'>← Back to model list</a><h2>{label}</h2>{_identification_summary(mappings)}<div class='identification-next'><h3>What needs your attention</h3><p>{next_step}</p>{missing_note}</div><h3>Which codes link to this model?</h3><p>These are reference links, not live results from a connected watch. A shared code can correctly belong to several variants.</p>{_identity_mapping_markup(selected, csrf_token, code_models=code_models)}<a class='section-link' href='/admin/devices/{quote(str(selected['id']), safe='')}'>View model details and installation evidence →</a></section>"
     else:
         empty = f"<div class='identification-empty'><h3>No matching models.</h3><p>No model or code matches “{html.escape(query)}”. Try a shorter model name or clear the search.</p><a class='section-link' href='/admin/device-identification'>Clear search</a></div>" if query else "<div class='identification-empty'><h3>No models available</h3><p>Run the device catalog collection, then return here to review its sources.</p><a class='section-link' href='/admin/devices'>Open device catalog</a></div>"
-        invalid = "<p class='identification-not-found' role='alert'>This model is unavailable for map-capable device review. Search the list below and select an existing model.</p>" if device_id else ''
+        invalid = "<p class='identification-not-found' role='alert'>This model is unavailable. Search the catalog below and select an existing model.</p>" if device_id else ''
         content = f"<section class='overview-panel identification-workspace'>{invalid}<h2>Select a model</h2><p><strong>{pending_label}</strong> Models with pending decisions appear first.</p><form method='get' class='identification-search'><label for='identification-search'>Find a model or code<input id='identification-search' name='q' placeholder='For example, fēnix 8 or 006-B…' value='{html.escape(query, quote=True)}'></label><button class='secondary-button' type='submit'>Search</button></form><p class='identification-result-count'>{result_label}</p><div class='identification-choices'>{''.join(choices) or empty}</div></section>"
-    body = _admin_header(user, csrf_token, active='device-identification') + "<main id='main-content' class='dashboard identification-page'><p class='section-kicker'>Device identification</p><h1>Help Terento recognize each watch</h1><p class='identification-intro'>Review Garmin watches that support additional Terento maps. Only models with confirmed map capability appear here; source approval and public compatibility approval remain separate.</p><details class='identification-guide'><summary>What am I approving, and why?</summary><p>You approve a link between a code, a model and a source. Compare the source’s model name and variant before deciding. Similar names or a shared USB code do not prove an exact match.</p><p>Exact identification also checks model, size, display and the codes reported by the watch. Source reviews do not change saved installations or map compatibility approval.</p></details>" + content + '</main>'
+    body = _admin_header(user, csrf_token, active='device-identification') + "<main id='main-content' class='dashboard identification-page'><p class='section-kicker'>Device identification</p><h1>Help Terento recognize each watch</h1><p class='identification-intro'>Check which Garmin codes belong to which models. Your review tells Terento which reference sources it can trust when identifying a watch.</p><details class='identification-guide'><summary>What am I approving, and why?</summary><p>You approve a link between a code, a model and a source. Compare the source’s model name and variant before deciding. Similar names or a shared USB code do not prove an exact match.</p><p>Exact identification also checks model, size, display and the codes reported by the watch. Source reviews do not change saved installations or map compatibility approval.</p></details>" + content + '</main>'
     return _layout('Device identification', body + '<script>' + _identification_review_script() + '</script>')
 
 
@@ -3245,26 +3453,6 @@ def _identity_recommendation(results: list[dict[str, Any]]) -> dict | None:
     return choices[0] if choices and len({c["deviceId"] for c in choices}) == 1 else None
 
 
-def _reported_identity_properties(results: list[dict[str, Any]]) -> dict[str, str | bool | None]:
-    """Return only explicit model properties present in the received report."""
-    values = {
-        str(result.get(field) or "")
-        for result in results
-        for field in (
-            "model", "variant", "compatibility_identity", "raw_mtp_model",
-            "garmin_model_description", "display_type",
-        )
-        if result.get(field)
-    }
-    text = " ".join(values)
-    screen = next(
-        (name for name in ("AMOLED", "MicroLED", "MIP")
-         if re.search(r"\b" + re.escape(name) + r"\b", text, flags=re.IGNORECASE)),
-        None,
-    )
-    return {"screen": screen, "solar": bool(re.search(r"\bsolar\b", text, flags=re.IGNORECASE))}
-
-
 def _identity_observations_markup(results: list[dict[str, Any]]) -> str:
     candidate = _identity_recommendation(results)
     recommended = candidate is not None
@@ -3303,13 +3491,8 @@ def _identity_observations_markup(results: list[dict[str, Any]]) -> str:
     solar_checks = [feature for c in possible for check in c.get("checks", [])
                     for feature in check.get("features", []) if feature.get("name") == "solar"]
     solar_values = {feature.get("expected") for feature in solar_checks}
-    reported_properties = _reported_identity_properties(results)
-    solar_label = "Not reported"
-    if reported_properties["solar"]:
-        solar_label = "Reported by device"
-        if solar_checks and len(solar_values) == 1 and all(feature.get("state") == "MATCH" for feature in solar_checks):
-            solar_label += " · catalog agrees"
-    elif solar_checks and len(solar_values) == 1 and all(feature.get("state") == "MATCH" for feature in solar_checks):
+    solar_label = "Not confirmed"
+    if solar_checks and len(solar_values) == 1 and all(feature.get("state") == "MATCH" for feature in solar_checks):
         solar_label = "Yes" if next(iter(solar_values)) else "No"
         if any(str(e.get("source", "")).startswith("catalog specification:") for feature in solar_checks for e in feature.get("evidence", [])):
             solar_label += " · catalog specification"
@@ -3452,55 +3635,24 @@ def _identity_device_options(devices: list[dict[str, Any]] | None, current_id: A
     current = str(current_id or "").strip()
     current_label = current or "No canonical device selected"
     options: list[str] = []
-    seen_labels: set[str] = set()
     for device in devices or []:
         device_id = str(device.get("device_id") or device.get("id") or "").strip()
         if not device_id:
             continue
         model, variant, _ = _identity_parts(device)
-        variant = re.sub(r",\s*\(", " (", variant)
+        family = str(device.get("family_name") or device.get("familyName") or device.get("family") or "").strip()
         label_parts = [part for part in (model, variant if variant != "—" else "") if part]
         label = " · ".join(label_parts)
         if properties_only:
-            screen = str(device.get("screen_technology") or device.get("screenTechnology") or "").strip()
+            screen = str(device.get("screen_technology") or device.get("screenTechnology") or "Screen not confirmed")
             solar = device.get("solar")
-            if screen and not re.search(r"\b" + re.escape(screen) + r"\b", label, flags=re.IGNORECASE):
-                label_parts.append(screen)
-            if solar is True and not re.search(r"\bsolar\b", label, flags=re.IGNORECASE):
-                label_parts.append("Solar")
-            elif solar is False and not re.search(r"\bsolar\b", label, flags=re.IGNORECASE):
-                label_parts.append("Solar: no")
-            label = " · ".join(label_parts)
-        if not label:
-            label = "Garmin device"
-        if label in seen_labels:
-            label += " · Catalog record: " + device_id
-        seen_labels.add(label)
+            label = screen + " · Solar: " + ("yes" if solar is True else "no" if solar is False else "not confirmed")
         if device_id == current:
             current_label = device_id
         options.append(
             f"<option value='{html.escape(device_id, quote=True)}'{' selected' if device_id == current else ''}>{html.escape(label)}</option>"
         )
     return "".join(options), current_label
-
-
-def _identity_review_guidance(result: dict[str, Any]) -> str:
-    model, variant, _ = _identity_parts(result)
-    reported = " · ".join(part for part in (model, variant if variant != "—" else "") if part)
-    properties = _reported_identity_properties([result])
-    facts = []
-    if properties["screen"]:
-        facts.append("Screen reported: " + str(properties["screen"]))
-    else:
-        facts.append("Screen not reported")
-    facts.append("Solar reported by device" if properties["solar"] else "Solar not reported")
-    return (
-        "<p class='table-help identity-review-guidance'><strong>How to read this list:</strong> "
-        + html.escape("Reported identity: " + (reported or "not available") + ". ")
-        + html.escape(" · ".join(facts) + ". ")
-        + "The choices are catalog variants; confirm the one supported by the evidence, "
-        + "not an unknown property label.</p>"
-    )
 
 
 def _operation_state(results: list[dict[str, Any]], *, resolved: bool) -> str:
@@ -3521,34 +3673,68 @@ def _operation_state(results: list[dict[str, Any]], *, resolved: bool) -> str:
     return "history"
 
 
+def _result_classification(result: dict[str, Any]) -> str:
+    outcome = str(result.get("phase_outcome") or "").strip().upper()
+    finishing = str(result.get("automatic_finishing_result") or "").strip().upper()
+    if outcome == "SUCCEEDED" and finishing == "VERIFIED":
+        return "SUCCESS"
+    if outcome == "FAILED":
+        write_started = result.get("write_started")
+        if write_started is True or write_started == 1 or (
+            write_started is None
+            and result.get("app_build") is None
+            and result.get("release_label") is None
+        ):
+            return "FAILURE"
+        if write_started is False or write_started == 0:
+            return "NOT_STARTED"
+        return "UNKNOWN"
+    if outcome == "NOT_STARTED":
+        return "NOT_STARTED"
+    return "UNKNOWN"
+
+
 def _operation_result(results: list[dict[str, Any]]) -> str:
-    outcomes = {str(result.get("phase_outcome") or "").strip().upper() for result in results}
-    if any(
-        str(result.get("phase_outcome") or "").strip().upper() == "SUCCEEDED"
-        and str(result.get("automatic_finishing_result") or "").strip().upper()
-        not in {"", "VERIFIED"}
+    classifications = {_result_classification(result) for result in results}
+    if len(classifications) != 1:
+        return "UNKNOWN"
+    classification = next(iter(classifications))
+    if classification == "NOT_STARTED" and all(
+        str(result.get("phase_outcome") or "").strip().upper() == "FAILED"
         for result in results
     ):
-        return "INCOMPLETE"
-    if "FAILED" in outcomes:
+        # Keep the received process outcome visible in diagnostics. Fresh
+        # statistics use _result_classification and still exclude this
+        # pre-write failure when write_started is false.
         return "FAILED"
-    if "NOT_STARTED" in outcomes:
-        return "NOT_STARTED"
-    if outcomes and outcomes <= {"SUCCEEDED"}:
-        return "SUCCEEDED"
-    return next(iter(sorted(outcomes)), "UNKNOWN")
+    return {
+        "SUCCESS": "SUCCEEDED",
+        "FAILURE": "FAILED",
+        "NOT_STARTED": "NOT_STARTED",
+        "UNKNOWN": "UNKNOWN",
+    }.get(classification, "UNKNOWN")
 
 
 def _operation_write_started(results: list[dict[str, Any]]) -> bool:
-    return any(result.get("write_started") is not False for result in results)
+    return any(
+        result.get("write_started") is True or result.get("write_started") == 1
+        for result in results
+    )
 
 
 def _operation_counts_as_installation_attempt(results: list[dict[str, Any]]) -> bool:
-    """Count persisted final results independently of device-write progress."""
+    """Count only a verified result or a failure after writing began."""
     result = _operation_result(results)
-    if result in {"FAILED", "SUCCEEDED", "INCOMPLETE", "BLOCKED"}:
+    if result == "SUCCEEDED":
         return True
-    return _operation_write_started(results)
+    if result == "FAILED":
+        return _operation_write_started(results) or all(
+            item.get("write_started") is None
+            and item.get("app_build") is None
+            and item.get("release_label") is None
+            for item in results
+        )
+    return False
 
 
 def _operation_text(results: list[dict[str, Any]], field: str, *, fallback: str = "—") -> str:
@@ -3865,8 +4051,7 @@ def _diagnostic_detail_dialog(
           <div{' hidden' if single_candidate else ''}>
           <div{' hidden' if same_model else ''}><label>Find another model<input id='{search_id}' type='search' data-identity-search placeholder='Model name or size' autocomplete='off' aria-controls='{canonical_id}'></label>
           <div class='identity-search-results' data-identity-results role='group' aria-label='Matching Garmin models' hidden></div></div>
-          <label>{'Candidate device variant' if same_model else 'Garmin model'}<select name='canonical_device_model_id' id='{canonical_id}' required><option value=''>{'Choose the catalog variant that matches the evidence' if same_model else 'Choose a Garmin model'}</option>{options}</select></label>
-          {_identity_review_guidance(first) if same_model else ''}
+          <label>{'Screen / Solar variant' if same_model else 'Garmin model'}<select name='canonical_device_model_id' id='{canonical_id}' required><option value=''>{'Choose the confirmed screen / Solar variant' if same_model else 'Choose a Garmin model'}</option>{options}</select></label>
           </div>
         </div>
         <p class='identity-selection' data-identity-selection>{'Model selected from the reported device. No further model selection needed.' if single_candidate else 'Select the model to confirm.'}</p>
@@ -4355,7 +4540,7 @@ def github_issue_queue_page(
         except ValueError:
             return False
 
-    groups = _group_operations([event for event in (operations or []) if has_valid_issue(event)])
+    groups = _group_operation_tasks([event for event in (operations or []) if has_valid_issue(event)])
     queue: list[tuple[str, list[dict[str, Any]]]] = []
     for operation_key, results in groups.items():
         if _operation_issue(results):
@@ -4394,15 +4579,15 @@ def github_issue_queue_page(
             return_to="/admin/review/github-issues",
         ))
     rows = "".join(rows_markup) or (
-        "<tr><td colspan='7' class='empty'>No active GitHub issues are waiting for resolution.</td></tr>"
+        "<tr><td colspan='7' class='empty'>No active GitHub review tasks are waiting for resolution.</td></tr>"
     )
     content = f"""
       {_admin_header(user, csrf_token, active='installations')}
       <main class='dashboard diagnostics-page' id='main-content'>
         <p class='back-link'><a href='/admin/installations'>{_admin_icon('arrow-left')} Installations</a></p>
-        <div class='heading-row'><div><p class='eyebrow'>Review queue</p><h1>GitHub issues in progress</h1><p class='lede'>Linked diagnostics stay here while the issue is being solved. GitHub closure synchronization moves them to the resolved history.</p></div></div>
+        <div class='heading-row'><div><p class='eyebrow'>Review queue</p><h1>GitHub review tasks</h1><p class='lede'>Each active operation is one review task. A linked GitHub issue is shown as work on that diagnostic operation; closure synchronization moves it to resolved history.</p></div></div>
         <section class='diagnostics-detail-section' aria-labelledby='github-issue-queue-title'>
-          <div class='section-heading'><div><p class='section-kicker'>Active work</p><h2 id='github-issue-queue-title'>{len(queue)} linked issue{'s' if len(queue) != 1 else ''}</h2></div></div>
+          <div class='section-heading'><div><p class='section-kicker'>Active work</p><h2 id='github-issue-queue-title'>{len(queue)} linked diagnostic task{'s' if len(queue) != 1 else ''}</h2></div></div>
           <div class='table-wrap diagnostic-list-wrap'><table class='admin-table diagnostic-list-table'><caption class='sr-only'>GitHub issues linked to active diagnostics</caption><thead><tr><th scope='col'>Issue</th><th scope='col'>Device</th><th scope='col'>Map / region</th><th scope='col'>Result</th><th scope='col'>Workflow</th><th scope='col'>Last activity</th><th scope='col'>Action</th></tr></thead><tbody>{rows}</tbody></table></div>
         </section>
         {''.join(dialogs)}
@@ -6083,6 +6268,8 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
 .overview-map-total small,.overview-download-total small{color:var(--secondary);font-size:var(--admin-type-support-size)}
 .overview-chart-download-dmg{fill:var(--interactive);background:var(--interactive)}
 .overview-chart-download-zip{fill:var(--status-success-text);background:var(--status-success-text)}
+.overview-chart-download-zero{fill:var(--surface);stroke:var(--secondary);stroke-width:2}
+.overview-chart-download-unknown{stroke:var(--secondary);stroke-width:3;stroke-dasharray:4 3}
 .overview-trend-chart{display:block;width:100%;height:260px;max-width:760px;min-height:0;margin:0 auto}
 .overview-trend-mobile{display:none}
 @media(max-width:700px){

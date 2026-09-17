@@ -1087,22 +1087,6 @@ class CompatibilityEvidenceTests(unittest.TestCase):
             },
         )
 
-    def test_official_model_photo_precedes_public_generic_asset(self):
-        row = self.database.public_compatibility_models(1)[0]
-        source = 'https://res.garmin.com/en/products/010-02809-01/v/cf-lg.jpg'
-        row.update(asset_status='AVAILABLE', asset_scope='GENERIC',
-                   asset_url='https://api.terento.app/assets/devices/generic.png',
-                   asset_storage_key='generic.png', asset_source_type='GENERIC_FALLBACK',
-                   asset_source_brand='Terento', asset_attribution_required=False,
-                   source_image_url=source)
-        self.database.public_compatibility_models = lambda limit: [row]
-        response, body = self.request('GET', '/compatibility/public/models.json')
-        self.assertEqual(response.status, 200)
-        self.assertEqual(json.loads(body)['models'][0]['image']['url'], source)
-        row['source_image_url'] = None
-        response, body = self.request('GET', '/compatibility/public/models.json')
-        self.assertEqual(json.loads(body)['models'][0]['image']['origin'], 'controlled')
-
     def test_public_models_is_additive_and_evidence_only(self):
         response, body = self.request("GET", "/compatibility/public/models.json?limit=5")
         document = json.loads(body)

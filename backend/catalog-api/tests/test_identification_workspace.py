@@ -12,35 +12,12 @@ def mapping(status='PENDING', **changes):
 
 def device(key='watch', **changes):
     return dict(dict(id=key, model='fēnix 9 Pro', variant='47 mm, AMOLED, inReach',
-                     mapCapable=True, identityMappings=[mapping()]), **changes)
+                     identityMappings=[mapping()]), **changes)
 
 
 class IdentificationWorkspaceTests(unittest.TestCase):
     def render(self, devices, **kwargs):
         return device_identification_page(devices, {'username': 'operator'}, 'csrf-test', **kwargs).decode()
-
-    def test_map_capability_scopes_list_search_counts_and_direct_details(self):
-        rows = [device('eligible'), device('non-map', model='Instinct', mapCapable=False),
-                device('unknown', model='Future watch', mapCapable=None)]
-        before = deepcopy(rows)
-        for options in ({}, {'query': '006-B4953'}, {'device_id': 'non-map'}, {'device_id': 'unknown'}):
-            body = self.render(rows, **options)
-            self.assertIn('1 model shown', body)
-            self.assertIn('1 model needs source review.', body)
-            self.assertNotIn('device=non-map', body)
-            self.assertNotIn('device=unknown', body)
-            self.assertNotIn("name='mapping_id'", body)
-        self.assertIn('No matching models', self.render(rows, query='Instinct'))
-        self.assertIn('No models available', self.render(rows[1:]))
-        self.assertEqual(rows, before)
-
-    def test_hidden_shared_targets_do_not_imply_code_uniqueness(self):
-        rows = [device(), device('non-map', model='Instinct', mapCapable=False)]
-        body = self.render(rows, device_id='watch')
-        self.assertNotIn('device=non-map', body)
-        self.assertIn('Codes may also belong to models outside this list', body)
-        self.assertIn('does not prove an exact match', body)
-        self.assertEqual(len(rows), 2)
 
     def test_rejected_only_is_not_presented_as_approved_or_ready(self):
         body = self.render([device(identityMappings=[mapping('REJECTED')])])

@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 import json
 import unittest
+from unittest.mock import ANY
 
 from terento_catalog.db import Database
 from terento_catalog.github_downloads import (
@@ -113,7 +114,11 @@ class GithubDownloadTests(unittest.TestCase):
             {"assets": [{"name": "Terento-legacy.dmg", "download_count": 2}]},
             {"draft": True, "assets": [{"name": "unpublished.zip", "download_count": 100}]},
         ])
-        self.assertEqual(totals, {"dmg_total": 6, "zip_total": 3, "release_count": 2})
+        self.assertEqual(totals["dmg_total"], 6)
+        self.assertEqual(totals["zip_total"], 3)
+        self.assertEqual(totals["release_count"], 2)
+        self.assertEqual(totals["asset_count"], 3)
+        self.assertTrue(totals["population_fingerprint"])
 
     def test_fetch_reads_all_release_pages(self):
         first_page = [{"assets": [{"name": "one.dmg", "download_count": 2}]}]
@@ -124,7 +129,10 @@ class GithubDownloadTests(unittest.TestCase):
         ])
         self.assertEqual(
             fetch_github_download_totals(opener=opener),
-            {"dmg_total": 2, "zip_total": 5, "release_count": 101},
+            {
+                "dmg_total": 2, "zip_total": 5, "release_count": 101,
+                "asset_count": 2, "population_fingerprint": ANY,
+            },
         )
         self.assertEqual(len(opener.urls), 2)
         self.assertIn("per_page=100", opener.urls[0])
@@ -152,26 +160,38 @@ class GithubDownloadTests(unittest.TestCase):
         self.assertEqual(database.values["release_count"], 4)
         self.assertEqual(database.values["observed_at"], observed_at)
 
-    def test_database_snapshot_fills_rolling_24_hour_window_and_uses_deltas(self):
+    def test_database_snapshot_uses_observed_intervals_without_filling_gaps(self):
         now = datetime(2026, 9, 11, 20, 13, tzinfo=timezone.utc)
-        start = datetime(2026, 9, 10, 21, tzinfo=timezone.utc)
+        start = datetime(2026, 9, 10, 20, tzinfo=timezone.utc)
         database = SnapshotDatabase(
             {"dmg_total": 15, "zip_total": 9, "observed_at": now},
             [
-                {"bucket": start, "dmg_count": 2, "zip_count": 1},
-                {"bucket": datetime(2026, 9, 11, 20, tzinfo=timezone.utc), "dmg_count": 3, "zip_count": 4},
+                {"observed_at": datetime(2026, 9, 10, 19, tzinfo=timezone.utc), "dmg_total": 10, "zip_total": 5, "release_count": 2, "asset_count": 2, "population_fingerprint": "same"},
+                {"observed_at": start, "dmg_total": 12, "zip_total": 6, "release_count": 2, "asset_count": 2, "population_fingerprint": "same"},
+                {"observed_at": datetime(2026, 9, 11, 1, tzinfo=timezone.utc), "dmg_total": 15, "zip_total": 9, "release_count": 2, "asset_count": 2, "population_fingerprint": "same"},
             ],
         )
         result = database.github_downloads_snapshot(now=now)
         self.assertTrue(result["hasData"])
         self.assertEqual((result["dmgTotal"], result["zipTotal"]), (15, 9))
-        self.assertEqual(len(result["trend"]), 25)
-        self.assertEqual(result["trend"][0]["bucket"], datetime(2026, 9, 10, 20, tzinfo=timezone.utc))
-        self.assertEqual(result["trend"][1]["dmg_count"], 2)
-        self.assertEqual(result["trend"][-1]["zip_count"], 4)
+        self.assertEqual(len(result["trend"]), 2)
+        self.assertEqual(result["trend"][0]["bucket"], start)
+        self.assertEqual(result["trend"][0]["dmg_count"], 2)
+        self.assertEqual(
+            result["trend"][0]["previous_observed_at"],
+            datetime(2026, 9, 10, 19, tzinfo=timezone.utc),
+        )
+        self.assertEqual(result["trend"][0]["state"], "period_boundary")
+        self.assertEqual(result["trend"][1]["state"], "gap")
+        self.assertEqual(result["trend"][1]["dmg_count"], 3)
+        self.assertEqual(
+            result["trend"][1]["previous_observed_at"],
+            start,
+        )
+        self.assertEqual(result["trend"][1]["observed_at"], datetime(2026, 9, 11, 1, tzinfo=timezone.utc))
         query = database.connection_instance.queries[1][0]
-        self.assertIn("lag(dmg_total)", query)
-        self.assertIn("greatest", query)
+        self.assertNotIn("lag(dmg_total)", query)
+        self.assertNotIn("greatest", query)
 
     def test_database_snapshot_without_observations_is_empty(self):
         database = SnapshotDatabase(None, [])
@@ -181,22 +201,68 @@ class GithubDownloadTests(unittest.TestCase):
         self.assertEqual(result["hasData"], False)
         self.assertEqual(result["trend"], [])
 
+    def test_database_snapshot_keeps_baseline_zero_and_discontinuity_distinct(self):
+        now = datetime(2026, 9, 11, 12, tzinfo=timezone.utc)
+        database = SnapshotDatabase(
+            {"dmg_total": 90, "zip_total": 40, "observed_at": now},
+            [
+                {"observed_at": datetime(2026, 9, 11, 10, tzinfo=timezone.utc), "dmg_total": 90, "zip_total": 40, "release_count": 1, "asset_count": 2, "population_fingerprint": "same"},
+                {"observed_at": datetime(2026, 9, 11, 11, tzinfo=timezone.utc), "dmg_total": 90, "zip_total": 40, "release_count": 1, "asset_count": 2, "population_fingerprint": "same"},
+                {"observed_at": datetime(2026, 9, 11, 12, tzinfo=timezone.utc), "dmg_total": 80, "zip_total": 40, "release_count": 1, "asset_count": 2, "population_fingerprint": "same"},
+            ],
+        )
+        result = database.github_downloads_snapshot(now=now)
+        self.assertEqual(result["trend"][0]["state"], "baseline")
+        self.assertIsNone(result["trend"][0]["dmg_count"])
+        self.assertEqual(result["trend"][1]["state"], "observed_zero")
+        self.assertEqual(result["trend"][1]["dmg_count"], 0)
+        self.assertEqual(result["trend"][2]["state"], "discontinuity")
+        self.assertIsNone(result["trend"][2]["dmg_count"])
+
+    def test_database_snapshot_marks_missing_hour_as_an_uncertain_interval(self):
+        now = datetime(2026, 9, 11, 13, tzinfo=timezone.utc)
+        database = SnapshotDatabase(
+            {"dmg_total": 110, "zip_total": 40, "observed_at": now},
+            [
+                {"observed_at": datetime(2026, 9, 11, 10, tzinfo=timezone.utc), "dmg_total": 100, "zip_total": 40, "release_count": 1, "asset_count": 2, "population_fingerprint": "same"},
+                {"observed_at": datetime(2026, 9, 11, 11, tzinfo=timezone.utc), "dmg_total": 103, "zip_total": 40, "release_count": 1, "asset_count": 2, "population_fingerprint": "same"},
+                {"observed_at": now, "dmg_total": 110, "zip_total": 40, "release_count": 1, "asset_count": 2, "population_fingerprint": "same"},
+            ],
+        )
+        result = database.github_downloads_snapshot(now=now)
+        self.assertEqual(result["trend"][0]["state"], "baseline")
+        self.assertEqual(result["trend"][1]["dmg_count"], 3)
+        self.assertEqual(result["trend"][2]["state"], "gap")
+        self.assertEqual(result["trend"][2]["dmg_count"], 7)
+        self.assertEqual(
+            result["trend"][2]["previous_observed_at"],
+            datetime(2026, 9, 11, 11, tzinfo=timezone.utc),
+        )
+
+    def test_collection_failure_does_not_replace_last_successful_snapshot(self):
+        database = CollectDatabase()
+        with self.assertRaisesRegex(RuntimeError, "GitHub unavailable"):
+            collect_once(database, fetch=lambda: (_ for _ in ()).throw(RuntimeError("GitHub unavailable")))
+        self.assertIsNone(database.values)
+
     def test_database_snapshot_aggregates_long_periods_in_local_days(self):
         now = datetime(2026, 9, 11, 20, 13, tzinfo=timezone.utc)
         database = SnapshotDatabase(
             {"dmg_total": 15, "zip_total": 9, "observed_at": now},
             [
-                {"bucket": datetime(2026, 9, 10, 21, tzinfo=timezone.utc), "dmg_count": 2, "zip_count": 1},
-                {"bucket": datetime(2026, 9, 11, 20, tzinfo=timezone.utc), "dmg_count": 3, "zip_count": 4},
+                {"observed_at": datetime(2026, 9, 9, 20, tzinfo=timezone.utc), "dmg_total": 10, "zip_total": 5, "release_count": 2, "asset_count": 2, "population_fingerprint": "same"},
+                {"observed_at": datetime(2026, 9, 10, 21, tzinfo=timezone.utc), "dmg_total": 12, "zip_total": 6, "release_count": 2, "asset_count": 2, "population_fingerprint": "same"},
+                {"observed_at": datetime(2026, 9, 11, 20, tzinfo=timezone.utc), "dmg_total": 15, "zip_total": 9, "release_count": 2, "asset_count": 2, "population_fingerprint": "same"},
             ],
         )
         result = database.github_downloads_snapshot(
             now=now, time_zone="Europe/Vilnius", period="7d",
         )
         self.assertEqual(result["bucket"], "day")
-        self.assertEqual(len(result["trend"]), 8)
-        self.assertEqual(sum(item["dmg_count"] for item in result["trend"]), 5)
-        self.assertEqual(sum(item["zip_count"] for item in result["trend"]), 5)
+        self.assertEqual(len(result["trend"]), 2)
+        self.assertEqual(sum(item["dmg_count"] or 0 for item in result["trend"]), 5)
+        self.assertEqual(sum(item["zip_count"] or 0 for item in result["trend"]), 4)
+        self.assertTrue(all(item["observed_at"] for item in result["trend"]))
 
     def test_record_snapshot_upserts_a_utc_hour_and_serializes_counts(self):
         database = WriteDatabase()
@@ -208,7 +274,7 @@ class GithubDownloadTests(unittest.TestCase):
         ))
         insert = database.connection_instance.calls[1]
         self.assertEqual(insert[1][0], datetime(2026, 9, 11, 20, tzinfo=timezone.utc))
-        self.assertEqual(insert[1][2:], (12, 8, 4))
+        self.assertEqual(insert[1][2:], (12, 8, 4, None, None))
         self.assertIn("ON CONFLICT (hour_start)", insert[0])
 
     def test_record_snapshot_skips_when_another_collector_holds_the_lock(self):

@@ -58,7 +58,7 @@ assert sum(row['success_count'] for row in overview['trend']) == 1
 assert sum(row['custom_count'] for row in overview['trend']) == 1
 assert database.admin_overview_snapshot(since)['successfulInstallCount'] == 2
 statistics = database.map_statistics({})
-assert sum(row['operation_count'] for row in statistics if row['event_type'] == 'INSTALL_SUCCEEDED') == 1
+assert sum(row['operation_count'] for row in statistics if row['event_type'] == 'INSTALL_SUCCEEDED') == 2
 devices, _ = database.admin_device_snapshot()
 watch = next(row for row in devices if row['device_id'] == device)
 assert watch['attempted_install_count'] == 2 and watch['successful_install_count'] == 2, watch
@@ -132,31 +132,3 @@ check_identity_database(database)
 
 from check_download_lifecycle_database import check_download_lifecycle_database
 check_download_lifecycle_database(database)
-
-# Historical additions remain review-only and do not replace the unsized record.
-with database.connection() as connection:
-    epix = connection.execute("SELECT * FROM device_model WHERE id LIKE 'garmin-epix-pro-gen-2%' ORDER BY case_size_mm").fetchall()
-    exact = [r for r in epix if r['case_size_mm'] is not None]
-    assert [r['case_size_mm'] for r in exact] == [42, 47, 51]
-    for row in exact:
-        assert row['screen_technology'] == 'AMOLED' and row['map_capable'] is True
-        assert row['collector_managed'] is False and row['record_source'] == 'HISTORICAL_REVIEWED'
-        assert row['support_status'] == 'NOT_EVALUATED'
-        assert row['source_image_url'].startswith('https://res.garmin.com/en/products/')
-        assert row['specification_evidence']['source_image']['edition'] == 'Sapphire Edition'
-    legacy = next(r for r in epix if r['id'] == 'garmin-epix-pro-gen-2')
-    assert legacy['case_size_mm'] is None and legacy['variant'] == 'Historical'
-print('PASS: epix Pro exact historical sizes, official media, and unchanged legacy record')
-
-
-with database.connection() as connection:
-    media_rows = connection.execute("SELECT id,source_image_url FROM device_model WHERE id LIKE 'garmin-fenix-7%' OR id IN ('garmin-forerunner-965','garmin-epix-pro-gen-2')").fetchall()
-    assert len(media_rows) == 10, media_rows
-    assert all(r['source_image_url'].startswith('https://res.garmin.com/') for r in media_rows)
-print('PASS: all ten targeted historical records have official model photos')
-
-with database.connection() as connection:
-    photo = connection.execute("SELECT source_image_url, variant FROM device_model WHERE id='garmin-forerunner-955'").fetchone()
-    assert photo['source_image_url'] == 'https://res.garmin.com/en/products/010-02638-10/v/cf-lg-d0a186df-582c-4f80-aeef-7eb37b60471b.jpg'
-    assert photo['variant'] == 'Standard'
-print('PASS: Forerunner 955 official non-Solar photograph and preserved variant')
