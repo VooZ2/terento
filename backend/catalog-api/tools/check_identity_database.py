@@ -77,7 +77,7 @@ def check_identity_database(database):
     assert not any(r['canonical_device_model_id'] is None and r['canonical_model'] == 'Identity CI Watch' for r in public)
     # Wrong client and manual selections encounter the same contradiction.
     try:
-        operation_key = f"{exact['operation_id']}:{exact['map_result_index']}"
+        operation_key = f"result:{exact['operation_id']}:{exact['map_result_index']}"
         database.resolve_compatibility_identity(operation_key, action='ASSIGN',
             canonical_device_model_id='identity-ci-microled', admin_user_id=admin, reason='Cannot override a conflict')
         raise AssertionError('conflict accepted')
