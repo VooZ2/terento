@@ -2352,14 +2352,13 @@ class Database:
                     f"""
                     UPDATE compatibility_evidence_event
                     SET canonical_device_model_id = %s,
-                        identity_resolution_state = %s,
-                        identity_assessment = COALESCE(%s::jsonb, identity_assessment)
+                        identity_resolution_state = %s
                     WHERE event_id = %s
                     """,
                     (canonical_device_model_id,
                      "RESOLVED" if normalized_action in {"ASSIGN", "MANUAL_ASSIGN"} else (
                          "NOT_IDENTIFIABLE" if normalized_action == "NOT_IDENTIFIABLE" else "UNRESOLVED"
-                     ), reviewed[0] if reviewed else None, row["event_id"]),
+                     ), row["event_id"]),
                 )
                 prior_assessment = row.get("identity_assessment")
                 if isinstance(prior_assessment, str):
