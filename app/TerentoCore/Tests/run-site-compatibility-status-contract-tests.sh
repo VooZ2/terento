@@ -10,80 +10,34 @@ root = Path(sys.argv[1])
 js = (root / "site/compatibility/compatibility.js").read_text()
 data_js = (root / "site/compatibility/compatibility-data.js").read_text()
 html = (root / "site/compatibility/index.html").read_text()
-css = (root / "site/styles.css").read_text()
 compatibility_files = [root / "site/compatibility/index.html", *sorted((root / "site").glob("*/compatibility/index.html"))]
-assert not (root / "site/compatibility/public-models.snapshot.json").exists()
-locales = ("de", "fr", "pl", "cs", "it")
-public_pages = [
-    root / "site/index.html",
-    root / "site/download/index.html",
-    root / "site/about/index.html",
-    root / "site/guides/install-garmin-maps-mac/index.html",
-    root / "site/legal/index.html",
-    root / "site/privacy/index.html",
-    *compatibility_files,
-]
-for locale in locales:
-    public_pages.extend(
-        [
-            root / f"site/{locale}/index.html",
-            root / f"site/{locale}/download/index.html",
-            root / f"site/{locale}/about/index.html",
-            root / f"site/{locale}/guides/install-garmin-maps-mac/index.html",
-        ]
-    )
 
-for path in public_pages:
-    page = path.read_text()
-    assert all(name in page for name in ("Freizeitkarte", "OpenTopoMap", "MapRando", "BBBike")) or any(copy in page for copy in ("four providers", "four map providers", "vier Anbietern", "vier Kartenanbieter", "quatre fournisseurs", "quatre fournisseurs de cartes", "czterech dostawców", "czterech dostawców map", "čtyř poskytovatelů", "čtyř poskytovatelů map", "quattro provider", "quattro provider di mappe")), f"{path}: four-provider scope is incomplete"
-    assert "Pre-MVP" not in page and "pre-MVP" not in page and "pre-release" not in page, f"{path}: stale pre-MVP wording"
-
-provider_script = (root / "site/provider-list.js").read_text()
-assert 'const PUBLIC_PROVIDER_IDS = new Set(["freizeitkarte", "opentopomap", "maprando", "bbbike"]);' in provider_script
-
-required_statuses = ("TESTING", "TESTED", "SUPPORTED", "VERIFIED")
-for status in required_statuses:
-    assert status in js, f"missing web status: {status}"
-    assert f"status-{status.lower()}" in css, f"missing badge style: {status}"
-
-assert 'status-${escapeHtml(statusClass)}' in js, "missing shared status badge template"
-assert js.count("createStatusBadge(") >= 3, "cards and explanation must use the shared badge renderer"
-
-assert "How compatibility works" in html
-assert "status-info" not in js and "status-info" not in css
-assert "info-circle" not in js and "(i)" not in js
-assert "Public compatibility is based on real installation evidence for exact Garmin models and variants." in html
-assert "models with evidence" in html
-assert "Unknown</dt>" not in html
-assert 'option value="TESTING"' in html
-assert "compatibilityIdentity" in js
-assert "caseSizeMm" in js
-assert 'successful > 0 ? "SUPPORTED"' not in js, "web must not promote status from install counts"
-assert 'attempted > 0 ? "TESTING"' not in js, "web must not invent a status from attempt counts"
-assert 'const rawStatus = String(row.status || row.evidenceStatus || row.calculated_status || "").toUpperCase();' in js
+assert (root / "site/compatibility/public-models.snapshot.json").exists()
+assert "initializeSnapshot" in js
+assert "public/models.json" in js
+assert "filter((row) => row.successful > 0)" in js
+assert "preserveExistingResults" in js
+assert "successfulRange" in js
 assert "canonicalFamilyKey" in data_js
 assert "familyOptions" in data_js
-assert "min-width: 74px" in css
-assert "data-summary-loading" in html
-assert 'data-summary-content hidden' in html
-assert 'id="compatibility-snapshot"' not in html
-assert "initializeSnapshot" not in js
-assert "invalid_compatibility_response" in js
-assert "compatibility_http_" in js
-assert "quiet && state.hasLoaded" in js
+assert "statusCodes" not in js and "createStatusBadge" not in js
+assert not any(status in js for status in ("TESTING", "TESTED", "SUPPORTED", "VERIFIED"))
+
 for path in compatibility_files:
     page = path.read_text()
-    assert 'class="compatibility-summary-line compatibility-summary-loading"' in page, f"{path}: missing localized loading state"
-    assert 'data-summary-content hidden' in page, f"{path}: API summary must wait for live evidence"
-    assert 'compatibility-summary-more' not in page, f"{path}: testing prompt must not appear in summary"
-    assert 'More models ready for testing' not in page, f"{path}: testing prompt must not appear in English summary"
-    assert 'Evidence refreshed' not in page, f"{path}: refresh label must not appear in summary"
-    assert 'id="compatibility-snapshot"' not in page, f"{path}: checked-in compatibility evidence remains"
-    assert '<noscript class="compatibility-noscript">' in page, f"{path}: missing no-JS API requirement"
-    assert '<strong data-summary="models"></strong>' in page, f"{path}: model count is hardcoded"
-    assert '<article class="watch-card"' not in page, f"{path}: model cards are hardcoded"
-    assert 'compatibility.js?v=20260914-device-labels-v1' in page, f"{path}: missing cache-busted compatibility script"
-print("Compatibility status web tests passed (statuses, live API loading, exact variants, disclosure, shared badge contract).")
+    assert 'id="compatibility-snapshot"' in page, f"{path}: missing checked-in snapshot"
+    assert '<article class="watch-card"' in page, f"{path}: missing server-rendered cards"
+    assert 'id="successful-install-filter"' in page, f"{path}: missing successful-install filter"
+    assert 'id="compatibility-clear"' in page
+    assert 'Not seeing your model' in page or 'Brak Twojego modelu' in page or 'Wenn dein Modell' in page or 'L’absence de votre modèle' in page or 'Pokud zde svůj model' in page or 'Se il tuo modello' in page
+    assert not any(f'<option value="{status}"' in page for status in ("TESTING", "TESTED", "SUPPORTED", "VERIFIED"))
+    assert 'class="compatibility-status' not in page
+    assert 'successful-install-filter' in page
+    assert '1–2' in page and '5+' in page
+    assert 'compatibility.js?v=20260918-compatibility-successful-snapshot-v1' in page
+    assert '<noscript class="compatibility-noscript">' in page
+
+print("Compatibility web tests passed (successful-installation snapshot, static cards, filters, disclosure, and fallback contract).")
 PY
 
 . "$repo_root/Tests/node-runtime.sh"

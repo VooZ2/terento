@@ -167,7 +167,7 @@ for (const locale of Object.keys(locales)) {
   const prefix = locale === "en" ? "" : `${locale}/`;
   const html = read(`site/${prefix}compatibility/index.html`);
   assert.match(html, /data-compatibility-evidence-note/);
-  assert.match(html, /not Garmin certification|keine Garmin-Zertifizierung|certification Garmin|certyfikatem firmy Garmin|certifikaci Garmin|certificazione Garmin/i);
+  assert.match(html, /not Garmin certification|keine Garmin-Zertifizierung|certification Garmin|certyfikatem firmy Garmin|certyfikacją Garmin|certifikaci Garmin|certificazione Garmin/i);
 }
 
 assert.doesNotMatch(read("site/localized-content.js"), /download-compatibility-link/);

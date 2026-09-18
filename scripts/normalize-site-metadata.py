@@ -157,7 +157,7 @@ def validate_rendered(config: dict) -> list[str]:
         source = path.read_text(encoding="utf-8")
         title_match = re.search(r"<title>(.*?)</title>", source, re.IGNORECASE | re.DOTALL)
         desc_match = re.search(r'<meta\s+name="description"\s+content="(.*?)">', source, re.IGNORECASE | re.DOTALL)
-        if not title_match or title_match.group(1) != page["title"]:
+        if not title_match or html.unescape(title_match.group(1)) != page["title"]:
             errors.append(f"{page['path']}: title mismatch")
         if len(page["title"]) >= 70 and not page["path"].rstrip("/").endswith("/guides/install-garmin-maps-mac"):
             errors.append(f"{page['path']}: title is longer than the 70-character audit limit")
@@ -179,11 +179,11 @@ def validate_rendered(config: dict) -> list[str]:
         ]:
             if len(re.findall(pattern, source, re.IGNORECASE)) != 1:
                 errors.append(f"{page['path']}: expected one {label}")
-        if f'content="{page["title"]}"' not in source:
+        if f'content="{html.escape(page["title"], quote=True)}"' not in source:
             errors.append(f"{page['path']}: title is not shared by social metadata")
         og_titles = meta_content(source, r'property="og:title"')
         twitter_titles = meta_content(source, r'name="twitter:title"')
-        if og_titles != [page["title"]] or twitter_titles != [page["title"]]:
+        if [html.unescape(value) for value in og_titles] != [page["title"]] or [html.unescape(value) for value in twitter_titles] != [page["title"]]:
             errors.append(f"{page['path']}: title, og:title, and twitter:title are not identical")
         image_url = f'{config["baseUrl"]}{config["socialImage"]}'
         og_images = meta_content(source, r'property="og:image"')

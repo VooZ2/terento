@@ -289,7 +289,7 @@ const englishHome = pageFor("en");
 assert.match(englishHome, /<p class="hero-lede">Install, update, and manage third-party maps from a native macOS app — without manual file transfers\.<\/p>/);
 assert.match(englishHome, /<h1 id="hero-title">Install maps on Garmin watches, simply<\/h1>/);
 assert.doesNotMatch(englishHome, /<p class="hero-lede">[^<]*Freizeitkarte/i);
-assert.match(englishHome, /<meta name="description" content="Install and manage third-party maps on supported Garmin smartwatches with Terento, a free macOS app for Apple Silicon\.">/);
+assert.match(englishHome, /<meta name="description" content="Install and manage third-party maps on Garmin smartwatches with map support using Terento, a free macOS app for Apple Silicon\.">/);
 assert.match(englishHome, /<p class="eyebrow"><span class="status-dot" aria-hidden="true"><\/span>Open-source project · Beta<\/p>/);
 assert.doesNotMatch(englishHome, /Compatibility varies by Garmin model\./);
 

@@ -22,3 +22,11 @@ as a side effect of unrelated work.
   explicitly scoped screenshot task.
 - Do not make broad CSS or generated-page refactors during unrelated content
   changes.
+
+Public Compatibility is a successful-installation directory, not a supported-device
+whitelist. Only exact model/variant rows with at least one successful shared
+installation may appear publicly; a missing model must never be described or
+implied as unsupported. Internal TESTING/TESTED/SUPPORTED/VERIFIED codes are not
+public badges. Initial HTML must contain the current published snapshot; JavaScript
+may refresh it live. Site-wide copy should describe Garmin smartwatches with map
+support rather than a finite supported-model list.

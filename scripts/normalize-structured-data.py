@@ -103,6 +103,7 @@ def application(
     locale: str,
     url: str,
     release: dict,
+    description: str | None = None,
 ) -> dict:
     required_source_fields = (
         "applicationCategory",
@@ -126,14 +127,15 @@ def application(
         "inLanguage": locale,
         "publisher": {"@id": ORGANIZATION_ID},
     }
+    description_value = description or source_application["description"]
     source_order = list(source_application)
     description_before_version = source_order.index("description") < source_order.index("softwareVersion")
     if description_before_version:
-        app["description"] = source_application["description"]
+        app["description"] = description_value
     app["softwareVersion"] = release["releaseLabel"]
     app["softwareRequirements"] = source_application["softwareRequirements"]
     if not description_before_version:
-        app["description"] = source_application["description"]
+        app["description"] = description_value
     return {
         key: app[key]
         for key in (
@@ -236,7 +238,7 @@ def build_pages() -> list[tuple[Path, str]]:
             "@context": "https://schema.org",
             "@graph": [
                 organization(),
-                application(current_application, locale, url, release),
+                application(current_application, locale, url, release, page["description"]),
                 website,
                 faq_page(visible_faq(source, path), locale, url),
             ],
@@ -247,7 +249,7 @@ def build_pages() -> list[tuple[Path, str]]:
         path = ROOT / page["file"]
         source = path.read_text(encoding="utf-8")
         app_source = entity(json_ld(source, path), "SoftwareApplication", path)
-        app = application(app_source, locale, canonical_url(page), release)
+        app = application(app_source, locale, canonical_url(page), release, page["description"])
         rendered.append((path, replace_json_ld(source, {"@context": "https://schema.org", **app}, path)))
     return rendered
 

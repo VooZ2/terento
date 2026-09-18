@@ -1,207 +1,37 @@
-(() => {
-  const statusCodes = ["VERIFIED", "SUPPORTED", "TESTED", "TESTING"];
-
+((root, factory) => {
+  const api = factory();
+  if (typeof module === "object" && module.exports) module.exports = api;
+  const language = typeof document === "object" && document?.documentElement?.lang || "en";
+  if (root) root.TerentoCompatibilityLocale = api.getLocale(language);
+})(typeof globalThis === "object" ? globalThis : this, () => {
   const definitions = {
     en: {
-      language: "en",
-      dateLocale: "en-US",
-      title: "Garmin compatibility",
-      metaTitle: "Garmin Watch Compatibility — Terento",
-      metaDescription: "Check Garmin smartwatch compatibility for Terento using real installation results by model and variant.",
-      hero: "See real Terento installation results for third-party maps by exact Garmin watch model and variant. Compatibility grows as more successful installations are shared by users.",
-      summary: {
-        modelOne: "model with evidence",
-        modelMany: "models with evidence",
-        successes: "successful installs",
-        updated: "Updated",
-      },
-      howSummary: "How compatibility works",
-      howText: "The current beta supports maps from four map providers. Public compatibility is based on real installation evidence for exact Garmin models and variants. Each successful installation shared by users helps us confirm compatibility with greater confidence.",
-      evidenceNote: "These counts come from successful installations shared with Terento. They are not Garmin certification.",
-      filters: {
-        search: "Search models",
-        status: "Filter by status",
-        allStatuses: "All statuses",
-        family: "Filter by family",
-        allFamilies: "All families",
-        sort: "Sort models",
-        attempts: "Most installations",
-        name: "A–Z",
-        statusOption: "Status",
-      },
-      results: { modelOne: "model", modelMany: "models", of: "of", noMatch: "No tried models match these filters.", error: "Compatibility results are temporarily unavailable. Please try again later." },
-      card: { latest: "Latest installation", smartwatch: "Smartwatch", unavailable: "Compatibility unavailable" },
-      statuses: {
-        VERIFIED: { label: "Verified", description: "5 or more successful installations have confirmed compatibility." },
-        SUPPORTED: { label: "Supported", description: "3–4 successful installations have confirmed compatibility." },
-        TESTED: { label: "Tested", description: "1–2 successful installations have been shared by Terento users." },
-        TESTING: { label: "Testing", description: "Terento can install third-party maps on this model, but we’re waiting for the first successful installation shared by users to confirm compatibility." },
-      },
+      dateLocale: "en-US", metaTitle: "Garmin Watch Compatibility & Successful Installs — Terento", metaDescription: "Terento is designed for Garmin smartwatches with map support. See exact models and variants with successful third-party map installations.", hero: "Terento is designed for Garmin smartwatches with map support. Below are exact models and variants where at least one third-party map installation has completed successfully. The list grows as more successful installations are shared.", missing: "Not seeing your model does not mean it is unsupported — we may simply not have a successful shared installation for that exact model and variant yet.", evidenceNote: "Installation results are shared with Terento by users. They are not Garmin certification.", modelOne: "model with successful installs", modelMany: "models with successful installs", successes: "successful installs", latest: "Latest successful install", cardLatest: "Latest successful install", cardSmartwatch: "Smartwatch", successfulInstallLabel: count => `${count} successful install${count === 1 ? "" : "s"}`, filters: { search: "Search models", successful: "Filter by successful installs", allSuccessful: "All successful installs", oneTwo: "1–2 successful installs", threeFour: "3–4 successful installs", fivePlus: "5+ successful installs", family: "Filter by family", allFamilies: "All families", sort: "Sort models", mostSuccessful: "Most successful installs", name: "A–Z", clear: "Clear filters" }, results: { modelOne: "model", modelMany: "models", of: "of" }, freshness: { stale: "Could not refresh. Showing the latest published installation results; counts may be outdated.", unavailable: "Could not load published installation results.", lastLoaded: "Last loaded", retry: "Retry", noMatch: "No models match these filters." }
     },
     de: {
-      language: "de",
-      dateLocale: "de-DE",
-      title: "Garmin-Kompatibilität",
-      metaTitle: "Kompatibilität von Garmin-Uhren — Terento",
-      metaDescription: "Prüfe die Kompatibilität von Garmin-Smartwatches mit Terento anhand echter Installationen für Modell und Variante.",
-      hero: "Sieh dir echte Terento-Installationsergebnisse für Drittanbieter-Karten nach genauem Garmin-Uhrenmodell und Variante an. Die Kompatibilität wächst, wenn Nutzer weitere erfolgreiche Installationen teilen.",
-      summary: { modelOne: "Modell mit Nachweis", modelMany: "Modelle mit Nachweis", successes: "erfolgreiche Installationen", updated: "Aktualisiert" },
-      howSummary: "So funktioniert die Kompatibilität",
-      howText: "Die aktuelle Beta unterstützt Karten von vier Kartenanbietern. Die öffentliche Kompatibilität basiert auf echten Installationsnachweisen für genaue Garmin-Modelle und Varianten. Jede von Nutzern geteilte erfolgreiche Installation hilft uns, die Kompatibilität verlässlicher zu bestätigen.",
-      evidenceNote: "Diese Zahlen stammen aus erfolgreichen Installationen, die mit Terento geteilt wurden. Sie sind keine Garmin-Zertifizierung.",
-      filters: { search: "Modelle suchen", status: "Nach Status filtern", allStatuses: "Alle Status", family: "Nach Familie filtern", allFamilies: "Alle Familien", sort: "Modelle sortieren", attempts: "Meiste Installationen", name: "A–Z", statusOption: "Status" },
-      results: { modelOne: "Modell", modelMany: "Modelle", of: "von", noMatch: "Keine getesteten Modelle passen zu diesen Filtern.", error: "Die Kompatibilitätsergebnisse sind vorübergehend nicht verfügbar. Bitte versuche es später erneut." },
-      card: { latest: "Letzte Installation", smartwatch: "Smartwatch", unavailable: "Kompatibilität nicht verfügbar" },
-      statuses: { VERIFIED: { label: "Bestätigt", description: "Mindestens 5 erfolgreiche Installationen haben die Kompatibilität bestätigt." }, SUPPORTED: { label: "Unterstützt", description: "3–4 erfolgreiche Installationen haben die Kompatibilität bestätigt." }, TESTED: { label: "Getestet", description: "1–2 erfolgreiche Installationen wurden von Terento-Nutzern geteilt." }, TESTING: { label: "In Prüfung", description: "Terento kann Drittanbieter-Karten auf diesem Modell installieren; wir warten noch auf die erste von Nutzern geteilte erfolgreiche Installation zur Bestätigung." } },
+      dateLocale: "de-DE", metaTitle: "Garmin-Uhren-Kompatibilität & erfolgreiche Installationen — Terento", metaDescription: "Terento ist für Garmin-Smartwatches mit Kartenunterstützung entwickelt. Sieh dir genaue Modelle und Varianten mit erfolgreichen Installationen von Drittanbieter-Karten an.", hero: "Terento ist für Garmin-Smartwatches mit Kartenunterstützung entwickelt. Unten siehst du genaue Modelle und Varianten, auf denen mindestens eine Drittanbieter-Karte erfolgreich installiert wurde. Die Liste wächst, wenn weitere erfolgreiche Installationen geteilt werden.", missing: "Wenn dein Modell nicht aufgeführt ist, bedeutet das nicht, dass es nicht unterstützt wird — möglicherweise wurde für genau dieses Modell und diese Variante noch keine erfolgreiche Installation geteilt.", evidenceNote: "Die Installationsergebnisse wurden von Nutzern mit Terento geteilt; sie sind keine Garmin-Zertifizierung.", modelOne: "Modell mit erfolgreichen Installationen", modelMany: "Modelle mit erfolgreichen Installationen", successes: "erfolgreiche Installationen", latest: "Letzte erfolgreiche Installation", cardLatest: "Letzte erfolgreiche Installation", cardSmartwatch: "Smartwatch", successfulInstallLabel: count => `${count} erfolgreiche Installation${count === 1 ? "" : "en"}`, filters: { search: "Modelle suchen", successful: "Nach erfolgreichen Installationen filtern", allSuccessful: "Alle erfolgreichen Installationen", oneTwo: "1–2 erfolgreiche Installationen", threeFour: "3–4 erfolgreiche Installationen", fivePlus: "5+ erfolgreiche Installationen", family: "Nach Familie filtern", allFamilies: "Alle", sort: "Modelle sortieren", mostSuccessful: "Meiste erfolgreiche Installationen", name: "A–Z", clear: "Filter zurücksetzen" }, results: { modelOne: "Modell", modelMany: "Modelle", of: "von" }, freshness: { stale: "Aktualisierung fehlgeschlagen. Die neuesten veröffentlichten Installationsergebnisse werden angezeigt; Zahlen können veraltet sein.", unavailable: "Veröffentlichte Installationsergebnisse konnten nicht geladen werden.", lastLoaded: "Zuletzt geladen", retry: "Erneut versuchen", noMatch: "Keine Modelle passen zu diesen Filtern." }
     },
     fr: {
-      language: "fr",
-      dateLocale: "fr-FR",
-      title: "Compatibilité Garmin",
-      metaTitle: "Compatibilité des montres Garmin — Terento",
-      metaDescription: "Vérifiez la compatibilité des montres Garmin avec Terento grâce aux résultats réels par modèle et variante.",
-      hero: "Consultez les résultats réels d’installation de cartes tierces avec Terento pour chaque modèle et variante de montre Garmin. La compatibilité progresse à mesure que les utilisateurs partagent de nouvelles installations réussies.",
-      summary: { modelOne: "modèle avec preuve", modelMany: "modèles avec preuve", successes: "installations réussies", updated: "Mis à jour" },
-      howSummary: "Comment fonctionne la compatibilité",
-      howText: "La bêta actuelle prend en charge les cartes de quatre fournisseurs de cartes. La compatibilité publique repose sur des preuves réelles d’installation pour des modèles et variantes Garmin précis. Chaque installation réussie partagée par les utilisateurs nous aide à confirmer la compatibilité avec plus de certitude.",
-      evidenceNote: "Ces chiffres proviennent d’installations réussies partagées avec Terento. Ils ne constituent pas une certification Garmin.",
-      filters: { search: "Rechercher un modèle", status: "Filtrer par statut", allStatuses: "Tous les statuts", family: "Filtrer par famille", allFamilies: "Toutes les familles", sort: "Trier les modèles", attempts: "Plus d’installations", name: "A–Z", statusOption: "Statut" },
-      results: { modelOne: "modèle", modelMany: "modèles", of: "sur", noMatch: "Aucun modèle testé ne correspond à ces filtres.", error: "Les résultats de compatibilité sont temporairement indisponibles. Réessayez plus tard." },
-      card: { latest: "Dernière installation", smartwatch: "Montre connectée", unavailable: "Compatibilité indisponible" },
-      statuses: { VERIFIED: { label: "Vérifiée", description: "Au moins 5 installations réussies ont confirmé la compatibilité." }, SUPPORTED: { label: "Prise en charge", description: "3 à 4 installations réussies ont confirmé la compatibilité." }, TESTED: { label: "Testée", description: "1 à 2 installations réussies ont été partagées par des utilisateurs de Terento." }, TESTING: { label: "En test", description: "Terento peut installer des cartes tierces sur ce modèle, mais nous attendons la première installation réussie partagée par un utilisateur pour confirmer la compatibilité." } },
+      dateLocale: "fr-FR", metaTitle: "Compatibilité des montres Garmin et installations réussies — Terento", metaDescription: "Terento est conçu pour les montres Garmin prenant en charge les cartes. Consultez les modèles et variantes exacts avec des installations réussies de cartes tierces.", hero: "Terento est conçu pour les montres Garmin prenant en charge les cartes. Vous trouverez ci-dessous les modèles et variantes exacts pour lesquels au moins une installation de carte tierce a réussi. La liste s’allonge à mesure que de nouvelles installations réussies sont partagées.", missing: "L’absence de votre modèle dans la liste ne signifie pas qu’il n’est pas pris en charge — il se peut simplement qu’aucune installation réussie n’ait encore été partagée pour ce modèle et cette variante précis.", evidenceNote: "Les résultats d’installation sont partagés avec Terento par les utilisateurs ; ils ne constituent pas une certification Garmin.", modelOne: "modèle avec des installations réussies", modelMany: "modèles avec des installations réussies", successes: "installations réussies", latest: "Dernière installation réussie", cardLatest: "Dernière installation réussie", cardSmartwatch: "Montre connectée", successfulInstallLabel: count => `${count} installation${count === 1 ? "" : "s"} réussie${count === 1 ? "" : "s"}`, filters: { search: "Rechercher un modèle", successful: "Filtrer par installations réussies", allSuccessful: "Toutes les installations réussies", oneTwo: "1–2 installations réussies", threeFour: "3–4 installations réussies", fivePlus: "5+ installations réussies", family: "Filtrer par famille", allFamilies: "Toutes les familles", sort: "Trier les modèles", mostSuccessful: "Plus d’installations réussies", name: "A–Z", clear: "Effacer les filtres" }, results: { modelOne: "modèle", modelMany: "modèles", of: "sur" }, freshness: { stale: "Actualisation impossible. Les derniers résultats d’installation publiés sont affichés ; les chiffres peuvent être obsolètes.", unavailable: "Impossible de charger les résultats d’installation publiés.", lastLoaded: "Dernier chargement", retry: "Réessayer", noMatch: "Aucun modèle ne correspond à ces filtres." }
     },
     pl: {
-      language: "pl",
-      dateLocale: "pl-PL",
-      title: "Kompatybilność z Garminem",
-      metaTitle: "Kompatybilność zegarków Garmin — Terento",
-      metaDescription: "Sprawdź kompatybilność zegarków Garmin z Terento na podstawie rzeczywistych instalacji dla modelu i wariantu.",
-      hero: "Zobacz rzeczywiste wyniki instalacji map innych firm przez Terento dla konkretnego modelu i wariantu zegarka Garmin. Kompatybilność rośnie wraz z kolejnymi udanymi instalacjami udostępnianymi przez użytkowników.",
-      summary: { modelOne: "model z potwierdzeniem", modelMany: "modele z potwierdzeniem", successes: "udanych instalacji", updated: "Zaktualizowano" },
-      howSummary: "Jak działa potwierdzanie kompatybilności",
-      howText: "Aktualna beta obsługuje mapy od czterech dostawców. Publiczna kompatybilność opiera się na rzeczywistych dowodach instalacji dla konkretnych modeli i wariantów Garmin. Każda udana instalacja udostępniona przez użytkownika pomaga nam potwierdzać kompatybilność z większą pewnością.",
-      evidenceNote: "Te dane pochodzą z udanych instalacji udostępnionych Terento. Nie są certyfikatem firmy Garmin.",
-      filters: { search: "Szukaj modeli", status: "Filtruj według statusu", allStatuses: "Wszystkie statusy", family: "Filtruj według rodziny", allFamilies: "Wszystkie rodziny", sort: "Sortuj modele", attempts: "Najwięcej instalacji", name: "A–Z", statusOption: "Status" },
-      results: { modelOne: "model", modelMany: "modeli", of: "z", noMatch: "Żaden testowany model nie pasuje do tych filtrów.", error: "Wyniki kompatybilności są chwilowo niedostępne. Spróbuj ponownie później." },
-      card: { latest: "Ostatnia instalacja", smartwatch: "Zegarek", unavailable: "Kompatybilność niedostępna" },
-      statuses: { VERIFIED: { label: "Potwierdzona", description: "Co najmniej 5 udanych instalacji potwierdziło kompatybilność." }, SUPPORTED: { label: "Obsługiwana", description: "3–4 udane instalacje potwierdziły kompatybilność." }, TESTED: { label: "Przetestowana", description: "Użytkownicy Terento udostępnili 1–2 udane instalacje." }, TESTING: { label: "W trakcie testów", description: "Terento może instalować mapy innych firm na tym modelu, ale czekamy na pierwszą udaną instalację udostępnioną przez użytkownika, aby potwierdzić kompatybilność." } },
+      dateLocale: "pl-PL", metaTitle: "Zgodność zegarków Garmin i udane instalacje — Terento", metaDescription: "Terento jest przeznaczone dla zegarków Garmin obsługujących mapy. Zobacz dokładne modele i warianty z udanymi instalacjami map innych firm.", hero: "Terento jest przeznaczone dla zegarków Garmin obsługujących mapy. Poniżej pokazujemy dokładne modele i warianty, na których co najmniej jedna instalacja mapy innej firmy zakończyła się powodzeniem. Lista rośnie wraz z kolejnymi udostępnionymi udanymi instalacjami.", missing: "Brak Twojego modelu na liście nie oznacza, że nie jest obsługiwany — być może nie otrzymaliśmy jeszcze udanej instalacji dla dokładnie tego modelu i wariantu.", evidenceNote: "Wyniki instalacji są udostępniane Terento przez użytkowników; nie są certyfikacją Garmin.", modelOne: "model z udanymi instalacjami", modelMany: "modele z udanymi instalacjami", successes: "udane instalacje", latest: "Ostatnia udana instalacja", cardLatest: "Ostatnia udana instalacja", cardSmartwatch: "Zegarek", successfulInstallLabel: count => `${count} ${count === 1 ? "udana instalacja" : "udanych instalacji"}`, filters: { search: "Szukaj modeli", successful: "Filtruj według udanych instalacji", allSuccessful: "Wszystkie udane instalacje", oneTwo: "1–2 udane instalacje", threeFour: "3–4 udane instalacje", fivePlus: "5+ udanych instalacji", family: "Filtruj według rodziny", allFamilies: "Wszystkie rodziny", sort: "Sortuj modele", mostSuccessful: "Najwięcej udanych instalacji", name: "A–Z", clear: "Wyczyść filtry" }, results: { modelOne: "model", modelMany: "modeli", of: "z" }, freshness: { stale: "Nie udało się odświeżyć danych. Wyświetlamy najnowsze opublikowane wyniki instalacji; liczby mogą być nieaktualne.", unavailable: "Nie udało się pobrać opublikowanych wyników instalacji.", lastLoaded: "Ostatnio pobrano", retry: "Spróbuj ponownie", noMatch: "Żaden model nie pasuje do tych filtrów." }
     },
     cs: {
-      language: "cs",
-      dateLocale: "cs-CZ",
-      title: "Kompatibilita Garmin",
-      metaTitle: "Kompatibilita hodinek Garmin — Terento",
-      metaDescription: "Ověřte kompatibilitu hodinek Garmin s Terento podle skutečných instalací pro konkrétní model a variantu.",
-      hero: "Prohlédněte si skutečné výsledky instalace map třetích stran pomocí Terento pro konkrétní model a variantu hodinek Garmin. Kompatibilita roste s každou další úspěšnou instalací sdílenou uživateli.",
-      summary: { modelOne: "model s ověřením", modelMany: "modely s ověřením", successes: "úspěšných instalací", updated: "Aktualizováno" },
-      howSummary: "Jak kompatibilita funguje",
-      howText: "Aktuální beta podporuje mapy od čtyř poskytovatelů. Veřejná kompatibilita vychází ze skutečných instalačních výsledků pro konkrétní modely a varianty Garmin. Každá úspěšná instalace sdílená uživateli nám pomáhá potvrdit kompatibilitu s větší jistotou.",
-      evidenceNote: "Tato čísla pocházejí z úspěšných instalací sdílených s Terento. Nejde o certifikaci Garmin.",
-      filters: { search: "Hledat modely", status: "Filtrovat podle stavu", allStatuses: "Všechny stavy", family: "Filtrovat podle řady", allFamilies: "Všechny řady", sort: "Řadit modely", attempts: "Nejvíce instalací", name: "A–Z", statusOption: "Stav" },
-      results: { modelOne: "model", modelMany: "modelů", of: "z", noMatch: "Žádný testovaný model neodpovídá těmto filtrům.", error: "Výsledky kompatibility jsou dočasně nedostupné. Zkuste to později znovu." },
-      card: { latest: "Poslední instalace", smartwatch: "Hodinky", unavailable: "Kompatibilita není dostupná" },
-      statuses: { VERIFIED: { label: "Ověřeno", description: "Kompatibilitu potvrdilo nejméně 5 úspěšných instalací." }, SUPPORTED: { label: "Podporováno", description: "Kompatibilitu potvrdily 3–4 úspěšné instalace." }, TESTED: { label: "Testováno", description: "Uživatelé Terento sdíleli 1–2 úspěšné instalace." }, TESTING: { label: "Testování", description: "Terento umí na tomto modelu instalovat mapy třetích stran, ale na potvrzení kompatibility čekáme na první úspěšnou instalaci sdílenou uživatelem." } },
+      dateLocale: "cs-CZ", metaTitle: "Kompatibilita hodinek Garmin a úspěšné instalace — Terento", metaDescription: "Terento je navrženo pro hodinky Garmin s podporou map. Podívejte se na konkrétní modely a varianty s úspěšnými instalacemi map třetích stran.", hero: "Terento je navrženo pro hodinky Garmin s podporou map. Níže jsou uvedeny konkrétní modely a varianty, na kterých již proběhla alespoň jedna úspěšná instalace mapy třetí strany. Seznam se rozšiřuje s dalšími sdílenými úspěšnými instalacemi.", missing: "Pokud zde svůj model nevidíte, neznamená to, že není podporován — pro daný model a variantu zatím možná nebyla sdílena žádná úspěšná instalace.", evidenceNote: "Výsledky instalací sdílejí s Terento uživatelé; nejde o certifikaci Garmin.", modelOne: "model s úspěšnými instalacemi", modelMany: "modely s úspěšnými instalacemi", successes: "úspěšných instalací", latest: "Poslední úspěšná instalace", cardLatest: "Poslední úspěšná instalace", cardSmartwatch: "Hodinky", successfulInstallLabel: count => `${count} ${count === 1 ? "úspěšná instalace" : "úspěšných instalací"}`, filters: { search: "Hledat modely", successful: "Filtrovat podle úspěšných instalací", allSuccessful: "Všechny úspěšné instalace", oneTwo: "1–2 úspěšné instalace", threeFour: "3–4 úspěšné instalace", fivePlus: "5+ úspěšných instalací", family: "Filtrovat podle řady", allFamilies: "Všechny řady", sort: "Řadit modely", mostSuccessful: "Nejvíce úspěšných instalací", name: "A–Z", clear: "Vymazat filtry" }, results: { modelOne: "model", modelMany: "modelů", of: "z" }, freshness: { stale: "Aktualizace se nezdařila. Zobrazují se nejnovější zveřejněné výsledky instalací; počty mohou být zastaralé.", unavailable: "Zveřejněné výsledky instalací se nepodařilo načíst.", lastLoaded: "Naposledy načteno", retry: "Zkusit znovu", noMatch: "Žádný model neodpovídá těmto filtrům." }
     },
     it: {
-      language: "it",
-      dateLocale: "it-IT",
-      title: "Compatibilità Garmin",
-      metaTitle: "Compatibilità degli smartwatch Garmin — Terento",
-      metaDescription: "Verifica la compatibilità degli smartwatch Garmin con Terento tramite risultati reali per modello e variante.",
-      hero: "Scopri i risultati reali di installazione di mappe di terze parti con Terento per ogni modello e variante di smartwatch Garmin. La compatibilità cresce quando gli utenti condividono nuove installazioni riuscite.",
-      summary: { modelOne: "modello con evidenze", modelMany: "modelli con evidenze", successes: "installazioni riuscite", updated: "Aggiornato" },
-      howSummary: "Come funziona la compatibilità",
-      howText: "La beta attuale supporta le mappe di quattro provider. La compatibilità pubblica si basa su risultati reali di installazione per modelli e varianti Garmin esatti. Ogni installazione riuscita condivisa dagli utenti ci aiuta a confermare la compatibilità con maggiore sicurezza.",
-      evidenceNote: "Questi dati provengono da installazioni riuscite condivise con Terento. Non sono una certificazione Garmin.",
-      filters: { search: "Cerca modelli", status: "Filtra per stato", allStatuses: "Tutti gli stati", family: "Filtra per famiglia", allFamilies: "Tutte le famiglie", sort: "Ordina modelli", attempts: "Più installazioni", name: "A–Z", statusOption: "Stato" },
-      results: { modelOne: "modello", modelMany: "modelli", of: "di", noMatch: "Nessun modello provato corrisponde a questi filtri.", error: "I risultati di compatibilità non sono temporaneamente disponibili. Riprova più tardi." },
-      card: { latest: "Ultima installazione", smartwatch: "Smartwatch", unavailable: "Compatibilità non disponibile" },
-      statuses: { VERIFIED: { label: "Verificata", description: "Almeno 5 installazioni riuscite hanno confermato la compatibilità." }, SUPPORTED: { label: "Supportata", description: "3–4 installazioni riuscite hanno confermato la compatibilità." }, TESTED: { label: "Testata", description: "Gli utenti di Terento hanno condiviso 1–2 installazioni riuscite." }, TESTING: { label: "In test", description: "Terento può installare mappe di terze parti su questo modello, ma aspettiamo la prima installazione riuscita condivisa da un utente per confermare la compatibilità." } },
-    },
+      dateLocale: "it-IT", metaTitle: "Compatibilità Garmin e installazioni riuscite — Terento", metaDescription: "Terento è progettato per gli smartwatch Garmin con supporto alle mappe. Scopri modelli e varianti esatti con installazioni riuscite di mappe di terze parti.", hero: "Terento è progettato per gli smartwatch Garmin con supporto alle mappe. Qui sotto trovi i modelli e le varianti esatti sui quali è già stata completata con successo almeno un’installazione di una mappa di terze parti. L’elenco cresce man mano che vengono condivise altre installazioni riuscite.", missing: "Se il tuo modello non è nell’elenco, non significa che non sia supportato — potrebbe semplicemente non esserci ancora un’installazione riuscita condivisa per quel modello e quella variante esatti.", evidenceNote: "I risultati delle installazioni sono condivisi con Terento dagli utenti; non costituiscono una certificazione Garmin.", modelOne: "modello con installazioni riuscite", modelMany: "modelli con installazioni riuscite", successes: "installazioni riuscite", latest: "Ultima installazione riuscita", cardLatest: "Ultima installazione riuscita", cardSmartwatch: "Smartwatch", successfulInstallLabel: count => `${count} ${count === 1 ? "installazione riuscita" : "installazioni riuscite"}`, filters: { search: "Cerca modelli", successful: "Filtra per installazioni riuscite", allSuccessful: "Tutte le installazioni riuscite", oneTwo: "1–2 installazioni riuscite", threeFour: "3–4 installazioni riuscite", fivePlus: "5+ installazioni riuscite", family: "Filtra per famiglia", allFamilies: "Tutte le famiglie", sort: "Ordina modelli", mostSuccessful: "Più installazioni riuscite", name: "A–Z", clear: "Cancella filtri" }, results: { modelOne: "modello", modelMany: "modelli", of: "di" }, freshness: { stale: "Aggiornamento non riuscito. Sono mostrati gli ultimi risultati di installazione pubblicati; i conteggi potrebbero non essere aggiornati.", unavailable: "Impossibile caricare i risultati di installazione pubblicati.", lastLoaded: "Ultimo caricamento", retry: "Riprova", noMatch: "Nessun modello corrisponde a questi filtri." }
+    }
   };
 
-  const freshnessCopy = {
-  "en": {
-    "loading": "Loading live compatibility evidence…",
-    "stale": "Could not refresh. Showing the last results loaded from the API; counts and statuses may be outdated.",
-    "lastLoaded": "Last loaded",
-    "unavailable": "Could not load live compatibility evidence.",
-    "retry": "Retry",
-    "clear": "Clear filters",
-    "noMatch": "No models match these filters.",
-        "recommended": "Recommended"
-  },
-  "de": {
-    "loading": "Aktuelle Kompatibilitätsnachweise werden geladen…",
-    "stale": "Aktualisierung fehlgeschlagen. Die zuletzt aus der API geladenen Ergebnisse werden angezeigt; Zahlen und Status können veraltet sein.",
-    "lastLoaded": "Zuletzt geladen",
-    "unavailable": "Aktuelle Kompatibilitätsnachweise konnten nicht geladen werden.",
-    "retry": "Erneut versuchen",
-    "clear": "Filter zurücksetzen",
-    "noMatch": "Keine Modelle passen zu diesen Filtern.",
-        "recommended": "Empfohlen"
-  },
-  "fr": {
-    "loading": "Chargement des données de compatibilité en direct…",
-    "stale": "Actualisation impossible. Les derniers résultats chargés depuis l’API sont affichés ; les chiffres et statuts peuvent être obsolètes.",
-    "lastLoaded": "Dernier chargement",
-    "unavailable": "Impossible de charger les données de compatibilité en direct.",
-    "retry": "Réessayer",
-    "clear": "Effacer les filtres",
-    "noMatch": "Aucun modèle ne correspond à ces filtres.",
-        "recommended": "Recommandé"
-  },
-  "pl": {
-    "loading": "Ładowanie aktualnych danych o kompatybilności…",
-    "stale": "Nie udało się odświeżyć danych. Wyświetlane są ostatnie wyniki pobrane z API; liczby i statusy mogą być nieaktualne.",
-    "lastLoaded": "Ostatnio pobrano",
-    "unavailable": "Nie udało się pobrać aktualnych danych o kompatybilności.",
-    "retry": "Spróbuj ponownie",
-    "clear": "Wyczyść filtry",
-    "noMatch": "Żaden model nie pasuje do tych filtrów.",
-        "recommended": "Zalecane"
-  },
-  "cs": {
-    "loading": "Načítají se aktuální údaje o kompatibilitě…",
-    "stale": "Aktualizace se nezdařila. Zobrazují se poslední výsledky načtené z API; počty a stavy mohou být zastaralé.",
-    "lastLoaded": "Naposledy načteno",
-    "unavailable": "Aktuální údaje o kompatibilitě se nepodařilo načíst.",
-    "retry": "Zkusit znovu",
-    "clear": "Vymazat filtry",
-    "noMatch": "Žádný model neodpovídá těmto filtrům.",
-        "recommended": "Doporučeno"
-  },
-  "it": {
-    "loading": "Caricamento dei dati di compatibilità aggiornati…",
-    "stale": "Aggiornamento non riuscito. Sono mostrati gli ultimi risultati caricati dall’API; conteggi e stati potrebbero non essere aggiornati.",
-    "lastLoaded": "Ultimo caricamento",
-    "unavailable": "Impossibile caricare i dati di compatibilità aggiornati.",
-    "retry": "Riprova",
-    "clear": "Cancella filtri",
-    "noMatch": "Nessun modello corrisponde a questi filtri.",
-        "recommended": "Consigliato"
-  }
-};
-
-  const successfulInstallLabel = {
-    en: (count) => `${count} successful install${count === 1 ? "" : "s"}`,
-    de: (count) => `${count} erfolgreiche Installation${count === 1 ? "" : "en"}`,
-    fr: (count) => `${count} installation${count === 1 ? "" : "s"} réussie${count === 1 ? "" : "s"}`,
-    pl: (count) => `${count} ${count === 1 ? "udana instalacja" : "udanych instalacji"}`,
-    cs: (count) => `${count} ${count === 1 ? "úspěšná instalace" : "úspěšných instalací"}`,
-    it: (count) => `${count} ${count === 1 ? "installazione riuscita" : "installazioni riuscite"}`,
-  };
-
-  Object.entries(definitions).forEach(([language, definition]) => {
-    definition.successfulInstallLabel = successfulInstallLabel[language];
-    definition.freshness = freshnessCopy[language];
+  Object.values(definitions).forEach((copy) => {
+    copy.summary = { modelOne: copy.modelOne, modelMany: copy.modelMany };
+    copy.card = { latest: copy.cardLatest, smartwatch: copy.cardSmartwatch };
+    Object.freeze(copy.summary);
+    Object.freeze(copy.card);
+    Object.freeze(copy);
   });
-
-  const getLocale = (value) => definitions[String(value || "en").toLowerCase().split("-")[0]] || definitions.en;
-  const selectedLanguage = typeof document === "undefined" ? "en" : document.documentElement.lang;
-  const selected = getLocale(selectedLanguage);
-  const api = { statusCodes, definitions, getLocale, selected };
-
-  if (typeof module !== "undefined" && module.exports) module.exports = api;
-  if (typeof globalThis !== "undefined") globalThis.TerentoCompatibilityLocale = selected;
-})();
+  const getLocale = (language) => definitions[language] || definitions.en;
+  return Object.freeze({ definitions: Object.freeze(definitions), getLocale });
+});
