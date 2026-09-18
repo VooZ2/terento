@@ -128,6 +128,18 @@ records the correction in `admin_audit_log`, so testing starts from the
 required paused state and a later activation remains an intentional admin
 action.
 
+Migration `058_remove_authorized_test_events_20260825.sql` is a one-time,
+owner-authorized cleanup of five test installation minutes displayed in the
+Europe/Vilnius timezone. It requires the matching `1.0.0` compatibility rows,
+regions, outcomes, and five distinct operation IDs before making any change;
+the temporary check constraint aborts the migration when that shape does not
+match (a completely empty compatibility table is treated as a safe no-op for
+fresh database bootstraps). It then removes only lifecycle rows keyed by those operation IDs and
+their compatibility rows (dependent evidence records use the existing
+cascade rules), and records the exact request and deletion counts in
+`admin_audit_log`. It does not use the broad local-test purge endpoint and
+does not change UI or design behavior.
+
 The OpenTopoMap collector accepts exactly 177 official `main` ZIP
 archives. `contours` links remain visible to the parser for source auditing,
 but are not collected or allowed to fail the main catalog; their installation
