@@ -169,3 +169,13 @@ class Build30Tests(unittest.TestCase):
         self.assertNotIn('Outcome not received', legacy)
         for event_type in ('DOWNLOAD_CANCELLED', 'DOWNLOAD_INTERRUPTED'):
             self.assertNotIn('failed', _overview_map_activity_row(dict(event_type=event_type)))
+
+    def test_stale_download_phase_is_history_not_active_work(self):
+        markup = _overview_map_activity_row(dict(
+            event_type='DOWNLOAD_STARTED', is_stale=True,
+            occurred_at='2026-09-18T15:32:00Z',
+        ))
+        self.assertIn('Outcome missing', markup)
+        self.assertNotIn('Outcome not received', markup)
+        self.assertIn('overview-activity-stale', markup)
+        self.assertIn('map-activity-neutral', markup)

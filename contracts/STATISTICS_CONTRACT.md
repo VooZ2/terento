@@ -136,6 +136,15 @@ The update acquisition result does not change `F_success`, `F_failed`,
 or fresh-map popularity. An update may update last-update/version information
 in map history, but it is not a fresh install.
 
+Provider acquisition failures before the device write boundary are acquisition
+facts only. A `write_started=false` diagnostic with download stage or
+`INSTALL_BLOCKED_DOWNLOAD_FAILED` is classified as `PRE-INSTALL` /
+`NOT_STARTED`: it is excluded from fresh-install attempts, failures, model
+compatibility statistics, open errors, and installation review tasks. Raw
+diagnostic and map-event facts remain retained and visible in acquisition
+activity. `STARTED`, `PROCESSING`, `CANCELLED`, `INTERRUPTED`, stale and
+missing terminal outcomes do not enter the acquisition failure denominator.
+
 ## Charts, cards, and activity
 
 The Overview chart is titled `MAP INSTALLATIONS` / `Map installations over time`.
@@ -182,6 +191,14 @@ decreases and confirmed release/asset-population changes are discontinuities.
 Missing newly introduced metadata must not automatically invalidate historical counter observations. Observed counter deltas and population-comparability confidence are separate dimensions.
 
 The GitHub read model uses these meanings:
+
+For the 24-hour visual trend, each observation is positioned at its canonical
+hour floor (`hour_start`), so `20:43` renders in `20:00` and `00:46` in
+`00:00`; there is one x-axis position per hour. The exact `observed_at` remains
+available for tooltip/accessibility context. This changes display bucketing
+only: deltas, baselines, gaps, discontinuities, legacy confidence, partial
+aggregation, and period-boundary handling continue to use the real retained
+observations. Daily, monthly, and all-time aggregation is unchanged.
 
 The trend `state` carries interval continuity and rendering semantics;
 `confidence` carries whether a retained delta is `legacy`, `verified`, or
@@ -247,6 +264,12 @@ Queue actions use the operation-level diagnostic scope when a batch contains
 multiple map-result rows; this does not merge those rows in installation
 statistics or change their per-map historical outcomes.
 
+A provider acquisition failure before the device write boundary, including
+`INSTALL_BLOCKED_DOWNLOAD_FAILED`, is not an actionable installation review
+task. It remains a `DOWNLOAD_FAILED` acquisition/activity fact and is excluded
+from installation-failure diagnostics, open-error counts, and identity-review
+tasks unless an operator explicitly creates or links a separate issue.
+
 Across API and UI read models, numeric zero, unknown, unavailable, stale, and
 partial values are distinct. A present zero remains `0`; missing or invalid
 data is `—`/`Unknown`; query failure is unavailable/stale; and partial data is
@@ -287,6 +310,21 @@ The regression case for beta.12 build30 Freizeitkarte `CZE+` with
 device installation `NOT_STARTED` result. It contributes zero fresh attempts,
 zero fresh failures, and does not alter the compatibility model rate. The
 backend must not synthesize an `INSTALL_FAILED` map event from that evidence.
+
+## Average download time
+
+The private provider metric is measured only for a successful external main-map
+acquisition with exactly one correlated `DOWNLOAD_STARTED`,
+`DOWNLOAD_PROCESSING`, and `DOWNLOAD_SUCCEEDED` phase. Identity must agree on
+acquisition, operation, provider, package, and `main` component. Its duration
+is `PROCESSING.occurred_at - STARTED.occurred_at`, not Started → Succeeded.
+Failed, interrupted, cancelled, contours, custom imports, local tests,
+missing/conflicting phases, and legacy records without reliable identity are
+excluded. Successful terminal completion selects the population, while its
+earlier phases may be outside the selected period; UI pagination and recent
+activity limits never restrict the population. `sampleCount` is the number of
+eligible measured acquisitions, and the raw average is rounded only once for
+display.
 
 ## Privacy and limits
 

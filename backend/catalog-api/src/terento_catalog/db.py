@@ -29,6 +29,7 @@ from .telemetry import is_local_release_label
 
 
 OVERVIEW_MODEL_ACTIVITY_LIMIT = 5
+ADMIN_DOWNLOAD_LIFECYCLE_STALE_HOURS = 4
 
 
 class IdentityResolutionError(ValueError):
@@ -441,7 +442,15 @@ class Database:
         for index, current in enumerate(period_observations, start=first_period_index):
             previous = observations[index - 1] if index > 0 else None
             item = {
-                "bucket": current["observed_at"] if bucket == "hour" else _overview_bucket_floor(current["observed_at"], bucket, time_zone=time_zone),
+                # The 24-hour chart is hourly even when the stored observation
+                # arrived mid-hour. Keep observed_at for exact tooltip/a11y
+                # context, but never let minutes create another x position.
+                "bucket": (
+                    current.get("hour_start")
+                    or _overview_bucket_floor(current["observed_at"], "hour", time_zone=time_zone)
+                    if bucket == "hour" else
+                    _overview_bucket_floor(current["observed_at"], bucket, time_zone=time_zone)
+                ),
                 "previous_observed_at": previous["observed_at"] if previous is not None else None,
                 "observed_at": current["observed_at"],
                 "state": "baseline",
@@ -1484,6 +1493,24 @@ class Database:
                         WHERE e.event_type = 'MAP_UPDATE_FAILED'
                           AND e.outcome = 'FAILED'
                     ) AS failed_map_update_count
+                    ,count(DISTINCT CASE
+                        WHEN e.event_type = 'DOWNLOAD_SUCCEEDED'
+                             AND e.outcome = 'SUCCEEDED'
+                            THEN COALESCE(e.acquisition_id::text, 'event:' || e.event_id::text)
+                                 || ':' || COALESCE(e.operation_id::text, '')
+                                 || ':' || COALESCE(e.provider_id, '')
+                                 || ':' || COALESCE(e.map_package_id::text, '')
+                                 || ':' || COALESCE(e.component_kind, '')
+                     END) AS completed_download_count
+                    ,count(DISTINCT CASE
+                        WHEN e.event_type = 'DOWNLOAD_FAILED'
+                             AND e.outcome = 'FAILED'
+                            THEN COALESCE(e.acquisition_id::text, 'event:' || e.event_id::text)
+                                 || ':' || COALESCE(e.operation_id::text, '')
+                                 || ':' || COALESCE(e.provider_id, '')
+                                 || ':' || COALESCE(e.map_package_id::text, '')
+                                 || ':' || COALESCE(e.component_kind, '')
+                     END) AS failed_download_count
                 {event_scope}
                 """,
                 (since, since),
@@ -1525,17 +1552,38 @@ class Database:
             ).fetchone() or {}
             recent = list(connection.execute(
                 f"""
-                {compatibility_fallback_cte}, acquisition_activity AS (
-                    SELECT DISTINCT ON (COALESCE(e.acquisition_id, e.event_id), e.operation_id, e.provider_id, e.map_package_id)
+                {compatibility_fallback_cte}, acquisition_events AS (
+                    SELECT
+                        e.*,
+                        CASE
+                            WHEN e.acquisition_id IS NOT NULL
+                                THEN 'acquisition:' || e.acquisition_id::text || ':'
+                                     || COALESCE(e.operation_id::text, '') || ':'
+                                     || COALESCE(e.provider_id, '') || ':'
+                                     || COALESCE(e.map_package_id::text, '') || ':'
+                                     || COALESCE(e.component_kind, '')
+                            WHEN e.operation_id IS NOT NULL
+                                THEN 'legacy:' || e.operation_id::text || ':'
+                                     || COALESCE(e.provider_id, '') || ':'
+                                     || COALESCE(e.map_package_id::text, '') || ':'
+                                     || COALESCE(e.component_kind, '')
+                            ELSE 'event:' || e.event_id::text
+                        END AS lifecycle_key
+                    FROM map_download_event AS e
+                    WHERE e.is_local_test IS NOT TRUE
+                ), acquisition_activity AS (
+                    SELECT DISTINCT ON (e.lifecycle_key)
                         e.*,
                         jsonb_agg(jsonb_build_object('type', e.event_type, 'at', e.occurred_at)) OVER (
-                            PARTITION BY COALESCE(e.acquisition_id, e.event_id), e.operation_id, e.provider_id, e.map_package_id
+                            PARTITION BY e.lifecycle_key
                             ORDER BY e.occurred_at, CASE e.event_type WHEN 'DOWNLOAD_STARTED' THEN 0 WHEN 'DOWNLOAD_PROCESSING' THEN 1 ELSE 2 END, e.event_id
                             ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
-                        ) AS lifecycle
-                    FROM map_download_event e
-                    WHERE e.is_local_test IS NOT TRUE
-                    ORDER BY COALESCE(e.acquisition_id, e.event_id), e.operation_id, e.provider_id, e.map_package_id,
+                        ) AS lifecycle,
+                        bool_or(e.event_type IN ('DOWNLOAD_SUCCEEDED', 'DOWNLOAD_FAILED', 'DOWNLOAD_CANCELLED', 'DOWNLOAD_INTERRUPTED')) OVER (
+                            PARTITION BY e.lifecycle_key
+                        ) AS has_recorded_outcome
+                    FROM acquisition_events AS e
+                    ORDER BY e.lifecycle_key,
                         CASE WHEN e.event_type IN ('DOWNLOAD_SUCCEEDED', 'DOWNLOAD_FAILED', 'DOWNLOAD_CANCELLED', 'DOWNLOAD_INTERRUPTED') THEN 0 ELSE 1 END,
                         e.occurred_at DESC, e.event_id DESC
                 )
@@ -1554,14 +1602,12 @@ class Database:
                     e.occurred_at,
                     e.component_kind,
                     e.lifecycle,
-                    EXISTS (SELECT 1 FROM map_download_event ended
-                            WHERE ended.operation_id = e.operation_id
-                              AND ended.provider_id = e.provider_id
-                              AND ended.map_package_id IS NOT DISTINCT FROM e.map_package_id
-                              AND ended.is_local_test IS NOT TRUE
-                              AND ended.event_type IN ('DOWNLOAD_SUCCEEDED', 'DOWNLOAD_FAILED', 'DOWNLOAD_CANCELLED', 'DOWNLOAD_INTERRUPTED')
-                              AND (ended.acquisition_id = e.acquisition_id OR
-                                   (ended.acquisition_id IS NULL AND e.acquisition_id IS NULL))) AS has_recorded_outcome
+                    e.has_recorded_outcome,
+                    (
+                        e.event_type IN ('DOWNLOAD_STARTED', 'DOWNLOAD_PROCESSING')
+                        AND NOT e.has_recorded_outcome
+                        AND e.occurred_at < now() - interval '{ADMIN_DOWNLOAD_LIFECYCLE_STALE_HOURS} hours'
+                    ) AS is_stale
                 {event_scope.replace('FROM map_download_event AS e', 'FROM acquisition_activity AS e')}
                 UNION ALL
                 SELECT
@@ -1580,7 +1626,8 @@ class Database:
                     c.occurred_at,
                     NULL AS component_kind,
                     NULL AS lifecycle,
-                    false AS has_recorded_outcome
+                    false AS has_recorded_outcome,
+                    false AS is_stale
                 FROM compatibility_fallback AS c
                 LEFT JOIN map_provider AS p ON p.id = c.provider_id
                 ORDER BY occurred_at DESC
@@ -1721,6 +1768,9 @@ class Database:
         failed = int(summary.get("failed_install_count") or 0)
         completed_updates = int(summary.get("completed_map_update_count") or 0)
         failed_updates = int(summary.get("failed_map_update_count") or 0)
+        completed_downloads = int(summary.get("completed_download_count") or 0)
+        failed_downloads = int(summary.get("failed_download_count") or 0)
+        download_attempts = completed_downloads + failed_downloads
         all_time_update_successes = int(all_time_summary.get("all_time_map_update_success_count") or 0)
         all_time_update_failures = int(all_time_summary.get("all_time_map_update_failed_count") or 0)
         return {
@@ -1728,6 +1778,12 @@ class Database:
             "completedInstallCount": completed,
             "failedInstallCount": failed,
             "installSuccessRate": completed / (completed + failed) * 100 if completed + failed else None,
+            "completedDownloadCount": completed_downloads,
+            "failedDownloadCount": failed_downloads,
+            "downloadSuccessRate": (
+                completed_downloads / download_attempts * 100
+                if download_attempts else None
+            ),
             "completedMapUpdateCount": completed_updates,
             "failedMapUpdateCount": failed_updates,
             "mapUpdateCount": completed_updates + failed_updates,
