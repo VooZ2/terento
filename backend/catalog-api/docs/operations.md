@@ -130,16 +130,16 @@ action.
 
 Migration `058_remove_authorized_test_events_20260825.sql` is a one-time,
 owner-authorized cleanup of five test installation minutes displayed in the
-Europe/Vilnius timezone. It requires exactly five matching `1.0.0`
-`freizeitkarte` `INSTALL_*` rows with the requested regions and outcomes, plus
-five distinct operation IDs, before making any change; the temporary check
+Europe/Vilnius timezone. It requires exactly five matching `1.0.0` rows with
+the requested regions and outcomes in one telemetry stream, or the same five
+operation IDs in both streams, before making any change; the temporary check
 constraint aborts the migration when that shape does not match (a completely
 empty telemetry database is treated as a safe no-op for fresh database
 bootstraps). It then removes only lifecycle rows keyed by those operation IDs
-and any compatibility rows linked to them (dependent evidence records use the
-existing cascade rules), and records the exact request and deletion counts in
-`admin_audit_log`. It does not use the broad local-test purge endpoint and does
-not change UI or design behavior.
+and compatibility rows linked to or explicitly identified by those targets
+(dependent evidence records use the existing cascade rules), and records the
+exact request and deletion counts in `admin_audit_log`. It does not use the
+broad local-test purge endpoint and does not change UI or design behavior.
 
 The OpenTopoMap collector accepts exactly 177 official `main` ZIP
 archives. `contours` links remain visible to the parser for source auditing,
