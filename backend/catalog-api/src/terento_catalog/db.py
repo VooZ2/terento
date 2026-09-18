@@ -936,13 +936,29 @@ class Database:
             WITH operation_reviews AS (
                 SELECT
                     COALESCE(operation_id::text, 'legacy:' || event_id::text) AS operation_key,
-                    bool_or(phase_outcome = 'FAILED') AS has_failure,
+                    bool_or(
+                        phase_outcome = 'FAILED'
+                        AND NOT (
+                            write_started IS FALSE
+                            AND (
+                                failure_stage = 'download'
+                                OR failure_code = 'INSTALL_BLOCKED_DOWNLOAD_FAILED'
+                            )
+                        )
+                    ) AS has_failure,
                     bool_or(NULLIF(btrim(linked_github_issue), '') IS NOT NULL)
                         AS has_github_issue,
                     bool_or(
                         canonical_device_model_id IS NULL
                         AND COALESCE(identity_resolution_state, 'UNRESOLVED')
                             NOT IN ('RESOLVED', 'NOT_IDENTIFIABLE')
+                        AND NOT (
+                            write_started IS FALSE
+                            AND (
+                                failure_stage = 'download'
+                                OR failure_code = 'INSTALL_BLOCKED_DOWNLOAD_FAILED'
+                            )
+                        )
                     ) AS identity_pending
                 FROM compatibility_evidence_event
                 WHERE diagnostic_status = 'ACTIVE'
@@ -1075,7 +1091,24 @@ class Database:
                     (write_started IS TRUE) AS write_started,
                     (result_classification_effective = 'SUCCESS') AS operation_succeeded,
                     (result_classification_effective = 'FAILURE') AS fresh_failure,
-                    (phase_outcome = 'FAILED') AS has_failed,
+                    (
+                        phase_outcome = 'FAILED'
+                        AND NOT (
+                            write_started IS FALSE
+                            AND (
+                                failure_stage = 'download'
+                                OR failure_code = 'INSTALL_BLOCKED_DOWNLOAD_FAILED'
+                            )
+                        )
+                    ) AS has_failed,
+                    (
+                        phase_outcome = 'FAILED'
+                        AND write_started IS FALSE
+                        AND (
+                            failure_stage = 'download'
+                            OR failure_code = 'INSTALL_BLOCKED_DOWNLOAD_FAILED'
+                        )
+                    ) AS preinstall_download_failure,
                     (result_classification_effective = 'NOT_STARTED') AS has_not_started,
                     (diagnostic_status = 'ACTIVE' AND
                         linked_github_issue IS NOT NULL AND btrim(linked_github_issue) <> '')
@@ -1083,8 +1116,21 @@ class Database:
                     (diagnostic_status = 'ACTIVE' AND
                         canonical_device_model_id IS NULL AND
                         COALESCE(identity_resolution_state, 'UNRESOLVED')
-                            NOT IN ('RESOLVED', 'NOT_IDENTIFIABLE')) AS identity_pending,
-                    (diagnostic_status = 'ACTIVE' AND (
+                            NOT IN ('RESOLVED', 'NOT_IDENTIFIABLE')
+                        AND NOT (
+                            write_started IS FALSE
+                            AND (
+                                failure_stage = 'download'
+                                OR failure_code = 'INSTALL_BLOCKED_DOWNLOAD_FAILED'
+                            )
+                        )) AS identity_pending,
+                    (diagnostic_status = 'ACTIVE' AND NOT (
+                        write_started IS FALSE
+                        AND (
+                            failure_stage = 'download'
+                            OR failure_code = 'INSTALL_BLOCKED_DOWNLOAD_FAILED'
+                        )
+                    ) AND (
                         phase_outcome IN ('FAILED', 'NOT_STARTED')
                         OR result_classification_effective = 'UNKNOWN'
                         OR failure_stage IS NOT NULL
@@ -1135,7 +1181,8 @@ class Database:
                     compatibility_identity, model, variant, provider, region,
                     release_label, app_build, failure_stage, failure_code,
                     error_category, last_occurred_at, operation_succeeded,
-                    has_failed, has_not_started, open_error,
+                    has_failed, has_not_started, preinstall_download_failure,
+                    open_error,
                     linked_github_issue, diagnostic_workflow_status, has_github_issue
                 FROM scoped_operations
                 ORDER BY last_occurred_at DESC, operation_key
