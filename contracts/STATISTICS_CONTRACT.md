@@ -147,23 +147,24 @@ missing terminal outcomes do not enter the acquisition failure denominator.
 
 ## Charts, cards, and activity
 
-The Overview chart is titled `MAP INSTALLATIONS` / `Map installations over time`.
-Map installations over time is an installation-outcome chart. It must never include download or pre-install acquisition events.
+The Overview installation trend is an installation-outcome chart. It must never
+include download or pre-install acquisition events.
 
-Fresh installs and map updates are separate statistical populations. Updates must never change fresh-install counts or success rates.
+Fresh-install outcomes and map-update outcomes are separate statistical
+populations. Updates must never change fresh-install counts or success rates.
 
 Its fresh series are provider fresh successes, custom fresh successes, and
-confirmed failed fresh installs (including custom). The update series is
+confirmed fresh-install failures (including custom). The update series is
 separate. Fresh attempt totals are `F_success + F_failed`; download,
 pre-install, device-check, not-started, cancelled, and unknown events are not
 chart series.
 
-The map-statistics view labels its cards separately as `Fresh installs`,
-`Fresh install success`, `Successful updates`, `Failed updates`, and `Update
-success`. It keeps acquisition cards separate from those outcomes. Period
-views use the selected period; all-time views say so explicitly. Period
-boundaries use the server/read-model timezone supplied by the request, and
-timestamps remain immutable source facts.
+The map-statistics read model keeps fresh-install outcomes, acquisition
+outcomes, and update outcomes separate. Period views use the selected period;
+all-time views say so explicitly. Period boundaries use the server/read-model
+timezone supplied by the request, and timestamps remain immutable source facts.
+Admin labels and grouping are owned by
+[`admin-behavior-contract.md`](../backend/catalog-api/docs/admin-behavior-contract.md).
 
 Popular maps uses only known provider-catalog packages and successful fresh
 main-map installs. Custom `.img` rows, optional components, updates, and
@@ -192,13 +193,13 @@ Missing newly introduced metadata must not automatically invalidate historical c
 
 The GitHub read model uses these meanings:
 
-For the 24-hour visual trend, each observation is positioned at its canonical
-hour floor (`hour_start`), so `20:43` renders in `20:00` and `00:46` in
-`00:00`; there is one x-axis position per hour. The exact `observed_at` remains
-available for tooltip/accessibility context. This changes display bucketing
-only: deltas, baselines, gaps, discontinuities, legacy confidence, partial
-aggregation, and period-boundary handling continue to use the real retained
-observations. Daily, monthly, and all-time aggregation is unchanged.
+For the 24-hour trend read model, `hour_start` is the canonical hourly floor of
+an observation. The exact `observed_at` remains available as factual interval
+metadata. This changes display bucketing only: deltas, baselines, gaps,
+discontinuities, legacy confidence, partial aggregation, and period-boundary
+handling continue to use the real retained observations. The Admin chart's
+equal-width slots and `HH:00` labels are presentation rules in
+[`admin-behavior-contract.md`](../backend/catalog-api/docs/admin-behavior-contract.md).
 
 The trend `state` carries interval continuity and rendering semantics;
 `confidence` carries whether a retained delta is `legacy`, `verified`, or
@@ -264,12 +265,6 @@ Queue actions use the operation-level diagnostic scope when a batch contains
 multiple map-result rows; this does not merge those rows in installation
 statistics or change their per-map historical outcomes.
 
-A provider acquisition failure before the device write boundary, including
-`INSTALL_BLOCKED_DOWNLOAD_FAILED`, is not an actionable installation review
-task. It remains a `DOWNLOAD_FAILED` acquisition/activity fact and is excluded
-from installation-failure diagnostics, open-error counts, and identity-review
-tasks unless an operator explicitly creates or links a separate issue.
-
 Across API and UI read models, numeric zero, unknown, unavailable, stale, and
 partial values are distinct. A present zero remains `0`; missing or invalid
 data is `—`/`Unknown`; query failure is unavailable/stale; and partial data is
@@ -322,9 +317,11 @@ Failed, interrupted, cancelled, contours, custom imports, local tests,
 missing/conflicting phases, and legacy records without reliable identity are
 excluded. Successful terminal completion selects the population, while its
 earlier phases may be outside the selected period; UI pagination and recent
-activity limits never restrict the population. `sampleCount` is the number of
-eligible measured acquisitions, and the raw average is rounded only once for
-display.
+activity limits never restrict the population. `populationCount` is the full
+selected eligible terminal-acquisition population; `sampleCount` is the subset
+with a complete measured phase sequence. The raw average is rounded only once
+for display. This is the only canonical definition of Average download time;
+Admin display formatting is owned by the Admin behavior contract.
 
 ## Privacy and limits
 
@@ -333,44 +330,3 @@ They must never require Garmin Unit IDs, serial numbers, accounts, local paths,
 manifests, raw logs, map binaries, credentials, or persistent user/watch IDs.
 The contract does not guarantee complete use: telemetry is opt-out, delivery
 can fail, reports may be delayed, and legacy records can have unknown fields.
-
-
-## Average download time
-
-This private Admin metric describes the observed main-map download phase, not
-server speed or a health verdict. File size, the user's connection, provider
-infrastructure and app phase timing all affect it.
-
-For each eligible successful main acquisition, duration in seconds is
-`DOWNLOAD_PROCESSING.occurred_at - DOWNLOAD_STARTED.occurred_at`. The current
-and released beta.12 build32 producer records Processing on entry to downloaded
-file validation, and Succeeded after acquisition completes. Started → Succeeded
-includes validation/unpacking and is not this metric.
-
-Join by acquisition ID and require agreement on operation, provider, package and
-explicit main component. Deduplicate identical phase facts. Require exactly one
-Started, Processing and successful terminal phase, nonnegative duration and a
-terminal timestamp not before Processing. Conflicting phases, missing identity
-or phases, contours, custom imports, local test events and failed/cancelled/
-interrupted acquisitions do not contribute. Never repair history with nearest
-timestamps or choose convenient min/max facts. Aggregate all eligible durations
-on the backend, without Recent activity or event-detail pagination limits.
-
-Completion time selects the population. Resolve its earlier Started/Processing
-phases even outside the window. Activity by provider uses selected statistics
-population filters; event-detail type/outcome/page filters do not change it.
-Providers uses the last 30 days. Return `averageSeconds` (number or null),
-`sampleCount`, and `populationCount` per provider. Population counts distinct
-successful main acquisition identities, including legacy successes with unknown
-component treated as historical main for coverage only; legacy missing phase
-identity never creates a measurement. Conflicting successes count once for
-coverage and supply no measurement. This coverage denominator is not an install
-count, user count or physical-device count.
-
-Average raw seconds first, then round once to the nearest whole second for
-mm:ss display: 8 → 00:08, 277 → 04:37, 3912 → 65:12. Empty/invalid sample means
-null/“—”, never zero. A genuine zero-duration eligible pair displays 00:00.
-Both Admin tables use the same formatter and expose a plain-language measured sample label (“X downloads”) plus measured/
-successful coverage, formula and period through the accessible explanation.
-Historical versions without reliable phases remain unmeasured. No app payload,
-public ingestion schema or health threshold changes are required.

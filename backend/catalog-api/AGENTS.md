@@ -17,5 +17,16 @@ backend runtime files as a side effect of brand work.
 - Isolate visual refactors from API or data-model refactors.
 - Preserve current responsive behavior and action semantics.
 
+Before changing Terento Admin UI or statistics, search the canonical Admin and
+statistics contracts for every touched concept. If a newer explicit owner rule
+supersedes older prose, update or remove the older rule in the same change
+rather than appending a conflicting definition; keep one canonical definition
+per behavior and update any regression tests that encode superseded behavior
+with the rule. Do not keep contradictory legacy guidance for compatibility.
+Explicit current Admin UI invariants in `docs/admin-behavior-contract.md` take
+precedence over older generic presentation wording.
+Statistical populations and formulas remain canonical in
+`contracts/STATISTICS_CONTRACT.md`; this contract owns Admin presentation only.
+
 The admin interface may remain denser and more operational than the public
 website; it is not a public marketing surface.

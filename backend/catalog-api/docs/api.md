@@ -112,32 +112,29 @@ show failed map events; this change adds no resolution mutation or diagnostic
 records. This PR212 path is an incomplete fallback: it does not supply a device
 diagnostic dialog, assignment or issue workflow. See the behavior contract's
 known gaps.
-Compatibility evidence remains a secondary, explicitly
-labelled block with its own variants, write-started attempts, evidence success,
-open errors, and normalized failure reasons. Common reason spelling variants
-are collapsed into stable canonical groups such as `source_validation`; only
-events without a classifiable category, stage, or code remain `unknown`. A
-successful full statistics query with no matching rows reports zero recorded
-events and zero terminal attempts, while rates remain an em dash because their
-denominator is zero. Failed or partial queries remain unavailable/partial; no new client
-telemetry, public statistics, or map-event payload is created by this page.
+Compatibility evidence remains a separate, explicitly labelled Overview block
+with its own variants, write-started attempts, evidence success, open errors,
+and normalized failure reasons. The separate `Device/model activity` panel is
+not that block; its target presentation is defined in
+[`admin-behavior-contract.md`](admin-behavior-contract.md). Common reason
+spelling variants are collapsed into stable canonical groups such as
+`source_validation`; only events without a classifiable category, stage, or
+code remain `unknown`. A successful full statistics query with no matching rows
+reports zero recorded events and zero terminal attempts, while rates remain an
+em dash because their denominator is zero. Failed or partial queries remain
+unavailable/partial; no new client telemetry, public statistics, or map-event
+payload is created by this page.
 The `Device/model activity` panel shows the five most recent identified
 compatibility operations as individual rows; it is not a grouped model-count
 summary. The full installations history remains available on the
 `/admin/installations` route.
 
-When a compatibility result has `write_started = false`, it remains visible as
-a pre-install diagnostic, but it is not projected as `INSTALL_FAILED` in the
-Overview fallback or fresh-install totals. Its stage/code and false write fact
-remain available in compatibility diagnostics. A missing write fact is retained
-as unknown. Existing explicit map events are kept and eligible verified-success
-or write-started failure fallback projection is deduplicated by logical map
-result.
-For a provider download failure before the device write boundary, it remains
-activity/history as `Download failed`; it does not create an installation-
-failure diagnostic, Review queue task, open-error count, or identity-review
-task. An explicitly linked GitHub issue remains a separate operator-created
-workflow.
+The read model applies the pre-install classification in
+[`contracts/STATISTICS_CONTRACT.md`](../../../contracts/STATISTICS_CONTRACT.md):
+a current `write_started = false` result remains diagnostic/activity history and
+is not projected as `INSTALL_FAILED` in Overview or fresh-install totals. A
+missing write fact remains unknown. Existing explicit map events and eligible
+fallback projections are deduplicated by logical map result.
 
 The Overview also exposes `Observed download increases`, a display-only chart
 of public GitHub release asset cumulative-counter increases for the selected
@@ -153,8 +150,12 @@ missing-check gap or period boundary are retained as uncertain intervals. Each
 trend item retains the previous observation time, the current `observed_at`,
 the two deltas, its continuity state, and population-comparability confidence.
 Aggregated buckets retain known deltas as partial when another interval is
-unknown. The chart uses actual observation times and never invents individual
-download times or zero observations. The scheduler refreshes hourly; a failed
+unknown. The chart's 24-hour visual slots use canonical hourly `hour_start`
+buckets; observation minutes do not change the x-position and labels use
+`HH:00`. The exact `observed_at` remains factual interval metadata for delta,
+gap, and discontinuity semantics and is retained for tooltip/accessibility
+context. The chart never invents individual download times or zero observations.
+The scheduler refreshes hourly; a failed
 or partial GitHub read does not erase the last successful snapshot, and the
 last successful data-update timestamp is shown separately.
 
@@ -699,16 +700,22 @@ those KPI values and is never recomputed from detail rows. The additive
 detail projection does not turn a non-empty population into an overall no-data
 state. These pagination parameters are private admin presentation controls.
 
-The Admin presentation keeps the six primary map-statistics metrics in one
-compact container, grouped as Downloads, Fresh installs, and Updates, with a
-secondary Diagnostic coverage row. Popular maps derives only from successful
-fresh main-map installs for known provider catalog packages: Top 5 and Regions
-group canonical country/region identities across providers, while All maps
-groups canonical country/region plus provider. Custom images, contours,
-updates, and downloads are excluded from these views before grouping. All maps
-searches the complete eligible set before pagination. Provider activity labels
-the final value Last install and uses the latest successful fresh-install
-timestamp in the selected scope.
+The aggregate response carries the complete population summary used by the
+Admin map-statistics view. Visible labels, KPI grouping, popularity row layout,
+provider-table columns, and chart presentation are defined in
+[`admin-behavior-contract.md`](admin-behavior-contract.md); statistical
+populations and formulas are defined in
+[`contracts/STATISTICS_CONTRACT.md`](../../../contracts/STATISTICS_CONTRACT.md).
+In the current HTML runtime, Activity by provider has nine columns:
+`Provider`, `Downloads`, `Failed downloads`, `Fresh installs`, `Successful
+updates`, `Failed updates`, `Fresh install success`, `Update success`, and
+`Last install`. It does not yet render `Average download time`; the target
+10-column presentation remains an Admin contract acceptance criterion, not an
+implemented API/UI claim.
+Popular-map grouping still uses only the eligible successful fresh main-map
+population, and the response searches the complete eligible set before any
+All maps pagination. Provider activity is an independent projection and does
+not infer installs from downloads or downloads from installs.
 
 Linkage is per independent map result. A reliable shared `operationId` and
 `mapResultIndex`, with unambiguous provider/region identity, is required;
@@ -720,47 +727,20 @@ operation; this administrative action scope does not merge per-map statistics.
 
 ## `GET /admin/map-statistics`
 
-The coverage map starts and resets at a padded full-world fit (100%). Resizing
-refits an untouched overview while preserving manual pan/zoom. Above 1100px,
-coverage and popularity share a 3:1 row with a minimum 300px sidebar. The sidebar
-matches the map card height and scrolls independently; narrower screens stack
-the cards with the shared spacing. The map viewport follows its 900:365 source
-proportions without a fixed minimum height. Zoom/reset controls overlay the
-desktop top-left corner; mobile uses a compact edge toolbar so 44px controls do
-not cover small countries. World-fit zoom uses continuous precision with 12px
-total fit padding. Popularity uses compact rows with full names, counts and
-timestamps; the redundant Provider column is omitted from Top 5 and Regions.
-Top 5 and Regions group canonical country/region identities across providers,
-while All maps retains the provider in each row. Map and region buttons
-highlight and focus the corresponding country; focus is immediate so reset
-cannot race an unfinished navigation animation. All maps search is applied
-before pagination, and the sidebar has a keyboard focus indicator.
-
 Authenticated, no-store/noindex HTML dashboard for the same aggregate read
 model. It supports Last 24 hours, Last 7 days, Last 30 days, and All time
-ranges plus provider, map, region, and event-type filters. It displays terminal
-acquisition totals, fresh-install totals, separate update totals and success
-rates, the three compact Popular maps views, provider health, and separate
-affected-package/problematic-source counts. When a
-provider filter is selected, the health, issue, and per-provider popularity
-summaries are scoped to that provider. The UI labels the distinction between
-distinct map operations and map-package records because one operation may
-contain multiple packages. Overview and Map statistics therefore do not imply
-identical totals. Regions groups equivalent provider labels by `region_identity`
-and sums successful fresh main-map installs; All maps retains the provider in
-its grouping key and uses the latest eligible fresh-install timestamp. The
-compatibility fallback suppression also resolves provider-region aliases
-through the catalog package identity, so one operation reported as `BEL` and
-`BEL+` is not projected as two installs. At country level, `region_identity`
-normalizes ISO-2/ISO-3, English, and provider-local country aliases into one
-stable country grouping, while reviewed subregions and multi-country packages
-remain separate.
-Compatibility Installations remain an all-time evidence
-view. Missing or unknown values use an explicit neutral state or em dash,
-rather than silently presented zeros. Unauthenticated requests redirect to
-`/admin/login`. Linkage is possible only when the app's map-statistics and
-compatibility-evidence choices are both enabled for the same installation
-operation.
+ranges plus provider, map, region, and event-type filters. It exposes terminal
+acquisition totals, fresh-install totals, update totals, success-rate values,
+popularity projections, provider health, and affected-package/problematic-source
+counts. Presentation and interaction rules are owned by
+[`admin-behavior-contract.md`](admin-behavior-contract.md); population and
+formula rules are owned by
+[`contracts/STATISTICS_CONTRACT.md`](../../../contracts/STATISTICS_CONTRACT.md).
+Provider filters scope the corresponding read-model projections. Missing or
+unknown values use an explicit neutral state or em dash, rather than silently
+presented zeros. Unauthenticated requests redirect to `/admin/login`. Linkage
+is possible only when the app's map-statistics and compatibility-evidence
+choices are both enabled for the same installation operation.
 
 This projection rule applies to the Overview event trend and its provider/map
 activity read model. Map statistics keeps its event and fresh-result boundary
@@ -1123,24 +1103,3 @@ Operation-owned reports retain initial identity/map context and operationId even
 when the screen closes. Existing received-versus-reviewed identity, assignment,
 local-test partition and counting rules remain unchanged. This prospective fix
 does not reconstruct historical missing reports.
-
-
-## Private Admin plan read-model additions (local, 2026-09-18)
-
-Admin HTML carries `data-admin-revisions`, a JSON mapping of meaningful section
-revision keys. Existing asynchronous Map statistics responses add `revisions`
-(`statistics`, `eventDetail`), `downloadTimes` keyed by provider, and shared
-`downloadTimeMarkup` for those rows. Each timing value has `averageSeconds`
-(number/null), `sampleCount` and `populationCount`; see the statistics contract.
-These additions are authenticated presentation/read-model data, not public
-telemetry or ingestion-schema changes. Freshness polls use the existing page
-route and cadence; no endpoint or scheduling infrastructure is added.
-
-`/admin/providers` requests the same timing aggregate over the last 30 days.
-Other callers of the operational provider summary do not incur that query.
-`/admin/installations` receives complete per-identity diagnostic aggregates;
-its values/filters/sorting no longer depend on the default 500 detail limit.
-Device/unknown-identity drilldowns scope history to that exact identity in SQL.
-No device writes, provider artifacts, telemetry facts, ownership or destructive
-lifecycle rules change. Existing authentication, CSRF and private no-store/noindex
-boundaries remain in effect.
