@@ -375,6 +375,9 @@ def _is_preinstall_download_failure(result: dict[str, Any]) -> bool:
     code = str(result.get("failure_code") or "").strip().upper()
     return stage == "download" or code == "INSTALL_BLOCKED_DOWNLOAD_FAILED"
 
+def _is_preinstall_download_operation(results: list[dict[str, Any]]) -> bool:
+    """Keep provider acquisition failures out of installation history views."""
+    return bool(results) and all(_is_preinstall_download_failure(result) for result in results)
 
 def _identity_is_pending(results: list[dict[str, Any]]) -> bool:
     if not results:
@@ -830,10 +833,10 @@ def _overview_operation_label(operation: dict[str, Any]) -> tuple[str, str]:
         return "GitHub issue in progress", "review"
     if _is_preinstall_download_failure(operation):
         return "Download failed", "failed"
-    if operation.get("has_failed"):
-        return "Install failed", "failed"
     if operation.get("has_not_started"):
         return "Install not started", "not-started"
+    if operation.get("has_failed"):
+        return "Install failed", "failed"
     if operation.get("operation_succeeded"):
         return "Install succeeded", "succeeded"
     return "Install operation", "unknown"
@@ -1048,6 +1051,16 @@ _MAP_ACTIVITY_STATES = {
 def _overview_map_event_label(event: dict[str, Any]) -> tuple[str, str]:
     if event.get("event_type") == "DOWNLOAD_STARTED" and event.get("has_recorded_outcome"):
         return "Download started · Outcome recorded", "started"
+    if (
+        event.get("event_type") in {"DOWNLOAD_STARTED", "DOWNLOAD_PROCESSING"}
+        and event.get("is_stale")
+    ):
+        return (
+            "Download started · Outcome missing"
+            if event.get("event_type") == "DOWNLOAD_STARTED"
+            else "Checking / unpacking · Outcome missing",
+            "stale",
+        )
     return _MAP_ACTIVITY_STATES.get(str(event.get("event_type") or "").upper(),
                                     ("Map activity", "unknown", "neutral"))[:2]
 
@@ -1368,6 +1381,8 @@ def _overview_map_activity_row(event: dict[str, Any]) -> str:
     label, state = _overview_map_event_label(event)
     event_type = str(event.get("event_type") or "")
     tone = _MAP_ACTIVITY_STATES.get(event_type.upper(), ("Map activity", "unknown", "neutral"))[2]
+    if state == "stale":
+        tone = "neutral"
     status_markup = _download_history_icon(event_type) + html.escape(label)
     href = _overview_map_event_href(event)
     component = {"main": "Main map", "contours": "Contours"}.get(event.get("component_kind"), "")
@@ -1864,12 +1879,31 @@ def overview_page(
         "<ul class='overview-activity-list'>" + "".join(_overview_map_activity_row(item) for item in recent) + "</ul>"
     )
     success_rate = _format_rate(data.get("installSuccessRate")) if has_map_data else "—"
+    download_successes = int(
+        data.get("completedDownloadCount", data.get("completedDownloads")) or 0
+    )
+    failed_downloads = int(
+        data.get("failedDownloadCount", data.get("failedDownloads")) or 0
+    )
+    download_success_rate = _format_rate(data.get("downloadSuccessRate")) if has_map_data else "—"
+    failed_download_value = data.get("failedDownloadCount", data.get("failedDownloads"))
+    failed_download_number = _optional_nonnegative_int(failed_download_value)
+    failed_download_available = (
+        failed_download_number is not None
+        and has_map_data
+    )
+    failed_download_counter = _admin_error_counter(
+        failed_downloads, available=failed_download_available,
+    )
     compatibility_attempts = str(compatibility.get("writeStartedCount")) if compatibility_has_data else "—"
     compatibility_variants = str(compatibility.get("variantCount")) if compatibility_has_data else "—"
     compatibility_rate = _format_rate(compatibility.get("evidenceSuccessRate")) if compatibility_has_data else "—"
     map_statistics_href = "/admin/map-statistics"
     map_statistics_href += "?" + urlencode({"period": period})
     failure_href = map_statistics_href + ("&" if "?" in map_statistics_href else "?") + urlencode({"eventType": "INSTALL_FAILED"})
+    download_success_href = map_statistics_href
+    completed_download_href = map_statistics_href + "&" + urlencode({"eventType": "DOWNLOAD_SUCCEEDED"})
+    failed_download_href = map_statistics_href + "&" + urlencode({"eventType": "DOWNLOAD_FAILED"})
     attention_href = (
         "/admin/installations?state=open" if compatibility_attention else
         "/admin/map-statistics?period=all&eventType=INSTALL_FAILED" if missing_diagnostics else
@@ -1884,11 +1918,15 @@ def overview_page(
         "".join(_overview_compatibility_activity_row(item) for item in compatibility_recent) +
         "</ul></div>"
     )
-    compatibility_recent_content = compatibility_recent_content or "<p class='empty'>No diagnostic activity in this period.</p>"
+    review_section = (
+        f"<div class='overview-review-block'><h3>New / review-required devices</h3>{_overview_review_required(review_required)}</div>"
+        if review_required else ""
+    )
     model_panel = (
-        f"<section class='overview-panel overview-model-panel' aria-labelledby='overview-model-title'><div class='section-heading'><h2 id='overview-model-title'>Device/model activity</h2><a class='section-link' href='/admin/installations'>Installations {_admin_icon('arrow-right')}</a></div>"
+        f"<section class='overview-panel overview-model-panel' aria-labelledby='overview-model-title'><div class='section-heading'><div><p class='section-kicker'>Compatibility evidence</p><h2 id='overview-model-title'>Device/model activity</h2></div></div>"
         f"{_overview_model_activity(model_activity)}"
-        f"<details class='admin-disclosure'><summary>Diagnostic activity</summary><div class='disclosure-body'>{compatibility_recent_content}</div></details></section>"
+        f"{review_section}</section>"
+        if model_activity or review_required else ""
     )
     download_has_data = bool(downloads.get("hasData"))
     download_last_update = downloads.get("lastSuccessfulObservedAt", downloads.get("lastObservedAt"))
@@ -1976,15 +2014,15 @@ def overview_page(
         <div class='heading-row overview-heading'><div><h1>Overview</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin'><label><span class='sr-only'>Time period</span><select id='overview-period' name='period'>{period_options}</select></label></form></div>
         <section class='map-statistics-kpi-panel provider-card admin-kpi-panel overview-kpis overview-kpi-panel' aria-label='Operational summary'>
           <div class='map-statistics-kpi-groups overview-kpi-groups'>
-            <section class='map-statistics-kpi-group overview-kpi-group' aria-labelledby='overview-fresh-kpis-title'><h2 id='overview-fresh-kpis-title'>Installs</h2><div class='map-statistics-kpi-values'>
+            <section class='map-statistics-kpi-group overview-kpi-group' aria-labelledby='overview-installs-kpis-title'><h2 id='overview-installs-kpis-title'>Installs</h2><div class='map-statistics-kpi-values'>
               <a class='map-statistics-kpi-value overview-kpi-link' href='/admin/installations'><span>Installs</span><strong>{event_metric(completed_installs + failed_installs)}</strong></a>
               <a class='map-statistics-kpi-value overview-kpi-link' href='/admin/installations'><span>Install success</span><strong>{success_rate}</strong></a>
-              <a class='map-statistics-kpi-value overview-kpi-link error-counter-kpi failed' href='{html.escape(failure_href, quote=True)}'><span>Failed installs</span>{failed_install_counter}</a>
+              <a class='map-statistics-kpi-value overview-kpi-link error-counter-kpi' href='{html.escape(failure_href, quote=True)}'><span>Failed installs</span>{failed_install_counter}</a>
             </div></section>
-            <section class='map-statistics-kpi-group overview-kpi-group' aria-labelledby='overview-status-kpis-title'><h2 id='overview-status-kpis-title'>Current status</h2><div class='map-statistics-kpi-values'>
-              <a class='map-statistics-kpi-value overview-kpi-link' href='{html.escape(map_statistics_href, quote=True)}'><span>Map updates</span><strong>{event_metric(map_updates)}</strong></a>
-              <a class='map-statistics-kpi-value overview-kpi-link error-counter-kpi' href='/admin/installations?state=open'><span>Open errors</span>{open_error_counter}</a>
-              <a class='map-statistics-kpi-value overview-kpi-link failed' href='/admin/providers'><span>Providers</span><strong>{healthy} / {provider_count}</strong></a>
+            <section class='map-statistics-kpi-group overview-kpi-group' aria-labelledby='overview-download-kpis-title'><h2 id='overview-download-kpis-title'>Downloads</h2><div class='map-statistics-kpi-values'>
+              <a class='map-statistics-kpi-value overview-kpi-link' href='{html.escape(completed_download_href, quote=True)}'><span>Downloads</span><strong>{event_metric(download_successes)}</strong></a>
+              <a class='map-statistics-kpi-value overview-kpi-link' href='{html.escape(download_success_href, quote=True)}'><span>Download success</span><strong>{download_success_rate}</strong></a>
+              <a class='map-statistics-kpi-value overview-kpi-link error-counter-kpi' href='{html.escape(failed_download_href, quote=True)}'><span>Failed downloads</span>{failed_download_counter}</a>
             </div></section>
           </div>
         </section>
@@ -2273,6 +2311,16 @@ def dashboard_page(
     identity_devices: list[dict[str, Any]] | None = None,
     diagnostic_summary: dict[str, dict[str, int]] | None = None,
 ) -> bytes:
+    # The statistics view may retain a zero-attempt identity row so raw
+    # pre-install evidence remains queryable, but it is not an installation
+    # variant and must not appear in the Installations table.
+    rows = [
+        row for row in rows
+        if not (
+            int(row.get("attempted_install_count") or 0) == 0
+            and int(row.get("prewrite_failure_count") or 0) > 0
+        )
+    ]
     catalog_by_id = {str(device.get("id") or device.get("device_id")): device
                      for device in identity_devices or []}
     latest = _latest_data_timestamp(rows)
@@ -3366,7 +3414,7 @@ def _map_statistics_script() -> str:
             ? `${providerName[item.provider] || item.provider || '—'} · ${formatTimestamp(item.lastInstall)}`
             : formatTimestamp(item.lastInstall);
           const installWord = item.installs === 1 ? 'install' : 'installs';
-          return `<tr class="popular-map-row"><td class="popular-map-name"><div class="popular-map-name-content"><strong>${mapLink}</strong><small class="popular-map-detail">${escapeHtml(detail)}</small></div></td><td class="column-number numeric popular-map-count" aria-label="${escapeHtml(`${countValue(item.installs)} ${installWord}`)}"><span class="popular-map-count-label"><strong>${escapeHtml(countValue(item.installs))}</strong> <span>${installWord}</span></span></td></tr>`;
+          return `<tr class="popular-map-row"><td class="popular-map-name"><div class="popular-map-name-content"><strong>${mapLink}</strong><small class="popular-map-detail">· ${escapeHtml(detail)}</small></div></td><td class="column-number numeric popular-map-count" aria-label="${escapeHtml(`${countValue(item.installs)} ${installWord}`)}"><span class="popular-map-count-label"><strong>${escapeHtml(countValue(item.installs))}</strong> <span>${installWord}</span></span></td></tr>`;
         };
         if (mapRows) mapRows.innerHTML = regionItems.slice(0, 5).map(mapRow).join('') || emptyPopularRow('No popular catalog maps in this period.');
         const query = String(allMapsSearch?.value || '').toLocaleLowerCase().trim();
@@ -3979,10 +4027,9 @@ def _operation_result(results: list[dict[str, Any]]) -> str:
     if classification == "NOT_STARTED" and all(
         str(result.get("phase_outcome") or "").strip().upper() == "FAILED"
         for result in results
-    ):
-        # Keep the received process outcome visible in diagnostics. Fresh
-        # statistics use _result_classification and still exclude this
-        # pre-write failure when write_started is false.
+    ) and not all(_is_preinstall_download_failure(result) for result in results):
+        # Preserve the existing display for non-download preflight failures.
+        # Provider acquisition failures are the explicit PRE-INSTALL exception.
         return "FAILED"
     return {
         "SUCCESS": "SUCCEEDED",
@@ -4530,8 +4577,16 @@ def device_detail_page(
     def matches(event: dict[str, Any]) -> bool:
         return str(event.get("canonical_device_model_id") or "").strip() == device_id
 
-    active_events = [event for event in (operations or []) if matches(event)]
-    resolved_events = [event for event in (resolved_operations or []) if matches(event)]
+    active_events = [
+        event for event in (operations or [])
+        if matches(event)
+        and not _is_preinstall_download_operation([event])
+    ]
+    resolved_events = [
+        event for event in (resolved_operations or [])
+        if matches(event)
+        and not _is_preinstall_download_operation([event])
+    ]
     active_groups = _group_operations(active_events)
     resolved_groups = _group_operations(resolved_events)
     history = [(key, results, False) for key, results in active_groups.items()]
@@ -4745,10 +4800,12 @@ def diagnostics_page(
     active_events = [
         event for event in (operations or [])
         if matches(event)
+        and not _is_preinstall_download_operation([event])
     ]
     resolved_events = [
         event for event in (resolved_operations or [])
         if matches(event)
+        and not _is_preinstall_download_operation([event])
     ]
     active_groups = _group_operations(active_events)
     resolved_groups = _group_operations(resolved_events)
@@ -6979,9 +7036,9 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .map-statistics-popularity .table-wrap .admin-table td::before{display:none}
 .map-statistics-popularity .table-wrap .admin-table td.popular-map-count::after{content:none}
 .map-statistics-popularity .table-secondary,.map-statistics-popularity code{white-space:normal;overflow-wrap:anywhere;font-size:11px}
-.map-statistics-popularity .table-wrap .popular-map-name-content{display:grid;min-width:0;gap:2px}
+.map-statistics-popularity .table-wrap .popular-map-name-content{display:flex;align-items:baseline;flex-wrap:wrap;min-width:0;column-gap:6px;row-gap:0}
 .map-statistics-popularity .table-wrap .popular-map-name-content>strong{min-width:0;font-weight:650}
-.map-statistics-popularity .table-wrap .popular-map-detail{display:block;color:var(--secondary);font-size:11px;font-weight:400;line-height:1.35}
+.map-statistics-popularity .table-wrap .popular-map-detail{display:inline;min-width:0;color:var(--secondary);font-size:11px;font-weight:400;line-height:1.35}
 .map-statistics-popularity .table-wrap .popular-map-count-label{display:inline-flex;align-items:baseline;gap:3px;white-space:nowrap;font-weight:400}
 .map-statistics-popularity .table-wrap .popular-map-count-label>strong{font-weight:750}
 .map-statistics-popularity .table-wrap .region-map-link{position:relative;display:inline-flex;width:auto;min-height:40px;align-items:flex-start;font-weight:650;text-decoration:none}

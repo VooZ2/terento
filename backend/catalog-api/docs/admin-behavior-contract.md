@@ -66,7 +66,7 @@ shows only received structured fields. Missing data must be labelled unavailable
 | Concept | Required interpretation |
 | --- | --- |
 | Installation result | One retained per-map result, not a watch, tester, whole batch or component phase. Custom IMG results belong in compatibility accounting. |
-| Acquisition result | One terminal provider acquisition identified by `acquisition_id` and `component_kind` where available. Started/processing/cancelled/interrupted phases are history, not completed acquisition attempts. |
+| Acquisition result | One terminal provider acquisition identified by `acquisition_id` plus known operation, provider, package and component facts where available. Without that ID, lifecycle pairing uses operation + provider + package + component; sibling components never close another acquisition. Started/processing/cancelled/interrupted phases are history, not completed acquisition attempts. |
 | Map update result | `MAP_UPDATE_SUCCEEDED` or `MAP_UPDATE_FAILED` is one replacement of an already installed Terento-owned provider map. It is not a new installation and is excluded from installation totals, coverage, and popularity counts. |
 | Success | SUCCEEDED with VERIFIED finishing; no success inferred from download completion or missing errors. |
 | Failed result | Recorded final failure; never a compatibility promotion. Preserve historical failed/attempt totals after resolution. |
@@ -124,6 +124,23 @@ remains separate in the statistics read model.
 A received device failure must lead to its actionable diagnostic context with
 model/variant, available watch image, provider/map, time, result and known reason.
 It must not be redirected to aggregate Map statistics as a substitute.
+
+When a provider acquisition fails before writing starts
+(`write_started=false` with `failure_stage=download` or
+`INSTALL_BLOCKED_DOWNLOAD_FAILED`), it is activity/history only. Show it as a
+failed download and do not create an installation failure diagnostic, Review
+queue task, open-error count, or identity-review task for it. Connection and
+provider acquisition failures are not operator bugs by default. The original
+diagnostic and map-event records remain available; an explicitly linked GitHub
+issue remains its own operator-created workflow.
+
+The same pre-install classification is used by all Admin read models:
+`PRE-INSTALL` / `NOT_STARTED` is absent from Map installations, device/model
+installation counts, fresh-install rates, and open errors. It remains in Map
+statistics and Recent map activity. A stale `DOWNLOAD_STARTED` or
+`DOWNLOAD_PROCESSING` phase without a correlated terminal event is shown as
+missing/unresolved after four hours; it is not converted into `FAILED`,
+`INTERRUPTED`, an acquisition failure, or an installation issue.
 
 When only a map failure exists, keep the gap visible and clearly say the device
 report is unavailable. A statistics link is supplementary, not diagnostic
@@ -213,7 +230,18 @@ with column headers aligned to their values. Sort controls retain their
 keyboard, focus, and `aria-sort` behavior. The Providers table shows the health
 badge without an additional “Latest check state” helper when no error exists.
 
-The GitHub chart says `Observed download increases between checks`. It starts
+Activity by provider keeps acquisition and installation populations independent:
+successful installs are not synthesized from downloads, downloads are not
+synthesized from installs, and `Installs > Downloads` is valid when the two
+telemetry streams are incomplete. Install success remains
+`F_success / (F_success + F_failed)`, while download success is terminal
+`DOWNLOAD_SUCCEEDED / (DOWNLOAD_SUCCEEDED + DOWNLOAD_FAILED)`; started,
+processing, cancelled, interrupted, stale, and missing outcomes are excluded
+from the latter denominator.
+
+The GitHub chart says `Observed download increases between checks`. In the 24h
+view each visual point uses the full-hour `hour_start` bucket while retaining
+the exact observation timestamp for context. It starts
 with a baseline and preserves valid zero increases. Historical counter deltas
 whose observations lack the new population metadata remain visible as legacy
 or unverified deltas; missing metadata alone is not a discontinuity. A counter
@@ -235,6 +263,14 @@ regions remain scrollable with wheel, trackpad, touch, keyboard, and horizontal
 table interaction. Hiding the scrollbar must not clip content, disable focus,
 change overflow behavior, or add scrolling to a view that was not already
 scrollable.
+
+Average download time, when exposed by an Admin provider statistic, uses only
+eligible successful main acquisitions with one trustworthy Started →
+Processing → Succeeded sequence for the same acquisition, operation, provider,
+package, and component. It measures Processing minus Started, excludes failed,
+cancelled, interrupted, contours, custom, local-test, missing, conflicting and
+legacy-incomplete sequences, aggregates the full selected population rather
+than paginated activity, and rounds only the final raw-seconds average.
 
 ## Identity Review operator-assisted assignment addendum (2026-09-17)
 
@@ -406,10 +442,9 @@ formulas, sorting, filtering, pagination, or device actions.
 - Overview, Installations, and device detail KPI summaries use the same
   `map-statistics-kpi-panel`, `map-statistics-kpi-groups`,
   `map-statistics-kpi-group`, and `map-statistics-kpi-value` hierarchy as Map
-  statistics. Overview groups fresh map-stream metrics and provider health within the same
-  compact panel. Compatibility-stream totals remain authoritative in Installations;
-  its distinct diagnostic activity remains accessible under Device/model activity. Installations
-  retains five metrics in one panel. Device detail groups Attempts, Successful,
+  statistics. Overview retains six metrics with Installs and Downloads grouped
+  in the same compact panel. Installations retains five metrics in one panel.
+  Device detail groups Attempts, Successful,
   Failed, and Open errors together, while Last activity remains in that panel
   with smaller date typography. Attempts has no decorative information icon.
 

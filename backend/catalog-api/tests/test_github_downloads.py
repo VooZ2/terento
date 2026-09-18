@@ -193,6 +193,33 @@ class GithubDownloadTests(unittest.TestCase):
         self.assertNotIn("lag(dmg_total)", query)
         self.assertNotIn("greatest", query)
 
+    def test_database_snapshot_positions_mid_hour_observations_at_hour_start(self):
+        now = datetime(2026, 9, 11, 1, 13, tzinfo=timezone.utc)
+        observations = [
+            datetime(2026, 9, 10, 20, 43, tzinfo=timezone.utc),
+            datetime(2026, 9, 10, 22, 0, tzinfo=timezone.utc),
+            datetime(2026, 9, 11, 0, 46, tzinfo=timezone.utc),
+        ]
+        database = SnapshotDatabase(
+            {"dmg_total": 15, "zip_total": 9, "observed_at": now},
+            [
+                {"observed_at": value, "dmg_total": 10 + index * 2,
+                 "zip_total": 5 + index, "release_count": 2,
+                 "asset_count": 2, "population_fingerprint": "same"}
+                for index, value in enumerate(observations)
+            ],
+        )
+
+        result = database.github_downloads_snapshot(now=now)
+
+        self.assertEqual(
+            [row["bucket"] for row in result["trend"]],
+            [value.replace(minute=0) for value in observations],
+        )
+        self.assertEqual(
+            [row["observed_at"] for row in result["trend"]], observations,
+        )
+
     def test_database_snapshot_without_observations_is_empty(self):
         database = SnapshotDatabase(None, [])
         result = database.github_downloads_snapshot(

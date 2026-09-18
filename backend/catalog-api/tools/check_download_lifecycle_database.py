@@ -41,6 +41,9 @@ def check_download_lifecycle_database(database):
     complete_legacy = dict(legacy, id=str(uuid4()), eventType='DOWNLOAD_SUCCEEDED', outcome='SUCCEEDED')
     assert database.insert_map_event(complete_legacy)
     recent = database.admin_overview_map_snapshot(now - timedelta(seconds=1), recent_limit=100)['recentActivity']
-    start = next(r for r in recent if r.get('operation_id') == legacy['operationId'] and r['event_type'] == 'DOWNLOAD_STARTED')
-    assert start['has_recorded_outcome'] is True
+    legacy_rows = [r for r in recent if r.get('operation_id') == legacy['operationId']]
+    assert len(legacy_rows) == 1, legacy_rows
+    assert legacy_rows[0]['event_type'] == 'DOWNLOAD_SUCCEEDED'
+    assert legacy_rows[0]['has_recorded_outcome'] is True
+    assert len(legacy_rows[0]['lifecycle']) == 2
     print('PASS: main/contour event isolation, terminal-first delivery, phase history and legacy deduplication')

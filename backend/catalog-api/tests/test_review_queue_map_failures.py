@@ -5,16 +5,104 @@ import unittest
 
 from test_admin_semantics import RecordingDatabase
 from terento_catalog.admin import (
+    _admin_device_payload,
     _identity_is_pending,
     _is_preinstall_download_failure,
+    _operation_result,
     _operation_is_problematic,
     _overview_operation_href,
     _overview_operation_label,
+    dashboard_page,
+    device_detail_page,
+    diagnostics_page,
     overview_page,
 )
 
 
 class MissingDiagnosticReviewTests(unittest.TestCase):
+    def test_preinstall_download_failure_is_activity_only(self):
+        operation = {
+            'model': 'fēnix 9 Pro',
+            'variant': '51 mm',
+            'provider': 'opentopomap',
+            'error_category': 'acquisition',
+            'phase_outcome': 'FAILED',
+            'failure_stage': 'download',
+            'failure_code': 'INSTALL_BLOCKED_DOWNLOAD_FAILED',
+            'write_started': 0,
+            'has_failed': True,       # raw phase_outcome=FAILED
+            'has_not_started': True,  # write_started=false classification
+            'operation_succeeded': False,
+            'open_error': False,
+            'identity_pending': False,
+            'operation_id': '0c3a14fe-089c-4c06-bb8a-764642729b02',
+        }
+
+        self.assertTrue(_is_preinstall_download_failure(operation))
+        self.assertFalse(_operation_is_problematic([operation]))
+        self.assertFalse(_identity_is_pending([operation]))
+        self.assertEqual(_overview_operation_label(operation), ('Download failed', 'failed'))
+        self.assertNotIn('state=', _overview_operation_href(operation))
+
+        body = overview_page({
+            'data': {'hasData': False},
+            'compatibility': {
+                'hasData': True,
+                'allTimeOpenErrorCount': 1,
+                'attention': [],
+                'recentActivity': [operation],
+            },
+        }, {'username': 'operator'}, 'csrf').decode()
+        panel = body.split("aria-labelledby='overview-attention-title'>", 1)[1].split('</section>', 1)[0]
+        self.assertNotIn('fēnix 9 Pro', panel)
+        self.assertNotIn('Download failed', body)
+
+    def test_preinstall_download_is_not_an_installation_read_model_result(self):
+        operation = {
+            'operation_key': 'download-only',
+            'canonical_device_model_id': 'fenix-9-51',
+            'compatibility_identity': 'fēnix 9 Pro · 51 mm',
+            'model': 'fēnix 9 Pro',
+            'variant': '51 mm',
+            'phase_outcome': 'FAILED',
+            'failure_stage': 'download',
+            'failure_code': 'INSTALL_BLOCKED_DOWNLOAD_FAILED',
+            'write_started': False,
+        }
+
+        self.assertEqual(_operation_result([operation]), 'NOT_STARTED')
+        installations = dashboard_page([{
+            'model': 'fēnix 9 Pro', 'variant': '51 mm',
+            'attempted_install_count': 0, 'successful_install_count': 0,
+            'failed_install_count': 0, 'prewrite_failure_count': 1,
+        }], {'username': 'operator'}, 'csrf', operations=[operation]).decode()
+        self.assertIn('No installation evidence yet.', installations)
+        self.assertNotIn('INSTALL_BLOCKED_DOWNLOAD_FAILED', installations)
+
+        device = _admin_device_payload([{
+            'device_id': 'fenix-9-51', 'model': 'fēnix 9 Pro',
+            'variant': '51 mm', 'family_name': 'fēnix', 'map_capable': True,
+            'support_status': 'SUPPORTED', 'active': True,
+            'attempted_install_count': 0, 'successful_install_count': 0,
+            'failed_install_count': 0, 'usb_identities': [],
+        }], None)['devices'][0]
+        detail = device_detail_page(
+            device, {'username': 'operator'}, 'csrf', operations=[operation],
+        ).decode()
+        self.assertIn('No installation history for this device.', detail)
+        self.assertNotIn('INSTALL_BLOCKED_DOWNLOAD_FAILED', detail)
+
+        diagnostics = diagnostics_page(
+            [{'canonical_device_model_id': 'fenix-9-51',
+              'compatibility_identity': 'fēnix 9 Pro · 51 mm',
+              'model': 'fēnix 9 Pro', 'variant': '51 mm',
+              'attempted_install_count': 0, 'successful_install_count': 0}],
+            {'username': 'operator'}, 'csrf', identity='fēnix 9 Pro · 51 mm',
+            canonical_device_model_id='fenix-9-51', operations=[operation],
+        ).decode()
+        self.assertIn('No installation history for this model.', diagnostics)
+        self.assertNotIn('INSTALL_BLOCKED_DOWNLOAD_FAILED', diagnostics)
+
     def test_only_unlinked_real_install_failures_need_diagnostics(self):
         recording = RecordingDatabase()
         recording.admin_overview_map_snapshot(datetime.now(timezone.utc))
@@ -126,7 +214,7 @@ class PreinstallDownloadFailureTests(unittest.TestCase):
             "</section>", 1
         )[0]
         self.assertNotIn("fēnix 9 Pro", panel)
-        self.assertIn("Download failed", body)
+        self.assertNotIn("Download failed", body)
 
     def test_aggregated_preinstall_download_failure_flag_is_not_review(self):
         operation = {

@@ -317,9 +317,11 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertEqual(overview_panel.count("class='map-statistics-kpi-value "), 6)
         self.assertEqual(overview_panel.count("class='map-statistics-kpi-group overview-kpi-group'"), 2)
         self.assertIn(">Installs</h2>", overview_panel)
-        self.assertIn(">Current status</h2>", overview_panel)
+        self.assertIn(">Downloads</h2>", overview_panel)
         self.assertIn("admin-error-counter is-positive", overview_panel)
-        self.assertIn("admin-error-counter'>0</strong>", overview_panel)
+        self.assertIn("<span>Downloads</span><strong>0</strong>", overview_panel)
+        self.assertIn("<span>Failed downloads</span><strong class='admin-error-counter'>—</strong>", overview_panel)
+        self.assertNotIn("<span>Open errors</span>", overview_panel)
 
         installations = dashboard_page(
             [{
@@ -489,7 +491,7 @@ class AdminSemanticsTests(unittest.TestCase):
                 "attention": [{"model": "Old unresolved watch", "open_error": True,
                     "has_failed": True, "last_occurred_at": "2026-01-01T00:00:00Z"}]},
         }, {"username": "operator"}, "csrf").decode()
-        self.assertIn("<span>Open errors</span><strong class='admin-error-counter is-positive'>12</strong>", body)
+        self.assertNotIn("<span>Open errors</span><strong class='admin-error-counter is-positive'>12</strong>", body)
         self.assertIn("Old unresolved watch", body)
         self.assertIn("Unresolved work · all dates", body)
         self.assertNotIn("No issues need attention", body)
@@ -637,7 +639,7 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("<h1>Overview</h1>", body)
         self.assertIn("<span>Installs</span><strong>—</strong>", body)
         self.assertIn("<span>Failed installs</span><strong class='admin-error-counter'>—</strong>", body)
-        self.assertIn("<span>Open errors</span><strong class='admin-error-counter'>—</strong>", body)
+        self.assertNotIn("<span>Open errors</span>", body)
         self.assertIn("No map activity in this period.", body)
 
     def test_overview_uses_existing_operation_and_provider_drill_downs(self):
@@ -649,6 +651,9 @@ class AdminSemanticsTests(unittest.TestCase):
                     "completedInstallCount": 3,
                     "failedInstallCount": 1,
                     "installSuccessRate": 75,
+                    "completedDownloadCount": 2,
+                    "failedDownloadCount": 1,
+                    "downloadSuccessRate": 66.7,
                     "hasData": True,
                     "recentActivity": [{
                         "event_type": "INSTALL_FAILED",
@@ -694,23 +699,20 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertIn("Last 7 days", body)
         self.assertIn("Install failed", body)
-        self.assertIn("Device transport", body)
-        self.assertIn("/admin/diagnostics?identity=f%C4%93nix+8+%C2%B7+47+mm&amp;identity_scope=unresolved&amp;state=failed", body)
         self.assertIn("/admin/providers/opentopomap", body)
         self.assertNotIn("<section class='overview-panel overview-provider-panel'", body)
         self.assertIn("<span>Installs</span><strong>4</strong>", body)
         self.assertIn("<span>Install success</span><strong>75%</strong>", body)
         self.assertIn("<span>Failed installs</span><strong class='admin-error-counter is-positive'>1</strong>", body)
-        self.assertIn("<span>Open errors</span><strong class='admin-error-counter is-positive'>1</strong>", body)
-        self.assertNotIn("overview-compatibility-summary'", body)
-        self.assertIn("Diagnostic activity", body)
-        self.assertIn("/admin/installations", body)
-        self.assertIn("Map installations", body)
+        self.assertIn("<span>Downloads</span><strong>2</strong>", body)
+        self.assertIn("<span>Download success</span><strong>66.7%</strong>", body)
+        self.assertIn("<span>Failed downloads</span><strong class='admin-error-counter is-positive'>1</strong>", body)
+        self.assertIn("eventType=DOWNLOAD_SUCCEEDED", body)
+        self.assertIn("eventType=DOWNLOAD_FAILED", body)
         self.assertIn("overview-chart-success", body)
         self.assertIn("viewBox='0 0 720 260'", body)
         self.assertIn("overview-chart-panel", body)
         self.assertIn("Recent map activity", body)
-        self.assertIn("Device/model activity", body)
         self.assertIn("Downloads</h2>", body)
         self.assertIn("overview-download-panel", body)
         self.assertNotIn("Failures by reason", body)
@@ -744,9 +746,9 @@ class AdminSemanticsTests(unittest.TestCase):
             },
             {"username": "operator"}, "csrf",
         ).decode()
-        self.assertIn("Recent compatibility activity", body)
-        self.assertIn("Custom installation", body)
-        self.assertIn("fēnix 7 Pro · Custom", body)
+        self.assertNotIn("Recent compatibility activity", body)
+        self.assertNotIn("Custom installation", body)
+        self.assertNotIn("fēnix 7 Pro · Custom", body)
         self.assertNotIn("No map telemetry in this period", body)
         self.assertIn("No map activity in this period", body)
 
@@ -773,7 +775,7 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertIn("Device/model activity", body)
         self.assertIn("fēnix 8 · 47 mm, AMOLED", body)
-        self.assertIn("Diagnostic activity", body)
+        self.assertIn("New / review-required devices", body)
         self.assertIn("Review queue", body)
         self.assertIn("Review required", body)
         self.assertIn("Last 24 hours", body)
@@ -793,10 +795,10 @@ class AdminSemanticsTests(unittest.TestCase):
             },
             {"username": "operator"}, "csrf",
         ).decode()
-        self.assertIn("overview-model-title", body)
+        self.assertNotIn("overview-model-title", body)
         self.assertIn("<div class='overview-primary-grid'>", body)
-        self.assertIn("No diagnostic activity in this period.", body)
-        self.assertNotIn("class='overview-primary-grid overview-primary-grid-single'", body)
+        self.assertNotIn("No diagnostic activity in this period.", body)
+        self.assertIn("overview-secondary-grid-single", body)
 
     def test_overview_period_control_updates_without_hard_reload(self):
         body = overview_page(
