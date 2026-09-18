@@ -104,17 +104,20 @@ and does not require Homebrew.
 
 Beta.12 adds BBBike and BBBike (Ontrail) maps, continent filtering, clearer
 country and region names, a larger catalog window, faster Install Maps
-filtering, and filters in Manage Maps. Build 29 improves watch model and screen
-identification and fixes map activity diagnostics that could stay queued.
+filtering, and filters in Manage Maps. Earlier beta.12 builds improved watch
+model and screen identification and fixed map activity diagnostics that could
+stay queued.
 
 **[Download Terento](https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_download)**
 
 DMG, ZIP, release notes, and previous versions are available on
 [GitHub Releases](https://github.com/VooZ2/terento/releases).
 
-Terento remains a Public beta. Installation and removal have real-device
-evidence. Safe updates are implemented, but the beta exit gate still requires
-one real update to a newer map release for each enabled provider.
+Terento remains a **Public beta — RC evaluation**. The owner-reported BBBike
+Lithuania safe update is PASS, while the beta exit gate still requires one real
+update to a newer map release for Freizeitkarte and one for OpenTopoMap.
+MapRando and BBBike remain subject to provider-specific lifecycle evidence, and
+compatibility claims remain exact-model and variant specific.
 
 During an update, Terento verifies the replacement before removing the
 previous Terento-owned version. If there is not enough space for both, it

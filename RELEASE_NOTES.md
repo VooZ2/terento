@@ -16,6 +16,7 @@ Terento continues to offer Freizeitkarte, OpenTopoMap, MapRando, BBBike and BBBi
 
 ## Known issues
 
+- Release status remains **Public beta — RC evaluation**. The owner-reported BBBike Lithuania safe update is PASS; the Freizeitkarte and OpenTopoMap real-update gates remain open. This is not a general hardware or provider certification.
 - Compatibility remains model and variant specific. Automated tests do not establish real-device compatibility for every Garmin model.
 - The isolated `Installing 0%` hardware cause from issue #222 has not been confirmed on the affected watch because no test watch is currently available. This build improves phase classification and diagnostics; it does not claim a confirmed hardware transport fix.
 - Occasional device connection issues may interrupt reading installed maps or finishing an installation. If prompted, disconnect and reconnect your Garmin, then try again.
