@@ -119,6 +119,12 @@ def render(source: str, config: dict, page: dict) -> str:
         raise ValueError(f"{page['file']} has no theme-color meta tag")
     insertion = "\n" + page_metadata_block(config, page) + "\n"
     head = head[: theme_match.end()] + insertion + head[theme_match.end() :]
+    head = re.sub(
+        r'(<title\b[^>]*>.*?</title>)[ \t]*\n(?:[ \t]*\n)+',
+        r'\1\n\n',
+        head,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
     return source[: head_match.start("head")] + head + source[head_match.end("head") :]
 
 

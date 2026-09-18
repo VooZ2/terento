@@ -8,7 +8,7 @@ const styles = read("site/styles.css");
 const shellSource = read("site/site-shell.js");
 const languageSource = read("site/language.js");
 const styleVersion = "20260913-maprando-language-v2";
-const localizedContentVersion = "20260911-three-providers-v2";
+const localizedContentVersion = "20260918-four-providers-v1";
 const mobileLanguageNames = { en: "English", de: "Deutsch", fr: "Français", pl: "Polski", cs: "Čeština", it: "Italiano" };
 
 const cssBlock = (selector) => {
