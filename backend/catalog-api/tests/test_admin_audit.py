@@ -186,7 +186,7 @@ class AdminAuditTests(unittest.TestCase):
 
     def test_post_audit_layout_copy_and_recovery_contract(self):
         body = map_statistics_page({"rows": []}, [], {"username": "audit"}, "csrf").decode()
-        for text in ("Downloads", "Successful", "Success rate", "Installs",
+        for text in ("Downloads", "Successful", "Success rate", "Fresh installs",
                      "Updates", "Diagnostic coverage", "View all map activity",
                      "No maps match your search", "flex-direction:column", "min-width:960px"):
             self.assertIn(text, body)

@@ -282,6 +282,10 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("popular-map-count-label", script)
         self.assertIn("mapRow(item, {includeProvider: true})", script)
         self.assertIn("matchedMaps.slice((allMapsPage - 1) * 10", script)
+        self.assertIn("${mapLink}<small class=\"popular-map-detail\">", script)
+        self.assertNotIn("<strong>${mapLink}</strong>", script)
+        self.assertIn(".popular-map-name-content{display:grid;", ADMIN_STYLES)
+        self.assertIn(".popular-map-detail{display:block;", ADMIN_STYLES)
         self.assertNotIn("#top-region-rows", ADMIN_STYLES)
         self.assertNotIn("popular-maps-table td:last-child{text-align", ADMIN_STYLES)
         self.assertNotIn("diagnostic-list-table th:last-child", ADMIN_STYLES)
@@ -491,7 +495,6 @@ class AdminSemanticsTests(unittest.TestCase):
                 "attention": [{"model": "Old unresolved watch", "open_error": True,
                     "has_failed": True, "last_occurred_at": "2026-01-01T00:00:00Z"}]},
         }, {"username": "operator"}, "csrf").decode()
-        self.assertNotIn("<span>Open errors</span><strong class='admin-error-counter is-positive'>12</strong>", body)
         self.assertIn("Old unresolved watch", body)
         self.assertIn("Unresolved work · all dates", body)
         self.assertNotIn("No issues need attention", body)
@@ -639,7 +642,6 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("<h1>Overview</h1>", body)
         self.assertIn("<span>Installs</span><strong>—</strong>", body)
         self.assertIn("<span>Failed installs</span><strong class='admin-error-counter'>—</strong>", body)
-        self.assertNotIn("<span>Open errors</span>", body)
         self.assertIn("No map activity in this period.", body)
 
     def test_overview_uses_existing_operation_and_provider_drill_downs(self):
@@ -782,6 +784,10 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("<div class='overview-primary-grid'>", body)
         self.assertIn("<div class='overview-secondary-grid'>", body)
         self.assertIn("overview-model-panel", body)
+        model_panel = body.split("overview-model-panel", 1)[1].split("</section>", 1)[0]
+        self.assertIn("Device/model activity", model_panel)
+        self.assertNotIn("Compatibility evidence", model_panel)
+        self.assertNotIn("Diagnostic activity", model_panel)
         self.assertNotIn("Failures by reason", body)
         self.assertNotIn("build", body.lower())
 
@@ -1204,26 +1210,43 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("overview-chart-download-unknown", body)
         self.assertIn("1 unknown interval retained", body)
 
-    def test_download_chart_positions_observations_on_real_time_axis(self):
+    def test_download_chart_uses_discrete_hourly_slots_not_observation_minutes(self):
         import xml.etree.ElementTree as ET
 
-        body = _overview_downloads_chart({
+        def chart_data(body):
+            svg = ET.fromstring(body[body.index("<svg"):body.index("</svg>") + 6])
+            bars = svg.findall("g/rect")
+            centers = [
+                float(bar.attrib["x"]) + float(bar.attrib["width"]) / 2
+                for bar in bars
+            ]
+            return svg, bars, centers
+
+        first = _overview_downloads_chart({
             "hasData": True,
             "trend": [
-                {"observed_at": "2026-09-11T10:00:00Z", "bucket": "2026-09-11T10:00:00Z", "dmg_count": 1, "zip_count": 0},
-                {"observed_at": "2026-09-11T11:00:00Z", "bucket": "2026-09-11T11:00:00Z", "dmg_count": 1, "zip_count": 0},
-                {"observed_at": "2026-09-11T15:00:00Z", "bucket": "2026-09-11T15:00:00Z", "dmg_count": 1, "zip_count": 0},
+                {"observed_at": "2026-09-11T15:01:00Z", "bucket": "2026-09-11T15:00:00Z", "dmg_count": 1, "zip_count": 0},
+                {"observed_at": "2026-09-11T16:59:00Z", "bucket": "2026-09-11T16:00:00Z", "dmg_count": 1, "zip_count": 0},
             ],
         })
-        svg = ET.fromstring(body[body.index("<svg"):body.index("</svg>") + 6])
-        centers = sorted({
-            round(float(bar.attrib["x"]) + float(bar.attrib["width"]) / 2, 3)
-            for bar in svg.findall("g/rect")
+        second = _overview_downloads_chart({
+            "hasData": True,
+            "trend": [
+                {"observed_at": "2026-09-11T15:59:00Z", "bucket": "2026-09-11T15:00:00Z", "dmg_count": 1, "zip_count": 0},
+                {"observed_at": "2026-09-11T16:01:00Z", "bucket": "2026-09-11T16:00:00Z", "dmg_count": 1, "zip_count": 0},
+            ],
         })
-        self.assertEqual(len(centers), 3)
-        first_gap = centers[1] - centers[0]
-        second_gap = centers[2] - centers[1]
-        self.assertGreater(second_gap, first_gap * 3)
+        first_svg, first_bars, first_centers = chart_data(first)
+        _, _, second_centers = chart_data(second)
+        self.assertEqual(len(first_bars), 2)
+        self.assertEqual(first_centers, second_centers)
+        self.assertGreater(
+            first_centers[1],
+            first_centers[0] + float(first_bars[0].attrib["width"]),
+        )
+        self.assertIn(">15:00<", first)
+        self.assertIn(">16:00<", first)
+        self.assertNotIn("15:01", first_svg.attrib.get("aria-label", ""))
 
     def test_overview_renders_github_download_totals(self):
         body = overview_page(
@@ -2431,6 +2454,94 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("<strong data-stat='installSuccessRate'>—</strong>", body)
         self.assertIn("setFailed('failedInstalls', metric('failedInstalls'))", _map_statistics_script())
 
+    def test_activity_by_provider_separates_failed_downloads_from_interruptions(self):
+        rows = [
+            *[
+                {
+                    "provider_id": "opentopomap",
+                    "event_type": "DOWNLOAD_SUCCEEDED",
+                    "outcome": "SUCCEEDED",
+                    "operation_count": 1,
+                    "event_count": 1,
+                }
+                for _ in range(19)
+            ],
+            *[
+                {
+                    "provider_id": "opentopomap",
+                    "event_type": "DOWNLOAD_FAILED",
+                    "outcome": "FAILED",
+                    "operation_count": 1,
+                    "event_count": 1,
+                }
+                for _ in range(2)
+            ],
+            {
+                "provider_id": "opentopomap",
+                "event_type": "DOWNLOAD_INTERRUPTED",
+                "outcome": "UNKNOWN",
+                "operation_count": 1,
+                "event_count": 1,
+            },
+        ]
+        body = map_statistics_page(
+            {"rows": rows},
+            [{"id": "opentopomap", "name": "OpenTopoMap", "health": "HEALTHY"}],
+            {"username": "operator"},
+            "csrf",
+        ).decode()
+        self.assertIn(">Downloads</th><th scope='col' class='column-number'>Failed downloads</th>", body)
+        script = _map_statistics_script()
+        self.assertIn("row.event_type === 'DOWNLOAD_FAILED' && row.outcome === 'FAILED'", script)
+        self.assertIn("emptyRow(9)", script)
+
+        harness = r"""
+        const assert = require('node:assert/strict');
+        const nodes = {};
+        const makeNode = () => ({
+          value: '', textContent: '', innerHTML: '', hidden: false, disabled: false,
+          open: false, dataset: {},
+          classList: {toggle() {}},
+          addEventListener() {},
+          querySelector() { return null; }
+        });
+        const node = (selector) => {
+          const selectors = new Set([
+            '#map-statistics-range', '#map-statistics-provider', '#map-statistics-map',
+            '#map-statistics-region', '#map-statistics-event', '#map-statistics-outcome',
+            '#map-statistics-status', '#map-rows', '#top-region-rows', '#all-map-rows',
+            '#all-maps-page', '#all-maps-prev', '#all-maps-next', '#map-statistics-rows',
+            '#provider-statistic-rows'
+          ]);
+          return selectors.has(selector) ? (nodes[selector] ||= makeNode()) : null;
+        };
+        global.document = {querySelector: node, querySelectorAll: () => []};
+        global.window = {
+          terentoAdminProviders: [{id: 'opentopomap', name: 'OpenTopoMap'}],
+          terentoMapStatisticsFilters: {},
+          terentoWorldMapCountryAliases: {},
+          addEventListener() {}
+        };
+        window.terentoMapStatistics = {
+          rows: [
+            ...Array.from({length: 19}, () => ({provider_id: 'opentopomap', event_type: 'DOWNLOAD_SUCCEEDED', outcome: 'SUCCEEDED', operation_count: 1, event_count: 1})),
+            ...Array.from({length: 2}, () => ({provider_id: 'opentopomap', event_type: 'DOWNLOAD_FAILED', outcome: 'FAILED', operation_count: 1, event_count: 1})),
+            {provider_id: 'opentopomap', event_type: 'DOWNLOAD_INTERRUPTED', outcome: 'UNKNOWN', operation_count: 1, event_count: 1},
+            {provider_id: 'opentopomap', map_package_id: 'otm-fr', region: 'france', region_identity: 'FRANCE', region_display_name: 'French Republic', region_country: 'FR', event_type: 'INSTALL_SUCCEEDED', outcome: 'SUCCEEDED', component_kind: 'main', operation_count: 1, event_count: 1, last_occurred_at: '2026-09-18T09:39:00Z'}
+          ],
+          summary: {hasEventData: true, completedDownloads: 19, failedDownloads: 2}
+        };
+        eval(process.argv[1]);
+        const html = nodes['#provider-statistic-rows'].innerHTML;
+        assert.match(html, /<td>OpenTopoMap<\/td><td class="column-number numeric">19<\/td><td class="column-number numeric">2<\/td>/);
+        assert.equal((html.match(/<td/g) || []).length, 9);
+        assert.ok(!html.includes('>3<'));
+        const popular = nodes['#all-map-rows'].innerHTML;
+        assert.match(popular, /<div class="popular-map-name-content"><button[^>]*>French Republic<\/button><small class="popular-map-detail">OpenTopoMap ·/);
+        assert.ok(!popular.includes('<strong><button'));
+        """
+        self._run_node(harness, script)
+
     def test_map_statistics_keeps_update_success_and_failure_counts_separate(self):
         summary = _map_statistics_summary([
             {"event_type": "MAP_UPDATE_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 2},
@@ -2471,7 +2582,7 @@ class AdminSemanticsTests(unittest.TestCase):
             self.assertNotIn(text, body)
         self.assertEqual(main.count("class='map-statistics-kpi-group'"), 3)
         self.assertEqual(main.count("id='map-statistics-metrics'"), 1)
-        for text in ("Downloads", "Installs", "Updates", "Diagnostic coverage", "Attempts", "Linked reports", "Report gaps", "Coverage rate", "Last install"):
+        for text in ("Downloads", "Fresh installs", "Updates", "Diagnostic coverage", "Attempts", "Linked reports", "Report gaps", "Coverage rate", "Last install"):
             self.assertIn(text, main)
         self.assertIn("class='admin-error-counter' data-stat='failedMapUpdates'>0</strong>", main)
         self.assertNotIn("map-statistics-reliability", main)
