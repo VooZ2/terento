@@ -364,8 +364,22 @@ def _group_operation_tasks(events: list[dict[str, Any]]) -> dict[str, list[dict[
     return grouped
 
 
+def _is_preinstall_download_failure(result: dict[str, Any]) -> bool:
+    """Return whether a provider download failed before device installation."""
+    if result.get("preinstall_download_failure") is True or result.get("preinstall_download_failure") == 1:
+        return True
+    write_started = result.get("write_started")
+    if not (write_started is False or write_started == 0):
+        return False
+    stage = str(result.get("failure_stage") or "").strip().casefold()
+    code = str(result.get("failure_code") or "").strip().upper()
+    return stage == "download" or code == "INSTALL_BLOCKED_DOWNLOAD_FAILED"
+
+
 def _identity_is_pending(results: list[dict[str, Any]]) -> bool:
     if not results:
+        return False
+    if all(_is_preinstall_download_failure(result) for result in results):
         return False
     first = results[0]
     if first.get("canonical_device_model_id"):
@@ -429,6 +443,10 @@ def _operation_is_problematic(results: list[dict[str, Any]]) -> bool:
     carries an explicit failure diagnostic.
     """
     for result in results:
+        if _is_preinstall_download_failure(result):
+            # Provider acquisition problems are expected operational history,
+            # not installation defects requiring operator review.
+            continue
         outcome = str(result.get("phase_outcome") or "").strip().upper()
         if outcome in {"FAILED", "NOT_STARTED", "INCOMPLETE", "BLOCKED"}:
             return True
@@ -810,6 +828,8 @@ def _overview_operation_label(operation: dict[str, Any]) -> tuple[str, str]:
         if workflow == "UNDER_REVIEW":
             return "GitHub issue under review", "review"
         return "GitHub issue in progress", "review"
+    if _is_preinstall_download_failure(operation):
+        return "Download failed", "failed"
     if operation.get("has_failed"):
         return "Install failed", "failed"
     if operation.get("has_not_started"):
@@ -854,7 +874,8 @@ def _overview_compatibility_activity_row(operation: dict[str, Any]) -> str:
 
 def _overview_operation_href(operation: dict[str, Any]) -> str:
     state = (
-        "failed" if operation.get("has_failed")
+        None if _is_preinstall_download_failure(operation)
+        else "failed" if operation.get("has_failed") and not operation.get("has_not_started")
         else "open" if operation.get("open_error") or operation.get("has_not_started")
         else None
     )

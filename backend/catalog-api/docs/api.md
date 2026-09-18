@@ -133,6 +133,11 @@ remain available in compatibility diagnostics. A missing write fact is retained
 as unknown. Existing explicit map events are kept and eligible verified-success
 or write-started failure fallback projection is deduplicated by logical map
 result.
+For a provider download failure before the device write boundary, it remains
+activity/history as `Download failed`; it does not create an installation-
+failure diagnostic, Review queue task, open-error count, or identity-review
+task. An explicitly linked GitHub issue remains a separate operator-created
+workflow.
 
 The Overview also exposes `Observed download increases`, a display-only chart
 of public GitHub release asset cumulative-counter increases for the selected
