@@ -1243,6 +1243,8 @@ class AdminSemanticsTests(unittest.TestCase):
         ).decode()
         self.assertIn("Downloads</h2>", body)
         self.assertNotIn("Observed download increases between checks.", body)
+        self.assertNotIn("overview-info", body)
+        self.assertNotIn("Observed GitHub counter increases between checks", body)
         self.assertIn("Last successful data update:", body)
         self.assertIn("overview-download-heading", body)
         self.assertIn("overview-download-total' aria-label='.dmg downloads total: 23'><strong>23</strong><small>.dmg", body)
@@ -1257,6 +1259,36 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertLess(
             body.index("overview-download-totals", heading_index),
             body.index("overview-chart-wrap", heading_index),
+        )
+
+    def test_overview_publication_review_opens_filtered_devices_workspace(self):
+        body = overview_page(
+            {
+                "period": "24h",
+                "data": {"hasData": False, "recentActivity": [], "attention": [], "trend": [], "bucket": "hour"},
+                "compatibility": {
+                    "hasData": True,
+                    "recentActivity": [],
+                    "failureReasons": [],
+                    "reviewRequired": [{
+                        "model": "fēnix 8",
+                        "variant": "51 mm",
+                        "canonical_device_model_id": "garmin-fenix-8-51-amoled",
+                        "review_status": "PENDING",
+                        "last_evidence": "2026-09-16T10:25:00Z",
+                    }],
+                },
+                "providers": [],
+            },
+            {"username": "operator"}, "csrf",
+        ).decode()
+        self.assertIn(
+            "class='overview-detail-link' href='/admin/devices?review=publication'",
+            body,
+        )
+        self.assertNotIn(
+            "/admin/devices/garmin-fenix-8-51-amoled?from=installations",
+            body,
         )
 
     def test_chart_segments_join_without_individual_rounding(self):

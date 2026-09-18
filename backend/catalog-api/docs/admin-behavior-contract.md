@@ -460,6 +460,8 @@ work-item boundaries. Implementation evidence is local until separately publishe
   unresolved work population and link to the corresponding existing work view;
   zero categories are omitted, unavailable counts remain unavailable. Each preview
   retains object, reason/action and available timestamp with one primary link.
+  Publication-review previews open the Devices publication-review filter, matching
+  the queue shortcut, rather than the ordinary unfiltered device detail view.
 - System health answers which component needs attention. Collapsed rows show title,
   status and a concrete issue. Details retain result, actual last-check time and
   operational links. Missing observations are “—”; next-check time appears only

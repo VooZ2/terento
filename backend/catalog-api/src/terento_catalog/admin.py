@@ -969,10 +969,10 @@ def _overview_review_item(item: dict[str, Any]) -> str:
     public_enabled = bool(item.get("public_statistics_enabled"))
     label = "Unpublished" if review_status == "APPROVED" and not public_enabled else "Review required"
     device_id = str(item.get("canonical_device_model_id") or "").strip()
-    href = (
-        _device_detail_url(device_id, origin="installations")
-        if device_id else _diagnostics_url(item)
-    )
+    # Publication review belongs to the Devices review workspace. Keep the
+    # queue action aligned with the Publication review shortcut instead of
+    # opening the ordinary device detail view.
+    href = "/admin/devices?review=publication" if device_id else _diagnostics_url(item)
     return (
         f"<li class='overview-review-item'><a href='{html.escape(href, quote=True)}'>"
         f"<strong>{html.escape(context)}</strong><span>{html.escape(label)}</span></a></li>"
@@ -996,10 +996,10 @@ def _overview_review_attention_item(item: dict[str, Any]) -> str:
     public_enabled = bool(item.get("public_statistics_enabled"))
     label = "Unpublished" if review_status == "APPROVED" and not public_enabled else "Review required"
     device_id = str(item.get("canonical_device_model_id") or "").strip()
-    href = (
-        _device_detail_url(device_id, origin="installations")
-        if device_id else _diagnostics_url(item)
-    )
+    # Publication review belongs to the Devices review workspace. Keep the
+    # queue action aligned with the Publication review shortcut instead of
+    # opening the ordinary device detail view.
+    href = "/admin/devices?review=publication" if device_id else _diagnostics_url(item)
     return (
         "<li class='overview-attention-item overview-attention-review'>"
         "<span class='overview-attention-dot' aria-hidden='true'>●</span>"
@@ -1905,7 +1905,7 @@ def overview_page(
     downloads_section = (
         "<section class='overview-panel overview-download-panel' aria-labelledby='overview-downloads-title'>"
         "<div class='section-heading overview-download-heading'><div>"
-        "<h2 id='overview-downloads-title'>Downloads</h2><span class='overview-info' tabindex='0' role='note' aria-label='Observed GitHub counter increases between checks; reporting may be partial and missing intervals are unknown.' title='Observed GitHub counter increases between checks; reporting may be partial and missing intervals are unknown.'>i</span></div>"
+        "<h2 id='overview-downloads-title'>Downloads</h2></div>"
         "<div class='overview-download-totals' aria-label='Total GitHub downloads'>"
         f"<div class='overview-download-total' aria-label='.dmg downloads total: {download_total('dmgTotal')}'><strong>{download_total('dmgTotal')}</strong><small>.dmg</small></div>"
         f"<div class='overview-download-total' aria-label='.zip downloads total: {download_total('zipTotal')}'><strong>{download_total('zipTotal')}</strong><small>.zip</small></div>"
