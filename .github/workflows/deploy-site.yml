@@ -78,6 +78,32 @@ jobs:
             --output "$RUNNER_TEMP/live-manifest.json" https://terento.app/updates/macos-arm64.json
           python3 scripts/check-live-release-manifest.py site/updates/macos-arm64.json "$RUNNER_TEMP/live-manifest.json"
 
+          python3 scripts/ci_http.py compatibility-page --fail --silent --show-error --connect-timeout 5 --max-time 20 \
+            --output "$RUNNER_TEMP/live-compatibility.html" https://terento.app/compatibility/
+          python3 - "$RUNNER_TEMP/live-compatibility.html" <<'PY'
+          import json
+          import re
+          import sys
+          from pathlib import Path
+
+          pattern = re.compile(
+              r'<script type="application/json" id="compatibility-snapshot">(.*?)</script>',
+              re.DOTALL,
+          )
+
+          def snapshot(path: Path) -> dict:
+              match = pattern.search(path.read_text(encoding="utf-8"))
+              if not match:
+                  raise SystemExit(f"compatibility snapshot missing from {path}")
+              return json.loads(match.group(1))
+
+          expected = snapshot(Path("site/compatibility/index.html"))
+          live = snapshot(Path(sys.argv[1]))
+          if live != expected:
+              raise SystemExit("live Compatibility snapshot does not match deployed beta output")
+          print("Live Compatibility snapshot matches the deployed beta output.")
+          PY
+
       - name: Retain website deployment health
         if: steps.current.outputs.deploy == 'true'
         shell: bash

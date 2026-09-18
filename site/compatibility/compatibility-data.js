@@ -63,7 +63,8 @@
 
   const publicModelName = (value) => {
     const label = clean(value).replace(/^Garmin\s+/i, "");
-    return trimSeparators(label.replace(sizePattern, "").replace(featurePattern, "")
+    const modelOnly = label.split(/\s*[·|:]\s*/, 1)[0].trim();
+    return trimSeparators(modelOnly.replace(sizePattern, "").replace(featurePattern, "")
       .replace(/\bHistorical\s*$/i, "")
       .replace(/\b(?:fenix|fēnix)\b/gi, "fēnix")
       .replace(/\bpro\b/gi, "Pro")

@@ -348,8 +348,19 @@ def main() -> int:
     verify_live_manifest()
     verify_http_transport()
     verify_scoped_transport()
-    assert not (WORKFLOWS / "refresh-compatibility-snapshot.yml").exists()
-    assert "update-compatibility-snapshot.py" not in publisher
+    refresh = (WORKFLOWS / "refresh-compatibility-snapshot.yml").read_text(encoding="utf-8")
+    assert "cron: \"0 */6 * * *\"" in refresh
+    assert "workflow_dispatch:" in refresh
+    assert "scripts/update-compatibility-snapshot.py" in refresh
+    assert "git diff --quiet" in refresh
+    assert "git push origin HEAD:beta" in refresh
+    assert "actions: write" in refresh
+    assert "gh workflow run deploy-site.yml --ref beta" in refresh
+    assert "gh run watch" in refresh
+    deploy_site = (WORKFLOWS / "deploy-site.yml").read_text(encoding="utf-8")
+    assert "compatibility-page" in deploy_site
+    assert "live-compatibility.html" in deploy_site
+    assert "live Compatibility snapshot does not match deployed beta output" in deploy_site
     codeql = (WORKFLOWS / "codeql.yml").read_text(encoding="utf-8")
     codeql_refs = re.findall(r"uses:\s*github/codeql-action/[^@\s]+@([0-9a-f]{40})", codeql)
     assert len(codeql_refs) >= 2 and len(set(codeql_refs)) == 1, "CodeQL steps must use the same pinned version"

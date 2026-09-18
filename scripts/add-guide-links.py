@@ -15,66 +15,72 @@ COPY = {
         "download_guide": "Read the Mac installation guide",
         "download_compatibility": "Check compatibility",
         "compatibility": "First time installing third-party maps? Read the Mac guide",
-        "community_eyebrow": "Community testing",
-        "community_heading": "Have another Garmin smartwatch with map support?",
-        "community_body": "Try the beta and share the result.",
+        "community_eyebrow": "Community results",
+        "community_heading": "Don’t see your Garmin here?",
+        "community_body": "If your Garmin smartwatch supports maps, you can still try Terento. This list grows as successful installations are shared from more exact models and variants.",
         "community_download": "Download",
-        "evidence_note": "These counts come from successful installations shared with Terento. They are not Garmin certification.",
+        "evidence_note": "Installation results are shared with Terento by users. They are not Garmin certification.",
+        "download_status": "This is the current Terento beta. It supports maps from four map providers. The Compatibility page shows exact models and variants with successful shared installations. A model missing from the list is not an unsupported-device claim.",
     },
     "de": {
         "home": "Lies die vollständige Mac-Installationsanleitung.",
         "download_guide": "Mac-Installationsanleitung lesen",
         "download_compatibility": "Kompatibilität prüfen",
         "compatibility": "Zum ersten Mal Drittanbieter-Karten installieren? Lies die Mac-Anleitung",
-        "community_eyebrow": "Community-Tests",
-        "community_heading": "Hast du eine weitere Garmin-Smartwatch mit Kartenunterstützung?",
-        "community_body": "Teste die Beta und teile das Ergebnis.",
+        "community_eyebrow": "Ergebnisse aus der Community",
+        "community_heading": "Dein Garmin ist nicht dabei?",
+        "community_body": "Wenn deine Garmin-Smartwatch Karten unterstützt, kannst du Terento trotzdem ausprobieren. Diese Liste wächst, wenn erfolgreiche Installationen für weitere genaue Modelle und Varianten geteilt werden.",
         "community_download": "Herunterladen",
-        "evidence_note": "Diese Zahlen stammen aus erfolgreichen Installationen, die mit Terento geteilt wurden. Sie sind keine Garmin-Zertifizierung.",
+        "evidence_note": "Die Installationsergebnisse wurden von Nutzern mit Terento geteilt; sie sind keine Garmin-Zertifizierung.",
+        "download_status": "Dies ist die aktuelle Terento-Beta. Sie unterstützt Karten von vier Kartenanbietern. Die Kompatibilitätsseite zeigt genaue Modelle und Varianten mit erfolgreich geteilten Installationen. Ein fehlendes Modell ist keine Aussage, dass das Gerät nicht unterstützt wird.",
     },
     "fr": {
         "home": "Lisez le guide complet d’installation sur Mac.",
         "download_guide": "Lire le guide d’installation sur Mac",
         "download_compatibility": "Vérifier la compatibilité",
         "compatibility": "Vous installez des cartes tierces pour la première fois ? Lisez le guide Mac",
-        "community_eyebrow": "Tests communautaires",
-        "community_heading": "Vous avez une autre montre Garmin compatible avec les cartes ?",
-        "community_body": "Testez la bêta et partagez le résultat.",
+        "community_eyebrow": "Résultats de la communauté",
+        "community_heading": "Votre Garmin n’apparaît pas ?",
+        "community_body": "Si votre montre Garmin prend en charge les cartes, vous pouvez tout de même essayer Terento. Cette liste s’allonge à mesure que des installations réussies sont partagées pour d’autres modèles et variantes exacts.",
         "community_download": "Télécharger",
-        "evidence_note": "Ces chiffres proviennent d’installations réussies partagées avec Terento. Ils ne constituent pas une certification Garmin.",
+        "evidence_note": "Les résultats d’installation sont partagés avec Terento par les utilisateurs ; ils ne constituent pas une certification Garmin.",
+        "download_status": "Il s’agit de la bêta actuelle de Terento. Elle prend en charge les cartes de quatre fournisseurs. La page Compatibilité affiche les modèles et variantes exacts avec des installations réussies partagées. L’absence d’un modèle ne signifie pas qu’il n’est pas pris en charge.",
     },
     "pl": {
         "home": "Przeczytaj pełną instrukcję instalacji na Macu.",
         "download_guide": "Przeczytaj instrukcję instalacji na Macu",
         "download_compatibility": "Sprawdź kompatybilność",
         "compatibility": "Instalujesz mapy innych firm pierwszy raz? Przeczytaj instrukcję na Macu",
-        "community_eyebrow": "Testy społeczności",
-        "community_heading": "Masz inny zegarek Garmin obsługujący mapy?",
-        "community_body": "Przetestuj betę i udostępnij wynik.",
+        "community_eyebrow": "Wyniki społeczności",
+        "community_heading": "Nie widzisz swojego Garmina?",
+        "community_body": "Jeśli Twój zegarek Garmin obsługuje mapy, nadal możesz wypróbować Terento. Lista rośnie wraz z udanymi instalacjami udostępnianymi dla kolejnych dokładnych modeli i wariantów.",
         "community_download": "Pobierz",
-        "evidence_note": "Te dane pochodzą z udanych instalacji udostępnionych Terento. Nie są certyfikatem firmy Garmin.",
+        "evidence_note": "Wyniki instalacji są udostępniane Terento przez użytkowników; nie są certyfikacją Garmin.",
+        "download_status": "To aktualna beta Terento. Obsługuje mapy od czterech dostawców. Strona zgodności pokazuje dokładne modele i warianty z udanymi, udostępnionymi instalacjami. Brak modelu nie oznacza, że urządzenie nie jest obsługiwane.",
     },
     "cs": {
         "home": "Přečtěte si úplného průvodce instalací na Macu.",
         "download_guide": "Přečíst průvodce instalací na Macu",
         "download_compatibility": "Ověřit kompatibilitu",
         "compatibility": "Instalujete mapy třetích stran poprvé? Přečtěte si průvodce pro Mac",
-        "community_eyebrow": "Komunitní testování",
-        "community_heading": "Máte jiné hodinky Garmin s podporou map?",
-        "community_body": "Vyzkoušejte betu a sdílejte výsledek.",
+        "community_eyebrow": "Výsledky komunity",
+        "community_heading": "Nevidíte zde svůj Garmin?",
+        "community_body": "Pokud vaše hodinky Garmin podporují mapy, můžete Terento přesto vyzkoušet. Seznam se rozšiřuje s dalšími sdílenými úspěšnými instalacemi pro konkrétní modely a varianty.",
         "community_download": "Stáhnout",
-        "evidence_note": "Tato čísla pocházejí z úspěšných instalací sdílených s Terento. Nejde o certifikaci Garmin.",
+        "evidence_note": "Výsledky instalací sdílejí s Terento uživatelé; nejde o certifikaci Garmin.",
+        "download_status": "Jde o aktuální betu Terento. Podporuje mapy od čtyř poskytovatelů. Stránka Kompatibilita zobrazuje konkrétní modely a varianty s úspěšnými sdílenými instalacemi. Chybějící model neznamená, že zařízení není podporováno.",
     },
     "it": {
         "home": "Leggi la guida completa all’installazione su Mac.",
         "download_guide": "Leggi la guida all’installazione su Mac",
         "download_compatibility": "Verifica la compatibilità",
         "compatibility": "Installi mappe di terze parti per la prima volta? Leggi la guida per Mac",
-        "community_eyebrow": "Test della community",
-        "community_heading": "Hai un altro smartwatch Garmin con supporto mappe?",
-        "community_body": "Prova la beta e condividi il risultato.",
+        "community_eyebrow": "Risultati della community",
+        "community_heading": "Non vedi il tuo Garmin?",
+        "community_body": "Se il tuo smartwatch Garmin supporta le mappe, puoi comunque provare Terento. L’elenco cresce man mano che vengono condivise installazioni riuscite per altri modelli e varianti esatti.",
         "community_download": "Scarica",
-        "evidence_note": "Questi dati provengono da installazioni riuscite condivise con Terento. Non sono una certificazione Garmin.",
+        "evidence_note": "I risultati delle installazioni sono condivisi con Terento dagli utenti; non costituiscono una certificazione Garmin.",
+        "download_status": "Questa è la beta attuale di Terento. Supporta le mappe di quattro provider. La pagina Compatibilità mostra i modelli e le varianti esatti con installazioni riuscite condivise. L’assenza di un modello non significa che il dispositivo non sia supportato.",
     },
 }
 
@@ -114,12 +120,12 @@ def download_link(label: str, href: str, *, event=None, location=None) -> str:
 
 
 DOWNLOAD_PRESENTATION = {
-    "en": ("A native Mac app for installing and managing community maps on compatible Garmin watches.", "Free", "Notarized", "Terento showing a connected Garmin watch on macOS"),
-    "de": ("Eine native Mac-App zum Installieren und Verwalten von Community-Karten auf kompatiblen Garmin-Uhren.", "Kostenlos", "Notarisiert", "Terento zeigt eine verbundene Garmin-Uhr unter macOS"),
-    "fr": ("Une application Mac native pour installer et gérer des cartes communautaires sur les montres Garmin compatibles.", "Gratuit", "Notarié", "Terento affiche une montre Garmin connectée sur macOS"),
-    "pl": ("Natywna aplikacja na Maca do instalowania i zarządzania mapami społecznościowymi na zgodnych zegarkach Garmin.", "Bezpłatna", "Notaryzowana", "Terento pokazuje podłączony zegarek Garmin w macOS"),
-    "cs": ("Nativní aplikace pro Mac k instalaci a správě komunitních map na kompatibilních hodinkách Garmin.", "Zdarma", "Notarizovaná", "Terento zobrazuje připojené hodinky Garmin v macOS"),
-    "it": ("Un’app Mac nativa per installare e gestire mappe della comunità sugli orologi Garmin compatibili.", "Gratuita", "Notarizzata", "Terento mostra un orologio Garmin collegato su macOS"),
+    "en": ("A native Mac app for installing and managing community maps on Garmin smartwatches with map support.", "Free", "Notarized", "Terento showing a connected Garmin watch on macOS"),
+    "de": ("Eine native Mac-App zum Installieren und Verwalten von Community-Karten auf Garmin-Smartwatches mit Kartenunterstützung.", "Kostenlos", "Notarisiert", "Terento zeigt eine verbundene Garmin-Uhr unter macOS"),
+    "fr": ("Une application Mac native pour installer et gérer des cartes communautaires sur les montres Garmin prenant en charge les cartes.", "Gratuit", "Notarié", "Terento affiche une montre Garmin connectée sur macOS"),
+    "pl": ("Natywna aplikacja na Maca do instalowania i zarządzania mapami społecznościowymi na zegarkach Garmin obsługujących mapy.", "Bezpłatna", "Notaryzowana", "Terento pokazuje podłączony zegarek Garmin w macOS"),
+    "cs": ("Nativní aplikace pro Mac k instalaci a správě komunitních map na hodinkách Garmin s podporou map.", "Zdarma", "Notarizovaná", "Terento zobrazuje připojené hodinky Garmin v macOS"),
+    "it": ("Un’app Mac nativa per installare e gestire mappe della comunità sugli smartwatch Garmin con supporto alle mappe.", "Gratuita", "Notarizzata", "Terento mostra uno smartwatch Garmin collegato su macOS"),
 }
 
 
@@ -189,6 +195,17 @@ def normalize_download_layout(source: str, locale: str) -> str:
         source,
         count=1,
     )
+    sections = list(re.finditer(r'<section class="download-detail">[\s\S]*?</section>', source))
+    if len(sections) < 2:
+        raise RuntimeError("Download page must contain a beta-status section")
+    status_section = sections[1]
+    updated_status = re.sub(
+        r'(<h2>[^<]*</h2>\s*)<p>[\s\S]*?</p>',
+        rf'\1<p>{html.escape(COPY[locale]["download_status"])}</p>',
+        status_section.group(0),
+        count=1,
+    )
+    source = source[:status_section.start()] + updated_status + source[status_section.end():]
     return download_presentation(source, locale)
 
 

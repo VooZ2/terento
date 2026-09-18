@@ -34,7 +34,7 @@ function visibleFaq(source, file) {
 }
 
 const questionSignals = [
-  [/Garmin.*Terento/i, /Compatibility|Kompatibilitätsseite|Compatibilité|kompatybilności|Kompatibilita|Compatibilità/i],
+  [/Garmin.*Terento/i, /Compatibility|Kompatibilitätsseite|Compatibilité|kompatybilności|zgodności|Kompatibilita|Compatibilità/i],
   [/BaseCamp/i, /Mac|macOS/],
   [/own|my own|ma propre|moją|vlastn|mia|\.img/i, /\.img|map|mapa|carte|Karte|mapy|mappa/i],
   [/update|aktual|mise à jour|à jour|nowsz|novější|più recent|aggiorn/i, /Terento|map/i],
