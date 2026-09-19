@@ -1,10 +1,12 @@
 # Terento repository instructions
 
 These are the repository-wide instructions for Codex and contributors. Keep
-changes narrow, evidence-based, and consistent with the canonical documents
-in the public component READMEs and the current release state. Private
-operator documentation under ignored `internal/` may supplement these rules
-but is not a prerequisite for external contributors.
+changes narrow, evidence-based, and consistent with the canonical product,
+scope, architecture, security, and release documents under `internal/` and
+with the public component READMEs. When descriptive facts change, update the
+relevant canonical document in the same change. Private operator documentation
+under ignored `internal/` may not be available to external contributors, so
+scoped instructions must still state their durable working rules.
 
 ## Mandatory reading for user-facing work
 
@@ -18,7 +20,7 @@ illustrations, screenshots, marketing documentation, or visual assets, read:
 Also inspect the current implementation before editing. Preserve current
 layout and runtime behavior unless the task explicitly requests a change.
 
-## Source precedence
+## Brand source precedence
 
 Use this order when sources disagree:
 
@@ -47,11 +49,10 @@ Use this order when sources disagree:
   never the only status signal.
 - Public claims must match functionality available in the current release.
   Beta limitations must remain truthful.
-- The official exact-model compatibility criteria are: `TESTING` (0), `TESTED` (1–2),
-  `SUPPORTED` (3–4), and `VERIFIED` (5+). The current administrator-approved
-  public rows come from `/admin` through the compatibility API; public pages,
-  app/API copy, release notes, and reviews must not introduce another list or
-  threshold.
+- Internal compatibility classifications must not be turned into a broad public
+  support claim. Public Compatibility presentation is owned by `site/AGENTS.md`
+  and the generated site contract; backend/admin evidence and status rules stay
+  in their scoped contracts.
 - Do not reduce accessibility or keyboard focus behavior.
 - Do not alter unrelated working behavior during visual or documentation
   work.
@@ -77,31 +78,39 @@ or change application/API behavior as a side effect of contract documentation.
 
 ## Admin and diagnostic workflow contract
 
-Before changing diagnostic delivery, API intake, admin UI/navigation or statistics,
-read `backend/catalog-api/docs/admin-behavior-contract.md` and the relevant routes
-in `backend/catalog-api/docs/api.md`, plus the canonical
-`contracts/STATISTICS_CONTRACT.md` population/formula contract. Preserve the
-complete failure-to-diagnostic workflow and counting semantics. A row in Review queue or a green deploy is not
-proof that device history, detail actions and statistics work. Follow the
-contract's change/release gate; report unverified criteria explicitly. Documentation
-requirements do not authorize changes to device install/remove behavior.
+For Admin, diagnostic, statistics, or app/API payload work, read the scoped
+`backend/catalog-api/AGENTS.md` plus the canonical Admin, API, statistics, and
+app/API release contracts named there. Keep diagnostic evidence, counting,
+identity-review, privacy, and device-safety invariants intact; a green deploy or
+one visible row is not proof that the full workflow works. Do not duplicate
+scoped Admin implementation rules here.
 
-The Admin visual consistency addendum (popularity rows, table alignment, KPI
-groups, error counters, and System health presentation) is maintained in that
-canonical contract; keep the source classes/helpers there synchronized with
-the implementation.
+## Git and workspace hygiene
 
-Identity Review is operator-assisted exact-model selection. Do not reintroduce
-a required identity reason/review note, require all technical checks to be
-`MATCH` before an operator can select a catalog model, hide case-size/display/
-Solar/inReach variant differences, or add duplicate picker mechanisms. Keep
-missing facts distinct from conflicts, keep the canonical per-result scope
-strict (including index `0`), and preserve the server-side conflict check and
-explicit manual-assignment audit path. Do not add a separate daily-review
-`Technical identity details` or candidate-table disclosure; identity-specific
-raw fields belong only in the single diagnostic-level `Technical details`
-disclosure.
-
-Before app/API payload, diagnostic or release changes, also read
-`contracts/APP_API_RELEASE_CONTRACT.md`. Verify both stream contracts and deploy
-additive API acceptance before publishing a client that uses it.
+- When the repository and workflows confirm it, `origin/beta` is the canonical
+  integrated Terento source state. Do not treat a local task branch as canonical
+  merely because its SHA is different.
+- Before substantial work, run `scripts/check-workspace-state.sh` and inspect
+  the current branch, upstream, `origin/beta`, working tree, worktrees, stashes,
+  and local branches. Fetch/prune remote refs when the task requires fresh
+  remote state; the checker itself is read-only.
+- Create a new task branch or worktree only for independently reviewable work.
+  Reuse the existing task branch for a continuation. Do not create `v2`, `v3`,
+  `final`, `deploy`, or replacement branches for the same work; commit history
+  records iterations.
+- Do not create deployment-only branches when deployment workflows use the
+  integration branch.
+- If an unexpected dirty worktree is found, audit staged, unstaged, untracked,
+  and ignored state before any checkout, stash, reset, restore, clean, branch
+  deletion, or worktree removal. Never auto-stash or discard it.
+- A task branch is temporary. After its work is integrated into `origin/beta`,
+  remote state is verified, and semantic review finds no unique local content,
+  remove its linked clean worktree, delete the local branch, and prune stale
+  worktree metadata/remote refs as appropriate. Use `git branch -D` only when
+  explicit semantic-equivalence evidence explains why ancestry is insufficient;
+  prefer `git branch -d` whenever it can prove the same result.
+- Stashes are temporary recovery mechanisms, not a backlog. Audit their content
+  before dropping them; preserve any unique, uncertain, or recovery material.
+- At task handoff report current branch, HEAD, upstream and ahead/behind,
+  working-tree state, remaining relevant branches, worktrees, stashes, tests,
+  and cleanup status.

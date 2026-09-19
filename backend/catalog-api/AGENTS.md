@@ -25,8 +25,9 @@ per behavior and update any regression tests that encode superseded behavior
 with the rule. Do not keep contradictory legacy guidance for compatibility.
 Explicit current Admin UI invariants in `docs/admin-behavior-contract.md` take
 precedence over older generic presentation wording.
-Statistical populations and formulas remain canonical in
-`contracts/STATISTICS_CONTRACT.md`; this contract owns Admin presentation only.
+`docs/admin-behavior-contract.md` owns Admin presentation and diagnostic behavior;
+`contracts/STATISTICS_CONTRACT.md` owns statistical populations and formulas;
+`docs/api.md` owns current route, payload, and runtime documentation.
 
 The admin interface may remain denser and more operational than the public
 website; it is not a public marketing surface.
