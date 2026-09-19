@@ -23,10 +23,15 @@ as a side effect of unrelated work.
 - Do not make broad CSS or generated-page refactors during unrelated content
   changes.
 
-Public Compatibility is a successful-installation directory, not a supported-device
-whitelist. Only exact model/variant rows with at least one successful shared
-installation may appear publicly; a missing model must never be described or
-implied as unsupported. Internal TESTING/TESTED/SUPPORTED/VERIFIED codes are not
-public badges. Initial HTML must contain the current published snapshot; JavaScript
-may refresh it live. Site-wide copy should describe Garmin smartwatches with map
-support rather than a finite supported-model list.
+## Public Compatibility
+
+- Compatibility is a successful-installation directory, not a supported-device
+  whitelist. A public exact model/variant requires `successfulInstallations >= 1`;
+  failed-only or zero-success models stay out of the public list.
+- A missing model is not unsupported. Internal `TESTING`/`TESTED`/`SUPPORTED`/
+  `VERIFIED` values are not public support badges.
+- Public device copy describes a Garmin smartwatch with map support rather than a
+  finite supported-model list.
+- Initial HTML must contain the current published snapshot; JavaScript may refresh
+  it live. The generator/source is canonical; do not hand-edit divergent locale
+  HTML, and preserve the same semantics in all six locales.

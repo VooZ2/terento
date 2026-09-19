@@ -97,7 +97,9 @@ workspace creation or HTTP acquisition. Existing device files remain protected.
 
 Manifests and device identifiers stay on the Mac. Compatibility and map-use
 reports are privacy-minimised and enabled by default; either stream can be
-turned off in Diagnostics. Custom maps contribute compatibility evidence only.
+turned off in Diagnostics. Custom maps contribute compatibility evidence and
+eligible common fresh-install totals, but no provider-download event or guessed
+catalog geography.
 Strict `-local` labels keep local-test events outside public aggregates.
 Report issue opens a user-reviewed GitHub draft; raw logs are not automatically
 uploaded. App updates use metadata checks and an explicit official-download
@@ -182,9 +184,9 @@ device metadata. Local map-capability and installation permission registries
 are unchanged. Historical manifest naming is frozen in the storage layer and
 is never a model-identification source.
 
-The existing v4 event queue sends only the two bounded optional model fields,
-with the existing diagnostic opt-out and local-test partition. The API must
-accept these additions before releasing the app. The current candidate uses
+The existing v4 event queue sends bounded optional model and component-outcome
+fields, with the existing diagnostic opt-out and local-test partition. The API
+must accept these additions before releasing the app. The current candidate uses
 beta.12 with build29; the published release remains whatever the canonical
 update manifest records. A read-only Mac-side observation of fēnix 8 47 mm
 received original XML AMOLED text and code 006-B4536-00; this is metadata
@@ -213,7 +215,9 @@ identity. Disconnect records interruption before clearing map state. Opt-out
 clears both queued events and journal entries. Delivery remains bounded/retryable
 and independent of installation safety. An absent server outcome is not proof
 of download failure. OTM main maps and contours use separate random acquisition
-IDs; manually imported IMG files remain custom compatibility evidence only.
+IDs; manually imported IMG files do not create provider-download events, but
+their eligible main-map results participate in the shared fresh-install read
+model without guessed provider or geography.
 The API supporting migration049 must precede distribution of beta.12/build30.
 
 ### Operation-owned installation reports

@@ -10,8 +10,10 @@ architecture, safety, documentation, and delivery.
 - The production app is the root Xcode target; this directory remains the
   SwiftPM source module and native regression harness consumed by that target.
 - The current beta release is maintained through the repository release
-  manifest, release notes, and the official compatibility list. Do not use an
-  old beta branch, draft PR, or local artifact as the current status source.
+  manifest, release notes, and the public successful-install compatibility
+  results. Do not use an old beta branch, draft PR, or local artifact as the
+  current status source. A missing public result does not prove another Garmin
+  model is unsupported.
 - Active providers are Freizeitkarte, OpenTopoMap, MapRando and BBBike through
   the shared lifecycle. BBBike and BBBike (Ontrail) are two map types of one
   provider. Source-validated OpenTopoMap contours are an optional public add-on.
