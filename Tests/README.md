@@ -92,3 +92,10 @@ Xcode/candidate build and the still-published manifest/notes/downloads. The
 candidate must advance the build and preserve the public version/label; it
 cannot carry distribution URLs or checksums. Removing it restores the direct
 Xcode/public-manifest equality requirement.
+
+Release documentation checks also protect the current Compatibility semantics:
+the public page is a successful-installation directory, exact model/variant
+entries require at least one successful shared installation, and a missing
+model is not an unsupported claim. The release gate checks all six guide
+locales, release identity parity, generator-produced help copy, and known
+retired public wording without scanning internal status terminology.

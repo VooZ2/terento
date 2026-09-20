@@ -26,6 +26,23 @@ repository, subject to the normal review of the current worktree:
 | `AGENTS.md` | Repository-wide Codex and contributor instructions |
 | `LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md` | Source and dependency notices |
 
+## Documentation ownership
+
+Each durable behavior has one canonical documentation owner. Component
+readmes may summarize the owning contract, but they must not duplicate its
+full specification; generated public HTML is output, not an independent source.
+
+| Domain | Canonical owner |
+| --- | --- |
+| Native app behavior | `app/TerentoCore/README.md`; release-specific details also belong in `RELEASE_NOTES.md` |
+| Admin behavior | `backend/catalog-api/docs/admin-behavior-contract.md` |
+| API routes, payloads, and runtime behavior | `backend/catalog-api/docs/api.md` |
+| Statistics populations and formulas | `contracts/STATISTICS_CONTRACT.md` |
+| Cross-component app/API release sequencing | `contracts/APP_API_RELEASE_CONTRACT.md` |
+| Public website semantics | Canonical generators and localized content sources under `scripts/` and `site/`; generated HTML is output |
+| Release identity | `site/updates/macos-arm64.json`, `RELEASE_NOTES.md`, and the matching GitHub Release |
+| User-facing product overview | Root `README.md` |
+
 ## Local-only or operational areas
 
 These areas are intentionally not part of the public GitHub publication

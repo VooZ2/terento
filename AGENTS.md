@@ -76,6 +76,16 @@ or change application/API behavior as a side effect of contract documentation.
   `AGENTS.override.md`; never copy private infrastructure, credentials,
   secrets, or personal working instructions into tracked files.
 
+### Same-change documentation and ownership
+
+Any change to durable product behavior, user/admin workflow, public semantics,
+API behavior, configuration, safety boundary, statistics interpretation,
+release behavior, or supported operational workflow must update the owning
+canonical documentation in the same change. Remove or rewrite superseded
+guidance instead of appending conflicting prose. Do not create documentation
+for transient implementation details that are self-evident from code and are
+not durable contracts or user/operator behavior.
+
 ## Admin and diagnostic workflow contract
 
 For Admin, diagnostic, statistics, or app/API payload work, read the scoped
