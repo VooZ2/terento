@@ -49,8 +49,23 @@ const publicLabel = versionMatch[4] || label;
 const readme = read("README.md");
 assert.ok(readme.includes(publicLabel), "README must identify the public beta label");
 assert.match(readme, new RegExp(`build\\s+${release.build}\\b`, "i"), "README must identify the public build");
-assert.match(readme, /The Compatibility page is the official public list/);
-assert.match(readme, /\*\*Tested\*\* — 1–2[\s\S]*\*\*Supported\*\* — 3–4[\s\S]*\*\*Verified\*\* — 5 or more/);
+const compatibilitySection = readme.match(
+  /## Requirements and compatibility[\s\S]*?(?=\n## Download and beta status)/,
+)?.[0] || "";
+assert.match(compatibilitySection, /successful-\s*installation\s+directory/i);
+assert.match(
+  compatibilitySection,
+  /exact Garmin models and variants with at least one[\s\S]*successful shared installation/i,
+);
+assert.match(compatibilitySection, /list grows[\s\S]*installations are shared/i);
+assert.match(compatibilitySection, /missing from the list does not mean it[\s\S]*unsupported/i);
+assert.match(compatibilitySection, /Garmin smartwatches with map support/i);
+assert.doesNotMatch(compatibilitySection, /official public list|single public list/i);
+assert.doesNotMatch(
+  compatibilitySection,
+  /\*\*(?:Tested|Supported|Verified)\*\*\s*[—-]\s*\d/i,
+  "README must not publish device support tiers",
+);
 
 const siteLinks = [...readme.matchAll(/https:\/\/terento\.app[^\s)"<>]*/g)];
 assert.ok(siteLinks.length > 0, "README must link to the public site");
@@ -133,7 +148,59 @@ for (const locale of ["en", "de", "fr", "pl", "cs", "it"]) {
     new RegExp(`\"dateModified\": \"${release.publishedAt}T00:00:00Z\"`),
     `site/${prefix}guides/install-garmin-maps-mac/index.html: guide review date must match the release date`,
   );
+  const compatibilityMarkers = {
+    en: [
+      /at least one successful shared installation/i,
+      /list grows as more successful installations are shared/i,
+      /missing model does not mean it is unsupported/i,
+    ],
+    de: [
+      /mindestens einer erfolgreich geteilten Installation/i,
+      /Liste wächst/i,
+      /Modell fehlt.*nicht.*unterstützt/i,
+    ],
+    fr: [
+      /au moins une installation réussie partagée/i,
+      /liste s’allonge/i,
+      /absence d’un modèle.*ne signifie pas/i,
+    ],
+    pl: [
+      /co najmniej jedną udaną.*udostępnioną instalacją/i,
+      /Lista rośnie/i,
+      /Brak modelu nie oznacza/i,
+    ],
+    cs: [
+      /alespoň jednou úspěšnou sdílenou instalací/i,
+      /Seznam se rozšiřuje/i,
+      /model není.*neznamená/i,
+    ],
+    it: [
+      /almeno un’installazione riuscita condivisa/i,
+      /L’elenco cresce/i,
+      /modello non è nell’elenco.*non significa/i,
+    ],
+  }[locale];
+  for (const marker of compatibilityMarkers) {
+    assert.match(guide, marker, `site/${prefix}guides/install-garmin-maps-mac: compatibility copy drift`);
+  }
+  assert.doesNotMatch(
+    guide,
+    /official(?:ly)?[^.]{0,80}(?:single|only|unique) public list|offizielle[^.]{0,100}einzige öffentliche Liste|liste publique unique|jedyną publiczną listą|jediným veřejným seznamem|unico elenco pubblico/i,
+    `site/${prefix}guides/install-garmin-maps-mac: obsolete public-list wording`,
+  );
 }
+const publicHelp = [
+  read("README.md"),
+  read("site/localized-content.js"),
+  ...["", "de/", "fr/", "pl/", "cs/", "it/"].map(
+    (prefix) => read(`site/${prefix}guides/install-garmin-maps-mac/index.html`),
+  ),
+].join("\n");
+assert.doesNotMatch(
+  publicHelp,
+  /Beta scope|Available today|Choose a map and get moving/i,
+  "public help must not retain retired UI copy",
+);
 assert.doesNotMatch(
   read("site/localized-content.js"),
   /b(?:eta|êta)[ .]\d+/gi,

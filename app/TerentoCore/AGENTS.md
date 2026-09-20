@@ -121,3 +121,12 @@ native control without an explicit reviewed reason.
 - For every change, run `git diff --check`, review the changed-file list, and
   state explicitly whether runtime, resources, release, and deployment files
   were untouched. Do not run destructive hardware tests for visual work.
+
+## Documentation impact
+
+Any durable or user-visible app workflow or functionality change must review
+`app/TerentoCore/README.md`, the root `README.md` when the public product
+description changes, relevant website/help text when the user journey changes,
+and `RELEASE_NOTES.md` when the change ships in a public release. Internal
+refactors with no durable or user-visible effect do not require documentation
+noise.

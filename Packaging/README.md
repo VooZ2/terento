@@ -202,6 +202,34 @@ Before distributing a public build:
   release and website build numbers. A published DMG or successful site deploy
   alone does not complete this operational release gate.
 
+### Documentation and help synchronization
+
+Before a public release, review every relevant user-facing surface:
+
+- `README.md`;
+- `app/TerentoCore/README.md`;
+- `RELEASE_NOTES.md`;
+- all six localized Download pages;
+- Home and FAQ copy;
+- the installation guide;
+- Compatibility page copy;
+- the About page when the product description changed;
+- troubleshooting and support copy;
+- screenshots when the UI materially changed;
+- structured data and metadata; and
+- Privacy/legal copy when collected data, diagnostics, or the user flow changed.
+
+Review every surface, then update only the surfaces made inaccurate or
+incomplete by the release. Do not touch every file merely to satisfy a
+checklist.
+
+If a release materially changes navigation, screen layout, labels, feature
+state shown in screenshots, or the main install/manage workflow, review the
+full screenshot set. A screenshot that still matches the current UI does not
+need to be regenerated solely because the build number changed. If it is stale,
+the release is not documentation-complete until the image, its derivatives,
+and every reference are updated from the canonical source.
+
 Every change to the public macOS update manifest selects the full CI matrix.
 A beta push containing that change automatically retains a release observation,
 including failed gates; no separate manual dispatch or new tag is required.

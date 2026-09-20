@@ -28,6 +28,8 @@ precedence over older generic presentation wording.
 `docs/admin-behavior-contract.md` owns Admin presentation and diagnostic behavior;
 `contracts/STATISTICS_CONTRACT.md` owns statistical populations and formulas;
 `docs/api.md` owns current route, payload, and runtime documentation.
+Admin/API runtime behavior changes must update the owning canonical document in
+the same PR.
 
 The admin interface may remain denser and more operational than the public
 website; it is not a public marketing surface.

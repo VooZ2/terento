@@ -23,6 +23,14 @@ as a side effect of unrelated work.
 - Do not make broad CSS or generated-page refactors during unrelated content
   changes.
 
+## Documentation impact
+
+When user-visible app behavior, feature availability, requirements,
+compatibility semantics, install/update/remove flow, or troubleshooting
+changes, review the public copy and its canonical generator source in the same
+change. Never hand-edit generated locale HTML. Regenerate all six locales and
+preserve the same meaning in each locale.
+
 ## Public Compatibility
 
 - Compatibility is a successful-installation directory, not a supported-device

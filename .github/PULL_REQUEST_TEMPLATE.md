@@ -16,6 +16,12 @@ Commands and results:
 
     <!-- Add commands and concise results here. -->
 
+## Documentation impact
+
+- [ ] Canonical documentation was updated for every durable behavior change, or this change has no durable documentation impact.
+- [ ] Superseded guidance was removed or rewritten; no conflicting old rule remains.
+- [ ] User/help/release copy was reviewed if user-visible behavior changed.
+
 ## Safety and compatibility
 
 - [ ] No unrelated Garmin files are silently overwritten, removed, or renamed.
