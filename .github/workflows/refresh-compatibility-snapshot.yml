@@ -29,7 +29,7 @@ jobs:
       - name: Validate public compatibility output
         run: |
           node Tests/shared-compatibility-data-tests.cjs
-          node Tests/site-post-audit-tests.cjs
+          node Tests/site-compatibility-refresh-tests.cjs
           git diff --check
 
       - name: Detect factual changes

@@ -19,7 +19,7 @@ import zipfile
 
 from .collectors.freizeitkarte.range_zip import ZipRangeError
 from .provider_catalog import (
-    OPENTOPO_MAP_BETA8_MAIN_PACKAGE_COUNT,
+    OPENTOPO_MAP_EXPECTED_MAIN_PACKAGE_COUNT,
     OPENTOPO_MAP,
     OpenTopoMapFetcher,
     OpenTopoMapLink,
@@ -69,7 +69,7 @@ class OpenTopoMapContourAuditReport:
 def audit_opentopomap_contours(
     *,
     fetcher: OpenTopoMapFetcher | None = None,
-    expected_main_package_count: int = OPENTOPO_MAP_BETA8_MAIN_PACKAGE_COUNT,
+    expected_main_package_count: int = OPENTOPO_MAP_EXPECTED_MAIN_PACKAGE_COUNT,
     sample_region: str | None = None,
     max_workers: int = 8,
 ) -> OpenTopoMapContourAuditReport:
@@ -235,7 +235,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Audit OpenTopoMap contour metadata")
     parser.add_argument("--sample-region", default="andorra")
-    parser.add_argument("--expected-main-count", type=int, default=OPENTOPO_MAP_BETA8_MAIN_PACKAGE_COUNT)
+    parser.add_argument("--expected-main-count", type=int, default=OPENTOPO_MAP_EXPECTED_MAIN_PACKAGE_COUNT)
     args = parser.parse_args()
     report = audit_opentopomap_contours(
         expected_main_package_count=args.expected_main_count,
@@ -246,4 +246,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
