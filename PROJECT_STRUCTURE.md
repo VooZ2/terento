@@ -12,14 +12,14 @@ repository, subject to the normal review of the current worktree:
 | Area | Purpose |
 | --- | --- |
 | `app/Terento/` | macOS application shell, `Info.plist`, entitlements, resources, and the bridging header |
-| `app/TerentoCore/` | Production SwiftPM source module, native bridge, resources, and regression tests consumed by the root Xcode target. |
+| `app/TerentoCore/` | Production SwiftPM source module, native bridge, resources, and app/native regression tests consumed by the root Xcode target. |
 | `Terento.xcodeproj/` | macOS application target and Xcode build configuration |
 | `Packaging/` | Repeatable local build/release preparation scripts and signing documentation. It must not contain certificates, credentials, or generated release files. |
 | `site/` | Public website, localized pages, legal pages, and public assets |
 | `legal/` | Public legal web source and publication inputs |
 | `backend/catalog-api/` | Metadata-only catalog, devices, compatibility evidence, diagnostics and admin API |
 | `contracts/` | [Shared public JSON schemas and fixtures](contracts/README.md) consumed directly by Python, Swift and Node tests |
-| `Tests/` | Suite inventory, path selection, repository runners and cross-component checks |
+| `Tests/` | Suite inventory, path selection, repository runners, and cross-component/site contract checks |
 | `site-deploy/` | Public website container configuration |
 | `.github/workflows/` | CI quality gates, reusable API checks and deployment workflows |
 | `brand/` | Approved brand assets and guidelines; exploratory previews remain local |

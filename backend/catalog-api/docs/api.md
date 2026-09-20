@@ -1002,18 +1002,19 @@ Map statistics resolve the stored package to its geographic identity and expose
 package or type. Candidate package IDs must be seeded in the receiving DB before
 owner testing, because unknown map IDs cannot link to package geography.
 
-### Build30 acquisition lifecycle extension
+### Acquisition lifecycle extension
 
 Schema1 additionally accepts paired optional `acquisitionId` (random UUID) and
-`componentKind` (`main` or `contours`) for download events. Build29 requests remain
-valid. `DOWNLOAD_PROCESSING`, `DOWNLOAD_CANCELLED`, and `DOWNLOAD_INTERRUPTED`
+`componentKind` (`main` or `contours`) for download events. Earlier client
+requests remain valid. `DOWNLOAD_PROCESSING`, `DOWNLOAD_CANCELLED`, and `DOWNLOAD_INTERRUPTED`
 require this pair and outcome `UNKNOWN`; new successes/failures require the
 corresponding outcome. These are metadata only, never filenames or device IDs.
 A repeated event/phase is idempotent and one acquisition admits one terminal.
 Recent activity groups the new acquisition phases with component and history;
 non-terminal observations are explicitly labelled `Outcome not received`.
 Cancellation/interruption are excluded from download failure/success ratios.
-The API/migration must be deployed before the build30 client.
+The API and migration supporting this contract must be deployed before a client
+that emits these fields is distributed.
 
 ### Admin information hierarchy (local UI implementation)
 

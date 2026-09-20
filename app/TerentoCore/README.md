@@ -186,9 +186,9 @@ is never a model-identification source.
 
 The existing v4 event queue sends bounded optional model and component-outcome
 fields, with the existing diagnostic opt-out and local-test partition. The API
-must accept these additions before releasing the app. The current candidate uses
-beta.12 with build29; the published release remains whatever the canonical
-update manifest records. A read-only Mac-side observation of fēnix 8 47 mm
+must accept these additions before releasing the app. The published release
+remains whatever the canonical update manifest records. A read-only Mac-side
+observation of fēnix 8 47 mm
 received original XML AMOLED text and code 006-B4536-00; this is metadata
 evidence for that watch, not other variants or map lifecycle acceptance. Map-operation safety
 regressions remain required; no new install/remove hardware test is introduced.
@@ -205,7 +205,7 @@ not alter identity/evidence strings, catalog matching, local manifest keys or
 installation authorization. The Map Manager registry includes the officially
 documented fēnix 9 family; exact-model public evidence remains independent.
 
-### Build30 acquisition reporting (local candidate)
+### Map acquisition reporting
 
 The app records each provider component acquisition directly through the shared
 statistics controller, including checking/unpacking, cancellation and interruption.
@@ -217,8 +217,9 @@ and independent of installation safety. An absent server outcome is not proof
 of download failure. OTM main maps and contours use separate random acquisition
 IDs; manually imported IMG files do not create provider-download events, but
 their eligible main-map results participate in the shared fresh-install read
-model without guessed provider or geography.
-The API supporting migration049 must precede distribution of beta.12/build30.
+model without guessed provider or geography. The API migration that introduced
+these fields is append-only and must be deployed before distribution of a
+client that emits them.
 
 ### Operation-owned installation reports
 

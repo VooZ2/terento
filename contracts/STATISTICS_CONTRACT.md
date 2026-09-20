@@ -300,7 +300,7 @@ a historical completed result happened. Reopened diagnostics remain linked to
 the same event and do not create a new attempt. Conflicting or insufficient
 facts remain visible as unknown/diagnostic data and are excluded from rates.
 
-The regression case for beta.12 build30 Freizeitkarte `CZE+` with
+The regression case for the Freizeitkarte `CZE+` package with
 `INSTALL_BLOCKED_DOWNLOAD_FAILED` is an acquisition `FAILED` event and a
 device installation `NOT_STARTED` result. It contributes zero fresh attempts,
 zero fresh failures, and does not alter the compatibility model rate. The

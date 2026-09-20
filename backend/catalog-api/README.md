@@ -43,7 +43,7 @@ System-health disclosures use the shared UI typography and retain padded,
 keyboard-accessible summary rows in both collapsed and expanded states. Filter
 clearing uses the page-specific clear event once per action.
 
-The September 9 post-audit contract keeps persistent labels above filters
+The current admin presentation contract keeps persistent labels above filters
 (including expanded map search), sentence-case health badges, and at least
 40 px desktop / 44 px mobile map controls. Wide evidence tables scroll inside
 their container instead of splitting headings. Empty time ranges and filtered
@@ -419,7 +419,7 @@ package `country` stores an ISO code for single-country admin aggregation.
 The source page provides a download/install path; this is not a grant to
 redistribute source code, rendering assets, elevation data or map binaries.
 Attribution is retained and no such assets are bundled. The API exposes the
-provider as ACTIVE for the beta.11 catalog while compatibility claims remain
+provider as ACTIVE in the v3 catalog while compatibility claims remain
 model-specific and evidence-based.
 
 Migration `037_maprando_compatibility_evidence.sql` adds MapRando to the
@@ -548,8 +548,8 @@ names. See [the display contract](docs/device-api.md#display-only-label-contract
 Approved records retain their IDs, specifications, assignments, counts and
 approval state. The underlying catalog and event fields remain unchanged.
 
-Build30 preparation adds migration049 and backward-compatible component
-acquisition outcomes, preserving build29 intake and legacy deduplication.
+The acquisition lifecycle adds backward-compatible component outcomes,
+preserving legacy intake and deduplication.
 Admin shows received XML/USB codes independently of mapping approval and derives
 only unanimous reviewed specification facts for XML-matching variants.
 New acquisition phases are grouped in Recent activity with component/history;
