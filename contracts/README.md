@@ -93,6 +93,109 @@ The map server's equality comparison currently accepts JSON `true` as version
 versions explicitly reject booleans. These are documented existing limits,
 not new allowed data uses.
 
+## Structured installation failure context
+
+The server-first change adds optional top-level `failureContext` and
+`originalFailureContext` to compatibility-event version 4 without changing its
+schema version. Both use the same closed, nonrecursive object shape below;
+neither can contain another context. Versions 1–3 remain accepted unchanged
+without these fields; reject new fields on versions 1–3 before legacy validation
+early returns. Existing v4 clients may omit both fields. This change
+does not implement app emission, comparator version 2, retries or a deployment.
+
+Each supplied context requires `boundary`, `classificationSource` (`native` or
+`derived`) and `devicePresence` (`unknown`, `present` or `absent`). Missing
+observations must not be fabricated: a read error alone does not establish
+absence.
+
+`boundary` and optional `lastSuccessfulBoundary` use the same closed set:
+`initial_snapshot`, `initial_inventory`, `prewrite_inventory`,
+`prewrite_protection`, `write`, `readback`, `postwrite_inventory`,
+`postwrite_snapshot`, `target_validation`, `postwrite_protection`, `cleanup`,
+`manifest`, `source_validation_complete`, `preflight_policy_passed`.
+Omit `lastSuccessfulBoundary` when unknown.
+
+Optional context fields have these controlled values:
+
+| Field | Accepted values |
+| --- | --- |
+| `operation` | `snapshot`, `inventory`, `file_prefix`, `file_range`, `write`, `readback`, `cleanup`, `manifest`, `protection_check` |
+| `executionMode` | `in_process`, `worker` |
+| `resultKind` | `native_error`, `timeout`, `cancelled`, `process_launch_error`, `process_exit`, `request_io_error`, `response_io_error`, `decode_error`, `invalid_response`, `app_error`, `protection_failed` |
+| `nativeCategory` | `detection`, `session_open`, `storage_read`, `inventory_read`, `object_read`, `allocation`, `invalid_argument`, `unspecified` |
+| `nativeCodeNamespace` | `terento_snapshot`, `terento_inventory`, `terento_file_prefix`, `terento_file_range` |
+| `nativeResultCode` | Signed 32-bit integer; present if and only if `nativeCodeNamespace` is present |
+| `retryCount` | Integer 0–255; operation retries, not diagnostic upload attempts |
+| `componentKind` | `main`, `contours`, matching the artifact component kind |
+
+Booleans are not integers. Native codes describe the named Terento boundary;
+no libmtp namespace or invented libmtp result code is accepted. Optional
+`protection` is a nested closed object requiring `protectionBoundary`
+(`pre-write` or `post-write`) and `protectionReason`, one of:
+`target-present-before-write`, `non-target-object-added`,
+`preexisting-object-removed`, `preexisting-object-changed`,
+`inventory-ambiguous`, `target-missing`, `target-duplicate`, `target-invalid`,
+`target-filename-mismatch`, `target-size-mismatch`.
+
+Its optional `stableIdentityComparisonVersion` is integer 1 or 2 and is reported
+only if comparison executed. Acceptance of 2 reserves the contract; this
+server change does not implement or validate that comparator. Optional
+`beforeObjectCount`, `afterObjectCount`, `addedObjectCount`,
+`removedObjectCount` and `changedObjectCount` are integers 0–16384.
+Before/after counts cover all observed entries; deltas cover non-target objects.
+Omit deltas when inventories cannot be paired. Never clamp an observed count
+to fit the bound.
+
+Optional `targetPresent`, `targetUnique`, `targetKindMatches`,
+`targetFilenameMatches`, `targetSizeMatches`, `targetPathMatches` and
+`targetItemIDMatches` are nullable booleans. Unknown is omitted or null, not
+false. Full paths are intentionally compared across validated session snapshots;
+report `targetPathMatches` only when that comparison was observed. Item IDs are
+session-scoped: report `targetItemIDMatches` only for a comparable check within
+the same session, never infer it across sessions. No actual paths, filenames or
+object IDs are sent.
+
+On cleanup failure, terminal `failureContext.boundary` is `cleanup`,
+`cleanupAttempted` must be true, and
+top-level `originalFailureContext` preserves the complete originating context,
+including protection, without rewriting it. Successful cleanup does not change
+the original failure stage or reason. Reject orphan `originalFailureContext`:
+it requires terminal `failureContext.boundary=cleanup`. When both contexts
+specify `componentKind`, they must match. Validate original protection against
+the original boundary, not the terminal cleanup boundary.
+
+Context may accompany a successful main-map result only for an explicitly
+failed selected contours component: `componentKind=contours`,
+`optionalComponentSelected=true` and `optionalComponentOutcome=FAILED`.
+Compare its boundary with `optionalComponentFailureStage`, not the main map's
+null failure stage. Select context by explicit component identity, never
+dictionary order. Aggregate `cleanupSucceeded` can describe another component
+and cannot alone invalidate this context. Do not manufacture context for
+success. Consistency checks use available facts without retroactively rejecting
+legacy events that omit context.
+
+Reject directly contradictory observed protection facts: target-present requires
+`targetPresent=true`, target-missing requires `targetPresent=false`,
+target-duplicate requires `targetPresent=true` and `targetUnique=false`, and
+filename/size mismatch requires the corresponding match flag to be false.
+These rules constrain supplied non-null observations; they do not require
+otherwise unknown target facts to be manufactured.
+
+Protection reasons must also match the context boundary:
+`target-present-before-write` is valid only at `prewrite_protection`; all other
+target reasons require `target_validation` or `postwrite_protection`.
+Inventory reasons (`non-target-object-added`, `preexisting-object-removed`,
+`preexisting-object-changed`, `inventory-ambiguous`) allow either
+`prewrite_protection` or `postwrite_protection`. Null or omitted target
+observations do not bypass this reason-to-phase invariant. Apply the same rule
+to original context using its own boundary.
+
+The nested allowlist does not disable existing privacy rejection. These objects
+allow only the listed enums, bounded integers and booleans, with null allowed
+only for the listed target observations. They exclude raw text, paths, private
+filenames, serials, Unit IDs, object identifiers, hashes and map contents.
+Historical absent context stays unavailable; it is not reconstructed.
+
 ## Changing a contract
 
 1. Inspect the serializer, validator, API documentation and existing consumers.

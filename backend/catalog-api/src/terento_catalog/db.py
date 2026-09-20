@@ -17,6 +17,7 @@ from .identity_assessment import (
     validate_correction,
 )
 from .failure_reasons import normalize_failure_reason
+from .failure_context import validate_event_contexts
 from .compatibility_status import calculate_compatibility_status
 from .models import CollectedDevice, CollectedMap
 from .asset_attribution import normalize_asset_source
@@ -593,6 +594,7 @@ class Database:
         }
 
     def insert_compatibility_event(self, event: dict[str, Any]) -> bool:
+        validate_event_contexts(event)
         query = """
             INSERT INTO compatibility_evidence_event (
                 event_id, occurred_at, model, compatibility_identity, variant, case_size_mm,
@@ -606,7 +608,8 @@ class Database:
                 native_failure_code, write_started, remote_object_created,
                 cleanup_attempted, cleanup_succeeded, transfer_progress_bucket,
                 raw_mtp_model, identity_resolution_code, is_local_test,
-                garmin_model_description, garmin_model_part_number, identity_assessment
+                garmin_model_description, garmin_model_part_number, identity_assessment,
+                failure_context, original_failure_context
             ) VALUES (
                 %(id)s, %(timestamp)s, %(model)s, %(compatibilityIdentity)s, %(variant)s, %(caseSizeMm)s,
                 %(displayType)s, %(canonicalDeviceId)s, %(identityResolutionState)s,
@@ -619,7 +622,8 @@ class Database:
                 %(failureCode)s, %(nativeFailureCode)s, %(writeStarted)s,
                 %(remoteObjectCreated)s, %(cleanupAttempted)s, %(cleanupSucceeded)s,
                 %(transferProgressBucket)s, %(rawMTPModel)s, %(identityResolutionCode)s,
-                %(isLocalTest)s, %(garminModelDescription)s, %(garminModelPartNumber)s, %(identityAssessment)s::jsonb
+                %(isLocalTest)s, %(garminModelDescription)s, %(garminModelPartNumber)s, %(identityAssessment)s::jsonb,
+                %(failureContext)s::jsonb, %(originalFailureContext)s::jsonb
             ) ON CONFLICT (event_id) DO NOTHING
             RETURNING event_id
         """
@@ -640,6 +644,8 @@ class Database:
             )
         values = {
             **event,
+            "failureContext": json.dumps(event['failureContext']) if 'failureContext' in event else None,
+            "originalFailureContext": json.dumps(event['originalFailureContext']) if 'originalFailureContext' in event else None,
             # Swift Codable omits nil optional fields. PostgreSQL still needs
             # explicit NULL parameters for the named placeholders below.
             "family": event.get("family"),
@@ -785,6 +791,7 @@ class Database:
                 variant, firmware_version, provider, region, map_release, terento_version,
                 app_build, release_label, map_result_index, selected_map_count,
                 phase_outcome, automatic_finishing_result, failure_stage, failure_code, native_failure_code,
+                failure_context, original_failure_context,
                 write_started,
                 remote_object_created,
                 cleanup_attempted,

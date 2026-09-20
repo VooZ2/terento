@@ -30,8 +30,10 @@ report must remain visible as missing.
 
 ## Mandatory tests before merging/releasing
 
-1. Change the native encoder/producer, shared schema/fixtures and API acceptance
-   together when fields or controlled codes change. Do not assume API acceptance
+1. Coordinate the native encoder/producer, shared schema/fixtures and API
+   acceptance when fields or controlled codes change. Additive server acceptance
+   may land first with fixtures; native emission follows its deployed acceptance
+   gate and must pass freshly encoded payload tests. Do not assume API acceptance
    from a successful statistics upload or a matching version label.
 2. Run the native operation diagnostics suite. It exercises a real MapEngine
    failure without ConnectScreen, persists and sends reports through the existing
@@ -81,6 +83,36 @@ public client can emit them. Initial operation context
 is in memory and terminal reports enter the existing durable outbox. This does
 not add crash journaling before a result exists, and cannot recover a historical
 missing report or infer an unknown user's watch.
+
+## Server-first structured failure context
+
+The version-4 additive contract accepts optional top-level `failureContext` and
+`originalFailureContext`, each using the same nonrecursive closed shape, with
+optional nested `protection`. The exact fields and bounds are defined in
+[the shared event contract](README.md#structured-installation-failure-context).
+Versions 1–3 remain accepted without the new fields, and existing v4 payloads
+remain valid. Server acceptance alone is not app emission or a deployment claim.
+
+The server group covers schema/explicit validation, additive persistence,
+Admin/report presentation and tests. Record its deployed source SHA, migration
+replay and old-client verification before implementing app emission. Historical
+rows retain unavailable context. Preserve both terminal cleanup context and its
+original failure context; do not reconstruct either from a legacy code.
+
+Validation must exercise nested privacy rejection and numeric bounds, legacy
+requests, idempotent replay, persistence and Admin/generated-report presentation.
+The loopback delivery suite uses SQLite and does not replace PostgreSQL migration
+and read-model integration. When app emission is added, run the actual Swift
+encoder-to-API gate, app/native suites and the Xcode product build; verify new
+Swift source membership in both the Xcode target and explicit shell-runner
+source lists. The repository all-suite runner does not replace those separate
+PostgreSQL and Xcode gates.
+
+Comparator version 1 denotes existing semantics during diagnostics-only work.
+Version 2 is reserved for a separate safety change, independent review and real
+hardware gate. Neither accepting that value nor a green diagnostic test proves
+the comparator safe. No operation retries are introduced. App emission and
+comparator version 2 remain unimplemented by this server-first group.
 
 ## Toolchain changes and final artifact startup
 

@@ -233,6 +233,12 @@
         "null"
       ],
       "maxLength": 80
+    },
+    "failureContext": {
+      "$ref": "#/$defs/failureContext"
+    },
+    "originalFailureContext": {
+      "$ref": "#/$defs/failureContext"
     }
   },
   "required": [
@@ -697,6 +703,654 @@
           }
         ]
       }
+    },
+    {
+      "if": {
+        "required": [
+          "failureContext"
+        ]
+      },
+      "then": {
+        "properties": {
+          "schemaVersion": {
+            "const": 4
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "failureContext"
+        ],
+        "properties": {
+          "failureContext": {
+            "required": [
+              "componentKind"
+            ],
+            "properties": {
+              "componentKind": {
+                "const": "contours"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "optionalComponentSelected",
+          "optionalComponentOutcome"
+        ],
+        "properties": {
+          "optionalComponentSelected": {
+            "const": true
+          },
+          "optionalComponentOutcome": {
+            "const": "FAILED"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "failureContext"
+        ],
+        "properties": {
+          "phaseOutcome": {
+            "const": "SUCCEEDED"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "failureContext": {
+            "required": [
+              "componentKind"
+            ],
+            "properties": {
+              "componentKind": {
+                "const": "contours"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "originalFailureContext"
+        ]
+      },
+      "then": {
+        "properties": {
+          "schemaVersion": {
+            "const": 4
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "originalFailureContext"
+        ],
+        "properties": {
+          "originalFailureContext": {
+            "required": [
+              "componentKind"
+            ],
+            "properties": {
+              "componentKind": {
+                "const": "contours"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "optionalComponentSelected",
+          "optionalComponentOutcome"
+        ],
+        "properties": {
+          "optionalComponentSelected": {
+            "const": true
+          },
+          "optionalComponentOutcome": {
+            "const": "FAILED"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "originalFailureContext"
+        ],
+        "properties": {
+          "phaseOutcome": {
+            "const": "SUCCEEDED"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "originalFailureContext": {
+            "required": [
+              "componentKind"
+            ],
+            "properties": {
+              "componentKind": {
+                "const": "contours"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "originalFailureContext"
+        ]
+      },
+      "then": {
+        "required": [
+          "failureContext"
+        ],
+        "properties": {
+          "failureContext": {
+            "properties": {
+              "boundary": {
+                "const": "cleanup"
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "failureContext": {
+                  "required": [
+                    "componentKind"
+                  ],
+                  "properties": {
+                    "componentKind": {
+                      "const": "contours"
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "optionalComponentFailureStage"
+              ],
+              "properties": {
+                "optionalComponentFailureStage": {
+                  "const": "cleanup"
+                }
+              }
+            },
+            "else": {
+              "required": [
+                "failureStage"
+              ],
+              "properties": {
+                "failureStage": {
+                  "const": "cleanup"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "failureContext": {
+                  "required": [
+                    "componentKind"
+                  ],
+                  "properties": {
+                    "componentKind": {
+                      "const": "main"
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "originalFailureContext": {
+                  "properties": {
+                    "componentKind": {
+                      "const": "main"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "failureContext": {
+                  "required": [
+                    "componentKind"
+                  ],
+                  "properties": {
+                    "componentKind": {
+                      "const": "contours"
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "originalFailureContext": {
+                  "properties": {
+                    "componentKind": {
+                      "const": "contours"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "failureContext"
+        ]
+      },
+      "then": {
+        "properties": {
+          "phaseOutcome": {
+            "enum": [
+              "FAILED",
+              "SUCCEEDED"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "originalFailureContext"
+        ]
+      },
+      "then": {
+        "properties": {
+          "phaseOutcome": {
+            "enum": [
+              "FAILED",
+              "SUCCEEDED"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "failureContext"
+        ],
+        "properties": {
+          "failureContext": {
+            "properties": {
+              "boundary": {
+                "enum": [
+                  "initial_snapshot",
+                  "initial_inventory",
+                  "prewrite_inventory",
+                  "prewrite_protection",
+                  "preflight_policy_passed"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "if": {
+          "properties": {
+            "failureContext": {
+              "required": [
+                "componentKind"
+              ],
+              "properties": {
+                "componentKind": {
+                  "const": "contours"
+                }
+              }
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "optionalComponentFailureStage": {
+              "enum": [
+                null,
+                "preflight"
+              ]
+            }
+          }
+        },
+        "else": {
+          "properties": {
+            "failureStage": {
+              "enum": [
+                null,
+                "preflight"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "failureContext"
+        ],
+        "properties": {
+          "failureContext": {
+            "properties": {
+              "boundary": {
+                "enum": [
+                  "write"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "if": {
+          "properties": {
+            "failureContext": {
+              "required": [
+                "componentKind"
+              ],
+              "properties": {
+                "componentKind": {
+                  "const": "contours"
+                }
+              }
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "optionalComponentFailureStage": {
+              "enum": [
+                null,
+                "write"
+              ]
+            }
+          }
+        },
+        "else": {
+          "properties": {
+            "failureStage": {
+              "enum": [
+                null,
+                "write"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "failureContext"
+        ],
+        "properties": {
+          "failureContext": {
+            "properties": {
+              "boundary": {
+                "enum": [
+                  "readback",
+                  "postwrite_inventory",
+                  "postwrite_snapshot",
+                  "target_validation",
+                  "postwrite_protection"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "if": {
+          "properties": {
+            "failureContext": {
+              "required": [
+                "componentKind"
+              ],
+              "properties": {
+                "componentKind": {
+                  "const": "contours"
+                }
+              }
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "optionalComponentFailureStage": {
+              "enum": [
+                null,
+                "verify"
+              ]
+            }
+          }
+        },
+        "else": {
+          "properties": {
+            "failureStage": {
+              "enum": [
+                null,
+                "verify"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "failureContext"
+        ],
+        "properties": {
+          "failureContext": {
+            "properties": {
+              "boundary": {
+                "enum": [
+                  "cleanup"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "if": {
+          "properties": {
+            "failureContext": {
+              "required": [
+                "componentKind"
+              ],
+              "properties": {
+                "componentKind": {
+                  "const": "contours"
+                }
+              }
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "optionalComponentFailureStage": {
+              "enum": [
+                null,
+                "cleanup"
+              ]
+            }
+          }
+        },
+        "else": {
+          "properties": {
+            "failureStage": {
+              "enum": [
+                null,
+                "cleanup"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "failureContext"
+        ],
+        "properties": {
+          "failureContext": {
+            "properties": {
+              "boundary": {
+                "enum": [
+                  "manifest"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "if": {
+          "properties": {
+            "failureContext": {
+              "required": [
+                "componentKind"
+              ],
+              "properties": {
+                "componentKind": {
+                  "const": "contours"
+                }
+              }
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "optionalComponentFailureStage": {
+              "enum": [
+                null,
+                "manifest"
+              ]
+            }
+          }
+        },
+        "else": {
+          "properties": {
+            "failureStage": {
+              "enum": [
+                null,
+                "manifest"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "failureContext"
+        ],
+        "properties": {
+          "failureContext": {
+            "properties": {
+              "boundary": {
+                "enum": [
+                  "source_validation_complete"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "if": {
+          "properties": {
+            "failureContext": {
+              "required": [
+                "componentKind"
+              ],
+              "properties": {
+                "componentKind": {
+                  "const": "contours"
+                }
+              }
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "optionalComponentFailureStage": {
+              "enum": [
+                null,
+                "source-validation"
+              ]
+            }
+          }
+        },
+        "else": {
+          "properties": {
+            "failureStage": {
+              "enum": [
+                null,
+                "source-validation"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "failureContext"
+        ],
+        "properties": {
+          "failureContext": {
+            "properties": {
+              "boundary": {
+                "const": "cleanup"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "cleanupAttempted": {
+            "const": true
+          }
+        }
+      }
     }
   ],
   "$defs": {
@@ -712,6 +1366,521 @@
       ],
       "maxLength": 160,
       "pattern": "^(?![\\s\\S]*(?:/Users/|file://))[\\s\\S]*$"
+    },
+    "failureContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "boundary",
+        "classificationSource",
+        "devicePresence"
+      ],
+      "properties": {
+        "boundary": {
+          "enum": [
+            "initial_snapshot",
+            "initial_inventory",
+            "prewrite_inventory",
+            "prewrite_protection",
+            "write",
+            "readback",
+            "postwrite_inventory",
+            "postwrite_snapshot",
+            "target_validation",
+            "postwrite_protection",
+            "cleanup",
+            "manifest",
+            "source_validation_complete",
+            "preflight_policy_passed"
+          ]
+        },
+        "lastSuccessfulBoundary": {
+          "enum": [
+            "initial_snapshot",
+            "initial_inventory",
+            "prewrite_inventory",
+            "prewrite_protection",
+            "write",
+            "readback",
+            "postwrite_inventory",
+            "postwrite_snapshot",
+            "target_validation",
+            "postwrite_protection",
+            "cleanup",
+            "manifest",
+            "source_validation_complete",
+            "preflight_policy_passed"
+          ]
+        },
+        "classificationSource": {
+          "enum": [
+            "native",
+            "derived"
+          ]
+        },
+        "devicePresence": {
+          "enum": [
+            "unknown",
+            "present",
+            "absent"
+          ]
+        },
+        "operation": {
+          "enum": [
+            "snapshot",
+            "inventory",
+            "file_prefix",
+            "file_range",
+            "write",
+            "readback",
+            "cleanup",
+            "manifest",
+            "protection_check"
+          ]
+        },
+        "executionMode": {
+          "enum": [
+            "in_process",
+            "worker"
+          ]
+        },
+        "resultKind": {
+          "enum": [
+            "native_error",
+            "timeout",
+            "cancelled",
+            "process_launch_error",
+            "process_exit",
+            "request_io_error",
+            "response_io_error",
+            "decode_error",
+            "invalid_response",
+            "app_error",
+            "protection_failed"
+          ]
+        },
+        "nativeCategory": {
+          "enum": [
+            "detection",
+            "session_open",
+            "storage_read",
+            "inventory_read",
+            "object_read",
+            "allocation",
+            "invalid_argument",
+            "unspecified"
+          ]
+        },
+        "nativeCodeNamespace": {
+          "enum": [
+            "terento_snapshot",
+            "terento_inventory",
+            "terento_file_prefix",
+            "terento_file_range"
+          ]
+        },
+        "componentKind": {
+          "enum": [
+            "main",
+            "contours"
+          ]
+        },
+        "nativeResultCode": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "retryCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "protection": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "protectionBoundary",
+            "protectionReason"
+          ],
+          "properties": {
+            "protectionBoundary": {
+              "enum": [
+                "pre-write",
+                "post-write"
+              ]
+            },
+            "protectionReason": {
+              "enum": [
+                "target-present-before-write",
+                "non-target-object-added",
+                "preexisting-object-removed",
+                "preexisting-object-changed",
+                "inventory-ambiguous",
+                "target-missing",
+                "target-duplicate",
+                "target-invalid",
+                "target-filename-mismatch",
+                "target-size-mismatch"
+              ]
+            },
+            "stableIdentityComparisonVersion": {
+              "type": "integer",
+              "enum": [
+                1,
+                2
+              ]
+            },
+            "beforeObjectCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 16384
+            },
+            "afterObjectCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 16384
+            },
+            "addedObjectCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 16384
+            },
+            "removedObjectCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 16384
+            },
+            "changedObjectCount": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 16384
+            },
+            "targetPresent": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "targetUnique": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "targetKindMatches": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "targetFilenameMatches": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "targetSizeMatches": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "targetPathMatches": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "targetItemIDMatches": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "protectionReason": {
+                    "const": "target-present-before-write"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "targetPresent": {
+                    "enum": [
+                      null,
+                      true
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "protectionReason": {
+                    "const": "target-missing"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "targetPresent": {
+                    "enum": [
+                      null,
+                      false
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "protectionReason": {
+                    "const": "target-duplicate"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "targetPresent": {
+                    "enum": [
+                      null,
+                      true
+                    ]
+                  },
+                  "targetUnique": {
+                    "enum": [
+                      null,
+                      false
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "protectionReason": {
+                    "const": "target-filename-mismatch"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "targetFilenameMatches": {
+                    "enum": [
+                      null,
+                      false
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "protectionReason": {
+                    "const": "target-size-mismatch"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "targetSizeMatches": {
+                    "enum": [
+                      null,
+                      false
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "dependentRequired": {
+        "nativeCodeNamespace": [
+          "nativeResultCode"
+        ],
+        "nativeResultCode": [
+          "nativeCodeNamespace"
+        ]
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "boundary": {
+                "const": "prewrite_protection"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "protection": {
+                "properties": {
+                  "protectionBoundary": {
+                    "const": "pre-write"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "boundary": {
+                "const": "postwrite_protection"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "protection": {
+                "properties": {
+                  "protectionBoundary": {
+                    "const": "post-write"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "boundary": {
+                "const": "target_validation"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "protection": {
+                "properties": {
+                  "protectionBoundary": {
+                    "const": "post-write"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "protection"
+            ]
+          },
+          "then": {
+            "properties": {
+              "boundary": {
+                "enum": [
+                  "prewrite_protection",
+                  "postwrite_protection",
+                  "target_validation"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "protection"
+            ],
+            "properties": {
+              "protection": {
+                "properties": {
+                  "protectionReason": {
+                    "enum": [
+                      "target-present-before-write"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "boundary": {
+                "enum": [
+                  "prewrite_protection"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "protection"
+            ],
+            "properties": {
+              "protection": {
+                "properties": {
+                  "protectionReason": {
+                    "enum": [
+                      "target-missing",
+                      "target-duplicate",
+                      "target-invalid",
+                      "target-filename-mismatch",
+                      "target-size-mismatch"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "boundary": {
+                "enum": [
+                  "target_validation",
+                  "postwrite_protection"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "protection"
+            ],
+            "properties": {
+              "protection": {
+                "properties": {
+                  "protectionReason": {
+                    "enum": [
+                      "non-target-object-added",
+                      "preexisting-object-removed",
+                      "preexisting-object-changed",
+                      "inventory-ambiguous"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "boundary": {
+                "enum": [
+                  "prewrite_protection",
+                  "postwrite_protection"
+                ]
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }

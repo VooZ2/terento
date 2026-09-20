@@ -319,6 +319,21 @@ progress are stored as separate columns. No raw JSON or error message is
 retained. `NOT_STARTED` is reserved for selected child maps skipped after an
 earlier result stopped the batch.
 
+The server-first v4 failure-context extension retains optional validated
+`failureContext` and `originalFailureContext` separately on the compatibility
+event in nullable JSONB columns `failure_context` and `original_failure_context`.
+Each is the same nonrecursive closed object; `protection` is nested
+inside its owning context. This is allowlisted structured evidence, not storage
+of the original request body or an unrestricted diagnostic JSON bag. The exact
+field contract is defined in
+[the shared event contract](../../../contracts/README.md#structured-installation-failure-context).
+Absent context on existing rows remains absent, with no historical backfill or
+inferred reason. Event identity, idempotency, retention and statistics semantics
+are unchanged. Cleanup failure must not overwrite its originating context.
+Migration replay and persistence/read-model tests must use PostgreSQL; SQLite
+delivery tests alone do not establish this storage gate. This extension is a
+server-first source change, not evidence of deployment or new app emission.
+
 Migration 018 adds the sanitized `raw_mtp_model` label and the controlled
 `identity_resolution_code` category. It stores neither the MTP serial nor the
 Garmin Unit ID. The migration also quarantines only the issue #32 legacy

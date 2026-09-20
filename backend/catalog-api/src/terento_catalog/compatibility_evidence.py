@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from .telemetry import validate_release_label
+from .failure_context import validate_event_contexts
 
 MAX_EVENT_BYTES = 16_384
 # `custom` is a local IMG source, not a map provider. It is accepted here so
@@ -14,6 +15,7 @@ MAX_EVENT_BYTES = 16_384
 # the client sends only the coarse custom/custom/custom labels.
 SUPPORTED_COMPATIBILITY_SOURCES = frozenset({"freizeitkarte", "opentopomap", "maprando", "bbbike", "custom"})
 ALLOWED_KEYS = {
+    "failureContext", "originalFailureContext",
     "garminModelDescription", "garminModelPartNumber",
     "schemaVersion", "id", "timestamp", "model", "compatibilityIdentity", "variant", "caseSizeMm", "displayType", "canonicalDeviceId", "family", "firmwareVersion",
     "usbVendorID", "usbProductID", "transport", "provider", "region",
@@ -160,6 +162,10 @@ def validate_event(raw: bytes) -> dict[str, Any]:
         raise EvidenceValidationError("deletion_not_supported")
     if schema_version in {3, 4}:
         _validate_v3(event)
+    try:
+        validate_event_contexts(event)
+    except ValueError as exc:
+        raise EvidenceValidationError(str(exc)) from exc
     return event
 
 

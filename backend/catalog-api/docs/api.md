@@ -89,6 +89,40 @@ part of the public or native event contract.
 Compatibility events older than 24 months are pruned from the active database
 by the service health cycle.
 
+### Optional v4 failure context: server-first acceptance
+
+The additive server contract accepts optional top-level `failureContext` and
+`originalFailureContext` only on version 4. Both have the same closed,
+nonrecursive shape, with optional nested `protection`; the exact enums,
+required fields and numeric bounds are defined in the
+[shared event contract](../../../contracts/README.md#structured-installation-failure-context).
+Versions 1–3 remain accepted unchanged without these fields; existing v4 clients
+may omit them. This server-first change does not implement app emission or
+comparator version 2 and does not establish deployment.
+
+Each context requires boundary, classification source and device presence.
+Only allowlisted enums, bounded integers, and the documented nullable target
+booleans are accepted. Native namespace/code must occur together, with a signed
+32-bit code and no boolean-to-integer coercion. Unknown nested properties and
+privacy-prohibited values are rejected; allowing a structured object is not an
+exemption from the existing privacy checks or the 16 KiB request limit.
+
+Cleanup failure retains its terminal cleanup context separately from the
+unchanged originating context. A successful main-map outcome does not by itself
+forbid context for a failed optional component: it requires explicit
+`componentKind=contours`, `optionalComponentSelected=true` and
+`optionalComponentOutcome=FAILED`, with boundary checked against
+`optionalComponentFailureStage`. Aggregate `cleanupSucceeded` may refer to
+another component and cannot alone invalidate that context. An original context
+requires a terminal context with boundary `cleanup`; component kinds must match
+when both are supplied, and original protection is checked against its own
+boundary. Reject new context fields on versions 1–3 before any legacy validation
+early return. Intake checks consistency where the
+reported fields establish it and preserves legacy requests without context.
+Context does not change statistical populations, event idempotency, sharing,
+retention or device-operation authority. Missing historical fields remain
+unavailable in authenticated diagnostics and generated issue reports.
+
 ## `GET https://api.terento.app/admin`
 
 Returns the authenticated operator Overview. The default period is the last 24
