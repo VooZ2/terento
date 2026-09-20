@@ -65,13 +65,13 @@ private final class SafeDeleteScanSequence: @unchecked Sendable {
     }
 }
 
-private enum Stage52TestError: Error {
+private enum SafeDeleteTestError: Error {
     case failed(String)
 }
 
 private func require(_ condition: @autoclosure () -> Bool, _ message: String) throws {
     guard condition() else {
-        throw Stage52TestError.failed(message)
+        throw SafeDeleteTestError.failed(message)
     }
 }
 
@@ -595,7 +595,7 @@ private func testLifecycleManagerCleansManifestAfterVerifiedDelete() throws {
 }
 
 @main
-struct Stage52SafeDeleteTests {
+struct SafeDeleteTests {
     static func main() {
         let tests: [(String, () throws -> Void)] = [
             ("managed map deletes without local backup", testManagedMapDeletesWithoutLocalBackup),
@@ -624,7 +624,7 @@ struct Stage52SafeDeleteTests {
                 try test()
                 print("PASS: " + name)
             }
-            print("PASS: " + String(tests.count) + " Stage 5.2 safe-delete tests")
+            print("PASS: " + String(tests.count) + " safe-delete tests")
         } catch {
             print("FAIL: " + String(describing: error))
             exit(1)

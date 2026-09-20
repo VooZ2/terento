@@ -234,7 +234,7 @@ rows become classifiable without a database migration or a source-specification
 rewrite. Capability is not installation authorization or compatibility evidence.
 This task adds no other unknown family without reviewed additional-map evidence.
 
-Build30 identity review presents the original XML model first. When explicitly
+Identity review presents the original XML model first. When explicitly
 reported Solar/inReach features have matching catalog rows, operator suggestions
 prefer those specific rows over rows whose corresponding feature is unknown.
 The complete authoritative assessment remains available and still controls

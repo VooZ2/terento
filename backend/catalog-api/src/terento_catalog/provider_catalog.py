@@ -146,7 +146,7 @@ KNOWN_PROVIDER_DEFINITIONS: dict[str, ProviderDefinition] = {
 }
 
 # Main package membership stays independent of optional contour availability.
-OPENTOPO_MAP_BETA8_MAIN_PACKAGE_COUNT = 177
+OPENTOPO_MAP_EXPECTED_MAIN_PACKAGE_COUNT = 177
 
 # The product policy needs a canonical identity for explicit OTM
 # russia packages. Other OTM regions may continue without country codes until
@@ -255,7 +255,7 @@ class OpenTopoMapProviderAdapter:
         *,
         fetcher: OpenTopoMapFetcher | None = None,
         catalog_url: str | None = None,
-        expected_main_package_count: int = OPENTOPO_MAP_BETA8_MAIN_PACKAGE_COUNT,
+        expected_main_package_count: int = OPENTOPO_MAP_EXPECTED_MAIN_PACKAGE_COUNT,
         max_workers: int = 4,
         measurement_attempts: int = 2,
         contour_mode: str | None = None,

@@ -34,6 +34,14 @@ second execution. Deployment repeats backend checks on its own exact commit;
 removing that repeat requires a verified same-SHA quality artifact handoff, not
 trust in an earlier PR head. The current explicit rerun is retained.
 
+Backend test modules are named by current ownership: provider acquisition and
+catalog projection live in `test_provider_catalog.py` and `test_maprando.py`,
+event validation/lifecycle tests live in their respective modules, and Admin
+map activity/API tests live in `test_admin_map_activity.py` and
+`test_catalog_api.py`. The shared `FakeProviderDatabase` lives in the
+non-discoverable `api_test_fixtures.py` helper; it is not an additional test
+suite.
+
 `validate-live-map-catalog.sh` tests the current checkout decoder against live
 routes for a candidate. Daily monitoring and API deployment additionally use
 `validate-released-map-catalog.sh` with immutable published source commits from

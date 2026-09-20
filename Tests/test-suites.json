@@ -9,7 +9,7 @@
     "Tests/run-site-structured-data-tests.sh",
     "Tests/run-site-umami-conversion-tests.sh",
     "Tests/run-site-seo-contract-tests.sh",
-    "app/TerentoCore/Tests/run-site-compatibility-status-contract-tests.sh",
+    "Tests/run-site-compatibility-contract-tests.sh",
     "Tests/run-site-shared-api-contract-tests.sh"
   ],
   "app": [

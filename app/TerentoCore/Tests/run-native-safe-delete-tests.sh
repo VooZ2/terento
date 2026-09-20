@@ -2,11 +2,11 @@
 set -euo pipefail
 
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
-build_dir="$(mktemp -d "${TMPDIR:-/tmp}/terento-stage52-safe-delete-tests.XXXXXX")"
-binary_path="$build_dir/stage52-safe-delete-tests"
+build_dir="$(mktemp -d "${TMPDIR:-/tmp}/terento-safe-delete-tests.XXXXXX")"
+binary_path="$build_dir/safe-delete-tests"
 
 swiftc \
-    -module-name TerentoStage52SafeDeleteTests \
+    -module-name TerentoSafeDeleteTests \
     "$project_root/Sources/TerentoPoC/Models/MTPModels.swift" \
     "$project_root/Sources/TerentoPoC/Compatibility/DeviceIdentity.swift" \
     "$project_root/Sources/TerentoPoC/MapCatalog/MapVersion.swift" \
@@ -24,7 +24,7 @@ swiftc \
     "$project_root/Sources/TerentoPoC/Installation/MapLifecycle.swift" \
     "$project_root/Sources/TerentoPoC/Installation/TerentoManifestStore.swift" \
     "$project_root/Sources/TerentoPoC/Installation/SafeDeleteAdapter.swift" \
-    "$project_root/Tests/TerentoPoCTests/Stage52SafeDeleteTests.swift" \
+    "$project_root/Tests/TerentoPoCTests/SafeDeleteTests.swift" \
     -o "$binary_path"
 
 "$binary_path"
@@ -41,4 +41,4 @@ if grep -Eiq 'SendObject|MoveObject|RenameObject' \
     exit 1
 fi
 
-print "PASS: Stage 5.2 delete path has no SendObject, MoveObject, or RenameObject"
+print "PASS: safe-delete path has no SendObject, MoveObject, or RenameObject"
