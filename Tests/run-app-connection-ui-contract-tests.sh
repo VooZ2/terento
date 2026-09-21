@@ -32,9 +32,16 @@ assert_contains 'return "connect-illustration-connecting"' "$connect_screen"
 assert_contains 'return "connect-illustration"' "$connect_screen"
 assert_contains 'connect-illustration-connecting.png in Resources' "$project_file"
 assert_contains 'return "Waiting for your Garmin…"' "$connect_screen"
-assert_contains 'return "Garmin not found"' "$connect_screen"
+assert_contains "return \"Couldn't connect to Garmin\"" "$connect_screen"
 assert_contains 'return "This may take up to 2 minutes."' "$connect_screen"
-assert_contains "return \"We couldn't find your Garmin within 2 minutes. Reconnect your watch and try again.\"" "$connect_screen"
+assert_contains "return \"We couldn't connect to your Garmin. Reconnect it and try again.\"" "$connect_screen"
+assert_contains 'return message' "$connect_screen"
+assert_absent 'return "Garmin not found"' "$connect_screen"
+if [[ "$(rg -Fxc "            return \"Couldn't connect to Garmin\"" "$connect_screen")" -ne 2 ]]; then
+    print -u2 "FAIL: failed connection title must be used in both production presentation paths"
+    exit 1
+fi
+assert_contains '.accessibilityLabel("\(connectionStatusTitle) \(connectionStatusDescription)")' "$connect_screen"
 assert_contains 'return "Waiting…"' "$connect_screen"
 assert_contains 'VStack(alignment: .center, spacing: 0)' "$connect_screen"
 assert_contains 'multilineTextAlignment(.center)' "$connect_screen"

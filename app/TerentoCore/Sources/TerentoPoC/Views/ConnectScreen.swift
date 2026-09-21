@@ -639,7 +639,7 @@ struct ConnectScreen: View {
         case .safeToDisconnect:
             return "Safe to disconnect"
         case .failed:
-            return "Garmin not found"
+            return "Couldn't connect to Garmin"
         }
     }
 
@@ -659,7 +659,7 @@ struct ConnectScreen: View {
             if let message = deviceEngine.userErrorMessage {
                 return message
             }
-            return "We couldn't find your Garmin within 2 minutes. Reconnect your watch and try again."
+            return "We couldn't connect to your Garmin. Reconnect it and try again."
         }
     }
 
@@ -3042,7 +3042,7 @@ private enum ConnectionStatusPresentation {
         case .safeToDisconnect:
             return "Safe to disconnect"
         case .failed:
-            return "Garmin not found"
+            return "Couldn't connect to Garmin"
         }
     }
 

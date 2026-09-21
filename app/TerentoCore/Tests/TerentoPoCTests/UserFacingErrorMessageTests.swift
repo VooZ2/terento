@@ -34,6 +34,12 @@ struct UserFacingErrorMessageTests {
         expect(UserFacingErrorMessage.forConnectionTimeout(
             garminUSBPresent: true, detectedConflicts: ["MacDroid"]
         ) == "Close MacDroid and try connecting again.", "USB-present connection timeout uses agreed message")
+        expect(UserFacingErrorMessage.forConnectionTimeout(
+            garminUSBPresent: true, detectedConflicts: []
+        ) == "Your Garmin was detected, but the connection did not become ready within 2 minutes. Reconnect it and try again.", "USB-present timeout without conflicts preserves the detailed detected-device message")
+        expect(UserFacingErrorMessage.forConnectionTimeout(
+            garminUSBPresent: false, detectedConflicts: []
+        ) == "We couldn't connect to your Garmin within 2 minutes. Reconnect it and try again.", "USB-absent timeout preserves the existing timeout description")
         expect(!UserFacingErrorMessage.forConnectionTimeout(
             garminUSBPresent: false, detectedConflicts: ["MacDroid"]
         ).contains("MacDroid"), "USB-absent timeout has no unrelated conflict")
