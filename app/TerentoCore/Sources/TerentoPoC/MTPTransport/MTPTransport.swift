@@ -7,13 +7,16 @@ struct MTPTransport: Sendable {
     private static let errorCapacity = 1024
     private let operationGate: MTPOperationGate
     private let lifecycleLease: MTPOperationLease?
+    private let operationProfile: DeviceMapOperationProfile?
 
     init(
         operationGate: MTPOperationGate = .shared,
-        lifecycleLease: MTPOperationLease? = nil
+        lifecycleLease: MTPOperationLease? = nil,
+        operationProfile: DeviceMapOperationProfile? = nil
     ) {
         self.operationGate = operationGate
         self.lifecycleLease = lifecycleLease
+        self.operationProfile = operationProfile
     }
 
     func readSnapshot() throws -> DeviceSnapshot {
@@ -155,18 +158,31 @@ struct MTPTransport: Sendable {
         }
     }
 
-    private func readFileInventoryUncoordinated() throws -> [DeviceFile] {
+    func readFileInventory(operationProfile: DeviceMapOperationProfile) throws -> [DeviceFile] {
+        try operationGate.withOperation(kind: .inventory, lifecycleLease: lifecycleLease) {
+            try readFileInventoryUncoordinated(profile: operationProfile)
+        }
+    }
+
+    private func withReadProfile<Result>(
+        _ profile: DeviceMapOperationProfile?,
+        _ body: (UnsafePointer<TerentoMTPMapOperationProfile>?) throws -> Result
+    ) rethrows -> Result {
+        if let profile { return try withNativeMapOperationProfile(profile) { try body($0) } }
+        return try body(nil)
+    }
+
+    private func readFileInventoryUncoordinated(profile: DeviceMapOperationProfile? = nil) throws -> [DeviceFile] {
         var rawInventory = TerentoMTPFileInventory()
         var nativeCategory: Int32 = 0
         var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
 
         let result = errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
             withUnsafeMutablePointer(to: &rawInventory) { inventoryPointer in
-                terento_mtp_read_file_inventory_diagnostic(
-                    inventoryPointer,
-                    errorPointer.baseAddress,
-                    errorPointer.count, &nativeCategory
-                )
+                withReadProfile(profile ?? operationProfile) { nativeProfile in
+                    terento_mtp_read_file_inventory_bound(nativeProfile, inventoryPointer,
+                        errorPointer.baseAddress, errorPointer.count, &nativeCategory)
+                }
             }
         }
 
@@ -216,16 +232,13 @@ struct MTPTransport: Sendable {
         var nativeCategory: Int32 = 0
         var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
 
-        let result = errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
-            withUnsafeMutablePointer(to: &rawBuffer) { bufferPointer in
-                terento_mtp_read_file_prefix_diagnostic(
-                    file.itemID,
-                    0,
-                    UInt32(maxLength),
-                    bufferPointer,
-                    errorPointer.baseAddress,
-                    errorPointer.count, &nativeCategory
-                )
+        let result = try withPrefixDescriptors([file]) { descriptors in
+            withReadProfile(operationProfile) { nativeProfile in
+                errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
+                    terento_mtp_read_file_prefix_diagnostic(nativeProfile, descriptors.baseAddress,
+                        0, UInt32(maxLength), &rawBuffer, errorPointer.baseAddress,
+                        errorPointer.count, &nativeCategory)
+                }
             }
         }
 
@@ -249,7 +262,7 @@ struct MTPTransport: Sendable {
     func readFilePrefixes(
         for files: [DeviceFile],
         maxLength: Int
-    ) throws -> [UInt32: [UInt8]] {
+    ) throws -> [DeviceFileIdentity: [UInt8]] {
         try operationGate.withOperation(
             kind: lifecycleLease == nil ? .inventory : .inventory,
             lifecycleLease: lifecycleLease
@@ -261,7 +274,7 @@ struct MTPTransport: Sendable {
     private func readFilePrefixesUncoordinated(
         for files: [DeviceFile],
         maxLength: Int
-    ) throws -> [UInt32: [UInt8]] {
+    ) throws -> [DeviceFileIdentity: [UInt8]] {
         guard maxLength > 0, maxLength <= Int(UInt32.max) else {
             throw MTPTransportError.readFailed("File prefix length is invalid")
         }
@@ -270,24 +283,20 @@ struct MTPTransport: Sendable {
             return [:]
         }
 
-        let itemIDs = files.map(\.itemID)
         var rawBuffers = [TerentoMTPByteBuffer](
             repeating: TerentoMTPByteBuffer(),
             count: files.count
         )
         var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
 
-        let result = itemIDs.withUnsafeBufferPointer { itemPointer in
-            rawBuffers.withUnsafeMutableBufferPointer { bufferPointer in
-                errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
-                    terento_mtp_read_file_prefixes(
-                        itemPointer.baseAddress,
-                        itemPointer.count,
-                        UInt32(maxLength),
-                        bufferPointer.baseAddress,
-                        errorPointer.baseAddress,
-                        errorPointer.count
-                    )
+        let result = try withPrefixDescriptors(files) { descriptors in
+            withReadProfile(operationProfile) { nativeProfile in
+                rawBuffers.withUnsafeMutableBufferPointer { bufferPointer in
+                    errorBuffer.withUnsafeMutableBufferPointer { errorPointer in
+                        terento_mtp_read_file_prefixes(nativeProfile, descriptors.baseAddress,
+                            descriptors.count, UInt32(maxLength), bufferPointer.baseAddress,
+                            errorPointer.baseAddress, errorPointer.count)
+                    }
                 }
             }
         }
@@ -309,17 +318,40 @@ struct MTPTransport: Sendable {
                     resultKind: .nativeError, nativeCategory: .unspecified))
         }
 
-        var prefixes: [UInt32: [UInt8]] = [:]
+        var prefixes: [DeviceFileIdentity: [UInt8]] = [:]
         for (index, file) in files.enumerated() {
             let rawBuffer = rawBuffers[index]
             guard let bytes = rawBuffer.bytes, rawBuffer.byte_count > 0 else {
                 continue
             }
-            prefixes[file.itemID] = Array(
+            prefixes[file.stableIdentity] = Array(
                 UnsafeBufferPointer(start: bytes, count: rawBuffer.byte_count)
             )
         }
         return prefixes
+    }
+
+    private func withPrefixDescriptors<Result>(
+        _ files: [DeviceFile], _ body: (UnsafeBufferPointer<TerentoMTPFileDescriptor>) throws -> Result
+    ) throws -> Result {
+        guard Set(files.map(\.stableIdentity)).count == files.count else {
+            throw MTPTransportError.readFailed("File prefix requests contain duplicate identities")
+        }
+        var strings: [UnsafeMutablePointer<CChar>] = []
+        defer { strings.forEach { free($0) } }
+        var descriptors: [TerentoMTPFileDescriptor] = []
+        for file in files {
+            guard !file.path.utf8.contains(0), !file.filename.utf8.contains(0) else {
+                throw MTPTransportError.readFailed("File prefix identity contains invalid text")
+            }
+            guard let path = strdup(file.path) else { throw MTPTransportError.readFailed("File prefix allocation failed") }
+            strings.append(path)
+            guard let filename = strdup(file.filename) else { throw MTPTransportError.readFailed("File prefix allocation failed") }
+            strings.append(filename)
+            descriptors.append(TerentoMTPFileDescriptor(storage_id: file.storageID, size_bytes: file.sizeBytes,
+                is_folder: file.isFolder ? 1 : 0, path: UnsafePointer(path), filename: UnsafePointer(filename)))
+        }
+        return try descriptors.withUnsafeBufferPointer(body)
     }
 
     static func nativeReadError(
@@ -394,17 +426,20 @@ extension MTPTransport: GarminUSBPresenceReader {}
 protocol DeviceFileReader: Sendable {
     func readFileInventory() throws -> [DeviceFile]
     func readFilePrefix(for file: DeviceFile, maxLength: Int) throws -> [UInt8]
-    func readFilePrefixes(for files: [DeviceFile], maxLength: Int) throws -> [UInt32: [UInt8]]
+    func readFilePrefixes(for files: [DeviceFile], maxLength: Int) throws -> [DeviceFileIdentity: [UInt8]]
 }
 
 extension DeviceFileReader {
     func readFilePrefixes(
         for files: [DeviceFile],
         maxLength: Int
-    ) throws -> [UInt32: [UInt8]] {
-        var prefixes: [UInt32: [UInt8]] = [:]
+    ) throws -> [DeviceFileIdentity: [UInt8]] {
+        guard Set(files.map(\.stableIdentity)).count == files.count else {
+            throw MTPTransportError.readFailed("File prefix requests contain duplicate identities")
+        }
+        var prefixes: [DeviceFileIdentity: [UInt8]] = [:]
         for file in files {
-            prefixes[file.itemID] = try readFilePrefix(for: file, maxLength: maxLength)
+            prefixes[file.stableIdentity] = try readFilePrefix(for: file, maxLength: maxLength)
         }
         return prefixes
     }
