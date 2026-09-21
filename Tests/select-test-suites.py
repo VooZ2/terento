@@ -77,6 +77,7 @@ def select_suites(paths: list[str]) -> list[str]:
                 token in text
                 for token in (
                     "guide", "site", "public", "structured", "release", "about", "home",
+                    "sitemap", "indexnow",
                 )
             ):
                 selected.update(("site", "release"))
