@@ -393,10 +393,9 @@ struct SafeDeleteAdapter: Sendable {
         }
 
         if target.ownership == .detectedNotManaged {
-            // External maps do not have a trusted local manifest hash. The
-            // transport must produce fresh exact identity and recognized IMG
-            // proof immediately before deletion; a complete content hash is
-            // not required for this explicitly confirmed one-file action.
+            // External maps need no trusted manifest hash. Production transport
+            // binds confirmation to captured content and revalidates its full
+            // hash, IMG header and exact target in the native delete session.
             return true
         }
 
@@ -418,9 +417,9 @@ struct SafeDeleteAdapter: Sendable {
         guard exactFile else { return false }
 
         if !object.contentHashVerified {
-            // Managed files are authorized by the exact local manifest record
-            // plus this fresh live identity check. External files are first
-            // classified by the transport's bounded Garmin IMG-header check.
+            // This domain-level check can precede content verification. The
+            // production native boundary must still match the manifest hash for
+            // managed maps, or the confirmed content hash for external maps.
             return target.ownership == .managedByTerento
                 || target.ownership == .detectedNotManaged
         }

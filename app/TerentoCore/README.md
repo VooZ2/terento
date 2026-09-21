@@ -259,10 +259,66 @@ installation remains a provider operation. No private filename, path, object ID,
 hash or raw native message is added to uploaded context. The field contract lives
 in [the shared contracts](../../contracts/README.md#structured-installation-failure-context).
 
-These changes describe the local candidate, not a released app or hardware
-validation. Protection comparison still uses version 1; comparator version 2
-requires its separate safety change and hardware gate. Upload, exact-target
-cleanup, ownership, provider acquisition and sharing boundaries remain in force.
+### Hybrid mutation safety (local candidate)
+
+The candidate replaces whole-device inventory equality with three independent
+controls: native mutation authorization, exact target verification, and protected
+inventory comparison. No new hardware pass or public release is claimed. Native
+and Swift integration, independent review, and a fresh real-device gate must
+complete before merge; earlier install evidence does not validate this model.
+
+Native authorization must bind the physical device, operation purpose, exact
+storage/path/name and expected state at the mutation boundary. A final same-session
+target-absence check precedes upload. The local mutation journal records prepared,
+dispatched and terminal outcomes per artifact; incomplete or incoherent successful
+native results fail closed. An exclusive native claim prevents replay. This local
+journal is separate from compatibility/statistics delivery and never grants retry
+or cleanup authority merely because a record exists.
+
+Fresh installation permits one authorized send and no delete. Update distinguishes
+new-artifact send from old-artifact removal. Explicit removal requires its own
+purpose and exact target validation. A failed-install object must not be deleted
+based only on matching filename and size after reconnect: uncertain creation
+identity leaves recovery evidence and refuses cleanup. External removal requires
+final protected-file/header validation and full content-hash comparison inside
+the delete session. Matching content establishes equivalence to the confirmed
+map, not unique physical-object identity. Cleanup refuses deletion after its
+creation session is lost; a filename/size match cannot restore that authority.
+
+Removal has three distinct authority sources. Automatic failed-install cleanup
+requires evidence that this same operation created the object; user confirmation
+cannot replace that evidence. Managed Remove and Update require the durable local
+manifest for the physical device and map. The manifest survives app version changes
+and is independent of the short-lived mutation journal. A different Mac, reinstall
+or lost local state grants no ownership, but leaves explicit external Remove
+available, including for an unowned Terento-style filename. External confirmation
+binds only the selected map and its content; the native delete session revalidates
+the physical device, storage, exact path/name/size/kind, presence, uniqueness,
+protected status and content hash. Missing manifest or old operation evidence never
+makes a valid external map inherently unremovable. It also never grants automatic
+replacement or Update authority. Garmin/protected objects stay read-only in every
+case.
+
+`ProtectedMapInventory` compares storage ID, exact full path, filename, size and
+file/folder kind; item/parent handles are session-scoped navigation and diagnostics.
+It conservatively protects unknown objects, all-storage IMG/GMA/UNL/SID, map and
+SID containers, explicit operation/manifest locations, and required ancestors.
+Classification grants no ownership or deletion authority. Duplicates, aliases,
+invalid paths and incoherent ancestry fail closed. Existing protected objects
+must remain stable; only explicit operation targets may change.
+
+Diagnostic-only cases are the exact `/GARMIN/GarminDevice.xml` file, immediate
+FIT files in `/GARMIN/Monitor`, and descendant folders of `/GARMIN/TLG/PER`, based
+on the captured no-write controls. Positive map classification or explicit target
+scope overrides those cases. There is no blanket FIT/XML rule. Unknown companion
+formats remain protected rather than assuming a complete Garmin format catalog.
+Global changes outside protected/operation scope are observations, not proof that
+Terento mutated them. Metadata equality does not prove unchanged same-size bytes.
+
+The runtime integration remains subject to the full test matrix and new hardware
+gate: recoverability, native authorization and journal, exact target verification,
+protected-map preservation, reconnect and on-watch use. Cleanup is a separate
+authorized hardware test. Historical issue #249's exact trigger remains unproven.
 
 Run `Tests/run-app-installation-operation-diagnostics-tests.sh` for the actual
 engine/no-screen regression and producer/outbox/privacy cases. Initial context

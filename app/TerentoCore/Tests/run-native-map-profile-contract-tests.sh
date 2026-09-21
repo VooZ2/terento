@@ -7,10 +7,10 @@ header="$project_root/Sources/LibMTPBridge/include/MTPBridge.h"
 
 for function_name in \
     terento_mtp_read_existing_file_to_local \
-    terento_mtp_install_map_file \
+    terento_mtp_install_map_file_authorized \
     terento_mtp_verify_managed_map_samples \
-    terento_mtp_delete_managed_map \
-    terento_mtp_delete_external_map; do
+    terento_mtp_delete_managed_map_authorized \
+    terento_mtp_delete_external_map_authorized; do
     if ! grep -A3 "^int ${function_name}(" "$header" | grep -q 'TerentoMTPMapOperationProfile'; then
         print -u2 "FAIL: $function_name does not require the native operation profile"
         exit 1
@@ -43,17 +43,47 @@ if ! grep -q 'find_existing_file_by_stable_identity(' "$bridge" \
     exit 1
 fi
 
-if ! grep -A100 '^int terento_mtp_delete_managed_map(' "$bridge" \
-    | grep -q 'expected_size_bytes != 0 && remote_size != expected_size_bytes'; then
-    print -u2 "FAIL: manual delete cannot resolve the exact stable target in its live session"
-    exit 1
-fi
-
-if ! grep -A100 '^int terento_mtp_delete_external_map(' "$bridge" \
-    | grep -q 'expected_size_bytes != 0 && remote_size != expected_size_bytes'; then
-    print -u2 "FAIL: external delete cannot resolve the exact stable target in its live session"
-    exit 1
-fi
+# Static integration checks complement the executable native authorization tests.
+# Inspect complete function bodies: line-window greps hid checks as code grew.
+python3 - "$bridge" "$header" <<'PYPROFILE'
+from pathlib import Path
+import re, sys
+source, header = [Path(p).read_text() for p in sys.argv[1:]]
+def body(name):
+    match = re.search(r"(?:static )?int " + re.escape(name) + r"\s*\([^;{}]*\)\s*\{", source)
+    assert match, name
+    start = source.index('{', match.start())
+    depth = 1
+    end = start + 1
+    while depth:
+        depth += (source[end] == '{') - (source[end] == '}')
+        end += 1
+    return source[start:end]
+for base in ['terento_mtp_install_map_file', 'terento_mtp_delete_managed_map', 'terento_mtp_delete_external_map']:
+    legacy = body(base)
+    assert 'return TERENTO_MTP_MUTATION_REFUSED;' in legacy, base
+    assert not re.search(r'LIBMTP_|open_single_garmin_device|terento_dispatch_mutation', legacy), base
+    live = body(base + '_authorized')
+    assert 'validate_live_map_operation_device(' in live, base
+    assert '!authorization || !record' in live, base
+    assert re.search(re.escape(base + '_authorized') + r'\s*\([^;]*TerentoMTPMutationAuthorization[^;]*TerentoMTPMutationRecord', header, re.S), base
+for base in ['terento_mtp_delete_managed_map', 'terento_mtp_delete_external_map']:
+    live = body(base + '_authorized')
+    for check in ['remote_size != expected_size_bytes', 'expected_size_bytes == 0',
+                  'storage_id != profile->expected_storage_id', 'match_count != 1',
+                  'verify_deletion_content(', 'deletion_target_still_matches(',
+                  'terento_dispatch_mutation(']:
+        assert check in live, (base, check)
+    assert live.index('verify_deletion_content(') < live.index('deletion_target_still_matches(') < live.index('terento_dispatch_mutation('), base
+    assert 'actual_item_id != expected_item_id' not in live, base
+assert '#define TERENTO_MAP_OPERATION_PROFILE_VERSION 2' in source
+for field in ['physical_identifier_source', 'physical_identifier', 'expected_storage_id']:
+    assert field in header and field in body('validate_map_operation_profile'), field
+physical = body('physical_identifier_matches')
+assert 'LIBMTP_Get_Serialnumber' in physical and 'read_garmin_device_xml' in physical
+assert 'physical_identifier_matches(profile, device)' in body('validate_live_map_operation_device')
+print('PASS: legacy mutation entrypoints refuse; authorized operations enforce physical binding, live storage, content and final identity checks')
+PYPROFILE
 
 if grep -A5 '^        \*matched_samples += 1;' "$bridge" \
     | grep -q 'LIBMTP_Release_Device(device)'; then
@@ -70,7 +100,7 @@ fi
 print "PASS: production map operations require a live-bound native profile"
 print "PASS: production map operations do not use the lab PID lock"
 print "PASS: Write Test remains locked to PID 0x51b8"
-print "PASS: read-back and manual delete re-resolve session-local MTP handles"
+print "PASS: read-back and authorized delete re-resolve session-local MTP handles; delete requires same-session content proof"
 print "PASS: sampled Install verification reuses one read-only MTP session"
 
 # Execute the actual C filename guard without loading libmtp or touching USB.
