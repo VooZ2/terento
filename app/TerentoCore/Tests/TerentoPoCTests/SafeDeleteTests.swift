@@ -517,6 +517,52 @@ private func testPostDeleteRescanAndExactIdentityAreRequired() throws {
     try require(identityTransport.events == ["inspect"], "identity mismatch must stop before delete")
 }
 
+private func testPostDeleteUsesStablePathAcrossSessions() throws {
+    var failures: [String] = []
+    for external in [false, true] {
+        for scenario in ["no reuse", "handle reused", "target path remains"] {
+            let target = external ? externalTarget().target : validTarget().target
+            let liveID: UInt32 = 42
+            let current = SafeDeleteDeviceObject(file: InstalledMapFile(
+                path: target.expectedPath, filename: target.expectedFilename,
+                sizeBytes: target.expectedSizeBytes, itemID: liveID),
+                sha256: external ? sha256(externalTarget().contents) : target.expectedSHA256)
+            let unrelated = InstalledMapFile(path: "/GARMIN/unrelated.img", filename: "unrelated.img",
+                sizeBytes: 42, itemID: scenario == "handle reused" ? liveID : 900)
+            var finalFiles = [unrelated]
+            if scenario == "target path remains" {
+                // A different session handle must not disguise the surviving path.
+                finalFiles.append(InstalledMapFile(path: target.expectedPath,
+                    filename: target.expectedFilename, sizeBytes: target.expectedSizeBytes, itemID: 901))
+            }
+            let scanSequence = SafeDeleteScanSequence([finalFiles])
+            let transport = FakeSafeDeleteTransport()
+            transport.currentObject = current
+            let cleanup = FakeManifestCleanupStore()
+            let result = MapLifecycleManager(manifestCleanupStore: cleanup).delete(
+                target: target, confirmed: true, deviceConnected: true,
+                rescan: { scanSequence.next() }, transport: transport,
+                ownershipSource: external ? .external : .manifest)
+            let shouldSucceed = scenario != "target path remains"
+            let expected: SafeDeleteStatus = shouldSucceed ? .success : .failedPostVerify
+            let passed = result.status == expected
+                && transport.events == ["inspect", "delete"]
+                && transport.deletedObjectIDs == [liveID]
+                && cleanup.removed.count == (shouldSucceed && !external ? 1 : 0)
+                && finalFiles.contains(unrelated)
+            let label = "\(external ? "external" : "managed") \(scenario)"
+            print("\(passed ? "PASS" : "FAIL"): \(label), expected=\(expected.rawValue), actual=\(result.status.rawValue), delete=\(transport.deletedObjectIDs.count), manifestCleanup=\(cleanup.removed.count)")
+            if !passed { failures.append(label) }
+            if let removed = cleanup.removed.first {
+                try require(removed.deviceKey == target.deviceKey
+                    && removed.devicePath == target.expectedPath && removed.filename == target.expectedFilename,
+                    "post-delete manifest cleanup remains scoped to the exact removed target")
+            }
+        }
+    }
+    try require(failures.isEmpty, "cross-session post-delete cases failed: \(failures.joined(separator: ", "))")
+}
+
 private func testPostDeleteRescanRetriesWithoutRepeatingDelete() throws {
     let prepared = validTarget()
 
@@ -685,6 +731,7 @@ struct SafeDeleteTests {
             ("disconnect and confirmation are blocked", testDisconnectAndConfirmationAreBlocked),
             ("post-delete rescan and exact identity are required", testPostDeleteRescanAndExactIdentityAreRequired),
             ("post-delete rescan retries without repeating delete", testPostDeleteRescanRetriesWithoutRepeatingDelete),
+            ("post-delete verification uses stable path across sessions", testPostDeleteUsesStablePathAcrossSessions),
             ("transport failure is reported", testTransportFailureIsReported),
             ("lifecycle manager cleans manifest after verified delete", testLifecycleManagerCleansManifestAfterVerifiedDelete),
             ("durable ownership and cross-computer removal", testDurableOwnershipAndCrossComputerRemoval)
