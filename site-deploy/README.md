@@ -70,9 +70,10 @@ records are retained and deduplicated by URL plus content fingerprint; pending
 records, including their known oldest-pending time, are carried into the next
 plan and retried. A no-change run does not change either submission timestamp.
 The workflow updates only this file after successful live verification through
-the existing protected-branch action commit/push path; the path is outside the
-site deployment filters, so state retention does not trigger a second site
-deployment. If the file is
+an automated pull request to the protected `beta` branch; the state PR waits
+for the required `build-and-test` check and is merged only when it passes. The
+path is outside the site deployment filters, so state retention does not
+trigger a second site deployment. If the file is
 missing or invalid, the next confirmed publication records a bootstrap
 baseline and sends no bulk notification; it does not infer a full-sitemap
 submission.
