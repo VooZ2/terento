@@ -99,14 +99,15 @@ are outside the current public scope.
 
 ## Download and beta status
 
-The latest public release is **beta.12 (build 32)**. The macOS app is notarized
+The latest public release is **beta.13 (build 33)**. The macOS app is notarized
 and does not require Homebrew.
 
-Beta.12 adds BBBike and BBBike (Ontrail) maps, continent filtering, clearer
-country and region names, a larger catalog window, faster Install Maps
-filtering, and filters in Manage Maps. Earlier beta.12 builds improved watch
-model and screen identification and fixed map activity diagnostics that could
-stay queued.
+Beta.13 strengthens protection of existing maps during Update and improves
+Update, Remove, and installed-map reading across Garmin session changes.
+Confirmed removal of valid external maps remains available after an app
+reinstall or on another Mac; automatic Update still requires durable local
+ownership. Uncertain failed-install cleanup keeps recovery information and
+refuses to guess which object to delete.
 
 **[Download Terento](https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_download)**
 
