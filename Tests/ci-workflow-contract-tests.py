@@ -336,6 +336,19 @@ def main() -> int:
     assert "cancel-in-progress: ${{ github.event_name == 'pull_request' }}" in swift
     assert "tags:" not in deploy_site, "a tag must not duplicate the beta site deployment"
     assert "scripts/check-live-release-manifest.py" in deploy_site
+    for contract in (
+        "scripts/generate-sitemap.py", "scripts/submit-indexnow.py",
+        "scripts/verify-live-site.py", "TERENTO_INDEXNOW_KEY",
+        "Prepare IndexNow delta plan", "Verify live sitemap and changed pages before notification",
+        "Persist IndexNow publication state", "contents/.github/indexnow/site-state.json",
+        "Prepare IndexNow report when notification was not run", "Report IndexNow submission result",
+        "INDEXNOW", "component:\"indexnow\"", "indexnow-observation",
+        "continue-on-error: true", "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+    ):
+        assert contract in deploy_site, f"deploy-site.yml is missing {contract!r}"
+    assert "keyLocation" not in deploy_site, "the IndexNow key location must not be printed by the workflow"
+    assert "site-state.json" not in (WORKFLOWS / "publish-vps-images.yml").read_text(encoding="utf-8")
+    assert "internal/infra/vps/deployment/site/compose.json" not in deploy_site
     assert "git diff --quiet" in deploy_site
     assert "steps.current.outputs.deploy == 'true'" in deploy_site
     assert '"!site/**/*.md"' in deploy_site

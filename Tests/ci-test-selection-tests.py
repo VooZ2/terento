@@ -37,6 +37,8 @@ def main() -> int:
     )
     expect(["internal/PROJECT_STATE.md"], baseline)
     expect(["scripts/build-guide-pages.py"], baseline | {"site", "release"})
+    expect(["scripts/generate-sitemap.py"], baseline | {"site", "release"})
+    expect(["scripts/submit-indexnow.py"], baseline | {"site", "release"})
     expect(["scripts/generate-brand-tokens.py"], baseline | {"site", "app"})
     expect(["Tests/site-faq-content-tests.cjs"], baseline | {"site"})
     expect([".github/workflows/swift-ci.yml"], set(MODULE.ALL_SUITES))

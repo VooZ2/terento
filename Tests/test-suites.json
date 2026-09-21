@@ -9,6 +9,7 @@
     "Tests/run-site-structured-data-tests.sh",
     "Tests/run-site-umami-conversion-tests.sh",
     "Tests/run-site-seo-contract-tests.sh",
+    "Tests/run-site-indexnow-runtime-tests.sh",
     "Tests/run-site-compatibility-contract-tests.sh",
     "Tests/run-site-shared-api-contract-tests.sh"
   ],
