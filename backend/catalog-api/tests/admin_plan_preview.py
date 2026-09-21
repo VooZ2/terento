@@ -1,8 +1,9 @@
 """Build isolated Admin scale fixtures; never submits telemetry or admin actions."""
 from pathlib import Path
+from datetime import datetime, timezone
 from unittest.mock import patch
 from terento_catalog.admin import *
-from terento_catalog.admin import _admin_device_payload, _system_health_card, _diagnostic_summary_by_identity, _map_statistics_summary
+from terento_catalog.admin import _admin_device_payload, _system_health_card, _indexnow_card, _diagnostic_summary_by_identity, _map_statistics_summary
 
 
 def build(root):
@@ -37,6 +38,20 @@ def build(root):
        'providers':providers_page(providers,user,'fixture'),'provider':provider_detail_page({'provider':detail},[{'id':1,'status':'SUCCEEDED','package_count':180,'artifact_count':180,'finished_at':'2026-09-17T10:20:00Z'}],[],user,'fixture'),
        'statistics':map_statistics_page(stats,providers,user,'fixture'),'device':device_detail_page(device,user,'fixture'),'devices':devices_page([],None,user,'fixture')}
     cards=[_system_health_card(f'Check {i+1}', 'FAILED' if i<5 else 'WARNING' if i<10 else 'HEALTHY', '<p>Packages: 180</p>', {'observed_at':'2026-09-17T10:30:00Z'},reason='Catalog request timed out' if i<10 else '',action='Inspect collection history') for i in range(50)]
+    cards.append(_indexnow_card({
+        'status':'WARNING', 'observed_at':'2026-09-17T10:30:00Z',
+        'source_run_url':'https://github.com/VooZ2/terento/actions/runs/321',
+        'details': {
+            'result':'validation_pending', 'publication_id':'deployment-site-321-1',
+            'last_submission_at':'2026-09-17T10:25:00Z',
+            'last_successful_submission_at':None, 'attempted_url_count':1,
+            'http_200_count':0, 'http_202_count':1, 'http_status':202,
+            'pending_url_count':1, 'oldest_pending_at':'2026-09-17T10:25:00Z',
+            'error_summary':'A deliberately long validation message remains readable while the expanded card wraps safely across narrow layouts.',
+            'url_preview':'https://terento.app/\nhttps://terento.app/guides/install-garmin-maps-mac/',
+            'url_preview_total':2,
+        },
+    }, None, now=datetime(2026, 9, 17, 10, 31, tzinfo=timezone.utc)))
     with patch('terento_catalog.admin._system_health_cards',return_value=(cards,None,{})):
         pages['health']=system_health_page({},user,'fixture')
     for name,body in pages.items():

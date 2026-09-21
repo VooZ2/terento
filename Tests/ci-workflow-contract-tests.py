@@ -339,6 +339,7 @@ def main() -> int:
     for contract in (
         "scripts/generate-sitemap.py", "scripts/submit-indexnow.py",
         "scripts/verify-live-site.py", "TERENTO_INDEXNOW_KEY",
+        "indexnow_manual_url", "--manual-url \"$INDEXNOW_MANUAL_URL\"",
         "Prepare IndexNow delta plan", "Verify live sitemap and changed pages before notification",
         "Persist IndexNow publication state", "contents/.github/indexnow/site-state.json",
         "Prepare IndexNow report when notification was not run", "Report IndexNow submission result",
