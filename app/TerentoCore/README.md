@@ -357,6 +357,14 @@ Update, external Remove or cleanup; those destructive paths have automated evide
 and require separately authorized hardware tests. Historical issue #249's exact
 physical trigger remains unproven.
 
+Local simulation follow-up (2026-09-21) reproduced false Update/Remove failures
+caused by cross-session handle comparisons. PR258 corrected those checks; the
+original Update reproduction is retained alongside the dedicated regressions.
+The broader simulation matrix remains incomplete and separate from that fix.
+Fresh-install hardware evidence does not validate the destructive lifecycle
+paths. Current cleanup APIs refuse deletion after the creation session closes;
+successful same-operation cleanup must not be simulated by bypassing that refusal.
+
 Run `Tests/run-app-installation-operation-diagnostics-tests.sh` for the actual
 engine/no-screen regression and producer/outbox/privacy cases. Initial context
 is in memory; force-quitting before a terminal result is observed is not a
