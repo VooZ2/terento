@@ -120,18 +120,18 @@ source lists. The repository all-suite runner does not replace those separate
 PostgreSQL and Xcode gates.
 
 Comparator version 1 denotes the earlier diagnostics-only comparison semantics.
-The local safety candidate retains the accepted version 2 numeric value and
-existing payload schema while its protection implementation is being redesigned.
+The hybrid safety implementation retains the accepted version 2 numeric value and
+existing payload schema with its bounded protected-inventory implementation.
 No backend field, accepted value, app version or public release is changed by this
 work. Release review must identify the exact app source/build and its comparator
 scope; the version number alone does not establish which files were compared.
 
-The candidate safety contract uses native authorization and a local per-artifact
+The safety contract uses native authorization and a local per-artifact
 mutation journal as primary controls, exact target verification, and a secondary
 protected inventory comparison. The stable metadata key is storage/path/name/size/
 kind; session handles are not cross-session identity. Whole-device equality is
 not an installation invariant. Existing protection booleans describe the bounded
-protected scope for this candidate, not proof that every device byte stayed fixed.
+protected scope, not proof that every device byte stayed fixed.
 Unknown objects remain protected; only evidence-scoped runtime categories outside
 map and operation scope are diagnostic. Incomplete authorization/journal evidence,
 ambiguous targets and uncertain cleanup identity fail closed. No automatic retry
@@ -156,8 +156,11 @@ The app retains typed failure provenance and original context when cleanup fails
 Before any distribution, source/encoder/API validation must confirm that candidate
 protection semantics are documented without changing accepted schema values by
 accident. Independent reviews, native executable tests, full matrix and a fresh
-real-device hybrid gate are still required. Current implementation work and older
-hardware evidence do not establish a new runtime/hardware pass or release.
+real-device hybrid gate are required. Source `7a6067a3` passed those integration
+gates with MapRando Malta on fēnix 8 47 mm AMOLED / firmware 23.31, including
+independent reconnect/full-target hashing and owner-confirmed on-watch use.
+This validates the tested fresh-install path; it does not establish destructive
+lifecycle hardware evidence, a new app release or historical #249 causation.
 
 The existing failure-context release gate still requires fresh encoder fixtures
 for preflight, protection and contours cleanup, followed by HTTP/storage/report

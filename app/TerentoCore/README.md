@@ -259,13 +259,13 @@ installation remains a provider operation. No private filename, path, object ID,
 hash or raw native message is added to uploaded context. The field contract lives
 in [the shared contracts](../../contracts/README.md#structured-installation-failure-context).
 
-### Hybrid mutation safety (local candidate)
+### Hybrid mutation safety
 
-The candidate replaces whole-device inventory equality with three independent
+The implementation replaces whole-device inventory equality with three independent
 controls: native mutation authorization, exact target verification, and protected
-inventory comparison. No new hardware pass or public release is claimed. Native
-and Swift integration, independent review, and a fresh real-device gate must
-complete before merge; earlier install evidence does not validate this model.
+inventory comparison. Native and Swift integration, independent review, and a fresh
+real-device gate must complete together; comparator relaxation cannot ship alone.
+The evidence below applies to the tested source, not a new public app release.
 
 Native authorization must bind the physical device, operation purpose, exact
 storage/path/name and expected state at the mutation boundary. A final same-session
@@ -319,13 +319,20 @@ formats remain protected rather than assuming a complete Garmin format catalog.
 Global changes outside protected/operation scope are observations, not proof that
 Terento mutated them. Metadata equality does not prove unchanged same-size bytes.
 
-The runtime integration remains subject to the full test matrix and new hardware
-gate: recoverability, native authorization and journal, exact target verification,
-protected-map preservation, reconnect and on-watch use. Cleanup is a separate
-authorized hardware test. Historical issue #249's exact trigger remains unproven.
+Source `7a6067a3` passed the 77-runner matrix, Xcode Debug build, required CI and
+independent safety/privacy review. On 2026-09-21, its fresh MapRando Malta install
+passed the hardware gate on fēnix 8 47 mm AMOLED, firmware 23.31: recoverability,
+one authorized native send, zero deletes, verified target and stable protected
+metadata. After physical reconnect, the complete target SHA-256 matched the
+provider source despite 313 item/41 parent handle changes. On-watch visibility and
+basic use were owner-confirmed PASS. One Monitor FIT removal was diagnostic only.
+This is evidence for that exact device and installation, not a hardware claim for
+Update, external Remove or cleanup; those destructive paths have automated evidence
+and require separately authorized hardware tests. Historical issue #249's exact
+physical trigger remains unproven.
 
 Run `Tests/run-app-installation-operation-diagnostics-tests.sh` for the actual
 engine/no-screen regression and producer/outbox/privacy cases. Initial context
 is in memory; force-quitting before a terminal result is observed is not a
 crash-recovery journal. Reports already persisted retain existing retry behavior.
-No device-operation behavior changes are part of this diagnostic producer fix.
+Diagnostic delivery does not itself grant any device mutation authority.
