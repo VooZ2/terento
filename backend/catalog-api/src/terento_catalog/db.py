@@ -36,9 +36,10 @@ ADMIN_DOWNLOAD_LIFECYCLE_STALE_HOURS = 4
 class IdentityResolutionError(ValueError):
     """Safe, user-facing validation failure for an identity review action."""
 
-    def __init__(self, code: str, message: str) -> None:
+    def __init__(self, code: str, message: str, *, details: dict[str, Any] | None = None) -> None:
         super().__init__(message)
         self.code = code
+        self.details = details or {}
 
 
 def _overview_time_zone(value: str) -> ZoneInfo:
@@ -2419,19 +2420,14 @@ class Database:
             if normalized_action in {"ASSIGN", "MANUAL_ASSIGN"}:
                 devices = list(connection.execute("SELECT * FROM device_model").fetchall())
                 mappings = list(connection.execute("SELECT * FROM device_identity_mapping").fetchall())
+                conflict_details: list[dict[str, Any]] = []
                 for row in rows:
                     corrections = list(connection.execute("SELECT * FROM device_identity_source_correction WHERE event_id=%s ORDER BY id", (row["event_id"],)).fetchall())
                     event = apply_corrections(self._identity_event(row), corrections)
                     assessment = assess_identity(event, devices, mappings)
                     conflicts = selected_identity_conflicts(event, device, mappings)
                     if conflicts and normalized_action == "ASSIGN":
-                        comparison = conflicts[0]
-                        reported = comparison.get("reported")
-                        selected = comparison.get("selected")
-                        raise IdentityResolutionError(
-                            "identity_conflict_manual_required",
-                            f"The selected model conflicts with reported {comparison.get('field')}: {reported} vs {selected}. Use manual assignment to confirm it.",
-                        )
+                        conflict_details.extend(self._identity_conflict_details(row, device, conflicts, devices))
                     previous_id = str(row.get("canonical_device_model_id") or "").strip() or None
                     if normalized_action == "MANUAL_ASSIGN":
                         decision_type = "MANUAL_ASSIGNMENT"
@@ -2475,6 +2471,12 @@ class Database:
                     }
                     reviewed_assessments[row["event_id"]] = (
                         json.dumps(assessment), assessment, reason or generated_reason,
+                    )
+                if conflict_details:
+                    raise IdentityResolutionError(
+                        "identity_conflict_manual_required",
+                        "The selected model conflicts with reported information. Use manual assignment to confirm it.",
+                        details={"conflicts": conflict_details},
                     )
             for row in rows:
                 reviewed = reviewed_assessments.get(row["event_id"])
@@ -2531,6 +2533,50 @@ class Database:
                      audit_reason, note, admin_user_id, reviewed[0] if reviewed else None),
                 )
             return len(rows)
+
+    @staticmethod
+    def _identity_conflict_details(
+        row: dict[str, Any], device: dict[str, Any], conflicts: list[dict[str, Any]],
+        devices: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Build bounded, non-diagnostic details safe for the identity API."""
+        by_id = {str(item.get("id") or ""): item for item in devices}
+
+        def safe(value: Any, limit: int = 200) -> Any:
+            if value is None or isinstance(value, (bool, int, float)):
+                return value
+            text = str(value)
+            text = "".join(char if 32 <= ord(char) != 127 else " " for char in text)
+            return text.strip()[:limit]
+
+        def model_label(item: dict[str, Any] | None) -> str:
+            if not item:
+                return "Catalog model unavailable"
+            model = safe(item.get("model")) or "Unknown model"
+            variant = safe(item.get("variant"))
+            return f"{model} · {variant}" if variant else str(model)
+
+        result = {"eventId": safe(row.get("event_id"))}
+        if row.get("operation_id") is not None:
+            result["operationId"] = safe(row.get("operation_id"))
+        if row.get("map_result_index") is not None:
+            result["mapResultIndex"] = row.get("map_result_index")
+        selected_model = model_label(device)
+        details = []
+        for conflict in conflicts:
+            mapping_ids = [str(value) for value in conflict.get("mappingDeviceIds") or []]
+            detail = {
+                "field": safe(conflict.get("field")),
+                "reported": safe(conflict.get("reportedRaw", conflict.get("reported"))),
+                "source": safe(conflict.get("source")),
+                "selected": safe(conflict.get("selected")),
+                "selectedModel": selected_model,
+                "result": result,
+            }
+            if mapping_ids:
+                detail["mappingModels"] = [model_label(by_id.get(mapping_id)) for mapping_id in mapping_ids]
+            details.append(detail)
+        return details
 
     def catalog_snapshot(self) -> tuple[list[dict[str, Any]], datetime]:
         query = """

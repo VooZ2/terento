@@ -1871,7 +1871,11 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                     status = HTTPStatus.CONFLICT if error_code == "identity_conflict_manual_required" else (
                         HTTPStatus.NOT_FOUND if error_code in {"diagnostic_not_found", "canonical_device_not_found"} else HTTPStatus.BAD_REQUEST
                     )
-                    self._send_json(status, {"error": error_code}, send_body=True, cache_control="no-store")
+                    payload = {"error": error_code}
+                    details = getattr(exc, "details", None)
+                    if isinstance(details, dict) and details:
+                        payload["details"] = details
+                    self._send_json(status, payload, send_body=True, cache_control="no-store")
                     return
                 except ValueError:
                     self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_identity_resolution"}, send_body=True, cache_control="no-store")

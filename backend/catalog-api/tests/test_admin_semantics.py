@@ -30,12 +30,14 @@ from terento_catalog.admin import (
     _dashboard_script,
     _device_last_success_comparator_script,
     _devices_script,
+    _diagnostic_detail_dialog,
     _diagnostic_summary_by_identity,
     _diagnostics_script,
     _github_issue_report,
     _github_issue_url,
     _sanitised_issue_value,
     _identity_comparison_key,
+    _identity_checks_markup,
     _map_statistics_summary,
     _normalise_variant,
     _overview_period_script,
@@ -99,13 +101,16 @@ class RecordingResult:
 
 class RecordingDatabase(Database):
     def __init__(self, *, diagnostic_rows=None, identity_rows=None, canonical_row=None,
-                 statistics_row=None, public_review_row=None):
+                 statistics_row=None, public_review_row=None, catalog_devices=None,
+                 identity_mappings=None):
         super().__init__("unused")
         self.diagnostic_rows = diagnostic_rows or []
         self.identity_rows = identity_rows or []
         self.canonical_row = canonical_row
         self.statistics_row = statistics_row
         self.public_review_row = public_review_row
+        self.catalog_devices = catalog_devices or ([canonical_row] if canonical_row else [])
+        self.identity_mappings = identity_mappings or []
         self.calls = []
 
     @contextmanager
@@ -118,7 +123,9 @@ class RecordingDatabase(Database):
                 if "SELECT event_id, diagnostic_status" in query:
                     return RecordingResult(rows=database.diagnostic_rows)
                 if "SELECT * FROM device_model" in query:
-                    return RecordingResult(rows=[database.canonical_row] if database.canonical_row else [])
+                    return RecordingResult(rows=database.catalog_devices)
+                if "SELECT * FROM device_identity_mapping" in query:
+                    return RecordingResult(rows=database.identity_mappings)
                 if "SELECT id, model, variant" in query:
                     return RecordingResult(row=database.canonical_row)
                 if "SELECT *" in query and "FROM compatibility_evidence_event" in query:
@@ -997,6 +1004,10 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("id='top-maps-view'", popular_maps)
         self.assertIn("id='regions-view'", popular_maps)
         self.assertIn("id='all-maps-view'", popular_maps)
+        self.assertIn("<h3 id='top-maps-title'>Top 5</h3>", popular_maps)
+        self.assertNotIn("Top 5 maps", popular_maps)
+        self.assertIn(".map-statistics-popularity .table-wrap .region-map-link{position:relative;display:inline-flex;width:auto;max-width:100%;min-height:0;padding:0;", body)
+        self.assertNotIn(".map-statistics-popularity .table-wrap .region-map-link{min-height:44px}", body)
         self.assertNotIn(">Provider</th>", popular_maps)
         map_script = _map_statistics_script()
         map_start = map_script.find("const mapRow =")
@@ -1631,6 +1642,72 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertEqual(audit[5], "ASSIGN")
         self.assertIn("MANUAL_ASSIGNMENT", audit[9])
         self.assertNotIn("verified on", audit[6].lower())
+
+    def test_identity_conflict_error_preserves_all_safe_result_details(self):
+        selected = {"id": "garmin-fenix-8-51", "model": "fēnix 8", "variant": "51 mm, AMOLED",
+                    "case_size_mm": 51, "screen_technology": "AMOLED", "solar": False, "inreach": False}
+        mapped = {"id": "garmin-fenix-7-47", "model": "fēnix 7", "variant": "47 mm, MIP",
+                  "case_size_mm": 47, "screen_technology": "MIP", "solar": True, "inreach": False}
+        mapping = {"kind": "USB", "value": "091e:51b8", "device_model_id": mapped["id"],
+                   "status": "APPROVED", "source_url": "https://example.org/usb", "source_version": "1"}
+        rows = [
+            {"event_id": "event-1", "operation_id": "123e4567-e89b-12d3-a456-426614174000", "map_result_index": 0,
+             "raw_mtp_model": "fenix 7 47mm MIP Solar", "model": "fenix 7", "case_size_mm": 47,
+             "display_type": "MIP", "usb_vendor_id": 2334, "usb_product_id": 20920,
+             "canonical_device_model_id": None, "identity_assessment": {}},
+            {"event_id": "event-2", "operation_id": "123e4567-e89b-12d3-a456-426614174000", "map_result_index": 1,
+             "raw_mtp_model": "fenix 7 47mm AMOLED", "model": "fenix 7", "case_size_mm": 47,
+             "display_type": "AMOLED", "usb_vendor_id": 2334, "usb_product_id": 20920,
+             "canonical_device_model_id": None, "identity_assessment": {}},
+        ]
+        database = RecordingDatabase(
+            identity_rows=rows, canonical_row=selected,
+            catalog_devices=[selected, mapped], identity_mappings=[mapping],
+        )
+        with self.assertRaises(IdentityResolutionError) as error:
+            database.resolve_compatibility_identity(
+                "operation-1", action="ASSIGN", canonical_device_model_id=selected["id"], admin_user_id=7,
+            )
+        self.assertEqual(error.exception.code, "identity_conflict_manual_required")
+        conflicts = error.exception.details["conflicts"]
+        self.assertGreaterEqual(len(conflicts), 6)
+        self.assertEqual({item["result"]["eventId"] for item in conflicts}, {"event-1", "event-2"})
+        self.assertTrue(any(item["field"] == "caseSizeMm" and item["source"] == "caseSizeMm" for item in conflicts))
+        mapping_conflict = next(item for item in conflicts if item["field"] == "USB")
+        self.assertEqual(mapping_conflict["reported"], "091e:51b8")
+        self.assertEqual(mapping_conflict["mappingModels"], ["fēnix 7 · 47 mm, MIP"])
+        self.assertEqual(mapping_conflict["selectedModel"], "fēnix 8 · 51 mm, AMOLED")
+        self.assertFalse(any("UPDATE compatibility_evidence_event" in query for query, _ in database.calls))
+        self.assertFalse(any("compatibility_identity_resolution_audit" in query for query, _ in database.calls))
+
+    def test_identity_conflict_details_are_rendered_for_multiple_results(self):
+        selected = {"id": "selected", "model": "fēnix 8", "variant": "51 mm, AMOLED",
+                    "case_size_mm": 51, "screen_technology": "AMOLED", "solar": None, "inreach": None}
+        mapped = {"id": "mapped", "model": "fēnix 7", "variant": "47 mm, MIP",
+                  "case_size_mm": 47, "screen_technology": "MIP", "solar": True, "inreach": False}
+        def assessment():
+            return {"candidates": [{"deviceId": "selected", "model": "fēnix 8", "conflict": True, "checks": [
+                {"name": "model", "state": "CONFLICT", "observedState": "CONFLICT", "expected": "fenix 8",
+                 "evidence": [{"source": "rawMTPModel", "value": "fenix 7"}]},
+                {"name": "size", "state": "CONFLICT", "expected": 51,
+                 "evidence": [{"source": "caseSizeMm", "value": 47}]},
+                {"name": "usb", "state": "CONFLICT", "value": "091e:51b8", "codeKind": "USB",
+                 "evidence": [{"source": "USB mapping", "value": "091e:51b8", "deviceId": "mapped"}]},
+            ]}]}
+        results = [
+            {"event_id": "event-1", "canonical_device_model_id": "selected", "identity_assessment": assessment()},
+            {"event_id": "event-2", "canonical_device_model_id": "selected", "identity_assessment": assessment()},
+        ]
+        body = _identity_checks_markup(results, [selected, mapped])
+        self.assertIn("Diagnostic result event-1", body)
+        self.assertIn("Diagnostic result event-2", body)
+        self.assertIn("Case size: reported 47 from caseSizeMm", body)
+        self.assertIn("USB mapping", body)
+        self.assertIn("fēnix 7 · 47 mm, MIP", body)
+        self.assertIn("regular Confirm is blocked", body)
+        script = _diagnostics_script()
+        self.assertIn("identityConflictMessage", script)
+        self.assertIn("clearStaleSelectionState", script)
 
     def test_identity_confirm_without_reason_uses_action_specific_audit_text(self):
         selected = {"id": "garmin-fenix-8-47", "model": "fēnix 8", "variant": "47 mm",

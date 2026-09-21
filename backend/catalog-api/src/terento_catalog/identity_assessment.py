@@ -18,6 +18,21 @@ CORRECTABLE_FIELDS = {'model', 'variant', 'rawMTPModel', 'garminModelDescription
                       'garminModelPartNumber', 'caseSizeMm', 'displayType', 'usbVendorID', 'usbProductID'}
 
 
+def _case_size(value: Any) -> int | None:
+    """Return a numeric case size, treating malformed input as unknown."""
+    if type(value) is int and 1 <= value <= 999:
+        return value
+    if isinstance(value, str) and re.fullmatch(r'\d{1,3}', value.strip()):
+        parsed = int(value.strip())
+        return parsed if 1 <= parsed <= 999 else None
+    return None
+
+
+def _screen_label(value: Any) -> str | None:
+    labels = {'amoled': 'AMOLED', 'microled': 'MicroLED', 'mip': 'MIP'}
+    return labels.get(normalized(value))
+
+
 def validate_correction(field: str, value: Any) -> None:
     if field not in CORRECTABLE_FIELDS:
         raise ValueError('unsupported identity source field')
@@ -72,8 +87,9 @@ def _identity_observations(event: dict) -> dict[str, Any]:
         texts.append((sources.get('variant', 'variant'), normalized(event['variant'])))
     sizes = [(key, int(match.group(1))) for key, text in texts
              for match in re.finditer(r'\b(\d{2,3})\s*mm\b', text)]
-    if event.get('caseSizeMm') is not None:
-        sizes.append((sources.get('caseSizeMm', 'caseSizeMm'), event['caseSizeMm']))
+    case_size = _case_size(event.get('caseSizeMm'))
+    if case_size is not None:
+        sizes.append((sources.get('caseSizeMm', 'caseSizeMm'), case_size))
     screens = []
     for key, text in texts + [(sources.get('displayType', 'displayType'), normalized(event.get('displayType')))]:
         for token, screen in (('microled', 'MicroLED'), ('amoled', 'AMOLED'), ('mip', 'MIP')):
@@ -119,25 +135,28 @@ def selected_identity_conflicts(
         reported_model = model_label(value)
         if reported_model and expected_model and reported_model != expected_model:
             conflicts.append({'field': 'model', 'source': source,
-                              'reported': reported_model, 'selected': expected_model})
-    expected_size = device.get('case_size_mm')
+                              'reported': reported_model, 'reportedRaw': value,
+                              'selected': expected_model})
+    expected_size = _case_size(device.get('case_size_mm'))
     if expected_size is not None:
         for source, value in observations['sizes']:
             if value != expected_size:
                 conflicts.append({'field': 'caseSizeMm', 'source': source,
-                                  'reported': value, 'selected': expected_size})
-    expected_screen = device.get('screen_technology')
+                                  'reported': value, 'reportedRaw': value,
+                                  'selected': expected_size})
+    expected_screen = _screen_label(device.get('screen_technology')) or device.get('screen_technology')
     if expected_screen:
         for source, value in observations['screens']:
             if value != expected_screen:
                 conflicts.append({'field': 'screenTechnology', 'source': source,
-                                  'reported': value, 'selected': expected_screen})
+                                  'reported': value, 'reportedRaw': value,
+                                  'selected': expected_screen})
     if device.get('solar') is False and observations['solar']:
         conflicts.append({'field': 'solar', 'source': observations['solar'][0][0],
-                          'reported': True, 'selected': False})
+                          'reported': True, 'reportedRaw': True, 'selected': False})
     if device.get('inreach') is False and observations['inreach']:
         conflicts.append({'field': 'inReach', 'source': observations['inreach'][0][0],
-                          'reported': True, 'selected': False})
+                          'reported': True, 'reportedRaw': True, 'selected': False})
     if mappings:
         device_id = str(device.get('id') or '')
         for kind, value in observations['codes'].items():
@@ -151,8 +170,8 @@ def selected_identity_conflicts(
                 and mapping.get('status') == 'APPROVED'
             }
             if approved_ids and device_id not in approved_ids:
-                conflicts.append({'field': kind, 'source': kind,
-                                  'reported': value, 'selected': ' / '.join(sorted(approved_ids))})
+                conflicts.append({'field': kind, 'source': f'{kind} mapping',
+                                  'reported': value, 'mappingDeviceIds': sorted(approved_ids)})
     return conflicts
 
 
@@ -183,7 +202,7 @@ def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> d
     specification_targets = [d for d in devices if specification_model
         and model_label(d.get('model')) == specification_model
         and all(model_label(value) == specification_model for _, value in labels)
-        and all(d.get('case_size_mm') is None or d['case_size_mm'] == value for _, value in sizes)
+        and all(d.get('case_size_mm') is None or _case_size(d.get('case_size_mm')) == value for _, value in sizes)
         and all(d.get('screen_technology') is None or d['screen_technology'] == value for _, value in screens)
         and (not solar or d.get('solar') is not False)
         and (not inreach or d.get('inreach') is not False)]
@@ -246,8 +265,8 @@ def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> d
                 'evidence': [{'source': key, 'value': value} for key, value in evidence]})
             if state == 'CONFLICT' or (state == 'MISSING' and model_check['state'] == 'MATCH'):
                 model_check['state'] = state
-        check('size', derived_size, device.get('case_size_mm'))
-        check('screen', derived_screen, device.get('screen_technology'))
+        check('size', derived_size, _case_size(device.get('case_size_mm')))
+        check('screen', derived_screen, _screen_label(device.get('screen_technology')) or device.get('screen_technology'))
         checks[-1]['catalogSource'] = (device.get('specification_evidence') or {}).get('screen_technology')
         for name, kind in (('xmlPartNumber', part_kind), ('usb', 'USB')):
             group = matched[kind]
