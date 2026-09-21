@@ -14,6 +14,7 @@ import unicodedata
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import quote, urlencode, urlsplit
+from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .campaign_links import CAMPAIGN_SUGGESTIONS, MEDIUM_OPTIONS, SOURCE_OPTIONS
@@ -716,16 +717,18 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     github_issues_in_progress = review_value("githubIssuesInProgress")
     identity_pending = review_value("identityPending")
     ready_to_publish = review_value("readyToPublish")
+    missing_diagnostics = review_value("missingDiagnostics")
     review_total = review_value("pendingReviewTasks")
     if review_total is None:
         review_total = review_value("total")
-    if review_total is None and all(value is not None for value in (installation_issues, github_issues_in_progress, identity_pending, ready_to_publish)):
-        review_total = sum(value for value in (installation_issues, github_issues_in_progress, identity_pending, ready_to_publish) if value is not None)
+    if review_total is None and all(value is not None for value in (installation_issues, github_issues_in_progress, identity_pending, ready_to_publish, missing_diagnostics)):
+        review_total = sum(value for value in (installation_issues, github_issues_in_progress, identity_pending, ready_to_publish, missing_diagnostics) if value is not None)
     review_count_markup = str(review_total) if review_total is not None else "—"
     review_menu = f"""<details class="needs-review-menu">
         <summary aria-label="Review queue: {html.escape(review_count_markup)}">Review queue <span class="needs-review-count">{review_count_markup}</span></summary>
         <div class="needs-review-popover" role="group" aria-label="Review queue">
           {"<p class='muted-value'>Pending review tasks: unavailable.</p>" if not review_available else f'''<p class='table-help'>Pending review tasks</p><a href="/admin/installations?state=open"><span>Failure diagnostics</span><strong>{installation_issues if installation_issues is not None else "—"}</strong></a>
+          <a href="/admin#overview-attention-title"><span>Missing diagnostics</span><strong>{missing_diagnostics if missing_diagnostics is not None else "—"}</strong></a>
           <a href="/admin/review/github-issues"><span>GitHub review tasks</span><strong>{github_issues_in_progress if github_issues_in_progress is not None else "—"}</strong></a>
           <a href="/admin/installations?state=identity-pending"><span>Identity review</span><strong>{identity_pending if identity_pending is not None else "—"}</strong></a>
           <a href="/admin/devices?review=publication"><span>Publication review</span><strong>{ready_to_publish if ready_to_publish is not None else "—"}</strong></a>'''}
@@ -957,9 +960,27 @@ def _overview_attention_item(operation: dict[str, Any]) -> str:
     )
 
 
-def _overview_missing_diagnostic_item(event: dict[str, Any]) -> str:
+def _overview_missing_diagnostic_item(
+    event: dict[str, Any], csrf_token: str = "",
+) -> str:
     href = html.escape(_overview_map_event_href(event), quote=True)
     context = html.escape(_overview_map_event_context(event))
+    event_id = str(event.get("event_id") or event.get("eventId") or "").strip()
+    try:
+        event_id = str(UUID(event_id))
+    except (ValueError, AttributeError):
+        event_id = ""
+    dismiss = ""
+    if event_id:
+        dismiss = (
+            "<form method='post' action='/admin/review/missing-diagnostics/dismiss' "
+            "class='admin-async-action overview-review-dismiss-form'>"
+            f"<input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>"
+            f"<input type='hidden' name='event_id' value='{html.escape(event_id, quote=True)}'>"
+            "<button type='submit' class='overview-dismiss-button' "
+            "aria-label='Dismiss review item' title='Dismiss review item'>×</button>"
+            "</form>"
+        )
     return (
         "<li class='overview-attention-item overview-attention-failed'>"
         "<span class='overview-attention-dot' aria-hidden='true'>●</span>"
@@ -967,7 +988,7 @@ def _overview_missing_diagnostic_item(event: dict[str, Any]) -> str:
         f"<span>{context}</span>"
         "<small>No device diagnostic report received · "
         f"{_timestamp_markup(event.get('occurred_at'))}</small></div>"
-        f"<a class='overview-detail-link' href='{href}'>View activity&nbsp;{_admin_icon('arrow-right')}</a></li>"
+        f"<div class='overview-attention-actions'><a class='overview-detail-link' href='{href}'>View activity&nbsp;{_admin_icon('arrow-right')}</a>{dismiss}</div></li>"
     )
 
 
@@ -1408,6 +1429,7 @@ def _overview_map_event_href(event: dict[str, Any]) -> str:
         "provider": str(event.get("provider_id") or ""),
         "map": str(event.get("map_package_id") or ""),
         "region": str(event.get("region") or ""),
+        "eventId": str(event.get("event_id") or event.get("eventId") or ""),
     }
     return "/admin/map-statistics?" + urlencode({key: value for key, value in parameters.items() if value})
 
@@ -1741,7 +1763,7 @@ def _overview_downloads_chart(
             if item.get("discontinuity_count"):
                 discontinuity_title += f" · {item['discontinuity_count']} unknown interval retained"
             bars.append(
-                f"<line class='overview-chart-download-unknown' x1='{center - 9:.1f}' x2='{center + 9:.1f}' y1='{top + plot_height - 3:.1f}' y2='{top + plot_height - 3:.1f}' tabindex='0' role='img' aria-label='{html.escape(discontinuity_title, quote=True)}'><title>{html.escape(discontinuity_title)}</title></line>"
+                f"<g class='overview-chart-download-unknown' tabindex='0' role='img' aria-label='{html.escape(discontinuity_title, quote=True)}'><line x1='{center:.1f}' x2='{center:.1f}' y1='{top + 14:.1f}' y2='{top + plot_height - 4:.1f}'></line><text x='{center:.1f}' y='{top + 12:.1f}' text-anchor='middle'>Unknown</text><title>{html.escape(discontinuity_title)}</title></g>"
             )
         label_step = max(1, round((len(values) - 1) / 11))
         show_label = len(values) <= 12 or index % label_step == 0 or index == len(values) - 1
@@ -1842,6 +1864,7 @@ def _overview_period_script() -> str:
 
 def overview_page(
     overview: dict[str, Any], user: dict[str, Any], csrf_token: str,
+    *, review_action: str = "", review_event_id: str = "",
 ) -> bytes:
     data = overview.get("data") if isinstance(overview.get("data"), dict) else {}
     compatibility = overview.get("compatibility") if isinstance(overview.get("compatibility"), dict) else {}
@@ -1895,10 +1918,17 @@ def overview_page(
         provider for provider in providers
         if str(provider.get("health") or "UNKNOWN").upper() not in {"HEALTHY", ""}
     ]
+    review = user.get("admin_review_summary") or {}
+    if review.get("available") is False:
+        review = {}
     missing_diagnostics = list(data.get("missingDiagnosticFailures") or [])
-    missing_diagnostic_count = int(data.get("missingDiagnosticFailureCount") or 0)
+    missing_diagnostic_count = int(
+        review.get("missingDiagnostics")
+        if review.get("missingDiagnostics") is not None
+        else data.get("missingDiagnosticFailureCount") or 0
+    )
     attention_item_markup: list[str] = [
-        _overview_missing_diagnostic_item(item) for item in missing_diagnostics
+        _overview_missing_diagnostic_item(item, csrf_token) for item in missing_diagnostics
     ]
     compatibility_attention = [
         item for item in compatibility.get("attention", compatibility.get("recentActivity", []))
@@ -1957,7 +1987,7 @@ def overview_page(
     failed_download_href = map_statistics_href + "&" + urlencode({"eventType": "DOWNLOAD_FAILED"})
     attention_href = (
         "/admin/installations?state=open" if compatibility_attention else
-        "/admin/map-statistics?period=all&eventType=INSTALL_FAILED" if missing_diagnostics else
+        "/admin#overview-attention-title" if missing_diagnostics else
         "/admin/devices" if review_required else
         "/admin/providers" if attention_providers else map_statistics_href
     )
@@ -2027,20 +2057,35 @@ def overview_page(
         if model_panel else
         "overview-secondary-grid overview-secondary-grid-single"
     )
+    notice_event_id = ""
+    try:
+        notice_event_id = str(UUID(str(review_event_id).strip()))
+    except (ValueError, AttributeError):
+        pass
+    review_notice = ""
+    if notice_event_id and review_action in {"dismissed", "reopened"}:
+        if review_action == "dismissed":
+            review_notice = (
+                "<div class='overview-review-notice' role='status'>Review item dismissed. "
+                "<form method='post' action='/admin/review/missing-diagnostics/undo' "
+                "class='admin-async-action'>"
+                f"<input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>"
+                f"<input type='hidden' name='event_id' value='{html.escape(notice_event_id, quote=True)}'>"
+                "<button type='submit' class='link-button'>Undo</button></form></div>"
+            )
+        else:
+            review_notice = "<div class='overview-review-notice' role='status'>Review item reopened.</div>"
     attention_section = (
-        f"<section class='overview-panel overview-attention-panel{' overview-attention-empty' if not has_review_queue else ''}' aria-labelledby='overview-attention-title'><div class='section-heading'><div><h2 id='overview-attention-title'>Review queue</h2></div><span class='table-help'>Unresolved work · all dates</span></div>{attention_content}"
+        f"<section class='overview-panel overview-attention-panel{' overview-attention-empty' if not has_review_queue else ''}' aria-labelledby='overview-attention-title'><div class='section-heading'><div><h2 id='overview-attention-title'>Review queue</h2></div><span class='table-help'>Unresolved work · all dates</span></div>{review_notice}{attention_content}"
     )
-    review = user.get("admin_review_summary") or {}
     review_metric = lambda key: str(review[key]) if key in review and review.get(key) is not None else "—"
     missing_diagnostic_shortcut = (
-        "<a href='/admin/map-statistics?period=all&amp;eventType=INSTALL_FAILED'>"
+        "<a href='/admin#overview-attention-title'>"
         f"Missing diagnostics <strong>{missing_diagnostic_count}</strong></a>"
         if missing_diagnostic_count else ""
     )
-    if review.get("available") is False:
-        review = {}
     queue_categories = [
-        ("Missing diagnostics", missing_diagnostic_count, "/admin/map-statistics?period=all&eventType=INSTALL_FAILED"),
+        ("Missing diagnostics", missing_diagnostic_count, "/admin#overview-attention-title"),
         ("Failure diagnostics", review.get("installationIssues"), "/admin/installations?state=open"),
         ("GitHub review", review.get("githubIssuesInProgress"), "/admin/review/github-issues"),
         ("Identity review", review.get("identityPending"), "/admin/installations?state=identity-pending"),
@@ -3211,6 +3256,7 @@ def map_statistics_page(
     statistics = dict(statistics)
     statistics['downloadTimeMarkup'] = {str(item.get('id')): _download_time_markup((statistics.get('downloadTimes') or {}).get(str(item.get('id'))), 'Selected statistics period') for item in providers}
     selected = selected_filters or {}
+    event_detail_open = " open" if selected.get("eventId") else ""
     has_population_data = bool(rows)
     has_event_data = has_population_data
     event_value = lambda key: "—" if summary.get(key) is None else str(summary[key])
@@ -3304,7 +3350,7 @@ def map_statistics_page(
         <section class='map-statistics-empty' id='map-statistics-empty' {'hidden' if has_event_data else ''} aria-live='polite'><h2>No map activity</h2><p>Try a wider time range or clear your filters. If all-time activity is empty, no map-operation reports have been received.</p><a href='/admin/map-statistics?period=all'>View all map activity</a></section>
         <section class='provider-card map-statistics-provider-table' id='map-statistics-provider-table' {'hidden' if not has_event_data else ''}><div class='section-heading'><div><h2>Activity by provider</h2></div></div><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Activity by provider</caption><thead><tr><th scope='col'>Provider</th><th scope='col' class='column-number'>Downloads</th><th scope='col' class='column-number'>Failed downloads</th><th scope='col' class='column-number'>Fresh installs</th><th scope='col' class='column-number'>Successful updates</th><th scope='col' class='column-number'>Failed updates</th><th scope='col' class='column-number'>Fresh install success</th><th scope='col' class='column-number'>Update success</th><th scope='col' class='column-date'>Last install</th></tr></thead><tbody id='provider-statistic-rows'></tbody></table></div></section>
         <section class='map-statistics-coverage-layout' id='map-statistics-coverage' {'hidden' if not has_event_data else ''} aria-label='Installation coverage'><section class='provider-card map-statistics-world-map-card' aria-labelledby='map-statistics-world-map-title'><div class='section-heading'><div><h2 id='map-statistics-world-map-title'>Installations by country</h2></div><p class='table-help' id='map-statistics-world-map-status'>Successful installs</p></div><div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map showing successful installs by country'><div class='world-map-controls' role='group' aria-label='Map navigation'><button type='button' data-map-zoom='in' aria-label='Zoom in'>+</button><button type='button' data-map-zoom='out' aria-label='Zoom out'>−</button><button type='button' data-map-zoom='reset'>Reset map</button><span id='world-map-zoom-status' role='status'>100%</span></div><div class='world-map-svg' id='world-map-svg' tabindex='0' aria-label='Map viewport. Use arrow keys to pan, plus and minus to zoom, or drag the map.'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div></section><section class='provider-card map-statistics-popularity' id='map-statistics-popularity' tabindex='0' aria-label='Popular maps and regions'><div class='section-heading'><div><h2>Popular maps</h2></div></div><div class='map-statistics-popularity-views'><section class='popularity-view' data-popularity-view='top' id='top-maps-view' aria-labelledby='top-maps-title'><h3 id='top-maps-title'>Top 5</h3><div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Top 5</caption><thead><tr><th scope='col'>Map</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='map-rows'></tbody></table></div></section><section class='popularity-view' data-popularity-view='regions' id='regions-view' aria-labelledby='regions-title' hidden><h3 id='regions-title'>Regions</h3><div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Popular regions</caption><thead><tr><th scope='col'>Region</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='top-region-rows'></tbody></table></div></section><section class='popularity-view' data-popularity-view='all' id='all-maps-view' aria-labelledby='all-maps-title' hidden><h3 id='all-maps-title'>All maps</h3><label class='popularity-search-label' for='all-maps-search'>Search maps</label><input type='search' id='all-maps-search' placeholder='Map, region or provider'><div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>All maps by region and provider</caption><thead><tr><th scope='col'>Map</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='all-map-rows'></tbody></table></div><div class='provider-pagination' aria-live='polite'><button type='button' id='all-maps-prev'>Previous</button><span id='all-maps-page' role='status'></span><button type='button' id='all-maps-next'>Next</button></div></section></div><nav class='popular-maps-nav' aria-label='Popular maps views'><button type='button' data-popularity-view-button='top' hidden>Top 5</button><button type='button' data-popularity-view-button='regions'>Regions</button><button type='button' data-popularity-view-button='all'>All maps</button></nav></section></section>
-        <section class='provider-card map-events-card' {'hidden' if not has_event_data else ''}><details class='admin-disclosure' id='map-statistics-event-detail'><summary id='map-statistics-event-summary'>Event detail <span class='disclosure-meta'>· {event_status}</span></summary><div class='disclosure-body' id='map-statistics-event-body'>{event_table}</div></details></section>
+        <section class='provider-card map-events-card' {'hidden' if not has_event_data else ''}><details class='admin-disclosure' id='map-statistics-event-detail'{event_detail_open}><summary id='map-statistics-event-summary'>Event detail <span class='disclosure-meta'>· {event_status}</span></summary><div class='disclosure-body' id='map-statistics-event-body'>{event_table}</div></details></section>
       </main>
       <link rel="stylesheet" href="/admin/map-assets/leaflet-1.9.4.css"><link rel="stylesheet" href="/admin/map-assets/coverage-map-v1.css"><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/leaflet-1.9.4.js"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/coverage-map-v1.js?v=20260913-coverage-sidebar-3"></script><script>window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};window.terentoWorldMapSvg = {_admin_json(WORLD_MAP_SVG)};window.terentoWorldMapCountryAliases = {_admin_json(WORLD_MAP_COUNTRY_ALIASES)};{_map_statistics_script()}</script>
     """
@@ -3724,7 +3770,7 @@ def _map_statistics_script() -> str:
       document.querySelector('#all-maps-prev')?.addEventListener('click', () => { allMapsPage--; render(currentPayload); });
       document.querySelector('#all-maps-next')?.addEventListener('click', () => { allMapsPage++; render(currentPayload); });
       const initialRange = ['24h', '7d', '30d', 'all'].includes(String(filters.period || '')) ? String(filters.period) : 'all'; range.value = initialRange; if (filters.provider) provider.value = filters.provider; if (filters.map) map.value = filters.map; if (filters.region) region.value = filters.region; if (filters.eventType) event.value = filters.eventType; if (filters.outcome) outcome.value = filters.outcome;
-      if (moreFilters && (filters.map || filters.region || filters.eventType || filters.outcome)) moreFilters.open = true;
+      if (moreFilters && (filters.map || filters.region || filters.eventType || filters.outcome || filters.eventId)) moreFilters.open = true;
       [range, provider, event, outcome].forEach((control) => control?.addEventListener('change', () => sync({resetDetailPage: true}))); [map, region].forEach((control) => { control?.addEventListener('change', () => sync({resetDetailPage: true})); control?.addEventListener('input', () => sync({resetDetailPage: true})); });
       eventPageSize?.addEventListener('change', () => sync({resetDetailPage: true}));
       eventPagination?.querySelector('[data-event-page="previous"]')?.addEventListener('click', () => { detailPage = Math.max(1, detailPage - 1); sync(); });
@@ -3733,6 +3779,11 @@ def _map_statistics_script() -> str:
       window.addEventListener('terento-admin-timezone-change', () => render(currentPayload));
       setPopularityView(popularityView);
       render(initial);
+      if (filters.eventId && eventDetail) {
+        eventDetail.open = true;
+        eventDetail.scrollIntoView?.({block: 'start'});
+        eventDetail.querySelector('summary')?.focus({preventScroll: true});
+      }
     })();"""
 
 
@@ -7037,7 +7088,7 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
 .overview-map-total small,.overview-download-total small{color:var(--secondary);font-size:var(--admin-type-support-size)}
 .overview-chart-download-dmg{fill:var(--interactive);background:var(--interactive)}
 .overview-chart-download-zip{fill:var(--status-success-text);background:var(--status-success-text)}
-.overview-chart-download-unknown{stroke:var(--secondary);stroke-width:3;stroke-dasharray:4 3}
+.overview-chart-download-unknown line{stroke:var(--secondary);stroke-width:3;stroke-dasharray:4 3}.overview-chart-download-unknown text{fill:var(--secondary);stroke:none;font-size:10px;font-weight:700}
 .overview-trend-chart{display:block;width:100%;height:260px;max-width:760px;min-height:0;margin:0 auto}
 .overview-trend-mobile{display:none}
 @media(max-width:700px){
@@ -7047,7 +7098,7 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
   .overview-trend-mobile text{font-size:13px}
   .overview-map-totals,.overview-download-totals{justify-content:flex-start;margin-inline-start:0}
 }
-@media(max-width:560px){.overview-map-totals,.overview-download-totals{flex-basis:100%}}
+@media(max-width:560px){.overview-map-totals,.overview-download-totals{flex-basis:100%}.overview-attention-actions{grid-column:2;justify-content:flex-start;flex-wrap:wrap}}
 .overview-provider-panel h2{font-family:var(--font-ui);font-size:var(--admin-type-subsection-size);line-height:var(--admin-type-subsection-line);letter-spacing:0}
 .overview-provider-panel .section-kicker{margin-bottom:1px}
 .overview-provider-panel{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:18px;min-height:76px;padding:12px 16px}
@@ -7214,6 +7265,7 @@ h1,h2,h3,h4,.administration-grid h3,.overview-kpi strong,.admin-kpi-grid article
 /* Full labels and values remain readable at every admin width. */
 .overview-attention-item span,.overview-activity-item a span:not(.overview-activity-label),.overview-model-item strong,.overview-review-item strong,.device-model-copy strong,.provider-error{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;max-width:none}
 .overview-panel,.system-health-card,.provider-card,.campaign-card,.admin-kpi-grid article,.overview-kpi,.provider-metrics article{min-width:0;overflow-wrap:anywhere}
+.overview-attention-item .overview-attention-actions{display:inline-flex;align-items:center;justify-content:flex-end;gap:8px}.overview-review-dismiss-form{display:inline-flex;margin:0}.overview-dismiss-button{display:inline-flex;align-items:center;justify-content:center;min-width:32px;min-height:32px;padding:0;border:1px solid var(--border);border-radius:8px;background:var(--surface-muted);color:var(--graphite);font-size:20px;line-height:1;cursor:pointer}.overview-dismiss-button:hover{border-color:var(--interactive);color:var(--interactive)}.overview-dismiss-button:focus-visible{outline:3px solid var(--admin-focus-ring);outline-offset:2px}.overview-review-notice{display:flex;align-items:center;gap:8px;margin:0 0 10px;padding:9px 12px;border:1px solid var(--border);border-radius:9px;background:var(--surface-muted);color:var(--graphite);font-size:13px}.overview-review-notice form{display:inline-flex;margin:0}
 .section-heading>div,.heading-row>div,.provider-latest-summary>div,.device-model-copy{min-width:0}
 .generated-url{white-space:pre-wrap;overflow-wrap:anywhere;overflow:visible;word-break:normal}
 .diagnostic-technical-details pre,.model-technical-details pre,.device-dialog pre,.diagnostic-detail-dialog pre{white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%}

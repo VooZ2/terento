@@ -993,13 +993,70 @@ class Database:
                       review_status = 'PENDING'
                       OR (review_status = 'APPROVED' AND public_statistics_enabled = false)
                   )
+            ), missing_diagnostic_reviews AS (
+                SELECT count(*) AS missing_diagnostics
+                FROM map_download_event AS e
+                LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
+                LEFT JOIN admin_map_review_task AS review_task
+                  ON review_task.event_id = e.event_id
+                 AND review_task.task_type = 'MISSING_DIAGNOSTIC'
+                WHERE e.is_local_test IS NOT TRUE
+                  AND e.event_type = 'INSTALL_FAILED'
+                  AND e.outcome = 'FAILED'
+                  AND COALESCE(review_task.status, 'OPEN') = 'OPEN'
+                  AND (
+                      NOT EXISTS (
+                          SELECT 1
+                          FROM compatibility_evidence_event AS diagnostic
+                          WHERE diagnostic.is_local_test IS NOT TRUE
+                            AND diagnostic.operation_id = e.operation_id
+                            AND diagnostic.map_result_index IS NOT NULL
+                            AND diagnostic.provider = e.provider_id
+                            AND (
+                                diagnostic.region IS NOT DISTINCT FROM e.region
+                                OR (
+                                    mp.provider_id = e.provider_id
+                                    AND diagnostic.region IN (
+                                        mp.provider_region_id, mp.canonical_region_id, mp.region
+                                    )
+                                    AND e.region IN (
+                                        mp.provider_region_id, mp.canonical_region_id, mp.region
+                                    )
+                                )
+                            )
+                      )
+                      OR EXISTS (
+                          SELECT 1
+                          FROM map_download_event AS sibling
+                          LEFT JOIN map_package AS sibling_package
+                            ON sibling_package.id = sibling.map_package_id
+                          WHERE sibling.is_local_test IS NOT TRUE
+                            AND sibling.event_type IN ('INSTALL_SUCCEEDED', 'INSTALL_FAILED')
+                            AND sibling.operation_id = e.operation_id
+                            AND sibling.provider_id = e.provider_id
+                            AND sibling.map_package_id IS DISTINCT FROM e.map_package_id
+                            AND COALESCE(
+                                sibling_package.canonical_region_id,
+                                sibling_package.provider_region_id,
+                                sibling_package.region,
+                                sibling.region
+                            ) IS NOT DISTINCT FROM COALESCE(
+                                mp.canonical_region_id,
+                                mp.provider_region_id,
+                                mp.region,
+                                e.region
+                            )
+                      )
+                  )
             )
             SELECT
                 count(*) FILTER (WHERE has_failure AND NOT has_github_issue)
                     AS installation_issues,
                 count(*) FILTER (WHERE has_github_issue) AS github_issues_in_progress,
                 count(*) FILTER (WHERE identity_pending) AS identity_pending,
-                (SELECT ready_to_publish FROM publication_reviews) AS ready_to_publish
+                (SELECT ready_to_publish FROM publication_reviews) AS ready_to_publish,
+                (SELECT missing_diagnostics FROM missing_diagnostic_reviews)
+                    AS missing_diagnostics
             FROM operation_reviews
         """
         with self.connection() as connection:
@@ -1011,19 +1068,120 @@ class Database:
             "githubIssuesInProgress": int(values["github_issues_in_progress"]) if values.get("github_issues_in_progress") is not None else None,
             "identityPending": int(values["identity_pending"]) if values.get("identity_pending") is not None else None,
             "readyToPublish": int(values["ready_to_publish"]) if values.get("ready_to_publish") is not None else None,
+            "missingDiagnostics": int(values["missing_diagnostics"]) if values.get("missing_diagnostics") is not None else None,
         }
         summary["pendingReviewTasks"] = (
             sum(summary[key] for key in (
                 "installationIssues", "githubIssuesInProgress",
-                "identityPending", "readyToPublish",
+                "identityPending", "readyToPublish", "missingDiagnostics",
             ))
             if all(summary[key] is not None for key in (
                 "installationIssues", "githubIssuesInProgress",
-                "identityPending", "readyToPublish",
+                "identityPending", "readyToPublish", "missingDiagnostics",
             )) else None
         )
         summary["total"] = summary["pendingReviewTasks"]
         return summary
+
+    def set_missing_diagnostic_review(
+        self,
+        event_id: str,
+        *,
+        status: str,
+        admin_user_id: int | None,
+        note: str | None = None,
+        request_id: str | None = None,
+    ) -> bool:
+        """Dismiss or reopen one map-event review task without touching telemetry."""
+        try:
+            normalized_event_id = str(UUID(str(event_id).strip()))
+        except (ValueError, AttributeError) as exc:
+            raise ValueError("invalid_missing_diagnostic_review") from exc
+        normalized_status = str(status or "").strip().upper()
+        if normalized_status not in {"OPEN", "DISMISSED"}:
+            raise ValueError("invalid_missing_diagnostic_review")
+        normalized_note = str(note or "").strip() or None
+        if normalized_note is not None and len(normalized_note) > 2000:
+            raise ValueError("invalid_missing_diagnostic_review")
+
+        with self.connection() as connection:
+            event = connection.execute(
+                """
+                SELECT event_id, provider_id, event_type, outcome
+                FROM map_download_event
+                WHERE event_id = %s
+                FOR UPDATE
+                """,
+                (normalized_event_id,),
+            ).fetchone()
+            if not event or event["event_type"] != "INSTALL_FAILED" or event["outcome"] != "FAILED":
+                return False
+            task = connection.execute(
+                """
+                SELECT status
+                FROM admin_map_review_task
+                WHERE event_id = %s AND task_type = 'MISSING_DIAGNOSTIC'
+                FOR UPDATE
+                """,
+                (normalized_event_id,),
+            ).fetchone()
+            previous_status = str(task["status"] if task else "OPEN")
+            if previous_status == normalized_status:
+                return True
+            if normalized_status == "DISMISSED":
+                connection.execute(
+                    """
+                    INSERT INTO admin_map_review_task (
+                        event_id, task_type, status, dismissed_by, dismissed_at,
+                        note, updated_at
+                    ) VALUES (%s, 'MISSING_DIAGNOSTIC', 'DISMISSED', %s, now(), %s, now())
+                    ON CONFLICT (event_id) DO UPDATE SET
+                        task_type = EXCLUDED.task_type,
+                        status = EXCLUDED.status,
+                        dismissed_by = EXCLUDED.dismissed_by,
+                        dismissed_at = EXCLUDED.dismissed_at,
+                        note = EXCLUDED.note,
+                        updated_at = EXCLUDED.updated_at
+                    """,
+                    (normalized_event_id, admin_user_id, normalized_note),
+                )
+            else:
+                connection.execute(
+                    """
+                    UPDATE admin_map_review_task
+                    SET status = 'OPEN', dismissed_by = NULL, dismissed_at = NULL,
+                        note = NULL, updated_at = now()
+                    WHERE event_id = %s AND task_type = 'MISSING_DIAGNOSTIC'
+                    """,
+                    (normalized_event_id,),
+                )
+            connection.execute(
+                """
+                INSERT INTO admin_map_review_task_audit (
+                    event_id, task_type, previous_status, new_status, note, changed_by
+                ) VALUES (%s, 'MISSING_DIAGNOSTIC', %s, %s, %s, %s)
+                """,
+                (
+                    normalized_event_id, previous_status, normalized_status,
+                    normalized_note, admin_user_id,
+                ),
+            )
+            self._insert_admin_audit(
+                connection,
+                admin_user_id=admin_user_id,
+                action="map_review.missing_diagnostic_status_changed",
+                provider_id=str(event["provider_id"]),
+                target=f"map-download-event:{normalized_event_id}",
+                request_id=request_id,
+                old_status=previous_status,
+                new_status=normalized_status,
+                reason=normalized_note,
+                details={
+                    "eventId": normalized_event_id,
+                    "taskType": "MISSING_DIAGNOSTIC",
+                },
+            )
+        return True
 
     def admin_overview_snapshot(
         self,
@@ -1654,8 +1812,12 @@ class Database:
                 FROM map_download_event AS e
                 LEFT JOIN map_provider AS p ON p.id = e.provider_id
                 LEFT JOIN map_package AS mp ON mp.id = e.map_package_id
+                LEFT JOIN admin_map_review_task AS review_task
+                  ON review_task.event_id = e.event_id
+                 AND review_task.task_type = 'MISSING_DIAGNOSTIC'
                 WHERE e.is_local_test IS NOT TRUE
                   AND e.event_type = 'INSTALL_FAILED' AND e.outcome = 'FAILED'
+                  AND COALESCE(review_task.status, 'OPEN') = 'OPEN'
                   AND (
                       NOT EXISTS (
                           SELECT 1 FROM compatibility_evidence_event AS diagnostic
@@ -3738,6 +3900,9 @@ class Database:
         if filters.get("outcome"):
             clauses.append(f"{alias}.outcome = %s")
             values.append(filters["outcome"])
+        if filters.get("eventId"):
+            clauses.append(f"{alias}.event_id = %s")
+            values.append(filters["eventId"])
         if filters.get("dateFrom"):
             clauses.append(f"{alias}.occurred_at >= %s")
             values.append(filters["dateFrom"])
@@ -3766,6 +3931,9 @@ class Database:
             clauses.append(f"{alias}.provider = %s")
             values.append(filters["provider"])
         if filters.get("map"):
+            clauses.append("1 = 0")
+        if filters.get("eventId"):
+            # Compatibility fallback rows have no stable map event identity.
             clauses.append("1 = 0")
         if filters.get("region"):
             clauses.append(f"{alias}.region = %s")

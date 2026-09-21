@@ -124,7 +124,7 @@ def validate_map_event(raw: bytes) -> dict[str, Any]:
 
 
 def validate_statistics_filters(filters: dict[str, str]) -> dict[str, Any]:
-    allowed = {"provider", "map", "region", "dateFrom", "dateTo", "eventType", "outcome"}
+    allowed = {"provider", "map", "region", "dateFrom", "dateTo", "eventType", "outcome", "eventId"}
     if set(filters) - allowed:
         raise MapEventValidationError("unknown_filter")
     result: dict[str, Any] = {}
@@ -144,6 +144,11 @@ def validate_statistics_filters(filters: dict[str, str]) -> dict[str, Any]:
         if outcome not in ALLOWED_OUTCOMES:
             raise MapEventValidationError("invalid_outcome_filter")
         result["outcome"] = outcome
+    if filters.get("eventId"):
+        try:
+            result["eventId"] = str(UUID(filters["eventId"]))
+        except (ValueError, AttributeError) as exc:
+            raise MapEventValidationError("invalid_event_id_filter") from exc
     for key in ("dateFrom", "dateTo"):
         value = filters.get(key)
         if value:

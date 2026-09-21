@@ -85,6 +85,7 @@ PUBLIC_REVIEW_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "023
 WORKFLOW_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "040_diagnostic_issue_workflow.sql"
 AUTHORIZED_TEST_CLEANUP_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "041_remove_authorized_test_install.sql"
 FOLLOWUP_TEST_CLEANUP_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "043_remove_authorized_test_install_2.sql"
+MISSING_REVIEW_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "060_missing_diagnostic_review_tasks.sql"
 
 
 class RecordingResult:
@@ -151,8 +152,38 @@ class ReviewSummaryDatabase(Database):
                     "installation_issues": 1,
                     "github_issues_in_progress": 0,
                     "identity_pending": 2,
+                    "missing_diagnostics": 0,
                     "ready_to_publish": 3,
                 })
+
+        yield Connection()
+
+
+class MissingReviewDatabase(Database):
+    def __init__(self):
+        super().__init__("unused")
+        self.status = None
+        self.calls = []
+
+    @contextmanager
+    def connection(self):
+        database = self
+
+        class Connection:
+            def execute(self, query, parameters=None):
+                database.calls.append((query, parameters))
+                if "SELECT event_id, provider_id, event_type, outcome" in query:
+                    return RecordingResult(row={
+                        "event_id": "a8098c1a-f86e-11da-bd1a-00112444be1e",
+                        "provider_id": "freizeitkarte",
+                        "event_type": "INSTALL_FAILED",
+                        "outcome": "FAILED",
+                    })
+                if "SELECT status" in query and "admin_map_review_task" in query:
+                    return RecordingResult(
+                        row={"status": database.status} if database.status else None,
+                    )
+                return RecordingResult()
 
         yield Connection()
 
@@ -1199,6 +1230,22 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("legacy observed counter delta", body)
         self.assertIn("population comparability unconfirmed", body)
 
+    def test_download_chart_keeps_trusted_final_delta_as_a_real_bar(self):
+        import xml.etree.ElementTree as ET
+
+        body = _overview_downloads_chart({
+            "hasData": True,
+            "trend": [
+                {"bucket": "2026-09-11T10:00:00Z", "dmg_count": 0, "zip_count": 0, "state": "observed_zero"},
+                {"bucket": "2026-09-11T11:00:00Z", "dmg_count": 1, "zip_count": 0, "state": "observed_increase"},
+            ],
+        })
+        svg = ET.fromstring(body[body.index("<svg"):body.index("</svg>") + 6])
+        bars = svg.findall("g/rect")
+        self.assertEqual(len(bars), 1)
+        self.assertIn(".dmg downloads: 1", body)
+        self.assertNotIn("overview-chart-download-unknown", body)
+
     def test_download_chart_marks_partial_known_total_and_preserves_unknown_interval(self):
         body = _overview_downloads_chart({
             "hasData": True,
@@ -1465,6 +1512,35 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertNotIn("DROP TABLE", migration)
         self.assertNotIn("DROP VIEW", migration)
 
+    def test_missing_diagnostic_review_migration_is_additive_and_audited(self):
+        migration = MISSING_REVIEW_MIGRATION.read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE admin_map_review_task", migration)
+        self.assertIn("CREATE TABLE admin_map_review_task_audit", migration)
+        self.assertIn("REFERENCES map_download_event(event_id) ON DELETE CASCADE", migration)
+        self.assertIn("REFERENCES admin_user(id) ON DELETE SET NULL", migration)
+        self.assertIn("CHECK (status IN ('OPEN', 'DISMISSED'))", migration)
+        self.assertNotIn("DROP TABLE", migration)
+
+    def test_missing_diagnostic_review_is_idempotent_reopenable_and_audited(self):
+        database = MissingReviewDatabase()
+        event_id = "a8098c1a-f86e-11da-bd1a-00112444be1e"
+        self.assertTrue(database.set_missing_diagnostic_review(
+            event_id, status="DISMISSED", admin_user_id=7, request_id="request-1",
+        ))
+        self.assertTrue(any("admin_map_review_task_audit" in query for query, _ in database.calls))
+        self.assertTrue(any("admin_audit_log" in query for query, _ in database.calls))
+        database.calls.clear()
+        database.status = "DISMISSED"
+        self.assertTrue(database.set_missing_diagnostic_review(
+            event_id, status="DISMISSED", admin_user_id=7,
+        ))
+        self.assertFalse(any("admin_map_review_task_audit" in query for query, _ in database.calls))
+        database.calls.clear()
+        self.assertTrue(database.set_missing_diagnostic_review(
+            event_id, status="OPEN", admin_user_id=7, request_id="request-2",
+        ))
+        self.assertTrue(any("admin_map_review_task_audit" in query for query, _ in database.calls))
+
     def test_needs_review_summary_counts_actionable_tasks(self):
         summary = ReviewSummaryDatabase().admin_review_summary()
         self.assertEqual(summary, {
@@ -1472,6 +1548,7 @@ class AdminSemanticsTests(unittest.TestCase):
             "installationIssues": 1,
             "githubIssuesInProgress": 0,
             "identityPending": 2,
+            "missingDiagnostics": 0,
             "readyToPublish": 3,
             "pendingReviewTasks": 6,
             "total": 6,
@@ -1479,6 +1556,7 @@ class AdminSemanticsTests(unittest.TestCase):
         source = inspect.getsource(Database.admin_review_summary)
         self.assertIn("diagnostic_status = 'ACTIVE'", source)
         self.assertIn("GROUP BY COALESCE(operation_id::text", source)
+        self.assertIn("missing_diagnostics", source)
         self.assertIn("canonical_device_model_id IS NOT NULL", source)
         self.assertIn("review_status = 'PENDING'", source)
         self.assertIn("review_status = 'APPROVED' AND public_statistics_enabled = false", source)
@@ -2339,6 +2417,29 @@ class AdminSemanticsTests(unittest.TestCase):
         self.assertIn("class='admin-error-counter' data-stat='failedInstalls'>0</strong>", body)
         self.assertIn("<section class='provider-card map-events-card' hidden>", body)
         self.assertIn("id='map-statistics-more-filters'", body)
+
+    def test_map_statistics_opens_exact_event_detail_from_review_link(self):
+        event_id = "a8098c1a-f86e-11da-bd1a-00112444be1e"
+        body = map_statistics_page(
+            {
+                "rows": [{
+                    "provider_id": "freizeitkarte", "map_package_id": "fzk-fr",
+                    "region": "FR", "event_type": "INSTALL_FAILED", "outcome": "FAILED",
+                    "event_count": 1, "operation_count": 1,
+                }],
+                "detailRows": [{
+                    "provider_id": "freizeitkarte", "map_package_id": "fzk-fr",
+                    "region": "FR", "event_type": "INSTALL_FAILED", "outcome": "FAILED",
+                    "event_count": 1, "operation_count": 1,
+                }],
+                "detailTotal": 1,
+            },
+            [{"id": "freizeitkarte", "name": "Freizeitkarte", "health": "HEALTHY"}],
+            {"username": "operator"}, "csrf", selected_filters={"eventId": event_id},
+        ).decode()
+        self.assertIn("id='map-statistics-event-detail' open", body)
+        self.assertIn("filters.eventId", _map_statistics_script())
+        self.assertIn("eventDetail.scrollIntoView?.({block: 'start'})", _map_statistics_script())
 
     def test_map_statistics_keeps_zero_operation_count_separate_from_event_count(self):
         summary = _map_statistics_summary([{

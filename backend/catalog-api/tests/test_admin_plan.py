@@ -60,6 +60,19 @@ class AdminPlanTests(unittest.TestCase):
         b['scheduler']['status'] = 'STALE'
         self.assertNotEqual(section_revisions(a)['scheduler'], section_revisions(b)['scheduler'])
 
+    def test_download_revision_detects_interval_semantics_without_observation_noise(self):
+        a = {'downloads': {
+            'dmgTotal': 269, 'zipTotal': 59, 'lastObservedAt': 'first',
+            'trend': [{'bucket': '2026-09-21T17:00:00Z', 'state': 'discontinuity',
+                       'dmg_count': None, 'zip_count': None}],
+        }}
+        b = {'downloads': {
+            'dmgTotal': 269, 'zipTotal': 59, 'lastObservedAt': 'second',
+            'trend': [{'bucket': '2026-09-21T17:00:00Z', 'state': 'observed_increase',
+                       'dmg_count': 1, 'zip_count': 2}],
+        }}
+        self.assertNotEqual(section_revisions(a)['downloads'], section_revisions(b)['downloads'])
+
     def test_identity_history_scopes_before_limit_and_requires_identity(self):
         db = CaptureDB('unused')
         with self.assertRaises(ValueError):

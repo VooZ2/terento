@@ -160,6 +160,18 @@ the queue is unavailable rather than zero. Actions opened from an operation
 task retain that operation-level diagnostic scope; per-map installation history
 remains separate in the statistics read model.
 
+An install failure without a matching device diagnostic is an additional
+per-map review task keyed by the immutable map event ID. Overview exposes a
+visible, keyboard-accessible `×` action to dismiss that task without a reason,
+device selection, or diagnostic mutation. Dismiss/reopen is server-side,
+idempotent, CSRF/authenticated, and audited with the administrator, timestamp,
+transition, and exact event target; a failed mutation leaves the item visible.
+The post-action Overview offers Undo. Queue counts, list rows, revisions, and
+freshness use the same active task population. A later matching diagnostic
+removes the gap independently. The activity link includes exact `eventId` and
+opens the corresponding Map statistics Event detail without changing aggregate
+statistics or install/coverage/publication/GitHub data.
+
 A received device failure must lead to its actionable diagnostic context with
 model/variant, available watch image, provider/map, time, result and known reason.
 It must not be redirected to aggregate Map statistics as a substitute.
@@ -301,7 +313,10 @@ The GitHub downloads bar chart keeps zero-valued intervals in its data and time
 axis, but does not render `.dmg` or `.zip` zero values as extra circles or
 repeated zero symbols. Zero information remains available through the interval
 tooltip/accessibility label. Unknown, missing, partial, legacy, and
-discontinuity semantics remain unchanged.
+discontinuity semantics remain unchanged. A trusted positive delta, including
+`+1` in the final slot, is rendered as a normal bar. A genuine unknown or
+discontinuity interval has a visible `Unknown` text marker and accessible
+description, not a color-only or dashed-zero interpretation.
 
 Admin scrollbars are visually hidden in existing scrollable regions while the
 regions remain scrollable with wheel, trackpad, touch, keyboard, and horizontal

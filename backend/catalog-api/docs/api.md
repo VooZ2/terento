@@ -145,11 +145,15 @@ status. Matching is evaluated per map package/result: it uses the operation ID,
 provider, and an exact or unambiguous known package-region alias; it excludes
 local tests and does not treat a sibling map's diagnostic as a match. A resolved
 diagnostic is still evidence for that result and is not reported as missing.
-When a report arrives, its normal diagnostic workflow takes over. Activity links
-show failed map events; this change adds no resolution mutation or diagnostic
-records. This PR212 path is an incomplete fallback: it does not supply a device
-diagnostic dialog, assignment or issue workflow. See the behavior contract's
-known gaps.
+When a report arrives, its normal diagnostic workflow takes over. Each gap is
+keyed by the exact immutable map event ID. The Overview action
+`POST /admin/review/missing-diagnostics/dismiss` records only an operator review
+state and audit entry; it does not edit the event, install result, coverage,
+compatibility evidence, publication state, or GitHub issue. The action is
+idempotent, requires no reason, and the Overview provides an Undo action through
+`POST /admin/review/missing-diagnostics/undo`. Failed mutations leave the gap
+visible. Activity links include `eventId` and open the matching Map statistics
+Event detail; aggregate population KPIs remain unchanged.
 Compatibility evidence remains a separate, explicitly labelled Overview block
 with its own variants, write-started attempts, evidence success, open errors,
 and normalized failure reasons. The separate `Device/model activity` panel is
@@ -353,7 +357,11 @@ Resolved diagnostics, `NOT_IDENTIFIABLE` identities, rejected publication
 reviews, and already-published models are excluded. The summary is private,
 no-store, and does not add fields to any public or native API response.
 
-`POST /admin/diagnostics/resolve` and `/admin/diagnostics/reopen` change only
+`POST /admin/review/missing-diagnostics/dismiss` and `/undo` accept the
+authenticated CSRF-protected `event_id` plus an optional note and change only
+the operator review state for that exact failed map event. They retain a
+dedicated transition audit and return to Overview; they never delete or rewrite
+telemetry. `POST /admin/diagnostics/resolve` and `/admin/diagnostics/reopen` change only
 the retained diagnostic lifecycle, while `POST /admin/diagnostics/workflow`
 changes only the non-terminal `IN_PROGRESS`/`UNDER_REVIEW` workflow state and
 rejects `OPEN` when a GitHub issue is linked. `POST /admin/diagnostics/identity`
@@ -768,13 +776,15 @@ session-level `min(provider)`, time, model, or region matching is not used. A
 linked diagnostic is an observation regardless of success/failure state, while
 a missing diagnostic is an observation gap and never a synthesized failure.
 Review queue actions may operate on all diagnostic rows in the selected
-operation; this administrative action scope does not merge per-map statistics.
+operation; the missing-diagnostic dismiss action instead targets one exact map
+event ID. Neither administrative action scope merges per-map statistics.
 
 ## `GET /admin/map-statistics`
 
 Authenticated, no-store/noindex HTML dashboard for the same aggregate read
 model. It supports Last 24 hours, Last 7 days, Last 30 days, and All time
-ranges plus provider, map, region, and event-type filters. It exposes terminal
+ranges plus provider, map, region, event-type, outcome, and exact `eventId`
+detail filters. It exposes terminal
 acquisition totals, fresh-install totals, update totals, success-rate values,
 popularity projections, provider health, and affected-package/problematic-source
 counts. Presentation and interaction rules are owned by
