@@ -45,7 +45,7 @@ struct DeviceInstallProfile: Equatable, Sendable {
 /// values here come from the live snapshot and can be compared again by C
 /// after it opens the device in a new MTP session.
 struct DeviceMapOperationProfile: Codable, Equatable, Sendable {
-    static let currentVersion: UInt32 = 1
+    static let currentVersion: UInt32 = 2
 
     let version: UInt32
     let vendorID: UInt16
@@ -53,8 +53,16 @@ struct DeviceMapOperationProfile: Codable, Equatable, Sendable {
     let manufacturer: String
     let rawModel: String
     let targetDirectory: String
+    /// Sensitive local-only binding. Never include this profile in diagnostics.
+    let physicalIdentifier: String
+    let physicalIdentifierSource: UInt32
+    let expectedStorageID: UInt32
 
-    init?(identity: DeviceIdentity, installProfile: DeviceInstallProfile?) {
+    init?(
+        identity: DeviceIdentity,
+        installProfile: DeviceInstallProfile?,
+        expectedStorageID: UInt32
+    ) {
         guard let installProfile,
               installProfile.supportsMapWrite,
               installProfile.matches(identity),
@@ -73,12 +81,42 @@ struct DeviceMapOperationProfile: Codable, Equatable, Sendable {
             return nil
         }
 
+        guard expectedStorageID != 0,
+              let identifier = identity.localHardwareIdentifier,
+              Self.validPhysicalIdentifier(identifier, source: identity.localIdentityResolution) else {
+            return nil
+        }
+
+        self.physicalIdentifier = identifier
+        self.physicalIdentifierSource = identity.localIdentityResolution == .mtpSerial ? 1 : 2
+        self.expectedStorageID = expectedStorageID
         self.version = Self.currentVersion
         self.vendorID = identity.usbVendorId
         self.productID = identity.usbProductId
         self.manufacturer = manufacturer
         self.rawModel = rawModel
         self.targetDirectory = installProfile.targetDirectory
+    }
+
+    private static func validPhysicalIdentifier(
+        _ value: String,
+        source: DeviceIdentity.LocalIdentityResolution
+    ) -> Bool {
+        guard value == value.trimmingCharacters(in: .whitespacesAndNewlines),
+              !value.isEmpty, value.utf8.count <= 255,
+              !value.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) }) else {
+            return false
+        }
+        switch source {
+        case .mtpSerial:
+            return true
+        case .garminUnitID:
+            return (4...64).contains(value.count) && value.allSatisfy {
+                $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-")
+            }
+        case .unavailable:
+            return false
+        }
     }
 }
 

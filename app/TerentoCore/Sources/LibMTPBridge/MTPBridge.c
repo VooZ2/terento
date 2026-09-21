@@ -1,6 +1,9 @@
 #include "MTPBridge.h"
 #include "FinishingTrace.h"
 #include "SampleCoverage.h"
+#include "MutationAuthorization.h"
+#include <CommonCrypto/CommonDigest.h>
+#include <CoreFoundation/CoreFoundation.h>
 
 #include <libusb.h>
 #include <libmtp.h>
@@ -44,7 +47,7 @@ static void abort_failed_device(LIBMTP_mtpdevice_t *device) {
 #define MAX_SUPPORTED_STORAGES 64
 #define MAX_SUPPORTED_FILES 16384
 #define MAX_FILE_TREE_DEPTH 32
-#define TERENTO_MAP_OPERATION_PROFILE_VERSION 1
+#define TERENTO_MAP_OPERATION_PROFILE_VERSION 2
 #define TERENTO_PROFILE_TEXT_MAX_BYTES 255
 #define TERENTO_GARMIN_DEVICE_XML_MAX_BYTES (2 * 1024 * 1024)
 
@@ -444,8 +447,13 @@ static LIBMTP_mtpdevice_t *open_single_garmin_device(
     uint16_t *vendor_id, uint16_t *product_id, char *error_message,
     size_t error_message_capacity, int uncached
 ) {
+#ifdef TERENTO_NATIVE_TEST_OPEN
+    /* Compile-time offline harness seam; production always uses discovery. */
+    return TERENTO_NATIVE_TEST_OPEN(vendor_id, product_id);
+#else
     return open_single_garmin_device_diagnostic(vendor_id, product_id, error_message,
         error_message_capacity, uncached, NULL);
+#endif
 }
 
 static char *join_path(const char *parent_path, const char *filename) {
@@ -1385,6 +1393,20 @@ static int trimmed_text_equal(
     return 1;
 }
 
+static int valid_physical_identifier(const TerentoMTPMapOperationProfile *profile) {
+    if (!bounded_profile_text(profile->physical_identifier)) return 0;
+    const char *value = profile->physical_identifier;
+    size_t length = strlen(value);
+    if (isspace((unsigned char)value[0]) || isspace((unsigned char)value[length - 1])) return 0;
+    for (size_t i = 0; i < length; ++i) {
+        unsigned char c = (unsigned char)value[i];
+        if (c < 32 || c == 127) return 0;
+        if (profile->physical_identifier_source == 2
+            && !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-')) return 0;
+    }
+    return profile->physical_identifier_source != 2 || (length >= 4 && length <= 64);
+}
+
 static int validate_map_operation_profile(
     const TerentoMTPMapOperationProfile *profile,
     char *error_message,
@@ -1397,7 +1419,10 @@ static int validate_map_operation_profile(
         || !bounded_profile_text(profile->manufacturer)
         || !bounded_profile_text(profile->model)
         || profile->target_directory == NULL
-        || strcmp(profile->target_directory, "/GARMIN") != 0) {
+        || strcmp(profile->target_directory, "/GARMIN") != 0
+        || !valid_physical_identifier(profile)
+        || (profile->physical_identifier_source != 1 && profile->physical_identifier_source != 2)
+        || profile->expected_storage_id == 0) {
         set_error(
             error_message,
             error_message_capacity,
@@ -1406,6 +1431,70 @@ static int validate_map_operation_profile(
         return -1;
     }
     return 0;
+}
+
+/* Source-tagged physical identity. XML never authorizes via arbitrary substring. */
+static int physical_identifier_matches(const TerentoMTPMapOperationProfile *profile, LIBMTP_mtpdevice_t *device) {
+    if (profile->physical_identifier_source == 1) {
+        char *serial = LIBMTP_Get_Serialnumber(device);
+        int match = serial && trimmed_text_equal(serial, profile->physical_identifier, 0);
+        if (serial) LIBMTP_FreeMemory(serial);
+        return match;
+    }
+    TerentoMTPDeviceSnapshot snapshot = {0};
+    read_garmin_device_xml(device, &snapshot);
+    if (snapshot.garmin_device_xml_status != TERENTO_GARMIN_DEVICE_XML_AVAILABLE) {
+        free(snapshot.garmin_device_xml); return 0;
+    }
+    const unsigned char *bytes = snapshot.garmin_device_xml;
+    size_t length = snapshot.garmin_device_xml_size;
+    for (size_t i = 0; i < length; ++i) {
+        if ((i + 9 <= length && !strncasecmp((const char *)bytes + i, "<!DOCTYPE", 9))
+            || (i + 8 <= length && !strncasecmp((const char *)bytes + i, "<!ENTITY", 8))) {
+            free(snapshot.garmin_device_xml); return 0;
+        }
+    }
+    CFDataRef data = CFDataCreate(kCFAllocatorDefault, bytes, (CFIndex)length);
+    free(snapshot.garmin_device_xml);
+    if (!data) return 0;
+    CFXMLTreeRef tree = CFXMLTreeCreateFromData(kCFAllocatorDefault, data, NULL,
+        kCFXMLParserSkipWhitespace, kCFXMLNodeCurrentVersion);
+    CFRelease(data);
+    if (!tree) return 0;
+    CFXMLTreeRef root = NULL;
+    int roots = 0, ids = 0, valid = 1;
+    for (CFIndex i = 0; i < CFTreeGetChildCount(tree); ++i) {
+        CFXMLTreeRef child = CFTreeGetChildAtIndex(tree, i);
+        if (CFXMLNodeGetTypeCode(CFXMLTreeGetNode(child)) == kCFXMLNodeTypeElement) { root = child; ++roots; }
+    }
+    if (roots != 1 || !CFEqual(CFXMLNodeGetString(CFXMLTreeGetNode(root)), CFSTR("GarminDevice"))) valid = 0;
+    char identifier[256] = {0};
+    if (valid) for (CFIndex i = 0; i < CFTreeGetChildCount(root); ++i) {
+        CFXMLTreeRef child = CFTreeGetChildAtIndex(root, i);
+        CFXMLNodeRef node = CFXMLTreeGetNode(child);
+        if (CFXMLNodeGetTypeCode(node) != kCFXMLNodeTypeElement || !CFEqual(CFXMLNodeGetString(node), CFSTR("Id"))) continue;
+        ++ids;
+        CFMutableStringRef value = CFStringCreateMutable(kCFAllocatorDefault, 0);
+        if (!value) { valid = 0; break; }
+        for (CFIndex j = 0; j < CFTreeGetChildCount(child); ++j) {
+            CFXMLNodeRef scalar = CFXMLTreeGetNode(CFTreeGetChildAtIndex(child, j));
+            CFXMLNodeTypeCode kind = CFXMLNodeGetTypeCode(scalar);
+            if (kind == kCFXMLNodeTypeText || kind == kCFXMLNodeTypeWhitespace) CFStringAppend(value, CFXMLNodeGetString(scalar));
+            else { valid = 0; break; }
+        }
+        CFStringTrimWhitespace(value);
+        if (!CFStringGetCString(value, identifier, sizeof(identifier), kCFStringEncodingUTF8)) valid = 0;
+        CFRelease(value);
+    }
+    size_t count = strlen(identifier);
+    if (count < 4 || count > 64 || ids != 1) valid = 0;
+    for (size_t i = 0; i < count; ++i) {
+        unsigned char c = (unsigned char)identifier[i];
+        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-')) valid = 0;
+    }
+    int match = valid && !strcmp(identifier, profile->physical_identifier);
+    CFRelease(tree);
+    return match;
 }
 
 static int validate_live_map_operation_device(
@@ -1449,7 +1538,7 @@ static int validate_live_map_operation_device(
         LIBMTP_FreeMemory(model);
     }
 
-    if (!matches) {
+    if (!matches || !physical_identifier_matches(profile, device)) {
         set_error(
             error_message,
             error_message_capacity,
@@ -1687,9 +1776,16 @@ static int find_stage42_map_file(
     }
 
     for (LIBMTP_file_t *child = children; child != NULL; child = child->next) {
-        if (child->filename == NULL || strcmp(child->filename, target_filename) != 0) {
-            continue;
+        if (child->filename == NULL) continue;
+        /* Some device filesystems alias case. A distinct spelling cannot
+         * authorize creation or deletion of the exact requested target. */
+        if (strcasecmp(child->filename, target_filename) == 0
+            && strcmp(child->filename, target_filename) != 0) {
+            set_error(error_message, error_message_capacity, "The map target has an ambiguous filename alias");
+            LIBMTP_destroy_file_t(children);
+            return -3;
         }
+        if (strcmp(child->filename, target_filename) != 0) continue;
 
         if (child->filetype == LIBMTP_FILETYPE_FOLDER) {
             set_error(error_message, error_message_capacity, "The map target name is already used by a folder");
@@ -1706,11 +1802,86 @@ static int find_stage42_map_file(
     return 0;
 }
 
+typedef struct {
+    LIBMTP_mtpdevice_t *device;
+    const char *source;
+    LIBMTP_file_t *file;
+    TerentoMTPProgressCallback progress;
+    const void *progress_context;
+} TerentoSendCall;
+static int authorized_send_call(void *context, uint32_t *created_id) {
+    TerentoSendCall *call = context;
+    int result = LIBMTP_Send_File_From_File(call->device, call->source, call->file,
+        call->progress, call->progress_context);
+    *created_id = call->file->item_id;
+    return result;
+}
+typedef struct { LIBMTP_mtpdevice_t *device; uint32_t object_id; } TerentoDeleteCall;
+static int authorized_delete_call(void *context, uint32_t *object_id) {
+    TerentoDeleteCall *call = context;
+    *object_id = call->object_id;
+    return LIBMTP_Delete_Object(call->device, call->object_id);
+}
+static int map_short_packet_reads(const TerentoMTPMapOperationProfile *profile) {
+#if defined(__APPLE__)
+    return profile && profile->vendor_id == 0x091e && profile->product_id == 0x51b8;
+#else
+    (void)profile;
+    return 0;
+#endif
+}
+
+/* Full selected-content proof, in the deletion session; not creation provenance. */
+static int verify_deletion_content(LIBMTP_mtpdevice_t *device,
+    const TerentoMTPMapOperationProfile *profile, uint32_t object_id,
+    uint64_t size, const char *expected_hash) {
+    if (!expected_hash || strnlen(expected_hash, 65) != 64 || size < 512) return 0;
+    int nonzero_hash = 0;
+    for (size_t i = 0; i < 64; ++i) {
+        if (!isxdigit((unsigned char)expected_hash[i])) return 0;
+        if (expected_hash[i] != '0') nonzero_hash = 1;
+    }
+    if (!nonzero_hash) return 0;
+    CC_SHA256_CTX hash;
+    if (!CC_SHA256_Init(&hash)) return 0;
+    uint64_t offset = 0;
+    while (offset < size) {
+        uint32_t remaining = (uint32_t)((size - offset) > 65536 ? 65536 : (size - offset));
+        uint32_t requested = terento_sample_read_request(remaining, map_short_packet_reads(profile));
+        unsigned char *bytes = NULL;
+        unsigned int count = 0;
+        int result = LIBMTP_GetPartialObject(device, object_id, offset, requested, &bytes, &count);
+        int valid = result == 0 && bytes && count == requested;
+        if (valid && offset == 0) valid = count >= 0x48 && bytes[0] == 0
+            && !memcmp(bytes + 0x10, "DSKIMG", 6) && !memcmp(bytes + 0x41, "GARMIN", 6);
+        if (valid) valid = CC_SHA256_Update(&hash, bytes, count);
+        if (bytes) LIBMTP_FreeMemory(bytes);
+        if (!valid) return 0;
+        offset += count;
+    }
+    unsigned char digest[CC_SHA256_DIGEST_LENGTH];
+    if (!CC_SHA256_Final(digest, &hash)) return 0;
+    char actual[65];
+    for (size_t i = 0; i < sizeof(digest); ++i) snprintf(actual + i * 2, 3, "%02x", digest[i]);
+    return strcasecmp(actual, expected_hash) == 0;
+}
+
+static int deletion_target_still_matches(LIBMTP_mtpdevice_t *device, uint32_t storage,
+    uint32_t parent, const char *filename, uint32_t expected_id, uint64_t expected_size) {
+    uint32_t id = 0; uint64_t size = 0; size_t count = 0;
+    char error[256] = {0};
+    return find_stage42_map_file(device, storage, parent, filename, &id, &size, &count,
+        error, sizeof(error)) == 0 && count == 1 && id == expected_id && size == expected_size;
+}
+
 /* Transfer the catalog-validated artifact on an already-open device.
  * Keeping this part separate lets the production install path perform its
  * sampled verification after the write session is released. */
 static int send_stage42_map_file(
     LIBMTP_mtpdevice_t *device,
+    const TerentoMTPMapOperationProfile *profile,
+    const TerentoMTPMutationAuthorization *authorization,
+    TerentoMTPMutationRecord *record,
     const char *local_path,
     const char *target_filename,
     const struct stat *source_stat,
@@ -1788,13 +1959,14 @@ static int send_stage42_map_file(
     }
 
     LIBMTP_Clear_Errorstack(device);
-    result = LIBMTP_Send_File_From_File(
-        device,
-        local_path,
-        file,
-        progress_callback,
-        progress_context
-    );
+    TerentoMutationSession session = {
+        terento_new_mutation_session_id(), profile->expected_storage_id, folder_id, 1,
+        profile->physical_identifier, profile->physical_identifier_source, profile->target_directory
+    };
+    TerentoSendCall call = {device, local_path, file, progress_callback, progress_context};
+    result = terento_dispatch_mutation(authorization, record, &session,
+        TERENTO_MUTATION_SEND, storage_id, folder_id, target_filename,
+        (uint64_t)source_stat->st_size, 0, 0, authorized_send_call, &call);
     if (file->item_id != 0) {
         *item_id = file->item_id;
     }
@@ -1837,8 +2009,10 @@ static int send_stage42_map_file(
     return 0;
 }
 
-int terento_mtp_install_map_file(
+int terento_mtp_install_map_file_authorized(
     const TerentoMTPMapOperationProfile *profile,
+    const TerentoMTPMutationAuthorization *authorization,
+    TerentoMTPMutationRecord *record,
     const char *local_path,
     const char *target_filename,
     uint32_t *item_id,
@@ -1848,6 +2022,8 @@ int terento_mtp_install_map_file(
     char *error_message,
     size_t error_message_capacity
 ) {
+    if (record) { memset(record, 0, sizeof(*record)); record->native_result = TERENTO_MTP_MUTATION_REFUSED; }
+    if (!authorization || !record) return TERENTO_MTP_MUTATION_REFUSED;
     if (validate_map_operation_profile(
             profile,
             error_message,
@@ -1901,6 +2077,9 @@ int terento_mtp_install_map_file(
 
     result = send_stage42_map_file(
         device,
+        profile,
+        authorization,
+        record,
         local_path,
         target_filename,
         &source_stat,
@@ -2057,12 +2236,8 @@ int terento_mtp_verify_managed_map_samples(
     LIBMTP_mtpdevice_t *device = NULL;
     int result = 0;
 
-    int short_packet_reads = 0;
-#if defined(__APPLE__)
-    /* Local workaround for the reproduced macOS fenix 8 read failure.
-       Preserve every planned byte and the normal policy on other devices. */
-    short_packet_reads = profile->vendor_id == 0x091e && profile->product_id == 0x51b8;
-#endif
+    /* The same device policy applies to sampled verification and full deletion hashes. */
+    int short_packet_reads = map_short_packet_reads(profile);
     terento_trace_event(&trace, "read_chunk_limit", 0, short_packet_reads,
                         terento_sample_read_request(64 * 1024, short_packet_reads));
 
@@ -2227,14 +2402,19 @@ sample_cleanup:
     return result;
 }
 
-int terento_mtp_delete_managed_map(
+int terento_mtp_delete_managed_map_authorized(
     const TerentoMTPMapOperationProfile *profile,
+    const TerentoMTPMutationAuthorization *authorization,
+    TerentoMTPMutationRecord *record,
     const char *target_filename,
     uint32_t expected_item_id,
     uint64_t expected_size_bytes,
     char *error_message,
     size_t error_message_capacity
 ) {
+    if (record) { memset(record, 0, sizeof(*record)); record->native_result = TERENTO_MTP_MUTATION_REFUSED; }
+    if (!authorization || !record) return TERENTO_MTP_MUTATION_REFUSED;
+    if (authorization->purpose != TERENTO_MUTATION_UPDATE_OLD && authorization->purpose != TERENTO_MUTATION_REMOVE_MANAGED) return TERENTO_MTP_MUTATION_REFUSED;
     if (validate_map_operation_profile(
             profile,
             error_message,
@@ -2302,16 +2482,27 @@ int terento_mtp_delete_managed_map(
     if (result != 0) {
         goto cleanup;
     }
-    if (match_count != 1
-        || (expected_size_bytes == 0 && actual_item_id != expected_item_id)
-        || (expected_size_bytes != 0 && remote_size != expected_size_bytes)) {
+    if (match_count != 1 || actual_item_id == 0 || expected_size_bytes == 0
+        || remote_size != expected_size_bytes || storage_id != profile->expected_storage_id
+        || authorization->expected_size != remote_size
+        || !verify_deletion_content(device, profile, actual_item_id, remote_size, authorization->expected_sha256)
+        || !deletion_target_still_matches(device, storage_id, folder_id, target_filename,
+            actual_item_id, remote_size)) {
         set_error(error_message, error_message_capacity, "Managed map cleanup refused: exact target identity did not match");
         result = TERENTO_MTP_MAP_OBJECT_ID_MISMATCH;
         goto cleanup;
     }
 
     LIBMTP_Clear_Errorstack(device);
-    if (LIBMTP_Delete_Object(device, actual_item_id) != 0) {
+    TerentoMutationSession session = {
+        terento_new_mutation_session_id(), profile->expected_storage_id, folder_id, 1,
+        profile->physical_identifier, profile->physical_identifier_source, profile->target_directory
+    };
+    TerentoDeleteCall call = {device, actual_item_id};
+    result = terento_dispatch_mutation(authorization, record, &session,
+        TERENTO_MUTATION_DELETE, storage_id, folder_id, target_filename,
+        remote_size, actual_item_id, 1, authorized_delete_call, &call);
+    if (result != 0) {
         set_device_error(error_message, error_message_capacity, device, "The managed map could not be removed");
         result = -4;
         goto cleanup;
@@ -2331,14 +2522,19 @@ cleanup:
     return result;
 }
 
-int terento_mtp_delete_external_map(
+int terento_mtp_delete_external_map_authorized(
     const TerentoMTPMapOperationProfile *profile,
+    const TerentoMTPMutationAuthorization *authorization,
+    TerentoMTPMutationRecord *record,
     const char *target_filename,
     uint32_t expected_item_id,
     uint64_t expected_size_bytes,
     char *error_message,
     size_t error_message_capacity
 ) {
+    if (record) { memset(record, 0, sizeof(*record)); record->native_result = TERENTO_MTP_MUTATION_REFUSED; }
+    if (!authorization || !record) return TERENTO_MTP_MUTATION_REFUSED;
+    if (authorization->purpose != TERENTO_MUTATION_REMOVE_EXTERNAL) return TERENTO_MTP_MUTATION_REFUSED;
     if (validate_map_operation_profile(
             profile,
             error_message,
@@ -2406,16 +2602,27 @@ int terento_mtp_delete_external_map(
     if (result != 0) {
         goto external_cleanup;
     }
-    if (match_count != 1
-        || (expected_size_bytes == 0 && actual_item_id != expected_item_id)
-        || (expected_size_bytes != 0 && remote_size != expected_size_bytes)) {
+    if (match_count != 1 || actual_item_id == 0 || expected_size_bytes == 0
+        || remote_size != expected_size_bytes || storage_id != profile->expected_storage_id
+        || authorization->expected_size != remote_size
+        || !verify_deletion_content(device, profile, actual_item_id, remote_size, authorization->expected_sha256)
+        || !deletion_target_still_matches(device, storage_id, folder_id, target_filename,
+            actual_item_id, remote_size)) {
         set_error(error_message, error_message_capacity, "External map removal refused: exact target identity did not match");
         result = TERENTO_MTP_MAP_OBJECT_ID_MISMATCH;
         goto external_cleanup;
     }
 
     LIBMTP_Clear_Errorstack(device);
-    if (LIBMTP_Delete_Object(device, actual_item_id) != 0) {
+    TerentoMutationSession session = {
+        terento_new_mutation_session_id(), profile->expected_storage_id, folder_id, 1,
+        profile->physical_identifier, profile->physical_identifier_source, profile->target_directory
+    };
+    TerentoDeleteCall call = {device, actual_item_id};
+    result = terento_dispatch_mutation(authorization, record, &session,
+        TERENTO_MUTATION_DELETE, storage_id, folder_id, target_filename,
+        remote_size, actual_item_id, 1, authorized_delete_call, &call);
+    if (result != 0) {
         set_device_error(error_message, error_message_capacity, device, "The external map could not be removed");
         result = -4;
         goto external_cleanup;
@@ -2585,6 +2792,8 @@ int terento_mtp_write_test_file(
     char *error_message,
     size_t error_message_capacity
 ) {
+    set_error(error_message, error_message_capacity, "Laboratory mutation is unavailable in this build");
+    return TERENTO_MTP_MUTATION_REFUSED;
     if (item_id == NULL || size_bytes == NULL) {
         set_error(error_message, error_message_capacity, "Write-test result is unavailable");
         return -1;
@@ -2687,7 +2896,7 @@ int terento_mtp_write_test_file(
     }
 
     LIBMTP_Clear_Errorstack(device);
-    result = LIBMTP_Send_File_From_File(device, local_path, file, NULL, NULL);
+    result = TERENTO_MTP_MUTATION_REFUSED;
     if (file->item_id != 0) {
         *item_id = file->item_id;
     }
@@ -2842,6 +3051,8 @@ int terento_mtp_delete_test_file(
     char *error_message,
     size_t error_message_capacity
 ) {
+    set_error(error_message, error_message_capacity, "Laboratory mutation is unavailable in this build");
+    return TERENTO_MTP_MUTATION_REFUSED;
     if (expected_item_id == 0) {
         set_error(error_message, error_message_capacity, "Write-test cleanup request is invalid");
         return -1;
@@ -2908,7 +3119,7 @@ int terento_mtp_delete_test_file(
     }
 
     LIBMTP_Clear_Errorstack(device);
-    if (LIBMTP_Delete_Object(device, actual_item_id) != 0) {
+    if (TERENTO_MTP_MUTATION_REFUSED != 0) {
         set_device_error(
             error_message,
             error_message_capacity,
@@ -2952,6 +3163,8 @@ int terento_mtp_interrupt_test_file(
     char *error_message,
     size_t error_message_capacity
 ) {
+    set_error(error_message, error_message_capacity, "Laboratory mutation is unavailable in this build");
+    return TERENTO_MTP_MUTATION_REFUSED;
     if (item_id == NULL || size_bytes == NULL || transfer_was_cancelled == NULL) {
         set_error(error_message, error_message_capacity, "Interruption-test result is unavailable");
         return -1;
@@ -3071,13 +3284,7 @@ int terento_mtp_interrupt_test_file(
     }
 
     LIBMTP_Clear_Errorstack(device);
-    result = LIBMTP_Send_File_From_File(
-        device,
-        local_path,
-        file,
-        interruption_progress_callback,
-        &progress
-    );
+    result = TERENTO_MTP_MUTATION_REFUSED;
     if (file->item_id != 0) {
         *item_id = file->item_id;
     }
@@ -3202,6 +3409,8 @@ int terento_mtp_delete_interrupt_test_file(
     char *error_message,
     size_t error_message_capacity
 ) {
+    set_error(error_message, error_message_capacity, "Laboratory mutation is unavailable in this build");
+    return TERENTO_MTP_MUTATION_REFUSED;
     if (expected_item_id == 0) {
         set_error(error_message, error_message_capacity, "Interruption-test cleanup requires an exact object identity");
         return -1;
@@ -3272,7 +3481,7 @@ int terento_mtp_delete_interrupt_test_file(
     }
 
     LIBMTP_Clear_Errorstack(device);
-    if (LIBMTP_Delete_Object(device, actual_item_id) != 0) {
+    if (TERENTO_MTP_MUTATION_REFUSED != 0) {
         set_device_error(
             error_message,
             error_message_capacity,
@@ -3490,4 +3699,41 @@ cleanup:
         clear_snapshot(snapshot);
     }
     return result;
+}
+
+int terento_mtp_install_map_file(
+    const TerentoMTPMapOperationProfile *profile,
+    const char *local_path,
+    const char *target_filename,
+    uint32_t *item_id,
+    uint64_t *size_bytes,
+    TerentoMTPProgressCallback progress_callback,
+    const void *progress_context,
+    char *error_message,
+    size_t error_message_capacity
+) {
+    set_error(error_message, error_message_capacity, "Native mutation requires explicit authorization");
+    return TERENTO_MTP_MUTATION_REFUSED;
+}
+int terento_mtp_delete_managed_map(
+    const TerentoMTPMapOperationProfile *profile,
+    const char *target_filename,
+    uint32_t expected_item_id,
+    uint64_t expected_size_bytes,
+    char *error_message,
+    size_t error_message_capacity
+) {
+    set_error(error_message, error_message_capacity, "Native mutation requires explicit authorization");
+    return TERENTO_MTP_MUTATION_REFUSED;
+}
+int terento_mtp_delete_external_map(
+    const TerentoMTPMapOperationProfile *profile,
+    const char *target_filename,
+    uint32_t expected_item_id,
+    uint64_t expected_size_bytes,
+    char *error_message,
+    size_t error_message_capacity
+) {
+    set_error(error_message, error_message_capacity, "Native mutation requires explicit authorization");
+    return TERENTO_MTP_MUTATION_REFUSED;
 }

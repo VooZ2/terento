@@ -73,7 +73,45 @@ typedef struct {
     const char *manufacturer;
     const char *model;
     const char *target_directory;
+    const char *physical_identifier;
+    uint32_t physical_identifier_source; /* 1: MTP serial; 2: validated Garmin XML Id */
+    uint32_t expected_storage_id;
 } TerentoMTPMapOperationProfile;
+
+enum {
+    TERENTO_MUTATION_INSTALL = 1, TERENTO_MUTATION_UPDATE_NEW = 2,
+    TERENTO_MUTATION_UPDATE_OLD = 3, TERENTO_MUTATION_REMOVE_MANAGED = 4,
+    TERENTO_MUTATION_REMOVE_EXTERNAL = 5, TERENTO_MUTATION_CLEANUP = 6,
+    TERENTO_MUTATION_SEND = 1, TERENTO_MUTATION_DELETE = 2
+};
+
+typedef struct {
+    uint32_t version;
+    const char *operation_id;
+    const char *claim_path; /* Persisted private one-time claim; never regenerated on retry. */
+    uint32_t sequence;
+    uint32_t purpose;
+    uint32_t mutation_kind;
+    const char *expected_filename;
+    uint64_t expected_size;
+    const char *expected_sha256; /* Full selected content proof for deletion. */
+    const char *expected_physical_identifier;
+    uint32_t expected_physical_identifier_source;
+    uint32_t expected_storage_id;
+    const char *expected_target_directory;
+} TerentoMTPMutationAuthorization;
+
+typedef struct {
+    uint8_t authorized;
+    uint8_t attempted;
+    uint8_t completed;
+    int32_t native_result;
+    uint32_t resulting_object_id;
+    uint64_t session_id;
+    uint32_t sequence;
+    uint32_t purpose;
+    uint32_t mutation_kind;
+} TerentoMTPMutationRecord;
 
 /* A real transfer callback. Returning non-zero cancels the transfer. */
 typedef int (*TerentoMTPProgressCallback)(
@@ -87,7 +125,8 @@ enum {
     TERENTO_MTP_MAP_REMOTE_FILE_MISSING = -21,
     TERENTO_MTP_MAP_OBJECT_ID_MISMATCH = -22,
     TERENTO_MTP_MAP_UNSUPPORTED_DEVICE = -23,
-    TERENTO_MTP_MAP_IDENTITY_MISMATCH = -24
+    TERENTO_MTP_MAP_IDENTITY_MISMATCH = -24,
+    TERENTO_MTP_MUTATION_REFUSED = -25
 };
 
 /* Read-only USB presence probe. Zero proves absence only after complete enumeration;
@@ -209,6 +248,21 @@ int terento_mtp_install_map_file(
     size_t error_message_capacity
 );
 
+/* Legacy entry point above refuses mutations; use explicit authorization. */
+int terento_mtp_install_map_file_authorized(
+    const TerentoMTPMapOperationProfile *profile,
+    const TerentoMTPMutationAuthorization *authorization,
+    TerentoMTPMutationRecord *record,
+    const char *local_path,
+    const char *target_filename,
+    uint32_t *item_id,
+    uint64_t *size_bytes,
+    TerentoMTPProgressCallback progress_callback,
+    const void *progress_context,
+    char *error_message,
+    size_t error_message_capacity
+);
+
 /*
  * Read bounded deterministic samples from the exact managed target and
  * compare them directly with the validated local source. The full map is
@@ -242,9 +296,33 @@ int terento_mtp_delete_managed_map(
     size_t error_message_capacity
 );
 
+/* Legacy entry point above refuses mutations; use explicit authorization. */
+int terento_mtp_delete_managed_map_authorized(
+    const TerentoMTPMapOperationProfile *profile,
+    const TerentoMTPMutationAuthorization *authorization,
+    TerentoMTPMutationRecord *record,
+    const char *target_filename,
+    uint32_t expected_item_id,
+    uint64_t expected_size_bytes,
+    char *error_message,
+    size_t error_message_capacity
+);
+
 /* Delete only one explicitly confirmed, externally recognized IMG object. */
 int terento_mtp_delete_external_map(
     const TerentoMTPMapOperationProfile *profile,
+    const char *target_filename,
+    uint32_t expected_item_id,
+    uint64_t expected_size_bytes,
+    char *error_message,
+    size_t error_message_capacity
+);
+
+/* Legacy entry point above refuses mutations; use explicit authorization. */
+int terento_mtp_delete_external_map_authorized(
+    const TerentoMTPMapOperationProfile *profile,
+    const TerentoMTPMutationAuthorization *authorization,
+    TerentoMTPMutationRecord *record,
     const char *target_filename,
     uint32_t expected_item_id,
     uint64_t expected_size_bytes,
