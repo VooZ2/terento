@@ -191,6 +191,7 @@ private final class MockTransport: MapInstallationTransport, @unchecked Sendable
     var writeCount = 0
     var readBackCount = 0
     var deleteCount = 0
+    var declineCleanup = false
     var deletedFilename: String?
     var deletedItemID: UInt32?
     var deletedSizeBytes: UInt64?
@@ -272,6 +273,7 @@ private final class MockTransport: MapInstallationTransport, @unchecked Sendable
         expectedItemID: UInt32,
         expectedSizeBytes: UInt64?
     ) throws {
+        if declineCleanup { throw CleanupIdentityUnproven() }
         deleteCount += 1
         deletedFilename = targetFilename
         deletedItemID = expectedItemID
@@ -284,6 +286,8 @@ private final class MockTransport: MapInstallationTransport, @unchecked Sendable
 
 @main
 struct Stage42InstallationTests {
+    private static var failed = 0
+
     static func main() throws {
         var passed = 0
         passed += testCanonicalTransferProgress()
@@ -328,9 +332,19 @@ struct Stage42InstallationTests {
         passed += testTargetReasonObservations()
         passed += testContextualReadBoundaries()
         passed += testRawReadContextProvider()
-        passed += testVersionOneDuplicateBehaviorUnchanged()
+        passed += testCrossSessionHandleMatrix()
+        passed += testCrossSessionMutationMatrix()
+        passed += testInitialInventoryAmbiguity()
+        passed += testTargetHandleAndFolderValidation()
         passed += testOversizedProtectionCountsAreOmitted()
+        passed += testRuntimeChurnIsDiagnostic()
+        passed += testDeclinedCleanupPreservesEvidence()
+        passed += testTargetStorageMismatch()
 
+        guard failed == 0 else {
+            print("FAIL: \(failed) Stage 4.2 installation assertions failed")
+            exit(1)
+        }
         print("PASS: \(passed) Stage 4.2 installation tests")
     }
 
@@ -354,10 +368,10 @@ struct Stage42InstallationTests {
                             path: "/GARMIN/unknown.img", filename: "unknown.img", sizeBytes: 42, isFolder: false))
                     case .preexistingObjectRemoved: files.remove(at: 1)
                     case .preexistingObjectChanged:
-                        // Parent-only changes must still reject under the unchanged v1 comparator.
-                        files[1] = DeviceFile(itemID: existing.itemID, parentID: existing.parentID + 100,
+                        // A real stable-field change must reject; session handles may change.
+                        files[1] = DeviceFile(itemID: existing.itemID, parentID: existing.parentID,
                             storageID: existing.storageID, path: existing.path, filename: existing.filename,
-                            sizeBytes: existing.sizeBytes, isFolder: existing.isFolder)
+                            sizeBytes: existing.sizeBytes + 1, isFolder: existing.isFolder)
                     case .inventoryAmbiguous:
                         files.append(DeviceFile(itemID: 600, parentID: 0, storageID: existing.storageID,
                             path: existing.path, filename: existing.filename, sizeBytes: 42, isFolder: false))
@@ -374,7 +388,7 @@ struct Stage42InstallationTests {
                     && context?.boundary.stageRawValue == (prewrite ? "preflight" : "verify")
                     && protection?.protectionReason == reason
                     && protection?.beforeObjectCount == 3
-                    && protection?.stableIdentityComparisonVersion == (reason == .targetPresentBeforeWrite ? nil : 1)
+                    && protection?.stableIdentityComparisonVersion == (reason == .targetPresentBeforeWrite ? nil : 2)
                     && protection?.targetItemIDMatches == nil
                     && result.originalFailureContext == nil
                     && harness.transport.writeCount == (prewrite ? 0 : 1)
@@ -525,12 +539,173 @@ struct Stage42InstallationTests {
             "oversized observed counts are omitted rather than clamped or used as an inventory limit")
     }
 
-    private static func testVersionOneDuplicateBehaviorUnchanged() -> Int {
+    private static func changedFile(
+        _ file: DeviceFile, itemID: UInt32? = nil, parentID: UInt32? = nil,
+        storageID: UInt32? = nil, path: String? = nil, filename: String? = nil,
+        sizeBytes: UInt64? = nil, isFolder: Bool? = nil
+    ) -> DeviceFile {
+        DeviceFile(itemID: itemID ?? file.itemID, parentID: parentID ?? file.parentID,
+            storageID: storageID ?? file.storageID, path: path ?? file.path,
+            filename: filename ?? file.filename, sizeBytes: sizeBytes ?? file.sizeBytes,
+            isFolder: isFolder ?? file.isFolder)
+    }
+
+    private static func testCrossSessionHandleMatrix() -> Int {
+        var passed = 0
+        for prewrite in [true, false] {
+            for kind in ["file", "folder", "hierarchy"] {
+                let harness = makeHarness()
+                let result = harness.run(configureReader: { reader in
+                    func renumber(_ files: [DeviceFile]) -> [DeviceFile] {
+                        files.map { file in
+                            guard file.path != targetPath,
+                                  kind == "hierarchy" || (kind == "folder") == file.isFolder else { return file }
+                            return changedFile(file, itemID: file.itemID + 1000, parentID: file.parentID + 1000)
+                        }
+                    }
+                    if prewrite { reader.initialFiles = renumber(reader.initialFiles) }
+                    else { reader.files = renumber(reader.files) }
+                })
+                passed += expect(result.isSuccess && result.failureContext == nil
+                    && result.diagnostics.existingFilesProtectionPassed
+                    && result.diagnostics.unrelatedFilesProtectionPassed
+                    && harness.transport.writeCount == 1 && harness.transport.deleteCount == 0
+                    && harness.manifest.entries.count == 1,
+                    "\(prewrite ? "prewrite" : "postwrite") \(kind) item and parent handles may renumber")
+            }
+        }
+        return passed
+    }
+
+    private static func testRuntimeChurnIsDiagnostic() -> Int {
+        func file(_ id: UInt32, _ path: String, folder: Bool = false, size: UInt64 = 10) -> DeviceFile {
+            DeviceFile(itemID: id, parentID: 9, storageID: 1, path: path,
+                filename: String(path.split(separator: "/").last!), sizeBytes: size, isFolder: folder)
+        }
+        let runtime = [file(1000, "/GARMIN/GarminDevice.xml"),
+            file(1001, "/GARMIN/Monitor", folder: true, size: 0),
+            file(1002, "/GARMIN/Monitor/before.FIT"),
+            file(1003, "/GARMIN/TLG", folder: true, size: 0),
+            file(1004, "/GARMIN/TLG/PER", folder: true, size: 0),
+            file(1005, "/GARMIN/TLG/PER/before", folder: true, size: 0)]
+        let changed = [file(1010, "/GARMIN/GarminDevice.xml", size: 99),
+            runtime[1], file(1012, "/GARMIN/Monitor/after.FIT"), runtime[3], runtime[4],
+            file(1015, "/GARMIN/TLG/PER/after", folder: true, size: 0)]
+        var passed = 0
+        for prewrite in [true, false] {
+            let harness = Harness(beforeFilesTransform: { $0 + runtime })
+            let recorder = DiagnosticRecorder()
+            let result = harness.run(configureReader: { reader in
+                if prewrite { reader.initialFiles = Harness.makeBeforeFiles(installedFrance: false) + changed }
+                reader.files += changed
+            }, diagnostic: recorder.record)
+            passed += expect(result.isSuccess && harness.transport.writeCount == 1
+                && harness.transport.deleteCount == 0 && result.diagnostics.existingFilesProtectionPassed
+                && recorder.text.contains("global_inventory_observation"),
+                "\(prewrite ? "prewrite and postwrite" : "postwrite") XML/FIT/runtime churn is diagnostic with protected maps unchanged")
+        }
+        return passed
+    }
+
+    private static func testTargetStorageMismatch() -> Int {
         let harness = makeHarness()
-        let result = harness.run(configureReader: { $0.files.append($0.files[1]) })
-        return expect(result.isSuccess && result.failureContext == nil && result.originalFailureContext == nil
-            && harness.transport.deleteCount == 0,
-            "telemetry-only change does not introduce duplicate rejection; v2 owns that safety change")
+        let result = harness.run(configureReader: { reader in
+            reader.files = reader.files.map { $0.path == targetPath ? changedFile($0, storageID: 2) : $0 }
+        })
+        return expect(!result.isSuccess && result.failure == .protectionViolation
+            && harness.manifest.entries.isEmpty,
+            "correct target name and size on another storage cannot pass independent protection")
+    }
+
+    private static func testDeclinedCleanupPreservesEvidence() -> Int {
+        let harness = makeHarness()
+        harness.transport.readBackMode = .hashMismatch
+        harness.transport.declineCleanup = true
+        let result = harness.run()
+        return expect(result.failure == .cleanupFailed && result.originalFailure != nil
+            && !result.diagnostics.cleanupAttempted && !result.diagnostics.cleanupSucceeded
+            && harness.transport.deleteCount == 0 && harness.recovery.records.count == 1,
+            "unproven cleanup identity refuses mutation and retains recovery plus original failure")
+    }
+
+    private static func testCrossSessionMutationMatrix() -> Int {
+        var passed = 0
+        let mutations = ["filename", "rename", "move", "size", "storage", "kind", "folder to file", "removed", "added",
+                         "duplicate", "duplicate handles", "ambiguous", "invalid path"]
+        for prewrite in [true, false] {
+            for mutation in mutations {
+                let harness = makeHarness()
+                let result = harness.run(configureReader: { reader in
+                    var files = prewrite ? reader.initialFiles : reader.files
+                    let original = files[1]
+                    switch mutation {
+                    case "filename": files[1] = changedFile(original, filename: "renamed.img")
+                    case "rename": files[1] = changedFile(original, path: "/GARMIN/renamed.img", filename: "renamed.img")
+                    case "folder to file": files[0] = changedFile(files[0], isFolder: false)
+                    case "move": files[1] = changedFile(original, path: "/OTHER/" + original.filename)
+                    case "size": files[1] = changedFile(original, sizeBytes: original.sizeBytes + 1)
+                    case "storage": files[1] = changedFile(original, storageID: 2)
+                    case "kind": files[1] = changedFile(original, isFolder: true)
+                    case "removed": files.remove(at: 1)
+                    case "added": files.append(changedFile(original, itemID: 900,
+                        path: "/GARMIN/unrelated.img", filename: "unrelated.img"))
+                    case "duplicate": files.append(original)
+                    case "duplicate handles": files.append(changedFile(original, itemID: 901, parentID: 902))
+                    case "ambiguous": files.append(changedFile(original, itemID: 903, sizeBytes: original.sizeBytes + 1))
+                    case "invalid path": files[1] = changedFile(original, path: "")
+                    default: fatalError("unexpected mutation")
+                    }
+                    if prewrite { reader.initialFiles = files } else { reader.files = files }
+                })
+                let ambiguous = ["duplicate", "duplicate handles", "ambiguous", "invalid path", "filename"].contains(mutation)
+                passed += expect(result.failure == .protectionViolation
+                    && result.failureContext?.boundary == (prewrite ? .prewriteProtection : .postwriteProtection)
+                    && result.failureContext?.boundary.stageRawValue == (prewrite ? "preflight" : "verify")
+                    && (!ambiguous || result.failureContext?.protection?.protectionReason == .inventoryAmbiguous)
+                    && harness.transport.writeCount == (prewrite ? 0 : 1)
+                    && harness.transport.deleteCount == (prewrite ? 0 : 1)
+                    && harness.manifest.entries.isEmpty,
+                    "\(prewrite ? "prewrite" : "postwrite") \(mutation) fails closed with exact mutation boundary")
+            }
+        }
+        return passed
+    }
+
+    private static func testInitialInventoryAmbiguity() -> Int {
+        var passed = 0
+        for changedSize in [false, true] {
+            let harness = Harness(beforeFilesTransform: { files in
+                files + [changedFile(files[1], itemID: 900, parentID: 901,
+                    sizeBytes: files[1].sizeBytes + (changedSize ? 1 : 0))]
+            })
+            let result = harness.run()
+            passed += expect(result.failure == .protectionViolation
+                && result.failureContext?.boundary == .prewriteProtection
+                && result.failureContext?.protection?.protectionReason == .inventoryAmbiguous
+                && harness.transport.writeCount == 0 && harness.transport.deleteCount == 0
+                && harness.manifest.entries.isEmpty,
+                "initial inventory \(changedSize ? "ambiguous path" : "duplicate stable identity") blocks before write")
+        }
+        return passed
+    }
+
+    private static func testTargetHandleAndFolderValidation() -> Int {
+        var passed = 0
+        for folder in [false, true] {
+            let harness = makeHarness()
+            let result = harness.run(configureReader: { reader in
+                reader.files = reader.files.map { file in
+                    file.path == targetPath
+                        ? changedFile(file, itemID: 999, parentID: 998, isFolder: folder) : file
+                }
+            })
+            passed += expect(folder
+                ? result.failureContext?.protection?.protectionReason == .targetInvalid
+                    && harness.transport.deleteCount == 1 && harness.manifest.entries.isEmpty
+                : result.isSuccess && harness.transport.deleteCount == 0 && harness.manifest.entries.count == 1,
+                folder ? "folder at exact target path fails validation" : "target stable identity survives item and parent handle changes")
+        }
+        return passed
     }
 
     private static func testCanonicalTransferProgress() -> Int {
@@ -1294,7 +1469,8 @@ struct Stage42InstallationTests {
             identity: DeviceIdentity? = nil,
             artifact: ValidatedMapArtifact? = nil,
             noArtifact: Bool = false,
-            userConfirmed: Bool = true
+            userConfirmed: Bool = true,
+            beforeFilesTransform: ([DeviceFile]) -> [DeviceFile] = { $0 }
         ) {
             remoteData = Self.makeIMG()
             transport = MockTransport(remoteData: remoteData)
@@ -1303,7 +1479,7 @@ struct Stage42InstallationTests {
 
             let package = Self.makePackage(size: UInt64(remoteData.count))
             let installed = installedFrance ? Self.makeFranceMap(size: UInt64(remoteData.count)) : nil
-            let before = Self.makeBeforeFiles(installedFrance: installedFrance)
+            let before = beforeFilesTransform(Self.makeBeforeFiles(installedFrance: installedFrance))
             let resolvedIdentity = identity ?? Self.identity()
             let resolvedArtifact = artifact ?? Self.makeArtifact(
                 package: package,
@@ -1548,6 +1724,7 @@ struct Stage42InstallationTests {
             print("PASS: \(description)")
             return 1
         }
+        failed += 1
         print("FAIL: \(description)")
         return 0
     }

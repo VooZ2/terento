@@ -800,7 +800,6 @@ struct MapInstallationCoordinator: Sendable {
                 before: request.beforeDeviceFiles,
                 after: afterFiles,
                 targetPath: targetPath,
-                expectedItemID: targetObject.itemID,
                 expectedFilename: targetFilename,
                 expectedSizeBytes: artifact.installSizeBytes
             )
@@ -1029,6 +1028,7 @@ struct MapInstallationCoordinator: Sendable {
         diagnostic("installation_failure", "elapsed=\(diagnostics.elapsedMilliseconds)")
         var cleanupFailure: InstallationFailure?
         var cleanupContext: InstallationFailureContext?
+        var cleanupDeclined = false
         if shouldCleanup, let remoteObjectID, remoteObjectID != 0 {
             do {
                 let cleanupFilename = preflight.proposedFilename
@@ -1052,13 +1052,14 @@ struct MapInstallationCoordinator: Sendable {
                     )
                 }
             } catch {
+                cleanupDeclined = error is CleanupIdentityUnproven
                 cleanupFailure = .cleanupFailed
                 cleanupContext = Self.failureContext(for: error, boundary: .cleanup, operation: .cleanup)
             }
         }
 
-        diagnostic("cleanup_result", "attempt=\(shouldCleanup && remoteObjectID != nil && remoteObjectID != 0 ? 1 : 0) succeeded=\(shouldCleanup && remoteObjectID != nil && remoteObjectID != 0 && cleanupFailure == nil ? 1 : 0)")
-        let cleanupAttempted = shouldCleanup && remoteObjectID != nil && remoteObjectID != 0
+        let cleanupAttempted = shouldCleanup && remoteObjectID != nil && remoteObjectID != 0 && !cleanupDeclined
+        diagnostic("cleanup_result", "attempt=\(cleanupAttempted ? 1 : 0) succeeded=\(cleanupAttempted && cleanupFailure == nil ? 1 : 0) declined=\(cleanupDeclined ? 1 : 0)")
         let finalFailure = cleanupFailure ?? failure
         if transaction.state != .failed && transaction.state != .completed {
             try? transaction.fail(finalFailure)
@@ -1077,7 +1078,7 @@ struct MapInstallationCoordinator: Sendable {
                 cleanupAttempted: cleanupAttempted,
                 cleanupSucceeded: cleanupAttempted && cleanupFailure == nil
             ).withNativeFailureCode(
-                cleanupFailure == nil ? diagnostics.nativeFailureCode : .deleteFailed
+                cleanupFailure == nil || cleanupDeclined ? diagnostics.nativeFailureCode : .deleteFailed
             ).withFailureContexts(
                 cleanupContext ?? diagnostics.failureContext,
                 original: cleanupFailure == nil ? diagnostics.originalFailureContext : diagnostics.failureContext
@@ -1123,26 +1124,22 @@ struct MapInstallationCoordinator: Sendable {
         targetFilename: String, expectedSize: UInt64, prewrite: Bool,
         targetValidation: Bool = false
     ) -> InstallationFailureContext {
-        struct Location: Hashable {
-            let storage: UInt32
-            let path: String
-        }
         func bounded(_ count: Int) -> Int? { (0...16384).contains(count) ? count : nil }
         let candidates = after.filter { $0.path == targetPath }
         let target = candidates.count == 1 ? candidates.first : nil
-        let beforeGroups = Dictionary(grouping: before.filter { $0.path != targetPath }) {
-            Location(storage: $0.storageID, path: $0.path)
+        let baseline = try? ProtectedMapInventory(files: before)
+        let current = baseline.flatMap { try? ProtectedMapInventory(files: after, forcedLocations: $0.protectedLocations) }
+        let beforeLocations = baseline?.protectedLocations ?? []
+        let afterLocations = current?.protectedLocations ?? []
+        let protectedBefore = before.filter { beforeLocations.contains(.init(storageID: $0.storageID, path: $0.path)) }
+        let protectedAfter = after.filter { afterLocations.contains(.init(storageID: $0.storageID, path: $0.path)) }
+        let beforeGroups = Dictionary(grouping: protectedBefore.filter { $0.path != targetPath }) {
+            CrossSessionInventoryLocation(storageID: $0.storageID, path: $0.path)
         }
-        let afterGroups = Dictionary(grouping: after.filter { $0.path != targetPath }) {
-            Location(storage: $0.storageID, path: $0.path)
+        let afterGroups = Dictionary(grouping: protectedAfter.filter { $0.path != targetPath }) {
+            CrossSessionInventoryLocation(storageID: $0.storageID, path: $0.path)
         }
-        let pairable = beforeGroups.values.allSatisfy { $0.count == 1 }
-            && afterGroups.values.allSatisfy { $0.count == 1 }
-            && (before + after).allSatisfy {
-                !$0.filename.isEmpty && !$0.filename.contains("/")
-                    && $0.path.hasPrefix("/")
-                    && $0.path.split(separator: "/").last.map(String.init) == $0.filename
-            }
+        let pairable = baseline != nil && current != nil
         let beforeKeys = Set(beforeGroups.keys)
         let afterKeys = Set(afterGroups.keys)
         let added = pairable ? afterKeys.subtracting(beforeKeys).count : nil
@@ -1170,7 +1167,7 @@ struct MapInstallationCoordinator: Sendable {
             operation: .protectionCheck, resultKind: .protectionFailed,
             protection: InstallationProtectionContext(
                 protectionBoundary: prewrite ? .preWrite : .postWrite,
-                protectionReason: reason, stableIdentityComparisonVersion: compared ? 1 : nil,
+                protectionReason: reason, stableIdentityComparisonVersion: compared ? 2 : nil,
                 beforeObjectCount: bounded(before.count), afterObjectCount: bounded(after.count),
                 addedObjectCount: added.flatMap(bounded), removedObjectCount: removed.flatMap(bounded),
                 changedObjectCount: changed.flatMap(bounded),
@@ -1444,23 +1441,36 @@ struct MapInstallationCoordinator: Sendable {
         before: [DeviceFile],
         after: [DeviceFile],
         targetPath: String,
-        expectedItemID: UInt32,
         expectedFilename: String,
         expectedSizeBytes: UInt64
     ) -> ProtectionResult {
-        let beforeComparable = Set(before.filter { $0.path != targetPath }.map(Self.comparable))
-        let afterComparable = Set(after.filter { $0.path != targetPath }.map(Self.comparable))
-        let target = after.first(where: { $0.path == targetPath && $0.itemID == expectedItemID })
-        let targetUnchanged = target.map {
-            !$0.isFolder
+        // Validate raw inventories before excluding the target or forming sets:
+        // duplicate identities must never disappear during comparison.
+        guard Self.inventoryIsUnambiguous(before), Self.inventoryIsUnambiguous(after),
+              !before.contains(where: { $0.path == targetPath }) else {
+            return ProtectionResult(existingFilesUnchanged: false, unrelatedFilesUnchanged: false)
+        }
+        guard let baseline = try? ProtectedMapInventory(files: before),
+              let current = try? ProtectedMapInventory(files: after, forcedLocations: baseline.protectedLocations) else {
+            return ProtectionResult(existingFilesUnchanged: false, unrelatedFilesUnchanged: false)
+        }
+        recordGlobalChanges(before: before, after: after, boundary: "postwrite")
+        let beforeComparable = baseline.protected
+        let afterComparable = Set(current.protected.filter { $0.path != targetPath })
+        let targets = after.filter { $0.path == targetPath }
+        let roots = before.filter { $0.path == "/GARMIN" && $0.isFolder }
+        let targetUnchanged = roots.count == 1 && targets.count == 1 && targets.allSatisfy {
+            $0.storageID == roots[0].storageID && !$0.isFolder
+                && $0.itemID != 0
                 && $0.filename == expectedFilename
                 && $0.sizeBytes == expectedSizeBytes
                 && $0.path == targetPath
-        } ?? false
+        }
 
         return ProtectionResult(
             // This field is retained for compatibility with the Stage 4.2
-            // diagnostics schema; it now means all pre-existing files were
+            // diagnostics schema; it means protected metadata is unchanged,
+            // not that every device file or every byte remained unchanged.
             existingFilesUnchanged: beforeComparable == afterComparable,
             unrelatedFilesUnchanged: beforeComparable == afterComparable && targetUnchanged
         )
@@ -1471,22 +1481,65 @@ struct MapInstallationCoordinator: Sendable {
         live: [DeviceFile],
         targetPath: String
     ) -> Bool {
-        // The target must still be absent immediately before the write. Some
-        // Garmin firmware re-enumerates MTP object IDs after a new file is
-        // committed, so the protection comparison uses the stable file
-        // identity (storage, parent, path, filename, size and kind) rather
-        // than a session-scoped object handle.
-        guard !live.contains(where: { $0.path == targetPath }) else {
+        // Every inventory read may use a different MTP session. Neither item
+        // nor parent object handles are stable identity across those sessions.
+        guard !before.contains(where: { $0.path == targetPath }),
+              !live.contains(where: { $0.path == targetPath }),
+              Self.inventoryIsUnambiguous(before), Self.inventoryIsUnambiguous(live) else {
             return false
         }
 
-        let beforeComparable = Set(before.filter { $0.path != targetPath }.map(Self.comparable))
-        let liveComparable = Set(live.filter { $0.path != targetPath }.map(Self.comparable))
-        return beforeComparable == liveComparable
+        guard let baseline = try? ProtectedMapInventory(files: before),
+              let current = try? ProtectedMapInventory(files: live, forcedLocations: baseline.protectedLocations) else {
+            return false
+        }
+        recordGlobalChanges(before: before, after: live, boundary: "prewrite")
+        return baseline.protected == current.protected
     }
 
-    private static func comparable(_ file: DeviceFile) -> String {
-        "\(file.storageID)|\(file.parentID)|\(file.path)|\(file.filename)|\(file.sizeBytes)|\(file.isFolder)"
+    /// Local counts only. Firmware churn is an observation, not an attribution.
+    private func recordGlobalChanges(before: [DeviceFile], after: [DeviceFile], boundary: String) {
+        let old = Set(before.map(Self.comparable))
+        let new = Set(after.map(Self.comparable))
+        diagnostic("global_inventory_observation",
+            "boundary=\(boundary) before=\(before.count) after=\(after.count) removedOrChanged=\(old.subtracting(new).count) addedOrChanged=\(new.subtracting(old).count)")
+    }
+
+    private struct CrossSessionInventoryKey: Hashable {
+        let storageID: UInt32
+        let path: String
+        let filename: String
+        let sizeBytes: UInt64
+        let isFolder: Bool
+    }
+
+    private struct CrossSessionInventoryLocation: Hashable {
+        let storageID: UInt32
+        let path: String
+    }
+
+    private static func inventoryIsUnambiguous(_ files: [DeviceFile]) -> Bool {
+        var locations = Set<CrossSessionInventoryLocation>()
+        for file in files {
+            // A location must resolve to exactly one object even if duplicated
+            // entries disagree on size or kind and therefore have distinct keys.
+            guard !file.filename.isEmpty, !file.filename.contains("/"),
+                  file.path.hasPrefix("/"),
+                  file.path.split(separator: "/").last.map(String.init) == file.filename,
+                  locations.insert(CrossSessionInventoryLocation(
+                    storageID: file.storageID, path: file.path
+                  )).inserted else {
+                return false
+            }
+        }
+        return true
+    }
+
+    private static func comparable(_ file: DeviceFile) -> CrossSessionInventoryKey {
+        CrossSessionInventoryKey(
+            storageID: file.storageID, path: file.path, filename: file.filename,
+            sizeBytes: file.sizeBytes, isFolder: file.isFolder
+        )
     }
 
     private func elapsedMilliseconds(since start: ContinuousClock.Instant) -> UInt64 {

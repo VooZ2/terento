@@ -25,12 +25,14 @@
 		000000000000000000000034 /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationTransaction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000033 /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationTransaction.swift */; };
 		000000000000000000000036 /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationTransportProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000035 /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationTransportProtocols.swift */; };
 		000000000000000000000038 /* app/TerentoCore/Sources/TerentoPoC/Installation/MTPMapInstallationTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000037 /* app/TerentoCore/Sources/TerentoPoC/Installation/MTPMapInstallationTransport.swift */; };
+		A12560000000000000000004 /* app/TerentoCore/Sources/TerentoPoC/Installation/NativeMutationLedger.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12560000000000000000003 /* app/TerentoCore/Sources/TerentoPoC/Installation/NativeMutationLedger.swift */; };
 		00000000000000000000003a /* app/TerentoCore/Sources/TerentoPoC/Installation/MTPMapReadAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000039 /* app/TerentoCore/Sources/TerentoPoC/Installation/MTPMapReadAdapter.swift */; };
 		00000000000000000000003c /* app/TerentoCore/Sources/TerentoPoC/Installation/MTPSafeDeleteTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000003b /* app/TerentoCore/Sources/TerentoPoC/Installation/MTPSafeDeleteTransport.swift */; };
 		00000000000000000000003e /* app/TerentoCore/Sources/TerentoPoC/Installation/MTPSafeUpdateTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000003d /* app/TerentoCore/Sources/TerentoPoC/Installation/MTPSafeUpdateTransport.swift */; };
 		000000000000000000000040 /* app/TerentoCore/Sources/TerentoPoC/Installation/ManagedFilename.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000003f /* app/TerentoCore/Sources/TerentoPoC/Installation/ManagedFilename.swift */; };
 		000000000000000000000042 /* app/TerentoCore/Sources/TerentoPoC/Installation/MapConflictResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000041 /* app/TerentoCore/Sources/TerentoPoC/Installation/MapConflictResolver.swift */; };
 		000000000000000000000044 /* app/TerentoCore/Sources/TerentoPoC/Installation/MapInstallationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000043 /* app/TerentoCore/Sources/TerentoPoC/Installation/MapInstallationCoordinator.swift */; };
+		A12560000000000000000002 /* app/TerentoCore/Sources/TerentoPoC/Installation/ProtectedMapInventory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12560000000000000000001 /* app/TerentoCore/Sources/TerentoPoC/Installation/ProtectedMapInventory.swift */; };
 		000000000000000000000046 /* app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000045 /* app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecycle.swift */; };
 		000000000000000000000048 /* app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecycleOperationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000047 /* app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecycleOperationController.swift */; };
 		00000000000000000000004a /* app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecyclePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000049 /* app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecyclePresentation.swift */; };
@@ -123,12 +125,14 @@
 		000000000000000000000033 /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationTransaction.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Installation/InstallationTransaction.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000035 /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationTransportProtocols.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Installation/InstallationTransportProtocols.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000037 /* app/TerentoCore/Sources/TerentoPoC/Installation/MTPMapInstallationTransport.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Installation/MTPMapInstallationTransport.swift; sourceTree = SOURCE_ROOT; };
+		A12560000000000000000003 /* app/TerentoCore/Sources/TerentoPoC/Installation/NativeMutationLedger.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Installation/NativeMutationLedger.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000039 /* app/TerentoCore/Sources/TerentoPoC/Installation/MTPMapReadAdapter.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Installation/MTPMapReadAdapter.swift; sourceTree = SOURCE_ROOT; };
 		00000000000000000000003b /* app/TerentoCore/Sources/TerentoPoC/Installation/MTPSafeDeleteTransport.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Installation/MTPSafeDeleteTransport.swift; sourceTree = SOURCE_ROOT; };
 		00000000000000000000003d /* app/TerentoCore/Sources/TerentoPoC/Installation/MTPSafeUpdateTransport.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Installation/MTPSafeUpdateTransport.swift; sourceTree = SOURCE_ROOT; };
 		00000000000000000000003f /* app/TerentoCore/Sources/TerentoPoC/Installation/ManagedFilename.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Installation/ManagedFilename.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000041 /* app/TerentoCore/Sources/TerentoPoC/Installation/MapConflictResolver.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Installation/MapConflictResolver.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000043 /* app/TerentoCore/Sources/TerentoPoC/Installation/MapInstallationCoordinator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Installation/MapInstallationCoordinator.swift; sourceTree = SOURCE_ROOT; };
+		A12560000000000000000001 /* app/TerentoCore/Sources/TerentoPoC/Installation/ProtectedMapInventory.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Installation/ProtectedMapInventory.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000045 /* app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecycle.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecycle.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000047 /* app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecycleOperationController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecycleOperationController.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000049 /* app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecyclePresentation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecyclePresentation.swift; sourceTree = SOURCE_ROOT; };
@@ -254,12 +258,14 @@
 				000000000000000000000033 /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationTransaction.swift */,
 				000000000000000000000035 /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationTransportProtocols.swift */,
 				000000000000000000000037 /* app/TerentoCore/Sources/TerentoPoC/Installation/MTPMapInstallationTransport.swift */,
+				A12560000000000000000003 /* app/TerentoCore/Sources/TerentoPoC/Installation/NativeMutationLedger.swift */,
 				000000000000000000000039 /* app/TerentoCore/Sources/TerentoPoC/Installation/MTPMapReadAdapter.swift */,
 				00000000000000000000003b /* app/TerentoCore/Sources/TerentoPoC/Installation/MTPSafeDeleteTransport.swift */,
 				00000000000000000000003d /* app/TerentoCore/Sources/TerentoPoC/Installation/MTPSafeUpdateTransport.swift */,
 				00000000000000000000003f /* app/TerentoCore/Sources/TerentoPoC/Installation/ManagedFilename.swift */,
 				000000000000000000000041 /* app/TerentoCore/Sources/TerentoPoC/Installation/MapConflictResolver.swift */,
 				000000000000000000000043 /* app/TerentoCore/Sources/TerentoPoC/Installation/MapInstallationCoordinator.swift */,
+				A12560000000000000000001 /* app/TerentoCore/Sources/TerentoPoC/Installation/ProtectedMapInventory.swift */,
 				000000000000000000000045 /* app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecycle.swift */,
 				000000000000000000000047 /* app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecycleOperationController.swift */,
 				000000000000000000000049 /* app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecyclePresentation.swift */,
@@ -478,12 +484,14 @@
 				000000000000000000000034 /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationTransaction.swift in Sources */,
 				000000000000000000000036 /* app/TerentoCore/Sources/TerentoPoC/Installation/InstallationTransportProtocols.swift in Sources */,
 				000000000000000000000038 /* app/TerentoCore/Sources/TerentoPoC/Installation/MTPMapInstallationTransport.swift in Sources */,
+				A12560000000000000000004 /* app/TerentoCore/Sources/TerentoPoC/Installation/NativeMutationLedger.swift in Sources */,
 				00000000000000000000003a /* app/TerentoCore/Sources/TerentoPoC/Installation/MTPMapReadAdapter.swift in Sources */,
 				00000000000000000000003c /* app/TerentoCore/Sources/TerentoPoC/Installation/MTPSafeDeleteTransport.swift in Sources */,
 				00000000000000000000003e /* app/TerentoCore/Sources/TerentoPoC/Installation/MTPSafeUpdateTransport.swift in Sources */,
 				000000000000000000000040 /* app/TerentoCore/Sources/TerentoPoC/Installation/ManagedFilename.swift in Sources */,
 				000000000000000000000042 /* app/TerentoCore/Sources/TerentoPoC/Installation/MapConflictResolver.swift in Sources */,
 				000000000000000000000044 /* app/TerentoCore/Sources/TerentoPoC/Installation/MapInstallationCoordinator.swift in Sources */,
+				A12560000000000000000002 /* app/TerentoCore/Sources/TerentoPoC/Installation/ProtectedMapInventory.swift in Sources */,
 				000000000000000000000046 /* app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecycle.swift in Sources */,
 				000000000000000000000048 /* app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecycleOperationController.swift in Sources */,
 				00000000000000000000004a /* app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecyclePresentation.swift in Sources */,
