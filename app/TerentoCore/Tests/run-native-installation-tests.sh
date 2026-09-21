@@ -1,48 +1,31 @@
-#!/bin/zsh
+#!/bin/bash
 set -euo pipefail
-
-project_root="$(cd "$(dirname "$0")/.." && pwd)"
-build_dir="$(mktemp -d "${TMPDIR:-/tmp}/terento-stage42-installation-tests.XXXXXX")"
-binary_path="$build_dir/stage42-installation-tests"
-
-swiftc \
-    -module-name TerentoStage42InstallationTests \
-    "$project_root/Sources/TerentoPoC/Models/MTPModels.swift" \
-    "$project_root/Sources/TerentoPoC/Compatibility/DeviceIdentity.swift" \
-    "$project_root/Sources/TerentoPoC/Compatibility/MapCapability.swift" \
-    "$project_root/Sources/TerentoPoC/MapCatalog/MapVersion.swift" \
-    "$project_root/Sources/TerentoPoC/MapCatalog/MapIdentity.swift" \
-    "$project_root/Sources/TerentoPoC/MapCatalog/MapModels.swift" \
-    "$project_root/Sources/TerentoPoC/MapCatalog/MapArtifactPlanning.swift" \
-    "$project_root/Sources/TerentoPoC/MapCatalog/InstalledMap.swift" \
-    "$project_root/Sources/TerentoPoC/MapCatalog/MapOwnership.swift" \
-    "$project_root/Sources/TerentoPoC/MapCatalog/MapComparison.swift" \
-    "$project_root/Sources/TerentoPoC/Installation/InstallationSafetyModels.swift" \
-    "$project_root/Sources/TerentoPoC/Installation/StoragePlanner.swift" \
-    "$project_root/Sources/TerentoPoC/Installation/InstallProfile.swift" \
-    "$project_root/Sources/TerentoPoC/Installation/ManagedFilename.swift" \
-    "$project_root/Sources/TerentoPoC/Installation/MapConflictResolver.swift" \
-    "$project_root/Sources/TerentoPoC/Installation/InstallationPreflight.swift" \
-    "$project_root/Sources/TerentoPoC/Installation/TransferVerification.swift" \
-    "$project_root/Sources/TerentoPoC/Installation/InstallationTransaction.swift" \
-    "$project_root/Sources/TerentoPoC/Installation/InstallationTransportProtocols.swift" \
-    "$project_root/Sources/TerentoPoC/Installation/TerentoManifestStore.swift" \
-    "$project_root/Sources/TerentoPoC/Installation/Stage42TargetPolicy.swift" \
-    "$project_root/Sources/TerentoPoC/Installation/ProtectedMapInventory.swift" \
-    "$project_root/Sources/TerentoPoC/Installation/MapInstallationCoordinator.swift" \
-    "$project_root/Sources/TerentoPoC/Installation/MapSourceValidator.swift" \
-    "$project_root/Sources/TerentoPoC/MapCatalog/BBBikeArchiveSafety.swift" \
-    "$project_root/Sources/TerentoPoC/MapCatalog/MapPackageAcquisition.swift" \
-    "$project_root/Tests/TerentoPoCTests/Stage42InstallationTests.swift" \
-    -o "$binary_path"
-
-"$binary_path"
+cd "$(dirname "$0")/.."
+project_root="$PWD"
+build_dir="$(mktemp -d /private/tmp/terento-cleanup-refusal.XXXXXX)"
+trap 'rm -rf "$build_dir"' EXIT
+mtp_prefix="$(brew --prefix libmtp)"
+usb_prefix="$(brew --prefix libusb)"
+clang -c -Wno-deprecated-declarations -I Sources/LibMTPBridge/include \
+  -I "$mtp_prefix/include" -I "$usb_prefix/include/libusb-1.0" \
+  Tests/NativeCleanupDenyFixture.c -o "$build_dir/cleanup-fixture.o"
+printf 'module LibMTPBridge { header "%s/Sources/LibMTPBridge/include/MTPBridge.h" export * }\n' "$PWD" > "$build_dir/module.modulemap"
+sources=()
+while IFS= read -r source; do sources+=("$source"); done < <(
+  rg --files Sources/TerentoPoC -g '*.swift' | grep -Ev '/Views/|/TerentoPoCApp\.swift$' | sort
+)
+swiftc -D TERENTO_PRODUCTION_CLEANUP_TEST -module-cache-path "$build_dir/module-cache" \
+  -parse-as-library -module-name TerentoProductionCleanupTests -I "$build_dir" \
+  -L "$mtp_prefix/lib" -lmtp -L "$usb_prefix/lib" -lusb-1.0 -framework CoreFoundation \
+  "$build_dir/cleanup-fixture.o" "${sources[@]}" Tests/TerentoPoCTests/Stage42InstallationTests.swift \
+  -o "$build_dir/cleanup-tests"
+"$build_dir/cleanup-tests"
 
 if grep -En "LIBMTP|MTPBridge|SendObject|DeleteObject|MoveObject|RenameObject" \
     "$project_root/Sources/TerentoPoC/Installation/MapInstallationCoordinator.swift" \
     "$project_root/Sources/TerentoPoC/Installation/InstallationTransportProtocols.swift"; then
-    print -u2 "FAIL: Stage 4.2 domain coordinator contains a native transport dependency"
+    printf "%s\n" "FAIL: Stage 4.2 domain coordinator contains a native transport dependency" >&2
     exit 1
 fi
 
-print "PASS: Stage 4.2 domain coordinator is transport-injected and read-only in tests"
+printf "%s\n" "PASS: Stage 4.2 domain coordinator is transport-injected and read-only in tests"

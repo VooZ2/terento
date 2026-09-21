@@ -72,7 +72,6 @@
 		00000000000000000000008e /* app/TerentoCore/Sources/TerentoPoC/Resources/Devices/fenix8-render.png in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000008d /* app/TerentoCore/Sources/TerentoPoC/Resources/Devices/fenix8-render.png */; };
 		000000000000000000000090 /* app/TerentoCore/Sources/TerentoPoC/Resources/Devices/generic-garmin-watch.png in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000008f /* app/TerentoCore/Sources/TerentoPoC/Resources/Devices/generic-garmin-watch.png */; };
 		000000000000000000000092 /* app/TerentoCore/Sources/TerentoPoC/Resources/Illustrations/connect-illustration.png in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000091 /* app/TerentoCore/Sources/TerentoPoC/Resources/Illustrations/connect-illustration.png */; };
-		000000000000000000000094 /* app/TerentoCore/Sources/TerentoPoC/Resources/Installation/terento-write-test.txt in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000093 /* app/TerentoCore/Sources/TerentoPoC/Resources/Installation/terento-write-test.txt */; };
 		000000000000000000000096 /* app/TerentoCore/Sources/TerentoPoC/Resources/Maps/catalog.json in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000095 /* app/TerentoCore/Sources/TerentoPoC/Resources/Maps/catalog.json */; };
 		000000000000000000000098 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000099 /* LICENSE */; };
 		00000000000000000000009a /* THIRD_PARTY_NOTICES.md in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000009b /* THIRD_PARTY_NOTICES.md */; };
@@ -409,7 +408,6 @@
 				000000000000000000000090 /* app/TerentoCore/Sources/TerentoPoC/Resources/Devices/generic-garmin-watch.png in Resources */,
 				000000000000000000000092 /* app/TerentoCore/Sources/TerentoPoC/Resources/Illustrations/connect-illustration.png in Resources */,
 				0000000000000000000000aa /* app/TerentoCore/Sources/TerentoPoC/Resources/Illustrations/connect-illustration-connecting.png in Resources */,
-				000000000000000000000094 /* app/TerentoCore/Sources/TerentoPoC/Resources/Installation/terento-write-test.txt in Resources */,
 				000000000000000000000096 /* app/TerentoCore/Sources/TerentoPoC/Resources/Maps/catalog.json in Resources */,
 				000000000000000000000098 /* LICENSE in Resources */,
 				00000000000000000000009a /* THIRD_PARTY_NOTICES.md in Resources */,

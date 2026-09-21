@@ -360,10 +360,21 @@ physical trigger remains unproven.
 Local simulation follow-up (2026-09-21) reproduced false Update/Remove failures
 caused by cross-session handle comparisons. PR258 corrected those checks; the
 original Update reproduction is retained alongside the dedicated regressions.
-The broader simulation matrix remains incomplete and separate from that fix.
+The local simulation matrix now drives production install/update coordinators,
+source validation, ownership/version comparison, durable manifests, protected
+inventory and mutation ledger with injected device I/O. Its v1→v2 path verifies
+one send/one delete, handle renumber/reuse and durable manifest advancement;
+negative cases deny unproven ownership, changed source/target, incomplete ledger
+and unexpected protected deltas. Separate executable native tests prove actual
+entrypoint refusal and zero unauthorized primitive calls. These are layered local
+evidence, not a real-provider hardware Update claim.
 Fresh-install hardware evidence does not validate the destructive lifecycle
 paths. Current cleanup APIs refuse deletion after the creation session closes;
 successful same-operation cleanup must not be simulated by bypassing that refusal.
+The local cleanup test invokes the actual refusal entrypoint and reloads retained
+recovery from disk, with no native open/send/delete. Fresh-install hardware PASS
+remains separate; real newer-provider Update and external Remove hardware remain
+pending opportunistic validation and are not gates for this beta release.
 
 Run `Tests/run-app-installation-operation-diagnostics-tests.sh` for the actual
 engine/no-screen regression and producer/outbox/privacy cases. Initial context

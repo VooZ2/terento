@@ -39,6 +39,9 @@ static size_t read_count;
 static uint64_t read_total;
 static const char *xml_fixture;
 static const char *alias;
+static const char *observed_name;
+static uint64_t observed_size = 512;
+static int moved;
 static const char *filename = "terento_test_map.img";
 static char directory[] = "/private/tmp/terento-native-auth-XXXXXX";
 static char claim[PATH_MAX], hash[65], source[PATH_MAX];
@@ -58,8 +61,14 @@ static LIBMTP_file_t *entry(const char *name, uint32_t id, int is_folder, uint64
 static LIBMTP_file_t *fake_files(LIBMTP_mtpdevice_t *d, uint32_t s, uint32_t parent) {
     if (parent==LIBMTP_FILES_AND_FOLDERS_ROOT) return entry("GARMIN",10,1,0);
     if (xml_fixture) return entry("GarminDevice.xml",88,0,strlen(xml_fixture));
+    if (moved) {
+        if (parent==10) return entry("Moved",33,1,0);
+        if (parent==33) return entry(filename,77,0,observed_size);
+        return NULL;
+    }
+    if (parent!=10) return NULL;
     if (!present) return alias ? entry(alias,79,folder,512) : NULL;
-    LIBMTP_file_t *f=entry(filename,substitute_after_read==2?78:77,folder,512);
+    LIBMTP_file_t *f=entry(observed_name ? observed_name : filename,substitute_after_read==2?78:77,folder,observed_size);
     if (duplicate || alias) f->next=entry(alias ? alias : filename,79,folder,512);
     return f;
 }
@@ -98,6 +107,119 @@ static int remove_map(TerentoMTPMapOperationProfile *p,TerentoMTPMutationAuthori
     char error[256]={0};
     return terento_mtp_delete_external_map_authorized(p,a,r,filename,999,512,error,sizeof(error));
 }
+static void reset_matrix_fixture(void) {
+    serial="TEST-SERIAL"; filename="terento_test_map.img"; storage.id=1;
+    present=1; duplicate=folder=substitute_after_read=send_failure=moved=0;
+    observed_size=512; observed_name=alias=xml_fixture=NULL;
+    track_reads=require_short_packets=0;
+    content[200]=0;
+}
+
+static void refused(const char *scenario, int result, int previous_sends, int previous_deletes,
+                    const TerentoMTPMutationRecord *record) {
+    assert(result!=0 && sends==previous_sends && deletes==previous_deletes);
+    assert(!record->authorized && !record->attempted && !record->completed);
+    printf("PASS: %s | authorized=0 send=0 delete=0 attempted=0 completed=0\n",scenario);
+}
+
+static void external_negative_matrix(void) {
+    const char *names[]={"external missing", "external moved", "external renamed", "external wrong size",
+        "external folder", "external duplicate", "external case alias", "external protected Garmin",
+        "external different physical device", "external same-size changed content", "external replaced after content read",
+        "external missing grant", "external invalid IMG header"};
+    for (size_t i=0;i<sizeof(names)/sizeof(names[0]);++i) {
+        reset_matrix_fixture();
+        TerentoMTPMapOperationProfile p=profile(); TerentoMTPMutationRecord r={0};
+        TerentoMTPMutationAuthorization a=grant(TERENTO_MUTATION_REMOVE_EXTERNAL,TERENTO_MUTATION_DELETE);
+        char invalid_header_hash[65];
+        switch(i) {
+            case 0: present=0; break;
+            case 1: moved=1; break;
+            case 2: observed_name="renamed.img"; break;
+            case 3: observed_size=513; break;
+            case 4: folder=1; break;
+            case 5: duplicate=1; break;
+            case 6: alias="TERENTO_TEST_MAP.IMG"; break;
+            case 7: filename="D123.img"; a.expected_filename=filename; break;
+            case 8: serial="OTHER-PHYSICAL-WATCH"; break;
+            case 9: content[200]=1; break;
+            case 10: substitute_after_read=1; break;
+            case 12: {
+                content[0x10]='X';
+                unsigned char digest[32]; CC_SHA256(content,512,digest);
+                for(int j=0;j<32;++j) snprintf(invalid_header_hash+j*2,3,"%02x",digest[j]);
+                a.expected_sha256=invalid_header_hash; /* Matching hash must not bypass the IMG header gate. */
+                break;
+            }
+            default: break;
+        }
+        int before_sends=sends, before_deletes=deletes;
+        int result=remove_map(&p,i==11?NULL:&a,&r);
+        refused(names[i],result,before_sends,before_deletes,&r);
+        content[0x10]='D';
+    }
+    reset_matrix_fixture();
+}
+
+static void grant_negative_matrix(void) {
+    const char *names[]={"operation ID mismatch", "zero sequence", "out-of-order sequence",
+        "wrong mutation kind", "wrong target", "wrong bound device", "stale claim directory",
+        "missing claim", "wrong purpose", "wrong target storage", "wrong target directory"};
+    for (int removing=0;removing<2;++removing) {
+        for (size_t i=0;i<sizeof(names)/sizeof(names[0]);++i) {
+            reset_matrix_fixture(); present=removing;
+            TerentoMTPMapOperationProfile p=profile(); TerentoMTPMutationRecord r={0};
+            TerentoMTPMutationAuthorization a=grant(removing?TERENTO_MUTATION_REMOVE_EXTERNAL:TERENTO_MUTATION_INSTALL,
+                removing?TERENTO_MUTATION_DELETE:TERENTO_MUTATION_SEND);
+            char stale_directory[PATH_MAX], stale_claim[PATH_MAX];
+            switch(i) {
+                case 0: a.operation_id="different-operation"; break; /* claim remains bound to original operation */
+                case 1: a.sequence=0; break;
+                case 2: a.sequence=2; snprintf(claim,sizeof(claim),"%s/%s-2.claim",directory,a.operation_id); break;
+                case 3: a.mutation_kind=removing?TERENTO_MUTATION_SEND:TERENTO_MUTATION_DELETE; break;
+                case 4: a.expected_filename="terento_other_map.img"; break;
+                case 5: a.expected_physical_identifier="OTHER-PHYSICAL-WATCH"; break;
+                case 6:
+                    snprintf(stale_directory,sizeof(stale_directory),"%s/retired-operation",directory);
+                    assert(mkdir(stale_directory,0700)==0); assert(rmdir(stale_directory)==0);
+                    snprintf(stale_claim,sizeof(stale_claim),"%s/%s-1.claim",stale_directory,a.operation_id);
+                    a.claim_path=stale_claim; break;
+                case 7: a.claim_path=NULL; break;
+                case 8: a.purpose=TERENTO_MUTATION_CLEANUP; break;
+                case 9: a.expected_storage_id=2; break;
+                case 10: a.expected_target_directory="/OTHER"; break;
+            }
+            int before_sends=sends, before_deletes=deletes;
+            int result=removing?remove_map(&p,&a,&r):install(&p,&a,&r);
+            char label[128]; snprintf(label,sizeof(label),"%s %s",removing?"delete":"send",names[i]);
+            refused(label,result,before_sends,before_deletes,&r);
+        }
+        reset_matrix_fixture(); present=removing;
+        TerentoMTPMapOperationProfile p=profile(); TerentoMTPMutationRecord r;
+        TerentoMTPMutationAuthorization a=grant(removing?TERENTO_MUTATION_REMOVE_EXTERNAL:TERENTO_MUTATION_INSTALL,
+            removing?TERENTO_MUTATION_DELETE:TERENTO_MUTATION_SEND);
+        int before_sends=sends, before_deletes=deletes;
+        int result=removing?remove_map(&p,&a,&r):install(&p,&a,&r);
+        assert(result==0 && r.authorized && r.attempted && r.completed && r.sequence==1);
+        assert(sends-before_sends==!removing && deletes-before_deletes==removing);
+        printf("PASS: %s approved operation=%s sequence=%u | authorized=1 send=%d delete=%d completed=1\n",
+            removing?"external remove":"install",a.operation_id,r.sequence,sends-before_sends,deletes-before_deletes);
+        before_sends=sends; before_deletes=deletes;
+        result=removing?remove_map(&p,&a,&r):install(&p,&a,&r);
+        refused(removing?"extra DeleteObject replay":"extra SendObject replay",result,before_sends,before_deletes,&r);
+        a.sequence=2; snprintf(claim,sizeof(claim),"%s/%s-2.claim",directory,a.operation_id);
+        result=removing?remove_map(&p,&a,&r):install(&p,&a,&r);
+        refused(removing?"extra delete with next sequence":"extra send with next sequence",result,before_sends,before_deletes,&r);
+    }
+    reset_matrix_fixture();
+    TerentoMTPMapOperationProfile p=profile(); TerentoMTPMutationRecord r;
+    TerentoMTPMutationAuthorization a=grant(TERENTO_MUTATION_UPDATE_OLD,TERENTO_MUTATION_DELETE);
+    a.sequence=2; snprintf(claim,sizeof(claim),"%s/%s-2.claim",directory,a.operation_id);
+    char error[256]; int before_sends=sends, before_deletes=deletes;
+    int result=terento_mtp_delete_managed_map_authorized(&p,&a,&r,filename,999,512,error,sizeof(error));
+    refused("update old delete without same-operation verified predecessor",result,before_sends,before_deletes,&r);
+}
+
 int main(void) {
     assert(mkdtemp(directory)); chmod(directory,0700);
     storage.id=1; device.storage=&storage;
@@ -194,6 +316,8 @@ assert(terento_mtp_delete_managed_map(&p,filename,77,512,error,sizeof(error))==T
     assert(read_total==sizeof(content)&&read_count==3&&read_requests[0]==65536
         &&read_requests[1]==65536&&read_requests[2]==2);
     track_reads=0;
+    external_negative_matrix();
+    grant_negative_matrix();
     puts("PASS: native mutation authorization (real entrypoints, fake libmtp, no USB)");
     return 0;
 }

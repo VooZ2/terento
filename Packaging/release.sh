@@ -370,6 +370,22 @@ if find "$app" -type f \( -name '*.dSYM' -o -name '*.swiftmodule' -o -name '*.sw
     die "Debug/build file found inside app bundle"
 fi
 
+run_logged "release-test-isolation" \
+    python3 "$script_dir/verify-release-test-isolation.py" \
+    --app "$app" --build-log "$run_dir/xcodebuild.log" --derived-data "$derived_data"
+
+# Keep dSYMs in the private build directory; remove source/build paths from
+# distributed Mach-O debug symbol tables before signing.
+for distributed_binary in "$app/Contents/MacOS/$RELEASE_PRODUCT_NAME" \
+    "$app/Contents/Frameworks/libusb-1.0.0.dylib" \
+    "$app/Contents/Frameworks/libmtp.9.dylib"; do
+    /usr/bin/strip -S "$distributed_binary"
+done
+
+run_logged "release-distribution-isolation" \
+    python3 "$script_dir/verify-release-test-isolation.py" --stripped \
+    --app "$app" --build-log "$run_dir/xcodebuild.log" --derived-data "$derived_data"
+
 printf '%s\n' "Native dependency bundling: PASS"
 
 printf '%s\n' "Signing libusb"
