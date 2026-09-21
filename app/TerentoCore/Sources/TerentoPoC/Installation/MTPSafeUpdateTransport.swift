@@ -357,6 +357,10 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
             return .operationFailed("The connected Garmin device changed after the update was authorized.")
         case .operationFailed(let message, _):
             return .operationFailed(message)
+        case .contextual(_, let message, _, _):
+            return error.isConfirmedDeviceDisconnected
+                ? .deviceDisconnected(message)
+                : .operationFailed(message)
         }
     }
 

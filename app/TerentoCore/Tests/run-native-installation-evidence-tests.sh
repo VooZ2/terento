@@ -9,6 +9,9 @@ swiftc -D TERENTO_TESTING -parse-as-library -module-name TerentoInstallationEvid
   "$project_root/Sources/TerentoPoC/Models/MTPModels.swift" \
   "$project_root/Sources/TerentoPoC/Compatibility/DeviceIdentity.swift" \
   "$project_root/Sources/TerentoPoC/Compatibility/InstallationEvidence.swift" \
+  "$project_root/Sources/TerentoPoC/Installation/InstallationTransportProtocols.swift" \
+  "$project_root/Sources/TerentoPoC/Installation/InstallationSafetyModels.swift" \
+  "$project_root/Sources/TerentoPoC/Installation/ManagedFilename.swift" \
   "$project_root/Sources/TerentoPoC/Diagnostics/InstallationIssueReport.swift" \
   "$project_root/Sources/TerentoPoC/MTPTransport/BoundedNativeProcess.swift" \
   "$project_root/Sources/TerentoPoC/MapCatalog/MapIdentity.swift" \

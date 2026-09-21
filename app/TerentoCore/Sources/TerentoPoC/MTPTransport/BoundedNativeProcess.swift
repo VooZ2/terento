@@ -22,7 +22,8 @@ enum BoundedNativeProcess {
         process.standardError = FileHandle.standardError
         let exited = DispatchSemaphore(value: 0)
         process.terminationHandler = { _ in exited.signal() }
-        try process.run()
+        do { try process.run() }
+        catch { throw NativeProcessFailure.launchFailed }
         FinishingTrace.event("worker_started", "child=\(process.processIdentifier) timeout=\(timeout)")
         defer {
             try? stdin.fileHandleForWriting.close()
@@ -31,8 +32,10 @@ enum BoundedNativeProcess {
                 process.waitUntilExit()
             }
         }
-        try stdin.fileHandleForWriting.write(contentsOf: input)
-        try stdin.fileHandleForWriting.close()
+        do {
+            try stdin.fileHandleForWriting.write(contentsOf: input)
+            try stdin.fileHandleForWriting.close()
+        } catch { throw NativeProcessFailure.requestIOFailed }
         var deadline = NativeProcessDeadline(start: ProcessInfo.processInfo.systemUptime,
                                              timeout: timeout, inactivityTimeout: inactivityTimeout)
         while exited.wait(timeout: .now() + 0.05) == .timedOut {
@@ -46,11 +49,11 @@ enum BoundedNativeProcess {
                 // Only our own child is killed. No other MTP client or app is touched.
                 kill(process.processIdentifier, SIGKILL)
                 process.waitUntilExit()
-                throw NativeProcessFailure.deadlineOrCancellation
+                throw cancellationRequested ? NativeProcessFailure.cancelled : NativeProcessFailure.timeout
             }
         }
         FinishingTrace.event("worker_exited", "child=\(process.processIdentifier) status=\(process.terminationStatus) reason=\(process.terminationReason.rawValue)")
-        guard process.terminationStatus == 0 else { throw NativeProcessFailure.failed }
+        guard process.terminationStatus == 0 else { throw NativeProcessFailure.processExit }
     }
 }
 
@@ -79,8 +82,12 @@ struct NativeProcessDeadline {
     }
 }
 
-enum NativeProcessFailure: Error {
-    case deadlineOrCancellation
+enum NativeProcessFailure: Error, Equatable {
+    case timeout
+    case cancelled
+    case launchFailed
+    case requestIOFailed
+    case processExit
     case failed
 }
 

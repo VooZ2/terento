@@ -55,6 +55,8 @@ enum InstallationIssueReport {
         cleanupAttempted: Bool = false,
         cleanupSucceeded: Bool = false,
         verification: InstallationIssueVerification = .init(),
+        failureContext: InstallationFailureContext? = nil,
+        originalFailureContext: InstallationFailureContext? = nil,
         diagnosticID: UUID = UUID(),
         timestamp: Date = Date(),
         appVersion: String = TerentoTelemetryMetadata.releaseLabel,
@@ -163,6 +165,14 @@ enum InstallationIssueReport {
         \(verificationLines)
         \(lifecycleLines)
 
+        ## Structured failure context
+
+        \(contextLines(failureContext))
+
+        ## Original failure context
+
+        \(contextLines(originalFailureContext))
+
         ## Finishing diagnostics
 
         Fixed-field diagnostic sequence; raw native return codes use rc. Swift elapsed values are seconds except installation_failure, which uses milliseconds. target_matches detail is the match count; target_size detail is the reported size, with expected bytes in offset. Missing events are unavailable evidence, not success.
@@ -178,6 +188,46 @@ enum InstallationIssueReport {
         """)
 
         return draft(title: title, body: body)
+    }
+
+    private static func contextLines(_ context: InstallationFailureContext?) -> String {
+        guard let context else { return "Unavailable" }
+        let protection = context.protection
+        func count(_ value: Int?) -> String? {
+            guard let value, (0...16384).contains(value) else { return nil }
+            return String(value)
+        }
+        func flag(_ value: Bool?) -> String? { value.map { $0 ? "true" : "false" } }
+        let fields: [(String, String?)] = [
+            ("Boundary", context.boundary.rawValue),
+            ("Classification source", context.classificationSource.rawValue),
+            ("Device presence", context.devicePresence.rawValue),
+            ("Last successful boundary", context.lastSuccessfulBoundary?.rawValue),
+            ("Operation", context.operation?.rawValue),
+            ("Execution mode", context.executionMode?.rawValue),
+            ("Result kind", context.resultKind?.rawValue),
+            ("Native category", context.nativeCategory?.rawValue),
+            ("Native code namespace", context.nativeCodeNamespace?.rawValue),
+            ("Native result code", context.nativeCodeNamespace == nil ? nil : context.nativeResultCode.map(String.init)),
+            ("Retry count", context.retryCount.map(String.init)),
+            ("Component", context.componentKind?.rawValue),
+            ("Protection boundary", protection?.protectionBoundary.rawValue),
+            ("Protection reason", protection?.protectionReason.rawValue),
+            ("Comparison version", protection?.stableIdentityComparisonVersion.flatMap { (1...2).contains($0) ? String($0) : nil }),
+            ("Before object count", count(protection?.beforeObjectCount)),
+            ("After object count", count(protection?.afterObjectCount)),
+            ("Added object count", count(protection?.addedObjectCount)),
+            ("Removed object count", count(protection?.removedObjectCount)),
+            ("Changed object count", count(protection?.changedObjectCount)),
+            ("Target present", flag(protection?.targetPresent)),
+            ("Target unique", flag(protection?.targetUnique)),
+            ("Target kind matches", flag(protection?.targetKindMatches)),
+            ("Target filename matches", flag(protection?.targetFilenameMatches)),
+            ("Target size matches", flag(protection?.targetSizeMatches)),
+            ("Target path matches", flag(protection?.targetPathMatches)),
+            ("Target item ID matches", flag(protection?.targetItemIDMatches))
+        ]
+        return fields.map { "- \($0.0): \($0.1 ?? "Unavailable")" }.joined(separator: "\n")
     }
 
     static func draft(title: String, body: String) -> InstallationIssueDraft {
@@ -247,7 +297,9 @@ enum InstallationIssueReport {
         if line.hasPrefix("Trace:") || line.contains("read_failed") || line.contains("read_ptp_response")
             || line.contains("read_error_code") || line.contains("Original failure:")
             || line.contains("Error code:") || line.contains("Diagnostic ID:")
-            || line.contains("Installation ID:") { return 0 }
+            || line.contains("Installation ID:") || line.contains("Boundary:")
+            || line.contains("Classification source:") || line.contains("Device presence:")
+            || line.contains("Protection reason:") { return 0 }
         if !line.hasPrefix("N ") && !line.hasPrefix("S ") { return 1 }
         if line.contains("failed") || line.contains("failure") || line.contains("cleanup")
             || line.contains("deadline") || line.contains("retry_close") { return 2 }

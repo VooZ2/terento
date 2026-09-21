@@ -33,7 +33,9 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
             ).readFileInventory()
         } catch let error as MTPTransportError {
             switch error {
-            case .readFailed(let message):
+            case .deviceAbsent:
+                throw SafeDeleteTransportError.deviceDisconnected(error.localizedDescription)
+            case .readFailed(let message), .contextual(let message, _):
                 if isMissing(message) {
                     throw SafeDeleteTransportError.objectNotFound
                 }
@@ -147,6 +149,9 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
                 )
             }
         } catch let error as InstallationTransportError {
+            if error.isConfirmedDeviceDisconnected {
+                throw SafeDeleteTransportError.deviceDisconnected(error.localizedDescription)
+            }
             switch error {
             case .deviceDisconnected(let message, _):
                 throw SafeDeleteTransportError.deviceDisconnected(message)

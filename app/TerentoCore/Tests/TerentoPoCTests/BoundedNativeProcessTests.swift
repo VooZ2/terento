@@ -3,6 +3,19 @@ import Foundation
 @main
 struct BoundedNativeProcessTests {
     static func main() throws {
+        let absentExecutable = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString).appendingPathComponent("missing-worker")
+        do {
+            try BoundedNativeProcess.run(executable: absentExecutable, arguments: [],
+                input: Data(), timeout: 1)
+            fatalError("missing executable unexpectedly launched")
+        } catch NativeProcessFailure.launchFailed { }
+        do {
+            try BoundedNativeProcess.run(executable: URL(fileURLWithPath: "/usr/bin/false"),
+                arguments: [], input: Data(), timeout: 1)
+            fatalError("unsuccessful worker exit unexpectedly succeeded")
+        } catch NativeProcessFailure.processExit { }
+        print("PASS: actual process launch and unsuccessful exit have distinct failure categories")
         // Deterministic model of the real >120s verification, without USB writes.
         var progressing = NativeProcessDeadline(start: 0, timeout: 600, inactivityTimeout: 120)
         for second in 1...180 {
@@ -39,7 +52,7 @@ struct BoundedNativeProcessTests {
                     inactivityTimeout: 1, verifiedProgress: { advancingBytes },
                     onPoll: { if advancing { advancingBytes += 1 } })
                 fatalError("deadline must reap child despite stalled or endless progress")
-            } catch NativeProcessFailure.deadlineOrCancellation {
+            } catch NativeProcessFailure.timeout {
                 precondition(ProcessInfo.processInfo.systemUptime - start < 10)
             }
         }
@@ -56,7 +69,8 @@ struct BoundedNativeProcessTests {
                 try BoundedNativeProcess.run(executable: URL(fileURLWithPath: "/bin/sleep"),
                     arguments: ["30"], input: Data(), timeout: 0.15, cancelled: { cancel })
                 fatalError("stalled child incorrectly succeeded")
-            } catch NativeProcessFailure.deadlineOrCancellation {
+            } catch let error as NativeProcessFailure {
+                precondition(error == (cancel ? .cancelled : .timeout))
                 precondition(ProcessInfo.processInfo.systemUptime - start < 2)
             }
         }
@@ -84,7 +98,7 @@ struct BoundedNativeProcessTests {
                 arguments: ["-c", "printf '%s\\n' 'FINISH_TRACE native t=1 pid=1 event=read_failed offset=64 rc=-1 detail=0' > \"$TERENTO_FINISHING_TRACE_FILE\"; exec /bin/sleep 30"],
                 input: Data(), timeout: 0.15, diagnosticFile: trace)
             fatalError("worker must time out")
-        } catch NativeProcessFailure.deadlineOrCancellation { }
+        } catch NativeProcessFailure.timeout { }
         let captured = try String(contentsOf: trace, encoding: .utf8)
         precondition(captured.contains("event=read_failed"))
         FinishingTrace.beginInstallation()

@@ -9,6 +9,9 @@ final class InstallationOperationDiagnostics: @unchecked Sendable {
         let artifactIDs: Set<String>
         let eventID = UUID()
         var results: [String: MapInstallationResult] = [:]
+        var failureContext: InstallationFailureContext?
+        var originalFailureContext: InstallationFailureContext?
+        var failedComponentKind: InstallationFailureContext.ComponentKind?
         var recorded = false
     }
 
@@ -48,8 +51,18 @@ final class InstallationOperationDiagnostics: @unchecked Sendable {
               !items[index].recorded, items[index].artifactIDs.contains(artifactID) else { return }
         items[index].results[artifactID] = result
         if !result.isSuccess {
-            finishFailure(index: index, stage: result.failure == .deviceDisconnected && !result.diagnostics.writeStarted
-                ? .preflight : Self.stage(for: result.failure), failure: result.failure,
+            let component = items[index].package.artifacts.first { $0.id == artifactID }
+                .flatMap { InstallationFailureContext.ComponentKind(rawValue: $0.kind.rawValue) }
+            items[index].failedComponentKind = component
+            items[index].failureContext = result.failureContext.map {
+                $0.at($0.boundary, componentKind: component)
+            }
+            items[index].originalFailureContext = result.originalFailureContext.map {
+                $0.at($0.boundary, componentKind: component)
+            }
+            finishFailure(index: index, stage: InstallationFailureStageResolver.stage(
+                for: result.failure, context: items[index].failureContext,
+                writeStarted: result.diagnostics.writeStarted), failure: result.failure,
                           native: result.diagnostics.nativeFailureCode.flatMap { EvidenceNativeFailureCode(rawValue: $0.rawValue) })
         } else if Set(items[index].results.keys) == items[index].artifactIDs {
             enqueue([event(index: index, outcome: .succeeded, stage: nil, failure: nil, native: nil)])
@@ -58,29 +71,49 @@ final class InstallationOperationDiagnostics: @unchecked Sendable {
 
     /// Used only at an observed failed boundary. No raw exception text is retained.
     func failed(index: Int, stage: EvidenceFailureStage, failure: InstallationFailure?,
-                native: EvidenceNativeFailureCode? = nil, cancelled: Bool = false) {
+                native: EvidenceNativeFailureCode? = nil, cancelled: Bool = false,
+                context: InstallationFailureContext? = nil,
+                componentKind: InstallationFailureContext.ComponentKind? = nil) {
         lock.lock(); defer { lock.unlock() }
-        // Cancellation is not an installation failure. Completed/failed component
-        // facts already recorded remain intact; unattempted maps are not invented.
-        guard !cancelled || disconnected, items.indices.contains(index) else { return }
+        let knownReadBoundary = context.map {
+            [.initialSnapshot, .initialInventory, .prewriteInventory].contains($0.boundary)
+        } ?? (native == .preflightMTPReadFailed)
+        // The task's cancellation flag may arrive after the native read failed.
+        // Only an actual cancellation outcome supersedes concrete read evidence.
+        let observedReadFailure = context?.resultKind != .cancelled && (
+            (knownReadBoundary && context?.resultKind != nil)
+                || failure == .preflightMTPReadFailed || native == .preflightMTPReadFailed
+        )
+        let cancellationOnly = context?.resultKind == .cancelled || (cancelled && !observedReadFailure)
+        guard !cancellationOnly || disconnected, items.indices.contains(index) else { return }
         if items[index].recorded {
             // Disconnect during the between-map settle wait cannot change the
             // completed map into a failure or pretend the next map was attempted.
-            if cancelled && disconnected {
+            if cancellationOnly && disconnected {
                 let remaining = items.indices.filter { !items[$0].recorded && items[$0].results.isEmpty }
                 enqueue(remaining.map { event(index: $0, outcome: .notStarted, stage: .preflight,
                                              failure: nil, native: nil) })
             }
             return
         }
-        finishFailure(index: index, stage: stage,
-                      failure: disconnected ? .deviceDisconnected : failure,
-                      native: disconnected ? .deviceDisconnected : native)
+        items[index].failureContext = context
+        items[index].failedComponentKind = componentKind ?? context?.componentKind
+        // A later connection invalidation does not rewrite an observed cause.
+        let confirmedCancellation = cancellationOnly && disconnected
+        let classifiedFailure = failure ?? (knownReadBoundary ? .preflightMTPReadFailed : nil)
+        finishFailure(index: index, stage: context.map { InstallationFailureStageResolver.stage(for: $0.boundary) } ?? stage,
+                      failure: confirmedCancellation ? .deviceDisconnected : classifiedFailure,
+                      native: confirmedCancellation ? .deviceDisconnected : native)
     }
 
     private func finishFailure(index: Int, stage: EvidenceFailureStage,
                                failure: InstallationFailure?, native: EvidenceNativeFailureCode?) {
-        var events = [event(index: index, outcome: .failed, stage: stage, failure: failure, native: native)]
+        let item = items[index]
+        let mainSucceeded = item.package.artifacts.filter { $0.kind == .main }
+            .contains { item.results[$0.id]?.isSuccess == true }
+        let optionalFailed = item.failedComponentKind == .contours
+        var events = [event(index: index, outcome: mainSucceeded && optionalFailed ? .succeeded : .failed,
+                            stage: stage, failure: failure, native: native)]
         for remaining in items.indices where !items[remaining].recorded {
             // A selected map is NOT_STARTED only if no component result proves a write.
             // Normally these are later batch maps, or all other maps after preflight.
@@ -97,12 +130,14 @@ final class InstallationOperationDiagnostics: @unchecked Sendable {
         let diagnostics = item.results.values.map(\.diagnostics)
         let failed = outcome == .failed
         let notStarted = outcome == .notStarted
+        let context = notStarted ? nil : item.failureContext
+        let optionalFailed = !notStarted && item.failedComponentKind == .contours
         return InstallationEvidenceEvent(
             id: item.eventID, identity: identity, package: item.package, outcome: outcome,
             finishingResult: outcome == .succeeded ? .verified : (notStarted ? .notReached : .failed),
             errorCategory: failed ? Self.category(for: failure) : nil,
             operationId: operationID, mapResultIndex: index, selectedMapCount: items.count,
-            failureStage: stage,
+            failureStage: outcome == .succeeded ? nil : stage,
             failureCode: notStarted ? "INSTALL_NOT_STARTED_AFTER_EARLIER_FAILURE"
                 : (failed ? failure?.rawValue ?? "INSTALL_FAILED_UNKNOWN" : nil),
             nativeFailureCode: failed ? native : nil,
@@ -112,7 +147,14 @@ final class InstallationOperationDiagnostics: @unchecked Sendable {
             cleanupSucceeded: diagnostics.contains { $0.cleanupSucceeded },
             transferProgressBucket: EvidenceTransferProgressBucket(
                 bytes: diagnostics.reduce(0) { $0 + $1.bytesTransferred },
-                total: diagnostics.reduce(0) { $0 + $1.transferTotalBytes })
+                total: diagnostics.reduce(0) { $0 + $1.transferTotalBytes }),
+            failureContext: context,
+            originalFailureContext: notStarted ? nil : item.originalFailureContext,
+            optionalComponentSelected: optionalFailed ? true : nil,
+            optionalComponentOutcome: optionalFailed ? "FAILED" : nil,
+            optionalComponentFailureStage: optionalFailed ? stage : nil,
+            optionalComponentFailureCode: optionalFailed ? failure?.rawValue : nil,
+            optionalComponentNativeFailureCode: optionalFailed ? native : nil
         )
     }
 
@@ -139,15 +181,7 @@ final class InstallationOperationDiagnostics: @unchecked Sendable {
     #endif
 
     static func stage(for failure: InstallationFailure?) -> EvidenceFailureStage {
-        switch failure {
-        case .manifestFailed: return .manifest
-        case .cleanupFailed: return .cleanup
-        case .sizeMismatch, .hashMismatch, .remoteFileMissing, .metadataMismatch, .verificationRequired: return .verify
-        case .writeFailed, .deviceDisconnected: return .write
-        case .preflightMTPReadFailed: return .preflight
-        case .sourceArtifactInvalid, .sourceValidationFailed: return .sourceValidation
-        default: return .preflight
-        }
+        InstallationFailureStageResolver.stage(for: failure, context: nil, writeStarted: true)
     }
 
     private static func category(for failure: InstallationFailure?) -> EvidenceErrorCategory {

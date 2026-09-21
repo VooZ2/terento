@@ -37,6 +37,8 @@ struct MapInstallationDiagnostics: Equatable, Sendable {
     let cleanupAttempted: Bool
     let cleanupSucceeded: Bool
     let nativeFailureCode: InstallationNativeFailureCode?
+    var failureContext: InstallationFailureContext? = nil
+    var originalFailureContext: InstallationFailureContext? = nil
 
     static func initial(
         artifact: ValidatedMapArtifact?,
@@ -97,6 +99,9 @@ struct MapInstallationResult: Equatable, Sendable {
     var isSuccess: Bool {
         status == .installVerified
     }
+
+    var failureContext: InstallationFailureContext? { diagnostics.failureContext }
+    var originalFailureContext: InstallationFailureContext? { diagnostics.originalFailureContext }
 }
 
 enum Stage42ArtifactValidationError: String, LocalizedError, Equatable, Sendable {
@@ -508,7 +513,11 @@ struct MapInstallationCoordinator: Sendable {
                     failure: .protectionViolation,
                     preflight: preflight,
                     transaction: transaction,
-                    diagnostics: diagnostics
+                    diagnostics: diagnostics.withFailureContexts(Self.protectionContext(
+                        before: request.beforeDeviceFiles, after: liveBeforeWrite,
+                        targetPath: targetPath, targetFilename: targetFilename,
+                        expectedSize: artifact.installSizeBytes, prewrite: true
+                    ))
                 )
             }
         } catch {
@@ -517,6 +526,7 @@ struct MapInstallationCoordinator: Sendable {
             let timedDiagnostics = diagnostics
                 .withElapsedMilliseconds(elapsed)
                 .withNativeFailureCode(.preflightMTPReadFailed)
+                .withFailureContexts(Self.failureContext(for: error, boundary: .prewriteInventory, operation: .inventory))
             return blocked(
                 status: .failed,
                 failure: Self.failure(for: error, during: .preWriteInventory),
@@ -543,17 +553,20 @@ struct MapInstallationCoordinator: Sendable {
         )
 
         let startedAt = ContinuousClock.now
+        var activeBoundary = InstallationFailureContext.Boundary.preflightPolicyPassed
         do {
             try transaction.begin()
             try transaction.transition(to: .preparing)
             onPhase?(.preparing)
             onPhaseProgress?(.preparing, 0)
+            activeBoundary = .sourceValidationComplete
             try transaction.recordSource(
                 sizeBytes: artifact.installSizeBytes,
                 sha256: artifact.sha256
             )
             try transaction.transition(to: .readyToWrite)
             onPhaseProgress?(.preparing, 1)
+            activeBoundary = .write
             try transaction.transition(to: .writing)
             onPhase?(.installing)
             onPhaseProgress?(.installing, 0)
@@ -566,7 +579,7 @@ struct MapInstallationCoordinator: Sendable {
                     failure: .manifestFailed,
                     transaction: &transaction,
                     preflight: preflight,
-                    diagnostics: diagnostics,
+                    diagnostics: diagnostics.withFailureContexts(Self.failureContext(for: error, boundary: .manifest, operation: .manifest)),
                     remoteObjectID: nil,
                     shouldCleanup: false
                 )
@@ -599,7 +612,8 @@ struct MapInstallationCoordinator: Sendable {
                     diagnostics: diagnostics.withProgress(
                         progress: progressState.value,
                         elapsedMilliseconds: elapsedMilliseconds(since: startedAt)
-                    ).withNativeFailureCode(Self.nativeFailureCode(for: error, during: .write)),
+                    ).withNativeFailureCode(Self.nativeFailureCode(for: error, during: .write))
+                        .withFailureContexts(Self.failureContext(for: error, boundary: .write, operation: .write)),
                     remoteObjectID: createdItemID,
                     shouldCleanup: createdItemID != nil,
                     recoveryRecord: recoveryRecord
@@ -614,6 +628,7 @@ struct MapInstallationCoordinator: Sendable {
                 totalBytes: artifact.installSizeBytes
             )
             onProgress?(progressState.value)
+            activeBoundary = .readback
             try transaction.transition(to: .verifying)
             onPhase?(.finishing)
             onPhaseProgress?(.finishing, 0.05)
@@ -655,7 +670,8 @@ struct MapInstallationCoordinator: Sendable {
                         hash: nil,
                         progress: progressState.value,
                         elapsedMilliseconds: elapsedMilliseconds(since: startedAt)
-                    ).withNativeFailureCode(Self.nativeFailureCode(for: error, during: .verification)),
+                    ).withNativeFailureCode(Self.nativeFailureCode(for: error, during: .verification))
+                        .withFailureContexts(Self.failureContext(for: error, boundary: .readback, operation: .readback)),
                     remoteObjectID: written.itemID,
                     shouldCleanup: true,
                     recoveryRecord: recoveryRecord
@@ -689,7 +705,7 @@ struct MapInstallationCoordinator: Sendable {
                     failure: failure,
                     transaction: &transaction,
                     preflight: preflight,
-                    diagnostics: verifiedDiagnostics,
+                    diagnostics: verifiedDiagnostics.withFailureContexts(Self.failureContext(boundary: .readback, operation: .readback)),
                     remoteObjectID: readBack.itemID,
                     shouldCleanup: true,
                     verification: verification,
@@ -711,7 +727,7 @@ struct MapInstallationCoordinator: Sendable {
                         region: metadataResult.region,
                         version: metadataResult.version,
                         warning: metadataResult.warning
-                    ),
+                    ).withFailureContexts(Self.failureContext(boundary: .readback, operation: .readback)),
                     remoteObjectID: readBack.itemID,
                     shouldCleanup: true,
                     verification: verification,
@@ -722,6 +738,7 @@ struct MapInstallationCoordinator: Sendable {
 
             let afterFiles: [DeviceFile]
             let afterSnapshot: DeviceSnapshot
+            var finalReadBoundary = InstallationFailureContext.Boundary.postwriteInventory
             do {
                 let firstInventory = try deviceReader.readFileInventory()
                 recordInventory(firstInventory, targetPath: targetPath, targetFilename: targetFilename,
@@ -737,13 +754,17 @@ struct MapInstallationCoordinator: Sendable {
                 } else {
                     afterFiles = firstInventory
                 }
+                finalReadBoundary = .postwriteSnapshot
                 afterSnapshot = try deviceReader.readSnapshot()
             } catch {
                 return failureResult(
                     failure: Self.failure(for: error, during: .postVerification),
                     transaction: &transaction,
                     preflight: preflight,
-                    diagnostics: verifiedDiagnostics,
+                    diagnostics: verifiedDiagnostics.withFailureContexts(Self.failureContext(
+                        for: error, boundary: finalReadBoundary,
+                        operation: finalReadBoundary == .postwriteSnapshot ? .snapshot : .inventory
+                    )),
                     remoteObjectID: readBack.itemID,
                     shouldCleanup: true,
                     verification: verification,
@@ -761,7 +782,12 @@ struct MapInstallationCoordinator: Sendable {
                     failure: .remoteFileMissing,
                     transaction: &transaction,
                     preflight: preflight,
-                    diagnostics: verifiedDiagnostics,
+                    diagnostics: verifiedDiagnostics.withFailureContexts(Self.protectionContext(
+                        before: request.beforeDeviceFiles, after: afterFiles,
+                        targetPath: targetPath, targetFilename: targetFilename,
+                        expectedSize: artifact.installSizeBytes, prewrite: false,
+                        targetValidation: true
+                    )),
                     remoteObjectID: readBack.itemID,
                     shouldCleanup: true,
                     verification: verification,
@@ -787,7 +813,11 @@ struct MapInstallationCoordinator: Sendable {
                         existingFilesUnchanged: protection.existingFilesUnchanged,
                         unrelatedUnchanged: false,
                         freeSpaceAfter: afterSnapshot.freeSpace
-                    ),
+                    ).withFailureContexts(Self.protectionContext(
+                        before: request.beforeDeviceFiles, after: afterFiles,
+                        targetPath: targetPath, targetFilename: targetFilename,
+                        expectedSize: artifact.installSizeBytes, prewrite: false
+                    )),
                     remoteObjectID: targetObject.itemID,
                     shouldCleanup: true,
                     verification: verification,
@@ -828,7 +858,7 @@ struct MapInstallationCoordinator: Sendable {
                         existingFilesUnchanged: protection.existingFilesUnchanged,
                         unrelatedUnchanged: true,
                         freeSpaceAfter: afterSnapshot.freeSpace
-                    ),
+                    ).withFailureContexts(Self.failureContext(for: error, boundary: .manifest, operation: .manifest)),
                     remoteObjectID: nil,
                     shouldCleanup: false,
                     verification: verification,
@@ -843,6 +873,7 @@ struct MapInstallationCoordinator: Sendable {
                 filename: recoveryRecord.filename
             )
 
+            activeBoundary = .manifest
             try transaction.transition(to: .completed)
             return MapInstallationResult(
                 status: .installVerified,
@@ -884,7 +915,7 @@ struct MapInstallationCoordinator: Sendable {
                         totalBytes: artifact.installSizeBytes
                     ),
                     elapsedMilliseconds: elapsedMilliseconds(since: startedAt)
-                ),
+                ).withFailureContexts(Self.failureContext(for: error, boundary: activeBoundary, operation: nil)),
                 remoteObjectID: createdItemID,
                 shouldCleanup: createdItemID != nil,
                 recoveryRecord: createdItemID == nil ? nil : recoveryRecord
@@ -997,6 +1028,7 @@ struct MapInstallationCoordinator: Sendable {
     ) -> MapInstallationResult {
         diagnostic("installation_failure", "elapsed=\(diagnostics.elapsedMilliseconds)")
         var cleanupFailure: InstallationFailure?
+        var cleanupContext: InstallationFailureContext?
         if shouldCleanup, let remoteObjectID, remoteObjectID != 0 {
             do {
                 let cleanupFilename = preflight.proposedFilename
@@ -1021,6 +1053,7 @@ struct MapInstallationCoordinator: Sendable {
                 }
             } catch {
                 cleanupFailure = .cleanupFailed
+                cleanupContext = Self.failureContext(for: error, boundary: .cleanup, operation: .cleanup)
             }
         }
 
@@ -1045,6 +1078,9 @@ struct MapInstallationCoordinator: Sendable {
                 cleanupSucceeded: cleanupAttempted && cleanupFailure == nil
             ).withNativeFailureCode(
                 cleanupFailure == nil ? diagnostics.nativeFailureCode : .deleteFailed
+            ).withFailureContexts(
+                cleanupContext ?? diagnostics.failureContext,
+                original: cleanupFailure == nil ? diagnostics.originalFailureContext : diagnostics.failureContext
             ),
             installedMap: nil
         )
@@ -1064,8 +1100,92 @@ struct MapInstallationCoordinator: Sendable {
         case postVerification
     }
 
+    private static func failureContext(
+        for error: Error? = nil,
+        boundary: InstallationFailureContext.Boundary,
+        operation: InstallationFailureContext.Operation?
+    ) -> InstallationFailureContext {
+        let transportError = error as? InstallationTransportError
+        if let context = (error as? any InstallationFailureContextProviding)?.failureContext {
+            return context.at(boundary)
+        }
+        return InstallationFailureContext(
+            boundary: boundary, classificationSource: .derived,
+            devicePresence: transportError?.isConfirmedDeviceDisconnected == true ? .absent : .unknown,
+            operation: operation, resultKind: .appError
+        )
+    }
+
+    /// Observations of an already rejected inventory. This helper never authorizes
+    /// a write, changes comparison results, or supplies a cleanup identity.
+    private static func protectionContext(
+        before: [DeviceFile], after: [DeviceFile], targetPath: String,
+        targetFilename: String, expectedSize: UInt64, prewrite: Bool,
+        targetValidation: Bool = false
+    ) -> InstallationFailureContext {
+        struct Location: Hashable {
+            let storage: UInt32
+            let path: String
+        }
+        func bounded(_ count: Int) -> Int? { (0...16384).contains(count) ? count : nil }
+        let candidates = after.filter { $0.path == targetPath }
+        let target = candidates.count == 1 ? candidates.first : nil
+        let beforeGroups = Dictionary(grouping: before.filter { $0.path != targetPath }) {
+            Location(storage: $0.storageID, path: $0.path)
+        }
+        let afterGroups = Dictionary(grouping: after.filter { $0.path != targetPath }) {
+            Location(storage: $0.storageID, path: $0.path)
+        }
+        let pairable = beforeGroups.values.allSatisfy { $0.count == 1 }
+            && afterGroups.values.allSatisfy { $0.count == 1 }
+            && (before + after).allSatisfy {
+                !$0.filename.isEmpty && !$0.filename.contains("/")
+                    && $0.path.hasPrefix("/")
+                    && $0.path.split(separator: "/").last.map(String.init) == $0.filename
+            }
+        let beforeKeys = Set(beforeGroups.keys)
+        let afterKeys = Set(afterGroups.keys)
+        let added = pairable ? afterKeys.subtracting(beforeKeys).count : nil
+        let removed = pairable ? beforeKeys.subtracting(afterKeys).count : nil
+        let changed = pairable ? beforeKeys.intersection(afterKeys).filter {
+            comparable(beforeGroups[$0]![0]) != comparable(afterGroups[$0]![0])
+        }.count : nil
+        let reason: InstallationProtectionContext.Reason
+        if prewrite && !candidates.isEmpty { reason = .targetPresentBeforeWrite }
+        else if targetValidation {
+            if candidates.isEmpty { reason = .targetMissing }
+            else if candidates.count != 1 { reason = .targetDuplicate }
+            else if target!.isFolder || target!.itemID == 0 { reason = .targetInvalid }
+            else if target!.filename != targetFilename { reason = .targetFilenameMismatch }
+            else { reason = .targetSizeMismatch }
+        } else if !pairable { reason = .inventoryAmbiguous }
+        else if (changed ?? 0) > 0 { reason = .preexistingObjectChanged }
+        else if (removed ?? 0) > 0 { reason = .preexistingObjectRemoved }
+        else if (added ?? 0) > 0 { reason = .nonTargetObjectAdded }
+        else { reason = .inventoryAmbiguous }
+        let compared = !targetValidation && !(prewrite && !candidates.isEmpty)
+        return InstallationFailureContext(
+            boundary: prewrite ? .prewriteProtection : (targetValidation ? .targetValidation : .postwriteProtection),
+            classificationSource: .derived, devicePresence: .unknown,
+            operation: .protectionCheck, resultKind: .protectionFailed,
+            protection: InstallationProtectionContext(
+                protectionBoundary: prewrite ? .preWrite : .postWrite,
+                protectionReason: reason, stableIdentityComparisonVersion: compared ? 1 : nil,
+                beforeObjectCount: bounded(before.count), afterObjectCount: bounded(after.count),
+                addedObjectCount: added.flatMap(bounded), removedObjectCount: removed.flatMap(bounded),
+                changedObjectCount: changed.flatMap(bounded),
+                targetPresent: !candidates.isEmpty, targetUnique: candidates.count == 1,
+                targetKindMatches: target.map { !$0.isFolder },
+                targetFilenameMatches: target.map { $0.filename == targetFilename },
+                targetSizeMatches: target.map { $0.sizeBytes == expectedSize },
+                targetPathMatches: target.map { $0.path == targetPath }
+            )
+        )
+    }
+
     private static func failure(for error: Error, during phase: FailurePhase) -> InstallationFailure {
         if let error = error as? InstallationTransportError {
+            if error.isConfirmedDeviceDisconnected { return .deviceDisconnected }
             switch error {
             case .remoteFileMissing:
                 return .remoteFileMissing
@@ -1079,7 +1199,7 @@ struct MapInstallationCoordinator: Sendable {
                 return .unknownInstallTarget
             case .liveIdentityMismatch:
                 return .unknownInstallTarget
-            case .operationFailed(_, _):
+            case .operationFailed(_, _), .contextual:
                 switch phase {
                 case .preWriteInventory: return .preflightMTPReadFailed
                 case .write: return .writeFailed
@@ -1106,6 +1226,7 @@ struct MapInstallationCoordinator: Sendable {
             case .verification, .postVerification: return .readbackFailed
             }
         }
+        if error.isConfirmedDeviceDisconnected { return .deviceDisconnected }
         switch error {
         case .targetAlreadyExists: return .targetAlreadyExists
         case .remoteFileMissing: return .remoteFileMissing
@@ -1113,7 +1234,7 @@ struct MapInstallationCoordinator: Sendable {
         case .unsupportedDevice: return .unsupportedDevice
         case .liveIdentityMismatch: return .liveIdentityMismatch
         case .deviceDisconnected: return .deviceDisconnected
-        case .operationFailed:
+        case .operationFailed, .contextual:
             switch phase {
             case .preWriteInventory: return .preflightMTPReadFailed
             case .write: return .sendObjectFailed
@@ -1123,17 +1244,7 @@ struct MapInstallationCoordinator: Sendable {
     }
 
     private static func createdItemID(from error: Error) -> UInt32? {
-        guard let error = error as? InstallationTransportError else {
-            return nil
-        }
-
-        switch error {
-        case .deviceDisconnected(_, let createdItemID),
-             .operationFailed(_, let createdItemID):
-            return createdItemID
-        default:
-            return nil
-        }
+        (error as? InstallationTransportError)?.createdItemID
     }
 
     private static func sha256(of url: URL) throws -> String {
@@ -1387,6 +1498,16 @@ struct MapInstallationCoordinator: Sendable {
 }
 
 private extension MapInstallationDiagnostics {
+    func withFailureContexts(
+        _ failureContext: InstallationFailureContext?,
+        original: InstallationFailureContext? = nil
+    ) -> MapInstallationDiagnostics {
+        var copy = self
+        copy.failureContext = failureContext
+        copy.originalFailureContext = original
+        return copy
+    }
+
     func withTarget(targetPath: String, projectedFreeSpace: UInt64?) -> MapInstallationDiagnostics {
         MapInstallationDiagnostics(
             sourceSizeBytes: sourceSizeBytes,
@@ -1411,7 +1532,9 @@ private extension MapInstallationDiagnostics {
             remoteObjectCreated: remoteObjectCreated,
             cleanupAttempted: cleanupAttempted,
             cleanupSucceeded: cleanupSucceeded,
-            nativeFailureCode: nativeFailureCode
+            nativeFailureCode: nativeFailureCode,
+            failureContext: failureContext,
+            originalFailureContext: originalFailureContext
         )
     }
 
@@ -1439,7 +1562,9 @@ private extension MapInstallationDiagnostics {
             remoteObjectCreated: remoteObjectCreated,
             cleanupAttempted: cleanupAttempted,
             cleanupSucceeded: cleanupSucceeded,
-            nativeFailureCode: nativeFailureCode
+            nativeFailureCode: nativeFailureCode,
+            failureContext: failureContext,
+            originalFailureContext: originalFailureContext
         )
     }
 
@@ -1467,7 +1592,9 @@ private extension MapInstallationDiagnostics {
             remoteObjectCreated: remoteObjectCreated,
             cleanupAttempted: cleanupAttempted,
             cleanupSucceeded: cleanupSucceeded,
-            nativeFailureCode: nativeFailureCode
+            nativeFailureCode: nativeFailureCode,
+            failureContext: failureContext,
+            originalFailureContext: originalFailureContext
         )
     }
 
@@ -1513,7 +1640,9 @@ private extension MapInstallationDiagnostics {
             remoteObjectCreated: exists || remoteObjectCreated,
             cleanupAttempted: cleanupAttempted,
             cleanupSucceeded: cleanupSucceeded,
-            nativeFailureCode: nativeFailureCode
+            nativeFailureCode: nativeFailureCode,
+            failureContext: failureContext,
+            originalFailureContext: originalFailureContext
         )
     }
 
@@ -1546,7 +1675,9 @@ private extension MapInstallationDiagnostics {
             remoteObjectCreated: remoteObjectCreated,
             cleanupAttempted: cleanupAttempted,
             cleanupSucceeded: cleanupSucceeded,
-            nativeFailureCode: nativeFailureCode
+            nativeFailureCode: nativeFailureCode,
+            failureContext: failureContext,
+            originalFailureContext: originalFailureContext
         )
     }
 
@@ -1578,7 +1709,9 @@ private extension MapInstallationDiagnostics {
             remoteObjectCreated: remoteObjectCreated,
             cleanupAttempted: cleanupAttempted,
             cleanupSucceeded: cleanupSucceeded,
-            nativeFailureCode: nativeFailureCode
+            nativeFailureCode: nativeFailureCode,
+            failureContext: failureContext,
+            originalFailureContext: originalFailureContext
         )
     }
 
@@ -1611,7 +1744,9 @@ private extension MapInstallationDiagnostics {
             remoteObjectCreated: remoteObjectCreated ?? self.remoteObjectCreated,
             cleanupAttempted: cleanupAttempted ?? self.cleanupAttempted,
             cleanupSucceeded: cleanupSucceeded ?? self.cleanupSucceeded,
-            nativeFailureCode: nativeFailureCode
+            nativeFailureCode: nativeFailureCode,
+            failureContext: failureContext,
+            originalFailureContext: originalFailureContext
         )
     }
 
@@ -1630,7 +1765,9 @@ private extension MapInstallationDiagnostics {
             unrelatedFilesProtectionPassed: copy.unrelatedFilesProtectionPassed,
             writeStarted: copy.writeStarted, remoteObjectCreated: copy.remoteObjectCreated,
             cleanupAttempted: copy.cleanupAttempted, cleanupSucceeded: copy.cleanupSucceeded,
-            nativeFailureCode: code
+            nativeFailureCode: code,
+            failureContext: failureContext,
+            originalFailureContext: originalFailureContext
         )
     }
 }
