@@ -2095,11 +2095,18 @@ def _health_status_badge(status: Any) -> str:
     return f"<span class='system-health-badge system-health-{normalized.lower()}'>{labels[normalized]}</span>"
 
 
-def _health_run_link(observation: dict[str, Any] | None) -> str:
+def _health_run_link(observation: dict[str, Any] | None, *, label: str = "GitHub Actions") -> str:
     url = str((observation or {}).get("source_run_url") or "").strip()
-    if not url.startswith("https://github.com/VooZ2/terento/actions/runs/"):
+    parsed = urlsplit(url)
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname != "github.com"
+        or not re.fullmatch(r"/VooZ2/terento/actions/runs/\d+", parsed.path)
+        or parsed.query
+        or parsed.fragment
+    ):
         return ""
-    return f"<a class='section-link' href='{html.escape(url, quote=True)}' target='_blank' rel='noopener noreferrer'>GitHub Actions&nbsp;{_admin_icon('external')}</a>"
+    return f"<a class='section-link' href='{html.escape(url, quote=True)}' target='_blank' rel='noopener noreferrer'>{html.escape(label)}&nbsp;{_admin_icon('external')}</a>"
 
 
 def _health_attention(status: Any, reason: str, action: str) -> str:
@@ -2129,15 +2136,178 @@ def _system_health_card(
         + _timestamp_markup(observation.get('observed_at')) + "</p>"
         if observation else "<p class='table-help'>Last checked: —</p>"
     )
+    issue_markup = (
+        "<span class='health-issue'>" + html.escape(reason) + "</span>"
+        if normalized_status != "HEALTHY" else ""
+    )
     markup = (
         f"<details class='system-health-card admin-disclosure' data-health-status='{html.escape(normalized_status, quote=True)}' data-health-name='{html.escape(title.casefold(), quote=True)}'>"
-        f"<summary><h2>{html.escape(title)}</h2>{_health_status_badge(normalized_status)}{('<span class="health-issue">' + html.escape(reason) + '</span>') if normalized_status != 'HEALTHY' else ''}</summary>"
+        f"<summary><h2>{html.escape(title)}</h2>{_health_status_badge(normalized_status)}{issue_markup}</summary>"
         f"<div class='disclosure-body'><p>Result: {_health_status_badge(normalized_status)}</p><div class='system-health-description'>{description}</div>"
         f"{_health_attention(normalized_status, reason, action)}"
         f"{evidence_time}"
         f"{_health_run_link(observation)}</div></details>"
     )
     return {"title": title, "status": normalized_status, "html": markup, "reason": reason, "lastChecked": (observation or {}).get("observed_at")}
+
+
+def _health_details(observation: dict[str, Any] | None) -> dict[str, Any]:
+    details = (observation or {}).get("details")
+    if isinstance(details, dict):
+        return details
+    if isinstance(details, str):
+        try:
+            decoded = json.loads(details)
+        except json.JSONDecodeError:
+            return {}
+        return decoded if isinstance(decoded, dict) else {}
+    return {}
+
+
+def _safe_indexnow_preview(details: dict[str, Any]) -> list[str]:
+    raw = details.get("url_preview")
+    if not isinstance(raw, str):
+        return []
+    urls = []
+    for value in raw.splitlines():
+        parsed = urlsplit(value)
+        if (
+            parsed.scheme == "https"
+            and parsed.netloc == "terento.app"
+            and parsed.path.startswith("/")
+            and (parsed.path == "/" or parsed.path.endswith("/"))
+            and not parsed.query
+            and not parsed.fragment
+        ):
+            urls.append(value)
+    return urls[:10]
+
+
+def _indexnow_count(value: Any) -> int | None:
+    return _optional_nonnegative_int(value)
+
+
+def _indexnow_card(
+    indexnow: dict[str, Any] | None,
+    site: dict[str, Any] | None,
+    *,
+    now: datetime,
+) -> dict[str, Any]:
+    report = indexnow if isinstance(indexnow, dict) else None
+    report_details = _health_details(report)
+    site_details = _health_details(site)
+    publication_id = str(site_details.get("indexnow_publication_id") or "").strip()
+    reported_publication_id = str(report_details.get("publication_id") or "").strip()
+    expected = site_details.get("indexnow_expected") is True
+    matching_report = bool(report and publication_id and reported_publication_id == publication_id)
+    report_status = str((report or {}).get("status") or "UNKNOWN").upper()
+    result = str(report_details.get("result") or "not_initialized")
+    reason = str((report or {}).get("summary") or "No IndexNow production report has been retained.")
+    action = "Review the deployment workflow and sender state; no search-indexing claim is implied."
+    status = report_status if report else "UNKNOWN"
+    if status not in {"HEALTHY", "WARNING", "FAILED", "UNKNOWN"}:
+        status = "UNKNOWN"
+
+    if expected and not matching_report:
+        deployed_at = _parse_timestamp((site or {}).get("observed_at"))
+        grace_seconds = _indexnow_count(site_details.get("indexnow_grace_seconds")) or 1_800
+        grace_elapsed = deployed_at is not None and now >= deployed_at + timedelta(seconds=grace_seconds)
+        if grace_elapsed:
+            status = "WARNING"
+            result = "missing_report"
+            reason = "IndexNow report missing for the latest deployment."
+            action = "Inspect the workflow run and retry only the operational report after confirming sender state."
+        else:
+            status = "UNKNOWN"
+            result = "awaiting_report"
+            reason = "The latest deployment is still within the documented IndexNow report grace period."
+            action = "Wait for the workflow report or inspect the linked deployment run if it exceeds the grace period."
+    elif not report:
+        if expected:
+            reason = "No IndexNow report has been retained for the latest deployment."
+        action = "Run a confirmed production deployment before treating IndexNow as initialized."
+
+    pending_count = _indexnow_count(report_details.get("pending_url_count"))
+    if report and (matching_report or not expected):
+        if result in {"validation_pending", "pending_retry", "partial_success"}:
+            status = "WARNING"
+        elif result in {"action_required", "live_verification_failed"}:
+            status = "FAILED"
+        elif result in {"bootstrap", "not_initialized"}:
+            status = "UNKNOWN"
+        elif result in {"submitted", "no_changes"}:
+            status = "HEALTHY" if pending_count == 0 else "WARNING" if pending_count is not None else "UNKNOWN"
+    if matching_report and pending_count is not None and pending_count > 0 and status == "HEALTHY":
+        status = "WARNING"
+        reason = "IndexNow has pending URLs retained for retry."
+        action = "Inspect the sender result and allow the next eligible workflow to retry the pending URLs."
+
+    last_submission = report_details.get("last_submission_at")
+    last_successful = report_details.get("last_successful_submission_at")
+    attempted = _indexnow_count(report_details.get("attempted_url_count"))
+    http_200_count = _indexnow_count(report_details.get("http_200_count"))
+    http_202_count = _indexnow_count(report_details.get("http_202_count"))
+    http_status = _indexnow_count(report_details.get("http_status"))
+    if http_status is None:
+        http_result = "No request"
+    else:
+        http_result = f"HTTP {http_status} · 200: {http_200_count if http_200_count is not None else '—'} · 202: {http_202_count if http_202_count is not None else '—'}"
+    preview = _safe_indexnow_preview(report_details)
+    preview_total = _indexnow_count(report_details.get("url_preview_total"))
+    preview_markup = (
+        f"<p>Showing {len(preview)} of {preview_total if preview_total is not None else len(preview)} URLs:</p>"
+        "<ul class='indexnow-url-preview'>"
+        + "".join(f"<li><code>{html.escape(url)}</code></li>" for url in preview)
+        + "</ul>"
+        if preview else "<p>No URL preview retained.</p>"
+    )
+    error_summary = report_details.get("error_summary")
+    if not isinstance(error_summary, str) or len(error_summary) > 240:
+        error_summary = None
+    safe_error = html.escape(error_summary or "No additional error recorded.")
+    checked = (report or site or {}).get("observed_at")
+    short_result = {
+        "submitted": "Submitted",
+        "validation_pending": "Validation pending",
+        "no_changes": "No changes to submit",
+        "pending_retry": "Pending retry",
+        "partial_success": "Partial success",
+        "action_required": "Action required",
+        "bootstrap": "Initialized — no submission yet",
+        "not_initialized": "Not initialized",
+        "missing_report": "Report missing",
+        "awaiting_report": "Awaiting report",
+    }.get(result, result.replace("_", " ").title())
+    markup = (
+        "<details class='system-health-card admin-disclosure' "
+        f"data-health-status='{html.escape(status, quote=True)}' "
+        f"data-health-name='indexnow submissions'>"
+        f"<summary><h2>IndexNow submissions</h2>{_health_status_badge(status)}"
+        f"<span class='health-issue'>{html.escape(short_result)}</span></summary>"
+        "<div class='disclosure-body'>"
+        f"<p>Result: {html.escape(short_result)} {_health_status_badge(status)}</p>"
+        f"<p class='indexnow-status-note'>Submission status only. This does not confirm search indexing.</p>"
+        "<dl class='indexnow-details'>"
+        f"<div><dt>Last check</dt><dd>{_timestamp_markup(checked)}</dd></div>"
+        f"<div><dt>Last submission</dt><dd>{_timestamp_markup(last_submission) if last_submission else 'No submissions yet'}</dd></div>"
+        f"<div><dt>Last successful submission (HTTP 200)</dt><dd>{_timestamp_markup(last_successful) if last_successful else '—'}</dd></div>"
+        f"<div><dt>Last execution</dt><dd>{attempted if attempted is not None else '—'} URL(s) · {html.escape(http_result)}</dd></div>"
+        f"<div><dt>Pending URLs</dt><dd>{pending_count if pending_count is not None else '—'}</dd></div>"
+        f"<div><dt>Oldest pending</dt><dd>{_timestamp_markup(report_details.get('oldest_pending_at'))}</dd></div>"
+        "</dl>"
+        f"<div class='system-health-description'>{preview_markup}</div>"
+        f"{_health_attention(status, reason, action)}"
+        f"<p class='indexnow-error'><strong>Safe error</strong>: {safe_error}</p>"
+        f"{_health_run_link(report or site, label='View workflow')}"
+        "</div></details>"
+    )
+    return {
+        "title": "IndexNow submissions",
+        "status": status,
+        "html": markup,
+        "reason": reason,
+        "lastChecked": checked,
+    }
 
 
 def _system_health_cards(health: dict[str, Any]) -> tuple[list[dict[str, Any]], Any, dict[str, Any]]:
@@ -2244,6 +2414,7 @@ def _system_health_cards(health: dict[str, Any]) -> tuple[list[dict[str, Any]], 
             str(provider.get('name') or provider.get('id') or 'Provider'),
             state["status"], description, reason=state["reason"], action=state["action"],
         ))
+    cards.append(_indexnow_card(observations.get("indexnow"), site, now=now))
     scheduler_action = "Inspect the catalog scheduler container and its next scheduled run."
     cards.extend([
         _system_health_card(
@@ -6803,7 +6974,7 @@ td.column-number,td.column-date,.numeric{font-variant-numeric:tabular-nums}
 @media(max-width:700px){.overview-compatibility-grid{grid-template-columns:1fr}.provider-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:480px){.overview-compatibility-grid{grid-template-columns:1fr}}
 .overview-primary-grid,.overview-secondary-grid{display:grid;gap:12px}.overview-primary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.overview-secondary-grid{grid-template-columns:minmax(0,1.35fr) minmax(320px,1fr)}.overview-primary-grid .overview-panel,.overview-secondary-grid .overview-panel{min-width:0}.overview-model-list,.overview-review-list{list-style:none;margin:0;padding:0}.overview-model-item,.overview-review-item{display:grid;grid-template-columns:minmax(0,1fr) max-content;gap:8px;align-items:start;padding:9px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.overview-model-item:first-child,.overview-review-item:first-child{border-top:0;padding-top:3px}.overview-model-item a,.overview-review-item a{display:grid;min-width:0;color:inherit;text-decoration:none}.overview-model-item a:hover strong,.overview-review-item a:hover strong{text-decoration:underline;text-underline-offset:3px}.overview-model-item strong,.overview-review-item strong{font-size:13px;overflow:hidden;text-overflow:ellipsis}.overview-model-item a span,.overview-review-item a span{color:var(--secondary);font-size:11px}.overview-model-item time{color:var(--secondary);font-size:11px;white-space:nowrap}.overview-model-failed strong{color:var(--danger)}.overview-review-block{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}.overview-review-block h3{margin:0 0 5px;color:var(--secondary);font-size:12px}.overview-activity-item{grid-template-columns:minmax(0,1fr) max-content}.overview-activity-item>time{grid-column:2;grid-row:1 / span 2}.overview-activity-item .overview-activity-label{grid-column:1}.overview-activity-item a span:not(.overview-activity-label){grid-column:1}.overview-compact-empty{padding-bottom:14px}.inline-filter-row{justify-content:flex-start}.inline-filter-row label{flex:0 1 260px}.inline-filter-row select{flex:0 0 170px}
-.system-health-page{padding-top:30px}.system-health-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.system-health-card{min-height:150px;padding:18px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}.system-health-card .section-heading{align-items:center;margin-bottom:14px}.system-health-card h2{font-size:16px}.system-health-description p{margin:0 0 10px;color:var(--secondary);font-size:12px;line-height:1.55}.system-health-explanation{margin:12px 0;font-size:11px}.system-health-explanation div{display:grid;grid-template-columns:48px 1fr;gap:7px;padding:5px 0;border-top:1px solid var(--border)}.system-health-explanation dt{font-weight:750;color:var(--graphite)}.system-health-explanation dd{margin:0;color:var(--secondary)}.system-health-badge{display:inline-flex;padding:4px 8px;border:1px solid;border-radius:999px;font-size:11px;font-weight:750}.system-health-healthy{border-color:var(--status-success-border);background:var(--status-success-surface);color:var(--status-success-text)}.system-health-warning{border-color:var(--status-tested-border);background:var(--status-tested-surface);color:var(--status-tested-text)}.system-health-failed{border-color:var(--status-error-border);background:var(--status-error-surface);color:var(--status-error-text)}.system-health-unknown{border-color:var(--status-neutral-border);background:var(--status-neutral-surface);color:var(--status-neutral-text)}
+.system-health-page{padding-top:30px}.system-health-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.system-health-card{min-height:150px;padding:18px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}.system-health-card .section-heading{align-items:center;margin-bottom:14px}.system-health-card h2{font-size:16px}.system-health-description p{margin:0 0 10px;color:var(--secondary);font-size:12px;line-height:1.55}.system-health-explanation{margin:12px 0;font-size:11px}.system-health-explanation div{display:grid;grid-template-columns:48px 1fr;gap:7px;padding:5px 0;border-top:1px solid var(--border)}.system-health-explanation dt{font-weight:750;color:var(--graphite)}.system-health-explanation dd{margin:0;color:var(--secondary)}.indexnow-status-note,.indexnow-error{color:var(--secondary);font-size:11px;line-height:1.55}.indexnow-details{margin:14px 0;font-size:11px}.indexnow-details div{display:grid;grid-template-columns:minmax(150px,auto) minmax(0,1fr);gap:10px;padding:5px 0;border-top:1px solid var(--border)}.indexnow-details dt{font-weight:750;color:var(--graphite)}.indexnow-details dd{margin:0;color:var(--secondary);overflow-wrap:anywhere}.indexnow-url-preview{margin:0 0 10px;padding-left:18px;color:var(--secondary);font-size:11px}.indexnow-url-preview code{font:500 10px var(--font-mono);overflow-wrap:anywhere}.system-health-badge{display:inline-flex;padding:4px 8px;border:1px solid;border-radius:999px;font-size:11px;font-weight:750}.system-health-healthy{border-color:var(--status-success-border);background:var(--status-success-surface);color:var(--status-success-text)}.system-health-warning{border-color:var(--status-tested-border);background:var(--status-tested-surface);color:var(--status-tested-text)}.system-health-failed{border-color:var(--status-error-border);background:var(--status-error-surface);color:var(--status-error-text)}.system-health-unknown{border-color:var(--status-neutral-border);background:var(--status-neutral-surface);color:var(--status-neutral-text)}
 @media(max-width:1100px){.system-health-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.system-health-grid{grid-template-columns:1fr}.system-health-card{min-height:0}}
 .model-statistics .attempts-metric>span{display:inline-flex;align-items:center;gap:6px}

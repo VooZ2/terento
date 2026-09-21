@@ -917,9 +917,22 @@ GitHub workflows. Requests require `Authorization: Bearer` with the separately
 configured `OPERATIONS_INGEST_SECRET`, use JSON, and are limited to 16 KiB.
 Kinds, components, statuses, GitHub run URLs, commit hashes, timestamps,
 release/build labels, summaries, and scalar detail values are allowlisted and
-validated. `observationId` makes retries idempotent. The route does not execute
-tests, accept raw logs, or expose a public read API; retained results are shown
-only on authenticated `/admin/system-health`.
+validated. `observationId` makes retries idempotent. In addition to existing
+workflow observations, `kind: "INDEXNOW"` and `component: "indexnow"` accept
+only the bounded submission result contract: publication ID, result code,
+last real submission and last HTTP 200 timestamps, attempted URL count,
+separate HTTP 200/202 counts, an optional HTTP status, pending count and
+oldest-pending timestamp, a safe error code/summary, and at most ten validated
+`https://terento.app/` URL preview entries. Keys, key locations, authorization
+values, raw requests/responses, exception text, and private paths are rejected
+by the allowlist. HTTP 200/201 from this route means only that the report was
+stored; it is not an IndexNow HTTP 200.
+
+`observationId` is also the retry identity when a workflow must resend the
+same report. The existing observation table is the durable store; no second
+IndexNow queue is created. The route does not execute tests, accept raw logs,
+or expose a public read API; retained results are shown only on authenticated
+`/admin/system-health`.
 
 ## `GET /internal/operations/report-context`
 

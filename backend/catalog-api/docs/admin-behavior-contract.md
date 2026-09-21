@@ -516,3 +516,24 @@ formulas, sorting, filtering, pagination, or device actions.
 - System health retains its result cards, badges, collapsed/expanded evidence,
   and diagnostic actions, but does not show the explanatory summary paragraph
   about healthy checks staying collapsed.
+
+- System health includes exactly one **IndexNow submissions** card. It reuses
+  the common health badge, status sorting/filtering, disclosure behavior, and
+  authenticated workflow link. The collapsed view shows the safe result,
+  last real submission or `No submissions yet`, and pending URL count when the
+  sender knows it. The expanded view distinguishes Last check, Last
+  submission, Last successful submission (HTTP 200), execution URL/HTTP
+  counts, pending/oldest-pending values, safe error/action text, and a maximum
+  ten-URL public preview. It includes the exact explanation `Submission status
+  only. This does not confirm search indexing.` and never offers submit/retry
+  or key/configuration controls.
+
+- IndexNow health is independent from API, database, site, and catalog health.
+  HTTP 200 with no pending URLs is `HEALTHY`; HTTP 202 is validation-pending
+  `WARNING`; temporary failures with retained pending URLs are `WARNING`; key,
+  domain, request, or live-verification errors are `FAILED`; bootstrap or
+  absent evidence is `UNKNOWN`. Unknown counts remain `—`, never zero. A
+  missing-report warning is evaluated only when the latest retained site
+  deployment has `indexnow_expected: true` and its 30-minute grace period has
+  elapsed. Old or superseded deployments, PR/fork/dry-run runs, and historical
+  deployments before this contract are not missing reports.

@@ -313,6 +313,27 @@ Overview attention is independent of the statistics date filter. Visible admin
 pages check every minute and offer Refresh when data changes, protecting unsaved
 form edits.
 
+### IndexNow submission observations
+
+The site workflow uses the existing authenticated operations observation route
+for one bounded `INDEXNOW/indexnow` report per eligible deployment execution.
+The report is separate from the IndexNow sender: sender state remains in
+`.github/indexnow/site-state.json`, while the API stores the latest safe report
+and its historical idempotent record. The report preserves the last real
+submission and last HTTP 200 timestamps across no-change runs, keeps HTTP 202
+validation-pending distinct from HTTP 200, and never treats an unknown pending
+count as zero. A report-delivery retry does not repeat an already successful
+IndexNow request. The System health card warns about a missing report only for
+an explicitly expected result after the workflow-aligned 30-minute grace
+period; it does not infer a new deployment from old observations and does not
+claim search indexing.
+
+Deploy the additive migration
+`src/terento_catalog/migrations/061_indexnow_operational_observations.sql`
+and verify API health before enabling the site workflow's `INDEXNOW` report
+format. The observation contract rejects keys, key locations, authorization
+values, raw payloads/responses, exception text, and private paths.
+
 At phone widths (up to 700 px), admin navigation collapses into Menu with a review
 shortcut, Overview attention precedes statistics, and the existing tables become
 labelled records. Search remains visible; secondary device/installation filters

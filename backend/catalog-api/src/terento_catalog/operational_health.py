@@ -7,12 +7,55 @@ from typing import Any
 from urllib.parse import urlsplit
 
 
-KINDS = {"WEEKLY_TEST", "RELEASE_GATE", "DEPLOYMENT"}
-COMPONENTS = {"test-matrix", "release", "site", "catalog-api"}
+KINDS = {"WEEKLY_TEST", "RELEASE_GATE", "DEPLOYMENT", "INDEXNOW"}
+COMPONENTS = {"test-matrix", "release", "site", "catalog-api", "indexnow"}
 STATUSES = {"HEALTHY", "WARNING", "FAILED", "UNKNOWN"}
 IDENTIFIER = re.compile(r"[A-Za-z0-9._:-]{1,160}")
 COMMIT_SHA = re.compile(r"[0-9a-f]{40}")
 SEMVER = re.compile(r"\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?")
+INDEXNOW_RESULTS = {
+    "submitted",
+    "validation_pending",
+    "no_changes",
+    "pending_retry",
+    "action_required",
+    "not_initialized",
+    "bootstrap",
+    "live_verification_failed",
+    "partial_success",
+}
+INDEXNOW_ERROR_CODES = {
+    "validation_pending",
+    "missing_configuration",
+    "live_verification_failed",
+    "key_verification_failed",
+    "http_400",
+    "http_403",
+    "http_422",
+    "http_429",
+    "http_5xx",
+    "network_timeout",
+    "pending_retry",
+    "report_delivery_failed",
+}
+INDEXNOW_DETAIL_KEYS = {
+    "publication_id",
+    "result",
+    "last_submission_at",
+    "last_successful_submission_at",
+    "attempted_url_count",
+    "http_200_count",
+    "http_202_count",
+    "http_status",
+    "pending_url_count",
+    "oldest_pending_at",
+    "error_code",
+    "error_summary",
+    "url_preview",
+    "url_preview_count",
+    "url_preview_total",
+}
+PUBLIC_URL_HOST = "terento.app"
 
 
 class OperationalObservationError(ValueError):
@@ -140,6 +183,13 @@ def validate_observation(document: dict[str, Any]) -> dict[str, Any]:
         if isinstance(value, str) and len(value) > 500:
             raise OperationalObservationError("invalid_detail_value")
         normalized_details[key] = value
+    if kind != "INDEXNOW" and component == "indexnow":
+        raise OperationalObservationError("invalid_observation_classification")
+    if kind == "INDEXNOW" and component != "indexnow":
+        raise OperationalObservationError("invalid_observation_classification")
+    if kind == "INDEXNOW":
+        normalized_details = _validate_indexnow_details(normalized_details)
+
     # Keep storage bounded independently from the HTTP body limit.
     if len(json.dumps(normalized_details, separators=(",", ":"))) > 8_000:
         raise OperationalObservationError("invalid_details")
@@ -203,3 +253,105 @@ def _optional_text(value: Any, maximum: int) -> str | None:
     if len(candidate) > maximum or any(ord(character) < 32 and character not in "\n\t" for character in candidate):
         raise OperationalObservationError("invalid_text_value")
     return candidate
+
+
+def _validate_indexnow_details(details: dict[str, str | int | float | bool | None]) -> dict[str, str | int | float | bool | None]:
+    """Validate the deliberately small, secret-free IndexNow report shape."""
+
+    if set(details) - INDEXNOW_DETAIL_KEYS:
+        raise OperationalObservationError("invalid_indexnow_details")
+
+    publication_id = details.get("publication_id")
+    if not isinstance(publication_id, str) or not IDENTIFIER.fullmatch(publication_id):
+        raise OperationalObservationError("invalid_indexnow_publication_id")
+
+    result = details.get("result")
+    if not isinstance(result, str) or result not in INDEXNOW_RESULTS:
+        raise OperationalObservationError("invalid_indexnow_result")
+
+    for field in ("last_submission_at", "last_successful_submission_at", "oldest_pending_at"):
+        value = details.get(field)
+        if value is not None:
+            if not isinstance(value, str) or _parse_report_timestamp(value) is None:
+                raise OperationalObservationError("invalid_indexnow_timestamp")
+
+    for field in ("attempted_url_count", "http_200_count", "http_202_count", "pending_url_count", "http_status", "url_preview_count", "url_preview_total"):
+        value = details.get(field)
+        if value is None:
+            continue
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise OperationalObservationError("invalid_indexnow_count")
+    status = details.get("http_status")
+    if status is not None and not 100 <= status <= 599:
+        raise OperationalObservationError("invalid_indexnow_http_status")
+    http_200_count = details.get("http_200_count")
+    http_202_count = details.get("http_202_count")
+    if result == "submitted" and (status != 200 or not isinstance(http_200_count, int) or http_200_count <= 0):
+        raise OperationalObservationError("invalid_indexnow_result_evidence")
+    if result == "validation_pending" and (status != 202 or not isinstance(http_202_count, int) or http_202_count <= 0):
+        raise OperationalObservationError("invalid_indexnow_result_evidence")
+    if status not in {None, 200, 202} and any(
+        details.get(field, 0) not in {None, 0}
+        for field in ("http_200_count", "http_202_count")
+    ):
+        raise OperationalObservationError("invalid_indexnow_result_evidence")
+
+    error_code = details.get("error_code")
+    if error_code is not None and (not isinstance(error_code, str) or error_code not in INDEXNOW_ERROR_CODES):
+        raise OperationalObservationError("invalid_indexnow_error_code")
+    error_summary = details.get("error_summary")
+    if error_summary is not None:
+        if not isinstance(error_summary, str) or error_summary not in {
+            "IndexNow configuration is missing.",
+            "The public IndexNow key check failed.",
+            "Live public-site verification failed before notification.",
+            "IndexNow validation is still pending.",
+            "IndexNow returned a permanent request error.",
+            "IndexNow is temporarily unavailable; pending URLs will be retried.",
+            "The IndexNow submission was only partially accepted.",
+            "The operational report could not be delivered after retries.",
+        }:
+            raise OperationalObservationError("invalid_indexnow_error_summary")
+
+    preview = details.get("url_preview")
+    preview_urls = []
+    if preview is not None:
+        if not isinstance(preview, str) or len(preview) > 2_000:
+            raise OperationalObservationError("invalid_indexnow_url_preview")
+        preview_urls = [line for line in preview.split("\n") if line]
+        if len(preview_urls) > 10 or any(not _is_public_url(url) for url in preview_urls):
+            raise OperationalObservationError("invalid_indexnow_url_preview")
+    preview_count = details.get("url_preview_count")
+    preview_total = details.get("url_preview_total")
+    if preview_count is not None and preview_count != len(preview_urls):
+        raise OperationalObservationError("invalid_indexnow_url_preview")
+    if preview_total is not None and preview_total < len(preview_urls):
+        raise OperationalObservationError("invalid_indexnow_url_preview")
+    if preview_total is not None and preview_count is None:
+        raise OperationalObservationError("invalid_indexnow_url_preview")
+    if preview_total is not None and preview_total > 10_000:
+        raise OperationalObservationError("invalid_indexnow_url_preview")
+
+    return details
+
+
+def _parse_report_timestamp(value: str) -> datetime | None:
+    try:
+        parsed = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    if parsed.tzinfo is None:
+        return None
+    return parsed.astimezone(timezone.utc)
+
+
+def _is_public_url(value: str) -> bool:
+    parsed = urlsplit(value)
+    return (
+        parsed.scheme == "https"
+        and parsed.netloc == PUBLIC_URL_HOST
+        and parsed.path.startswith("/")
+        and (parsed.path == "/" or parsed.path.endswith("/"))
+        and not parsed.query
+        and not parsed.fragment
+    )
