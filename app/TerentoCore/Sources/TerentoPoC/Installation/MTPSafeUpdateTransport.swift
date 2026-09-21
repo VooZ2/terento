@@ -24,7 +24,8 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
         self.lifecycleLease = lifecycleLease
         self.deviceReader = MTPTransport(
             operationGate: operationGate,
-            lifecycleLease: lifecycleLease
+            lifecycleLease: lifecycleLease,
+            operationProfile: operationProfile
         )
         self.mapTransport = MTPMapInstallationTransport(
             operationProfile: operationProfile,
@@ -261,6 +262,13 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
         }
     }
 
+    func readProtectedInventory() throws -> SafeUpdateInventorySnapshot {
+        // The native session checks the immutable physical profile before
+        // enumerating; a separate identity snapshot would permit substitution.
+        SafeUpdateInventorySnapshot(storageID: operationProfile.expectedStorageID,
+            files: try deviceReader.readFileInventory(operationProfile: operationProfile))
+    }
+
     func rescanObjects() throws -> [SafeUpdateRemoteObject] {
         let files = try deviceReader.readFileInventory().filter {
             !$0.isFolder
@@ -274,7 +282,7 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
         )
 
         return files.compactMap { file in
-            let metadata = prefixes[file.itemID].flatMap {
+            let metadata = prefixes[file.stableIdentity].flatMap {
                 contextualMetadata($0, filename: file.filename) ?? GarminIMGMetadataParser().parse($0, filename: file.filename)
             }
             guard let metadata,
@@ -300,7 +308,7 @@ struct MTPSafeUpdateTransport: SafeUpdateTransport, Sendable {
         let mtpFile = DeviceFile(
             itemID: file.itemID ?? 0,
             parentID: 0,
-            storageID: 0,
+            storageID: operationProfile.expectedStorageID,
             path: file.path,
             filename: file.filename,
             sizeBytes: file.sizeBytes,

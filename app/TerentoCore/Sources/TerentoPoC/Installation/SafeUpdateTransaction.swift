@@ -285,10 +285,18 @@ enum SafeUpdateTransportError: LocalizedError, Equatable, Sendable {
     }
 }
 
+/// A complete inventory read in a session validated against the operation's
+/// physical device profile. Storage is the immutable operation destination.
+struct SafeUpdateInventorySnapshot: Sendable {
+    let storageID: UInt32
+    let files: [DeviceFile]
+}
+
 /// The Stage 5.3 transport includes only operations needed by this
 /// coordinator. Device adapters must implement transaction cleanup only for
 /// the exact object returned by this transaction, never by filename alone.
 protocol SafeUpdateTransport: SafeDeleteTransport, Sendable {
+    func readProtectedInventory() throws -> SafeUpdateInventorySnapshot
     func inspectCurrentObject(_ expected: SafeUpdateRemoteObject) throws -> SafeUpdateRemoteObject
 
     func writeTransactionObject(
@@ -641,15 +649,31 @@ struct SafeUpdateTransaction: Sendable {
         }
         let targetPath = "/GARMIN/\(targetFilename)"
 
+        let protectedBaseline: ProtectedMapInventory
+        let oldKey: ProtectedMapInventory.Key
+        let newKey: ProtectedMapInventory.Key
         do {
-            let occupied = try transport.rescanObjects().contains {
-                $0.file.path == targetPath || $0.file.filename == targetFilename
-            }
-            guard !occupied else {
-                return failure(.failedWrite, "The safe update target already exists. Nothing was overwritten.", storagePlan: storagePlan)
+            let snapshot = try transport.readProtectedInventory()
+            guard snapshot.storageID != 0 else { throw ProtectedMapInventory.Invalid.malformedLocation }
+            oldKey = ProtectedMapInventory.Key(storageID: snapshot.storageID,
+                path: current.file.path, filename: current.file.filename,
+                sizeBytes: current.file.sizeBytes, isFolder: false)
+            newKey = ProtectedMapInventory.Key(storageID: snapshot.storageID,
+                path: targetPath, filename: targetFilename,
+                sizeBytes: artifact.installSizeBytes, isFolder: false)
+            protectedBaseline = try ProtectedMapInventory(files: snapshot.files,
+                forcedLocations: [oldKey.location, newKey.location])
+            guard protectedBaseline.protected.contains(oldKey),
+                  !snapshot.files.contains(where: {
+                      $0.storageID == snapshot.storageID
+                          && $0.path.lowercased() == targetPath.lowercased()
+                  }) else {
+                return failure(.blockedCurrentObjectChanged,
+                    "The installed map or replacement location changed. Nothing was changed.", storagePlan: storagePlan)
             }
         } catch {
-            return failure(.failedDeviceDisconnected, "The Garmin device could not be scanned before the new map was written.", storagePlan: storagePlan)
+            return failure(.failedPostVerify,
+                "Existing device content could not be checked safely. Nothing was changed.", storagePlan: storagePlan)
         }
 
         emit(.writing, onProgress)
@@ -768,12 +792,26 @@ struct SafeUpdateTransaction: Sendable {
             // without a redundant local full-file copy or backup.
         )
         guard deleteResult.isSuccess else {
-            return failure(.failedCommit, "The new map is verified, but the previous map could not be removed. No success was reported.", storagePlan: storagePlan, newObject: verified)
+            return failure(.failedCommit, "The new map is verified, but removal of the previous map could not be confirmed. The update was not recorded as complete.", storagePlan: storagePlan, newObject: verified,
+                oldMapPreserved: false)
         }
 
         emit(.postVerifying, onProgress)
         let finalObjects: [SafeUpdateRemoteObject]
         do {
+            let snapshot = try transport.readProtectedInventory()
+            let finalInventory = try ProtectedMapInventory(files: snapshot.files,
+                forcedLocations: protectedBaseline.protectedLocations.union([newKey.location]))
+            guard snapshot.storageID == oldKey.storageID,
+                  verified.file.path == newKey.path,
+                  verified.file.filename == newKey.filename,
+                  verified.file.sizeBytes == newKey.sizeBytes,
+                  finalInventory.isExactReplacement(of: protectedBaseline,
+                      removing: oldKey, adding: newKey) else {
+                return failure(.failedPostVerify,
+                    "Existing device content changed during the update. The update was not recorded as complete.",
+                    storagePlan: storagePlan, newObject: verified, oldMapPreserved: false)
+            }
             finalObjects = try transport.rescanObjects()
         } catch {
             return failure(.failedPostVerify, "The device could not be rescanned after the update.", storagePlan: storagePlan, newObject: verified, oldMapPreserved: false)
