@@ -70,10 +70,14 @@ records are retained and deduplicated by URL plus content fingerprint; pending
 records, including their known oldest-pending time, are carried into the next
 plan and retried. A no-change run does not change either submission timestamp.
 The workflow updates only this file after successful live verification through
-an automated pull request to the protected `beta` branch; the state PR waits
-for the required `build-and-test` check and is merged only when it passes. The
-path is outside the site deployment filters, so state retention does not
-trigger a second site deployment. If the file is
+a state-only pull request to the protected `beta` branch; the path is outside
+the site deployment filters, so state retention does not trigger a second site
+deployment. A PR created with the default `GITHUB_TOKEN` does not trigger new
+`pull_request` workflows on GitHub, so the state PR must be created with an
+approved non-`GITHUB_TOKEN` automation identity for the workflow to wait for
+`build-and-test` and merge it automatically. Until that identity is provisioned,
+the deploy retains the state as a fallback artifact and an operator must merge
+the state-only PR after the normal checks pass. If the file is
 missing or invalid, the next confirmed publication records a bootstrap
 baseline and sends no bulk notification; it does not infer a full-sitemap
 submission.
