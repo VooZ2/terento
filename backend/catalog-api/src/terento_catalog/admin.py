@@ -3132,7 +3132,7 @@ def map_statistics_page(
         {linkage_section}
         <section class='map-statistics-empty' id='map-statistics-empty' {'hidden' if has_event_data else ''} aria-live='polite'><h2>No map activity</h2><p>Try a wider time range or clear your filters. If all-time activity is empty, no map-operation reports have been received.</p><a href='/admin/map-statistics?period=all'>View all map activity</a></section>
         <section class='provider-card map-statistics-provider-table' id='map-statistics-provider-table' {'hidden' if not has_event_data else ''}><div class='section-heading'><div><h2>Activity by provider</h2></div></div><div class='table-wrap provider-table-wrap'><table class='admin-table'><caption class='sr-only'>Activity by provider</caption><thead><tr><th scope='col'>Provider</th><th scope='col' class='column-number'>Downloads</th><th scope='col' class='column-number'>Failed downloads</th><th scope='col' class='column-number'>Fresh installs</th><th scope='col' class='column-number'>Successful updates</th><th scope='col' class='column-number'>Failed updates</th><th scope='col' class='column-number'>Fresh install success</th><th scope='col' class='column-number'>Update success</th><th scope='col' class='column-date'>Last install</th></tr></thead><tbody id='provider-statistic-rows'></tbody></table></div></section>
-        <section class='map-statistics-coverage-layout' id='map-statistics-coverage' {'hidden' if not has_event_data else ''} aria-label='Installation coverage'><section class='provider-card map-statistics-world-map-card' aria-labelledby='map-statistics-world-map-title'><div class='section-heading'><div><h2 id='map-statistics-world-map-title'>Installations by country</h2></div><p class='table-help' id='map-statistics-world-map-status'>Successful installs</p></div><div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map showing successful installs by country'><div class='world-map-controls' role='group' aria-label='Map navigation'><button type='button' data-map-zoom='in' aria-label='Zoom in'>+</button><button type='button' data-map-zoom='out' aria-label='Zoom out'>−</button><button type='button' data-map-zoom='reset'>Reset map</button><span id='world-map-zoom-status' role='status'>100%</span></div><div class='world-map-svg' id='world-map-svg' tabindex='0' aria-label='Map viewport. Use arrow keys to pan, plus and minus to zoom, or drag the map.'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div></section><section class='provider-card map-statistics-popularity' id='map-statistics-popularity' tabindex='0' aria-label='Popular maps and regions'><div class='section-heading'><div><h2>Popular maps</h2></div></div><div class='map-statistics-popularity-views'><section class='popularity-view' data-popularity-view='top' id='top-maps-view' aria-labelledby='top-maps-title'><h3 id='top-maps-title'>Top 5 maps</h3><div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Top 5 popular maps</caption><thead><tr><th scope='col'>Map</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='map-rows'></tbody></table></div></section><section class='popularity-view' data-popularity-view='regions' id='regions-view' aria-labelledby='regions-title' hidden><h3 id='regions-title'>Regions</h3><div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Popular regions</caption><thead><tr><th scope='col'>Region</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='top-region-rows'></tbody></table></div></section><section class='popularity-view' data-popularity-view='all' id='all-maps-view' aria-labelledby='all-maps-title' hidden><h3 id='all-maps-title'>All maps</h3><label class='popularity-search-label' for='all-maps-search'>Search maps</label><input type='search' id='all-maps-search' placeholder='Map, region or provider'><div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>All maps by region and provider</caption><thead><tr><th scope='col'>Map</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='all-map-rows'></tbody></table></div><div class='provider-pagination' aria-live='polite'><button type='button' id='all-maps-prev'>Previous</button><span id='all-maps-page' role='status'></span><button type='button' id='all-maps-next'>Next</button></div></section></div><nav class='popular-maps-nav' aria-label='Popular maps views'><button type='button' data-popularity-view-button='top' hidden>Top 5</button><button type='button' data-popularity-view-button='regions'>Regions</button><button type='button' data-popularity-view-button='all'>All maps</button></nav></section></section>
+        <section class='map-statistics-coverage-layout' id='map-statistics-coverage' {'hidden' if not has_event_data else ''} aria-label='Installation coverage'><section class='provider-card map-statistics-world-map-card' aria-labelledby='map-statistics-world-map-title'><div class='section-heading'><div><h2 id='map-statistics-world-map-title'>Installations by country</h2></div><p class='table-help' id='map-statistics-world-map-status'>Successful installs</p></div><div class='map-statistics-world-map' id='map-statistics-world-map' role='group' aria-label='World map showing successful installs by country'><div class='world-map-controls' role='group' aria-label='Map navigation'><button type='button' data-map-zoom='in' aria-label='Zoom in'>+</button><button type='button' data-map-zoom='out' aria-label='Zoom out'>−</button><button type='button' data-map-zoom='reset'>Reset map</button><span id='world-map-zoom-status' role='status'>100%</span></div><div class='world-map-svg' id='world-map-svg' tabindex='0' aria-label='Map viewport. Use arrow keys to pan, plus and minus to zoom, or drag the map.'></div><div class='world-map-tooltip' id='world-map-tooltip' role='status' aria-live='polite' hidden></div></div><div class='world-map-legend' aria-label='Installation coverage legend'><span>0</span><i class='world-map-legend-gradient' aria-hidden='true'></i><span id='world-map-legend-max'>Most</span></div></section><section class='provider-card map-statistics-popularity' id='map-statistics-popularity' tabindex='0' aria-label='Popular maps and regions'><div class='section-heading'><div><h2>Popular maps</h2></div></div><div class='map-statistics-popularity-views'><section class='popularity-view' data-popularity-view='top' id='top-maps-view' aria-labelledby='top-maps-title'><h3 id='top-maps-title'>Top 5</h3><div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Top 5</caption><thead><tr><th scope='col'>Map</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='map-rows'></tbody></table></div></section><section class='popularity-view' data-popularity-view='regions' id='regions-view' aria-labelledby='regions-title' hidden><h3 id='regions-title'>Regions</h3><div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>Popular regions</caption><thead><tr><th scope='col'>Region</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='top-region-rows'></tbody></table></div></section><section class='popularity-view' data-popularity-view='all' id='all-maps-view' aria-labelledby='all-maps-title' hidden><h3 id='all-maps-title'>All maps</h3><label class='popularity-search-label' for='all-maps-search'>Search maps</label><input type='search' id='all-maps-search' placeholder='Map, region or provider'><div class='table-wrap provider-table-wrap'><table class='admin-table popular-maps-table'><caption class='sr-only'>All maps by region and provider</caption><thead><tr><th scope='col'>Map</th><th scope='col' class='column-number'>Installs</th></tr></thead><tbody id='all-map-rows'></tbody></table></div><div class='provider-pagination' aria-live='polite'><button type='button' id='all-maps-prev'>Previous</button><span id='all-maps-page' role='status'></span><button type='button' id='all-maps-next'>Next</button></div></section></div><nav class='popular-maps-nav' aria-label='Popular maps views'><button type='button' data-popularity-view-button='top' hidden>Top 5</button><button type='button' data-popularity-view-button='regions'>Regions</button><button type='button' data-popularity-view-button='all'>All maps</button></nav></section></section>
         <section class='provider-card map-events-card' {'hidden' if not has_event_data else ''}><details class='admin-disclosure' id='map-statistics-event-detail'><summary id='map-statistics-event-summary'>Event detail <span class='disclosure-meta'>· {event_status}</span></summary><div class='disclosure-body' id='map-statistics-event-body'>{event_table}</div></details></section>
       </main>
       <link rel="stylesheet" href="/admin/map-assets/leaflet-1.9.4.css"><link rel="stylesheet" href="/admin/map-assets/coverage-map-v1.css"><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/leaflet-1.9.4.js"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/coverage-map-v1.js?v=20260913-coverage-sidebar-3"></script><script>window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};window.terentoWorldMapSvg = {_admin_json(WORLD_MAP_SVG)};window.terentoWorldMapCountryAliases = {_admin_json(WORLD_MAP_COUNTRY_ALIASES)};{_map_statistics_script()}</script>
@@ -3813,6 +3813,79 @@ def _identity_feature(candidate: dict[str, Any] | None, name: str) -> dict[str, 
                  for feature in check.get("features", []) if feature.get("name") == name), {})
 
 
+def _identity_conflict_lines(
+    results: list[dict[str, Any]], selected_id: str | None,
+    identity_devices: list[dict[str, Any]] | None = None,
+) -> list[str]:
+    """Render every concrete selected-model conflict across all result rows."""
+    if not selected_id:
+        return []
+    devices = {
+        str(device.get("id") or device.get("device_id") or ""): device
+        for device in identity_devices or []
+    }
+    selected_device = devices.get(str(selected_id))
+    selected_label = _identity_device_label(selected_device) if selected_device else "selected catalog model"
+    field_labels = {
+        "model": "Model", "size": "Case size", "screen": "Display",
+        "solar": "Solar", "inreach": "inReach", "xmlPartNumber": "Product mapping",
+        "usb": "USB mapping",
+    }
+    lines: list[str] = []
+    seen: set[tuple[str, str, str, str, str]] = set()
+    for result_index, result in enumerate(results, start=1):
+        assessment = result.get("current_identity_assessment") or result.get("identity_assessment") or {}
+        candidate = next((item for item in assessment.get("candidates", [])
+                          if str(item.get("deviceId") or "") == str(selected_id)), None)
+        if not candidate:
+            continue
+        result_id = str(result.get("event_id") or "").strip()
+        result_label = f"Diagnostic result {result_id}" if result_id else f"Diagnostic result {result_index}"
+
+        def add(field: str, reported: Any, source: Any, *, mapping_models: list[str] | None = None) -> None:
+            reported_text = "Not reported" if reported is None or reported == "" else str(reported)
+            source_text = str(source or "reported data")
+            mappings_text = ", ".join(mapping_models or [])
+            key = (result_label, field, reported_text, source_text, mappings_text)
+            if key in seen:
+                return
+            seen.add(key)
+            line = (f"{result_label}: {field_labels.get(field, field)}: reported "
+                    f"{reported_text} from {source_text}; selected model {selected_label}.")
+            if mappings_text:
+                line += f" Approved mapping models for this code: {mappings_text}."
+            lines.append(line)
+
+        for check in candidate.get("checks", []):
+            name = str(check.get("name") or "")
+            if (check.get("state") == "CONFLICT" and name == "model"
+                    and check.get("observedState", check.get("state")) == "CONFLICT"):
+                for evidence in check.get("evidence") or []:
+                    if evidence.get("value") != check.get("expected"):
+                        add(name, evidence.get("value"), evidence.get("source"))
+            if check.get("state") == "CONFLICT" and name in {"size", "screen"}:
+                for evidence in check.get("evidence") or []:
+                    if evidence.get("value") != check.get("expected"):
+                        add(name, evidence.get("value"), evidence.get("source"))
+            if check.get("state") == "CONFLICT" and name not in {"model", "size", "screen", "xmlPartNumber", "usb"}:
+                for evidence in check.get("evidence") or []:
+                    add(name, evidence.get("value"), evidence.get("source"))
+            if check.get("state") == "CONFLICT" and name in {"xmlPartNumber", "usb"}:
+                mapping_models = [
+                    _identity_device_label(devices.get(str(evidence.get("deviceId") or "")))
+                    for evidence in check.get("evidence") or []
+                    if str(evidence.get("deviceId") or "") in devices
+                ]
+                add(name, check.get("value"), check.get("codeKind") or name,
+                    mapping_models=[label for label in mapping_models if label != "selected catalog model"])
+            for feature in check.get("features") or []:
+                if feature.get("state") == "CONFLICT":
+                    for evidence in feature.get("evidence") or []:
+                        if evidence.get("value") != feature.get("expected"):
+                            add(str(feature.get("name") or "feature"), evidence.get("value"), evidence.get("source"))
+    return lines
+
+
 def _identity_source_label(evidence: list[dict[str, Any]] | None) -> str:
     sources = [str(item.get("source") or "") for item in evidence or []]
     has_catalog = any(source.startswith("catalog specification:") for source in sources)
@@ -3949,11 +4022,15 @@ def _identity_checks_markup(
         if isinstance(value, dict):
             decision = value
             break
-    candidate_conflict = bool(candidate and (candidate.get("conflict") or any(
+    selected_id = assigned or (str(candidate.get("deviceId")) if candidate else None)
+    conflict_lines = _identity_conflict_lines(results, selected_id, identity_devices)
+    candidate_conflict = bool(conflict_lines) or bool(candidate and (candidate.get("conflict") or any(
         check.get("state") == "CONFLICT" for check in candidate.get("checks", []))))
     if candidate_conflict:
         title = "Conflicting assignment"
-        action = "A regular Confirm is blocked for this selection. Use the explicit manual assignment action if the report is known to be wrong."
+        details = (" " + "<br>".join(html.escape(line) for line in conflict_lines)) if conflict_lines else ""
+        action = ("A regular Confirm is blocked for this selection. Use the explicit manual assignment action "
+                  "if the report is known to be wrong." + details)
     elif decision.get("decisionType") == "MANUAL_ASSIGNMENT":
         title, action = "Manual assignment", "The reported conflict and the administrator's choice remain in the audit."
     elif decision.get("deviceId"):
@@ -4405,15 +4482,12 @@ def _diagnostic_detail_dialog(
             ]
     options, current_label = _identity_device_options(picker_devices, selection_id)
     selected_candidate = _identity_candidate(results, selection_id or None)
-    selection_conflict = bool(selected_candidate and (selected_candidate.get("conflict") or any(
+    conflict_lines = _identity_conflict_lines(results, selection_id, identity_devices)
+    selection_conflict = bool(conflict_lines) or bool(selected_candidate and (selected_candidate.get("conflict") or any(
         check.get("state") == "CONFLICT" for check in selected_candidate.get("checks", []))))
-    conflict_detail = ""
-    if selection_conflict:
-        conflict_check = next((check for check in selected_candidate.get("checks", []) if check.get("state") == "CONFLICT"), None)
-        if conflict_check:
-            conflict_detail = "Reported " + str(conflict_check.get("name") or "value") + ": " + str(
-                (conflict_check.get("evidence") or [{}])[0].get("value") or conflict_check.get("value") or "unknown"
-            ) + ". Selected model: " + str(conflict_check.get("expected") or selected_candidate.get("model") or "different value")
+    conflict_detail = " ".join(conflict_lines) if conflict_lines else (
+        "The selected model conflicts with reported information." if selection_conflict else ""
+    )
     picker_hidden = bool(selection_id)
     search_id = f"identity-search-{dialog_id}"
     canonical_id = f"identity-canonical-{dialog_id}"
@@ -6124,11 +6198,40 @@ def _diagnostics_script() -> str:
           if (!response.ok) {
             let payload = {};
             try { payload = await response.json(); } catch (_) {}
+            const safeIdentityText = (value, fallback = 'Not reported') => {
+              if (value === null || value === undefined || value === '') return fallback;
+              if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+              return String(value).replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 200);
+            };
+            const identityFieldLabels = {
+              model: 'Model', caseSizeMm: 'Case size', screenTechnology: 'Display',
+              solar: 'Solar', inReach: 'inReach', USB: 'USB mapping',
+              XML_PART_NUMBER: 'Product mapping', RETAIL_SKU: 'Retail SKU mapping',
+            };
+            const identityConflictMessage = (responsePayload) => {
+              const conflicts = responsePayload?.details?.conflicts;
+              if (!Array.isArray(conflicts) || !conflicts.length) {
+                return 'The selected model conflicts with reported information. Confirm manual assignment if this is the intended correction.';
+              }
+              const lines = conflicts.map((detail, index) => {
+                const field = identityFieldLabels[detail?.field] || safeIdentityText(detail?.field, 'Identity field');
+                const source = safeIdentityText(detail?.source, 'reported data');
+                const reported = safeIdentityText(detail?.reported);
+                const selected = safeIdentityText(detail?.selectedModel || detail?.selected, 'selected catalog model');
+                const result = detail?.result || {};
+                const resultLabel = result.eventId ? `Diagnostic result ${safeIdentityText(result.eventId)}` : `Diagnostic result ${index + 1}`;
+                const mappings = Array.isArray(detail?.mappingModels) && detail.mappingModels.length
+                  ? ` Approved mapping models for this code: ${detail.mappingModels.map((value) => safeIdentityText(value, 'Unknown model')).join(', ')}.`
+                  : '';
+                return `${resultLabel}: ${field}: reported ${reported} from ${source}; selected model ${selected}.${mappings}`;
+              });
+              return `The selected model conflicts with reported information. ${lines.join(' ')} Use manual assignment to confirm it.`;
+            };
             const messages = {
               missing_model_selection: 'Choose a specific catalog model before confirming.',
               canonical_device_not_found: 'That catalog model is no longer available. Choose another model.',
               diagnostic_not_found: 'This diagnostic result is no longer available. Reload the review queue.',
-              identity_conflict_manual_required: 'The selected model conflicts with reported information. Confirm manual assignment if this is the intended correction.',
+              identity_conflict_manual_required: identityConflictMessage(payload),
               invalid_diagnostic_record: 'This diagnostic result identifier is invalid. Reload the review queue.',
             };
             const message = messages[payload.error] || (form.matches('[data-identity-form]')
@@ -6241,6 +6344,10 @@ def _diagnostics_script() -> str:
             label: option.dataset.identityDeviceLabel || option.textContent.trim(),
           })) : [];
           const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+          const clearStaleSelectionState = () => {
+            form.querySelector('[data-identity-conflict]')?.setAttribute('hidden', '');
+            form.querySelector('[data-manual-confirm]')?.setAttribute('hidden', '');
+          };
           const sync = () => {
             const hasSelection = Boolean(canonical?.value);
             if (confirm) confirm.disabled = !hasSelection;
@@ -6261,6 +6368,7 @@ def _diagnostics_script() -> str:
               button.dataset.identityDeviceLabel = choice.label;
               button.textContent = choice.label;
               button.addEventListener('click', () => {
+                clearStaleSelectionState();
                 if (canonical) canonical.value = choice.id;
                 if (search) search.value = choice.label;
                 if (results) results.hidden = true;
@@ -6281,6 +6389,7 @@ def _diagnostics_script() -> str:
             return matches;
           };
           edit?.addEventListener('click', () => {
+            clearStaleSelectionState();
             if (wrap) wrap.hidden = false;
             if (results) results.hidden = false;
             render('');
@@ -6288,6 +6397,7 @@ def _diagnostics_script() -> str:
             sync();
           });
           search?.addEventListener('input', () => {
+            clearStaleSelectionState();
             const selected = choices.find(choice => choice.id === canonical?.value);
             if (!selected || normalize(search.value) !== normalize(selected.label)) {
               if (canonical) canonical.value = '';
@@ -7103,10 +7213,9 @@ button:active:not(:disabled),.button-link:active,.copy-button:active{transform:s
 .map-statistics-popularity .table-wrap .popular-map-detail{display:block;min-width:0;color:var(--secondary);font-size:11px;font-weight:400;line-height:1.35;overflow-wrap:anywhere}
 .map-statistics-popularity .table-wrap .popular-map-count-label{display:inline-flex;align-items:baseline;gap:3px;white-space:nowrap;font-weight:400}
 .map-statistics-popularity .table-wrap .popular-map-count-label>strong{font-weight:750}
-.map-statistics-popularity .table-wrap .region-map-link{position:relative;display:inline-flex;width:auto;max-width:100%;min-height:40px;align-items:flex-start;color:inherit;font-weight:400;line-height:1.35;text-align:left;text-decoration:none;white-space:normal;overflow-wrap:anywhere}
+.map-statistics-popularity .table-wrap .region-map-link{position:relative;display:inline-flex;width:auto;max-width:100%;min-height:0;padding:0;align-items:flex-start;color:inherit;font-weight:400;line-height:1.35;text-align:left;text-decoration:none;white-space:normal;overflow-wrap:anywhere}
 .map-statistics-popularity .table-wrap .region-map-link::after{content:'';position:absolute;inset:0;min-width:44px;min-height:44px}
 .map-statistics-popularity .region-map-link:hover,.map-statistics-popularity .region-map-link:focus-visible{text-decoration:underline}
-@media(max-width:700px){.map-statistics-popularity .table-wrap .region-map-link{min-height:44px}}
 .map-statistics-world-map-card .section-heading{flex-wrap:wrap}
 .map-statistics-world-map-card .map-statistics-world-map{padding:0;min-height:0}
 .map-statistics-world-map-card .world-map-svg{height:auto;min-height:0;aspect-ratio:900 / 365}

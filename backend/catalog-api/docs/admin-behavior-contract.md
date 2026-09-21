@@ -367,6 +367,16 @@ identity audit trail. Existing source-correction and mapping-review controls
 remain available in technical/admin workflows; they are not duplicated in the
 compact confirmation form.
 
+The `identity_conflict_manual_required` response keeps the stable error code and
+adds a bounded `details.conflicts` array. Each item identifies the diagnostic
+result, conflicting field, reported value, source, selected catalog model and
+selected field value; approved identifier conflicts also list the catalog models
+mapped to that exact code. All conflicting results in the selected operation are
+included. Missing or unconfirmed facts remain `MISSING`/unknown and do not
+create a conflict. The browser renders these fields as text and falls back to
+the generic message when details are absent; exception, SQL and stack-trace
+text are never exposed.
+
 The shared implementation is in `identity_assessment.py` (safe observations,
 catalog-derived facts and conflict checks), `db.py` (strict result scope,
 validated persistence and audit), `admin.py` (compact review and diagnostic
@@ -475,7 +485,10 @@ formulas, sorting, filtering, pagination, or device actions.
   the count remains top-right, the secondary line remains below the left
   content, and the separator cannot become an orphan. Regions and All maps
   retain their existing scroll/search/page behavior, and the map button keeps
-  its full focus/click target.
+  its full focus/click target. The visible summary heading is `Top 5`; each
+  primary row and its optional secondary metadata line form one compact flow
+  without a reserved empty row. Missing dates omit only their text, not the
+  row or its divider.
 
 - Admin tables use semantic `column-number`, `column-status`, and
   `column-date` classes on headers and cells. Text and dates are left aligned;

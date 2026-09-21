@@ -1,6 +1,6 @@
 import unittest
 
-from terento_catalog.identity_assessment import assess_identity
+from terento_catalog.identity_assessment import assess_identity, selected_identity_conflicts
 
 
 class IdentityAssessmentTests(unittest.TestCase):
@@ -125,6 +125,25 @@ class IdentityAssessmentTests(unittest.TestCase):
         result = assess_identity(self.event, [device], self.mappings)
         self.assertIsNone(result['canonicalDeviceId'])
         self.assertEqual(result['candidates'][0]['checks'][0]['state'], 'MISSING')
+
+    def test_matching_fenix_normalization_and_unknown_mapping_are_not_conflicts(self):
+        device = dict(self.device, model='fēnix 8', case_size_mm='51', solar=None, inreach=None)
+        event = {
+            'model': 'fenix 8', 'rawMTPModel': 'fenix 8 – 51mm, AMOLED',
+            'caseSizeMm': '51', 'displayType': 'AMOLED',
+            'usbVendorID': 2334, 'usbProductID': 20920,
+        }
+        result = assess_identity(event, [device], [])
+        self.assertFalse(result['candidates'][0]['conflict'])
+        self.assertEqual(selected_identity_conflicts(event, device, []), [])
+        self.assertNotEqual(result['candidates'][0]['checks'][0]['state'], 'CONFLICT')
+
+    def test_unknown_features_and_unconfirmed_mapping_are_not_false_conflicts(self):
+        device = dict(self.device, solar=None, inreach=None)
+        event = dict(self.event, rawMTPModel='fenix 8 Pro 51mm AMOLED', displayType=None)
+        pending = [dict(mapping, status='PENDING') for mapping in self.mappings]
+        self.assertEqual(selected_identity_conflicts(event, device, pending), [])
+        self.assertFalse(assess_identity(event, [device], pending)['candidates'][0]['conflict'])
 
     def test_variant_field_cannot_hide_solar_conflict(self):
         result = assess_identity(dict(self.event, variant='Solar'), [self.device], self.mappings)

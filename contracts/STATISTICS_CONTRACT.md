@@ -174,7 +174,10 @@ other views where their existing formulas require them. Top 5 and Regions
 group by canonical country/region across providers. All maps groups by
 canonical country/region plus provider. A popularity timestamp is the last
 successful fresh install eligible for that grouped row, not arbitrary activity
-or an update.
+or an update. The Admin presentation labels the summary view `Top 5`; Top 5,
+Regions, and All maps rows use compact primary/secondary geometry, so an absent
+optional date does not reserve an empty line. These are presentation rules only
+and do not change the popularity population, grouping, ordering, or pagination.
 
 Map-statistics `provider`, `map`, `region`, and date filters define the KPI,
 coverage, and popularity population. `eventType`, `outcome`, and pagination

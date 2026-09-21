@@ -358,7 +358,14 @@ the retained diagnostic lifecycle, while `POST /admin/diagnostics/workflow`
 changes only the non-terminal `IN_PROGRESS`/`UNDER_REVIEW` workflow state and
 rejects `OPEN` when a GitHub issue is linked. `POST /admin/diagnostics/identity`
 assigns or leaves an exact canonical Garmin record and writes an identity audit
-entry. `POST /admin/diagnostics/issue` links, changes, or removes a GitHub issue
+entry. A normal `ASSIGN` that encounters concrete conflicts returns HTTP 409
+with `{"error":"identity_conflict_manual_required","details":{"conflicts":[...]}}`.
+Each bounded conflict item carries the diagnostic result, field, reported value,
+source, selected value/model and, for approved identifier mappings, the catalog
+models mapped to that exact code; all conflicting results are included. Unknown
+or unconfirmed facts do not create this error. The stable error code remains
+unchanged, and the response never contains exception text, SQL or a stack trace.
+`POST /admin/diagnostics/issue` links, changes, or removes a GitHub issue
 reference without changing evidence outcome or diagnostic lifecycle; linking an
 active row also initializes its workflow state. The create-issue
 flow opens a sanitized prefilled GitHub form; it does not create an issue for
