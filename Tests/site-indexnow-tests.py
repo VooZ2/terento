@@ -219,6 +219,64 @@ def test_delta_selection_and_bootstrap() -> None:
     assert indexnow.build_plan(current, indexnow.empty_state(), True)["entries"] == []
 
 
+def test_explicit_manual_submission_bootstraps_one_selected_url() -> None:
+    with tempfile.TemporaryDirectory(prefix="terento-indexnow-manual-") as temporary:
+        root = Path(temporary)
+        manifest_path = root / "manifest.json"
+        manifest_path.write_text(json.dumps({
+            "schemaVersion": 1,
+            "baseUrl": "https://terento.app",
+            "pages": [page("/", fingerprint="home"), page("/about/", fingerprint="about")],
+        }), encoding="utf-8")
+        state_path = root / "state.json"
+        state_path.write_text(json.dumps(indexnow.empty_state()), encoding="utf-8")
+        plan_path = root / "plan.json"
+        report_path = root / "report.json"
+        calls: list[list[str]] = []
+        original_post = indexnow.post_indexnow
+        indexnow.post_indexnow = lambda _key, urls: (calls.append(urls) or (200, None, 1))
+        try:
+            args = type("Args", (), {
+                "mode": "send",
+                "current_manifest": manifest_path,
+                "state": state_path,
+                "plan_out": plan_path,
+                "published_commit": "manual-bootstrap",
+                "key": "a" * 32,
+                "report_out": report_path,
+                "publication_id": "manual-1",
+                "report_result": None,
+                "error_code": None,
+                "manual_url": "https://terento.app/",
+            })()
+            assert indexnow.run(args) == 0
+        finally:
+            indexnow.post_indexnow = original_post
+
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        assert calls == [["https://terento.app/"]]
+        assert state["status"] == "published"
+        assert [record["url"] for record in state["indexNow"]["accepted"]] == ["https://terento.app/"]
+        assert report["details"]["attempted_url_count"] == 1
+        assert report["details"]["http_status"] == 200
+        assert report["details"]["pending_url_count"] == 0
+
+        invalid_args = type("Args", (), {
+            "mode": "send", "current_manifest": manifest_path, "state": state_path,
+            "plan_out": plan_path, "published_commit": "manual-bootstrap",
+            "key": "a" * 32, "report_out": report_path, "publication_id": "manual-1",
+            "report_result": None, "error_code": None,
+            "manual_url": "https://terento.app/about",
+        })()
+        try:
+            indexnow.run(invalid_args)
+        except ValueError as error:
+            assert "canonical trailing slash" in str(error)
+        else:
+            raise AssertionError("manual mode accepted a non-canonical URL")
+
+
 def test_publication_state_survives_independent_runs() -> None:
     with tempfile.TemporaryDirectory(prefix="terento-indexnow-state-") as temporary:
         root = Path(temporary)

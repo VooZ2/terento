@@ -132,7 +132,7 @@ class IndexNowObservationTests(unittest.TestCase):
         self.assertNotIn("keyLocation", serialized)
         self.assertNotIn("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", serialized)
 
-    def test_card_submitted_validation_pending_action_required_and_not_initialized(self) -> None:
+    def test_card_collapsed_summary_contains_only_title_and_health_badge(self) -> None:
         now = datetime.now(timezone.utc)
         for report, expected_status, expected_text in (
             (observation(), "HEALTHY", "Submitted"),
@@ -144,10 +144,20 @@ class IndexNowObservationTests(unittest.TestCase):
             card = next(item for item in cards if item["title"] == "IndexNow submissions")
             self.assertEqual(card["status"], expected_status)
             self.assertIn(expected_text, card["html"])
+            summary = card["html"].split("<summary>", 1)[1].split("</summary>", 1)[0]
+            self.assertIn("<h2>IndexNow submissions</h2>", summary)
+            self.assertEqual(summary.count("system-health-badge"), 1)
+            self.assertNotIn("health-issue", summary)
+            self.assertNotIn("Result:", summary)
+            self.assertNotIn("Last ", summary)
+            self.assertNotIn("Pending", summary)
         cards, _, _ = _system_health_cards({"providers": [], "observations": [], "scheduler": None})
         card = next(item for item in cards if item["title"] == "IndexNow submissions")
         self.assertEqual(card["status"], "UNKNOWN")
-        self.assertIn("Not initialized", card["html"])
+        summary = card["html"].split("<summary>", 1)[1].split("</summary>", 1)[0]
+        details = card["html"].split("<div class='disclosure-body'>", 1)[1].split("</div></details>", 1)[0]
+        self.assertIn("Not initialized", details)
+        self.assertNotIn("Not initialized", summary)
         self.assertIn("Submission status only. This does not confirm search indexing.", card["html"])
 
     def test_pending_unknown_is_not_rendered_as_zero_and_missing_report_has_grace_period(self) -> None:

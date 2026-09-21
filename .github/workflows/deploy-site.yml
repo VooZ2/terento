@@ -18,6 +18,12 @@ on:
       - "scripts/submit-indexnow.py"
       - "scripts/verify-live-site.py"
   workflow_dispatch:
+    inputs:
+      indexnow_manual_url:
+        description: "Optional explicit one-URL IndexNow submission"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -153,16 +159,23 @@ jobs:
         id: indexnow_submit
         if: steps.current.outputs.deploy == 'true' && steps.live_content.outcome == 'success' && steps.indexnow_key.outcome == 'success'
         continue-on-error: true
+        env:
+          INDEXNOW_MANUAL_URL: ${{ inputs.indexnow_manual_url }}
         shell: bash
         run: |
           set -euo pipefail
+          manual_args=()
+          if [ -n "${INDEXNOW_MANUAL_URL:-}" ]; then
+            manual_args+=(--manual-url "$INDEXNOW_MANUAL_URL")
+          fi
           python3 scripts/submit-indexnow.py --send \
             --current-manifest "$RUNNER_TEMP/site-manifest.json" \
             --state "$RUNNER_TEMP/indexnow-state.json" \
             --plan-out "$RUNNER_TEMP/indexnow-plan.json" \
             --published-commit "$GITHUB_SHA" \
             --publication-id "deployment-site-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
-            --report-out "$RUNNER_TEMP/indexnow-report.json"
+            --report-out "$RUNNER_TEMP/indexnow-report.json" \
+            "${manual_args[@]}"
 
       - name: Record published state when IndexNow is unavailable
         if: steps.current.outputs.deploy == 'true' && steps.live_content.outcome == 'success' && steps.indexnow_submit.outcome != 'success'

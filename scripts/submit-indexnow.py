@@ -5,6 +5,9 @@ The script deliberately has no default network mode.  ``--dry-run`` only
 prints a plan, ``--record-published`` advances the local state without an
 IndexNow request, ``--report-only`` creates a safe workflow observation without
 an IndexNow request, and ``--send`` is the explicit real-submission mode.
+``--manual-url`` narrows that mode to one explicitly selected, currently
+indexable public URL for an operator-triggered bootstrap submission; it never
+runs by itself on a normal deployment.
 """
 
 from __future__ import annotations
@@ -239,6 +242,24 @@ def build_plan(current: dict[str, dict[str, object]], state: dict[str, object], 
         "urls": [entry["url"] for entry in ordered],
         "removed": [entry["url"] for entry in ordered if entry.get("kind") == "removed"],
     }
+
+
+def build_manual_plan(current: dict[str, dict[str, object]], url: str) -> dict[str, object]:
+    """Build a one-URL plan for an explicit operator-triggered submission."""
+    validate_url(url)
+    page = next((candidate for candidate in current.values() if candidate.get("url") == url), None)
+    if page is None or page.get("indexable") is not True:
+        raise ValueError("manual IndexNow URL must be a current indexable public page")
+    entry: dict[str, object] = {
+        "url": page["url"],
+        "path": page["path"],
+        "kind": "manual",
+        "indexable": True,
+        "fingerprint": page.get("fingerprint", ""),
+    }
+    if page.get("file"):
+        entry["file"] = page["file"]
+    return {"mode": "manual", "entries": [entry], "urls": [url], "removed": []}
 
 
 def retry_after_seconds(headers: object) -> float | None:
@@ -493,7 +514,14 @@ def write_report(path: Path | None, report: dict[str, object]) -> None:
 def run(args: argparse.Namespace) -> int:
     current = current_pages_from_manifest(args.current_manifest)
     state, bootstrap = load_state(args.state)
-    plan = build_plan(current, state, bootstrap)
+    manual_url = getattr(args, "manual_url", None)
+    if manual_url:
+        if args.mode != "send":
+            raise ValueError("--manual-url requires --send")
+        plan = build_manual_plan(current, manual_url)
+        bootstrap = False
+    else:
+        plan = build_plan(current, state, bootstrap)
     if args.plan_out:
         atomic_write_json(args.plan_out, plan)
 
@@ -520,7 +548,7 @@ def run(args: argparse.Namespace) -> int:
         return 0
 
     accepted: list[dict[str, object]] = []
-    pending: list[dict[str, object]] = []
+    pending: list[dict[str, object]] = pending_records(state) if manual_url else []
     eligible: list[str] = []
     submission_at: str | None = None
     successful_submission_at: str | None = None
@@ -615,11 +643,15 @@ def run(args: argparse.Namespace) -> int:
         run_status = "accepted"
         exit_code = 0
     else:
-        pending.extend(
-            _pending_since(entry, submission_at)
-            for entry in entries
-            if entry.get("kind") != "removed" or str(entry["url"]) in eligible
-        )
+        retained_pending = {
+            (str(entry.get("url")), str(entry.get("fingerprint", ""))): entry
+            for entry in pending
+        }
+        for entry in entries:
+            if entry.get("kind") != "removed" or str(entry["url"]) in eligible:
+                key = (str(entry["url"]), str(entry.get("fingerprint", "")))
+                retained_pending[key] = _pending_since(entry, submission_at)
+        pending = list(retained_pending.values())
         run_status = "failed"
         exit_code = 1
 
@@ -685,6 +717,7 @@ def main() -> int:
     parser.add_argument("--publication-id")
     parser.add_argument("--report-result", choices=sorted(REPORT_RESULTS))
     parser.add_argument("--error-code")
+    parser.add_argument("--manual-url", help="explicitly submit one current indexable public URL")
     args = parser.parse_args()
     for attribute in ("current_manifest", "state", "plan_out"):
         path = getattr(args, attribute)
